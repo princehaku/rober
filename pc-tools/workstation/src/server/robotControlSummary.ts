@@ -2362,6 +2362,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       },
     },
     operator_hil_material_summary: notLoadedHilMaterialSummary("not_loaded"),
+    first_jog_readiness_summary: buildFirstJogReadinessSummary(notLoadedHilMaterialSummary("not_loaded")),
     safe_command_boundary: lockedBoundary(),
     blocked_reasons: [reason],
     not_proven: ["robot_api_readback", "O7", "path_generated", "delivery_success"],
@@ -2396,6 +2397,49 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
     navigate_goal_enabled: false,
     keyboard_control_enabled: false,
     robot_control_executed: false,
+  };
+}
+
+function materialClaimReady(value: string): boolean {
+  // operator summary 使用 "true; ref=..." 表达可追溯材料；not_loaded 不能被当成 ready。
+  return value.startsWith("true; ref=") && !value.endsWith("not_loaded");
+}
+
+function buildFirstJogReadinessSummary(
+  materialSummary: RobotControlOperatorHilMaterialSummary,
+): RobotControlSummaryResponse["first_jog_readiness_summary"] {
+  // first-jog 只把首次试动的前置条件前移到 summary；轮速和 LiDAR delta 仍是试动后的证据。
+  if (materialSummary.status !== "loaded") {
+    return {
+      status: "not_loaded",
+      basic_safety_ready: false,
+      visual_material_ready: false,
+      missing_fields: ["operator_report_latest"],
+      next_action: "connect_robot_api",
+    };
+  }
+  const basicMissing = [
+    materialSummary.operator_present === "true" ? "" : "operator_present",
+    materialSummary.physical_clearance === "true" ? "" : "physical_clearance_confirmed",
+    materialSummary.emergency_stop === "true" ? "" : "emergency_stop_ready",
+  ].filter(Boolean);
+  const visualReady = materialClaimReady(materialSummary.external_video) || materialClaimReady(materialSummary.camera_visible);
+  const missingFields = [...basicMissing, ...(visualReady ? [] : ["external_video_or_visible_camera"])];
+  const basicReady = basicMissing.length === 0;
+  return {
+    status: !basicReady
+      ? "blocked_missing_basic_safety"
+      : visualReady
+        ? "ready_for_first_jog"
+        : "blocked_missing_visual_material",
+    basic_safety_ready: basicReady,
+    visual_material_ready: visualReady,
+    missing_fields: missingFields,
+    next_action: !basicReady
+      ? "complete_basic_safety_check"
+      : visualReady
+        ? "press_try_move"
+        : "record_visual_material",
   };
 }
 
@@ -2451,6 +2495,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
     ...readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`)),
     ...dangerous.map((field) => `dangerous_true_field:${field}`),
   ];
+  const operatorHilMaterialSummary = buildOperatorHilMaterialSummary(readbacks);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -2482,7 +2527,8 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
       lidar: lidarSummaryFromReadbacks(readbacks),
       base: baseSummaryFromReadbacks(readbacks),
     },
-    operator_hil_material_summary: buildOperatorHilMaterialSummary(readbacks),
+    operator_hil_material_summary: operatorHilMaterialSummary,
+    first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),
     safe_command_boundary: lockedBoundary(),
     blocked_reasons: blockedReasons.length ? blockedReasons : ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success", "safe_to_control_true", "real_robot_ack"],

@@ -3833,8 +3833,57 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.operator_hil_material_summary.wheel_feedback).toBe("true; ref=runtime/wave_rover_feedback_debug.jsonl");
       expect(summary.operator_hil_material_summary.lidar_delta).toBe("false; ref=runtime/scan_delta/latest_metrics.json");
       expect(summary.operator_hil_material_summary.delivery_claim).toBe("true");
+      expect(summary.first_jog_readiness_summary).toEqual({
+        status: "ready_for_first_jog",
+        basic_safety_ready: true,
+        visual_material_ready: true,
+        missing_fields: [],
+        next_action: "press_try_move",
+      });
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
+      expect(summary.primary_actions_enabled).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("summarizes first-jog readiness when only visual material is missing", async () => {
+    // 当前实板常见状态：基础安全三项已记录，但外部视频/可见相机材料还没补。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          operator_present: true,
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          structured_hil_claims: {
+            external_video_recorded: false,
+            visible_content_proven: false,
+            wheel_feedback_lr_nonzero_proven: false,
+            physical_motion_lidar_delta_proven: false,
+            delivery_success: false,
+            site_state: "plain_motion_precheck_ready_for_review",
+          },
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.operator_hil_material_summary.operator_present).toBe("true");
+      expect(summary.first_jog_readiness_summary).toEqual({
+        status: "blocked_missing_visual_material",
+        basic_safety_ready: true,
+        visual_material_ready: false,
+        missing_fields: ["external_video_or_visible_camera"],
+        next_action: "record_visual_material",
+      });
+      expect(summary.safe_to_control).toBe(false);
       expect(summary.primary_actions_enabled).toBe(false);
     } finally {
       await robotApi.close();

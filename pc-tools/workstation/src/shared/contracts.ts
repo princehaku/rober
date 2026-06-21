@@ -2205,6 +2205,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     };
   };
   operator_hil_material_summary: RobotControlOperatorHilMaterialSummary;
+  first_jog_readiness_summary: {
+    status: "ready_for_first_jog" | "blocked_missing_visual_material" | "blocked_missing_basic_safety" | "not_loaded";
+    basic_safety_ready: boolean;
+    visual_material_ready: boolean;
+    missing_fields: string[];
+    next_action: "press_try_move" | "record_visual_material" | "complete_basic_safety_check" | "connect_robot_api";
+  };
   safe_command_boundary: {
     manual_endpoint: "/api/base/manual";
     stop_endpoint: "/api/base/stop";

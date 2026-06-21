@@ -430,12 +430,8 @@ const operatorMaterialReady = computed(() => {
 });
 
 const firstJogVisualMaterialReady = computed(() => {
-  // first-jog 只需要先有人记录现场画面；轮速和 LiDAR delta 是试动后的输出证据。
-  const summary = robotSummary.value?.operator_hil_material_summary;
-  if (summary?.status !== "loaded") {
-    return false;
-  }
-  return claimWithRefReady(summary.external_video) || claimWithRefReady(summary.camera_visible);
+  // first-jog readiness 由 PC summary 后端统一判定，避免普通首屏和 API 合同漂移。
+  return robotSummary.value?.first_jog_readiness_summary?.visual_material_ready === true;
 });
 
 const canSendManualMotion = computed(() => {

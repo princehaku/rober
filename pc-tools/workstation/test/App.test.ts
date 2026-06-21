@@ -441,6 +441,13 @@ const fixtures: Record<string, unknown> = {
       delivery_claim: "true",
       site_state: "field_operator_claim_ready_for_review",
     },
+    first_jog_readiness_summary: {
+      status: "ready_for_first_jog",
+      basic_safety_ready: true,
+      visual_material_ready: true,
+      missing_fields: [],
+      next_action: "press_try_move",
+    },
     safe_command_boundary: {
       manual_endpoint: "/api/base/manual",
       stop_endpoint: "/api/base/stop",
@@ -3393,6 +3400,13 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "not_loaded";
     summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.first_jog_readiness_summary = {
+      status: "blocked_missing_visual_material",
+      basic_safety_ready: true,
+      visual_material_ready: false,
+      missing_fields: ["external_video_or_visible_camera"],
+      next_action: "record_visual_material",
+    };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/manual": {
@@ -3504,6 +3518,13 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "not_loaded";
     summaryFixture.operator_hil_material_summary.lidar_delta = "not_loaded";
+    summaryFixture.first_jog_readiness_summary = {
+      status: "blocked_missing_visual_material",
+      basic_safety_ready: true,
+      visual_material_ready: false,
+      missing_fields: ["external_video_or_visible_camera"],
+      next_action: "record_visual_material",
+    };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/manual": {
