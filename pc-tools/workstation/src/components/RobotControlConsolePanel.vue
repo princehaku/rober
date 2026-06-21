@@ -429,6 +429,15 @@ const operatorMaterialReady = computed(() => {
   return robotSummary.value?.operator_hil_material_summary?.status === "loaded" && operatorMaterialMissingFields.value.length === 0;
 });
 
+const firstJogVisualMaterialReady = computed(() => {
+  // first-jog 只需要先有人记录现场画面；轮速和 LiDAR delta 是试动后的输出证据。
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  if (summary?.status !== "loaded") {
+    return false;
+  }
+  return claimWithRefReady(summary.external_video) || claimWithRefReady(summary.camera_visible);
+});
+
 const canSendManualMotion = computed(() => {
   // 非 stop 方向必须同时满足地址、checklist、现场材料和“当前无 pending”。
   return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
@@ -507,7 +516,7 @@ const plainMotionSummary = computed(() => {
   }
   if (plainMotionPrecheckResult.value) {
     if (plainMotionPrecheckResult.value.proxy_status === "report_forwarded" && plainMotionPrecheckResult.value.status !== "blocked") {
-      return { state: "已记录", hint: "移动前检查已记录；还需要画面、轮子和雷达材料。" };
+      return { state: "已记录", hint: "移动前检查已记录；还需要现场画面。" };
     }
     return { state: "检查失败", hint: plainMotionPrecheckResult.value.failure_reason || "移动前检查提交失败。" };
   }
@@ -515,9 +524,10 @@ const plainMotionSummary = computed(() => {
     return { state: "处理中", hint: "正在处理请求。" };
   }
   if (!manualCommandResult.value) {
-    return operatorMaterialReady.value
-      ? { state: "待命", hint: "已完成移动前检查；需要时可直接停止。" }
-      : { state: "待检查", hint: "移动前先完成画面、轮子和周围环境检查；需要时可直接停止。" };
+    if (firstJogVisualMaterialReady.value) {
+      return { state: "待试动", hint: "现场画面已记录；可以试动一下。" };
+    }
+    return { state: "待记录", hint: "先记录现场画面，再试动一下；需要时可直接停止。" };
   }
   if (manualCommandResult.value.command_kind === "stop" && manualCommandResult.value.proxy_status === "command_forwarded") {
     return { state: "已停止", hint: "停止请求已发送。" };
@@ -527,7 +537,7 @@ const plainMotionSummary = computed(() => {
   }
   return operatorMaterialReady.value
     ? { state: "待命", hint: "已完成移动前检查；需要时可直接停止。" }
-    : { state: "待检查", hint: "移动前先完成画面、轮子和周围环境检查；需要时可直接停止。" };
+    : { state: "待记录", hint: "先记录现场画面，再试动一下；需要时可直接停止。" };
 });
 
 const plainEvidenceSweepSummary = computed(() => {

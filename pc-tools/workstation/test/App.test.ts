@@ -3199,8 +3199,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("地图列表");
     expect(firstScreenText).toContain("重新建图");
     expect(firstScreenText).toContain("保存地图");
-    expect(firstScreenText).toContain("待检查");
-    expect(firstScreenText).toContain("移动前先完成画面、轮子和周围环境检查；需要时可直接停止。");
+    expect(firstScreenText).toContain("待试动");
+    expect(firstScreenText).toContain("现场画面已记录；可以试动一下。");
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).toContain("移动前检查");
     expect(firstScreenText).toContain("停止");
@@ -3472,8 +3472,8 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("wheel_feedback_lr_nonzero_proven");
     expect(diagnostics.text()).toContain("physical_motion_lidar_delta_proven");
     const firstScreenText = visiblePlainHomeText(wrapper);
-    expect(firstScreenText).toContain("待检查");
-    expect(firstScreenText).toContain("移动前先完成画面、轮子和周围环境检查；需要时可直接停止。");
+    expect(firstScreenText).toContain("待记录");
+    expect(firstScreenText).toContain("先记录现场画面，再试动一下；需要时可直接停止。");
     expect(firstScreenText).not.toContain("现场材料");
     expect(firstScreenText).not.toContain("external_video_recorded");
     expect(firstScreenText).not.toContain("physical_motion_lidar_delta_proven");
@@ -3547,7 +3547,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("已记录");
-    expect(firstScreenText).toContain("移动前检查已记录；还需要画面、轮子和雷达材料。");
+    expect(firstScreenText).toContain("移动前检查已记录；还需要现场画面。");
     expect(firstScreenText).not.toContain("operator_report");
     expect(firstScreenText).not.toContain("structured_hil_claims");
     expect(firstScreenText).not.toContain("external_video_recorded");
