@@ -38,8 +38,12 @@ import type {
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
-// 本组件仍然是 fail-closed 控制台；新增的 WebRTC 只负责观察视频，不负责任何运动控制。
-const robotApiBaseUrl = ref("");
+// 本组件仍然是 fail-closed 控制台；默认地址固定到当前上位机，减少普通用户每次手输。
+const DEFAULT_ROBOT_API_BASE_URL = "http://192.168.1.11:8787";
+type ManualDirection = "forward" | "back" | "left" | "right";
+const KEYBOARD_JOG_INTERVAL_MS = 260;
+const KEYBOARD_JOG_DURATION_MS = 240;
+const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
 const o6ConsumerBaseUrl = ref("http://127.0.0.1:8088");
 const taskId = ref("");
 const fieldEvidenceManifestJson = ref("");
@@ -146,7 +150,13 @@ const evidenceSweepPending = ref(false);
 const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
 const evidenceSweepLines = ref<string[]>([]);
+const keyboardHeldDirection = ref<ManualDirection | null>(null);
+const keyboardControlStatus = ref("idle_not_started");
+const keyboardLastDirection = ref("not_loaded");
+const keyboardLastStopReason = ref("not_loaded");
 let previewFrameSampleTimers: number[] = [];
+let keyboardJogTimer: number | null = null;
+let keyboardJogInFlight = false;
 
 const selectedTaskSummary = computed(() => {
   // task_id 是回放和 evidence 的主键；没有 task_id 时保持 blocked 空状态。
@@ -439,6 +449,20 @@ const canSendManualMotion = computed(() => {
   return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
 });
 
+const keyboardControlSummary = computed(() => {
+  // 键盘控制只是高级区的连续点动入口；真正是否发送仍复用 manual gate。
+  if (keyboardHeldDirection.value) {
+    return { state: "手控中", hint: `${keyboardLastDirection.value} 按住点动中；松开按键、窗口失焦或页面隐藏会发送停止。` };
+  }
+  if (canSendManualMotion.value) {
+    return { state: "可手控", hint: "高级手控已就绪：按住 W/A/S/D 或方向键连续点动，松开即停。" };
+  }
+  if (keyboardControlStatus.value.startsWith("blocked")) {
+    return { state: "未满足", hint: keyboardControlStatus.value };
+  }
+  return { state: "未满足", hint: manualBlockedReason.value };
+});
+
 const operatorMaterialGateSummary = computed(() => {
   // 首页只给“现场材料”普通结论；具体字段名和引用全部留在高级诊断。
   return operatorMaterialReady.value
@@ -601,12 +625,22 @@ function timestampText(epochMs: number | null | undefined): string {
   return typeof epochMs === "number" && Number.isFinite(epochMs) ? new Date(epochMs).toISOString() : "never";
 }
 
-function requestBodyForDirection(direction: "forward" | "back" | "left" | "right") {
+function requestBodyForDirection(direction: ManualDirection) {
   // 提交前再次按当前边界 clamp，避免浏览器层被手工改值后越过安全上限。
   return {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
+    confirm_hil_checklist: hilChecklistConfirmed.value,
+  } as const;
+}
+
+function requestBodyForKeyboardDirection(direction: ManualDirection) {
+  // 键盘连续手控采用短脉冲重复发送，降低“按键卡住”时单条命令持续过久的风险。
+  return {
+    direction,
+    speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
+    duration_ms: Math.min(Math.max(KEYBOARD_JOG_DURATION_MS, 0), manualDurationLimit.value),
     confirm_hil_checklist: hilChecklistConfirmed.value,
   } as const;
 }
@@ -1015,6 +1049,12 @@ function makeBaseFeedbackSamplesFallback(reason: string): RobotControlBaseFeedba
       all_samples_observed_t1001: "not_loaded",
       partial_samples_observed_t1001: "not_loaded",
       feedback_ack_t1001_observed: "not_loaded",
+      wheel_feedback_lr_nonzero_proven: "not_loaded",
+      wheel_feedback_nonzero_observed: "not_loaded",
+      wheel_feedback_nonzero_frame_count: "not_loaded",
+      wheel_feedback_latest_left_speed: "not_observed",
+      wheel_feedback_latest_right_speed: "not_observed",
+      wheel_feedback_source: "not_observed",
       observed_feedback_types: "not_loaded",
       sends_motion_commands: "false",
       robot_control_executed: "false",
@@ -1678,7 +1718,7 @@ async function runEvidenceSweep(): Promise<void> {
   }
 }
 
-async function sendManualMotion(direction: "forward" | "back" | "left" | "right"): Promise<void> {
+async function sendManualMotion(direction: ManualDirection): Promise<void> {
   // 非 stop 点动必须通过 checklist gate；即使远端成功，也继续维持 fail-closed UI。
   if (!canSendManualMotion.value) {
     return;
@@ -1726,6 +1766,133 @@ async function sendManualMotion(direction: "forward" | "back" | "left" | "right"
   } finally {
     manualCommandPending.value = false;
     await refreshConsole();
+  }
+}
+
+async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void> {
+  // 连续键盘脉冲复用同一个后端 manual 代理；不新增浏览器直连或 /cmd_vel 通道。
+  if (!canSendManualMotion.value || keyboardJogInFlight || keyboardHeldDirection.value !== direction) {
+    return;
+  }
+  keyboardJogInFlight = true;
+  keyboardControlStatus.value = "sending_keyboard_pulse";
+  try {
+    manualCommandPending.value = true;
+    manualCommandResult.value = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForKeyboardDirection(direction));
+    if (keyboardHeldDirection.value === direction) {
+      keyboardControlStatus.value = "holding_keyboard_jog";
+    }
+  } catch (err) {
+    keyboardControlStatus.value = `blocked_keyboard_pulse_failed:${err instanceof Error ? err.message : "keyboard_manual_request_failed"}`;
+  } finally {
+    manualCommandPending.value = false;
+    keyboardJogInFlight = false;
+    await refreshConsole();
+  }
+}
+
+function keyboardDirectionFromKey(key: string): ManualDirection | null {
+  // 支持 WASD 和方向键，避免普通键盘没有小键盘时无法现场操作。
+  const normalizedKey = key.toLowerCase();
+  if (normalizedKey === "w" || key === "ArrowUp") {
+    return "forward";
+  }
+  if (normalizedKey === "s" || key === "ArrowDown") {
+    return "back";
+  }
+  if (normalizedKey === "a" || key === "ArrowLeft") {
+    return "left";
+  }
+  if (normalizedKey === "d" || key === "ArrowRight") {
+    return "right";
+  }
+  return null;
+}
+
+function eventTargetIsEditable(target: EventTarget | null): boolean {
+  // 输入框内按 WASD 必须继续输入文本，不能被全局手控快捷键抢走。
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tagName = target.tagName.toLowerCase();
+  return target.isContentEditable || tagName === "input" || tagName === "textarea" || tagName === "select";
+}
+
+function clearKeyboardJogTimer(): void {
+  // 全局 timer 必须集中清理，防止组件卸载或地址切换后仍重复发点动。
+  if (keyboardJogTimer !== null) {
+    window.clearInterval(keyboardJogTimer);
+    keyboardJogTimer = null;
+  }
+}
+
+function stopKeyboardControl(reason: string): void {
+  // 只有真实进入过按住态才发送 stop；普通误按 blocked 时不制造额外请求。
+  const shouldSendStop = keyboardHeldDirection.value !== null || keyboardJogTimer !== null;
+  clearKeyboardJogTimer();
+  keyboardHeldDirection.value = null;
+  keyboardLastStopReason.value = reason;
+  keyboardControlStatus.value = `released:${reason}`;
+  if (shouldSendStop && canSendStop.value) {
+    void sendStop().then(() => {
+      keyboardControlStatus.value = `stop_sent:${reason}`;
+    });
+  }
+}
+
+function startKeyboardControl(direction: ManualDirection): void {
+  // 切换方向时先收掉旧循环，并让下一次短脉冲按新方向进入后端 preflight。
+  if (!canSendManualMotion.value) {
+    keyboardControlStatus.value = `blocked_keyboard_manual_gate:${manualBlockedReason.value}`;
+    return;
+  }
+  clearKeyboardJogTimer();
+  keyboardHeldDirection.value = direction;
+  keyboardLastDirection.value = direction;
+  keyboardControlStatus.value = "holding_keyboard_jog";
+  void sendKeyboardManualPulse(direction);
+  keyboardJogTimer = window.setInterval(() => {
+    void sendKeyboardManualPulse(direction);
+  }, KEYBOARD_JOG_INTERVAL_MS);
+}
+
+function handleGlobalKeyDown(event: KeyboardEvent): void {
+  // 长按产生的 repeat 事件由 timer 接管，避免浏览器 repeat 频率影响底盘命令节奏。
+  const direction = keyboardDirectionFromKey(event.key);
+  if (!direction || eventTargetIsEditable(event.target)) {
+    return;
+  }
+  event.preventDefault();
+  if (keyboardHeldDirection.value === direction) {
+    return;
+  }
+  if (keyboardHeldDirection.value) {
+    stopKeyboardControl("direction_changed");
+  }
+  startKeyboardControl(direction);
+}
+
+function handleGlobalKeyUp(event: KeyboardEvent): void {
+  // 松开当前方向键即停；松开非当前方向键不影响正在按住的方向。
+  const direction = keyboardDirectionFromKey(event.key);
+  if (!direction || keyboardHeldDirection.value !== direction) {
+    return;
+  }
+  event.preventDefault();
+  stopKeyboardControl("key_released");
+}
+
+function handlePageVisibilityChange(): void {
+  // 页面隐藏时 operator 不再能观察现场，必须立即退出连续手控。
+  if (document.hidden && keyboardHeldDirection.value) {
+    stopKeyboardControl("page_hidden");
+  }
+}
+
+function handleWindowBlur(): void {
+  // 窗口失焦时按键释放事件可能丢失，所以主动发送 stop 收口。
+  if (keyboardHeldDirection.value) {
+    stopKeyboardControl("window_blur");
   }
 }
 
@@ -1879,6 +2046,9 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
   if (nextValue.trim() === previousValue.trim()) {
     return;
   }
+  if (keyboardHeldDirection.value) {
+    stopKeyboardControl("base_url_changed");
+  }
   if (previewPeerConnection.value || previewPeerId.value) {
     await cleanupPreview("stopped_by_user", "base_url_changed_cleanup");
   }
@@ -1890,12 +2060,21 @@ watch(manualBoundary, () => {
 }, { immediate: true });
 
 onMounted(() => {
-  // 初次加载只拿到 baseUrl_not_provided 的 blocked 摘要，不会探测真实机器人。
+  // 初次加载直接读取固定上位机地址的摘要；控制动作仍需要显式点击或按键。
+  window.addEventListener("keydown", handleGlobalKeyDown);
+  window.addEventListener("keyup", handleGlobalKeyUp);
+  window.addEventListener("blur", handleWindowBlur);
+  document.addEventListener("visibilitychange", handlePageVisibilityChange);
   void refreshConsole();
 });
 
 onBeforeUnmount(() => {
-  // 卸载时只做本地资源释放；远端 cleanup 尽量执行，但不能阻塞组件销毁。
+  // 卸载时先退出键盘循环，再释放视频资源；远端 cleanup 尽量执行但不能阻塞组件销毁。
+  clearKeyboardJogTimer();
+  window.removeEventListener("keydown", handleGlobalKeyDown);
+  window.removeEventListener("keyup", handleGlobalKeyUp);
+  window.removeEventListener("blur", handleWindowBlur);
+  document.removeEventListener("visibilitychange", handlePageVisibilityChange);
   void cleanupPreview("stopped_by_user", "component_unmounted");
 });
 </script>
@@ -1906,7 +2085,7 @@ onBeforeUnmount(() => {
       <form class="robot-quick-connect" @submit.prevent="refreshConsole">
         <label>
           <span>小车地址</span>
-          <input v-model="robotApiBaseUrl" name="robotApiBaseUrl" placeholder="http://192.168.x.x:8787">
+          <input v-model="robotApiBaseUrl" name="robotApiBaseUrl" placeholder="http://192.168.1.11:8787">
         </label>
         <button class="secondary" type="submit" :disabled="loading">连接/刷新</button>
         <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
@@ -2622,6 +2801,14 @@ onBeforeUnmount(() => {
             材料未满足，本机不会发送点动。缺项：{{ operatorMaterialMissingFields.join("、") }}
           </p>
           <p class="panel-note">非 stop 方向必须同时满足地址、checklist、现场材料且当前没有 pending；stop 可在材料缺失时单独发送。</p>
+          <div class="keyboard-control-box">
+            <div class="simple-status-row">
+              <span class="status-chip" :data-state="keyboardControlSummary.state">{{ keyboardControlSummary.state }}</span>
+              <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
+            </div>
+            <p class="panel-note">{{ keyboardControlSummary.hint }}</p>
+            <p class="panel-note">W/A/S/D 或方向键：前进、左转、后退、右转；按住重复发送短脉冲，松开即停。</p>
+          </div>
           <button class="secondary" type="button" :disabled="baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" @click="runBaseFeedbackSamples">
             {{ baseFeedbackSamplesPending ? "采集中..." : "采集底盘反馈（高级）" }}
           </button>
@@ -2675,6 +2862,15 @@ onBeforeUnmount(() => {
             <dd>navigate_goal_enabled=false</dd>
             <dt>keyboard_control_enabled</dt>
             <dd>keyboard_control_enabled=false</dd>
+            <dt>keyboard continuous control</dt>
+            <dd>
+              status={{ keyboardControlStatus }},
+              held={{ keyboardHeldDirection ?? "none" }},
+              last_direction={{ keyboardLastDirection }},
+              pulse_ms={{ KEYBOARD_JOG_DURATION_MS }},
+              interval_ms={{ KEYBOARD_JOG_INTERVAL_MS }},
+              stop_reason={{ keyboardLastStopReason }}
+            </dd>
             <dt>robot_control_executed</dt>
             <dd>robot_control_executed=false</dd>
             <dt>Camera / LiDAR / Base</dt>

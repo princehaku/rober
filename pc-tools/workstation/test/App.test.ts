@@ -3183,7 +3183,7 @@ describe("App", () => {
 
   it("renders Robot Control V1 by default with Robot API proxy and locked command boundary", async () => {
     // 首屏默认就是 Robot Control；测试只验证 Node proxy 摘要和 locked UI，不触发任何真实控制 endpoint。
-    stubWorkstationFetch();
+    const mockedFetch = stubWorkstationFetch();
 
     const wrapper = mount(App);
     await flushPromises();
@@ -3200,7 +3200,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("雷达已运行");
     expect(firstScreenText).toContain("地图");
     expect(firstScreenText).toContain("移动/导航");
-    expect(firstScreenText).toContain("未连接");
+    expect(firstScreenText).toContain("有异常");
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("地图列表");
@@ -3213,6 +3213,10 @@ describe("App", () => {
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("普通用户入口");
     expect(wrapper.find(".robot-console > .section-head").exists()).toBe(false);
+    expect((wrapper.find('input[name="robotApiBaseUrl"]').element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
+    expect(
+      mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787")),
+    ).toBe(true);
     const simpleUserConsoleText = wrapper.find(".simple-user-console").text();
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(simpleUserConsoleText).not.toContain(token);
@@ -3502,6 +3506,11 @@ describe("App", () => {
     await forwardButton?.trigger("click");
     await flushPromises();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("blocked_keyboard_manual_gate");
 
     await stopButton?.trigger("click");
     await flushPromises();
@@ -3777,6 +3786,60 @@ describe("App", () => {
         failure_reason: "",
         blocked_reasons: [],
       },
+      "/api/robot-control/base/stop": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: false,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/stop",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        requested_direction: "stop",
+        applied_direction: "stop",
+        requested_speed_mps: 0,
+        clamped_speed_mps: 0,
+        requested_duration_ms: 0,
+        clamped_duration_ms: 0,
+        confirm_hil_checklist: false,
+        non_stop_requires_confirm_hil_checklist: true,
+        hil_checklist_gate_status: "stop_allowed_without_checklist",
+        checklist_missing: [],
+        operator_report_preflight: {
+          status: "not_required_for_stop",
+          source_endpoint: "/api/operator/report",
+          request_status: "not_required",
+          http_status: null,
+          report_status: "not_required_for_stop",
+          evidence_ref: "not_required_for_stop",
+          required_fields: [],
+          missing_fields: [],
+          material_summary: summaryFixture.operator_hil_material_summary,
+          failure_reason: "",
+          hard_dangerous_true_fields: [],
+        },
+        request_contract: {
+          max_speed_mps: 0.12,
+          max_duration_ms: 800,
+          allowed_directions: ["forward", "back", "left", "right", "stop"],
+        },
+        evidence_capture_status: "blocked",
+        evidence_capture_endpoints: [],
+        evidence_capture_blocked_reasons: [],
+        before_readback: {},
+        after_readback: {},
+        motion_evidence_summary: "keyboard release stop fixture",
+        motion_evidence_gaps: ["stop_command_not_motion_proof"],
+        failure_reason: "",
+        blocked_reasons: [],
+      },
     });
 
     const wrapper = mount(App);
@@ -3824,6 +3887,27 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("cmd_vel");
     expect(firstScreenText).not.toContain("base_manual");
     expect(firstScreenText).not.toContain("task_id");
+
+    const manualCallsBeforeKeyboard = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const manualCallsAfterKeyboard = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    expect(manualCallsAfterKeyboard).toBeGreaterThan(manualCallsBeforeKeyboard);
+    const keyboardManualCalls = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"));
+    const keyboardManualCall = keyboardManualCalls[keyboardManualCalls.length - 1];
+    const keyboardBody = JSON.parse(String((keyboardManualCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
+    expect(keyboardBody).toEqual(expect.objectContaining({
+      direction: "forward",
+      duration_ms: 240,
+      confirm_hil_checklist: true,
+    }));
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("keyboard continuous control");
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("pulse_ms=240");
   });
 
   it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {
