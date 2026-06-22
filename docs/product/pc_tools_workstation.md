@@ -1582,3 +1582,6 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 2026-06-22 18:06 起，普通首屏 `启用键盘` 在 gate 全部满足后显示为 `启用键盘（按键才动）`；未满足时仍显示
 `启用键盘（还差 N 项）`。点击启用只让键盘面板获得焦点，不发送 keyboard pulse、manual、stop、Nav2
 或 `/cmd_vel`；真正手控仍必须后续按住 W/A/S/D 或方向键，并继续复用 manual gate。
+
+2026-06-22 18:09 起，普通首屏键盘面板里的 `键盘停止` 显示为 `键盘停止（随时可点）`。该按钮仍走既有
+固定 stop 代理，用于收口键盘循环；不放宽非 stop manual gate，不发送 keyboard pulse、Nav2 或 `/cmd_vel`。

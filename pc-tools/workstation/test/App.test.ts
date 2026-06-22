@@ -3226,7 +3226,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).toContain("移动前检查");
     expect(firstScreenText).toContain("启用键盘");
-    expect(firstScreenText).toContain("键盘停止");
+    expect(wrapper.find('[data-testid="keyboard-control-stop"]').text()).toBe("键盘停止（随时可点）");
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
