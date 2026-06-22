@@ -1349,3 +1349,11 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 视频和行程材料已核对、确认已投放/送达全部满足时，`确认送达` 才可点击。点击后先提交 operator report，
 再调用固定 `/api/robot-control/delivery/complete` 让上位机 gate 合成结果；仍不发送 Nav2 goal、manual、
 `/cmd_vel` 或任何底盘运动。普通首屏不展示 ref/API 字段，避免把最终确认误解成工程调试入口。
+
+2026-06-22 14:03 起，普通首屏 `移动/导航` 卡片新增常驻“轮速记录”小面板。该面板把 wheel raw
+L/R 非零采集拆成 `待准备 → 待试动 → 可保存 → 已保存` 的普通状态：默认提示先记录现场画面，再通过
+`试动一下` 固定 first-jog 入口读取轮速；只有 first-jog 返回
+`remote_motion_key_values.wheel_feedback_lr_nonzero_proven=true` 时，`保存轮速记录` 才可点击。保存动作仍只写
+operator report，不再次发送运动命令、不补 LiDAR/route/delivery。轮速字段事实沿用
+`docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER UART JSON 资料：`T=1001` 的 `L/R` 是底盘反馈字段；本轮未修改
+串口、底盘协议或硬件参数。

@@ -853,6 +853,26 @@ const plainFirstJogEvidenceSummary = computed(() => {
   return `已试动，但轮速非零还没拿到：L/R=${left}/${right}，运动帧=${frames}。`;
 });
 
+const plainWheelRecordSummary = computed(() => {
+  // 轮速记录是本轮目标的独立步骤；首屏需要常驻提示，不等试动完成后才出现按钮。
+  if (plainWheelEvidenceSavePending.value) {
+    return { state: "保存中", hint: "正在保存轮速记录。" };
+  }
+  if (plainWheelEvidenceSaveResult.value?.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked") {
+    return { state: "已保存", hint: "轮速记录已保存；键盘手控材料可复用。" };
+  }
+  if (plainFirstJogWheelEvidenceReady.value) {
+    return { state: "可保存", hint: "已拿到非零 L/R，先保存轮速记录。" };
+  }
+  if (plainFirstJogResult.value?.proxy_status === "command_forwarded") {
+    return { state: "待重试", hint: "已试动，但还没拿到非零 L/R。" };
+  }
+  if (canSendPlainFirstJog.value) {
+    return { state: "待试动", hint: "点“试动一下”后读取轮速。" };
+  }
+  return { state: "待准备", hint: "先记录现场画面，再试动读取轮速。" };
+});
+
 const plainWheelEvidenceSaveSummary = computed(() => {
   // 保存状态只用普通话术；完整 operator report 响应留在高级诊断。
   if (plainWheelEvidenceSavePending.value) {
@@ -3222,9 +3242,6 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canSendPlainFirstJog" @click="sendPlainFirstJog">
               试动一下
             </button>
-            <button v-if="plainFirstJogWheelEvidenceReady || plainWheelEvidenceSavePending || plainWheelEvidenceSaveResult" type="button" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" @click="savePlainWheelEvidence">
-              保存轮速证据
-            </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
           </div>
           <div
@@ -3256,7 +3273,17 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
           <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>
-          <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>
+          <div class="plain-wheel-record" data-testid="plain-wheel-record">
+            <div class="simple-status-row">
+              <strong>轮速记录</strong>
+              <span class="status-chip" :data-state="plainWheelRecordSummary.state">{{ plainWheelRecordSummary.state }}</span>
+              <button type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" @click="savePlainWheelEvidence">
+                保存轮速记录
+              </button>
+            </div>
+            <p class="panel-note">{{ plainWheelRecordSummary.hint }}</p>
+            <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>
+          </div>
           <div class="plain-delivery-status" data-testid="plain-delivery-status">
             <div class="simple-status-row">
               <strong>任务收口</strong>

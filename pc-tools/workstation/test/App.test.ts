@@ -3229,6 +3229,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
     expect(firstScreenText).toContain("轮速记录");
+    expect(firstScreenText).toContain("点“试动一下”后读取轮速。");
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
@@ -3237,6 +3238,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("待材料");
     expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
+    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find(".simple-user-console [data-testid='keyboard-control-panel']").exists()).toBe(true);
@@ -4054,10 +4057,12 @@ describe("App", () => {
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("已试动");
     expect(firstScreenText).toContain("轮速证据已拿到：L/R=0.08/0.08，运动帧=3。");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("可保存");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("已拿到非零 L/R，先保存轮速记录。");
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(firstScreenText).not.toContain(token);
     }
-    const saveWheelButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速证据");
+    const saveWheelButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录");
     expect(saveWheelButton).toBeTruthy();
     expect(saveWheelButton?.attributes("disabled")).toBeUndefined();
     await saveWheelButton?.trigger("click");
@@ -4083,6 +4088,7 @@ describe("App", () => {
       site_state: "plain_first_jog_wheel_lr_nonzero_observed",
     }));
     expect(String(reportBody.structured_hil_claims.wheel_feedback_ref)).toMatch(/^pc-first-jog-wheel-lr-/);
+    expect(visiblePlainHomeText(wrapper)).toContain("轮速记录已保存；键盘手控材料可复用。");
     expect(visiblePlainHomeText(wrapper)).toContain("轮速证据已保存；后续手控材料可复用。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
