@@ -3263,7 +3263,8 @@ describe("App", () => {
     expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("读取轮速");
-    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（等非零 L/R）");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("tabindex")).toBe("-1");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').attributes("tabindex")).toBe("-1");
@@ -4471,10 +4472,10 @@ describe("App", () => {
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(firstScreenText).not.toContain(token);
     }
-    const saveWheelButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录");
-    expect(saveWheelButton).toBeTruthy();
-    expect(saveWheelButton?.attributes("disabled")).toBeUndefined();
-    await saveWheelButton?.trigger("click");
+    const saveWheelButton = wrapper.find('[data-testid="plain-wheel-save"]');
+    expect(saveWheelButton.text()).toBe("保存轮速记录");
+    expect(saveWheelButton.attributes("disabled")).toBeUndefined();
+    await saveWheelButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -4609,8 +4610,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?")).length).toBe(firstJogCallsBeforeRetry + 1);
-    const saveWheelButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录");
-    expect(saveWheelButton?.attributes("disabled")).toBeDefined();
+    const saveWheelButton = wrapper.find('[data-testid="plain-wheel-save"]');
+    expect(saveWheelButton.text()).toBe("保存轮速记录（等非零 L/R）");
+    expect(saveWheelButton.attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });

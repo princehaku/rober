@@ -1543,3 +1543,8 @@ manual 或 `/cmd_vel`，也不把行程成功外推成 delivery success。
 2026-06-22 17:37 起，普通首屏 `复查手控条件` 按钮也会显示当前键盘 gate 缺项数量，例如
 `复查手控条件（还差 3 项）`；全部满足后恢复为 `复查手控条件`。该按钮仍只调用普通进度刷新链路，
 不发送 keyboard pulse、manual、stop 或 `/cmd_vel`。
+
+2026-06-22 17:41 起，普通首屏 `保存轮速记录` 按钮在未拿到同帧非零 L/R 前显示
+`保存轮速记录（等非零 L/R）`，拿到 `wheel_feedback_lr_nonzero_proven=true` 后恢复为 `保存轮速记录`。
+按钮仍沿用既有 `plainFirstJogWheelEvidenceReady` gate，不自动保存、不调用 operator report、不发送
+first-jog、manual、stop、Nav2 或 `/cmd_vel`。

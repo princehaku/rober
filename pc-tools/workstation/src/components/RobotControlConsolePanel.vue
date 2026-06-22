@@ -1108,6 +1108,14 @@ const plainWheelTrialButtonLabel = computed(() => {
   return "读取轮速";
 });
 
+const plainWheelEvidenceSaveButtonLabel = computed(() => {
+  // 保存按钮只有拿到同帧非零 L/R 才能点；禁用文案直接说明还在等什么。
+  if (plainWheelEvidenceSavePending.value || operatorReportPending.value) {
+    return "保存中";
+  }
+  return plainFirstJogWheelEvidenceReady.value ? "保存轮速记录" : "保存轮速记录（等非零 L/R）";
+});
+
 const plainWheelEvidenceSaveSummary = computed(() => {
   // 保存状态只用普通话术；完整 operator report 响应留在高级诊断。
   if (plainWheelEvidenceSavePending.value) {
@@ -3864,8 +3872,8 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="!canSendPlainFirstJog" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
                 {{ plainWheelTrialButtonLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" @click="savePlainWheelEvidence">
-                保存轮速记录
+              <button type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" data-testid="plain-wheel-save" @click="savePlainWheelEvidence">
+                {{ plainWheelEvidenceSaveButtonLabel }}
               </button>
             </div>
             <p class="panel-note">{{ plainWheelRecordSummary.hint }}</p>
