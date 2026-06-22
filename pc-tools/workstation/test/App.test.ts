@@ -4896,6 +4896,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const firstJogButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButton).toBeTruthy();
@@ -4917,6 +4918,8 @@ describe("App", () => {
     const saveWheelButton = wrapper.find('[data-testid="plain-wheel-save"]');
     expect(saveWheelButton.text()).toBe("保存轮速记录");
     expect(saveWheelButton.attributes("disabled")).toBeUndefined();
+    expect(focusSpy).toHaveBeenCalled();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     await saveWheelButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();

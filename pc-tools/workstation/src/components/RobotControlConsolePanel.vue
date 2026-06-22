@@ -201,6 +201,7 @@ const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
 const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainWheelTrialButton = ref<HTMLButtonElement | null>(null);
+const plainWheelSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
 const keyboardControlArmed = ref(false);
@@ -3871,6 +3872,11 @@ async function sendPlainFirstJog(): Promise<void> {
     manualCommandPending.value = false;
     await runBaseFeedbackSamples({ refreshAfter: false });
     await refreshConsole();
+    if (plainFirstJogWheelEvidenceReady.value) {
+      await nextTick();
+      plainWheelSaveButton.value?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+      plainWheelSaveButton.value?.focus({ preventScroll: true });
+    }
   }
 }
 
@@ -4590,7 +4596,7 @@ onBeforeUnmount(() => {
               <button v-if="plainWheelZeroBlockerActive" type="button" class="secondary compact-stop" data-testid="plain-wheel-zero-check" @click="markPlainWheelZeroBlockerChecked">
                 {{ plainWheelZeroBlockerButtonLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" data-testid="plain-wheel-save" @click="savePlainWheelEvidence">
+              <button ref="plainWheelSaveButton" type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" data-testid="plain-wheel-save" @click="savePlainWheelEvidence">
                 {{ plainWheelEvidenceSaveButtonLabel }}
               </button>
             </div>
