@@ -818,24 +818,28 @@ const plainGoalProgressItems = computed(() => {
     {
       id: "wheel",
       label: "轮速记录",
+      actionLabel: "去轮速",
       state: wheelReady ? "已完成" : "待完成",
       hint: wheelReady ? "已读到非零 L/R。" : plainWheelGoalProgressHint.value,
     },
     {
       id: "trip",
       label: "行程执行",
+      actionLabel: "去行程",
       state: navReady ? "已完成" : "待完成",
       hint: navReady ? "最近行程已读到成功结果。" : "还没读到最近行程成功结果。",
     },
     {
       id: "delivery",
       label: "送达确认",
+      actionLabel: "去送达",
       state: deliveryReady ? "已完成" : "待完成",
       hint: deliveryReady ? "送达已确认。" : plainDeliveryGoalProgressHint.value,
     },
     {
       id: "keyboard",
       label: "键盘手控",
+      actionLabel: "去键盘",
       state: canUseKeyboardControl.value ? "可使用" : "未满足",
       hint: canUseKeyboardControl.value ? "可启用键盘面板。" : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value}`,
     },
@@ -3627,7 +3631,7 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
               <span class="muted">{{ item.hint }}</span>
               <button type="button" class="secondary compact-stop" :data-testid="`plain-goal-progress-go-${item.id}`" @click="focusPlainGoalProgressTarget(item.id)">
-                去处理
+                {{ item.actionLabel }}
               </button>
             </div>
           </div>

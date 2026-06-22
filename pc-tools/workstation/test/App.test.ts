@@ -3231,7 +3231,10 @@ describe("App", () => {
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
     expect(firstScreenText).toContain("刷新进度");
-    expect(firstScreenText).toContain("去处理");
+    expect(firstScreenText).toContain("去轮速");
+    expect(firstScreenText).toContain("去行程");
+    expect(firstScreenText).toContain("去送达");
+    expect(firstScreenText).toContain("去键盘");
     expect(firstScreenText).toContain("轮速记录");
     expect(firstScreenText).toContain("点“试动一下”后读取轮速。");
     expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。");
@@ -3533,7 +3536,7 @@ describe("App", () => {
   });
 
   it("focuses plain goal progress targets without calling robot APIs", async () => {
-    // “去处理”只是把用户带到对应普通面板；不替用户执行行程、确认送达或发送手控。
+    // 进度快捷按钮只是把用户带到对应普通面板；不替用户执行行程、确认送达或发送手控。
     const mockedFetch = stubWorkstationFetch();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
@@ -3547,6 +3550,10 @@ describe("App", () => {
     for (const target of targets) {
       await wrapper.find(`[data-testid="plain-goal-progress-go-${target}"]`).trigger("click");
     }
+    expect(wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').text()).toBe("去轮速");
+    expect(wrapper.find('[data-testid="plain-goal-progress-go-trip"]').text()).toBe("去行程");
+    expect(wrapper.find('[data-testid="plain-goal-progress-go-delivery"]').text()).toBe("去送达");
+    expect(wrapper.find('[data-testid="plain-goal-progress-go-keyboard"]').text()).toBe("去键盘");
 
     expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeClick + 4);
     expect(mockedFetch.mock.calls.length).toBe(callsBeforeClick);

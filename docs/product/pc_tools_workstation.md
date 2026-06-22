@@ -1360,6 +1360,8 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 该调用仍只发送后端写死的 T=130 反馈采样，不传方向、速度、duration、串口或任意 endpoint，不调用
 `/api/base/manual`、Nav2 goal、delivery complete 或 `/cmd_vel`；L/R 仍为 0/0 时只提示“仍需试动读到非零”，
 不会把 T1001 计数解释成 wheel raw L/R 非零完成。
+2026-06-22 18:35 起，`本轮进度` 四个快捷按钮从统一“去处理”改为明确的 `去轮速 / 去行程 / 去送达 / 去键盘`。
+这些按钮仍只把焦点移动到对应普通首屏面板，不调用行程执行、送达确认、manual、stop 或任何材料提交接口。
 
 2026-06-22 14:00 起，普通首屏 `任务收口` 新增“最终确认”小面板，复用高级送达确认同一组
 `deliveryOperatorConfirmations` 和同一条 `submitDeliveryOperatorReportAndComplete` 安全路径。面板默认不勾选；
