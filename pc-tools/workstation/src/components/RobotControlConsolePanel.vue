@@ -591,6 +591,27 @@ function deliveryGateMissing(token: string): boolean {
   return deliveryGateBlockedReasons.value.some((reason) => reason.includes(token));
 }
 
+const plainDeliveryGateMissingSummary = computed(() => {
+  // 把上位机 delivery gate 缺口翻成普通话；字段名留在高级诊断，避免普通首屏变成接口面板。
+  if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
+    return "";
+  }
+  const reasonText = deliveryGateBlockedReasons.value.join(" ");
+  const labels = [
+    { label: "完成行程", ready: !reasonText.includes("nav2_goal_succeeded") },
+    { label: "现场确认报告", ready: !reasonText.includes("operator_report_ready_for_review") },
+    { label: "已观察到到达/移动", ready: !reasonText.includes("operator_observed_motion") },
+    { label: "已观察到停止", ready: !reasonText.includes("operator_observed_stop") },
+    { label: "确认已投放/送达", ready: !reasonText.includes("structured_hil_claims.delivery_success") },
+    { label: "视频和行程材料", ready: !reasonText.includes("external_video_or_visible_camera_ref") && !reasonText.includes("route_map") },
+    { label: "最后点击确认送达", ready: !reasonText.includes("confirm_delivery_completion") },
+  ].filter((item) => !item.ready).map((item) => item.label);
+  if (labels.length === 0) {
+    return "";
+  }
+  return `上位机还差：${labels.join("、")}。`;
+});
+
 const deliveryNav2GoalReady = computed(() => {
   // Nav2 success 可来自刚执行结果、latest 读回或 delivery gate 的压缩 key values。
   const latestStatus = deliveryLatestResult.value?.delivery_key_values.nav2_status
@@ -3525,6 +3546,9 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainDeliverySummary.hint }}</p>
+            <p v-if="plainDeliveryGateMissingSummary" class="panel-note" data-testid="plain-delivery-gate-missing">
+              {{ plainDeliveryGateMissingSummary }}
+            </p>
             <div class="simple-status-row plain-delivery-material-row">
               <span class="status-chip" :data-state="plainDeliveryMaterialSummary.state">{{ plainDeliveryMaterialSummary.state }}</span>
               <button
