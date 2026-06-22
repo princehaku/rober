@@ -1335,9 +1335,9 @@ const plainKeyboardMissingSummary = computed(() => {
 });
 
 const plainKeyboardArmButtonLabel = computed(() => {
-  // 启用按钮本身显示缺项数量，避免现场只看到 disabled 按钮。
+  // 启用只让键盘面板获得焦点；真正手控必须后续按住方向键。
   const missingCount = plainKeyboardMissingLabels.value.length;
-  return missingCount > 0 ? `启用键盘（还差 ${missingCount} 项）` : "启用键盘";
+  return missingCount > 0 ? `启用键盘（还差 ${missingCount} 项）` : "启用键盘（按键才动）";
 });
 
 const plainKeyboardRecheckButtonLabel = computed(() => {

@@ -5408,7 +5408,7 @@ describe("App", () => {
     const armButton = wrapper.find('[data-testid="keyboard-control-arm"]');
     expect(armButton.attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
-    expect(armButton.text()).toBe("启用键盘");
+    expect(armButton.text()).toBe("启用键盘（按键才动）");
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').text()).not.toContain("还差：");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text().replace(/\s+/g, "")).toContain("键盘手控可使用");

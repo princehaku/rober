@@ -1578,3 +1578,7 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 2026-06-22 18:03 起，普通首屏 `复查送达条件` 按钮会显示 `复查送达条件（还差 N 项，不确认）`；
 当前未读到缺口时显示 `复查送达条件（不确认）`。该按钮仍只调用固定 `POST /api/robot-control/delivery/check`
 且后端请求固定 `confirm_delivery_completion=false`，不提交 operator report、不调用 delivery complete，不发车。
+
+2026-06-22 18:06 起，普通首屏 `启用键盘` 在 gate 全部满足后显示为 `启用键盘（按键才动）`；未满足时仍显示
+`启用键盘（还差 N 项）`。点击启用只让键盘面板获得焦点，不发送 keyboard pulse、manual、stop、Nav2
+或 `/cmd_vel`；真正手控仍必须后续按住 W/A/S/D 或方向键，并继续复用 manual gate。
