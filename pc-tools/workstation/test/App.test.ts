@@ -3266,7 +3266,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读轮速");
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
-    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（等非零 L/R）");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("tabindex")).toBe("-1");
@@ -3580,6 +3580,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("历史轮速样本已过期，以当前读回为准");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读非零 L/R");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
     expect(visiblePlainHomeText(wrapper)).not.toContain("raw");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -3922,6 +3923,8 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("physical_motion_lidar_delta_proven");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先记录画面再试动");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先记录画面）");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
 
     const motionButtons = wrapper.findAll(".motion-pad button");
     const forwardButton = motionButtons.find((button) => button.text() === "前进");
@@ -4293,6 +4296,8 @@ describe("App", () => {
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("action=restore first-jog confirmation");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先恢复确认再试动");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先恢复确认）");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
     const firstJogButtonBeforeRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButtonBeforeRestore).toBeTruthy();
     expect(firstJogButtonBeforeRestore?.attributes("disabled")).toBeDefined();

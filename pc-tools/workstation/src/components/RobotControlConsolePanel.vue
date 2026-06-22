@@ -1232,7 +1232,19 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
   if (plainWheelEvidenceSavePending.value || operatorReportPending.value) {
     return "保存中";
   }
-  return plainFirstJogWheelEvidenceReady.value ? "保存轮速记录" : "保存轮速记录（等非零 L/R）";
+  if (plainFirstJogWheelEvidenceReady.value) {
+    return "保存轮速记录";
+  }
+  if (firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value) {
+    return "保存轮速记录（先恢复确认）";
+  }
+  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
+    return "保存轮速记录（先记录画面）";
+  }
+  if (!plainFirstJogResult.value) {
+    return "保存轮速记录（先试动）";
+  }
+  return "保存轮速记录（等非零 L/R）";
 });
 
 const plainWheelReadbackButtonLabel = computed(() => (
