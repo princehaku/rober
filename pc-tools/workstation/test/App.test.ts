@@ -3230,6 +3230,10 @@ describe("App", () => {
     expect(
       mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787")),
     ).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     const simpleUserConsoleText = wrapper.find(".simple-user-console").text();
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(simpleUserConsoleText).not.toContain(token);

@@ -2096,6 +2096,17 @@ async function loadDeliveryLatest(): Promise<void> {
   }
 }
 
+async function preloadGoalClosureReadbacks(): Promise<void> {
+  // 目标收口进度只预载固定 GET 读回；不执行 Nav2 goal、不提交 delivery、不触发底盘运动。
+  if (!robotApiBaseUrl.value.trim()) {
+    return;
+  }
+  await Promise.all([
+    loadNavGoalExecutionLatest(),
+    loadDeliveryLatest(),
+  ]);
+}
+
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
   if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
@@ -2936,7 +2947,7 @@ onMounted(() => {
   window.addEventListener("keyup", handleGlobalKeyUp);
   window.addEventListener("blur", handleWindowBlur);
   document.addEventListener("visibilitychange", handlePageVisibilityChange);
-  void refreshConsole();
+  void refreshConsole().then(() => preloadGoalClosureReadbacks());
 });
 
 onBeforeUnmount(() => {
