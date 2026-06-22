@@ -3896,6 +3896,105 @@ describe("App", () => {
     expect(firstScreenAfter).not.toContain("external_video_or_visible_camera");
   });
 
+  it("summarizes first-jog wheel evidence on the plain first screen after a forwarded trial", async () => {
+    // 普通首屏要把试动后的 wheel raw L/R 结果翻译成短摘要，不要求用户进高级诊断翻 key。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/base/first-jog": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: false,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/manual",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        requested_direction: "forward",
+        applied_direction: "forward",
+        requested_speed_mps: 0.08,
+        clamped_speed_mps: 0.08,
+        requested_duration_ms: 500,
+        clamped_duration_ms: 500,
+        confirm_hil_checklist: true,
+        non_stop_requires_confirm_hil_checklist: true,
+        hil_checklist_gate_status: "manual_allowed",
+        checklist_missing: [],
+        operator_report_preflight: {
+          status: "loaded",
+          source_endpoint: "/api/operator/report",
+          request_status: "loaded",
+          http_status: 200,
+          report_status: "ready_for_execution",
+          evidence_ref: "plain-first-jog-video-fixture",
+          required_fields: [],
+          missing_fields: [],
+          material_summary: (fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse).operator_hil_material_summary,
+          failure_reason: "",
+          hard_dangerous_true_fields: [],
+        },
+        request_contract: {
+          max_speed_mps: 0.12,
+          max_duration_ms: 800,
+          allowed_directions: ["forward", "back", "left", "right", "stop"],
+        },
+        evidence_capture_status: "captured",
+        evidence_capture_endpoints: [],
+        evidence_capture_blocked_reasons: [],
+        before_readback: {},
+        after_readback: {},
+        motion_evidence_summary: "first-jog fixture captured during-motion T1001 wheel feedback",
+        motion_evidence_gaps: [],
+        remote_motion_key_values: {
+          wheel_feedback_lr_nonzero_proven: "true",
+          wheel_feedback_nonzero_observed: "true",
+          wheel_feedback_nonzero_frame_count: "2",
+          wheel_feedback_latest_left_speed: "0.08",
+          wheel_feedback_latest_right_speed: "0.08",
+          wheel_feedback_latest_raw_left: "0.08",
+          wheel_feedback_latest_raw_right: "0.08",
+          feedback_during_motion_t1001_frame_count: "3",
+          feedback_after_stop_t1001_frame_count: "1",
+          feedback_during_motion_attempted: "true",
+          feedback_after_stop_attempted: "true",
+          manual_command_executed: "true",
+          auto_stop_executed: "true",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+      },
+      "/api/robot-control/base/manual": {
+        proxy_status: "should_not_be_called",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstJogButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
+    expect(firstJogButton).toBeTruthy();
+    expect(firstJogButton?.attributes("disabled")).toBeUndefined();
+    await firstJogButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("已试动");
+    expect(firstScreenText).toContain("轮速证据已拿到：L/R=0.08/0.08，运动帧=3。");
+    for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
+      expect(firstScreenText).not.toContain(token);
+    }
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("prefills delivery video ref from fixed camera first-frame probe without submitting delivery", async () => {
     // 送达材料的画面 ref 可以从固定 camera probe 样张预填，但不能自动提交送达 claim。
     const mockedFetch = stubWorkstationFetch({

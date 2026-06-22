@@ -1297,3 +1297,8 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 代理；代理侧仍会再次读取 latest operator report 并 fail-closed。
 同轮首屏补充普通禁用原因，例如“试动按钮已锁定：请先点恢复试动确认。”或“请先记录现场画面。”，
 让现场知道下一步操作，而不暴露 endpoint、HIL、proof 或 raw feedback 细节。
+2026-06-22 17:35 起，普通首屏会在 `试动一下` 返回后显示短轮速证据摘要：若
+`remote_motion_key_values.wheel_feedback_lr_nonzero_proven=true`，显示“轮速证据已拿到：L/R=...，运动帧=...”；
+若已试动但非零未证明，则显示当前 L/R 与运动帧数量并提示未拿到非零证据。完整
+`remote_motion_key_values`、during-motion T1001 帧数和 gaps 仍保留在高级诊断；普通摘要不改变
+`delivery_success=false`、`safe_to_control=false` 或 `primary_actions_enabled=false`。

@@ -596,6 +596,28 @@ const plainFirstJogBlockedHint = computed(() => {
   return "试动按钮已锁定：移动前确认还未满足。";
 });
 
+const plainFirstJogEvidenceSummary = computed(() => {
+  // 普通首屏只压缩试动后的轮速结果；完整 raw key 仍留在高级诊断。
+  const result = plainFirstJogResult.value;
+  if (!result) {
+    return "";
+  }
+  if (result.proxy_status !== "command_forwarded") {
+    return "轮速证据未采集：小车没有进入试动。";
+  }
+  const values = result.remote_motion_key_values;
+  if (!values) {
+    return "轮速证据未返回：请查看高级诊断。";
+  }
+  const left = values.wheel_feedback_latest_raw_left ?? "not_loaded";
+  const right = values.wheel_feedback_latest_raw_right ?? "not_loaded";
+  const frames = values.feedback_during_motion_t1001_frame_count ?? "0";
+  if (values.wheel_feedback_lr_nonzero_proven === "true") {
+    return `轮速证据已拿到：L/R=${left}/${right}，运动帧=${frames}。`;
+  }
+  return `已试动，但轮速非零还没拿到：L/R=${left}/${right}，运动帧=${frames}。`;
+});
+
 const canSendManualMotion = computed(() => {
   // 非 stop 方向必须同时满足地址、checklist、现场材料和“当前无 pending”。
   return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
@@ -2801,6 +2823,7 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
+          <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>
         </article>
       </div>
     </div>
