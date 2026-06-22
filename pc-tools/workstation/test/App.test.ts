@@ -5970,7 +5970,7 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("最终确认");
     expect(deliveryStatus.text()).toContain("待材料");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 8 项：送达材料");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（还差 8 项）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先准备材料）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 2 项，不确认）");
     expect(wrapper.find('[data-testid="plain-delivery-mark-safety"]').text()).toBe("下一步：勾选安全三项");
@@ -6004,7 +6004,7 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 7 项");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("确认已投放/送达");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（还差 7 项）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先勾选安全）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);

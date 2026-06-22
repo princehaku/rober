@@ -644,13 +644,13 @@ function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
 }
 
 const plainDeliveryConfirmButtonLabel = computed(() => {
-  // 按钮禁用时显示缺项数量；可提交时明确“不发车”，避免送达收口被误解成运动命令。
+  // 按钮禁用时也直接显示下一步动作；可提交时明确“不发车”，避免送达收口被误解成运动命令。
   const missingLabels = plainDeliveryConfirmMissingLabels.value;
   const missingCount = missingLabels.length;
-  if (missingCount > 0 && deliveryDraftMaterialPresent()) {
+  if (missingCount > 0) {
     return plainDeliveryConfirmBlockedLabel(missingLabels);
   }
-  return missingCount > 0 ? `确认送达（还差 ${missingCount} 项）` : "确认送达（不发车）";
+  return "确认送达（不发车）";
 });
 
 const plainDeliverySafetyButtonLabel = computed(() => {
