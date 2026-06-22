@@ -1548,3 +1548,7 @@ manual 或 `/cmd_vel`，也不把行程成功外推成 delivery success。
 `保存轮速记录（等非零 L/R）`，拿到 `wheel_feedback_lr_nonzero_proven=true` 后恢复为 `保存轮速记录`。
 按钮仍沿用既有 `plainFirstJogWheelEvidenceReady` gate，不自动保存、不调用 operator report、不发送
 first-jog、manual、stop、Nav2 或 `/cmd_vel`。
+
+2026-06-22 17:45 起，普通首屏 `小车地址` 默认固定为 `http://192.168.1.11:8787`，并新增
+`默认地址` 按钮用于用户误清空或改错后恢复该地址。该按钮只修改本地输入框，不自动连接/刷新、不调用
+Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用户显式点击 `连接/刷新`。

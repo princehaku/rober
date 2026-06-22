@@ -3280,7 +3280,19 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("目标收口进度");
     expect(firstScreenText).not.toContain("普通用户入口");
     expect(wrapper.find(".robot-console > .section-head").exists()).toBe(false);
-    expect((wrapper.find('input[name="robotApiBaseUrl"]').element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
+    const robotBaseUrlInput = wrapper.find('input[name="robotApiBaseUrl"]');
+    const defaultRobotBaseUrlButton = wrapper.find('[data-testid="robot-api-default"]');
+    expect((robotBaseUrlInput.element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
+    expect(defaultRobotBaseUrlButton.text()).toBe("默认地址");
+    expect(defaultRobotBaseUrlButton.attributes("disabled")).toBeDefined();
+    await robotBaseUrlInput.setValue("");
+    await wrapper.vm.$nextTick();
+    expect(defaultRobotBaseUrlButton.attributes("disabled")).toBeUndefined();
+    const fetchCallsBeforeDefaultRestore = mockedFetch.mock.calls.length;
+    await defaultRobotBaseUrlButton.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect((robotBaseUrlInput.element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
+    expect(mockedFetch.mock.calls).toHaveLength(fetchCallsBeforeDefaultRestore);
     expect(
       mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787")),
     ).toBe(true);

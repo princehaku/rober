@@ -416,7 +416,7 @@ function isPrivateIpv4(hostname: string): boolean {
 }
 
 export function normalizeRobotApiBaseUrl(baseUrl: string): { ok: true; normalized: URL } | { ok: false; reason: string } {
-  // 不提供默认地址，是为了避免页面初次加载时误探 workstation 自己或真实机器人。
+  // 代理层不自行发明默认地址；前端可传入固定上位机地址，但这里仍只负责校验和规范化。
   const trimmed = baseUrl.trim();
   if (!trimmed) {
     return { ok: false, reason: "baseUrl_not_provided" };

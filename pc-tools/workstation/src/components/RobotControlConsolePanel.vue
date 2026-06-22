@@ -55,6 +55,7 @@ const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
+const robotApiBaseUrlUsesDefault = computed(() => robotApiBaseUrl.value.trim() === DEFAULT_ROBOT_API_BASE_URL);
 const o6ConsumerBaseUrl = ref("http://127.0.0.1:8088");
 const taskId = ref("");
 const fieldEvidenceManifestJson = ref("");
@@ -231,6 +232,14 @@ const canStartPreview = computed(() => !previewBusy.value && robotApiBaseUrl.val
 const canStopPreview = computed(
   () => !previewBusy.value && (previewPeerConnection.value !== null || previewPeerId.value.length > 0),
 );
+
+function resetRobotApiBaseUrlToDefault(): void {
+  // 恢复地址只改本地输入值；真正读取或控制仍必须由用户再显式点击。
+  if (robotApiBaseUrlUsesDefault.value) {
+    return;
+  }
+  robotApiBaseUrl.value = DEFAULT_ROBOT_API_BASE_URL;
+}
 
 function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有异常"; hint: string } {
   // 连接状态只给普通用户看三档，细节放在折叠区。
@@ -3698,6 +3707,7 @@ onBeforeUnmount(() => {
           <span>小车地址</span>
           <input v-model="robotApiBaseUrl" name="robotApiBaseUrl" placeholder="http://192.168.1.11:8787">
         </label>
+        <button class="secondary compact-stop" type="button" :disabled="loading || robotApiBaseUrlUsesDefault" data-testid="robot-api-default" @click="resetRobotApiBaseUrlToDefault">默认地址</button>
         <button class="secondary" type="submit" :disabled="loading">连接/刷新</button>
         <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
       </form>
