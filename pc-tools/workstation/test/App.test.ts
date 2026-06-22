@@ -3247,7 +3247,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
     expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口、移动前检查、雷达移动记录。");
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（还差 3 项）");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（还差 3 项，不发车）");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（还差 3 项）");
     expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：复查手控条件。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口、移动前检查、雷达移动记录。");
@@ -3938,7 +3938,7 @@ describe("App", () => {
 
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("键盘合同未从 summary 读到");
     expect(visiblePlainHomeText(wrapper)).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口。");
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（还差 1 项）");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（还差 1 项，不发车）");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（还差 1 项）");
     expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：复查手控条件。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口。");

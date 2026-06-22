@@ -1334,7 +1334,7 @@ const plainKeyboardArmButtonLabel = computed(() => {
 const plainKeyboardRecheckButtonLabel = computed(() => {
   // 复查按钮同样显示缺项数量；点击仍只刷新只读进度，不会发送手控。
   const missingCount = plainKeyboardMissingLabels.value.length;
-  return missingCount > 0 ? `复查手控条件（还差 ${missingCount} 项）` : "复查手控条件";
+  return missingCount > 0 ? `复查手控条件（还差 ${missingCount} 项，不发车）` : "复查手控条件";
 });
 
 const plainKeyboardNextActionSummary = computed(() => {

@@ -1561,3 +1561,7 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 `下一步：确认到达停稳`、`下一步：核对材料`、`下一步：确认投放/送达`；对应项已勾选后显示
 `安全三项已勾选`、`已确认到达停稳`、`材料已核对`、`已确认投放/送达`。这些按钮仍只改本地 checkbox，
 不提交 operator report、不调用 delivery complete，也不触发 Nav2、manual、first-jog、stop 或 `/cmd_vel`。
+
+2026-06-22 17:54 起，普通首屏 `复查手控条件` 按钮在键盘 gate 未满足时显示
+`复查手控条件（还差 N 项，不发车）`；全部满足后恢复为 `复查手控条件`。该按钮仍只刷新 summary、
+底盘只读反馈、最近行程和送达状态，不发送 keyboard pulse、manual、first-jog、stop、Nav2 或 `/cmd_vel`。
