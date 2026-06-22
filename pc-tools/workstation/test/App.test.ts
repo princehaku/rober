@@ -3389,8 +3389,50 @@ describe("App", () => {
   });
 
   it("refreshes plain goal progress with read-only endpoints only", async () => {
-    // 普通首屏的进度刷新只重读摘要、最近行程和送达状态；不能借刷新触发运动或送达确认。
-    const mockedFetch = stubWorkstationFetch();
+    // 普通首屏的进度刷新只重读摘要、底盘反馈、最近行程和送达状态；不能借刷新触发运动或送达确认。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/feedback-samples": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+        proxy_status: "samples_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/feedback-samples",
+        remote_http_status: 200,
+        status: "loaded",
+        sample_key_values: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          requested_sample_count: "3",
+          completed_sample_count: "3",
+          t1001_observed_count: "3",
+          all_samples_observed_t1001: "true",
+          partial_samples_observed_t1001: "false",
+          feedback_ack_t1001_observed: "true",
+          wheel_feedback_lr_nonzero_proven: "false",
+          wheel_feedback_nonzero_observed: "false",
+          wheel_feedback_nonzero_frame_count: "0",
+          wheel_feedback_latest_left_speed: "0",
+          wheel_feedback_latest_right_speed: "0",
+          wheel_feedback_source: "vendor_t1001_L_R",
+          observed_feedback_types: "[1001]",
+          sends_motion_commands: "false",
+          robot_control_executed: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        sends_motion_commands: false,
+        robot_control_executed: false,
+      },
+    });
 
     const wrapper = mount(App);
     await flushPromises();
@@ -3406,6 +3448,9 @@ describe("App", () => {
     const deliveryLatestCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/delivery/latest?"),
     ).length;
+    const baseFeedbackSamplesCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/feedback-samples?"),
+    ).length;
 
     const refreshButton = wrapper.find('[data-testid="plain-goal-progress-refresh"]');
     expect(refreshButton.exists()).toBe(true);
@@ -3415,10 +3460,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const callsAfterClick = mockedFetch.mock.calls.slice(callsBeforeClick).map(([url]) => String(url));
-    expect(callsAfterClick).toHaveLength(3);
+    expect(callsAfterClick).toHaveLength(4);
     expect(
       mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary?")).length,
     ).toBe(summaryCallsBeforeClick + 1);
+    expect(
+      mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?")).length,
+    ).toBe(baseFeedbackSamplesCallsBeforeClick + 1);
     expect(
       mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?")).length,
     ).toBe(navLatestCallsBeforeClick + 1);
@@ -3429,6 +3477,7 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，仍需试动读到非零。");
   });
 
   it("shows current wheel L/R and frame count in plain goal progress from summary", async () => {

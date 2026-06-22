@@ -1355,6 +1355,11 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 执行或送达确认；文案刻意避免 `Nav2/proof/HIL/API` 等工程字段。若 wheel L/R 非零、最近行程成功、
 送达完成或键盘 gate 可用，对应项显示 `已完成` 或 `可使用`；否则显示 `待完成/未满足` 并给出下一步
 普通提示。完整字段和证据引用仍保留在高级诊断。
+2026-06-22 18:25 起，普通首屏 `本轮进度 -> 刷新进度` 会额外调用固定只读
+`POST /api/robot-control/base/feedback-samples?baseUrl=...`，让轮速记录直接刷新当前 T1001 帧数与 L/R。
+该调用仍只发送后端写死的 T=130 反馈采样，不传方向、速度、duration、串口或任意 endpoint，不调用
+`/api/base/manual`、Nav2 goal、delivery complete 或 `/cmd_vel`；L/R 仍为 0/0 时只提示“仍需试动读到非零”，
+不会把 T1001 计数解释成 wheel raw L/R 非零完成。
 
 2026-06-22 14:00 起，普通首屏 `任务收口` 新增“最终确认”小面板，复用高级送达确认同一组
 `deliveryOperatorConfirmations` 和同一条 `submitDeliveryOperatorReportAndComplete` 安全路径。面板默认不勾选；

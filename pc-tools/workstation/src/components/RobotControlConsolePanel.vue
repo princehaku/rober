@@ -884,7 +884,12 @@ const canRunPlainTripExecution = computed(() => {
   return !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
-const plainGoalProgressPending = computed(() => loading.value || navGoalExecutionLatestPending.value || deliveryLatestPending.value);
+const plainGoalProgressPending = computed(() => (
+  loading.value
+  || navGoalExecutionLatestPending.value
+  || deliveryLatestPending.value
+  || baseFeedbackSamplesPending.value
+));
 
 const firstJogVisualMaterialReady = computed(() => {
   // first-jog readiness 由 PC summary 后端统一判定，避免普通首屏和 API 合同漂移。
@@ -2601,12 +2606,15 @@ async function preloadGoalClosureReadbacks(): Promise<void> {
 }
 
 async function refreshPlainGoalProgress(): Promise<void> {
-  // 普通首屏刷新进度只读 summary、最近行程和送达状态，不执行行程、不保存材料、不确认送达。
+  // 普通首屏刷新进度只读 summary、底盘反馈、最近行程和送达状态，不执行行程、不保存材料、不确认送达。
   if (!robotApiBaseUrl.value.trim() || plainGoalProgressPending.value) {
     return;
   }
   await refreshConsole();
-  await preloadGoalClosureReadbacks();
+  await Promise.all([
+    runBaseFeedbackSamples({ refreshAfter: false }),
+    preloadGoalClosureReadbacks(),
+  ]);
 }
 
 function focusPlainGoalProgressTarget(targetId: string): void {
@@ -3021,7 +3029,7 @@ async function runCameraFirstFrameProbe(): Promise<void> {
   }
 }
 
-async function runBaseFeedbackSamples(): Promise<void> {
+async function runBaseFeedbackSamples(options: { refreshAfter?: boolean } = {}): Promise<void> {
   // 反馈样本采集只走固定 T=130 只读代理，不发送方向、速度或 stop/manual 命令。
   if (!robotApiBaseUrl.value.trim() || baseFeedbackSamplesPending.value) {
     return;
@@ -3035,7 +3043,9 @@ async function runBaseFeedbackSamples(): Promise<void> {
     );
   } finally {
     baseFeedbackSamplesPending.value = false;
-    await refreshConsole();
+    if (options.refreshAfter ?? true) {
+      await refreshConsole();
+    }
   }
 }
 
