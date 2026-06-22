@@ -205,6 +205,7 @@ const plainWheelSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
 const plainDeliveryDraftSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
+const plainDeliveryConfirmSubmitButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
@@ -3489,6 +3490,17 @@ async function focusPlainDeliveryDraftSaveButton(): Promise<void> {
   target.focus({ preventScroll: true });
 }
 
+async function focusPlainDeliveryConfirmSubmitButton(): Promise<void> {
+  // 最终确认勾齐后只聚焦红色提交按钮；提交 delivery gate 仍必须另点一次。
+  await nextTick();
+  const target = plainDeliveryConfirmSubmitButton.value;
+  if (!target || target.disabled || !plainDeliveryConfirmReady.value) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
+}
+
 function markDeliveryBasicSafetyConfirmed(): void {
   // 只减少现场重复勾选；到达、停稳和送达成功仍必须由 operator 分开确认。
   deliveryOperatorConfirmations.value.operator_present = true;
@@ -3512,17 +3524,19 @@ function markDeliveryRefsVerified(): void {
   deliveryOperatorConfirmations.value.route_video_refs_verified = true;
 }
 
-function markDeliverySuccessConfirmed(): void {
+async function markDeliverySuccessConfirmed(): Promise<void> {
   // 最后一项必须由 operator 显式点击；这里只勾本地确认，不触发提交。
   deliveryOperatorConfirmations.value.delivery_success = true;
+  await focusPlainDeliveryConfirmSubmitButton();
 }
 
-function markAllDeliveryConfirmations(): void {
+async function markAllDeliveryConfirmations(): Promise<void> {
   // 这个按钮只把现场已确认事项合并勾选；最终提交仍必须单独点击“确认送达”。
   markDeliveryBasicSafetyConfirmed();
   markDeliveryArrivedAndStopped();
   markDeliveryRefsVerified();
-  markDeliverySuccessConfirmed();
+  deliveryOperatorConfirmations.value.delivery_success = true;
+  await focusPlainDeliveryConfirmSubmitButton();
 }
 
 async function checkDeliveryGap(): Promise<void> {
@@ -4748,6 +4762,7 @@ onBeforeUnmount(() => {
                 </label>
               </div>
               <button
+                ref="plainDeliveryConfirmSubmitButton"
                 type="button"
                 class="danger-button compact-stop"
                 :disabled="!plainDeliveryConfirmReady"

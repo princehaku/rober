@@ -6818,6 +6818,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
     const callsBeforeAllConfirmedShortcut = mockedFetch.mock.calls.length;
+    const focusCallsBeforeAllConfirmedShortcut = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect((wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').element as HTMLInputElement).checked).toBe(true);
@@ -6831,6 +6832,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeAllConfirmedShortcut);
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeAllConfirmedShortcut);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').element);
 
     await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(false);
     await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(false);
@@ -6868,6 +6871,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-mark-refs-verified"]').text()).toBe("材料已核对");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
 
+    const focusCallsBeforeSuccessShortcut = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-delivery-mark-success"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect((wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').element as HTMLInputElement).checked).toBe(true);
@@ -6876,6 +6880,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-delivery-mark-success"]').text()).toBe("已确认投放/送达");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeSuccessShortcut);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').element);
 
     await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
