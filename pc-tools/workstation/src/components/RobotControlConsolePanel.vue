@@ -910,7 +910,7 @@ const goalClosureChecklist = computed(() => {
     || baseFeedbackSamplesResult.value?.sample_key_values.wheel_feedback_lr_nonzero_proven === "true";
   const nav2Ready = deliveryNav2GoalReady.value;
   const deliveryReady = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
-  const keyboardReady = canUseKeyboardControl.value;
+  const keyboardReady = canUseKeyboardControl.value && keyboardManualPulseObserved.value;
   return [
     {
       id: "wheel_raw_lr",
@@ -935,8 +935,10 @@ const goalClosureChecklist = computed(() => {
       label: "PC 键盘连续手控",
       ready: keyboardReady,
       hint: keyboardReady
-        ? "键盘入口已就绪，材料 gate 已满足"
-        : keyboardContractReady.value ? `键盘入口已在，仍需补齐：${plainKeyboardMissingSummary.value.replace(/^还差：/, "").replace(/。$/, "")}` : "键盘合同未从 summary 读到",
+        ? "已触发过键盘方向输入"
+        : canUseKeyboardControl.value
+          ? "键盘入口已就绪，仍需按住方向键现场验证"
+          : keyboardContractReady.value ? `键盘入口已在，仍需补齐：${plainKeyboardMissingSummary.value.replace(/^还差：/, "").replace(/。$/, "")}` : "键盘合同未从 summary 读到",
     },
   ];
 });
