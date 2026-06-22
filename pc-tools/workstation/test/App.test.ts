@@ -3234,6 +3234,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toBe("当前状态：轮速记录已完成；行程执行待完成；送达确认待完成；键盘手控未满足。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toBe("当前读数：轮速已完成；行程未完成；送达未完成；键盘未满足。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");
     expect(firstScreenText).toContain("去轮速");
     expect(firstScreenText).toContain("去行程");
     expect(firstScreenText).toContain("去送达");
@@ -3579,6 +3580,7 @@ describe("App", () => {
     expect(plainProgress).toContain("轮速记录");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理轮速记录。当前轮速 L/R=0/0");
     expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：轮速 L/R=0/0，检查电机使能、供电、模式和现场空间后重试。");
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("历史轮速样本已过期，以当前读回为准");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读非零 L/R");
@@ -6196,6 +6198,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选安全三项。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行已完成；送达确认待完成");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次；送达未完成");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：送达未完成，下一步：勾选安全三项。");
     expect((wrapper.find('input[name="deliveryOperatorEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-draft-smoke-1782102952");
     expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe("/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-1782099547218");

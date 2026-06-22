@@ -1050,6 +1050,31 @@ const plainGoalProgressEvidenceSummary = computed(() => {
   return `当前读数：${wheelText}；${tripText}；${deliveryText}；${keyboardText}。`;
 });
 
+const plainGoalProgressBlockerSummary = computed(() => {
+  // 验收卡点只选当前第一处真实缺口，避免现场在多条提示里来回找重点。
+  const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  const base = robotSummary.value?.readback_summary.base;
+  const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
+  if (!wheelReady) {
+    if (isZeroWheelPair(left, right)) {
+      return `验收卡点：轮速 L/R=${left}/${right}，检查电机使能、供电、模式和现场空间后重试。`;
+    }
+    return "验收卡点：还需要试动期间同帧 L/R 都非零。";
+  }
+  if (!deliveryNav2GoalReady.value) {
+    return "验收卡点：还没读到行程成功结果。";
+  }
+  if (!(deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true)) {
+    return plainDeliveryNextActionSummary.value ? `验收卡点：送达未完成，${plainDeliveryNextActionSummary.value}` : "验收卡点：送达未完成，需要现场最终确认。";
+  }
+  if (!canUseKeyboardControl.value) {
+    return `验收卡点：键盘手控未满足，${plainKeyboardNextActionSummary.value}`;
+  }
+  return "验收卡点：四项都已满足，保持待命。";
+});
+
 const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value);
 
 const plainTripSummary = computed(() => {
@@ -4086,6 +4111,7 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="plain-goal-progress-next-action">{{ plainGoalProgressNextAction }}</p>
             <p class="panel-note" data-testid="plain-goal-progress-state-summary">{{ plainGoalProgressStateSummary }}</p>
             <p class="panel-note" data-testid="plain-goal-progress-evidence-summary">{{ plainGoalProgressEvidenceSummary }}</p>
+            <p class="panel-note" data-testid="plain-goal-progress-blocker-summary">{{ plainGoalProgressBlockerSummary }}</p>
             <div v-for="item in plainGoalProgressItems" :key="item.id" class="plain-progress-row">
               <span class="plain-progress-label">{{ item.label }}</span>
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
