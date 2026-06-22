@@ -3893,8 +3893,14 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：行程成功但缺少反馈样本，需要重新读取或执行完整行程。");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新读取或执行完整行程。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("本轮行程");
+    await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg");
+    await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-no-feedback-fixture");
+    await wrapper.find('input[name="deliveryEvidenceRef"]').setValue("delivery-confirmation-o11-nav2-goal-execution-no-feedback-fixture");
     await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项：本轮行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();

@@ -821,10 +821,15 @@ function nav2ExecutionComplete(values: Record<string, string> | undefined): bool
 }
 
 function nav2EvidenceValues(): Array<Record<string, string> | undefined> {
-  // 当前执行结果优先级最高；latest/delivery 只能作为只读候选材料，旧材料不能算本轮完成。
-  return [
+  // 直接 Nav2 执行/最近结果是本轮行程的权威来源；一旦已读到，就不能再用 delivery latest 的旧摘要补完成。
+  const directValues = [
     navGoalExecutionResult.value?.goal_execution_key_values,
     navGoalExecutionLatestResult.value?.goal_execution_key_values,
+  ].filter((values): values is Record<string, string> => Boolean(values));
+  if (directValues.length > 0) {
+    return directValues;
+  }
+  return [
     deliveryLatestResult.value?.delivery_key_values,
     deliveryGapCheckResult.value?.delivery_key_values,
     deliveryCompletionResult.value?.delivery_key_values,

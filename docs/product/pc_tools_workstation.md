@@ -1665,6 +1665,12 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 收紧 UI gate，不自动执行行程、不提交 delivery complete，也不发送 manual、first-jog、stop、keyboard pulse 或
 `/cmd_vel`。
 
+2026-06-23 05:20 起，Nav2 证据优先级继续收紧：页面一旦读到本页执行结果或直接
+`/api/robot-control/nav2/goal/execution/latest`，就以该直接结果作为本轮行程权威来源，不能再用
+`delivery/latest` 中的旧 `nav2_feedback_sample_count` 或 route/map 摘要把直接 no-feedback / stale 行程补成完成。
+若直接 latest 是 `goal_succeeded` 但反馈样本为 0，普通首屏继续显示 `本轮行程` 缺口，最终确认按钮保持
+`确认送达（先重新行程）` 禁用，并且不会提交 operator report、delivery complete、manual 或 `/cmd_vel`。
+
 2026-06-23 04:20 起，普通首屏 `delivery success` 也按当前证据收口：`delivery/latest` 或 completion 读到
 `delivery_success=true` 但带有过期 `generated_at_ms/response_generated_at_ms` 时，只显示为旧送达成功记录，
 `本轮进度` 仍保持 `送达确认待完成`，最终确认面板提示 `旧送达成功记录不能用于本轮，仍需重新确认送达`。
