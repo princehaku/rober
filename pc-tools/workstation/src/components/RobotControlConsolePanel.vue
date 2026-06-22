@@ -118,6 +118,7 @@ const navGoalY = ref(0);
 const navGoalYaw = ref(0);
 const confirmNavigationPreflight = ref(false);
 const confirmNavigationExecution = ref(false);
+const plainTripSafetyConfirmed = ref(false);
 const confirmDeliveryCompletion = ref(false);
 const deliveryEvidenceRef = ref("");
 const deliveryOperatorEvidenceRef = ref("");
@@ -758,6 +759,47 @@ const plainGoalProgressItems = computed(() => {
       hint: canSendManualMotion.value ? "可启用键盘面板。" : "先完成移动前检查和轮速记录。",
     },
   ];
+});
+
+const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value);
+
+const plainTripSummary = computed(() => {
+  // 普通首屏只说“行程”，不把 Nav2、goal 或 proof 术语放到默认界面。
+  if (navGoalExecutionPending.value) {
+    return { state: "执行中", hint: "正在执行行程；人在旁边准备停止。" };
+  }
+  if (navGoalPreflightPending.value) {
+    return { state: "检查中", hint: "正在检查行程条件；不会发车。" };
+  }
+  if (navGoalExecutionLatestPending.value) {
+    return { state: "读取中", hint: "正在读取最近行程结果。" };
+  }
+  if (deliveryNav2GoalReady.value) {
+    return { state: "已完成", hint: "已读到最近行程完成，可以准备送达材料。" };
+  }
+  if (navGoalExecutionResult.value?.proxy_status === "execution_failed" || navGoalExecutionResult.value?.proxy_status === "execution_rejected") {
+    return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
+  }
+  if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
+    return { state: "可执行", hint: "检查通过，确认人在旁边后可执行一次行程。" };
+  }
+  if (navGoalPreflightResult.value && navGoalPreflightResult.value.proxy_status !== "preflight_passed") {
+    return { state: "检查失败", hint: "行程条件还没满足，请看高级诊断。" };
+  }
+  if (!plainTripSafetyConfirmed.value) {
+    return { state: "待确认", hint: "先勾选行程前确认，再检查或执行。" };
+  }
+  return { state: "可检查", hint: "可先检查行程条件，也可执行一次默认行程。" };
+});
+
+const canRunPlainTripPreflight = computed(() => {
+  // 预检不发车，但也要求现场先确认，避免普通入口被误当成随手按钮。
+  return !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+});
+
+const canRunPlainTripExecution = computed(() => {
+  // 真正执行仍由后端 confirm_navigation_execution gate 再次校验。
+  return !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
 const firstJogVisualMaterialReady = computed(() => {
@@ -2239,6 +2281,24 @@ async function runNavGoalExecution(): Promise<void> {
   }
 }
 
+async function runPlainTripPreflight(): Promise<void> {
+  // 普通入口固定使用当前目标参数，只是把高级预检入口翻译成普通操作。
+  if (!canRunPlainTripPreflight.value) {
+    return;
+  }
+  confirmNavigationPreflight.value = true;
+  await runNavGoalPreflight();
+}
+
+async function runPlainTripExecution(): Promise<void> {
+  // 普通入口只设置显式确认位，真正执行仍走固定 PC 代理和上位机 gate。
+  if (!canRunPlainTripExecution.value) {
+    return;
+  }
+  confirmNavigationExecution.value = true;
+  await runNavGoalExecution();
+}
+
 async function loadNavGoalExecutionLatest(): Promise<void> {
   // 读取最近执行结果只走固定 GET 代理；用于页面刷新后补回 route/map evidence ref。
   if (!robotApiBaseUrl.value.trim() || navGoalExecutionLatestPending.value) {
@@ -3270,6 +3330,28 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
               <span class="muted">{{ item.hint }}</span>
             </div>
+          </div>
+          <div class="plain-trip-run" data-testid="plain-trip-run">
+            <div class="simple-status-row">
+              <strong>行程操作</strong>
+              <span class="status-chip" :data-state="plainTripSummary.state">{{ plainTripSummary.state }}</span>
+            </div>
+            <label class="plain-trip-confirm">
+              <input v-model="plainTripSafetyConfirmed" name="plainTripSafetyConfirmed" type="checkbox">
+              <span>人在旁边、周围安全、停止手段就绪</span>
+            </label>
+            <div class="simple-status-row">
+              <button type="button" class="secondary compact-stop" :disabled="!canRunPlainTripPreflight" @click="runPlainTripPreflight">
+                检查行程
+              </button>
+              <button type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" @click="runPlainTripExecution">
+                执行行程
+              </button>
+              <button type="button" class="secondary compact-stop" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" @click="loadNavGoalExecutionLatest">
+                读取行程结果
+              </button>
+            </div>
+            <p class="panel-note">{{ plainTripSummary.hint }}</p>
           </div>
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
           <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>

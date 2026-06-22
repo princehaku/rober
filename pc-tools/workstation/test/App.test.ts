@@ -3011,6 +3011,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/nav2/proof/refresh";
     } else if (url.startsWith("/api/robot-control/nav2/goal/preflight")) {
       fixtureKey = "/api/robot-control/nav2/goal/preflight";
+    } else if (url.startsWith("/api/robot-control/nav2/goal/execute")) {
+      fixtureKey = "/api/robot-control/nav2/goal/execute";
     } else if (url.startsWith("/api/robot-control/nav2/goal/execution/latest")) {
       fixtureKey = "/api/robot-control/nav2/goal/execution/latest";
     } else if (url.startsWith("/api/robot-control/delivery/latest")) {
@@ -3230,6 +3232,11 @@ describe("App", () => {
     expect(firstScreenText).toContain("本轮进度");
     expect(firstScreenText).toContain("轮速记录");
     expect(firstScreenText).toContain("点“试动一下”后读取轮速。");
+    expect(firstScreenText).toContain("行程操作");
+    expect(firstScreenText).toContain("先勾选行程前确认，再检查或执行。");
+    expect(firstScreenText).toContain("检查行程");
+    expect(firstScreenText).toContain("执行行程");
+    expect(firstScreenText).toContain("读取行程结果");
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
@@ -3238,6 +3245,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("待材料");
     expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-trip-run"]').exists()).toBe(true);
+    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
     expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
@@ -3364,6 +3373,95 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("runs plain trip preflight and execution only after the safety checkbox is checked", async () => {
+    // 普通首屏可以触发固定行程代理，但必须先显式勾选；测试不触发任何底盘手控或 cmd_vel endpoint。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execute": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_proxy.v1",
+        proxy_status: "execution_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execute",
+        remote_endpoint: "/api/nav2/goal/execute",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_request: {
+          goal_frame_id: "map",
+          goal_x: 0.8,
+          goal_y: 0,
+          goal_yaw: 0,
+          result_timeout_s: 8,
+          confirm_navigation_execution: true,
+        },
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "plain-trip-execution-fixture",
+          result_status: "succeeded",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.exists()).toBe(true);
+    expect(tripPanel.text()).toContain("行程操作");
+    expect(tripPanel.text()).toContain("待确认");
+    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "检查行程")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeDefined();
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "检查行程")?.attributes("disabled")).toBeUndefined();
+    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeUndefined();
+
+    await wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "检查行程")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const preflightCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight?"));
+    expect(preflightCall).toBeTruthy();
+    expect(JSON.parse(String((preflightCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual({
+      goal_frame_id: "map",
+      goal_x: 0.8,
+      goal_y: 0,
+      goal_yaw: 0,
+      confirm_navigation_preflight: true,
+    });
+
+    await wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const executeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"));
+    expect(executeCall).toBeTruthy();
+    expect(JSON.parse(String((executeCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual({
+      goal_frame_id: "map",
+      goal_x: 0.8,
+      goal_y: 0,
+      goal_yaw: 0,
+      result_timeout_s: 8,
+      confirm_navigation_execution: true,
+    });
+    expect(visiblePlainHomeText(wrapper)).toContain("已读到最近行程完成，可以准备送达材料。");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("Nav2");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("proof");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("/cmd_vel");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("turns camera source first-frame failure into a plain first-screen hint", async () => {

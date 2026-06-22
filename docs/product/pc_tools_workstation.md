@@ -1357,3 +1357,11 @@ L/R 非零采集拆成 `待准备 → 待试动 → 可保存 → 已保存` 的
 operator report，不再次发送运动命令、不补 LiDAR/route/delivery。轮速字段事实沿用
 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER UART JSON 资料：`T=1001` 的 `L/R` 是底盘反馈字段；本轮未修改
 串口、底盘协议或硬件参数。
+
+2026-06-22 14:08 起，普通首屏 `移动/导航` 卡片新增“行程操作”入口，把原高级区的固定目标预检/执行流程翻译成
+`检查行程`、`执行行程`、`读取行程结果` 三个按钮。默认必须先勾选“人在旁边、周围安全、停止手段就绪”，
+否则检查和执行按钮禁用；勾选后普通入口会设置既有 `confirm_navigation_preflight` 或
+`confirm_navigation_execution`，再调用固定 PC 代理 `/api/robot-control/nav2/goal/preflight` 或
+`/api/robot-control/nav2/goal/execute`。该入口不开放地图点击、任意目标或任意 endpoint；默认目标仍沿用当前
+`map` frame 的 `x=0.8,y=0,yaw=0` 受限参数。普通首屏文案继续只显示“行程”，不展示 `Nav2/proof/API`
+字段；执行结果只用于“行程执行”状态和后续送达材料，不自动确认 delivery success。

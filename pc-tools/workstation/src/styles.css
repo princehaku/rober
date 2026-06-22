@@ -276,6 +276,8 @@ h3 {
 .status-chip[data-state="检查中"],
 .status-chip[data-state="确认中"],
 .status-chip[data-state="保存中"],
+.status-chip[data-state="执行中"],
+.status-chip[data-state="读取中"],
 .status-chip[data-state="发送中"] {
   border-color: #cfe0f0;
   background: #eef5fb;
@@ -305,6 +307,8 @@ h3 {
 .status-chip[data-state="可使用"],
 .status-chip[data-state="可提交"],
 .status-chip[data-state="可保存"],
+.status-chip[data-state="可检查"],
+.status-chip[data-state="可执行"],
 .status-chip[data-state="手控中"] {
   border-color: #d5d2a9;
   background: #fbf8e8;
@@ -313,6 +317,7 @@ h3 {
 
 .status-chip[data-state="有异常"],
 .status-chip[data-state="失败"],
+.status-chip[data-state="执行失败"],
 .status-chip[data-state="检查失败"] {
   border-color: #efc9c9;
   background: #fff1f1;
@@ -473,6 +478,27 @@ h3 {
 .plain-wheel-record strong {
   color: #253341;
   font-size: 14px;
+}
+
+.plain-trip-run {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px solid #d7dee6;
+  padding-top: 12px;
+}
+
+.plain-trip-run strong {
+  color: #253341;
+  font-size: 14px;
+}
+
+.plain-trip-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #1b2a38;
+  font-size: 13px;
 }
 
 .plain-goal-progress {
