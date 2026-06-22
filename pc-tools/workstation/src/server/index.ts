@@ -65,8 +65,10 @@ import type {
   RobotControlRadarLifecycleAction,
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalExecutionLatestResponse,
+  RobotControlDeliveryCompleteRequest,
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
+  RobotControlDeliveryGapCheckResponse,
 } from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -1588,6 +1590,74 @@ export function createWorkstationApp(): express.Express {
     } catch (error) {
       const reason = error instanceof Error ? shortText(error.message, "delivery_latest_failed") : "delivery_latest_failed";
       res.status(502).json({ ...fallbackBase, proxy_status: "latest_failed", failure_reason: reason, blocked_reasons: [reason] });
+    }
+  });
+
+  workstationApp.post("/api/robot-control/delivery/check", async (req, res) => {
+    // 缺口复算固定 confirm=false；只让上位机用当前 Nav2/operator report 重新生成 blocked 缺项。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const requestBody: RobotControlDeliveryCompleteRequest = {
+      confirm_delivery_completion: false,
+      delivery_evidence_ref: "delivery-gap-check-not-confirmed",
+      operator_notes: "PC delivery gap check only; confirm_delivery_completion=false so this cannot produce delivery success.",
+    };
+    const fallbackBase: RobotControlDeliveryGapCheckResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_delivery_gap_check_proxy.v1",
+      proxy_status: "check_rejected",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+      workstation_endpoint: "/api/robot-control/delivery/check",
+      remote_endpoint: "/api/delivery/complete",
+      remote_http_status: null,
+      status: "blocked",
+      request_body: requestBody,
+      delivery_key_values: {},
+      failure_reason: normalized.ok ? "" : normalized.reason,
+      blocked_reasons: normalized.ok ? [] : [normalized.reason],
+      hard_dangerous_true_fields: [],
+    };
+    if (!normalized.ok) {
+      res.status(400).json(fallbackBase);
+      return;
+    }
+    try {
+      const remote = await fetch(endpointUrl(normalized.normalized, "/api/delivery/complete"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(15000),
+      });
+      const remotePayload = asRecord(await remote.json().catch(() => null));
+      const missingMaterial = Array.isArray(remotePayload?.missing_required_material)
+        ? remotePayload.missing_required_material.map((item) => shortText(item, "")).filter(Boolean)
+        : [];
+      const dangerous = scanDangerousTrueFields(remotePayload);
+      const responseBody: RobotControlDeliveryGapCheckResponse = {
+        ...fallbackBase,
+        proxy_status: remote.ok && dangerous.length === 0 ? "check_loaded" : "check_failed",
+        remote_http_status: remote.status,
+        status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
+        delivery_key_values: deliveryCompleteKeyValues(remotePayload),
+        failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `delivery_check_http_status_${remote.status}`,
+        blocked_reasons: [
+          ...(remote.ok ? [] : [`delivery_check_http_status_${remote.status}`]),
+          ...missingMaterial,
+          ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ],
+        hard_dangerous_true_fields: dangerous,
+      };
+      res.status(responseBody.proxy_status === "check_loaded" ? 200 : 502).json(responseBody);
+    } catch (error) {
+      const reason = error instanceof Error ? shortText(error.message, "delivery_check_failed") : "delivery_check_failed";
+      res.status(502).json({ ...fallbackBase, proxy_status: "check_failed", failure_reason: reason, blocked_reasons: [reason] });
     }
   });
 

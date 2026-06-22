@@ -3015,6 +3015,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/nav2/goal/execution/latest";
     } else if (url.startsWith("/api/robot-control/delivery/latest")) {
       fixtureKey = "/api/robot-control/delivery/latest";
+    } else if (url.startsWith("/api/robot-control/delivery/check")) {
+      fixtureKey = "/api/robot-control/delivery/check";
     } else if (url.startsWith("/api/robot-control/delivery/complete")) {
       fixtureKey = "/api/robot-control/delivery/complete";
     } else if (url.startsWith("/api/robot-control/localize/reset")) {
@@ -4086,6 +4088,90 @@ describe("App", () => {
     expect(reportBody.delivery_success).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+  });
+
+  it("recomputes delivery gap through the fixed check endpoint without confirming completion", async () => {
+    // 复算缺口只调用 delivery/check；它固定 confirm=false，不能走 delivery/complete 确认路径。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/delivery/check": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_gap_check_proxy.v1",
+        proxy_status: "check_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/check",
+        remote_endpoint: "/api/delivery/complete",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {
+          confirm_delivery_completion: false,
+          delivery_evidence_ref: "delivery-gap-check-not-confirmed",
+        },
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_status: "goal_succeeded",
+          operator_report_status: "unsafe_or_incomplete",
+        },
+        failure_reason: "",
+        blocked_reasons: ["confirm_delivery_completion", "operator_report_ready_for_review"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/latest",
+        remote_endpoint: "/api/delivery/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_status: "goal_succeeded",
+          operator_report_status: "unsafe_or_incomplete",
+        },
+        failure_reason: "",
+        blocked_reasons: ["operator_report_ready_for_review"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+
+    const checkButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "复算送达缺口（高级）");
+    expect(checkButton).toBeTruthy();
+    await checkButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const checkCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/delivery/check?"));
+    expect(checkCall).toBeTruthy();
+    expect((checkCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    const diagnosticsText = wrapper.find(".robot-console .advanced-details").text();
+    expect(diagnosticsText).toContain("delivery check status");
+    expect(diagnosticsText).toContain("check_loaded");
+    expect(diagnosticsText).toContain("operator_report_ready_for_review");
   });
 
   it("enables non-stop motion only after complete operator material and still uses the fixed workstation proxy", async () => {

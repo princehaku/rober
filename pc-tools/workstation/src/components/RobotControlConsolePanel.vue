@@ -10,6 +10,7 @@ import {
   postRobotControlBaseManual,
   postRobotControlBaseStop,
   postRobotControlDeliveryComplete,
+  postRobotControlDeliveryGapCheck,
   postRobotControlMapStart,
   postRobotControlMapSave,
   postRobotControlLocalizeReset,
@@ -34,6 +35,7 @@ import type {
   RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
+  RobotControlDeliveryGapCheckResponse,
   RobotControlMapLifecycleResponse,
   RobotControlNavGoalExecutionLatestResponse,
   RobotControlNavGoalExecutionResponse,
@@ -67,6 +69,7 @@ const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(
 const navGoalExecutionResult = ref<RobotControlNavGoalExecutionResponse | null>(null);
 const navGoalExecutionLatestResult = ref<RobotControlNavGoalExecutionLatestResponse | null>(null);
 const deliveryLatestResult = ref<RobotControlDeliveryLatestResponse | null>(null);
+const deliveryGapCheckResult = ref<RobotControlDeliveryGapCheckResponse | null>(null);
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
 const localizationResetResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
@@ -143,6 +146,7 @@ const navGoalPreflightPending = ref(false);
 const navGoalExecutionPending = ref(false);
 const navGoalExecutionLatestPending = ref(false);
 const deliveryLatestPending = ref(false);
+const deliveryGapCheckPending = ref(false);
 const deliveryCompletionPending = ref(false);
 const localizationResetPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
@@ -936,6 +940,35 @@ function makeDeliveryLatestFallback(reason: string): RobotControlDeliveryLatestR
   };
 }
 
+function makeDeliveryGapCheckFallback(reason: string): RobotControlDeliveryGapCheckResponse {
+  // 缺口复算固定 confirm=false；异常也不能升级成送达完成。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_delivery_gap_check_proxy.v1",
+    proxy_status: "check_failed",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    workstation_endpoint: "/api/robot-control/delivery/check",
+    remote_endpoint: "/api/delivery/complete",
+    remote_http_status: null,
+    status: "blocked",
+    request_body: {
+      confirm_delivery_completion: false,
+      delivery_evidence_ref: "delivery-gap-check-not-confirmed",
+    },
+    delivery_key_values: {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function makeRadarLifecycleFallback(action: "start" | "stop", reason: string): RobotControlRadarLifecycleResponse {
   // 浏览器 fetch 异常时也保持与后端一致的安全字段，避免高级诊断误判。
   return {
@@ -1684,6 +1717,23 @@ async function loadDeliveryLatest(): Promise<void> {
     deliveryLatestResult.value = makeDeliveryLatestFallback(err instanceof Error ? err.message : "delivery_latest_request_failed");
   } finally {
     deliveryLatestPending.value = false;
+  }
+}
+
+async function checkDeliveryGap(): Promise<void> {
+  // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
+  if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
+    return;
+  }
+  deliveryGapCheckPending.value = true;
+  try {
+    deliveryGapCheckResult.value = await postRobotControlDeliveryGapCheck(robotApiBaseUrl.value);
+  } catch (err) {
+    deliveryGapCheckResult.value = makeDeliveryGapCheckFallback(err instanceof Error ? err.message : "delivery_gap_check_request_failed");
+  } finally {
+    deliveryGapCheckPending.value = false;
+    await loadDeliveryLatest();
+    await refreshConsole();
   }
 }
 
@@ -2908,6 +2958,9 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="loading || deliveryLatestPending || !robotApiBaseUrl.trim()" @click="loadDeliveryLatest">
               读取送达缺口（高级）
             </button>
+            <button class="secondary" type="button" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" @click="checkDeliveryGap">
+              复算送达缺口（高级）
+            </button>
           </div>
           <form class="robot-control-form" @submit.prevent="completeDelivery">
             <label>
@@ -3019,6 +3072,14 @@ onBeforeUnmount(() => {
             <dd>{{ recordText(deliveryLatestResult?.delivery_key_values) }}</dd>
             <dt>delivery latest missing</dt>
             <dd>{{ listText(deliveryLatestResult?.blocked_reasons, "none") }}</dd>
+            <dt>delivery check pending</dt>
+            <dd>{{ deliveryGapCheckPending ? "pending" : "idle" }}</dd>
+            <dt>delivery check status</dt>
+            <dd>{{ deliveryGapCheckResult?.proxy_status ?? "not_checked" }} / {{ deliveryGapCheckResult?.delivery_key_values.status ?? "not_loaded" }}</dd>
+            <dt>delivery check keys</dt>
+            <dd>{{ recordText(deliveryGapCheckResult?.delivery_key_values) }}</dd>
+            <dt>delivery check missing</dt>
+            <dd>{{ listText(deliveryGapCheckResult?.blocked_reasons, "none") }}</dd>
             <dt>delivery gate pending</dt>
             <dd>{{ deliveryCompletionPending ? "pending" : "idle" }}</dd>
             <dt>delivery gate status</dt>

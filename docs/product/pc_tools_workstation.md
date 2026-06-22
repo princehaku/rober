@@ -1229,6 +1229,13 @@ Nav2 goal，不调用 `/api/base/manual` 或 `/cmd_vel`，顶层继续固定
 `/api/delivery/complete`、不触发 Nav2 或底盘运动；即使 latest 显示缺项，PC 也只把缺项列给现场人员，
 不会自动代填或伪造 observed motion/stop、视频 ref、route/map ref 或 delivery claim。
 
+2026-06-22 14:00 起，PC 新增固定 `POST /api/robot-control/delivery/check?baseUrl=...`，
+高级诊断按钮为“复算送达缺口（高级）”。它转发到上位机 `/api/delivery/complete`，但 body 由
+PC 后端写死为 `confirm_delivery_completion=false`、`delivery_evidence_ref=delivery-gap-check-not-confirmed`，
+浏览器传入的 confirm 或 success 字段会被忽略。因此该入口只能让上位机用当前 Nav2 latest 与
+operator report latest 重新生成 blocked 缺项，不能确认送达；若远端意外返回 `delivery_success=true`，
+PC 会按危险字段阻断。
+
 2026-06-22 12:55 起，送达材料快捷表单新增“使用最近画面 ref”。该按钮复用既有固定
 `POST /api/robot-control/camera/first-frame/probe?baseUrl=...`，从响应
 `probe_key_values.sample_path` 预填“送达视频 ref”。如果本页已经有 camera probe 结果则直接使用，

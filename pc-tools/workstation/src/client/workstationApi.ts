@@ -35,6 +35,7 @@ import type {
   RobotControlDeliveryCompleteRequest,
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
+  RobotControlDeliveryGapCheckResponse,
   RobotControlOperatorReportProxyResponse,
   RobotControlOperatorReportRequest,
   RobotControlSummaryResponse,
@@ -114,6 +115,7 @@ const API_ENDPOINTS = {
   robotControlNav2GoalExecute: "/api/robot-control/nav2/goal/execute",
   robotControlNav2GoalExecutionLatest: "/api/robot-control/nav2/goal/execution/latest",
   robotControlDeliveryLatest: "/api/robot-control/delivery/latest",
+  robotControlDeliveryCheck: "/api/robot-control/delivery/check",
   robotControlDeliveryComplete: "/api/robot-control/delivery/complete",
   robotControlLocalizeReset: "/api/robot-control/localize/reset",
   robotControlMapList: "/api/robot-control/map/list",
@@ -562,6 +564,14 @@ export async function getRobotControlDeliveryLatest(baseUrl: string): Promise<Ro
   // delivery latest 只读取 gate 最近结论和缺项；不会提交送达或 operator report。
   return loadJson<RobotControlDeliveryLatestResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlDeliveryLatest, baseUrl),
+  );
+}
+
+export async function postRobotControlDeliveryGapCheck(baseUrl: string): Promise<RobotControlDeliveryGapCheckResponse> {
+  // 缺口复算固定 confirm=false，只刷新当前 Nav2/operator report 缺项，不可能确认送达。
+  return postJson<RobotControlDeliveryGapCheckResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlDeliveryCheck, baseUrl),
+    {},
   );
 }
 

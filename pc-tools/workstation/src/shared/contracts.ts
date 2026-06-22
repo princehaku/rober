@@ -2235,6 +2235,29 @@ export interface RobotControlDeliveryLatestResponse {
   robot_control_executed: false;
 }
 
+export interface RobotControlDeliveryGapCheckResponse {
+  schema: "trashbot.pc_tools_workstation.robot_control_delivery_gap_check_proxy.v1";
+  proxy_status: "check_loaded" | "check_rejected" | "check_failed";
+  source: "software_proof";
+  proof_status: "not_proven";
+  safe_to_control: false;
+  delivery_success: false;
+  primary_actions_enabled: false;
+  pc_only: true;
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/delivery/check";
+  remote_endpoint: "/api/delivery/complete";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  request_body: RobotControlDeliveryCompleteRequest;
+  delivery_key_values: Record<string, string>;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export type RobotControlPreviewStatus =
   | "idle_not_started"
   | "starting_local_peer"
@@ -2877,6 +2900,7 @@ export const API_ROUTES = [
   "/api/robot-control/nav2/goal/execute?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/goal/execution/latest?baseUrl=<robot-api-base-url>",
   "/api/robot-control/delivery/latest?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/delivery/check?baseUrl=<robot-api-base-url>",
   "/api/robot-control/delivery/complete?baseUrl=<robot-api-base-url>",
   "/api/robot-control/localize/reset?baseUrl=<robot-api-base-url>",
   "/api/robot-control/camera/offer?baseUrl=<robot-api-base-url>",

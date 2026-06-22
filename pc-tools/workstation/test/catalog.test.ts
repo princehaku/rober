@@ -5634,6 +5634,69 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("delivery gap check posts fixed confirm false body and cannot confirm completion", async () => {
+    // check 入口只刷新当前缺口：即使浏览器传 confirm=true，也必须固定转发 confirm=false。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/delivery/complete": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.delivery_completion_result",
+          status: "blocked_missing_delivery_material",
+          delivery_success: false,
+          safe_to_control: false,
+          primary_actions_enabled: false,
+          missing_required_material: ["confirm_delivery_completion", "operator_report_ready_for_review"],
+          nav2_goal_execution: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            feedback_sample_count: 8,
+          },
+          operator_report: {
+            operator_report_status: "unsafe_or_incomplete",
+            evidence_ref: "delivery-draft",
+          },
+        },
+      },
+    }, {});
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/delivery/check?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm_delivery_completion: true, delivery_success: true }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        delivery_success: boolean;
+        request_body: { confirm_delivery_completion?: boolean; delivery_evidence_ref?: string };
+        delivery_key_values: Record<string, string>;
+        blocked_reasons: string[];
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("check_loaded");
+      expect(body.delivery_success).toBe(false);
+      expect(body.request_body.confirm_delivery_completion).toBe(false);
+      expect(body.request_body.delivery_evidence_ref).toBe("delivery-gap-check-not-confirmed");
+      expect(body.delivery_key_values.status).toBe("blocked_missing_delivery_material");
+      expect(body.delivery_key_values.operator_report_status).toBe("unsafe_or_incomplete");
+      expect(body.blocked_reasons).toEqual(["confirm_delivery_completion", "operator_report_ready_for_review"]);
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedBodies["/api/delivery/complete"]).toEqual([
+        {
+          confirm_delivery_completion: false,
+          delivery_evidence_ref: "delivery-gap-check-not-confirmed",
+          operator_notes: "PC delivery gap check only; confirm_delivery_completion=false so this cannot produce delivery success.",
+        },
+      ]);
+      expect(upstream.receivedBodies["/api/operator/report"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("Robot Control summary rejects unsafe URLs and dangerous true fields", async () => {
     // URL 和 payload 任一层不安全都必须 fail-closed，防止控制台被误用为控制代理。
     const missing = await buildRobotControlSummary("");
