@@ -1613,3 +1613,7 @@ delivery complete、keyboard pulse 或 `/cmd_vel`，也不会把历史样本外�
 `上位机没回应；检查小车电源、网络和上位机服务后再点连接/刷新`。该提示只消费 PC summary 的
 `robot_api_connection.blocked_reasons`，不会把 timeout 当成已连接，也不会触发 Nav2、delivery complete、
 manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
+
+2026-06-23 00:08 起，普通首屏检测到送达材料草稿已存在时，禁用态 `确认送达` 按钮从
+`确认送达（还差 N 项）` 调整为 `确认送达（先确认 N 项）`。该文案只强调现场最终确认步骤，不自动勾选、
+不提交 operator report、不调用 delivery complete，不发送 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。

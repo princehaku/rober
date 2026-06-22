@@ -5945,7 +5945,7 @@ describe("App", () => {
     expect((wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').element as HTMLInputElement).checked).toBe(true);
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("确认已投放/送达");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（还差 1 项）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先确认 1 项）");
     expect(wrapper.find('[data-testid="plain-delivery-mark-refs-verified"]').text()).toBe("材料已核对");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
 
@@ -6072,6 +6072,7 @@ describe("App", () => {
     expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe("/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-1782099547218");
     expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-o11-nav2-goal-execution-1782099547218");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先确认 7 项）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(visiblePlainHomeText(wrapper)).not.toContain("o11-nav2-goal-execution-1782099547218");
     expect(visiblePlainHomeText(wrapper)).not.toContain("structured_hil_claims");
