@@ -3885,6 +3885,7 @@ describe("App", () => {
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     expect(visiblePlainHomeText(wrapper)).toContain("已有现场画面；请恢复试动确认后再试动。");
     expect(visiblePlainHomeText(wrapper)).toContain("试动按钮已锁定：请先点恢复试动确认。");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("先点“恢复试动确认”，再试动读取轮速。");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("first-jog material restore");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("latest-only operator report is delivery_material_draft_not_operator_confirmed");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("action=restore first-jog confirmation");

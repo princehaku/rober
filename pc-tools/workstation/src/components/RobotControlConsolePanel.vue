@@ -909,8 +909,14 @@ const plainWheelRecordSummary = computed(() => {
   if (plainFirstJogResult.value?.proxy_status === "command_forwarded") {
     return { state: "待重试", hint: "已试动，但还没拿到非零 L/R。" };
   }
+  if (firstJogMaterialRestoreReady.value) {
+    return { state: "待确认", hint: "先点“恢复试动确认”，再试动读取轮速。" };
+  }
   if (canSendPlainFirstJog.value) {
     return { state: "待试动", hint: "点“试动一下”后读取轮速。" };
+  }
+  if (firstJogVisualMaterialReady.value || plainVisualMaterialSubmitted.value) {
+    return { state: "待确认", hint: "现场画面已在，先完成试动前确认。" };
   }
   return { state: "待准备", hint: "先记录现场画面，再试动读取轮速。" };
 });
