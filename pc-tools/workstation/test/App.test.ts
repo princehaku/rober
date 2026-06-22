@@ -4430,6 +4430,82 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("does not close wheel raw L/R from static nonzero base feedback samples", async () => {
+    // 只读 samples 可能读到非零 L/R，但它不是试动窗口材料，不能点亮保存或目标收口。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/feedback-samples": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+        proxy_status: "samples_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/feedback-samples",
+        remote_http_status: 200,
+        status: "loaded",
+        requested_sample_count: 3,
+        sample_interval_s: 0.08,
+        read_timeout_s: 0.8,
+        read_window_s: 1.0,
+        sample_key_values: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          requested_sample_count: "3",
+          completed_sample_count: "3",
+          t1001_observed_count: "3",
+          all_samples_observed_t1001: "true",
+          partial_samples_observed_t1001: "false",
+          feedback_ack_t1001_observed: "true",
+          wheel_feedback_lr_nonzero_proven: "true",
+          wheel_feedback_nonzero_observed: "true",
+          wheel_feedback_nonzero_frame_count: "2",
+          wheel_feedback_latest_left_speed: "0.08",
+          wheel_feedback_latest_right_speed: "0.08",
+          wheel_feedback_source: "vendor_t1001_L_R",
+          observed_feedback_types: "[1001]",
+          sends_motion_commands: "false",
+          robot_control_executed: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        sends_motion_commands: false,
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+
+    await wrapper.find('[data-testid="plain-wheel-readback-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("只读轮速已出现非零：L/R=0.08/0.08；仍以试动窗口保存为准。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("轮速记录待完成");
+    const wheelClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("wheel raw L/R 非零"));
+    expect(wheelClosureItem?.attributes("data-ready")).toBe("false");
+    expect(wheelClosureItem?.text()).toContain("只读采样读到非零 L/R=0.08/0.08；仍需低速试动窗口保存");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("restores first-jog material from existing visual refs without sending motion", async () => {
     // 送达草稿可能覆盖 latest report；恢复按钮只补 first-jog 前置材料，不触发试动。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

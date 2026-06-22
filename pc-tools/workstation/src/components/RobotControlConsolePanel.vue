@@ -1084,8 +1084,8 @@ const wheelClosureEvidence = computed(() => {
   const sampleValues = baseFeedbackSamplesResult.value?.sample_key_values;
   if (sampleValues?.wheel_feedback_lr_nonzero_proven === "true") {
     return {
-      ready: true,
-      hint: `只读采样读到非零 L/R=${sampleValues.wheel_feedback_latest_left_speed}/${sampleValues.wheel_feedback_latest_right_speed}`,
+      ready: false,
+      hint: `只读采样读到非零 L/R=${sampleValues.wheel_feedback_latest_left_speed}/${sampleValues.wheel_feedback_latest_right_speed}；仍需低速试动窗口保存`,
     };
   }
   if (claimWithRefReady(robotSummary.value?.operator_hil_material_summary?.wheel_feedback)) {
