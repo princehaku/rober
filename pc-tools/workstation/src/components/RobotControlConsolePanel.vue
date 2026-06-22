@@ -1061,6 +1061,8 @@ const plainWheelEvidenceSaveSummary = computed(() => {
 
 const plainWheelReadbackSummary = computed(() => {
   // 只读底盘反馈可以解释“当前为什么还不是非零证据”，但不能替代试动窗口材料。
+  const base = robotSummary.value?.readback_summary.base;
+  const voltage = base?.feedback_voltage_v && base.feedback_voltage_v !== "not_loaded" ? `；反馈电压约 ${base.feedback_voltage_v}V` : "";
   const zeroReadbackNextStep = "这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。";
   const sample = baseFeedbackSamplesResult.value?.sample_key_values;
   if (sample?.t1001_observed_count && sample.t1001_observed_count !== "not_loaded") {
@@ -1069,9 +1071,8 @@ const plainWheelReadbackSummary = computed(() => {
     if (sample.wheel_feedback_lr_nonzero_proven === "true" || sample.wheel_feedback_nonzero_observed === "true") {
       return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
     }
-    return `已读到底盘反馈，但当前轮速是 L/R=${left}/${right}；${zeroReadbackNextStep}`;
+    return `已读到底盘反馈，但当前轮速是 L/R=${left}/${right}${voltage}；${zeroReadbackNextStep}`;
   }
-  const base = robotSummary.value?.readback_summary.base;
   if (!base || base.latest_t1001_observed_count === "not_loaded") {
     return "";
   }
@@ -1084,7 +1085,7 @@ const plainWheelReadbackSummary = computed(() => {
     return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
   }
   if (Number(base.latest_t1001_observed_count) > 0) {
-    return `已读到底盘反馈，但当前轮速是 L/R=${left}/${right}；${zeroReadbackNextStep}`;
+    return `已读到底盘反馈，但当前轮速是 L/R=${left}/${right}${voltage}；${zeroReadbackNextStep}`;
   }
   return "";
 });

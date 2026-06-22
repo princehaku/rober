@@ -382,6 +382,7 @@ const STATUS_KEYS = [
   "wheel_feedback_nonzero_frame_count",
   "wheel_feedback_frame_count",
   "wheel_feedback_source",
+  "feedback_voltage_v",
   "left_speed",
   "right_speed",
   "latest_scan_once_observed",
@@ -803,6 +804,7 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
   const result = Object.fromEntries(entries);
   appendFreshBaseFeedbackFrameCount(payload, result, keys);
   appendWheelFeedbackSummaryKeyValues(payload, result, keys);
+  appendBaseFeedbackVoltageKeyValue(payload, result, keys);
   return result;
 }
 
@@ -841,6 +843,22 @@ function appendWheelFeedbackSummaryKeyValues(payload: JsonRecord | null, result:
   fill("wheel_feedback_source", latestPair?.source ?? wheelSummary.source);
   fill("wheel_feedback_latest_nonzero_left_speed", latestNonzeroPair?.left_speed);
   fill("wheel_feedback_latest_nonzero_right_speed", latestNonzeroPair?.right_speed);
+}
+
+function appendBaseFeedbackVoltageKeyValue(payload: JsonRecord | null, result: Record<string, string>, keys: readonly string[]): void {
+  // WAVE ROVER T1001 帧里的 v 只用于现场供电排查展示，不能作为运动或 HIL 证明。
+  if (!keys.includes("feedback_voltage_v") || result.feedback_voltage_v !== undefined) {
+    return;
+  }
+  const frames = findFirstKey(payload, ["t1001_feedback_frames"]);
+  if (!Array.isArray(frames)) {
+    return;
+  }
+  const latestFrame = [...frames].reverse().find((frame) => asRecord(frame)?.v !== undefined);
+  const voltage = asRecord(latestFrame)?.v;
+  if (typeof voltage === "number" || typeof voltage === "string") {
+    result.feedback_voltage_v = compactValueText(voltage);
+  }
 }
 
 function summaryValueText(payload: JsonRecord | null, keys: string[], fallback = "not_loaded"): string {
@@ -2430,6 +2448,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       wheel_feedback_nonzero_observed: "not_loaded",
       wheel_feedback_latest_left_speed: "not_loaded",
       wheel_feedback_latest_right_speed: "not_loaded",
+      feedback_voltage_v: "not_loaded",
       feedback_link_status: "not_observed",
     },
     },
@@ -2544,6 +2563,9 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     ?? feedbackLatest?.key_values.wheel_feedback_latest_right_speed
     ?? feedbackLatest?.key_values.right_speed
     ?? "not_loaded";
+  const feedbackVoltage = baseStatus?.key_values.feedback_voltage_v
+    ?? feedbackLatest?.key_values.feedback_voltage_v
+    ?? "not_loaded";
   return {
     status: baseStatus?.status ?? "not_loaded",
     latest_feedback_status: feedbackLatest?.status ?? "not_loaded",
@@ -2553,6 +2575,7 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     wheel_feedback_nonzero_observed: wheelFeedbackObserved,
     wheel_feedback_latest_left_speed: latestLeft,
     wheel_feedback_latest_right_speed: latestRight,
+    feedback_voltage_v: feedbackVoltage,
     feedback_link_status: wheelFeedbackProven === "true" || wheelFeedbackObserved === "true"
       ? "t1001_lr_nonzero_material_observed_not_hil"
       : Number(observedCount) > 0 ? "t1001_observed_not_motion_proof" : "not_observed",

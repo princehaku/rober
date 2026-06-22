@@ -3877,6 +3877,7 @@ describe("workstation fail-closed API contracts", () => {
             sends_motion_commands: false,
             robot_control_executed: false,
             t1001_observed_count: 3,
+            t1001_feedback_frames: [{ T: 1001, L: 0, R: 0, v: 12.31 }],
             wheel_feedback_lr_nonzero_proven: false,
             wheel_feedback_nonzero_observed: false,
             wheel_feedback_summary: {
@@ -3907,6 +3908,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("3");
       expect(summary.readback_summary.base.wheel_feedback_latest_left_speed).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
+      expect(summary.readback_summary.base.feedback_voltage_v).toBe("12.31");
       expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("false");
       expect(summary.readback_summary.base.wheel_feedback_nonzero_observed).toBe("false");
       expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_observed_not_motion_proof");
@@ -3929,6 +3931,7 @@ describe("workstation fail-closed API contracts", () => {
           feedback_readback: {
             schema: "trashbot.upper_robot_api.v1.base_feedback_request_result",
             t1001_feedback_frame_count: 12,
+            t1001_feedback_frames: [{ T: 1001, L: 0, R: 0, v: 12.43 }],
             wheel_feedback_lr_nonzero_proven: false,
             wheel_feedback_nonzero_observed: false,
             wheel_feedback_summary: {
@@ -3966,6 +3969,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("12");
       expect(summary.readback_summary.base.wheel_feedback_latest_left_speed).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
+      expect(summary.readback_summary.base.feedback_voltage_v).toBe("12.43");
       expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_observed_not_motion_proof");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.feedback_readback.sends_commands");
     } finally {
