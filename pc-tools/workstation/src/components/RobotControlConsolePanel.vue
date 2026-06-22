@@ -637,6 +637,9 @@ const plainDeliveryMaterialSummary = computed(() => {
   if (deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "已预填", hint: "视频和行程材料已预填，可先保存草稿。" };
   }
+  if (deliveryOperatorRouteMapRef.value.trim()) {
+    return { state: "待画面", hint: "行程材料已在，点准备送达材料补画面。" };
+  }
   if (deliveryNav2GoalReady.value) {
     return { state: "可准备", hint: "已读到最近行程结果，可以准备送达材料。" };
   }
@@ -2377,6 +2380,7 @@ async function runPlainTripExecution(): Promise<void> {
   }
   confirmNavigationExecution.value = true;
   await runNavGoalExecution();
+  fillDeliveryRouteRefFromLatestNav2();
 }
 
 async function loadNavGoalExecutionLatest(): Promise<void> {

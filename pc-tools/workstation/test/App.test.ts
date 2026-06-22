@@ -3531,7 +3531,12 @@ describe("App", () => {
       result_timeout_s: 8,
       confirm_navigation_execution: true,
     });
+    expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("plain-trip-execution-fixture");
+    expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-plain-trip-execution-fixture");
     expect(visiblePlainHomeText(wrapper)).toContain("已读到最近行程完成，可以准备送达材料。");
+    expect(visiblePlainHomeText(wrapper)).toContain("行程材料已在，点准备送达材料补画面。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(visiblePlainHomeText(wrapper)).not.toContain("Nav2");
     expect(visiblePlainHomeText(wrapper)).not.toContain("proof");
     expect(visiblePlainHomeText(wrapper)).not.toContain("/cmd_vel");

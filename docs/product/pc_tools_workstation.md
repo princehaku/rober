@@ -1372,6 +1372,11 @@ operator report，不再次发送运动命令、不补 LiDAR/route/delivery。�
 `map` frame 的 `x=0.8,y=0,yaw=0` 受限参数。普通首屏文案继续只显示“行程”，不展示 `Nav2/proof/API`
 字段；执行结果只用于“行程执行”状态和后续送达材料，不自动确认 delivery success。
 
+2026-06-22 15:14 起，普通首屏点击 `执行行程` 后如果固定代理返回 `goal_succeeded` 和 evidence ref，PC 会自动把
+这次行程材料填入送达材料候选，并把“任务收口”材料状态显示为“待画面”。这一步不调用 camera probe、
+不提交 operator report、不调用 delivery complete，也不替现场勾选最终确认；用途只是省掉用户从“行程成功”
+到“准备送达材料”之间手动复制 route/map ref 的一步。
+
 2026-06-22 14:12 起，普通首屏“轮速记录”下一步提示按当前 first-jog readiness 分流：如果上位机 latest
 operator report 是送达草稿、仍保留画面材料但 basic safety 为 false，`first_jog_readiness_summary.status`
 会是 `blocked_missing_basic_safety`。此时轮速记录不再提示重新记录现场画面，而是显示“先点恢复试动确认，
