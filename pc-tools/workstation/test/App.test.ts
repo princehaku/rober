@@ -3243,8 +3243,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
-    expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：移动前检查、雷达移动记录。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：移动前检查、雷达移动记录。");
+    expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口、移动前检查、雷达移动记录。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口、移动前检查、雷达移动记录。");
     expect(firstScreenText).toContain("最终确认");
     expect(firstScreenText).toContain("待材料");
     expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
@@ -3809,6 +3809,55 @@ describe("App", () => {
     const stopCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/base/stop?"));
     expect(stopCall).toBeTruthy();
     expect((stopCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
+  });
+
+  it("keeps keyboard disabled when summary lacks the bounded pulse contract even after manual gate is ready", async () => {
+    // 连续键盘手控不能只靠材料 gate 放开；后端 summary 必须显式声明 bounded pulse 合同。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        proxy_status: "should_not_be_called",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("键盘合同未从 summary 读到");
+    expect(visiblePlainHomeText(wrapper)).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口。");
+    const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("PC 键盘连续手控"));
+    expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
+    expect(keyboardClosureItem?.text()).toContain("键盘合同未从 summary 读到");
+
+    const armButton = wrapper.find('[data-testid="keyboard-control-arm"]');
+    expect(armButton.attributes("disabled")).toBeDefined();
+    await armButton.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
   it("submits a plain motion precheck without unlocking non-stop motion", async () => {

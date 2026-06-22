@@ -502,7 +502,13 @@ const checklistMissing = computed(() => hilChecklist.value.filter((item) => !ite
 const hilChecklistConfirmed = computed(() => checklistMissing.value.length === 0);
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const canRunEvidenceSweep = computed(() => !evidenceSweepPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
-const canArmKeyboardControl = computed(() => canSendManualMotion.value);
+const keyboardContractReady = computed(() => {
+  // 键盘手控必须由后端 summary 明确声明 bounded pulse 合同，不能只靠前端默认值放开。
+  return robotSummary.value?.safe_command_boundary.keyboard_control_mode === "bounded_repeating_manual_pulse"
+    && robotSummary.value.safe_command_boundary.keyboard_reuses_manual_gate === true;
+});
+const canUseKeyboardControl = computed(() => keyboardContractReady.value && canSendManualMotion.value);
+const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
 
 const keyboardDirectionPlainLabel = computed(() => {
   // 普通首屏只显示方向中文，避免把底层 direction enum 暴露给现场用户。
@@ -746,9 +752,7 @@ const goalClosureChecklist = computed(() => {
     || baseFeedbackSamplesResult.value?.sample_key_values.wheel_feedback_lr_nonzero_proven === "true";
   const nav2Ready = deliveryNav2GoalReady.value;
   const deliveryReady = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
-  const keyboardContractReady = robotSummary.value?.safe_command_boundary.keyboard_control_mode === "bounded_repeating_manual_pulse"
-    && robotSummary.value.safe_command_boundary.keyboard_reuses_manual_gate === true;
-  const keyboardReady = keyboardContractReady && canSendManualMotion.value;
+  const keyboardReady = canUseKeyboardControl.value;
   return [
     {
       id: "wheel_raw_lr",
@@ -774,7 +778,7 @@ const goalClosureChecklist = computed(() => {
       ready: keyboardReady,
       hint: keyboardReady
         ? "键盘入口已就绪，材料 gate 已满足"
-        : keyboardContractReady ? `键盘入口已在，仍需补齐：${plainKeyboardMissingSummary.value.replace(/^还差：/, "").replace(/。$/, "")}` : "键盘合同未从 summary 读到",
+        : keyboardContractReady.value ? `键盘入口已在，仍需补齐：${plainKeyboardMissingSummary.value.replace(/^还差：/, "").replace(/。$/, "")}` : "键盘合同未从 summary 读到",
     },
   ];
 });
@@ -833,8 +837,8 @@ const plainGoalProgressItems = computed(() => {
     {
       id: "keyboard",
       label: "键盘手控",
-      state: canSendManualMotion.value ? "可使用" : "未满足",
-      hint: canSendManualMotion.value ? "可启用键盘面板。" : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value}`,
+      state: canUseKeyboardControl.value ? "可使用" : "未满足",
+      hint: canUseKeyboardControl.value ? "可启用键盘面板。" : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value}`,
     },
   ];
 });
@@ -1105,11 +1109,14 @@ const keyboardControlSummary = computed(() => {
   if (keyboardHeldDirection.value) {
     return { state: "手控中", hint: `${keyboardLastDirection.value} 按住点动中；松开按键、窗口失焦或页面隐藏会发送停止。` };
   }
-  if (keyboardControlArmed.value && canSendManualMotion.value) {
+  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return { state: "已启用", hint: "键盘面板已聚焦：按住 W/A/S/D 或方向键连续点动，松开即停。" };
   }
-  if (canSendManualMotion.value) {
+  if (canUseKeyboardControl.value) {
     return { state: "可手控", hint: "点击“启用键盘”后，按住 W/A/S/D 或方向键连续点动，松开即停。" };
+  }
+  if (!keyboardContractReady.value) {
+    return { state: "未满足", hint: "键盘合同未从 summary 读到；本机不会启用连续手控。" };
   }
   if (keyboardControlStatus.value.startsWith("blocked")) {
     return { state: "未满足", hint: keyboardControlStatus.value };
@@ -1119,7 +1126,7 @@ const keyboardControlSummary = computed(() => {
 
 const plainKeyboardMissingSummary = computed(() => {
   // 普通首屏只给下一步操作名，不暴露 operator report、HIL 或后端字段名。
-  if (canSendManualMotion.value) {
+  if (canUseKeyboardControl.value) {
     return "";
   }
   if (!robotApiBaseUrl.value.trim()) {
@@ -1129,6 +1136,9 @@ const plainKeyboardMissingSummary = computed(() => {
     return "正在处理上一条请求，请稍等。";
   }
   const missing = new Set<string>();
+  if (!keyboardContractReady.value) {
+    missing.add("键盘入口");
+  }
   if (!hilChecklistConfirmed.value) {
     missing.add("移动前检查");
   }
@@ -1156,10 +1166,10 @@ const plainKeyboardControlSummary = computed(() => {
   if (keyboardHeldDirection.value) {
     return { state: "手控中", hint: "按住点动中；松开按键、窗口失焦或页面隐藏会自动停止。" };
   }
-  if (keyboardControlArmed.value && canSendManualMotion.value) {
+  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return { state: "已启用", hint: "按住 W/A/S/D 或方向键连续手控，松开即停。" };
   }
-  if (canSendManualMotion.value) {
+  if (canUseKeyboardControl.value) {
     return { state: "可手控", hint: "点击启用键盘，让这个小面板获得焦点后再按方向键。" };
   }
   if (keyboardControlArmed.value || keyboardControlStatus.value.startsWith("blocked")) {

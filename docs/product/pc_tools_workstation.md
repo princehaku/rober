@@ -77,6 +77,7 @@ pc-tools/workstation/
 - 2026-06-22 起，普通首屏在 `试动一下` 返回 `wheel_feedback_lr_nonzero_proven=true` 后才显示 `保存轮速证据`。该按钮只把 first-jog 响应里的 wheel raw L/R、during-motion T1001 帧数和短 evidence ref 写入固定 `POST /api/robot-control/operator/report` 代理，不再次调用 `/api/base/manual`、Nav2 goal、stop 之外的控制接口，也不自动补齐 LiDAR delta、real route map 或 delivery success。普通用户看到的状态只保留“轮速证据已拿到/已保存”这类短句；完整 `structured_hil_claims` 仍留在默认关闭的 `高级诊断`。
 - 2026-06-22 13:23 起，默认关闭的 `高级诊断` 顶部新增 `目标收口进度`，把 CEO 当前四个收口目标压成只读 checklist：`wheel raw L/R 非零`、`完整 Nav2 路线执行`、`delivery success`、`PC 键盘连续手控`。该面板只消费当前已读 summary、Nav2 latest、delivery latest/check/complete、first-jog 和 base feedback sample 结果，不自动发车、不提交 operator report、不调用 delivery complete，也不把任何 success 字段提升为 true。普通首屏继续不显示该目标进度或工程词。
 - 2026-06-22 15:34 起，`目标收口进度` 的 `PC 键盘连续手控` 不再只因为 summary 存在 `bounded_repeating_manual_pulse` 合同就显示满足；必须同时满足当前 manual gate，也就是现场 checklist、operator report 材料、wheel raw L/R 非零和 LiDAR motion delta 都已经齐备。合同存在但材料未齐时，高级诊断显示“键盘入口已在，仍需补齐...”，避免把“入口实现”误判成“真实可手控”。
+- 2026-06-22 18:05 起，普通首屏“本轮进度”、键盘面板和 `启用键盘` 按钮统一要求 summary 同时声明 `safe_command_boundary.keyboard_control_mode=bounded_repeating_manual_pulse` 与 `keyboard_reuses_manual_gate=true`。即使现场材料 gate 已满足，只要 summary 未读到该合同，首屏仍显示“还差：键盘入口”，按钮保持禁用，高级诊断显示“键盘合同未从 summary 读到”；这样避免 UI 在后端合同缺失或旧上位机响应下误提示键盘可用。
 - 2026-06-22 13:26 起，页面初载在读取 Robot Control summary 后，会自动预载两个固定只读 GET 代理：`GET /api/robot-control/nav2/goal/execution/latest` 与 `GET /api/robot-control/delivery/latest`，用于让 `目标收口进度` 立即显示最近 Nav2 goal 与 delivery gate 状态。该预载不调用 `POST /api/robot-control/nav2/goal/execute`、`POST /api/robot-control/delivery/complete`、`/api/base/manual`、`/cmd_vel` 或任何运动/送达确认接口。
 - 2026-06-22 13:40 起，普通首屏 `移动/导航` 卡片新增 `任务收口` 只读状态：显示 `未读取 / 检查中 / 待行程结果 / 待确认 / 已送达`，并提供 `刷新送达状态` 与 `复查送达条件` 两个普通按钮。它们分别只调用固定 `GET /api/robot-control/delivery/latest` 和 `POST /api/robot-control/delivery/check`（后端固定 `confirm=false`），不会调用 `POST /api/robot-control/delivery/complete`、`POST /api/robot-control/operator/report`、Nav2 goal、`/api/base/manual` 或 `/cmd_vel`。首屏只展示“行程已完成，还需补齐 N 项送达确认”这类短句，不显示 `delivery_success`、`/api/delivery`、blocked field name、route/map ref 或 raw readback；真正送达确认和 checklist 仍只在默认关闭的高级诊断里显式操作。
 - 2026-06-22 13:45 起，普通首屏同一 `任务收口` 区新增 `准备送达材料` 与 `保存送达草稿`。`准备送达材料` 只复用既有 `prefillDeliveryMaterialRefs`：读取最近 Nav2 execution ref、必要时调用固定 camera first-frame probe 获取样张 ref，并刷新 delivery latest；不提交 operator report、不确认送达。`保存送达草稿` 只在视频材料和行程材料都已预填后调用固定 `POST /api/robot-control/operator/report`，写入 `delivery_material_draft_not_operator_confirmed`、`observed_motion=false`、`observed_stop=false`、nested `delivery_success=false`；它不会调用 `delivery/complete`、Nav2 goal、manual 或 `/cmd_vel`。首屏只显示 `可准备 / 已预填 / 已保存` 等短状态，不展示 ref 和工程字段。
@@ -1346,6 +1347,8 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 条件满足后点击启用会聚焦键盘面板，按住 `W/A/S/D` 或方向键期间首屏显示 `手控中` 与“当前方向：
 前进/后退/左转/右转”，松开、窗口失焦或页面隐藏仍发送停止。该变化只改善 PC 首屏可理解性，不改变
 `/api/robot-control/base/manual` 的 checklist/operator report gate，也不放宽 stop 之外的运动权限。
+2026-06-22 18:05 起，上述“条件满足”同时包含后端 summary 的键盘合同；manual gate 齐备但合同缺失时，普通
+首屏继续显示“还差：键盘入口”，不会让用户点亮键盘面板。
 
 2026-06-22 13:57 起，普通首屏 `移动/导航` 卡片新增“本轮进度”四项压缩状态：轮速记录、行程执行、
 送达确认、键盘手控。该区域只消费当前已读 summary、最近行程结果和送达状态，不触发任何运动、Nav2
