@@ -3258,6 +3258,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run"]').exists()).toBe(true);
     expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("读取轮速");
     expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("tabindex")).toBe("-1");
@@ -4570,6 +4571,14 @@ describe("App", () => {
     expect(firstScreenText).toContain("已试动，但轮速还是 0/0：检查电机使能、供电、模式和现场空间后重试。运动帧=4。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("待重试");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("已试动但 L/R=0/0，检查电机使能、供电、模式和现场空间后重试。");
+    const retryWheelButton = wrapper.find('[data-testid="plain-wheel-trial"]');
+    expect(retryWheelButton.text()).toBe("重试读取轮速");
+    expect(retryWheelButton.attributes("disabled")).toBeUndefined();
+    const firstJogCallsBeforeRetry = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?")).length;
+    await retryWheelButton.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?")).length).toBe(firstJogCallsBeforeRetry + 1);
     const saveWheelButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录");
     expect(saveWheelButton?.attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);

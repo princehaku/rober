@@ -1031,6 +1031,13 @@ const plainWheelRecordSummary = computed(() => {
   return { state: "待准备", hint: "先记录现场画面，再试动读取轮速。" };
 });
 
+const plainWheelTrialButtonLabel = computed(() => {
+  // 轮速面板里的按钮复用 first-jog；已有一次失败试动后，文案改为重试，减少现场误解。
+  return plainFirstJogResult.value?.proxy_status === "command_forwarded" && !plainFirstJogWheelEvidenceReady.value
+    ? "重试读取轮速"
+    : "读取轮速";
+});
+
 const plainWheelEvidenceSaveSummary = computed(() => {
   // 保存状态只用普通话术；完整 operator report 响应留在高级诊断。
   if (plainWheelEvidenceSavePending.value) {
@@ -3668,6 +3675,9 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainWheelRecordSummary.state">{{ plainWheelRecordSummary.state }}</span>
               <button type="button" class="secondary compact-stop" :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim() || !firstJogMaterialRestoreReady" @click="restorePlainFirstJogMaterial">
                 恢复试动确认
+              </button>
+              <button type="button" class="secondary compact-stop" :disabled="!canSendPlainFirstJog" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
+                {{ plainWheelTrialButtonLabel }}
               </button>
               <button type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" @click="savePlainWheelEvidence">
                 保存轮速记录
