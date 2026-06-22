@@ -3230,7 +3230,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
-    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去处理卡点");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toBe("当前状态：轮速记录已完成；行程执行待完成；送达确认待完成；键盘手控未满足。");
@@ -3579,6 +3579,7 @@ describe("App", () => {
 
     const plainProgress = wrapper.find('[data-testid="plain-goal-progress"]').text();
     expect(plainProgress).toContain("轮速记录");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去轮速记录卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理轮速记录。当前轮速 L/R=0/0");
     expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：轮速 L/R=0/0，检查电机使能、供电、模式和现场空间后重试。");
@@ -3640,7 +3641,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-go-delivery"]').text()).toBe("去送达");
     expect(wrapper.find('[data-testid="plain-goal-progress-go-keyboard"]').text()).toBe("去键盘");
 
-    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去处理卡点");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeClick + 5);
     expect(mockedFetch.mock.calls.length).toBe(callsBeforeClick);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -6187,6 +6188,7 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("已保存");
     expect(deliveryStatus.text()).toContain("送达材料草稿已保存；请完成下方最终确认。");
     expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去送达卡点");
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 5 项，不确认）");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：勾选安全三项。");

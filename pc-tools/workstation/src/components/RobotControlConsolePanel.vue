@@ -1035,9 +1035,11 @@ const plainGoalProgressPrimaryTarget = computed(() => {
   return plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "可使用")?.id ?? "";
 });
 
-const plainGoalProgressPrimaryActionLabel = computed(() => (
-  plainGoalProgressPrimaryTarget.value ? "去处理卡点" : "全部完成"
-));
+const plainGoalProgressPrimaryActionLabel = computed(() => {
+  // 文案直接写出要跳到哪个卡点，减少现场点按钮前的二次判断。
+  const target = plainGoalProgressItems.value.find((item) => item.id === plainGoalProgressPrimaryTarget.value);
+  return target ? `去${target.label.replace("执行", "").replace("确认", "")}卡点` : "全部完成";
+});
 
 const plainGoalProgressStateSummary = computed(() => {
   // 四个目标的当前结论压成一行，方便现场先看全局状态再按下一步执行。
