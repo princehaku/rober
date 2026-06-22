@@ -4255,7 +4255,11 @@ describe("App", () => {
 
   it("submits delivery draft material without operator confirmation or delivery completion", async () => {
     // 草稿只保存 refs；不允许把预填材料升级成 observed motion/stop 或 delivery_success。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=pc-first-jog-wheel-lr-fixture";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-fixture";
     const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/operator/report": {
         schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
         proxy_status: "report_forwarded",
@@ -4337,6 +4341,10 @@ describe("App", () => {
       external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_prefill.jpg",
       visible_content_proven: true,
       camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_prefill.jpg",
+      wheel_feedback_lr_nonzero_proven: true,
+      wheel_feedback_ref: "pc-first-jog-wheel-lr-fixture",
+      physical_motion_lidar_delta_proven: true,
+      scan_delta_ref: "scan-delta-fixture",
       real_route_map_proven: true,
       route_map_ref: "o11-nav2-goal-execution-fixture",
       delivery_success: false,
@@ -4384,7 +4392,11 @@ describe("App", () => {
 
   it("submits final delivery operator material only after the explicit checklist is complete", async () => {
     // 全项确认后才提交 operator report，并把 delivery complete 交给后端 gate 合成最终结论。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=pc-first-jog-wheel-lr-final";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-final";
     const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/operator/report": {
         schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
         proxy_status: "report_forwarded",
@@ -4493,6 +4505,10 @@ describe("App", () => {
     expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
       external_video_recorded: true,
       external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg",
+      wheel_feedback_lr_nonzero_proven: true,
+      wheel_feedback_ref: "pc-first-jog-wheel-lr-final",
+      physical_motion_lidar_delta_proven: true,
+      scan_delta_ref: "scan-delta-final",
       real_route_map_proven: true,
       route_map_ref: "o11-nav2-goal-execution-fixture",
       delivery_success: true,

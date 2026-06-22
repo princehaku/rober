@@ -1407,6 +1407,22 @@ function claimRefFromSummary(value: string | undefined): string {
   return refValue && refValue !== "not_loaded" ? refValue : "";
 }
 
+function inheritedMotionClaimsFromSummary(): Pick<
+  NonNullable<RobotControlOperatorReportRequest["structured_hil_claims"]>,
+  "wheel_feedback_lr_nonzero_proven" | "wheel_feedback_ref" | "physical_motion_lidar_delta_proven" | "scan_delta_ref"
+> {
+  // delivery 草稿/确认不能把已有 wheel/LiDAR 材料冲掉；但只有 summary 已明确 true; ref=... 时才继承。
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  const wheelRef = claimRefFromSummary(summary?.wheel_feedback);
+  const scanDeltaRef = claimRefFromSummary(summary?.lidar_delta);
+  return {
+    wheel_feedback_lr_nonzero_proven: Boolean(wheelRef),
+    ...(wheelRef ? { wheel_feedback_ref: wheelRef } : {}),
+    physical_motion_lidar_delta_proven: Boolean(scanDeltaRef),
+    ...(scanDeltaRef ? { scan_delta_ref: scanDeltaRef } : {}),
+  };
+}
+
 function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRequest {
   // 恢复试动材料只重写 first-jog 前置项；不伪造轮速、LiDAR 位移、路线或送达成功。
   const summary = robotSummary.value?.operator_hil_material_summary;
@@ -2148,6 +2164,7 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
   }
   operatorReportPending.value = true;
   const evidenceRef = deliveryOperatorEvidenceRef.value.trim() || `delivery-draft-${Date.now()}`;
+  const inheritedMotionClaims = inheritedMotionClaimsFromSummary();
   const reportBody: RobotControlOperatorReportRequest = {
     operator_present: false,
     evidence_ref: evidenceRef,
@@ -2162,8 +2179,7 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
       external_video_ref: deliveryOperatorVideoRef.value.trim(),
       visible_content_proven: true,
       camera_artifacts_ref: deliveryOperatorVideoRef.value.trim(),
-      wheel_feedback_lr_nonzero_proven: false,
-      physical_motion_lidar_delta_proven: false,
+      ...inheritedMotionClaims,
       real_route_map_proven: true,
       route_map_ref: deliveryOperatorRouteMapRef.value.trim(),
       delivery_success: false,
@@ -2197,6 +2213,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
   deliveryCompletionPending.value = true;
   const evidenceRef = deliveryOperatorEvidenceRef.value.trim() || `delivery-operator-${Date.now()}`;
   const confirmations = deliveryOperatorConfirmations.value;
+  const inheritedMotionClaims = inheritedMotionClaimsFromSummary();
   const reportBody: RobotControlOperatorReportRequest = {
     operator_present: confirmations.operator_present,
     evidence_ref: evidenceRef,
@@ -2210,8 +2227,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
       external_video_recorded: true,
       external_video_ref: deliveryOperatorVideoRef.value.trim(),
       visible_content_proven: false,
-      wheel_feedback_lr_nonzero_proven: false,
-      physical_motion_lidar_delta_proven: false,
+      ...inheritedMotionClaims,
       real_route_map_proven: confirmations.route_video_refs_verified,
       route_map_ref: deliveryOperatorRouteMapRef.value.trim(),
       delivery_success: confirmations.delivery_success,

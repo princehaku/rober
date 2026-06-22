@@ -1220,6 +1220,13 @@ delivery complete，也不把 `delivery_success` 提升为 true。真实读回�
 `confirm_delivery_completion`、`operator_report_ready_for_review`、`operator_observed_motion`、
 `operator_observed_stop` 和 `structured_hil_claims.delivery_success`，因此 delivery success 仍未完成。
 
+2026-06-22 13:20 起，送达草稿和最终送达 operator report 会保留已有 motion evidence 材料：当
+Robot Control summary 中的 `operator_hil_material_summary.wheel_feedback` 或 `lidar_delta` 已经是
+`true; ref=...` 时，提交送达草稿/最终确认会把 `wheel_feedback_lr_nonzero_proven + wheel_feedback_ref`
+和 `physical_motion_lidar_delta_proven + scan_delta_ref` 一并带入新 report，避免 delivery draft 把
+之前保存的 wheel raw L/R 或 LiDAR delta 材料覆盖成 false。若 summary 没有明确 `true; ref=...`，
+这些字段仍保持 false/缺 ref；PC 不会凭空生成 wheel、LiDAR 或 delivery success 证据。
+
 2026-06-22 12:15 起，PC 高级诊断补充固定只读入口
 `GET /api/robot-control/nav2/goal/execution/latest?baseUrl=<robot-api-base-url>`，只转发到上位机
 `GET /api/nav2/goal/execution/latest`。它用于页面刷新后找回最近 NavigateToPose artifact 的
