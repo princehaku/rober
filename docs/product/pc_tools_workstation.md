@@ -1589,3 +1589,7 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 2026-06-22 18:12 起，普通首屏 `刷新送达状态` 显示为 `刷新送达状态（只读）`，pending 时显示 `刷新中`。
 它仍只调用固定 `GET /api/robot-control/delivery/latest`，不提交 operator report、不调用 delivery complete，
 不执行 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
+
+2026-06-22 18:15 起，普通首屏 `本轮进度` 的刷新按钮显示为 `刷新进度（只读）`，pending 时显示 `刷新中`。
+它仍只刷新 summary、base feedback samples、Nav2 latest 和 delivery latest/check 读回，不执行行程、不确认送达、
+不发送 manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。

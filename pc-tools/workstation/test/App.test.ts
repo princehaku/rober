@@ -3230,7 +3230,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
-    expect(firstScreenText).toContain("刷新进度");
+    expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(firstScreenText).toContain("去轮速");
     expect(firstScreenText).toContain("去行程");
     expect(firstScreenText).toContain("去送达");
@@ -3477,6 +3477,7 @@ describe("App", () => {
 
     const refreshButton = wrapper.find('[data-testid="plain-goal-progress-refresh"]');
     expect(refreshButton.exists()).toBe(true);
+    expect(refreshButton.text()).toBe("刷新进度（只读）");
     expect(refreshButton.attributes("disabled")).toBeUndefined();
     await refreshButton.trigger("click");
     await flushPromises();

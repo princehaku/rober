@@ -1010,6 +1010,9 @@ const plainGoalProgressPending = computed(() => (
   || deliveryLatestPending.value
   || baseFeedbackSamplesPending.value
 ));
+const plainGoalProgressRefreshButtonLabel = computed(() => (
+  plainGoalProgressPending.value ? "刷新中" : "刷新进度（只读）"
+));
 
 const firstJogVisualMaterialReady = computed(() => {
   // first-jog readiness 由 PC summary 后端统一判定，避免普通首屏和 API 合同漂移。
@@ -3872,7 +3875,7 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <strong>本轮进度</strong>
               <button type="button" class="secondary compact-stop" :disabled="plainGoalProgressPending" data-testid="plain-goal-progress-refresh" @click="refreshPlainGoalProgress">
-                刷新进度
+                {{ plainGoalProgressRefreshButtonLabel }}
               </button>
             </div>
             <div v-for="item in plainGoalProgressItems" :key="item.id" class="plain-progress-row">
