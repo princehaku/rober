@@ -3411,6 +3411,41 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
+  it("shows a plain timeout hint when the robot API does not respond", async () => {
+    // 真实现场可能出现上位机 HTTP 全部 timeout；普通首屏要给可执行排查动作，不暴露 endpoint 细节或发控制命令。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.robot_api_connection = {
+      status: "degraded",
+      loaded_count: 0,
+      blocked_count: 0,
+      failed_count: 12,
+      schema_mismatch_count: 0,
+      dangerous_true_fields: [],
+      blocked_reasons: [
+        "status:fetch_timeout_5000ms",
+        "base_status:fetch_timeout_5000ms",
+        "delivery_latest:fetch_timeout_5000ms",
+      ],
+      last_refresh_ms: 1782141632169,
+    };
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("小车连接");
+    expect(firstScreenText).toContain("有异常");
+    expect(firstScreenText).toContain("上位机没回应；检查小车电源、网络和上位机服务后再点连接/刷新。");
+    expect(firstScreenText).not.toContain("fetch_timeout");
+    expect(firstScreenText).not.toContain("/api/base");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("refreshes plain goal progress with read-only endpoints only", async () => {
     // 普通首屏的进度刷新只重读摘要、底盘反馈、最近行程和送达状态；不能借刷新触发运动或送达确认。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

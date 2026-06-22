@@ -241,6 +241,12 @@ function resetRobotApiBaseUrlToDefault(): void {
   robotApiBaseUrl.value = DEFAULT_ROBOT_API_BASE_URL;
 }
 
+function robotConnectionBlockedReasonText(): string {
+  // 普通首屏只用 blocked reason 判断“没回应/失败”大类，完整 endpoint 留在高级诊断。
+  const connection = robotSummary.value?.robot_api_connection;
+  return connection?.blocked_reasons.join(" ") ?? "";
+}
+
 function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有异常"; hint: string } {
   // 连接状态只给普通用户看三档，细节放在折叠区。
   if (!robotApiBaseUrl.value.trim()) {
@@ -260,7 +266,11 @@ function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有�
     return { state: "已连接", hint: "已读到小车状态摘要。" };
   }
   if (connection.status === "blocked" || connection.failed_count > 0 || connection.blocked_count > 0) {
-    return { state: "有异常", hint: "可读到部分信息，但有字段被阻断或失败。" };
+    const reasonText = robotConnectionBlockedReasonText();
+    if (reasonText.includes("fetch_timeout")) {
+      return { state: "有异常", hint: "上位机没回应；检查小车电源、网络和上位机服务后再点连接/刷新。" };
+    }
+    return { state: "有异常", hint: "连接失败；检查小车地址、网络和上位机服务后再试。" };
   }
   return { state: "未连接", hint: "还没有连上可读状态。" };
 }
