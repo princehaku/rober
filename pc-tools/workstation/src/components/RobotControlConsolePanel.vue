@@ -830,7 +830,7 @@ const plainGoalProgressItems = computed(() => {
       id: "keyboard",
       label: "键盘手控",
       state: canSendManualMotion.value ? "可使用" : "未满足",
-      hint: canSendManualMotion.value ? "可启用键盘面板。" : "先完成移动前检查和轮速记录。",
+      hint: canSendManualMotion.value ? "可启用键盘面板。" : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value}`,
     },
   ];
 });

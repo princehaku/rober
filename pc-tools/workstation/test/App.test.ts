@@ -3243,8 +3243,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
-    expect(firstScreenText).toContain("先完成移动前检查和轮速记录。");
     expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：移动前检查、雷达移动记录。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：移动前检查、雷达移动记录。");
     expect(firstScreenText).toContain("最终确认");
     expect(firstScreenText).toContain("待材料");
     expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
