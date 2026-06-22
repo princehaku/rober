@@ -365,6 +365,10 @@ const BASE_COMMAND_EVIDENCE_KEYS = [
   "latest_t1001_observed_count",
   "wheel_feedback_lr_nonzero_proven",
   "wheel_feedback_nonzero_observed",
+  "physical_motion_lidar_delta_proven",
+  "lidar_motion_delta_proven",
+  "scan_delta_observed",
+  "scan_delta_ref",
   "latest_proof_status",
   "latest_result_status",
   "evidence_ref",
@@ -463,6 +467,10 @@ function buildMotionEvidenceGaps(
   const remoteWheelFeedbackObserved =
     remoteMotionKeyValues.wheel_feedback_lr_nonzero_proven === "true"
     || remoteMotionKeyValues.wheel_feedback_nonzero_observed === "true";
+  const remoteLidarDeltaObserved =
+    remoteMotionKeyValues.physical_motion_lidar_delta_proven === "true"
+    || remoteMotionKeyValues.lidar_motion_delta_proven === "true"
+    || remoteMotionKeyValues.scan_delta_observed === "true";
   const gaps = [
     preflightReason ? "motion_command_not_forwarded" : "",
     status === "captured" ? "" : "before_after_evidence_snapshot_incomplete",
@@ -471,7 +479,8 @@ function buildMotionEvidenceGaps(
       || evidenceKeyTrue(afterReadback, "base_feedback_samples_latest", ["wheel_feedback_lr_nonzero_proven", "wheel_feedback_nonzero_observed"])
       ? ""
       : "wheel_feedback_lr_nonzero_not_proven",
-    evidenceKeyTrue(afterReadback, "radar_status", ["physical_motion_lidar_delta_proven", "lidar_motion_delta_proven", "scan_delta_observed"])
+    remoteLidarDeltaObserved
+      || evidenceKeyTrue(afterReadback, "radar_status", ["physical_motion_lidar_delta_proven", "lidar_motion_delta_proven", "scan_delta_observed"])
       || evidenceKeyTrue(afterReadback, "radar_scan_proof_latest", ["physical_motion_lidar_delta_proven", "lidar_motion_delta_proven", "scan_delta_observed"])
       ? ""
       : "physical_motion_lidar_delta_not_proven",

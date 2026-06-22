@@ -1435,3 +1435,9 @@ LiDAR delta。这样保存 wheel 材料不会把已经满足的键盘手控 gate
 `移动前检查`、`记录画面`、`恢复试动确认`、`保存轮速记录` 都会从当前 summary 继承明确
 `true; ref=...` 的 wheel、LiDAR 和 route/map ref。没有明确 ref 时仍保持 false，不伪造任何证明；该修复只防止
 上位机 latest-only report slot 被普通动作覆盖后丢失已完成的 wheel/Nav2/键盘 gate 材料。
+
+2026-06-22 15:40 起，PC 代理的 first-jog/manual 运动证据压缩白名单包含
+`physical_motion_lidar_delta_proven`、`lidar_motion_delta_proven`、`scan_delta_observed` 和 `scan_delta_ref`，
+避免上位机已经读到的 LiDAR 位移材料在 workstation 合同里被丢弃。普通首屏 `保存轮速记录` 也会在同轮
+first-jog 已消除 LiDAR delta 缺口时，把 `physical_motion_lidar_delta_proven=true` 和可追溯 `scan_delta_ref`
+随 wheel raw L/R 一起写入 operator report；若同轮未证明 LiDAR delta，仍保持缺项，不伪造材料。

@@ -957,10 +957,16 @@ const plainWheelRecordSummary = computed(() => {
     return { state: "保存中", hint: "正在保存轮速记录。" };
   }
   if (plainWheelEvidenceSaveResult.value?.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked") {
-    return { state: "已保存", hint: "轮速记录已保存；键盘手控材料可复用。" };
+    return {
+      state: "已保存",
+      hint: plainFirstJogLidarDeltaReady.value ? "轮速和雷达记录已保存；键盘手控材料可复用。" : "轮速记录已保存；键盘手控材料可复用。",
+    };
   }
   if (plainFirstJogWheelEvidenceReady.value) {
-    return { state: "可保存", hint: "已拿到非零 L/R，先保存轮速记录。" };
+    return {
+      state: "可保存",
+      hint: plainFirstJogLidarDeltaReady.value ? "已拿到非零 L/R 和雷达移动记录，先保存。" : "已拿到非零 L/R，先保存轮速记录。",
+    };
   }
   if (plainFirstJogResult.value?.proxy_status === "command_forwarded") {
     const values = plainFirstJogResult.value.remote_motion_key_values;
@@ -992,7 +998,9 @@ const plainWheelEvidenceSaveSummary = computed(() => {
     return "";
   }
   if (plainWheelEvidenceSaveResult.value.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked") {
-    return "轮速证据已保存；后续手控材料可复用。";
+    return plainFirstJogLidarDeltaReady.value
+      ? "轮速和雷达移动证据已保存；后续手控材料可复用。"
+      : "轮速证据已保存；后续手控材料可复用。";
   }
   return "轮速证据保存失败；请查看高级诊断。";
 });
@@ -1028,6 +1036,11 @@ const plainWheelReadbackSummary = computed(() => {
 
 const plainLidarMotionRecordSummary = computed(() => {
   // LiDAR delta 是试动后的运动证据；普通首屏只说明下一步，不展示后端字段名。
+  if (plainFirstJogLidarDeltaReady.value) {
+    return plainWheelEvidenceSaveResult.value?.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked"
+      ? "雷达移动记录已随轮速记录保存；后续键盘手控可复用。"
+      : "雷达移动记录已拿到：保存轮速记录时会一起保存。";
+  }
   if (!operatorMaterialMissingFields.value.includes("physical_motion_lidar_delta_proven")) {
     return "";
   }
@@ -1045,6 +1058,14 @@ const plainFirstJogWheelEvidenceReady = computed(() => {
   // 只有后端 first-jog 响应明确证明 L/R 非零时，才允许保存 wheel feedback claim。
   return plainFirstJogResult.value?.proxy_status === "command_forwarded"
     && plainFirstJogResult.value.remote_motion_key_values?.wheel_feedback_lr_nonzero_proven === "true";
+});
+
+const plainFirstJogLidarDeltaReady = computed(() => {
+  // LiDAR 位移可以来自 first-jog 后的固定 readback；没有缺口才允许写入材料。
+  const result = plainFirstJogResult.value;
+  return result?.proxy_status === "command_forwarded"
+    && (result.evidence_capture_status === "captured" || result.evidence_capture_status === "partial")
+    && !result.motion_evidence_gaps.includes("physical_motion_lidar_delta_not_proven");
 });
 
 const canSendManualMotion = computed(() => {
@@ -1863,7 +1884,7 @@ function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRe
 }
 
 function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportRequest {
-  // 轮速材料只能来自 first-jog 返回的 during-motion T1001 非零证明；已有 LiDAR/route 只保留，不补造。
+  // 轮速材料只能来自 first-jog 返回的 during-motion T1001 非零证明；同轮 LiDAR 位移已证明时一并保存。
   const values = plainFirstJogResult.value?.remote_motion_key_values ?? {};
   const left = values.wheel_feedback_latest_raw_left ?? "not_loaded";
   const right = values.wheel_feedback_latest_raw_right ?? "not_loaded";
@@ -1873,6 +1894,7 @@ function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportReques
   const cameraArtifactRef = claimRefFromSummary(summary?.camera_visible);
   const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   const wheelRef = `pc-first-jog-wheel-lr-${Date.now()}`;
+  const lidarDeltaRef = firstJogLidarDeltaRef();
   return {
     operator_present: true,
     evidence_ref: wheelRef,
@@ -1881,7 +1903,7 @@ function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportReques
     observed_motion: true,
     observed_stop: true,
     reported_at: new Date().toISOString(),
-    operator_notes: `PC first-jog wheel evidence save; L/R=${left}/${right}; during_motion_t1001_frames=${frames}; does not prove lidar delta, route map, or delivery success.`,
+    operator_notes: `PC first-jog wheel evidence save; L/R=${left}/${right}; during_motion_t1001_frames=${frames}; lidar_delta_saved=${Boolean(lidarDeltaRef)}; does not prove route map or delivery success.`,
     structured_hil_claims: {
       external_video_recorded: Boolean(externalVideoRef),
       ...(externalVideoRef ? { external_video_ref: externalVideoRef } : {}),
@@ -1890,10 +1912,30 @@ function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportReques
       ...inheritedProgressClaims,
       wheel_feedback_lr_nonzero_proven: true,
       wheel_feedback_ref: wheelRef,
+      ...(lidarDeltaRef ? { physical_motion_lidar_delta_proven: true, scan_delta_ref: lidarDeltaRef } : {}),
       delivery_success: false,
       site_state: "plain_first_jog_wheel_lr_nonzero_observed",
     },
   };
+}
+
+function firstJogLidarDeltaRef(): string {
+  // 优先复用上位机返回的 scan delta ref；没有显式 ref 时生成 PC 侧可追踪短 ref。
+  if (!plainFirstJogLidarDeltaReady.value) {
+    return "";
+  }
+  const result = plainFirstJogResult.value;
+  const remoteValues = result?.remote_motion_key_values ?? {};
+  const directRef = remoteValues.scan_delta_ref
+    ?? remoteValues.lidar_motion_delta_ref
+    ?? result?.after_readback.radar_status?.key_values.scan_delta_ref
+    ?? result?.after_readback.radar_scan_proof_latest?.key_values.scan_delta_ref
+    ?? result?.after_readback.radar_status?.key_values.evidence_ref
+    ?? result?.after_readback.radar_scan_proof_latest?.key_values.evidence_ref;
+  if (directRef && directRef !== "not_loaded") {
+    return directRef;
+  }
+  return `pc-first-jog-lidar-delta-${Date.now()}`;
 }
 
 function plainFirstJogRequestBody(): RobotControlBaseCommandRequest {

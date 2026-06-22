@@ -4162,7 +4162,7 @@ describe("App", () => {
   it("summarizes first-jog wheel evidence on the plain first screen after a forwarded trial", async () => {
     // 普通首屏要把试动后的 wheel raw L/R 结果翻译成短摘要，不要求用户进高级诊断翻 key。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
-    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-before-wheel-save";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
     summaryFixture.operator_hil_material_summary.route_map = "true; ref=o11-nav2-goal-execution-before-wheel-save";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -4214,7 +4214,24 @@ describe("App", () => {
         evidence_capture_endpoints: [],
         evidence_capture_blocked_reasons: [],
         before_readback: {},
-        after_readback: {},
+        after_readback: {
+          radar_status: {
+            phase: "after",
+            id: "radar_status",
+            endpoint: "/api/radar/status",
+            method: "GET",
+            request_status: "loaded",
+            http_status: 200,
+            status: "scan_delta_observed",
+            schema: "trashbot.upper_robot_api.v1.radar_status",
+            key_values: {
+              physical_motion_lidar_delta_proven: "true",
+              scan_delta_ref: "first-jog-scan-delta-fixture",
+              evidence_ref: "radar-status-fixture",
+            },
+            failure_reason: "",
+          },
+        },
         motion_evidence_summary: "first-jog fixture captured during-motion T1001 wheel feedback",
         motion_evidence_gaps: [],
         remote_motion_key_values: {
@@ -4229,6 +4246,8 @@ describe("App", () => {
           feedback_after_stop_t1001_frame_count: "1",
           feedback_during_motion_attempted: "true",
           feedback_after_stop_attempted: "true",
+          physical_motion_lidar_delta_proven: "true",
+          scan_delta_ref: "first-jog-scan-delta-fixture",
           manual_command_executed: "true",
           auto_stop_executed: "true",
         },
@@ -4256,7 +4275,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("已试动");
     expect(firstScreenText).toContain("轮速证据已拿到：L/R=0.08/0.08，运动帧=3。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("可保存");
-    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("已拿到非零 L/R，先保存轮速记录。");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("已拿到非零 L/R 和雷达移动记录，先保存。");
+    expect(wrapper.find('[data-testid="plain-lidar-motion-record-summary"]').text()).toContain("雷达移动记录已拿到：保存轮速记录时会一起保存。");
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(firstScreenText).not.toContain(token);
     }
@@ -4281,15 +4301,15 @@ describe("App", () => {
     expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
       wheel_feedback_lr_nonzero_proven: true,
       physical_motion_lidar_delta_proven: true,
-      scan_delta_ref: "scan-delta-before-wheel-save",
+      scan_delta_ref: "first-jog-scan-delta-fixture",
       real_route_map_proven: true,
       route_map_ref: "o11-nav2-goal-execution-before-wheel-save",
       delivery_success: false,
       site_state: "plain_first_jog_wheel_lr_nonzero_observed",
     }));
     expect(String(reportBody.structured_hil_claims.wheel_feedback_ref)).toMatch(/^pc-first-jog-wheel-lr-/);
-    expect(visiblePlainHomeText(wrapper)).toContain("轮速记录已保存；键盘手控材料可复用。");
-    expect(visiblePlainHomeText(wrapper)).toContain("轮速证据已保存；后续手控材料可复用。");
+    expect(visiblePlainHomeText(wrapper)).toContain("轮速和雷达记录已保存；键盘手控材料可复用。");
+    expect(visiblePlainHomeText(wrapper)).toContain("轮速和雷达移动证据已保存；后续手控材料可复用。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
