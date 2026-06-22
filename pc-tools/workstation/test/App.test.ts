@@ -3264,6 +3264,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读轮速");
+    expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（等非零 L/R）");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
@@ -3539,6 +3540,19 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，仍需试动读到非零。");
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).not.toContain("历史轮速样本已过期");
+
+    const wheelRefreshCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/feedback-samples?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-wheel-readback-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(
+      mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?")).length,
+    ).toBe(wheelRefreshCallsBeforeClick + 1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
   it("shows current wheel L/R and frame count in plain goal progress from summary", async () => {

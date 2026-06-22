@@ -1190,6 +1190,10 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
   return plainFirstJogWheelEvidenceReady.value ? "保存轮速记录" : "保存轮速记录（等非零 L/R）";
 });
 
+const plainWheelReadbackButtonLabel = computed(() => (
+  baseFeedbackSamplesPending.value ? "刷新中" : "刷新当前轮速（只读）"
+));
+
 const plainWheelEvidenceSaveSummary = computed(() => {
   // 保存状态只用普通话术；完整 operator report 响应留在高级诊断。
   if (plainWheelEvidenceSavePending.value) {
@@ -3947,6 +3951,9 @@ onBeforeUnmount(() => {
               </button>
               <button type="button" class="secondary compact-stop" :disabled="!canSendPlainFirstJog" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
                 {{ plainWheelTrialButtonLabel }}
+              </button>
+              <button type="button" class="secondary compact-stop" :disabled="loading || baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
+                {{ plainWheelReadbackButtonLabel }}
               </button>
               <button type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" data-testid="plain-wheel-save" @click="savePlainWheelEvidence">
                 {{ plainWheelEvidenceSaveButtonLabel }}

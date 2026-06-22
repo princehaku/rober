@@ -1617,3 +1617,7 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 2026-06-23 00:08 起，普通首屏检测到送达材料草稿已存在时，禁用态 `确认送达` 按钮从
 `确认送达（还差 N 项）` 调整为 `确认送达（先确认 N 项）`。该文案只强调现场最终确认步骤，不自动勾选、
 不提交 operator report、不调用 delivery complete，不发送 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
+
+2026-06-23 00:11 起，普通首屏“轮速记录”新增 `刷新当前轮速（只读）`。该按钮只复用固定
+`POST /api/robot-control/base/feedback-samples?baseUrl=...` 读取当前 T1001 L/R，pending 时显示 `刷新中`；
+不发送 T=1/T=13、manual、first-jog、stop、Nav2、delivery complete、keyboard pulse 或 `/cmd_vel`。
