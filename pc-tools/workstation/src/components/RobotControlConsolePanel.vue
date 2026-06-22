@@ -1037,6 +1037,37 @@ const plainDeliveryGoalProgressHint = computed(() => {
   return plainDeliveryNextActionSummary.value || "还缺最终送达确认。";
 });
 
+function parsePositiveMillis(value: string | undefined): number | null {
+  // 上位机时间只用于提示证据新旧，解析失败时保持旧文案，不推断 freshness。
+  if (!value || value === "not_loaded") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function formatNav2EvidenceAge(values: Record<string, string> | undefined): string {
+  // latest 可能是昨天的成功 artifact；普通用户需要看到年龄，避免把旧成功误当成本轮复验。
+  const actionGeneratedAt = parsePositiveMillis(values?.generated_at_ms ?? values?.nav2_generated_at_ms);
+  if (actionGeneratedAt === null) {
+    return "";
+  }
+  const referenceAt = parsePositiveMillis(values?.response_generated_at_ms) ?? Date.now();
+  const ageMs = Math.max(0, referenceAt - actionGeneratedAt);
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+  const ageText = ageMs < minuteMs
+    ? "刚刚"
+    : ageMs < hourMs
+      ? `约 ${Math.max(1, Math.round(ageMs / minuteMs))} 分钟前`
+      : ageMs < dayMs
+        ? `约 ${Math.max(1, Math.round(ageMs / hourMs))} 小时前`
+        : `约 ${Math.max(1, Math.round(ageMs / dayMs))} 天前`;
+  const staleText = ageMs >= 15 * minuteMs ? "；这条记录较旧，如需本轮复验，请重新执行行程" : "";
+  return `，${ageText}${staleText}`;
+}
+
 const plainTripEvidenceSummary = computed(() => {
   // 行程成功只展示普通证据摘要；完整 evidence_ref 和 action 细节留在高级诊断。
   const values = navGoalExecutionResult.value?.goal_execution_key_values
@@ -1050,7 +1081,7 @@ const plainTripEvidenceSummary = computed(() => {
   }
   const feedbackCount = values?.feedback_sample_count ?? values?.nav2_feedback_sample_count;
   const feedbackText = feedbackCount && feedbackCount !== "0" && feedbackCount !== "not_loaded" ? `，反馈 ${feedbackCount} 次` : "";
-  return `最近行程成功${feedbackText}；送达仍需现场确认。`;
+  return `最近行程成功${feedbackText}${formatNav2EvidenceAge(values)}；送达仍需现场确认。`;
 });
 
 const plainGoalProgressItems = computed(() => {

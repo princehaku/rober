@@ -3787,6 +3787,54 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows stale latest Nav2 success age on the plain first screen without sending commands", async () => {
+    // latest 只读结果可能很旧；普通首屏必须讲清年龄，不能把它冒充成本轮新路线证明。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-stale-fixture",
+          generated_at_ms: "1782099547218",
+          response_generated_at_ms: "1782150147954",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const staleSummary = "最近行程成功，反馈 8 次，约 14 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达仍需现场确认。";
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain(staleSummary);
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain(staleSummary);
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，约 14 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达未完成");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("turns camera source first-frame failure into a plain first-screen hint", async () => {
     // 首屏可以提示用户检查摄像头/视频线，但不能把 source_readiness 或 first_frame_timeout 露出来。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;

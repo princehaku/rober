@@ -223,6 +223,9 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
   return {
     status: shortValue(latestResult?.status ?? payload?.status),
     evidence_ref: shortValue(payload?.evidence_ref ?? latestResult?.evidence_ref),
+    generated_at_ms: shortValue(latestResult?.generated_at_ms ?? payload?.generated_at_ms),
+    response_generated_at_ms: shortValue(payload?.generated_at_ms),
+    completed_at_ms: shortValue(latestResult?.completed_at_ms ?? payload?.completed_at_ms),
     nav2_goal_execution_proven: shortValue(payload?.nav2_goal_execution_proven ?? latestResult?.nav2_goal_execution_proven, "false"),
     goal_accepted: shortValue(payload?.goal_accepted ?? latestResult?.goal_accepted),
     result_received: shortValue(payload?.result_received ?? latestResult?.result_received),
@@ -246,6 +249,8 @@ function deliveryCompleteKeyValues(payload: Record<string, unknown> | null): Rec
     nav2_status: shortValue(nav2?.status),
     nav2_result_status: shortValue(nav2?.result_status),
     nav2_feedback_sample_count: shortValue(nav2?.feedback_sample_count, "0"),
+    nav2_generated_at_ms: shortValue(nav2?.generated_at_ms),
+    generated_at_ms: shortValue(result?.generated_at_ms ?? payload?.generated_at_ms),
     operator_report_status: shortValue(operatorReport?.operator_report_status),
     operator_evidence_ref: shortValue(operatorReport?.evidence_ref),
     missing_required_material: shortValue(result?.missing_required_material),
