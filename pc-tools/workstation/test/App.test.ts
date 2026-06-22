@@ -6001,6 +6001,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-mark-arrived-stopped"]').text()).toBe("下一步：确认到达停稳");
     expect(wrapper.find('[data-testid="plain-delivery-mark-refs-verified"]').text()).toBe("下一步：核对材料");
     expect(wrapper.find('[data-testid="plain-delivery-mark-success"]').text()).toBe("下一步：确认投放/送达");
+    expect(wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').text()).toBe("全部已确认");
     expect(visiblePlainHomeText(wrapper)).not.toContain("delivery_success");
     expect(visiblePlainHomeText(wrapper)).not.toContain("/api/delivery");
 
@@ -6061,6 +6062,30 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    const callsBeforeAllConfirmedShortcut = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect((wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmClearance"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmEstop"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').text()).toBe("全部确认已勾选");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeAllConfirmedShortcut);
+
+    await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(false);
+    await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(false);
+    await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(false);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').setValue(false);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').setValue(false);
+    await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(false);
+    await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(false);
+    await wrapper.vm.$nextTick();
 
     const callsBeforeSafetyShortcut = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-delivery-mark-safety"]').trigger("click");

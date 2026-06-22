@@ -696,6 +696,10 @@ const plainDeliverySuccessButtonLabel = computed(() => (
   deliveryOperatorConfirmations.value.delivery_success ? "已确认投放/送达" : "下一步：确认投放/送达"
 ));
 
+const plainDeliveryAllConfirmedButtonLabel = computed(() => (
+  deliveryOperatorConfirmationReady.value ? "全部确认已勾选" : "全部已确认"
+));
+
 const deliveryGateBlockedReasons = computed(() => {
   // 送达缺口可能来自 latest、check 或 complete；合并后给现场人员一个稳定清单。
   return Array.from(new Set([
@@ -3125,6 +3129,14 @@ function markDeliverySuccessConfirmed(): void {
   deliveryOperatorConfirmations.value.delivery_success = true;
 }
 
+function markAllDeliveryConfirmations(): void {
+  // 这个按钮只把现场已确认事项合并勾选；最终提交仍必须单独点击“确认送达”。
+  markDeliveryBasicSafetyConfirmed();
+  markDeliveryArrivedAndStopped();
+  markDeliveryRefsVerified();
+  markDeliverySuccessConfirmed();
+}
+
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
   if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
@@ -4256,6 +4268,9 @@ onBeforeUnmount(() => {
                 </button>
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-success" @click="markDeliverySuccessConfirmed">
                   {{ plainDeliverySuccessButtonLabel }}
+                </button>
+                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-all-confirmed" @click="markAllDeliveryConfirmations">
+                  {{ plainDeliveryAllConfirmedButtonLabel }}
                 </button>
               </div>
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
