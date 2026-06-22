@@ -998,6 +998,40 @@ const keyboardControlSummary = computed(() => {
   return { state: "未满足", hint: manualBlockedReason.value };
 });
 
+const plainKeyboardMissingSummary = computed(() => {
+  // 普通首屏只给下一步操作名，不暴露 operator report、HIL 或后端字段名。
+  if (canSendManualMotion.value) {
+    return "";
+  }
+  if (!robotApiBaseUrl.value.trim()) {
+    return "还差：小车连接。";
+  }
+  if (manualCommandPending.value || loading.value) {
+    return "正在处理上一条请求，请稍等。";
+  }
+  const missing = new Set<string>();
+  if (!hilChecklistConfirmed.value) {
+    missing.add("移动前检查");
+  }
+  const materialMissing = operatorMaterialMissingFields.value;
+  if (materialMissing.some((field) => ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready"].includes(field))) {
+    missing.add("移动前检查");
+  }
+  if (materialMissing.some((field) => ["external_video_recorded", "visible_content_proven"].includes(field))) {
+    missing.add("现场画面");
+  }
+  if (materialMissing.includes("wheel_feedback_lr_nonzero_proven")) {
+    missing.add("轮速记录");
+  }
+  if (materialMissing.includes("physical_motion_lidar_delta_proven")) {
+    missing.add("雷达移动记录");
+  }
+  if (missing.size === 0 && !operatorMaterialReady.value) {
+    missing.add("现场材料读取");
+  }
+  return `还差：${Array.from(missing).join("、")}。`;
+});
+
 const plainKeyboardControlSummary = computed(() => {
   // 普通首屏只说“能不能用”和“怎么停”，不展示 operator report 字段名或 HIL 术语。
   if (keyboardHeldDirection.value) {
@@ -1010,9 +1044,9 @@ const plainKeyboardControlSummary = computed(() => {
     return { state: "可手控", hint: "点击启用键盘，让这个小面板获得焦点后再按方向键。" };
   }
   if (keyboardControlArmed.value || keyboardControlStatus.value.startsWith("blocked")) {
-    return { state: "未满足", hint: "移动条件还没满足，暂不发送键盘手控。" };
+    return { state: "未满足", hint: `移动条件还没满足，暂不发送键盘手控。${plainKeyboardMissingSummary.value}` };
   }
-  return { state: "未满足", hint: "先完成移动前检查和轮速记录，再启用键盘。" };
+  return { state: "未满足", hint: `先补齐键盘手控条件，再启用键盘。${plainKeyboardMissingSummary.value}` };
 });
 
 const operatorMaterialGateSummary = computed(() => {
