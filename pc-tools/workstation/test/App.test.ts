@@ -6771,6 +6771,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
 
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    const focusCallsBeforePrefill = focusSpy.mock.calls.length;
     await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "准备送达材料")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -6783,9 +6785,11 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-delivery-draft-save"]').text()).toBe("保存送达草稿（不确认）");
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforePrefill);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-draft-save"]').element);
 
     const checkCallsBeforeDraftSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/check?")).length;
-    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    const focusCallsBeforeDraftSave = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-delivery-draft-save"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -6806,7 +6810,8 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("已保存");
     expect(deliveryStatus.text()).toContain("请完成下方最终确认");
     expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
-    expect(focusSpy).toHaveBeenCalledTimes(1);
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeDraftSave);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-final-confirm"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/check?")).length).toBe(checkCallsBeforeDraftSave + 1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

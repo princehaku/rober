@@ -203,6 +203,7 @@ const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainWheelTrialButton = ref<HTMLButtonElement | null>(null);
 const plainWheelSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
+const plainDeliveryDraftSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
 const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
@@ -3477,6 +3478,17 @@ async function focusPlainDeliveryStatusPanel(): Promise<void> {
   target.focus({ preventScroll: true });
 }
 
+async function focusPlainDeliveryDraftSaveButton(): Promise<void> {
+  // 送达材料准备好后只聚焦草稿保存按钮；是否保存仍必须由现场人员显式点击。
+  await nextTick();
+  const target = plainDeliveryDraftSaveButton.value;
+  if (!target || target.disabled) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
+}
+
 function markDeliveryBasicSafetyConfirmed(): void {
   // 只减少现场重复勾选；到达、停稳和送达成功仍必须由 operator 分开确认。
   deliveryOperatorConfirmations.value.operator_present = true;
@@ -3605,6 +3617,9 @@ async function prefillDeliveryMaterialRefs(): Promise<void> {
     await fillDeliveryVideoRefFromCameraProbe();
   }
   await loadDeliveryLatest();
+  if (deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim() && !deliveryDraftMaterialPresent()) {
+    await focusPlainDeliveryDraftSaveButton();
+  }
 }
 
 async function submitDeliveryDraftMaterial(): Promise<void> {
@@ -4664,6 +4679,7 @@ onBeforeUnmount(() => {
                 准备送达材料
               </button>
               <button
+                ref="plainDeliveryDraftSaveButton"
                 type="button"
                 class="secondary compact-stop"
                 :disabled="loading || operatorReportPending || !robotApiBaseUrl.trim() || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()"
