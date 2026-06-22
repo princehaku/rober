@@ -1372,7 +1372,14 @@ const plainKeyboardMissingSummary = computed(() => {
 
 const plainKeyboardArmButtonLabel = computed(() => {
   // 启用只让键盘面板获得焦点；真正手控必须后续按住方向键。
-  const missingCount = plainKeyboardMissingLabels.value.length;
+  const missingLabels = plainKeyboardMissingLabels.value;
+  const missingCount = missingLabels.length;
+  const higherPriorityMissing = ["小车连接", "键盘入口", "移动前检查", "现场画面"]
+    .some((label) => missingLabels.includes(label));
+  // 轮速是当前真实收口的高频卡点；只有前置条件都过了，按钮才直接提示先补轮速。
+  if (!higherPriorityMissing && missingLabels.includes("轮速记录")) {
+    return "启用键盘（先补轮速）";
+  }
   return missingCount > 0 ? `启用键盘（还差 ${missingCount} 项）` : "启用键盘（按键才动）";
 });
 

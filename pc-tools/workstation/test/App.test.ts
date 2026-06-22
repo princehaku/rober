@@ -3963,6 +3963,50 @@ describe("App", () => {
     expect((stopCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
   });
 
+  it("points the keyboard arm button at wheel proof once earlier plain gates are ready", async () => {
+    // 前置普通 gate 已满足时，键盘入口应把 operator 引向当前真实卡点：轮速非零证据。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_review";
+    summaryFixture.operator_hil_material_summary.operator_present = "true";
+    summaryFixture.operator_hil_material_summary.physical_clearance = "true";
+    summaryFixture.operator_hil_material_summary.emergency_stop = "true";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        proxy_status: "should_not_be_called",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const armButton = wrapper.find('[data-testid="keyboard-control-arm"]');
+    expect(armButton.text()).toBe("启用键盘（先补轮速）");
+    expect(armButton.attributes("disabled")).toBeDefined();
+    expect(visiblePlainHomeText(wrapper)).toContain("下一步：读取并保存轮速记录。");
+
+    await armButton.trigger("click");
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("keeps keyboard disabled when summary lacks the bounded pulse contract even after manual gate is ready", async () => {
     // 连续键盘手控不能只靠材料 gate 放开；后端 summary 必须显式声明 bounded pulse 合同。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
