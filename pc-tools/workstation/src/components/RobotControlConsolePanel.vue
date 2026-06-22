@@ -739,6 +739,10 @@ const plainDeliveryLatestButtonLabel = computed(() => {
   return deliveryLatestPending.value ? "刷新中" : "刷新送达状态（只读）";
 });
 
+const deliveryLatestDraftMaterialPresent = computed(() => (
+  deliveryLatestResult.value?.delivery_material_refs?.site_state === "delivery_material_draft_not_operator_confirmed"
+));
+
 const plainDeliveryMaterialSummary = computed(() => {
   // 送达材料草稿只说明“有没有准备好”；不显示 ref、字段名或 delivery claim。
   if (operatorReportPending.value) {
@@ -747,7 +751,7 @@ const plainDeliveryMaterialSummary = computed(() => {
   if (navGoalExecutionLatestPending.value || cameraFirstFrameProbePending.value || deliveryLatestPending.value) {
     return { state: "准备中", hint: "正在读取最近行程和画面材料。" };
   }
-  if (operatorReportResult.value?.structured_hil_claims?.site_state === "delivery_material_draft_not_operator_confirmed") {
+  if (operatorReportResult.value?.structured_hil_claims?.site_state === "delivery_material_draft_not_operator_confirmed" || deliveryLatestDraftMaterialPresent.value) {
     return { state: "已保存", hint: "送达材料草稿已保存；请完成下方最终确认。" };
   }
   if (deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim()) {
@@ -788,7 +792,7 @@ const plainDeliveryConfirmSummary = computed(() => {
   if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "待材料", hint: "先准备送达材料，再做最终确认。" };
   }
-  if (operatorReportResult.value?.structured_hil_claims?.site_state === "delivery_material_draft_not_operator_confirmed") {
+  if (operatorReportResult.value?.structured_hil_claims?.site_state === "delivery_material_draft_not_operator_confirmed" || deliveryLatestDraftMaterialPresent.value) {
     return { state: "待确认", hint: "送达材料已保存；现场逐项确认后再提交。" };
   }
   if (!deliveryOperatorConfirmationReady.value) {

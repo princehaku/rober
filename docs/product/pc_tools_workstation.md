@@ -1603,3 +1603,8 @@ keyboard pulse 或 `/cmd_vel`。
 `latest_feedback_status`；普通首屏轮速记录若读到 `stale`，会提示 `历史轮速样本已过期，以当前读回为准`。
 该提示只解释 `/api/base/status` 与 latest sample 的新旧关系，不发送 T=1/T=13、manual、first-jog、Nav2、
 delivery complete、keyboard pulse 或 `/cmd_vel`，也不会把历史样本外推成 wheel raw L/R 非零证明。
+
+2026-06-22 23:24 起，普通首屏从 `GET /api/robot-control/delivery/latest` 读到上位机已有
+`delivery_material_draft_not_operator_confirmed` 草稿时，也会把送达材料状态显示为 `已保存`，并提示
+`送达材料草稿已保存；请完成下方最终确认`。该提示只消费 latest readback，不自动勾选最终确认、
+不提交 operator report、不调用 delivery complete，不发送 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。

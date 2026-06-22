@@ -6018,8 +6018,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
-    expect(deliveryStatus.text()).toContain("已预填");
-    expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
+    expect(deliveryStatus.text()).toContain("已保存");
+    expect(deliveryStatus.text()).toContain("送达材料草稿已保存；请完成下方最终确认。");
+    expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 5 项，不确认）");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：勾选安全三项。");
