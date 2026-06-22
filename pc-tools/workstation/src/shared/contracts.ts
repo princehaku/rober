@@ -2137,6 +2137,37 @@ export interface RobotControlNavGoalPreflightResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface RobotControlNavGoalExecutionRequest {
+  goal_frame_id?: "map";
+  goal_x?: number;
+  goal_y?: number;
+  goal_yaw?: number;
+  result_timeout_s?: number;
+  confirm_navigation_execution?: boolean;
+}
+
+export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_proxy.v1";
+  proxy_status: "execution_forwarded" | "execution_rejected" | "execution_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/nav2/goal/execute";
+  remote_endpoint: "/api/nav2/goal/execute";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  goal_request: Required<Pick<RobotControlNavGoalExecutionRequest, "goal_frame_id" | "confirm_navigation_execution">> & {
+    goal_x: number;
+    goal_y: number;
+    goal_yaw: number;
+    result_timeout_s: number;
+  };
+  goal_execution_key_values: Record<string, string>;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: boolean;
+}
+
 export type RobotControlPreviewStatus =
   | "idle_not_started"
   | "starting_local_peer"

@@ -50,6 +50,7 @@ MAP_LIFECYCLE_OBSERVED_STATUS = "map_once_artifact_metadata_observed"
 SAFE_MAP_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecycle_latest.json"
+DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_goal_execution_latest.json"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
 NAV2_PROOF_PROCESS_BASE_MARGIN_S = 12.0
 NAV2_PROOF_PROCESS_PATH_MARGIN_S = 8.0
@@ -162,6 +163,8 @@ ROUTE_PATHS = {
     "nav2_status": "/api/nav2/status",
     "nav2_proof_refresh": "/api/nav2/proof/refresh",
     "nav2_proof_latest": "/api/nav2/proof/latest",
+    "nav2_goal_execute": "/api/nav2/goal/execute",
+    "nav2_goal_execution_latest": "/api/nav2/goal/execution/latest",
     "nav2_start": "/api/nav2/start",
     "nav2_stop": "/api/nav2/stop",
     "elevator_status": "/api/elevator/status",
@@ -1335,6 +1338,26 @@ def nav2_lifecycle_artifact_info(path: str) -> dict[str, Any]:
             "planner/controller lifecycle state",
             "Nav2 consumes /scan + map",
             "path generated or explicitly blocked",
+        ],
+    }
+
+
+def nav2_goal_execution_artifact_info(path: str) -> dict[str, Any]:
+    """Nav2 目标执行 artifact 只记录一次 bounded NavigateToPose，不等同交付成功。"""
+    resolved_path = resolve_onboard_runtime_path(path)
+    return {
+        "path": resolved_path,
+        "configured_path": path,
+        "resolved_path": resolved_path,
+        "canonical_path": DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH,
+        "configured_by": "ROBER_NAV2_GOAL_EXECUTION_ARTIFACT_PATH or --nav2-goal-execution-artifact-path",
+        "format": "json",
+        "schema": f"{SCHEMA}.nav2_goal_execution_proof",
+        "expected_material": [
+            "NavigateToPose action server availability",
+            "goal accepted/rejected",
+            "bounded result or cancel response",
+            "feedback distance remaining samples",
         ],
     }
 
@@ -4049,6 +4072,95 @@ def manual_motion_serial_transaction(
     }
 
 
+def run_nav2_goal_execution_helper(
+    *,
+    artifact_path: str,
+    goal_frame_id: str,
+    goal_x: float,
+    goal_y: float,
+    goal_yaw: float,
+    result_timeout_s: float,
+    server_timeout_s: float,
+    managed_runtime_opt_in: bool,
+    managed_map_yaml: str,
+    managed_startup_s: float,
+    managed_ready_timeout_s: float,
+) -> dict[str, Any]:
+    """运行 bounded NavigateToPose helper；超时由 helper cancel，外层保留结构化结果。"""
+    script_path = Path(__file__).resolve().with_name("o11_nav2_goal_execution_proof.py")
+    helper_argv = [
+        sys.executable,
+        str(script_path),
+        "--output",
+        artifact_path,
+        "--goal-frame-id",
+        goal_frame_id,
+        "--goal-x",
+        str(goal_x),
+        "--goal-y",
+        str(goal_y),
+        "--goal-yaw",
+        str(goal_yaw),
+        "--server-timeout-s",
+        str(server_timeout_s),
+        "--result-timeout-s",
+        str(result_timeout_s),
+    ]
+    if managed_runtime_opt_in:
+        helper_argv.extend(
+            [
+                "--managed-runtime-opt-in",
+                "--managed-map-yaml",
+                managed_map_yaml,
+                "--managed-startup-s",
+                str(managed_startup_s),
+                "--managed-ready-timeout-s",
+                str(managed_ready_timeout_s),
+            ]
+        )
+    ros_setup_parts = [
+        "source /opt/ros/humble/setup.bash",
+        f"if [ -f {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))} ]; then source {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))}; fi",
+    ]
+    helper_command = " && ".join(ros_setup_parts + [shlex.join(helper_argv)])
+    process_timeout_s = min(max(server_timeout_s + result_timeout_s + managed_startup_s + managed_ready_timeout_s + 15.0, 20.0), 100.0)
+    started_ms = now_ms()
+    try:
+        completed = run_helper_bash_process_group(helper_command, process_timeout_s, DEFAULT_ONBOARD_WORKDIR)
+        return {
+            "mode": "o11_nav2_goal_execution_helper",
+            "executed": True,
+            "ok": bool(completed.get("returncode") == 0),
+            "returncode": completed.get("returncode"),
+            "argv": ["bash", "-lc", helper_command],
+            "helper_argv": helper_argv,
+            "elapsed_ms": now_ms() - started_ms,
+            "process_timeout_s": process_timeout_s,
+            "timed_out": bool(completed.get("timed_out")),
+            "stdout_preview": str(completed.get("stdout") or "")[-4000:],
+            "stderr_preview": str(completed.get("stderr") or "")[-4000:],
+            "helper_process_group": completed.get("process_group"),
+            "helper_cleanup_result": completed.get("cleanup_result"),
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    except Exception as exc:  # noqa: BLE001 - helper 启动失败也要结构化返回。
+        return {
+            "mode": "o11_nav2_goal_execution_helper",
+            "executed": False,
+            "ok": False,
+            "argv": ["bash", "-lc", helper_command],
+            "helper_argv": helper_argv,
+            "elapsed_ms": now_ms() - started_ms,
+            "process_timeout_s": process_timeout_s,
+            "error": compact_error(exc),
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+
+
 def build_base_feedback_payload(
     *,
     port: str,
@@ -4423,6 +4535,7 @@ class UpperRobotApi:
         map_lifecycle_proof_artifact_path: str = DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH,
         localization_artifact_path: str = DEFAULT_LOCALIZATION_ARTIFACT_PATH,
         nav2_lifecycle_artifact_path: str = DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH,
+        nav2_goal_execution_artifact_path: str = DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH,
         elevator_status_artifact_path: str = DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH,
         operator_report_artifact_path: str = DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH,
         radar_start_command: str | None = None,
@@ -4448,6 +4561,7 @@ class UpperRobotApi:
         self.map_lifecycle_proof_artifact_path = resolve_onboard_runtime_path(map_lifecycle_proof_artifact_path)
         self.localization_artifact_path = resolve_onboard_runtime_path(localization_artifact_path)
         self.nav2_lifecycle_artifact_path = resolve_onboard_runtime_path(nav2_lifecycle_artifact_path)
+        self.nav2_goal_execution_artifact_path = resolve_onboard_runtime_path(nav2_goal_execution_artifact_path)
         self.elevator_status_artifact_path = elevator_status_artifact_path
         self.operator_report_artifact_path = operator_report_artifact_path
         self.radar_start_command = radar_start_command
@@ -5243,6 +5357,104 @@ class UpperRobotApi:
             source="nav2_lifecycle_runtime_artifact",
         )
 
+    async def nav2_goal_execute(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """显式执行 bounded NavigateToPose；超时自动 cancel，不宣称 delivery success。"""
+        body = body if isinstance(body, dict) else {}
+        if body.get("confirm_navigation_execution") is not True:
+            return software_guard_payload(
+                schema_suffix="nav2_goal_execution_result",
+                action="nav2_goal_execute",
+                endpoint=ROUTE_PATHS["nav2_goal_execute"],
+                artifact=nav2_goal_execution_artifact_info(self.nav2_goal_execution_artifact_path),
+                extra={
+                    "status": "blocked_missing_confirm_navigation_execution",
+                    "failure_reason": "confirm_navigation_execution_required",
+                    "command_result": {"executed": False, "ok": False},
+                    "robot_control_executed": False,
+                },
+            )
+        goal_frame_id = str(body.get("goal_frame_id") or "map")[:40]
+        goal_x = clamp_float(body.get("goal_x"), 0.8, -3.0, 3.0)
+        goal_y = clamp_float(body.get("goal_y"), 0.0, -3.0, 3.0)
+        goal_yaw = clamp_float(body.get("goal_yaw"), 0.0, -math.pi, math.pi)
+        result_timeout_s = clamp_float(body.get("result_timeout_s"), 8.0, 2.0, 20.0)
+        server_timeout_s = clamp_float(body.get("server_timeout_s"), 5.0, 1.0, 8.0)
+        latest_nav2_http_status, latest_nav2 = self.nav2_proof_latest()
+        latest_nav2_result = latest_nav2.get("latest_result") if isinstance(latest_nav2.get("latest_result"), dict) else {}
+        latest_nav2_proof = latest_nav2_result.get("proof") if isinstance(latest_nav2_result.get("proof"), dict) else {}
+        default_map_yaml = str(latest_nav2_proof.get("managed_runtime_map_yaml") or "")
+        managed_runtime_opt_in = body.get("managed_runtime_opt_in") is not False
+        managed_map_yaml = str(body.get("managed_map_yaml") or default_map_yaml)[:400]
+        # O11 自己轮询 Nav2 lifecycle active；startup 只保留进程组启动余量。
+        managed_startup_s = clamp_float(body.get("managed_startup_s"), 2.0, 0.0, 5.0)
+        managed_ready_timeout_s = clamp_float(body.get("managed_ready_timeout_s"), 45.0, 10.0, 60.0)
+        command_result = await asyncio.to_thread(
+            run_nav2_goal_execution_helper,
+            artifact_path=self.nav2_goal_execution_artifact_path,
+            goal_frame_id=goal_frame_id,
+            goal_x=goal_x,
+            goal_y=goal_y,
+            goal_yaw=goal_yaw,
+            result_timeout_s=result_timeout_s,
+            server_timeout_s=server_timeout_s,
+            managed_runtime_opt_in=managed_runtime_opt_in,
+            managed_map_yaml=managed_map_yaml,
+            managed_startup_s=managed_startup_s,
+            managed_ready_timeout_s=managed_ready_timeout_s,
+        )
+        http_status, latest = self.nav2_goal_execution_latest()
+        latest_result = latest.get("latest_result") if isinstance(latest.get("latest_result"), dict) else {}
+        latest_status = latest_result.get("status") if isinstance(latest_result, dict) else "not_loaded"
+        return software_guard_payload(
+            schema_suffix="nav2_goal_execution_result",
+            action="nav2_goal_execute",
+            endpoint=ROUTE_PATHS["nav2_goal_execute"],
+            command_env="built_in_bounded_navigate_to_pose_helper",
+            command="o11_nav2_goal_execution_proof.py",
+            command_result=command_result,
+            artifact=nav2_goal_execution_artifact_info(self.nav2_goal_execution_artifact_path),
+            extra={
+                "status": latest_status,
+                "goal_request": {
+                    "goal_frame_id": goal_frame_id,
+                    "goal_x": goal_x,
+                    "goal_y": goal_y,
+                    "goal_yaw": goal_yaw,
+                    "result_timeout_s": result_timeout_s,
+                    "managed_runtime_opt_in": managed_runtime_opt_in,
+                    "managed_map_yaml": managed_map_yaml,
+                    "managed_startup_s": managed_startup_s,
+                    "managed_ready_timeout_s": managed_ready_timeout_s,
+                    "managed_map_yaml_source": "latest_nav2_proof_managed_runtime_map_yaml" if managed_map_yaml == default_map_yaml else "request_body",
+                    "latest_nav2_readback_http_status": latest_nav2_http_status,
+                },
+                "latest_readback_http_status": http_status,
+                "latest_result": latest_result,
+                "goal_accepted": bool(latest_result.get("goal_accepted")) if isinstance(latest_result, dict) else False,
+                "result_received": bool(latest_result.get("result_received")) if isinstance(latest_result, dict) else False,
+                "result_status": latest_result.get("result_status") if isinstance(latest_result, dict) else "not_loaded",
+                "cancel_requested": bool(latest_result.get("cancel_requested")) if isinstance(latest_result, dict) else False,
+                "feedback_sample_count": int(latest_result.get("feedback_sample_count") or 0) if isinstance(latest_result, dict) else 0,
+                "nav2_goal_execution_proven": latest_status == "goal_succeeded",
+                "delivery_success": False,
+                "safe_to_control": False,
+                "primary_actions_enabled": False,
+                "robot_control_executed": bool(latest_result.get("robot_control_executed")) if isinstance(latest_result, dict) else False,
+                "not_proven": ["delivery_success", "operator_dropoff_confirmation"],
+            },
+        )
+
+    def nav2_goal_execution_latest(self) -> tuple[int, dict[str, Any]]:
+        """只读最近一次 NavigateToPose 执行 artifact，不触发 action。"""
+        return read_runtime_artifact_latest(
+            self.nav2_goal_execution_artifact_path,
+            artifact_info=nav2_goal_execution_artifact_info(self.nav2_goal_execution_artifact_path),
+            schema_suffix="nav2_goal_execution_latest",
+            endpoint=ROUTE_PATHS["nav2_goal_execution_latest"],
+            boundary="readback_only_not_delivery_success",
+            source="nav2_goal_execution_artifact",
+        )
+
     def nav2_status(self) -> dict[str, Any]:
         """Nav2 lifecycle 状态只读 artifact；真实 graph 查询由外部 collector 写材料。"""
         return {
@@ -5261,6 +5473,8 @@ class UpperRobotApi:
                 "status": ROUTE_PATHS["nav2_status"],
                 "proof_refresh": ROUTE_PATHS["nav2_proof_refresh"],
                 "proof_latest": ROUTE_PATHS["nav2_proof_latest"],
+                "goal_execute": ROUTE_PATHS["nav2_goal_execute"],
+                "goal_execution_latest": ROUTE_PATHS["nav2_goal_execution_latest"],
                 "start": ROUTE_PATHS["nav2_start"],
                 "stop": ROUTE_PATHS["nav2_stop"],
             },
@@ -5274,6 +5488,8 @@ class UpperRobotApi:
                 "required_inputs": ["/scan", "map yaml/image", "tf map->base_link"],
                 "proof_refresh": ROUTE_PATHS["nav2_proof_refresh"],
                 "proof_latest": ROUTE_PATHS["nav2_proof_latest"],
+                "goal_execute": ROUTE_PATHS["nav2_goal_execute"],
+                "goal_execution_latest": ROUTE_PATHS["nav2_goal_execution_latest"],
             },
             **runtime_boundary_flags(),
             **proof_flags(),
@@ -5696,6 +5912,10 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH", DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH),
     )
     parser.add_argument(
+        "--nav2-goal-execution-artifact-path",
+        default=os.getenv("ROBER_NAV2_GOAL_EXECUTION_ARTIFACT_PATH", DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH),
+    )
+    parser.add_argument(
         "--elevator-status-artifact-path",
         default=os.getenv("ROBER_ELEVATOR_STATUS_ARTIFACT_PATH", DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH),
     )
@@ -5737,6 +5957,7 @@ async def run_server(args: argparse.Namespace) -> None:
         map_lifecycle_proof_artifact_path=args.map_lifecycle_proof_artifact_path,
         localization_artifact_path=args.localization_artifact_path,
         nav2_lifecycle_artifact_path=args.nav2_lifecycle_artifact_path,
+        nav2_goal_execution_artifact_path=args.nav2_goal_execution_artifact_path,
         elevator_status_artifact_path=args.elevator_status_artifact_path,
         operator_report_artifact_path=args.operator_report_artifact_path,
         radar_start_command=args.radar_start_command,
@@ -5873,6 +6094,14 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = api.nav2_proof_latest()
         return json_response(payload, status=http_status)
 
+    async def nav2_goal_execute(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(await api.nav2_goal_execute(body if isinstance(body, dict) else {}))
+
+    async def nav2_goal_execution_latest(_: web.Request) -> Any:
+        http_status, payload = api.nav2_goal_execution_latest()
+        return json_response(payload, status=http_status)
+
     async def nav2_start(_: web.Request) -> Any:
         return json_response(api.nav2_control("start"))
 
@@ -5950,6 +6179,8 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_get(ROUTE_PATHS["nav2_status"], nav2_status)
     app.router.add_post(ROUTE_PATHS["nav2_proof_refresh"], nav2_proof_refresh)
     app.router.add_get(ROUTE_PATHS["nav2_proof_latest"], nav2_proof_latest)
+    app.router.add_post(ROUTE_PATHS["nav2_goal_execute"], nav2_goal_execute)
+    app.router.add_get(ROUTE_PATHS["nav2_goal_execution_latest"], nav2_goal_execution_latest)
     app.router.add_post(ROUTE_PATHS["nav2_start"], nav2_start)
     app.router.add_post(ROUTE_PATHS["nav2_stop"], nav2_stop)
     app.router.add_get(ROUTE_PATHS["elevator_status"], elevator_status)

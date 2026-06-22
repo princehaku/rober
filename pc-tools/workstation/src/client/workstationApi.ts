@@ -29,6 +29,8 @@ import type {
   RobotControlMapLifecycleResponse,
   RobotControlNavGoalPreflightRequest,
   RobotControlNavGoalPreflightResponse,
+  RobotControlNavGoalExecutionRequest,
+  RobotControlNavGoalExecutionResponse,
   RobotControlOperatorReportProxyResponse,
   RobotControlOperatorReportRequest,
   RobotControlSummaryResponse,
@@ -105,6 +107,7 @@ const API_ENDPOINTS = {
   robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
   robotControlNav2ProofRefresh: "/api/robot-control/nav2/proof/refresh",
   robotControlNav2GoalPreflight: "/api/robot-control/nav2/goal/preflight",
+  robotControlNav2GoalExecute: "/api/robot-control/nav2/goal/execute",
   robotControlLocalizeReset: "/api/robot-control/localize/reset",
   robotControlMapList: "/api/robot-control/map/list",
   robotControlMapStart: "/api/robot-control/map/start",
@@ -526,6 +529,17 @@ export async function postRobotControlNav2GoalPreflight(
   // 目标预检只传短白名单字段；真正的只读材料 gate 和禁止执行保证在 Node 后端完成。
   return postJson<RobotControlNavGoalPreflightResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2GoalPreflight, baseUrl),
+    body,
+  );
+}
+
+export async function postRobotControlNav2GoalExecute(
+  baseUrl: string,
+  body: RobotControlNavGoalExecutionRequest,
+): Promise<RobotControlNavGoalExecutionResponse> {
+  // 目标执行只走固定 Node 代理；组件只能传短白名单目标和显式确认。
+  return postJson<RobotControlNavGoalExecutionResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2GoalExecute, baseUrl),
     body,
   );
 }

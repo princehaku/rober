@@ -1172,3 +1172,36 @@ PC evidence capture 同步改为串行固定 GET，单 endpoint timeout 提到 5
 串口/雷达时被并发请求互相挤到 timeout。该修复让 wheel raw L/R 非零在 PC 工作流里可复验，
 但仍不解锁 `delivery_success`、`safe_to_control` 或 `primary_actions_enabled`。完整 Nav2
 路线执行与真实交付成功仍需后续路线运行、到达/投放验收和 operator report 收口。
+
+## 2026-06-22 Nav2 NavigateToPose Execution Proof
+
+`sprints/2026.06.22_11-30_nav2_goal_execution_pc_proxy/` 新增 PC 固定高级代理
+`POST /api/robot-control/nav2/goal/execute?baseUrl=<robot-api-base-url>`，只转发到上位机
+`POST /api/nav2/goal/execute`。该入口默认仍在 `高级诊断 -> Nav2 规划详情` 内，不进入
+`.simple-user-console` 普通首屏；普通首屏继续保持面向普通用户的简易风格和 `停止` 安全入口。
+
+上位机新增 `o11_nav2_goal_execution_proof.py`，显式 opt-in 后会托管启动 map/amcl、发布一次
+`/initialpose`、等待 planner/controller/BT/behavior lifecycle active，再发送 bounded
+`NavigateToPose`。helper 结束后会清理托管 runtime；PC 代理等待窗口大于上位机 helper 的结构化超时，
+避免浏览器先超时而丢失 artifact。
+
+真实 PC proxy 连接默认上位机 `http://192.168.1.11:8787` 后，`goal=(map, 0.8, 0, 0)`、
+`result_timeout_s=4` 的复验结果为：
+
+- `proxy_status=execution_forwarded`
+- `remote_http_status=200`
+- `status=goal_succeeded`
+- `nav2_goal_execution_proven=true`
+- `goal_accepted=true`
+- `result_received=true`
+- `result_status=succeeded`
+- `feedback_sample_count=8`
+- `robot_control_executed=true`
+- `hard_dangerous_true_fields=[]`
+- `delivery_success=false`
+
+PC guard 对这个固定 endpoint 只放行预期会出现的 `robot_control_executed`、
+`sends_motion_commands` 和 `sends_commands`，仍然阻断 `safe_to_control=true`、
+`primary_actions_enabled=true`、`delivery_success=true`、`hil_pass=true`、`calls_base_manual=true`
+等不应由导航 proof 自动声明的字段。Nav2 goal succeeded 只能证明路线执行链路可用；它不等于
+垃圾投放、到桶确认或 delivery success。

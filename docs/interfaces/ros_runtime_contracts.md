@@ -1,5 +1,39 @@
 # ROS Runtime Contracts
 
+## nav2_goal_execution_proof
+
+`nav2_goal_execution_proof` 是上位机 `POST /api/nav2/goal/execute` 写入的 bounded
+`NavigateToPose` 执行材料，latest readback 为 `GET /api/nav2/goal/execution/latest`。PC
+只能通过固定代理 `POST /api/robot-control/nav2/goal/execute?baseUrl=...` 调用它，不能把该能力扩展成任意
+Robot API POST。
+
+该合同允许记录真实执行字段：
+
+- `goal_sent=true`
+- `goal_accepted=true`
+- `result_received=true`
+- `result_status=succeeded`
+- `robot_control_executed=true`
+- `sends_motion_commands=true`
+- `feedback_sample_count>0`
+
+但它仍是导航执行 proof，不是交付 proof：
+
+- `safe_to_control=false`
+- `primary_actions_enabled=false`
+- `delivery_success=false`
+- `hil_pass=false`
+
+O11 helper 的托管 runtime 必须先让 map/amcl active，发布一次 `/initialpose`，再等待
+planner/controller/BT/behavior lifecycle active 后才发送 `NavigateToPose`。readiness 可以使用同一轮 helper
+日志中的 `lifecycle_manager_navigation: Managed nodes are active` 作为执行层 active 证据；不能只因为
+`/navigate_to_pose` action server 出现就发送 goal，因为 BT node 未 active 时目标可能被拒绝。
+
+PC guard 对该固定 endpoint 只允许预期执行字段为 true，仍必须 fail-closed 拦截
+`safe_to_control=true`、`primary_actions_enabled=true`、`delivery_success=true`、`hil_pass=true`、
+`calls_base_manual=true`、`uses_base_uart=true` 等越界声明。`NavigateToPose` succeeded 后，还需要现场
+operator report、到达/投放确认和交付结果收口，才能单独评估 delivery success。
+
 ## cloud_hosted_mobile_web_degradation_passthrough
 
 `cloud_hosted_mobile_web_degradation_passthrough` is the Robot/API contract for the cloud-hosted same-origin mobile `GET /api/status` adapter. It consumes only sanitized relay latest status metadata and, when present, preserves an allow-listed safe `remote_readiness.degradation_state` instead of flattening degraded status to only `state=status_present`.

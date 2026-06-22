@@ -63,6 +63,7 @@ import type {
   RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
   RobotControlRadarLifecycleAction,
+  RobotControlNavGoalExecutionResponse,
 } from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -197,6 +198,24 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
     feedback_after_stop_attempted: shortValue(payload?.feedback_after_stop_attempted, "false"),
     manual_command_executed: shortValue(payload?.manual_command_executed, "false"),
     auto_stop_executed: shortValue(payload?.auto_stop_executed, "false"),
+  };
+}
+
+function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
+  // 上位机执行响应里 latest_result 是真正的 action artifact；PC 只展示短摘要。
+  const latestResult = asRecord(payload?.latest_result);
+  const cancelResponse = asRecord(latestResult?.cancel_response);
+  return {
+    status: shortValue(payload?.status),
+    nav2_goal_execution_proven: shortValue(payload?.nav2_goal_execution_proven, "false"),
+    goal_accepted: shortValue(payload?.goal_accepted),
+    result_received: shortValue(payload?.result_received),
+    result_status: shortValue(payload?.result_status),
+    cancel_requested: shortValue(payload?.cancel_requested),
+    cancel_accepted: shortValue(cancelResponse?.accepted, "false"),
+    feedback_sample_count: shortValue(payload?.feedback_sample_count, "0"),
+    robot_control_executed: shortValue(payload?.robot_control_executed, "false"),
+    delivery_success: shortValue(payload?.delivery_success, "false"),
   };
 }
 
@@ -1310,6 +1329,103 @@ export function createWorkstationApp(): express.Express {
     // 目标预检只读 fixed GET 材料；即使通过也不调用 NavigateToPose、/api/nav2/start、/cmd_vel 或 base manual。
     const response = await buildNavGoalPreflightProxy(queryString(req.query.baseUrl), req.body);
     res.status(response.proxy_status === "preflight_passed" ? 200 : 400).json(response);
+  });
+
+  workstationApp.post("/api/robot-control/nav2/goal/execute", async (req, res) => {
+    // 目标执行只转发固定 NavigateToPose proof endpoint；不开放任意上位机 POST。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const payload = asRecord(req.body);
+    const confirmNavigationExecution = payload?.confirm_navigation_execution === true;
+    const goalX = clamp(Number(payload?.goal_x ?? 0.8), -3, 3);
+    const goalY = clamp(Number(payload?.goal_y ?? 0), -3, 3);
+    const goalYaw = clamp(Number(payload?.goal_yaw ?? 0), -Math.PI, Math.PI);
+    const resultTimeoutS = clamp(Number(payload?.result_timeout_s ?? 8), 2, 20);
+    const fallbackBase: RobotControlNavGoalExecutionResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_proxy.v1",
+      proxy_status: "execution_rejected",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+      workstation_endpoint: "/api/robot-control/nav2/goal/execute",
+      remote_endpoint: "/api/nav2/goal/execute",
+      remote_http_status: null,
+      status: "blocked",
+      goal_request: {
+        goal_frame_id: "map",
+        goal_x: goalX,
+        goal_y: goalY,
+        goal_yaw: goalYaw,
+        result_timeout_s: resultTimeoutS,
+        confirm_navigation_execution: confirmNavigationExecution,
+      },
+      goal_execution_key_values: {},
+      failure_reason: normalized.ok ? "" : normalized.reason,
+      blocked_reasons: normalized.ok ? [] : [normalized.reason],
+      hard_dangerous_true_fields: [],
+    };
+    if (!normalized.ok) {
+      res.status(400).json(fallbackBase);
+      return;
+    }
+    if (!confirmNavigationExecution) {
+      res.status(400).json({
+        ...fallbackBase,
+        failure_reason: "confirm_navigation_execution_required",
+        blocked_reasons: ["confirm_navigation_execution_required"],
+      });
+      return;
+    }
+    try {
+      const remote = await fetch(endpointUrl(normalized.normalized, "/api/nav2/goal/execute"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          goal_frame_id: "map",
+          goal_x: goalX,
+          goal_y: goalY,
+          goal_yaw: goalYaw,
+          result_timeout_s: resultTimeoutS,
+          confirm_navigation_execution: true,
+        }),
+        // O11 会等待 Nav2 lifecycle active 后才发 goal；PC 等待窗口必须大于上位机 helper 的结构化超时。
+        signal: AbortSignal.timeout(Math.round((resultTimeoutS + 90) * 1000)),
+      });
+      const remotePayload = asRecord(await remote.json().catch(() => null));
+      const dangerous = scanDangerousTrueFields(remotePayload).filter(
+        (field) =>
+          field !== "sends_commands" &&
+          !field.endsWith(".sends_commands") &&
+          field !== "robot_control_executed" &&
+          !field.endsWith(".robot_control_executed") &&
+          field !== "sends_motion_commands" &&
+          !field.endsWith(".sends_motion_commands"),
+      );
+      const responseBody: RobotControlNavGoalExecutionResponse = {
+        ...fallbackBase,
+        proxy_status: remote.ok && dangerous.length === 0 ? "execution_forwarded" : "execution_failed",
+        remote_http_status: remote.status,
+        status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
+        goal_execution_key_values: navGoalExecutionKeyValues(remotePayload),
+        failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `execute_http_status_${remote.status}`,
+        blocked_reasons: [
+          ...(remote.ok ? [] : [`execute_http_status_${remote.status}`]),
+          ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ],
+        hard_dangerous_true_fields: dangerous,
+        robot_control_executed: remotePayload?.robot_control_executed === true,
+      };
+      res.status(responseBody.proxy_status === "execution_forwarded" ? 200 : 502).json(responseBody);
+    } catch (error) {
+      const reason = error instanceof Error ? shortText(error.message, "nav2_goal_execute_failed") : "nav2_goal_execute_failed";
+      res.status(502).json({ ...fallbackBase, proxy_status: "execution_failed", failure_reason: reason, blocked_reasons: [reason] });
+    }
   });
 
   workstationApp.post("/api/robot-control/localize/reset", async (req, res) => {
