@@ -623,11 +623,32 @@ function deliveryDraftMaterialPresent(): boolean {
     || deliveryLatestResult.value?.delivery_material_refs?.site_state === "delivery_material_draft_not_operator_confirmed";
 }
 
+function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
+  // 已有草稿后，按钮直接指向下一组人工确认，避免现场只看到抽象数量。
+  if (missingLabels.includes("送达材料")) {
+    return "确认送达（先准备材料）";
+  }
+  if (missingLabels.some((label) => ["人在旁边可接管", "周围安全", "停止手段就绪"].includes(label))) {
+    return "确认送达（先勾选安全）";
+  }
+  if (missingLabels.some((label) => ["已观察到到达/移动", "已观察到停止"].includes(label))) {
+    return "确认送达（先确认到达）";
+  }
+  if (missingLabels.includes("视频和行程材料已核对")) {
+    return "确认送达（先核对材料）";
+  }
+  if (missingLabels.includes("确认已投放/送达")) {
+    return "确认送达（先确认投放）";
+  }
+  return `确认送达（先确认 ${missingLabels.length} 项）`;
+}
+
 const plainDeliveryConfirmButtonLabel = computed(() => {
   // 按钮禁用时显示缺项数量；可提交时明确“不发车”，避免送达收口被误解成运动命令。
-  const missingCount = plainDeliveryConfirmMissingLabels.value.length;
+  const missingLabels = plainDeliveryConfirmMissingLabels.value;
+  const missingCount = missingLabels.length;
   if (missingCount > 0 && deliveryDraftMaterialPresent()) {
-    return `确认送达（先确认 ${missingCount} 项）`;
+    return plainDeliveryConfirmBlockedLabel(missingLabels);
   }
   return missingCount > 0 ? `确认送达（还差 ${missingCount} 项）` : "确认送达（不发车）";
 });
