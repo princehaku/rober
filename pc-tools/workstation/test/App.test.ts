@@ -3998,6 +3998,7 @@ describe("App", () => {
     const armButton = wrapper.find('[data-testid="keyboard-control-arm"]');
     expect(armButton.text()).toBe("启用键盘（先补轮速）");
     expect(armButton.attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先补轮速，不发车）");
     expect(visiblePlainHomeText(wrapper)).toContain("下一步：读取并保存轮速记录。");
 
     await armButton.trigger("click");

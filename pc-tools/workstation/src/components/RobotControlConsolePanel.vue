@@ -1370,14 +1370,20 @@ const plainKeyboardMissingSummary = computed(() => {
   return `还差：${missingLabels.join("、")}。`;
 });
 
+const plainKeyboardWheelProofIsNext = computed(() => {
+  const missingLabels = plainKeyboardMissingLabels.value;
+  const higherPriorityMissing = ["小车连接", "键盘入口", "移动前检查", "现场画面"]
+    .some((label) => missingLabels.includes(label));
+  // 只有连接、安全和画面这些前置步骤都过了，轮速才是键盘 gate 的第一下一步。
+  return !higherPriorityMissing && missingLabels.includes("轮速记录");
+});
+
 const plainKeyboardArmButtonLabel = computed(() => {
   // 启用只让键盘面板获得焦点；真正手控必须后续按住方向键。
   const missingLabels = plainKeyboardMissingLabels.value;
   const missingCount = missingLabels.length;
-  const higherPriorityMissing = ["小车连接", "键盘入口", "移动前检查", "现场画面"]
-    .some((label) => missingLabels.includes(label));
   // 轮速是当前真实收口的高频卡点；只有前置条件都过了，按钮才直接提示先补轮速。
-  if (!higherPriorityMissing && missingLabels.includes("轮速记录")) {
+  if (plainKeyboardWheelProofIsNext.value) {
     return "启用键盘（先补轮速）";
   }
   return missingCount > 0 ? `启用键盘（还差 ${missingCount} 项）` : "启用键盘（按键才动）";
@@ -1386,6 +1392,9 @@ const plainKeyboardArmButtonLabel = computed(() => {
 const plainKeyboardRecheckButtonLabel = computed(() => {
   // 复查按钮同样显示缺项数量；点击仍只刷新只读进度，不会发送手控。
   const missingCount = plainKeyboardMissingLabels.value.length;
+  if (plainKeyboardWheelProofIsNext.value) {
+    return "复查手控条件（先补轮速，不发车）";
+  }
   return missingCount > 0 ? `复查手控条件（还差 ${missingCount} 项，不发车）` : "复查手控条件";
 });
 
