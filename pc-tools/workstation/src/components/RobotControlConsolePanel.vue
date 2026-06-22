@@ -536,6 +536,22 @@ const firstJogMaterialRestoreReady = computed(() => {
   return firstJog?.status === "blocked_missing_basic_safety" && firstJog.visual_material_ready === true;
 });
 
+const firstJogMaterialRestoreSummary = computed(() => {
+  // 上位机当前只有 latest operator report；送达草稿覆盖后，要把可恢复原因说清楚。
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  const firstJog = robotSummary.value?.first_jog_readiness_summary;
+  if (!summary || !firstJog) {
+    return "operator report not loaded";
+  }
+  if (firstJogMaterialRestoreReady.value) {
+    return `latest-only operator report is ${summary.site_state}; visual material kept; missing=${firstJog.missing_fields.join(",")}; action=restore first-jog confirmation`;
+  }
+  if (firstJog.status === "ready_for_first_jog") {
+    return "first-jog material ready; next=run observed trial";
+  }
+  return `first-jog ${firstJog.status}; missing=${firstJog.missing_fields.join(",") || "none"}; next=${firstJog.next_action}`;
+});
+
 const canSendManualMotion = computed(() => {
   // 非 stop 方向必须同时满足地址、checklist、现场材料和“当前无 pending”。
   return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
@@ -3548,6 +3564,8 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.safe_command_boundary.manual_motion_entry_status ?? "not_loaded" }}</dd>
             <dt>material gate</dt>
             <dd>{{ operatorMaterialGateSummary.state }} / {{ operatorMaterialGateSummary.hint }}</dd>
+            <dt>first-jog material restore</dt>
+            <dd>{{ firstJogMaterialRestoreSummary }}</dd>
             <dt>material missing fields</dt>
             <dd>{{ operatorMaterialMissingFields.length ? operatorMaterialMissingFields.join(", ") : "none" }}</dd>
             <dt>operator report preflight</dt>

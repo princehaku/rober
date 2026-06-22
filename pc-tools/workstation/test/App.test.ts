@@ -3717,6 +3717,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     expect(visiblePlainHomeText(wrapper)).toContain("已有现场画面；请恢复试动确认后再试动。");
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("first-jog material restore");
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("latest-only operator report is delivery_material_draft_not_operator_confirmed");
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("action=restore first-jog confirmation");
 
     const restoreButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "恢复试动确认");
     expect(restoreButton).toBeTruthy();

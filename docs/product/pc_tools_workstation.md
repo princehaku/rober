@@ -1286,3 +1286,7 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 基础安全三项为 true 的 operator report。它不调用 `/api/base/manual`、`/api/base/first-jog`、`/cmd_vel`
 或 delivery complete，不写 `wheel_feedback_lr_nonzero_proven`、LiDAR delta、route map 或
 `delivery_success=true`；用途只是把 first-jog 从送达草稿覆盖状态恢复到可由现场人员试动的前置状态。
+同轮高级诊断新增 `first-jog material restore` 摘要，明确上位机 operator report 是 latest-only slot：
+若 latest report 的 `site_state=delivery_material_draft_not_operator_confirmed` 且仍保留视觉材料，PC 会显示
+`latest-only operator report ... action=restore first-jog confirmation`，避免现场误以为上位机存在可自动回退的
+历史 first-jog 材料。
