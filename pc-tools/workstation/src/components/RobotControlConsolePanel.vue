@@ -793,10 +793,11 @@ const plainWheelGoalProgressHint = computed(() => {
   const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
   const frameCount = sample?.t1001_observed_count ?? base?.latest_t1001_observed_count ?? "not_loaded";
+  const voltageText = base?.feedback_voltage_v && base.feedback_voltage_v !== "not_loaded" ? `，反馈电压约 ${base.feedback_voltage_v}V` : "";
   if (left !== "not_loaded" && right !== "not_loaded") {
     const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
     const nextStep = firstJogMaterialRestoreReady.value ? "先点恢复试动确认，再试动读非零。" : "仍需试动读到非零。";
-    return `当前轮速 L/R=${left}/${right}${frameText}，${nextStep}`;
+    return `当前轮速 L/R=${left}/${right}${frameText}${voltageText}，${nextStep}`;
   }
   if (firstJogMaterialRestoreReady.value) {
     return "先点恢复试动确认，再试动读取轮速。";

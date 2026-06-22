@@ -3493,6 +3493,7 @@ describe("App", () => {
     summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
     summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
     summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    summaryFixture.readback_summary.base.feedback_voltage_v = "12.43";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
     const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
 
@@ -3502,7 +3503,7 @@ describe("App", () => {
 
     const plainProgress = wrapper.find('[data-testid="plain-goal-progress"]').text();
     expect(plainProgress).toContain("轮速记录");
-    expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，仍需试动读到非零。");
+    expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，仍需试动读到非零。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("raw");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -4086,7 +4087,7 @@ describe("App", () => {
     expect(diagnosticsText).toContain("static T1001 feedback only");
     expect(diagnosticsText).toContain("next=restore first-jog materials then run wheel nonzero trial");
     expect(visiblePlainHomeText(wrapper)).toContain("已读到底盘反馈，但当前轮速是 L/R=0/0；反馈电压约 12.43V；这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，仍需试动读到非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，反馈电压约 12.43V，仍需试动读到非零。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
