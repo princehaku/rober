@@ -3920,6 +3920,8 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("现场材料");
     expect(firstScreenText).not.toContain("external_video_recorded");
     expect(firstScreenText).not.toContain("physical_motion_lidar_delta_proven");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先记录画面再试动");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
 
     const motionButtons = wrapper.findAll(".motion-pad button");
     const forwardButton = motionButtons.find((button) => button.text() === "前进");
@@ -4289,6 +4291,8 @@ describe("App", () => {
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("first-jog material restore");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("latest-only operator report is delivery_material_draft_not_operator_confirmed");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("action=restore first-jog confirmation");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先恢复确认再试动");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
     const firstJogButtonBeforeRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButtonBeforeRestore).toBeTruthy();
     expect(firstJogButtonBeforeRestore?.attributes("disabled")).toBeDefined();

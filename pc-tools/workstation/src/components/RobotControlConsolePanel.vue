@@ -1200,6 +1200,18 @@ const plainWheelRecordSummary = computed(() => {
 
 const plainWheelTrialButtonLabel = computed(() => {
   // 轮速面板里的按钮复用 first-jog；已有一次失败试动后，文案改为重试，减少现场误解。
+  if (!robotApiBaseUrl.value.trim()) {
+    return "连接后试动读轮速";
+  }
+  if (loading.value || manualCommandPending.value) {
+    return "等待上一条请求";
+  }
+  if (firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value) {
+    return "先恢复确认再试动";
+  }
+  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
+    return "先记录画面再试动";
+  }
   if (plainFirstJogResult.value?.proxy_status === "command_forwarded" && !plainFirstJogWheelEvidenceReady.value) {
     return "重试低速试动读非零 L/R";
   }
