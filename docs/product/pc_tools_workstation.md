@@ -1212,6 +1212,14 @@ PC guard 对这个固定 endpoint 只放行预期会出现的 `robot_control_exe
 等不应由导航 proof 自动声明的字段。Nav2 goal succeeded 只能证明路线执行链路可用；它不等于
 垃圾投放、到桶确认或 delivery success。
 
+2026-06-22 13:17 起，PC 高级诊断的送达确认区新增 `送达收口检查`。它把 delivery latest/check/complete
+返回的 `blocked_reasons` 与当前表单状态合并，按 `Nav2 路线执行成功`、`现场报告 ready_for_review`、
+`现场观察到运动/到达`、`现场观察到停止`、`确认已投放/送达`、`视频与 route/map ref` 六项显示
+`已满足/未满足`。该摘要只做现场操作提示，不自动勾选 checklist，不提交 operator report，不调用
+delivery complete，也不把 `delivery_success` 提升为 true。真实读回仍显示当前 delivery gate 缺
+`confirm_delivery_completion`、`operator_report_ready_for_review`、`operator_observed_motion`、
+`operator_observed_stop` 和 `structured_hil_claims.delivery_success`，因此 delivery success 仍未完成。
+
 2026-06-22 12:15 起，PC 高级诊断补充固定只读入口
 `GET /api/robot-control/nav2/goal/execution/latest?baseUrl=<robot-api-base-url>`，只转发到上位机
 `GET /api/nav2/goal/execution/latest`。它用于页面刷新后找回最近 NavigateToPose artifact 的

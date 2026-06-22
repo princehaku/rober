@@ -4536,7 +4536,13 @@ describe("App", () => {
           operator_report_status: "unsafe_or_incomplete",
         },
         failure_reason: "",
-        blocked_reasons: ["confirm_delivery_completion", "operator_report_ready_for_review"],
+        blocked_reasons: [
+          "confirm_delivery_completion",
+          "operator_report_ready_for_review",
+          "operator_observed_motion",
+          "operator_observed_stop",
+          "structured_hil_claims.delivery_success",
+        ],
         hard_dangerous_true_fields: [],
         robot_control_executed: false,
       },
@@ -4562,7 +4568,12 @@ describe("App", () => {
           operator_report_status: "unsafe_or_incomplete",
         },
         failure_reason: "",
-        blocked_reasons: ["operator_report_ready_for_review"],
+        blocked_reasons: [
+          "operator_report_ready_for_review",
+          "operator_observed_motion",
+          "operator_observed_stop",
+          "structured_hil_claims.delivery_success",
+        ],
         hard_dangerous_true_fields: [],
         robot_control_executed: false,
       },
@@ -4589,6 +4600,14 @@ describe("App", () => {
     expect(diagnosticsText).toContain("delivery check status");
     expect(diagnosticsText).toContain("check_loaded");
     expect(diagnosticsText).toContain("operator_report_ready_for_review");
+    const closureCheckText = wrapper.find('[data-testid="delivery-closure-check"]').text();
+    expect(closureCheckText).toContain("送达收口检查");
+    expect(closureCheckText).toContain("当前 gate 缺项");
+    expect(closureCheckText).toContain("已满足：Nav2 路线执行成功");
+    expect(closureCheckText).toContain("未满足：现场报告 ready_for_review");
+    expect(closureCheckText).toContain("未满足：现场观察到运动/到达");
+    expect(closureCheckText).toContain("未满足：现场观察到停止");
+    expect(closureCheckText).toContain("未满足：确认已投放/送达");
   });
 
   it("enables non-stop motion only after complete operator material and still uses the fixed workstation proxy", async () => {

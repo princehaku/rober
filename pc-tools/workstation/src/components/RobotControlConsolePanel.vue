@@ -529,6 +529,73 @@ const deliveryOperatorConfirmationReady = computed(() => {
     && confirmations.delivery_success;
 });
 
+const deliveryGateBlockedReasons = computed(() => {
+  // 送达缺口可能来自 latest、check 或 complete；合并后给现场人员一个稳定清单。
+  return Array.from(new Set([
+    ...(deliveryCompletionResult.value?.blocked_reasons ?? []),
+    ...(deliveryGapCheckResult.value?.blocked_reasons ?? []),
+    ...(deliveryLatestResult.value?.blocked_reasons ?? []),
+  ]));
+});
+
+function deliveryGateMissing(token: string): boolean {
+  // 后端缺口字段有时是精确字段，有时是 required material 名称；这里仅做保守包含判断。
+  return deliveryGateBlockedReasons.value.some((reason) => reason.includes(token));
+}
+
+const deliveryNav2GoalReady = computed(() => {
+  // Nav2 success 可来自刚执行结果、latest 读回或 delivery gate 的压缩 key values。
+  const latestStatus = deliveryLatestResult.value?.delivery_key_values.nav2_status
+    ?? deliveryGapCheckResult.value?.delivery_key_values.nav2_status
+    ?? deliveryCompletionResult.value?.delivery_key_values.nav2_status;
+  return latestStatus === "goal_succeeded"
+    || navGoalExecutionResult.value?.goal_execution_key_values.status === "goal_succeeded"
+    || navGoalExecutionLatestResult.value?.goal_execution_key_values.status === "goal_succeeded";
+});
+
+const deliveryClosureChecklist = computed(() => {
+  // 这个摘要只是 UI 收口提示，不自动勾选、不提交、不把 delivery_success 提升为 true。
+  const confirmations = deliveryOperatorConfirmations.value;
+  return [
+    {
+      id: "nav2_goal_succeeded",
+      label: "Nav2 路线执行成功",
+      ready: deliveryNav2GoalReady.value && !deliveryGateMissing("nav2_goal_succeeded"),
+      hint: deliveryNav2GoalReady.value ? "已有 goal_succeeded 读回" : "先读取或执行最近 Nav2 目标",
+    },
+    {
+      id: "operator_report_ready",
+      label: "现场报告 ready_for_review",
+      ready: !deliveryGateMissing("operator_report_ready_for_review") && deliveryOperatorConfirmationReady.value,
+      hint: deliveryOperatorConfirmationReady.value ? "最终 checklist 已勾全，提交后由上位机确认" : "需要完成下方送达最终确认",
+    },
+    {
+      id: "observed_motion",
+      label: "现场观察到运动/到达",
+      ready: confirmations.observed_motion && !deliveryGateMissing("operator_observed_motion"),
+      hint: confirmations.observed_motion ? "已勾选" : "需要现场勾选",
+    },
+    {
+      id: "observed_stop",
+      label: "现场观察到停止",
+      ready: confirmations.observed_stop && !deliveryGateMissing("operator_observed_stop"),
+      hint: confirmations.observed_stop ? "已勾选" : "需要现场勾选",
+    },
+    {
+      id: "delivery_claim",
+      label: "确认已投放/送达",
+      ready: confirmations.delivery_success && !deliveryGateMissing("structured_hil_claims.delivery_success"),
+      hint: confirmations.delivery_success ? "已勾选" : "需要现场勾选",
+    },
+    {
+      id: "refs_ready",
+      label: "视频与 route/map ref",
+      ready: Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim() && confirmations.route_video_refs_verified),
+      hint: deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim() ? "ref 已填写，仍需勾选可复核" : "先预填或手动填写 ref",
+    },
+  ];
+});
+
 const firstJogVisualMaterialReady = computed(() => {
   // first-jog readiness 由 PC summary 后端统一判定，避免普通首屏和 API 合同漂移。
   return robotSummary.value?.first_jog_readiness_summary?.visual_material_ready === true;
@@ -3345,6 +3412,18 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="loading || operatorReportPending || !robotApiBaseUrl.trim() || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()" @click="submitDeliveryDraftMaterial">
               提交送达草稿（高级）
             </button>
+            <div class="delivery-closure-check" data-testid="delivery-closure-check">
+              <p class="checklist-title">送达收口检查</p>
+              <p v-if="deliveryGateBlockedReasons.length" class="panel-note">
+                当前 gate 缺项：{{ deliveryGateBlockedReasons.join("、") }}
+              </p>
+              <ul class="compact-list">
+                <li v-for="item in deliveryClosureChecklist" :key="item.id" :data-ready="item.ready">
+                  <span>{{ item.ready ? "已满足" : "未满足" }}：{{ item.label }}</span>
+                  <small>{{ item.hint }}</small>
+                </li>
+              </ul>
+            </div>
             <div class="checklist-box compact-checklist">
               <p class="checklist-title">送达最终确认</p>
               <label class="checklist-item">

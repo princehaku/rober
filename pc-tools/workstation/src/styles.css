@@ -430,6 +430,37 @@ h3 {
   background: #f7f9fb;
 }
 
+.delivery-closure-check {
+  margin-top: 10px;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f7f9fb;
+}
+
+.compact-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compact-list li {
+  display: grid;
+  gap: 2px;
+  color: #1b2a38;
+  font-size: 13px;
+}
+
+.compact-list li[data-ready="true"] {
+  color: #176b46;
+}
+
+.compact-list small {
+  color: #5f6b7a;
+}
+
 .motion-limits label,
 .checklist-box label {
   display: block;
