@@ -3579,6 +3579,7 @@ describe("App", () => {
     expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("历史轮速样本已过期，以当前读回为准");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读非零 L/R");
     expect(visiblePlainHomeText(wrapper)).not.toContain("raw");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -4325,7 +4326,7 @@ describe("App", () => {
     }));
     const firstJogButtonAfterRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButtonAfterRestore?.attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读轮速");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读非零 L/R");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
     expect(visiblePlainHomeText(wrapper)).not.toContain("试动按钮已锁定");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
@@ -4724,7 +4725,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("已试动但 L/R=0/0，检查电机使能、供电、模式和现场空间后重试。");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     const retryWheelButton = wrapper.find('[data-testid="plain-wheel-trial"]');
-    expect(retryWheelButton.text()).toBe("重试低速试动读轮速");
+    expect(retryWheelButton.text()).toBe("重试低速试动读非零 L/R");
     expect(retryWheelButton.attributes("disabled")).toBeUndefined();
     const firstJogCallsBeforeRetry = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?")).length;
     await retryWheelButton.trigger("click");

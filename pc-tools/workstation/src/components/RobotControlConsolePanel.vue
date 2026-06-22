@@ -1201,10 +1201,16 @@ const plainWheelRecordSummary = computed(() => {
 const plainWheelTrialButtonLabel = computed(() => {
   // 轮速面板里的按钮复用 first-jog；已有一次失败试动后，文案改为重试，减少现场误解。
   if (plainFirstJogResult.value?.proxy_status === "command_forwarded" && !plainFirstJogWheelEvidenceReady.value) {
-    return "重试低速试动读轮速";
+    return "重试低速试动读非零 L/R";
   }
   if (plainFirstJogMaterialRestored.value) {
-    return "开始低速试动读轮速";
+    return "开始低速试动读非零 L/R";
+  }
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  const base = robotSummary.value?.readback_summary.base;
+  if ((sample && isZeroWheelPair(sample.wheel_feedback_latest_left_speed, sample.wheel_feedback_latest_right_speed))
+    || (base && isZeroWheelPair(base.wheel_feedback_latest_left_speed, base.wheel_feedback_latest_right_speed))) {
+    return "低速试动读非零 L/R";
   }
   return "低速试动读轮速";
 });
