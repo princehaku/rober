@@ -3839,6 +3839,65 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("keeps a fresh Nav2 success without feedback samples out of the complete route gate", async () => {
+    // 完整路线执行必须有 goal_succeeded 和执行反馈样本；空 success 摘要不能放行送达确认。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-no-feedback-fixture",
+          generated_at_ms: "1782150441201",
+          response_generated_at_ms: "1782150442201",
+          result_status: "succeeded",
+          feedback_sample_count: "0",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，未读到反馈样本，刚刚；需重新读取或执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程缺少反馈样本，需要重新读取或执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：行程成功但缺少反馈样本，需要重新读取或执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新读取或执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("本轮行程");
+    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("turns camera source first-frame failure into a plain first-screen hint", async () => {
     // 首屏可以提示用户检查摄像头/视频线，但不能把 source_readiness 或 first_frame_timeout 露出来。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
@@ -5142,6 +5201,7 @@ describe("App", () => {
           status: "blocked_missing_delivery_material",
           delivery_success: "false",
           nav2_status: "goal_succeeded",
+          nav2_feedback_sample_count: "8",
           operator_report_status: "unsafe_or_incomplete",
         },
         failure_reason: "",
@@ -5565,6 +5625,7 @@ describe("App", () => {
           status: "blocked_missing_delivery_material",
           delivery_success: "false",
           nav2_status: "goal_succeeded",
+          nav2_feedback_sample_count: "8",
           operator_report_status: "unsafe_or_incomplete",
         },
         failure_reason: "",
@@ -6258,6 +6319,7 @@ describe("App", () => {
           status: "goal_succeeded",
           evidence_ref: "o11-nav2-goal-execution-plain-fixture",
           result_status: "succeeded",
+          feedback_sample_count: "8",
           delivery_success: "false",
         },
         failure_reason: "",

@@ -1656,3 +1656,9 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 新的本轮行程成功记录，`确认送达` 会显示 `确认送达（先更新行程材料）` 并保持禁用；点击 `准备送达材料`
 只把 route/map ref 更新为当前行程 ref，不提交 operator report、不调用 delivery complete，不发送 Nav2、
 manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
+
+2026-06-23 04:05 起，普通首屏“完整 Nav2 路线执行”不再只看 `goal_succeeded`，还要求当前未过期行程结果
+带有 `feedback_sample_count` 或 `nav2_feedback_sample_count` 且大于 0。若读到新鲜 `goal_succeeded` 但反馈样本为
+0 或缺失，PC 会提示 `最近行程缺少反馈样本，需要重新读取或执行完整行程`，并继续禁用送达最终确认。该规则只
+收紧 UI gate，不自动执行行程、不提交 delivery complete，也不发送 manual、first-jog、stop、keyboard pulse 或
+`/cmd_vel`。
