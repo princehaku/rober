@@ -498,6 +498,23 @@ const checklistMissing = computed(() => hilChecklist.value.filter((item) => !ite
 const hilChecklistConfirmed = computed(() => checklistMissing.value.length === 0);
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const canRunEvidenceSweep = computed(() => !evidenceSweepPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
+const canArmKeyboardControl = computed(() => canSendManualMotion.value);
+
+const keyboardDirectionPlainLabel = computed(() => {
+  // 普通首屏只显示方向中文，避免把底层 direction enum 暴露给现场用户。
+  switch (keyboardHeldDirection.value) {
+    case "forward":
+      return "前进";
+    case "back":
+      return "后退";
+    case "left":
+      return "左转";
+    case "right":
+      return "右转";
+    default:
+      return "未按键";
+  }
+});
 function claimWithRefReady(value: string | undefined): boolean {
   // 现场材料的四类引用型 claim 必须同时满足 true 且带 ref，缺任一条件都按未满足处理。
   return typeof value === "string" && value.startsWith("true; ref=") && !value.endsWith("not_loaded");
@@ -3160,7 +3177,8 @@ onBeforeUnmount(() => {
           >
             <div class="simple-status-row">
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
-              <button class="secondary compact-stop" type="button" :disabled="!robotApiBaseUrl.trim()" data-testid="keyboard-control-arm" @click="activateKeyboardControl">启用键盘</button>
+              <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
+              <button class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">启用键盘</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>

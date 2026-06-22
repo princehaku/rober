@@ -262,6 +262,7 @@ h3 {
 .status-chip[data-state="已连接"],
 .status-chip[data-state="已打开"],
 .status-chip[data-state="已刷新"],
+.status-chip[data-state="已启用"],
 .status-chip[data-state="路径可生成"] {
   border-color: #bfd4c6;
   background: #eff8f1;
@@ -282,6 +283,7 @@ h3 {
 .status-chip[data-state="未刷新"],
 .status-chip[data-state="未检查"],
 .status-chip[data-state="未确认"],
+.status-chip[data-state="未满足"],
 .status-chip[data-state="locked"] {
   background: #f5f7fa;
   color: #5f6b7a;
@@ -438,6 +440,13 @@ h3 {
 .plain-keyboard-control:focus {
   outline: 2px solid #4f83cc;
   outline-offset: 2px;
+}
+
+.plain-keyboard-direction {
+  min-height: 30px;
+  color: #334455;
+  font-size: 13px;
+  line-height: 30px;
 }
 
 .plain-delivery-status {

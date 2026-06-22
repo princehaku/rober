@@ -1330,3 +1330,9 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 若已试动但非零未证明，则显示当前 L/R 与运动帧数量并提示未拿到非零证据。完整
 `remote_motion_key_values`、during-motion T1001 帧数和 gaps 仍保留在高级诊断；普通摘要不改变
 `delivery_success=false`、`safe_to_control=false` 或 `primary_actions_enabled=false`。
+
+2026-06-22 13:55 起，普通首屏键盘连续手控入口改为“条件满足才可启用”：`启用键盘` 按钮直接绑定
+手控 gate，移动前检查、现场材料或轮速记录不足时保持禁用，并继续显示普通话术“先完成移动前检查和轮速记录”。
+条件满足后点击启用会聚焦键盘面板，按住 `W/A/S/D` 或方向键期间首屏显示 `手控中` 与“当前方向：
+前进/后退/左转/右转”，松开、窗口失焦或页面隐藏仍发送停止。该变化只改善 PC 首屏可理解性，不改变
+`/api/robot-control/base/manual` 的 checklist/operator report gate，也不放宽 stop 之外的运动权限。

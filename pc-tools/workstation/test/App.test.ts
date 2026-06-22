@@ -3226,7 +3226,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("启用键盘");
     expect(firstScreenText).toContain("键盘停止");
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
+    expect(firstScreenText).toContain("当前方向：未按键");
     expect(wrapper.find(".simple-user-console [data-testid='keyboard-control-panel']").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find(".simple-user-console .motion-pad").exists()).toBe(false);
     expect(firstScreenText).toContain("任务收口");
     expect(firstScreenText).toContain("刷新送达状态");
@@ -3540,7 +3542,9 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(wrapper.find(".robot-console .advanced-details").text()).not.toContain("blocked_keyboard_manual_gate");
 
-    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    const blockedArmButton = wrapper.find('[data-testid="keyboard-control-arm"]');
+    expect(blockedArmButton.attributes("disabled")).toBeDefined();
+    await blockedArmButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     const blockedKeyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
@@ -3548,7 +3552,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
-    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("blocked_keyboard_manual_gate");
+    expect(wrapper.find(".robot-console .advanced-details").text()).not.toContain("blocked_keyboard_manual_gate");
 
     await stopButton?.trigger("click");
     await flushPromises();
@@ -4814,13 +4818,19 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeKeyboard);
 
-    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    const armButton = wrapper.find('[data-testid="keyboard-control-arm"]');
+    expect(armButton.attributes("disabled")).toBeUndefined();
+    expect(visiblePlainHomeText(wrapper)).toContain("可手控");
+    await armButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(visiblePlainHomeText(wrapper)).toContain("已启用");
     const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
     await keyboardPanel.trigger("keydown", { key: "w" });
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(visiblePlainHomeText(wrapper)).toContain("手控中");
+    expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：前进");
     const manualCallsAfterKeyboard = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     expect(manualCallsAfterKeyboard).toBeGreaterThan(manualCallsBeforeKeyboard);
     const keyboardManualCalls = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"));
@@ -4834,6 +4844,7 @@ describe("App", () => {
     await keyboardPanel.trigger("keyup", { key: "w" });
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("keyboard continuous control");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("pulse_ms=240");
