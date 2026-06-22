@@ -53,6 +53,7 @@ const DEFAULT_ROBOT_API_BASE_URL = "http://192.168.1.11:8787";
 type ManualDirection = "forward" | "back" | "left" | "right";
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
+const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
 const o6ConsumerBaseUrl = ref("http://127.0.0.1:8088");
 const taskId = ref("");
@@ -531,6 +532,16 @@ function claimWithRefReady(value: string | undefined): boolean {
   return typeof value === "string" && value.startsWith("true; ref=") && !value.endsWith("not_loaded");
 }
 
+function isZeroWheelPair(left: string | undefined, right: string | undefined): boolean {
+  // 上位机可能返回 "0"、"0.0" 或数值转字符串；这里只判断有限零值，不把缺失值当成零。
+  if (!left || !right || left === "not_loaded" || right === "not_loaded") {
+    return false;
+  }
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+  return Number.isFinite(leftNumber) && Number.isFinite(rightNumber) && leftNumber === 0 && rightNumber === 0;
+}
+
 const operatorMaterialMissingFields = computed(() => {
   // 这里直接输出后端约定字段名，方便现场人员对照材料清单补证据。
   const summary = robotSummary.value?.operator_hil_material_summary;
@@ -820,7 +831,9 @@ const plainWheelGoalProgressHint = computed(() => {
   const voltageText = base?.feedback_voltage_v && base.feedback_voltage_v !== "not_loaded" ? `，反馈电压约 ${base.feedback_voltage_v}V` : "";
   if (left !== "not_loaded" && right !== "not_loaded") {
     const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
-    const nextStep = firstJogMaterialRestoreReady.value ? "先点恢复试动确认，再试动读非零。" : "仍需试动读到非零。";
+    const nextStep = firstJogMaterialRestoreReady.value
+      ? "先点恢复试动确认，再试动读非零。"
+      : isZeroWheelPair(left, right) && voltageText ? WHEEL_ZERO_NEXT_ACTION_SUMMARY : "仍需试动读到非零。";
     return `当前轮速 L/R=${left}/${right}${frameText}${voltageText}，${nextStep}`;
   }
   if (firstJogMaterialRestoreReady.value) {
@@ -1083,6 +1096,26 @@ const plainWheelEvidenceSaveSummary = computed(() => {
       : "轮速证据已保存；后续手控材料可复用。";
   }
   return "轮速证据保存失败；请查看高级诊断。";
+});
+
+const plainWheelNextActionSummary = computed(() => {
+  // 当反馈链路已在线但 L/R 仍为 0/0 时，把现场排障动作直接放在轮速模块里。
+  const firstJogValues = plainFirstJogResult.value?.remote_motion_key_values;
+  if (plainFirstJogResult.value?.proxy_status === "command_forwarded"
+    && isZeroWheelPair(firstJogValues?.wheel_feedback_latest_raw_left, firstJogValues?.wheel_feedback_latest_raw_right)) {
+    return WHEEL_ZERO_NEXT_ACTION_SUMMARY;
+  }
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  if (sample?.t1001_observed_count && sample.t1001_observed_count !== "not_loaded"
+    && isZeroWheelPair(sample.wheel_feedback_latest_left_speed, sample.wheel_feedback_latest_right_speed)) {
+    return WHEEL_ZERO_NEXT_ACTION_SUMMARY;
+  }
+  const base = robotSummary.value?.readback_summary.base;
+  if (base?.latest_t1001_observed_count && base.latest_t1001_observed_count !== "not_loaded"
+    && isZeroWheelPair(base.wheel_feedback_latest_left_speed, base.wheel_feedback_latest_right_speed)) {
+    return WHEEL_ZERO_NEXT_ACTION_SUMMARY;
+  }
+  return "";
 });
 
 const plainWheelReadbackSummary = computed(() => {
@@ -3785,6 +3818,9 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainWheelRecordSummary.hint }}</p>
             <p v-if="plainWheelReadbackSummary" class="panel-note" data-testid="plain-wheel-readback-summary">
               {{ plainWheelReadbackSummary }}
+            </p>
+            <p v-if="plainWheelNextActionSummary" class="panel-note" data-testid="plain-wheel-next-action">
+              {{ plainWheelNextActionSummary }}
             </p>
             <p v-if="plainLidarMotionRecordSummary" class="panel-note" data-testid="plain-lidar-motion-record-summary">
               {{ plainLidarMotionRecordSummary }}
