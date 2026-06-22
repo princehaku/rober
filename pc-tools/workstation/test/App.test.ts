@@ -3720,6 +3720,9 @@ describe("App", () => {
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("first-jog material restore");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("latest-only operator report is delivery_material_draft_not_operator_confirmed");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("action=restore first-jog confirmation");
+    const firstJogButtonBeforeRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
+    expect(firstJogButtonBeforeRestore).toBeTruthy();
+    expect(firstJogButtonBeforeRestore?.attributes("disabled")).toBeDefined();
 
     const restoreButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "恢复试动确认");
     expect(restoreButton).toBeTruthy();
@@ -3748,6 +3751,8 @@ describe("App", () => {
       delivery_success: false,
       site_state: "plain_first_jog_material_restored_for_trial",
     }));
+    const firstJogButtonAfterRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
+    expect(firstJogButtonAfterRestore?.attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });

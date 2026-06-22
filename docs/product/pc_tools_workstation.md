@@ -1290,3 +1290,8 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 若 latest report 的 `site_state=delivery_material_draft_not_operator_confirmed` 且仍保留视觉材料，PC 会显示
 `latest-only operator report ... action=restore first-jog confirmation`，避免现场误以为上位机存在可自动回退的
 历史 first-jog 材料。
+2026-06-22 17:05 起，普通首屏 `试动一下` 按钮也绑定同一 readiness gate：当
+`first_jog_readiness_summary.status=blocked_missing_basic_safety` 且 `恢复试动确认` 可用时，`试动一下`
+直接禁用，避免现场点了才收到后端 `first_jog_preflight_required`。只有 summary 已是
+`ready_for_first_jog`，或本页刚成功提交 `记录画面` / `恢复试动确认` 后，按钮才允许调用固定 first-jog
+代理；代理侧仍会再次读取 latest operator report 并 fail-closed。

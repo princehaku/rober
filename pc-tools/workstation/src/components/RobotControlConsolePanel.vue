@@ -552,6 +552,30 @@ const firstJogMaterialRestoreSummary = computed(() => {
   return `first-jog ${firstJog.status}; missing=${firstJog.missing_fields.join(",") || "none"}; next=${firstJog.next_action}`;
 });
 
+const plainVisualMaterialSubmitted = computed(() => {
+  // 本页刚提交的视觉材料可作为立即试动的本地反馈；最终仍由后端 first-jog preflight 复核。
+  return plainVisualMaterialResult.value?.proxy_status === "report_forwarded" && plainVisualMaterialResult.value.status !== "blocked";
+});
+
+const plainFirstJogMaterialRestored = computed(() => {
+  // 恢复确认成功后允许进入 first-jog；后端仍会再次读取 latest operator report。
+  return plainFirstJogMaterialRestoreResult.value?.proxy_status === "report_forwarded" && plainFirstJogMaterialRestoreResult.value.status !== "blocked";
+});
+
+const canSendPlainFirstJog = computed(() => {
+  // 普通试动必须先有 first-jog 材料；送达草稿覆盖状态下必须先点“恢复试动确认”。
+  if (!robotApiBaseUrl.value.trim() || loading.value || manualCommandPending.value) {
+    return false;
+  }
+  if (plainFirstJogMaterialRestored.value || plainVisualMaterialSubmitted.value) {
+    return true;
+  }
+  if (firstJogMaterialRestoreReady.value) {
+    return false;
+  }
+  return robotSummary.value?.first_jog_readiness_summary?.status === "ready_for_first_jog";
+});
+
 const canSendManualMotion = computed(() => {
   // 非 stop 方向必须同时满足地址、checklist、现场材料和“当前无 pending”。
   return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
@@ -2154,7 +2178,7 @@ async function restorePlainFirstJogMaterial(): Promise<void> {
 
 async function sendPlainFirstJog(): Promise<void> {
   // 试动按钮只调用 first-jog 固定代理；后端 preflight 不通过时不会调用远端 manual。
-  if (!robotApiBaseUrl.value.trim() || manualCommandPending.value || loading.value) {
+  if (!canSendPlainFirstJog.value) {
     return;
   }
   manualCommandPending.value = true;
@@ -2750,7 +2774,7 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim() || !firstJogMaterialRestoreReady" @click="restorePlainFirstJogMaterial">
               恢复试动确认
             </button>
-            <button type="button" :disabled="loading || manualCommandPending || !robotApiBaseUrl.trim()" @click="sendPlainFirstJog">
+            <button type="button" :disabled="!canSendPlainFirstJog" @click="sendPlainFirstJog">
               试动一下
             </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
