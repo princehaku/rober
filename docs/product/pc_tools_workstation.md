@@ -1405,3 +1405,8 @@ delivery gate 继续 blocked 的概率。
 如果当前 summary 中 `lidar_delta` 已经是明确 `true; ref=...`，提交的 operator report 会继续携带
 `physical_motion_lidar_delta_proven=true` 和同一个 `scan_delta_ref`。没有明确 ref 时仍保持 false，不伪造
 LiDAR delta。这样保存 wheel 材料不会把已经满足的键盘手控 gate 材料冲掉。
+
+2026-06-22 15:05 起，同一个 `保存轮速记录` 也会保留已有完整路线材料：若当前 summary 的 `route_map`
+已经是 `true; ref=...`，新的 wheel report 会继续携带 `real_route_map_proven=true` 和原 `route_map_ref`。
+没有明确 ref 时仍保持 false，不凭轮速记录伪造路线材料。这样 latest-only operator report 不会因为保存 wheel
+材料而丢失完整 Nav2 路线执行证据，降低后续 delivery success gate 被重新挡住的概率。

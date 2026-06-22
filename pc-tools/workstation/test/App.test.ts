@@ -4144,6 +4144,7 @@ describe("App", () => {
     // 普通首屏要把试动后的 wheel raw L/R 结果翻译成短摘要，不要求用户进高级诊断翻 key。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
     summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-before-wheel-save";
+    summaryFixture.operator_hil_material_summary.route_map = "true; ref=o11-nav2-goal-execution-before-wheel-save";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/first-jog": {
@@ -4262,7 +4263,8 @@ describe("App", () => {
       wheel_feedback_lr_nonzero_proven: true,
       physical_motion_lidar_delta_proven: true,
       scan_delta_ref: "scan-delta-before-wheel-save",
-      real_route_map_proven: false,
+      real_route_map_proven: true,
+      route_map_ref: "o11-nav2-goal-execution-before-wheel-save",
       delivery_success: false,
       site_state: "plain_first_jog_wheel_lr_nonzero_observed",
     }));

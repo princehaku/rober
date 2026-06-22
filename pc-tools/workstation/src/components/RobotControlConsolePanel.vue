@@ -1780,7 +1780,7 @@ function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRe
 }
 
 function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportRequest {
-  // 轮速材料只能来自 first-jog 返回的 during-motion T1001 非零证明；已有 LiDAR delta 只保留，不补造。
+  // 轮速材料只能来自 first-jog 返回的 during-motion T1001 非零证明；已有 LiDAR/route 只保留，不补造。
   const values = plainFirstJogResult.value?.remote_motion_key_values ?? {};
   const left = values.wheel_feedback_latest_raw_left ?? "not_loaded";
   const right = values.wheel_feedback_latest_raw_right ?? "not_loaded";
@@ -1789,6 +1789,7 @@ function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportReques
   const externalVideoRef = claimRefFromSummary(summary?.external_video);
   const cameraArtifactRef = claimRefFromSummary(summary?.camera_visible);
   const scanDeltaRef = claimRefFromSummary(summary?.lidar_delta);
+  const routeMapRef = claimRefFromSummary(summary?.route_map);
   const wheelRef = `pc-first-jog-wheel-lr-${Date.now()}`;
   return {
     operator_present: true,
@@ -1808,7 +1809,8 @@ function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportReques
       wheel_feedback_ref: wheelRef,
       physical_motion_lidar_delta_proven: Boolean(scanDeltaRef),
       ...(scanDeltaRef ? { scan_delta_ref: scanDeltaRef } : {}),
-      real_route_map_proven: false,
+      real_route_map_proven: Boolean(routeMapRef),
+      ...(routeMapRef ? { route_map_ref: routeMapRef } : {}),
       delivery_success: false,
       site_state: "plain_first_jog_wheel_lr_nonzero_observed",
     },
