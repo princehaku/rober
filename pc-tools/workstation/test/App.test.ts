@@ -3223,6 +3223,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).toContain("移动前检查");
     expect(firstScreenText).toContain("停止");
+    expect(firstScreenText).not.toContain("目标收口进度");
     expect(firstScreenText).not.toContain("普通用户入口");
     expect(wrapper.find(".robot-console > .section-head").exists()).toBe(false);
     expect((wrapper.find('input[name="robotApiBaseUrl"]').element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
@@ -3300,6 +3301,12 @@ describe("App", () => {
     const diagnostics = wrapper.find(".robot-console .advanced-details");
     expect(diagnostics.find("summary").text()).toContain("高级诊断");
     expect(diagnostics.attributes("open")).toBeUndefined();
+    const goalClosureText = wrapper.find('[data-testid="goal-closure-checklist"]').text();
+    expect(goalClosureText).toContain("wheel raw L/R 非零");
+    expect(goalClosureText).toContain("完整 Nav2 路线执行");
+    expect(goalClosureText).toContain("delivery success");
+    expect(goalClosureText).toContain("PC 键盘连续手控");
+    expect(goalClosureText).not.toContain("/cmd_vel");
     expect(diagnostics.text()).toContain("task_id");
     expect(diagnostics.text()).toContain("Robot API status");
     expect(diagnostics.text()).toContain("Node server only; Vue direct access=false");

@@ -596,6 +596,44 @@ const deliveryClosureChecklist = computed(() => {
   ];
 });
 
+const goalClosureChecklist = computed(() => {
+  // 总目标进度只聚合已读证据，不触发任何控制动作或成功外推。
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  const wheelReady = claimWithRefReady(summary?.wheel_feedback)
+    || plainFirstJogResult.value?.remote_motion_key_values?.wheel_feedback_lr_nonzero_proven === "true"
+    || baseFeedbackSamplesResult.value?.sample_key_values.wheel_feedback_lr_nonzero_proven === "true";
+  const nav2Ready = deliveryNav2GoalReady.value;
+  const deliveryReady = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
+  const keyboardContractReady = robotSummary.value?.safe_command_boundary.keyboard_control_mode === "bounded_repeating_manual_pulse"
+    && robotSummary.value.safe_command_boundary.keyboard_reuses_manual_gate === true;
+  return [
+    {
+      id: "wheel_raw_lr",
+      label: "wheel raw L/R 非零",
+      ready: wheelReady,
+      hint: wheelReady ? "已有非零 L/R 材料" : "仍需 first-jog/manual 期间同帧 T1001 L/R 非零",
+    },
+    {
+      id: "nav2_goal_execution",
+      label: "完整 Nav2 路线执行",
+      ready: nav2Ready,
+      hint: nav2Ready ? "已有 goal_succeeded 读回" : "读取最近 Nav2 结果或执行受限目标后确认",
+    },
+    {
+      id: "delivery_success",
+      label: "delivery success",
+      ready: deliveryReady,
+      hint: deliveryReady ? "delivery gate 已确认成功" : "仍需现场最终确认并通过 delivery gate",
+    },
+    {
+      id: "keyboard_manual",
+      label: "PC 键盘连续手控",
+      ready: keyboardContractReady,
+      hint: keyboardContractReady ? "入口已按 focused panel + manual gate 收口" : "键盘合同未从 summary 读到",
+    },
+  ];
+});
+
 const firstJogVisualMaterialReady = computed(() => {
   // first-jog readiness 由 PC summary 后端统一判定，避免普通首屏和 API 合同漂移。
   return robotSummary.value?.first_jog_readiness_summary?.visual_material_ready === true;
@@ -3035,6 +3073,16 @@ onBeforeUnmount(() => {
     <details class="advanced-details">
       <summary>高级诊断</summary>
       <div class="advanced-grid">
+        <section class="advanced-block">
+          <h3>目标收口进度</h3>
+          <p class="panel-note">只汇总当前已读证据；不会自动发车、提交送达或提升 success。</p>
+          <ul class="compact-list" data-testid="goal-closure-checklist">
+            <li v-for="item in goalClosureChecklist" :key="item.id" :data-ready="item.ready">
+              <span>{{ item.ready ? "已满足" : "未满足" }}：{{ item.label }}</span>
+              <small>{{ item.hint }}</small>
+            </li>
+          </ul>
+        </section>
         <section class="advanced-block">
           <h3>连接详情</h3>
           <form class="robot-control-form" @submit.prevent="refreshConsole">
