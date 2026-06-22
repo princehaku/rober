@@ -2213,6 +2213,14 @@ export interface RobotControlDeliveryCompleteResponse {
   robot_control_executed: false;
 }
 
+export interface RobotControlDeliveryMaterialRefs {
+  operator_evidence_ref: string;
+  external_video_ref: string;
+  camera_artifacts_ref: string;
+  route_map_ref: string;
+  site_state: string;
+}
+
 export interface RobotControlDeliveryLatestResponse {
   schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1";
   proxy_status: "latest_loaded" | "latest_rejected" | "latest_failed";
@@ -2229,6 +2237,7 @@ export interface RobotControlDeliveryLatestResponse {
   remote_http_status: number | null;
   status: "blocked" | "delivery_success_confirmed" | "loaded_fail_closed_summary";
   delivery_key_values: Record<string, string>;
+  delivery_material_refs: RobotControlDeliveryMaterialRefs;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

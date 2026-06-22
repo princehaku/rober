@@ -252,6 +252,20 @@ function deliveryCompleteKeyValues(payload: Record<string, unknown> | null): Rec
   };
 }
 
+function deliveryMaterialRefs(payload: Record<string, unknown> | null): RobotControlDeliveryLatestResponse["delivery_material_refs"] {
+  // latest 只把 operator report 里的短 ref 带给前端预填，不暴露完整远端 JSON 或任何 success/control 字段。
+  const result = asRecord(payload?.latest_result) ?? payload;
+  const operatorReport = asRecord(result?.operator_report);
+  const claims = asRecord(operatorReport?.structured_hil_claims);
+  return {
+    operator_evidence_ref: shortValue(operatorReport?.evidence_ref, ""),
+    external_video_ref: shortValue(claims?.external_video_ref, ""),
+    camera_artifacts_ref: shortValue(claims?.camera_artifacts_ref, ""),
+    route_map_ref: shortValue(claims?.route_map_ref, ""),
+    site_state: shortValue(claims?.site_state, ""),
+  };
+}
+
 function baseFeedbackSamplesFailure(sourceBaseUrl: string, reason: string): RobotControlBaseFeedbackSamplesProxyResponse {
   // 本机拒绝时不能触发任何串口请求；响应仍保持完整 fail-closed 形状。
   return {
@@ -1546,6 +1560,7 @@ export function createWorkstationApp(): express.Express {
       remote_http_status: null,
       status: "blocked",
       delivery_key_values: {},
+      delivery_material_refs: deliveryMaterialRefs(null),
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
@@ -1578,6 +1593,7 @@ export function createWorkstationApp(): express.Express {
         status: remoteDeliverySuccess ? "delivery_success_confirmed" : remote.ok ? "loaded_fail_closed_summary" : "blocked",
         delivery_success: remoteDeliverySuccess,
         delivery_key_values: deliveryCompleteKeyValues(remotePayload),
+        delivery_material_refs: deliveryMaterialRefs(remotePayload),
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `delivery_latest_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`delivery_latest_http_status_${remote.status}`]),

@@ -1504,6 +1504,13 @@ function makeDeliveryLatestFallback(reason: string): RobotControlDeliveryLatestR
     remote_http_status: null,
     status: "blocked",
     delivery_key_values: {},
+    delivery_material_refs: {
+      operator_evidence_ref: "",
+      external_video_ref: "",
+      camera_artifacts_ref: "",
+      route_map_ref: "",
+      site_state: "",
+    },
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -2406,10 +2413,32 @@ async function loadDeliveryLatest(): Promise<void> {
   deliveryLatestPending.value = true;
   try {
     deliveryLatestResult.value = await getRobotControlDeliveryLatest(robotApiBaseUrl.value);
+    fillDeliveryRefsFromLatestReadback();
   } catch (err) {
     deliveryLatestResult.value = makeDeliveryLatestFallback(err instanceof Error ? err.message : "delivery_latest_request_failed");
   } finally {
     deliveryLatestPending.value = false;
+  }
+}
+
+function fillDeliveryRefsFromLatestReadback(): void {
+  // 页面刷新后复用 delivery latest 中的草稿材料 ref；只预填输入，不提交报告、不确认送达。
+  const refs = deliveryLatestResult.value?.delivery_material_refs;
+  if (!refs) {
+    return;
+  }
+  const videoRef = refs.camera_artifacts_ref || refs.external_video_ref;
+  if (!deliveryOperatorVideoRef.value.trim() && videoRef && videoRef !== "not_loaded") {
+    deliveryOperatorVideoRef.value = videoRef;
+  }
+  if (!deliveryOperatorRouteMapRef.value.trim() && refs.route_map_ref && refs.route_map_ref !== "not_loaded") {
+    deliveryOperatorRouteMapRef.value = refs.route_map_ref;
+    if (!deliveryEvidenceRef.value.trim()) {
+      deliveryEvidenceRef.value = `delivery-confirmation-${refs.route_map_ref}`;
+    }
+  }
+  if (!deliveryOperatorEvidenceRef.value.trim() && refs.operator_evidence_ref && refs.operator_evidence_ref !== "not_loaded") {
+    deliveryOperatorEvidenceRef.value = refs.operator_evidence_ref;
   }
 }
 
