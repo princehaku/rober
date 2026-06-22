@@ -1662,3 +1662,9 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 0 或缺失，PC 会提示 `最近行程缺少反馈样本，需要重新读取或执行完整行程`，并继续禁用送达最终确认。该规则只
 收紧 UI gate，不自动执行行程、不提交 delivery complete，也不发送 manual、first-jog、stop、keyboard pulse 或
 `/cmd_vel`。
+
+2026-06-23 04:20 起，普通首屏 `delivery success` 也按当前证据收口：`delivery/latest` 或 completion 读到
+`delivery_success=true` 但带有过期 `generated_at_ms/response_generated_at_ms` 时，只显示为旧送达成功记录，
+`本轮进度` 仍保持 `送达确认待完成`，最终确认面板提示 `旧送达成功记录不能用于本轮，仍需重新确认送达`。
+刚点击确认送达后返回的 completion success 若无时间戳，仍按当前提交结果处理。该规则不自动提交 operator report、
+不调用 delivery complete，不发送 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。

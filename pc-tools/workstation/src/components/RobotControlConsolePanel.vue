@@ -735,7 +735,7 @@ function deliveryGateMissing(token: string): boolean {
 
 const plainDeliveryGateMissingSummary = computed(() => {
   // 把上位机 delivery gate 缺口翻成普通话；字段名留在高级诊断，避免普通首屏变成接口面板。
-  if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
+  if (deliverySuccessReady.value) {
     return "";
   }
   const reasonText = deliveryGateBlockedReasons.value.join(" ");
@@ -765,7 +765,7 @@ const plainDeliveryGapCheckButtonLabel = computed(() => {
 
 const plainDeliveryNextActionSummary = computed(() => {
   // 送达 gate 缺项很多时，普通首屏只给一个下一步，避免现场人员在多按钮之间来回猜。
-  if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
+  if (deliverySuccessReady.value) {
     return "";
   }
   if (!deliveryNav2GoalReady.value) {
@@ -835,10 +835,26 @@ function evidenceIsStale(values: Record<string, string> | undefined): boolean {
   return ageMs !== null && ageMs >= EVIDENCE_STALE_AFTER_MS;
 }
 
+function deliveryResultSucceeded(result: RobotControlDeliveryCompleteResponse | RobotControlDeliveryLatestResponse | null): boolean {
+  return result?.delivery_success === true;
+}
+
+function deliveryResultReadyForCurrentRun(result: RobotControlDeliveryCompleteResponse | RobotControlDeliveryLatestResponse | null): boolean {
+  // delivery success 也必须是当前证据；没有时间戳的刚提交响应按本轮结果处理。
+  return deliveryResultSucceeded(result) && !evidenceIsStale(result?.delivery_key_values);
+}
+
 const plainTripHasSucceededEvidence = computed(() => nav2EvidenceValues().some((values) => nav2GoalSucceeded(values)));
 const plainTripHasFreshIncompleteEvidence = computed(() => nav2EvidenceValues().some((values) => (
   nav2GoalSucceeded(values) && !nav2ExecutionComplete(values) && !evidenceIsStale(values)
 )));
+const deliverySuccessReady = computed(() => (
+  deliveryResultReadyForCurrentRun(deliveryCompletionResult.value) || deliveryResultReadyForCurrentRun(deliveryLatestResult.value)
+));
+const deliveryHasSuccessEvidence = computed(() => (
+  deliveryResultSucceeded(deliveryCompletionResult.value) || deliveryResultSucceeded(deliveryLatestResult.value)
+));
+const deliverySuccessEvidenceIsStale = computed(() => deliveryHasSuccessEvidence.value && !deliverySuccessReady.value);
 
 const deliveryNav2GoalReady = computed(() => {
   // 本轮完成只接受未过期且带反馈样本的 goal_succeeded；旧/空摘要只能作为提示材料。
@@ -860,12 +876,15 @@ const deliveryRouteMapMatchesFreshNav2 = computed(() => {
 
 const plainDeliverySummary = computed(() => {
   // 普通首屏只做收口状态提示；按钮只读 latest 或复算缺口，不提交送达确认。
-  const deliveryConfirmed = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
+  const deliveryConfirmed = deliverySuccessReady.value;
   if (deliveryCompletionPending.value || deliveryLatestPending.value || deliveryGapCheckPending.value) {
     return { state: "检查中", hint: "正在读取最近行程和送达状态；不会发车。" };
   }
   if (deliveryConfirmed) {
     return { state: "已送达", hint: "送达 gate 已确认成功。" };
+  }
+  if (deliverySuccessEvidenceIsStale.value) {
+    return { state: "需复验", hint: "读到旧送达成功记录；本轮仍需重新确认送达。" };
   }
   if (deliveryNav2GoalReady.value) {
     const gapCount = deliveryGateBlockedReasons.value.length;
@@ -943,8 +962,11 @@ const plainDeliveryConfirmSummary = computed(() => {
   if (operatorReportPending.value || deliveryCompletionPending.value) {
     return { state: "确认中", hint: "正在提交最终确认。" };
   }
-  if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
+  if (deliverySuccessReady.value) {
     return { state: "已完成", hint: "送达已确认完成。" };
+  }
+  if (deliverySuccessEvidenceIsStale.value) {
+    return { state: "待确认", hint: "旧送达成功记录不能用于本轮，仍需重新确认送达。" };
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripHasFreshIncompleteEvidence.value) {
@@ -1075,7 +1097,7 @@ const goalClosureChecklist = computed(() => {
   // 总目标进度只聚合已读证据，不触发任何控制动作或成功外推。
   const wheelEvidence = wheelClosureEvidence.value;
   const nav2Ready = deliveryNav2GoalReady.value;
-  const deliveryReady = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
+  const deliveryReady = deliverySuccessReady.value;
   const keyboardReady = canUseKeyboardControl.value && keyboardManualPulseObserved.value;
   return [
     {
@@ -1096,7 +1118,7 @@ const goalClosureChecklist = computed(() => {
       id: "delivery_success",
       label: "delivery success",
       ready: deliveryReady,
-      hint: deliveryReady ? "delivery gate 已确认成功" : "仍需现场最终确认并通过 delivery gate",
+      hint: deliveryReady ? "delivery gate 已确认成功" : deliverySuccessEvidenceIsStale.value ? "已有旧 delivery success，需本轮重新确认" : "仍需现场最终确认并通过 delivery gate",
     },
     {
       id: "keyboard_manual",
@@ -1134,6 +1156,9 @@ const plainWheelGoalProgressHint = computed(() => {
 
 const plainDeliveryGoalProgressHint = computed(() => {
   // 送达进度优先显示上位机 gate 缺项；它只是提示，不自动勾选或提交最终确认。
+  if (deliverySuccessEvidenceIsStale.value) {
+    return "旧送达成功记录不能用于本轮，仍需重新确认送达。";
+  }
   const missingSummary = plainDeliveryGateMissingSummary.value;
   if (missingSummary) {
     const nextAction = plainDeliveryNextActionSummary.value;
@@ -1266,7 +1291,7 @@ const plainGoalProgressEvidenceSummary = computed(() => {
   const tripText = deliveryNav2GoalReady.value || plainTripHasSucceededEvidence.value
     ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成"
     : "行程未完成";
-  const deliveryText = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true ? "送达已完成" : "送达未完成";
+  const deliveryText = deliverySuccessReady.value ? "送达已完成" : deliverySuccessEvidenceIsStale.value ? "送达有旧成功记录" : "送达未完成";
   const keyboardText = canUseKeyboardControl.value ? (keyboardManualPulseObserved.value ? "键盘已验证" : "键盘待验证") : "键盘未满足";
   return `当前读数：${wheelText}；${tripText}；${deliveryText}；${keyboardText}。`;
 });
@@ -1292,7 +1317,10 @@ const plainGoalProgressBlockerSummary = computed(() => {
       ? "验收卡点：行程成功记录较旧，需要重新执行本轮行程。"
       : "验收卡点：还没读到行程成功结果。";
   }
-  if (!(deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true)) {
+  if (!deliverySuccessReady.value) {
+    if (deliverySuccessEvidenceIsStale.value) {
+      return "验收卡点：送达成功记录较旧，需要本轮重新确认送达。";
+    }
     return plainDeliveryNextActionSummary.value ? `验收卡点：送达未完成，${plainDeliveryNextActionSummary.value}` : "验收卡点：送达未完成，需要现场最终确认。";
   }
   if (canUseKeyboardControl.value && !keyboardManualPulseObserved.value) {
