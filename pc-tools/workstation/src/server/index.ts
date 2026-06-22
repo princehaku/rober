@@ -218,6 +218,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
   const cancelResponse = asRecord(latestResult?.cancel_response);
   return {
     status: shortValue(payload?.status),
+    evidence_ref: shortValue(payload?.evidence_ref ?? latestResult?.evidence_ref),
     nav2_goal_execution_proven: shortValue(payload?.nav2_goal_execution_proven, "false"),
     goal_accepted: shortValue(payload?.goal_accepted),
     result_received: shortValue(payload?.result_received),

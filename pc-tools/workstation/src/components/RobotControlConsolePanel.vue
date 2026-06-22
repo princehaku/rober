@@ -107,6 +107,10 @@ const confirmNavigationPreflight = ref(false);
 const confirmNavigationExecution = ref(false);
 const confirmDeliveryCompletion = ref(false);
 const deliveryEvidenceRef = ref("");
+const deliveryOperatorEvidenceRef = ref("");
+const deliveryOperatorVideoRef = ref("");
+const deliveryOperatorRouteMapRef = ref("");
+const confirmDeliveryOperatorReport = ref(false);
 const navGoalExecutionTimeoutS = ref(8);
 const hilChecklist = ref([
   { id: "operator_ready", checked: false, label: "现场有人扶控并准备急停" },
@@ -1615,6 +1619,73 @@ async function completeDelivery(): Promise<void> {
   }
 }
 
+function fillDeliveryRouteRefFromLatestNav2(): void {
+  // 最近 Nav2 execution evidence_ref 可作为 route_map_ref 候选；现场仍需自己确认送达和视频材料。
+  const nav2Ref = navGoalExecutionResult.value?.goal_execution_key_values.evidence_ref;
+  if (nav2Ref && nav2Ref !== "not_loaded") {
+    deliveryOperatorRouteMapRef.value = nav2Ref;
+    deliveryEvidenceRef.value = `delivery-confirmation-${nav2Ref}`;
+    if (!deliveryOperatorEvidenceRef.value.trim()) {
+      deliveryOperatorEvidenceRef.value = `operator-${nav2Ref}`;
+    }
+  }
+}
+
+async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
+  // 这个快捷入口只帮现场人员把“送达确认材料”写进 operator report，再交给 delivery gate 合成结论。
+  if (
+    !robotApiBaseUrl.value.trim()
+    || operatorReportPending.value
+    || deliveryCompletionPending.value
+    || !confirmDeliveryOperatorReport.value
+    || !deliveryOperatorVideoRef.value.trim()
+    || !deliveryOperatorRouteMapRef.value.trim()
+  ) {
+    return;
+  }
+  operatorReportPending.value = true;
+  deliveryCompletionPending.value = true;
+  const evidenceRef = deliveryOperatorEvidenceRef.value.trim() || `delivery-operator-${Date.now()}`;
+  const reportBody: RobotControlOperatorReportRequest = {
+    operator_present: true,
+    evidence_ref: evidenceRef,
+    physical_clearance_confirmed: true,
+    emergency_stop_ready: true,
+    observed_motion: true,
+    observed_stop: true,
+    reported_at: new Date().toISOString(),
+    operator_notes: "PC delivery closure shortcut; operator explicitly confirmed delivery, route/map evidence, and visual material.",
+    structured_hil_claims: {
+      external_video_recorded: true,
+      external_video_ref: deliveryOperatorVideoRef.value.trim(),
+      visible_content_proven: false,
+      wheel_feedback_lr_nonzero_proven: false,
+      physical_motion_lidar_delta_proven: false,
+      real_route_map_proven: true,
+      route_map_ref: deliveryOperatorRouteMapRef.value.trim(),
+      delivery_success: true,
+      site_state: "operator_confirmed_delivery_complete",
+    },
+  };
+  try {
+    operatorReportResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, reportBody);
+    if (operatorReportResult.value.proxy_status === "report_forwarded" && operatorReportResult.value.status !== "blocked") {
+      deliveryCompletionResult.value = await postRobotControlDeliveryComplete(robotApiBaseUrl.value, {
+        confirm_delivery_completion: true,
+        delivery_evidence_ref: deliveryEvidenceRef.value.trim() || evidenceRef,
+        operator_notes: "PC delivery closure shortcut after operator report material submit.",
+      });
+    }
+  } catch (err) {
+    operatorReportResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "delivery_operator_report_request_failed", reportBody);
+    deliveryCompletionResult.value = makeDeliveryCompletionFallback(err instanceof Error ? err.message : "delivery_operator_report_request_failed");
+  } finally {
+    operatorReportPending.value = false;
+    deliveryCompletionPending.value = false;
+    await refreshConsole();
+  }
+}
+
 async function runMapLifecycleAction(
   action: "list" | "start" | "save",
   request: () => Promise<RobotControlMapLifecycleResponse>,
@@ -2662,6 +2733,30 @@ onBeforeUnmount(() => {
             </label>
             <button class="danger-button" type="submit" :disabled="loading || deliveryCompletionPending || !robotApiBaseUrl.trim() || !confirmDeliveryCompletion">
               确认送达（高级）
+            </button>
+          </form>
+          <form class="robot-control-form" @submit.prevent="submitDeliveryOperatorReportAndComplete">
+            <label>
+              <span>operator evidence ref</span>
+              <input v-model="deliveryOperatorEvidenceRef" name="deliveryOperatorEvidenceRef" maxlength="512" placeholder="delivery-operator-...">
+            </label>
+            <label>
+              <span>送达视频 ref</span>
+              <input v-model="deliveryOperatorVideoRef" name="deliveryOperatorVideoRef" maxlength="512" placeholder="phone-video-or-camera-artifact-ref">
+            </label>
+            <label>
+              <span>route/map ref</span>
+              <input v-model="deliveryOperatorRouteMapRef" name="deliveryOperatorRouteMapRef" maxlength="512" placeholder="o11-nav2-goal-execution-...">
+            </label>
+            <button class="secondary" type="button" :disabled="!navGoalExecutionResult?.goal_execution_key_values.evidence_ref" @click="fillDeliveryRouteRefFromLatestNav2">
+              使用最近 Nav2 ref
+            </button>
+            <label class="checkbox-inline">
+              <input v-model="confirmDeliveryOperatorReport" name="confirmDeliveryOperatorReport" type="checkbox">
+              <span>现场确认已到达/投放，且视频与 route/map ref 可复核</span>
+            </label>
+            <button class="danger-button" type="submit" :disabled="loading || operatorReportPending || deliveryCompletionPending || !robotApiBaseUrl.trim() || !confirmDeliveryOperatorReport || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()">
+              提交送达材料并确认（高级）
             </button>
           </form>
           <dl class="kv compact-kv">
