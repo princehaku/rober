@@ -734,6 +734,11 @@ const plainDeliverySummary = computed(() => {
   return { state: "未读取", hint: "点击刷新送达状态，只读取结果，不执行行程或确认送达。" };
 });
 
+const plainDeliveryLatestButtonLabel = computed(() => {
+  // latest 只读最近送达 gate 结果；按钮文案直接说明不会提交确认。
+  return deliveryLatestPending.value ? "刷新中" : "刷新送达状态（只读）";
+});
+
 const plainDeliveryMaterialSummary = computed(() => {
   // 送达材料草稿只说明“有没有准备好”；不显示 ref、字段名或 delivery claim。
   if (operatorReportPending.value) {
@@ -3936,8 +3941,8 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <strong>任务收口</strong>
               <span class="status-chip" :data-state="plainDeliverySummary.state">{{ plainDeliverySummary.state }}</span>
-              <button type="button" class="secondary compact-stop" :disabled="loading || deliveryLatestPending || !robotApiBaseUrl.trim()" @click="loadDeliveryLatest">
-                刷新送达状态
+              <button type="button" class="secondary compact-stop" :disabled="loading || deliveryLatestPending || !robotApiBaseUrl.trim()" data-testid="plain-delivery-latest" @click="loadDeliveryLatest">
+                {{ plainDeliveryLatestButtonLabel }}
               </button>
               <button type="button" class="secondary compact-stop" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" data-testid="plain-delivery-gap-check" @click="checkDeliveryGap">
                 {{ plainDeliveryGapCheckButtonLabel }}

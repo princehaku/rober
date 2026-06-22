@@ -3275,7 +3275,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find(".simple-user-console .motion-pad").exists()).toBe(false);
     expect(firstScreenText).toContain("任务收口");
-    expect(firstScreenText).toContain("刷新送达状态");
+    expect(wrapper.find('[data-testid="plain-delivery-latest"]').text()).toBe("刷新送达状态（只读）");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（不确认）");
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("目标收口进度");
@@ -5825,7 +5825,7 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).not.toContain("/api/delivery");
 
     const latestCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?")).length;
-    await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "刷新送达状态")?.trigger("click");
+    await wrapper.find('[data-testid="plain-delivery-latest"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?")).length).toBeGreaterThan(latestCallsBefore);

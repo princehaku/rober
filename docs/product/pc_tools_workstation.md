@@ -1585,3 +1585,7 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 
 2026-06-22 18:09 起，普通首屏键盘面板里的 `键盘停止` 显示为 `键盘停止（随时可点）`。该按钮仍走既有
 固定 stop 代理，用于收口键盘循环；不放宽非 stop manual gate，不发送 keyboard pulse、Nav2 或 `/cmd_vel`。
+
+2026-06-22 18:12 起，普通首屏 `刷新送达状态` 显示为 `刷新送达状态（只读）`，pending 时显示 `刷新中`。
+它仍只调用固定 `GET /api/robot-control/delivery/latest`，不提交 operator report、不调用 delivery complete，
+不执行 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
