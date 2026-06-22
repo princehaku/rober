@@ -3453,6 +3453,35 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("shows restore-first-jog as the next wheel step when delivery draft replaced basic safety", async () => {
+    // 送达草稿覆盖 basic safety 后，进度区应先引导恢复确认，再让现场试动读非零。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "13";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.operator_hil_material_summary.operator_present = "false";
+    summaryFixture.operator_hil_material_summary.physical_clearance = "false";
+    summaryFixture.operator_hil_material_summary.emergency_stop = "false";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    summaryFixture.first_jog_readiness_summary = {
+      status: "blocked_missing_basic_safety",
+      basic_safety_ready: false,
+      visual_material_ready: true,
+      missing_fields: ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready"],
+      next_action: "complete_basic_safety_check",
+    };
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 13 帧，先点恢复试动确认，再试动读非零。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("focuses plain goal progress targets without calling robot APIs", async () => {
     // “去处理”只是把用户带到对应普通面板；不替用户执行行程、确认送达或发送手控。
     const mockedFetch = stubWorkstationFetch();

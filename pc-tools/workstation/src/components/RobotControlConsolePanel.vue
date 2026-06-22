@@ -788,7 +788,11 @@ const plainWheelGoalProgressHint = computed(() => {
   const frameCount = sample?.t1001_observed_count ?? base?.latest_t1001_observed_count ?? "not_loaded";
   if (left !== "not_loaded" && right !== "not_loaded") {
     const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
-    return `当前轮速 L/R=${left}/${right}${frameText}，仍需试动读到非零。`;
+    const nextStep = firstJogMaterialRestoreReady.value ? "先点恢复试动确认，再试动读非零。" : "仍需试动读到非零。";
+    return `当前轮速 L/R=${left}/${right}${frameText}，${nextStep}`;
+  }
+  if (firstJogMaterialRestoreReady.value) {
+    return "先点恢复试动确认，再试动读取轮速。";
   }
   return "等待运动窗口读到非零 L/R。";
 });
