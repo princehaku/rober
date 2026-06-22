@@ -1030,6 +1030,12 @@ const plainGoalProgressNextAction = computed(() => {
   return nextItem ? `下一步：先处理${nextItem.label}。${nextItem.hint}` : "下一步：四项都已完成，保持待命。";
 });
 
+const plainGoalProgressStateSummary = computed(() => {
+  // 四个目标的当前结论压成一行，方便现场先看全局状态再按下一步执行。
+  const fragments = plainGoalProgressItems.value.map((item) => `${item.label}${item.state}`);
+  return `当前状态：${fragments.join("；")}。`;
+});
+
 const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value);
 
 const plainTripSummary = computed(() => {
@@ -4064,6 +4070,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note" data-testid="plain-goal-progress-next-action">{{ plainGoalProgressNextAction }}</p>
+            <p class="panel-note" data-testid="plain-goal-progress-state-summary">{{ plainGoalProgressStateSummary }}</p>
             <div v-for="item in plainGoalProgressItems" :key="item.id" class="plain-progress-row">
               <span class="plain-progress-label">{{ item.label }}</span>
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
