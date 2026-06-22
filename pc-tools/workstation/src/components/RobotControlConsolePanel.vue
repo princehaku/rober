@@ -852,6 +852,22 @@ const plainDeliveryGoalProgressHint = computed(() => {
   return plainDeliveryNextActionSummary.value || "还缺最终送达确认。";
 });
 
+const plainTripEvidenceSummary = computed(() => {
+  // 行程成功只展示普通证据摘要；完整 evidence_ref 和 action 细节留在高级诊断。
+  const values = navGoalExecutionResult.value?.goal_execution_key_values
+    ?? navGoalExecutionLatestResult.value?.goal_execution_key_values
+    ?? deliveryLatestResult.value?.delivery_key_values
+    ?? deliveryGapCheckResult.value?.delivery_key_values
+    ?? deliveryCompletionResult.value?.delivery_key_values;
+  const status = values?.nav2_status ?? values?.status;
+  if (status !== "goal_succeeded") {
+    return "";
+  }
+  const feedbackCount = values?.feedback_sample_count ?? values?.nav2_feedback_sample_count;
+  const feedbackText = feedbackCount && feedbackCount !== "0" && feedbackCount !== "not_loaded" ? `，反馈 ${feedbackCount} 次` : "";
+  return `最近行程成功${feedbackText}；送达仍需现场确认。`;
+});
+
 const plainGoalProgressItems = computed(() => {
   // 普通首屏只展示用户能决策的四件事；工程字段继续留在高级诊断。
   const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
@@ -870,7 +886,7 @@ const plainGoalProgressItems = computed(() => {
       label: "行程执行",
       actionLabel: "去行程",
       state: navReady ? "已完成" : "待完成",
-      hint: navReady ? "最近行程已读到成功结果。" : "还没读到最近行程成功结果。",
+      hint: navReady ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。" : "还没读到最近行程成功结果。",
     },
     {
       id: "delivery",
@@ -903,7 +919,7 @@ const plainTripSummary = computed(() => {
     return { state: "读取中", hint: "正在读取最近行程结果。" };
   }
   if (deliveryNav2GoalReady.value) {
-    return { state: "已完成", hint: "已读到最近行程完成，可以准备送达材料。" };
+    return { state: "已完成", hint: plainTripEvidenceSummary.value || "已读到最近行程完成，可以准备送达材料。" };
   }
   if (navGoalExecutionResult.value?.proxy_status === "execution_failed" || navGoalExecutionResult.value?.proxy_status === "execution_rejected") {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
@@ -3798,6 +3814,9 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
+            <p v-if="plainTripEvidenceSummary" class="panel-note" data-testid="plain-trip-evidence-summary">
+              {{ plainTripEvidenceSummary }}
+            </p>
           </div>
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
           <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>

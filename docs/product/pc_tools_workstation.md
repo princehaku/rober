@@ -1525,3 +1525,8 @@ T=1001 wheel raw L/R，例如真实 readback 中的 `L/R=0/0`；该派生只读 
 `下一步` 提示；如果 `本轮进度` 同时读到反馈电压，也会把 `仍需试动读到非零` 改成
 `下一步：检查电机使能、供电、模式和现场空间后重试读取轮速`。该提示只解释现场排障方向，不发送
 first-jog、manual、stop、Nav2 或 `/cmd_vel`，也不把静态 T1001 反馈、电压或 `0/0` 当作非零证明。
+
+2026-06-22 17:23 起，普通首屏 `行程操作` 和 `本轮进度 / 行程执行` 在最近行程读到成功时显示普通证据摘要：
+`最近行程成功，反馈 ... 次；送达仍需现场确认。` 该摘要只消费 `/api/robot-control/nav2/goal/execution/latest`
+或 delivery gate 已读到的压缩 key，不展示 evidence ref、Nav2/API/proof 字段，不触发行程执行、送达确认、
+manual 或 `/cmd_vel`，也不把行程成功外推成 delivery success。
