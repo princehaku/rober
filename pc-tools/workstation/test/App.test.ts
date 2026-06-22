@@ -3263,7 +3263,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("读取轮速");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读轮速");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（等非零 L/R）");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
@@ -4224,7 +4224,7 @@ describe("App", () => {
     }));
     const firstJogButtonAfterRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButtonAfterRestore?.attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始试动读轮速");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读轮速");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
     expect(visiblePlainHomeText(wrapper)).not.toContain("试动按钮已锁定");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
@@ -4623,7 +4623,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("已试动但 L/R=0/0，检查电机使能、供电、模式和现场空间后重试。");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     const retryWheelButton = wrapper.find('[data-testid="plain-wheel-trial"]');
-    expect(retryWheelButton.text()).toBe("重试读取轮速");
+    expect(retryWheelButton.text()).toBe("重试低速试动读轮速");
     expect(retryWheelButton.attributes("disabled")).toBeUndefined();
     const firstJogCallsBeforeRetry = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?")).length;
     await retryWheelButton.trigger("click");

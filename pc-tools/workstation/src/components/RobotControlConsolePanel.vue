@@ -1134,12 +1134,12 @@ const plainWheelRecordSummary = computed(() => {
 const plainWheelTrialButtonLabel = computed(() => {
   // 轮速面板里的按钮复用 first-jog；已有一次失败试动后，文案改为重试，减少现场误解。
   if (plainFirstJogResult.value?.proxy_status === "command_forwarded" && !plainFirstJogWheelEvidenceReady.value) {
-    return "重试读取轮速";
+    return "重试低速试动读轮速";
   }
   if (plainFirstJogMaterialRestored.value) {
-    return "开始试动读轮速";
+    return "开始低速试动读轮速";
   }
-  return "读取轮速";
+  return "低速试动读轮速";
 });
 
 const plainWheelEvidenceSaveButtonLabel = computed(() => {
