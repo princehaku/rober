@@ -3994,6 +3994,100 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
+  it("submits delivery draft material without operator confirmation or delivery completion", async () => {
+    // 草稿只保存 refs；不允许把预填材料升级成 observed motion/stop 或 delivery_success。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/operator/report": {
+        schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+        proxy_status: "report_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/operator/report",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        structured_hil_claims: { delivery_success: false },
+        rejected_fields: [],
+        ignored_fields: [],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/latest",
+        remote_endpoint: "/api/delivery/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_status: "goal_succeeded",
+          operator_report_status: "unsafe_or_incomplete",
+        },
+        failure_reason: "",
+        blocked_reasons: ["operator_report_ready_for_review", "operator_observed_motion", "structured_hil_claims.delivery_success"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await wrapper.find('input[name="deliveryOperatorEvidenceRef"]').setValue("delivery-draft-fixture");
+    await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/first_frame_probe_prefill.jpg");
+    await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-fixture");
+
+    const draftButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "提交送达草稿（高级）");
+    expect(draftButton).toBeTruthy();
+    await draftButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCall).toBeTruthy();
+    const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(reportBody.evidence_ref).toBe("delivery-draft-fixture");
+    expect(reportBody.operator_present).toBe(false);
+    expect(reportBody.physical_clearance_confirmed).toBe(false);
+    expect(reportBody.emergency_stop_ready).toBe(false);
+    expect(reportBody.observed_motion).toBe(false);
+    expect(reportBody.observed_stop).toBe(false);
+    expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      external_video_recorded: true,
+      external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_prefill.jpg",
+      visible_content_proven: true,
+      camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_prefill.jpg",
+      real_route_map_proven: true,
+      route_map_ref: "o11-nav2-goal-execution-fixture",
+      delivery_success: false,
+      site_state: "delivery_material_draft_not_operator_confirmed",
+    }));
+    expect(reportBody.delivery_success).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+  });
+
   it("enables non-stop motion only after complete operator material and still uses the fixed workstation proxy", async () => {
     // 材料齐全时，前端只放开固定 proxy 点动；普通用户首屏仍不出现工程词。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

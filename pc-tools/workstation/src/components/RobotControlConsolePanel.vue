@@ -1764,6 +1764,51 @@ async function prefillDeliveryMaterialRefs(): Promise<void> {
   await loadDeliveryLatest();
 }
 
+async function submitDeliveryDraftMaterial(): Promise<void> {
+  // 草稿只保存 ref 材料，刻意不写现场确认和送达成功；用于把 404 缺口推进成可复核缺项。
+  if (
+    !robotApiBaseUrl.value.trim()
+    || operatorReportPending.value
+    || !deliveryOperatorVideoRef.value.trim()
+    || !deliveryOperatorRouteMapRef.value.trim()
+  ) {
+    return;
+  }
+  operatorReportPending.value = true;
+  const evidenceRef = deliveryOperatorEvidenceRef.value.trim() || `delivery-draft-${Date.now()}`;
+  const reportBody: RobotControlOperatorReportRequest = {
+    operator_present: false,
+    evidence_ref: evidenceRef,
+    physical_clearance_confirmed: false,
+    emergency_stop_ready: false,
+    observed_motion: false,
+    observed_stop: false,
+    reported_at: new Date().toISOString(),
+    operator_notes: "PC delivery draft only; visual and route/map refs are captured, but operator has not confirmed delivery.",
+    structured_hil_claims: {
+      external_video_recorded: true,
+      external_video_ref: deliveryOperatorVideoRef.value.trim(),
+      visible_content_proven: true,
+      camera_artifacts_ref: deliveryOperatorVideoRef.value.trim(),
+      wheel_feedback_lr_nonzero_proven: false,
+      physical_motion_lidar_delta_proven: false,
+      real_route_map_proven: true,
+      route_map_ref: deliveryOperatorRouteMapRef.value.trim(),
+      delivery_success: false,
+      site_state: "delivery_material_draft_not_operator_confirmed",
+    },
+  };
+  try {
+    operatorReportResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, reportBody);
+  } catch (err) {
+    operatorReportResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "delivery_draft_report_request_failed", reportBody);
+  } finally {
+    operatorReportPending.value = false;
+    await loadDeliveryLatest();
+    await refreshConsole();
+  }
+}
+
 async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
   // 这个快捷入口只帮现场人员把“送达确认材料”写进 operator report，再交给 delivery gate 合成结论。
   if (
@@ -2903,6 +2948,9 @@ onBeforeUnmount(() => {
             </label>
             <button class="secondary" type="button" :disabled="!(navGoalExecutionResult?.goal_execution_key_values.evidence_ref || navGoalExecutionLatestResult?.goal_execution_key_values.evidence_ref)" @click="fillDeliveryRouteRefFromLatestNav2">
               使用最近 Nav2 ref
+            </button>
+            <button class="secondary" type="button" :disabled="loading || operatorReportPending || !robotApiBaseUrl.trim() || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()" @click="submitDeliveryDraftMaterial">
+              提交送达草稿（高级）
             </button>
             <label class="checkbox-inline">
               <input v-model="confirmDeliveryOperatorReport" name="confirmDeliveryOperatorReport" type="checkbox">

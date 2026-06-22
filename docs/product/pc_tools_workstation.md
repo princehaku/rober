@@ -1242,3 +1242,12 @@ Nav2 goal，不调用 `/api/base/manual` 或 `/cmd_vel`，顶层继续固定
 `GET /api/robot-control/delivery/latest` 缺口面板。该按钮只填 `route/map ref`、
 `delivery_evidence_ref`、`operator evidence ref` 和“送达视频 ref”，不提交
 `/api/operator/report`、不调用 `/api/delivery/complete`，也不替 operator 勾选“现场确认已到达/投放”。
+
+2026-06-22 13:40 起，同一表单新增“提交送达草稿（高级）”。该按钮只在已经有“送达视频 ref”
+和 `route/map ref` 时可用，提交固定 `/api/robot-control/operator/report` 草稿：保存
+`external_video_ref`、`camera_artifacts_ref`、`route_map_ref` 等材料引用，但刻意写入
+`operator_present=false`、`physical_clearance_confirmed=false`、`emergency_stop_ready=false`、
+`observed_motion=false`、`observed_stop=false`、`structured_hil_claims.delivery_success=false` 和
+`site_state=delivery_material_draft_not_operator_confirmed`。它不会调用 `/api/delivery/complete`，
+不会触发运动，也不会把 operator report 404 直接升级为 delivery success；用途只是把缺口从“无 report”
+推进成“有草稿材料但缺现场确认”的可复核状态。
