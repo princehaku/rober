@@ -3656,6 +3656,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 13 帧，先点恢复试动确认，再试动读非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：送达草稿覆盖了试动确认，先恢复试动确认，再低速试动读非零 L/R。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

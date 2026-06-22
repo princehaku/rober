@@ -1319,6 +1319,9 @@ const plainGoalProgressBlockerSummary = computed(() => {
   const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
   if (!wheelReady) {
+    if (firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value) {
+      return "验收卡点：送达草稿覆盖了试动确认，先恢复试动确认，再低速试动读非零 L/R。";
+    }
     if (isZeroWheelPair(left, right)) {
       return `验收卡点：轮速 L/R=${left}/${right}，检查电机使能、供电、模式和现场空间后重试。`;
     }
