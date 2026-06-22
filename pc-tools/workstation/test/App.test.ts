@@ -5665,6 +5665,109 @@ describe("App", () => {
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("pulse_ms=240");
   });
 
+  it("does not verify keyboard control when the manual pulse is rejected", async () => {
+    // 键盘验收必须来自固定 manual proxy 成功转发；单纯按键或失败响应不能算已验证。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_rejected",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: false,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/manual",
+        remote_http_status: 400,
+        status: "blocked",
+        requested_direction: "forward",
+        applied_direction: "forward",
+        requested_speed_mps: 0.08,
+        clamped_speed_mps: 0.08,
+        requested_duration_ms: 240,
+        clamped_duration_ms: 240,
+        confirm_hil_checklist: true,
+        non_stop_requires_confirm_hil_checklist: true,
+        hil_checklist_gate_status: "manual_blocked_by_remote",
+        checklist_missing: [],
+        operator_report_preflight: {
+          status: "loaded",
+          source_endpoint: "/api/operator/report",
+          request_status: "loaded",
+          http_status: 200,
+          report_status: "ready_for_execution",
+          evidence_ref: "field-hil-keyboard-rejected",
+          required_fields: [],
+          missing_fields: [],
+          material_summary: summaryFixture.operator_hil_material_summary,
+          failure_reason: "",
+          hard_dangerous_true_fields: [],
+        },
+        request_contract: {
+          max_speed_mps: 0.12,
+          max_duration_ms: 800,
+          allowed_directions: ["forward", "back", "left", "right", "stop"],
+        },
+        evidence_capture_status: "blocked",
+        evidence_capture_endpoints: [],
+        evidence_capture_blocked_reasons: ["remote_manual_rejected"],
+        before_readback: {},
+        after_readback: {},
+        motion_evidence_summary: "keyboard manual pulse rejected fixture",
+        motion_evidence_gaps: ["motion_command_not_forwarded"],
+        failure_reason: "remote_manual_rejected",
+        blocked_reasons: ["remote_manual_rejected"],
+      },
+      "/api/robot-control/base/stop": {
+        proxy_status: "should_not_be_called",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘手控请求未成功，未记为已验证。");
+    expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
+    const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("PC 键盘连续手控"));
+    expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
+    expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，仍需按住方向键现场验证");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(false);
+  });
+
   it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {
     // 刷新与 lifecycle 按钮都只打 workstation 固定代理，动作结束后还要自动回刷 summary。
     const mockedFetch = stubWorkstationFetch();

@@ -203,6 +203,7 @@ const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
 const keyboardLastDirection = ref("not_loaded");
+const keyboardVerifiedPulseCount = ref(0);
 const keyboardLastStopReason = ref("not_loaded");
 let previewFrameSampleTimers: number[] = [];
 let keyboardJogTimer: number | null = null;
@@ -531,7 +532,7 @@ const keyboardContractReady = computed(() => {
 });
 const canUseKeyboardControl = computed(() => keyboardContractReady.value && canSendManualMotion.value);
 const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
-const keyboardManualPulseObserved = computed(() => keyboardLastDirection.value !== "not_loaded");
+const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value > 0);
 
 const keyboardDirectionPlainLabel = computed(() => {
   // 普通首屏只显示方向中文，避免把底层 direction enum 暴露给现场用户。
@@ -559,6 +560,9 @@ const plainKeyboardLiveStatus = computed(() => {
   }
   if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("released")) {
     return "已松开，正在发送停止。";
+  }
+  if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
+    return "键盘手控请求未成功，未记为已验证。";
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return "等待按键，按住才会动。";
@@ -1705,6 +1709,9 @@ const plainKeyboardControlSummary = computed(() => {
   // 普通首屏只说“能不能用”和“怎么停”，不展示 operator report 字段名或 HIL 术语。
   if (keyboardHeldDirection.value) {
     return { state: "手控中", hint: "按住点动中；松开按键、窗口失焦或页面隐藏会自动停止。" };
+  }
+  if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
+    return { state: "待验证", hint: "上次按键没有成功发送；检查后再按住方向键。" };
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return { state: "已启用", hint: "按住 W/A/S/D 或方向键连续手控，松开即停。" };
@@ -3735,11 +3742,27 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
   keyboardControlStatus.value = "sending_keyboard_pulse";
   try {
     manualCommandPending.value = true;
-    manualCommandResult.value = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForKeyboardDirection(direction));
-    if (keyboardHeldDirection.value === direction) {
+    const result = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForKeyboardDirection(direction));
+    manualCommandResult.value = result;
+    const pulseForwarded = result.proxy_status === "command_forwarded"
+      && typeof result.remote_http_status === "number"
+      && result.remote_http_status >= 200
+      && result.remote_http_status < 300;
+    if (pulseForwarded) {
+      keyboardVerifiedPulseCount.value += 1;
+    }
+    if (keyboardHeldDirection.value === direction && pulseForwarded) {
       keyboardControlStatus.value = "holding_keyboard_jog";
+    } else if (keyboardHeldDirection.value === direction) {
+      clearKeyboardJogTimer();
+      keyboardHeldDirection.value = null;
+      keyboardControlStatus.value = `blocked_keyboard_pulse_failed:${result.failure_reason || result.proxy_status}`;
     }
   } catch (err) {
+    clearKeyboardJogTimer();
+    if (keyboardHeldDirection.value === direction) {
+      keyboardHeldDirection.value = null;
+    }
     keyboardControlStatus.value = `blocked_keyboard_pulse_failed:${err instanceof Error ? err.message : "keyboard_manual_request_failed"}`;
   } finally {
     manualCommandPending.value = false;
