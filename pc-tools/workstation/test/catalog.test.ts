@@ -3862,6 +3862,60 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary derives latest wheel L/R from nested feedback summary", async () => {
+    // 真实上位机 latest 把 wheel raw L/R 放在 nested latest_pair；PC summary 必须提取出来给普通首屏显示。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/base/feedback-samples/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_result: {
+            sends_commands: true,
+            sends_motion_commands: false,
+            robot_control_executed: false,
+            t1001_observed_count: 3,
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_nonzero_observed: false,
+            wheel_feedback_summary: {
+              frame_count: 13,
+              latest_nonzero_pair: null,
+              latest_pair: {
+                left_speed: 0,
+                right_speed: 0,
+                source: "vendor_t1001_L_R",
+              },
+              lr_nonzero_observed: false,
+              matched_frame_count: 13,
+              nonzero_frame_count: 0,
+              source: "vendor_t1001_L_R",
+            },
+          },
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const feedbackLatestReadback = summary.read_endpoints.find((item) => item.id === "base_feedback_samples_latest");
+
+      expect(feedbackLatestReadback?.key_values.wheel_feedback_latest_left_speed).toBe("0");
+      expect(feedbackLatestReadback?.key_values.wheel_feedback_latest_right_speed).toBe("0");
+      expect(feedbackLatestReadback?.key_values.wheel_feedback_nonzero_frame_count).toBe("0");
+      expect(feedbackLatestReadback?.key_values.wheel_feedback_source).toBe("vendor_t1001_L_R");
+      expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("3");
+      expect(summary.readback_summary.base.wheel_feedback_latest_left_speed).toBe("0");
+      expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
+      expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("false");
+      expect(summary.readback_summary.base.wheel_feedback_nonzero_observed).toBe("false");
+      expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_observed_not_motion_proof");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_feedback_samples_latest.latest_result.sends_commands");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary treats structured HIL delivery as operator material only", async () => {
     // /api/operator/report 的 structured_hil_claims 是人工材料索引，不得把 delivery_success claim 当成顶层成功。
     const robotApi = await listenRobotApiReadbackByPath({

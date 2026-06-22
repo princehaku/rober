@@ -1441,3 +1441,9 @@ LiDAR delta。这样保存 wheel 材料不会把已经满足的键盘手控 gate
 避免上位机已经读到的 LiDAR 位移材料在 workstation 合同里被丢弃。普通首屏 `保存轮速记录` 也会在同轮
 first-jog 已消除 LiDAR delta 缺口时，把 `physical_motion_lidar_delta_proven=true` 和可追溯 `scan_delta_ref`
 随 wheel raw L/R 一起写入 operator report；若同轮未证明 LiDAR delta，仍保持缺项，不伪造材料。
+
+2026-06-22 15:45 起，Robot Control summary 会从上位机 `/api/base/feedback-samples/latest` 的
+`wheel_feedback_summary.latest_pair.left_speed/right_speed` 派生既有 `wheel_feedback_latest_left_speed` 和
+`wheel_feedback_latest_right_speed` 摘要字段。这样普通首屏无需重新采样或进入高级诊断，也能直接显示当前只读
+T=1001 wheel raw L/R，例如真实 readback 中的 `L/R=0/0`；该派生只读 latest artifact，不发送运动命令，
+也不把静态 `0/0` 当作 wheel raw L/R 非零证明。

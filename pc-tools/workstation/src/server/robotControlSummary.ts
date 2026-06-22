@@ -379,6 +379,9 @@ const STATUS_KEYS = [
   "wheel_feedback_nonzero_observed",
   "wheel_feedback_latest_left_speed",
   "wheel_feedback_latest_right_speed",
+  "wheel_feedback_nonzero_frame_count",
+  "wheel_feedback_frame_count",
+  "wheel_feedback_source",
   "left_speed",
   "right_speed",
   "latest_scan_once_observed",
@@ -797,7 +800,34 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
     const found = findFirstKey(payload, [key]);
     return found === undefined ? [] : [[key, compactValueText(found)] as const];
   });
-  return Object.fromEntries(entries);
+  const result = Object.fromEntries(entries);
+  appendWheelFeedbackSummaryKeyValues(payload, result, keys);
+  return result;
+}
+
+function appendWheelFeedbackSummaryKeyValues(payload: JsonRecord | null, result: Record<string, string>, keys: readonly string[]): void {
+  // 真实上位机把 L/R 放在 wheel_feedback_summary.latest_pair；这里派生成既有 PC 摘要字段。
+  const wheelSummary = asRecord(findFirstKey(payload, ["wheel_feedback_summary"]));
+  if (!wheelSummary) {
+    return;
+  }
+  const latestPair = asRecord(wheelSummary.latest_pair);
+  const latestNonzeroPair = asRecord(wheelSummary.latest_nonzero_pair);
+  const fill = (key: string, value: unknown): void => {
+    if (!keys.includes(key) || result[key] !== undefined || value === undefined) {
+      return;
+    }
+    result[key] = compactValueText(value);
+  };
+  fill("wheel_feedback_latest_left_speed", latestPair?.left_speed);
+  fill("wheel_feedback_latest_right_speed", latestPair?.right_speed);
+  fill("left_speed", latestPair?.left_speed);
+  fill("right_speed", latestPair?.right_speed);
+  fill("wheel_feedback_nonzero_frame_count", wheelSummary.nonzero_frame_count);
+  fill("wheel_feedback_frame_count", wheelSummary.frame_count);
+  fill("wheel_feedback_source", latestPair?.source ?? wheelSummary.source);
+  fill("wheel_feedback_latest_nonzero_left_speed", latestNonzeroPair?.left_speed);
+  fill("wheel_feedback_latest_nonzero_right_speed", latestNonzeroPair?.right_speed);
 }
 
 function summaryValueText(payload: JsonRecord | null, keys: string[], fallback = "not_loaded"): string {
