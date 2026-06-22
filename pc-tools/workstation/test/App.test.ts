@@ -4313,6 +4313,7 @@ describe("App", () => {
       duration_ms: 500,
       confirm_hil_checklist: true,
     });
+    expect(mockedFetch.mock.calls.some(([callUrl]) => String(callUrl).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([callUrl]) => String(callUrl).startsWith("/api/robot-control/base/manual?"))).toBe(false);
 
     const firstScreenAfter = visiblePlainHomeText(wrapper);
@@ -4435,6 +4436,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    expect(mockedFetch.mock.calls.some(([callUrl]) => String(callUrl).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("已试动");
     expect(firstScreenText).toContain("轮速证据已拿到：L/R=0.08/0.08，运动帧=3。");

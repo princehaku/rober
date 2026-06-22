@@ -3038,6 +3038,7 @@ async function sendPlainFirstJog(): Promise<void> {
   } finally {
     manualCommandResult.value = plainFirstJogResult.value;
     manualCommandPending.value = false;
+    await runBaseFeedbackSamples({ refreshAfter: false });
     await refreshConsole();
   }
 }
