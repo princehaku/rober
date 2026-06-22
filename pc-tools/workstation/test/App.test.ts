@@ -5770,7 +5770,9 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("待确认");
     expect(deliveryStatus.text()).toContain("行程已完成");
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：已观察到到达/移动、确认已投放/送达。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：准备送达材料。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：已观察到到达/移动、确认已投放/送达。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：准备送达材料。");
     expect(deliveryStatus.text()).toContain("最终确认");
     expect(deliveryStatus.text()).toContain("待材料");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 8 项：送达材料");
@@ -5960,7 +5962,9 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("已预填");
     expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：勾选安全三项。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选安全三项。");
     expect((wrapper.find('input[name="deliveryOperatorEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-draft-smoke-1782102952");
     expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe("/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-1782099547218");

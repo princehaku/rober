@@ -618,6 +618,30 @@ const plainDeliveryGateMissingSummary = computed(() => {
   return `上位机还差：${labels.join("、")}。`;
 });
 
+const plainDeliveryNextActionSummary = computed(() => {
+  // 送达 gate 缺项很多时，普通首屏只给一个下一步，避免现场人员在多按钮之间来回猜。
+  if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
+    return "";
+  }
+  if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
+    return "下一步：准备送达材料。";
+  }
+  const confirmations = deliveryOperatorConfirmations.value;
+  if (!confirmations.operator_present || !confirmations.physical_clearance_confirmed || !confirmations.emergency_stop_ready) {
+    return "下一步：勾选安全三项。";
+  }
+  if (!confirmations.observed_motion || !confirmations.observed_stop) {
+    return "下一步：确认已到达并停稳。";
+  }
+  if (!confirmations.route_video_refs_verified) {
+    return "下一步：核对视频和行程材料。";
+  }
+  if (!confirmations.delivery_success) {
+    return "下一步：确认已投放/送达。";
+  }
+  return "下一步：点击确认送达。";
+});
+
 const deliveryNav2GoalReady = computed(() => {
   // Nav2 success 可来自刚执行结果、latest 读回或 delivery gate 的压缩 key values。
   const latestStatus = deliveryLatestResult.value?.delivery_key_values.nav2_status
@@ -809,9 +833,10 @@ const plainDeliveryGoalProgressHint = computed(() => {
   // 送达进度优先显示上位机 gate 缺项；它只是提示，不自动勾选或提交最终确认。
   const missingSummary = plainDeliveryGateMissingSummary.value;
   if (missingSummary) {
-    return missingSummary.replace(/^上位机还差：/, "还差：");
+    const nextAction = plainDeliveryNextActionSummary.value;
+    return `${missingSummary.replace(/^上位机还差：/, "还差：")}${nextAction ? ` ${nextAction}` : ""}`;
   }
-  return "还缺最终送达确认。";
+  return plainDeliveryNextActionSummary.value || "还缺最终送达确认。";
 });
 
 const plainGoalProgressItems = computed(() => {
@@ -3747,6 +3772,9 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainDeliverySummary.hint }}</p>
             <p v-if="plainDeliveryGateMissingSummary" class="panel-note" data-testid="plain-delivery-gate-missing">
               {{ plainDeliveryGateMissingSummary }}
+            </p>
+            <p v-if="plainDeliveryNextActionSummary" class="panel-note" data-testid="plain-delivery-next-action">
+              {{ plainDeliveryNextActionSummary }}
             </p>
             <div class="simple-status-row plain-delivery-material-row">
               <span class="status-chip" :data-state="plainDeliveryMaterialSummary.state">{{ plainDeliveryMaterialSummary.state }}</span>
