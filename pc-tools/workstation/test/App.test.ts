@@ -3743,6 +3743,7 @@ describe("App", () => {
         hard_dangerous_true_fields: [],
       },
     });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const wrapper = mount(App);
     await flushPromises();
@@ -3777,6 +3778,7 @@ describe("App", () => {
       confirm_navigation_preflight: true,
     });
 
+    const focusCallsBeforeExecute = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -3801,6 +3803,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程（只读）");
     expect(visiblePlainHomeText(wrapper)).toContain("行程材料已在，点准备送达材料补画面。");
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeExecute);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-status"]').element);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(visiblePlainHomeText(wrapper)).not.toContain("Nav2");

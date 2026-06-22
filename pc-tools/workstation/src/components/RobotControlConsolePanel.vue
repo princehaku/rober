@@ -3364,6 +3364,9 @@ async function runPlainTripExecution(): Promise<void> {
   confirmNavigationExecution.value = true;
   await runNavGoalExecution();
   fillDeliveryRouteRefFromLatestNav2();
+  if (deliveryNav2GoalReady.value) {
+    await focusPlainDeliveryStatusPanel();
+  }
 }
 
 async function loadNavGoalExecutionLatest(): Promise<void> {
@@ -3456,6 +3459,17 @@ function focusPlainGoalProgressTarget(targetId: string): void {
     keyboard: keyboardControlPanel.value,
   };
   const target = targetMap[targetId];
+  if (!target) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
+}
+
+async function focusPlainDeliveryStatusPanel(): Promise<void> {
+  // 行程成功后只把现场带到送达材料区；不能自动准备材料、提交报告或确认送达。
+  await nextTick();
+  const target = plainDeliveryStatusPanel.value;
   if (!target) {
     return;
   }
