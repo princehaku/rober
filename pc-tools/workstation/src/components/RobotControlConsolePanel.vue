@@ -699,6 +699,39 @@ const goalClosureChecklist = computed(() => {
   ];
 });
 
+const plainGoalProgressItems = computed(() => {
+  // 普通首屏只展示用户能决策的四件事；工程字段继续留在高级诊断。
+  const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
+  const navReady = goalClosureChecklist.value.find((item) => item.id === "nav2_goal_execution")?.ready === true;
+  const deliveryReady = goalClosureChecklist.value.find((item) => item.id === "delivery_success")?.ready === true;
+  return [
+    {
+      id: "wheel",
+      label: "轮速记录",
+      state: wheelReady ? "已完成" : "待完成",
+      hint: wheelReady ? "已读到非零 L/R。" : "等待运动窗口读到非零 L/R。",
+    },
+    {
+      id: "trip",
+      label: "行程执行",
+      state: navReady ? "已完成" : "待完成",
+      hint: navReady ? "最近行程已读到成功结果。" : "还没读到最近行程成功结果。",
+    },
+    {
+      id: "delivery",
+      label: "送达确认",
+      state: deliveryReady ? "已完成" : "待完成",
+      hint: deliveryReady ? "送达已确认。" : "还缺最终送达确认。",
+    },
+    {
+      id: "keyboard",
+      label: "键盘手控",
+      state: canSendManualMotion.value ? "可使用" : "未满足",
+      hint: canSendManualMotion.value ? "可启用键盘面板。" : "先完成移动前检查和轮速记录。",
+    },
+  ];
+});
+
 const firstJogVisualMaterialReady = computed(() => {
   // first-jog readiness 由 PC summary 后端统一判定，避免普通首屏和 API 合同漂移。
   return robotSummary.value?.first_jog_readiness_summary?.visual_material_ready === true;
@@ -3185,6 +3218,14 @@ onBeforeUnmount(() => {
             <p class="panel-note">W/A/S/D 或方向键：前进、左转、后退、右转。</p>
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
+          <div class="plain-goal-progress" data-testid="plain-goal-progress">
+            <strong>本轮进度</strong>
+            <div v-for="item in plainGoalProgressItems" :key="item.id" class="plain-progress-row">
+              <span class="plain-progress-label">{{ item.label }}</span>
+              <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+              <span class="muted">{{ item.hint }}</span>
+            </div>
+          </div>
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
           <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>
           <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>

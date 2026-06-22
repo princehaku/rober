@@ -263,6 +263,7 @@ h3 {
 .status-chip[data-state="已打开"],
 .status-chip[data-state="已刷新"],
 .status-chip[data-state="已启用"],
+.status-chip[data-state="已完成"],
 .status-chip[data-state="路径可生成"] {
   border-color: #bfd4c6;
   background: #eff8f1;
@@ -284,6 +285,7 @@ h3 {
 .status-chip[data-state="未检查"],
 .status-chip[data-state="未确认"],
 .status-chip[data-state="未满足"],
+.status-chip[data-state="待完成"],
 .status-chip[data-state="locked"] {
   background: #f5f7fa;
   color: #5f6b7a;
@@ -292,6 +294,7 @@ h3 {
 .status-chip[data-state="可点动"],
 .status-chip[data-state="已发送"],
 .status-chip[data-state="可手控"],
+.status-chip[data-state="可使用"],
 .status-chip[data-state="手控中"] {
   border-color: #d5d2a9;
   background: #fbf8e8;
@@ -447,6 +450,27 @@ h3 {
   color: #334455;
   font-size: 13px;
   line-height: 30px;
+}
+
+.plain-goal-progress {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px solid #d7dee6;
+  padding-top: 12px;
+}
+
+.plain-goal-progress strong,
+.plain-progress-label {
+  color: #253341;
+  font-size: 14px;
+}
+
+.plain-progress-row {
+  display: grid;
+  grid-template-columns: minmax(70px, auto) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
 }
 
 .plain-delivery-status {

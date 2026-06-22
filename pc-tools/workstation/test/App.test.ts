@@ -3227,6 +3227,13 @@ describe("App", () => {
     expect(firstScreenText).toContain("键盘停止");
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(firstScreenText).toContain("当前方向：未按键");
+    expect(firstScreenText).toContain("本轮进度");
+    expect(firstScreenText).toContain("轮速记录");
+    expect(firstScreenText).toContain("行程执行");
+    expect(firstScreenText).toContain("送达确认");
+    expect(firstScreenText).toContain("键盘手控");
+    expect(firstScreenText).toContain("先完成移动前检查和轮速记录。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
     expect(wrapper.find(".simple-user-console [data-testid='keyboard-control-panel']").exists()).toBe(true);
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find(".simple-user-console .motion-pad").exists()).toBe(false);
@@ -4821,6 +4828,7 @@ describe("App", () => {
     const armButton = wrapper.find('[data-testid="keyboard-control-arm"]');
     expect(armButton.attributes("disabled")).toBeUndefined();
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text().replace(/\s+/g, "")).toContain("键盘手控可使用");
     await armButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
