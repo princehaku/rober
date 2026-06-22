@@ -762,6 +762,10 @@ const plainDeliveryMaterialSummary = computed(() => {
   return { state: "待行程", hint: "需要先读到最近行程结果，再准备送达材料。" };
 });
 
+const plainDeliveryDraftSaveButtonLabel = computed(() => (
+  operatorReportPending.value ? "保存中" : "保存送达草稿（不确认）"
+));
+
 const plainDeliveryConfirmReady = computed(() => {
   // 普通确认入口复用高级 gate：材料和逐项勾选都满足后才允许提交。
   return !loading.value
@@ -3972,9 +3976,10 @@ onBeforeUnmount(() => {
                 type="button"
                 class="secondary compact-stop"
                 :disabled="loading || operatorReportPending || !robotApiBaseUrl.trim() || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()"
+                data-testid="plain-delivery-draft-save"
                 @click="submitDeliveryDraftMaterial"
               >
-                保存送达草稿
+                {{ plainDeliveryDraftSaveButtonLabel }}
               </button>
             </div>
             <p class="panel-note">{{ plainDeliveryMaterialSummary.hint }}</p>

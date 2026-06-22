@@ -5853,10 +5853,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(wrapper.find('[data-testid="plain-delivery-draft-save"]').text()).toBe("保存送达草稿（不确认）");
 
     const checkCallsBeforeDraftSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/check?")).length;
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-    await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "保存送达草稿")?.trigger("click");
+    await wrapper.find('[data-testid="plain-delivery-draft-save"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 

@@ -1593,3 +1593,8 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 2026-06-22 18:15 起，普通首屏 `本轮进度` 的刷新按钮显示为 `刷新进度（只读）`，pending 时显示 `刷新中`。
 它仍只刷新 summary、base feedback samples、Nav2 latest 和 delivery latest/check 读回，不执行行程、不确认送达、
 不发送 manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
+
+2026-06-22 18:19 起，普通首屏 `保存送达草稿` 显示为 `保存送达草稿（不确认）`，pending 时显示 `保存中`。
+该按钮仍只提交 material-only operator report 草稿，写入 `delivery_success=false` 和
+`delivery_material_draft_not_operator_confirmed`，不会调用 delivery complete、Nav2、manual、first-jog、stop、
+keyboard pulse 或 `/cmd_vel`。
