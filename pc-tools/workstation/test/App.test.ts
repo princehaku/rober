@@ -4178,6 +4178,8 @@ describe("App", () => {
     }));
     const firstJogButtonAfterRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButtonAfterRestore?.attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始试动读轮速");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
     expect(visiblePlainHomeText(wrapper)).not.toContain("试动按钮已锁定");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
