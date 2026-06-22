@@ -3659,6 +3659,7 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
+              <button class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainGoalProgress">复查手控条件</button>
               <button class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">启用键盘</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
             </div>

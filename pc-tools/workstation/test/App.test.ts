@@ -3860,6 +3860,16 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(wrapper.find(".robot-console .advanced-details").text()).not.toContain("blocked_keyboard_manual_gate");
+    const feedbackCallsBeforeKeyboardRecheck = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/feedback-samples?"),
+    ).length;
+    await wrapper.find('[data-testid="keyboard-control-recheck"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(
+      mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?")).length,
+    ).toBe(feedbackCallsBeforeKeyboardRecheck + 1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
 
     await stopButton?.trigger("click");
     await flushPromises();
