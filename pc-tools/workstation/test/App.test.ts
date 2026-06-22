@@ -5786,6 +5786,7 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("最终确认");
     expect(deliveryStatus.text()).toContain("待材料");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 8 项：送达材料");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（还差 8 项）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(visiblePlainHomeText(wrapper)).not.toContain("delivery_success");
     expect(visiblePlainHomeText(wrapper)).not.toContain("/api/delivery");
@@ -5814,6 +5815,7 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 7 项");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("确认已投放/送达");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（还差 7 项）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
@@ -5867,12 +5869,14 @@ describe("App", () => {
     expect((wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').element as HTMLInputElement).checked).toBe(true);
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("确认已投放/送达");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（还差 1 项）");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
 
     await wrapper.find('[data-testid="plain-delivery-mark-success"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect((wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').element as HTMLInputElement).checked).toBe(true);
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
 

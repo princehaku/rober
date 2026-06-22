@@ -574,11 +574,11 @@ const deliveryOperatorConfirmationReady = computed(() => {
     && confirmations.delivery_success;
 });
 
-const plainDeliveryConfirmMissingSummary = computed(() => {
+const plainDeliveryConfirmMissingLabels = computed(() => {
   // 最终确认区要先提示材料缺口，再提示现场勾选项，避免现场在按钮之间来回猜。
   const confirmations = deliveryOperatorConfirmations.value;
   const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim());
-  const missingLabels = [
+  return [
     { label: "送达材料", ready: materialReady },
     { label: "人在旁边可接管", ready: confirmations.operator_present },
     { label: "周围安全", ready: confirmations.physical_clearance_confirmed },
@@ -588,10 +588,20 @@ const plainDeliveryConfirmMissingSummary = computed(() => {
     { label: "视频和行程材料已核对", ready: confirmations.route_video_refs_verified },
     { label: "确认已投放/送达", ready: confirmations.delivery_success },
   ].filter((item) => !item.ready).map((item) => item.label);
+});
+
+const plainDeliveryConfirmMissingSummary = computed(() => {
+  const missingLabels = plainDeliveryConfirmMissingLabels.value;
   if (missingLabels.length === 0) {
     return "全部确认项已勾选，可以提交。";
   }
   return `还差 ${missingLabels.length} 项：${missingLabels.join("、")}。`;
+});
+
+const plainDeliveryConfirmButtonLabel = computed(() => {
+  // 按钮禁用时直接显示缺项数量，减少现场人员在按钮和说明之间来回找原因。
+  const missingCount = plainDeliveryConfirmMissingLabels.value.length;
+  return missingCount > 0 ? `确认送达（还差 ${missingCount} 项）` : "确认送达";
 });
 
 const deliveryGateBlockedReasons = computed(() => {
@@ -3942,7 +3952,7 @@ onBeforeUnmount(() => {
                 data-testid="plain-delivery-confirm-submit"
                 @click="submitDeliveryOperatorReportAndComplete"
               >
-                确认送达
+                {{ plainDeliveryConfirmButtonLabel }}
               </button>
             </div>
           </div>

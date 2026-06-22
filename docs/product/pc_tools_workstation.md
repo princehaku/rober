@@ -1530,3 +1530,8 @@ first-jog、manual、stop、Nav2 或 `/cmd_vel`，也不把静态 T1001 反馈�
 `最近行程成功，反馈 ... 次；送达仍需现场确认。` 该摘要只消费 `/api/robot-control/nav2/goal/execution/latest`
 或 delivery gate 已读到的压缩 key，不展示 evidence ref、Nav2/API/proof 字段，不触发行程执行、送达确认、
 manual 或 `/cmd_vel`，也不把行程成功外推成 delivery success。
+
+2026-06-22 17:29 起，普通首屏 `最终确认` 的 `确认送达` 按钮在禁用时直接显示缺项数量，例如
+`确认送达（还差 8 项）`；全部确认项满足后恢复为 `确认送达`。按钮文案和 `还差 ... 项` 提示共用同一
+缺项列表，只改善现场可读性，不放宽 `plainDeliveryConfirmReady`，也不自动提交 operator report 或
+`/api/delivery/complete`。
