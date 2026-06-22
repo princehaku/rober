@@ -1267,3 +1267,13 @@ PC 会按危险字段阻断。
 `/api/robot-control/delivery/complete` 交给上位机 gate 合成最终结论；缺任一项时 PC 不提交 operator report，
 也不调用 delivery complete。该变化只收紧高级送达收口入口，不改变普通用户首屏，也不把当前草稿材料、
 camera sample 或 Nav2 goal succeeded 自动外推成真实 delivery success。
+
+2026-06-22 15:55 起，高级点动区新增 `wheel raw L/R progress` 摘要，用于区分 WAVE ROVER vendor
+`T=1001` 静态反馈链路和真实运动窗口轮速证明。该摘要采用 `docs/vendor/VENDOR_INDEX.md` 指向的
+WAVE ROVER UART JSON 事实：`T=130` 可请求底盘反馈，`T=1001` 的 `L/R` 是 raw 轮速字段；但
+`POST /api/robot-control/base/feedback-samples` 不发送运动命令，所以即使观察到 `T=1001`，只要
+`sends_motion_commands=false` 且 `L/R=0/0`，PC 会显示 `static T1001 feedback only`，提示下一步是恢复
+first-jog/operator report 材料后再运行轮速非零试采。若 manual/first-jog 返回
+`remote_motion_key_values`，该摘要优先展示 during-motion `feedback_during_motion_t1001_frame_count`、
+raw `latest_L/latest_R` 和 `wheel_feedback_lr_nonzero_proven`；若被 operator report preflight 挡住，
+则直接显示缺失字段，避免现场把静态采样误判成 wheel raw L/R 非零。

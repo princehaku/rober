@@ -3658,6 +3658,9 @@ describe("App", () => {
     expect(diagnosticsText).toContain("nonzero_frames=0");
     expect(diagnosticsText).toContain("proven=false");
     expect(diagnosticsText).toContain("source=vendor_t1001_L_R");
+    expect(diagnosticsText).toContain("wheel raw L/R progress");
+    expect(diagnosticsText).toContain("static T1001 feedback only");
+    expect(diagnosticsText).toContain("next=restore first-jog materials then run wheel nonzero trial");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });

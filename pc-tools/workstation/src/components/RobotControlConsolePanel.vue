@@ -418,6 +418,40 @@ const baseFeedbackSamplesSummary = computed(() => {
   const values = result.sample_key_values;
   return `${result.proxy_status}; status=${result.status}; t1001=${values.t1001_observed_count}/${values.completed_sample_count}; L/R=${values.wheel_feedback_latest_left_speed}/${values.wheel_feedback_latest_right_speed}; nonzero=${values.wheel_feedback_lr_nonzero_proven}; motion=${values.sends_motion_commands}; reason=${result.failure_reason || "none"}`;
 });
+const wheelRawLrProgressSummary = computed(() => {
+  // 轮速非零只能由运动窗口 during-motion T1001 证明；静态采样和草稿材料只能给下一步提示。
+  if (manualCommandPending.value) {
+    return "motion window capture pending";
+  }
+  const motionValues = manualCommandResult.value?.remote_motion_key_values;
+  if (motionValues) {
+    if (motionValues.wheel_feedback_lr_nonzero_proven === "true") {
+      return `motion window nonzero proven; frames=${motionValues.feedback_during_motion_t1001_frame_count ?? "not_loaded"}; L/R=${motionValues.wheel_feedback_latest_raw_left ?? "not_loaded"}/${motionValues.wheel_feedback_latest_raw_right ?? "not_loaded"}`;
+    }
+    if (manualCommandResult.value?.operator_report_preflight.status === "blocked") {
+      const missing = manualCommandResult.value.operator_report_preflight.missing_fields.join(",");
+      return `motion gate blocked by operator report; missing=${missing || "unknown"}; report=${manualCommandResult.value.operator_report_preflight.report_status}`;
+    }
+    return `motion attempted but nonzero not proven; frames=${motionValues.feedback_during_motion_t1001_frame_count ?? "0"}; L/R=${motionValues.wheel_feedback_latest_raw_left ?? "not_loaded"}/${motionValues.wheel_feedback_latest_raw_right ?? "not_loaded"}; next=check motor enable, power, mode, floor clearance`;
+  }
+  const sampleValues = baseFeedbackSamplesResult.value?.sample_key_values;
+  if (sampleValues) {
+    if (sampleValues.wheel_feedback_lr_nonzero_proven === "true") {
+      return `feedback sample reported nonzero; L/R=${sampleValues.wheel_feedback_latest_left_speed}/${sampleValues.wheel_feedback_latest_right_speed}; still prefer motion window proof`;
+    }
+    if (sampleValues.sends_motion_commands === "false") {
+      return `static T1001 feedback only; L/R=${sampleValues.wheel_feedback_latest_left_speed}/${sampleValues.wheel_feedback_latest_right_speed}; t1001=${sampleValues.t1001_observed_count}; next=restore first-jog materials then run wheel nonzero trial`;
+    }
+  }
+  const firstJog = robotSummary.value?.first_jog_readiness_summary;
+  if (firstJog && firstJog.status !== "ready_for_first_jog") {
+    return `first-jog not ready; status=${firstJog.status}; missing=${firstJog.missing_fields.join(",") || "none"}; next=${firstJog.next_action}`;
+  }
+  if (firstJog?.status === "ready_for_first_jog") {
+    return "first-jog ready; next=run wheel nonzero trial while operator watches stop";
+  }
+  return "not checked; run base feedback sample or first-jog readiness first";
+});
 const evidenceSweepSummary = computed(() => {
   // 一键巡检聚合固定代理结果；blocked 仍按 blocked 展示，不伪装成全量通过。
   if (evidenceSweepPending.value) {
@@ -3422,6 +3456,8 @@ onBeforeUnmount(() => {
               proven={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_lr_nonzero_proven ?? "false" }},
               source={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_source ?? "not_loaded" }}
             </dd>
+            <dt>wheel raw L/R progress</dt>
+            <dd>{{ wheelRawLrProgressSummary }}</dd>
             <dt>base feedback safety</dt>
             <dd>
               motion={{ baseFeedbackSamplesResult?.sample_key_values.sends_motion_commands ?? "false" }},
