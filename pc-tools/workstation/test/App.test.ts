@@ -5793,6 +5793,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
 
     const checkCallsBeforeDraftSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/check?")).length;
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "保存送达草稿")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -5811,8 +5812,9 @@ describe("App", () => {
       site_state: "delivery_material_draft_not_operator_confirmed",
     }));
     expect(deliveryStatus.text()).toContain("已保存");
-    expect(deliveryStatus.text()).toContain("仍需现场最终确认");
+    expect(deliveryStatus.text()).toContain("请完成下方最终确认");
     expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
+    expect(focusSpy).toHaveBeenCalledTimes(1);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/check?")).length).toBe(checkCallsBeforeDraftSave + 1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

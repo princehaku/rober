@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   getO7ConsumerTaskDetail,
   getRobotControlSummary,
@@ -195,6 +195,7 @@ const keyboardControlPanel = ref<HTMLElement | null>(null);
 const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
+const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
 const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
@@ -658,7 +659,7 @@ const plainDeliveryMaterialSummary = computed(() => {
     return { state: "准备中", hint: "正在读取最近行程和画面材料。" };
   }
   if (operatorReportResult.value?.structured_hil_claims?.site_state === "delivery_material_draft_not_operator_confirmed") {
-    return { state: "已保存", hint: "送达材料草稿已保存；仍需现场最终确认。" };
+    return { state: "已保存", hint: "送达材料草稿已保存；请完成下方最终确认。" };
   }
   if (deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "已预填", hint: "视频和行程材料已预填，可先保存草稿。" };
@@ -2790,6 +2791,8 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
   }
   if (draftSaved) {
     await checkDeliveryGap();
+    await nextTick();
+    plainDeliveryFinalPanel.value?.focus();
   } else {
     await loadDeliveryLatest();
     await refreshConsole();
@@ -3737,7 +3740,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainDeliveryMaterialSummary.hint }}</p>
-            <div class="plain-delivery-final" data-testid="plain-delivery-final-confirm">
+            <div ref="plainDeliveryFinalPanel" class="plain-delivery-final" tabindex="-1" data-testid="plain-delivery-final-confirm">
               <div class="simple-status-row">
                 <strong>最终确认</strong>
                 <span class="status-chip" :data-state="plainDeliveryConfirmSummary.state">{{ plainDeliveryConfirmSummary.state }}</span>
