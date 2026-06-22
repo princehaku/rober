@@ -87,6 +87,8 @@ const plainVisualMaterialResult = ref<RobotControlOperatorReportProxyResponse | 
 const plainFirstJogMaterialRestorePending = ref(false);
 const plainFirstJogMaterialRestoreResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainFirstJogResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
+const plainWheelEvidenceSavePending = ref(false);
+const plainWheelEvidenceSaveResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainExternalVideoRef = ref("");
 const operatorReportEvidenceRef = ref("");
 const operatorReportSiteState = ref("field_operator_claim_ready_for_review");
@@ -616,6 +618,26 @@ const plainFirstJogEvidenceSummary = computed(() => {
     return `轮速证据已拿到：L/R=${left}/${right}，运动帧=${frames}。`;
   }
   return `已试动，但轮速非零还没拿到：L/R=${left}/${right}，运动帧=${frames}。`;
+});
+
+const plainWheelEvidenceSaveSummary = computed(() => {
+  // 保存状态只用普通话术；完整 operator report 响应留在高级诊断。
+  if (plainWheelEvidenceSavePending.value) {
+    return "正在保存轮速证据。";
+  }
+  if (!plainWheelEvidenceSaveResult.value) {
+    return "";
+  }
+  if (plainWheelEvidenceSaveResult.value.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked") {
+    return "轮速证据已保存；后续手控材料可复用。";
+  }
+  return "轮速证据保存失败；请查看高级诊断。";
+});
+
+const plainFirstJogWheelEvidenceReady = computed(() => {
+  // 只有后端 first-jog 响应明确证明 L/R 非零时，才允许保存 wheel feedback claim。
+  return plainFirstJogResult.value?.proxy_status === "command_forwarded"
+    && plainFirstJogResult.value.remote_motion_key_values?.wheel_feedback_lr_nonzero_proven === "true";
 });
 
 const canSendManualMotion = computed(() => {
@@ -1337,6 +1359,40 @@ function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRe
       real_route_map_proven: false,
       delivery_success: false,
       site_state: "plain_first_jog_material_restored_for_trial",
+    },
+  };
+}
+
+function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportRequest {
+  // 轮速材料只能来自 first-jog 返回的 during-motion T1001 非零证明；不补 LiDAR/route/delivery。
+  const values = plainFirstJogResult.value?.remote_motion_key_values ?? {};
+  const left = values.wheel_feedback_latest_raw_left ?? "not_loaded";
+  const right = values.wheel_feedback_latest_raw_right ?? "not_loaded";
+  const frames = values.feedback_during_motion_t1001_frame_count ?? "0";
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  const externalVideoRef = claimRefFromSummary(summary?.external_video);
+  const cameraArtifactRef = claimRefFromSummary(summary?.camera_visible);
+  const wheelRef = `pc-first-jog-wheel-lr-${Date.now()}`;
+  return {
+    operator_present: true,
+    evidence_ref: wheelRef,
+    physical_clearance_confirmed: true,
+    emergency_stop_ready: true,
+    observed_motion: true,
+    observed_stop: true,
+    reported_at: new Date().toISOString(),
+    operator_notes: `PC first-jog wheel evidence save; L/R=${left}/${right}; during_motion_t1001_frames=${frames}; does not prove lidar delta, route map, or delivery success.`,
+    structured_hil_claims: {
+      external_video_recorded: Boolean(externalVideoRef),
+      ...(externalVideoRef ? { external_video_ref: externalVideoRef } : {}),
+      visible_content_proven: Boolean(cameraArtifactRef),
+      ...(cameraArtifactRef ? { camera_artifacts_ref: cameraArtifactRef } : {}),
+      wheel_feedback_lr_nonzero_proven: true,
+      wheel_feedback_ref: wheelRef,
+      physical_motion_lidar_delta_proven: false,
+      real_route_map_proven: false,
+      delivery_success: false,
+      site_state: "plain_first_jog_wheel_lr_nonzero_observed",
     },
   };
 }
@@ -2272,6 +2328,24 @@ async function sendPlainFirstJog(): Promise<void> {
   }
 }
 
+async function savePlainWheelEvidence(): Promise<void> {
+  // 保存轮速材料只写 operator report；不补 LiDAR/route/delivery，也不再次发送运动命令。
+  if (!robotApiBaseUrl.value.trim() || plainWheelEvidenceSavePending.value || operatorReportPending.value || !plainFirstJogWheelEvidenceReady.value) {
+    return;
+  }
+  const requestBody = plainWheelEvidenceReportRequestBody();
+  plainWheelEvidenceSavePending.value = true;
+  try {
+    plainWheelEvidenceSaveResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, requestBody);
+  } catch (err) {
+    plainWheelEvidenceSaveResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "plain_wheel_evidence_save_failed", requestBody);
+  } finally {
+    operatorReportResult.value = plainWheelEvidenceSaveResult.value;
+    plainWheelEvidenceSavePending.value = false;
+    await refreshConsole();
+  }
+}
+
 async function runCameraFirstFrameProbe(): Promise<void> {
   // 这个按钮只触发上位机固定首帧探针，不创建 WebRTC peer，也不发送任何运动命令。
   if (!robotApiBaseUrl.value.trim() || cameraFirstFrameProbePending.value) {
@@ -2819,11 +2893,15 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canSendPlainFirstJog" @click="sendPlainFirstJog">
               试动一下
             </button>
+            <button v-if="plainFirstJogWheelEvidenceReady || plainWheelEvidenceSavePending || plainWheelEvidenceSaveResult" type="button" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" @click="savePlainWheelEvidence">
+              保存轮速证据
+            </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
           <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>
+          <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>
         </article>
       </div>
     </div>

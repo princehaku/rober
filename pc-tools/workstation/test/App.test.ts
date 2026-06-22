@@ -3551,6 +3551,30 @@ describe("App", () => {
       "/api/robot-control/base/manual": {
         proxy_status: "should_not_be_called",
       },
+      "/api/robot-control/operator/report": {
+        schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+        proxy_status: "report_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/operator/report",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        structured_hil_claims: { wheel_feedback_lr_nonzero_proven: true, delivery_success: false },
+        rejected_fields: [],
+        ignored_fields: [],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
     });
 
     const wrapper = mount(App);
@@ -3991,6 +4015,33 @@ describe("App", () => {
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(firstScreenText).not.toContain(token);
     }
+    const saveWheelButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速证据");
+    expect(saveWheelButton).toBeTruthy();
+    expect(saveWheelButton?.attributes("disabled")).toBeUndefined();
+    await saveWheelButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCall).toBeTruthy();
+    const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(reportBody).toEqual(expect.objectContaining({
+      operator_present: true,
+      physical_clearance_confirmed: true,
+      emergency_stop_ready: true,
+      observed_motion: true,
+      observed_stop: true,
+    }));
+    expect(String(reportBody.evidence_ref)).toMatch(/^pc-first-jog-wheel-lr-/);
+    expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      wheel_feedback_lr_nonzero_proven: true,
+      physical_motion_lidar_delta_proven: false,
+      real_route_map_proven: false,
+      delivery_success: false,
+      site_state: "plain_first_jog_wheel_lr_nonzero_observed",
+    }));
+    expect(String(reportBody.structured_hil_claims.wheel_feedback_ref)).toMatch(/^pc-first-jog-wheel-lr-/);
+    expect(visiblePlainHomeText(wrapper)).toContain("轮速证据已保存；后续手控材料可复用。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
