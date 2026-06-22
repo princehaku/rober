@@ -451,6 +451,10 @@ h3 {
   font-size: 14px;
 }
 
+.plain-delivery-material-row {
+  margin-top: 10px;
+}
+
 .delivery-closure-check {
   margin-top: 10px;
   border: 1px solid #d7dee6;

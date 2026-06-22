@@ -5091,7 +5091,103 @@ describe("App", () => {
         hard_dangerous_true_fields: [],
         robot_control_executed: false,
       },
-      "/api/robot-control/operator/report": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-plain-fixture",
+          result_status: "succeeded",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/camera/first-frame/probe": {
+        schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+        proxy_status: "probe_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/camera/first-frame/probe",
+        remote_http_status: 200,
+        status: "frame_read",
+        probe_key_values: {
+          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
+          device: "/dev/video1",
+          requested_fourcc: "MJPG",
+          open_ok: "true",
+          read_ok: "true",
+          first_frame_timeout: "false",
+          failure_reason: "",
+          visible_content_proven: "true",
+          visible_content_candidate: "true",
+          sample_path: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+          sample_write_ok: "true",
+          elapsed_ms: "120",
+          mean_luma: "42.0",
+          max_luma: "220",
+          dynamic_range_luma: "180",
+          non_black_ratio: "0.8",
+          backend_smoke_status: "not_requested",
+          backend_frame_observed: "false",
+          backend_attempts: "0",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": {
+        schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+        proxy_status: "report_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/operator/report",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        structured_hil_claims: {
+          external_video_recorded: true,
+          external_video_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+          real_route_map_proven: true,
+          route_map_ref: "o11-nav2-goal-execution-plain-fixture",
+          delivery_success: false,
+          site_state: "delivery_material_draft_not_operator_confirmed",
+        },
+        rejected_fields: [],
+        ignored_fields: [],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
       "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
     });
 
@@ -5123,6 +5219,37 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+
+    await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "准备送达材料")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(deliveryStatus.text()).toContain("已预填");
+    expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+
+    await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "保存送达草稿")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCall).toBeTruthy();
+    const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(reportBody.observed_motion).toBe(false);
+    expect(reportBody.observed_stop).toBe(false);
+    expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      external_video_recorded: true,
+      external_video_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+      real_route_map_proven: true,
+      route_map_ref: "o11-nav2-goal-execution-plain-fixture",
+      delivery_success: false,
+      site_state: "delivery_material_draft_not_operator_confirmed",
+    }));
+    expect(deliveryStatus.text()).toContain("已保存");
+    expect(deliveryStatus.text()).toContain("仍需现场最终确认");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {

@@ -575,6 +575,26 @@ const plainDeliverySummary = computed(() => {
   return { state: "未读取", hint: "点击刷新送达状态，只读取结果，不执行行程或确认送达。" };
 });
 
+const plainDeliveryMaterialSummary = computed(() => {
+  // 送达材料草稿只说明“有没有准备好”；不显示 ref、字段名或 delivery claim。
+  if (operatorReportPending.value) {
+    return { state: "保存中", hint: "正在保存送达材料草稿；不会确认送达。" };
+  }
+  if (navGoalExecutionLatestPending.value || cameraFirstFrameProbePending.value || deliveryLatestPending.value) {
+    return { state: "准备中", hint: "正在读取最近行程和画面材料。" };
+  }
+  if (operatorReportResult.value?.structured_hil_claims?.site_state === "delivery_material_draft_not_operator_confirmed") {
+    return { state: "已保存", hint: "送达材料草稿已保存；仍需现场最终确认。" };
+  }
+  if (deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim()) {
+    return { state: "已预填", hint: "视频和行程材料已预填，可先保存草稿。" };
+  }
+  if (deliveryNav2GoalReady.value) {
+    return { state: "可准备", hint: "已读到最近行程结果，可以准备送达材料。" };
+  }
+  return { state: "待行程", hint: "需要先读到最近行程结果，再准备送达材料。" };
+});
+
 const deliveryClosureChecklist = computed(() => {
   // 这个摘要只是 UI 收口提示，不自动勾选、不提交、不把 delivery_success 提升为 true。
   const confirmations = deliveryOperatorConfirmations.value;
@@ -3156,6 +3176,26 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainDeliverySummary.hint }}</p>
+            <div class="simple-status-row plain-delivery-material-row">
+              <span class="status-chip" :data-state="plainDeliveryMaterialSummary.state">{{ plainDeliveryMaterialSummary.state }}</span>
+              <button
+                type="button"
+                class="secondary compact-stop"
+                :disabled="loading || navGoalExecutionLatestPending || cameraFirstFrameProbePending || deliveryLatestPending || !robotApiBaseUrl.trim()"
+                @click="prefillDeliveryMaterialRefs"
+              >
+                准备送达材料
+              </button>
+              <button
+                type="button"
+                class="secondary compact-stop"
+                :disabled="loading || operatorReportPending || !robotApiBaseUrl.trim() || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()"
+                @click="submitDeliveryDraftMaterial"
+              >
+                保存送达草稿
+              </button>
+            </div>
+            <p class="panel-note">{{ plainDeliveryMaterialSummary.hint }}</p>
           </div>
         </article>
       </div>
