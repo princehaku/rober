@@ -3964,9 +3964,11 @@ describe("workstation fail-closed API contracts", () => {
       const baseStatusReadback = summary.read_endpoints.find((item) => item.id === "base_status");
 
       expect(baseStatusReadback?.key_values.latest_t1001_observed_count).toBe("12");
+      expect(baseStatusReadback?.key_values.feedback_samples_freshness_status).toBe("stale");
       expect(baseStatusReadback?.key_values.wheel_feedback_latest_left_speed).toBe("0");
       expect(baseStatusReadback?.key_values.wheel_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("12");
+      expect(summary.readback_summary.base.latest_feedback_status).toBe("stale");
       expect(summary.readback_summary.base.wheel_feedback_latest_left_speed).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.base.feedback_voltage_v).toBe("12.43");

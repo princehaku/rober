@@ -1598,3 +1598,8 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 该按钮仍只提交 material-only operator report 草稿，写入 `delivery_success=false` 和
 `delivery_material_draft_not_operator_confirmed`，不会调用 delivery complete、Nav2、manual、first-jog、stop、
 keyboard pulse 或 `/cmd_vel`。
+
+2026-06-22 18:23 起，PC summary 会把上位机 `feedback_samples_latest.freshness.status` 提炼为底盘
+`latest_feedback_status`；普通首屏轮速记录若读到 `stale`，会提示 `历史轮速样本已过期，以当前读回为准`。
+该提示只解释 `/api/base/status` 与 latest sample 的新旧关系，不发送 T=1/T=13、manual、first-jog、Nav2、
+delivery complete、keyboard pulse 或 `/cmd_vel`，也不会把历史样本外推成 wheel raw L/R 非零证明。

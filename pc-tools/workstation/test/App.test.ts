@@ -3415,6 +3415,7 @@ describe("App", () => {
     // 普通首屏的进度刷新只重读摘要、底盘反馈、最近行程和送达状态；不能借刷新触发运动或送达确认。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    summaryFixture.readback_summary.base.latest_feedback_status = "stale";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/feedback-samples": {
@@ -3502,6 +3503,7 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，仍需试动读到非零。");
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).not.toContain("历史轮速样本已过期");
   });
 
   it("shows current wheel L/R and frame count in plain goal progress from summary", async () => {
@@ -3513,6 +3515,7 @@ describe("App", () => {
     summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
     summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
     summaryFixture.readback_summary.base.feedback_voltage_v = "12.43";
+    summaryFixture.readback_summary.base.latest_feedback_status = "stale";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
     const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
 
@@ -3523,6 +3526,7 @@ describe("App", () => {
     const plainProgress = wrapper.find('[data-testid="plain-goal-progress"]').text();
     expect(plainProgress).toContain("轮速记录");
     expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("历史轮速样本已过期，以当前读回为准");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("raw");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

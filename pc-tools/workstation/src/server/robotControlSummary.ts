@@ -383,6 +383,8 @@ const STATUS_KEYS = [
   "wheel_feedback_frame_count",
   "wheel_feedback_source",
   "feedback_voltage_v",
+  "feedback_samples_freshness_status",
+  "feedback_samples_age_ms",
   "left_speed",
   "right_speed",
   "latest_scan_once_observed",
@@ -805,6 +807,7 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
   appendFreshBaseFeedbackFrameCount(payload, result, keys);
   appendWheelFeedbackSummaryKeyValues(payload, result, keys);
   appendBaseFeedbackVoltageKeyValue(payload, result, keys);
+  appendFeedbackSamplesFreshnessKeyValues(payload, result, keys);
   return result;
 }
 
@@ -858,6 +861,23 @@ function appendBaseFeedbackVoltageKeyValue(payload: JsonRecord | null, result: R
   const voltage = asRecord(latestFrame)?.v;
   if (typeof voltage === "number" || typeof voltage === "string") {
     result.feedback_voltage_v = compactValueText(voltage);
+  }
+}
+
+function appendFeedbackSamplesFreshnessKeyValues(payload: JsonRecord | null, result: Record<string, string>, keys: readonly string[]): void {
+  // samples latest 可能是历史文件；把 freshness 只作为排障提示，不提升轮速或 HIL 证明。
+  if (!keys.includes("feedback_samples_freshness_status") && !keys.includes("feedback_samples_age_ms")) {
+    return;
+  }
+  const freshness = asRecord(findFirstKey(payload, ["freshness"]));
+  if (!freshness) {
+    return;
+  }
+  if (keys.includes("feedback_samples_freshness_status") && result.feedback_samples_freshness_status === undefined && freshness.status !== undefined) {
+    result.feedback_samples_freshness_status = compactValueText(freshness.status);
+  }
+  if (keys.includes("feedback_samples_age_ms") && result.feedback_samples_age_ms === undefined && freshness.age_ms !== undefined) {
+    result.feedback_samples_age_ms = compactValueText(freshness.age_ms);
   }
 }
 
@@ -2548,6 +2568,10 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   const statusT1001 = baseStatus?.key_values.latest_t1001_observed_count;
   const latestT1001 = feedbackLatest?.key_values.latest_t1001_observed_count ?? feedbackLatest?.key_values.t1001_observed_count;
   const observedCount = statusT1001 ?? latestT1001 ?? "not_loaded";
+  const latestFeedbackStatus = feedbackLatest?.key_values.feedback_samples_freshness_status
+    ?? baseStatus?.key_values.feedback_samples_freshness_status
+    ?? feedbackLatest?.status
+    ?? "not_loaded";
   const ackStatus = baseStatus?.key_values.feedback_ack_status ?? (Number(observedCount) > 0 ? "t1001_observed" : "not_loaded");
   const wheelFeedbackProven = baseStatus?.key_values.wheel_feedback_lr_nonzero_proven
     ?? feedbackLatest?.key_values.wheel_feedback_lr_nonzero_proven
@@ -2568,7 +2592,7 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     ?? "not_loaded";
   return {
     status: baseStatus?.status ?? "not_loaded",
-    latest_feedback_status: feedbackLatest?.status ?? "not_loaded",
+    latest_feedback_status: latestFeedbackStatus,
     feedback_ack_status: ackStatus,
     latest_t1001_observed_count: observedCount,
     wheel_feedback_lr_nonzero_proven: wheelFeedbackProven,
