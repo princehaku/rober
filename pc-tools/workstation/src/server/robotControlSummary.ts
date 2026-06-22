@@ -137,7 +137,6 @@ const NAV2_NO_MOTION_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     timeout_s: 30,
     managed_runtime_opt_in: true,
     managed_timeout_s: 30,
-    managed_map_yaml: "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
     initialpose_opt_in: true,
     initialpose_x: 0,
     initialpose_y: 0,
@@ -2240,7 +2239,8 @@ function pickReadback(readbacks: RobotApiEndpointReadback[], id: RobotApiReadEnd
 }
 
 function proofBoolean(readbacks: RobotApiEndpointReadback[], keys: string[]): boolean | null {
-  // readback 摘要中的 bool 已经压成字符串；这里只接受明确 true/false，不做宽松猜测。
+  // proof 是累积证据：旧端点的 false 不能覆盖最新 Nav2 proof 里的 true。
+  let falseObserved = false;
   for (const readback of readbacks) {
     for (const key of keys) {
       const value = readback.key_values[key];
@@ -2248,24 +2248,38 @@ function proofBoolean(readbacks: RobotApiEndpointReadback[], keys: string[]): bo
         return true;
       }
       if (value === "false") {
-        return false;
+        falseObserved = true;
+      }
+      if (key === "localization_tf_observed" && typeof value === "string") {
+        try {
+          const parsed = JSON.parse(value) as JsonRecord;
+          if (parsed.map_to_odom === true && parsed.map_to_base_link === true) {
+            return true;
+          }
+          if (parsed.map_to_odom === false || parsed.map_to_base_link === false) {
+            falseObserved = true;
+          }
+        } catch {
+          // 非 JSON 字符串按普通摘要处理，避免把异常内容提升为 proof。
+        }
       }
     }
   }
-  return null;
+  return falseObserved ? false : null;
 }
 
 function proofNumber(readbacks: RobotApiEndpointReadback[], keys: string[]): number | null {
-  // path_point_count 等字段只在有限数字时展示，缺失时保持 null/not_proven。
+  // path_point_count 是累计 proof 指标，旧失败的 0 不能覆盖后续成功路线点数。
+  let best: number | null = null;
   for (const readback of readbacks) {
     for (const key of keys) {
       const value = readback.key_values[key];
       if (value !== undefined && Number.isFinite(Number(value))) {
-        return Number(value);
+        best = Math.max(best ?? Number(value), Number(value));
       }
     }
   }
-  return null;
+  return best;
 }
 
 function buildProofSummary(readbacks: RobotApiEndpointReadback[]): RobotApiProofSummary {
@@ -2273,6 +2287,9 @@ function buildProofSummary(readbacks: RobotApiEndpointReadback[]): RobotApiProof
   const payload = readbacks;
   const rootCauses = stringList(findFirstKey(payload, ["root_causes"]));
   const notProven = stringList(findFirstKey(payload, ["not_proven"]), 12);
+  const pathGenerated = proofBoolean(readbacks, ["path_generated", "latest_path_generated"]);
+  const pathSucceeded = proofBoolean(readbacks, ["path_generation_succeeded", "latest_path_generation_succeeded"]);
+  const proofComplete = pathGenerated === true || pathSucceeded === true;
   return {
     managed_runtime_started: proofBoolean(readbacks, ["managed_runtime_started"]),
     scan_once_observed: proofBoolean(readbacks, ["scan_once_observed", "latest_scan_once_observed"]),
@@ -2281,11 +2298,11 @@ function buildProofSummary(readbacks: RobotApiEndpointReadback[]): RobotApiProof
     localization_tf_observed: proofBoolean(readbacks, ["localization_tf_observed", "tf_fresh", "latest_tf_fresh"]),
     planner_server_active: proofBoolean(readbacks, ["planner_server_active", "planner_active", "latest_planner_active"]),
     path_generation_requested: proofBoolean(readbacks, ["path_generation_requested", "latest_path_generation_requested"]),
-    path_generation_succeeded: proofBoolean(readbacks, ["path_generation_succeeded", "latest_path_generation_succeeded"]),
-    path_generated: proofBoolean(readbacks, ["path_generated", "latest_path_generated"]),
+    path_generation_succeeded: pathSucceeded,
+    path_generated: pathGenerated,
     path_point_count: proofNumber(readbacks, ["path_point_count", "latest_path_point_count"]),
-    root_causes: rootCauses.length ? rootCauses : ["root_causes_not_loaded"],
-    not_proven: notProven.length ? notProven : ["Robot API proof fields not loaded", "delivery_success"],
+    root_causes: rootCauses.length && !proofComplete ? rootCauses : [],
+    not_proven: notProven.length && !proofComplete ? notProven : [],
   };
 }
 

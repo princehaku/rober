@@ -296,3 +296,39 @@ Robot API readback 均返回 HTTP 200：`/api/status`、`/api/camera/health`、
   残留。
 - 本轮没有 route execution、NavigateToPose、controller 执行、`/api/base/manual` 或
   非 stop 底盘动作；Nav2 只证明 no-motion path generation readiness。
+
+## 2026-06-22 managed map Nav2 proof 补充
+
+`sprints/2026.06.22_10-41_nav2_route_proof_readback/` 在真实上位机
+`root@192.168.1.11:37878` 上修正了 Nav2 no-motion proof 的地图选择和 readback 聚合。
+
+现场根因是 PC fixed body 早先写死了空的 `trashbot_map.yaml`，而 canonical map proof
+latest 仍保留旧 blocked 状态。helper 现在会在未显式指定 `--managed-map-yaml` 时，从
+canonical map candidates 中选择包含 free cell 的地图；本轮选择：
+
+- `/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.yaml`
+- `managed_runtime_map_yaml_source=canonical_map_proof_usable_yaml_candidate`
+- `cell_counts.free=394`
+
+真实 PC proxy `POST /api/robot-control/nav2/proof/refresh?baseUrl=http://192.168.1.11:8787`
+读回：
+
+- `evidence_ref=o10-amcl-nav2-runtime-1782095872075`
+- `map_server_active=true`
+- `amcl_active=true`
+- `planner_server_active=true`
+- `initialpose_published=true`
+- `scan_once_observed=true`
+- `map_once_observed=true`
+- `amcl_pose_observed=true`
+- `localization_tf_observed.map_to_odom=true`
+- `localization_tf_observed.map_to_base_link=true`
+- `path_generation_service_name=/compute_path_to_pose`
+- `path_generation_succeeded=true`
+- `path_point_count=31`
+- `root_causes=[]`
+
+该 proof 仍只允许 `ComputePathToPose` no-motion action，用于证明当前地图、AMCL 和 planner
+能生成路线；它没有调用 NavigateToPose、controller execution、`/cmd_vel`、`/api/base/manual`
+或 WAVE ROVER UART 运动命令。因此它不是真实路线执行、wheel raw L/R 非零、dropoff 或
+delivery success 证明。

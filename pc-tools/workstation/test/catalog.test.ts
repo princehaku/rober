@@ -4432,7 +4432,6 @@ describe("workstation fail-closed API contracts", () => {
         timeout_s: 30,
         managed_runtime_opt_in: true,
         managed_timeout_s: 30,
-        managed_map_yaml: "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
         initialpose_opt_in: true,
         initialpose_x: 0,
         initialpose_y: 0,

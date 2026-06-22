@@ -1077,3 +1077,28 @@ Get-ChildItem -Path pc-tools -Recurse -File -Include *.py | Where-Object { $_.Fu
 - `/api/robot-control/base/stop` 可转发并返回 `status=stopped`。
 
 因此本轮只完成 PC 易用性和 gated 键盘入口；完整 Nav2 路线执行、wheel raw L/R 非零和 delivery success 仍是未证明现场能力。
+
+## 2026-06-22 Nav2 Route Proof Readback Repair
+
+`sprints/2026.06.22_10-41_nav2_route_proof_readback/` 修复了 PC fixed Nav2 proof 和上位机 helper 的两处现场问题：
+
+- PC fixed body 不再写死 `/root/rober/onboard/runtime/maps/trashbot_map.yaml`，避免把空地图强塞给上位机。
+- 上位机 Nav2 helper 在 managed runtime 缺省地图选择时，优先从 canonical map candidates 中挑选包含 free cell 的 YAML/PGM。
+- `lifecycle_manager` 延迟 3 秒启动，避开 map_server/AMCL service 发现竞态。
+- 当 managed runtime 本轮已加载可用地图并观测到 `/map` 时，旧 `map_lifecycle_latest.json` 的 blocked 状态不再阻止本轮 `ComputePathToPose` proof。
+- PC summary 的 Nav2 proof 聚合改为 proof-first：旧失败 readback 的 `false/0` 不覆盖后续 `nav2_proof_latest` 的 `true/path_point_count`。
+
+真实 PC proxy 连接默认上位机 `http://192.168.1.11:8787` 后，`POST /api/robot-control/nav2/proof/refresh` 返回：
+
+- `last_result_status=refreshed`
+- `latest_proof_status=nav2_no_motion_path_generation_runtime_observed`
+- `evidence_ref=o10-amcl-nav2-runtime-1782095872075`
+- `managed_runtime_map_yaml=/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.yaml`
+- `managed_runtime_map_yaml_source=canonical_map_proof_usable_yaml_candidate`
+- `path_generation_boundary=explicit_opt_in_compute_path_to_pose_action_no_motion`
+- `path_generated=true`
+- `path_generation_succeeded=true`
+- `path_point_count=31`
+- `root_causes=[]`
+
+PC summary 复验显示 `o3_proof_summary.path_generated=true`、`path_generation_succeeded=true`、`path_point_count=31`，但安全状态仍保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`，键盘和 NavigateToPose 真实执行仍锁定。当前 `first_jog_readiness_summary.status=blocked_missing_visual_material`，缺 `external_video_or_visible_camera`；因此本轮不证明 wheel raw L/R 非零，也不证明 delivery success。

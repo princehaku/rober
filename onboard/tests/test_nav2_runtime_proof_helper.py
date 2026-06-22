@@ -50,6 +50,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "--timeout-s",
             "--managed-runtime-opt-in",
             "--managed-timeout-s",
+            "--managed-lifecycle-start-delay-s",
             "--managed-map-yaml",
             "--initialpose-opt-in",
             "--initialpose-yaw",
@@ -70,6 +71,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertFalse(args.managed_runtime_opt_in)
         self.assertEqual("", args.managed_map_yaml)
         self.assertEqual(20.0, args.managed_timeout_s)
+        self.assertEqual(3.0, args.managed_lifecycle_start_delay_s)
         self.assertFalse(args.initialpose_opt_in)
         self.assertFalse(args.path_generation_opt_in)
         self.assertEqual(20.0, args.path_generation_timeout_s)
@@ -196,6 +198,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "nav2_map_server map_server",
             "nav2_amcl amcl",
             "nav2_lifecycle_manager lifecycle_manager",
+            "waiting before lifecycle_manager start delay_s=3",
             "blocked_device=/dev/ttyS5",
         ):
             self.assertIn(required, shell)
@@ -240,6 +243,9 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertIn('node_names: ["map_server", "amcl", "planner_server"]', params)
         self.assertIn("nav2_planner planner_server", shell)
         self.assertIn("no_motion_path_generation_planner_only", shell)
+        self.assertIn("waiting before lifecycle_manager start delay_s=3", shell)
+        self.assertLess(shell.index("starting role=planner_server"), shell.index("waiting before lifecycle_manager start"))
+        self.assertLess(shell.index("waiting before lifecycle_manager start"), shell.index("starting role=lifecycle_manager"))
         for forbidden in ("controller_server", "bt_navigator", "FollowPath", "/cmd_vel", "ros2 action send_goal"):
             self.assertNotIn(forbidden, shell)
 
@@ -283,6 +289,73 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertFalse(request["map_goal_diagnostics"]["goal_in_bounds"])
         self.assertEqual(0, request["map_free_cell_count"])
         self.assertFalse(request["map_has_free_cells_for_path_proof"])
+
+    def test_resolve_managed_map_yaml_prefers_free_cell_candidate(self) -> None:
+        """默认 managed runtime 必须避开空 trashbot_map，优先使用包含 free cell 的地图。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            maps = Path(temp_dir)
+            empty_yaml = maps / "trashbot_map.yaml"
+            empty_pgm = maps / "trashbot_map.pgm"
+            usable_yaml = maps / "fixed_free_cells.yaml"
+            usable_pgm = maps / "fixed_free_cells.pgm"
+            empty_yaml.write_text(
+                "image: trashbot_map.pgm\nresolution: 0.05\norigin: [0, 0, 0]\n",
+                encoding="utf-8",
+            )
+            empty_pgm.write_bytes(b"P5\n2 1\n255\n" + bytes([205, 205]))
+            usable_yaml.write_text(
+                "image: fixed_free_cells.pgm\nresolution: 0.05\norigin: [0, 0, 0]\n",
+                encoding="utf-8",
+            )
+            usable_pgm.write_bytes(b"P5\n2 1\n255\n" + bytes([205, 254]))
+            args = HELPER.parse_args([])
+            map_yaml, source = HELPER.resolve_managed_map_yaml(
+                args,
+                {
+                    "map_yaml_candidates": [
+                        {"path": str(empty_yaml), "mtime_ms": 20},
+                        {"path": str(usable_yaml), "mtime_ms": 10},
+                    ]
+                },
+            )
+
+        self.assertEqual(str(usable_yaml), map_yaml)
+        self.assertEqual("canonical_map_proof_usable_yaml_candidate", source)
+
+    def test_effective_map_inputs_uses_managed_runtime_when_map_consumed(self) -> None:
+        """本轮 managed runtime 已消费可用地图时，旧 canonical map proof blocker 不应阻止 planner。"""
+        map_inputs = {
+            "inputs_ready": False,
+            "root_causes": [{"layer": "canonical map proof", "reason": "map_lifecycle_proof_not_clean"}],
+        }
+        effective = HELPER.effective_map_inputs_for_runtime(
+            map_inputs,
+            managed_runtime_requested=True,
+            managed_runtime_started=True,
+            managed_map_analysis={"cell_counts": {"free": 3}},
+            map_once_observed=True,
+        )
+
+        self.assertTrue(effective["inputs_ready"])
+        self.assertTrue(effective["managed_runtime_map_inputs_ready"])
+        self.assertEqual([], effective["root_causes"])
+        self.assertEqual([{"layer": "canonical map proof", "reason": "map_lifecycle_proof_not_clean"}], map_inputs["root_causes"])
+
+    def test_effective_map_inputs_keeps_blocker_until_runtime_map_observed(self) -> None:
+        """只有启动 runtime 不够，必须确认 /map 被观测到才允许覆盖旧 map proof。"""
+        map_inputs = {
+            "inputs_ready": False,
+            "root_causes": [{"layer": "canonical map proof", "reason": "map_lifecycle_proof_not_clean"}],
+        }
+        effective = HELPER.effective_map_inputs_for_runtime(
+            map_inputs,
+            managed_runtime_requested=True,
+            managed_runtime_started=True,
+            managed_map_analysis={"cell_counts": {"free": 3}},
+            map_once_observed=False,
+        )
+
+        self.assertIs(map_inputs, effective)
 
     def test_path_generation_blocks_unknown_only_map_before_action(self) -> None:
         """没有 free cell 的地图不能进入 Nav2 action，避免把弱地图误报为可规划。"""

@@ -27,6 +27,7 @@ DEFAULT_MANAGED_MAP_YAML = "/root/rober/onboard/runtime/maps/trashbot_map.yaml"
 DEFAULT_MANAGED_LIDAR_SERIAL_PORT = "/dev/ttyACM0"
 DEFAULT_MANAGED_LIDAR_SERIAL_BAUDRATE = 150000
 DEFAULT_MANAGED_TIMEOUT_S = 20.0
+DEFAULT_MANAGED_LIFECYCLE_START_DELAY_S = 3.0
 DEFAULT_MANAGED_BASE_FRAME_ID = "base_link"
 DEFAULT_MANAGED_ODOM_FRAME_ID = "odom"
 DEFAULT_MANAGED_LASER_FRAME_ID = "laser_frame"
@@ -424,6 +425,31 @@ def map_input_summary(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def effective_map_inputs_for_runtime(
+    map_inputs: dict[str, Any],
+    *,
+    managed_runtime_requested: bool,
+    managed_runtime_started: bool,
+    managed_map_analysis: dict[str, Any],
+    map_once_observed: bool,
+) -> dict[str, Any]:
+    """managed runtime 已实测消费可用地图时，用本轮证据覆盖陈旧 canonical proof blocker。"""
+    runtime_map_ready = bool(
+        managed_runtime_requested
+        and managed_runtime_started
+        and map_once_observed
+        and map_has_free_cells_for_path_proof(managed_map_analysis)
+    )
+    if not runtime_map_ready:
+        return map_inputs
+    effective = dict(map_inputs)
+    # canonical map proof 可能是上一轮坏地图状态；本轮 /map 已来自 managed runtime 加载的可用地图。
+    effective["root_causes"] = []
+    effective["inputs_ready"] = True
+    effective["managed_runtime_map_inputs_ready"] = True
+    return effective
+
+
 def resolve_managed_map_yaml(args: argparse.Namespace, map_inputs: dict[str, Any]) -> tuple[str | None, str]:
     """managed runtime 优先用显式 map yaml；缺省时才回退到 canonical artifact。"""
     explicit = str(args.managed_map_yaml or "").strip()
@@ -432,10 +458,23 @@ def resolve_managed_map_yaml(args: argparse.Namespace, map_inputs: dict[str, Any
         if path.exists():
             return str(path), "explicit_cli_managed_map_yaml"
         return None, "explicit_cli_managed_map_yaml_missing"
+    usable_candidates: list[tuple[int, int, str]] = []
+    fallback_candidate: str | None = None
     for candidate in map_inputs.get("map_yaml_candidates") or []:
         path = str(candidate.get("path") or "").strip()
-        if path and Path(path).exists():
-            return path, "canonical_map_proof_yaml_candidate"
+        if not path or not Path(path).exists():
+            continue
+        if fallback_candidate is None:
+            fallback_candidate = path
+        analysis = map_yaml_runtime_analysis(path)
+        if map_has_free_cells_for_path_proof(analysis):
+            cell_counts = analysis.get("cell_counts") if isinstance(analysis.get("cell_counts"), dict) else {}
+            usable_candidates.append((int(cell_counts.get("free") or 0), int(candidate.get("mtime_ms") or 0), path))
+    if usable_candidates:
+        usable_candidates.sort(reverse=True)
+        return usable_candidates[0][2], "canonical_map_proof_usable_yaml_candidate"
+    if fallback_candidate:
+        return fallback_candidate, "canonical_map_proof_yaml_candidate_without_free_cells"
     return None, "canonical_map_yaml_candidate_missing"
 
 
@@ -510,12 +549,16 @@ def map_yaml_runtime_analysis(map_yaml: str | None) -> dict[str, Any]:
             elif line.startswith("resolution:"):
                 resolution = float(line.split(":", 1)[1].strip())
             elif line.startswith("origin:"):
-                for offset in range(1, 4):
-                    if index + offset < len(lines):
-                        value_text = lines[index + offset].strip()
-                        if value_text.startswith("-"):
-                            value_text = value_text[1:].strip()
-                        origin_values.append(float(value_text))
+                inline = line.split(":", 1)[1].strip()
+                if inline.startswith("[") and inline.endswith("]"):
+                    origin_values = [float(part.strip()) for part in inline.strip("[]").split(",") if part.strip()]
+                else:
+                    for offset in range(1, 4):
+                        if index + offset < len(lines):
+                            value_text = lines[index + offset].strip()
+                            if value_text.startswith("-"):
+                                value_text = value_text[1:].strip()
+                            origin_values.append(float(value_text))
         if resolution is None or len(origin_values) < 2:
             raise ValueError("map yaml missing resolution or origin")
         image_path = (yaml_path.parent / image_name) if image_name else yaml_path.with_suffix(".pgm")
@@ -2118,6 +2161,7 @@ def build_managed_runtime_shell(
             f"--params-file {params} -r __node:=lifecycle_manager"
         ),
     )
+    lifecycle_start_delay_s = max(float(args.managed_lifecycle_start_delay_s), 0.0)
     lines = [
         "set -e",
         f"{source_prefix(args)}",
@@ -2133,6 +2177,10 @@ def build_managed_runtime_shell(
         "printf '%s\\n' 'blocked_device=/dev/ttyS5' >> " + log,
     ]
     for role, command in commands:
+        if role == "lifecycle_manager" and lifecycle_start_delay_s > 0:
+            # map_server 加载地图和 AMCL 建 service 都有 ROS graph 发现延迟；过早 autostart 会触发生命周期 race。
+            lines.append(f"printf '%s\\n' 'waiting before lifecycle_manager start delay_s={lifecycle_start_delay_s:g}' >> {log}")
+            lines.append(f"sleep {lifecycle_start_delay_s:g}")
         # 每个子进程都追加到同一日志，便于远端 artifact 回放每个节点的启动顺序。
         lines.append(f"printf '%s\\n' 'starting role={role}' >> {log}")
         lines.append(f"({command}) >> {log} 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role={role} pid='$pid >> {log}")
@@ -3049,6 +3097,13 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             and localization_tf_observed["map_to_odom"]
             and localization_tf_observed["map_to_base_link"]
         )
+    effective_map_inputs = effective_map_inputs_for_runtime(
+        map_inputs,
+        managed_runtime_requested=bool(managed_runtime.get("requested")),
+        managed_runtime_started=bool(managed_runtime.get("started")),
+        managed_map_analysis=managed_map_analysis,
+        map_once_observed=map_observed,
+    )
     planner_lifecycle_recheck = {"executed": False, "boundary": "path_generation_planner_recheck_not_requested"}
     if ros2_ok and args.path_generation_opt_in and localization_ready:
         # AMCL 定位成立后再看 planner，避免把 costmap 等 TF 的瞬态误记成最终 planner blocker。
@@ -3067,7 +3122,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             planner_lifecycle_active["controller_server"] = True
             planner_lifecycle_results["controller_server"] = recheck_planner_results["controller_server"]
     localization_root_causes = classify_root_causes(
-        map_inputs=map_inputs,
+        map_inputs=effective_map_inputs,
         ros2_ok=ros2_ok,
         packages=packages,
         lifecycle_active=lifecycle_active,
@@ -3107,7 +3162,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     if path_generation_request["enabled"]:
         root_causes.extend(path_generation_root_causes)
     complete = bool(
-        map_inputs["inputs_ready"]
+        effective_map_inputs["inputs_ready"]
         and localization_ready
         and not localization_root_causes
         and (
@@ -3187,6 +3242,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "recent_commands": phase_writer.recent_commands[-12:],
         "source_map_evidence_ref": map_inputs.get("source_evidence_ref"),
         "source_map_evidence_type": map_inputs.get("source_evidence_type"),
+        "map_inputs_ready": bool(map_inputs.get("inputs_ready")),
+        "effective_map_inputs_ready": bool(effective_map_inputs.get("inputs_ready")),
+        "managed_runtime_map_inputs_ready": bool(effective_map_inputs.get("managed_runtime_map_inputs_ready")),
         "package_availability": packages,
         "package_check_mode": "single_sourced_pkg_list_diagnostic",
         "package_checks_batch_ok": bool(package_batch_result.get("ok")),
@@ -3346,6 +3404,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--timeout-s", type=float, default=8.0)
     parser.add_argument("--managed-runtime-opt-in", action="store_true")
     parser.add_argument("--managed-timeout-s", type=float, default=DEFAULT_MANAGED_TIMEOUT_S)
+    parser.add_argument("--managed-lifecycle-start-delay-s", type=float, default=DEFAULT_MANAGED_LIFECYCLE_START_DELAY_S)
     parser.add_argument("--managed-map-yaml", default="")
     parser.add_argument("--managed-lidar-serial-port", default=DEFAULT_MANAGED_LIDAR_SERIAL_PORT)
     parser.add_argument("--managed-lidar-serial-baudrate", type=int, default=DEFAULT_MANAGED_LIDAR_SERIAL_BAUDRATE)
