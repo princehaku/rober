@@ -55,6 +55,7 @@ const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
+const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
 const robotApiBaseUrlUsesDefault = computed(() => robotApiBaseUrl.value.trim() === DEFAULT_ROBOT_API_BASE_URL);
 const o6ConsumerBaseUrl = ref("http://127.0.0.1:8088");
@@ -759,6 +760,9 @@ const plainDeliveryNextActionSummary = computed(() => {
   if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
     return "";
   }
+  if (!deliveryNav2GoalReady.value) {
+    return plainTripHasSucceededEvidence.value ? "下一步：重新执行本轮行程。" : "下一步：先完成行程。";
+  }
   if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
     return "下一步：准备送达材料。";
   }
@@ -778,14 +782,40 @@ const plainDeliveryNextActionSummary = computed(() => {
   return "下一步：点击确认送达。";
 });
 
+function nav2GoalSucceeded(values: Record<string, string> | undefined): boolean {
+  return (values?.nav2_status ?? values?.status) === "goal_succeeded";
+}
+
+function nav2EvidenceValues(): Array<Record<string, string> | undefined> {
+  // 当前执行结果优先级最高；latest/delivery 只能作为只读候选材料，旧材料不能算本轮完成。
+  return [
+    navGoalExecutionResult.value?.goal_execution_key_values,
+    navGoalExecutionLatestResult.value?.goal_execution_key_values,
+    deliveryLatestResult.value?.delivery_key_values,
+    deliveryGapCheckResult.value?.delivery_key_values,
+    deliveryCompletionResult.value?.delivery_key_values,
+  ];
+}
+
+function evidenceAgeMs(values: Record<string, string> | undefined): number | null {
+  const actionGeneratedAt = parsePositiveMillis(values?.generated_at_ms ?? values?.nav2_generated_at_ms);
+  if (actionGeneratedAt === null) {
+    return null;
+  }
+  const referenceAt = parsePositiveMillis(values?.response_generated_at_ms) ?? Date.now();
+  return Math.max(0, referenceAt - actionGeneratedAt);
+}
+
+function evidenceIsStale(values: Record<string, string> | undefined): boolean {
+  const ageMs = evidenceAgeMs(values);
+  return ageMs !== null && ageMs >= EVIDENCE_STALE_AFTER_MS;
+}
+
+const plainTripHasSucceededEvidence = computed(() => nav2EvidenceValues().some((values) => nav2GoalSucceeded(values)));
+
 const deliveryNav2GoalReady = computed(() => {
-  // Nav2 success 可来自刚执行结果、latest 读回或 delivery gate 的压缩 key values。
-  const latestStatus = deliveryLatestResult.value?.delivery_key_values.nav2_status
-    ?? deliveryGapCheckResult.value?.delivery_key_values.nav2_status
-    ?? deliveryCompletionResult.value?.delivery_key_values.nav2_status;
-  return latestStatus === "goal_succeeded"
-    || navGoalExecutionResult.value?.goal_execution_key_values.status === "goal_succeeded"
-    || navGoalExecutionLatestResult.value?.goal_execution_key_values.status === "goal_succeeded";
+  // 本轮完成只接受未过期的 goal_succeeded；旧 latest 只展示为参考，不锁死重新执行入口。
+  return nav2EvidenceValues().some((values) => nav2GoalSucceeded(values) && !evidenceIsStale(values));
 });
 
 const plainDeliverySummary = computed(() => {
@@ -805,7 +835,9 @@ const plainDeliverySummary = computed(() => {
     };
   }
   if (deliveryLatestResult.value || deliveryGapCheckResult.value || deliveryCompletionResult.value || navGoalExecutionLatestResult.value) {
-    return { state: "待行程结果", hint: "还没读到最近一次完整行程结果。" };
+    return plainTripHasSucceededEvidence.value
+      ? { state: "需复验", hint: "读到旧行程成功记录；本轮送达前需要重新执行行程。" }
+      : { state: "待行程结果", hint: "还没读到最近一次完整行程结果。" };
   }
   return { state: "未读取", hint: "点击刷新送达状态，只读取结果，不执行行程或确认送达。" };
 });
@@ -838,6 +870,9 @@ const plainDeliveryMaterialSummary = computed(() => {
   }
   if (deliveryNav2GoalReady.value) {
     return { state: "可准备", hint: "已读到最近行程结果，可以准备送达材料。" };
+  }
+  if (plainTripHasSucceededEvidence.value) {
+    return { state: "需复验", hint: "行程成功记录较旧，先重新执行本轮行程。" };
   }
   return { state: "待行程", hint: "需要先读到最近行程结果，再准备送达材料。" };
 });
@@ -901,7 +936,9 @@ const deliveryClosureChecklist = computed(() => {
       id: "nav2_goal_succeeded",
       label: "Nav2 路线执行成功",
       ready: deliveryNav2GoalReady.value && !deliveryGateMissing("nav2_goal_succeeded"),
-      hint: deliveryNav2GoalReady.value ? "已有 goal_succeeded 读回" : "先读取或执行最近 Nav2 目标",
+      hint: deliveryNav2GoalReady.value
+        ? "已有本轮 goal_succeeded 读回"
+        : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : "先读取或执行最近 Nav2 目标",
     },
     {
       id: "operator_report_ready",
@@ -994,7 +1031,9 @@ const goalClosureChecklist = computed(() => {
       id: "nav2_goal_execution",
       label: "完整 Nav2 路线执行",
       ready: nav2Ready,
-      hint: nav2Ready ? "已有 goal_succeeded 读回" : "读取最近 Nav2 结果或执行受限目标后确认",
+      hint: nav2Ready
+        ? "已有本轮 goal_succeeded 读回"
+        : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : "读取最近 Nav2 结果或执行受限目标后确认",
     },
     {
       id: "delivery_success",
@@ -1073,7 +1112,7 @@ function formatEvidenceAge(values: Record<string, string> | undefined, staleMess
       : ageMs < dayMs
         ? `约 ${Math.max(1, Math.round(ageMs / hourMs))} 小时前`
         : `约 ${Math.max(1, Math.round(ageMs / dayMs))} 天前`;
-  const staleText = ageMs >= 15 * minuteMs ? `；${staleMessage}` : "";
+  const staleText = ageMs >= EVIDENCE_STALE_AFTER_MS ? `；${staleMessage}` : "";
   return `，${ageText}${staleText}`;
 }
 
@@ -1112,7 +1151,9 @@ const plainGoalProgressItems = computed(() => {
       label: "行程执行",
       actionLabel: "去行程",
       state: navReady ? "已完成" : "待完成",
-      hint: navReady ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。" : "还没读到最近行程成功结果。",
+      hint: navReady
+        ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
+        : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : "还没读到最近行程成功结果。",
     },
     {
       id: "delivery",
@@ -1163,7 +1204,9 @@ const plainGoalProgressEvidenceSummary = computed(() => {
   const wheelText = wheelReady
     ? isZeroWheelPair(left, right) ? `轮速有历史材料，当前 L/R=${left}/${right}` : "轮速已完成"
     : left !== "not_loaded" && right !== "not_loaded" ? `轮速 L/R=${left}/${right}` : "轮速未读到";
-  const tripText = deliveryNav2GoalReady.value ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成" : "行程未完成";
+  const tripText = deliveryNav2GoalReady.value || plainTripHasSucceededEvidence.value
+    ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成"
+    : "行程未完成";
   const deliveryText = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true ? "送达已完成" : "送达未完成";
   const keyboardText = canUseKeyboardControl.value ? (keyboardManualPulseObserved.value ? "键盘已验证" : "键盘待验证") : "键盘未满足";
   return `当前读数：${wheelText}；${tripText}；${deliveryText}；${keyboardText}。`;
@@ -1183,7 +1226,9 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return "验收卡点：还需要试动期间同帧 L/R 都非零。";
   }
   if (!deliveryNav2GoalReady.value) {
-    return "验收卡点：还没读到行程成功结果。";
+    return plainTripHasSucceededEvidence.value
+      ? "验收卡点：行程成功记录较旧，需要重新执行本轮行程。"
+      : "验收卡点：还没读到行程成功结果。";
   }
   if (!(deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true)) {
     return plainDeliveryNextActionSummary.value ? `验收卡点：送达未完成，${plainDeliveryNextActionSummary.value}` : "验收卡点：送达未完成，需要现场最终确认。";
@@ -1212,6 +1257,9 @@ const plainTripSummary = computed(() => {
   }
   if (deliveryNav2GoalReady.value) {
     return { state: "已完成", hint: plainTripEvidenceSummary.value || "已读到最近行程完成，可以准备送达材料。" };
+  }
+  if (plainTripHasSucceededEvidence.value) {
+    return { state: "需复验", hint: plainTripEvidenceSummary.value || "最近行程记录较旧，需要重新执行本轮行程。" };
   }
   if (navGoalExecutionResult.value?.proxy_status === "execution_failed" || navGoalExecutionResult.value?.proxy_status === "execution_rejected") {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
