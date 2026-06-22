@@ -2997,6 +2997,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/base/manual";
     } else if (url.startsWith("/api/robot-control/base/stop")) {
       fixtureKey = "/api/robot-control/base/stop";
+    } else if (url.startsWith("/api/robot-control/base/feedback-samples")) {
+      fixtureKey = "/api/robot-control/base/feedback-samples";
     } else if (url.startsWith("/api/robot-control/radar/scan-proof/refresh")) {
       fixtureKey = "/api/robot-control/radar/scan-proof/refresh";
     } else if (url.startsWith("/api/robot-control/radar/start")) {
@@ -3591,6 +3593,71 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("structured_hil_claims");
     expect(firstScreenText).not.toContain("external_video_recorded");
     expect(mockedFetch.mock.calls.some(([callUrl]) => String(callUrl).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("shows raw wheel L/R from base feedback samples without treating T1001 count as nonzero proof", async () => {
+    // T=1001 计数只是反馈链路；UI 必须直接显示 L/R=0/0 和 nonzero=false。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/base/feedback-samples": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+        proxy_status: "samples_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/feedback-samples",
+        remote_http_status: 200,
+        status: "loaded",
+        sample_key_values: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          requested_sample_count: "3",
+          completed_sample_count: "3",
+          t1001_observed_count: "3",
+          all_samples_observed_t1001: "true",
+          partial_samples_observed_t1001: "false",
+          feedback_ack_t1001_observed: "true",
+          wheel_feedback_lr_nonzero_proven: "false",
+          wheel_feedback_nonzero_observed: "false",
+          wheel_feedback_nonzero_frame_count: "0",
+          wheel_feedback_latest_left_speed: "0",
+          wheel_feedback_latest_right_speed: "0",
+          wheel_feedback_source: "vendor_t1001_L_R",
+          observed_feedback_types: "[1001]",
+          sends_motion_commands: "false",
+          robot_control_executed: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        sends_motion_commands: false,
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+
+    const feedbackButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "采集底盘反馈（高级）");
+    expect(feedbackButton).toBeTruthy();
+    await feedbackButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const diagnosticsText = wrapper.find(".robot-console .advanced-details").text();
+    expect(diagnosticsText).toContain("base feedback raw L/R");
+    expect(diagnosticsText).toContain("latest_L=0");
+    expect(diagnosticsText).toContain("latest_R=0");
+    expect(diagnosticsText).toContain("nonzero_frames=0");
+    expect(diagnosticsText).toContain("proven=false");
+    expect(diagnosticsText).toContain("source=vendor_t1001_L_R");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
   it("records a plain video reference and sends first-jog through the fixed proxy only", async () => {

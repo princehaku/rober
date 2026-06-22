@@ -404,7 +404,7 @@ const baseFeedbackSamplesSummary = computed(() => {
     return "feedback samples not requested";
   }
   const values = result.sample_key_values;
-  return `${result.proxy_status}; status=${result.status}; t1001=${values.t1001_observed_count}/${values.completed_sample_count}; motion=${values.sends_motion_commands}; reason=${result.failure_reason || "none"}`;
+  return `${result.proxy_status}; status=${result.status}; t1001=${values.t1001_observed_count}/${values.completed_sample_count}; L/R=${values.wheel_feedback_latest_left_speed}/${values.wheel_feedback_latest_right_speed}; nonzero=${values.wheel_feedback_lr_nonzero_proven}; motion=${values.sends_motion_commands}; reason=${result.failure_reason || "none"}`;
 });
 const evidenceSweepSummary = computed(() => {
   // 一键巡检聚合固定代理结果；blocked 仍按 blocked 展示，不伪装成全量通过。
@@ -3256,6 +3256,14 @@ onBeforeUnmount(() => {
               t1001={{ baseFeedbackSamplesResult?.sample_key_values.t1001_observed_count ?? "not_loaded" }},
               completed={{ baseFeedbackSamplesResult?.sample_key_values.completed_sample_count ?? "not_loaded" }},
               ack={{ baseFeedbackSamplesResult?.sample_key_values.feedback_ack_t1001_observed ?? "not_loaded" }}
+            </dd>
+            <dt>base feedback raw L/R</dt>
+            <dd>
+              latest_L={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_latest_left_speed ?? "not_loaded" }},
+              latest_R={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_latest_right_speed ?? "not_loaded" }},
+              nonzero_frames={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_nonzero_frame_count ?? "0" }},
+              proven={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_lr_nonzero_proven ?? "false" }},
+              source={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_source ?? "not_loaded" }}
             </dd>
             <dt>base feedback safety</dt>
             <dd>
