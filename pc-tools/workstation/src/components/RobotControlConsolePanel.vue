@@ -1036,6 +1036,20 @@ const plainGoalProgressStateSummary = computed(() => {
   return `当前状态：${fragments.join("；")}。`;
 });
 
+const plainGoalProgressEvidenceSummary = computed(() => {
+  // 这行只压缩已读证据，不刷新接口，也不把只读材料外推成真实完成。
+  const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  const base = robotSummary.value?.readback_summary.base;
+  const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
+  const wheelText = wheelReady ? "轮速已完成" : left !== "not_loaded" && right !== "not_loaded" ? `轮速 L/R=${left}/${right}` : "轮速未读到";
+  const tripText = deliveryNav2GoalReady.value ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成" : "行程未完成";
+  const deliveryText = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true ? "送达已完成" : "送达未完成";
+  const keyboardText = canUseKeyboardControl.value ? "键盘可使用" : "键盘未满足";
+  return `当前读数：${wheelText}；${tripText}；${deliveryText}；${keyboardText}。`;
+});
+
 const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value);
 
 const plainTripSummary = computed(() => {
@@ -4071,6 +4085,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note" data-testid="plain-goal-progress-next-action">{{ plainGoalProgressNextAction }}</p>
             <p class="panel-note" data-testid="plain-goal-progress-state-summary">{{ plainGoalProgressStateSummary }}</p>
+            <p class="panel-note" data-testid="plain-goal-progress-evidence-summary">{{ plainGoalProgressEvidenceSummary }}</p>
             <div v-for="item in plainGoalProgressItems" :key="item.id" class="plain-progress-row">
               <span class="plain-progress-label">{{ item.label }}</span>
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
