@@ -91,6 +91,7 @@ const plainFirstJogMaterialRestoreResult = ref<RobotControlOperatorReportProxyRe
 const plainFirstJogResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const plainWheelEvidenceSavePending = ref(false);
 const plainWheelEvidenceSaveResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
+const plainWheelZeroBlockerChecked = ref(false);
 const plainExternalVideoRef = ref("");
 const operatorReportEvidenceRef = ref("");
 const operatorReportSiteState = ref("field_operator_claim_ready_for_review");
@@ -1296,6 +1297,9 @@ const plainWheelRecordSummary = computed(() => {
     const left = values?.wheel_feedback_latest_raw_left ?? "not_loaded";
     const right = values?.wheel_feedback_latest_raw_right ?? "not_loaded";
     if (left !== "not_loaded" && right !== "not_loaded") {
+      if (isZeroWheelPair(left, right) && plainWheelZeroBlockerChecked.value) {
+        return { state: "待重试", hint: "轮速卡点已检查；请低速重试读取非零 L/R。" };
+      }
       return { state: "待重试", hint: `已试动但 L/R=${left}/${right}，检查电机使能、供电、模式和现场空间后重试。` };
     }
     return { state: "待重试", hint: "已试动，但还没拿到非零 L/R。" };
@@ -1325,6 +1329,12 @@ const plainWheelTrialButtonLabel = computed(() => {
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
     return "先记录画面再试动";
+  }
+  if (plainWheelZeroBlockerActive.value && plainWheelZeroBlockerChecked.value) {
+    return "检查后重试读非零 L/R";
+  }
+  if (plainWheelZeroBlockerActive.value) {
+    return "先查卡点再重试读非零 L/R";
   }
   if (plainFirstJogResult.value?.proxy_status === "command_forwarded" && !plainFirstJogWheelEvidenceReady.value) {
     return "重试低速试动读非零 L/R";
@@ -1400,6 +1410,23 @@ const plainWheelNextActionSummary = computed(() => {
   }
   return "";
 });
+
+const plainWheelZeroBlockerActive = computed(() => plainWheelNextActionSummary.value !== "");
+
+const plainWheelZeroBlockerSummary = computed(() => {
+  // 这个确认只服务现场排障流程，不写 operator report，也不证明 wheel raw L/R 非零。
+  if (!plainWheelZeroBlockerActive.value) {
+    return "";
+  }
+  if (plainWheelZeroBlockerChecked.value) {
+    return "轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步低速重试读非零 L/R。";
+  }
+  return "轮速卡点：请确认电机使能、供电、模式和现场空间后再重试。";
+});
+
+const plainWheelZeroBlockerButtonLabel = computed(() => (
+  plainWheelZeroBlockerChecked.value ? "轮速卡点已检查" : "已检查轮速卡点"
+));
 
 const plainWheelReadbackSummary = computed(() => {
   // 只读底盘反馈可以解释“当前为什么还不是非零证据”，但不能替代试动窗口材料。
@@ -3113,6 +3140,11 @@ function markDeliveryBasicSafetyConfirmed(): void {
   deliveryOperatorConfirmations.value.emergency_stop_ready = true;
 }
 
+function markPlainWheelZeroBlockerChecked(): void {
+  // 本地勾选只改变现场操作提示，不调用任何机器人接口。
+  plainWheelZeroBlockerChecked.value = true;
+}
+
 function markDeliveryArrivedAndStopped(): void {
   // operator 需要亲眼确认这两项；按钮只合并本地勾选，不提交 report 或 delivery gate。
   deliveryOperatorConfirmations.value.observed_motion = true;
@@ -4198,6 +4230,9 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="loading || baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
                 {{ plainWheelReadbackButtonLabel }}
               </button>
+              <button v-if="plainWheelZeroBlockerActive" type="button" class="secondary compact-stop" data-testid="plain-wheel-zero-check" @click="markPlainWheelZeroBlockerChecked">
+                {{ plainWheelZeroBlockerButtonLabel }}
+              </button>
               <button type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" data-testid="plain-wheel-save" @click="savePlainWheelEvidence">
                 {{ plainWheelEvidenceSaveButtonLabel }}
               </button>
@@ -4208,6 +4243,9 @@ onBeforeUnmount(() => {
             </p>
             <p v-if="plainWheelNextActionSummary" class="panel-note" data-testid="plain-wheel-next-action">
               {{ plainWheelNextActionSummary }}
+            </p>
+            <p v-if="plainWheelZeroBlockerSummary" class="panel-note" data-testid="plain-wheel-zero-check-summary">
+              {{ plainWheelZeroBlockerSummary }}
             </p>
             <p v-if="plainLidarMotionRecordSummary" class="panel-note" data-testid="plain-lidar-motion-record-summary">
               {{ plainLidarMotionRecordSummary }}
