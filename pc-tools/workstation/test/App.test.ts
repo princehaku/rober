@@ -4142,7 +4142,10 @@ describe("App", () => {
 
   it("summarizes first-jog wheel evidence on the plain first screen after a forwarded trial", async () => {
     // 普通首屏要把试动后的 wheel raw L/R 结果翻译成短摘要，不要求用户进高级诊断翻 key。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-before-wheel-save";
     const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/first-jog": {
         schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
         command_kind: "manual",
@@ -4178,7 +4181,7 @@ describe("App", () => {
           evidence_ref: "plain-first-jog-video-fixture",
           required_fields: [],
           missing_fields: [],
-          material_summary: (fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse).operator_hil_material_summary,
+          material_summary: summaryFixture.operator_hil_material_summary,
           failure_reason: "",
           hard_dangerous_true_fields: [],
         },
@@ -4257,7 +4260,8 @@ describe("App", () => {
     expect(String(reportBody.evidence_ref)).toMatch(/^pc-first-jog-wheel-lr-/);
     expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
       wheel_feedback_lr_nonzero_proven: true,
-      physical_motion_lidar_delta_proven: false,
+      physical_motion_lidar_delta_proven: true,
+      scan_delta_ref: "scan-delta-before-wheel-save",
       real_route_map_proven: false,
       delivery_success: false,
       site_state: "plain_first_jog_wheel_lr_nonzero_observed",
