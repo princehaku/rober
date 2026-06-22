@@ -10,6 +10,7 @@
 - PC workstation 新增固定代理 `POST /api/robot-control/delivery/complete?baseUrl=...`，只转发到上位机 `/api/delivery/complete`，不暴露任意 endpoint，不发送 Nav2 goal、manual、stop、`/cmd_vel` 或底盘串口命令。
 - `RobotControlConsolePanel` 的默认关闭 `高级诊断 -> Nav2 规划详情` 新增 `确认送达（高级）` 表单和 gate readback。普通首屏保持简易风格，不出现送达确认、HIL、proof、Nav2 goal 或 raw key values。
 - `onboard/tests/test_upper_robot_api.py` 新增 delivery completion gate 单测，覆盖缺现场材料 blocked 和材料齐备 success 两条路径。
+- `pc-tools/workstation/src/shared/contracts.ts` 的 health route list 补齐 Robot Control 固定代理，包含 Nav2 execute 与 delivery complete，避免 health 可见契约滞后。
 - 更新 `docs/interfaces/ros_runtime_contracts.md` 与 `docs/product/pc_tools_workstation.md`，明确 Nav2 goal succeeded 不等于送达成功；delivery success 只能由 delivery completion gate 在材料齐备时给出。
 
 ## 验证结果
@@ -22,6 +23,7 @@
   - `cd pc-tools/workstation && npm run build` 通过。
   - `git diff --check` 通过。
   - `bash onboard/scripts/docker_humble_build.sh` 通过，`Summary: 6 packages finished [1min 45s]`。
+  - 重启本机 `npm run api` 后，`GET http://127.0.0.1:8787/api/health` 返回 HTTP 200，`api_routes` 包含 `/api/robot-control/delivery/complete?baseUrl=<robot-api-base-url>` 与 `/api/robot-control/nav2/goal/execute?baseUrl=<robot-api-base-url>`。
 - 上车机：
   - `scp` 部署 `upper_robot_api.py` 到 `root@192.168.1.11:/root/rober/onboard/scripts/`，远端 `python3 -m py_compile /root/rober/onboard/scripts/upper_robot_api.py.next` 通过。
   - 重启后进程为 `python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12`。
