@@ -3652,6 +3652,7 @@ describe("App", () => {
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const wrapper = mount(App);
     await flushPromises();
@@ -3659,10 +3660,17 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 13 帧，先点恢复试动确认，再试动读非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：送达草稿覆盖了试动确认，先恢复试动确认，再低速试动读非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去恢复确认");
+    expect(wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').text()).toBe("去恢复");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先恢复确认）");
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先恢复确认，不发车）");
     expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：恢复试动确认（不会发车）。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：移动前检查、恢复试动确认、轮速记录、雷达移动记录。");
+    const callsBeforeFocus = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
+    expect(focusSpy).toHaveBeenCalled();
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFocus);
+    expect(wrapper.find('[data-testid="plain-first-jog-restore"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

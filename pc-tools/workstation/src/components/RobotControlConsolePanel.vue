@@ -199,6 +199,7 @@ const evidenceSweepLines = ref<string[]>([]);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
+const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
 const keyboardControlArmed = ref(false);
@@ -1285,7 +1286,7 @@ const plainGoalProgressItems = computed(() => {
     {
       id: "wheel",
       label: "轮速记录",
-      actionLabel: "去轮速",
+      actionLabel: firstJogMaterialRestoreBlocksMotion.value ? "去恢复" : "去轮速",
       state: wheelReady ? "已完成" : "待完成",
       hint: wheelReady ? `${wheelEvidence.hint}。` : plainWheelGoalProgressHint.value,
     },
@@ -1331,6 +1332,9 @@ const plainGoalProgressPrimaryTarget = computed(() => {
 const plainGoalProgressPrimaryActionLabel = computed(() => {
   // 文案直接写出要跳到哪个卡点，减少现场点按钮前的二次判断。
   const target = plainGoalProgressItems.value.find((item) => item.id === plainGoalProgressPrimaryTarget.value);
+  if (target?.id === "wheel" && firstJogMaterialRestoreBlocksMotion.value) {
+    return "去恢复确认";
+  }
   return target ? `去${target.label.replace("执行", "").replace("确认", "")}卡点` : "全部完成";
 });
 
@@ -3440,8 +3444,11 @@ function focusPlainGoalProgressTarget(targetId: string): void {
   const deliveryTarget = plainDeliveryConfirmMissingLabels.value.includes("送达材料")
     ? plainDeliveryStatusPanel.value
     : plainDeliveryFinalPanel.value;
+  const wheelTarget = firstJogMaterialRestoreBlocksMotion.value
+    ? plainFirstJogRestoreButton.value ?? plainWheelRecordPanel.value
+    : plainWheelRecordPanel.value;
   const targetMap: Record<string, HTMLElement | null> = {
-    wheel: plainWheelRecordPanel.value,
+    wheel: wheelTarget,
     trip: plainTripRunPanel.value,
     delivery: deliveryTarget,
     keyboard: keyboardControlPanel.value,
@@ -4565,7 +4572,7 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <strong>轮速记录</strong>
               <span class="status-chip" :data-state="plainWheelRecordSummary.state">{{ plainWheelRecordSummary.state }}</span>
-              <button type="button" class="secondary compact-stop" :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim() || !firstJogMaterialRestoreReady" @click="restorePlainFirstJogMaterial">
+              <button ref="plainFirstJogRestoreButton" type="button" class="secondary compact-stop" :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim() || !firstJogMaterialRestoreReady" data-testid="plain-first-jog-restore" @click="restorePlainFirstJogMaterial">
                 恢复试动确认
               </button>
               <button type="button" class="secondary compact-stop" :disabled="!canSendPlainFirstJog" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
