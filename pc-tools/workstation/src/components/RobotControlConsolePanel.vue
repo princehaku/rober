@@ -2970,6 +2970,9 @@ onBeforeUnmount(() => {
             材料未满足，本机不会发送点动。缺项：{{ operatorMaterialMissingFields.join("、") }}
           </p>
           <p class="panel-note">非 stop 方向必须同时满足地址、checklist、现场材料且当前没有 pending；stop 可在材料缺失时单独发送。</p>
+          <button class="secondary" type="button" :disabled="manualCommandPending || loading || !robotApiBaseUrl.trim()" @click="sendPlainFirstJog">
+            轮速非零试采（高级）
+          </button>
           <div class="keyboard-control-box">
             <div class="simple-status-row">
               <span class="status-chip" :data-state="keyboardControlSummary.state">{{ keyboardControlSummary.state }}</span>
@@ -3093,6 +3096,14 @@ onBeforeUnmount(() => {
             <dd>{{ listText(manualCommandResult?.motion_evidence_gaps, "none") }}</dd>
             <dt>motion wheel feedback</dt>
             <dd>{{ recordText(manualCommandResult?.remote_motion_key_values) }}</dd>
+            <dt>wheel raw L/R</dt>
+            <dd>
+              during_frames={{ manualCommandResult?.remote_motion_key_values?.feedback_during_motion_t1001_frame_count ?? "not_loaded" }},
+              latest_L={{ manualCommandResult?.remote_motion_key_values?.wheel_feedback_latest_raw_left ?? "not_loaded" }},
+              latest_R={{ manualCommandResult?.remote_motion_key_values?.wheel_feedback_latest_raw_right ?? "not_loaded" }},
+              nonzero_frames={{ manualCommandResult?.remote_motion_key_values?.wheel_feedback_nonzero_frame_count ?? "0" }},
+              proven={{ manualCommandResult?.remote_motion_key_values?.wheel_feedback_lr_nonzero_proven ?? "false" }}
+            </dd>
             <dt>before readback</dt>
             <dd>{{ evidenceReadbackText(manualCommandResult?.before_readback) }}</dd>
             <dt>after readback</dt>

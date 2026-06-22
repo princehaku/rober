@@ -3681,6 +3681,109 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control first-jog proxy exposes raw during-motion L/R key values", async () => {
+    // 只模拟上位机 HTTP contract，验证 PC 代理把 T=1001 during-motion raw L/R 抬给高级诊断。
+    const server = http.createServer((req, res) => {
+      res.setHeader("Content-Type", "application/json");
+      if (req.method === "GET" && req.url === "/api/operator/report") {
+        res.end(JSON.stringify({
+          latest_result: {
+            operator_report_status: "ready_for_review",
+            operator_report: {
+              evidence_ref: "operator-visual-ready",
+              operator_present: true,
+              physical_clearance_confirmed: true,
+              emergency_stop_ready: true,
+              structured_hil_claims: {
+                external_video_recorded: true,
+                external_video_ref: "video-ref",
+                visible_content_proven: false,
+                camera_artifacts_ref: "",
+              },
+            },
+          },
+        }));
+        return;
+      }
+      if (req.method === "POST" && req.url === "/api/base/manual") {
+        res.end(JSON.stringify({
+          status: "manual_command_completed",
+          manual_command_executed: true,
+          auto_stop_executed: true,
+          feedback_during_motion_attempted: true,
+          serial_motion_transaction: {
+            feedback_during_motion: {
+              t1001_feedback_frames: [
+                { T: 1001, L: 0, R: 0, y: "null" },
+                { T: 1001, L: 0.07, R: 0.08, y: "null" },
+              ],
+            },
+            feedback_after_stop: {
+              t1001_feedback_frames: [{ T: 1001, L: 0, R: 0, y: "null" }],
+            },
+          },
+          manual_wheel_feedback_summary: {
+            lr_nonzero_observed: true,
+            nonzero_frame_count: 1,
+            latest_nonzero_pair: { left_speed: 0.07, right_speed: 0.08 },
+          },
+          wheel_feedback_lr_nonzero_proven: true,
+          wheel_feedback_nonzero_observed: true,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        }));
+        return;
+      }
+      res.end(JSON.stringify({ safe_to_control: false, delivery_success: false, primary_actions_enabled: false }));
+    });
+    const robotApi = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            server.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const app = createWorkstationApp();
+    const workstation = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      const listener = app.listen(0, "127.0.0.1", () => {
+        const address = listener.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            listener.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/first-jog?baseUrl=${encodeURIComponent(robotApi.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction: "forward", speed: 0.08, duration_ms: 500, confirm_hil_checklist: true }),
+      });
+      const payload = await response.json();
+      expect(response.status).toBe(200);
+      expect(payload.proxy_status).toBe("command_forwarded");
+      expect(payload.remote_motion_key_values.feedback_during_motion_t1001_frame_count).toBe("2");
+      expect(payload.remote_motion_key_values.feedback_after_stop_t1001_frame_count).toBe("1");
+      expect(payload.remote_motion_key_values.wheel_feedback_latest_raw_left).toBe("0.07");
+      expect(payload.remote_motion_key_values.wheel_feedback_latest_raw_right).toBe("0.08");
+      expect(payload.remote_motion_key_values.wheel_feedback_lr_nonzero_proven).toBe("true");
+      expect(payload.safe_to_control).toBe(false);
+      expect(payload.delivery_success).toBe(false);
+    } finally {
+      await workstation.close();
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary does not block on T130 read-only base feedback sends_commands", async () => {
     // T=130 反馈采样会出现 sends_commands=true；只要 motion/control 字段为 false，就不应误判成底盘运动。
     const robotApi = await listenRobotApiReadbackByPath({

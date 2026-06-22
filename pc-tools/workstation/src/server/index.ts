@@ -189,12 +189,22 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
   // 上位机 manual 响应里的 during-motion 反馈是最贴近真实点动窗口的 wheel material。
   const wheelSummary = asRecord(payload?.manual_wheel_feedback_summary);
   const latestPair = asRecord(wheelSummary?.latest_nonzero_pair) ?? asRecord(wheelSummary?.latest_pair);
+  const transaction = asRecord(payload?.serial_motion_transaction);
+  const duringFeedback = asRecord(transaction?.feedback_during_motion);
+  const afterStopFeedback = asRecord(transaction?.feedback_after_stop);
+  const duringFrames = Array.isArray(duringFeedback?.t1001_feedback_frames) ? duringFeedback.t1001_feedback_frames : [];
+  const afterStopFrames = Array.isArray(afterStopFeedback?.t1001_feedback_frames) ? afterStopFeedback.t1001_feedback_frames : [];
+  const latestDuringFrame = asRecord(duringFrames[duringFrames.length - 1]);
   return {
     wheel_feedback_lr_nonzero_proven: shortValue(payload?.wheel_feedback_lr_nonzero_proven, "false"),
     wheel_feedback_nonzero_observed: shortValue(payload?.wheel_feedback_nonzero_observed, "false"),
     wheel_feedback_nonzero_frame_count: shortValue(wheelSummary?.nonzero_frame_count, "0"),
     wheel_feedback_latest_left_speed: shortValue(latestPair?.left_speed, "not_loaded"),
     wheel_feedback_latest_right_speed: shortValue(latestPair?.right_speed, "not_loaded"),
+    wheel_feedback_latest_raw_left: shortValue(latestDuringFrame?.L, "not_loaded"),
+    wheel_feedback_latest_raw_right: shortValue(latestDuringFrame?.R, "not_loaded"),
+    feedback_during_motion_t1001_frame_count: String(duringFrames.length),
+    feedback_after_stop_t1001_frame_count: String(afterStopFrames.length),
     feedback_during_motion_attempted: shortValue(payload?.feedback_during_motion_attempted, "false"),
     feedback_after_stop_attempted: shortValue(payload?.feedback_after_stop_attempted, "false"),
     manual_command_executed: shortValue(payload?.manual_command_executed, "false"),
