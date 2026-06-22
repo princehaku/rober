@@ -1447,3 +1447,9 @@ first-jog 已消除 LiDAR delta 缺口时，把 `physical_motion_lidar_delta_pro
 `wheel_feedback_latest_right_speed` 摘要字段。这样普通首屏无需重新采样或进入高级诊断，也能直接显示当前只读
 T=1001 wheel raw L/R，例如真实 readback 中的 `L/R=0/0`；该派生只读 latest artifact，不发送运动命令，
 也不把静态 `0/0` 当作 wheel raw L/R 非零证明。
+
+2026-06-22 15:52 起，Robot Control summary 对 `/api/base/status` 内的 fresh `feedback_readback` 做优先级修正：
+若本次 status 同步读到 `t1001_feedback_frame_count`，PC 摘要会把它作为当前 `latest_t1001_observed_count`，
+优先于同一 payload 里可能已经 stale 的 `feedback_samples_latest.latest_t1001_observed_count`。这匹配当前真实
+上位机状态：fresh `/api/base/status` 可读到 12 帧 T=1001 且 L/R 仍为 `0/0`，旧 samples latest artifact 只有
+3 帧且已 stale。该修正只改善普通首屏诊断，不发送 T=130、first-jog、manual、Nav2 或 delivery 请求。

@@ -801,8 +801,21 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
     return found === undefined ? [] : [[key, compactValueText(found)] as const];
   });
   const result = Object.fromEntries(entries);
+  appendFreshBaseFeedbackFrameCount(payload, result, keys);
   appendWheelFeedbackSummaryKeyValues(payload, result, keys);
   return result;
+}
+
+function appendFreshBaseFeedbackFrameCount(payload: JsonRecord | null, result: Record<string, string>, keys: readonly string[]): void {
+  // /api/base/status 内的 feedback_readback 是本次 fresh 读数；优先于可能 stale 的 feedback_samples_latest。
+  if (!keys.includes("latest_t1001_observed_count")) {
+    return;
+  }
+  const feedbackReadback = asRecord(findFirstKey(payload, ["feedback_readback"]));
+  const frameCount = feedbackReadback?.t1001_feedback_frame_count;
+  if (typeof frameCount === "number" || typeof frameCount === "string") {
+    result.latest_t1001_observed_count = compactValueText(frameCount);
+  }
 }
 
 function appendWheelFeedbackSummaryKeyValues(payload: JsonRecord | null, result: Record<string, string>, keys: readonly string[]): void {

@@ -3916,6 +3916,63 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary prefers fresh base status T1001 frame count over stale samples artifact", async () => {
+    // /api/base/status 会同步读取 fresh T=1001；不能被嵌套 stale samples latest 的旧计数覆盖。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/base/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_status",
+          status: "ready",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          feedback_readback: {
+            schema: "trashbot.upper_robot_api.v1.base_feedback_request_result",
+            t1001_feedback_frame_count: 12,
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_nonzero_observed: false,
+            wheel_feedback_summary: {
+              frame_count: 12,
+              latest_pair: { left_speed: 0, right_speed: 0, source: "vendor_t1001_L_R" },
+              latest_nonzero_pair: null,
+              nonzero_frame_count: 0,
+              source: "vendor_t1001_L_R",
+            },
+            sends_commands: true,
+            sends_motion_commands: false,
+            robot_control_executed: false,
+          },
+          feedback_samples_latest: {
+            freshness: { status: "stale" },
+            latest_t1001_observed_count: 3,
+            wheel_feedback_summary: {
+              frame_count: 3,
+              latest_pair: { left_speed: 0, right_speed: 0, source: "vendor_t1001_L_R" },
+              latest_nonzero_pair: null,
+              nonzero_frame_count: 0,
+              source: "vendor_t1001_L_R",
+            },
+          },
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const baseStatusReadback = summary.read_endpoints.find((item) => item.id === "base_status");
+
+      expect(baseStatusReadback?.key_values.latest_t1001_observed_count).toBe("12");
+      expect(baseStatusReadback?.key_values.wheel_feedback_latest_left_speed).toBe("0");
+      expect(baseStatusReadback?.key_values.wheel_feedback_latest_right_speed).toBe("0");
+      expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("12");
+      expect(summary.readback_summary.base.wheel_feedback_latest_left_speed).toBe("0");
+      expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
+      expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_observed_not_motion_proof");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.feedback_readback.sends_commands");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary treats structured HIL delivery as operator material only", async () => {
     // /api/operator/report 的 structured_hil_claims 是人工材料索引，不得把 delivery_success claim 当成顶层成功。
     const robotApi = await listenRobotApiReadbackByPath({
