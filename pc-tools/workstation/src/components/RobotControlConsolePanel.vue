@@ -1461,6 +1461,16 @@ function inheritedMotionClaimsFromSummary(): Pick<
   };
 }
 
+function inheritedBasicSafetyFromSummary(): Pick<RobotControlOperatorReportRequest, "operator_present" | "physical_clearance_confirmed" | "emergency_stop_ready"> {
+  // 送达草稿只保留已有 basic safety 确认；没有当前 true 读回时仍保持 false，避免伪造现场人在场。
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  return {
+    operator_present: summary?.operator_present === "true",
+    physical_clearance_confirmed: summary?.physical_clearance === "true",
+    emergency_stop_ready: summary?.emergency_stop === "true",
+  };
+}
+
 function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRequest {
   // 恢复试动材料只重写 first-jog 前置项；不伪造轮速、LiDAR 位移、路线或送达成功。
   const summary = robotSummary.value?.operator_hil_material_summary;
@@ -2214,11 +2224,12 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
   operatorReportPending.value = true;
   const evidenceRef = deliveryOperatorEvidenceRef.value.trim() || `delivery-draft-${Date.now()}`;
   const inheritedMotionClaims = inheritedMotionClaimsFromSummary();
+  const inheritedBasicSafety = inheritedBasicSafetyFromSummary();
   const reportBody: RobotControlOperatorReportRequest = {
-    operator_present: false,
+    operator_present: inheritedBasicSafety.operator_present,
     evidence_ref: evidenceRef,
-    physical_clearance_confirmed: false,
-    emergency_stop_ready: false,
+    physical_clearance_confirmed: inheritedBasicSafety.physical_clearance_confirmed,
+    emergency_stop_ready: inheritedBasicSafety.emergency_stop_ready,
     observed_motion: false,
     observed_stop: false,
     reported_at: new Date().toISOString(),

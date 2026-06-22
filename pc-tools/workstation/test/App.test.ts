@@ -4264,8 +4264,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
-  it("submits delivery draft material without operator confirmation or delivery completion", async () => {
-    // 草稿只保存 refs；不允许把预填材料升级成 observed motion/stop 或 delivery_success。
+  it("submits delivery draft material without motion or delivery confirmation while preserving existing safety material", async () => {
+    // 草稿只保存 refs；允许保留已有 basic safety，但不能升级成 observed motion/stop 或 delivery_success。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=pc-first-jog-wheel-lr-fixture";
     summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-fixture";
@@ -4342,9 +4342,9 @@ describe("App", () => {
     expect(reportCall).toBeTruthy();
     const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
     expect(reportBody.evidence_ref).toBe("delivery-draft-fixture");
-    expect(reportBody.operator_present).toBe(false);
-    expect(reportBody.physical_clearance_confirmed).toBe(false);
-    expect(reportBody.emergency_stop_ready).toBe(false);
+    expect(reportBody.operator_present).toBe(true);
+    expect(reportBody.physical_clearance_confirmed).toBe(true);
+    expect(reportBody.emergency_stop_ready).toBe(true);
     expect(reportBody.observed_motion).toBe(false);
     expect(reportBody.observed_stop).toBe(false);
     expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({

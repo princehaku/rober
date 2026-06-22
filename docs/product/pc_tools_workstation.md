@@ -1229,6 +1229,12 @@ Robot Control summary 中的 `operator_hil_material_summary.wheel_feedback` 或 
 之前保存的 wheel raw L/R 或 LiDAR delta 材料覆盖成 false。若 summary 没有明确 `true; ref=...`，
 这些字段仍保持 false/缺 ref；PC 不会凭空生成 wheel、LiDAR 或 delivery success 证据。
 
+2026-06-22 13:30 起，送达草稿同样会保留已有 basic safety 三项：只有当前 Robot Control summary
+已读到 `operator_present=true`、`physical_clearance=true`、`emergency_stop=true` 时，草稿 report
+才保留对应顶层字段；否则仍写 false。这样 delivery draft 不再无意覆盖 first-jog 前置安全确认，
+但也不会把未确认的 operator/clearance/estop 凭空改成 true。`observed_motion`、`observed_stop` 和
+`delivery_success` 在草稿中仍固定为 false，最终送达仍必须走完整现场 checklist。
+
 2026-06-22 12:15 起，PC 高级诊断补充固定只读入口
 `GET /api/robot-control/nav2/goal/execution/latest?baseUrl=<robot-api-base-url>`，只转发到上位机
 `GET /api/nav2/goal/execution/latest`。它用于页面刷新后找回最近 NavigateToPose artifact 的
