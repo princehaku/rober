@@ -1745,6 +1745,25 @@ async function fillDeliveryVideoRefFromCameraProbe(): Promise<void> {
   }
 }
 
+async function prefillDeliveryMaterialRefs(): Promise<void> {
+  // 一键预填只收集 ref，不提交 operator report；最终送达仍由现场人员显式确认。
+  if (!robotApiBaseUrl.value.trim()) {
+    return;
+  }
+  const existingNav2Ref = navGoalExecutionResult.value?.goal_execution_key_values.evidence_ref
+    ?? navGoalExecutionLatestResult.value?.goal_execution_key_values.evidence_ref;
+  if (!deliveryOperatorRouteMapRef.value.trim() && (!existingNav2Ref || existingNav2Ref === "not_loaded")) {
+    await loadNavGoalExecutionLatest();
+  }
+  if (!deliveryOperatorRouteMapRef.value.trim()) {
+    fillDeliveryRouteRefFromLatestNav2();
+  }
+  if (!deliveryOperatorVideoRef.value.trim()) {
+    await fillDeliveryVideoRefFromCameraProbe();
+  }
+  await loadDeliveryLatest();
+}
+
 async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
   // 这个快捷入口只帮现场人员把“送达确认材料”写进 operator report，再交给 delivery gate 合成结论。
   if (
@@ -2859,6 +2878,14 @@ onBeforeUnmount(() => {
             </button>
           </form>
           <form class="robot-control-form" @submit.prevent="submitDeliveryOperatorReportAndComplete">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="loading || navGoalExecutionLatestPending || cameraFirstFrameProbePending || deliveryLatestPending || !robotApiBaseUrl.trim()"
+              @click="prefillDeliveryMaterialRefs"
+            >
+              预填送达材料（高级）
+            </button>
             <label>
               <span>operator evidence ref</span>
               <input v-model="deliveryOperatorEvidenceRef" name="deliveryOperatorEvidenceRef" maxlength="512" placeholder="delivery-operator-...">

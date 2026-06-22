@@ -1234,3 +1234,10 @@ Nav2 goal，不调用 `/api/base/manual` 或 `/cmd_vel`，顶层继续固定
 否则先触发一次固定 camera first-frame probe。该按钮不提交 operator report、不调用 delivery gate、
 不勾选现场确认，也不把相机样张外推为 `observed_motion/observed_stop` 或 delivery success；它只减少
 现场人员手动复制可追溯画面 ref 的成本。
+
+同轮继续新增“预填送达材料（高级）”组合按钮：先用固定
+`GET /api/robot-control/nav2/goal/execution/latest` 找回最近 `goal_succeeded` 的
+`evidence_ref`，再用固定 camera first-frame probe 取得 `sample_path`，最后刷新固定
+`GET /api/robot-control/delivery/latest` 缺口面板。该按钮只填 `route/map ref`、
+`delivery_evidence_ref`、`operator evidence ref` 和“送达视频 ref”，不提交
+`/api/operator/report`、不调用 `/api/delivery/complete`，也不替 operator 勾选“现场确认已到达/投放”。
