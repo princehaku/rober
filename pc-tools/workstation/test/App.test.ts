@@ -3257,9 +3257,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口、移动前检查、雷达移动记录。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：复查手控条件。");
     expect(firstScreenText).toContain("最终确认");
-    expect(firstScreenText).toContain("待材料");
-    expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
-    expect(firstScreenText).toContain("还差 8 项：送达材料、人在旁边可接管、周围安全、停止手段就绪、已观察到到达/移动、已观察到停止、视频和行程材料已核对、确认已投放/送达。");
+    expect(firstScreenText).toContain("待行程");
+    expect(firstScreenText).toContain("先完成本轮行程，再做最终确认。");
+    expect(firstScreenText).toContain("还差 9 项：本轮行程、送达材料、人在旁边可接管、周围安全、停止手段就绪、已观察到到达/移动、已观察到停止、视频和行程材料已核对、确认已投放/送达。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid^="plain-goal-progress-go-"]')).toHaveLength(4);
@@ -5257,6 +5257,35 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-final";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-fixture",
+          generated_at_ms: "1782150147000",
+          response_generated_at_ms: "1782150147954",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
       "/api/robot-control/operator/report": {
         schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
         proxy_status: "report_forwarded",
@@ -5389,6 +5418,35 @@ describe("App", () => {
   it("shows a plain delivery submit failure summary when the completion gate blocks", async () => {
     // 红色确认提交失败后，普通首屏必须直接显示 gate 缺口，不能只回到“可提交”。
     const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-fixture",
+          generated_at_ms: "1782150147000",
+          response_generated_at_ms: "1782150147954",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
       "/api/robot-control/operator/report": {
         schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
         proxy_status: "report_forwarded",
@@ -6526,7 +6584,7 @@ describe("App", () => {
     const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
     expect(deliveryStatus.text()).toContain("已保存");
     expect(deliveryStatus.text()).toContain("送达材料草稿已保存，约 13 小时前；这份草稿较旧，如本轮已重新到达，请重新准备材料或重新确认；请完成下方最终确认。");
-    expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
+    expect(deliveryStatus.text()).toContain("旧行程记录不能用于本轮送达，先重新执行本轮行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     const callsBeforeFocus = mockedFetch.mock.calls.length;
     const focusCallsBeforeDeliveryClick = focusSpy.mock.calls.length;
@@ -6553,8 +6611,17 @@ describe("App", () => {
     expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe("/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-1782099547218");
     expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-o11-nav2-goal-execution-1782099547218");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先勾选安全）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("本轮行程");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项：本轮行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).not.toContain("o11-nav2-goal-execution-1782099547218");
     expect(visiblePlainHomeText(wrapper)).not.toContain("structured_hil_claims");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);

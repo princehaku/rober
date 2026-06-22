@@ -631,6 +631,7 @@ const plainDeliveryConfirmMissingLabels = computed(() => {
   const confirmations = deliveryOperatorConfirmations.value;
   const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim());
   return [
+    { label: "本轮行程", ready: deliveryNav2GoalReady.value },
     { label: "送达材料", ready: materialReady },
     { label: "人在旁边可接管", ready: confirmations.operator_present },
     { label: "周围安全", ready: confirmations.physical_clearance_confirmed },
@@ -658,6 +659,9 @@ function deliveryDraftMaterialPresent(): boolean {
 
 function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
   // 已有草稿后，按钮直接指向下一组人工确认，避免现场只看到抽象数量。
+  if (missingLabels.includes("本轮行程")) {
+    return "确认送达（先重新行程）";
+  }
   if (missingLabels.includes("送达材料")) {
     return "确认送达（先准备材料）";
   }
@@ -882,11 +886,12 @@ const plainDeliveryDraftSaveButtonLabel = computed(() => (
 ));
 
 const plainDeliveryConfirmReady = computed(() => {
-  // 普通确认入口复用高级 gate：材料和逐项勾选都满足后才允许提交。
+  // 普通确认入口复用高级 gate：本轮行程、材料和逐项勾选都满足后才允许提交。
   return !loading.value
     && !operatorReportPending.value
     && !deliveryCompletionPending.value
     && robotApiBaseUrl.value.trim().length > 0
+    && deliveryNav2GoalReady.value
     && deliveryOperatorConfirmationReady.value
     && deliveryOperatorVideoRef.value.trim().length > 0
     && deliveryOperatorRouteMapRef.value.trim().length > 0;
@@ -899,6 +904,11 @@ const plainDeliveryConfirmSummary = computed(() => {
   }
   if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
     return { state: "已完成", hint: "送达已确认完成。" };
+  }
+  if (!deliveryNav2GoalReady.value) {
+    return plainTripHasSucceededEvidence.value
+      ? { state: "待行程", hint: "旧行程记录不能用于本轮送达，先重新执行本轮行程。" }
+      : { state: "待行程", hint: "先完成本轮行程，再做最终确认。" };
   }
   if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "待材料", hint: "先准备送达材料，再做最终确认。" };
@@ -3472,6 +3482,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
     !robotApiBaseUrl.value.trim()
     || operatorReportPending.value
     || deliveryCompletionPending.value
+    || !deliveryNav2GoalReady.value
     || !deliveryOperatorConfirmationReady.value
     || !deliveryOperatorVideoRef.value.trim()
     || !deliveryOperatorRouteMapRef.value.trim()
