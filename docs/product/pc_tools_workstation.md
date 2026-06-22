@@ -1258,3 +1258,12 @@ PC 会按危险字段阻断。
 `site_state=delivery_material_draft_not_operator_confirmed`。它不会调用 `/api/delivery/complete`，
 不会触发运动，也不会把 operator report 404 直接升级为 delivery success；用途只是把缺口从“无 report”
 推进成“有草稿材料但缺现场确认”的可复核状态。
+
+2026-06-22 15:10 起，“提交送达材料并确认（高级）”不再使用一个总确认 checkbox。PC 表单改为逐项
+现场 checklist：现场有人确认并可接管、周围安全、急停/停止手段、已观察到到达/运动、已观察到停止、
+视频与 `route/map ref` 可复核、确认已投放/送达。只有所有项目和“送达视频 ref”、
+`route/map ref` 都齐全时，按钮才会提交 `operator_present=true`、`observed_motion=true`、
+`observed_stop=true` 与 `structured_hil_claims.delivery_success=true` 的 operator report，再调用固定
+`/api/robot-control/delivery/complete` 交给上位机 gate 合成最终结论；缺任一项时 PC 不提交 operator report，
+也不调用 delivery complete。该变化只收紧高级送达收口入口，不改变普通用户首屏，也不把当前草稿材料、
+camera sample 或 Nav2 goal succeeded 自动外推成真实 delivery success。

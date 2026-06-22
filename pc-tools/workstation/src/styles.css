@@ -481,6 +481,8 @@ h3 {
 
 .checklist-item input {
   margin-top: 2px;
+  width: auto;
+  min-height: auto;
 }
 
 .advanced-details {

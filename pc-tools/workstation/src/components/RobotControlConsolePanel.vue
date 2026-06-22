@@ -119,7 +119,15 @@ const deliveryEvidenceRef = ref("");
 const deliveryOperatorEvidenceRef = ref("");
 const deliveryOperatorVideoRef = ref("");
 const deliveryOperatorRouteMapRef = ref("");
-const confirmDeliveryOperatorReport = ref(false);
+const deliveryOperatorConfirmations = ref({
+  operator_present: false,
+  physical_clearance_confirmed: false,
+  emergency_stop_ready: false,
+  observed_motion: false,
+  observed_stop: false,
+  route_video_refs_verified: false,
+  delivery_success: false,
+});
 const navGoalExecutionTimeoutS = ref(8);
 const hilChecklist = ref([
   { id: "operator_ready", checked: false, label: "现场有人扶控并准备急停" },
@@ -467,6 +475,18 @@ const operatorMaterialMissingFields = computed(() => {
 const operatorMaterialReady = computed(() => {
   // 未加载 summary 时会自然落入缺项列表，因此这里不再额外放宽。
   return robotSummary.value?.operator_hil_material_summary?.status === "loaded" && operatorMaterialMissingFields.value.length === 0;
+});
+
+const deliveryOperatorConfirmationReady = computed(() => {
+  // 送达成功必须由现场逐项确认；预填 ref 或草稿 report 不能替代 observed motion/stop。
+  const confirmations = deliveryOperatorConfirmations.value;
+  return confirmations.operator_present
+    && confirmations.physical_clearance_confirmed
+    && confirmations.emergency_stop_ready
+    && confirmations.observed_motion
+    && confirmations.observed_stop
+    && confirmations.route_video_refs_verified
+    && confirmations.delivery_success;
 });
 
 const firstJogVisualMaterialReady = computed(() => {
@@ -1865,7 +1885,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
     !robotApiBaseUrl.value.trim()
     || operatorReportPending.value
     || deliveryCompletionPending.value
-    || !confirmDeliveryOperatorReport.value
+    || !deliveryOperatorConfirmationReady.value
     || !deliveryOperatorVideoRef.value.trim()
     || !deliveryOperatorRouteMapRef.value.trim()
   ) {
@@ -1874,13 +1894,14 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
   operatorReportPending.value = true;
   deliveryCompletionPending.value = true;
   const evidenceRef = deliveryOperatorEvidenceRef.value.trim() || `delivery-operator-${Date.now()}`;
+  const confirmations = deliveryOperatorConfirmations.value;
   const reportBody: RobotControlOperatorReportRequest = {
-    operator_present: true,
+    operator_present: confirmations.operator_present,
     evidence_ref: evidenceRef,
-    physical_clearance_confirmed: true,
-    emergency_stop_ready: true,
-    observed_motion: true,
-    observed_stop: true,
+    physical_clearance_confirmed: confirmations.physical_clearance_confirmed,
+    emergency_stop_ready: confirmations.emergency_stop_ready,
+    observed_motion: confirmations.observed_motion,
+    observed_stop: confirmations.observed_stop,
     reported_at: new Date().toISOString(),
     operator_notes: "PC delivery closure shortcut; operator explicitly confirmed delivery, route/map evidence, and visual material.",
     structured_hil_claims: {
@@ -1889,9 +1910,9 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
       visible_content_proven: false,
       wheel_feedback_lr_nonzero_proven: false,
       physical_motion_lidar_delta_proven: false,
-      real_route_map_proven: true,
+      real_route_map_proven: confirmations.route_video_refs_verified,
       route_map_ref: deliveryOperatorRouteMapRef.value.trim(),
-      delivery_success: true,
+      delivery_success: confirmations.delivery_success,
       site_state: "operator_confirmed_delivery_complete",
     },
   };
@@ -3005,11 +3026,38 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="loading || operatorReportPending || !robotApiBaseUrl.trim() || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()" @click="submitDeliveryDraftMaterial">
               提交送达草稿（高级）
             </button>
-            <label class="checkbox-inline">
-              <input v-model="confirmDeliveryOperatorReport" name="confirmDeliveryOperatorReport" type="checkbox">
-              <span>现场确认已到达/投放，且视频与 route/map ref 可复核</span>
-            </label>
-            <button class="danger-button" type="submit" :disabled="loading || operatorReportPending || deliveryCompletionPending || !robotApiBaseUrl.trim() || !confirmDeliveryOperatorReport || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()">
+            <div class="checklist-box compact-checklist">
+              <p class="checklist-title">送达最终确认</p>
+              <label class="checklist-item">
+                <input v-model="deliveryOperatorConfirmations.operator_present" name="deliveryOperatorConfirmOperatorPresent" type="checkbox">
+                <span>现场有人确认并可接管</span>
+              </label>
+              <label class="checklist-item">
+                <input v-model="deliveryOperatorConfirmations.physical_clearance_confirmed" name="deliveryOperatorConfirmClearance" type="checkbox">
+                <span>周围安全已确认</span>
+              </label>
+              <label class="checklist-item">
+                <input v-model="deliveryOperatorConfirmations.emergency_stop_ready" name="deliveryOperatorConfirmEstop" type="checkbox">
+                <span>急停/停止手段就绪</span>
+              </label>
+              <label class="checklist-item">
+                <input v-model="deliveryOperatorConfirmations.observed_motion" name="deliveryOperatorConfirmObservedMotion" type="checkbox">
+                <span>已观察到小车到达/运动过程</span>
+              </label>
+              <label class="checklist-item">
+                <input v-model="deliveryOperatorConfirmations.observed_stop" name="deliveryOperatorConfirmObservedStop" type="checkbox">
+                <span>已观察到小车停止</span>
+              </label>
+              <label class="checklist-item">
+                <input v-model="deliveryOperatorConfirmations.route_video_refs_verified" name="deliveryOperatorConfirmRefsVerified" type="checkbox">
+                <span>视频与 route/map ref 可复核</span>
+              </label>
+              <label class="checklist-item">
+                <input v-model="deliveryOperatorConfirmations.delivery_success" name="deliveryOperatorConfirmDeliverySuccess" type="checkbox">
+                <span>确认已投放/送达</span>
+              </label>
+            </div>
+            <button class="danger-button" type="submit" :disabled="loading || operatorReportPending || deliveryCompletionPending || !robotApiBaseUrl.trim() || !deliveryOperatorConfirmationReady || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()">
               提交送达材料并确认（高级）
             </button>
           </form>

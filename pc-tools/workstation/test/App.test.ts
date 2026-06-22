@@ -3374,7 +3374,9 @@ describe("App", () => {
     await wrapper.find('input[name="operatorReportExternalVideoRef"]').setValue("phone-video-ui.mp4");
     await wrapper.find('input[name="operatorReportCameraArtifactsRef"]').setValue("runtime/camera/latest_metrics.json");
     await wrapper.find('input[name="operatorReportWheelFeedbackRef"]').setValue("runtime/wave_rover_feedback_debug.jsonl");
-    const claimChecks = wrapper.findAll(".compact-checklist input[type='checkbox']");
+    const reportForm = wrapper.findAll("form").find((form) => form.text().includes("提交现场材料"));
+    expect(reportForm).toBeTruthy();
+    const claimChecks = reportForm?.findAll(".compact-checklist input[type='checkbox']") ?? [];
     await claimChecks[0]?.setValue(true);
     await claimChecks[1]?.setValue(true);
     await claimChecks[2]?.setValue(true);
@@ -3382,8 +3384,6 @@ describe("App", () => {
     await claimChecks[6]?.setValue(true);
     await claimChecks[10]?.setValue(true);
 
-    const reportForm = wrapper.findAll("form").find((form) => form.text().includes("提交现场材料"));
-    expect(reportForm).toBeTruthy();
     await reportForm?.trigger("submit");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4088,6 +4088,166 @@ describe("App", () => {
     expect(reportBody.delivery_success).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+  });
+
+  it("keeps final delivery confirmation disabled until every operator checklist item is checked", async () => {
+    // 最终送达确认不能再靠一个总开关；缺任一现场确认项都不能写 delivery_success。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/operator/report": {
+        proxy_status: "should_not_be_called",
+      },
+      "/api/robot-control/delivery/complete": {
+        proxy_status: "should_not_be_called",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg");
+    await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-fixture");
+    await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    const confirmButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "提交送达材料并确认（高级）");
+    expect(confirmButton).toBeTruthy();
+    expect(confirmButton?.attributes("disabled")).toBeDefined();
+    await confirmButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+  });
+
+  it("submits final delivery operator material only after the explicit checklist is complete", async () => {
+    // 全项确认后才提交 operator report，并把 delivery complete 交给后端 gate 合成最终结论。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/operator/report": {
+        schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+        proxy_status: "report_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/operator/report",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        structured_hil_claims: { delivery_success: true },
+        rejected_fields: [],
+        ignored_fields: [],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/complete": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_complete_proxy.v1",
+        proxy_status: "completion_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: true,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/complete",
+        remote_endpoint: "/api/delivery/complete",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        delivery_key_values: { status: "delivery_complete", delivery_success: "true" },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: true,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/latest",
+        remote_endpoint: "/api/delivery/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        delivery_key_values: { status: "delivery_complete", delivery_success: "true" },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="deliveryOperatorEvidenceRef"]').setValue("delivery-operator-fixture");
+    await wrapper.find('input[name="deliveryEvidenceRef"]').setValue("delivery-confirmation-fixture");
+    await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg");
+    await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-fixture");
+    await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    const confirmButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "提交送达材料并确认（高级）");
+    expect(confirmButton).toBeTruthy();
+    expect(confirmButton?.attributes("disabled")).toBeUndefined();
+    const confirmForm = wrapper.findAll("form").find((form) => form.text().includes("送达最终确认"));
+    expect(confirmForm).toBeTruthy();
+    await confirmForm?.trigger("submit");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCall).toBeTruthy();
+    const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(reportBody).toEqual(expect.objectContaining({
+      operator_present: true,
+      evidence_ref: "delivery-operator-fixture",
+      physical_clearance_confirmed: true,
+      emergency_stop_ready: true,
+      observed_motion: true,
+      observed_stop: true,
+    }));
+    expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      external_video_recorded: true,
+      external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg",
+      real_route_map_proven: true,
+      route_map_ref: "o11-nav2-goal-execution-fixture",
+      delivery_success: true,
+      site_state: "operator_confirmed_delivery_complete",
+    }));
+    const completeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"));
+    expect(completeCall).toBeTruthy();
+    const completeBody = JSON.parse(String((completeCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(completeBody).toEqual(expect.objectContaining({
+      confirm_delivery_completion: true,
+      delivery_evidence_ref: "delivery-confirmation-fixture",
+    }));
   });
 
   it("recomputes delivery gap through the fixed check endpoint without confirming completion", async () => {
