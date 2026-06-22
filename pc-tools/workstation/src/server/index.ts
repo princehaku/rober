@@ -251,6 +251,7 @@ function deliveryCompleteKeyValues(payload: Record<string, unknown> | null): Rec
     nav2_feedback_sample_count: shortValue(nav2?.feedback_sample_count, "0"),
     nav2_generated_at_ms: shortValue(nav2?.generated_at_ms),
     generated_at_ms: shortValue(result?.generated_at_ms ?? payload?.generated_at_ms),
+    response_generated_at_ms: shortValue(payload?.generated_at_ms),
     operator_report_status: shortValue(operatorReport?.operator_report_status),
     operator_evidence_ref: shortValue(operatorReport?.evidence_ref),
     missing_required_material: shortValue(result?.missing_required_material),

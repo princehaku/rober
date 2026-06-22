@@ -819,7 +819,11 @@ const plainDeliveryMaterialSummary = computed(() => {
     return { state: "准备中", hint: "正在读取最近行程和画面材料。" };
   }
   if (deliveryDraftMaterialPresent()) {
-    return { state: "已保存", hint: "送达材料草稿已保存；请完成下方最终确认。" };
+    const ageText = formatEvidenceAge(
+      deliveryLatestResult.value?.delivery_key_values,
+      "这份草稿较旧，如本轮已重新到达，请重新准备材料或重新确认",
+    );
+    return { state: "已保存", hint: `送达材料草稿已保存${ageText}；请完成下方最终确认。` };
   }
   if (deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "已预填", hint: "视频和行程材料已预填，可先保存草稿。" };
@@ -1046,8 +1050,8 @@ function parsePositiveMillis(value: string | undefined): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function formatNav2EvidenceAge(values: Record<string, string> | undefined): string {
-  // latest 可能是昨天的成功 artifact；普通用户需要看到年龄，避免把旧成功误当成本轮复验。
+function formatEvidenceAge(values: Record<string, string> | undefined, staleMessage = "这条记录较旧，如需本轮复验，请重新执行行程"): string {
+  // latest 可能是昨天的 artifact；普通用户需要看到年龄，避免把旧材料误当成本轮证据。
   const actionGeneratedAt = parsePositiveMillis(values?.generated_at_ms ?? values?.nav2_generated_at_ms);
   if (actionGeneratedAt === null) {
     return "";
@@ -1064,7 +1068,7 @@ function formatNav2EvidenceAge(values: Record<string, string> | undefined): stri
       : ageMs < dayMs
         ? `约 ${Math.max(1, Math.round(ageMs / hourMs))} 小时前`
         : `约 ${Math.max(1, Math.round(ageMs / dayMs))} 天前`;
-  const staleText = ageMs >= 15 * minuteMs ? "；这条记录较旧，如需本轮复验，请重新执行行程" : "";
+  const staleText = ageMs >= 15 * minuteMs ? `；${staleMessage}` : "";
   return `，${ageText}${staleText}`;
 }
 
@@ -1081,7 +1085,7 @@ const plainTripEvidenceSummary = computed(() => {
   }
   const feedbackCount = values?.feedback_sample_count ?? values?.nav2_feedback_sample_count;
   const feedbackText = feedbackCount && feedbackCount !== "0" && feedbackCount !== "not_loaded" ? `，反馈 ${feedbackCount} 次` : "";
-  return `最近行程成功${feedbackText}${formatNav2EvidenceAge(values)}；送达仍需现场确认。`;
+  return `最近行程成功${feedbackText}${formatEvidenceAge(values)}；送达仍需现场确认。`;
 });
 
 const plainGoalProgressItems = computed(() => {

@@ -6477,6 +6477,8 @@ describe("App", () => {
           delivery_success: "false",
           nav2_status: "goal_succeeded",
           nav2_feedback_sample_count: "8",
+          generated_at_ms: "1782103344406",
+          response_generated_at_ms: "1782150442201",
           operator_report_status: "unsafe_or_incomplete",
         },
         delivery_material_refs: {
@@ -6507,7 +6509,7 @@ describe("App", () => {
 
     const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
     expect(deliveryStatus.text()).toContain("已保存");
-    expect(deliveryStatus.text()).toContain("送达材料草稿已保存；请完成下方最终确认。");
+    expect(deliveryStatus.text()).toContain("送达材料草稿已保存，约 13 小时前；这份草稿较旧，如本轮已重新到达，请重新准备材料或重新确认；请完成下方最终确认。");
     expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去送达卡点");
     const callsBeforeFocus = mockedFetch.mock.calls.length;
@@ -6519,8 +6521,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 5 项，不确认）");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：勾选安全三项。");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，约 13 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达仍需现场确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程成功，反馈 8 次，约 13 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达仍需现场确认。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("行程已完成");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("行程已完成");
@@ -6529,7 +6531,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选安全三项。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行已完成；送达确认待完成");
-    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次；送达未完成");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，约 13 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达未完成");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：送达未完成，下一步：勾选安全三项。");
     expect((wrapper.find('input[name="deliveryOperatorEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-draft-smoke-1782102952");
     expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe("/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg");
