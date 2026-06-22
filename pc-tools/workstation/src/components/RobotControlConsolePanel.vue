@@ -200,6 +200,7 @@ const keyboardControlPanel = ref<HTMLElement | null>(null);
 const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
 const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
+const plainWheelTrialButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
 const keyboardControlArmed = ref(false);
@@ -3810,6 +3811,11 @@ async function restorePlainFirstJogMaterial(): Promise<void> {
     operatorReportResult.value = plainFirstJogMaterialRestoreResult.value;
     plainFirstJogMaterialRestorePending.value = false;
     await refreshConsole();
+    if (plainFirstJogMaterialRestored.value) {
+      await nextTick();
+      plainWheelTrialButton.value?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+      plainWheelTrialButton.value?.focus({ preventScroll: true });
+    }
   }
 }
 
@@ -4575,7 +4581,7 @@ onBeforeUnmount(() => {
               <button ref="plainFirstJogRestoreButton" type="button" class="secondary compact-stop" :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim() || !firstJogMaterialRestoreReady" data-testid="plain-first-jog-restore" @click="restorePlainFirstJogMaterial">
                 恢复试动确认
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="!canSendPlainFirstJog" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
+              <button ref="plainWheelTrialButton" type="button" class="secondary compact-stop" :disabled="!canSendPlainFirstJog" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
                 {{ plainWheelTrialButtonLabel }}
               </button>
               <button type="button" class="secondary compact-stop" :disabled="loading || baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">

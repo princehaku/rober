@@ -4591,6 +4591,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     expect(visiblePlainHomeText(wrapper)).toContain("已有现场画面；请恢复试动确认后再试动，恢复确认不会发车。");
     expect(visiblePlainHomeText(wrapper)).toContain("试动按钮已锁定：请先点恢复试动确认（不会发车）。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("先点“恢复试动确认”（不会发车），再试动读取轮速。");
@@ -4612,6 +4613,7 @@ describe("App", () => {
     const restoreButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "恢复试动确认");
     expect(restoreButton).toBeTruthy();
     expect(restoreButton?.attributes("disabled")).toBeUndefined();
+    const callsBeforeRestore = mockedFetch.mock.calls.length;
     await restoreButton?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4644,7 +4646,9 @@ describe("App", () => {
     expect(firstJogButtonAfterRestore?.attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读非零 L/R");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
+    expect(focusSpy).toHaveBeenCalled();
     expect(visiblePlainHomeText(wrapper)).not.toContain("试动按钮已锁定");
+    expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeRestore);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
