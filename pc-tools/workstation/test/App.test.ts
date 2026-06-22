@@ -3241,8 +3241,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。");
     expect(firstScreenText).toContain("行程操作");
     expect(firstScreenText).toContain("先勾选行程前确认，再检查或执行。");
-    expect(firstScreenText).toContain("检查行程");
-    expect(firstScreenText).toContain("执行行程");
+    expect(firstScreenText).toContain("先勾选确认");
     expect(firstScreenText).toContain("读取行程结果");
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
@@ -3261,7 +3260,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid^="plain-goal-progress-go-"]')).toHaveLength(4);
     expect(wrapper.find('[data-testid="plain-trip-run"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读轮速");
@@ -3690,13 +3690,15 @@ describe("App", () => {
     expect(tripPanel.exists()).toBe(true);
     expect(tripPanel.text()).toContain("行程操作");
     expect(tripPanel.text()).toContain("待确认");
-    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
 

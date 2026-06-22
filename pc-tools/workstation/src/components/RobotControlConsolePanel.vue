@@ -1050,8 +1050,33 @@ const canRunPlainTripExecution = computed(() => {
   return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
-const plainTripPreflightButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "行程已完成" : "检查行程"));
-const plainTripExecutionButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "行程已完成" : "执行行程"));
+const plainTripPreflightButtonLabel = computed(() => {
+  // 禁用态也显示下一步；预检本身不发车，但仍要求先完成现场确认。
+  if (deliveryNav2GoalReady.value) {
+    return "行程已完成";
+  }
+  if (!robotApiBaseUrl.value.trim()) {
+    return "连接后检查行程";
+  }
+  if (loading.value || plainTripActionPending.value) {
+    return "检查中";
+  }
+  return plainTripSafetyConfirmed.value ? "检查行程" : "先勾选确认";
+});
+
+const plainTripExecutionButtonLabel = computed(() => {
+  // 真正执行仍由后端 confirm_navigation_execution gate 再次校验。
+  if (deliveryNav2GoalReady.value) {
+    return "行程已完成";
+  }
+  if (!robotApiBaseUrl.value.trim()) {
+    return "连接后执行行程";
+  }
+  if (loading.value || plainTripActionPending.value) {
+    return "执行中";
+  }
+  return plainTripSafetyConfirmed.value ? "执行行程" : "先勾选确认";
+});
 const plainTripLatestButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "重新读取行程" : "读取行程结果"));
 
 const plainGoalProgressPending = computed(() => (
