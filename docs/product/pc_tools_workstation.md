@@ -1668,3 +1668,8 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 `本轮进度` 仍保持 `送达确认待完成`，最终确认面板提示 `旧送达成功记录不能用于本轮，仍需重新确认送达`。
 刚点击确认送达后返回的 completion success 若无时间戳，仍按当前提交结果处理。该规则不自动提交 operator report、
 不调用 delivery complete，不发送 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
+
+2026-06-23 04:35 起，普通首屏 `PC 键盘连续手控` 的验证不再跨松开累计脉冲。前端会区分“本次按住”和
+“最佳连续”：松开方向键后当前按住计数清零，只有同一次按住会话内连续成功转发至少 2 个 bounded manual pulse，
+`本轮进度` 才显示键盘已验证。两次分开的单脉冲只会显示 `最佳连续 1/2 次`，仍要求继续按住完成连续验证。
+该规则不放宽 manual gate，不发送额外 Nav2、delivery complete、first-jog、stop 或 `/cmd_vel`。

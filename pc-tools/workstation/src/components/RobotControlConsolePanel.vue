@@ -206,6 +206,7 @@ const keyboardHeldDirection = ref<ManualDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
 const keyboardLastDirection = ref("not_loaded");
 const keyboardVerifiedPulseCount = ref(0);
+const keyboardHoldPulseCount = ref(0);
 const keyboardLastStopReason = ref("not_loaded");
 let previewFrameSampleTimers: number[] = [];
 let keyboardJogTimer: number | null = null;
@@ -535,7 +536,16 @@ const keyboardContractReady = computed(() => {
 const canUseKeyboardControl = computed(() => keyboardContractReady.value && canSendManualMotion.value);
 const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
 const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES);
-const keyboardForwardedPulseProgressText = computed(() => `已成功 ${keyboardVerifiedPulseCount.value}/${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次`);
+const keyboardForwardedPulseProgressText = computed(() => {
+  // 验证必须来自同一次按住会话；历史最佳只用于提示，不把分散单脉冲累加成连续手控。
+  if (keyboardManualPulseObserved.value) {
+    return `已连续 ${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES}/${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次`;
+  }
+  if (keyboardHeldDirection.value) {
+    return `本次按住 ${keyboardHoldPulseCount.value}/${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次`;
+  }
+  return `最佳连续 ${keyboardVerifiedPulseCount.value}/${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次`;
+});
 
 const keyboardDirectionPlainLabel = computed(() => {
   // 普通首屏只显示方向中文，避免把底层 direction enum 暴露给现场用户。
@@ -556,7 +566,7 @@ const keyboardDirectionPlainLabel = computed(() => {
 const plainKeyboardLiveStatus = computed(() => {
   // 这行只解释本地键盘循环状态，不作为任何控制 gate 或成功证据。
   if (keyboardHeldDirection.value) {
-    return `正在${keyboardDirectionPlainLabel.value}，松开即停。`;
+    return `正在${keyboardDirectionPlainLabel.value}，松开即停；${keyboardForwardedPulseProgressText.value}。`;
   }
   if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("stop_sent")) {
     return "已停止，按住方向键可继续点动。";
@@ -568,7 +578,7 @@ const plainKeyboardLiveStatus = computed(() => {
     return "键盘手控请求未成功，未记为已验证。";
   }
   if (keyboardVerifiedPulseCount.value > 0 && !keyboardManualPulseObserved.value) {
-    return `${keyboardForwardedPulseProgressText.value}，继续按住方向键完成连续验证。`;
+    return `${keyboardForwardedPulseProgressText.value}，需同一次按住达到 ${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次。`;
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return "等待按键，按住才会动。";
@@ -3948,13 +3958,15 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
       && result.remote_http_status >= 200
       && result.remote_http_status < 300;
     if (pulseForwarded) {
-      keyboardVerifiedPulseCount.value += 1;
+      keyboardHoldPulseCount.value += 1;
+      keyboardVerifiedPulseCount.value = Math.max(keyboardVerifiedPulseCount.value, keyboardHoldPulseCount.value);
     }
     if (keyboardHeldDirection.value === direction && pulseForwarded) {
       keyboardControlStatus.value = "holding_keyboard_jog";
     } else if (keyboardHeldDirection.value === direction) {
       clearKeyboardJogTimer();
       keyboardHeldDirection.value = null;
+      keyboardHoldPulseCount.value = 0;
       keyboardControlStatus.value = `blocked_keyboard_pulse_failed:${result.failure_reason || result.proxy_status}`;
     }
   } catch (err) {
@@ -3962,6 +3974,7 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
     if (keyboardHeldDirection.value === direction) {
       keyboardHeldDirection.value = null;
     }
+    keyboardHoldPulseCount.value = 0;
     keyboardControlStatus.value = `blocked_keyboard_pulse_failed:${err instanceof Error ? err.message : "keyboard_manual_request_failed"}`;
   } finally {
     manualCommandPending.value = false;
@@ -4035,6 +4048,7 @@ function stopKeyboardControl(reason: string): void {
   const shouldSendStop = keyboardHeldDirection.value !== null || keyboardJogTimer !== null;
   clearKeyboardJogTimer();
   keyboardHeldDirection.value = null;
+  keyboardHoldPulseCount.value = 0;
   keyboardLastStopReason.value = reason;
   keyboardControlStatus.value = `released:${reason}`;
   if (shouldSendStop && canSendStop.value) {
@@ -4056,6 +4070,7 @@ function startKeyboardControl(direction: ManualDirection): void {
   }
   clearKeyboardJogTimer();
   keyboardHeldDirection.value = direction;
+  keyboardHoldPulseCount.value = 0;
   keyboardLastDirection.value = direction;
   keyboardControlStatus.value = "holding_keyboard_jog";
   void sendKeyboardManualPulse(direction);
