@@ -753,7 +753,7 @@ const canSendManualMotion = computed(() => {
 });
 
 const keyboardControlSummary = computed(() => {
-  // 键盘控制只是高级区的连续点动入口；真正是否发送仍复用 manual gate。
+  // 高级诊断保留完整 gate 状态，便于现场排障；普通首屏会用另一套不泄露字段名的话术。
   if (keyboardHeldDirection.value) {
     return { state: "手控中", hint: `${keyboardLastDirection.value} 按住点动中；松开按键、窗口失焦或页面隐藏会发送停止。` };
   }
@@ -767,6 +767,23 @@ const keyboardControlSummary = computed(() => {
     return { state: "未满足", hint: keyboardControlStatus.value };
   }
   return { state: "未满足", hint: manualBlockedReason.value };
+});
+
+const plainKeyboardControlSummary = computed(() => {
+  // 普通首屏只说“能不能用”和“怎么停”，不展示 operator report 字段名或 HIL 术语。
+  if (keyboardHeldDirection.value) {
+    return { state: "手控中", hint: "按住点动中；松开按键、窗口失焦或页面隐藏会自动停止。" };
+  }
+  if (keyboardControlArmed.value && canSendManualMotion.value) {
+    return { state: "已启用", hint: "按住 W/A/S/D 或方向键连续手控，松开即停。" };
+  }
+  if (canSendManualMotion.value) {
+    return { state: "可手控", hint: "点击启用键盘，让这个小面板获得焦点后再按方向键。" };
+  }
+  if (keyboardControlArmed.value || keyboardControlStatus.value.startsWith("blocked")) {
+    return { state: "未满足", hint: "移动条件还没满足，暂不发送键盘手控。" };
+  }
+  return { state: "未满足", hint: "先完成移动前检查和轮速记录，再启用键盘。" };
 });
 
 const operatorMaterialGateSummary = computed(() => {
@@ -3084,6 +3101,23 @@ onBeforeUnmount(() => {
             </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
           </div>
+          <div
+            ref="keyboardControlPanel"
+            class="keyboard-control-box plain-keyboard-control"
+            tabindex="0"
+            data-testid="keyboard-control-panel"
+            @keydown="handleGlobalKeyDown"
+            @keyup="handleGlobalKeyUp"
+            @focusout="handleKeyboardControlFocusOut"
+          >
+            <div class="simple-status-row">
+              <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
+              <button class="secondary compact-stop" type="button" :disabled="!robotApiBaseUrl.trim()" data-testid="keyboard-control-arm" @click="activateKeyboardControl">启用键盘</button>
+              <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
+            </div>
+            <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
+            <p class="panel-note">W/A/S/D 或方向键：前进、左转、后退、右转。</p>
+          </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
           <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>
@@ -3878,23 +3912,7 @@ onBeforeUnmount(() => {
           <button class="secondary" type="button" :disabled="manualCommandPending || loading || !robotApiBaseUrl.trim()" @click="sendPlainFirstJog">
             轮速非零试采（高级）
           </button>
-          <div
-            ref="keyboardControlPanel"
-            class="keyboard-control-box"
-            tabindex="0"
-            data-testid="keyboard-control-panel"
-            @keydown="handleGlobalKeyDown"
-            @keyup="handleGlobalKeyUp"
-            @focusout="handleKeyboardControlFocusOut"
-          >
-            <div class="simple-status-row">
-              <span class="status-chip" :data-state="keyboardControlSummary.state">{{ keyboardControlSummary.state }}</span>
-              <button class="secondary compact-stop" type="button" :disabled="!robotApiBaseUrl.trim()" data-testid="keyboard-control-arm" @click="activateKeyboardControl">启用键盘</button>
-              <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
-            </div>
-            <p class="panel-note">{{ keyboardControlSummary.hint }}</p>
-            <p class="panel-note">先点启用键盘，再按住 W/A/S/D 或方向键：前进、左转、后退、右转；按住重复发送短脉冲，松开即停。</p>
-          </div>
+          <p class="panel-note">键盘连续手控入口已放在普通首屏；此处只保留完整状态、pulse 和 stop trigger 诊断。</p>
           <button class="secondary" type="button" :disabled="baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" @click="runBaseFeedbackSamples">
             {{ baseFeedbackSamplesPending ? "采集中..." : "采集底盘反馈（高级）" }}
           </button>
@@ -3971,6 +3989,8 @@ onBeforeUnmount(() => {
               interval_ms={{ keyboardJogIntervalMs }},
               stop_reason={{ keyboardLastStopReason }}
             </dd>
+            <dt>keyboard summary</dt>
+            <dd>{{ keyboardControlSummary.state }} / {{ keyboardControlSummary.hint }}</dd>
             <dt>keyboard stop triggers</dt>
             <dd>{{ listText(robotSummary?.safe_command_boundary.keyboard_stop_triggers, "key_released/window_blur/page_hidden") }}</dd>
             <dt>keyboard proxy</dt>

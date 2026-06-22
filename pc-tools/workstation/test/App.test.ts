@@ -3222,6 +3222,11 @@ describe("App", () => {
     expect(firstScreenText).toContain("现场画面已记录；可以试动一下。");
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).toContain("移动前检查");
+    expect(firstScreenText).toContain("启用键盘");
+    expect(firstScreenText).toContain("键盘停止");
+    expect(firstScreenText).toContain("W/A/S/D 或方向键");
+    expect(wrapper.find(".simple-user-console [data-testid='keyboard-control-panel']").exists()).toBe(true);
+    expect(wrapper.find(".simple-user-console .motion-pad").exists()).toBe(false);
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("目标收口进度");
     expect(firstScreenText).not.toContain("普通用户入口");
@@ -3250,10 +3255,6 @@ describe("App", () => {
       "重置地图",
       "启动雷达",
       "停止雷达",
-      "前进",
-      "后退",
-      "左转",
-      "右转",
       "structured_hil_claims",
       "现场确认",
       "低速短时点动",

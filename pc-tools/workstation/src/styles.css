@@ -430,6 +430,16 @@ h3 {
   background: #f7f9fb;
 }
 
+.plain-keyboard-control {
+  margin-top: 12px;
+  background: #ffffff;
+}
+
+.plain-keyboard-control:focus {
+  outline: 2px solid #4f83cc;
+  outline-offset: 2px;
+}
+
 .delivery-closure-check {
   margin-top: 10px;
   border: 1px solid #d7dee6;
