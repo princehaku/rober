@@ -1444,28 +1444,50 @@ const plainKeyboardMotionProofNextStep = computed(() => {
   return "";
 });
 
+function plainKeyboardBlockedActionLabel(missingLabels: string[]): string {
+  // 按普通流程顺序提示下一步，避免按钮只显示抽象缺项数量。
+  if (missingLabels.includes("小车连接")) {
+    return "先连接";
+  }
+  if (missingLabels.includes("键盘入口")) {
+    return "先复查入口";
+  }
+  if (missingLabels.includes("移动前检查")) {
+    return "先做检查";
+  }
+  if (missingLabels.includes("现场画面")) {
+    return "先记录画面";
+  }
+  if (plainKeyboardMotionProofNextStep.value === "wheel") {
+    return "先补轮速";
+  }
+  if (plainKeyboardMotionProofNextStep.value === "lidar") {
+    return "先补雷达";
+  }
+  if (missingLabels.includes("现场材料读取")) {
+    return "先复查材料";
+  }
+  return "";
+}
+
 const plainKeyboardArmButtonLabel = computed(() => {
   // 启用只让键盘面板获得焦点；真正手控必须后续按住方向键。
   const missingLabels = plainKeyboardMissingLabels.value;
   const missingCount = missingLabels.length;
-  // 当前真实收口高频卡在运动证据；只有前置条件都过了，按钮才直接提示具体补哪项。
-  if (plainKeyboardMotionProofNextStep.value === "wheel") {
-    return "启用键盘（先补轮速）";
-  }
-  if (plainKeyboardMotionProofNextStep.value === "lidar") {
-    return "启用键盘（先补雷达）";
+  const actionLabel = plainKeyboardBlockedActionLabel(missingLabels);
+  if (actionLabel) {
+    return `启用键盘（${actionLabel}）`;
   }
   return missingCount > 0 ? `启用键盘（还差 ${missingCount} 项）` : "启用键盘（按键才动）";
 });
 
 const plainKeyboardRecheckButtonLabel = computed(() => {
   // 复查按钮同样显示缺项数量；点击仍只刷新只读进度，不会发送手控。
-  const missingCount = plainKeyboardMissingLabels.value.length;
-  if (plainKeyboardMotionProofNextStep.value === "wheel") {
-    return "复查手控条件（先补轮速，不发车）";
-  }
-  if (plainKeyboardMotionProofNextStep.value === "lidar") {
-    return "复查手控条件（先补雷达，不发车）";
+  const missingLabels = plainKeyboardMissingLabels.value;
+  const missingCount = missingLabels.length;
+  const actionLabel = plainKeyboardBlockedActionLabel(missingLabels);
+  if (actionLabel) {
+    return `复查手控条件（${actionLabel}，不发车）`;
   }
   return missingCount > 0 ? `复查手控条件（还差 ${missingCount} 项，不发车）` : "复查手控条件";
 });
