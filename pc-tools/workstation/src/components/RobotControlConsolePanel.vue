@@ -192,6 +192,9 @@ const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
 const evidenceSweepLines = ref<string[]>([]);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
+const plainTripRunPanel = ref<HTMLElement | null>(null);
+const plainWheelRecordPanel = ref<HTMLElement | null>(null);
+const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
 const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
@@ -2357,6 +2360,22 @@ async function refreshPlainGoalProgress(): Promise<void> {
   await preloadGoalClosureReadbacks();
 }
 
+function focusPlainGoalProgressTarget(targetId: string): void {
+  // 进度区的“去处理”只做本页定位，不能顺手触发行程、送达、手控或任何材料提交。
+  const targetMap: Record<string, HTMLElement | null> = {
+    wheel: plainWheelRecordPanel.value,
+    trip: plainTripRunPanel.value,
+    delivery: plainDeliveryStatusPanel.value,
+    keyboard: keyboardControlPanel.value,
+  };
+  const target = targetMap[targetId];
+  if (!target) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
+}
+
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
   if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
@@ -3348,9 +3367,12 @@ onBeforeUnmount(() => {
               <span class="plain-progress-label">{{ item.label }}</span>
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
               <span class="muted">{{ item.hint }}</span>
+              <button type="button" class="secondary compact-stop" :data-testid="`plain-goal-progress-go-${item.id}`" @click="focusPlainGoalProgressTarget(item.id)">
+                去处理
+              </button>
             </div>
           </div>
-          <div class="plain-trip-run" data-testid="plain-trip-run">
+          <div ref="plainTripRunPanel" class="plain-trip-run" tabindex="-1" data-testid="plain-trip-run">
             <div class="simple-status-row">
               <strong>行程操作</strong>
               <span class="status-chip" :data-state="plainTripSummary.state">{{ plainTripSummary.state }}</span>
@@ -3374,7 +3396,7 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
           <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>
-          <div class="plain-wheel-record" data-testid="plain-wheel-record">
+          <div ref="plainWheelRecordPanel" class="plain-wheel-record" tabindex="-1" data-testid="plain-wheel-record">
             <div class="simple-status-row">
               <strong>轮速记录</strong>
               <span class="status-chip" :data-state="plainWheelRecordSummary.state">{{ plainWheelRecordSummary.state }}</span>
@@ -3388,7 +3410,7 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainWheelRecordSummary.hint }}</p>
             <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>
           </div>
-          <div class="plain-delivery-status" data-testid="plain-delivery-status">
+          <div ref="plainDeliveryStatusPanel" class="plain-delivery-status" tabindex="-1" data-testid="plain-delivery-status">
             <div class="simple-status-row">
               <strong>任务收口</strong>
               <span class="status-chip" :data-state="plainDeliverySummary.state">{{ plainDeliverySummary.state }}</span>

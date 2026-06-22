@@ -3231,6 +3231,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
     expect(firstScreenText).toContain("刷新进度");
+    expect(firstScreenText).toContain("去处理");
     expect(firstScreenText).toContain("轮速记录");
     expect(firstScreenText).toContain("点“试动一下”后读取轮速。");
     expect(firstScreenText).toContain("行程操作");
@@ -3247,11 +3248,15 @@ describe("App", () => {
     expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
+    expect(wrapper.findAll('[data-testid^="plain-goal-progress-go-"]')).toHaveLength(4);
     expect(wrapper.find('[data-testid="plain-trip-run"]').exists()).toBe(true);
     expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
     expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "保存轮速记录")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("tabindex")).toBe("-1");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').attributes("tabindex")).toBe("-1");
+    expect(wrapper.find('[data-testid="plain-delivery-status"]').attributes("tabindex")).toBe("-1");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find(".simple-user-console [data-testid='keyboard-control-panel']").exists()).toBe(true);
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
@@ -3418,6 +3423,30 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("focuses plain goal progress targets without calling robot APIs", async () => {
+    // “去处理”只是把用户带到对应普通面板；不替用户执行行程、确认送达或发送手控。
+    const mockedFetch = stubWorkstationFetch();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    const focusCallsBeforeClick = focusSpy.mock.calls.length;
+    const targets = ["wheel", "trip", "delivery", "keyboard"];
+    for (const target of targets) {
+      await wrapper.find(`[data-testid="plain-goal-progress-go-${target}"]`).trigger("click");
+    }
+
+    expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeClick + 4);
+    expect(mockedFetch.mock.calls.length).toBe(callsBeforeClick);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("runs plain trip preflight and execution only after the safety checkbox is checked", async () => {
