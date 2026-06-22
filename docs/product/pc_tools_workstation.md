@@ -1227,3 +1227,10 @@ Nav2 goal，不调用 `/api/base/manual` 或 `/cmd_vel`，顶层继续固定
 与“operator 送达材料仍未补齐”。该入口不提交 `/api/operator/report`、不调用
 `/api/delivery/complete`、不触发 Nav2 或底盘运动；即使 latest 显示缺项，PC 也只把缺项列给现场人员，
 不会自动代填或伪造 observed motion/stop、视频 ref、route/map ref 或 delivery claim。
+
+2026-06-22 12:55 起，送达材料快捷表单新增“使用最近画面 ref”。该按钮复用既有固定
+`POST /api/robot-control/camera/first-frame/probe?baseUrl=...`，从响应
+`probe_key_values.sample_path` 预填“送达视频 ref”。如果本页已经有 camera probe 结果则直接使用，
+否则先触发一次固定 camera first-frame probe。该按钮不提交 operator report、不调用 delivery gate、
+不勾选现场确认，也不把相机样张外推为 `observed_motion/observed_stop` 或 delivery success；它只减少
+现场人员手动复制可追溯画面 ref 的成本。

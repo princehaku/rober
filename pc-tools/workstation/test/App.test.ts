@@ -3017,6 +3017,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/map/save";
     } else if (url.startsWith("/api/robot-control/operator/report")) {
       fixtureKey = "/api/robot-control/operator/report";
+    } else if (url.startsWith("/api/robot-control/camera/first-frame/probe")) {
+      fixtureKey = "/api/robot-control/camera/first-frame/probe";
     } else if (url.startsWith("/api/robot-control/camera/offer")) {
       fixtureKey = "/api/robot-control/camera/offer";
     } else if (url.startsWith("/api/robot-control/camera/peers/peer-preview-001/close")) {
@@ -3720,6 +3722,79 @@ describe("App", () => {
     expect(firstScreenAfter).toContain("还需要先记录现场画面，小车没有移动。");
     expect(firstScreenAfter).not.toContain("first_jog_preflight_required");
     expect(firstScreenAfter).not.toContain("external_video_or_visible_camera");
+  });
+
+  it("prefills delivery video ref from fixed camera first-frame probe without submitting delivery", async () => {
+    // 送达材料的画面 ref 可以从固定 camera probe 样张预填，但不能自动提交送达 claim。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/camera/first-frame/probe": {
+        schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+        proxy_status: "probe_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/camera/first-frame/probe",
+        remote_http_status: 200,
+        status: "visible_content_candidate",
+        probe_key_values: {
+          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
+          device: "/dev/video1",
+          requested_fourcc: "MJPG",
+          open_ok: "true",
+          read_ok: "true",
+          first_frame_timeout: "false",
+          failure_reason: "",
+          visible_content_proven: "false",
+          visible_content_candidate: "true",
+          sample_path: "/root/rober/onboard/runtime/camera/first_frame_probe_fixture.jpg",
+          sample_write_ok: "true",
+          elapsed_ms: "120",
+          mean_luma: "42.0",
+          max_luma: "220",
+          dynamic_range_luma: "180",
+          non_black_ratio: "0.8",
+          backend_smoke_status: "not_requested",
+          backend_frame_observed: "false",
+          backend_attempts: "0",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": {
+        proxy_status: "should_not_be_called",
+      },
+      "/api/robot-control/delivery/complete": {
+        proxy_status: "should_not_be_called",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+
+    const fillVideoButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "使用最近画面 ref");
+    expect(fillVideoButton).toBeTruthy();
+    await fillVideoButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe(
+      "/root/rober/onboard/runtime/camera/first_frame_probe_fixture.jpg",
+    );
+    const probeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"));
+    expect(probeCall).toBeTruthy();
+    expect((probeCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(visiblePlainHomeText(wrapper)).not.toContain("送达视频 ref");
   });
 
   it("enables non-stop motion only after complete operator material and still uses the fixed workstation proxy", async () => {

@@ -1721,6 +1721,30 @@ function fillDeliveryRouteRefFromLatestNav2(): void {
   }
 }
 
+function latestCameraProbeSampleRef(): string {
+  // 样张 ref 只能来自固定 camera first-frame probe，不能用任意本地路径或手写危险字段代替。
+  const samplePath = cameraFirstFrameProbeResult.value?.probe_key_values.sample_path ?? "";
+  if (samplePath && samplePath !== "not_loaded" && samplePath !== "not_available") {
+    return samplePath;
+  }
+  return "";
+}
+
+async function fillDeliveryVideoRefFromCameraProbe(): Promise<void> {
+  // 送达视频 ref 预填只采集可追溯样张路径；仍要求现场显式确认送达。
+  if (!robotApiBaseUrl.value.trim() || cameraFirstFrameProbePending.value) {
+    return;
+  }
+  let sampleRef = latestCameraProbeSampleRef();
+  if (!sampleRef) {
+    await runCameraFirstFrameProbe();
+    sampleRef = latestCameraProbeSampleRef();
+  }
+  if (sampleRef) {
+    deliveryOperatorVideoRef.value = sampleRef;
+  }
+}
+
 async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
   // 这个快捷入口只帮现场人员把“送达确认材料”写进 operator report，再交给 delivery gate 合成结论。
   if (
@@ -2843,6 +2867,9 @@ onBeforeUnmount(() => {
               <span>送达视频 ref</span>
               <input v-model="deliveryOperatorVideoRef" name="deliveryOperatorVideoRef" maxlength="512" placeholder="phone-video-or-camera-artifact-ref">
             </label>
+            <button class="secondary" type="button" :disabled="loading || cameraFirstFrameProbePending || !robotApiBaseUrl.trim()" @click="fillDeliveryVideoRefFromCameraProbe">
+              使用最近画面 ref
+            </button>
             <label>
               <span>route/map ref</span>
               <input v-model="deliveryOperatorRouteMapRef" name="deliveryOperatorRouteMapRef" maxlength="512" placeholder="o11-nav2-goal-execution-...">
