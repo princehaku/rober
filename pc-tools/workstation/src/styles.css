@@ -358,6 +358,19 @@ h3 {
   margin-bottom: 12px;
 }
 
+.plain-default-robot {
+  min-height: 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.robot-quick-connect .plain-default-robot-title {
+  color: #17202a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .simple-status-row,
 .panel-action-row,
 .locked-summary {

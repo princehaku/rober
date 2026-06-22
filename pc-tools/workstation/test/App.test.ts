@@ -3286,19 +3286,27 @@ describe("App", () => {
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("目标收口进度");
     expect(firstScreenText).not.toContain("普通用户入口");
+    expect(firstScreenText).not.toContain("http://192.168.1.11:8787");
     expect(wrapper.find(".robot-console > .section-head").exists()).toBe(false);
+    expect(wrapper.find(".simple-user-console input[name='robotApiBaseUrl']").exists()).toBe(false);
     const robotBaseUrlInput = wrapper.find('input[name="robotApiBaseUrl"]');
     const defaultRobotBaseUrlButton = wrapper.find('[data-testid="robot-api-default"]');
+    const defaultRobotBaseUrlAdvancedButton = wrapper.find('[data-testid="robot-api-default-advanced"]');
     expect((robotBaseUrlInput.element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
-    expect(defaultRobotBaseUrlButton.text()).toBe("默认地址");
+    expect(defaultRobotBaseUrlButton.text()).toBe("恢复默认");
     expect(defaultRobotBaseUrlButton.attributes("disabled")).toBeDefined();
+    expect(defaultRobotBaseUrlAdvancedButton.text()).toBe("恢复默认地址");
+    expect(defaultRobotBaseUrlAdvancedButton.attributes("disabled")).toBeDefined();
     await robotBaseUrlInput.setValue("");
     await wrapper.vm.$nextTick();
     expect(defaultRobotBaseUrlButton.attributes("disabled")).toBeUndefined();
+    expect(defaultRobotBaseUrlAdvancedButton.attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="robot-api-default-summary"]').text()).toBe("已改为高级地址");
     const fetchCallsBeforeDefaultRestore = mockedFetch.mock.calls.length;
     await defaultRobotBaseUrlButton.trigger("click");
     await wrapper.vm.$nextTick();
     expect((robotBaseUrlInput.element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
+    expect(wrapper.find('[data-testid="robot-api-default-summary"]').text()).toBe("已使用默认地址");
     expect(mockedFetch.mock.calls).toHaveLength(fetchCallsBeforeDefaultRestore);
     expect(
       mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787")),

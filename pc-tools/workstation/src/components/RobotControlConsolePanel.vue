@@ -4314,15 +4314,15 @@ onBeforeUnmount(() => {
 <template>
   <section class="workspace robot-console">
     <div class="simple-user-console" data-testid="pc-simple-user-first-screen">
-      <form class="robot-quick-connect" @submit.prevent="refreshConsole">
-        <label>
-          <span>小车地址</span>
-          <input v-model="robotApiBaseUrl" name="robotApiBaseUrl" placeholder="http://192.168.1.11:8787">
-        </label>
-        <button class="secondary compact-stop" type="button" :disabled="loading || robotApiBaseUrlUsesDefault" data-testid="robot-api-default" @click="resetRobotApiBaseUrlToDefault">默认地址</button>
-        <button class="secondary" type="submit" :disabled="loading">连接/刷新</button>
+      <div class="robot-quick-connect">
+        <div class="plain-default-robot">
+          <span class="plain-default-robot-title">默认小车</span>
+          <span class="muted" data-testid="robot-api-default-summary">{{ robotApiBaseUrlUsesDefault ? "已使用默认地址" : "已改为高级地址" }}</span>
+        </div>
+        <button class="secondary compact-stop" type="button" :disabled="loading || robotApiBaseUrlUsesDefault" data-testid="robot-api-default" @click="resetRobotApiBaseUrlToDefault">恢复默认</button>
+        <button class="secondary" type="button" :disabled="loading" data-testid="robot-api-refresh" @click="refreshConsole">连接/刷新</button>
         <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
-      </form>
+      </div>
 
       <div v-if="error" class="notice" role="alert">
         {{ error }}；安全锁定保持不变。
@@ -4655,6 +4655,14 @@ onBeforeUnmount(() => {
         <section class="advanced-block">
           <h3>连接详情</h3>
           <form class="robot-control-form" @submit.prevent="refreshConsole">
+            <label>
+              <span>Robot API base URL</span>
+              <input v-model="robotApiBaseUrl" name="robotApiBaseUrl" placeholder="http://192.168.1.11:8787">
+            </label>
+            <div class="panel-action-row">
+              <button class="secondary compact-stop" type="button" :disabled="loading || robotApiBaseUrlUsesDefault" data-testid="robot-api-default-advanced" @click="resetRobotApiBaseUrlToDefault">恢复默认地址</button>
+              <span class="muted">普通首屏固定使用默认小车；改地址仅用于高级联调。</span>
+            </div>
             <label>
               <span>task_id</span>
               <input v-model="taskId" name="task_id" placeholder="task_id">
