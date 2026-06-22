@@ -3234,6 +3234,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("去处理");
     expect(firstScreenText).toContain("轮速记录");
     expect(firstScreenText).toContain("点“试动一下”后读取轮速。");
+    expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。");
     expect(firstScreenText).toContain("行程操作");
     expect(firstScreenText).toContain("先勾选行程前确认，再检查或执行。");
     expect(firstScreenText).toContain("检查行程");
@@ -4151,6 +4152,7 @@ describe("App", () => {
     expect(firstScreenAfter).toContain("还需要先记录现场画面，小车没有移动。");
     expect(firstScreenAfter).not.toContain("first_jog_preflight_required");
     expect(firstScreenAfter).not.toContain("external_video_or_visible_camera");
+    expect(firstScreenAfter).not.toContain("physical_motion_lidar_delta_proven");
   });
 
   it("summarizes first-jog wheel evidence on the plain first screen after a forwarded trial", async () => {

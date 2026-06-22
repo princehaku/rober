@@ -1023,6 +1023,21 @@ const plainWheelReadbackSummary = computed(() => {
   return "";
 });
 
+const plainLidarMotionRecordSummary = computed(() => {
+  // LiDAR delta 是试动后的运动证据；普通首屏只说明下一步，不展示后端字段名。
+  if (!operatorMaterialMissingFields.value.includes("physical_motion_lidar_delta_proven")) {
+    return "";
+  }
+  const gaps = plainFirstJogResult.value?.motion_evidence_gaps ?? [];
+  if (gaps.includes("physical_motion_lidar_delta_not_proven")) {
+    return "雷达移动记录还没拿到：已试动但雷达前后变化未通过，确认雷达已运行、现场空间足够后重试。";
+  }
+  if (robotSummary.value?.readback_summary.lidar.lifecycle_running === "true") {
+    return "雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。";
+  }
+  return "雷达移动记录还没拿到：先确认雷达已运行，再试动读取移动变化。";
+});
+
 const plainFirstJogWheelEvidenceReady = computed(() => {
   // 只有后端 first-jog 响应明确证明 L/R 非零时，才允许保存 wheel feedback claim。
   return plainFirstJogResult.value?.proxy_status === "command_forwarded"
@@ -3563,6 +3578,9 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainWheelRecordSummary.hint }}</p>
             <p v-if="plainWheelReadbackSummary" class="panel-note" data-testid="plain-wheel-readback-summary">
               {{ plainWheelReadbackSummary }}
+            </p>
+            <p v-if="plainLidarMotionRecordSummary" class="panel-note" data-testid="plain-lidar-motion-record-summary">
+              {{ plainLidarMotionRecordSummary }}
             </p>
             <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>
           </div>

@@ -1414,6 +1414,11 @@ delivery gate 继续 blocked 的概率。
 2026-06-22 14:59 起，普通首屏键盘手控禁用时会显示还差哪些普通步骤：小车连接、移动前检查、现场画面、
 轮速记录或雷达移动记录。该提示由现有手控 gate 和现场材料 summary 只读计算，不展示 HIL/operator report
 字段名，不自动提交材料，也不放开 `/api/base/manual`；条件满足后提示消失，仍需用户点击 `启用键盘` 并聚焦面板。
+2026-06-22 15:31 起，普通首屏“轮速记录”面板会单独解释“雷达移动记录”缺口：如果 summary 仍缺
+LiDAR motion delta，页面显示“雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。”
+若已经试动但返回 `physical_motion_lidar_delta_not_proven`，则提示检查雷达运行和现场空间后重试。该提示只读
+summary 或 first-jog 响应缺口，不调用雷达 start/stop、manual、first-jog、Nav2 或 `/cmd_vel`，也不伪造
+LiDAR delta 材料。
 
 2026-06-22 15:03 起，普通首屏 `保存轮速记录` 在写入 wheel raw L/R 非零材料时会保留已有的雷达移动记录：
 如果当前 summary 中 `lidar_delta` 已经是明确 `true; ref=...`，提交的 operator report 会继续携带
