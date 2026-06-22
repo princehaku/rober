@@ -907,12 +907,50 @@ const deliveryClosureChecklist = computed(() => {
   ];
 });
 
+const currentWheelReadback = computed(() => {
+  // 当前只读 T1001 只能解释现场状态；真正 wheel proof 仍优先看运动窗口或已保存材料。
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  const base = robotSummary.value?.readback_summary.base;
+  return {
+    left: sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded",
+    right: sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded",
+  };
+});
+
+const wheelClosureEvidence = computed(() => {
+  // 轮速收口必须写清证据来源，避免把历史材料、静态 T1001 读回和本轮 during-motion proof 混成一句“已完成”。
+  const motionValues = plainFirstJogResult.value?.remote_motion_key_values;
+  if (motionValues?.wheel_feedback_lr_nonzero_proven === "true") {
+    return {
+      ready: true,
+      hint: `本轮试动已读到非零 L/R=${motionValues.wheel_feedback_latest_raw_left ?? "not_loaded"}/${motionValues.wheel_feedback_latest_raw_right ?? "not_loaded"}`,
+    };
+  }
+  const sampleValues = baseFeedbackSamplesResult.value?.sample_key_values;
+  if (sampleValues?.wheel_feedback_lr_nonzero_proven === "true") {
+    return {
+      ready: true,
+      hint: `只读采样读到非零 L/R=${sampleValues.wheel_feedback_latest_left_speed}/${sampleValues.wheel_feedback_latest_right_speed}`,
+    };
+  }
+  if (claimWithRefReady(robotSummary.value?.operator_hil_material_summary?.wheel_feedback)) {
+    const { left, right } = currentWheelReadback.value;
+    return {
+      ready: true,
+      hint: isZeroWheelPair(left, right)
+        ? `已有历史非零材料；当前只读 L/R=${left}/${right}，本轮复验需低速重试`
+        : "已有历史非零 L/R 材料",
+    };
+  }
+  return {
+    ready: false,
+    hint: "仍需 first-jog/manual 期间同帧 T1001 L/R 非零",
+  };
+});
+
 const goalClosureChecklist = computed(() => {
   // 总目标进度只聚合已读证据，不触发任何控制动作或成功外推。
-  const summary = robotSummary.value?.operator_hil_material_summary;
-  const wheelReady = claimWithRefReady(summary?.wheel_feedback)
-    || plainFirstJogResult.value?.remote_motion_key_values?.wheel_feedback_lr_nonzero_proven === "true"
-    || baseFeedbackSamplesResult.value?.sample_key_values.wheel_feedback_lr_nonzero_proven === "true";
+  const wheelEvidence = wheelClosureEvidence.value;
   const nav2Ready = deliveryNav2GoalReady.value;
   const deliveryReady = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
   const keyboardReady = canUseKeyboardControl.value && keyboardManualPulseObserved.value;
@@ -920,8 +958,8 @@ const goalClosureChecklist = computed(() => {
     {
       id: "wheel_raw_lr",
       label: "wheel raw L/R 非零",
-      ready: wheelReady,
-      hint: wheelReady ? "已有非零 L/R 材料" : "仍需 first-jog/manual 期间同帧 T1001 L/R 非零",
+      ready: wheelEvidence.ready,
+      hint: wheelEvidence.hint,
     },
     {
       id: "nav2_goal_execution",
@@ -997,7 +1035,8 @@ const plainTripEvidenceSummary = computed(() => {
 
 const plainGoalProgressItems = computed(() => {
   // 普通首屏只展示用户能决策的四件事；工程字段继续留在高级诊断。
-  const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
+  const wheelEvidence = wheelClosureEvidence.value;
+  const wheelReady = wheelEvidence.ready;
   const navReady = goalClosureChecklist.value.find((item) => item.id === "nav2_goal_execution")?.ready === true;
   const deliveryReady = goalClosureChecklist.value.find((item) => item.id === "delivery_success")?.ready === true;
   return [
@@ -1006,7 +1045,7 @@ const plainGoalProgressItems = computed(() => {
       label: "轮速记录",
       actionLabel: "去轮速",
       state: wheelReady ? "已完成" : "待完成",
-      hint: wheelReady ? "已读到非零 L/R。" : plainWheelGoalProgressHint.value,
+      hint: wheelReady ? `${wheelEvidence.hint}。` : plainWheelGoalProgressHint.value,
     },
     {
       id: "trip",
@@ -1060,11 +1099,10 @@ const plainGoalProgressStateSummary = computed(() => {
 const plainGoalProgressEvidenceSummary = computed(() => {
   // 这行只压缩已读证据，不刷新接口，也不把只读材料外推成真实完成。
   const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
-  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
-  const base = robotSummary.value?.readback_summary.base;
-  const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
-  const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
-  const wheelText = wheelReady ? "轮速已完成" : left !== "not_loaded" && right !== "not_loaded" ? `轮速 L/R=${left}/${right}` : "轮速未读到";
+  const { left, right } = currentWheelReadback.value;
+  const wheelText = wheelReady
+    ? isZeroWheelPair(left, right) ? `轮速有历史材料，当前 L/R=${left}/${right}` : "轮速已完成"
+    : left !== "not_loaded" && right !== "not_loaded" ? `轮速 L/R=${left}/${right}` : "轮速未读到";
   const tripText = deliveryNav2GoalReady.value ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成" : "行程未完成";
   const deliveryText = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true ? "送达已完成" : "送达未完成";
   const keyboardText = canUseKeyboardControl.value ? (keyboardManualPulseObserved.value ? "键盘已验证" : "键盘待验证") : "键盘未满足";
