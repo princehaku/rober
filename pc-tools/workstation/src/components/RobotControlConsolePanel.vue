@@ -982,6 +982,12 @@ const plainGoalProgressItems = computed(() => {
   ];
 });
 
+const plainGoalProgressNextAction = computed(() => {
+  // 现场不应该在四个目标之间猜顺序；总提示只指向第一项未完成的普通任务。
+  const nextItem = plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "可使用");
+  return nextItem ? `下一步：先处理${nextItem.label}。${nextItem.hint}` : "下一步：四项都已完成，保持待命。";
+});
+
 const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value);
 
 const plainTripSummary = computed(() => {
@@ -3922,6 +3928,7 @@ onBeforeUnmount(() => {
                 {{ plainGoalProgressRefreshButtonLabel }}
               </button>
             </div>
+            <p class="panel-note" data-testid="plain-goal-progress-next-action">{{ plainGoalProgressNextAction }}</p>
             <div v-for="item in plainGoalProgressItems" :key="item.id" class="plain-progress-row">
               <span class="plain-progress-label">{{ item.label }}</span>
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>

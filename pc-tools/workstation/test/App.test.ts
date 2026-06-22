@@ -3231,6 +3231,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
     expect(firstScreenText).toContain("去轮速");
     expect(firstScreenText).toContain("去行程");
     expect(firstScreenText).toContain("去送达");
@@ -3574,6 +3575,7 @@ describe("App", () => {
 
     const plainProgress = wrapper.find('[data-testid="plain-goal-progress"]').text();
     expect(plainProgress).toContain("轮速记录");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理轮速记录。当前轮速 L/R=0/0");
     expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("历史轮速样本已过期，以当前读回为准");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
