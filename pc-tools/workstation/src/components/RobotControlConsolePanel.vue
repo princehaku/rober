@@ -576,6 +576,26 @@ const canSendPlainFirstJog = computed(() => {
   return robotSummary.value?.first_jog_readiness_summary?.status === "ready_for_first_jog";
 });
 
+const plainFirstJogBlockedHint = computed(() => {
+  // 首屏禁用原因必须是普通话术；工程细节留给高级诊断。
+  if (canSendPlainFirstJog.value) {
+    return "";
+  }
+  if (!robotApiBaseUrl.value.trim()) {
+    return "试动按钮已锁定：先连接小车。";
+  }
+  if (loading.value || manualCommandPending.value) {
+    return "试动按钮已锁定：正在处理上一条请求。";
+  }
+  if (firstJogMaterialRestoreReady.value) {
+    return "试动按钮已锁定：请先点恢复试动确认。";
+  }
+  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
+    return "试动按钮已锁定：请先记录现场画面。";
+  }
+  return "试动按钮已锁定：移动前确认还未满足。";
+});
+
 const canSendManualMotion = computed(() => {
   // 非 stop 方向必须同时满足地址、checklist、现场材料和“当前无 pending”。
   return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
@@ -2780,6 +2800,7 @@ onBeforeUnmount(() => {
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
+          <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
         </article>
       </div>
     </div>

@@ -1295,3 +1295,5 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 直接禁用，避免现场点了才收到后端 `first_jog_preflight_required`。只有 summary 已是
 `ready_for_first_jog`，或本页刚成功提交 `记录画面` / `恢复试动确认` 后，按钮才允许调用固定 first-jog
 代理；代理侧仍会再次读取 latest operator report 并 fail-closed。
+同轮首屏补充普通禁用原因，例如“试动按钮已锁定：请先点恢复试动确认。”或“请先记录现场画面。”，
+让现场知道下一步操作，而不暴露 endpoint、HIL、proof 或 raw feedback 细节。
