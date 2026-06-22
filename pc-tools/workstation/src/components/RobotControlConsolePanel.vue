@@ -918,6 +918,9 @@ const plainFirstJogEvidenceSummary = computed(() => {
   if (values.wheel_feedback_lr_nonzero_proven === "true") {
     return `轮速证据已拿到：L/R=${left}/${right}，运动帧=${frames}。`;
   }
+  if (frames !== "0" && left !== "not_loaded" && right !== "not_loaded") {
+    return `已试动，但轮速还是 ${left}/${right}：检查电机使能、供电、模式和现场空间后重试。运动帧=${frames}。`;
+  }
   return `已试动，但轮速非零还没拿到：L/R=${left}/${right}，运动帧=${frames}。`;
 });
 
@@ -933,6 +936,12 @@ const plainWheelRecordSummary = computed(() => {
     return { state: "可保存", hint: "已拿到非零 L/R，先保存轮速记录。" };
   }
   if (plainFirstJogResult.value?.proxy_status === "command_forwarded") {
+    const values = plainFirstJogResult.value.remote_motion_key_values;
+    const left = values?.wheel_feedback_latest_raw_left ?? "not_loaded";
+    const right = values?.wheel_feedback_latest_raw_right ?? "not_loaded";
+    if (left !== "not_loaded" && right !== "not_loaded") {
+      return { state: "待重试", hint: `已试动但 L/R=${left}/${right}，检查电机使能、供电、模式和现场空间后重试。` };
+    }
     return { state: "待重试", hint: "已试动，但还没拿到非零 L/R。" };
   }
   if (firstJogMaterialRestoreReady.value) {

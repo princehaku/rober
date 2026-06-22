@@ -1391,3 +1391,8 @@ operator report 修复，再继续 `试动一下`。按钮行为不变：只提�
 停止手段、已观察到移动/停止、材料已核对和确认已投放/送达。该提示只读取本页 checkbox 状态，不自动勾选、
 不提交 operator report、不调用 delivery complete，也不把 delivery success 置 true；它只是降低现场漏勾导致
 delivery gate 继续 blocked 的概率。
+
+2026-06-22 14:56 起，普通首屏 `试动一下` 若已经进入运动采样窗口、但返回的 wheel raw `L/R` 仍是 `0/0`
+或其它非非零值，会显示“检查电机使能、供电、模式和现场空间后重试”。`轮速记录` 面板同步显示同样的待重试
+提示，并继续禁用 `保存轮速记录`。该文案只解释失败后的现场排查方向，不把静态或运动窗口 `L/R=0/0`
+当作 wheel raw L/R 非零证据，也不额外调用 operator report、manual 或 `/cmd_vel`。
