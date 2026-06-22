@@ -3917,6 +3917,9 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.emergency_stop = "false";
     summaryFixture.operator_hil_material_summary.external_video = "true; ref=/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg";
     summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=pc-first-jog-wheel-before-restore";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-before-restore";
+    summaryFixture.operator_hil_material_summary.route_map = "true; ref=o11-nav2-goal-execution-before-restore";
     summaryFixture.operator_hil_material_summary.delivery_claim = "false";
     summaryFixture.operator_hil_material_summary.site_state = "delivery_material_draft_not_operator_confirmed";
     summaryFixture.first_jog_readiness_summary = {
@@ -3991,8 +3994,12 @@ describe("App", () => {
       external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg",
       visible_content_proven: true,
       camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg",
-      wheel_feedback_lr_nonzero_proven: false,
-      physical_motion_lidar_delta_proven: false,
+      wheel_feedback_lr_nonzero_proven: true,
+      wheel_feedback_ref: "pc-first-jog-wheel-before-restore",
+      physical_motion_lidar_delta_proven: true,
+      scan_delta_ref: "scan-delta-before-restore",
+      real_route_map_proven: true,
+      route_map_ref: "o11-nav2-goal-execution-before-restore",
       delivery_success: false,
       site_state: "plain_first_jog_material_restored_for_trial",
     }));

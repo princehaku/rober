@@ -1410,3 +1410,8 @@ LiDAR delta。这样保存 wheel 材料不会把已经满足的键盘手控 gate
 已经是 `true; ref=...`，新的 wheel report 会继续携带 `real_route_map_proven=true` 和原 `route_map_ref`。
 没有明确 ref 时仍保持 false，不凭轮速记录伪造路线材料。这样 latest-only operator report 不会因为保存 wheel
 材料而丢失完整 Nav2 路线执行证据，降低后续 delivery success gate 被重新挡住的概率。
+
+2026-06-22 15:09 起，普通首屏所有会写 operator report 的非 delivery 动作统一保留已有进度材料：
+`移动前检查`、`记录画面`、`恢复试动确认`、`保存轮速记录` 都会从当前 summary 继承明确
+`true; ref=...` 的 wheel、LiDAR 和 route/map ref。没有明确 ref 时仍保持 false，不伪造任何证明；该修复只防止
+上位机 latest-only report slot 被普通动作覆盖后丢失已完成的 wheel/Nav2/键盘 gate 材料。

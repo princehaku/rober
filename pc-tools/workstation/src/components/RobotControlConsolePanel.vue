@@ -1668,7 +1668,8 @@ function makeOperatorReportFallback(reason: string, requestBody: RobotControlOpe
 }
 
 function plainMotionPrecheckRequestBody(): RobotControlOperatorReportRequest {
-  // 普通检查只确认人在场、周围安全和急停可用；四类真实运动材料仍必须另行采集。
+  // 普通检查只确认人在场、周围安全和急停可用；已有进度材料只保留，不补造。
+  const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   return {
     operator_present: true,
     evidence_ref: `plain-motion-precheck-${Date.now()}`,
@@ -1681,9 +1682,7 @@ function plainMotionPrecheckRequestBody(): RobotControlOperatorReportRequest {
     structured_hil_claims: {
       external_video_recorded: false,
       visible_content_proven: false,
-      wheel_feedback_lr_nonzero_proven: false,
-      physical_motion_lidar_delta_proven: false,
-      real_route_map_proven: false,
+      ...inheritedProgressClaims,
       delivery_success: false,
       site_state: "plain_motion_precheck_ready_for_review",
     },
@@ -1691,8 +1690,9 @@ function plainMotionPrecheckRequestBody(): RobotControlOperatorReportRequest {
 }
 
 function plainVisualMaterialRequestBody(): RobotControlOperatorReportRequest {
-  // 普通记录画面只提交人工外部视频索引，不伪造轮速、LiDAR delta、路线地图或交付成功。
+  // 普通记录画面只提交人工外部视频索引；已有进度材料只保留，不补造。
   const videoRef = plainExternalVideoRef.value.trim();
+  const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   return {
     operator_present: true,
     evidence_ref: `plain-first-jog-video-${Date.now()}`,
@@ -1706,9 +1706,7 @@ function plainVisualMaterialRequestBody(): RobotControlOperatorReportRequest {
       external_video_recorded: true,
       external_video_ref: videoRef,
       visible_content_proven: false,
-      wheel_feedback_lr_nonzero_proven: false,
-      physical_motion_lidar_delta_proven: false,
-      real_route_map_proven: false,
+      ...inheritedProgressClaims,
       delivery_success: false,
       site_state: "plain_first_jog_visual_ready_for_review",
     },
@@ -1725,19 +1723,27 @@ function claimRefFromSummary(value: string | undefined): string {
   return refValue && refValue !== "not_loaded" ? refValue : "";
 }
 
-function inheritedMotionClaimsFromSummary(): Pick<
+function inheritedProgressClaimsFromSummary(): Pick<
   NonNullable<RobotControlOperatorReportRequest["structured_hil_claims"]>,
-  "wheel_feedback_lr_nonzero_proven" | "wheel_feedback_ref" | "physical_motion_lidar_delta_proven" | "scan_delta_ref"
+  | "wheel_feedback_lr_nonzero_proven"
+  | "wheel_feedback_ref"
+  | "physical_motion_lidar_delta_proven"
+  | "scan_delta_ref"
+  | "real_route_map_proven"
+  | "route_map_ref"
 > {
-  // delivery 草稿/确认不能把已有 wheel/LiDAR 材料冲掉；但只有 summary 已明确 true; ref=... 时才继承。
+  // latest-only operator report 不能把已有 wheel/LiDAR/route 材料冲掉；只有明确 true; ref=... 才继承。
   const summary = robotSummary.value?.operator_hil_material_summary;
   const wheelRef = claimRefFromSummary(summary?.wheel_feedback);
   const scanDeltaRef = claimRefFromSummary(summary?.lidar_delta);
+  const routeMapRef = claimRefFromSummary(summary?.route_map);
   return {
     wheel_feedback_lr_nonzero_proven: Boolean(wheelRef),
     ...(wheelRef ? { wheel_feedback_ref: wheelRef } : {}),
     physical_motion_lidar_delta_proven: Boolean(scanDeltaRef),
     ...(scanDeltaRef ? { scan_delta_ref: scanDeltaRef } : {}),
+    real_route_map_proven: Boolean(routeMapRef),
+    ...(routeMapRef ? { route_map_ref: routeMapRef } : {}),
   };
 }
 
@@ -1752,10 +1758,11 @@ function inheritedBasicSafetyFromSummary(): Pick<RobotControlOperatorReportReque
 }
 
 function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRequest {
-  // 恢复试动材料只重写 first-jog 前置项；不伪造轮速、LiDAR 位移、路线或送达成功。
+  // 恢复试动材料只重写 first-jog 前置项；已有进度材料只保留，不补造。
   const summary = robotSummary.value?.operator_hil_material_summary;
   const externalVideoRef = claimRefFromSummary(summary?.external_video);
   const cameraArtifactRef = claimRefFromSummary(summary?.camera_visible);
+  const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   return {
     operator_present: true,
     evidence_ref: `plain-first-jog-restore-${Date.now()}`,
@@ -1770,9 +1777,7 @@ function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRe
       ...(externalVideoRef ? { external_video_ref: externalVideoRef } : {}),
       visible_content_proven: Boolean(cameraArtifactRef),
       ...(cameraArtifactRef ? { camera_artifacts_ref: cameraArtifactRef } : {}),
-      wheel_feedback_lr_nonzero_proven: false,
-      physical_motion_lidar_delta_proven: false,
-      real_route_map_proven: false,
+      ...inheritedProgressClaims,
       delivery_success: false,
       site_state: "plain_first_jog_material_restored_for_trial",
     },
@@ -1788,8 +1793,7 @@ function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportReques
   const summary = robotSummary.value?.operator_hil_material_summary;
   const externalVideoRef = claimRefFromSummary(summary?.external_video);
   const cameraArtifactRef = claimRefFromSummary(summary?.camera_visible);
-  const scanDeltaRef = claimRefFromSummary(summary?.lidar_delta);
-  const routeMapRef = claimRefFromSummary(summary?.route_map);
+  const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   const wheelRef = `pc-first-jog-wheel-lr-${Date.now()}`;
   return {
     operator_present: true,
@@ -1805,12 +1809,9 @@ function plainWheelEvidenceReportRequestBody(): RobotControlOperatorReportReques
       ...(externalVideoRef ? { external_video_ref: externalVideoRef } : {}),
       visible_content_proven: Boolean(cameraArtifactRef),
       ...(cameraArtifactRef ? { camera_artifacts_ref: cameraArtifactRef } : {}),
+      ...inheritedProgressClaims,
       wheel_feedback_lr_nonzero_proven: true,
       wheel_feedback_ref: wheelRef,
-      physical_motion_lidar_delta_proven: Boolean(scanDeltaRef),
-      ...(scanDeltaRef ? { scan_delta_ref: scanDeltaRef } : {}),
-      real_route_map_proven: Boolean(routeMapRef),
-      ...(routeMapRef ? { route_map_ref: routeMapRef } : {}),
       delivery_success: false,
       site_state: "plain_first_jog_wheel_lr_nonzero_observed",
     },
@@ -2550,7 +2551,7 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
   }
   operatorReportPending.value = true;
   const evidenceRef = deliveryOperatorEvidenceRef.value.trim() || `delivery-draft-${Date.now()}`;
-  const inheritedMotionClaims = inheritedMotionClaimsFromSummary();
+  const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   const inheritedBasicSafety = inheritedBasicSafetyFromSummary();
   const reportBody: RobotControlOperatorReportRequest = {
     operator_present: inheritedBasicSafety.operator_present,
@@ -2566,7 +2567,7 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
       external_video_ref: deliveryOperatorVideoRef.value.trim(),
       visible_content_proven: true,
       camera_artifacts_ref: deliveryOperatorVideoRef.value.trim(),
-      ...inheritedMotionClaims,
+      ...inheritedProgressClaims,
       real_route_map_proven: true,
       route_map_ref: deliveryOperatorRouteMapRef.value.trim(),
       delivery_success: false,
@@ -2600,7 +2601,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
   deliveryCompletionPending.value = true;
   const evidenceRef = deliveryOperatorEvidenceRef.value.trim() || `delivery-operator-${Date.now()}`;
   const confirmations = deliveryOperatorConfirmations.value;
-  const inheritedMotionClaims = inheritedMotionClaimsFromSummary();
+  const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   const reportBody: RobotControlOperatorReportRequest = {
     operator_present: confirmations.operator_present,
     evidence_ref: evidenceRef,
@@ -2614,7 +2615,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
       external_video_recorded: true,
       external_video_ref: deliveryOperatorVideoRef.value.trim(),
       visible_content_proven: false,
-      ...inheritedMotionClaims,
+      ...inheritedProgressClaims,
       real_route_map_proven: confirmations.route_video_refs_verified,
       route_map_ref: deliveryOperatorRouteMapRef.value.trim(),
       delivery_success: confirmations.delivery_success,
