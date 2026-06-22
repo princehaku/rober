@@ -563,12 +563,11 @@ const deliveryOperatorConfirmationReady = computed(() => {
 });
 
 const plainDeliveryConfirmMissingSummary = computed(() => {
-  // 材料准备好之后，把“还差哪几项”翻成普通话，避免现场在 7 个勾选框之间来回猜。
-  if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
-    return "";
-  }
+  // 最终确认区要先提示材料缺口，再提示现场勾选项，避免现场在按钮之间来回猜。
   const confirmations = deliveryOperatorConfirmations.value;
+  const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim());
   const missingLabels = [
+    { label: "送达材料", ready: materialReady },
     { label: "人在旁边可接管", ready: confirmations.operator_present },
     { label: "周围安全", ready: confirmations.physical_clearance_confirmed },
     { label: "停止手段就绪", ready: confirmations.emergency_stop_ready },
