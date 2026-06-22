@@ -1524,6 +1524,10 @@ const plainFirstJogMaterialRestored = computed(() => {
   return plainFirstJogMaterialRestoreResult.value?.proxy_status === "report_forwarded" && plainFirstJogMaterialRestoreResult.value.status !== "blocked";
 });
 
+const firstJogMaterialRestoreBlocksMotion = computed(() => (
+  firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value
+));
+
 const canSendPlainFirstJog = computed(() => {
   // 普通试动必须先有 first-jog 材料；送达草稿覆盖状态下必须先点“恢复试动确认”。
   if (!robotApiBaseUrl.value.trim() || loading.value || manualCommandPending.value) {
@@ -1532,7 +1536,7 @@ const canSendPlainFirstJog = computed(() => {
   if (plainFirstJogMaterialRestored.value || plainVisualMaterialSubmitted.value) {
     return true;
   }
-  if (firstJogMaterialRestoreReady.value) {
+  if (firstJogMaterialRestoreBlocksMotion.value) {
     return false;
   }
   return robotSummary.value?.first_jog_readiness_summary?.status === "ready_for_first_jog";
@@ -1549,7 +1553,7 @@ const plainFirstJogBlockedHint = computed(() => {
   if (loading.value || manualCommandPending.value) {
     return "试动按钮已锁定：正在处理上一条请求。";
   }
-  if (firstJogMaterialRestoreReady.value) {
+  if (firstJogMaterialRestoreBlocksMotion.value) {
     return "试动按钮已锁定：请先点恢复试动确认（不会发车）。";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
@@ -1612,7 +1616,7 @@ const plainWheelRecordSummary = computed(() => {
     }
     return { state: "待重试", hint: "已试动，但还没拿到非零 L/R。" };
   }
-  if (firstJogMaterialRestoreReady.value) {
+  if (firstJogMaterialRestoreBlocksMotion.value) {
     return { state: "待确认", hint: "先点“恢复试动确认”（不会发车），再试动读取轮速。" };
   }
   if (canSendPlainFirstJog.value) {
@@ -1632,7 +1636,7 @@ const plainWheelTrialButtonLabel = computed(() => {
   if (loading.value || manualCommandPending.value) {
     return "等待上一条请求";
   }
-  if (firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value) {
+  if (firstJogMaterialRestoreBlocksMotion.value) {
     return "先恢复确认再试动";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
@@ -1667,7 +1671,7 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
   if (plainFirstJogWheelEvidenceReady.value) {
     return "保存轮速记录";
   }
-  if (firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value) {
+  if (firstJogMaterialRestoreBlocksMotion.value) {
     return "保存轮速记录（先恢复确认）";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
@@ -1847,7 +1851,7 @@ const plainKeyboardMissingLabels = computed(() => {
   }
   const materialMissing = operatorMaterialMissingFields.value;
   if (materialMissing.some((field) => ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready"].includes(field))) {
-    missing.add("移动前检查");
+    missing.add(firstJogMaterialRestoreBlocksMotion.value ? "恢复试动确认" : "移动前检查");
   }
   if (materialMissing.some((field) => ["external_video_recorded", "visible_content_proven"].includes(field))) {
     missing.add("现场画面");
@@ -1878,7 +1882,7 @@ const plainKeyboardMissingSummary = computed(() => {
 
 const plainKeyboardMotionProofNextStep = computed(() => {
   const missingLabels = plainKeyboardMissingLabels.value;
-  const higherPriorityMissing = ["小车连接", "键盘入口", "移动前检查", "现场画面"]
+  const higherPriorityMissing = ["小车连接", "键盘入口", "移动前检查", "恢复试动确认", "现场画面"]
     .some((label) => missingLabels.includes(label));
   // 只有连接、安全和画面这些前置步骤都过了，运动证据才是键盘 gate 的第一下一步。
   if (higherPriorityMissing) {
@@ -1900,6 +1904,9 @@ function plainKeyboardBlockedActionLabel(missingLabels: string[]): string {
   }
   if (missingLabels.includes("键盘入口")) {
     return "先复查入口";
+  }
+  if (missingLabels.includes("恢复试动确认")) {
+    return "先恢复确认";
   }
   if (missingLabels.includes("移动前检查")) {
     return "先做检查";
@@ -1952,12 +1959,15 @@ const plainKeyboardNextActionSummary = computed(() => {
   if (!keyboardContractReady.value) {
     return "下一步：复查手控条件。";
   }
+  if (firstJogMaterialRestoreBlocksMotion.value) {
+    return "下一步：恢复试动确认（不会发车）。";
+  }
   if (!hilChecklistConfirmed.value) {
     return "下一步：完成移动前检查。";
   }
   const materialMissing = operatorMaterialMissingFields.value;
   if (materialMissing.some((field) => ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready"].includes(field))) {
-    return "下一步：完成移动前检查。";
+    return firstJogMaterialRestoreBlocksMotion.value ? "下一步：恢复试动确认（不会发车）。" : "下一步：完成移动前检查。";
   }
   if (materialMissing.some((field) => ["external_video_recorded", "visible_content_proven"].includes(field))) {
     return "下一步：记录现场画面。";
