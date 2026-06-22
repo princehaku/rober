@@ -3247,7 +3247,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
     expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口、移动前检查、雷达移动记录。");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：复查手控条件。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口、移动前检查、雷达移动记录。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：复查手控条件。");
     expect(firstScreenText).toContain("最终确认");
     expect(firstScreenText).toContain("待材料");
     expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
@@ -3909,7 +3911,9 @@ describe("App", () => {
 
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("键盘合同未从 summary 读到");
     expect(visiblePlainHomeText(wrapper)).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口。");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：复查手控条件。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：复查手控条件。");
     const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");

@@ -871,7 +871,7 @@ const plainGoalProgressItems = computed(() => {
       label: "键盘手控",
       actionLabel: "去键盘",
       state: canUseKeyboardControl.value ? "可使用" : "未满足",
-      hint: canUseKeyboardControl.value ? "可启用键盘面板。" : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value}`,
+      hint: canUseKeyboardControl.value ? "可启用键盘面板。" : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}`,
     },
   ];
 });
@@ -1212,6 +1212,36 @@ const plainKeyboardMissingSummary = computed(() => {
   return `还差：${Array.from(missing).join("、")}。`;
 });
 
+const plainKeyboardNextActionSummary = computed(() => {
+  // 键盘 gate 缺项可能较多；现场只需要知道当前先做哪个普通动作。
+  if (canUseKeyboardControl.value) {
+    return "";
+  }
+  if (!robotApiBaseUrl.value.trim()) {
+    return "下一步：连接小车。";
+  }
+  if (!keyboardContractReady.value) {
+    return "下一步：复查手控条件。";
+  }
+  if (!hilChecklistConfirmed.value) {
+    return "下一步：完成移动前检查。";
+  }
+  const materialMissing = operatorMaterialMissingFields.value;
+  if (materialMissing.some((field) => ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready"].includes(field))) {
+    return "下一步：完成移动前检查。";
+  }
+  if (materialMissing.some((field) => ["external_video_recorded", "visible_content_proven"].includes(field))) {
+    return "下一步：记录现场画面。";
+  }
+  if (materialMissing.includes("wheel_feedback_lr_nonzero_proven")) {
+    return "下一步：读取并保存轮速记录。";
+  }
+  if (materialMissing.includes("physical_motion_lidar_delta_proven")) {
+    return "下一步：试动读取雷达移动记录。";
+  }
+  return "下一步：复查手控条件。";
+});
+
 const plainKeyboardControlSummary = computed(() => {
   // 普通首屏只说“能不能用”和“怎么停”，不展示 operator report 字段名或 HIL 术语。
   if (keyboardHeldDirection.value) {
@@ -1224,9 +1254,9 @@ const plainKeyboardControlSummary = computed(() => {
     return { state: "可手控", hint: "点击启用键盘，让这个小面板获得焦点后再按方向键。" };
   }
   if (keyboardControlArmed.value || keyboardControlStatus.value.startsWith("blocked")) {
-    return { state: "未满足", hint: `移动条件还没满足，暂不发送键盘手控。${plainKeyboardMissingSummary.value}` };
+    return { state: "未满足", hint: `移动条件还没满足，暂不发送键盘手控。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}` };
   }
-  return { state: "未满足", hint: `先补齐键盘手控条件，再启用键盘。${plainKeyboardMissingSummary.value}` };
+  return { state: "未满足", hint: `先补齐键盘手控条件，再启用键盘。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}` };
 });
 
 const operatorMaterialGateSummary = computed(() => {
@@ -3692,6 +3722,9 @@ onBeforeUnmount(() => {
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
+            <p v-if="plainKeyboardNextActionSummary" class="panel-note" data-testid="plain-keyboard-next-action">
+              {{ plainKeyboardNextActionSummary }}
+            </p>
             <p class="panel-note">W/A/S/D 或方向键：前进、左转、后退、右转。</p>
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
