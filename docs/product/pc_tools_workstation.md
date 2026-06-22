@@ -1650,3 +1650,9 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 2026-06-23 00:11 起，普通首屏“轮速记录”新增 `刷新当前轮速（只读）`。该按钮只复用固定
 `POST /api/robot-control/base/feedback-samples?baseUrl=...` 读取当前 T1001 L/R，pending 时显示 `刷新中`；
 不发送 T=1/T=13、manual、first-jog、stop、Nav2、delivery complete、keyboard pulse 或 `/cmd_vel`。
+
+2026-06-23 03:50 起，普通首屏和高级诊断的最终送达确认都要求送达材料里的 route/map ref 与当前未过期
+行程结果的 `evidence_ref` 一致。若页面从 `/api/robot-control/delivery/latest` 恢复了旧草稿，但又读到一条
+新的本轮行程成功记录，`确认送达` 会显示 `确认送达（先更新行程材料）` 并保持禁用；点击 `准备送达材料`
+只把 route/map ref 更新为当前行程 ref，不提交 operator report、不调用 delivery complete，不发送 Nav2、
+manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。

@@ -632,6 +632,7 @@ const plainDeliveryConfirmMissingLabels = computed(() => {
   const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim());
   return [
     { label: "本轮行程", ready: deliveryNav2GoalReady.value },
+    { label: "本轮行程材料", ready: !deliveryNav2GoalReady.value || deliveryRouteMapMatchesFreshNav2.value },
     { label: "送达材料", ready: materialReady },
     { label: "人在旁边可接管", ready: confirmations.operator_present },
     { label: "周围安全", ready: confirmations.physical_clearance_confirmed },
@@ -661,6 +662,9 @@ function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
   // 已有草稿后，按钮直接指向下一组人工确认，避免现场只看到抽象数量。
   if (missingLabels.includes("本轮行程")) {
     return "确认送达（先重新行程）";
+  }
+  if (missingLabels.includes("本轮行程材料")) {
+    return "确认送达（先更新行程材料）";
   }
   if (missingLabels.includes("送达材料")) {
     return "确认送达（先准备材料）";
@@ -767,6 +771,9 @@ const plainDeliveryNextActionSummary = computed(() => {
   if (!deliveryNav2GoalReady.value) {
     return plainTripHasSucceededEvidence.value ? "下一步：重新执行本轮行程。" : "下一步：先完成行程。";
   }
+  if (!deliveryRouteMapMatchesFreshNav2.value) {
+    return "下一步：更新行程材料。";
+  }
   if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
     return "下一步：准备送达材料。";
   }
@@ -822,6 +829,19 @@ const deliveryNav2GoalReady = computed(() => {
   return nav2EvidenceValues().some((values) => nav2GoalSucceeded(values) && !evidenceIsStale(values));
 });
 
+const freshNav2RouteMapRef = computed(() => {
+  // 送达材料必须引用当前新鲜 Nav2 execution，避免旧草稿 route/map ref 被误当成本轮证据。
+  const values = nav2EvidenceValues().find((item) => nav2GoalSucceeded(item) && !evidenceIsStale(item));
+  const evidenceRef = values?.evidence_ref ?? "";
+  return evidenceRef && evidenceRef !== "not_loaded" ? evidenceRef : "";
+});
+
+const deliveryRouteMapMatchesFreshNav2 = computed(() => {
+  // 部分后端只返回状态不返回 evidence_ref；没有可比 ref 时只保留“本轮行程”新鲜度 gate。
+  const freshRef = freshNav2RouteMapRef.value;
+  return !freshRef || deliveryOperatorRouteMapRef.value.trim() === freshRef;
+});
+
 const plainDeliverySummary = computed(() => {
   // 普通首屏只做收口状态提示；按钮只读 latest 或复算缺口，不提交送达确认。
   const deliveryConfirmed = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
@@ -864,7 +884,8 @@ const plainDeliveryMaterialSummary = computed(() => {
       deliveryLatestResult.value?.delivery_key_values,
       "这份草稿较旧，如本轮已重新到达，请重新准备材料或重新确认",
     );
-    return { state: "已保存", hint: `送达材料草稿已保存${ageText}；请完成下方最终确认。` };
+    const mismatchText = deliveryRouteMapMatchesFreshNav2.value ? "" : "行程材料不是本轮记录，请点准备送达材料更新。";
+    return { state: "已保存", hint: `送达材料草稿已保存${ageText}；${mismatchText}请完成下方最终确认。` };
   }
   if (deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "已预填", hint: "视频和行程材料已预填，可先保存草稿。" };
@@ -892,6 +913,7 @@ const plainDeliveryConfirmReady = computed(() => {
     && !deliveryCompletionPending.value
     && robotApiBaseUrl.value.trim().length > 0
     && deliveryNav2GoalReady.value
+    && deliveryRouteMapMatchesFreshNav2.value
     && deliveryOperatorConfirmationReady.value
     && deliveryOperatorVideoRef.value.trim().length > 0
     && deliveryOperatorRouteMapRef.value.trim().length > 0;
@@ -909,6 +931,9 @@ const plainDeliveryConfirmSummary = computed(() => {
     return plainTripHasSucceededEvidence.value
       ? { state: "待行程", hint: "旧行程记录不能用于本轮送达，先重新执行本轮行程。" }
       : { state: "待行程", hint: "先完成本轮行程，再做最终确认。" };
+  }
+  if (!deliveryRouteMapMatchesFreshNav2.value) {
+    return { state: "待材料", hint: "行程材料不是本轮记录，先点准备送达材料更新。" };
   }
   if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "待材料", hint: "先准备送达材料，再做最终确认。" };
@@ -3408,12 +3433,12 @@ async function prefillDeliveryMaterialRefs(): Promise<void> {
   if (!robotApiBaseUrl.value.trim()) {
     return;
   }
-  const existingNav2Ref = navGoalExecutionResult.value?.goal_execution_key_values.evidence_ref
-    ?? navGoalExecutionLatestResult.value?.goal_execution_key_values.evidence_ref;
-  if (!deliveryOperatorRouteMapRef.value.trim() && (!existingNav2Ref || existingNav2Ref === "not_loaded")) {
+  const routeRefNeedsRefresh = !deliveryOperatorRouteMapRef.value.trim()
+    || (deliveryNav2GoalReady.value && !deliveryRouteMapMatchesFreshNav2.value);
+  if (routeRefNeedsRefresh && !freshNav2RouteMapRef.value) {
     await loadNavGoalExecutionLatest();
   }
-  if (!deliveryOperatorRouteMapRef.value.trim()) {
+  if (routeRefNeedsRefresh) {
     fillDeliveryRouteRefFromLatestNav2();
   }
   if (!deliveryOperatorVideoRef.value.trim()) {
@@ -3483,6 +3508,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
     || operatorReportPending.value
     || deliveryCompletionPending.value
     || !deliveryNav2GoalReady.value
+    || !deliveryRouteMapMatchesFreshNav2.value
     || !deliveryOperatorConfirmationReady.value
     || !deliveryOperatorVideoRef.value.trim()
     || !deliveryOperatorRouteMapRef.value.trim()
@@ -4452,6 +4478,7 @@ onBeforeUnmount(() => {
                 type="button"
                 class="secondary compact-stop"
                 :disabled="loading || navGoalExecutionLatestPending || cameraFirstFrameProbePending || deliveryLatestPending || !robotApiBaseUrl.trim()"
+                data-testid="plain-delivery-prefill-material"
                 @click="prefillDeliveryMaterialRefs"
               >
                 准备送达材料
@@ -4920,6 +4947,7 @@ onBeforeUnmount(() => {
               class="secondary"
               type="button"
               :disabled="loading || navGoalExecutionLatestPending || cameraFirstFrameProbePending || deliveryLatestPending || !robotApiBaseUrl.trim()"
+              data-testid="advanced-delivery-prefill-material"
               @click="prefillDeliveryMaterialRefs"
             >
               预填送达材料（高级）
@@ -4988,7 +5016,7 @@ onBeforeUnmount(() => {
                 <span>确认已投放/送达</span>
               </label>
             </div>
-            <button class="danger-button" type="submit" :disabled="loading || operatorReportPending || deliveryCompletionPending || !robotApiBaseUrl.trim() || !deliveryOperatorConfirmationReady || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()">
+            <button class="danger-button" type="submit" :disabled="loading || operatorReportPending || deliveryCompletionPending || !robotApiBaseUrl.trim() || !deliveryNav2GoalReady || !deliveryRouteMapMatchesFreshNav2 || !deliveryOperatorConfirmationReady || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()">
               提交送达材料并确认（高级）
             </button>
           </form>

@@ -6349,13 +6349,13 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("待确认");
     expect(deliveryStatus.text()).toContain("行程已完成");
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：已观察到到达/移动、确认已投放/送达。");
-    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：准备送达材料。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：更新行程材料。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：已观察到到达/移动、确认已投放/送达。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：准备送达材料。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：更新行程材料。");
     expect(deliveryStatus.text()).toContain("最终确认");
     expect(deliveryStatus.text()).toContain("待材料");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 8 项：送达材料");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先准备材料）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 9 项：本轮行程材料、送达材料");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先更新行程材料）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 2 项，不确认）");
     expect(wrapper.find('[data-testid="plain-delivery-mark-safety"]').text()).toBe("下一步：勾选安全三项");
@@ -6628,6 +6628,117 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("blocks final delivery when a restored draft route ref does not match the fresh Nav2 result", async () => {
+    // 旧草稿不能混用到新一轮行程；必须先更新 route/map ref，再允许现场最终确认。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-fresh-fixture",
+          generated_at_ms: "1782150441201",
+          response_generated_at_ms: "1782150442201",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/latest",
+        remote_endpoint: "/api/delivery/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_status: "goal_succeeded",
+          nav2_feedback_sample_count: "8",
+          generated_at_ms: "1782150441201",
+          response_generated_at_ms: "1782150442201",
+          operator_report_status: "unsafe_or_incomplete",
+        },
+        delivery_material_refs: {
+          operator_evidence_ref: "delivery-draft-old-fixture",
+          external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_old.jpg",
+          camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_old.jpg",
+          route_map_ref: "o11-nav2-goal-execution-old-fixture",
+          site_state: "delivery_material_draft_not_operator_confirmed",
+        },
+        failure_reason: "",
+        blocked_reasons: [
+          "confirm_delivery_completion",
+          "operator_report_ready_for_review",
+          "operator_observed_motion",
+          "operator_observed_stop",
+          "structured_hil_claims.delivery_success",
+        ],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-old-fixture");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：更新行程材料。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("本轮行程材料");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先更新行程材料）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+
+    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项：本轮行程材料。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+
+    await wrapper.find('[data-testid="plain-delivery-prefill-material"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-fresh-fixture");
+    expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-o11-nav2-goal-execution-fresh-fixture");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
