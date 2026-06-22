@@ -3351,6 +3351,10 @@ describe("App", () => {
     expect(goalClosureText).toContain("delivery success");
     expect(goalClosureText).toContain("PC 键盘连续手控");
     expect(goalClosureText).not.toContain("/cmd_vel");
+    const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("PC 键盘连续手控"));
+    expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
+    expect(keyboardClosureItem?.text()).toContain("键盘合同未从 summary 读到");
     expect(diagnostics.text()).toContain("task_id");
     expect(diagnostics.text()).toContain("Robot API status");
     expect(diagnostics.text()).toContain("Node server only; Vue direct access=false");
@@ -4993,6 +4997,8 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
     summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/manual": {
@@ -5162,6 +5168,10 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').text()).not.toContain("还差：");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text().replace(/\s+/g, "")).toContain("键盘手控可使用");
+    const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("PC 键盘连续手控"));
+    expect(keyboardClosureItem?.attributes("data-ready")).toBe("true");
+    expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，材料 gate 已满足");
     await armButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();

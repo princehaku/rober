@@ -748,6 +748,7 @@ const goalClosureChecklist = computed(() => {
   const deliveryReady = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
   const keyboardContractReady = robotSummary.value?.safe_command_boundary.keyboard_control_mode === "bounded_repeating_manual_pulse"
     && robotSummary.value.safe_command_boundary.keyboard_reuses_manual_gate === true;
+  const keyboardReady = keyboardContractReady && canSendManualMotion.value;
   return [
     {
       id: "wheel_raw_lr",
@@ -770,8 +771,10 @@ const goalClosureChecklist = computed(() => {
     {
       id: "keyboard_manual",
       label: "PC 键盘连续手控",
-      ready: keyboardContractReady,
-      hint: keyboardContractReady ? "入口已按 focused panel + manual gate 收口" : "键盘合同未从 summary 读到",
+      ready: keyboardReady,
+      hint: keyboardReady
+        ? "键盘入口已就绪，材料 gate 已满足"
+        : keyboardContractReady ? `键盘入口已在，仍需补齐：${plainKeyboardMissingSummary.value.replace(/^还差：/, "").replace(/。$/, "")}` : "键盘合同未从 summary 读到",
     },
   ];
 });
