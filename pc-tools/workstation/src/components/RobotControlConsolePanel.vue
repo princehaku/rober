@@ -960,7 +960,7 @@ const plainFirstJogBlockedHint = computed(() => {
     return "试动按钮已锁定：正在处理上一条请求。";
   }
   if (firstJogMaterialRestoreReady.value) {
-    return "试动按钮已锁定：请先点恢复试动确认。";
+    return "试动按钮已锁定：请先点恢复试动确认（不会发车）。";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
     return "试动按钮已锁定：请先记录现场画面。";
@@ -1020,7 +1020,7 @@ const plainWheelRecordSummary = computed(() => {
     return { state: "待重试", hint: "已试动，但还没拿到非零 L/R。" };
   }
   if (firstJogMaterialRestoreReady.value) {
-    return { state: "待确认", hint: "先点“恢复试动确认”，再试动读取轮速。" };
+    return { state: "待确认", hint: "先点“恢复试动确认”（不会发车），再试动读取轮速。" };
   }
   if (canSendPlainFirstJog.value) {
     return { state: "待试动", hint: "点“试动一下”后读取轮速。" };
@@ -1280,7 +1280,7 @@ const plainMotionSummary = computed(() => {
   }
   if (!manualCommandResult.value) {
     if (firstJogMaterialRestoreReady.value) {
-      return { state: "待确认", hint: "已有现场画面；请恢复试动确认后再试动。" };
+      return { state: "待确认", hint: "已有现场画面；请恢复试动确认后再试动，恢复确认不会发车。" };
     }
     if (firstJogVisualMaterialReady.value) {
       return { state: "待试动", hint: "现场画面已记录；可以试动一下。" };
