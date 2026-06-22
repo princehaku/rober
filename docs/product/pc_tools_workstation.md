@@ -1574,3 +1574,7 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 2026-06-22 18:00 起，普通首屏 `确认送达` 按钮在全部确认项满足后显示为 `确认送达（不发车）`；
 缺项时仍显示 `确认送达（还差 N 项）`。按钮只在可提交状态下解释动作边界，后端 gate、operator report
 和 delivery complete 合同不变，不发送 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
+
+2026-06-22 18:03 起，普通首屏 `复查送达条件` 按钮会显示 `复查送达条件（还差 N 项，不确认）`；
+当前未读到缺口时显示 `复查送达条件（不确认）`。该按钮仍只调用固定 `POST /api/robot-control/delivery/check`
+且后端请求固定 `confirm_delivery_completion=false`，不提交 operator report、不调用 delivery complete，不发车。

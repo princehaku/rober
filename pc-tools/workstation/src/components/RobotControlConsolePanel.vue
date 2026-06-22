@@ -669,6 +669,15 @@ const plainDeliveryGateMissingSummary = computed(() => {
   return `上位机还差：${labels.join("、")}。`;
 });
 
+const plainDeliveryGapCheckButtonLabel = computed(() => {
+  // 复查固定 confirm=false，只重新算缺口；按钮文案直接说明不会确认送达。
+  if (deliveryGapCheckPending.value) {
+    return "复查中";
+  }
+  const missingCount = deliveryGateBlockedReasons.value.length;
+  return missingCount > 0 ? `复查送达条件（还差 ${missingCount} 项，不确认）` : "复查送达条件（不确认）";
+});
+
 const plainDeliveryNextActionSummary = computed(() => {
   // 送达 gate 缺项很多时，普通首屏只给一个下一步，避免现场人员在多按钮之间来回猜。
   if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
@@ -3930,8 +3939,8 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="loading || deliveryLatestPending || !robotApiBaseUrl.trim()" @click="loadDeliveryLatest">
                 刷新送达状态
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" @click="checkDeliveryGap">
-                复查送达条件
+              <button type="button" class="secondary compact-stop" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" data-testid="plain-delivery-gap-check" @click="checkDeliveryGap">
+                {{ plainDeliveryGapCheckButtonLabel }}
               </button>
             </div>
             <p class="panel-note">{{ plainDeliverySummary.hint }}</p>

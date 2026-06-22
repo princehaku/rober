@@ -3276,7 +3276,7 @@ describe("App", () => {
     expect(wrapper.find(".simple-user-console .motion-pad").exists()).toBe(false);
     expect(firstScreenText).toContain("任务收口");
     expect(firstScreenText).toContain("刷新送达状态");
-    expect(firstScreenText).toContain("复查送达条件");
+    expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（不确认）");
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("目标收口进度");
     expect(firstScreenText).not.toContain("普通用户入口");
@@ -5816,6 +5816,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 8 项：送达材料");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（还差 8 项）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 2 项，不确认）");
     expect(wrapper.find('[data-testid="plain-delivery-mark-safety"]').text()).toBe("下一步：勾选安全三项");
     expect(wrapper.find('[data-testid="plain-delivery-mark-arrived-stopped"]').text()).toBe("下一步：确认到达停稳");
     expect(wrapper.find('[data-testid="plain-delivery-mark-refs-verified"]').text()).toBe("下一步：核对材料");
@@ -5829,7 +5830,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?")).length).toBeGreaterThan(latestCallsBefore);
 
-    await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "复查送达条件")?.trigger("click");
+    await wrapper.find('[data-testid="plain-delivery-gap-check"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -6014,6 +6015,7 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("已预填");
     expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
+    expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 5 项，不确认）");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：勾选安全三项。");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
