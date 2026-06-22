@@ -802,6 +802,8 @@ const canRunPlainTripExecution = computed(() => {
   return !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
+const plainGoalProgressPending = computed(() => loading.value || navGoalExecutionLatestPending.value || deliveryLatestPending.value);
+
 const firstJogVisualMaterialReady = computed(() => {
   // first-jog readiness 由 PC summary 后端统一判定，避免普通首屏和 API 合同漂移。
   return robotSummary.value?.first_jog_readiness_summary?.visual_material_ready === true;
@@ -2346,6 +2348,15 @@ async function preloadGoalClosureReadbacks(): Promise<void> {
   ]);
 }
 
+async function refreshPlainGoalProgress(): Promise<void> {
+  // 普通首屏刷新进度只读 summary、最近行程和送达状态，不执行行程、不保存材料、不确认送达。
+  if (!robotApiBaseUrl.value.trim() || plainGoalProgressPending.value) {
+    return;
+  }
+  await refreshConsole();
+  await preloadGoalClosureReadbacks();
+}
+
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
   if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
@@ -3327,7 +3338,12 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
           <div class="plain-goal-progress" data-testid="plain-goal-progress">
-            <strong>本轮进度</strong>
+            <div class="simple-status-row">
+              <strong>本轮进度</strong>
+              <button type="button" class="secondary compact-stop" :disabled="plainGoalProgressPending" data-testid="plain-goal-progress-refresh" @click="refreshPlainGoalProgress">
+                刷新进度
+              </button>
+            </div>
             <div v-for="item in plainGoalProgressItems" :key="item.id" class="plain-progress-row">
               <span class="plain-progress-label">{{ item.label }}</span>
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>

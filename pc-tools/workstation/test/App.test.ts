@@ -3230,6 +3230,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
+    expect(firstScreenText).toContain("刷新进度");
     expect(firstScreenText).toContain("轮速记录");
     expect(firstScreenText).toContain("点“试动一下”后读取轮速。");
     expect(firstScreenText).toContain("行程操作");
@@ -3245,6 +3246,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("待材料");
     expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-trip-run"]').exists()).toBe(true);
     expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
@@ -3373,6 +3375,49 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("refreshes plain goal progress with read-only endpoints only", async () => {
+    // 普通首屏的进度刷新只重读摘要、最近行程和送达状态；不能借刷新触发运动或送达确认。
+    const mockedFetch = stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    const summaryCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/summary?"),
+    ).length;
+    const navLatestCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?"),
+    ).length;
+    const deliveryLatestCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/delivery/latest?"),
+    ).length;
+
+    const refreshButton = wrapper.find('[data-testid="plain-goal-progress-refresh"]');
+    expect(refreshButton.exists()).toBe(true);
+    expect(refreshButton.attributes("disabled")).toBeUndefined();
+    await refreshButton.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const callsAfterClick = mockedFetch.mock.calls.slice(callsBeforeClick).map(([url]) => String(url));
+    expect(callsAfterClick).toHaveLength(3);
+    expect(
+      mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary?")).length,
+    ).toBe(summaryCallsBeforeClick + 1);
+    expect(
+      mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?")).length,
+    ).toBe(navLatestCallsBeforeClick + 1);
+    expect(
+      mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?")).length,
+    ).toBe(deliveryLatestCallsBeforeClick + 1);
+    expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
   });
 
   it("runs plain trip preflight and execution only after the safety checkbox is checked", async () => {

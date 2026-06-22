@@ -1376,3 +1376,8 @@ operator report 是送达草稿、仍保留画面材料但 basic safety 为 fals
 放在同一行。这样当轮速记录提示“先点恢复试动确认”时，现场人员可以直接在同一模块完成无运动的 latest
 operator report 修复，再继续 `试动一下`。按钮行为不变：只提交 first-jog 前置 basic safety report，不调用
 `/api/base/manual`、first-jog、Nav2 或 delivery complete。
+
+2026-06-22 14:18 起，普通首屏“本轮进度”新增 `刷新进度` 按钮。它只读刷新 PC summary、最近一次行程执行结果
+和最近一次送达状态，用于现场确认 wheel raw L/R 非零、完整路线执行、delivery success、键盘手控 gate
+这些收口项有没有变化。该按钮不调用行程执行、送达确认、底盘手控或 `/cmd_vel`，所以不会因为刷新进度触发
+小车运动或把送达结果自动写成成功。
