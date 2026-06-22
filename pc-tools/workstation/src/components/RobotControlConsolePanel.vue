@@ -530,6 +530,7 @@ const keyboardContractReady = computed(() => {
 });
 const canUseKeyboardControl = computed(() => keyboardContractReady.value && canSendManualMotion.value);
 const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
+const keyboardManualPulseObserved = computed(() => keyboardLastDirection.value !== "not_loaded");
 
 const keyboardDirectionPlainLabel = computed(() => {
   // 普通首屏只显示方向中文，避免把底层 direction enum 暴露给现场用户。
@@ -1018,21 +1019,23 @@ const plainGoalProgressItems = computed(() => {
       id: "keyboard",
       label: "键盘手控",
       actionLabel: "去键盘",
-      state: canUseKeyboardControl.value ? "可使用" : "未满足",
-      hint: canUseKeyboardControl.value ? "可启用键盘面板。" : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}`,
+      state: canUseKeyboardControl.value ? (keyboardManualPulseObserved.value ? "已验证" : "待验证") : "未满足",
+      hint: canUseKeyboardControl.value
+        ? keyboardManualPulseObserved.value ? "已触发过键盘方向输入；现场可继续按住方向键手控。" : "键盘已解锁；点击启用键盘后按住方向键验证。"
+        : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}`,
     },
   ];
 });
 
 const plainGoalProgressNextAction = computed(() => {
   // 现场不应该在四个目标之间猜顺序；总提示只指向第一项未完成的普通任务。
-  const nextItem = plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "可使用");
+  const nextItem = plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "已验证");
   return nextItem ? `下一步：先处理${nextItem.label}。${nextItem.hint}` : "下一步：四项都已完成，保持待命。";
 });
 
 const plainGoalProgressPrimaryTarget = computed(() => {
   // 主按钮只指向当前第一项缺口；没有缺口时禁用，不能触发任何自动动作。
-  return plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "可使用")?.id ?? "";
+  return plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "已验证")?.id ?? "";
 });
 
 const plainGoalProgressPrimaryActionLabel = computed(() => {
@@ -1057,7 +1060,7 @@ const plainGoalProgressEvidenceSummary = computed(() => {
   const wheelText = wheelReady ? "轮速已完成" : left !== "not_loaded" && right !== "not_loaded" ? `轮速 L/R=${left}/${right}` : "轮速未读到";
   const tripText = deliveryNav2GoalReady.value ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成" : "行程未完成";
   const deliveryText = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true ? "送达已完成" : "送达未完成";
-  const keyboardText = canUseKeyboardControl.value ? "键盘可使用" : "键盘未满足";
+  const keyboardText = canUseKeyboardControl.value ? (keyboardManualPulseObserved.value ? "键盘已验证" : "键盘待验证") : "键盘未满足";
   return `当前读数：${wheelText}；${tripText}；${deliveryText}；${keyboardText}。`;
 });
 
@@ -1079,6 +1082,9 @@ const plainGoalProgressBlockerSummary = computed(() => {
   }
   if (!(deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true)) {
     return plainDeliveryNextActionSummary.value ? `验收卡点：送达未完成，${plainDeliveryNextActionSummary.value}` : "验收卡点：送达未完成，需要现场最终确认。";
+  }
+  if (canUseKeyboardControl.value && !keyboardManualPulseObserved.value) {
+    return "验收卡点：键盘已解锁，点击启用键盘后按住方向键验证。";
   }
   if (!canUseKeyboardControl.value) {
     return `验收卡点：键盘手控未满足，${plainKeyboardNextActionSummary.value}`;
