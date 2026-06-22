@@ -2669,6 +2669,11 @@ function markDeliveryRefsVerified(): void {
   deliveryOperatorConfirmations.value.route_video_refs_verified = true;
 }
 
+function markDeliverySuccessConfirmed(): void {
+  // 最后一项必须由 operator 显式点击；这里只勾本地确认，不触发提交。
+  deliveryOperatorConfirmations.value.delivery_success = true;
+}
+
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
   if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
@@ -3770,6 +3775,9 @@ onBeforeUnmount(() => {
                 </button>
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-refs-verified" @click="markDeliveryRefsVerified">
                   材料已核对
+                </button>
+                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-success" @click="markDeliverySuccessConfirmed">
+                  确认已投放/送达
                 </button>
               </div>
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>

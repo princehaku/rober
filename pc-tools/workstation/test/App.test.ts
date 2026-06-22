@@ -5843,6 +5843,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("确认已投放/送达");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
 
+    await wrapper.find('[data-testid="plain-delivery-mark-success"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect((wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
+
     await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(true);
