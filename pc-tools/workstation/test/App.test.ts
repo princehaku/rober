@@ -3230,6 +3230,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去处理卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toBe("当前状态：轮速记录已完成；行程执行待完成；送达确认待完成；键盘手控未满足。");
@@ -3629,6 +3630,7 @@ describe("App", () => {
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
     const focusCallsBeforeClick = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     const targets = ["wheel", "trip", "delivery", "keyboard"];
     for (const target of targets) {
       await wrapper.find(`[data-testid="plain-goal-progress-go-${target}"]`).trigger("click");
@@ -3638,7 +3640,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-go-delivery"]').text()).toBe("去送达");
     expect(wrapper.find('[data-testid="plain-goal-progress-go-keyboard"]').text()).toBe("去键盘");
 
-    expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeClick + 4);
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去处理卡点");
+    expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeClick + 5);
     expect(mockedFetch.mock.calls.length).toBe(callsBeforeClick);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);

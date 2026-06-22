@@ -1030,6 +1030,15 @@ const plainGoalProgressNextAction = computed(() => {
   return nextItem ? `下一步：先处理${nextItem.label}。${nextItem.hint}` : "下一步：四项都已完成，保持待命。";
 });
 
+const plainGoalProgressPrimaryTarget = computed(() => {
+  // 主按钮只指向当前第一项缺口；没有缺口时禁用，不能触发任何自动动作。
+  return plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "可使用")?.id ?? "";
+});
+
+const plainGoalProgressPrimaryActionLabel = computed(() => (
+  plainGoalProgressPrimaryTarget.value ? "去处理卡点" : "全部完成"
+));
+
 const plainGoalProgressStateSummary = computed(() => {
   // 四个目标的当前结论压成一行，方便现场先看全局状态再按下一步执行。
   const fragments = plainGoalProgressItems.value.map((item) => `${item.label}${item.state}`);
@@ -4104,6 +4113,9 @@ onBeforeUnmount(() => {
           <div class="plain-goal-progress" data-testid="plain-goal-progress">
             <div class="simple-status-row">
               <strong>本轮进度</strong>
+              <button type="button" class="secondary compact-stop" :disabled="!plainGoalProgressPrimaryTarget" data-testid="plain-goal-progress-primary-action" @click="focusPlainGoalProgressTarget(plainGoalProgressPrimaryTarget)">
+                {{ plainGoalProgressPrimaryActionLabel }}
+              </button>
               <button type="button" class="secondary compact-stop" :disabled="plainGoalProgressPending" data-testid="plain-goal-progress-refresh" @click="refreshPlainGoalProgress">
                 {{ plainGoalProgressRefreshButtonLabel }}
               </button>
