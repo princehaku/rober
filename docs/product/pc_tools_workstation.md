@@ -1371,3 +1371,8 @@ operator report 是送达草稿、仍保留画面材料但 basic safety 为 fals
 会是 `blocked_missing_basic_safety`。此时轮速记录不再提示重新记录现场画面，而是显示“先点恢复试动确认，
 再试动读取轮速”。该文案匹配当前真实上位机状态：`/api/base/status` 只读 T=1001 L/R 仍为 `0/0`，
 `/api/nav2/goal/execution/latest` 已有 `goal_succeeded` 材料，`/api/delivery/latest` 仍缺 operator 最终确认。
+
+2026-06-22 14:15 起，`恢复试动确认` 按钮从移动/导航顶部动作行移动到“轮速记录”小面板内，和“保存轮速记录”
+放在同一行。这样当轮速记录提示“先点恢复试动确认”时，现场人员可以直接在同一模块完成无运动的 latest
+operator report 修复，再继续 `试动一下`。按钮行为不变：只提交 first-jog 前置 basic safety report，不调用
+`/api/base/manual`、first-jog、Nav2 或 delivery complete。
