@@ -868,6 +868,22 @@ const plainDeliveryConfirmSummary = computed(() => {
   return { state: "可提交", hint: "已满足最终确认条件；提交后只做送达收口，不发车。" };
 });
 
+const plainDeliverySubmitResultSummary = computed(() => {
+  // 红色确认按钮的后端 gate 结果必须回到普通首屏；这里只读结果，不自动重试。
+  const result = deliveryCompletionResult.value;
+  if (!result) {
+    return "";
+  }
+  if (result.delivery_success === true) {
+    return "送达提交已通过：上位机已确认送达完成。";
+  }
+  const missingSummary = plainDeliveryGateMissingSummary.value;
+  if (missingSummary) {
+    return `送达提交未通过：${missingSummary.replace(/^上位机还差：/, "还差：")}`;
+  }
+  return `送达提交未通过：${result.failure_reason || result.status || result.proxy_status}。`;
+});
+
 const deliveryClosureChecklist = computed(() => {
   // 这个摘要只是 UI 收口提示，不自动勾选、不提交、不把 delivery_success 提升为 true。
   const confirmations = deliveryOperatorConfirmations.value;
@@ -4375,6 +4391,9 @@ onBeforeUnmount(() => {
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
               <p v-if="plainDeliveryConfirmMissingSummary" class="panel-note" data-testid="plain-delivery-confirm-missing">
                 {{ plainDeliveryConfirmMissingSummary }}
+              </p>
+              <p v-if="plainDeliverySubmitResultSummary" class="panel-note" data-testid="plain-delivery-submit-result">
+                {{ plainDeliverySubmitResultSummary }}
               </p>
               <div class="plain-confirm-grid">
                 <label>
