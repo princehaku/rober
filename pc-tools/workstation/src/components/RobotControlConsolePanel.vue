@@ -613,6 +613,27 @@ const plainDeliveryConfirmButtonLabel = computed(() => {
   return missingCount > 0 ? `确认送达（还差 ${missingCount} 项）` : "确认送达";
 });
 
+const plainDeliverySafetyButtonLabel = computed(() => {
+  // 下一步直接写在对应按钮上；点击仍只勾选本地确认项，不提交送达。
+  const confirmations = deliveryOperatorConfirmations.value;
+  return confirmations.operator_present && confirmations.physical_clearance_confirmed && confirmations.emergency_stop_ready
+    ? "安全三项已勾选"
+    : "下一步：勾选安全三项";
+});
+
+const plainDeliveryArrivedStoppedButtonLabel = computed(() => {
+  const confirmations = deliveryOperatorConfirmations.value;
+  return confirmations.observed_motion && confirmations.observed_stop ? "已确认到达停稳" : "下一步：确认到达停稳";
+});
+
+const plainDeliveryRefsVerifiedButtonLabel = computed(() => (
+  deliveryOperatorConfirmations.value.route_video_refs_verified ? "材料已核对" : "下一步：核对材料"
+));
+
+const plainDeliverySuccessButtonLabel = computed(() => (
+  deliveryOperatorConfirmations.value.delivery_success ? "已确认投放/送达" : "下一步：确认投放/送达"
+));
+
 const deliveryGateBlockedReasons = computed(() => {
   // 送达缺口可能来自 latest、check 或 complete；合并后给现场人员一个稳定清单。
   return Array.from(new Set([
@@ -3945,16 +3966,16 @@ onBeforeUnmount(() => {
                 <strong>最终确认</strong>
                 <span class="status-chip" :data-state="plainDeliveryConfirmSummary.state">{{ plainDeliveryConfirmSummary.state }}</span>
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-safety" @click="markDeliveryBasicSafetyConfirmed">
-                  勾选安全三项
+                  {{ plainDeliverySafetyButtonLabel }}
                 </button>
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-arrived-stopped" @click="markDeliveryArrivedAndStopped">
-                  已看到到达并停稳
+                  {{ plainDeliveryArrivedStoppedButtonLabel }}
                 </button>
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-refs-verified" @click="markDeliveryRefsVerified">
-                  材料已核对
+                  {{ plainDeliveryRefsVerifiedButtonLabel }}
                 </button>
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-success" @click="markDeliverySuccessConfirmed">
-                  确认已投放/送达
+                  {{ plainDeliverySuccessButtonLabel }}
                 </button>
               </div>
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
