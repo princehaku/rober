@@ -190,6 +190,8 @@ const evidenceSweepPending = ref(false);
 const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
 const evidenceSweepLines = ref<string[]>([]);
+const keyboardControlPanel = ref<HTMLElement | null>(null);
+const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
 const keyboardLastDirection = ref("not_loaded");
@@ -650,8 +652,11 @@ const keyboardControlSummary = computed(() => {
   if (keyboardHeldDirection.value) {
     return { state: "手控中", hint: `${keyboardLastDirection.value} 按住点动中；松开按键、窗口失焦或页面隐藏会发送停止。` };
   }
+  if (keyboardControlArmed.value && canSendManualMotion.value) {
+    return { state: "已启用", hint: "键盘面板已聚焦：按住 W/A/S/D 或方向键连续点动，松开即停。" };
+  }
   if (canSendManualMotion.value) {
-    return { state: "可手控", hint: "高级手控已就绪：按住 W/A/S/D 或方向键连续点动，松开即停。" };
+    return { state: "可手控", hint: "点击“启用键盘”后，按住 W/A/S/D 或方向键连续点动，松开即停。" };
   }
   if (keyboardControlStatus.value.startsWith("blocked")) {
     return { state: "未满足", hint: keyboardControlStatus.value };
@@ -2525,6 +2530,31 @@ function eventTargetIsEditable(target: EventTarget | null): boolean {
   return target.isContentEditable || tagName === "input" || tagName === "textarea" || tagName === "select";
 }
 
+function eventTargetIsKeyboardControlScope(target: EventTarget | null): boolean {
+  // 连续手控必须发生在明确聚焦的键盘面板里，避免普通页面快捷键误触底盘。
+  const panel = keyboardControlPanel.value;
+  return Boolean(panel && target instanceof Node && panel.contains(target));
+}
+
+function activateKeyboardControl(): void {
+  // 现场 operator 需要先显式进入键盘面板；页面其他区域按键不触发手控。
+  keyboardControlArmed.value = true;
+  keyboardControlStatus.value = canSendManualMotion.value ? "armed_waiting_for_key" : `blocked_keyboard_manual_gate:${manualBlockedReason.value}`;
+  keyboardControlPanel.value?.focus();
+}
+
+function disarmKeyboardControl(reason: string): void {
+  // 面板失焦或页面失焦时退出 armed 状态；如果正在运动，先通过统一 stop 路径收口。
+  keyboardControlArmed.value = false;
+  if (keyboardHeldDirection.value) {
+    stopKeyboardControl(reason);
+    return;
+  }
+  clearKeyboardJogTimer();
+  keyboardLastStopReason.value = reason;
+  keyboardControlStatus.value = `disarmed:${reason}`;
+}
+
 function clearKeyboardJogTimer(): void {
   // 全局 timer 必须集中清理，防止组件卸载或地址切换后仍重复发点动。
   if (keyboardJogTimer !== null) {
@@ -2549,6 +2579,10 @@ function stopKeyboardControl(reason: string): void {
 
 function startKeyboardControl(direction: ManualDirection): void {
   // 切换方向时先收掉旧循环，并让下一次短脉冲按新方向进入后端 preflight。
+  if (!keyboardControlArmed.value) {
+    keyboardControlStatus.value = "blocked_keyboard_not_armed";
+    return;
+  }
   if (!canSendManualMotion.value) {
     keyboardControlStatus.value = `blocked_keyboard_manual_gate:${manualBlockedReason.value}`;
     return;
@@ -2566,7 +2600,7 @@ function startKeyboardControl(direction: ManualDirection): void {
 function handleGlobalKeyDown(event: KeyboardEvent): void {
   // 长按产生的 repeat 事件由 timer 接管，避免浏览器 repeat 频率影响底盘命令节奏。
   const direction = keyboardDirectionFromKey(event.key);
-  if (!direction || eventTargetIsEditable(event.target)) {
+  if (!direction || eventTargetIsEditable(event.target) || !keyboardControlArmed.value || !eventTargetIsKeyboardControlScope(event.target)) {
     return;
   }
   event.preventDefault();
@@ -2582,24 +2616,33 @@ function handleGlobalKeyDown(event: KeyboardEvent): void {
 function handleGlobalKeyUp(event: KeyboardEvent): void {
   // 松开当前方向键即停；松开非当前方向键不影响正在按住的方向。
   const direction = keyboardDirectionFromKey(event.key);
-  if (!direction || keyboardHeldDirection.value !== direction) {
+  if (!direction || !keyboardControlArmed.value || !eventTargetIsKeyboardControlScope(event.target) || keyboardHeldDirection.value !== direction) {
     return;
   }
   event.preventDefault();
   stopKeyboardControl("key_released");
 }
 
+function handleKeyboardControlFocusOut(event: FocusEvent): void {
+  // 焦点离开键盘面板就退出手控窗口，防止 operator 去填表时旧按键状态继续有效。
+  const nextTarget = event.relatedTarget;
+  if (nextTarget instanceof Node && keyboardControlPanel.value?.contains(nextTarget)) {
+    return;
+  }
+  disarmKeyboardControl("focus_lost");
+}
+
 function handlePageVisibilityChange(): void {
   // 页面隐藏时 operator 不再能观察现场，必须立即退出连续手控。
-  if (document.hidden && keyboardHeldDirection.value) {
-    stopKeyboardControl("page_hidden");
+  if (document.hidden && (keyboardControlArmed.value || keyboardHeldDirection.value)) {
+    disarmKeyboardControl("page_hidden");
   }
 }
 
 function handleWindowBlur(): void {
   // 窗口失焦时按键释放事件可能丢失，所以主动发送 stop 收口。
-  if (keyboardHeldDirection.value) {
-    stopKeyboardControl("window_blur");
+  if (keyboardControlArmed.value || keyboardHeldDirection.value) {
+    disarmKeyboardControl("window_blur");
   }
 }
 
@@ -3670,13 +3713,22 @@ onBeforeUnmount(() => {
           <button class="secondary" type="button" :disabled="manualCommandPending || loading || !robotApiBaseUrl.trim()" @click="sendPlainFirstJog">
             轮速非零试采（高级）
           </button>
-          <div class="keyboard-control-box">
+          <div
+            ref="keyboardControlPanel"
+            class="keyboard-control-box"
+            tabindex="0"
+            data-testid="keyboard-control-panel"
+            @keydown="handleGlobalKeyDown"
+            @keyup="handleGlobalKeyUp"
+            @focusout="handleKeyboardControlFocusOut"
+          >
             <div class="simple-status-row">
               <span class="status-chip" :data-state="keyboardControlSummary.state">{{ keyboardControlSummary.state }}</span>
+              <button class="secondary compact-stop" type="button" :disabled="!robotApiBaseUrl.trim()" data-testid="keyboard-control-arm" @click="activateKeyboardControl">启用键盘</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
             </div>
             <p class="panel-note">{{ keyboardControlSummary.hint }}</p>
-            <p class="panel-note">W/A/S/D 或方向键：前进、左转、后退、右转；按住重复发送短脉冲，松开即停。</p>
+            <p class="panel-note">先点启用键盘，再按住 W/A/S/D 或方向键：前进、左转、后退、右转；按住重复发送短脉冲，松开即停。</p>
           </div>
           <button class="secondary" type="button" :disabled="baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" @click="runBaseFeedbackSamples">
             {{ baseFeedbackSamplesPending ? "采集中..." : "采集底盘反馈（高级）" }}
@@ -3746,6 +3798,7 @@ onBeforeUnmount(() => {
             <dt>keyboard continuous control</dt>
             <dd>
               status={{ keyboardControlStatus }},
+              armed={{ keyboardControlArmed }},
               held={{ keyboardHeldDirection ?? "none" }},
               mode={{ robotSummary?.safe_command_boundary.keyboard_control_mode ?? "bounded_repeating_manual_pulse" }},
               last_direction={{ keyboardLastDirection }},

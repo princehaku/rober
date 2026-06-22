@@ -1070,7 +1070,7 @@ Get-ChildItem -Path pc-tools -Recurse -File -Include *.py | Where-Object { $_.Fu
 `sprints/2026.06.22_02-40_pc_default_keyboard_control/` 将 PC 控制台的小车地址默认固定为
 `http://192.168.1.11:8787`。页面加载后会自动读取该上位机的 Robot Control summary，但不会自动发送运动命令；普通首屏仍保持面向普通用户的简易风格，高级诊断继续默认折叠。
 
-高级诊断的“现场点动设置 / 控制边界”增加键盘连续手控入口：按住 W/A/S/D 或方向键会按 240ms 短脉冲重复走固定 `/api/robot-control/base/manual` proxy，松开按键、窗口失焦、页面隐藏或切换小车地址会收口并发送 stop。非 stop 键盘点动复用现有 `canSendManualMotion` 门禁，必须同时满足地址、现场 checklist、operator HIL material；材料不满足时不会发送 manual。stop 仍保留为独立 fail-safe。
+高级诊断的“现场点动设置 / 控制边界”增加键盘连续手控入口：operator 必须先点击 `启用键盘`，让键盘面板获得焦点，然后按住 W/A/S/D 或方向键，才会按 240ms 短脉冲重复走固定 `/api/robot-control/base/manual` proxy；普通页面全局按键、输入框内按键不会触发手控。松开按键、键盘面板失焦、窗口失焦、页面隐藏或切换小车地址会收口并发送 stop。非 stop 键盘点动复用现有 `canSendManualMotion` 门禁，必须同时满足地址、现场 checklist、operator HIL material；材料不满足时不会发送 manual。stop 仍保留为独立 fail-safe。
 
 本轮同步修正了 PC 前端 base feedback fallback 字段，使失败态也包含 `wheel_feedback_lr_nonzero_proven`、左右轮速和来源字段。该字段语义依据 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER UART JSON 反馈资料：上位机只读采样 `T=130` 请求、观察 `T=1001` 中的 `L/R`，不发送底盘运动命令，也不把 feedback link 外推为真实移动证明。
 
