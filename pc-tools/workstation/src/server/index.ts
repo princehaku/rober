@@ -289,6 +289,7 @@ const BASE_COMMAND_EVIDENCE_ENDPOINTS: Array<{
   { id: "radar_status", endpoint: "/api/radar/status" },
   { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest" },
 ];
+const BASE_COMMAND_EVIDENCE_ENDPOINT_TIMEOUT_MS = 5000;
 
 const BASE_COMMAND_EVIDENCE_KEYS = [
   "schema",
@@ -450,7 +451,7 @@ async function fetchEvidenceEndpoint(
   try {
     const response = await fetch(endpointUrl(baseUrl, config.endpoint), {
       method: "GET",
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(BASE_COMMAND_EVIDENCE_ENDPOINT_TIMEOUT_MS),
     });
     const payload = asRecord(await response.json().catch(() => null));
     return {
@@ -485,8 +486,12 @@ async function captureEvidencePhase(
   baseUrl: URL,
   phase: RobotControlEvidenceCapturePhase,
 ): Promise<RobotControlEvidenceEndpointCapture[]> {
-  // before/after 两个阶段并行读取固定 GET 列表；阶段之间仍保持顺序，便于和主请求对齐。
-  return Promise.all(BASE_COMMAND_EVIDENCE_ENDPOINTS.map((endpoint) => fetchEvidenceEndpoint(baseUrl, phase, endpoint)));
+  // 上位机部分 GET 会同步读串口/雷达；串行采集避免并发请求把 aiohttp 事件循环挤到超时。
+  const captures: RobotControlEvidenceEndpointCapture[] = [];
+  for (const endpoint of BASE_COMMAND_EVIDENCE_ENDPOINTS) {
+    captures.push(await fetchEvidenceEndpoint(baseUrl, phase, endpoint));
+  }
+  return captures;
 }
 
 function baseCommandFailure(
@@ -580,7 +585,7 @@ async function fetchFixedRobotPostSummary(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),
     });
     const json = await response.json().catch(() => null);
     return {

@@ -200,22 +200,31 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "feedback_ack": {"t1001_observed": True},
         }
 
-        with mock.patch.object(upper_robot_api, "write_serial_json", return_value={"ok": True, "bytes_written": 20}):
-            with mock.patch.object(upper_robot_api, "request_base_feedback_once", side_effect=[during_feedback, after_feedback]):
-                payload = asyncio.run(
-                    api.manual_control(
-                        {
-                            "direction": "forward",
-                            "speed": 0.04,
-                            "duration_ms": 300,
-                            "motion_read_window_s": 0.05,
-                        }
-                    )
+        transaction = {
+            "command_result": {"ok": True, "bytes_written": 26, "command": {"T": 1, "L": 0.04, "R": 0.04}},
+            "stop_result": {"ok": True, "bytes_written": 20, "command": {"T": 1, "L": 0, "R": 0}},
+            "feedback_during_motion": during_feedback,
+            "feedback_after_stop": after_feedback,
+            "serial_session_error": None,
+        }
+
+        with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction", return_value=transaction) as mocked_transaction:
+            payload = asyncio.run(
+                api.manual_control(
+                    {
+                        "direction": "forward",
+                        "speed": 0.04,
+                        "duration_ms": 300,
+                        "motion_read_window_s": 0.05,
+                    }
                 )
+            )
 
         self.assertTrue(payload["manual_command_executed"])
         self.assertTrue(payload["auto_stop_executed"])
         self.assertTrue(payload["feedback_during_motion_attempted"])
+        mocked_transaction.assert_called_once()
+        self.assertEqual(transaction, payload["serial_motion_transaction"])
         self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
         self.assertEqual(1, payload["manual_wheel_feedback_summary"]["nonzero_frame_count"])
         self.assertEqual(0.04, payload["manual_wheel_feedback_summary"]["latest_nonzero_pair"]["left_speed"])

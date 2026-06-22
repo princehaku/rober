@@ -1136,3 +1136,39 @@ PC summary 的 first-jog 状态变为 `ready_for_first_jog`。真实 PC first-jo
 因此 PC 易用性和证据读回链路继续推进，但 wheel raw L/R 非零、完整 Nav2 路线执行和
 delivery success 仍不是已完成能力；下一轮应在人工现场确认电机使能、供电、急停、模式、
 底盘架空/落地状态和固件反馈语义后继续 HIL。
+
+## 2026-06-22 Same-Session Wheel Raw L/R Proof
+
+`sprints/2026.06.22_11-00_wheel_lr_samesession_first_jog/` 修正了上一节的关键假设：
+不是 WAVE ROVER `T=1001 L/R` 完全不可用，而是上位机原先把运动命令、运动中 `T=130`、
+stop 和停车后 `T=130` 拆成多个短串口会话，容易错过真正的运动窗口。现在
+`/api/base/manual` 对非 stop 点动使用同一个串口会话完成：
+
+- 写入 `T=1` 点动命令。
+- 立即写入 `T=130` 并读取运动窗口内 feedback。
+- 到达脉冲时限后写入 `T=1,L=0,R=0` stop。
+- 再写入 `T=130` 并读取停车后 feedback。
+
+真实上位机直连验证 `POST /api/base/manual`、`direction=forward`、`speed=0.12`、
+`duration_ms=800` 得到：
+
+- 运动窗口 compact frames 包含 `{"T":1,"L":0.12,"R":0.12}`、`{"T":130}`、
+  `{"T":1001,"L":61,"R":61,...}`。
+- 停车后 compact frames 包含 `{"T":1,"L":0,"R":0}`、`{"T":130}`、
+  `{"T":1001,"L":0,"R":0,...}`。
+- `manual_wheel_feedback_summary.lr_nonzero_observed=true`。
+
+真实 PC first-jog 复验 `direction=forward`、`speed=0.04`、`duration_ms=800` 返回：
+
+- `proxy_status=command_forwarded`
+- `remote_http_status=200`
+- `remote_motion_key_values.wheel_feedback_lr_nonzero_proven=true`
+- `wheel_feedback_latest_left_speed=20`
+- `wheel_feedback_latest_right_speed=20`
+- `evidence_capture_status=captured`
+- `motion_evidence_gaps=["physical_motion_lidar_delta_not_proven"]`
+
+PC evidence capture 同步改为串行固定 GET，单 endpoint timeout 提到 5 秒，避免上位机同步读
+串口/雷达时被并发请求互相挤到 timeout。该修复让 wheel raw L/R 非零在 PC 工作流里可复验，
+但仍不解锁 `delivery_success`、`safe_to_control` 或 `primary_actions_enabled`。完整 Nav2
+路线执行与真实交付成功仍需后续路线运行、到达/投放验收和 operator report 收口。

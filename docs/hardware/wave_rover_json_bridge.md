@@ -211,6 +211,31 @@ HIL run 需记录 `T=1001.v` 与 `/battery` 取样对齐证据。
 L/R 非零。下一步必须在人工在场条件下检查电机供电、急停、底盘模式、轮子是否离地、
 固件是否需要额外使能，以及 `T=1001 L/R` 是否在当前固件中代表实时轮速。
 
+## 2026-06-22 same-session manual transaction proof
+
+继续依据 `docs/vendor/VENDOR_INDEX.md`、`ugv_rpi/base_ctrl.py`、`json_cmd.h`、
+`uart_ctrl.h`、`movtion_module.h` 和 `ugv_advance.h` 复核：vendor `baseInfoFeedback()`
+返回的 `T=1001 L/R` 来自 `speedGetA/speedGetB`。因此运动窗口内读到同帧非零 `L/R`
+可以作为 wheel raw feedback material；停车后读到 `0/0` 只说明 stop 后轮速清零，
+不能覆盖运动窗口内的非零帧。
+
+上位机 `/api/base/manual` 已改成同一个串口会话内完成点动事务，避免打开/关闭串口或独立
+`T=130` 会话造成读窗错位。真实上位机 `root@192.168.1.11:37878` 验证：
+
+- 直连 `/api/base/manual`，`speed=0.12,duration_ms=800`：
+  - command compact frame：`{"T":1,"L":0.12,"R":0.12}`
+  - motion feedback：`{"T":1001,"L":61,"R":61,...}`
+  - stop compact frame：`{"T":1,"L":0,"R":0}`
+  - after-stop feedback：`{"T":1001,"L":0,"R":0,...}`
+- PC first-jog，`speed=0.04,duration_ms=800`：
+  - `remote_motion_key_values.wheel_feedback_lr_nonzero_proven=true`
+  - `wheel_feedback_latest_left_speed=20`
+  - `wheel_feedback_latest_right_speed=20`
+
+这个证据把上一节“wheel raw L/R 非零未证明”更新为：在受控 first-jog/manual 点动中，
+WAVE ROVER `T=1001 L/R` 非零已经可被上位机和 PC proxy 读取。它仍不是完整 HIL 通过：
+本轮没有证明 Nav2 NavigateToPose 真实执行、路线到达、垃圾投放或 delivery success。
+
 ## Run-time Validation Checklist
 
 - 确认 Orange Pi 串口与波特率（不要复用 Raspberry Pi 示例路径）。

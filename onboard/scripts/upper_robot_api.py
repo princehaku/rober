@@ -3823,6 +3823,232 @@ def request_base_feedback_once(
     )
 
 
+def write_json_to_open_serial(serial_obj: Any, command: dict[str, Any]) -> dict[str, Any]:
+    """复用已打开串口写 JSON；manual 点动需要同一会话内写运动、读反馈、写 stop。"""
+    try:
+        frame = (json.dumps(command, separators=(",", ":")) + "\n").encode("utf-8")
+        return {"ok": True, "command": command, "bytes_written": serial_obj.write(frame)}
+    except Exception as exc:  # noqa: BLE001 - 串口现场错误必须结构化上报。
+        return {"ok": False, "command": command, "error": compact_error(exc)}
+
+
+def read_serial_json_window(serial_obj: Any, read_window_s: float) -> dict[str, Any]:
+    """在短窗口内收集换行 JSON；只保留精简帧，避免把无限串口流灌到 API。"""
+    read_line_count = 0
+    parsed_json_count = 0
+    invalid_json_count = 0
+    observed_feedback_types: list[int] = []
+    t1001_feedback_frames: list[dict[str, Any]] = []
+    compact_frames: list[dict[str, Any]] = []
+    read_error: dict[str, str] | None = None
+    deadline = time.monotonic() + read_window_s
+    try:
+        while time.monotonic() < deadline:
+            raw_line = serial_obj.readline()
+            if not raw_line:
+                continue
+            read_line_count += 1
+            try:
+                parsed = json.loads(raw_line.decode("utf-8").strip())
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                invalid_json_count += 1
+                continue
+            if not isinstance(parsed, dict):
+                invalid_json_count += 1
+                continue
+            parsed_json_count += 1
+            compact_frame = {key: parsed.get(key) for key in ("T", "L", "R", "X", "Z", "cmd", "r", "p", "y", "v") if key in parsed}
+            if len(compact_frames) < 24:
+                compact_frames.append(compact_frame)
+            feedback_type = feedback_type_from_frame(parsed)
+            if feedback_type is not None:
+                observed_feedback_types.append(feedback_type)
+            compact_t1001 = compact_t1001_feedback_frame(parsed)
+            if compact_t1001 is not None:
+                t1001_feedback_frames.append(compact_t1001)
+    except Exception as exc:  # noqa: BLE001 - 读阶段错误不能吞掉，否则现场会误判为无反馈。
+        read_error = compact_error(exc)
+    return {
+        "read_line_count": read_line_count,
+        "parsed_json_count": parsed_json_count,
+        "invalid_json_count": invalid_json_count,
+        "observed_feedback_types": observed_feedback_types,
+        "t1001_feedback_frames": t1001_feedback_frames,
+        "compact_frames": compact_frames,
+        "read_error": read_error,
+    }
+
+
+def build_feedback_payload_from_open_serial_read(
+    *,
+    port: str,
+    baudrate: int,
+    read_timeout_s: float,
+    read_window_s: float,
+    serial_open: dict[str, Any],
+    serial_write: dict[str, Any],
+    read_summary: dict[str, Any],
+) -> dict[str, Any]:
+    """把同一串口会话里的 read window 包装成既有 T1001 feedback 合同。"""
+    observed_types = sorted(set(read_summary["observed_feedback_types"]))
+    status = feedback_request_status(
+        serial_open_ok=bool(serial_open.get("ok")),
+        serial_write_ok=bool(serial_write.get("ok")),
+        t1001_observed=BASE_FEEDBACK_ID in observed_types,
+        import_error=None,
+        read_error=read_summary.get("read_error"),
+    )
+    payload = build_base_feedback_payload(
+        port=port,
+        baudrate=baudrate,
+        read_timeout_s=read_timeout_s,
+        read_window_s=read_window_s,
+        serial_open=serial_open,
+        serial_write=serial_write,
+        serial_read={"ok": read_summary.get("read_error") is None, "window_s": read_window_s, "error": read_summary.get("read_error")},
+        read_line_count=read_summary["read_line_count"],
+        parsed_json_count=read_summary["parsed_json_count"],
+        invalid_json_count=read_summary["invalid_json_count"],
+        observed_feedback_types=observed_types,
+        t1001_feedback_frames=read_summary["t1001_feedback_frames"],
+        t1001_feedback_status=status,
+    )
+    payload["compact_frames"] = read_summary["compact_frames"]
+    return payload
+
+
+def manual_motion_serial_transaction(
+    *,
+    port: str,
+    baudrate: int,
+    command: dict[str, Any],
+    pulse_ms: int,
+    motion_read_timeout_s: float,
+    motion_read_window_s: float,
+    after_stop_read_timeout_s: float,
+    after_stop_read_window_s: float,
+) -> dict[str, Any]:
+    """同一串口会话内完成点动、运动中 T130、stop、停车后 T130，用于排除会话切换误差。"""
+    serial_module, import_error = load_serial_module()
+    serial_open: dict[str, Any] = {"ok": False, "port": port, "baudrate": baudrate, "timeout_s": motion_read_timeout_s}
+    input_reset: dict[str, Any] = {"attempted": False, "ok": False}
+    command_write: dict[str, Any] = {"ok": False, "command": command}
+    stop_write: dict[str, Any] = {"ok": False, "command": {"T": 1, "L": 0, "R": 0}}
+    motion_feedback_write: dict[str, Any] = {"ok": False, "command": BASE_FEEDBACK_REQUEST_COMMAND}
+    after_stop_feedback_write: dict[str, Any] = {"ok": False, "command": BASE_FEEDBACK_REQUEST_COMMAND}
+    serial_obj = None
+    started_monotonic = time.monotonic()
+
+    if serial_module is None:
+        error = {"type": "pyserial_unavailable", "message": import_error or "missing"}
+        command_write["error"] = error
+        return {
+            "serial_open": {**serial_open, "error": error},
+            "input_reset": input_reset,
+            "command_result": command_write,
+            "stop_result": stop_write,
+            "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "pyserial_unavailable"),
+            "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "pyserial_unavailable"),
+            "serial_session_error": error,
+        }
+
+    try:
+        serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=motion_read_timeout_s)
+        serial_open["ok"] = True
+    except Exception as exc:  # noqa: BLE001 - 打不开串口时仍返回完整 fail-closed 形状。
+        error = compact_error(exc)
+        command_write["error"] = error
+        return {
+            "serial_open": {**serial_open, "error": error},
+            "input_reset": input_reset,
+            "command_result": command_write,
+            "stop_result": stop_write,
+            "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "serial_not_opened"),
+            "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "serial_not_opened"),
+            "serial_session_error": error,
+        }
+
+    try:
+        if hasattr(serial_obj, "reset_input_buffer"):
+            input_reset["attempted"] = True
+            try:
+                serial_obj.reset_input_buffer()
+                input_reset["ok"] = True
+            except Exception as exc:  # noqa: BLE001 - 清缓冲失败不阻止停车兜底。
+                input_reset["error"] = compact_error(exc)
+
+        command_write = write_json_to_open_serial(serial_obj, command)
+        if command_write.get("ok"):
+            # 运动反馈必须在 stop 前请求；同一串口会话能看见命令 echo、T130 和 T1001 的相对顺序。
+            motion_feedback_write = write_json_to_open_serial(serial_obj, BASE_FEEDBACK_REQUEST_COMMAND)
+            motion_read = read_serial_json_window(serial_obj, motion_read_window_s) if motion_feedback_write.get("ok") else {
+                "read_line_count": 0,
+                "parsed_json_count": 0,
+                "invalid_json_count": 0,
+                "observed_feedback_types": [],
+                "t1001_feedback_frames": [],
+                "compact_frames": [],
+                "read_error": motion_feedback_write.get("error"),
+            }
+            feedback_during_motion = build_feedback_payload_from_open_serial_read(
+                port=port,
+                baudrate=baudrate,
+                read_timeout_s=motion_read_timeout_s,
+                read_window_s=motion_read_window_s,
+                serial_open=serial_open,
+                serial_write=motion_feedback_write,
+                read_summary=motion_read,
+            )
+        else:
+            feedback_during_motion = skipped_manual_feedback_payload(port, baudrate, "motion_command_write_failed")
+
+        remaining_s = max(pulse_ms / 1000.0 - (time.monotonic() - started_monotonic), 0.0)
+        if remaining_s > 0:
+            time.sleep(remaining_s)
+        stop_write = write_json_to_open_serial(serial_obj, {"T": 1, "L": 0, "R": 0})
+        if stop_write.get("ok"):
+            serial_obj.timeout = after_stop_read_timeout_s
+            after_stop_feedback_write = write_json_to_open_serial(serial_obj, BASE_FEEDBACK_REQUEST_COMMAND)
+            after_read = read_serial_json_window(serial_obj, after_stop_read_window_s) if after_stop_feedback_write.get("ok") else {
+                "read_line_count": 0,
+                "parsed_json_count": 0,
+                "invalid_json_count": 0,
+                "observed_feedback_types": [],
+                "t1001_feedback_frames": [],
+                "compact_frames": [],
+                "read_error": after_stop_feedback_write.get("error"),
+            }
+            feedback_after_stop = build_feedback_payload_from_open_serial_read(
+                port=port,
+                baudrate=baudrate,
+                read_timeout_s=after_stop_read_timeout_s,
+                read_window_s=after_stop_read_window_s,
+                serial_open=serial_open,
+                serial_write=after_stop_feedback_write,
+                read_summary=after_read,
+            )
+        else:
+            feedback_after_stop = skipped_manual_feedback_payload(port, baudrate, "stop_write_failed")
+    finally:
+        if serial_obj is not None:
+            try:
+                serial_obj.close()
+            except Exception:
+                pass
+
+    return {
+        "serial_open": serial_open,
+        "input_reset": input_reset,
+        "command_result": command_write,
+        "motion_feedback_request_result": motion_feedback_write,
+        "stop_result": stop_write,
+        "after_stop_feedback_request_result": after_stop_feedback_write,
+        "feedback_during_motion": feedback_during_motion,
+        "feedback_after_stop": feedback_after_stop,
+        "serial_session_error": None,
+    }
+
+
 def build_base_feedback_payload(
     *,
     port: str,
@@ -5336,56 +5562,67 @@ class UpperRobotApi:
         # 点动窗口强制限时，任何非 stop 方向都必须进入停车兜底。
         pulse_ms = min(max(requested_pulse_ms, 0), MAX_PULSE_MS)
         command = wheel_command_for_direction(direction, speed)
-        started_monotonic = time.monotonic()
-        first = write_serial_json(self.base_port, self.base_baudrate, command)
-        feedback_during_motion_attempted = bool(first.get("ok") and direction != "stop" and pulse_ms > 0)
+        motion_read_window_s = clamp_float(
+            body.get("motion_read_window_s"),
+            min(0.22, max(pulse_ms / 1000.0 - 0.05, 0.05)),
+            0.05,
+            min(0.35, max(pulse_ms / 1000.0, 0.05)),
+        )
+        motion_read_timeout_s = clamp_float(body.get("motion_read_timeout_s"), 0.05, 0.01, 0.2)
+        read_timeout_s = clamp_float(body.get("read_timeout_s"), DEFAULT_FEEDBACK_READ_TIMEOUT_S, 0.01, MAX_FEEDBACK_READ_TIMEOUT_S)
+        read_window_s = clamp_float(body.get("read_window_s"), DEFAULT_FEEDBACK_READ_WINDOW_S, 0.01, MAX_FEEDBACK_READ_WINDOW_S)
+        feedback_during_motion_attempted = direction != "stop" and pulse_ms > 0
+        serial_motion_transaction: dict[str, Any] | None = None
         if feedback_during_motion_attempted:
-            # 轮速非零必须在运动窗口内读；停车后再读通常只能得到 0/0。
-            motion_read_window_s = clamp_float(
-                body.get("motion_read_window_s"),
-                min(0.22, max(pulse_ms / 1000.0 - 0.05, 0.05)),
-                0.05,
-                min(0.35, max(pulse_ms / 1000.0, 0.05)),
+            serial_motion_transaction = manual_motion_serial_transaction(
+                port=self.base_port,
+                baudrate=self.base_baudrate,
+                command=command,
+                pulse_ms=pulse_ms,
+                motion_read_timeout_s=motion_read_timeout_s,
+                motion_read_window_s=motion_read_window_s,
+                after_stop_read_timeout_s=read_timeout_s,
+                after_stop_read_window_s=read_window_s,
             )
-            motion_read_timeout_s = clamp_float(body.get("motion_read_timeout_s"), 0.05, 0.01, 0.2)
-            feedback_during_motion = request_base_feedback_once(
-                self.base_port,
-                self.base_baudrate,
-                read_timeout_s=motion_read_timeout_s,
-                read_window_s=motion_read_window_s,
-            )
+            first = serial_motion_transaction["command_result"]
+            stop = serial_motion_transaction["stop_result"]
+            feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
+            feedback_evidence = serial_motion_transaction["feedback_after_stop"]
+            feedback_after_stop_attempted = bool(stop.get("ok"))
         else:
+            started_monotonic = time.monotonic()
+            first = write_serial_json(self.base_port, self.base_baudrate, command)
             feedback_during_motion = skipped_manual_feedback_payload(
                 self.base_port,
                 self.base_baudrate,
                 "manual_motion_feedback_not_attempted",
             )
-        elapsed_s = time.monotonic() - started_monotonic
-        remaining_s = max(pulse_ms / 1000.0 - elapsed_s, 0.0)
-        if remaining_s > 0:
-            await asyncio.sleep(remaining_s)
-        stop = write_serial_json(self.base_port, self.base_baudrate, {"T": 1, "L": 0, "R": 0})
+            elapsed_s = time.monotonic() - started_monotonic
+            remaining_s = max(pulse_ms / 1000.0 - elapsed_s, 0.0)
+            if remaining_s > 0:
+                await asyncio.sleep(remaining_s)
+            stop = write_serial_json(self.base_port, self.base_baudrate, {"T": 1, "L": 0, "R": 0})
+            if first.get("ok") and stop.get("ok"):
+                # stop-only 仍可读停车后反馈，但不会产生运动窗口证据。
+                feedback_evidence = request_base_feedback_once(
+                    self.base_port,
+                    self.base_baudrate,
+                    read_timeout_s=read_timeout_s,
+                    read_window_s=read_window_s,
+                )
+                feedback_after_stop_attempted = True
+            else:
+                feedback_evidence = skipped_manual_feedback_payload(
+                    self.base_port,
+                    self.base_baudrate,
+                    "skipped_due_to_manual_write_failure",
+                )
+                feedback_after_stop_attempted = False
         serial_write_failures = [
             result["error"]
             for result in (first, stop)
             if isinstance(result, dict) and not result.get("ok") and "error" in result
         ]
-        if first.get("ok") and stop.get("ok"):
-            # 反馈请求必须排在停车之后，避免读窗口影响点动停车兜底。
-            feedback_evidence = request_base_feedback_once(
-                self.base_port,
-                self.base_baudrate,
-                read_timeout_s=body.get("read_timeout_s", DEFAULT_FEEDBACK_READ_TIMEOUT_S),
-                read_window_s=body.get("read_window_s", DEFAULT_FEEDBACK_READ_WINDOW_S),
-            )
-            feedback_after_stop_attempted = True
-        else:
-            feedback_evidence = skipped_manual_feedback_payload(
-                self.base_port,
-                self.base_baudrate,
-                "skipped_due_to_manual_write_failure",
-            )
-            feedback_after_stop_attempted = False
         wheel_feedback_frames = [
             *t1001_frames_from_feedback_payload(feedback_during_motion),
             *t1001_frames_from_feedback_payload(feedback_evidence),
@@ -5410,6 +5647,7 @@ class UpperRobotApi:
             "feedback_during_motion": feedback_during_motion,
             "feedback_after_stop_attempted": feedback_after_stop_attempted,
             "feedback_evidence": feedback_evidence,
+            "serial_motion_transaction": serial_motion_transaction,
             "t1001_feedback_status": feedback_evidence.get("t1001_feedback_status"),
             "manual_wheel_feedback_summary": manual_wheel_feedback_summary,
             "wheel_feedback_nonzero_observed": manual_wheel_feedback_summary["lr_nonzero_observed"],
