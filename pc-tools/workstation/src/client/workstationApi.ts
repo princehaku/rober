@@ -34,6 +34,7 @@ import type {
   RobotControlNavGoalExecutionLatestResponse,
   RobotControlDeliveryCompleteRequest,
   RobotControlDeliveryCompleteResponse,
+  RobotControlDeliveryLatestResponse,
   RobotControlOperatorReportProxyResponse,
   RobotControlOperatorReportRequest,
   RobotControlSummaryResponse,
@@ -112,6 +113,7 @@ const API_ENDPOINTS = {
   robotControlNav2GoalPreflight: "/api/robot-control/nav2/goal/preflight",
   robotControlNav2GoalExecute: "/api/robot-control/nav2/goal/execute",
   robotControlNav2GoalExecutionLatest: "/api/robot-control/nav2/goal/execution/latest",
+  robotControlDeliveryLatest: "/api/robot-control/delivery/latest",
   robotControlDeliveryComplete: "/api/robot-control/delivery/complete",
   robotControlLocalizeReset: "/api/robot-control/localize/reset",
   robotControlMapList: "/api/robot-control/map/list",
@@ -553,6 +555,13 @@ export async function getRobotControlNav2GoalExecutionLatest(baseUrl: string): P
   // latest 只读取最近 NavigateToPose artifact；不会再次执行 goal。
   return loadJson<RobotControlNavGoalExecutionLatestResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2GoalExecutionLatest, baseUrl),
+  );
+}
+
+export async function getRobotControlDeliveryLatest(baseUrl: string): Promise<RobotControlDeliveryLatestResponse> {
+  // delivery latest 只读取 gate 最近结论和缺项；不会提交送达或 operator report。
+  return loadJson<RobotControlDeliveryLatestResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlDeliveryLatest, baseUrl),
   );
 }
 

@@ -1219,3 +1219,11 @@ Nav2 goal，不调用 `/api/base/manual` 或 `/cmd_vel`，顶层继续固定
 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
 `robot_control_executed=false`；只有送达视频、route/map ref、现场 observed motion/stop 等人工材料
 补齐后，才能再走 delivery gate。
+
+同轮继续补充只读送达缺口入口
+`GET /api/robot-control/delivery/latest?baseUrl=<robot-api-base-url>`，只转发到上位机
+`GET /api/delivery/latest`。高级诊断中的“读取送达缺口（高级）”会展示最近 delivery gate
+状态、`missing_required_material`、Nav2 子状态和 operator report 子状态，用于区分“Nav2 已成功”
+与“operator 送达材料仍未补齐”。该入口不提交 `/api/operator/report`、不调用
+`/api/delivery/complete`、不触发 Nav2 或底盘运动；即使 latest 显示缺项，PC 也只把缺项列给现场人员，
+不会自动代填或伪造 observed motion/stop、视频 ref、route/map ref 或 delivery claim。

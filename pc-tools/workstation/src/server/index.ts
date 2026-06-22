@@ -66,6 +66,7 @@ import type {
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalExecutionLatestResponse,
   RobotControlDeliveryCompleteResponse,
+  RobotControlDeliveryLatestResponse,
 } from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -234,17 +235,18 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
 
 function deliveryCompleteKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
   // delivery completion 是 Nav2 latest + operator report latest 的合成 gate，UI 只展示短摘要。
-  const nav2 = asRecord(payload?.nav2_goal_execution);
-  const operatorReport = asRecord(payload?.operator_report);
+  const result = asRecord(payload?.latest_result) ?? payload;
+  const nav2 = asRecord(result?.nav2_goal_execution);
+  const operatorReport = asRecord(result?.operator_report);
   return {
-    status: shortValue(payload?.status),
-    delivery_success: shortValue(payload?.delivery_success, "false"),
+    status: shortValue(result?.status ?? payload?.status),
+    delivery_success: shortValue(result?.delivery_success ?? payload?.delivery_success, "false"),
     nav2_status: shortValue(nav2?.status),
     nav2_result_status: shortValue(nav2?.result_status),
     nav2_feedback_sample_count: shortValue(nav2?.feedback_sample_count, "0"),
     operator_report_status: shortValue(operatorReport?.operator_report_status),
     operator_evidence_ref: shortValue(operatorReport?.evidence_ref),
-    missing_required_material: shortValue(payload?.missing_required_material),
+    missing_required_material: shortValue(result?.missing_required_material),
   };
 }
 
@@ -1517,6 +1519,74 @@ export function createWorkstationApp(): express.Express {
       res.status(responseBody.proxy_status === "latest_loaded" ? 200 : 502).json(responseBody);
     } catch (error) {
       const reason = error instanceof Error ? shortText(error.message, "nav2_goal_execution_latest_failed") : "nav2_goal_execution_latest_failed";
+      res.status(502).json({ ...fallbackBase, proxy_status: "latest_failed", failure_reason: reason, blocked_reasons: [reason] });
+    }
+  });
+
+  workstationApp.get("/api/robot-control/delivery/latest", async (req, res) => {
+    // delivery latest 只读交付 gate 最近结论，帮助现场补材料；不会提交 operator report 或确认送达。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const fallbackBase: RobotControlDeliveryLatestResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+      proxy_status: "latest_rejected",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+      workstation_endpoint: "/api/robot-control/delivery/latest",
+      remote_endpoint: "/api/delivery/latest",
+      remote_http_status: null,
+      status: "blocked",
+      delivery_key_values: {},
+      failure_reason: normalized.ok ? "" : normalized.reason,
+      blocked_reasons: normalized.ok ? [] : [normalized.reason],
+      hard_dangerous_true_fields: [],
+    };
+    if (!normalized.ok) {
+      res.status(400).json(fallbackBase);
+      return;
+    }
+    try {
+      const remote = await fetch(endpointUrl(normalized.normalized, "/api/delivery/latest"), {
+        method: "GET",
+        signal: AbortSignal.timeout(10000),
+      });
+      const remotePayload = asRecord(await remote.json().catch(() => null));
+      const latestResult = asRecord(remotePayload?.latest_result) ?? remotePayload;
+      const missingMaterial = Array.isArray(latestResult?.missing_required_material)
+        ? latestResult.missing_required_material.map((item) => shortText(item, "")).filter(Boolean)
+        : [];
+      const dangerous = scanDangerousTrueFields(remotePayload).filter(
+        (field) =>
+          field !== "delivery_success" &&
+          !field.endsWith(".delivery_success"),
+      );
+      const remoteDeliverySuccess = remotePayload?.delivery_success === true || latestResult?.delivery_success === true;
+      const responseBody: RobotControlDeliveryLatestResponse = {
+        ...fallbackBase,
+        proxy_status: remote.ok && dangerous.length === 0 ? "latest_loaded" : "latest_failed",
+        proof_status: remoteDeliverySuccess ? "proven" : "not_proven",
+        remote_http_status: remote.status,
+        status: remoteDeliverySuccess ? "delivery_success_confirmed" : remote.ok ? "loaded_fail_closed_summary" : "blocked",
+        delivery_success: remoteDeliverySuccess,
+        delivery_key_values: deliveryCompleteKeyValues(remotePayload),
+        failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `delivery_latest_http_status_${remote.status}`,
+        blocked_reasons: [
+          ...(remote.ok ? [] : [`delivery_latest_http_status_${remote.status}`]),
+          ...missingMaterial,
+          ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ],
+        hard_dangerous_true_fields: dangerous,
+      };
+      res.status(responseBody.proxy_status === "latest_loaded" ? 200 : 502).json(responseBody);
+    } catch (error) {
+      const reason = error instanceof Error ? shortText(error.message, "delivery_latest_failed") : "delivery_latest_failed";
       res.status(502).json({ ...fallbackBase, proxy_status: "latest_failed", failure_reason: reason, blocked_reasons: [reason] });
     }
   });

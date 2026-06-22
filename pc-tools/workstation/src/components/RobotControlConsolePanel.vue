@@ -4,6 +4,7 @@ import {
   getO7ConsumerTaskDetail,
   getRobotControlSummary,
   getRobotControlMapList,
+  getRobotControlDeliveryLatest,
   postRobotControlBaseFeedbackSamples,
   postRobotControlBaseFirstJog,
   postRobotControlBaseManual,
@@ -32,6 +33,7 @@ import type {
   RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlDeliveryCompleteResponse,
+  RobotControlDeliveryLatestResponse,
   RobotControlMapLifecycleResponse,
   RobotControlNavGoalExecutionLatestResponse,
   RobotControlNavGoalExecutionResponse,
@@ -64,6 +66,7 @@ const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null
 const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(null);
 const navGoalExecutionResult = ref<RobotControlNavGoalExecutionResponse | null>(null);
 const navGoalExecutionLatestResult = ref<RobotControlNavGoalExecutionLatestResponse | null>(null);
+const deliveryLatestResult = ref<RobotControlDeliveryLatestResponse | null>(null);
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
 const localizationResetResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
@@ -139,6 +142,7 @@ const nav2RefreshPending = ref(false);
 const navGoalPreflightPending = ref(false);
 const navGoalExecutionPending = ref(false);
 const navGoalExecutionLatestPending = ref(false);
+const deliveryLatestPending = ref(false);
 const deliveryCompletionPending = ref(false);
 const localizationResetPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
@@ -907,6 +911,31 @@ function makeDeliveryCompletionFallback(reason: string): RobotControlDeliveryCom
   };
 }
 
+function makeDeliveryLatestFallback(reason: string): RobotControlDeliveryLatestResponse {
+  // 送达 latest 读取失败只表示缺口未知；不能默认认为送达 gate 已满足。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+    proxy_status: "latest_failed",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    workstation_endpoint: "/api/robot-control/delivery/latest",
+    remote_endpoint: "/api/delivery/latest",
+    remote_http_status: null,
+    status: "blocked",
+    delivery_key_values: {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function makeRadarLifecycleFallback(action: "start" | "stop", reason: string): RobotControlRadarLifecycleResponse {
   // 浏览器 fetch 异常时也保持与后端一致的安全字段，避免高级诊断误判。
   return {
@@ -1643,6 +1672,21 @@ async function loadNavGoalExecutionLatest(): Promise<void> {
   }
 }
 
+async function loadDeliveryLatest(): Promise<void> {
+  // delivery latest 只读最近 gate 结论；用于明确现场还缺哪些送达材料。
+  if (!robotApiBaseUrl.value.trim() || deliveryLatestPending.value) {
+    return;
+  }
+  deliveryLatestPending.value = true;
+  try {
+    deliveryLatestResult.value = await getRobotControlDeliveryLatest(robotApiBaseUrl.value);
+  } catch (err) {
+    deliveryLatestResult.value = makeDeliveryLatestFallback(err instanceof Error ? err.message : "delivery_latest_request_failed");
+  } finally {
+    deliveryLatestPending.value = false;
+  }
+}
+
 async function completeDelivery(): Promise<void> {
   // delivery gate 只合成最近 Nav2 执行和 operator report；按钮本身不发送运动命令。
   if (!robotApiBaseUrl.value.trim() || deliveryCompletionPending.value) {
@@ -1659,6 +1703,7 @@ async function completeDelivery(): Promise<void> {
     deliveryCompletionResult.value = makeDeliveryCompletionFallback(err instanceof Error ? err.message : "delivery_completion_request_failed");
   } finally {
     deliveryCompletionPending.value = false;
+    await loadDeliveryLatest();
     await refreshConsole();
   }
 }
@@ -1727,6 +1772,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
   } finally {
     operatorReportPending.value = false;
     deliveryCompletionPending.value = false;
+    await loadDeliveryLatest();
     await refreshConsole();
   }
 }
@@ -2771,6 +2817,9 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" @click="loadNavGoalExecutionLatest">
               读取最近 Nav2 结果（高级）
             </button>
+            <button class="secondary" type="button" :disabled="loading || deliveryLatestPending || !robotApiBaseUrl.trim()" @click="loadDeliveryLatest">
+              读取送达缺口（高级）
+            </button>
           </div>
           <form class="robot-control-form" @submit.prevent="completeDelivery">
             <label>
@@ -2860,6 +2909,14 @@ onBeforeUnmount(() => {
             <dd>{{ recordText(navGoalExecutionLatestResult?.goal_execution_key_values) }}</dd>
             <dt>goal latest failure</dt>
             <dd>{{ navGoalExecutionLatestResult?.failure_reason || "none" }}</dd>
+            <dt>delivery latest pending</dt>
+            <dd>{{ deliveryLatestPending ? "pending" : "idle" }}</dd>
+            <dt>delivery latest status</dt>
+            <dd>{{ deliveryLatestResult?.proxy_status ?? "not_loaded" }} / {{ deliveryLatestResult?.delivery_key_values.status ?? "not_loaded" }}</dd>
+            <dt>delivery latest keys</dt>
+            <dd>{{ recordText(deliveryLatestResult?.delivery_key_values) }}</dd>
+            <dt>delivery latest missing</dt>
+            <dd>{{ listText(deliveryLatestResult?.blocked_reasons, "none") }}</dd>
             <dt>delivery gate pending</dt>
             <dd>{{ deliveryCompletionPending ? "pending" : "idle" }}</dd>
             <dt>delivery gate status</dt>
