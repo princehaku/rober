@@ -546,6 +546,27 @@ const keyboardDirectionPlainLabel = computed(() => {
       return "未按键";
   }
 });
+
+const plainKeyboardLiveStatus = computed(() => {
+  // 这行只解释本地键盘循环状态，不作为任何控制 gate 或成功证据。
+  if (keyboardHeldDirection.value) {
+    return `正在${keyboardDirectionPlainLabel.value}，松开即停。`;
+  }
+  if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("stop_sent")) {
+    return "已停止，按住方向键可继续点动。";
+  }
+  if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("released")) {
+    return "已松开，正在发送停止。";
+  }
+  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+    return "等待按键，按住才会动。";
+  }
+  if (canUseKeyboardControl.value) {
+    return "未启用，先点启用键盘。";
+  }
+  return plainKeyboardMissingSummary.value || "键盘手控暂未满足。";
+});
+
 function claimWithRefReady(value: string | undefined): boolean {
   // 现场材料的四类引用型 claim 必须同时满足 true 且带 ref，缺任一条件都按未满足处理。
   return typeof value === "string" && value.startsWith("true; ref=") && !value.endsWith("not_loaded");
@@ -4028,6 +4049,7 @@ onBeforeUnmount(() => {
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
+            <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
             <p v-if="plainKeyboardNextActionSummary" class="panel-note" data-testid="plain-keyboard-next-action">
               {{ plainKeyboardNextActionSummary }}
             </p>

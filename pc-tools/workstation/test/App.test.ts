@@ -5568,6 +5568,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
     expect(armButton.text()).toBe("启用键盘（按键才动）");
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("未启用，先点启用键盘。");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').text()).not.toContain("还差：");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text().replace(/\s+/g, "")).toContain("键盘手控可使用");
     const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
@@ -5578,11 +5579,13 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("已启用");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
     const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
     await keyboardPanel.trigger("keydown", { key: "w" });
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("手控中");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停。");
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：前进");
     const manualCallsAfterKeyboard = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     expect(manualCallsAfterKeyboard).toBeGreaterThan(manualCallsBeforeKeyboard);
@@ -5598,6 +5601,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已停止，按住方向键可继续点动。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("keyboard continuous control");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("pulse_ms=240");
