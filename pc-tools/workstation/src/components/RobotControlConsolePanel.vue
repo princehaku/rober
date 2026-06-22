@@ -53,6 +53,7 @@ const DEFAULT_ROBOT_API_BASE_URL = "http://192.168.1.11:8787";
 type ManualDirection = "forward" | "back" | "left" | "right";
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
+const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
 const robotApiBaseUrlUsesDefault = computed(() => robotApiBaseUrl.value.trim() === DEFAULT_ROBOT_API_BASE_URL);
@@ -532,7 +533,8 @@ const keyboardContractReady = computed(() => {
 });
 const canUseKeyboardControl = computed(() => keyboardContractReady.value && canSendManualMotion.value);
 const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
-const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value > 0);
+const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES);
+const keyboardForwardedPulseProgressText = computed(() => `已成功 ${keyboardVerifiedPulseCount.value}/${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次`);
 
 const keyboardDirectionPlainLabel = computed(() => {
   // 普通首屏只显示方向中文，避免把底层 direction enum 暴露给现场用户。
@@ -563,6 +565,9 @@ const plainKeyboardLiveStatus = computed(() => {
   }
   if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
     return "键盘手控请求未成功，未记为已验证。";
+  }
+  if (keyboardVerifiedPulseCount.value > 0 && !keyboardManualPulseObserved.value) {
+    return `${keyboardForwardedPulseProgressText.value}，继续按住方向键完成连续验证。`;
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return "等待按键，按住才会动。";
@@ -1002,9 +1007,9 @@ const goalClosureChecklist = computed(() => {
       label: "PC 键盘连续手控",
       ready: keyboardReady,
       hint: keyboardReady
-        ? "已触发过键盘方向输入"
+        ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}`
         : canUseKeyboardControl.value
-          ? "键盘入口已就绪，仍需按住方向键现场验证"
+          ? `键盘入口已就绪，仍需按住方向键连续验证，${keyboardForwardedPulseProgressText.value}`
           : keyboardContractReady.value ? `键盘入口已在，仍需补齐：${plainKeyboardMissingSummary.value.replace(/^还差：/, "").replace(/。$/, "")}` : "键盘合同未从 summary 读到",
     },
   ];
@@ -1122,7 +1127,7 @@ const plainGoalProgressItems = computed(() => {
       actionLabel: "去键盘",
       state: canUseKeyboardControl.value ? (keyboardManualPulseObserved.value ? "已验证" : "待验证") : "未满足",
       hint: canUseKeyboardControl.value
-        ? keyboardManualPulseObserved.value ? "已触发过键盘方向输入；现场可继续按住方向键手控。" : "键盘已解锁；点击启用键盘后按住方向键验证。"
+        ? keyboardManualPulseObserved.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}；现场可继续按住方向键手控。` : `键盘已解锁；点击启用键盘后按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`
         : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}`,
     },
   ];
@@ -1184,7 +1189,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return plainDeliveryNextActionSummary.value ? `验收卡点：送达未完成，${plainDeliveryNextActionSummary.value}` : "验收卡点：送达未完成，需要现场最终确认。";
   }
   if (canUseKeyboardControl.value && !keyboardManualPulseObserved.value) {
-    return "验收卡点：键盘已解锁，点击启用键盘后按住方向键验证。";
+    return `验收卡点：键盘已解锁，点击启用键盘后按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`;
   }
   if (!canUseKeyboardControl.value) {
     return `验收卡点：键盘手控未满足，${plainKeyboardNextActionSummary.value}`;

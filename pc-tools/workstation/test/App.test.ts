@@ -5583,6 +5583,7 @@ describe("App", () => {
 
   it("enables non-stop motion only after complete operator material and still uses the fixed workstation proxy", async () => {
     // 材料齐全时，前端只放开固定 proxy 点动；普通用户首屏仍不出现工程词。
+    vi.useFakeTimers();
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
     summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
@@ -5769,7 +5770,7 @@ describe("App", () => {
     const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
-    expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，仍需按住方向键现场验证");
+    expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，仍需按住方向键连续验证，已成功 0/2 次");
     await armButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -5781,12 +5782,23 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("手控中");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
+    const keyboardClosureItemAfterFirstPulse = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("PC 键盘连续手控"));
+    expect(keyboardClosureItemAfterFirstPulse?.attributes("data-ready")).toBe("false");
+    expect(keyboardClosureItemAfterFirstPulse?.text()).toContain("已成功 1/2 次");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停。");
+
+    await vi.advanceTimersByTimeAsync(260);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控已验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘已验证");
     const keyboardClosureItemAfterKey = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItemAfterKey?.attributes("data-ready")).toBe("true");
-    expect(keyboardClosureItemAfterKey?.text()).toContain("已触发过键盘方向输入");
+    expect(keyboardClosureItemAfterKey?.text()).toContain("已连续转发键盘方向输入，已成功 2/2 次");
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：前进");
     const manualCallsAfterKeyboard = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     expect(manualCallsAfterKeyboard).toBeGreaterThan(manualCallsBeforeKeyboard);
@@ -5907,7 +5919,7 @@ describe("App", () => {
     const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
-    expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，仍需按住方向键现场验证");
+    expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，仍需按住方向键连续验证，已成功 0/2 次");
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(false);
   });
