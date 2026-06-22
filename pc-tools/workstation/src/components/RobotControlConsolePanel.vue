@@ -608,9 +608,9 @@ const plainDeliveryConfirmMissingSummary = computed(() => {
 });
 
 const plainDeliveryConfirmButtonLabel = computed(() => {
-  // 按钮禁用时直接显示缺项数量，减少现场人员在按钮和说明之间来回找原因。
+  // 按钮禁用时显示缺项数量；可提交时明确“不发车”，避免送达收口被误解成运动命令。
   const missingCount = plainDeliveryConfirmMissingLabels.value.length;
-  return missingCount > 0 ? `确认送达（还差 ${missingCount} 项）` : "确认送达";
+  return missingCount > 0 ? `确认送达（还差 ${missingCount} 项）` : "确认送达（不发车）";
 });
 
 const plainDeliverySafetyButtonLabel = computed(() => {

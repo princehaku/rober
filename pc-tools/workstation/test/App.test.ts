@@ -5911,7 +5911,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect((wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').element as HTMLInputElement).checked).toBe(true);
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-delivery-mark-success"]').text()).toBe("已确认投放/送达");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
@@ -5925,6 +5925,7 @@ describe("App", () => {
     await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
 
     await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");

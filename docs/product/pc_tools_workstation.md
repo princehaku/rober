@@ -1570,3 +1570,7 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 `低速试动读轮速`，恢复材料后显示 `开始低速试动读轮速`，失败后显示 `重试低速试动读轮速`。
 文案只说明轮速非零需要低速试动窗口，不放宽 first-jog gate、不自动发车，也不把静态 T1001 `L/R=0/0`
 当作 wheel raw L/R 非零证明。
+
+2026-06-22 18:00 起，普通首屏 `确认送达` 按钮在全部确认项满足后显示为 `确认送达（不发车）`；
+缺项时仍显示 `确认送达（还差 N 项）`。按钮只在可提交状态下解释动作边界，后端 gate、operator report
+和 delivery complete 合同不变，不发送 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
