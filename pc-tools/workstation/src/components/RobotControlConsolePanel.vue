@@ -994,6 +994,35 @@ const plainWheelEvidenceSaveSummary = computed(() => {
   return "轮速证据保存失败；请查看高级诊断。";
 });
 
+const plainWheelReadbackSummary = computed(() => {
+  // 只读底盘反馈可以解释“当前为什么还不是非零证据”，但不能替代试动窗口材料。
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  if (sample?.t1001_observed_count && sample.t1001_observed_count !== "not_loaded") {
+    const left = sample.wheel_feedback_latest_left_speed;
+    const right = sample.wheel_feedback_latest_right_speed;
+    if (sample.wheel_feedback_lr_nonzero_proven === "true" || sample.wheel_feedback_nonzero_observed === "true") {
+      return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
+    }
+    return `当前只读轮速是 L/R=${left}/${right}；这还不是非零证据，需要现场试动窗口。`;
+  }
+  const base = robotSummary.value?.readback_summary.base;
+  if (!base || base.latest_t1001_observed_count === "not_loaded") {
+    return "";
+  }
+  const left = base.wheel_feedback_latest_left_speed;
+  const right = base.wheel_feedback_latest_right_speed;
+  if (!left || !right || left === "not_loaded" || right === "not_loaded") {
+    return "";
+  }
+  if (base.wheel_feedback_lr_nonzero_proven === "true" || base.wheel_feedback_nonzero_observed === "true") {
+    return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
+  }
+  if (Number(base.latest_t1001_observed_count) > 0) {
+    return `当前只读轮速是 L/R=${left}/${right}；这还不是非零证据，需要现场试动窗口。`;
+  }
+  return "";
+});
+
 const plainFirstJogWheelEvidenceReady = computed(() => {
   // 只有后端 first-jog 响应明确证明 L/R 非零时，才允许保存 wheel feedback claim。
   return plainFirstJogResult.value?.proxy_status === "command_forwarded"
@@ -3532,6 +3561,9 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainWheelRecordSummary.hint }}</p>
+            <p v-if="plainWheelReadbackSummary" class="panel-note" data-testid="plain-wheel-readback-summary">
+              {{ plainWheelReadbackSummary }}
+            </p>
             <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>
           </div>
           <div ref="plainDeliveryStatusPanel" class="plain-delivery-status" tabindex="-1" data-testid="plain-delivery-status">

@@ -377,6 +377,10 @@ const STATUS_KEYS = [
   "t1001_observed_count",
   "wheel_feedback_lr_nonzero_proven",
   "wheel_feedback_nonzero_observed",
+  "wheel_feedback_latest_left_speed",
+  "wheel_feedback_latest_right_speed",
+  "left_speed",
+  "right_speed",
   "latest_scan_once_observed",
   "continuous_scan_status",
   "continuous_window_observed",
@@ -2381,6 +2385,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       latest_t1001_observed_count: "not_loaded",
       wheel_feedback_lr_nonzero_proven: "not_loaded",
       wheel_feedback_nonzero_observed: "not_loaded",
+      wheel_feedback_latest_left_speed: "not_loaded",
+      wheel_feedback_latest_right_speed: "not_loaded",
       feedback_link_status: "not_observed",
     },
     },
@@ -2487,6 +2493,14 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   const wheelFeedbackObserved = baseStatus?.key_values.wheel_feedback_nonzero_observed
     ?? feedbackLatest?.key_values.wheel_feedback_nonzero_observed
     ?? "not_loaded";
+  const latestLeft = baseStatus?.key_values.wheel_feedback_latest_left_speed
+    ?? feedbackLatest?.key_values.wheel_feedback_latest_left_speed
+    ?? feedbackLatest?.key_values.left_speed
+    ?? "not_loaded";
+  const latestRight = baseStatus?.key_values.wheel_feedback_latest_right_speed
+    ?? feedbackLatest?.key_values.wheel_feedback_latest_right_speed
+    ?? feedbackLatest?.key_values.right_speed
+    ?? "not_loaded";
   return {
     status: baseStatus?.status ?? "not_loaded",
     latest_feedback_status: feedbackLatest?.status ?? "not_loaded",
@@ -2494,6 +2508,8 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     latest_t1001_observed_count: observedCount,
     wheel_feedback_lr_nonzero_proven: wheelFeedbackProven,
     wheel_feedback_nonzero_observed: wheelFeedbackObserved,
+    wheel_feedback_latest_left_speed: latestLeft,
+    wheel_feedback_latest_right_speed: latestRight,
     feedback_link_status: wheelFeedbackProven === "true" || wheelFeedbackObserved === "true"
       ? "t1001_lr_nonzero_material_observed_not_hil"
       : Number(observedCount) > 0 ? "t1001_observed_not_motion_proof" : "not_observed",

@@ -2333,6 +2333,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       latest_t1001_observed_count: string;
       wheel_feedback_lr_nonzero_proven: string;
       wheel_feedback_nonzero_observed: string;
+      wheel_feedback_latest_left_speed: string;
+      wheel_feedback_latest_right_speed: string;
       feedback_link_status: string;
     };
   };
