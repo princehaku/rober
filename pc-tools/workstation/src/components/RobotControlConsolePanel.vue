@@ -854,9 +854,37 @@ function deliveryResultSucceeded(result: RobotControlDeliveryCompleteResponse | 
   return result?.delivery_success === true;
 }
 
+function deliveryResultRouteMapRef(result: RobotControlDeliveryCompleteResponse | RobotControlDeliveryLatestResponse | null): string {
+  // latest 会带 operator report 的 route/map ref；complete 响应通常只带 key values，因此要兼容两种形状。
+  if (!result) {
+    return "";
+  }
+  const latestRefs = "delivery_material_refs" in result ? result.delivery_material_refs : null;
+  return latestRefs?.route_map_ref?.trim()
+    || result.delivery_key_values.route_map_ref?.trim()
+    || result.delivery_key_values.nav2_evidence_ref?.trim()
+    || result.delivery_key_values.evidence_ref?.trim()
+    || "";
+}
+
+function deliveryResultMatchesFreshNav2(result: RobotControlDeliveryCompleteResponse | RobotControlDeliveryLatestResponse | null): boolean {
+  // delivery_success 只能证明同一轮行程收口；latest 带旧 route/map ref 时不能点亮本轮完成。
+  const freshRef = freshNav2RouteMapRef.value;
+  if (!freshRef) {
+    return true;
+  }
+  const resultRouteRef = deliveryResultRouteMapRef(result);
+  if (resultRouteRef) {
+    return resultRouteRef === freshRef;
+  }
+  return result === deliveryCompletionResult.value && deliveryRouteMapMatchesFreshNav2.value;
+}
+
 function deliveryResultReadyForCurrentRun(result: RobotControlDeliveryCompleteResponse | RobotControlDeliveryLatestResponse | null): boolean {
-  // delivery success 也必须是当前证据；没有时间戳的刚提交响应按本轮结果处理。
-  return deliveryResultSucceeded(result) && !evidenceIsStale(result?.delivery_key_values);
+  // delivery success 也必须是当前证据；latest 还必须和本轮 Nav2 行程材料对齐。
+  return deliveryResultSucceeded(result)
+    && !evidenceIsStale(result?.delivery_key_values)
+    && deliveryResultMatchesFreshNav2(result);
 }
 
 const plainTripHasSucceededEvidence = computed(() => nav2EvidenceValues().some((values) => nav2GoalSucceeded(values)));
@@ -866,10 +894,16 @@ const plainTripHasFreshIncompleteEvidence = computed(() => nav2EvidenceValues().
 const deliverySuccessReady = computed(() => (
   deliveryResultReadyForCurrentRun(deliveryCompletionResult.value) || deliveryResultReadyForCurrentRun(deliveryLatestResult.value)
 ));
-const deliveryHasSuccessEvidence = computed(() => (
-  deliveryResultSucceeded(deliveryCompletionResult.value) || deliveryResultSucceeded(deliveryLatestResult.value)
+const deliverySuccessEvidenceIsStale = computed(() => (
+  [deliveryCompletionResult.value, deliveryLatestResult.value].some((result) => deliveryResultSucceeded(result) && evidenceIsStale(result?.delivery_key_values))
 ));
-const deliverySuccessEvidenceIsStale = computed(() => deliveryHasSuccessEvidence.value && !deliverySuccessReady.value);
+const deliverySuccessEvidenceRouteMismatch = computed(() => (
+  [deliveryCompletionResult.value, deliveryLatestResult.value].some((result) => (
+    deliveryResultSucceeded(result)
+    && !evidenceIsStale(result?.delivery_key_values)
+    && !deliveryResultMatchesFreshNav2(result)
+  ))
+));
 
 const deliveryNav2GoalReady = computed(() => {
   // 本轮完成只接受未过期且带反馈样本的 goal_succeeded；旧/空摘要只能作为提示材料。
@@ -900,6 +934,9 @@ const plainDeliverySummary = computed(() => {
   }
   if (deliverySuccessEvidenceIsStale.value) {
     return { state: "需复验", hint: "读到旧送达成功记录；本轮仍需重新确认送达。" };
+  }
+  if (deliverySuccessEvidenceRouteMismatch.value) {
+    return { state: "需复验", hint: "读到送达成功记录，但行程材料不是本轮记录；本轮仍需重新确认送达。" };
   }
   if (deliveryNav2GoalReady.value) {
     const gapCount = deliveryGateBlockedReasons.value.length;
@@ -982,6 +1019,9 @@ const plainDeliveryConfirmSummary = computed(() => {
   }
   if (deliverySuccessEvidenceIsStale.value) {
     return { state: "待确认", hint: "旧送达成功记录不能用于本轮，仍需重新确认送达。" };
+  }
+  if (deliverySuccessEvidenceRouteMismatch.value) {
+    return { state: "待材料", hint: "送达成功记录的行程材料不是本轮记录，先重新准备材料并确认送达。" };
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripHasFreshIncompleteEvidence.value) {
@@ -1133,7 +1173,11 @@ const goalClosureChecklist = computed(() => {
       id: "delivery_success",
       label: "delivery success",
       ready: deliveryReady,
-      hint: deliveryReady ? "delivery gate 已确认成功" : deliverySuccessEvidenceIsStale.value ? "已有旧 delivery success，需本轮重新确认" : "仍需现场最终确认并通过 delivery gate",
+      hint: deliveryReady
+        ? "delivery gate 已确认成功"
+        : deliverySuccessEvidenceIsStale.value ? "已有旧 delivery success，需本轮重新确认"
+          : deliverySuccessEvidenceRouteMismatch.value ? "已有 delivery success，但行程材料不是本轮记录"
+            : "仍需现场最终确认并通过 delivery gate",
     },
     {
       id: "keyboard_manual",
@@ -1306,7 +1350,11 @@ const plainGoalProgressEvidenceSummary = computed(() => {
   const tripText = deliveryNav2GoalReady.value || plainTripHasSucceededEvidence.value
     ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成"
     : "行程未完成";
-  const deliveryText = deliverySuccessReady.value ? "送达已完成" : deliverySuccessEvidenceIsStale.value ? "送达有旧成功记录" : "送达未完成";
+  const deliveryText = deliverySuccessReady.value
+    ? "送达已完成"
+    : deliverySuccessEvidenceIsStale.value ? "送达有旧成功记录"
+      : deliverySuccessEvidenceRouteMismatch.value ? "送达成功材料非本轮"
+        : "送达未完成";
   const keyboardText = canUseKeyboardControl.value ? (keyboardManualPulseObserved.value ? "键盘已验证" : "键盘待验证") : "键盘未满足";
   return `当前读数：${wheelText}；${tripText}；${deliveryText}；${keyboardText}。`;
 });
@@ -1338,6 +1386,9 @@ const plainGoalProgressBlockerSummary = computed(() => {
   if (!deliverySuccessReady.value) {
     if (deliverySuccessEvidenceIsStale.value) {
       return "验收卡点：送达成功记录较旧，需要本轮重新确认送达。";
+    }
+    if (deliverySuccessEvidenceRouteMismatch.value) {
+      return "验收卡点：送达成功记录的行程材料不是本轮记录，需要重新准备材料并确认送达。";
     }
     return plainDeliveryNextActionSummary.value ? `验收卡点：送达未完成，${plainDeliveryNextActionSummary.value}` : "验收卡点：送达未完成，需要现场最终确认。";
   }
