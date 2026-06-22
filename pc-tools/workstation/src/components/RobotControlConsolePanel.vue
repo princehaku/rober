@@ -793,6 +793,15 @@ const plainWheelGoalProgressHint = computed(() => {
   return "等待运动窗口读到非零 L/R。";
 });
 
+const plainDeliveryGoalProgressHint = computed(() => {
+  // 送达进度优先显示上位机 gate 缺项；它只是提示，不自动勾选或提交最终确认。
+  const missingSummary = plainDeliveryGateMissingSummary.value;
+  if (missingSummary) {
+    return missingSummary.replace(/^上位机还差：/, "还差：");
+  }
+  return "还缺最终送达确认。";
+});
+
 const plainGoalProgressItems = computed(() => {
   // 普通首屏只展示用户能决策的四件事；工程字段继续留在高级诊断。
   const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
@@ -815,7 +824,7 @@ const plainGoalProgressItems = computed(() => {
       id: "delivery",
       label: "送达确认",
       state: deliveryReady ? "已完成" : "待完成",
-      hint: deliveryReady ? "送达已确认。" : "还缺最终送达确认。",
+      hint: deliveryReady ? "送达已确认。" : plainDeliveryGoalProgressHint.value,
     },
     {
       id: "keyboard",
