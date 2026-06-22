@@ -1069,7 +1069,7 @@ const plainWheelReadbackSummary = computed(() => {
     if (sample.wheel_feedback_lr_nonzero_proven === "true" || sample.wheel_feedback_nonzero_observed === "true") {
       return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
     }
-    return `当前只读轮速是 L/R=${left}/${right}；${zeroReadbackNextStep}`;
+    return `已读到底盘反馈，但当前轮速是 L/R=${left}/${right}；${zeroReadbackNextStep}`;
   }
   const base = robotSummary.value?.readback_summary.base;
   if (!base || base.latest_t1001_observed_count === "not_loaded") {
@@ -1084,7 +1084,7 @@ const plainWheelReadbackSummary = computed(() => {
     return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
   }
   if (Number(base.latest_t1001_observed_count) > 0) {
-    return `当前只读轮速是 L/R=${left}/${right}；${zeroReadbackNextStep}`;
+    return `已读到底盘反馈，但当前轮速是 L/R=${left}/${right}；${zeroReadbackNextStep}`;
   }
   return "";
 });
