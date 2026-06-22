@@ -4853,6 +4853,8 @@ describe("App", () => {
     expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
       external_video_recorded: true,
       external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg",
+      visible_content_proven: true,
+      camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg",
       wheel_feedback_lr_nonzero_proven: true,
       wheel_feedback_ref: "pc-first-jog-wheel-lr-final",
       physical_motion_lidar_delta_proven: true,
@@ -5625,6 +5627,10 @@ describe("App", () => {
       observed_stop: true,
     }));
     expect(finalReportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      external_video_recorded: true,
+      external_video_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+      visible_content_proven: true,
+      camera_artifacts_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
       route_map_ref: "o11-nav2-goal-execution-plain-fixture",
       delivery_success: true,
       site_state: "operator_confirmed_delivery_complete",

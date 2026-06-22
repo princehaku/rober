@@ -2614,7 +2614,8 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
     structured_hil_claims: {
       external_video_recorded: true,
       external_video_ref: deliveryOperatorVideoRef.value.trim(),
-      visible_content_proven: false,
+      visible_content_proven: true,
+      camera_artifacts_ref: deliveryOperatorVideoRef.value.trim(),
       ...inheritedProgressClaims,
       real_route_map_proven: confirmations.route_video_refs_verified,
       route_map_ref: deliveryOperatorRouteMapRef.value.trim(),

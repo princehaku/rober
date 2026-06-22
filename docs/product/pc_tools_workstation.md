@@ -1296,6 +1296,12 @@ PC 会按危险字段阻断。
 也不调用 delivery complete。该变化只收紧高级送达收口入口，不改变普通用户首屏，也不把当前草稿材料、
 camera sample 或 Nav2 goal succeeded 自动外推成真实 delivery success。
 
+2026-06-22 15:12 起，普通首屏“确认送达”和高级“提交送达材料并确认”提交最终 operator report 时，
+会把已填写的“送达视频 ref”同时写入 `external_video_ref` 与 `camera_artifacts_ref`，并保持
+`visible_content_proven=true`。这只是让最终确认 report 保留草稿阶段已经准备好的视觉材料，避免
+delivery gate 因最终 report 缺 `visible_content_proven/camera_artifacts_ref` 被误卡住；PC 仍不自动勾选
+现场 checklist，不绕过 `/api/robot-control/delivery/complete`，也不发送 Nav2、manual 或 `/cmd_vel`。
+
 2026-06-22 15:55 起，高级点动区新增 `wheel raw L/R progress` 摘要，用于区分 WAVE ROVER vendor
 `T=1001` 静态反馈链路和真实运动窗口轮速证明。该摘要采用 `docs/vendor/VENDOR_INDEX.md` 指向的
 WAVE ROVER UART JSON 事实：`T=130` 可请求底盘反馈，`T=1001` 的 `L/R` 是 raw 轮速字段；但
