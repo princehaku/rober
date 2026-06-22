@@ -3227,6 +3227,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(wrapper.find(".simple-user-console [data-testid='keyboard-control-panel']").exists()).toBe(true);
     expect(wrapper.find(".simple-user-console .motion-pad").exists()).toBe(false);
+    expect(firstScreenText).toContain("任务收口");
+    expect(firstScreenText).toContain("刷新送达状态");
+    expect(firstScreenText).toContain("复查送达条件");
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("目标收口进度");
     expect(firstScreenText).not.toContain("普通用户入口");
@@ -5028,6 +5031,98 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start") && options?.method === "POST")).toBe(true);
+  });
+
+  it("refreshes plain delivery status without submitting delivery completion", async () => {
+    // 普通首屏收口按钮只能读取/复算状态；不能提交 operator report 或 delivery complete。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/delivery/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/latest",
+        remote_endpoint: "/api/delivery/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_status: "goal_succeeded",
+          operator_report_status: "ready_for_review",
+        },
+        failure_reason: "",
+        blocked_reasons: ["operator_observed_motion", "structured_hil_claims.delivery_success"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/check": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_gap_check_proxy.v1",
+        proxy_status: "check_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/check",
+        remote_endpoint: "/api/delivery/complete",
+        remote_http_status: 400,
+        status: "blocked",
+        request_body: {
+          confirm_delivery_completion: false,
+          delivery_evidence_ref: "delivery-gap-check-not-confirmed",
+        },
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_status: "goal_succeeded",
+        },
+        failure_reason: "delivery_material_incomplete",
+        blocked_reasons: ["operator_observed_motion", "structured_hil_claims.delivery_success"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
+    expect(deliveryStatus.exists()).toBe(true);
+    expect(deliveryStatus.text()).toContain("任务收口");
+    expect(deliveryStatus.text()).toContain("待确认");
+    expect(deliveryStatus.text()).toContain("行程已完成");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("delivery_success");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("/api/delivery");
+
+    const latestCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?")).length;
+    await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "刷新送达状态")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?")).length).toBeGreaterThan(latestCallsBefore);
+
+    await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "复查送达条件")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const checkCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/delivery/check?"));
+    expect(checkCall).toBeTruthy();
+    expect((checkCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {

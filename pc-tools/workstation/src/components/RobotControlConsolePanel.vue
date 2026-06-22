@@ -553,6 +553,28 @@ const deliveryNav2GoalReady = computed(() => {
     || navGoalExecutionLatestResult.value?.goal_execution_key_values.status === "goal_succeeded";
 });
 
+const plainDeliverySummary = computed(() => {
+  // 普通首屏只做收口状态提示；按钮只读 latest 或复算缺口，不提交送达确认。
+  const deliveryConfirmed = deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true;
+  if (deliveryCompletionPending.value || deliveryLatestPending.value || deliveryGapCheckPending.value) {
+    return { state: "检查中", hint: "正在读取最近行程和送达状态；不会发车。" };
+  }
+  if (deliveryConfirmed) {
+    return { state: "已送达", hint: "送达 gate 已确认成功。" };
+  }
+  if (deliveryNav2GoalReady.value) {
+    const gapCount = deliveryGateBlockedReasons.value.length;
+    return {
+      state: "待确认",
+      hint: gapCount > 0 ? `行程已完成，还需补齐 ${gapCount} 项送达确认。` : "行程已完成，还需要现场确认送达。",
+    };
+  }
+  if (deliveryLatestResult.value || deliveryGapCheckResult.value || deliveryCompletionResult.value || navGoalExecutionLatestResult.value) {
+    return { state: "待行程结果", hint: "还没读到最近一次完整行程结果。" };
+  }
+  return { state: "未读取", hint: "点击刷新送达状态，只读取结果，不执行行程或确认送达。" };
+});
+
 const deliveryClosureChecklist = computed(() => {
   // 这个摘要只是 UI 收口提示，不自动勾选、不提交、不把 delivery_success 提升为 true。
   const confirmations = deliveryOperatorConfirmations.value;
@@ -3122,6 +3144,19 @@ onBeforeUnmount(() => {
           <p v-if="plainFirstJogBlockedHint" class="panel-note">{{ plainFirstJogBlockedHint }}</p>
           <p v-if="plainFirstJogEvidenceSummary" class="panel-note">{{ plainFirstJogEvidenceSummary }}</p>
           <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>
+          <div class="plain-delivery-status" data-testid="plain-delivery-status">
+            <div class="simple-status-row">
+              <strong>任务收口</strong>
+              <span class="status-chip" :data-state="plainDeliverySummary.state">{{ plainDeliverySummary.state }}</span>
+              <button type="button" class="secondary compact-stop" :disabled="loading || deliveryLatestPending || !robotApiBaseUrl.trim()" @click="loadDeliveryLatest">
+                刷新送达状态
+              </button>
+              <button type="button" class="secondary compact-stop" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" @click="checkDeliveryGap">
+                复查送达条件
+              </button>
+            </div>
+            <p class="panel-note">{{ plainDeliverySummary.hint }}</p>
+          </div>
         </article>
       </div>
     </div>

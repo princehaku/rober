@@ -440,6 +440,17 @@ h3 {
   outline-offset: 2px;
 }
 
+.plain-delivery-status {
+  margin-top: 12px;
+  border-top: 1px solid #d7dee6;
+  padding-top: 12px;
+}
+
+.plain-delivery-status strong {
+  color: #253341;
+  font-size: 14px;
+}
+
 .delivery-closure-check {
   margin-top: 10px;
   border: 1px solid #d7dee6;
