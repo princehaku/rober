@@ -5829,6 +5829,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 4 项");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
 
+    await wrapper.find('[data-testid="plain-delivery-mark-arrived-stopped"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect((wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 2 项");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
+
     await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(true);

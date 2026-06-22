@@ -2658,6 +2658,12 @@ function markDeliveryBasicSafetyConfirmed(): void {
   deliveryOperatorConfirmations.value.emergency_stop_ready = true;
 }
 
+function markDeliveryArrivedAndStopped(): void {
+  // operator 需要亲眼确认这两项；按钮只合并本地勾选，不提交 report 或 delivery gate。
+  deliveryOperatorConfirmations.value.observed_motion = true;
+  deliveryOperatorConfirmations.value.observed_stop = true;
+}
+
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
   if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
@@ -3753,6 +3759,9 @@ onBeforeUnmount(() => {
                 <span class="status-chip" :data-state="plainDeliveryConfirmSummary.state">{{ plainDeliveryConfirmSummary.state }}</span>
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-safety" @click="markDeliveryBasicSafetyConfirmed">
                   勾选安全三项
+                </button>
+                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-arrived-stopped" @click="markDeliveryArrivedAndStopped">
+                  已看到到达并停稳
                 </button>
               </div>
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
