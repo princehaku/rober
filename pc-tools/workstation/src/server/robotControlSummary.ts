@@ -33,6 +33,8 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 1500;
 const SLOW_READBACK_TIMEOUT_MS = 4000;
 export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
 export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
+export const ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS = 260;
+export const ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS = 240;
 export const ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
 export const ROBOT_CONTROL_HIL_CHECKLIST = [
   { id: "operator_ready", label: "现场有人扶控并准备急停" },
@@ -2400,9 +2402,16 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
     nav2_goal: "Nav2 NavigateToPose locked",
     map_start: "map start locked",
     radar_start: "radar start locked",
-    keyboard_control: "keyboard control locked",
+    keyboard_control: "bounded repeating manual pulse gated",
+    keyboard_control_mode: "bounded_repeating_manual_pulse",
+    keyboard_manual_proxy_endpoint: "/api/robot-control/base/manual",
+    keyboard_stop_proxy_endpoint: "/api/robot-control/base/stop",
+    keyboard_jog_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
+    keyboard_jog_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
+    keyboard_stop_triggers: ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"],
+    keyboard_reuses_manual_gate: true,
     map_click_goal: "map click goal locked",
-    locked_reason: "requires safety lock, checklist, operator report materials, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
+    locked_reason: "bounded manual and keyboard pulse control require checklist and operator report materials; primary autonomy and safe_control remain locked",
     manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report",
     manual_motion_entry_label: "受控点动（需现场确认）",
     allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],

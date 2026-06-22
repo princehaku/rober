@@ -2281,7 +2281,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     nav2_goal: "Nav2 NavigateToPose locked";
     map_start: "map start locked";
     radar_start: "radar start locked";
-    keyboard_control: "keyboard control locked";
+    keyboard_control: "bounded repeating manual pulse gated";
+    keyboard_control_mode: "bounded_repeating_manual_pulse";
+    keyboard_manual_proxy_endpoint: "/api/robot-control/base/manual";
+    keyboard_stop_proxy_endpoint: "/api/robot-control/base/stop";
+    keyboard_jog_interval_ms: number;
+    keyboard_jog_duration_ms: number;
+    keyboard_stop_triggers: string[];
+    keyboard_reuses_manual_gate: true;
     map_click_goal: "map click goal locked";
     locked_reason: string;
     manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report";

@@ -3664,6 +3664,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.operator_report_preflight_required_fields).toContain("scan_delta_ref");
       expect(summary.safe_command_boundary.allowed_directions).toEqual(["forward", "back", "left", "right", "stop"]);
       expect(summary.safe_command_boundary.manual_control_enabled).toBe(false);
+      expect(summary.safe_command_boundary.keyboard_control).toBe("bounded repeating manual pulse gated");
+      expect(summary.safe_command_boundary.keyboard_control_mode).toBe("bounded_repeating_manual_pulse");
+      expect(summary.safe_command_boundary.keyboard_manual_proxy_endpoint).toBe("/api/robot-control/base/manual");
+      expect(summary.safe_command_boundary.keyboard_stop_proxy_endpoint).toBe("/api/robot-control/base/stop");
+      expect(summary.safe_command_boundary.keyboard_jog_interval_ms).toBe(260);
+      expect(summary.safe_command_boundary.keyboard_jog_duration_ms).toBe(240);
+      expect(summary.safe_command_boundary.keyboard_stop_triggers).toContain("window_blur");
+      expect(summary.safe_command_boundary.keyboard_reuses_manual_gate).toBe(true);
+      expect(summary.safe_command_boundary.keyboard_control_enabled).toBe(false);
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
       expect(summary.primary_actions_enabled).toBe(false);

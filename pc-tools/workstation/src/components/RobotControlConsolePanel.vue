@@ -422,6 +422,8 @@ const mapLifecycleSummary = computed(() => summarizeMapLifecycle());
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
 const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ?? 0.12);
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
+const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
+const keyboardJogDurationMs = computed(() => manualBoundary.value?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS);
 const checklistMissing = computed(() => hilChecklist.value.filter((item) => !item.checked).map((item) => item.label));
 const hilChecklistConfirmed = computed(() => checklistMissing.value.length === 0);
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
@@ -652,7 +654,7 @@ function requestBodyForKeyboardDirection(direction: ManualDirection) {
   return {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
-    duration_ms: Math.min(Math.max(KEYBOARD_JOG_DURATION_MS, 0), manualDurationLimit.value),
+    duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
     confirm_hil_checklist: hilChecklistConfirmed.value,
   } as const;
 }
@@ -1970,7 +1972,7 @@ function startKeyboardControl(direction: ManualDirection): void {
   void sendKeyboardManualPulse(direction);
   keyboardJogTimer = window.setInterval(() => {
     void sendKeyboardManualPulse(direction);
-  }, KEYBOARD_JOG_INTERVAL_MS);
+  }, keyboardJogIntervalMs.value);
 }
 
 function handleGlobalKeyDown(event: KeyboardEvent): void {
@@ -3033,10 +3035,19 @@ onBeforeUnmount(() => {
             <dd>
               status={{ keyboardControlStatus }},
               held={{ keyboardHeldDirection ?? "none" }},
+              mode={{ robotSummary?.safe_command_boundary.keyboard_control_mode ?? "bounded_repeating_manual_pulse" }},
               last_direction={{ keyboardLastDirection }},
-              pulse_ms={{ KEYBOARD_JOG_DURATION_MS }},
-              interval_ms={{ KEYBOARD_JOG_INTERVAL_MS }},
+              pulse_ms={{ keyboardJogDurationMs }},
+              interval_ms={{ keyboardJogIntervalMs }},
               stop_reason={{ keyboardLastStopReason }}
+            </dd>
+            <dt>keyboard stop triggers</dt>
+            <dd>{{ listText(robotSummary?.safe_command_boundary.keyboard_stop_triggers, "key_released/window_blur/page_hidden") }}</dd>
+            <dt>keyboard proxy</dt>
+            <dd>
+              manual={{ robotSummary?.safe_command_boundary.keyboard_manual_proxy_endpoint ?? "/api/robot-control/base/manual" }},
+              stop={{ robotSummary?.safe_command_boundary.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop" }},
+              reuses_gate={{ robotSummary?.safe_command_boundary.keyboard_reuses_manual_gate ?? true }}
             </dd>
             <dt>robot_control_executed</dt>
             <dd>robot_control_executed=false</dd>
