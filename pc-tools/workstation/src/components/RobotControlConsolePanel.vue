@@ -1289,6 +1289,12 @@ const plainKeyboardArmButtonLabel = computed(() => {
   return missingCount > 0 ? `启用键盘（还差 ${missingCount} 项）` : "启用键盘";
 });
 
+const plainKeyboardRecheckButtonLabel = computed(() => {
+  // 复查按钮同样显示缺项数量；点击仍只刷新只读进度，不会发送手控。
+  const missingCount = plainKeyboardMissingLabels.value.length;
+  return missingCount > 0 ? `复查手控条件（还差 ${missingCount} 项）` : "复查手控条件";
+});
+
 const plainKeyboardNextActionSummary = computed(() => {
   // 键盘 gate 缺项可能较多；现场只需要知道当前先做哪个普通动作。
   if (canUseKeyboardControl.value) {
@@ -3794,7 +3800,7 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
-              <button class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainGoalProgress">复查手控条件</button>
+              <button class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainGoalProgress">{{ plainKeyboardRecheckButtonLabel }}</button>
               <button class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
             </div>
