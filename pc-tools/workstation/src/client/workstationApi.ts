@@ -31,6 +31,8 @@ import type {
   RobotControlNavGoalPreflightResponse,
   RobotControlNavGoalExecutionRequest,
   RobotControlNavGoalExecutionResponse,
+  RobotControlDeliveryCompleteRequest,
+  RobotControlDeliveryCompleteResponse,
   RobotControlOperatorReportProxyResponse,
   RobotControlOperatorReportRequest,
   RobotControlSummaryResponse,
@@ -108,6 +110,7 @@ const API_ENDPOINTS = {
   robotControlNav2ProofRefresh: "/api/robot-control/nav2/proof/refresh",
   robotControlNav2GoalPreflight: "/api/robot-control/nav2/goal/preflight",
   robotControlNav2GoalExecute: "/api/robot-control/nav2/goal/execute",
+  robotControlDeliveryComplete: "/api/robot-control/delivery/complete",
   robotControlLocalizeReset: "/api/robot-control/localize/reset",
   robotControlMapList: "/api/robot-control/map/list",
   robotControlMapStart: "/api/robot-control/map/start",
@@ -540,6 +543,17 @@ export async function postRobotControlNav2GoalExecute(
   // 目标执行只走固定 Node 代理；组件只能传短白名单目标和显式确认。
   return postJson<RobotControlNavGoalExecutionResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2GoalExecute, baseUrl),
+    body,
+  );
+}
+
+export async function postRobotControlDeliveryComplete(
+  baseUrl: string,
+  body: RobotControlDeliveryCompleteRequest,
+): Promise<RobotControlDeliveryCompleteResponse> {
+  // 交付完成只走固定 gate；后端只合成 Nav2 latest 与 operator report latest，不发送运动命令。
+  return postJson<RobotControlDeliveryCompleteResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlDeliveryComplete, baseUrl),
     body,
   );
 }

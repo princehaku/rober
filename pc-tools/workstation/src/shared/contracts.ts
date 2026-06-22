@@ -2168,6 +2168,35 @@ export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
   robot_control_executed: boolean;
 }
 
+export interface RobotControlDeliveryCompleteRequest {
+  confirm_delivery_completion?: boolean;
+  delivery_evidence_ref?: string;
+  operator_notes?: string;
+}
+
+export interface RobotControlDeliveryCompleteResponse {
+  schema: "trashbot.pc_tools_workstation.robot_control_delivery_complete_proxy.v1";
+  proxy_status: "completion_forwarded" | "completion_rejected" | "completion_failed";
+  source: "software_proof";
+  proof_status: "not_proven" | "proven";
+  safe_to_control: false;
+  delivery_success: boolean;
+  primary_actions_enabled: false;
+  pc_only: true;
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/delivery/complete";
+  remote_endpoint: "/api/delivery/complete";
+  remote_http_status: number | null;
+  status: "blocked" | "delivery_success_confirmed" | "loaded_fail_closed_summary";
+  request_body: RobotControlDeliveryCompleteRequest;
+  delivery_key_values: Record<string, string>;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export type RobotControlPreviewStatus =
   | "idle_not_started"
   | "starting_local_peer"

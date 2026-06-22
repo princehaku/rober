@@ -34,6 +34,33 @@ PC guard 对该固定 endpoint 只允许预期执行字段为 true，仍必须 f
 `calls_base_manual=true`、`uses_base_uart=true` 等越界声明。`NavigateToPose` succeeded 后，还需要现场
 operator report、到达/投放确认和交付结果收口，才能单独评估 delivery success。
 
+## delivery_completion_gate
+
+`delivery_completion_gate` 是上位机 `POST /api/delivery/complete` 写入的送达收口材料，
+latest readback 为 `GET /api/delivery/latest`。PC 只能通过固定代理
+`POST /api/robot-control/delivery/complete?baseUrl=...` 调用它，不能把该能力扩展成任意
+Robot API POST，也不能借此发送新的 Nav2 goal、manual、stop、`/cmd_vel` 或底盘串口命令。
+
+该 gate 只合成两个既有 latest artifact：
+
+- `GET /api/nav2/goal/execution/latest` 中最近一次 `NavigateToPose` 必须 `status=goal_succeeded`、
+  `goal_accepted=true`、`result_received=true`、`result_status=succeeded`。
+- `GET /api/operator/report` 中最近一次现场报告必须 `operator_report_status=ready_for_review`，
+  且包含 `observed_motion=true`、`observed_stop=true`、
+  `structured_hil_claims.delivery_success=true`、
+  `structured_hil_claims.real_route_map_proven=true`、非空 `route_map_ref`，以及外部视频或可见相机 ref。
+
+请求体必须显式包含 `confirm_delivery_completion=true`。任一材料缺失时，上位机返回
+`status=blocked_missing_delivery_material`、`delivery_success=false`，并在
+`missing_required_material` 中列出缺项。只有上述全部满足时，该 endpoint 才允许返回
+`status=delivery_success_confirmed` 与 `delivery_success=true`；这是真实现场报告和最近 Nav2 成功的
+合成结论，不会改变 `safe_to_control=false`、`primary_actions_enabled=false`、`hil_pass=false`。
+
+PC guard 对该固定 endpoint 只允许这个 endpoint 的顶层 `delivery_success=true` 作为送达收口结果；
+其它 summary、manual、Nav2 execution、operator report、O7 fixture 或任意非 gate payload 中的
+`delivery_success=true` 仍必须 fail-closed。PC 响应会保留 `robot_control_executed=false`，因为确认送达
+本身不发送任何运动命令。
+
 ## cloud_hosted_mobile_web_degradation_passthrough
 
 `cloud_hosted_mobile_web_degradation_passthrough` is the Robot/API contract for the cloud-hosted same-origin mobile `GET /api/status` adapter. It consumes only sanitized relay latest status metadata and, when present, preserves an allow-listed safe `remote_readiness.degradation_state` instead of flattening degraded status to only `state=status_present`.

@@ -8,6 +8,7 @@ import {
   postRobotControlBaseFirstJog,
   postRobotControlBaseManual,
   postRobotControlBaseStop,
+  postRobotControlDeliveryComplete,
   postRobotControlMapStart,
   postRobotControlMapSave,
   postRobotControlLocalizeReset,
@@ -29,6 +30,7 @@ import type {
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
+  RobotControlDeliveryCompleteResponse,
   RobotControlMapLifecycleResponse,
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalPreflightResponse,
@@ -59,6 +61,7 @@ const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null)
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(null);
 const navGoalExecutionResult = ref<RobotControlNavGoalExecutionResponse | null>(null);
+const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
 const localizationResetResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
 const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
@@ -102,6 +105,8 @@ const navGoalY = ref(0);
 const navGoalYaw = ref(0);
 const confirmNavigationPreflight = ref(false);
 const confirmNavigationExecution = ref(false);
+const confirmDeliveryCompletion = ref(false);
+const deliveryEvidenceRef = ref("");
 const navGoalExecutionTimeoutS = ref(8);
 const hilChecklist = ref([
   { id: "operator_ready", checked: false, label: "现场有人扶控并准备急停" },
@@ -126,6 +131,7 @@ const mapRefreshPending = ref(false);
 const nav2RefreshPending = ref(false);
 const navGoalPreflightPending = ref(false);
 const navGoalExecutionPending = ref(false);
+const deliveryCompletionPending = ref(false);
 const localizationResetPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
 const previewStream = ref<MediaStream | null>(null);
@@ -830,6 +836,35 @@ function makeNavGoalExecutionFallback(reason: string): RobotControlNavGoalExecut
       confirm_navigation_execution: confirmNavigationExecution.value,
     },
     goal_execution_key_values: {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+function makeDeliveryCompletionFallback(reason: string): RobotControlDeliveryCompleteResponse {
+  // 交付确认异常必须 fail closed；只有后端 gate 能把 delivery_success 置 true。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_delivery_complete_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "completion_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    workstation_endpoint: "/api/robot-control/delivery/complete",
+    remote_endpoint: "/api/delivery/complete",
+    remote_http_status: null,
+    status: "blocked",
+    request_body: {
+      confirm_delivery_completion: confirmDeliveryCompletion.value,
+      delivery_evidence_ref: deliveryEvidenceRef.value,
+    },
+    delivery_key_values: {},
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -1554,6 +1589,26 @@ async function runNavGoalExecution(): Promise<void> {
     navGoalExecutionResult.value = makeNavGoalExecutionFallback(err instanceof Error ? err.message : "nav_goal_execution_request_failed");
   } finally {
     navGoalExecutionPending.value = false;
+    await refreshConsole();
+  }
+}
+
+async function completeDelivery(): Promise<void> {
+  // delivery gate 只合成最近 Nav2 执行和 operator report；按钮本身不发送运动命令。
+  if (!robotApiBaseUrl.value.trim() || deliveryCompletionPending.value) {
+    return;
+  }
+  deliveryCompletionPending.value = true;
+  try {
+    deliveryCompletionResult.value = await postRobotControlDeliveryComplete(robotApiBaseUrl.value, {
+      confirm_delivery_completion: confirmDeliveryCompletion.value,
+      delivery_evidence_ref: deliveryEvidenceRef.value.trim(),
+      operator_notes: "PC advanced delivery completion gate; requires latest Nav2 goal and operator report material.",
+    });
+  } catch (err) {
+    deliveryCompletionResult.value = makeDeliveryCompletionFallback(err instanceof Error ? err.message : "delivery_completion_request_failed");
+  } finally {
+    deliveryCompletionPending.value = false;
     await refreshConsole();
   }
 }
@@ -2594,6 +2649,19 @@ onBeforeUnmount(() => {
               执行导航目标（高级）
             </button>
           </form>
+          <form class="robot-control-form" @submit.prevent="completeDelivery">
+            <label>
+              <span>送达证据 ref</span>
+              <input v-model="deliveryEvidenceRef" name="deliveryEvidenceRef" placeholder="delivery-confirmation-...">
+            </label>
+            <label class="checkbox-inline">
+              <input v-model="confirmDeliveryCompletion" name="confirmDeliveryCompletion" type="checkbox">
+              <span>确认最近 Nav2 成功且现场报告已确认送达</span>
+            </label>
+            <button class="danger-button" type="submit" :disabled="loading || deliveryCompletionPending || !robotApiBaseUrl.trim() || !confirmDeliveryCompletion">
+              确认送达（高级）
+            </button>
+          </form>
           <dl class="kv compact-kv">
             <dt>goal preflight pending</dt>
             <dd>{{ navGoalPreflightPending ? "pending" : "idle" }}</dd>
@@ -2637,6 +2705,20 @@ onBeforeUnmount(() => {
             <dd>{{ navGoalExecutionResult?.failure_reason || "none" }}</dd>
             <dt>goal execution blocked reasons</dt>
             <dd>{{ listText(navGoalExecutionResult?.blocked_reasons, "none") }}</dd>
+            <dt>delivery gate pending</dt>
+            <dd>{{ deliveryCompletionPending ? "pending" : "idle" }}</dd>
+            <dt>delivery gate status</dt>
+            <dd>{{ deliveryCompletionResult?.proxy_status ?? "not_submitted" }} / {{ deliveryCompletionResult?.status ?? "not_loaded" }}</dd>
+            <dt>delivery success</dt>
+            <dd>{{ deliveryCompletionResult?.delivery_success ?? false }}</dd>
+            <dt>delivery keys</dt>
+            <dd>{{ recordText(deliveryCompletionResult?.delivery_key_values) }}</dd>
+            <dt>delivery failure</dt>
+            <dd>{{ deliveryCompletionResult?.failure_reason || "none" }}</dd>
+            <dt>delivery blocked reasons</dt>
+            <dd>{{ listText(deliveryCompletionResult?.blocked_reasons, "none") }}</dd>
+            <dt>delivery dangerous fields</dt>
+            <dd>{{ listText(deliveryCompletionResult?.hard_dangerous_true_fields, "none") }}</dd>
             <dt>localize reset pending</dt>
             <dd>{{ localizationResetPending ? "pending" : "idle" }}</dd>
             <dt>localize reset endpoint</dt>

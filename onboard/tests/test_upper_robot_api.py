@@ -333,6 +333,98 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["hil_pass"])
         self.assertFalse(payload["sends_motion_commands"])
 
+    def test_delivery_completion_gate_blocks_missing_operator_material(self) -> None:
+        """Nav2 成功不能单独推出送达成功，缺现场材料时必须 fail closed。"""
+        # 最近 Nav2 goal 已成功，但 operator latest 缺失时只能生成 blocked artifact。
+        nav2_latest = {
+            "latest_result": {
+                "status": "goal_succeeded",
+                "evidence_ref": "o11-nav2-goal-execution-test",
+                "goal_accepted": True,
+                "result_received": True,
+                "result_status": "succeeded",
+                "feedback_sample_count": 8,
+            }
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            payload = upper_robot_api.build_delivery_completion_payload(
+                path=str(Path(temp_dir) / "delivery_completion_latest.json"),
+                request={"confirm_delivery_completion": True, "delivery_evidence_ref": "delivery-test"},
+                nav2_http_status=200,
+                nav2_latest=nav2_latest,
+                operator_http_status=404,
+                operator_latest={},
+            )
+
+        self.assertEqual("blocked_missing_delivery_material", payload["status"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertIn("operator_report_latest_http_200", payload["missing_required_material"])
+        self.assertIn("structured_hil_claims.delivery_success", payload["missing_required_material"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["robot_control_executed"])
+
+    def test_delivery_completion_gate_confirms_only_with_full_material(self) -> None:
+        """送达成功只能由 delivery gate 在 Nav2 与现场材料齐备时合成。"""
+        # 这里模拟已经由独立 endpoint 写好的 latest artifact，gate 本身不发任何运动命令。
+        nav2_latest = {
+            "latest_result": {
+                "status": "goal_succeeded",
+                "evidence_ref": "o11-nav2-goal-execution-test",
+                "goal_accepted": True,
+                "result_received": True,
+                "result_status": "succeeded",
+                "feedback_sample_count": 8,
+            }
+        }
+        claims = {
+            "external_video_recorded": True,
+            "external_video_ref": "field-video-ref",
+            "visible_content_proven": False,
+            "camera_artifacts_ref": "",
+            "wheel_feedback_lr_nonzero_proven": True,
+            "wheel_feedback_ref": "wheel-ref",
+            "physical_motion_lidar_delta_proven": True,
+            "scan_delta_ref": "scan-ref",
+            "real_route_map_proven": True,
+            "route_map_ref": "route-map-ref",
+            "delivery_success": True,
+            "site_state": "operator_confirmed_delivery_complete",
+        }
+        operator_latest = {
+            "latest_result": {
+                "operator_report_status": "ready_for_review",
+                "operator_report": {
+                    "evidence_ref": "operator-report-ref",
+                    "observed_motion": True,
+                    "observed_stop": True,
+                    "structured_hil_claims": claims,
+                },
+            }
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "delivery_completion_latest.json"
+            payload = upper_robot_api.build_delivery_completion_payload(
+                path=str(artifact_path),
+                request={"confirm_delivery_completion": True, "delivery_evidence_ref": "delivery-test"},
+                nav2_http_status=200,
+                nav2_latest=nav2_latest,
+                operator_http_status=200,
+                operator_latest=operator_latest,
+            )
+            persisted = json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        self.assertEqual("delivery_success_confirmed", payload["status"])
+        self.assertTrue(payload["delivery_success"])
+        self.assertEqual([], payload["missing_required_material"])
+        self.assertEqual(payload["delivery_success"], persisted["delivery_success"])
+        self.assertEqual("route-map-ref", payload["operator_report"]["structured_hil_claims"]["route_map_ref"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertFalse(payload["robot_control_executed"])
+        self.assertFalse(payload["sends_motion_commands"])
+
     def test_camera_probe_request_is_whitelisted(self) -> None:
         """camera probe HTTP body 只能影响白名单参数，不能注入任意 argv。"""
         request = upper_robot_api.safe_camera_probe_request(

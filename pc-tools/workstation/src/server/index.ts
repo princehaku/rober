@@ -64,6 +64,7 @@ import type {
   RobotControlMapLifecycleAction,
   RobotControlRadarLifecycleAction,
   RobotControlNavGoalExecutionResponse,
+  RobotControlDeliveryCompleteResponse,
 } from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -216,6 +217,22 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     feedback_sample_count: shortValue(payload?.feedback_sample_count, "0"),
     robot_control_executed: shortValue(payload?.robot_control_executed, "false"),
     delivery_success: shortValue(payload?.delivery_success, "false"),
+  };
+}
+
+function deliveryCompleteKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
+  // delivery completion 是 Nav2 latest + operator report latest 的合成 gate，UI 只展示短摘要。
+  const nav2 = asRecord(payload?.nav2_goal_execution);
+  const operatorReport = asRecord(payload?.operator_report);
+  return {
+    status: shortValue(payload?.status),
+    delivery_success: shortValue(payload?.delivery_success, "false"),
+    nav2_status: shortValue(nav2?.status),
+    nav2_result_status: shortValue(nav2?.result_status),
+    nav2_feedback_sample_count: shortValue(nav2?.feedback_sample_count, "0"),
+    operator_report_status: shortValue(operatorReport?.operator_report_status),
+    operator_evidence_ref: shortValue(operatorReport?.evidence_ref),
+    missing_required_material: shortValue(payload?.missing_required_material),
   };
 }
 
@@ -1425,6 +1442,87 @@ export function createWorkstationApp(): express.Express {
     } catch (error) {
       const reason = error instanceof Error ? shortText(error.message, "nav2_goal_execute_failed") : "nav2_goal_execute_failed";
       res.status(502).json({ ...fallbackBase, proxy_status: "execution_failed", failure_reason: reason, blocked_reasons: [reason] });
+    }
+  });
+
+  workstationApp.post("/api/robot-control/delivery/complete", async (req, res) => {
+    // 交付完成只调用固定 gate；不会发送 Nav2 goal、manual、stop 或底盘运动请求。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const payload = asRecord(req.body);
+    const confirmDeliveryCompletion = payload?.confirm_delivery_completion === true;
+    const requestBody = {
+      confirm_delivery_completion: confirmDeliveryCompletion,
+      delivery_evidence_ref: shortText(payload?.delivery_evidence_ref, ""),
+      operator_notes: shortText(payload?.operator_notes, ""),
+    };
+    const fallbackBase: RobotControlDeliveryCompleteResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_delivery_complete_proxy.v1",
+      proxy_status: "completion_rejected",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+      workstation_endpoint: "/api/robot-control/delivery/complete",
+      remote_endpoint: "/api/delivery/complete",
+      remote_http_status: null,
+      status: "blocked",
+      request_body: requestBody,
+      delivery_key_values: {},
+      failure_reason: normalized.ok ? "" : normalized.reason,
+      blocked_reasons: normalized.ok ? [] : [normalized.reason],
+      hard_dangerous_true_fields: [],
+    };
+    if (!normalized.ok) {
+      res.status(400).json(fallbackBase);
+      return;
+    }
+    if (!confirmDeliveryCompletion) {
+      res.status(400).json({
+        ...fallbackBase,
+        failure_reason: "confirm_delivery_completion_required",
+        blocked_reasons: ["confirm_delivery_completion_required"],
+      });
+      return;
+    }
+    try {
+      const remote = await fetch(endpointUrl(normalized.normalized, "/api/delivery/complete"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(15000),
+      });
+      const remotePayload = asRecord(await remote.json().catch(() => null));
+      const dangerous = scanDangerousTrueFields(remotePayload).filter(
+        (field) =>
+          field !== "delivery_success" &&
+          !field.endsWith(".delivery_success"),
+      );
+      const remoteDeliverySuccess = remotePayload?.delivery_success === true;
+      const responseBody: RobotControlDeliveryCompleteResponse = {
+        ...fallbackBase,
+        proxy_status: remote.ok && dangerous.length === 0 ? "completion_forwarded" : "completion_failed",
+        proof_status: remoteDeliverySuccess ? "proven" : "not_proven",
+        remote_http_status: remote.status,
+        status: remoteDeliverySuccess ? "delivery_success_confirmed" : remote.ok ? "loaded_fail_closed_summary" : "blocked",
+        delivery_success: remoteDeliverySuccess,
+        delivery_key_values: deliveryCompleteKeyValues(remotePayload),
+        failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `delivery_complete_http_status_${remote.status}`,
+        blocked_reasons: [
+          ...(remote.ok ? [] : [`delivery_complete_http_status_${remote.status}`]),
+          ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ],
+        hard_dangerous_true_fields: dangerous,
+      };
+      res.status(responseBody.proxy_status === "completion_forwarded" ? 200 : 502).json(responseBody);
+    } catch (error) {
+      const reason = error instanceof Error ? shortText(error.message, "delivery_complete_failed") : "delivery_complete_failed";
+      res.status(502).json({ ...fallbackBase, proxy_status: "completion_failed", failure_reason: reason, blocked_reasons: [reason] });
     }
   });
 

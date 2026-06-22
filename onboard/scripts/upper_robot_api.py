@@ -51,6 +51,7 @@ SAFE_MAP_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecycle_latest.json"
 DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_goal_execution_latest.json"
+DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH = "/root/rober/onboard/runtime/delivery_completion_latest.json"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
 NAV2_PROOF_PROCESS_BASE_MARGIN_S = 12.0
 NAV2_PROOF_PROCESS_PATH_MARGIN_S = 8.0
@@ -165,6 +166,8 @@ ROUTE_PATHS = {
     "nav2_proof_latest": "/api/nav2/proof/latest",
     "nav2_goal_execute": "/api/nav2/goal/execute",
     "nav2_goal_execution_latest": "/api/nav2/goal/execution/latest",
+    "delivery_complete": "/api/delivery/complete",
+    "delivery_latest": "/api/delivery/latest",
     "nav2_start": "/api/nav2/start",
     "nav2_stop": "/api/nav2/stop",
     "elevator_status": "/api/elevator/status",
@@ -1358,6 +1361,27 @@ def nav2_goal_execution_artifact_info(path: str) -> dict[str, Any]:
             "goal accepted/rejected",
             "bounded result or cancel response",
             "feedback distance remaining samples",
+        ],
+    }
+
+
+def delivery_completion_artifact_info(path: str) -> dict[str, Any]:
+    """送达完成 artifact 只由 delivery gate 写入，不能由 Nav2 或 operator report 单独替代。"""
+    resolved_path = resolve_onboard_runtime_path(path)
+    return {
+        "path": resolved_path,
+        "configured_path": path,
+        "resolved_path": resolved_path,
+        "canonical_path": DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH,
+        "configured_by": "ROBER_DELIVERY_COMPLETION_ARTIFACT_PATH or --delivery-completion-artifact-path",
+        "format": "json",
+        "schema": f"{SCHEMA}.delivery_completion_result",
+        "expected_material": [
+            "latest NavigateToPose goal_succeeded",
+            "operator report ready_for_review",
+            "structured_hil_claims.delivery_success=true",
+            "route/map evidence ref",
+            "motion/stop observation",
         ],
     }
 
@@ -3565,6 +3589,166 @@ def summarize_operator_report_latest_artifact(path: str) -> dict[str, Any]:
     }
 
 
+def build_delivery_completion_payload(
+    *,
+    path: str,
+    request: dict[str, Any],
+    nav2_http_status: int,
+    nav2_latest: dict[str, Any],
+    operator_http_status: int,
+    operator_latest: dict[str, Any],
+) -> dict[str, Any]:
+    """把 Nav2 执行证据和现场报告合成交付完成结论；任一材料缺失都 fail closed。"""
+    nav2_result = nav2_latest.get("latest_result") if isinstance(nav2_latest.get("latest_result"), dict) else {}
+    operator_result = operator_latest.get("latest_result") if isinstance(operator_latest.get("latest_result"), dict) else {}
+    operator_report = operator_result.get("operator_report") if isinstance(operator_result.get("operator_report"), dict) else {}
+    claims = operator_result.get("structured_hil_claims")
+    if not isinstance(claims, dict) and isinstance(operator_report.get("structured_hil_claims"), dict):
+        claims = operator_report["structured_hil_claims"]
+    claims = claims if isinstance(claims, dict) else {}
+
+    missing: list[str] = []
+    if request.get("confirm_delivery_completion") is not True:
+        missing.append("confirm_delivery_completion")
+    if nav2_http_status != 200:
+        missing.append("nav2_goal_execution_latest_http_200")
+    if nav2_result.get("status") != "goal_succeeded":
+        missing.append("nav2_goal_succeeded")
+    if nav2_result.get("goal_accepted") is not True:
+        missing.append("nav2_goal_accepted")
+    if nav2_result.get("result_received") is not True:
+        missing.append("nav2_result_received")
+    if nav2_result.get("result_status") != "succeeded":
+        missing.append("nav2_result_status_succeeded")
+    if operator_http_status != 200:
+        missing.append("operator_report_latest_http_200")
+    if operator_result.get("operator_report_status") != "ready_for_review":
+        missing.append("operator_report_ready_for_review")
+    if operator_report.get("observed_motion") is not True:
+        missing.append("operator_observed_motion")
+    if operator_report.get("observed_stop") is not True:
+        missing.append("operator_observed_stop")
+    if claims.get("delivery_success") is not True:
+        missing.append("structured_hil_claims.delivery_success")
+    if claims.get("real_route_map_proven") is not True:
+        missing.append("structured_hil_claims.real_route_map_proven")
+    if not str(claims.get("route_map_ref") or "").strip():
+        missing.append("structured_hil_claims.route_map_ref")
+    visual_ok = (
+        claims.get("external_video_recorded") is True
+        and bool(str(claims.get("external_video_ref") or "").strip())
+    ) or (
+        claims.get("visible_content_proven") is True
+        and bool(str(claims.get("camera_artifacts_ref") or "").strip())
+    )
+    if not visual_ok:
+        missing.append("external_video_or_visible_camera_ref")
+
+    delivery_success = not missing
+    now = now_ms()
+    payload: dict[str, Any] = {
+        "schema": f"{SCHEMA}.delivery_completion_result",
+        "generated_at_ms": now,
+        "endpoint": ROUTE_PATHS["delivery_complete"],
+        "request": {
+            "method": "POST",
+            "endpoint": ROUTE_PATHS["delivery_complete"],
+            "confirm_delivery_completion": request.get("confirm_delivery_completion") is True,
+            "delivery_evidence_ref": normalize_optional_report_text(request.get("delivery_evidence_ref")),
+            "operator_notes": normalize_optional_report_text(request.get("operator_notes")),
+        },
+        "status": "delivery_success_confirmed" if delivery_success else "blocked_missing_delivery_material",
+        "delivery_success": delivery_success,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "hil_pass": False,
+        "robot_control_executed": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "source": "nav2_goal_execution_plus_operator_report",
+        "nav2_goal_execution": {
+            "http_status": nav2_http_status,
+            "status": nav2_result.get("status"),
+            "evidence_ref": nav2_result.get("evidence_ref"),
+            "goal_accepted": bool(nav2_result.get("goal_accepted")),
+            "result_received": bool(nav2_result.get("result_received")),
+            "result_status": nav2_result.get("result_status"),
+            "feedback_sample_count": int(nav2_result.get("feedback_sample_count") or 0),
+        },
+        "operator_report": {
+            "http_status": operator_http_status,
+            "operator_report_status": operator_result.get("operator_report_status"),
+            "evidence_ref": operator_report.get("evidence_ref"),
+            "observed_motion": operator_report.get("observed_motion"),
+            "observed_stop": operator_report.get("observed_stop"),
+            "structured_hil_claims": claims,
+        },
+        "missing_required_material": missing,
+        "required_material": [
+            "confirm_delivery_completion",
+            "nav2_goal_succeeded",
+            "operator_report_ready_for_review",
+            "operator_observed_motion",
+            "operator_observed_stop",
+            "structured_hil_claims.delivery_success",
+            "structured_hil_claims.real_route_map_proven + route_map_ref",
+            "external_video_or_visible_camera_ref",
+        ],
+        "artifact": {
+            **delivery_completion_artifact_info(path),
+            "written_at_ms": now,
+            "write": {"ok": True, "method": "atomic_replace"},
+        },
+        "boundary": "delivery_success_requires_nav2_goal_succeeded_and_operator_dropoff_confirmation",
+    }
+    write_result = atomic_write_json_artifact(path, payload)
+    payload["artifact"]["write"] = write_result
+    return payload
+
+
+def build_delivery_completion_latest_payload(artifact_status: dict[str, Any], latest_result: dict[str, Any] | None) -> dict[str, Any]:
+    """送达完成 latest 只读 artifact；缺失时显式 fail closed。"""
+    delivery_success = bool(isinstance(latest_result, dict) and latest_result.get("delivery_success") is True)
+    return {
+        "schema": f"{SCHEMA}.delivery_completion_latest_result",
+        "generated_at_ms": now_ms(),
+        "endpoint": ROUTE_PATHS["delivery_latest"],
+        "artifact": artifact_status,
+        "latest_result": latest_result,
+        "delivery_success": delivery_success,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "boundary": "readback_only_delivery_completion_gate",
+    }
+
+
+def read_delivery_completion_latest_artifact(path: str) -> tuple[int, dict[str, Any]]:
+    """读取 delivery completion latest，不触发机器人动作。"""
+    artifact = delivery_completion_artifact_info(path)
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest delivery completion artifact is missing"}})
+        return 404, build_delivery_completion_latest_payload(artifact, None)
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        return 500, build_delivery_completion_latest_payload(artifact, None)
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
+        return 422, build_delivery_completion_latest_payload(artifact, None)
+    if not isinstance(parsed, dict):
+        artifact.update({"ok": False, "status": "json_not_object", "error": {"type": "ValueError", "message": "latest delivery completion JSON root is not an object"}})
+        return 422, build_delivery_completion_latest_payload(artifact, None)
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    return 200, build_delivery_completion_latest_payload(artifact, parsed)
+
+
 def feedback_request_status(
     *,
     serial_open_ok: bool,
@@ -4536,6 +4720,7 @@ class UpperRobotApi:
         localization_artifact_path: str = DEFAULT_LOCALIZATION_ARTIFACT_PATH,
         nav2_lifecycle_artifact_path: str = DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH,
         nav2_goal_execution_artifact_path: str = DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH,
+        delivery_completion_artifact_path: str = DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH,
         elevator_status_artifact_path: str = DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH,
         operator_report_artifact_path: str = DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH,
         radar_start_command: str | None = None,
@@ -4562,6 +4747,7 @@ class UpperRobotApi:
         self.localization_artifact_path = resolve_onboard_runtime_path(localization_artifact_path)
         self.nav2_lifecycle_artifact_path = resolve_onboard_runtime_path(nav2_lifecycle_artifact_path)
         self.nav2_goal_execution_artifact_path = resolve_onboard_runtime_path(nav2_goal_execution_artifact_path)
+        self.delivery_completion_artifact_path = resolve_onboard_runtime_path(delivery_completion_artifact_path)
         self.elevator_status_artifact_path = elevator_status_artifact_path
         self.operator_report_artifact_path = operator_report_artifact_path
         self.radar_start_command = radar_start_command
@@ -5455,6 +5641,24 @@ class UpperRobotApi:
             source="nav2_goal_execution_artifact",
         )
 
+    def delivery_complete(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """确认交付完成；只合成 Nav2 latest 与 operator report latest，不触发机器人动作。"""
+        request = body if isinstance(body, dict) else {}
+        nav2_http_status, nav2_latest = self.nav2_goal_execution_latest()
+        operator_http_status, operator_latest = self.operator_report_latest()
+        return build_delivery_completion_payload(
+            path=self.delivery_completion_artifact_path,
+            request=request,
+            nav2_http_status=nav2_http_status,
+            nav2_latest=nav2_latest,
+            operator_http_status=operator_http_status,
+            operator_latest=operator_latest,
+        )
+
+    def delivery_latest(self) -> tuple[int, dict[str, Any]]:
+        """只读交付完成 latest artifact。"""
+        return read_delivery_completion_latest_artifact(self.delivery_completion_artifact_path)
+
     def nav2_status(self) -> dict[str, Any]:
         """Nav2 lifecycle 状态只读 artifact；真实 graph 查询由外部 collector 写材料。"""
         return {
@@ -5916,6 +6120,10 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("ROBER_NAV2_GOAL_EXECUTION_ARTIFACT_PATH", DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH),
     )
     parser.add_argument(
+        "--delivery-completion-artifact-path",
+        default=os.getenv("ROBER_DELIVERY_COMPLETION_ARTIFACT_PATH", DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH),
+    )
+    parser.add_argument(
         "--elevator-status-artifact-path",
         default=os.getenv("ROBER_ELEVATOR_STATUS_ARTIFACT_PATH", DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH),
     )
@@ -5958,6 +6166,7 @@ async def run_server(args: argparse.Namespace) -> None:
         localization_artifact_path=args.localization_artifact_path,
         nav2_lifecycle_artifact_path=args.nav2_lifecycle_artifact_path,
         nav2_goal_execution_artifact_path=args.nav2_goal_execution_artifact_path,
+        delivery_completion_artifact_path=args.delivery_completion_artifact_path,
         elevator_status_artifact_path=args.elevator_status_artifact_path,
         operator_report_artifact_path=args.operator_report_artifact_path,
         radar_start_command=args.radar_start_command,
@@ -6102,6 +6311,14 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = api.nav2_goal_execution_latest()
         return json_response(payload, status=http_status)
 
+    async def delivery_complete(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(api.delivery_complete(body if isinstance(body, dict) else {}))
+
+    async def delivery_latest(_: web.Request) -> Any:
+        http_status, payload = api.delivery_latest()
+        return json_response(payload, status=http_status)
+
     async def nav2_start(_: web.Request) -> Any:
         return json_response(api.nav2_control("start"))
 
@@ -6181,6 +6398,8 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_get(ROUTE_PATHS["nav2_proof_latest"], nav2_proof_latest)
     app.router.add_post(ROUTE_PATHS["nav2_goal_execute"], nav2_goal_execute)
     app.router.add_get(ROUTE_PATHS["nav2_goal_execution_latest"], nav2_goal_execution_latest)
+    app.router.add_post(ROUTE_PATHS["delivery_complete"], delivery_complete)
+    app.router.add_get(ROUTE_PATHS["delivery_latest"], delivery_latest)
     app.router.add_post(ROUTE_PATHS["nav2_start"], nav2_start)
     app.router.add_post(ROUTE_PATHS["nav2_stop"], nav2_stop)
     app.router.add_get(ROUTE_PATHS["elevator_status"], elevator_status)
