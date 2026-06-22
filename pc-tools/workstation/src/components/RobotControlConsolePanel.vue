@@ -3077,10 +3077,13 @@ async function refreshPlainGoalProgress(): Promise<void> {
 
 function focusPlainGoalProgressTarget(targetId: string): void {
   // 进度区的“去处理”只做本页定位，不能顺手触发行程、送达、手控或任何材料提交。
+  const deliveryTarget = plainDeliveryConfirmMissingLabels.value.includes("送达材料")
+    ? plainDeliveryStatusPanel.value
+    : plainDeliveryFinalPanel.value;
   const targetMap: Record<string, HTMLElement | null> = {
     wheel: plainWheelRecordPanel.value,
     trip: plainTripRunPanel.value,
-    delivery: plainDeliveryStatusPanel.value,
+    delivery: deliveryTarget,
     keyboard: keyboardControlPanel.value,
   };
   const target = targetMap[targetId];

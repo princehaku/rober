@@ -6135,6 +6135,7 @@ describe("App", () => {
 
   it("prefills plain delivery material refs from latest delivery readback without submitting", async () => {
     // 页面刷新后若上位机 latest 已有送达草稿材料，PC 只恢复 ref，不能替现场确认送达。
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/delivery/latest": {
         schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
@@ -6189,6 +6190,12 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("送达材料草稿已保存；请完成下方最终确认。");
     expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去送达卡点");
+    const callsBeforeFocus = mockedFetch.mock.calls.length;
+    const focusCallsBeforeDeliveryClick = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
+    expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeDeliveryClick + 1);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-final-confirm"]').element);
+    expect(mockedFetch.mock.calls.length).toBe(callsBeforeFocus);
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 5 项，不确认）");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：勾选安全三项。");
