@@ -1234,16 +1234,16 @@ const keyboardControlSummary = computed(() => {
   return { state: "未满足", hint: manualBlockedReason.value };
 });
 
-const plainKeyboardMissingSummary = computed(() => {
-  // 普通首屏只给下一步操作名，不暴露 operator report、HIL 或后端字段名。
+const plainKeyboardMissingLabels = computed(() => {
+  // 普通首屏只给普通步骤名，不暴露 operator report、HIL 或后端字段名。
   if (canUseKeyboardControl.value) {
-    return "";
+    return [];
   }
   if (!robotApiBaseUrl.value.trim()) {
-    return "还差：小车连接。";
+    return ["小车连接"];
   }
   if (manualCommandPending.value || loading.value) {
-    return "正在处理上一条请求，请稍等。";
+    return [];
   }
   const missing = new Set<string>();
   if (!keyboardContractReady.value) {
@@ -1268,7 +1268,25 @@ const plainKeyboardMissingSummary = computed(() => {
   if (missing.size === 0 && !operatorMaterialReady.value) {
     missing.add("现场材料读取");
   }
-  return `还差：${Array.from(missing).join("、")}。`;
+  return Array.from(missing);
+});
+
+const plainKeyboardMissingSummary = computed(() => {
+  // pending 态不是缺项，不把按钮文案变成“还差 0 项”。
+  if (canUseKeyboardControl.value) {
+    return "";
+  }
+  if (manualCommandPending.value || loading.value) {
+    return "正在处理上一条请求，请稍等。";
+  }
+  const missingLabels = plainKeyboardMissingLabels.value;
+  return `还差：${missingLabels.join("、")}。`;
+});
+
+const plainKeyboardArmButtonLabel = computed(() => {
+  // 启用按钮本身显示缺项数量，避免现场只看到 disabled 按钮。
+  const missingCount = plainKeyboardMissingLabels.value.length;
+  return missingCount > 0 ? `启用键盘（还差 ${missingCount} 项）` : "启用键盘";
 });
 
 const plainKeyboardNextActionSummary = computed(() => {
@@ -3777,7 +3795,7 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
               <button class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainGoalProgress">复查手控条件</button>
-              <button class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">启用键盘</button>
+              <button class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" @click="stopKeyboardControl('button_stop')">键盘停止</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>

@@ -1535,3 +1535,7 @@ manual 或 `/cmd_vel`，也不把行程成功外推成 delivery success。
 `确认送达（还差 8 项）`；全部确认项满足后恢复为 `确认送达`。按钮文案和 `还差 ... 项` 提示共用同一
 缺项列表，只改善现场可读性，不放宽 `plainDeliveryConfirmReady`，也不自动提交 operator report 或
 `/api/delivery/complete`。
+
+2026-06-22 17:33 起，普通首屏 `启用键盘` 按钮在未满足 gate 时显示缺项数量，例如 `启用键盘（还差 3 项）`；
+全部满足后恢复为 `启用键盘`。按钮文案复用普通键盘缺项列表，只改善 PC 键盘连续手控入口的可读性，
+不放宽 `canArmKeyboardControl`，也不会自动启用键盘、发送 `/api/base/manual` 或 `/cmd_vel`。
