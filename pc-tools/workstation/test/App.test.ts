@@ -5454,6 +5454,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(deliveryStatus.text()).toContain("已预填");
     expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 7 项");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("确认已投放/送达");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
@@ -5489,6 +5491,7 @@ describe("App", () => {
     await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
 
     await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");

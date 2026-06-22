@@ -556,6 +556,27 @@ const deliveryOperatorConfirmationReady = computed(() => {
     && confirmations.delivery_success;
 });
 
+const plainDeliveryConfirmMissingSummary = computed(() => {
+  // 材料准备好之后，把“还差哪几项”翻成普通话，避免现场在 7 个勾选框之间来回猜。
+  if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
+    return "";
+  }
+  const confirmations = deliveryOperatorConfirmations.value;
+  const missingLabels = [
+    { label: "人在旁边可接管", ready: confirmations.operator_present },
+    { label: "周围安全", ready: confirmations.physical_clearance_confirmed },
+    { label: "停止手段就绪", ready: confirmations.emergency_stop_ready },
+    { label: "已观察到到达/移动", ready: confirmations.observed_motion },
+    { label: "已观察到停止", ready: confirmations.observed_stop },
+    { label: "视频和行程材料已核对", ready: confirmations.route_video_refs_verified },
+    { label: "确认已投放/送达", ready: confirmations.delivery_success },
+  ].filter((item) => !item.ready).map((item) => item.label);
+  if (missingLabels.length === 0) {
+    return "全部确认项已勾选，可以提交。";
+  }
+  return `还差 ${missingLabels.length} 项：${missingLabels.join("、")}。`;
+});
+
 const deliveryGateBlockedReasons = computed(() => {
   // 送达缺口可能来自 latest、check 或 complete；合并后给现场人员一个稳定清单。
   return Array.from(new Set([
@@ -3448,6 +3469,9 @@ onBeforeUnmount(() => {
                 <span class="status-chip" :data-state="plainDeliveryConfirmSummary.state">{{ plainDeliveryConfirmSummary.state }}</span>
               </div>
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
+              <p v-if="plainDeliveryConfirmMissingSummary" class="panel-note" data-testid="plain-delivery-confirm-missing">
+                {{ plainDeliveryConfirmMissingSummary }}
+              </p>
               <div class="plain-confirm-grid">
                 <label>
                   <input v-model="deliveryOperatorConfirmations.operator_present" name="deliveryOperatorConfirmOperatorPresent" type="checkbox">
