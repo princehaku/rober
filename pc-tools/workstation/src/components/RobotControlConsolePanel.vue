@@ -1061,6 +1061,7 @@ const plainWheelEvidenceSaveSummary = computed(() => {
 
 const plainWheelReadbackSummary = computed(() => {
   // 只读底盘反馈可以解释“当前为什么还不是非零证据”，但不能替代试动窗口材料。
+  const zeroReadbackNextStep = "这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。";
   const sample = baseFeedbackSamplesResult.value?.sample_key_values;
   if (sample?.t1001_observed_count && sample.t1001_observed_count !== "not_loaded") {
     const left = sample.wheel_feedback_latest_left_speed;
@@ -1068,7 +1069,7 @@ const plainWheelReadbackSummary = computed(() => {
     if (sample.wheel_feedback_lr_nonzero_proven === "true" || sample.wheel_feedback_nonzero_observed === "true") {
       return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
     }
-    return `当前只读轮速是 L/R=${left}/${right}；这还不是非零证据，需要现场试动窗口。`;
+    return `当前只读轮速是 L/R=${left}/${right}；${zeroReadbackNextStep}`;
   }
   const base = robotSummary.value?.readback_summary.base;
   if (!base || base.latest_t1001_observed_count === "not_loaded") {
@@ -1083,7 +1084,7 @@ const plainWheelReadbackSummary = computed(() => {
     return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
   }
   if (Number(base.latest_t1001_observed_count) > 0) {
-    return `当前只读轮速是 L/R=${left}/${right}；这还不是非零证据，需要现场试动窗口。`;
+    return `当前只读轮速是 L/R=${left}/${right}；${zeroReadbackNextStep}`;
   }
   return "";
 });

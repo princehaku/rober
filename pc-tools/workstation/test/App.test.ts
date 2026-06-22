@@ -4084,7 +4084,7 @@ describe("App", () => {
     expect(diagnosticsText).toContain("wheel raw L/R progress");
     expect(diagnosticsText).toContain("static T1001 feedback only");
     expect(diagnosticsText).toContain("next=restore first-jog materials then run wheel nonzero trial");
-    expect(visiblePlainHomeText(wrapper)).toContain("当前只读轮速是 L/R=0/0；这还不是非零证据，需要现场试动窗口。");
+    expect(visiblePlainHomeText(wrapper)).toContain("当前只读轮速是 L/R=0/0；这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，仍需试动读到非零。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
