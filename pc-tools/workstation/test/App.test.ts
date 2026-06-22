@@ -4920,6 +4920,7 @@ describe("App", () => {
     expect(saveWheelButton.attributes("disabled")).toBeUndefined();
     expect(focusSpy).toHaveBeenCalled();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    const focusCallsBeforeSave = focusSpy.mock.calls.length;
     await saveWheelButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4947,8 +4948,11 @@ describe("App", () => {
     expect(String(reportBody.structured_hil_claims.wheel_feedback_ref)).toMatch(/^pc-first-jog-wheel-lr-/);
     expect(visiblePlainHomeText(wrapper)).toContain("轮速和雷达记录已保存；键盘手控材料可复用。");
     expect(visiblePlainHomeText(wrapper)).toContain("轮速和雷达移动证据已保存；后续手控材料可复用。");
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeSave);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-run"]').element);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
   it("explains plain first-jog wheel retry when motion frames keep L/R at zero", async () => {

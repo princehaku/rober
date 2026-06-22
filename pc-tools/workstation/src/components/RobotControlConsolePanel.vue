@@ -3895,6 +3895,11 @@ async function savePlainWheelEvidence(): Promise<void> {
     operatorReportResult.value = plainWheelEvidenceSaveResult.value;
     plainWheelEvidenceSavePending.value = false;
     await refreshConsole();
+    if (plainWheelEvidenceSaveResult.value?.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked") {
+      await nextTick();
+      plainTripRunPanel.value?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+      plainTripRunPanel.value?.focus({ preventScroll: true });
+    }
   }
 }
 

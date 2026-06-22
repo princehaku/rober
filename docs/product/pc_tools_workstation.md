@@ -123,6 +123,7 @@ pc-tools/workstation/
 - 2026-06-23 06:20 起，同一状态下普通首屏 `本轮进度` 主按钮从 `去轮速记录卡点` 改为 `去恢复确认`，轮速行按钮从 `去轮速` 改为 `去恢复`，点击后只滚动并聚焦 `恢复试动确认` 按钮。该跳转不自动点击恢复确认、不提交 operator report、不调用 first-jog/manual/keyboard pulse/stop、Nav2、delivery complete 或 `/cmd_vel`。
 - 2026-06-23 06:35 起，`恢复试动确认` 提交成功后会自动把焦点移到 `开始低速试动读非零 L/R` 按钮，帮助现场按顺序继续采集 wheel raw L/R。该焦点移动只发生在 operator report 代理成功后，不自动点击试动、不调用 first-jog/manual/keyboard pulse/stop、Nav2、delivery complete 或 `/cmd_vel`。
 - 2026-06-23 06:50 起，first-jog 返回 `wheel_feedback_lr_nonzero_proven=true` 后会自动把焦点移到 `保存轮速记录` 按钮，帮助现场把已拿到的 wheel raw L/R 证据写入 operator report。该焦点移动不自动保存、不提交 operator report、不再次调用 first-jog/manual/keyboard pulse/stop、Nav2、delivery complete 或 `/cmd_vel`。
+- 2026-06-23 07:05 起，`保存轮速记录` 成功写入 operator report 后会自动把焦点移到 `行程操作` 面板，帮助现场进入完整 Nav2 路线执行步骤。该焦点移动不自动勾选行程确认、不调用 Nav2 preflight/execute、不发送 first-jog/manual/keyboard pulse/stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-23 01:06 起，普通首屏 `本轮进度` 标题行新增 `去处理卡点` 按钮，自动定位到当前第一项未完成目标对应的普通面板。该按钮只执行本页 scroll/focus，不刷新接口、不执行行程、不确认送达、不发送 manual、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-23 01:09 起，`去处理卡点` 按钮改为动态文案：`去行程卡点`、`去轮速记录卡点`、`去送达卡点` 或 `去键盘手控卡点`，让现场点击前就能知道会跳到哪个普通面板。按钮行为不变，仍只执行本页 scroll/focus，不刷新接口、不执行行程、不确认送达、不发送 manual、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-23 01:12 起，`去送达卡点` 的定位更精确：送达材料还缺时聚焦送达状态/材料区；材料已保存或已预填、但最终确认仍缺项时，优先聚焦 `最终确认` 面板。该按钮仍只执行本页 scroll/focus，不刷新接口、不执行行程、不确认送达、不发送 manual、keyboard pulse、stop 或 `/cmd_vel`。
