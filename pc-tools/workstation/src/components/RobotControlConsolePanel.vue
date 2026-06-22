@@ -84,6 +84,8 @@ const plainMotionPrecheckPending = ref(false);
 const plainMotionPrecheckResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainVisualMaterialPending = ref(false);
 const plainVisualMaterialResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
+const plainFirstJogMaterialRestorePending = ref(false);
+const plainFirstJogMaterialRestoreResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainFirstJogResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const plainExternalVideoRef = ref("");
 const operatorReportEvidenceRef = ref("");
@@ -528,6 +530,12 @@ const firstJogVisualMaterialReady = computed(() => {
   return robotSummary.value?.first_jog_readiness_summary?.visual_material_ready === true;
 });
 
+const firstJogMaterialRestoreReady = computed(() => {
+  // delivery draft 会覆盖 latest operator report；已有视觉材料时允许 operator 重新确认基础安全三项。
+  const firstJog = robotSummary.value?.first_jog_readiness_summary;
+  return firstJog?.status === "blocked_missing_basic_safety" && firstJog.visual_material_ready === true;
+});
+
 const canSendManualMotion = computed(() => {
   // 非 stop 方向必须同时满足地址、checklist、现场材料和“当前无 pending”。
   return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
@@ -597,6 +605,9 @@ const plainMotionSummary = computed(() => {
   if (plainVisualMaterialPending.value) {
     return { state: "记录中", hint: "正在记录现场画面；不会发车。" };
   }
+  if (plainFirstJogMaterialRestorePending.value) {
+    return { state: "确认中", hint: "正在恢复试动前确认；不会发车。" };
+  }
   if (localizationResetResult.value) {
     if (localizationResetResult.value.proxy_status === "refresh_forwarded" && localizationResetResult.value.status !== "blocked") {
       return { state: "已定位", hint: "定位已返回；需要时可直接停止。" };
@@ -611,6 +622,12 @@ const plainMotionSummary = computed(() => {
       return { state: "未试动", hint: "还需要先记录现场画面，小车没有移动。" };
     }
     return { state: "试动失败", hint: "请求被拒绝，小车没有移动。" };
+  }
+  if (plainFirstJogMaterialRestoreResult.value) {
+    if (plainFirstJogMaterialRestoreResult.value.proxy_status === "report_forwarded" && plainFirstJogMaterialRestoreResult.value.status !== "blocked") {
+      return { state: "待试动", hint: "试动前确认已恢复；可以试动一下。" };
+    }
+    return { state: "确认失败", hint: plainFirstJogMaterialRestoreResult.value.failure_reason || "试动前确认恢复失败。" };
   }
   if (plainVisualMaterialResult.value) {
     if (plainVisualMaterialResult.value.proxy_status === "report_forwarded" && plainVisualMaterialResult.value.status !== "blocked") {
@@ -628,6 +645,9 @@ const plainMotionSummary = computed(() => {
     return { state: "处理中", hint: "正在处理请求。" };
   }
   if (!manualCommandResult.value) {
+    if (firstJogMaterialRestoreReady.value) {
+      return { state: "待确认", hint: "已有现场画面；请恢复试动确认后再试动。" };
+    }
     if (firstJogVisualMaterialReady.value) {
       return { state: "待试动", hint: "现场画面已记录；可以试动一下。" };
     }
@@ -1197,6 +1217,44 @@ function plainVisualMaterialRequestBody(): RobotControlOperatorReportRequest {
       real_route_map_proven: false,
       delivery_success: false,
       site_state: "plain_first_jog_visual_ready_for_review",
+    },
+  };
+}
+
+function claimRefFromSummary(value: string | undefined): string {
+  // summary 的格式来自后端 "true; ref=..." 合同；只复用明确为 true 的可追溯 ref。
+  const prefix = "true; ref=";
+  if (!value?.startsWith(prefix)) {
+    return "";
+  }
+  const refValue = value.slice(prefix.length).trim();
+  return refValue && refValue !== "not_loaded" ? refValue : "";
+}
+
+function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRequest {
+  // 恢复试动材料只重写 first-jog 前置项；不伪造轮速、LiDAR 位移、路线或送达成功。
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  const externalVideoRef = claimRefFromSummary(summary?.external_video);
+  const cameraArtifactRef = claimRefFromSummary(summary?.camera_visible);
+  return {
+    operator_present: true,
+    evidence_ref: `plain-first-jog-restore-${Date.now()}`,
+    physical_clearance_confirmed: true,
+    emergency_stop_ready: true,
+    observed_motion: false,
+    observed_stop: true,
+    reported_at: new Date().toISOString(),
+    operator_notes: "plain PC first-jog material restore after delivery draft; does not prove wheel feedback, lidar delta, route map, or delivery success.",
+    structured_hil_claims: {
+      external_video_recorded: Boolean(externalVideoRef),
+      ...(externalVideoRef ? { external_video_ref: externalVideoRef } : {}),
+      visible_content_proven: Boolean(cameraArtifactRef),
+      ...(cameraArtifactRef ? { camera_artifacts_ref: cameraArtifactRef } : {}),
+      wheel_feedback_lr_nonzero_proven: false,
+      physical_motion_lidar_delta_proven: false,
+      real_route_map_proven: false,
+      delivery_success: false,
+      site_state: "plain_first_jog_material_restored_for_trial",
     },
   };
 }
@@ -2059,6 +2117,25 @@ async function submitPlainVisualMaterial(): Promise<void> {
   }
 }
 
+async function restorePlainFirstJogMaterial(): Promise<void> {
+  // 送达草稿会覆盖 latest report；恢复按钮只补 first-jog 前置材料，不发送任何运动命令。
+  if (!robotApiBaseUrl.value.trim() || plainFirstJogMaterialRestorePending.value || operatorReportPending.value || !firstJogMaterialRestoreReady.value) {
+    return;
+  }
+  const requestBody = plainFirstJogMaterialRestoreRequestBody();
+  plainFirstJogMaterialRestorePending.value = true;
+  plainFirstJogResult.value = null;
+  try {
+    plainFirstJogMaterialRestoreResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, requestBody);
+  } catch (err) {
+    plainFirstJogMaterialRestoreResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "plain_first_jog_material_restore_failed", requestBody);
+  } finally {
+    operatorReportResult.value = plainFirstJogMaterialRestoreResult.value;
+    plainFirstJogMaterialRestorePending.value = false;
+    await refreshConsole();
+  }
+}
+
 async function sendPlainFirstJog(): Promise<void> {
   // 试动按钮只调用 first-jog 固定代理；后端 preflight 不通过时不会调用远端 manual。
   if (!robotApiBaseUrl.value.trim() || manualCommandPending.value || loading.value) {
@@ -2653,6 +2730,9 @@ onBeforeUnmount(() => {
             </label>
             <button type="button" :disabled="loading || plainVisualMaterialPending || operatorReportPending || !robotApiBaseUrl.trim() || !plainExternalVideoRef.trim()" @click="submitPlainVisualMaterial">
               记录画面
+            </button>
+            <button type="button" :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim() || !firstJogMaterialRestoreReady" @click="restorePlainFirstJogMaterial">
+              恢复试动确认
             </button>
             <button type="button" :disabled="loading || manualCommandPending || !robotApiBaseUrl.trim()" @click="sendPlainFirstJog">
               试动一下

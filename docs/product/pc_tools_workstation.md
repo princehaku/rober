@@ -1277,3 +1277,12 @@ first-jog/operator report 材料后再运行轮速非零试采。若 manual/firs
 `remote_motion_key_values`，该摘要优先展示 during-motion `feedback_during_motion_t1001_frame_count`、
 raw `latest_L/latest_R` 和 `wheel_feedback_lr_nonzero_proven`；若被 operator report preflight 挡住，
 则直接显示缺失字段，避免现场把静态采样误判成 wheel raw L/R 非零。
+
+2026-06-22 16:25 起，普通 `移动/导航` 卡片新增 `恢复试动确认`。它解决一个现场流程摩擦：
+送达草稿会写入上位机唯一的 latest operator report，保留可见画面 ref 但把
+`operator_present/physical_clearance_confirmed/emergency_stop_ready` 置为 false，从而挡住后续 first-jog
+轮速非零试采。该按钮只在 `first_jog_readiness_summary.status=blocked_missing_basic_safety` 且已有
+visual material 时可用；点击后复用 latest summary 中明确 `true; ref=...` 的外部视频/相机 ref，重新提交
+基础安全三项为 true 的 operator report。它不调用 `/api/base/manual`、`/api/base/first-jog`、`/cmd_vel`
+或 delivery complete，不写 `wheel_feedback_lr_nonzero_proven`、LiDAR delta、route map 或
+`delivery_success=true`；用途只是把 first-jog 从送达草稿覆盖状态恢复到可由现场人员试动的前置状态。

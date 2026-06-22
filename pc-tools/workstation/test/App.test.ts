@@ -3665,6 +3665,90 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("restores first-jog material from existing visual refs without sending motion", async () => {
+    // 送达草稿可能覆盖 latest report；恢复按钮只补 first-jog 前置材料，不触发试动。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "unsafe_or_incomplete";
+    summaryFixture.operator_hil_material_summary.evidence_ref = "delivery-draft-fixture";
+    summaryFixture.operator_hil_material_summary.operator_present = "false";
+    summaryFixture.operator_hil_material_summary.physical_clearance = "false";
+    summaryFixture.operator_hil_material_summary.emergency_stop = "false";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg";
+    summaryFixture.operator_hil_material_summary.delivery_claim = "false";
+    summaryFixture.operator_hil_material_summary.site_state = "delivery_material_draft_not_operator_confirmed";
+    summaryFixture.first_jog_readiness_summary = {
+      status: "blocked_missing_basic_safety",
+      basic_safety_ready: false,
+      visual_material_ready: true,
+      missing_fields: ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready"],
+      next_action: "complete_basic_safety_check",
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/operator/report": {
+        schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+        proxy_status: "report_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/operator/report",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        structured_hil_claims: { delivery_success: false },
+        rejected_fields: [],
+        ignored_fields: [],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    expect(visiblePlainHomeText(wrapper)).toContain("已有现场画面；请恢复试动确认后再试动。");
+
+    const restoreButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "恢复试动确认");
+    expect(restoreButton).toBeTruthy();
+    expect(restoreButton?.attributes("disabled")).toBeUndefined();
+    await restoreButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCall).toBeTruthy();
+    const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(reportBody).toEqual(expect.objectContaining({
+      operator_present: true,
+      physical_clearance_confirmed: true,
+      emergency_stop_ready: true,
+      observed_motion: false,
+      observed_stop: true,
+    }));
+    expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      external_video_recorded: true,
+      external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg",
+      visible_content_proven: true,
+      camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_restore.jpg",
+      wheel_feedback_lr_nonzero_proven: false,
+      physical_motion_lidar_delta_proven: false,
+      delivery_success: false,
+      site_state: "plain_first_jog_material_restored_for_trial",
+    }));
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("records a plain video reference and sends first-jog through the fixed proxy only", async () => {
     // 普通首屏可以走 first-jog 入口，但不会伪造轮速/LiDAR，也不会退回旧 manual 代理。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
