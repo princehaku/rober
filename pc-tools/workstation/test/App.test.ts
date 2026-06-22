@@ -5820,6 +5820,15 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
+    const callsBeforeSafetyShortcut = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-delivery-mark-safety"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect((wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmClearance"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('input[name="deliveryOperatorConfirmEstop"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 4 项");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
+
     await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(true);

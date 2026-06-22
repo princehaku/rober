@@ -2651,6 +2651,13 @@ function focusPlainGoalProgressTarget(targetId: string): void {
   target.focus({ preventScroll: true });
 }
 
+function markDeliveryBasicSafetyConfirmed(): void {
+  // 只减少现场重复勾选；到达、停稳和送达成功仍必须由 operator 分开确认。
+  deliveryOperatorConfirmations.value.operator_present = true;
+  deliveryOperatorConfirmations.value.physical_clearance_confirmed = true;
+  deliveryOperatorConfirmations.value.emergency_stop_ready = true;
+}
+
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
   if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
@@ -3744,6 +3751,9 @@ onBeforeUnmount(() => {
               <div class="simple-status-row">
                 <strong>最终确认</strong>
                 <span class="status-chip" :data-state="plainDeliveryConfirmSummary.state">{{ plainDeliveryConfirmSummary.state }}</span>
+                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-safety" @click="markDeliveryBasicSafetyConfirmed">
+                  勾选安全三项
+                </button>
               </div>
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
               <p v-if="plainDeliveryConfirmMissingSummary" class="panel-note" data-testid="plain-delivery-confirm-missing">
