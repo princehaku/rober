@@ -235,10 +235,16 @@ function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有�
   if (!connection) {
     return { state: "未连接", hint: "先输入地址，再点连接/刷新。" };
   }
-  if (connection.status === "readable" && connection.failed_count === 0 && connection.blocked_count === 0) {
+  if (connection.dangerous_true_fields.length > 0) {
+    return { state: "有异常", hint: "读到危险字段，控制保持锁定。" };
+  }
+  if (connection.loaded_count > 0) {
+    if (connection.failed_count > 0 || connection.blocked_count > 0 || connection.status === "degraded" || connection.status === "blocked") {
+      return { state: "已连接", hint: "已读到小车状态；部分项目未通过，可展开高级诊断。" };
+    }
     return { state: "已连接", hint: "已读到小车状态摘要。" };
   }
-  if (connection.status === "blocked" || connection.failed_count > 0 || connection.blocked_count > 0 || connection.dangerous_true_fields.length > 0) {
+  if (connection.status === "blocked" || connection.failed_count > 0 || connection.blocked_count > 0) {
     return { state: "有异常", hint: "可读到部分信息，但有字段被阻断或失败。" };
   }
   return { state: "未连接", hint: "还没有连上可读状态。" };

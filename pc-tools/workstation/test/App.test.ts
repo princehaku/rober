@@ -3212,7 +3212,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("雷达已运行");
     expect(firstScreenText).toContain("地图");
     expect(firstScreenText).toContain("移动/导航");
-    expect(firstScreenText).toContain("有异常");
+    expect(firstScreenText).toContain("已连接");
+    expect(firstScreenText).toContain("部分项目未通过，可展开高级诊断。");
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("地图列表");
