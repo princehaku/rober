@@ -957,13 +957,17 @@ const plainTripSummary = computed(() => {
 
 const canRunPlainTripPreflight = computed(() => {
   // 预检不发车，但也要求现场先确认，避免普通入口被误当成随手按钮。
-  return !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
 const canRunPlainTripExecution = computed(() => {
   // 真正执行仍由后端 confirm_navigation_execution gate 再次校验。
-  return !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
+
+const plainTripPreflightButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "行程已完成" : "检查行程"));
+const plainTripExecutionButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "行程已完成" : "执行行程"));
+const plainTripLatestButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "重新读取行程" : "读取行程结果"));
 
 const plainGoalProgressPending = computed(() => (
   loading.value
@@ -3855,14 +3859,14 @@ onBeforeUnmount(() => {
               <span>人在旁边、周围安全、停止手段就绪</span>
             </label>
             <div class="simple-status-row">
-              <button type="button" class="secondary compact-stop" :disabled="!canRunPlainTripPreflight" @click="runPlainTripPreflight">
-                检查行程
+              <button type="button" class="secondary compact-stop" :disabled="!canRunPlainTripPreflight" data-testid="plain-trip-preflight" @click="runPlainTripPreflight">
+                {{ plainTripPreflightButtonLabel }}
               </button>
-              <button type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" @click="runPlainTripExecution">
-                执行行程
+              <button type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
+                {{ plainTripExecutionButtonLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" @click="loadNavGoalExecutionLatest">
-                读取行程结果
+              <button type="button" class="secondary compact-stop" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
+                {{ plainTripLatestButtonLabel }}
               </button>
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>

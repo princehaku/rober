@@ -3260,7 +3260,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid^="plain-goal-progress-go-"]')).toHaveLength(4);
     expect(wrapper.find('[data-testid="plain-trip-run"]').exists()).toBe(true);
-    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("读取轮速");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（等非零 L/R）");
@@ -3631,15 +3632,17 @@ describe("App", () => {
     expect(tripPanel.exists()).toBe(true);
     expect(tripPanel.text()).toContain("行程操作");
     expect(tripPanel.text()).toContain("待确认");
-    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "检查行程")?.attributes("disabled")).toBeDefined();
-    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "检查行程")?.attributes("disabled")).toBeUndefined();
-    expect(wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
 
-    await wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "检查行程")?.trigger("click");
+    await wrapper.find('[data-testid="plain-trip-preflight"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     const preflightCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight?"));
@@ -3652,7 +3655,7 @@ describe("App", () => {
       confirm_navigation_preflight: true,
     });
 
-    await wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "执行行程")?.trigger("click");
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     const executeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"));
@@ -3670,6 +3673,11 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("行程已完成");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("行程已完成");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程");
     expect(visiblePlainHomeText(wrapper)).toContain("行程材料已在，点准备送达材料补画面。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -6000,6 +6008,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：勾选安全三项。");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("行程已完成");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("行程已完成");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选安全三项。");
     expect((wrapper.find('input[name="deliveryOperatorEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-draft-smoke-1782102952");
