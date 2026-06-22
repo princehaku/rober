@@ -1453,3 +1453,7 @@ T=1001 wheel raw L/R，例如真实 readback 中的 `L/R=0/0`；该派生只读 
 优先于同一 payload 里可能已经 stale 的 `feedback_samples_latest.latest_t1001_observed_count`。这匹配当前真实
 上位机状态：fresh `/api/base/status` 可读到 12 帧 T=1001 且 L/R 仍为 `0/0`，旧 samples latest artifact 只有
 3 帧且已 stale。该修正只改善普通首屏诊断，不发送 T=130、first-jog、manual、Nav2 或 delivery 请求。
+
+2026-06-22 16:00 起，普通首屏“本轮进度”的 `轮速记录` 项会直接显示当前只读轮速和帧数，例如
+`当前轮速 L/R=0/0，已读到 12 帧，仍需试动读到非零。` 该提示来自 PC summary 或本页刚执行的只读底盘反馈采样，
+用于解释 wheel raw L/R 非零为什么仍未满足；它不触发新的底盘采样、first-jog、manual 或 `/cmd_vel`。

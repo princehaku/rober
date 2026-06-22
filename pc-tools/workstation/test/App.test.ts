@@ -3431,6 +3431,28 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows current wheel L/R and frame count in plain goal progress from summary", async () => {
+    // 本轮进度要直接解释当前 wheel L/R=0/0，避免用户误以为只要有反馈帧就算完成。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "12";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const plainProgress = wrapper.find('[data-testid="plain-goal-progress"]').text();
+    expect(plainProgress).toContain("轮速记录");
+    expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，仍需试动读到非零。");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("raw");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("focuses plain goal progress targets without calling robot APIs", async () => {
     // “去处理”只是把用户带到对应普通面板；不替用户执行行程、确认送达或发送手控。
     const mockedFetch = stubWorkstationFetch();
@@ -3851,7 +3873,10 @@ describe("App", () => {
 
   it("shows raw wheel L/R from base feedback samples without treating T1001 count as nonzero proof", async () => {
     // T=1001 计数只是反馈链路；UI 必须直接显示 L/R=0/0 和 nonzero=false。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
     const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/feedback-samples": {
         schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
         proxy_status: "samples_forwarded",
@@ -3914,6 +3939,7 @@ describe("App", () => {
     expect(diagnosticsText).toContain("static T1001 feedback only");
     expect(diagnosticsText).toContain("next=restore first-jog materials then run wheel nonzero trial");
     expect(visiblePlainHomeText(wrapper)).toContain("当前只读轮速是 L/R=0/0；这还不是非零证据，需要现场试动窗口。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，仍需试动读到非零。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });

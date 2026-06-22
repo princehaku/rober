@@ -779,6 +779,20 @@ const goalClosureChecklist = computed(() => {
   ];
 });
 
+const plainWheelGoalProgressHint = computed(() => {
+  // 轮速进度要显示当前 L/R 和帧数，帮助现场判断是“没读到”还是“读到了但仍为 0/0”。
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  const base = robotSummary.value?.readback_summary.base;
+  const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
+  const frameCount = sample?.t1001_observed_count ?? base?.latest_t1001_observed_count ?? "not_loaded";
+  if (left !== "not_loaded" && right !== "not_loaded") {
+    const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
+    return `当前轮速 L/R=${left}/${right}${frameText}，仍需试动读到非零。`;
+  }
+  return "等待运动窗口读到非零 L/R。";
+});
+
 const plainGoalProgressItems = computed(() => {
   // 普通首屏只展示用户能决策的四件事；工程字段继续留在高级诊断。
   const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
@@ -789,7 +803,7 @@ const plainGoalProgressItems = computed(() => {
       id: "wheel",
       label: "轮速记录",
       state: wheelReady ? "已完成" : "待完成",
-      hint: wheelReady ? "已读到非零 L/R。" : "等待运动窗口读到非零 L/R。",
+      hint: wheelReady ? "已读到非零 L/R。" : plainWheelGoalProgressHint.value,
     },
     {
       id: "trip",
