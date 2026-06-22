@@ -3608,6 +3608,7 @@ def wheel_feedback_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str
     matched_frames: list[dict[str, Any]] = []
     nonzero_frames: list[dict[str, Any]] = []
     latest_pair: dict[str, Any] | None = None
+    latest_nonzero_pair: dict[str, Any] | None = None
     for frame in frames:
         left_speed = finite_feedback_number(frame.get("L"))
         right_speed = finite_feedback_number(frame.get("R"))
@@ -3622,6 +3623,7 @@ def wheel_feedback_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str
         latest_pair = pair
         if abs(left_speed) > 0.0 and abs(right_speed) > 0.0:
             nonzero_frames.append(pair)
+            latest_nonzero_pair = pair
 
     observed = bool(nonzero_frames)
     return {
@@ -3631,12 +3633,23 @@ def wheel_feedback_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str
         "nonzero_frame_count": len(nonzero_frames),
         "lr_nonzero_observed": observed,
         "latest_pair": latest_pair,
+        "latest_nonzero_pair": latest_nonzero_pair,
         "reason": (
             "same T=1001 frame contains finite nonzero L/R wheel feedback"
             if observed
             else "no same T=1001 frame contained finite nonzero L/R wheel feedback"
         ),
     }
+
+
+def t1001_frames_from_feedback_payload(payload: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """从一次反馈 payload 中取出精简 T1001 帧；缺失时返回空列表便于合并。"""
+    if not isinstance(payload, dict):
+        return []
+    frames = payload.get("t1001_feedback_frames")
+    if not isinstance(frames, list):
+        return []
+    return [frame for frame in frames if isinstance(frame, dict)]
 
 
 def feedback_ack_from_fresh_evidence(
@@ -5323,8 +5336,34 @@ class UpperRobotApi:
         # 点动窗口强制限时，任何非 stop 方向都必须进入停车兜底。
         pulse_ms = min(max(requested_pulse_ms, 0), MAX_PULSE_MS)
         command = wheel_command_for_direction(direction, speed)
+        started_monotonic = time.monotonic()
         first = write_serial_json(self.base_port, self.base_baudrate, command)
-        await asyncio.sleep(pulse_ms / 1000.0)
+        feedback_during_motion_attempted = bool(first.get("ok") and direction != "stop" and pulse_ms > 0)
+        if feedback_during_motion_attempted:
+            # 轮速非零必须在运动窗口内读；停车后再读通常只能得到 0/0。
+            motion_read_window_s = clamp_float(
+                body.get("motion_read_window_s"),
+                min(0.22, max(pulse_ms / 1000.0 - 0.05, 0.05)),
+                0.05,
+                min(0.35, max(pulse_ms / 1000.0, 0.05)),
+            )
+            motion_read_timeout_s = clamp_float(body.get("motion_read_timeout_s"), 0.05, 0.01, 0.2)
+            feedback_during_motion = request_base_feedback_once(
+                self.base_port,
+                self.base_baudrate,
+                read_timeout_s=motion_read_timeout_s,
+                read_window_s=motion_read_window_s,
+            )
+        else:
+            feedback_during_motion = skipped_manual_feedback_payload(
+                self.base_port,
+                self.base_baudrate,
+                "manual_motion_feedback_not_attempted",
+            )
+        elapsed_s = time.monotonic() - started_monotonic
+        remaining_s = max(pulse_ms / 1000.0 - elapsed_s, 0.0)
+        if remaining_s > 0:
+            await asyncio.sleep(remaining_s)
         stop = write_serial_json(self.base_port, self.base_baudrate, {"T": 1, "L": 0, "R": 0})
         serial_write_failures = [
             result["error"]
@@ -5347,6 +5386,11 @@ class UpperRobotApi:
                 "skipped_due_to_manual_write_failure",
             )
             feedback_after_stop_attempted = False
+        wheel_feedback_frames = [
+            *t1001_frames_from_feedback_payload(feedback_during_motion),
+            *t1001_frames_from_feedback_payload(feedback_evidence),
+        ]
+        manual_wheel_feedback_summary = wheel_feedback_summary_from_frames(wheel_feedback_frames)
         return {
             "schema": f"{SCHEMA}.base_manual_result",
             "generated_at_ms": now_ms(),
@@ -5362,9 +5406,14 @@ class UpperRobotApi:
             "auto_stop_attempted": True,
             "auto_stop_executed": bool(stop.get("ok")),
             "manual_command_executed": bool(first.get("ok")),
+            "feedback_during_motion_attempted": feedback_during_motion_attempted,
+            "feedback_during_motion": feedback_during_motion,
             "feedback_after_stop_attempted": feedback_after_stop_attempted,
             "feedback_evidence": feedback_evidence,
             "t1001_feedback_status": feedback_evidence.get("t1001_feedback_status"),
+            "manual_wheel_feedback_summary": manual_wheel_feedback_summary,
+            "wheel_feedback_nonzero_observed": manual_wheel_feedback_summary["lr_nonzero_observed"],
+            "wheel_feedback_lr_nonzero_proven": manual_wheel_feedback_summary["lr_nonzero_observed"],
             "feedback_ack": feedback_evidence.get("feedback_ack", t1001_boundary("manual feedback evidence unavailable")),
             "safe_to_control": False,
             "sends_commands": True,

@@ -181,6 +181,36 @@ HIL run 必须在报告中说明：`/imu/data` 与 `T=1001.y` 一一对应（以
 当前仅发布电压（来自 `T=1001.v`）。只要 `v` 存在且是 finite 数值，即使 `y` unavailable，也必须继续发布 `/battery`。不提供当前、SOC、容量与电芯信息。
 HIL run 需记录 `T=1001.v` 与 `/battery` 取样对齐证据。
 
+## 2026-06-22 first-jog in-motion feedback boundary
+
+本轮按 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料复核协议来源：
+`ugv_rpi/base_ctrl.py`、`WAVE_ROVER_V0.9/json_cmd.h`、`movtion_module.h`、
+`uart_ctrl.h`。采用的协议边界仍是 newline JSON UART，项目现场串口为
+`/dev/ttyS5 @ 115200`；vendor Raspberry Pi 示例里的 `/dev/ttyAMA0` 只作为资料来源，
+不能直接写成 Orange Pi 现场路径。
+
+上位机 `/api/base/manual` 现在在非 stop 点动命令写入成功后，会在运动窗口内发送一次
+`T=130` feedback request 并读取 `T=1001`，再执行 `{"T":1,"L":0,"R":0}` stop，
+最后保留停车后反馈。`manual_wheel_feedback_summary` 会合并运动窗口和停车后帧，
+只有同一 `T=1001` 帧内 `L/R` 都是 finite 且非零时，才把
+`wheel_feedback_lr_nonzero_proven=true`。
+
+真实上位机 `root@192.168.1.11:37878`、Robot API `http://192.168.1.11:8787`
+本轮诊断结果：
+
+- PC first-jog `speed=0.04,duration_ms=800`：命令转发成功，运动窗口反馈已尝试，但
+  `T=1001 L/R=0/0`。
+- 直连上位机 `T=1` speed command：`{"T":1,"L":0.12,"R":0.12}` 写入成功并 stop，
+  运动窗口内与停车后 `T=1001 L/R=0/0`。
+- 直连 UART `T=13` ROS command：`{"T":13,"X":0.1,"Z":0}` 与 `{"T":130}` 写入成功，
+  `T=1001 L/R=0/0`。
+- 直连 UART `T=11` PWM command：`{"T":11,"L":60,"R":60}` 与 `{"T":130}` 写入成功，
+  `T=1001 L/R=0/0`。
+
+这些结果说明软件侧已经覆盖“运动窗口内采样”这一证据缺口，但尚未证明真实 wheel raw
+L/R 非零。下一步必须在人工在场条件下检查电机供电、急停、底盘模式、轮子是否离地、
+固件是否需要额外使能，以及 `T=1001 L/R` 是否在当前固件中代表实时轮速。
+
 ## Run-time Validation Checklist
 
 - 确认 Orange Pi 串口与波特率（不要复用 Raspberry Pi 示例路径）。

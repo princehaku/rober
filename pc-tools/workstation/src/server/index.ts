@@ -183,6 +183,23 @@ function baseFeedbackSampleKeyValues(payload: Record<string, unknown> | null): R
   };
 }
 
+function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
+  // 上位机 manual 响应里的 during-motion 反馈是最贴近真实点动窗口的 wheel material。
+  const wheelSummary = asRecord(payload?.manual_wheel_feedback_summary);
+  const latestPair = asRecord(wheelSummary?.latest_nonzero_pair) ?? asRecord(wheelSummary?.latest_pair);
+  return {
+    wheel_feedback_lr_nonzero_proven: shortValue(payload?.wheel_feedback_lr_nonzero_proven, "false"),
+    wheel_feedback_nonzero_observed: shortValue(payload?.wheel_feedback_nonzero_observed, "false"),
+    wheel_feedback_nonzero_frame_count: shortValue(wheelSummary?.nonzero_frame_count, "0"),
+    wheel_feedback_latest_left_speed: shortValue(latestPair?.left_speed, "not_loaded"),
+    wheel_feedback_latest_right_speed: shortValue(latestPair?.right_speed, "not_loaded"),
+    feedback_during_motion_attempted: shortValue(payload?.feedback_during_motion_attempted, "false"),
+    feedback_after_stop_attempted: shortValue(payload?.feedback_after_stop_attempted, "false"),
+    manual_command_executed: shortValue(payload?.manual_command_executed, "false"),
+    auto_stop_executed: shortValue(payload?.auto_stop_executed, "false"),
+  };
+}
+
 function baseFeedbackSamplesFailure(sourceBaseUrl: string, reason: string): RobotControlBaseFeedbackSamplesProxyResponse {
   // 本机拒绝时不能触发任何串口请求；响应仍保持完整 fail-closed 形状。
   return {
@@ -370,15 +387,20 @@ function buildMotionEvidenceGaps(
   status: RobotControlEvidenceCaptureStatus,
   afterReadback: RobotControlEvidenceReadbackSummary,
   preflightReason = "",
+  remoteMotionKeyValues: Record<string, string> = {},
 ): string[] {
   // gap 是下一步补证据清单，不是放行依据；stop 永远不是运动证明。
   if (commandKind === "stop") {
     return ["stop_command_not_motion_proof"];
   }
+  const remoteWheelFeedbackObserved =
+    remoteMotionKeyValues.wheel_feedback_lr_nonzero_proven === "true"
+    || remoteMotionKeyValues.wheel_feedback_nonzero_observed === "true";
   const gaps = [
     preflightReason ? "motion_command_not_forwarded" : "",
     status === "captured" ? "" : "before_after_evidence_snapshot_incomplete",
-    evidenceKeyTrue(afterReadback, "base_status", ["wheel_feedback_lr_nonzero_proven", "wheel_feedback_nonzero_observed"])
+    remoteWheelFeedbackObserved
+      || evidenceKeyTrue(afterReadback, "base_status", ["wheel_feedback_lr_nonzero_proven", "wheel_feedback_nonzero_observed"])
       || evidenceKeyTrue(afterReadback, "base_feedback_samples_latest", ["wheel_feedback_lr_nonzero_proven", "wheel_feedback_nonzero_observed"])
       ? ""
       : "wheel_feedback_lr_nonzero_not_proven",
@@ -394,6 +416,7 @@ function buildEvidenceCapture(
   commandKind: "manual" | "stop",
   endpoints: RobotControlEvidenceEndpointCapture[],
   preflightReason = "",
+  remoteMotionKeyValues: Record<string, string> = {},
 ): BaseCommandEvidenceCapture {
   // evidence_capture_* 字段集中生成，保证成功、失败、本地拒绝三条路径合同一致。
   const status = evidenceStatus(endpoints, preflightReason);
@@ -409,7 +432,7 @@ function buildEvidenceCapture(
     before_readback: beforeReadback,
     after_readback: afterReadback,
     motion_evidence_summary: buildMotionEvidenceSummary(commandKind, status),
-    motion_evidence_gaps: buildMotionEvidenceGaps(commandKind, status, afterReadback, preflightReason),
+    motion_evidence_gaps: buildMotionEvidenceGaps(commandKind, status, afterReadback, preflightReason, remoteMotionKeyValues),
   };
 }
 
@@ -941,7 +964,8 @@ export function createWorkstationApp(): express.Express {
       confirm_hil_checklist: true,
     });
     const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-    const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+    const remoteMotionKeyValues = baseManualMotionKeyValues(remote.payload);
+    const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence], "", remoteMotionKeyValues);
     if (remote.error) {
       res.status(502).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", remote.error, direction, speed, durationMs, confirmHilChecklist, evidenceCapture, operatorReportPreflight));
       return;
@@ -980,6 +1004,7 @@ export function createWorkstationApp(): express.Express {
         max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
         allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
       },
+      remote_motion_key_values: remoteMotionKeyValues,
       ...evidenceCapture,
       failure_reason:
         dangerous.length > 0
@@ -1062,7 +1087,8 @@ export function createWorkstationApp(): express.Express {
       confirm_hil_checklist: true,
     });
     const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-    const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+    const remoteMotionKeyValues = baseManualMotionKeyValues(remote.payload);
+    const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence], "", remoteMotionKeyValues);
     if (remote.error) {
       res.status(502).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", remote.error, direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
@@ -1101,6 +1127,7 @@ export function createWorkstationApp(): express.Express {
         max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
         allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
       },
+      remote_motion_key_values: remoteMotionKeyValues,
       ...evidenceCapture,
       failure_reason:
         dangerous.length > 0

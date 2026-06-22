@@ -713,3 +713,23 @@ probe 的证据闭环：`camera_first_frame_probe.py` 只有在 `visible_content
   `/root/rober/onboard/runtime/camera/first_frame_probe_1782060889824.jpg`。
 - 本轮没有把相机可见样张解释成路线关键帧、视觉定位、障碍识别或交付成功；
   它只满足 first-jog 的 `external_video_or_visible_camera` 前置材料。
+
+## 2026-06-22 stale peer release before first-jog visual material
+
+本轮复测 PC first-jog 前置视觉材料时，`/api/camera/first-frame/probe` 一度返回
+HTTP 503 `open_failed`。排查发现 `/dev/video1` 被 stale WebRTC peer
+`f040d79c10d4` 持有，peer 已存在约 9 小时且 `frames_read=0`。通过 PC proxy 调用
+`POST /api/robot-control/camera/peers/f040d79c10d4/close` 后，重新执行
+first-frame probe 得到：
+
+- `remote_http_status=200`
+- `status=frame_read`
+- `visible_content_proven=true`
+- `sample_path=/root/rober/onboard/runtime/camera/first_frame_probe_1782096252146.jpg`
+- `mean_luma=7.7865`
+- `dynamic_range_luma=48.983`
+- `non_black_ratio=0.190534`
+
+这份样张随后作为 operator report `evidence_ref=first-jog-visual-1782096252146`
+的视觉材料，使 first-jog readiness 从缺少视觉材料推进到 `ready_for_first_jog`。
+该材料仍只证明当前相机链路有可见样张，不证明检测、定位、避障、完整路线或交付成功。

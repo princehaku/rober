@@ -1102,3 +1102,37 @@ Get-ChildItem -Path pc-tools -Recurse -File -Include *.py | Where-Object { $_.Fu
 - `root_causes=[]`
 
 PC summary 复验显示 `o3_proof_summary.path_generated=true`、`path_generation_succeeded=true`、`path_point_count=31`，但安全状态仍保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`，键盘和 NavigateToPose 真实执行仍锁定。当前 `first_jog_readiness_summary.status=blocked_missing_visual_material`，缺 `external_video_or_visible_camera`；因此本轮不证明 wheel raw L/R 非零，也不证明 delivery success。
+
+## 2026-06-22 First-Jog In-Motion Wheel Feedback Readback
+
+`sprints/2026.06.22_10-50_first_jog_inmotion_feedback/` 把 first-jog 从“停车后读反馈”
+调整为“点动窗口内读一次反馈、再强制 stop、最后再读停车反馈”。PC proxy 会把上位机
+manual 响应里的 `manual_wheel_feedback_summary` 摘成 `remote_motion_key_values`，
+高级诊断展示 `motion wheel feedback`，并在计算 `motion_evidence_gaps` 时优先参考
+点动窗口内的 wheel material，避免停车后的 `0/0` 覆盖真实运动窗口证据。
+
+真实上位机连接默认地址 `http://192.168.1.11:8787` 后，本轮先关闭 stale WebRTC peer
+`f040d79c10d4`，再通过 PC first-frame probe 重新取得可见样张：
+
+- `remote_http_status=200`
+- `status=frame_read`
+- `visible_content_proven=true`
+- `sample_path=/root/rober/onboard/runtime/camera/first_frame_probe_1782096252146.jpg`
+
+随后提交 operator report `evidence_ref=first-jog-visual-1782096252146`，
+PC summary 的 first-jog 状态变为 `ready_for_first_jog`。真实 PC first-jog
+`direction=forward`、`speed=0.04`、`duration_ms=800` 成功转发到上位机，
+`manual_command_executed=true`、`auto_stop_executed=true`、
+`feedback_during_motion_attempted=true`，但本轮实测 `T=1001` 的 `L/R` 仍为 `0/0`，
+所以 `wheel_feedback_lr_nonzero_proven=false`、`delivery_success=false`、
+`primary_actions_enabled=false` 仍保持锁定。
+
+本轮进一步直连上位机做了三条低风险诊断，均在发送后执行 stop：
+
+- `T=1`：`{"T":1,"L":0.12,"R":0.12}`，点动窗口内与停车后 `T=1001 L/R=0/0`。
+- `T=13`：`{"T":13,"X":0.1,"Z":0}`，随后请求 `T=130`，`T=1001 L/R=0/0`。
+- `T=11`：`{"T":11,"L":60,"R":60}`，随后请求 `T=130`，`T=1001 L/R=0/0`。
+
+因此 PC 易用性和证据读回链路继续推进，但 wheel raw L/R 非零、完整 Nav2 路线执行和
+delivery success 仍不是已完成能力；下一轮应在人工现场确认电机使能、供电、急停、模式、
+底盘架空/落地状态和固件反馈语义后继续 HIL。

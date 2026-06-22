@@ -2913,6 +2913,8 @@ onBeforeUnmount(() => {
             <dd>{{ listText(manualCommandResult?.evidence_capture_blocked_reasons, "none") }}</dd>
             <dt>motion evidence gaps</dt>
             <dd>{{ listText(manualCommandResult?.motion_evidence_gaps, "none") }}</dd>
+            <dt>motion wheel feedback</dt>
+            <dd>{{ recordText(manualCommandResult?.remote_motion_key_values) }}</dd>
             <dt>before readback</dt>
             <dd>{{ evidenceReadbackText(manualCommandResult?.before_readback) }}</dd>
             <dt>after readback</dt>

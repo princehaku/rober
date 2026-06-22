@@ -181,6 +181,48 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(status["primary_actions_enabled"])
         self.assertFalse(status["robot_control_executed"])
 
+    def test_manual_control_samples_wheel_feedback_during_motion_window(self) -> None:
+        """manual 点动必须在停车前采样轮速，避免动作后 0/0 覆盖真实运动材料。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        during_feedback = {
+            "t1001_feedback_status": "observed",
+            "t1001_feedback_frames": [{"T": 1001, "L": 0.04, "R": 0.04, "y": "null"}],
+            "feedback_ack": {"t1001_observed": True},
+        }
+        after_feedback = {
+            "t1001_feedback_status": "observed",
+            "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
+            "feedback_ack": {"t1001_observed": True},
+        }
+
+        with mock.patch.object(upper_robot_api, "write_serial_json", return_value={"ok": True, "bytes_written": 20}):
+            with mock.patch.object(upper_robot_api, "request_base_feedback_once", side_effect=[during_feedback, after_feedback]):
+                payload = asyncio.run(
+                    api.manual_control(
+                        {
+                            "direction": "forward",
+                            "speed": 0.04,
+                            "duration_ms": 300,
+                            "motion_read_window_s": 0.05,
+                        }
+                    )
+                )
+
+        self.assertTrue(payload["manual_command_executed"])
+        self.assertTrue(payload["auto_stop_executed"])
+        self.assertTrue(payload["feedback_during_motion_attempted"])
+        self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(1, payload["manual_wheel_feedback_summary"]["nonzero_frame_count"])
+        self.assertEqual(0.04, payload["manual_wheel_feedback_summary"]["latest_nonzero_pair"]["left_speed"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+
     def test_operator_report_persists_structured_hil_claims_without_hil_pass(self) -> None:
         """结构化 HIL 字段必须可机器回读，但 report 本身仍不是 HIL pass。"""
         # 这些字段来自人工现场材料；即使全部声明为 true，也只能作为 claim 保存。
