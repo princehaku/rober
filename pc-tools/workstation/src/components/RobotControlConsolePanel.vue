@@ -694,6 +694,9 @@ const plainDeliveryConfirmSummary = computed(() => {
   if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "待材料", hint: "先准备送达材料，再做最终确认。" };
   }
+  if (operatorReportResult.value?.structured_hil_claims?.site_state === "delivery_material_draft_not_operator_confirmed") {
+    return { state: "待确认", hint: "送达材料已保存；现场逐项确认后再提交。" };
+  }
   if (!deliveryOperatorConfirmationReady.value) {
     return { state: "待勾选", hint: "逐项确认后才能提交送达结果。" };
   }

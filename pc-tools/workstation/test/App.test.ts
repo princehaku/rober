@@ -5800,6 +5800,7 @@ describe("App", () => {
     }));
     expect(deliveryStatus.text()).toContain("已保存");
     expect(deliveryStatus.text()).toContain("仍需现场最终确认");
+    expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
