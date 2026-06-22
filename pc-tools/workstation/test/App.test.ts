@@ -3242,7 +3242,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("行程操作");
     expect(firstScreenText).toContain("先勾选行程前确认，再检查或执行。");
     expect(firstScreenText).toContain("先勾选确认");
-    expect(firstScreenText).toContain("读取行程结果");
+    expect(firstScreenText).toContain("读取行程结果（只读）");
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
@@ -3737,7 +3737,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("行程已完成");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程");
+    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程（只读）");
     expect(visiblePlainHomeText(wrapper)).toContain("行程材料已在，点准备送达材料补画面。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -6183,7 +6183,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("行程已完成");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程");
+    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选安全三项。");
     expect((wrapper.find('input[name="deliveryOperatorEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-draft-smoke-1782102952");

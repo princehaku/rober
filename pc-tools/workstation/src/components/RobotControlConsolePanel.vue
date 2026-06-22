@@ -1077,7 +1077,7 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   return plainTripSafetyConfirmed.value ? "执行行程" : "先勾选确认";
 });
-const plainTripLatestButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "重新读取行程" : "读取行程结果"));
+const plainTripLatestButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "重新读取行程（只读）" : "读取行程结果（只读）"));
 
 const plainGoalProgressPending = computed(() => (
   loading.value
