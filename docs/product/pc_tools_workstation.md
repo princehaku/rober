@@ -1209,3 +1209,13 @@ PC guard 对这个固定 endpoint 只放行预期会出现的 `robot_control_exe
 `primary_actions_enabled=true`、`delivery_success=true`、`hil_pass=true`、`calls_base_manual=true`
 等不应由导航 proof 自动声明的字段。Nav2 goal succeeded 只能证明路线执行链路可用；它不等于
 垃圾投放、到桶确认或 delivery success。
+
+2026-06-22 12:15 起，PC 高级诊断补充固定只读入口
+`GET /api/robot-control/nav2/goal/execution/latest?baseUrl=<robot-api-base-url>`，只转发到上位机
+`GET /api/nav2/goal/execution/latest`。它用于页面刷新后找回最近 NavigateToPose artifact 的
+`evidence_ref`，并让“使用最近 Nav2 ref”同时支持刚执行结果和上位机 latest 结果，预填
+送达 operator report 的 `route_map_ref` 与 `delivery_evidence_ref`。该 latest 入口不会重新发送
+Nav2 goal，不调用 `/api/base/manual` 或 `/cmd_vel`，顶层继续固定
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+`robot_control_executed=false`；只有送达视频、route/map ref、现场 observed motion/stop 等人工材料
+补齐后，才能再走 delivery gate。

@@ -31,6 +31,7 @@ import type {
   RobotControlNavGoalPreflightResponse,
   RobotControlNavGoalExecutionRequest,
   RobotControlNavGoalExecutionResponse,
+  RobotControlNavGoalExecutionLatestResponse,
   RobotControlDeliveryCompleteRequest,
   RobotControlDeliveryCompleteResponse,
   RobotControlOperatorReportProxyResponse,
@@ -110,6 +111,7 @@ const API_ENDPOINTS = {
   robotControlNav2ProofRefresh: "/api/robot-control/nav2/proof/refresh",
   robotControlNav2GoalPreflight: "/api/robot-control/nav2/goal/preflight",
   robotControlNav2GoalExecute: "/api/robot-control/nav2/goal/execute",
+  robotControlNav2GoalExecutionLatest: "/api/robot-control/nav2/goal/execution/latest",
   robotControlDeliveryComplete: "/api/robot-control/delivery/complete",
   robotControlLocalizeReset: "/api/robot-control/localize/reset",
   robotControlMapList: "/api/robot-control/map/list",
@@ -544,6 +546,13 @@ export async function postRobotControlNav2GoalExecute(
   return postJson<RobotControlNavGoalExecutionResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2GoalExecute, baseUrl),
     body,
+  );
+}
+
+export async function getRobotControlNav2GoalExecutionLatest(baseUrl: string): Promise<RobotControlNavGoalExecutionLatestResponse> {
+  // latest 只读取最近 NavigateToPose artifact；不会再次执行 goal。
+  return loadJson<RobotControlNavGoalExecutionLatestResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2GoalExecutionLatest, baseUrl),
   );
 }
 

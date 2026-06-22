@@ -5514,6 +5514,60 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Nav2 latest execution proxy reads fixed GET artifact without replaying navigation", async () => {
+    // latest 入口只帮 PC 页面找回最近 NavigateToPose artifact ref，不重新发送 Nav2 goal。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest_result",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_result: {
+            status: "goal_succeeded",
+            evidence_ref: "o11-nav2-goal-execution-test",
+            nav2_goal_execution_proven: true,
+            goal_accepted: true,
+            result_received: true,
+            result_status: "succeeded",
+            feedback_sample_count: 8,
+            robot_control_executed: true,
+            sends_motion_commands: true,
+            delivery_success: false,
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/goal/execution/latest?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        goal_execution_key_values: Record<string, string>;
+        hard_dangerous_true_fields: string[];
+        robot_control_executed: boolean;
+        delivery_success: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("latest_loaded");
+      expect(body.goal_execution_key_values.status).toBe("goal_succeeded");
+      expect(body.goal_execution_key_values.evidence_ref).toBe("o11-nav2-goal-execution-test");
+      expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
+      expect(body.goal_execution_key_values.delivery_success).toBe("false");
+      expect(body.hard_dangerous_true_fields).toEqual([]);
+      expect(body.robot_control_executed).toBe(false);
+      expect(body.delivery_success).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/nav2/goal/execution/latest"]);
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("Robot Control summary rejects unsafe URLs and dangerous true fields", async () => {
     // URL 和 payload 任一层不安全都必须 fail-closed，防止控制台被误用为控制代理。
     const missing = await buildRobotControlSummary("");

@@ -12,6 +12,7 @@ import {
   postRobotControlMapStart,
   postRobotControlMapSave,
   postRobotControlLocalizeReset,
+  getRobotControlNav2GoalExecutionLatest,
   postRobotControlNav2GoalExecute,
   postRobotControlNav2GoalPreflight,
   postRobotControlMapProofRefresh,
@@ -32,6 +33,7 @@ import type {
   RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlDeliveryCompleteResponse,
   RobotControlMapLifecycleResponse,
+  RobotControlNavGoalExecutionLatestResponse,
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalPreflightResponse,
   RobotControlOperatorReportProxyResponse,
@@ -61,6 +63,7 @@ const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null)
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(null);
 const navGoalExecutionResult = ref<RobotControlNavGoalExecutionResponse | null>(null);
+const navGoalExecutionLatestResult = ref<RobotControlNavGoalExecutionLatestResponse | null>(null);
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
 const localizationResetResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
@@ -135,6 +138,7 @@ const mapRefreshPending = ref(false);
 const nav2RefreshPending = ref(false);
 const navGoalPreflightPending = ref(false);
 const navGoalExecutionPending = ref(false);
+const navGoalExecutionLatestPending = ref(false);
 const deliveryCompletionPending = ref(false);
 const localizationResetPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
@@ -841,6 +845,31 @@ function makeNavGoalExecutionFallback(reason: string): RobotControlNavGoalExecut
       result_timeout_s: navGoalExecutionTimeoutS.value,
       confirm_navigation_execution: confirmNavigationExecution.value,
     },
+    goal_execution_key_values: {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+function makeNavGoalExecutionLatestFallback(reason: string): RobotControlNavGoalExecutionLatestResponse {
+  // latest 读取失败只代表“无法预填材料”，不能被解释成导航重新执行失败。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+    proxy_status: "latest_failed",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+    remote_endpoint: "/api/nav2/goal/execution/latest",
+    remote_http_status: null,
+    status: "blocked",
     goal_execution_key_values: {},
     failure_reason: reason,
     blocked_reasons: [reason],
@@ -1599,6 +1628,21 @@ async function runNavGoalExecution(): Promise<void> {
   }
 }
 
+async function loadNavGoalExecutionLatest(): Promise<void> {
+  // 读取最近执行结果只走固定 GET 代理；用于页面刷新后补回 route/map evidence ref。
+  if (!robotApiBaseUrl.value.trim() || navGoalExecutionLatestPending.value) {
+    return;
+  }
+  navGoalExecutionLatestPending.value = true;
+  try {
+    navGoalExecutionLatestResult.value = await getRobotControlNav2GoalExecutionLatest(robotApiBaseUrl.value);
+  } catch (err) {
+    navGoalExecutionLatestResult.value = makeNavGoalExecutionLatestFallback(err instanceof Error ? err.message : "nav_goal_execution_latest_request_failed");
+  } finally {
+    navGoalExecutionLatestPending.value = false;
+  }
+}
+
 async function completeDelivery(): Promise<void> {
   // delivery gate 只合成最近 Nav2 执行和 operator report；按钮本身不发送运动命令。
   if (!robotApiBaseUrl.value.trim() || deliveryCompletionPending.value) {
@@ -1621,7 +1665,8 @@ async function completeDelivery(): Promise<void> {
 
 function fillDeliveryRouteRefFromLatestNav2(): void {
   // 最近 Nav2 execution evidence_ref 可作为 route_map_ref 候选；现场仍需自己确认送达和视频材料。
-  const nav2Ref = navGoalExecutionResult.value?.goal_execution_key_values.evidence_ref;
+  const nav2Ref = navGoalExecutionResult.value?.goal_execution_key_values.evidence_ref
+    ?? navGoalExecutionLatestResult.value?.goal_execution_key_values.evidence_ref;
   if (nav2Ref && nav2Ref !== "not_loaded") {
     deliveryOperatorRouteMapRef.value = nav2Ref;
     deliveryEvidenceRef.value = `delivery-confirmation-${nav2Ref}`;
@@ -2722,6 +2767,11 @@ onBeforeUnmount(() => {
               执行导航目标（高级）
             </button>
           </form>
+          <div class="robot-control-form">
+            <button class="secondary" type="button" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" @click="loadNavGoalExecutionLatest">
+              读取最近 Nav2 结果（高级）
+            </button>
+          </div>
           <form class="robot-control-form" @submit.prevent="completeDelivery">
             <label>
               <span>送达证据 ref</span>
@@ -2748,7 +2798,7 @@ onBeforeUnmount(() => {
               <span>route/map ref</span>
               <input v-model="deliveryOperatorRouteMapRef" name="deliveryOperatorRouteMapRef" maxlength="512" placeholder="o11-nav2-goal-execution-...">
             </label>
-            <button class="secondary" type="button" :disabled="!navGoalExecutionResult?.goal_execution_key_values.evidence_ref" @click="fillDeliveryRouteRefFromLatestNav2">
+            <button class="secondary" type="button" :disabled="!(navGoalExecutionResult?.goal_execution_key_values.evidence_ref || navGoalExecutionLatestResult?.goal_execution_key_values.evidence_ref)" @click="fillDeliveryRouteRefFromLatestNav2">
               使用最近 Nav2 ref
             </button>
             <label class="checkbox-inline">
@@ -2802,6 +2852,14 @@ onBeforeUnmount(() => {
             <dd>{{ navGoalExecutionResult?.failure_reason || "none" }}</dd>
             <dt>goal execution blocked reasons</dt>
             <dd>{{ listText(navGoalExecutionResult?.blocked_reasons, "none") }}</dd>
+            <dt>goal latest pending</dt>
+            <dd>{{ navGoalExecutionLatestPending ? "pending" : "idle" }}</dd>
+            <dt>goal latest status</dt>
+            <dd>{{ navGoalExecutionLatestResult?.proxy_status ?? "not_loaded" }} / {{ navGoalExecutionLatestResult?.goal_execution_key_values.status ?? "not_loaded" }}</dd>
+            <dt>goal latest keys</dt>
+            <dd>{{ recordText(navGoalExecutionLatestResult?.goal_execution_key_values) }}</dd>
+            <dt>goal latest failure</dt>
+            <dd>{{ navGoalExecutionLatestResult?.failure_reason || "none" }}</dd>
             <dt>delivery gate pending</dt>
             <dd>{{ deliveryCompletionPending ? "pending" : "idle" }}</dd>
             <dt>delivery gate status</dt>

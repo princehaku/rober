@@ -64,6 +64,7 @@ import type {
   RobotControlMapLifecycleAction,
   RobotControlRadarLifecycleAction,
   RobotControlNavGoalExecutionResponse,
+  RobotControlNavGoalExecutionLatestResponse,
   RobotControlDeliveryCompleteResponse,
 } from "../shared/contracts";
 
@@ -217,17 +218,17 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
   const latestResult = asRecord(payload?.latest_result);
   const cancelResponse = asRecord(latestResult?.cancel_response);
   return {
-    status: shortValue(payload?.status),
+    status: shortValue(latestResult?.status ?? payload?.status),
     evidence_ref: shortValue(payload?.evidence_ref ?? latestResult?.evidence_ref),
-    nav2_goal_execution_proven: shortValue(payload?.nav2_goal_execution_proven, "false"),
-    goal_accepted: shortValue(payload?.goal_accepted),
-    result_received: shortValue(payload?.result_received),
-    result_status: shortValue(payload?.result_status),
-    cancel_requested: shortValue(payload?.cancel_requested),
+    nav2_goal_execution_proven: shortValue(payload?.nav2_goal_execution_proven ?? latestResult?.nav2_goal_execution_proven, "false"),
+    goal_accepted: shortValue(payload?.goal_accepted ?? latestResult?.goal_accepted),
+    result_received: shortValue(payload?.result_received ?? latestResult?.result_received),
+    result_status: shortValue(payload?.result_status ?? latestResult?.result_status),
+    cancel_requested: shortValue(payload?.cancel_requested ?? latestResult?.cancel_requested),
     cancel_accepted: shortValue(cancelResponse?.accepted, "false"),
-    feedback_sample_count: shortValue(payload?.feedback_sample_count, "0"),
-    robot_control_executed: shortValue(payload?.robot_control_executed, "false"),
-    delivery_success: shortValue(payload?.delivery_success, "false"),
+    feedback_sample_count: shortValue(payload?.feedback_sample_count ?? latestResult?.feedback_sample_count, "0"),
+    robot_control_executed: shortValue(payload?.robot_control_executed ?? latestResult?.robot_control_executed, "false"),
+    delivery_success: shortValue(payload?.delivery_success ?? latestResult?.delivery_success, "false"),
   };
 }
 
@@ -1453,6 +1454,70 @@ export function createWorkstationApp(): express.Express {
     } catch (error) {
       const reason = error instanceof Error ? shortText(error.message, "nav2_goal_execute_failed") : "nav2_goal_execute_failed";
       res.status(502).json({ ...fallbackBase, proxy_status: "execution_failed", failure_reason: reason, blocked_reasons: [reason] });
+    }
+  });
+
+  workstationApp.get("/api/robot-control/nav2/goal/execution/latest", async (req, res) => {
+    // latest 只读最近 NavigateToPose artifact，用于送达材料预填；不发送新的 Nav2 goal。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const fallbackBase: RobotControlNavGoalExecutionLatestResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+      proxy_status: "latest_rejected",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+      workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+      remote_endpoint: "/api/nav2/goal/execution/latest",
+      remote_http_status: null,
+      status: "blocked",
+      goal_execution_key_values: {},
+      failure_reason: normalized.ok ? "" : normalized.reason,
+      blocked_reasons: normalized.ok ? [] : [normalized.reason],
+      hard_dangerous_true_fields: [],
+    };
+    if (!normalized.ok) {
+      res.status(400).json(fallbackBase);
+      return;
+    }
+    try {
+      const remote = await fetch(endpointUrl(normalized.normalized, "/api/nav2/goal/execution/latest"), {
+        method: "GET",
+        signal: AbortSignal.timeout(10000),
+      });
+      const remotePayload = asRecord(await remote.json().catch(() => null));
+      const dangerous = scanDangerousTrueFields(remotePayload).filter(
+        (field) =>
+          field !== "sends_commands" &&
+          !field.endsWith(".sends_commands") &&
+          field !== "robot_control_executed" &&
+          !field.endsWith(".robot_control_executed") &&
+          field !== "sends_motion_commands" &&
+          !field.endsWith(".sends_motion_commands"),
+      );
+      const responseBody: RobotControlNavGoalExecutionLatestResponse = {
+        ...fallbackBase,
+        proxy_status: remote.ok && dangerous.length === 0 ? "latest_loaded" : "latest_failed",
+        remote_http_status: remote.status,
+        status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
+        goal_execution_key_values: navGoalExecutionKeyValues(remotePayload),
+        failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `latest_http_status_${remote.status}`,
+        blocked_reasons: [
+          ...(remote.ok ? [] : [`latest_http_status_${remote.status}`]),
+          ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ],
+        hard_dangerous_true_fields: dangerous,
+      };
+      res.status(responseBody.proxy_status === "latest_loaded" ? 200 : 502).json(responseBody);
+    } catch (error) {
+      const reason = error instanceof Error ? shortText(error.message, "nav2_goal_execution_latest_failed") : "nav2_goal_execution_latest_failed";
+      res.status(502).json({ ...fallbackBase, proxy_status: "latest_failed", failure_reason: reason, blocked_reasons: [reason] });
     }
   });
 

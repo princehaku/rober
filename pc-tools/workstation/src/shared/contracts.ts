@@ -2168,6 +2168,22 @@ export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
   robot_control_executed: boolean;
 }
 
+export interface RobotControlNavGoalExecutionLatestResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1";
+  proxy_status: "latest_loaded" | "latest_rejected" | "latest_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest";
+  remote_endpoint: "/api/nav2/goal/execution/latest";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  goal_execution_key_values: Record<string, string>;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export interface RobotControlDeliveryCompleteRequest {
   confirm_delivery_completion?: boolean;
   delivery_evidence_ref?: string;
@@ -2837,6 +2853,7 @@ export const API_ROUTES = [
   "/api/robot-control/nav2/proof/refresh?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/goal/preflight?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/goal/execute?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/nav2/goal/execution/latest?baseUrl=<robot-api-base-url>",
   "/api/robot-control/delivery/complete?baseUrl=<robot-api-base-url>",
   "/api/robot-control/localize/reset?baseUrl=<robot-api-base-url>",
   "/api/robot-control/camera/offer?baseUrl=<robot-api-base-url>",
