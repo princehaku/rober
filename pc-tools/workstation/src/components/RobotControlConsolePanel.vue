@@ -2664,6 +2664,11 @@ function markDeliveryArrivedAndStopped(): void {
   deliveryOperatorConfirmations.value.observed_stop = true;
 }
 
+function markDeliveryRefsVerified(): void {
+  // 材料核对只代表 operator 已看过视频和行程引用；不代表送达成功。
+  deliveryOperatorConfirmations.value.route_video_refs_verified = true;
+}
+
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
   if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
@@ -3762,6 +3767,9 @@ onBeforeUnmount(() => {
                 </button>
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-arrived-stopped" @click="markDeliveryArrivedAndStopped">
                   已看到到达并停稳
+                </button>
+                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-refs-verified" @click="markDeliveryRefsVerified">
+                  材料已核对
                 </button>
               </div>
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
