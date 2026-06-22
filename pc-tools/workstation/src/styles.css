@@ -273,6 +273,7 @@ h3 {
 .status-chip[data-state="连接中"],
 .status-chip[data-state="刷新中"],
 .status-chip[data-state="检查中"],
+.status-chip[data-state="确认中"],
 .status-chip[data-state="发送中"] {
   border-color: #cfe0f0;
   background: #eef5fb;
@@ -285,6 +286,8 @@ h3 {
 .status-chip[data-state="未检查"],
 .status-chip[data-state="未确认"],
 .status-chip[data-state="未满足"],
+.status-chip[data-state="待材料"],
+.status-chip[data-state="待勾选"],
 .status-chip[data-state="待完成"],
 .status-chip[data-state="locked"] {
   background: #f5f7fa;
@@ -295,6 +298,7 @@ h3 {
 .status-chip[data-state="已发送"],
 .status-chip[data-state="可手控"],
 .status-chip[data-state="可使用"],
+.status-chip[data-state="可提交"],
 .status-chip[data-state="手控中"] {
   border-color: #d5d2a9;
   background: #fbf8e8;
@@ -486,6 +490,28 @@ h3 {
 
 .plain-delivery-material-row {
   margin-top: 10px;
+}
+
+.plain-delivery-final {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px solid #d7dee6;
+  padding-top: 12px;
+}
+
+.plain-confirm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 12px;
+}
+
+.plain-confirm-grid label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #1b2a38;
+  font-size: 13px;
 }
 
 .delivery-closure-check {

@@ -618,6 +618,34 @@ const plainDeliveryMaterialSummary = computed(() => {
   return { state: "待行程", hint: "需要先读到最近行程结果，再准备送达材料。" };
 });
 
+const plainDeliveryConfirmReady = computed(() => {
+  // 普通确认入口复用高级 gate：材料和逐项勾选都满足后才允许提交。
+  return !loading.value
+    && !operatorReportPending.value
+    && !deliveryCompletionPending.value
+    && robotApiBaseUrl.value.trim().length > 0
+    && deliveryOperatorConfirmationReady.value
+    && deliveryOperatorVideoRef.value.trim().length > 0
+    && deliveryOperatorRouteMapRef.value.trim().length > 0;
+});
+
+const plainDeliveryConfirmSummary = computed(() => {
+  // 首屏只解释下一步，不把 operator report、route_map_ref 或 delivery gate 术语暴露给普通用户。
+  if (operatorReportPending.value || deliveryCompletionPending.value) {
+    return { state: "确认中", hint: "正在提交最终确认。" };
+  }
+  if (deliveryCompletionResult.value?.delivery_success === true || deliveryLatestResult.value?.delivery_success === true) {
+    return { state: "已完成", hint: "送达已确认完成。" };
+  }
+  if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
+    return { state: "待材料", hint: "先准备送达材料，再做最终确认。" };
+  }
+  if (!deliveryOperatorConfirmationReady.value) {
+    return { state: "待勾选", hint: "逐项确认后才能提交送达结果。" };
+  }
+  return { state: "可提交", hint: "已满足最终确认条件；提交后只做送达收口，不发车。" };
+});
+
 const deliveryClosureChecklist = computed(() => {
   // 这个摘要只是 UI 收口提示，不自动勾选、不提交、不把 delivery_success 提升为 true。
   const confirmations = deliveryOperatorConfirmations.value;
@@ -3261,6 +3289,52 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainDeliveryMaterialSummary.hint }}</p>
+            <div class="plain-delivery-final" data-testid="plain-delivery-final-confirm">
+              <div class="simple-status-row">
+                <strong>最终确认</strong>
+                <span class="status-chip" :data-state="plainDeliveryConfirmSummary.state">{{ plainDeliveryConfirmSummary.state }}</span>
+              </div>
+              <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
+              <div class="plain-confirm-grid">
+                <label>
+                  <input v-model="deliveryOperatorConfirmations.operator_present" name="deliveryOperatorConfirmOperatorPresent" type="checkbox">
+                  <span>人在旁边可接管</span>
+                </label>
+                <label>
+                  <input v-model="deliveryOperatorConfirmations.physical_clearance_confirmed" name="deliveryOperatorConfirmClearance" type="checkbox">
+                  <span>周围安全</span>
+                </label>
+                <label>
+                  <input v-model="deliveryOperatorConfirmations.emergency_stop_ready" name="deliveryOperatorConfirmEstop" type="checkbox">
+                  <span>停止手段就绪</span>
+                </label>
+                <label>
+                  <input v-model="deliveryOperatorConfirmations.observed_motion" name="deliveryOperatorConfirmObservedMotion" type="checkbox">
+                  <span>已观察到到达/移动</span>
+                </label>
+                <label>
+                  <input v-model="deliveryOperatorConfirmations.observed_stop" name="deliveryOperatorConfirmObservedStop" type="checkbox">
+                  <span>已观察到停止</span>
+                </label>
+                <label>
+                  <input v-model="deliveryOperatorConfirmations.route_video_refs_verified" name="deliveryOperatorConfirmRefsVerified" type="checkbox">
+                  <span>视频和行程材料已核对</span>
+                </label>
+                <label>
+                  <input v-model="deliveryOperatorConfirmations.delivery_success" name="deliveryOperatorConfirmDeliverySuccess" type="checkbox">
+                  <span>确认已投放/送达</span>
+                </label>
+              </div>
+              <button
+                type="button"
+                class="danger-button compact-stop"
+                :disabled="!plainDeliveryConfirmReady"
+                data-testid="plain-delivery-confirm-submit"
+                @click="submitDeliveryOperatorReportAndComplete"
+              >
+                确认送达
+              </button>
+            </div>
           </div>
         </article>
       </div>

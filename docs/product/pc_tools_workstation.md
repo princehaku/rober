@@ -1342,3 +1342,10 @@ visual material 时可用；点击后复用 latest summary 中明确 `true; ref=
 执行或送达确认；文案刻意避免 `Nav2/proof/HIL/API` 等工程字段。若 wheel L/R 非零、最近行程成功、
 送达完成或键盘 gate 可用，对应项显示 `已完成` 或 `可使用`；否则显示 `待完成/未满足` 并给出下一步
 普通提示。完整字段和证据引用仍保留在高级诊断。
+
+2026-06-22 14:00 起，普通首屏 `任务收口` 新增“最终确认”小面板，复用高级送达确认同一组
+`deliveryOperatorConfirmations` 和同一条 `submitDeliveryOperatorReportAndComplete` 安全路径。面板默认不勾选；
+只有已经准备送达材料、人在旁边可接管、周围安全、停止手段就绪、已观察到到达/移动、已观察到停止、
+视频和行程材料已核对、确认已投放/送达全部满足时，`确认送达` 才可点击。点击后先提交 operator report，
+再调用固定 `/api/robot-control/delivery/complete` 让上位机 gate 合成结果；仍不发送 Nav2 goal、manual、
+`/cmd_vel` 或任何底盘运动。普通首屏不展示 ref/API 字段，避免把最终确认误解成工程调试入口。

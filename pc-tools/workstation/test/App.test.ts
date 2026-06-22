@@ -3233,7 +3233,12 @@ describe("App", () => {
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
     expect(firstScreenText).toContain("先完成移动前检查和轮速记录。");
+    expect(firstScreenText).toContain("最终确认");
+    expect(firstScreenText).toContain("待材料");
+    expect(firstScreenText).toContain("先准备送达材料，再做最终确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find(".simple-user-console [data-testid='keyboard-control-panel']").exists()).toBe(true);
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find(".simple-user-console .motion-pad").exists()).toBe(false);
@@ -4337,7 +4342,28 @@ describe("App", () => {
         hard_dangerous_true_fields: [],
         robot_control_executed: false,
       },
-      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_complete_proxy.v1",
+        proxy_status: "completion_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: true,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/complete",
+        remote_endpoint: "/api/delivery/complete",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        delivery_key_values: { status: "delivery_complete", delivery_success: "true" },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
     });
 
     const wrapper = mount(App);
@@ -5220,6 +5246,9 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("任务收口");
     expect(deliveryStatus.text()).toContain("待确认");
     expect(deliveryStatus.text()).toContain("行程已完成");
+    expect(deliveryStatus.text()).toContain("最终确认");
+    expect(deliveryStatus.text()).toContain("待材料");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(visiblePlainHomeText(wrapper)).not.toContain("delivery_success");
     expect(visiblePlainHomeText(wrapper)).not.toContain("/api/delivery");
 
@@ -5245,6 +5274,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(deliveryStatus.text()).toContain("已预填");
     expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
 
@@ -5270,6 +5300,42 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
+
+    await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCalls = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCalls).toHaveLength(2);
+    const finalReportBody = JSON.parse(String((reportCalls[1]?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(finalReportBody).toEqual(expect.objectContaining({
+      operator_present: true,
+      physical_clearance_confirmed: true,
+      emergency_stop_ready: true,
+      observed_motion: true,
+      observed_stop: true,
+    }));
+    expect(finalReportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      route_map_ref: "o11-nav2-goal-execution-plain-fixture",
+      delivery_success: true,
+      site_state: "operator_confirmed_delivery_complete",
+    }));
+    const completeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"));
+    expect(completeCall).toBeTruthy();
+    const completeBody = JSON.parse(String((completeCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
+    expect(completeBody).toEqual(expect.objectContaining({ confirm_delivery_completion: true }));
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
