@@ -2741,7 +2741,7 @@ async function prefillDeliveryMaterialRefs(): Promise<void> {
 }
 
 async function submitDeliveryDraftMaterial(): Promise<void> {
-  // 草稿只保存 ref 材料，刻意不写现场确认和送达成功；用于把 404 缺口推进成可复核缺项。
+  // 草稿只保存 ref 材料；成功后自动复算 confirm=false 缺口，减少现场下一步点击。
   if (
     !robotApiBaseUrl.value.trim()
     || operatorReportPending.value
@@ -2775,12 +2775,18 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
       site_state: "delivery_material_draft_not_operator_confirmed",
     },
   };
+  let draftSaved = false;
   try {
     operatorReportResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, reportBody);
+    draftSaved = operatorReportResult.value.proxy_status === "report_forwarded" && operatorReportResult.value.status !== "blocked";
   } catch (err) {
     operatorReportResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "delivery_draft_report_request_failed", reportBody);
   } finally {
     operatorReportPending.value = false;
+  }
+  if (draftSaved) {
+    await checkDeliveryGap();
+  } else {
     await loadDeliveryLatest();
     await refreshConsole();
   }
