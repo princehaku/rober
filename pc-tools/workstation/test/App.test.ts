@@ -6707,6 +6707,7 @@ describe("App", () => {
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
     });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const wrapper = mount(App);
     await flushPromises();
@@ -6719,10 +6720,19 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("/api/radar/start");
     expect(firstScreenText).not.toContain("lifecycle_not_running");
 
+    const radarRefreshCallsBeforeStart = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
+    ).length;
     await wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，请点刷新雷达确认状态。");
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
+    ).length).toBe(radarRefreshCallsBeforeStart);
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

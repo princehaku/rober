@@ -196,6 +196,7 @@ const evidenceSweepPending = ref(false);
 const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
 const evidenceSweepLines = ref<string[]>([]);
+const plainRadarRefreshButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmButton = ref<HTMLButtonElement | null>(null);
@@ -380,6 +381,9 @@ function summarizeRadarState(): { state: "雷达未运行" | "刷新中" | "雷�
   }
   if (lifecycleRunning) {
     return { state: "雷达未运行", hint: "雷达正在准备，先点刷新再看结果。" };
+  }
+  if (radarLifecycleResult.value?.action === "start" && radarLifecycleResult.value.proxy_status === "lifecycle_forwarded") {
+    return { state: "雷达未运行", hint: "雷达启动已返回，请点刷新雷达确认状态。" };
   }
   return { state: "雷达未运行", hint: "还没有看到雷达正在运行。" };
 }
@@ -3281,6 +3285,13 @@ async function startRadarLifecycle(): Promise<void> {
   await runRadarLifecycleAction("start", () => postRobotControlRadarStart(robotApiBaseUrl.value));
 }
 
+async function startPlainRadarLifecycle(): Promise<void> {
+  // 普通首屏启动后只把焦点带回刷新按钮；是否刷新仍由现场人员显式点击。
+  await startRadarLifecycle();
+  await nextTick();
+  plainRadarRefreshButton.value?.focus({ preventScroll: true });
+}
+
 async function stopRadarLifecycle(): Promise<void> {
   // 停止雷达用于真实上位机 dry-run guard smoke；不会触发任何底盘运动。
   await runRadarLifecycleAction("stop", () => postRobotControlRadarStop(robotApiBaseUrl.value));
@@ -4566,10 +4577,10 @@ onBeforeUnmount(() => {
         <article class="snapshot-panel">
           <h3>雷达</h3>
           <div class="panel-action-row">
-            <button type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" @click="refreshRadarProof">
+            <button ref="plainRadarRefreshButton" type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" data-testid="plain-radar-refresh" @click="refreshRadarProof">
               刷新雷达
             </button>
-            <button v-if="showPlainRadarStart" type="button" class="secondary compact-stop" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" data-testid="plain-radar-start" @click="startRadarLifecycle">
+            <button v-if="showPlainRadarStart" type="button" class="secondary compact-stop" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" data-testid="plain-radar-start" @click="startPlainRadarLifecycle">
               启动雷达
             </button>
             <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
