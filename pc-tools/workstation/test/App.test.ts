@@ -6922,6 +6922,93 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
   });
 
+  it("queues release stop when keyup happens during an in-flight keyboard pulse", async () => {
+    // 松开时若 manual pulse 仍在请求中，stop 不能被 pending gate 吃掉；pulse 返回后必须补发一次 stop。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const fallbackFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    let resolveManual!: (response: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedManual = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveManual = resolve;
+    });
+    const mockedFetch = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/base/manual")) {
+        return delayedManual;
+      }
+      if (url.startsWith("/api/robot-control/base/stop")) {
+        return {
+          ok: true,
+          json: async () => ({
+            command_kind: "stop",
+            proxy_status: "command_forwarded",
+            remote_http_status: 200,
+            status: "loaded_fail_closed_summary",
+            failure_reason: "",
+            operator_report_preflight: {
+              status: "not_required_for_stop",
+              failure_reason: "",
+              missing_fields: [],
+            },
+          }),
+        };
+      }
+      return fallbackFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
+
+    await keyboardPanel.trigger("keyup", { key: "w" });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已松开，正在发送停止。");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(0);
+
+    resolveManual({
+      ok: true,
+      json: async () => ({
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+        operator_report_preflight: {
+          status: "loaded",
+          failure_reason: "",
+          missing_fields: [],
+        },
+      }),
+    });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已停止，按住方向键可继续点动。");
+  });
+
   it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {
     // 刷新与 lifecycle 按钮都只打 workstation 固定代理，动作结束后还要自动回刷 summary。
     const mockedFetch = stubWorkstationFetch();

@@ -232,6 +232,7 @@ const keyboardLastStopReason = ref("not_loaded");
 let previewFrameSampleTimers: number[] = [];
 let keyboardJogTimer: number | null = null;
 let keyboardJogInFlight = false;
+let keyboardStopAfterPulseReason: string | null = null;
 
 const selectedTaskSummary = computed(() => {
   // task_id 是回放和 evidence 的主键；没有 task_id 时保持 blocked 空状态。
@@ -4536,6 +4537,11 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
   } finally {
     manualCommandPending.value = false;
     keyboardJogInFlight = false;
+    if (keyboardStopAfterPulseReason && !keyboardHeldDirection.value) {
+      const reason = keyboardStopAfterPulseReason;
+      keyboardStopAfterPulseReason = null;
+      await sendKeyboardReleaseStop(reason);
+    }
     await refreshConsole();
   }
 }
@@ -4609,16 +4615,28 @@ function stopKeyboardControl(reason: string): void {
   keyboardLastStopReason.value = reason;
   keyboardControlStatus.value = `released:${reason}`;
   if (shouldSendStop && canSendStop.value) {
-    void sendStop().then(() => {
-      const result = manualCommandResult.value;
-      const stopForwarded = result?.command_kind === "stop"
-        && result.proxy_status === "command_forwarded"
-        && typeof result.remote_http_status === "number"
-        && result.remote_http_status >= 200
-        && result.remote_http_status < 300;
-      keyboardControlStatus.value = stopForwarded ? `stop_sent:${reason}` : `blocked_keyboard_stop_failed:${result?.failure_reason || result?.proxy_status || "stop_not_forwarded"}`;
-    });
+    void sendKeyboardReleaseStop(reason);
+  } else if (shouldSendStop && manualCommandPending.value) {
+    keyboardStopAfterPulseReason = reason;
+  } else if (shouldSendStop) {
+    keyboardControlStatus.value = "blocked_keyboard_stop_failed:stop_unavailable";
   }
+}
+
+async function sendKeyboardReleaseStop(reason: string): Promise<void> {
+  // 键盘验收必须等 release stop 真正转发成功；失败或不可发都不能算已验证。
+  if (!canSendStop.value) {
+    keyboardControlStatus.value = "blocked_keyboard_stop_failed:stop_unavailable";
+    return;
+  }
+  await sendStop();
+  const result = manualCommandResult.value;
+  const stopForwarded = result?.command_kind === "stop"
+    && result.proxy_status === "command_forwarded"
+    && typeof result.remote_http_status === "number"
+    && result.remote_http_status >= 200
+    && result.remote_http_status < 300;
+  keyboardControlStatus.value = stopForwarded ? `stop_sent:${reason}` : `blocked_keyboard_stop_failed:${result?.failure_reason || result?.proxy_status || "stop_not_forwarded"}`;
 }
 
 function startKeyboardControl(direction: ManualDirection): void {
