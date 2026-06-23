@@ -72,8 +72,10 @@ import type {
   RobotControlDeliveryGapCheckResponse,
 } from "../shared/contracts";
 
-const PORT = Number(process.env.PORT ?? 8787);
-const HOST = process.env.HOST ?? "127.0.0.1";
+const DEFAULT_PUBLIC_HOST = "0.0.0.0";
+const DEFAULT_PUBLIC_PORT = 7071;
+const PORT = Number(process.env.PORT ?? DEFAULT_PUBLIC_PORT);
+const HOST = process.env.HOST ?? DEFAULT_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_ROOT = path.resolve(__dirname, "../../dist");
 
@@ -90,7 +92,7 @@ export function listenFailureHint(error: NodeJS.ErrnoException, host = HOST, por
   return [
     `pc-tools workstation API failed to listen on ${host}:${port}: address already in use.`,
     `检查占用进程: lsof -nP -iTCP:${port} -sTCP:LISTEN || netstat -anv | rg '[.:]${port} .*LISTEN'`,
-    "停掉占用进程后重试，或临时改用 PORT=<free-port> npm run api:public。",
+    "停掉占用进程后重试，或临时改用 PORT=<free-port> npm run api。",
   ].join("\n");
 }
 

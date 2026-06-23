@@ -37,7 +37,7 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
-import { createWorkstationApp, listenFailureHint } from "../src/server/index";
+import { createWorkstationApp, listenFailureHint, workstationListenAddress } from "../src/server/index";
 
 function sampleStatus(evidenceRef: string) {
   // 样例只提供 Node loader 生成 safe summary 所需字段，不模拟真实 Nav2 或现场成功。
@@ -1157,6 +1157,11 @@ function expectNoLegacyPythonGateSemantics(value: unknown, allowVendorSerialRefe
 }
 
 describe("workstation fail-closed API contracts", () => {
+  it("defaults workstation Node API to the public operator port", () => {
+    // 现场默认要能从局域网访问；仍允许 HOST/PORT 环境变量在启动前覆盖。
+    expect(workstationListenAddress()).toBe("http://0.0.0.0:7071");
+  });
+
   it("formats public API port conflict with operator next steps", () => {
     // 公网绑定失败是现场访问问题；提示必须给出占用排查和换端口兜底。
     const message = listenFailureHint(
@@ -1168,7 +1173,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(message).toContain("0.0.0.0:7071");
     expect(message).toContain("address already in use");
     expect(message).toContain("lsof -nP -iTCP:7071");
-    expect(message).toContain("PORT=<free-port> npm run api:public");
+    expect(message).toContain("PORT=<free-port> npm run api");
   });
 
   it("health exposes software-proof fields only", () => {

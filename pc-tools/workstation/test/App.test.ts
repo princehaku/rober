@@ -6828,9 +6828,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，请点刷新雷达确认状态。");
+    expect(visiblePlainHomeText(wrapper)).toContain("雷达启动没有成功：command_not_configured。");
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
     ).length).toBe(radarRefreshCallsBeforeStart);
@@ -6840,6 +6840,49 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("/api/radar/start");
+  });
+
+  it("focuses plain radar refresh only after radar start reports ok", async () => {
+    // 只有上位机 lifecycle 明确 ok=true，普通首屏才进入“刷新雷达确认状态”这一步。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/radar/start": {
+        schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+        action: "start",
+        proxy_status: "lifecycle_forwarded",
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/radar/start",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        command_result: { mode: "configured_command", executed: true, ok: true },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，请点刷新雷达确认状态。");
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
   it("refreshes plain delivery status without submitting delivery completion", async () => {

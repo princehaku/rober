@@ -15,6 +15,12 @@ pc-tools/workstation/
 - `route/`：保留 fixed-route 调试说明；实际读取能力在 `workstation/src/server/routeDebugLoader.ts`。
 - `training/`、`labeling/`：保留占位目录和后续工作入口，不代表真实训练或标注流水线已接入。
 
+`workstation/` 构建后可直接用 `npm run api` 启动 Node/Express 工作站；默认监听
+`0.0.0.0:7071`，方便同局域网设备访问。需要临时换地址或端口时，在启动前设置
+`HOST=<host> PORT=<port>`；`api:public` 只是兼容旧入口。该 HTTP 入口只暴露 PC
+工作站，不会自动执行 Nav2、manual、delivery complete、keyboard pulse、stop 或
+`/cmd_vel`。
+
 ## Robot Control Console V1
 
 `workstation/` 默认直接展示 `RobotControlConsolePanel` 和 `GET /api/robot-control/summary?baseUrl=<robot-api-base-url>`，不再把普通控制台放在 tab 导航后面。Vue 不直接跨域访问上位机；Robot API base URL 只交给 Node server 代理。代理只读取 `/api/status`、O3 proof latest、Camera/LiDAR/Base status/latest/readback 类 GET endpoint，并拒绝 unsafe URL、credentials、query/hash、非回环或非 RFC1918 局域网 host、schema drift 和危险 true 字段。为避免真实上位机慢一点的状态聚合被误判成离线，`/api/status`、`/api/camera/health`、`/api/camera/devices` 采用更宽的只读超时窗口；其余 endpoint 继续保持短超时。当前首屏已经回到普通用户可读的简易风格：五个普通卡片只给短状态、少量按钮和可停止入口；前端测试会阻止默认可见首屏再次出现 `检查路径`、`现场材料`、`HIL`、`Nav2`、`proof`、`key values`、`/cmd_vel`、`/api/base/manual`、`可点动`、`task_id`、`O6`、`O7`、`Mock`、`field manifest`。定位重置、导航目标预检、O6 base URL、peer/ICE/SDP、readback table、O3 proof summary、route replay、非 stop 点动、HIL checklist、现场材料和 evidence 细节都收进 `<details>` 折叠区，工程 tabs 只在默认关闭的 `高级工具` 中出现。

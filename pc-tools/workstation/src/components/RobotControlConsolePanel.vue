@@ -365,6 +365,14 @@ function radarFieldIsTrue(value: string | undefined): boolean {
   return value === "true";
 }
 
+function radarStartSucceeded(result: RobotControlRadarLifecycleResponse | null): boolean {
+  // 只有上位机明确返回 ok=true 才把启动视为可继续刷新；dry-run/未配置不能冒充成功。
+  return result?.action === "start"
+    && result.proxy_status === "lifecycle_forwarded"
+    && result.status !== "blocked"
+    && result.command_result.ok === true;
+}
+
 function summarizeRadarState(): { state: "雷达未运行" | "刷新中" | "雷达已运行" | "刷新失败"; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
   if (radarRefreshPending.value) {
@@ -391,8 +399,11 @@ function summarizeRadarState(): { state: "雷达未运行" | "刷新中" | "雷�
   if (lifecycleRunning) {
     return { state: "雷达未运行", hint: "雷达正在准备，先点刷新再看结果。" };
   }
-  if (radarLifecycleResult.value?.action === "start" && radarLifecycleResult.value.proxy_status === "lifecycle_forwarded") {
+  if (radarStartSucceeded(radarLifecycleResult.value)) {
     return { state: "雷达未运行", hint: "雷达启动已返回，请点刷新雷达确认状态。" };
+  }
+  if (radarLifecycleResult.value?.action === "start" && radarLifecycleResult.value) {
+    return { state: "雷达未运行", hint: radarLifecycleResult.value.failure_reason ? `雷达启动没有成功：${radarLifecycleResult.value.failure_reason}。` : "雷达启动没有成功，请检查上位机配置。" };
   }
   return { state: "雷达未运行", hint: "还没有看到雷达正在运行。" };
 }
@@ -3386,10 +3397,13 @@ async function startRadarLifecycle(): Promise<void> {
 }
 
 async function startPlainRadarLifecycle(): Promise<void> {
-  // 普通首屏启动后只把焦点带回刷新按钮；是否刷新仍由现场人员显式点击。
+  // 普通首屏启动成功后才带到刷新；失败时留在启动按钮，避免现场误以为已进入刷新阶段。
   await startRadarLifecycle();
   await nextTick();
-  plainRadarRefreshButton.value?.focus({ preventScroll: true });
+  const target = radarStartSucceeded(radarLifecycleResult.value)
+    ? plainRadarRefreshButton.value
+    : plainRadarStartButton.value ?? plainRadarRefreshButton.value;
+  target?.focus({ preventScroll: true });
 }
 
 async function stopRadarLifecycle(): Promise<void> {
