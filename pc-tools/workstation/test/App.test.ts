@@ -6683,12 +6683,14 @@ describe("App", () => {
     await vi.advanceTimersByTimeAsync(260);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控已验证");
-    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘已验证");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，已连续 2/2 次；松开后完成停止收口。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-keyboard"]').text()).toBe("下一步：松开按键完成停止收口。");
     const keyboardClosureItemAfterKey = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
-    expect(keyboardClosureItemAfterKey?.attributes("data-ready")).toBe("true");
-    expect(keyboardClosureItemAfterKey?.text()).toContain("已连续转发键盘方向输入，已连续 2/2 次");
+    expect(keyboardClosureItemAfterKey?.attributes("data-ready")).toBe("false");
+    expect(keyboardClosureItemAfterKey?.text()).toContain("已连续转发键盘方向输入，已连续 2/2 次，仍需松开按键完成停止收口");
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：前进");
     const manualCallsAfterKeyboard = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     expect(manualCallsAfterKeyboard).toBeGreaterThan(manualCallsBeforeKeyboard);
@@ -6705,8 +6707,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
     expect(visiblePlainHomeText(wrapper)).toContain("已验证");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘手控已验证，已连续 2/2 次；需要继续移动可按住方向键。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘手控已验证，已连续 2/2 次，停止已发送；需要继续移动可按住方向键。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控已验证");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘已验证");
+    const keyboardClosureItemAfterStop = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("PC 键盘连续手控"));
+    expect(keyboardClosureItemAfterStop?.attributes("data-ready")).toBe("true");
+    expect(keyboardClosureItemAfterStop?.text()).toContain("已连续转发键盘方向输入，已连续 2/2 次，且停止已发送");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("keyboard continuous control");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("pulse_ms=240");
