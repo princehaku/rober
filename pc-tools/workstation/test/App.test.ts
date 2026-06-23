@@ -3883,6 +3883,10 @@ describe("App", () => {
       .find((item) => item.text().includes("完整 Nav2 路线执行"));
     expect(navClosureItem?.attributes("data-ready")).toBe("false");
     expect(navClosureItem?.text()).toContain("雷达未运行，先启动雷达，再检查或执行完整行程");
+    const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("delivery success"));
+    expect(deliveryClosureItem?.attributes("data-ready")).toBe("false");
+    expect(deliveryClosureItem?.text()).toContain("送达确认前先启动雷达并完成本轮完整行程");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(true);
     expect(visiblePlainHomeText(wrapper)).not.toContain("/api/radar/start");
 

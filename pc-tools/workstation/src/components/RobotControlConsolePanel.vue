@@ -1226,6 +1226,7 @@ const goalClosureChecklist = computed(() => {
         ? "delivery gate 已确认成功"
         : deliverySuccessEvidenceIsStale.value ? "已有旧 delivery success，需本轮重新确认"
           : deliverySuccessEvidenceRouteMismatch.value ? "已有 delivery success，但行程材料不是本轮记录"
+            : !deliveryNav2GoalReady.value ? (plainTripRadarBlocked.value ? "送达确认前先启动雷达并完成本轮完整行程" : "送达确认前先完成本轮完整行程")
             : "仍需现场最终确认并通过 delivery gate",
     },
     {
