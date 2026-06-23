@@ -207,8 +207,10 @@ const plainWheelTrialButton = ref<HTMLButtonElement | null>(null);
 const plainWheelZeroCheckButton = ref<HTMLButtonElement | null>(null);
 const plainWheelSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
+const plainDeliveryPrefillButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryDraftSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
+const plainDeliveryAllConfirmedButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryConfirmSubmitButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
@@ -3494,13 +3496,10 @@ async function refreshPlainKeyboardGate(): Promise<void> {
 
 function focusPlainGoalProgressTarget(targetId: string): void {
   // 进度区的“去处理”只做本页定位，不能顺手触发行程、送达、手控或任何材料提交。
-  const deliveryTarget = plainDeliveryConfirmMissingLabels.value.includes("送达材料")
-    ? plainDeliveryStatusPanel.value
-    : plainDeliveryFinalPanel.value;
   const targetMap: Record<string, HTMLElement | null> = {
     wheel: plainWheelGoalTarget(),
     trip: plainTripRunPanel.value,
-    delivery: deliveryTarget,
+    delivery: plainDeliveryGoalTarget(),
     keyboard: keyboardControlPanel.value,
   };
   const target = targetMap[targetId];
@@ -3526,6 +3525,23 @@ function plainWheelGoalTarget(): HTMLElement | null {
     return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
   }
   return plainWheelRecordPanel.value;
+}
+
+function plainDeliveryGoalTarget(): HTMLElement | null {
+  // 送达目标同样落到现场下一手动作；这里只移动焦点，最终提交仍必须 operator 再点一次。
+  const missingLabels = plainDeliveryConfirmMissingLabels.value;
+  if (missingLabels.includes("本轮行程")) {
+    return plainTripRunPanel.value ?? plainDeliveryStatusPanel.value;
+  }
+  if (missingLabels.includes("本轮行程材料") || missingLabels.includes("送达材料")) {
+    return enabledButton(plainDeliveryPrefillButton.value)
+      ?? enabledButton(plainDeliveryDraftSaveButton.value)
+      ?? plainDeliveryStatusPanel.value;
+  }
+  if (deliveryOperatorConfirmationReady.value) {
+    return enabledButton(plainDeliveryConfirmSubmitButton.value) ?? plainDeliveryFinalPanel.value;
+  }
+  return enabledButton(plainDeliveryAllConfirmedButton.value) ?? plainDeliveryFinalPanel.value;
 }
 
 async function focusPlainDeliveryStatusPanel(): Promise<void> {
@@ -4809,6 +4825,7 @@ onBeforeUnmount(() => {
             <div class="simple-status-row plain-delivery-material-row">
               <span class="status-chip" :data-state="plainDeliveryMaterialSummary.state">{{ plainDeliveryMaterialSummary.state }}</span>
               <button
+                ref="plainDeliveryPrefillButton"
                 type="button"
                 class="secondary compact-stop"
                 :disabled="loading || navGoalExecutionLatestPending || cameraFirstFrameProbePending || deliveryLatestPending || !robotApiBaseUrl.trim()"
@@ -4845,7 +4862,7 @@ onBeforeUnmount(() => {
                 <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-success" @click="markDeliverySuccessConfirmed">
                   {{ plainDeliverySuccessButtonLabel }}
                 </button>
-                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-all-confirmed" @click="markAllDeliveryConfirmations">
+                <button ref="plainDeliveryAllConfirmedButton" type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-all-confirmed" @click="markAllDeliveryConfirmations">
                   {{ plainDeliveryAllConfirmedButtonLabel }}
                 </button>
               </div>

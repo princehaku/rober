@@ -7017,6 +7017,11 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("送达材料已保存；现场逐项确认后再提交。");
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeDraftSave);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-final-confirm"]').element);
+    const focusCallsBeforeDeliveryProgress = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-go-delivery"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeDeliveryProgress);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/check?")).length).toBe(checkCallsBeforeDraftSave + 1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -7039,6 +7044,11 @@ describe("App", () => {
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeAllConfirmedShortcut);
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeAllConfirmedShortcut);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').element);
+    const callsBeforeReadyDeliveryProgress = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-go-delivery"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeReadyDeliveryProgress);
 
     await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(false);
     await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(false);
