@@ -823,7 +823,11 @@ function appendFreshBaseFeedbackFrameCount(payload: JsonRecord | null, result: R
     return;
   }
   const feedbackReadback = asRecord(findFirstKey(payload, ["feedback_readback"]));
-  const frameCount = feedbackReadback?.t1001_feedback_frame_count;
+  const feedbackFrames = feedbackReadback?.t1001_feedback_frames;
+  const wheelSummary = asRecord(feedbackReadback?.wheel_feedback_summary);
+  const frameCount = feedbackReadback?.t1001_feedback_frame_count
+    ?? (Array.isArray(feedbackFrames) ? feedbackFrames.length : undefined)
+    ?? wheelSummary?.frame_count;
   if (typeof frameCount === "number" || typeof frameCount === "string") {
     result.latest_t1001_observed_count = compactValueText(frameCount);
   }

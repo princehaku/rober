@@ -3937,8 +3937,9 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Robot Control summary prefers fresh base status T1001 frame count over stale samples artifact", async () => {
-    // /api/base/status 会同步读取 fresh T=1001；不能被嵌套 stale samples latest 的旧计数覆盖。
+  it("Robot Control summary derives fresh base status T1001 frame count from frames array", async () => {
+    // 真实 /api/base/status 会返回 fresh T=1001 frames 数组；即使没有显式 count，也不能退回 stale samples 旧计数。
+    const freshFrames = Array.from({ length: 12 }, () => ({ T: 1001, L: 0, R: 0, v: 12.43 }));
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/base/status": {
         payload: {
@@ -3949,8 +3950,7 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
           feedback_readback: {
             schema: "trashbot.upper_robot_api.v1.base_feedback_request_result",
-            t1001_feedback_frame_count: 12,
-            t1001_feedback_frames: [{ T: 1001, L: 0, R: 0, v: 12.43 }],
+            t1001_feedback_frames: freshFrames,
             wheel_feedback_lr_nonzero_proven: false,
             wheel_feedback_nonzero_observed: false,
             wheel_feedback_summary: {
