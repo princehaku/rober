@@ -647,6 +647,18 @@ function isZeroWheelPair(left: string | undefined, right: string | undefined): b
   return Number.isFinite(leftNumber) && Number.isFinite(rightNumber) && leftNumber === 0 && rightNumber === 0;
 }
 
+function formatPlainVoltage(value: string | undefined): string {
+  // 普通首屏只需要供电读数的大致判断；原始长小数仍留在高级诊断和接口里。
+  if (!value || value === "not_loaded") {
+    return "";
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return "";
+  }
+  return (Math.round(parsed * 100) / 100).toFixed(2).replace(/\.?0+$/, "");
+}
+
 const operatorMaterialMissingFields = computed(() => {
   // 这里直接输出后端约定字段名，方便现场人员对照材料清单补证据。
   const summary = robotSummary.value?.operator_hil_material_summary;
@@ -1300,7 +1312,8 @@ const plainWheelGoalProgressHint = computed(() => {
   const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
   const frameCount = sample?.t1001_observed_count ?? base?.latest_t1001_observed_count ?? "not_loaded";
-  const voltageText = base?.feedback_voltage_v && base.feedback_voltage_v !== "not_loaded" ? `，反馈电压约 ${base.feedback_voltage_v}V` : "";
+  const voltage = formatPlainVoltage(base?.feedback_voltage_v);
+  const voltageText = voltage ? `，反馈电压约 ${voltage}V` : "";
   if (left !== "not_loaded" && right !== "not_loaded") {
     const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
     const nextStep = firstJogMaterialRestoreReady.value
@@ -1946,7 +1959,8 @@ const plainWheelZeroBlockerButtonLabel = computed(() => (
 const plainWheelReadbackSummary = computed(() => {
   // 只读底盘反馈可以解释“当前为什么还不是非零证据”，但不能替代试动窗口材料。
   const base = robotSummary.value?.readback_summary.base;
-  const voltage = base?.feedback_voltage_v && base.feedback_voltage_v !== "not_loaded" ? `；反馈电压约 ${base.feedback_voltage_v}V` : "";
+  const plainVoltage = formatPlainVoltage(base?.feedback_voltage_v);
+  const voltage = plainVoltage ? `；反馈电压约 ${plainVoltage}V` : "";
   const staleSamples = base?.latest_feedback_status === "stale" ? "；历史轮速样本已过期，以当前读回为准" : "";
   const zeroReadbackNextStep = "这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。";
   const sample = baseFeedbackSamplesResult.value?.sample_key_values;
