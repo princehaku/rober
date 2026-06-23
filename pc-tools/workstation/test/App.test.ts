@@ -3849,6 +3849,50 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("blocks plain trip actions on the first screen until radar is running", async () => {
+    // 完整行程依赖雷达运行；普通入口只把现场带到雷达按钮，不自动启动雷达或执行行程。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "missing";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.text()).toContain("待雷达");
+    expect(tripPanel.text()).toContain("雷达未运行，先启动雷达，再检查或执行行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：先启动雷达，再检查或执行行程。");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(true);
+    expect(visiblePlainHomeText(wrapper)).not.toContain("/api/radar/start");
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先启动雷达");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先启动雷达");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+
+    const callsBeforeTripFocus = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-go-trip"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeTripFocus);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows stale latest Nav2 success age on the plain first screen without sending commands", async () => {
     // latest 只读结果可能很旧；普通首屏必须讲清年龄，不能把它冒充成本轮新路线证明。
     const mockedFetch = stubWorkstationFetch({
