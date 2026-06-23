@@ -3699,6 +3699,7 @@ describe("App", () => {
     const callsBeforeClick = mockedFetch.mock.calls.length;
     const focusCallsBeforeClick = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
     const targets = ["wheel", "trip", "delivery", "keyboard"];
     for (const target of targets) {
       await wrapper.find(`[data-testid="plain-goal-progress-go-${target}"]`).trigger("click");
@@ -3778,6 +3779,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    const navExecuteCallsBeforeTripFocus = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-goal-progress-go-trip"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
+    ).length).toBe(navExecuteCallsBeforeTripFocus);
 
     await wrapper.find('[data-testid="plain-trip-preflight"]').trigger("click");
     await flushPromises();
@@ -7221,7 +7231,7 @@ describe("App", () => {
     const focusCallsBeforeDeliveryClick = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeDeliveryClick + 1);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-run"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
     expect(mockedFetch.mock.calls.length).toBe(callsBeforeFocus);
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 5 项，不确认）");

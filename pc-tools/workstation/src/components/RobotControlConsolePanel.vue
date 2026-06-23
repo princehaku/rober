@@ -202,6 +202,10 @@ const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmButton = ref<HTMLButtonElement | null>(null);
 const plainTripRunPanel = ref<HTMLElement | null>(null);
+const plainTripSafetyCheckbox = ref<HTMLInputElement | null>(null);
+const plainTripPreflightButton = ref<HTMLButtonElement | null>(null);
+const plainTripExecuteButton = ref<HTMLButtonElement | null>(null);
+const plainTripLatestButton = ref<HTMLButtonElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
 const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainWheelTrialButton = ref<HTMLButtonElement | null>(null);
@@ -3553,7 +3557,7 @@ function focusPlainGoalProgressTarget(targetId: string): void {
   // 进度区的“去处理”只做本页定位，不能顺手触发行程、送达、手控或任何材料提交。
   const targetMap: Record<string, HTMLElement | null> = {
     wheel: plainWheelGoalTarget(),
-    trip: plainTripRunPanel.value,
+    trip: plainTripGoalTarget(),
     delivery: plainDeliveryGoalTarget(),
     keyboard: plainKeyboardNextTarget(),
   };
@@ -3580,6 +3584,20 @@ function plainWheelGoalTarget(): HTMLElement | null {
     return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
   }
   return plainWheelRecordPanel.value;
+}
+
+function plainTripGoalTarget(): HTMLElement | null {
+  // 行程目标也落到真实下一手控件；只移动焦点，不自动勾选、不执行 Nav2。
+  if (deliveryNav2GoalReady.value) {
+    return enabledButton(plainTripLatestButton.value) ?? plainTripRunPanel.value;
+  }
+  if (!plainTripSafetyConfirmed.value) {
+    return plainTripSafetyCheckbox.value ?? plainTripRunPanel.value;
+  }
+  return enabledButton(plainTripExecuteButton.value)
+    ?? enabledButton(plainTripPreflightButton.value)
+    ?? enabledButton(plainTripLatestButton.value)
+    ?? plainTripRunPanel.value;
 }
 
 function plainDeliveryGoalTarget(): HTMLElement | null {
@@ -4815,17 +4833,17 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainTripSummary.state">{{ plainTripSummary.state }}</span>
             </div>
             <label class="plain-trip-confirm">
-              <input v-model="plainTripSafetyConfirmed" name="plainTripSafetyConfirmed" type="checkbox">
+              <input ref="plainTripSafetyCheckbox" v-model="plainTripSafetyConfirmed" name="plainTripSafetyConfirmed" type="checkbox">
               <span>人在旁边、周围安全、停止手段就绪</span>
             </label>
             <div class="simple-status-row">
-              <button type="button" class="secondary compact-stop" :disabled="!canRunPlainTripPreflight" data-testid="plain-trip-preflight" @click="runPlainTripPreflight">
+              <button ref="plainTripPreflightButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainTripPreflight" data-testid="plain-trip-preflight" @click="runPlainTripPreflight">
                 {{ plainTripPreflightButtonLabel }}
               </button>
-              <button type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
+              <button ref="plainTripExecuteButton" type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
                 {{ plainTripExecutionButtonLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
+              <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
                 {{ plainTripLatestButtonLabel }}
               </button>
             </div>
