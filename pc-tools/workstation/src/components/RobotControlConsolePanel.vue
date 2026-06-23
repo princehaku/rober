@@ -1366,7 +1366,7 @@ const plainGoalProgressItems = computed(() => {
     {
       id: "wheel",
       label: "轮速记录",
-      actionLabel: firstJogMaterialRestoreBlocksMotion.value ? "去恢复" : "去轮速",
+      actionLabel: firstJogMaterialRestoreBlocksMotion.value ? "去恢复" : plainWheelZeroBlockerNeedsRadar.value ? "去雷达" : "去轮速",
       state: wheelReady ? "已完成" : "待完成",
       hint: wheelReady ? `${wheelEvidence.hint}。` : plainWheelGoalProgressHint.value,
       nextAction: plainWheelGoalNextAction.value,
@@ -1405,6 +1405,9 @@ const plainGoalProgressItems = computed(() => {
 const plainGoalProgressNextAction = computed(() => {
   // 现场不应该在四个目标之间猜顺序；总提示只指向第一项未完成的普通任务。
   const nextItem = plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "已验证");
+  if (nextItem?.id === "wheel" && plainWheelZeroBlockerNeedsRadar.value) {
+    return "下一步：先处理轮速记录。先启动雷达，再重试读非零 L/R。";
+  }
   return nextItem ? `下一步：先处理${nextItem.label}。${nextItem.hint}` : "下一步：四项都已完成，保持待命。";
 });
 
@@ -1418,6 +1421,9 @@ const plainGoalProgressPrimaryActionLabel = computed(() => {
   const target = plainGoalProgressItems.value.find((item) => item.id === plainGoalProgressPrimaryTarget.value);
   if (target?.id === "wheel" && firstJogMaterialRestoreBlocksMotion.value) {
     return "去恢复确认";
+  }
+  if (target?.id === "wheel" && plainWheelZeroBlockerNeedsRadar.value) {
+    return "去启动雷达";
   }
   return target ? `去${target.label.replace("执行", "").replace("确认", "")}卡点` : "全部完成";
 });

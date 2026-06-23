@@ -3614,6 +3614,10 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-wheel-zero-check"]').text()).toBe("轮速卡点已检查");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去启动雷达");
+    expect(wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').text()).toBe("去雷达");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理轮速记录。先启动雷达，再重试读非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：先启动雷达，再重试读非零 L/R。");
     expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步先启动雷达，再低速重试读非零 L/R。");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先启动雷达再试动");
     expect(focusSpy).toHaveBeenCalled();
