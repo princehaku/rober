@@ -4167,6 +4167,13 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=runtime/wave_rover_feedback_debug.jsonl";
     summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.first_jog_readiness_summary = {
+      status: "ready_for_first_jog",
+      basic_safety_ready: true,
+      visual_material_ready: true,
+      missing_fields: [],
+      next_action: "run_first_jog",
+    };
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mockedFetch = stubWorkstationFetch({
@@ -4175,6 +4182,7 @@ describe("App", () => {
         proxy_status: "should_not_be_called",
       },
     });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const wrapper = mount(App);
     await flushPromises();
@@ -4198,6 +4206,20 @@ describe("App", () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+
+    const feedbackCallsBeforeKeyboardRecheck = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/feedback-samples?"),
+    ).length;
+    const focusCallsBeforeKeyboardRecheck = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="keyboard-control-recheck"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(
+      mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?")).length,
+    ).toBe(feedbackCallsBeforeKeyboardRecheck + 1);
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeKeyboardRecheck);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

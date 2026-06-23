@@ -3452,10 +3452,7 @@ async function refreshPlainKeyboardGate(): Promise<void> {
   // 键盘复查仍只读刷新；刷新后把焦点带到下一步按钮，不自动启用键盘或发送手控。
   await refreshPlainGoalProgress();
   await nextTick();
-  const target = canArmKeyboardControl.value
-    ? keyboardControlArmButton.value
-    : keyboardControlRecheckButton.value;
-  target?.focus({ preventScroll: true });
+  focusPlainKeyboardNextTarget();
 }
 
 function focusPlainGoalProgressTarget(targetId: string): void {
@@ -3516,14 +3513,43 @@ async function focusPlainDeliveryConfirmSubmitButton(): Promise<void> {
 async function focusKeyboardPanelAfterDeliverySuccess(): Promise<void> {
   // 送达 gate 通过后只把现场带到键盘区；若已满足 gate，则聚焦启用按钮但不自动启用。
   await nextTick();
-  const target = canArmKeyboardControl.value
-    ? keyboardControlArmButton.value ?? keyboardControlPanel.value
-    : keyboardControlRecheckButton.value ?? keyboardControlPanel.value;
+  focusPlainKeyboardNextTarget({ scroll: true });
+}
+
+function focusPlainKeyboardNextTarget(options: { scroll?: boolean } = {}): void {
+  // 键盘 gate 未满足时直接带到真实补证动作；仍只改变焦点，不触发任何接口。
+  const target = plainKeyboardNextTarget();
   if (!target) {
     return;
   }
-  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  if (options.scroll) {
+    target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  }
   target.focus({ preventScroll: true });
+}
+
+function enabledButton(button: HTMLButtonElement | null): HTMLButtonElement | null {
+  return button && !button.disabled ? button : null;
+}
+
+function plainKeyboardNextTarget(): HTMLElement | null {
+  if (canArmKeyboardControl.value) {
+    return enabledButton(keyboardControlArmButton.value) ?? keyboardControlPanel.value;
+  }
+  if (firstJogMaterialRestoreBlocksMotion.value) {
+    return enabledButton(plainFirstJogRestoreButton.value) ?? plainWheelRecordPanel.value;
+  }
+  if (plainKeyboardMotionProofNextStep.value === "wheel") {
+    return enabledButton(plainWheelSaveButton.value)
+      ?? enabledButton(plainWheelTrialButton.value)
+      ?? plainWheelRecordPanel.value;
+  }
+  if (plainKeyboardMotionProofNextStep.value === "lidar") {
+    return enabledButton(plainWheelTrialButton.value)
+      ?? enabledButton(plainWheelSaveButton.value)
+      ?? plainWheelRecordPanel.value;
+  }
+  return enabledButton(keyboardControlRecheckButton.value) ?? keyboardControlPanel.value;
 }
 
 function markDeliveryBasicSafetyConfirmed(): void {
