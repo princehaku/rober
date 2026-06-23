@@ -92,6 +92,11 @@ BLOCKED_LIDAR_RUNTIME_COMMAND_TOKENS = (
 SAFE_LIDAR_RUNTIME_SCRIPT = "o1_lidar_ros2_scan_smoke.sh"
 SAFE_RADAR_LIFECYCLE_SCRIPT = "o1_lidar_lifecycle.sh"
 SAFE_LIDAR_RUNTIME_SHELLS = ("bash", "sh")
+DEFAULT_RADAR_START_COMMAND = (
+    "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
+    "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+)
+DEFAULT_RADAR_STOP_COMMAND = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
 OPERATOR_REPORT_FIELDS = (
     "operator_present",
     "evidence_ref",
@@ -4723,8 +4728,8 @@ class UpperRobotApi:
         delivery_completion_artifact_path: str = DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH,
         elevator_status_artifact_path: str = DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH,
         operator_report_artifact_path: str = DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH,
-        radar_start_command: str | None = None,
-        radar_stop_command: str | None = None,
+        radar_start_command: str | None = DEFAULT_RADAR_START_COMMAND,
+        radar_stop_command: str | None = DEFAULT_RADAR_STOP_COMMAND,
         lidar_scan_proof_runtime_command: str | None = None,
         lidar_scan_proof_runtime_warmup_s: float = DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S,
         map_start_command: str | None = None,
@@ -4894,13 +4899,13 @@ class UpperRobotApi:
                 "start": {
                     "endpoint": ROUTE_PATHS["radar_start"],
                     "command": command_config_info("ROBER_RADAR_START_COMMAND", self.radar_start_command),
-                    "recommended_command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame",
+                    "recommended_command": DEFAULT_RADAR_START_COMMAND,
                     "allowed_runtime_script": SAFE_RADAR_LIFECYCLE_SCRIPT,
                 },
                 "stop": {
                     "endpoint": ROUTE_PATHS["radar_stop"],
                     "command": command_config_info("ROBER_RADAR_STOP_COMMAND", self.radar_stop_command),
-                    "recommended_command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop",
+                    "recommended_command": DEFAULT_RADAR_STOP_COMMAND,
                     "allowed_runtime_script": SAFE_RADAR_LIFECYCLE_SCRIPT,
                 },
                 "scan_proof_refresh": {
@@ -6131,8 +6136,8 @@ def parse_args() -> argparse.Namespace:
         "--operator-report-artifact-path",
         default=os.getenv("ROBER_OPERATOR_REPORT_ARTIFACT_PATH", DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH),
     )
-    parser.add_argument("--radar-start-command", default=os.getenv("ROBER_RADAR_START_COMMAND"))
-    parser.add_argument("--radar-stop-command", default=os.getenv("ROBER_RADAR_STOP_COMMAND"))
+    parser.add_argument("--radar-start-command", default=os.getenv("ROBER_RADAR_START_COMMAND", DEFAULT_RADAR_START_COMMAND))
+    parser.add_argument("--radar-stop-command", default=os.getenv("ROBER_RADAR_STOP_COMMAND", DEFAULT_RADAR_STOP_COMMAND))
     parser.add_argument("--lidar-scan-proof-runtime-command", default=os.getenv("ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND"))
     parser.add_argument(
         "--lidar-scan-proof-runtime-warmup-s",

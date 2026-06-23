@@ -150,12 +150,15 @@ LiDAR-only smoke 脚本纳入仓库，并新增
 
 runtime lifecycle 与 scan proof refresh 的关系：
 
-- `/api/radar/start` 通过
-  `ROBER_RADAR_START_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame`
+- 2026-06-23 起，`upper_robot_api.py` 默认内置 `/api/radar/start|stop` 的受管
+  lifecycle 命令；`ROBER_RADAR_START_COMMAND` / `ROBER_RADAR_STOP_COMMAND`
+  仍可覆盖，但不再是启动雷达的必需环境变量。
+- `/api/radar/start` 默认通过
+  `bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame`
   后台启动 `ros2_trashbot_hardware lidar_driver` 和
   `tf2_ros static_transform_publisher`，快速返回命令执行结果。
-- `/api/radar/stop` 通过
-  `ROBER_RADAR_STOP_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop`
+- `/api/radar/stop` 默认通过
+  `bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop`
   只停止 lifecycle 脚本创建的进程组，不按名称杀其他 ROS2 进程。
 - `/api/radar/scan-proof/refresh` 仍是证据采集入口；当 lifecycle 已 start 时，可用
   `{"start_runtime": false, "timeout_s": 12}` 只读取现有 `/scan`、`/lidar/raw_packet`

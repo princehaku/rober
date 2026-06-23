@@ -13,6 +13,7 @@ status 允许发送 `T=130`，但必须持续关闭所有运动控制许可。
 import importlib.util
 import asyncio
 import json
+import shlex
 import tempfile
 import unittest
 from pathlib import Path
@@ -775,6 +776,57 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertIsNone(stop_error)
         self.assertIn("o1_lidar_lifecycle.sh", start_argv[1])
         self.assertEqual("stop", stop_argv[2])
+
+    def test_radar_status_defaults_to_managed_lifecycle_commands(self) -> None:
+        """默认上位机应可启动 LiDAR lifecycle，不再要求现场额外设置环境变量。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        status = api.radar_status()
+
+        start_command = status["controls"]["start"]["command"]
+        stop_command = status["controls"]["stop"]["command"]
+        self.assertTrue(start_command["configured"])
+        self.assertEqual("command", start_command["mode"])
+        self.assertIn("o1_lidar_lifecycle.sh", start_command["argv"][1])
+        self.assertIn("/dev/ttyACM0", start_command["argv"])
+        self.assertEqual("150000", start_command["argv"][start_command["argv"].index("--serial-baudrate") + 1])
+        self.assertTrue(stop_command["configured"])
+        self.assertEqual("command", stop_command["mode"])
+        self.assertFalse(status["sends_motion_commands"])
+        self.assertFalse(status["calls_base_manual"])
+        self.assertFalse(status["safe_to_control"])
+
+    def test_radar_control_uses_default_managed_lifecycle_command(self) -> None:
+        """未显式传入命令时，start 使用默认 LiDAR-only lifecycle 脚本。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        with mock.patch.object(
+            upper_robot_api,
+            "run_configured_command",
+            return_value={"mode": "command", "executed": True, "ok": True, "returncode": 0},
+        ) as run_mock:
+            payload = api.radar_control("start")
+
+        run_mock.assert_called_once_with(upper_robot_api.DEFAULT_RADAR_START_COMMAND)
+        self.assertTrue(payload["command_result"]["executed"])
+        self.assertTrue(payload["command_result"]["ok"])
+        self.assertEqual(
+            shlex.split(upper_robot_api.DEFAULT_RADAR_START_COMMAND),
+            payload["configured_command"]["argv"],
+        )
+        self.assertFalse(payload["base_uart_touched"])
+        self.assertFalse(payload["sends_base_motion_commands"])
+        self.assertFalse(payload["safe_to_control"])
 
     def test_radar_lifecycle_validation_rejects_base_uart_and_motion_tokens(self) -> None:
         """雷达命令不能指向 WAVE ROVER UART，也不能夹带底盘控制 token。"""
