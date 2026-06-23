@@ -4622,6 +4622,9 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.route_map = "true; ref=o11-nav2-goal-execution-before-restore";
     summaryFixture.operator_hil_material_summary.delivery_claim = "false";
     summaryFixture.operator_hil_material_summary.site_state = "delivery_material_draft_not_operator_confirmed";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
     summaryFixture.first_jog_readiness_summary = {
       status: "blocked_missing_basic_safety",
       basic_safety_ready: false,
@@ -4719,6 +4722,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读非零 L/R");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
     expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
     expect(visiblePlainHomeText(wrapper)).not.toContain("试动按钮已锁定");
     expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeRestore);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);

@@ -4069,10 +4069,18 @@ async function restorePlainFirstJogMaterial(): Promise<void> {
     await refreshConsole();
     if (plainFirstJogMaterialRestored.value) {
       await nextTick();
-      plainWheelTrialButton.value?.scrollIntoView?.({ block: "center", behavior: "smooth" });
-      plainWheelTrialButton.value?.focus({ preventScroll: true });
+      focusAfterPlainFirstJogMaterialRestore();
     }
   }
+}
+
+function focusAfterPlainFirstJogMaterialRestore(): void {
+  // 恢复确认后先补传感器前置条件；雷达未运行时不能直接把现场带去试动。
+  const target = showPlainRadarStart.value
+    ? plainRadarNextTarget()
+    : enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
+  target?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target?.focus({ preventScroll: true });
 }
 
 async function sendPlainFirstJog(): Promise<void> {
