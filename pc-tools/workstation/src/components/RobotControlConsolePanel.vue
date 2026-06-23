@@ -1257,13 +1257,13 @@ const plainWheelGoalNextAction = computed(() => {
   if (wheelClosureEvidence.value.ready) {
     return "已完成。";
   }
+  if (plainWheelZeroBlockerActive.value && showPlainRadarStart.value) {
+    return "下一步：先启动雷达，再重试读非零 L/R。";
+  }
   if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
     return "下一步：检查轮速卡点。";
   }
   if (plainWheelZeroBlockerChecked.value) {
-    if (showPlainRadarStart.value) {
-      return "下一步：先启动雷达，再重试读非零 L/R。";
-    }
     return "下一步：重试读非零 L/R。";
   }
   if (firstJogMaterialRestoreBlocksMotion.value) {
@@ -1647,6 +1647,13 @@ const canSendPlainFirstJog = computed(() => {
   return robotSummary.value?.first_jog_readiness_summary?.status === "ready_for_first_jog";
 });
 
+const canSendPlainWheelTrial = computed(() => {
+  // 轮速记录面板要服从雷达前置提示；按钮写着先启动雷达时不能继续发 first-jog。
+  return canSendPlainFirstJog.value && !(plainWheelZeroBlockerActive.value && showPlainRadarStart.value);
+});
+
+const plainWheelTrialDisabled = computed(() => !canSendPlainWheelTrial.value);
+
 const plainFirstJogBlockedHint = computed(() => {
   // 首屏禁用原因必须是普通话术；工程细节留给高级诊断。
   if (canSendPlainFirstJog.value) {
@@ -1750,10 +1757,10 @@ const plainWheelTrialButtonLabel = computed(() => {
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
     return "先记录画面再试动";
   }
+  if (plainWheelZeroBlockerActive.value && showPlainRadarStart.value) {
+    return "先启动雷达再试动";
+  }
   if (plainWheelZeroBlockerActive.value && plainWheelZeroBlockerChecked.value) {
-    if (showPlainRadarStart.value) {
-      return "先启动雷达再试动";
-    }
     return "检查后重试读非零 L/R";
   }
   if (plainWheelZeroBlockerActive.value) {
@@ -1836,7 +1843,7 @@ const plainWheelNextActionSummary = computed(() => {
 
 const plainWheelZeroBlockerActive = computed(() => plainWheelNextActionSummary.value !== "");
 const plainWheelZeroBlockerNeedsRadar = computed(() => (
-  plainWheelZeroBlockerActive.value && plainWheelZeroBlockerChecked.value && showPlainRadarStart.value
+  plainWheelZeroBlockerActive.value && showPlainRadarStart.value
 ));
 
 const plainWheelZeroBlockerSummary = computed(() => {
@@ -3613,13 +3620,13 @@ function plainWheelGoalTarget(): HTMLElement | null {
       ?? enabledButton(plainFirstJogRestoreButton.value)
       ?? plainWheelRecordPanel.value;
   }
+  if (plainWheelZeroBlockerActive.value && showPlainRadarStart.value) {
+    return plainRadarNextTarget() ?? plainWheelRecordPanel.value;
+  }
   if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
     return enabledButton(plainWheelZeroCheckButton.value) ?? plainWheelRecordPanel.value;
   }
   if (plainWheelZeroBlockerChecked.value) {
-    if (showPlainRadarStart.value) {
-      return plainRadarNextTarget() ?? plainWheelRecordPanel.value;
-    }
     return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
   }
   if (canSendPlainFirstJog.value) {
@@ -4995,7 +5002,7 @@ onBeforeUnmount(() => {
               <button ref="plainFirstJogRestoreButton" type="button" class="secondary compact-stop" :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim() || !firstJogMaterialRestoreReady" data-testid="plain-first-jog-restore" @click="restorePlainFirstJogMaterial">
                 恢复试动确认
               </button>
-              <button ref="plainWheelTrialButton" type="button" class="secondary compact-stop" :disabled="!canSendPlainFirstJog" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
+              <button ref="plainWheelTrialButton" type="button" class="secondary compact-stop" :disabled="plainWheelTrialDisabled" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
                 {{ plainWheelTrialButtonLabel }}
               </button>
               <button type="button" class="secondary compact-stop" :disabled="loading || baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
