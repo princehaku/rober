@@ -5617,6 +5617,85 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("focuses keyboard recheck after delivery success when keyboard gate is still blocked", async () => {
+    // 送达完成后若键盘条件还没齐，只把焦点带到复查按钮；不能自动启用键盘或发送手控。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        proxy_status: "latest_loaded",
+        status: "loaded_fail_closed_summary",
+        delivery_success: false,
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-keyboard-blocked",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          delivery_success: "false",
+        },
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": {
+        proxy_status: "report_forwarded",
+        status: "loaded_fail_closed_summary",
+        delivery_success: false,
+        structured_hil_claims: { delivery_success: true },
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/complete": {
+        proxy_status: "completion_forwarded",
+        status: "loaded_fail_closed_summary",
+        delivery_success: true,
+        delivery_key_values: { status: "delivery_complete", delivery_success: "true" },
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/latest": {
+        proxy_status: "latest_loaded",
+        status: "loaded_fail_closed_summary",
+        delivery_success: true,
+        delivery_key_values: { status: "delivery_complete", delivery_success: "true" },
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    await wrapper.find('input[name="deliveryOperatorEvidenceRef"]').setValue("delivery-operator-keyboard-blocked");
+    await wrapper.find('input[name="deliveryEvidenceRef"]').setValue("delivery-confirmation-keyboard-blocked");
+    await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/keyboard_blocked.jpg");
+    await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-keyboard-blocked");
+    await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    const confirmForm = wrapper.findAll("form").find((form) => form.text().includes("送达最终确认"));
+    expect(confirmForm).toBeTruthy();
+    await confirmForm?.trigger("submit");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-delivery-submit-result"]').text()).toContain("送达提交已通过：上位机已确认送达完成。");
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).not.toContain("手控中");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("treats stale delivery success as history instead of current completion", async () => {
     // 旧 delivery_success 只能提示历史记录，不能让本轮进度或最终确认直接变成完成。
     const mockedFetch = stubWorkstationFetch({
