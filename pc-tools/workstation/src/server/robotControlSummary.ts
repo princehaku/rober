@@ -2595,10 +2595,13 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   const statusT1001 = baseStatus?.key_values.latest_t1001_observed_count;
   const latestT1001 = feedbackLatest?.key_values.latest_t1001_observed_count ?? feedbackLatest?.key_values.t1001_observed_count;
   const observedCount = statusT1001 ?? latestT1001 ?? "not_loaded";
-  const latestFeedbackStatus = feedbackLatest?.key_values.feedback_samples_freshness_status
-    ?? baseStatus?.key_values.feedback_samples_freshness_status
-    ?? feedbackLatest?.status
-    ?? "not_loaded";
+  const baseStatusHasFreshT1001 = statusT1001 !== undefined && statusT1001 !== "not_loaded" && Number(statusT1001) > 0;
+  const latestFeedbackStatus = baseStatusHasFreshT1001
+    ? "fresh_base_status_readback"
+    : feedbackLatest?.key_values.feedback_samples_freshness_status
+      ?? baseStatus?.key_values.feedback_samples_freshness_status
+      ?? feedbackLatest?.status
+      ?? "not_loaded";
   const ackStatus = baseStatus?.key_values.feedback_ack_status ?? (Number(observedCount) > 0 ? "t1001_observed" : "not_loaded");
   const wheelFeedbackProven = baseStatus?.key_values.wheel_feedback_lr_nonzero_proven
     ?? feedbackLatest?.key_values.wheel_feedback_lr_nonzero_proven

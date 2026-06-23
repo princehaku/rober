@@ -3581,7 +3581,7 @@ describe("App", () => {
     summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
     summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
     summaryFixture.readback_summary.base.feedback_voltage_v = "12.43";
-    summaryFixture.readback_summary.base.latest_feedback_status = "stale";
+    summaryFixture.readback_summary.base.latest_feedback_status = "fresh_base_status_readback";
     summaryFixture.readback_summary.lidar.lifecycle_running = "false";
     summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
@@ -3600,7 +3600,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：先启动雷达，再重试读非零 L/R。");
     expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：轮速 L/R=0/0，检查电机使能、供电、模式和现场空间后重试。");
-    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("历史轮速样本已过期，以当前读回为准");
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).not.toContain("历史轮速样本已过期");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点：请确认电机使能、供电、模式和现场空间后再重试。");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先启动雷达再试动");

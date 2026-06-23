@@ -3987,7 +3987,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(baseStatusReadback?.key_values.wheel_feedback_latest_left_speed).toBe("0");
       expect(baseStatusReadback?.key_values.wheel_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("12");
-      expect(summary.readback_summary.base.latest_feedback_status).toBe("stale");
+      expect(summary.readback_summary.base.latest_feedback_status).toBe("fresh_base_status_readback");
       expect(summary.readback_summary.base.wheel_feedback_latest_left_speed).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.base.feedback_voltage_v).toBe("12.43");
