@@ -1,4 +1,5 @@
 import express from "express";
+import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -75,6 +76,35 @@ const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? "127.0.0.1";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_ROOT = path.resolve(__dirname, "../../dist");
+
+export function workstationListenAddress(): string {
+  // 启动日志统一走同一个地址格式，避免 public 脚本排障时出现口径漂移。
+  return `http://${HOST}:${PORT}`;
+}
+
+export function listenFailureHint(error: NodeJS.ErrnoException, host = HOST, port = PORT): string {
+  // 7071 常用于局域网公开访问；端口被占时必须给出下一手，而不是只吐 Node 栈。
+  if (error.code !== "EADDRINUSE") {
+    return `pc-tools workstation API failed to listen on ${host}:${port}: ${error.message}`;
+  }
+  return [
+    `pc-tools workstation API failed to listen on ${host}:${port}: address already in use.`,
+    `检查占用进程: lsof -nP -iTCP:${port} -sTCP:LISTEN || netstat -anv | rg '[.:]${port} .*LISTEN'`,
+    "停掉占用进程后重试，或临时改用 PORT=<free-port> npm run api:public。",
+  ].join("\n");
+}
+
+function preflightListenAddress(host: string, port: number): Promise<void> {
+  // 先用一次短生命周期 socket 探测端口；失败时不启动 Express，日志更像操作提示。
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.once("listening", () => {
+      probe.close((error) => (error ? reject(error) : resolve()));
+    });
+    probe.listen(port, host);
+  });
+}
 
 function queryString(value: unknown): string {
   // Express query 可能是数组或对象；只接受单个字符串，其他形态 fail closed 为空。
@@ -1997,12 +2027,18 @@ export function createWorkstationApp(): express.Express {
 export const app = createWorkstationApp();
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  // 显式保留 server 引用，确保 public API 进程在 CLI 启动后持续监听。
-  const server = app.listen(PORT, HOST, () => {
-    console.log(`pc-tools workstation API listening on http://${HOST}:${PORT}`);
-  });
-  server.on("error", (error) => {
-    console.error(`pc-tools workstation API failed to listen on ${HOST}:${PORT}`, error);
+  // 启动前先探测端口，避免 7071 被 Clash/其他服务占用时出现“已监听又失败”的误导日志。
+  void preflightListenAddress(HOST, PORT).then(() => {
+    // 显式保留 server 引用，确保 public API 进程在 CLI 启动后持续监听。
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`pc-tools workstation API listening on ${workstationListenAddress()}`);
+    });
+    server.on("error", (error: NodeJS.ErrnoException) => {
+      console.error(listenFailureHint(error));
+      process.exitCode = 1;
+    });
+  }).catch((error: NodeJS.ErrnoException) => {
+    console.error(listenFailureHint(error));
     process.exitCode = 1;
   });
 }

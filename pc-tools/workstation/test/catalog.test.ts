@@ -37,7 +37,7 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
-import { createWorkstationApp } from "../src/server/index";
+import { createWorkstationApp, listenFailureHint } from "../src/server/index";
 
 function sampleStatus(evidenceRef: string) {
   // 样例只提供 Node loader 生成 safe summary 所需字段，不模拟真实 Nav2 或现场成功。
@@ -1157,6 +1157,20 @@ function expectNoLegacyPythonGateSemantics(value: unknown, allowVendorSerialRefe
 }
 
 describe("workstation fail-closed API contracts", () => {
+  it("formats public API port conflict with operator next steps", () => {
+    // 公网绑定失败是现场访问问题；提示必须给出占用排查和换端口兜底。
+    const message = listenFailureHint(
+      Object.assign(new Error("listen EADDRINUSE"), { code: "EADDRINUSE" }),
+      "0.0.0.0",
+      7071,
+    );
+
+    expect(message).toContain("0.0.0.0:7071");
+    expect(message).toContain("address already in use");
+    expect(message).toContain("lsof -nP -iTCP:7071");
+    expect(message).toContain("PORT=<free-port> npm run api:public");
+  });
+
   it("health exposes software-proof fields only", () => {
     // health 在线不等于机器人在线，因此必须覆盖全部 fail-closed 字段。
     const health = buildHealth();
