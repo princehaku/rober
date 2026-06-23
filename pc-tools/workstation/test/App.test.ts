@@ -3598,6 +3598,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
     const callsBeforeZeroCheck = mockedFetch.mock.calls.length;
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-zero-check"]').element);
     await wrapper.find('[data-testid="plain-wheel-zero-check"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();

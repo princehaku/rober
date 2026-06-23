@@ -3497,11 +3497,8 @@ function focusPlainGoalProgressTarget(targetId: string): void {
   const deliveryTarget = plainDeliveryConfirmMissingLabels.value.includes("送达材料")
     ? plainDeliveryStatusPanel.value
     : plainDeliveryFinalPanel.value;
-  const wheelTarget = firstJogMaterialRestoreBlocksMotion.value
-    ? plainFirstJogRestoreButton.value ?? plainWheelRecordPanel.value
-    : plainWheelRecordPanel.value;
   const targetMap: Record<string, HTMLElement | null> = {
-    wheel: wheelTarget,
+    wheel: plainWheelGoalTarget(),
     trip: plainTripRunPanel.value,
     delivery: deliveryTarget,
     keyboard: keyboardControlPanel.value,
@@ -3512,6 +3509,23 @@ function focusPlainGoalProgressTarget(targetId: string): void {
   }
   target.scrollIntoView?.({ block: "center", behavior: "smooth" });
   target.focus({ preventScroll: true });
+}
+
+function plainWheelGoalTarget(): HTMLElement | null {
+  // 轮速目标的跳转要落到现场“下一手动作”，否则用户还得在面板里二次找卡点。
+  if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
+    return enabledButton(plainWheelZeroCheckButton.value) ?? plainWheelRecordPanel.value;
+  }
+  if (plainWheelZeroBlockerChecked.value) {
+    return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
+  }
+  if (firstJogMaterialRestoreBlocksMotion.value) {
+    return enabledButton(plainFirstJogRestoreButton.value) ?? plainWheelRecordPanel.value;
+  }
+  if (canSendPlainFirstJog.value) {
+    return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
+  }
+  return plainWheelRecordPanel.value;
 }
 
 async function focusPlainDeliveryStatusPanel(): Promise<void> {
