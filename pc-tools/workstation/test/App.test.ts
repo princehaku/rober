@@ -3291,6 +3291,7 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("目标收口进度");
     expect(firstScreenText).not.toContain("普通用户入口");
     expect(firstScreenText).not.toContain("http://192.168.1.11:8787");
+    expect(wrapper.find('[data-testid="robot-api-default-address"]').text()).toBe("192.168.1.11:8787");
     expect(wrapper.find(".robot-console > .section-head").exists()).toBe(false);
     expect(wrapper.find(".simple-user-console input[name='robotApiBaseUrl']").exists()).toBe(false);
     const robotBaseUrlInput = wrapper.find('input[name="robotApiBaseUrl"]');
@@ -3305,11 +3306,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(defaultRobotBaseUrlButton.attributes("disabled")).toBeUndefined();
     expect(defaultRobotBaseUrlAdvancedButton.attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="robot-api-default-address"]').text()).toBe("未设置地址");
     expect(wrapper.find('[data-testid="robot-api-default-summary"]').text()).toBe("已改为高级地址");
     const fetchCallsBeforeDefaultRestore = mockedFetch.mock.calls.length;
     await defaultRobotBaseUrlButton.trigger("click");
     await wrapper.vm.$nextTick();
     expect((robotBaseUrlInput.element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
+    expect(wrapper.find('[data-testid="robot-api-default-address"]').text()).toBe("192.168.1.11:8787");
     expect(wrapper.find('[data-testid="robot-api-default-summary"]').text()).toBe("已使用默认地址");
     expect(mockedFetch.mock.calls).toHaveLength(fetchCallsBeforeDefaultRestore);
     expect(

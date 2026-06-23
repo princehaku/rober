@@ -58,6 +58,10 @@ const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电�
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
 const robotApiBaseUrlUsesDefault = computed(() => robotApiBaseUrl.value.trim() === DEFAULT_ROBOT_API_BASE_URL);
+const robotApiBaseUrlPlainLabel = computed(() => {
+  // 首屏只展示 host:port，既让现场确认默认小车，又避免把高级 URL 输入框放回普通视图。
+  return robotApiBaseUrl.value.trim().replace(/^https?:\/\//, "") || "未设置地址";
+});
 const o6ConsumerBaseUrl = ref("http://127.0.0.1:8088");
 const taskId = ref("");
 const fieldEvidenceManifestJson = ref("");
@@ -4831,6 +4835,7 @@ onBeforeUnmount(() => {
       <div class="robot-quick-connect">
         <div class="plain-default-robot">
           <span class="plain-default-robot-title">默认小车</span>
+          <span class="plain-default-robot-address" data-testid="robot-api-default-address">{{ robotApiBaseUrlPlainLabel }}</span>
           <span class="muted" data-testid="robot-api-default-summary">{{ robotApiBaseUrlUsesDefault ? "已使用默认地址" : "已改为高级地址" }}</span>
         </div>
         <button class="secondary compact-stop" type="button" :disabled="loading || robotApiBaseUrlUsesDefault" data-testid="robot-api-default" @click="resetRobotApiBaseUrlToDefault">恢复默认</button>
