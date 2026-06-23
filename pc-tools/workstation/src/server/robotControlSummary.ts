@@ -969,6 +969,9 @@ function lidarSummaryFromReadbacks(
 ): RobotControlSummaryResponse["readback_summary"]["lidar"] {
   // 普通首屏只消费 summary 压缩字段，因此把 radar status 的 continuity/lifecycle 结论集中收口在这里。
   const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
+  const radarControls = asRecord(findFirstKey(radarStatusPayload, ["controls"]));
+  const radarStartControl = asRecord(radarControls?.start);
+  const radarStartCommand = asRecord(radarStartControl?.command);
   return {
     status: readbackById(readbacks, "radar_status")?.status ?? "not_loaded",
     latest_scan_proof_status: readbackById(readbacks, "radar_scan_proof_latest")?.status ?? "not_loaded",
@@ -979,6 +982,7 @@ function lidarSummaryFromReadbacks(
     continuous_window_observed: summaryValueText(radarStatusPayload, ["continuous_window_observed"]),
     continuity_window_status: summaryValueText(radarStatusPayload, ["continuity_window_status"]),
     latest_scan_proof_fresh: summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"]),
+    radar_start_configured: summaryValueText(radarStartCommand, ["configured"]),
   };
 }
 
@@ -2485,6 +2489,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         continuous_window_observed: "not_loaded",
         continuity_window_status: "not_loaded",
         latest_scan_proof_fresh: "not_loaded",
+        radar_start_configured: "not_loaded",
       },
     base: {
       status: "not_loaded",

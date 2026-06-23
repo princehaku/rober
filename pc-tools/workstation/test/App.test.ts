@@ -417,6 +417,7 @@ const fixtures: Record<string, unknown> = {
         continuous_window_observed: "true",
         continuity_window_status: "fresh_window_observed",
         latest_scan_proof_fresh: "true",
+        radar_start_configured: "true",
       },
       base: {
         status: "base_status_not_proven",
@@ -7259,6 +7260,49 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("/api/radar/start");
+  });
+
+  it("shows radar start configuration as the trip blocker before sending start", async () => {
+    // 真实上位机可能处于 LiDAR 停止但 start command 未配置；普通首屏要先提示配置缺口，避免点击 dry-run。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "missing";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.radar_start_configured = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("雷达未运行");
+    expect(firstScreenText).toContain("上位机雷达启动命令未配置，先配置后再启动雷达。");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("雷达未配置");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去配置雷达");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：先配置雷达启动命令。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先配置雷达启动命令。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达启动命令未配置，先在上位机配置后再执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：先配置雷达启动命令。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先配置雷达）");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先配置雷达");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先配置雷达");
+    const navClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("完整 Nav2 路线执行"));
+    expect(navClosureItem?.text()).toContain("雷达启动命令未配置，先在上位机配置后再执行完整行程");
+    const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("delivery success"));
+    expect(deliveryClosureItem?.text()).toContain("送达确认前先配置雷达启动命令并完成本轮完整行程");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("focuses plain radar refresh only after radar start reports ok", async () => {
