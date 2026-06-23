@@ -21,6 +21,11 @@ pc-tools/workstation/
 工作站，不会自动执行 Nav2、manual、delivery complete、keyboard pulse、stop 或
 `/cmd_vel`。
 
+若启动时报 `0.0.0.0:7071: address already in use`，先查
+`netstat -anv | rg '[.:]7071 .*LISTEN|7071'`。2026-06-23 本机实测该端口可被
+Clash Verge 的 root `verge-mihomo` 占用；在这种情况下 Node 代码仍然按
+`0.0.0.0:7071` 绑定，但需要先从 Clash Verge 侧释放 7071 后才能成功启动。
+
 ## Robot Control Console V1
 
 `workstation/` 默认直接展示 `RobotControlConsolePanel` 和 `GET /api/robot-control/summary?baseUrl=<robot-api-base-url>`，不再把普通控制台放在 tab 导航后面。Vue 不直接跨域访问上位机；Robot API base URL 只交给 Node server 代理。代理只读取 `/api/status`、O3 proof latest、Camera/LiDAR/Base status/latest/readback 类 GET endpoint，并拒绝 unsafe URL、credentials、query/hash、非回环或非 RFC1918 局域网 host、schema drift 和危险 true 字段。为避免真实上位机慢一点的状态聚合被误判成离线，`/api/status`、`/api/camera/health`、`/api/camera/devices` 采用更宽的只读超时窗口；其余 endpoint 继续保持短超时。当前首屏已经回到普通用户可读的简易风格：五个普通卡片只给短状态、少量按钮和可停止入口；前端测试会阻止默认可见首屏再次出现 `检查路径`、`现场材料`、`HIL`、`Nav2`、`proof`、`key values`、`/cmd_vel`、`/api/base/manual`、`可点动`、`task_id`、`O6`、`O7`、`Mock`、`field manifest`。定位重置、导航目标预检、O6 base URL、peer/ICE/SDP、readback table、O3 proof summary、route replay、非 stop 点动、HIL checklist、现场材料和 evidence 细节都收进 `<details>` 折叠区，工程 tabs 只在默认关闭的 `高级工具` 中出现。
