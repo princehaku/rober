@@ -2207,6 +2207,7 @@ export interface RobotControlDeliveryCompleteResponse {
   status: "blocked" | "delivery_success_confirmed" | "loaded_fail_closed_summary";
   request_body: RobotControlDeliveryCompleteRequest;
   delivery_key_values: Record<string, string>;
+  missing_required_material: string[];
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
@@ -2238,6 +2239,7 @@ export interface RobotControlDeliveryLatestResponse {
   status: "blocked" | "delivery_success_confirmed" | "loaded_fail_closed_summary";
   delivery_key_values: Record<string, string>;
   delivery_material_refs: RobotControlDeliveryMaterialRefs;
+  missing_required_material: string[];
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
@@ -2261,6 +2263,7 @@ export interface RobotControlDeliveryGapCheckResponse {
   status: "blocked" | "loaded_fail_closed_summary";
   request_body: RobotControlDeliveryCompleteRequest;
   delivery_key_values: Record<string, string>;
+  missing_required_material: string[];
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

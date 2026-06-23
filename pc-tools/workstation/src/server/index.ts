@@ -1609,6 +1609,7 @@ export function createWorkstationApp(): express.Express {
       status: "blocked",
       delivery_key_values: {},
       delivery_material_refs: deliveryMaterialRefs(null),
+      missing_required_material: [],
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
@@ -1642,6 +1643,7 @@ export function createWorkstationApp(): express.Express {
         delivery_success: remoteDeliverySuccess,
         delivery_key_values: deliveryCompleteKeyValues(remotePayload),
         delivery_material_refs: deliveryMaterialRefs(remotePayload),
+        missing_required_material: missingMaterial,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `delivery_latest_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`delivery_latest_http_status_${remote.status}`]),
@@ -1684,6 +1686,7 @@ export function createWorkstationApp(): express.Express {
       status: "blocked",
       request_body: requestBody,
       delivery_key_values: {},
+      missing_required_material: [],
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
@@ -1710,6 +1713,7 @@ export function createWorkstationApp(): express.Express {
         remote_http_status: remote.status,
         status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
         delivery_key_values: deliveryCompleteKeyValues(remotePayload),
+        missing_required_material: missingMaterial,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `delivery_check_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`delivery_check_http_status_${remote.status}`]),
@@ -1754,6 +1758,7 @@ export function createWorkstationApp(): express.Express {
       status: "blocked",
       request_body: requestBody,
       delivery_key_values: {},
+      missing_required_material: [],
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
@@ -1778,6 +1783,9 @@ export function createWorkstationApp(): express.Express {
         signal: AbortSignal.timeout(15000),
       });
       const remotePayload = asRecord(await remote.json().catch(() => null));
+      const missingMaterial = Array.isArray(remotePayload?.missing_required_material)
+        ? remotePayload.missing_required_material.map((item) => shortText(item, "")).filter(Boolean)
+        : [];
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
         (field) =>
           field !== "delivery_success" &&
@@ -1792,9 +1800,11 @@ export function createWorkstationApp(): express.Express {
         status: remoteDeliverySuccess ? "delivery_success_confirmed" : remote.ok ? "loaded_fail_closed_summary" : "blocked",
         delivery_success: remoteDeliverySuccess,
         delivery_key_values: deliveryCompleteKeyValues(remotePayload),
+        missing_required_material: missingMaterial,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `delivery_complete_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`delivery_complete_http_status_${remote.status}`]),
+          ...missingMaterial,
           ...dangerous.map((field) => `dangerous_true_field:${field}`),
         ],
         hard_dangerous_true_fields: dangerous,

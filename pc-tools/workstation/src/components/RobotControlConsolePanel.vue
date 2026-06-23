@@ -818,8 +818,11 @@ const deliveryGateBlockedReasons = computed(() => {
   // 送达缺口可能来自 latest、check 或 complete；合并后给现场人员一个稳定清单。
   return Array.from(new Set([
     ...(deliveryCompletionResult.value?.blocked_reasons ?? []),
+    ...(deliveryCompletionResult.value?.missing_required_material ?? []),
     ...(deliveryGapCheckResult.value?.blocked_reasons ?? []),
+    ...(deliveryGapCheckResult.value?.missing_required_material ?? []),
     ...(deliveryLatestResult.value?.blocked_reasons ?? []),
+    ...(deliveryLatestResult.value?.missing_required_material ?? []),
   ]));
 });
 
@@ -2741,6 +2744,7 @@ function makeDeliveryCompletionFallback(reason: string): RobotControlDeliveryCom
       delivery_evidence_ref: deliveryEvidenceRef.value,
     },
     delivery_key_values: {},
+    missing_required_material: [],
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -2774,6 +2778,7 @@ function makeDeliveryLatestFallback(reason: string): RobotControlDeliveryLatestR
       site_state: "",
     },
     failure_reason: reason,
+    missing_required_material: [],
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
     robot_control_executed: false,
@@ -2802,6 +2807,7 @@ function makeDeliveryGapCheckFallback(reason: string): RobotControlDeliveryGapCh
       delivery_evidence_ref: "delivery-gap-check-not-confirmed",
     },
     delivery_key_values: {},
+    missing_required_material: [],
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],

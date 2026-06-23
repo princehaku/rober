@@ -5809,6 +5809,7 @@ describe("workstation fail-closed API contracts", () => {
         proxy_status: string;
         delivery_success: boolean;
         delivery_key_values: Record<string, string>;
+        missing_required_material: string[];
         blocked_reasons: string[];
         robot_control_executed: boolean;
       };
@@ -5820,6 +5821,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.delivery_key_values.nav2_status).toBe("goal_succeeded");
       expect(body.delivery_key_values.nav2_feedback_sample_count).toBe("8");
       expect(body.blocked_reasons).toEqual([
+        "operator_report_latest_http_200",
+        "operator_observed_motion",
+        "structured_hil_claims.route_map_ref",
+      ]);
+      expect(body.missing_required_material).toEqual([
         "operator_report_latest_http_200",
         "operator_observed_motion",
         "structured_hil_claims.route_map_ref",

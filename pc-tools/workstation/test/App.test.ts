@@ -3977,6 +3977,67 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows delivery latest missing material even when blocked reasons are empty", async () => {
+    // 上位机 latest 已经给出 missing_required_material；首屏必须直接翻成普通话，不能要求用户再点一次复查。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/delivery/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/latest",
+        remote_endpoint: "/api/delivery/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_status: "goal_succeeded",
+          nav2_feedback_sample_count: "8",
+          operator_report_status: "unsafe_or_incomplete",
+        },
+        delivery_material_refs: {
+          operator_evidence_ref: "delivery-draft-smoke",
+          external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe.jpg",
+          camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe.jpg",
+          route_map_ref: "o11-nav2-goal-execution-fixture",
+          site_state: "delivery_material_draft_not_operator_confirmed",
+        },
+        missing_required_material: [
+          "confirm_delivery_completion",
+          "operator_report_ready_for_review",
+          "operator_observed_motion",
+          "operator_observed_stop",
+          "structured_hil_claims.delivery_success",
+        ],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toBe(
+      "上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。",
+    );
+    expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toContain("还差 5 项");
+    expect(wrapper.find('[data-testid="delivery-closure-check"]').text()).toContain("confirm_delivery_completion");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/check?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps stale Nav2 rerun explicit when delivery is blocked by stopped radar", async () => {
     // 真实现场可能同时遇到雷达未运行和旧行程成功；送达入口必须把“重跑本轮行程”说出来。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
