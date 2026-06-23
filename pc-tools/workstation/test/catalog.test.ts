@@ -4180,6 +4180,71 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("keeps robot connection readable when optional radar latest endpoints are not installed", async () => {
+    // 真实上位机可能只提供 /api/radar/status；独立 latest 404 只能降级雷达证据，不能误判整机离线。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.radar_status", "lifecycle_not_running"),
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          continuous_scan_status: "lifecycle_not_running",
+          continuous_window_observed: false,
+          latest_scan_proof_fresh: false,
+        },
+      },
+      "/api/radar/scan-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.base_status", "loaded"),
+          latest_t1001_observed_count: 3,
+          wheel_feedback_lr_nonzero_proven: false,
+        },
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded"),
+          t1001_observed_count: 3,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.console_status).toBe("loaded_fail_closed_summary");
+      expect(summary.robot_api_connection.status).toBe("readable");
+      expect(summary.robot_api_connection.blocked_count).toBe(0);
+      expect(summary.robot_api_connection.blocked_reasons).toEqual([]);
+      expect(summary.readback_summary.lidar.latest_scan_proof_status).toBe("missing");
+      expect(summary.readback_summary.lidar.latest_raw_packet_proof_status).toBe("missing");
+      expect(summary.read_endpoints.find((item) => item.id === "radar_scan_proof_latest")).toEqual(expect.objectContaining({
+        http_status: 404,
+        request_status: "loaded",
+        status: "missing",
+        blocked_reasons: [],
+      }));
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("operator report proxy posts only whitelisted material fields to fixed endpoint", async () => {
     // 现场材料提交只能命中 /api/operator/report；delivery_success 只允许作为 structured claim 保留。
     const upstream = await listenRobotProofRefreshApi({
@@ -4303,7 +4368,7 @@ describe("workstation fail-closed API contracts", () => {
     // status/camera 在真实板端可能慢于 proof latest；只要仍在白名单窗口内，就不应被误记成 fetch_failed。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
-        delay_ms: 2200,
+        delay_ms: 5200,
         payload: {
           schema: "trashbot.upper_robot_api.v1.status",
           status: "camera_ready_from_status",
@@ -4319,7 +4384,7 @@ describe("workstation fail-closed API contracts", () => {
         },
       },
       "/api/camera/health": {
-        delay_ms: 2400,
+        delay_ms: 5400,
         payload: {
           schema: "trashbot.upper_robot_api.v1.camera_health",
           status: "ready",
@@ -4483,7 +4548,7 @@ describe("workstation fail-closed API contracts", () => {
     } finally {
       await robotApi.close();
     }
-  });
+  }, 10_000);
 
   it("workstation proof refresh proxies only allow fixed radar, map, and Nav2 POST bodies", async () => {
     // refresh 代理必须把 body 锁死成 workstation 预设值，且危险 true 字段仍然 fail closed。

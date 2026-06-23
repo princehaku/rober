@@ -31,6 +31,7 @@ type InternalRobotApiEndpointReadback = RobotApiEndpointReadback & {
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 1500;
 const SLOW_READBACK_TIMEOUT_MS = 4000;
+const HEAVY_READBACK_TIMEOUT_MS = 8000;
 export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
 export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
 export const ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS = 260;
@@ -51,14 +52,14 @@ type RobotReadEndpointConfig = {
 
 const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   // 真实上位机 /api/status 会顺带聚合 camera/radar/base 子摘要，读取窗口要比 proof latest 更宽。
-  { id: "status", endpoint: "/api/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "status", endpoint: "/api/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
   { id: "map_proof_latest", endpoint: "/api/map/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   // camera 端点在真实板端会探测设备与健康摘要，允许更长只读窗口，避免误判成离线。
-  { id: "camera_health", endpoint: "/api/camera/health", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "camera_health", endpoint: "/api/camera/health", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
   { id: "camera_devices", endpoint: "/api/camera/devices", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "radar_status", endpoint: "/api/radar/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
@@ -67,6 +68,11 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "base_status", endpoint: "/api/base/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
 ];
+
+const OPTIONAL_MISSING_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([
+  "radar_scan_proof_latest",
+  "radar_raw_packet_proof_latest",
+]);
 
 export type RobotProofRefreshConfig = {
   kind: RobotControlProofRefreshKind;
@@ -2015,6 +2021,23 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
       blocked_reasons: ["response_json_not_object"],
       dangerous_true_fields: [],
       payload: null,
+    };
+  }
+
+  if (response.status === 404 && OPTIONAL_MISSING_READ_ENDPOINT_IDS.has(id)) {
+    // 旧上位机可能还没有独立 radar latest 端点；这只说明雷达证据缺失，不该把整机连接打成 blocked。
+    return {
+      id,
+      endpoint,
+      http_status: response.status,
+      request_status: "loaded",
+      schema: asString(payload.schema, "schema_missing"),
+      status: "missing",
+      evidence_ref: "not_loaded",
+      key_values: {},
+      blocked_reasons: [],
+      dangerous_true_fields: [],
+      payload,
     };
   }
 
