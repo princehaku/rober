@@ -1234,6 +1234,43 @@ const plainWheelGoalProgressHint = computed(() => {
   return "等待运动窗口读到非零 L/R。";
 });
 
+const plainWheelGoalNextAction = computed(() => {
+  // 每个目标行都给一条短下一步，避免第一卡点挡住其它目标的操作线索。
+  if (wheelClosureEvidence.value.ready) {
+    return "已完成。";
+  }
+  if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
+    return "下一步：检查轮速卡点。";
+  }
+  if (plainWheelZeroBlockerChecked.value) {
+    return "下一步：重试读非零 L/R。";
+  }
+  if (firstJogMaterialRestoreBlocksMotion.value) {
+    return "下一步：恢复试动确认。";
+  }
+  if (canSendPlainFirstJog.value) {
+    return "下一步：试动读取轮速。";
+  }
+  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
+    return "下一步：记录现场画面。";
+  }
+  return "下一步：完成移动前检查。";
+});
+
+const plainTripGoalNextAction = computed(() => {
+  const navReady = goalClosureChecklist.value.find((item) => item.id === "nav2_goal_execution")?.ready === true;
+  if (navReady) {
+    return "已完成。";
+  }
+  if (plainTripHasFreshIncompleteEvidence.value) {
+    return "下一步：重新读取或执行完整行程。";
+  }
+  if (plainTripHasSucceededEvidence.value) {
+    return "下一步：重新执行本轮行程。";
+  }
+  return plainTripSafetyConfirmed.value ? "下一步：检查或执行行程。" : "下一步：勾选行程前确认。";
+});
+
 const plainDeliveryGoalProgressHint = computed(() => {
   // 送达进度优先显示上位机 gate 缺项；它只是提示，不自动勾选或提交最终确认。
   if (deliverySuccessEvidenceIsStale.value) {
@@ -1245,6 +1282,19 @@ const plainDeliveryGoalProgressHint = computed(() => {
     return `${missingSummary.replace(/^上位机还差：/, "还差：")}${nextAction ? ` ${nextAction}` : ""}`;
   }
   return plainDeliveryNextActionSummary.value || "还缺最终送达确认。";
+});
+
+const plainDeliveryGoalNextAction = computed(() => (
+  goalClosureChecklist.value.find((item) => item.id === "delivery_success")?.ready === true
+    ? "已完成。"
+    : plainDeliveryNextActionSummary.value || "下一步：完成最终送达确认。"
+));
+
+const plainKeyboardGoalNextAction = computed(() => {
+  if (canUseKeyboardControl.value) {
+    return keyboardManualPulseObserved.value ? "已验证。" : "下一步：启用键盘并按住方向键验证。";
+  }
+  return plainKeyboardNextActionSummary.value || "下一步：复查手控条件。";
 });
 
 function parsePositiveMillis(value: string | undefined): number | null {
@@ -1309,6 +1359,7 @@ const plainGoalProgressItems = computed(() => {
       actionLabel: firstJogMaterialRestoreBlocksMotion.value ? "去恢复" : "去轮速",
       state: wheelReady ? "已完成" : "待完成",
       hint: wheelReady ? `${wheelEvidence.hint}。` : plainWheelGoalProgressHint.value,
+      nextAction: plainWheelGoalNextAction.value,
     },
     {
       id: "trip",
@@ -1318,6 +1369,7 @@ const plainGoalProgressItems = computed(() => {
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
         : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : "还没读到最近行程成功结果。",
+      nextAction: plainTripGoalNextAction.value,
     },
     {
       id: "delivery",
@@ -1325,6 +1377,7 @@ const plainGoalProgressItems = computed(() => {
       actionLabel: "去送达",
       state: deliveryReady ? "已完成" : "待完成",
       hint: deliveryReady ? "送达已确认。" : plainDeliveryGoalProgressHint.value,
+      nextAction: plainDeliveryGoalNextAction.value,
     },
     {
       id: "keyboard",
@@ -1334,6 +1387,7 @@ const plainGoalProgressItems = computed(() => {
       hint: canUseKeyboardControl.value
         ? keyboardManualPulseObserved.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}；现场可继续按住方向键手控。` : `键盘已解锁；点击启用键盘后按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`
         : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}`,
+      nextAction: plainKeyboardGoalNextAction.value,
     },
   ];
 });
@@ -4737,6 +4791,7 @@ onBeforeUnmount(() => {
               <span class="plain-progress-label">{{ item.label }}</span>
               <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
               <span class="muted">{{ item.hint }}</span>
+              <small class="muted" :data-testid="`plain-goal-progress-next-${item.id}`">{{ item.nextAction }}</small>
               <button type="button" class="secondary compact-stop" :data-testid="`plain-goal-progress-go-${item.id}`" @click="focusPlainGoalProgressTarget(item.id)">
                 {{ item.actionLabel }}
               </button>

@@ -530,7 +530,7 @@ h3 {
 
 .plain-progress-row {
   display: grid;
-  grid-template-columns: minmax(70px, auto) auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(70px, auto) auto minmax(0, 1fr) minmax(110px, auto) auto;
   align-items: center;
   gap: 8px;
 }
@@ -905,7 +905,8 @@ th {
     .advanced-grid,
     .locked-actions,
     .motion-limits,
-    .motion-middle-row {
+    .motion-middle-row,
+    .plain-progress-row {
     grid-template-columns: 1fr;
   }
 
