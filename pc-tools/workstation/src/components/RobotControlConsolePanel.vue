@@ -558,6 +558,7 @@ const keyboardContractReady = computed(() => {
 });
 const canUseKeyboardControl = computed(() => keyboardContractReady.value && canSendManualMotion.value);
 const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
+const canPressKeyboardDirection = computed(() => keyboardControlArmed.value && canUseKeyboardControl.value);
 const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES);
 const keyboardForwardedPulseProgressText = computed(() => {
   // 验证必须来自同一次按住会话；历史最佳只用于提示，不把分散单脉冲累加成连续手控。
@@ -4437,6 +4438,26 @@ function startKeyboardControl(direction: ManualDirection): void {
   }, keyboardJogIntervalMs.value);
 }
 
+function handleKeyboardDirectionPointerDown(direction: ManualDirection, event: PointerEvent): void {
+  // 屏幕方向键只是一种更稳的按住入口，仍复用键盘 armed 状态和 manual gate。
+  event.preventDefault();
+  keyboardControlPanel.value?.focus();
+  if (keyboardHeldDirection.value && keyboardHeldDirection.value !== direction) {
+    stopKeyboardControl("screen_direction_changed");
+  }
+  if (keyboardHeldDirection.value === direction) {
+    return;
+  }
+  startKeyboardControl(direction);
+}
+
+function handleKeyboardDirectionPointerEnd(direction: ManualDirection, reason: string): void {
+  // 松开、移出或取消都走统一 stop 路径，防止屏幕按钮残留连续点动。
+  if (keyboardHeldDirection.value === direction) {
+    stopKeyboardControl(reason);
+  }
+}
+
 function handleGlobalKeyDown(event: KeyboardEvent): void {
   // 长按产生的 repeat 事件由 timer 接管，避免浏览器 repeat 频率影响底盘命令节奏。
   const direction = keyboardDirectionFromKey(event.key);
@@ -4797,6 +4818,57 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
+            <div class="keyboard-direction-pad" data-testid="keyboard-direction-pad">
+              <button
+                type="button"
+                :disabled="!canPressKeyboardDirection"
+                data-testid="keyboard-screen-forward"
+                @pointerdown="handleKeyboardDirectionPointerDown('forward', $event)"
+                @pointerup="handleKeyboardDirectionPointerEnd('forward', 'screen_button_released')"
+                @pointerleave="handleKeyboardDirectionPointerEnd('forward', 'screen_button_left')"
+                @pointercancel="handleKeyboardDirectionPointerEnd('forward', 'screen_button_cancelled')"
+              >
+                前进
+              </button>
+              <div class="motion-middle-row">
+                <button
+                  type="button"
+                  :disabled="!canPressKeyboardDirection"
+                  data-testid="keyboard-screen-left"
+                  @pointerdown="handleKeyboardDirectionPointerDown('left', $event)"
+                  @pointerup="handleKeyboardDirectionPointerEnd('left', 'screen_button_released')"
+                  @pointerleave="handleKeyboardDirectionPointerEnd('left', 'screen_button_left')"
+                  @pointercancel="handleKeyboardDirectionPointerEnd('left', 'screen_button_cancelled')"
+                >
+                  左转
+                </button>
+                <button class="danger-button" type="button" :disabled="!canSendStop" data-testid="keyboard-screen-stop" @click="stopKeyboardControl('screen_button_stop')">
+                  停止
+                </button>
+                <button
+                  type="button"
+                  :disabled="!canPressKeyboardDirection"
+                  data-testid="keyboard-screen-right"
+                  @pointerdown="handleKeyboardDirectionPointerDown('right', $event)"
+                  @pointerup="handleKeyboardDirectionPointerEnd('right', 'screen_button_released')"
+                  @pointerleave="handleKeyboardDirectionPointerEnd('right', 'screen_button_left')"
+                  @pointercancel="handleKeyboardDirectionPointerEnd('right', 'screen_button_cancelled')"
+                >
+                  右转
+                </button>
+              </div>
+              <button
+                type="button"
+                :disabled="!canPressKeyboardDirection"
+                data-testid="keyboard-screen-back"
+                @pointerdown="handleKeyboardDirectionPointerDown('back', $event)"
+                @pointerup="handleKeyboardDirectionPointerEnd('back', 'screen_button_released')"
+                @pointerleave="handleKeyboardDirectionPointerEnd('back', 'screen_button_left')"
+                @pointercancel="handleKeyboardDirectionPointerEnd('back', 'screen_button_cancelled')"
+              >
+                后退
+              </button>
+            </div>
             <p v-if="plainKeyboardNextActionSummary" class="panel-note" data-testid="plain-keyboard-next-action">
               {{ plainKeyboardNextActionSummary }}
             </p>

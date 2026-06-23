@@ -6315,7 +6315,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    const forwardButton = wrapper.findAll(".motion-pad button").find((button) => button.text() === "前进");
+    const forwardButton = wrapper.findAll(".advanced-details .motion-pad button").find((button) => button.text() === "前进");
     expect(forwardButton?.attributes("disabled")).toBeUndefined();
     expect(wrapper.find(".robot-console .advanced-details").text().replace(/\s+/g, "")).toContain("materialmissingfieldsnone");
 
@@ -6362,6 +6362,7 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("未启用，先点启用键盘。");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').text()).not.toContain("还差：");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text().replace(/\s+/g, "")).toContain("键盘手控待验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
@@ -6383,6 +6384,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("已启用");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
     const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
     await keyboardPanel.trigger("keydown", { key: "w" });
     await flushPromises();
@@ -6444,6 +6446,28 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("keyboard continuous control");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("pulse_ms=240");
+
+    const screenManualCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    await wrapper.find('[data-testid="keyboard-screen-right"]').trigger("pointerdown");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：右转");
+    await vi.advanceTimersByTimeAsync(260);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="keyboard-screen-right"]').trigger("pointerup");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const screenManualCalls = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"));
+    expect(screenManualCalls.length).toBeGreaterThan(screenManualCallsBefore);
+    const screenBody = JSON.parse(String((screenManualCalls[screenManualCalls.length - 1]?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
+    expect(screenBody).toEqual(expect.objectContaining({
+      direction: "right",
+      duration_ms: 240,
+      confirm_hil_checklist: true,
+    }));
+    expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?")).length).toBeGreaterThan(1);
   });
 
   it("does not verify keyboard control when the manual pulse is rejected", async () => {
