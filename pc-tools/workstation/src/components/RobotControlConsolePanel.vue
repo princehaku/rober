@@ -3501,6 +3501,17 @@ async function focusPlainDeliveryConfirmSubmitButton(): Promise<void> {
   target.focus({ preventScroll: true });
 }
 
+async function focusKeyboardPanelAfterDeliverySuccess(): Promise<void> {
+  // 送达 gate 通过后只把现场带到键盘区；不启用键盘、不发送任何手控脉冲。
+  await nextTick();
+  const target = keyboardControlPanel.value;
+  if (!target) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
+}
+
 function markDeliveryBasicSafetyConfirmed(): void {
   // 只减少现场重复勾选；到达、停稳和送达成功仍必须由 operator 分开确认。
   deliveryOperatorConfirmations.value.operator_present = true;
@@ -3747,6 +3758,9 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
     deliveryCompletionPending.value = false;
     await loadDeliveryLatest();
     await refreshConsole();
+    if (deliveryCompletionResult.value?.delivery_success === true) {
+      await focusKeyboardPanelAfterDeliverySuccess();
+    }
   }
 }
 

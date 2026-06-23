@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "api": "tsx src/server/index.ts",
+    "api:public": "HOST=0.0.0.0 PORT=7071 tsx src/server/index.ts",
     "build": "tsc -p tsconfig.app.json && vite build && tsc -p tsconfig.server.json",
     "test": "vitest run",
     "lint": "eslint ."

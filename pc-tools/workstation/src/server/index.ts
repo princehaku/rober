@@ -72,6 +72,7 @@ import type {
 } from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
+const HOST = process.env.HOST ?? "127.0.0.1";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_ROOT = path.resolve(__dirname, "../../dist");
 
@@ -1996,7 +1997,7 @@ export function createWorkstationApp(): express.Express {
 export const app = createWorkstationApp();
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  app.listen(PORT, "127.0.0.1", () => {
-    console.log(`pc-tools workstation API listening on http://127.0.0.1:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`pc-tools workstation API listening on http://${HOST}:${PORT}`);
   });
 }

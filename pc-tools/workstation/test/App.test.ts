@@ -5543,6 +5543,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     await wrapper.find('input[name="deliveryOperatorEvidenceRef"]').setValue("delivery-operator-fixture");
     await wrapper.find('input[name="deliveryEvidenceRef"]').setValue("delivery-confirmation-fixture");
     await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg");
@@ -5598,6 +5599,12 @@ describe("App", () => {
       delivery_evidence_ref: "delivery-confirmation-fixture",
     }));
     expect(wrapper.find('[data-testid="plain-delivery-submit-result"]').text()).toContain("送达提交已通过：上位机已确认送达完成。");
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-panel"]').element);
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).not.toContain("手控中");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).not.toContain("已启用");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("treats stale delivery success as history instead of current completion", async () => {
