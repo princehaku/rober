@@ -615,6 +615,9 @@ const plainKeyboardLiveStatus = computed(() => {
   if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
     return "键盘手控请求未成功，未记为已验证。";
   }
+  if (keyboardControlStatus.value.startsWith("blocked_keyboard_stop_failed")) {
+    return "键盘停止请求未成功，未记为已验证。";
+  }
   if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("released")) {
     return "已松开，正在发送停止。";
   }
@@ -4607,7 +4610,13 @@ function stopKeyboardControl(reason: string): void {
   keyboardControlStatus.value = `released:${reason}`;
   if (shouldSendStop && canSendStop.value) {
     void sendStop().then(() => {
-      keyboardControlStatus.value = `stop_sent:${reason}`;
+      const result = manualCommandResult.value;
+      const stopForwarded = result?.command_kind === "stop"
+        && result.proxy_status === "command_forwarded"
+        && typeof result.remote_http_status === "number"
+        && result.remote_http_status >= 200
+        && result.remote_http_status < 300;
+      keyboardControlStatus.value = stopForwarded ? `stop_sent:${reason}` : `blocked_keyboard_stop_failed:${result?.failure_reason || result?.proxy_status || "stop_not_forwarded"}`;
     });
   }
 }

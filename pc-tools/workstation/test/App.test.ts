@@ -6844,6 +6844,84 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(false);
   });
 
+  it("does not verify keyboard control when release stop is rejected", async () => {
+    // 连续 pulse 成功后还必须完成 stop 收口；stop 失败时不能把键盘手控标成已验证。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+        operator_report_preflight: {
+          status: "loaded",
+          failure_reason: "",
+          missing_fields: [],
+        },
+      },
+      "/api/robot-control/base/stop": {
+        command_kind: "stop",
+        proxy_status: "command_rejected",
+        remote_http_status: 500,
+        status: "blocked",
+        failure_reason: "remote_stop_rejected",
+        operator_report_preflight: {
+          status: "not_required_for_stop",
+          failure_reason: "",
+          missing_fields: [],
+        },
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await vi.advanceTimersByTimeAsync(260);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-keyboard"]').text()).toBe("下一步：松开按键完成停止收口。");
+
+    await keyboardPanel.trigger("keyup", { key: "w" });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘停止请求未成功，未记为已验证。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
+    const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("PC 键盘连续手控"));
+    expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
+    expect(keyboardClosureItem?.text()).toContain("已连续转发键盘方向输入，已连续 2/2 次，仍需松开按键完成停止收口");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(2);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
+  });
+
   it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {
     // 刷新与 lifecycle 按钮都只打 workstation 固定代理，动作结束后还要自动回刷 summary。
     const mockedFetch = stubWorkstationFetch();
