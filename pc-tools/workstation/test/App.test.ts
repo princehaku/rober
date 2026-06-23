@@ -6299,6 +6299,14 @@ describe("App", () => {
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
     expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，仍需按住方向键连续验证，最佳连续 0/2 次");
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    const manualCallsBeforeKeyboardRecheck = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    await wrapper.find('[data-testid="keyboard-control-recheck"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-arm"]').element);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeKeyboardRecheck);
     await armButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();

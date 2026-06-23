@@ -3448,6 +3448,16 @@ async function refreshPlainGoalProgress(): Promise<void> {
   ]);
 }
 
+async function refreshPlainKeyboardGate(): Promise<void> {
+  // 键盘复查仍只读刷新；刷新后把焦点带到下一步按钮，不自动启用键盘或发送手控。
+  await refreshPlainGoalProgress();
+  await nextTick();
+  const target = canArmKeyboardControl.value
+    ? keyboardControlArmButton.value
+    : keyboardControlRecheckButton.value;
+  target?.focus({ preventScroll: true });
+}
+
 function focusPlainGoalProgressTarget(targetId: string): void {
   // 进度区的“去处理”只做本页定位，不能顺手触发行程、送达、手控或任何材料提交。
   const deliveryTarget = plainDeliveryConfirmMissingLabels.value.includes("送达材料")
@@ -4584,7 +4594,7 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
-              <button ref="keyboardControlRecheckButton" class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainGoalProgress">{{ plainKeyboardRecheckButtonLabel }}</button>
+              <button ref="keyboardControlRecheckButton" class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainKeyboardGate">{{ plainKeyboardRecheckButtonLabel }}</button>
               <button ref="keyboardControlArmButton" class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>
