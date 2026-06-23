@@ -31,6 +31,10 @@ sprint_type: micro
 - 通过：`npm run lint`。
 - 通过：`npm run build`，完成 app/server TypeScript 与 Vite production build。
 - 通过：`git diff --check`。
+- 本机运行验证：
+  - `npm run api` 默认会尝试监听 `0.0.0.0:7071`，但当前 7071 被 Clash Verge 的 `verge-mihomo` 占用，返回 `address already in use`，未强杀代理进程。
+  - 临时以 `HOST=0.0.0.0 PORT=17071 npm run api` 通过 `launchctl submit` 启动，`lsof` 显示 `node ... TCP *:17071 (LISTEN)`。
+  - `curl http://127.0.0.1:17071/api/health` 返回 `trashbot.pc_tools_workstation.health.v1`，首页 `HEAD /` 返回 HTTP 200。
 - 真实上位机只读状态：
   - `/api/radar/status`: `lifecycle_running=false`, `lifecycle_status=lifecycle_not_running`
   - `/api/base/status`: `T=1001` 可读，最新 `L=0/R=0`，反馈电压约 `12.43V`
@@ -41,4 +45,5 @@ sprint_type: micro
 ## 剩余风险
 
 - 本轮没有执行真实雷达启动、first-jog、Nav2 或 delivery complete。
+- 当前开发机的 `0.0.0.0:7071` 被 Clash Verge 占用；默认代码已改为 7071，但要实际占用该端口需先释放 Clash Verge 对 7071 的监听，当前临时访问端口是 `17071`。
 - `wheel raw L/R 非零`、`完整 Nav2 路线执行`、`delivery success`、`PC 键盘连续手控` 仍需现场安全确认后继续拿真实证据。
