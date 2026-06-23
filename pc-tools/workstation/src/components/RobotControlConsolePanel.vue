@@ -1304,9 +1304,6 @@ const plainWheelGoalNextAction = computed(() => {
   if (wheelClosureEvidence.value.ready) {
     return "已完成。";
   }
-  if (plainWheelZeroBlockerActive.value && showPlainRadarStart.value) {
-    return "下一步：先启动雷达，再重试读非零 L/R。";
-  }
   if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
     return "下一步：检查轮速卡点。";
   }
@@ -1430,7 +1427,7 @@ const plainGoalProgressItems = computed(() => {
     {
       id: "wheel",
       label: "轮速记录",
-      actionLabel: firstJogMaterialRestoreBlocksMotion.value ? "去恢复" : plainWheelZeroBlockerNeedsRadar.value ? "去雷达" : "去轮速",
+      actionLabel: firstJogMaterialRestoreBlocksMotion.value ? "去恢复" : "去轮速",
       state: wheelReady ? "已完成" : "待完成",
       hint: wheelReady ? `${wheelEvidence.hint}。` : plainWheelGoalProgressHint.value,
       nextAction: plainWheelGoalNextAction.value,
@@ -1469,9 +1466,6 @@ const plainGoalProgressItems = computed(() => {
 const plainGoalProgressNextAction = computed(() => {
   // 现场不应该在四个目标之间猜顺序；总提示只指向第一项未完成的普通任务。
   const nextItem = plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "已验证");
-  if (nextItem?.id === "wheel" && plainWheelZeroBlockerNeedsRadar.value) {
-    return "下一步：先处理轮速记录。先启动雷达，再重试读非零 L/R。";
-  }
   return nextItem ? `下一步：先处理${nextItem.label}。${nextItem.hint}` : "下一步：四项都已完成，保持待命。";
 });
 
@@ -1485,9 +1479,6 @@ const plainGoalProgressPrimaryActionLabel = computed(() => {
   const target = plainGoalProgressItems.value.find((item) => item.id === plainGoalProgressPrimaryTarget.value);
   if (target?.id === "wheel" && firstJogMaterialRestoreBlocksMotion.value) {
     return "去恢复确认";
-  }
-  if (target?.id === "wheel" && plainWheelZeroBlockerNeedsRadar.value) {
-    return "去启动雷达";
   }
   if (target?.id === "trip" && plainTripRadarBlocked.value) {
     return "去启动雷达";
@@ -1724,8 +1715,8 @@ const canSendPlainFirstJog = computed(() => {
 });
 
 const canSendPlainWheelTrial = computed(() => {
-  // 轮速记录面板要服从雷达前置提示；按钮写着先启动雷达时不能继续发 first-jog。
-  return canSendPlainFirstJog.value && !(plainWheelZeroBlockerActive.value && showPlainRadarStart.value);
+  // wheel raw L/R 的重试只要求现场先确认轮速卡点；雷达缺口留给行程/键盘移动记录处理。
+  return canSendPlainFirstJog.value && (!plainWheelZeroBlockerActive.value || plainWheelZeroBlockerChecked.value);
 });
 
 const plainWheelTrialDisabled = computed(() => !canSendPlainWheelTrial.value);
@@ -1798,9 +1789,6 @@ const plainWheelRecordSummary = computed(() => {
     const right = values?.wheel_feedback_latest_raw_right ?? "not_loaded";
     if (left !== "not_loaded" && right !== "not_loaded") {
       if (isZeroWheelPair(left, right) && plainWheelZeroBlockerChecked.value) {
-        if (showPlainRadarStart.value) {
-          return { state: "待重试", hint: "轮速卡点已检查；先启动雷达，再低速重试读取非零 L/R。" };
-        }
         return { state: "待重试", hint: "轮速卡点已检查；请低速重试读取非零 L/R。" };
       }
       return { state: "待重试", hint: `已试动但 L/R=${left}/${right}，检查电机使能、供电、模式和现场空间后重试。` };
@@ -1832,9 +1820,6 @@ const plainWheelTrialButtonLabel = computed(() => {
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
     return "先记录画面再试动";
-  }
-  if (plainWheelZeroBlockerActive.value && showPlainRadarStart.value) {
-    return "先启动雷达再试动";
   }
   if (plainWheelZeroBlockerActive.value && plainWheelZeroBlockerChecked.value) {
     return "检查后重试读非零 L/R";
@@ -1918,9 +1903,6 @@ const plainWheelNextActionSummary = computed(() => {
 });
 
 const plainWheelZeroBlockerActive = computed(() => plainWheelNextActionSummary.value !== "");
-const plainWheelZeroBlockerNeedsRadar = computed(() => (
-  plainWheelZeroBlockerActive.value && showPlainRadarStart.value
-));
 
 const plainWheelZeroBlockerSummary = computed(() => {
   // 这个确认只服务现场排障流程，不写 operator report，也不证明 wheel raw L/R 非零。
@@ -1928,9 +1910,6 @@ const plainWheelZeroBlockerSummary = computed(() => {
     return "";
   }
   if (plainWheelZeroBlockerChecked.value) {
-    if (showPlainRadarStart.value) {
-      return "轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步先启动雷达，再低速重试读非零 L/R。";
-    }
     return "轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步低速重试读非零 L/R。";
   }
   return "轮速卡点：请确认电机使能、供电、模式和现场空间后再重试。";
@@ -3695,9 +3674,6 @@ function plainWheelGoalTarget(): HTMLElement | null {
       ?? enabledButton(plainFirstJogRestoreButton.value)
       ?? plainWheelRecordPanel.value;
   }
-  if (plainWheelZeroBlockerActive.value && showPlainRadarStart.value) {
-    return plainRadarNextTarget() ?? plainWheelRecordPanel.value;
-  }
   if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
     return enabledButton(plainWheelZeroCheckButton.value) ?? plainWheelRecordPanel.value;
   }
@@ -3844,10 +3820,8 @@ async function markPlainWheelZeroBlockerChecked(): Promise<void> {
   // 本地勾选只改变现场操作提示，不调用任何机器人接口。
   plainWheelZeroBlockerChecked.value = true;
   await nextTick();
-  const target = plainWheelZeroBlockerNeedsRadar.value
-    ? plainRadarNextTarget() ?? plainWheelRecordPanel.value
-    : enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
-  target?.focus({ preventScroll: true });
+  const target = enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
+  target.focus({ preventScroll: true });
 }
 
 function markDeliveryArrivedAndStopped(): void {
