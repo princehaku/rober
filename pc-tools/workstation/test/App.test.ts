@@ -3975,6 +3975,71 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("keeps stale Nav2 rerun explicit when delivery is blocked by stopped radar", async () => {
+    // 真实现场可能同时遇到雷达未运行和旧行程成功；送达入口必须把“重跑本轮行程”说出来。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "missing";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-stale-radar-fixture",
+          generated_at_ms: "1782099547218",
+          response_generated_at_ms: "1782150147954",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("雷达未运行，先启动雷达，再重新执行本轮行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：先启动雷达，再重新执行本轮行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先启动雷达，再重新执行本轮行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：先启动雷达，再重新执行本轮行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先雷达再行程）");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达未运行，先启动雷达，再重新执行本轮行程。");
+    const navClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("完整 Nav2 路线执行"));
+    expect(navClosureItem?.text()).toContain("雷达未运行，先启动雷达，再重新执行本轮完整行程");
+    const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("delivery success"));
+    expect(deliveryClosureItem?.text()).toContain("送达确认前先启动雷达并重新执行本轮完整行程");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows latest Nav2 not-proven as a checked but incomplete trip result", async () => {
     // 真实上位机可能已返回 latest=not_proven；普通首屏要说“未通过”，不能继续假装没读取。
     const mockedFetch = stubWorkstationFetch({

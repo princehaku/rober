@@ -715,6 +715,9 @@ function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
   // 已有草稿后，按钮直接指向下一组人工确认，避免现场只看到抽象数量。
   if (missingLabels.includes("本轮行程")) {
     if (plainTripRadarBlocked.value) {
+      if (plainTripNeedsFreshRunAfterRadar.value) {
+        return "确认送达（先雷达再行程）";
+      }
       return "确认送达（先启动雷达）";
     }
     return "确认送达（先重新行程）";
@@ -826,6 +829,9 @@ const plainDeliveryNextActionSummary = computed(() => {
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
+      if (plainTripNeedsFreshRunAfterRadar.value) {
+        return "下一步：先启动雷达，再重新执行本轮行程。";
+      }
       return "下一步：先启动雷达，再完成本轮行程。";
     }
     if (plainTripHasFreshIncompleteEvidence.value) {
@@ -955,6 +961,12 @@ const plainTripLatestNotProvenEvidence = computed(() => {
     && Boolean(status)
     && status !== "not_loaded"
     && status !== "goal_succeeded";
+});
+const plainTripNeedsFreshRunAfterRadar = computed(() => {
+  // 雷达未运行时如果已经读到旧/失败/不完整行程，现场需要先恢复传感器，再重新跑本轮路线。
+  return plainTripHasFreshIncompleteEvidence.value
+    || plainTripHasSucceededEvidence.value
+    || plainTripLatestNotProvenEvidence.value;
 });
 const deliverySuccessReady = computed(() => (
   deliveryResultReadyForCurrentRun(deliveryCompletionResult.value) || deliveryResultReadyForCurrentRun(deliveryLatestResult.value)
@@ -1093,6 +1105,9 @@ const plainDeliveryConfirmSummary = computed(() => {
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
+      if (plainTripNeedsFreshRunAfterRadar.value) {
+        return { state: "待行程", hint: "雷达未运行，先启动雷达，再重新执行本轮行程。" };
+      }
       return { state: "待行程", hint: "雷达未运行，先启动雷达，再完成本轮行程。" };
     }
     if (plainTripHasFreshIncompleteEvidence.value) {
@@ -1251,7 +1266,7 @@ const goalClosureChecklist = computed(() => {
       ready: nav2Ready,
       hint: nav2Ready
         ? "已有本轮 goal_succeeded 和反馈样本"
-        : plainTripRadarBlocked.value ? "雷达未运行，先启动雷达，再检查或执行完整行程"
+        : plainTripRadarBlocked.value ? (plainTripNeedsFreshRunAfterRadar.value ? "雷达未运行，先启动雷达，再重新执行本轮完整行程" : "雷达未运行，先启动雷达，再检查或执行完整行程")
         : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本，需重新读取或执行完整行程" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需检查或重新执行完整行程" : "读取最近 Nav2 结果或执行受限目标后确认",
     },
     {
@@ -1262,7 +1277,7 @@ const goalClosureChecklist = computed(() => {
         ? "delivery gate 已确认成功"
         : deliverySuccessEvidenceIsStale.value ? "已有旧 delivery success，需本轮重新确认"
           : deliverySuccessEvidenceRouteMismatch.value ? "已有 delivery success，但行程材料不是本轮记录"
-            : !deliveryNav2GoalReady.value ? (plainTripRadarBlocked.value ? "送达确认前先启动雷达并完成本轮完整行程" : "送达确认前先完成本轮完整行程")
+            : !deliveryNav2GoalReady.value ? (plainTripRadarBlocked.value ? (plainTripNeedsFreshRunAfterRadar.value ? "送达确认前先启动雷达并重新执行本轮完整行程" : "送达确认前先启动雷达并完成本轮完整行程") : "送达确认前先完成本轮完整行程")
             : "仍需现场最终确认并通过 delivery gate",
     },
     {
@@ -1328,6 +1343,9 @@ const plainTripGoalNextAction = computed(() => {
     return "已完成。";
   }
   if (plainTripRadarBlocked.value) {
+    if (plainTripNeedsFreshRunAfterRadar.value) {
+      return "下一步：先启动雷达，再重新执行本轮行程。";
+    }
     return "下一步：先启动雷达，再检查或执行行程。";
   }
   if (plainTripHasFreshIncompleteEvidence.value) {
@@ -1439,7 +1457,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? "雷达未运行，先启动雷达，再检查或执行行程。" : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? (plainTripNeedsFreshRunAfterRadar.value ? "雷达未运行，先启动雷达，再重新执行本轮行程。" : "雷达未运行，先启动雷达，再检查或执行行程。") : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -1529,6 +1547,9 @@ const plainGoalProgressBlockerSummary = computed(() => {
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
+      if (plainTripNeedsFreshRunAfterRadar.value) {
+        return "验收卡点：雷达未运行，先启动雷达，再重新执行本轮行程。";
+      }
       return "验收卡点：雷达未运行，先启动雷达，再执行完整行程。";
     }
     if (plainTripHasFreshIncompleteEvidence.value) {
@@ -1576,6 +1597,9 @@ const plainTripSummary = computed(() => {
   }
   if (deliveryNav2GoalReady.value) {
     return { state: "已完成", hint: plainTripEvidenceSummary.value || "已读到最近行程完成，可以准备送达材料。" };
+  }
+  if (plainTripRadarBlocked.value && plainTripNeedsFreshRunAfterRadar.value) {
+    return { state: "待雷达", hint: "雷达未运行，先启动雷达，再重新执行本轮行程。" };
   }
   if (plainTripHasFreshIncompleteEvidence.value) {
     return { state: "需复验", hint: plainTripEvidenceSummary.value || "最近行程缺少反馈样本，需要重新读取或执行完整行程。" };
