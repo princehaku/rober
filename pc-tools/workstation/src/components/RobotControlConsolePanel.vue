@@ -3596,9 +3596,12 @@ function markDeliveryBasicSafetyConfirmed(): void {
   deliveryOperatorConfirmations.value.emergency_stop_ready = true;
 }
 
-function markPlainWheelZeroBlockerChecked(): void {
+async function markPlainWheelZeroBlockerChecked(): Promise<void> {
   // 本地勾选只改变现场操作提示，不调用任何机器人接口。
   plainWheelZeroBlockerChecked.value = true;
+  await nextTick();
+  const target = enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
+  target?.focus({ preventScroll: true });
 }
 
 function markDeliveryArrivedAndStopped(): void {

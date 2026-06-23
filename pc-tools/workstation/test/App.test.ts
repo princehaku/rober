@@ -3597,11 +3597,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先查卡点再重试读非零 L/R");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
     const callsBeforeZeroCheck = mockedFetch.mock.calls.length;
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     await wrapper.find('[data-testid="plain-wheel-zero-check"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-wheel-zero-check"]').text()).toBe("轮速卡点已检查");
     expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步低速重试读非零 L/R。");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("检查后重试读非零 L/R");
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeZeroCheck);
     expect(visiblePlainHomeText(wrapper)).not.toContain("raw");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -5074,6 +5078,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const firstJogButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButton?.attributes("disabled")).toBeUndefined();
@@ -5091,12 +5096,16 @@ describe("App", () => {
     expect(retryWheelButton.text()).toBe("先查卡点再重试读非零 L/R");
     expect(retryWheelButton.attributes("disabled")).toBeUndefined();
     const callsBeforeZeroCheck = mockedFetch.mock.calls.length;
+    const focusCallsBeforeZeroCheck = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-wheel-zero-check"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-wheel-zero-check"]').text()).toBe("轮速卡点已检查");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("轮速卡点已检查；请低速重试读取非零 L/R。");
     expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步低速重试读非零 L/R。");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("检查后重试读非零 L/R");
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeZeroCheck);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeZeroCheck);
     const firstJogCallsBeforeRetry = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?")).length;
     await wrapper.find('[data-testid="plain-wheel-trial"]').trigger("click");
