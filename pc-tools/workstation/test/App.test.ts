@@ -3683,6 +3683,8 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     expect(focusSpy).toHaveBeenCalled();
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFocus);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-motion-restore"]').element);
+    expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-first-jog-restore"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -4680,11 +4682,11 @@ describe("App", () => {
     expect(firstJogButtonBeforeRestore).toBeTruthy();
     expect(firstJogButtonBeforeRestore?.attributes("disabled")).toBeDefined();
 
-    const restoreButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "恢复试动确认");
-    expect(restoreButton).toBeTruthy();
-    expect(restoreButton?.attributes("disabled")).toBeUndefined();
+    const restoreButton = wrapper.find('[data-testid="plain-motion-restore"]');
+    expect(restoreButton.exists()).toBe(true);
+    expect(restoreButton.attributes("disabled")).toBeUndefined();
     const callsBeforeRestore = mockedFetch.mock.calls.length;
-    await restoreButton?.trigger("click");
+    await restoreButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 

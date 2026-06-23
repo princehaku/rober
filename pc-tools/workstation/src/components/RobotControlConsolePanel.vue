@@ -207,6 +207,7 @@ const plainTripPreflightButton = ref<HTMLButtonElement | null>(null);
 const plainTripExecuteButton = ref<HTMLButtonElement | null>(null);
 const plainTripLatestButton = ref<HTMLButtonElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
+const plainMotionRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainWheelTrialButton = ref<HTMLButtonElement | null>(null);
 const plainWheelZeroCheckButton = ref<HTMLButtonElement | null>(null);
@@ -3572,14 +3573,16 @@ function focusPlainGoalProgressTarget(targetId: string): void {
 
 function plainWheelGoalTarget(): HTMLElement | null {
   // 轮速目标的跳转要落到现场“下一手动作”，否则用户还得在面板里二次找卡点。
+  if (firstJogMaterialRestoreBlocksMotion.value) {
+    return enabledButton(plainMotionRestoreButton.value)
+      ?? enabledButton(plainFirstJogRestoreButton.value)
+      ?? plainWheelRecordPanel.value;
+  }
   if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
     return enabledButton(plainWheelZeroCheckButton.value) ?? plainWheelRecordPanel.value;
   }
   if (plainWheelZeroBlockerChecked.value) {
     return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
-  }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return enabledButton(plainFirstJogRestoreButton.value) ?? plainWheelRecordPanel.value;
   }
   if (canSendPlainFirstJog.value) {
     return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
@@ -4794,6 +4797,17 @@ onBeforeUnmount(() => {
             </label>
             <button type="button" :disabled="loading || plainVisualMaterialPending || operatorReportPending || !robotApiBaseUrl.trim() || !plainExternalVideoRef.trim()" @click="submitPlainVisualMaterial">
               记录画面
+            </button>
+            <button
+              v-if="firstJogMaterialRestoreBlocksMotion"
+              ref="plainMotionRestoreButton"
+              type="button"
+              class="secondary compact-stop"
+              :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim()"
+              data-testid="plain-motion-restore"
+              @click="restorePlainFirstJogMaterial"
+            >
+              恢复试动确认
             </button>
             <button type="button" :disabled="!canSendPlainFirstJog" @click="sendPlainFirstJog">
               试动一下
