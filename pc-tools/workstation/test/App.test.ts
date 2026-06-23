@@ -3582,6 +3582,9 @@ describe("App", () => {
     summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
     summaryFixture.readback_summary.base.feedback_voltage_v = "12.43";
     summaryFixture.readback_summary.base.latest_feedback_status = "stale";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
     const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
 
@@ -3611,10 +3614,10 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-wheel-zero-check"]').text()).toBe("轮速卡点已检查");
-    expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步低速重试读非零 L/R。");
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("检查后重试读非零 L/R");
+    expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步先启动雷达，再低速重试读非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先启动雷达再试动");
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeZeroCheck);
     expect(visiblePlainHomeText(wrapper)).not.toContain("raw");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -5033,7 +5036,12 @@ describe("App", () => {
 
   it("explains plain first-jog wheel retry when motion frames keep L/R at zero", async () => {
     // 真实现场曾读到 during-motion T1001 但 L/R=0/0；普通首屏要给出下一步排查，而不是只说失败。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
     const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/first-jog": {
         schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
         command_kind: "manual",
@@ -5138,11 +5146,11 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-wheel-zero-check"]').text()).toBe("轮速卡点已检查");
-    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("轮速卡点已检查；请低速重试读取非零 L/R。");
-    expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步低速重试读非零 L/R。");
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("检查后重试读非零 L/R");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("轮速卡点已检查；先启动雷达，再低速重试读取非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步先启动雷达，再低速重试读非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先启动雷达再试动");
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeZeroCheck);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeZeroCheck);
     const firstJogCallsBeforeRetry = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?")).length;
     await wrapper.find('[data-testid="plain-wheel-trial"]').trigger("click");

@@ -1250,6 +1250,9 @@ const plainWheelGoalNextAction = computed(() => {
     return "下一步：检查轮速卡点。";
   }
   if (plainWheelZeroBlockerChecked.value) {
+    if (showPlainRadarStart.value) {
+      return "下一步：先启动雷达，再重试读非零 L/R。";
+    }
     return "下一步：重试读非零 L/R。";
   }
   if (firstJogMaterialRestoreBlocksMotion.value) {
@@ -1695,6 +1698,9 @@ const plainWheelRecordSummary = computed(() => {
     const right = values?.wheel_feedback_latest_raw_right ?? "not_loaded";
     if (left !== "not_loaded" && right !== "not_loaded") {
       if (isZeroWheelPair(left, right) && plainWheelZeroBlockerChecked.value) {
+        if (showPlainRadarStart.value) {
+          return { state: "待重试", hint: "轮速卡点已检查；先启动雷达，再低速重试读取非零 L/R。" };
+        }
         return { state: "待重试", hint: "轮速卡点已检查；请低速重试读取非零 L/R。" };
       }
       return { state: "待重试", hint: `已试动但 L/R=${left}/${right}，检查电机使能、供电、模式和现场空间后重试。` };
@@ -1728,6 +1734,9 @@ const plainWheelTrialButtonLabel = computed(() => {
     return "先记录画面再试动";
   }
   if (plainWheelZeroBlockerActive.value && plainWheelZeroBlockerChecked.value) {
+    if (showPlainRadarStart.value) {
+      return "先启动雷达再试动";
+    }
     return "检查后重试读非零 L/R";
   }
   if (plainWheelZeroBlockerActive.value) {
@@ -1809,6 +1818,9 @@ const plainWheelNextActionSummary = computed(() => {
 });
 
 const plainWheelZeroBlockerActive = computed(() => plainWheelNextActionSummary.value !== "");
+const plainWheelZeroBlockerNeedsRadar = computed(() => (
+  plainWheelZeroBlockerActive.value && plainWheelZeroBlockerChecked.value && showPlainRadarStart.value
+));
 
 const plainWheelZeroBlockerSummary = computed(() => {
   // 这个确认只服务现场排障流程，不写 operator report，也不证明 wheel raw L/R 非零。
@@ -1816,6 +1828,9 @@ const plainWheelZeroBlockerSummary = computed(() => {
     return "";
   }
   if (plainWheelZeroBlockerChecked.value) {
+    if (showPlainRadarStart.value) {
+      return "轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步先启动雷达，再低速重试读非零 L/R。";
+    }
     return "轮速卡点已检查：电机使能、供电、模式和现场空间已确认；下一步低速重试读非零 L/R。";
   }
   return "轮速卡点：请确认电机使能、供电、模式和现场空间后再重试。";
@@ -3582,6 +3597,9 @@ function plainWheelGoalTarget(): HTMLElement | null {
     return enabledButton(plainWheelZeroCheckButton.value) ?? plainWheelRecordPanel.value;
   }
   if (plainWheelZeroBlockerChecked.value) {
+    if (showPlainRadarStart.value) {
+      return plainRadarNextTarget() ?? plainWheelRecordPanel.value;
+    }
     return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
   }
   if (canSendPlainFirstJog.value) {
@@ -3718,7 +3736,9 @@ async function markPlainWheelZeroBlockerChecked(): Promise<void> {
   // 本地勾选只改变现场操作提示，不调用任何机器人接口。
   plainWheelZeroBlockerChecked.value = true;
   await nextTick();
-  const target = enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
+  const target = plainWheelZeroBlockerNeedsRadar.value
+    ? plainRadarNextTarget() ?? plainWheelRecordPanel.value
+    : enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
   target?.focus({ preventScroll: true });
 }
 
