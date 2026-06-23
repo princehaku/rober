@@ -575,14 +575,17 @@ const plainKeyboardLiveStatus = computed(() => {
   if (keyboardHeldDirection.value) {
     return `正在${keyboardDirectionPlainLabel.value}，松开即停；${keyboardForwardedPulseProgressText.value}。`;
   }
+  if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
+    return "键盘手控请求未成功，未记为已验证。";
+  }
+  if (keyboardManualPulseObserved.value) {
+    return `键盘手控已验证，${keyboardForwardedPulseProgressText.value}；需要继续移动可按住方向键。`;
+  }
   if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("stop_sent")) {
     return "已停止，按住方向键可继续点动。";
   }
   if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("released")) {
     return "已松开，正在发送停止。";
-  }
-  if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
-    return "键盘手控请求未成功，未记为已验证。";
   }
   if (keyboardVerifiedPulseCount.value > 0 && !keyboardManualPulseObserved.value) {
     return `${keyboardForwardedPulseProgressText.value}，需同一次按住达到 ${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次。`;
@@ -1998,6 +2001,9 @@ const plainKeyboardControlSummary = computed(() => {
   }
   if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
     return { state: "待验证", hint: "上次按键没有成功发送；检查后再按住方向键。" };
+  }
+  if (keyboardManualPulseObserved.value) {
+    return { state: "已验证", hint: "键盘连续手控已完成 2 次连续脉冲验证；需要继续移动可按住方向键，松开即停。" };
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return { state: "已启用", hint: "按住 W/A/S/D 或方向键连续手控，松开即停。" };

@@ -1997,7 +1997,12 @@ export function createWorkstationApp(): express.Express {
 export const app = createWorkstationApp();
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  app.listen(PORT, HOST, () => {
+  // 显式保留 server 引用，确保 public API 进程在 CLI 启动后持续监听。
+  const server = app.listen(PORT, HOST, () => {
     console.log(`pc-tools workstation API listening on http://${HOST}:${PORT}`);
+  });
+  server.on("error", (error) => {
+    console.error(`pc-tools workstation API failed to listen on ${HOST}:${PORT}`, error);
+    process.exitCode = 1;
   });
 }

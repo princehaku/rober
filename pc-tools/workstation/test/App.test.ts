@@ -6389,7 +6389,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已停止，按住方向键可继续点动。");
+    expect(visiblePlainHomeText(wrapper)).toContain("已验证");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘手控已验证，已连续 2/2 次；需要继续移动可按住方向键。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控已验证");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("keyboard continuous control");
