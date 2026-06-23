@@ -95,6 +95,7 @@ pc-tools/workstation/
 - 2026-06-23 07:35 起，普通首屏 `准备送达材料` 成功预填视频和行程材料后会自动聚焦 `保存送达草稿（不确认）`。该聚焦只帮助现场继续下一步，仍不自动保存草稿、不提交 delivery complete、不执行 Nav2、manual、stop 或 `/cmd_vel`；草稿保存成功后才继续聚焦最终确认区。
 - 2026-06-23 07:50 起，普通首屏 `全部已确认` 或最后一步 `确认投放/送达` 让最终确认条件满足后，会自动聚焦红色 `确认送达（不发车）` 按钮。该聚焦不自动提交 operator report、不调用 delivery complete、不执行 Nav2、manual、stop 或 `/cmd_vel`，仍要求现场人员再显式点击一次红色按钮。
 - 2026-06-23 08:05 起，`确认送达（不发车）` 通过上位机 delivery gate 后，普通首屏会自动聚焦到 `键盘手控` 面板，提示现场进入最后的 PC 键盘连续手控验证。该聚焦不启用键盘、不发送 keyboard pulse、不调用 manual、stop、Nav2 或 `/cmd_vel`；仍必须先点 `启用键盘（按键才动）`，再按住方向键/WASD 产生连续脉冲证据。
+- 2026-06-23 08:20 起，若 delivery gate 通过时键盘 gate 已经满足，普通首屏会优先聚焦 `启用键盘（按键才动）` 按钮；若键盘 gate 仍缺材料，则继续聚焦键盘面板显示缺项。该聚焦不自动启用键盘、不发送 keyboard pulse、manual、stop、Nav2 或 `/cmd_vel`。
 - 2026-06-23 02:35 起，普通首屏 `行程执行` 和 `任务收口` 会在最近 Nav2 goal 成功材料带 `generated_at_ms` 时显示“约 N 分钟/小时/天前”；超过 15 分钟的 latest 成功会额外提示“这条记录较旧，如需本轮复验，请重新执行行程”。该提示只消费 `GET /api/robot-control/nav2/goal/execution/latest`、本次受限 execute 响应或 delivery 摘要里的短时间字段，不自动执行 Nav2、不提交送达、不发送 manual/stop 或 `/cmd_vel`。
 - 2026-06-23 03:20 起，超过 15 分钟的 Nav2 `goal_succeeded` 只作为历史参考展示，不再让普通首屏 `本轮进度` 显示 `行程执行已完成`，也不再把 `检查行程/执行行程` 按钮锁成 `行程已完成`。这类旧记录会让 `任务收口` 和 `验收卡点` 指向“重新执行本轮行程”，避免现场拿旧路线证据继续做送达确认。该口径只调整前端状态和按钮可用性，不自动执行 Nav2、不提交送达、不发送 manual/stop 或 `/cmd_vel`。
 - 2026-06-23 03:35 起，普通首屏和高级区的最终送达提交也要求本轮 Nav2 成功材料未超过 15 分钟。旧路线下即使视频/行程 ref 已预填、七项最终确认都已勾选，`确认送达（不发车）` 仍保持禁用并显示 `确认送达（先重新行程）`，submit handler 也会直接返回，不提交 operator report 或 delivery complete。该 gate 只防止旧路线材料进入 delivery success，不自动执行 Nav2、不提交送达、不发送 manual/stop 或 `/cmd_vel`。

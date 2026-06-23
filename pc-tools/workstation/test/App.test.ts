@@ -5438,8 +5438,13 @@ describe("App", () => {
   it("submits final delivery operator material only after the explicit checklist is complete", async () => {
     // 全项确认后才提交 operator report，并把 delivery complete 交给后端 gate 合成最终结论。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=pc-first-jog-wheel-lr-final";
     summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=scan-delta-final";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execution/latest": {
@@ -5555,6 +5560,10 @@ describe("App", () => {
     await wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
     await wrapper.vm.$nextTick();
 
     const confirmButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "提交送达材料并确认（高级）");
@@ -5600,9 +5609,10 @@ describe("App", () => {
     }));
     expect(wrapper.find('[data-testid="plain-delivery-submit-result"]').text()).toContain("送达提交已通过：上位机已确认送达完成。");
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-panel"]').element);
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).not.toContain("手控中");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).not.toContain("已启用");
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-arm"]').element);
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（按键才动）");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("未启用");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });

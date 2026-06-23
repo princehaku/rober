@@ -197,6 +197,7 @@ const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
 const evidenceSweepLines = ref<string[]>([]);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
+const keyboardControlArmButton = ref<HTMLButtonElement | null>(null);
 const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
 const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
@@ -3502,9 +3503,11 @@ async function focusPlainDeliveryConfirmSubmitButton(): Promise<void> {
 }
 
 async function focusKeyboardPanelAfterDeliverySuccess(): Promise<void> {
-  // 送达 gate 通过后只把现场带到键盘区；不启用键盘、不发送任何手控脉冲。
+  // 送达 gate 通过后只把现场带到键盘区；若已满足 gate，则聚焦启用按钮但不自动启用。
   await nextTick();
-  const target = keyboardControlPanel.value;
+  const target = canArmKeyboardControl.value
+    ? keyboardControlArmButton.value ?? keyboardControlPanel.value
+    : keyboardControlPanel.value;
   if (!target) {
     return;
   }
@@ -4581,7 +4584,7 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
               <button class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainGoalProgress">{{ plainKeyboardRecheckButtonLabel }}</button>
-              <button class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
+              <button ref="keyboardControlArmButton" class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
