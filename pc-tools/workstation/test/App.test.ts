@@ -3972,6 +3972,57 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows latest Nav2 not-proven as a checked but incomplete trip result", async () => {
+    // 真实上位机可能已返回 latest=not_proven；普通首屏要说“未通过”，不能继续假装没读取。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "not_proven",
+          proof_state: "not_proven",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("需检查");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("最近行程未通过，需要检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程未通过，需要检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程未通过");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：最近行程未通过，需要检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：检查或重新执行完整行程。");
+    const navClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("完整 Nav2 路线执行"));
+    expect(navClosureItem?.attributes("data-ready")).toBe("false");
+    expect(navClosureItem?.text()).toContain("最近行程未通过，需检查或重新执行完整行程");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("not_proven");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps a fresh Nav2 success without feedback samples out of the complete route gate", async () => {
     // 完整路线执行必须有 goal_succeeded 和执行反馈样本；空 success 摘要不能放行送达确认。
     const mockedFetch = stubWorkstationFetch({
