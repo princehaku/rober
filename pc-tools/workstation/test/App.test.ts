@@ -4331,6 +4331,12 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=runtime/wave_rover_feedback_debug.jsonl";
     summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "12";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    summaryFixture.readback_summary.base.latest_feedback_status = "fresh_base_status_readback";
     summaryFixture.first_jog_readiness_summary = {
       status: "ready_for_first_jog",
       basic_safety_ready: true,
@@ -4364,7 +4370,7 @@ describe("App", () => {
     expect(armButton.text()).toBe("启用键盘（先补轮速）");
     expect(armButton.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先补轮速，不发车）");
-    expect(visiblePlainHomeText(wrapper)).toContain("下一步：读取并保存轮速记录。");
+    expect(visiblePlainHomeText(wrapper)).toContain("下一步：检查轮速卡点，再重试读非零 L/R。");
 
     await armButton.trigger("click");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
@@ -4383,7 +4389,8 @@ describe("App", () => {
       mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?")).length,
     ).toBe(feedbackCallsBeforeKeyboardRecheck + 1);
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeKeyboardRecheck);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-zero-check"]').element);
+    expect(visiblePlainHomeText(wrapper)).toContain("下一步：检查轮速卡点，再重试读非零 L/R。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

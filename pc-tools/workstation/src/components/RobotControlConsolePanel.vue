@@ -2152,6 +2152,12 @@ const plainKeyboardNextActionSummary = computed(() => {
     return "下一步：记录现场画面。";
   }
   if (materialMissing.includes("wheel_feedback_lr_nonzero_proven")) {
+    if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
+      return "下一步：检查轮速卡点，再重试读非零 L/R。";
+    }
+    if (plainWheelZeroBlockerActive.value) {
+      return "下一步：重试读非零 L/R，并保存轮速记录。";
+    }
     return "下一步：读取并保存轮速记录。";
   }
   if (materialMissing.includes("physical_motion_lidar_delta_proven")) {
@@ -3797,6 +3803,7 @@ function plainKeyboardNextTarget(): HTMLElement | null {
   }
   if (plainKeyboardMotionProofNextStep.value === "wheel") {
     return enabledButton(plainWheelSaveButton.value)
+      ?? enabledButton(plainWheelZeroCheckButton.value)
       ?? enabledButton(plainWheelTrialButton.value)
       ?? plainWheelRecordPanel.value;
   }
