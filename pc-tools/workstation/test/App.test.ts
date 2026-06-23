@@ -6695,6 +6695,42 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start") && options?.method === "POST")).toBe(true);
   });
 
+  it("shows plain radar start only when the readback says lidar is stopped", async () => {
+    // 真实现场 Nav2 前置常卡在 LiDAR lifecycle 未运行；普通首屏允许启动传感器，但仍不触发底盘或送达动作。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "missing";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("雷达未运行");
+    expect(firstScreenText).toContain("启动雷达");
+    expect(firstScreenText).not.toContain("停止雷达");
+    expect(firstScreenText).not.toContain("/api/radar/start");
+    expect(firstScreenText).not.toContain("lifecycle_not_running");
+
+    await wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("/api/radar/start");
+  });
+
   it("refreshes plain delivery status without submitting delivery completion", async () => {
     // 普通首屏收口按钮只能读取/复算状态；不能提交 operator report 或 delivery complete。
     const mockedFetch = stubWorkstationFetch({

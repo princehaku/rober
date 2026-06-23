@@ -512,6 +512,10 @@ const evidenceSweepSummary = computed(() => {
   return evidenceSweepLines.value.join(" | ");
 });
 const radarSummary = computed(() => summarizeRadarState());
+const showPlainRadarStart = computed(() => {
+  // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
+  return radarSummary.value.state === "雷达未运行";
+});
 const radarLifecycleSummary = computed(() => {
   // 雷达 lifecycle 是高级诊断动作；摘要只说明代理和 guard 结果，不证明 runtime 已启动。
   if (radarLifecyclePending.value) {
@@ -4564,6 +4568,9 @@ onBeforeUnmount(() => {
           <div class="panel-action-row">
             <button type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" @click="refreshRadarProof">
               刷新雷达
+            </button>
+            <button v-if="showPlainRadarStart" type="button" class="secondary compact-stop" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" data-testid="plain-radar-start" @click="startRadarLifecycle">
+              启动雷达
             </button>
             <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
           </div>
