@@ -6588,7 +6588,7 @@ describe("App", () => {
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达已运行");
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-record"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
     expect(visiblePlainHomeText(wrapper)).not.toContain("scan 可见");
     expect(visiblePlainHomeText(wrapper)).not.toContain("tf 可见");
     expect(wrapper.find("details").text()).toContain("scan_once_observed");

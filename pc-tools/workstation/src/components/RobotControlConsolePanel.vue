@@ -3321,12 +3321,12 @@ async function refreshRadarProof(): Promise<void> {
 }
 
 async function focusWheelRecordAfterRadarReady(): Promise<void> {
-  // 雷达运行后只把现场带到下一块证据区域；first-jog 仍必须由 operator 显式点击。
+  // 雷达运行后直接带到轮速/雷达移动记录的下一手动作；first-jog 仍必须由 operator 显式点击。
   await nextTick();
   if (radarSummary.value.state !== "雷达已运行") {
     return;
   }
-  const target = plainWheelRecordPanel.value;
+  const target = plainWheelGoalTarget() ?? plainWheelRecordPanel.value;
   if (!target) {
     return;
   }
