@@ -3259,6 +3259,21 @@ async function refreshRadarProof(): Promise<void> {
     radarRefreshResult,
     radarRefreshPending,
   );
+  await focusWheelRecordAfterRadarReady();
+}
+
+async function focusWheelRecordAfterRadarReady(): Promise<void> {
+  // 雷达运行后只把现场带到下一块证据区域；first-jog 仍必须由 operator 显式点击。
+  await nextTick();
+  if (radarSummary.value.state !== "雷达已运行") {
+    return;
+  }
+  const target = plainWheelRecordPanel.value;
+  if (!target) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
 }
 
 async function runRadarLifecycleAction(

@@ -6538,12 +6538,18 @@ describe("App", () => {
     await flushPromises();
 
     const summaryCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    const firstJogCallsBeforeRadarRefresh = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/first-jog?"),
+    ).length;
 
     await wrapper.findAll("button").find((button) => button.text() === "刷新雷达")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达已运行");
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-record"]').element);
     expect(visiblePlainHomeText(wrapper)).not.toContain("scan 可见");
     expect(visiblePlainHomeText(wrapper)).not.toContain("tf 可见");
     expect(wrapper.find("details").text()).toContain("scan_once_observed");
@@ -6559,6 +6565,10 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("latest readback key values");
     expect(wrapper.find("details").text()).toContain("blocked reasons");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/first-jog?"),
+    ).length).toBe(firstJogCallsBeforeRadarRefresh);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     const summaryCallsAfterRadar = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterRadar).toBeGreaterThan(summaryCallsBefore);
 
