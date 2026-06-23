@@ -1351,7 +1351,7 @@ const plainWheelGoalProgressHint = computed(() => {
     const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
     const nextStep = firstJogMaterialRestoreReady.value
       ? "先点恢复试动确认，再试动读非零。"
-      : isZeroWheelPair(left, right) && voltageText ? WHEEL_ZERO_NEXT_ACTION_SUMMARY : "仍需试动读到非零。";
+      : isZeroWheelPair(left, right) ? WHEEL_ZERO_NEXT_ACTION_SUMMARY : "仍需试动读到非零。";
     return `当前轮速 L/R=${left}/${right}${frameText}${voltageText}，${nextStep}`;
   }
   if (firstJogMaterialRestoreReady.value) {

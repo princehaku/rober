@@ -3559,7 +3559,9 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，仍需试动读到非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain(
+      "当前轮速 L/R=0/0，已读到 3 帧，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。",
+    );
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).not.toContain("历史轮速样本已过期");
 
     const wheelRefreshCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
@@ -5474,6 +5476,45 @@ describe("App", () => {
     expect(saveWheelButton.text()).toBe("保存轮速记录（等非零 L/R）");
     expect(saveWheelButton.attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("shows the wheel zero blocker from static readback even when voltage is missing", async () => {
+    // 真实只读 T1001 可能能证明 L/R=0，但电压字段缺失；这时也要把现场带去检查卡点。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "12";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    summaryFixture.readback_summary.base.feedback_voltage_v = "not_loaded";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/first-jog": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/base/manual": { proxy_status: "should_not_be_called" },
+    });
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：检查轮速卡点。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain(
+      "当前轮速 L/R=0/0，已读到 12 帧，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。",
+    );
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe(
+      "验收卡点：轮速 L/R=0/0，检查电机使能、供电、模式和现场空间后重试。",
+    );
+    expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain(
+      "轮速卡点：请确认电机使能、供电、模式和现场空间后再重试。",
+    );
+    const callsBeforeFocus = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-zero-check"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFocus);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
