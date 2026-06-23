@@ -1388,11 +1388,11 @@ const plainGoalProgressItems = computed(() => {
     {
       id: "trip",
       label: "行程执行",
-      actionLabel: "去行程",
+      actionLabel: plainTripRadarBlocked.value ? "去雷达" : "去行程",
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? "雷达未运行，先启动雷达，再检查或执行行程。" : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -1437,6 +1437,9 @@ const plainGoalProgressPrimaryActionLabel = computed(() => {
     return "去恢复确认";
   }
   if (target?.id === "wheel" && plainWheelZeroBlockerNeedsRadar.value) {
+    return "去启动雷达";
+  }
+  if (target?.id === "trip" && plainTripRadarBlocked.value) {
     return "去启动雷达";
   }
   return target ? `去${target.label.replace("执行", "").replace("确认", "")}卡点` : "全部完成";
@@ -1484,6 +1487,9 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return "验收卡点：还需要试动期间同帧 L/R 都非零。";
   }
   if (!deliveryNav2GoalReady.value) {
+    if (plainTripRadarBlocked.value) {
+      return "验收卡点：雷达未运行，先启动雷达，再执行完整行程。";
+    }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return "验收卡点：行程成功但缺少反馈样本，需要重新读取或执行完整行程。";
     }
