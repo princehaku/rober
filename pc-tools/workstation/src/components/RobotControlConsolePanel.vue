@@ -4263,10 +4263,8 @@ async function restorePlainFirstJogMaterial(): Promise<void> {
 }
 
 function focusAfterPlainFirstJogMaterialRestore(): void {
-  // 恢复确认后先补传感器前置条件；雷达未运行时不能直接把现场带去试动。
-  const target = showPlainRadarStart.value
-    ? plainRadarNextTarget()
-    : enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
+  // 恢复确认只服务 wheel raw L/R 流程；成功后回到轮速下一手动作，不被雷达卡点抢焦点。
+  const target = plainWheelGoalTarget();
   target?.scrollIntoView?.({ block: "center", behavior: "smooth" });
   target?.focus({ preventScroll: true });
 }
