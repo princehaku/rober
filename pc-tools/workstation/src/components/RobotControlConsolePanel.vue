@@ -204,6 +204,7 @@ const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
 const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainWheelTrialButton = ref<HTMLButtonElement | null>(null);
+const plainWheelZeroCheckButton = ref<HTMLButtonElement | null>(null);
 const plainWheelSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
 const plainDeliveryDraftSaveButton = ref<HTMLButtonElement | null>(null);
@@ -4071,7 +4072,21 @@ async function runBaseFeedbackSamples(options: { refreshAfter?: boolean } = {}):
     if (options.refreshAfter ?? true) {
       await refreshConsole();
     }
+    await focusPlainWheelZeroCheckAfterReadback();
   }
+}
+
+async function focusPlainWheelZeroCheckAfterReadback(): Promise<void> {
+  // 只读刷新读到 L/R=0/0 后带到本地排查确认；不发送运动、不写 operator report。
+  await nextTick();
+  if (!plainWheelZeroBlockerActive.value || plainWheelZeroBlockerChecked.value) {
+    return;
+  }
+  const target = plainWheelZeroCheckButton.value;
+  if (!target) {
+    return;
+  }
+  target.focus({ preventScroll: true });
 }
 
 function appendEvidenceSweepLine(label: string, value: string): void {
@@ -4734,7 +4749,7 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="loading || baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
                 {{ plainWheelReadbackButtonLabel }}
               </button>
-              <button v-if="plainWheelZeroBlockerActive" type="button" class="secondary compact-stop" data-testid="plain-wheel-zero-check" @click="markPlainWheelZeroBlockerChecked">
+              <button v-if="plainWheelZeroBlockerActive" ref="plainWheelZeroCheckButton" type="button" class="secondary compact-stop" data-testid="plain-wheel-zero-check" @click="markPlainWheelZeroBlockerChecked">
                 {{ plainWheelZeroBlockerButtonLabel }}
               </button>
               <button ref="plainWheelSaveButton" type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" data-testid="plain-wheel-save" @click="savePlainWheelEvidence">

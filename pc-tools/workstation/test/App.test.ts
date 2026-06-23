@@ -4464,6 +4464,10 @@ describe("App", () => {
 
     const feedbackButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "采集底盘反馈（高级）");
     expect(feedbackButton).toBeTruthy();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    const firstJogCallsBeforeReadback = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/first-jog?"),
+    ).length;
     await feedbackButton?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4481,7 +4485,12 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("已读到底盘反馈，但当前轮速是 L/R=0/0；反馈电压约 12.43V；这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-zero-check"]').element);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/first-jog?"),
+    ).length).toBe(firstJogCallsBeforeReadback);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
