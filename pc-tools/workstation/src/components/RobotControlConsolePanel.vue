@@ -1205,9 +1205,10 @@ const wheelClosureEvidence = computed(() => {
   }
   if (claimWithRefReady(robotSummary.value?.operator_hil_material_summary?.wheel_feedback)) {
     const { left, right } = currentWheelReadback.value;
+    const currentReadbackIsZero = isZeroWheelPair(left, right);
     return {
-      ready: true,
-      hint: isZeroWheelPair(left, right)
+      ready: !currentReadbackIsZero,
+      hint: currentReadbackIsZero
         ? `已有历史非零材料；当前只读 L/R=${left}/${right}，本轮复验需低速重试`
         : "已有历史非零 L/R 材料",
     };

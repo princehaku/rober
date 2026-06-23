@@ -3634,7 +3634,7 @@ describe("App", () => {
   });
 
   it("shows historical wheel material separately from current zero readback", async () => {
-    // 已保存的 during-motion 轮速材料不能被当前停车 0/0 读回抹掉，但 UI 必须讲清来源。
+    // 已保存的 during-motion 轮速材料不能被当前停车 0/0 抹掉，但本轮收口不能把它当作当前已完成。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=pc-first-jog-wheel-lr-history";
     summaryFixture.readback_summary.base.latest_t1001_observed_count = "13";
@@ -3650,10 +3650,10 @@ describe("App", () => {
 
     const wheelClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("wheel raw L/R 非零"));
-    expect(wheelClosureItem?.attributes("data-ready")).toBe("true");
+    expect(wheelClosureItem?.attributes("data-ready")).toBe("false");
     expect(wheelClosureItem?.text()).toContain("已有历史非零材料；当前只读 L/R=0/0，本轮复验需低速重试");
-    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速有历史材料，当前 L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理轮速记录。");
   });
 
   it("shows restore-first-jog as the next wheel step when delivery draft replaced basic safety", async () => {
