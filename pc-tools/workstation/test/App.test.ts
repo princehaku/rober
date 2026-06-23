@@ -4253,6 +4253,44 @@ describe("App", () => {
     };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/feedback-samples": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+        proxy_status: "samples_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/feedback-samples",
+        remote_http_status: 200,
+        status: "loaded",
+        sample_key_values: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          requested_sample_count: "3",
+          completed_sample_count: "3",
+          t1001_observed_count: "3",
+          all_samples_observed_t1001: "true",
+          partial_samples_observed_t1001: "false",
+          feedback_ack_t1001_observed: "true",
+          wheel_feedback_lr_nonzero_proven: "false",
+          wheel_feedback_nonzero_observed: "false",
+          wheel_feedback_nonzero_frame_count: "0",
+          wheel_feedback_latest_left_speed: "0",
+          wheel_feedback_latest_right_speed: "0",
+          wheel_feedback_source: "vendor_t1001_L_R",
+          observed_feedback_types: "[1001]",
+          sends_motion_commands: "false",
+          robot_control_executed: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        sends_motion_commands: false,
+        robot_control_executed: false,
+      },
       "/api/robot-control/base/manual": {
         proxy_status: "should_not_be_called",
       },
@@ -4403,6 +4441,7 @@ describe("App", () => {
     summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
     summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
     summaryFixture.readback_summary.base.latest_feedback_status = "fresh_base_status_readback";
+    summaryFixture.readback_summary.base.feedback_voltage_v = "12.43049049";
     summaryFixture.first_jog_readiness_summary = {
       status: "ready_for_first_jog",
       basic_safety_ready: true,
@@ -4436,7 +4475,8 @@ describe("App", () => {
     expect(armButton.text()).toBe("启用键盘（先补轮速）");
     expect(armButton.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先补轮速，不发车）");
-    expect(visiblePlainHomeText(wrapper)).toContain("下一步：检查轮速卡点，再重试读非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V；下一步：检查轮速卡点，再重试读非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).not.toContain("12.43049049V");
 
     await armButton.trigger("click");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
@@ -4456,7 +4496,7 @@ describe("App", () => {
     ).toBe(feedbackCallsBeforeKeyboardRecheck + 1);
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeKeyboardRecheck);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-zero-check"]').element);
-    expect(visiblePlainHomeText(wrapper)).toContain("下一步：检查轮速卡点，再重试读非零 L/R。");
+    expect(visiblePlainHomeText(wrapper)).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V；下一步：检查轮速卡点，再重试读非零 L/R。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

@@ -1956,6 +1956,27 @@ const plainWheelZeroBlockerButtonLabel = computed(() => (
   plainWheelZeroBlockerChecked.value ? "轮速卡点已检查" : "已检查轮速卡点"
 ));
 
+const plainWheelKeyboardBlockerPrefix = computed(() => {
+  // 键盘 gate 被轮速挡住时，也要在键盘区复述当前读数，避免用户来回翻轮速卡片。
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  const base = robotSummary.value?.readback_summary.base;
+  const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
+  if (!isZeroWheelPair(left, right)) {
+    return "";
+  }
+  const frameCount = sample?.t1001_observed_count ?? base?.latest_t1001_observed_count ?? "not_loaded";
+  const voltage = formatPlainVoltage(base?.feedback_voltage_v);
+  const details = [`当前轮速 L/R=${left}/${right}`];
+  if (frameCount !== "not_loaded") {
+    details.push(`已读到 ${frameCount} 帧`);
+  }
+  if (voltage) {
+    details.push(`反馈电压约 ${voltage}V`);
+  }
+  return `${details.join("，")}；`;
+});
+
 const plainWheelReadbackSummary = computed(() => {
   // 只读底盘反馈可以解释“当前为什么还不是非零证据”，但不能替代试动窗口材料。
   const base = robotSummary.value?.readback_summary.base;
@@ -2191,10 +2212,10 @@ const plainKeyboardNextActionSummary = computed(() => {
   }
   if (materialMissing.includes("wheel_feedback_lr_nonzero_proven")) {
     if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
-      return "下一步：检查轮速卡点，再重试读非零 L/R。";
+      return `${plainWheelKeyboardBlockerPrefix.value}下一步：检查轮速卡点，再重试读非零 L/R。`;
     }
     if (plainWheelZeroBlockerActive.value) {
-      return "下一步：重试读非零 L/R，并保存轮速记录。";
+      return `${plainWheelKeyboardBlockerPrefix.value}下一步：重试读非零 L/R，并保存轮速记录。`;
     }
     return "下一步：读取并保存轮速记录。";
   }
