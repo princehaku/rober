@@ -1142,7 +1142,7 @@ const deliveryClosureChecklist = computed(() => {
       ready: deliveryNav2GoalReady.value && !deliveryGateMissing("nav2_goal_succeeded"),
       hint: deliveryNav2GoalReady.value
         ? "已有本轮 goal_succeeded 和反馈样本"
-        : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : "先读取或执行最近 Nav2 目标",
+        : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需检查或重新执行完整行程" : "先读取或执行最近 Nav2 目标",
     },
     {
       id: "operator_report_ready",

@@ -4016,6 +4016,10 @@ describe("App", () => {
       .find((item) => item.text().includes("完整 Nav2 路线执行"));
     expect(navClosureItem?.attributes("data-ready")).toBe("false");
     expect(navClosureItem?.text()).toContain("最近行程未通过，需检查或重新执行完整行程");
+    const deliveryNavItem = wrapper.findAll('[data-testid="delivery-closure-check"] li')
+      .find((item) => item.text().includes("Nav2 路线执行成功"));
+    expect(deliveryNavItem?.attributes("data-ready")).toBe("false");
+    expect(deliveryNavItem?.text()).toContain("最近行程未通过，需检查或重新执行完整行程");
     expect(visiblePlainHomeText(wrapper)).not.toContain("not_proven");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
