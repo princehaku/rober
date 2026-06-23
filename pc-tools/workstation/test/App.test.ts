@@ -6714,7 +6714,7 @@ describe("App", () => {
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达已运行");
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
     expect(visiblePlainHomeText(wrapper)).not.toContain("scan 可见");
     expect(visiblePlainHomeText(wrapper)).not.toContain("tf 可见");
     expect(wrapper.find("details").text()).toContain("scan_once_observed");
@@ -6957,6 +6957,31 @@ describe("App", () => {
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("returns to the current goal blocker after radar refresh confirms running", async () => {
+    // 雷达刷新只是前置确认；雷达已运行后要回到本轮第一缺口，不能固定把现场带去轮速面板。
+    const mockedFetch = stubWorkstationFetch();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
+    const callsBeforeRefresh = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-radar-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    const callsAfterRefresh = mockedFetch.mock.calls.slice(callsBeforeRefresh);
+    expect(callsAfterRefresh.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(callsAfterRefresh.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(callsAfterRefresh.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(callsAfterRefresh.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(callsAfterRefresh.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("refreshes plain delivery status without submitting delivery completion", async () => {

@@ -3404,21 +3404,20 @@ async function refreshRadarProof(): Promise<void> {
     radarRefreshResult,
     radarRefreshPending,
   );
-  await focusWheelRecordAfterRadarReady();
+  await focusPlainGoalProgressAfterRadarReady();
 }
 
-async function focusWheelRecordAfterRadarReady(): Promise<void> {
-  // 雷达运行后直接带到轮速/雷达移动记录的下一手动作；first-jog 仍必须由 operator 显式点击。
+async function focusPlainGoalProgressAfterRadarReady(): Promise<void> {
+  // 雷达只是前置条件；刷新确认运行后回到当前第一缺口，不固定落到轮速。
   await nextTick();
   if (radarSummary.value.state !== "雷达已运行") {
     return;
   }
-  const target = plainWheelGoalTarget() ?? plainWheelRecordPanel.value;
-  if (!target) {
+  const targetId = plainGoalProgressPrimaryTarget.value;
+  if (!targetId) {
     return;
   }
-  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
-  target.focus({ preventScroll: true });
+  focusPlainGoalProgressTarget(targetId);
 }
 
 async function runRadarLifecycleAction(
