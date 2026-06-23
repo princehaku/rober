@@ -3878,7 +3878,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-go-trip"]').text()).toBe("去雷达");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。雷达未运行，先启动雷达，再检查或执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：先启动雷达，再检查或执行行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先启动雷达，再完成本轮行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达未运行，先启动雷达，再执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：先启动雷达，再完成本轮行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先启动雷达）");
     const navClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("完整 Nav2 路线执行"));
     expect(navClosureItem?.attributes("data-ready")).toBe("false");
@@ -3907,6 +3910,14 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    const callsBeforeDeliveryFocus = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-go-delivery"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeDeliveryFocus);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
   it("shows stale latest Nav2 success age on the plain first screen without sending commands", async () => {

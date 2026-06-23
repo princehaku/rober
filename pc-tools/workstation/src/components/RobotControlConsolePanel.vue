@@ -710,6 +710,9 @@ function deliveryDraftMaterialPresent(): boolean {
 function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
   // 已有草稿后，按钮直接指向下一组人工确认，避免现场只看到抽象数量。
   if (missingLabels.includes("本轮行程")) {
+    if (plainTripRadarBlocked.value) {
+      return "确认送达（先启动雷达）";
+    }
     return "确认送达（先重新行程）";
   }
   if (missingLabels.includes("本轮行程材料")) {
@@ -818,6 +821,9 @@ const plainDeliveryNextActionSummary = computed(() => {
     return "";
   }
   if (!deliveryNav2GoalReady.value) {
+    if (plainTripRadarBlocked.value) {
+      return "下一步：先启动雷达，再完成本轮行程。";
+    }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return "下一步：重新读取或执行完整行程。";
     }
@@ -1063,6 +1069,9 @@ const plainDeliveryConfirmSummary = computed(() => {
     return { state: "待材料", hint: "送达成功记录的行程材料不是本轮记录，先重新准备材料并确认送达。" };
   }
   if (!deliveryNav2GoalReady.value) {
+    if (plainTripRadarBlocked.value) {
+      return { state: "待行程", hint: "雷达未运行，先启动雷达，再完成本轮行程。" };
+    }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return { state: "待行程", hint: "最近行程缺少反馈样本，先重新读取或执行完整行程。" };
     }
@@ -3689,6 +3698,9 @@ function plainDeliveryGoalTarget(): HTMLElement | null {
   // 送达目标同样落到现场下一手动作；这里只移动焦点，最终提交仍必须 operator 再点一次。
   const missingLabels = plainDeliveryConfirmMissingLabels.value;
   if (missingLabels.includes("本轮行程")) {
+    if (plainTripRadarBlocked.value) {
+      return plainRadarNextTarget() ?? plainDeliveryStatusPanel.value;
+    }
     return plainTripRunPanel.value ?? plainDeliveryStatusPanel.value;
   }
   if (missingLabels.includes("本轮行程材料") || missingLabels.includes("送达材料")) {
