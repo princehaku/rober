@@ -4248,6 +4248,10 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
     summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mockedFetch = stubWorkstationFetch({
@@ -4273,13 +4277,20 @@ describe("App", () => {
     expect(armButton.text()).toBe("启用键盘（先补雷达）");
     expect(armButton.attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先补雷达，不发车）");
-    expect(visiblePlainHomeText(wrapper)).toContain("下一步：试动读取雷达移动记录。");
+    expect(visiblePlainHomeText(wrapper)).toContain("下一步：先启动雷达，再试动读取雷达移动记录。");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(true);
 
     await armButton.trigger("click");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    await wrapper.find('[data-testid="plain-goal-progress-go-keyboard"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
   });
 
   it("keeps keyboard disabled when summary lacks the bounded pulse contract even after manual gate is ready", async () => {

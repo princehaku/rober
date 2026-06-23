@@ -197,6 +197,7 @@ const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
 const evidenceSweepLines = ref<string[]>([]);
 const plainRadarRefreshButton = ref<HTMLButtonElement | null>(null);
+const plainRadarStartButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmButton = ref<HTMLButtonElement | null>(null);
@@ -2054,7 +2055,7 @@ const plainKeyboardNextActionSummary = computed(() => {
     return "下一步：读取并保存轮速记录。";
   }
   if (materialMissing.includes("physical_motion_lidar_delta_proven")) {
-    return "下一步：试动读取雷达移动记录。";
+    return showPlainRadarStart.value ? "下一步：先启动雷达，再试动读取雷达移动记录。" : "下一步：试动读取雷达移动记录。";
   }
   return "下一步：复查手控条件。";
 });
@@ -3653,6 +3654,16 @@ function enabledButton(button: HTMLButtonElement | null): HTMLButtonElement | nu
   return button && !button.disabled ? button : null;
 }
 
+function plainRadarNextTarget(): HTMLElement | null {
+  // LiDAR delta 依赖雷达先运行；若普通首屏已暴露启动/刷新入口，优先带现场处理传感器。
+  if (showPlainRadarStart.value) {
+    return enabledButton(plainRadarStartButton.value)
+      ?? enabledButton(plainRadarRefreshButton.value)
+      ?? plainRadarRefreshButton.value;
+  }
+  return enabledButton(plainRadarRefreshButton.value) ?? plainRadarRefreshButton.value;
+}
+
 function plainKeyboardNextTarget(): HTMLElement | null {
   if (canArmKeyboardControl.value) {
     return enabledButton(keyboardControlArmButton.value) ?? keyboardControlPanel.value;
@@ -3666,7 +3677,8 @@ function plainKeyboardNextTarget(): HTMLElement | null {
       ?? plainWheelRecordPanel.value;
   }
   if (plainKeyboardMotionProofNextStep.value === "lidar") {
-    return enabledButton(plainWheelTrialButton.value)
+    return plainRadarNextTarget()
+      ?? enabledButton(plainWheelTrialButton.value)
       ?? enabledButton(plainWheelSaveButton.value)
       ?? plainWheelRecordPanel.value;
   }
@@ -4697,7 +4709,7 @@ onBeforeUnmount(() => {
             <button ref="plainRadarRefreshButton" type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" data-testid="plain-radar-refresh" @click="refreshRadarProof">
               刷新雷达
             </button>
-            <button v-if="showPlainRadarStart" type="button" class="secondary compact-stop" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" data-testid="plain-radar-start" @click="startPlainRadarLifecycle">
+            <button v-if="showPlainRadarStart" ref="plainRadarStartButton" type="button" class="secondary compact-stop" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" data-testid="plain-radar-start" @click="startPlainRadarLifecycle">
               启动雷达
             </button>
             <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
