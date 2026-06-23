@@ -1215,6 +1215,7 @@ const goalClosureChecklist = computed(() => {
       ready: nav2Ready,
       hint: nav2Ready
         ? "已有本轮 goal_succeeded 和反馈样本"
+        : plainTripRadarBlocked.value ? "雷达未运行，先启动雷达，再检查或执行完整行程"
         : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本，需重新读取或执行完整行程" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : "读取最近 Nav2 结果或执行受限目标后确认",
     },
     {
