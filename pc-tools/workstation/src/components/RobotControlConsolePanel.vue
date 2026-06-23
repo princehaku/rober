@@ -3500,7 +3500,7 @@ function focusPlainGoalProgressTarget(targetId: string): void {
     wheel: plainWheelGoalTarget(),
     trip: plainTripRunPanel.value,
     delivery: plainDeliveryGoalTarget(),
-    keyboard: keyboardControlPanel.value,
+    keyboard: plainKeyboardNextTarget(),
   };
   const target = targetMap[targetId];
   if (!target) {
