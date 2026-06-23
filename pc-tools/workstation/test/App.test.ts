@@ -3600,6 +3600,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：先启动雷达，再重试读非零 L/R。");
     expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：轮速 L/R=0/0，检查电机使能、供电、模式和现场空间后重试。");
+    const wheelClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("wheel raw L/R 非零"));
+    expect(wheelClosureItem?.attributes("data-ready")).toBe("false");
+    expect(wheelClosureItem?.text()).toContain("当前只读 L/R=0/0，已读到 12 帧；仍需低速试动窗口保存非零 L/R");
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).not.toContain("历史轮速样本已过期");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-zero-check-summary"]').text()).toContain("轮速卡点：请确认电机使能、供电、模式和现场空间后再重试。");

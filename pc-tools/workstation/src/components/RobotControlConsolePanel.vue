@@ -1181,6 +1181,15 @@ const wheelClosureEvidence = computed(() => {
         : "已有历史非零 L/R 材料",
     };
   }
+  const { left, right } = currentWheelReadback.value;
+  const frameCount = sampleValues?.t1001_observed_count ?? robotSummary.value?.readback_summary.base.latest_t1001_observed_count ?? "not_loaded";
+  if (left !== "not_loaded" && right !== "not_loaded") {
+    const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
+    return {
+      ready: false,
+      hint: `当前只读 L/R=${left}/${right}${frameText}；仍需低速试动窗口保存非零 L/R`,
+    };
+  }
   return {
     ready: false,
     hint: "仍需 first-jog/manual 期间同帧 T1001 L/R 非零",
