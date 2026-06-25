@@ -4318,6 +4318,50 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
+  it("shows localization reset failure on the plain map pose marker", async () => {
+    // 重新定位失败必须贴在地图缺位标记上，避免普通用户只看到泛化的“位置未读到”。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.o3_proof_summary.amcl_pose_observed = false;
+    summaryFixture.o3_proof_summary.localization_tf_observed = false;
+    const localizationFailure = {
+      ...(fixtures["/api/robot-control/localize/reset"] as Record<string, unknown>),
+      proxy_status: "refresh_failed",
+      status: "blocked",
+      last_result_status: "fetch_failed",
+      latest_readback_key_values: {},
+      failure_reason: "amcl_timeout",
+      blocked_reasons: ["amcl_timeout"],
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/localize/reset": localizationFailure,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
+
+    const resetButton = wrapper.findAll("button").find((button) => button.text() === "重新定位");
+    expect(resetButton).toBeTruthy();
+    await resetButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const poseMissing = wrapper.find('[data-testid="plain-map-pose-missing"]');
+    expect(poseMissing.text()).toBe("定位失败：amcl_timeout");
+    expect(poseMissing.attributes("aria-label")).toBe("定位失败：amcl_timeout，地图上的小车位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(false);
+    expect(visiblePlainHomeText(wrapper)).toContain("定位失败");
+    expect(visiblePlainHomeText(wrapper)).toContain("amcl_timeout");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/localize/reset") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps recent local radar scan visible when lidar is currently stopped", async () => {
     // 真实上位机可能保留最近 scan artifact，但 lifecycle 当前已停；地图必须说明这是最近局部轮廓，不贴到地图。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

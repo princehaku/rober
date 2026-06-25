@@ -1298,6 +1298,19 @@ function mapLifecycleFailureText(result: RobotControlMapLifecycleResponse | null
   return "请求失败";
 }
 
+function localizationResetFailed(result: RobotControlProofRefreshProxyResponse | null): boolean {
+  // 重新定位失败要回写到地图缺位 marker；成功回包不覆盖真实 pose 观测。
+  return Boolean(result && (result.proxy_status !== "refresh_forwarded" || result.status === "blocked"));
+}
+
+function localizationResetFailureLabel(result: RobotControlProofRefreshProxyResponse | null): string {
+  // 普通首屏保留上位机给出的短 failure_reason，避免 operator 只看到“位置未读到”。
+  if (!localizationResetFailed(result)) {
+    return "";
+  }
+  return result?.failure_reason || result?.blocked_reasons?.[0] || "定位请求失败";
+}
+
 function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
   // 扫图流程 marker 把“记录中/已停/可保存/保存中”贴回地图，避免状态只散落在按钮文案里。
   const style = robotPose
@@ -1465,9 +1478,15 @@ const plainMapVisualSummary = computed(() => {
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref
     || "";
+  const localizationFailureLabel = localizationResetFailureLabel(localizationResetResult.value);
+  const poseLabel = poseObserved ? "位置已读到" : localizationFailureLabel ? `定位失败：${localizationFailureLabel}` : "位置未读到";
+  const poseMissingAria = localizationFailureLabel
+    ? `定位失败：${localizationFailureLabel}，地图上的小车位置未读到`
+    : "机器人位置未读到";
   return {
     state,
-    poseLabel: poseObserved ? "位置已读到" : "位置未读到",
+    poseLabel,
+    poseMissingAria,
     radarLabel: displayedRadarState,
     radarOverlayLabel,
     radarOverlayMode,
@@ -7066,7 +7085,7 @@ onBeforeUnmount(() => {
                 </svg>
                 <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" :style="plainMapVisualSummary.radarOverlayStyle" aria-hidden="true" />
                 <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" :style="plainMapVisualSummary.robotPoseStyle" :aria-label="plainMapVisualSummary.robotPoseAria" />
-                <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing">{{ plainMapVisualSummary.poseLabel }}</span>
+                <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing" :aria-label="plainMapVisualSummary.poseMissingAria">{{ plainMapVisualSummary.poseLabel }}</span>
                 <span class="plain-map-radar-marker" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarOverlayAria">{{ plainMapVisualSummary.radarOverlayLabel }}</span>
               </div>
             </div>
