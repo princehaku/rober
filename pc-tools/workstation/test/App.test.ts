@@ -10561,6 +10561,8 @@ describe("App", () => {
     expect(marker.text()).toBe("雷达刷新失败：fetch_timeout");
     expect(marker.attributes("data-state")).toBe("雷达刷新失败");
     expect(marker.attributes("aria-label")).toBe("雷达刷新失败：fetch_timeout，地图位置未读到");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-radar-marker[data-state="雷达刷新失败"]');
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达刷新失败，未显示新点位。");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);

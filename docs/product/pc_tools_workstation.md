@@ -2287,8 +2287,9 @@ stop 或 `/cmd_vel`。
 
 2026-06-26 03:01 起，普通首屏点击 `刷新雷达` 失败时，地图 marker 会同步显示
 `雷达刷新失败：<failure_reason>`，`data-state=雷达刷新失败`，freshness 明确说明未显示新点位，并隐藏扫描范围占位。
-该失败态只消费固定 radar proof refresh 响应，不自动重试、不启动雷达、不发送 manual、keyboard pulse、Nav2、
-delivery、stop 或 `/cmd_vel`。
+2026-06-26 07:45 起，`雷达刷新失败` marker 同步纳入地图失败视觉态并由 CSS 选择器测试锁定，避免文字失败但样式仍像等待。
+该失败态只消费固定 radar proof refresh 响应，不自动重试、不启动雷达、不发送 manual、keyboard pulse、Nav2、delivery、
+stop 或 `/cmd_vel`。
 
 2026-06-26 04:05 起，雷达已运行但机器人 map-frame 位置未读到时，普通首屏地图 marker 会直接显示局部点数，例如
 `雷达已运行，局部点 3 个`；点云仍画成车身局部轮廓，不贴到地图坐标。该状态只消费只读 scan proof 和定位读回，
