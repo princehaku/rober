@@ -4030,10 +4030,7 @@ describe("App", () => {
       resolveMapPreviewRefresh = resolve;
     });
     let delayNextMapProofRefresh = false;
-    let resolveMapProofRefresh!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
-    const delayedMapProofRefresh = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
-      resolveMapProofRefresh = resolve;
-    });
+    const mapProofRefreshControl: { finish?: () => void } = {};
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": {
@@ -4105,7 +4102,12 @@ describe("App", () => {
       }
       if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextMapProofRefresh) {
         delayNextMapProofRefresh = false;
-        return delayedMapProofRefresh;
+        return new Promise((resolve) => {
+          mapProofRefreshControl.finish = () => resolve({
+            ok: true,
+            json: async () => fixtures["/api/robot-control/map/proof/refresh"],
+          });
+        });
       }
       return baseFetch(url, options);
     });
@@ -4129,6 +4131,30 @@ describe("App", () => {
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFirstNext);
 
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    delayNextMapProofRefresh = true;
+    const mapProofButtonBeforeStart = wrapper.findAll("button").find((button) => button.text() === "刷新地图");
+    if (!mapProofButtonBeforeStart) {
+      throw new Error("plain map proof refresh button was not found before mapping start");
+    }
+    const mapProofRefreshBeforeStartClick = mapProofButtonBeforeStart.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("地图状态刷新中；刷新完成后再开始或保存扫图。");
+    const mapStartCallsBeforeBlockedStart = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/start?")).length;
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toHaveLength(mapStartCallsBeforeBlockedStart);
+    const finishMapProofBeforeStart = mapProofRefreshControl.finish;
+    if (!finishMapProofBeforeStart) {
+      throw new Error("map proof refresh before start was not captured");
+    }
+    finishMapProofBeforeStart();
+    await mapProofRefreshBeforeStartClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -4226,10 +4252,11 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeProofBlockedMove);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/save?"))).toHaveLength(mapSaveCallsBeforeProofBlockedSave);
-    resolveMapProofRefresh({
-      ok: true,
-      json: async () => fixtures["/api/robot-control/map/proof/refresh"],
-    });
+    const finishMapProofDuringSweep = mapProofRefreshControl.finish;
+    if (!finishMapProofDuringSweep) {
+      throw new Error("map proof refresh during sweep was not captured");
+    }
+    finishMapProofDuringSweep();
     await pendingMapProofRefreshClick;
     await flushPromises();
     await wrapper.vm.$nextTick();

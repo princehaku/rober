@@ -1698,6 +1698,13 @@ const canStartPlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
   && !loading.value
   && !mapLifecyclePending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const canStartMapLifecycle = computed(() => (
+  !loading.value
+  && !mapLifecyclePending.value
+  && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
 const freeRoamAutonomySaveBlocked = computed(() => (
@@ -1775,6 +1782,9 @@ const plainFreeRoamMappingSummary = computed(() => {
   if (mapPreviewPending.value && mapSavedThisSession.value) {
     return { state: "刷新中", hint: "地图已保存，正在自动刷新最新画面。" };
   }
+  if (mapWysiwygRefreshPending.value) {
+    return { state: "刷新中", hint: `${mapWysiwygRefreshPendingText()}；刷新完成后再开始或保存扫图。` };
+  }
   if (mapPreviewPending.value) {
     return { state: "刷新中", hint: "正在刷新扫图画面；刷新完成后再保存。" };
   }
@@ -1797,7 +1807,11 @@ const plainFreeRoamMappingSummary = computed(() => {
   return { state: "可开始", hint: "先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图。" };
 });
 const plainFreeRoamMappingStartLabel = computed(() => (
-  mapLifecyclePending.value && mapLifecyclePendingAction.value === "start" ? "启动中" : mapRuntimeStarted.value ? "重新启动记录" : "开始扫地式建图"
+  mapLifecyclePending.value && mapLifecyclePendingAction.value === "start"
+    ? "启动中"
+    : mapWysiwygRefreshPending.value
+      ? "等待地图刷新"
+      : mapRuntimeStarted.value ? "重新启动记录" : "开始扫地式建图"
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
@@ -1848,6 +1862,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
     return "下一步：等待画面刷新";
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    if (mapWysiwygRefreshPending.value) {
+      return "下一步：等待地图刷新";
+    }
     return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
@@ -6409,6 +6426,9 @@ async function loadMapList(): Promise<void> {
 
 async function startMapRuntime(): Promise<void> {
   // 普通按钮只走固定 /api/map/start，不接受浏览器传运动、串口或 ROS 参数。
+  if (mapWysiwygRefreshPending.value) {
+    return;
+  }
   plainFreeRoamMapPreviewFreshForSession.value = false;
   plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
   plainFreeRoamSavedMapPreviewFreshForSession.value = false;
@@ -7428,7 +7448,7 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
               地图列表
             </button>
-            <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="startMapRuntime">
+            <button type="button" :disabled="!canStartMapLifecycle" @click="startMapRuntime">
               重新建图
             </button>
             <button type="button" :disabled="!canSaveMapLifecycle" @click="saveMap">
@@ -8150,7 +8170,7 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="!canSaveMapLifecycle" @click="saveMap">
               保存地图
             </button>
-            <button class="secondary" type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="startMapRuntime">
+            <button class="secondary" type="button" :disabled="!canStartMapLifecycle" @click="startMapRuntime">
               开始建图（高级）
             </button>
             <button class="secondary" type="button" disabled title="受控/高级：本轮不开放 reset">
