@@ -3376,6 +3376,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("还没有打开实时画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
@@ -5015,6 +5016,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("相机在线，点打开画面。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("相机在线，点打开画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但画面未打开，点打开画面。");
     expect(firstScreenText).not.toContain("画面可见");
     expect(firstScreenText).not.toContain("preview_status");
     expect(firstScreenText).not.toContain("/dev/video1");
@@ -9192,6 +9194,7 @@ describe("App", () => {
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面可见。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面可见");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示真实视频帧。");
     expect(wrapper.find("details").text()).toContain("preview_status");
     expect(wrapper.find("details").text()).toContain("streaming");
     expect(wrapper.find("details").text()).toContain("peer-preview-001");
@@ -9333,6 +9336,7 @@ describe("App", () => {
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面太暗，先检查镜头/光线。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面偏暗");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("画面偏暗");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前画面偏暗，先检查镜头或光线。");
     expect(wrapper.find("details").text()).toContain("near_black");
     expect(wrapper.find("details").text()).toContain("max_luma");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);

@@ -498,6 +498,26 @@ function syncJogInputsToBoundary(): void {
 
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
+const plainCameraWysiwygStatus = computed(() => {
+  // 普通首屏要把“按钮状态”和“真实看到的画面”分开说清，避免把已连接误解成已出图。
+  switch (cameraSummary.value.state) {
+    case "画面可见":
+      return "画面状态：当前显示真实视频帧。";
+    case "画面偏暗":
+      return "画面状态：当前画面偏暗，先检查镜头或光线。";
+    case "已打开":
+      return "画面状态：画面已打开，正在确认是否有可见内容。";
+    case "连接中":
+      return "画面状态：正在连接真实画面。";
+    case "失败":
+      return `画面状态：${cameraSummary.value.hint}`;
+    default:
+      if (cameraSummary.value.hint === "相机在线，点打开画面。") {
+        return "画面状态：相机在线但画面未打开，点打开画面。";
+      }
+      return "画面状态：还没打开，本页没有显示实时画面。";
+  }
+});
 const cameraFirstFrameProbeSummary = computed(() => {
   // 首帧探针是高级诊断结果：只说明底层 camera readback，不升级为实时图传成功。
   if (cameraFirstFrameProbePending.value) {
@@ -5888,6 +5908,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <p class="panel-note">{{ cameraSummary.hint }}</p>
+          <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
         </article>
 
         <article class="snapshot-panel">
