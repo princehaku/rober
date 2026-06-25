@@ -2333,3 +2333,7 @@ WebRTC 画面正在打开或关闭时，普通按钮显示 `等待画面稳定` 
 `恢复试动确认` 会等待实时画面打开/关闭完成和地图 proof/preview 刷新完成；`保存轮速记录` 会等待地图刷新完成。等待期间按钮显示
 `等待画面稳定` 或 `等待地图刷新` 并禁用，函数入口同步早退，不再允许用过期画面、路线图或轮速上下文改写 latest operator report。
 该状态只等待只读画面/地图状态稳定，不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-26 07:15 起，普通首屏执行图上路线期间，`行程操作` 区会就地显示红色 `行程停止（随时可点）`。
+点击后只调用已有固定 `/api/robot-control/base/stop` 兜底代理，pending 时显示 `停止中`，不新增 Nav2 cancel、manual/keyboard pulse、
+delivery complete 或 `/cmd_vel` 调用。原移动/导航卡片的 `停止` 按钮仍保留，行程区按钮只是让执行路线时的接管动作离状态更近。

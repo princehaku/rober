@@ -4032,6 +4032,10 @@ const plainTripLatestButtonLabel = computed(() => {
   }
   return deliveryNav2GoalReady.value ? "重新读取行程（只读）" : "读取行程结果（只读）";
 });
+const plainTripStopButtonLabel = computed(() => (
+  // 行程执行时把 stop 放在行程区就近呈现；底层仍复用统一 base stop 兜底，不新增 Nav2 cancel 接口。
+  manualCommandPending.value ? "停止中" : "行程停止（随时可点）"
+));
 
 const plainGoalProgressPending = computed(() => (
   loading.value
@@ -7993,6 +7997,9 @@ onBeforeUnmount(() => {
               </button>
               <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="!canLoadNavGoalExecutionLatest" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
                 {{ plainTripLatestButtonLabel }}
+              </button>
+              <button v-if="navGoalExecutionPending" type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-trip-stop" @click="sendStop">
+                {{ plainTripStopButtonLabel }}
               </button>
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>

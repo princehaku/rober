@@ -6196,12 +6196,21 @@ describe("App", () => {
     const executeResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
       resolveExecute = resolve;
     });
+    let delayNextStop = false;
+    let resolveStop!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const stopResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveStop = resolve;
+    });
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
     });
     const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
       if (url.startsWith("/api/robot-control/nav2/goal/execute")) {
         return executeResponse;
+      }
+      if (url.startsWith("/api/robot-control/base/stop") && delayNextStop) {
+        delayNextStop = false;
+        return stopResponse;
       }
       return baseFetch(url, options);
     });
@@ -6232,6 +6241,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-trip-stop"]').text()).toBe("行程停止（随时可点）");
+    expect(wrapper.find('[data-testid="plain-trip-stop"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（行程中）");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
@@ -6251,6 +6262,23 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeBlockedKeyboard);
+    const stopCallsBeforeTripStop = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?")).length;
+    delayNextStop = true;
+    const tripStopClick = wrapper.find('[data-testid="plain-trip-stop"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-stop"]').text()).toBe("停止中");
+    expect(wrapper.find('[data-testid="plain-trip-stop"]').attributes("disabled")).toBeDefined();
+    expect(mockedFetch.mock.calls.filter(([url, options]) =>
+      String(url).startsWith("/api/robot-control/base/stop?") && options?.method === "POST",
+    )).toHaveLength(stopCallsBeforeTripStop + 1);
+    resolveStop({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/base/stop"],
+    });
+    await tripStopClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-stop"]').text()).toBe("行程停止（随时可点）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
