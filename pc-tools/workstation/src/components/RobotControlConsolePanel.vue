@@ -2276,8 +2276,8 @@ const plainGoalProgressBlockerSummary = computed(() => {
 
 const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value || nav2RefreshPending.value);
 const plainTripRadarBlocked = computed(() => {
-  // 完整行程依赖雷达运行；普通首屏先卡住行程按钮，避免用户在传感器未就绪时误点 Nav2。
-  return !deliveryNav2GoalReady.value && radarSummary.value.state !== "雷达已运行";
+  // 雷达状态只作为普通提示；执行按钮按“安全确认 + 后端定位/路线预检”收敛，不在前端重复硬挡。
+  return false;
 });
 
 const plainTripPreparedByRefresh = computed(() => {
@@ -2323,9 +2323,6 @@ const plainTripSummary = computed(() => {
   if (deliveryNav2GoalReady.value) {
     return { state: "已完成", hint: plainTripEvidenceSummary.value || "已读到最近行程完成，可以准备送达材料。" };
   }
-  if (plainTripRadarBlocked.value && plainTripNeedsFreshRunAfterRadar.value) {
-    return { state: "待雷达", hint: plainRadarTripBlockedHint(true) };
-  }
   if (plainTripHasFreshIncompleteEvidence.value) {
     return { state: "需复验", hint: plainTripEvidenceSummary.value || "最近行程缺少反馈样本，需要重新读取或执行完整行程。" };
   }
@@ -2350,17 +2347,14 @@ const plainTripSummary = computed(() => {
   if (navGoalPreflightResult.value && navGoalPreflightResult.value.proxy_status !== "preflight_passed") {
     return { state: "检查失败", hint: "行程条件还没满足，请看高级诊断。" };
   }
-  if (plainTripRadarBlocked.value) {
-    return { state: "待雷达", hint: plainRadarTripBlockedHint(false) };
-  }
   if (!plainTripSafetyConfirmed.value) {
     return { state: "待确认", hint: "先勾选行程前确认，再检查或执行。" };
   }
-  return { state: "可检查", hint: "可先检查行程条件，也可执行一次默认行程。" };
+  return { state: "可执行", hint: "已完成最小确认；执行前后端会复查定位和路线。" };
 });
 
 const canRunPlainTripPreflight = computed(() => {
-  // 预检不发车，因此允许在雷达未就绪时先看路线 gate；真正执行仍单独被雷达状态挡住。
+  // 预检不发车，只要求现场完成同一个安全确认。
   return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
@@ -2370,8 +2364,8 @@ const canRefreshPlainTripPreparation = computed(() => {
 });
 
 const canRunPlainTripExecution = computed(() => {
-  // 真正执行仍由后端 confirm_navigation_execution gate 再次校验。
-  return !deliveryNav2GoalReady.value && !plainTripRadarBlocked.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+  // 真正执行仍由后端 confirm_navigation_execution + 定位/路线 readback gate 再次校验。
+  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
 const plainTripPreflightButtonLabel = computed(() => {
@@ -2384,18 +2378,6 @@ const plainTripPreflightButtonLabel = computed(() => {
   }
   if (loading.value || plainTripActionPending.value) {
     return "检查中";
-  }
-  if (plainTripRadarBlocked.value) {
-    if (plainTripSafetyConfirmed.value) {
-      return "检查行程（不发车）";
-    }
-    if (plainRadarStartUnavailable.value) {
-      return "先配置雷达";
-    }
-    if (plainRadarRequiresRefresh.value) {
-      return "先刷新雷达";
-    }
-    return "先启动雷达";
   }
   return plainTripSafetyConfirmed.value ? "检查行程" : "先勾选确认";
 });
@@ -2424,15 +2406,6 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   if (loading.value || plainTripActionPending.value) {
     return "执行中";
-  }
-  if (plainTripRadarBlocked.value) {
-    if (plainRadarStartUnavailable.value) {
-      return "先配置雷达";
-    }
-    if (plainRadarRequiresRefresh.value) {
-      return "先刷新雷达";
-    }
-    return "先启动雷达";
   }
   return plainTripSafetyConfirmed.value ? "执行行程" : "先勾选确认";
 });

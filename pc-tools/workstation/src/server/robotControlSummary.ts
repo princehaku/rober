@@ -1597,19 +1597,28 @@ export async function buildNavGoalPreflightProxy(
   const readbacks = await Promise.all(NAV_GOAL_PREFLIGHT_ENDPOINTS.map((endpoint) => readEndpoint(normalized.normalized, endpoint)));
   const localize = readbackById(readbacks, "localize_proof_latest");
   const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
+  const nav2Status = readbackById(readbacks, "nav2_status");
   const operatorReportPreflight = notRequiredNav2OperatorReportPreflight();
   const hardDangerous = readbacks.flatMap((item) => item.dangerous_true_fields.map((field) => `${item.id}.${field}`));
+  const localizationPayloads = [localize?.payload ?? null, nav2Proof?.payload ?? null, nav2Status?.payload ?? null];
   const localizationResetObserved =
     booleanObserved(localize?.payload ?? null, ["localization_reset_observed"]) ||
     statusMentions(localize?.payload ?? null, "localization_reset_observed");
-  const localizationRuntimeObserved = statusMentions(localize?.payload ?? null, "nav2_no_motion_localization_runtime_observed");
-  const mapToBaseLink = mapToBaseLinkObserved(localize?.payload ?? null);
+  const localizationRuntimeObserved = localizationPayloads.some((payload) =>
+    statusMentions(payload, "nav2_no_motion_localization_runtime_observed") ||
+    statusMentions(payload, "nav2_no_motion_path_generation_runtime_observed") ||
+    booleanObserved(payload, ["amcl_pose_observed"]),
+  );
+  const mapToBaseLink = localizationPayloads.some((payload) => mapToBaseLinkObserved(payload));
   const pathGenerated = booleanObserved(nav2Proof?.payload ?? null, ["path_generated", "latest_path_generated"]);
   const pathSucceeded = booleanObserved(nav2Proof?.payload ?? null, ["path_generation_succeeded"]);
   const pathPointCount = numericField(nav2Proof?.payload ?? null, ["path_point_count", "latest_path_point_count"]);
+  const localizationReadbackLoaded = localizationPayloads.some((payload, index) =>
+    Boolean(payload && [localize, nav2Proof, nav2Status][index]?.request_status === "loaded"),
+  );
   const missingRequirements = [
     sanitized.body.confirm_navigation_preflight ? "" : "confirm_navigation_preflight_required",
-    localize?.request_status === "loaded" ? "" : "localization_latest_not_loaded",
+    localizationReadbackLoaded ? "" : "localization_readback_not_loaded",
     localizationResetObserved || localizationRuntimeObserved ? "" : "localization_runtime_or_reset_not_observed",
     mapToBaseLink ? "" : "map_to_base_link_tf_not_observed",
     nav2Proof?.request_status === "loaded" ? "" : "nav2_proof_latest_not_loaded",
@@ -1638,6 +1647,7 @@ export async function buildNavGoalPreflightProxy(
       localization_reset_observed: localizationResetObserved,
       nav2_no_motion_localization_runtime_observed: localizationRuntimeObserved,
       map_to_base_link: mapToBaseLink,
+      source: mapToBaseLink || localizationRuntimeObserved ? "localize_or_nav2_proof_latest" : "localize_proof_latest",
     },
     nav2_path_summary: {
       request_status: nav2Proof?.request_status ?? "blocked",
@@ -1647,8 +1657,8 @@ export async function buildNavGoalPreflightProxy(
       path_point_count: pathPointCount,
     },
     nav2_status_summary: {
-      request_status: readbackById(readbacks, "nav2_status")?.request_status ?? "blocked",
-      status: asString(findFirstKey(readbackById(readbacks, "nav2_status")?.payload, ["status", "lifecycle_state", "nav2_status"]), "not_loaded"),
+      request_status: nav2Status?.request_status ?? "blocked",
+      status: asString(findFirstKey(nav2Status?.payload, ["status", "lifecycle_state", "nav2_status"]), "not_loaded"),
     },
     missing_requirements: missingRequirements,
     failure_reason: missingRequirements[0] ?? "",

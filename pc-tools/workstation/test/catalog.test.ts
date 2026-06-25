@@ -5702,13 +5702,13 @@ describe("workstation fail-closed API contracts", () => {
       "/api/localize/proof/latest": {
         payload: {
           schema: "trashbot.upper_robot_api.v1.localization_reset_result",
-          status: "localization_reset_observed",
+          status: "blocked_with_root_cause",
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
           robot_control_executed: false,
-          localization_reset_observed: true,
-          localization_tf_observed: { map_to_base_link: true },
+          localization_reset_observed: false,
+          localization_tf_observed: { map_to_base_link: false },
         },
       },
       "/api/nav2/proof/latest": {
@@ -5719,6 +5719,8 @@ describe("workstation fail-closed API contracts", () => {
           delivery_success: false,
           primary_actions_enabled: false,
           robot_control_executed: false,
+          amcl_pose_observed: true,
+          localization_tf_observed: { map_to_odom: true, map_to_base_link: true },
           path_generated: true,
           path_generation_succeeded: true,
           path_point_count: 23,
@@ -5784,6 +5786,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(JSON.stringify(helperResponse.remote_read_endpoints)).not.toContain("\"payload\"");
       expect(helperResponse.operator_report_preflight.status).toBe("not_required_for_nav2_minimal_safety_precheck");
       expect(helperResponse.operator_report_preflight.report_status).toBe("not_required_for_nav2_minimal_safety_precheck");
+      expect(helperResponse.localization_summary.source).toBe("localize_or_nav2_proof_latest");
+      expect(helperResponse.localization_summary.map_to_base_link).toBe(true);
       expect(helperResponse.missing_requirements).toEqual([]);
       expect(helperResponse.forbidden_remote_endpoints_not_called).toEqual(["/api/nav2/start", "NavigateToPose", "/cmd_vel", "/api/base/manual"]);
       expect(helperResponse.robot_control_executed).toBe(false);

@@ -310,6 +310,14 @@ AMCL/TF readiness、planner lifecycle、ComputePath action、outer timeout 或
 cleanup。PC 代理只转发固定 body 并读取 latest，不允许前端传入任意 goal、
 Nav2 start/stop 或底盘控制参数。
 
+2026-06-25 起，PC 普通首屏的固定目标预检会把定位证据来源从单一
+`/api/localize/proof/latest` 扩展为 `localize latest + nav2 proof latest + nav2 status`。
+如果 localize latest 保留旧失败，但 Nav2 no-motion proof/status 已读到 AMCL pose、
+`map_to_base_link` 和正数路径点，PC 预检可以通过；雷达 lifecycle 状态继续作为普通提示和
+WYSIWYG 扫描显示，不再作为行程按钮的前端硬挡。该预检仍不发送 `NavigateToPose`、
+`/cmd_vel`、`/api/base/manual` 或 WAVE ROVER UART 命令；真正执行仍由
+`/api/robot-control/nav2/goal/execute` 的确认字段和后端定位/路线 gate 再次复查。
+
 `/api/nav2/proof/refresh` 现在会先显式 source ROS Humble setup，再拉起 helper。
 这样 `rclpy` 和 Nav2 action client 的运行时依赖不会被 systemd 服务环境吞掉；
 但这个变化只影响 proof helper 的启动方式，不改变默认只读/no-motion 边界。

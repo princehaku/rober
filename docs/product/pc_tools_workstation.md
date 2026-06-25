@@ -1546,9 +1546,15 @@ operator report，不再次发送运动命令、不补 LiDAR/route/delivery。�
 
 2026-06-25 17:32 起，普通首屏 `检查行程` 作为不发车预检动作，不再被雷达 lifecycle 状态禁用：现场勾选
 `人在旁边、周围安全、停止手段就绪` 后，即使雷达未运行或待刷新，也可以先调用固定
-`/api/robot-control/nav2/goal/preflight` 查看路线 gate。`执行行程` 仍继续被雷达未运行/待刷新状态挡住，并且
-仍必须走 `confirm_navigation_execution` 与后端固定 execute gate；该改动不会调用 `/api/robot-control/nav2/goal/execute`、
-`/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`。
+`/api/robot-control/nav2/goal/preflight` 查看路线 gate。
+
+2026-06-25 19:00 起，普通首屏 `行程操作` 进一步收敛为最小现场确认：雷达状态只在雷达卡片、地图扫描点和
+WYSIWYG 提示里展示，不再作为 `检查行程` 或 `执行行程` 的前端硬挡。勾选同一个安全确认后，行程按钮直接显示
+`检查行程` / `执行行程`；真正发车仍必须走 `confirm_navigation_execution` 与后端固定 execute gate。后端
+`/api/robot-control/nav2/goal/preflight` 会合并 `/api/localize/proof/latest`、`/api/nav2/proof/latest` 和
+`/api/nav2/status` 的定位证据：当 localize latest 是旧失败，但 Nav2 proof/status 已证明 AMCL pose、
+`map_to_base_link` 和路径点时，预检不再被 stale localize 单点误挡。该改动不会自动调用
+`/api/robot-control/nav2/goal/execute`、`/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`。
 
 2026-06-25 18:01 起，普通首屏 `行程操作` 新增 `准备行程（不发车）`。该按钮在勾选同一个现场安全确认后可用，
 底层只调用固定 `POST /api/robot-control/nav2/proof/refresh` 刷新 no-motion planner proof，并把结果翻译成

@@ -2165,6 +2165,7 @@ export interface RobotControlNavGoalPreflightResponse extends ProofFlags {
     localization_reset_observed: boolean;
     nav2_no_motion_localization_runtime_observed: boolean;
     map_to_base_link: boolean;
+    source?: string;
   };
   nav2_path_summary: {
     request_status: RobotApiEndpointReadback["request_status"];
