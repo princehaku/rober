@@ -1651,7 +1651,9 @@ const plainFreeRoamCoverageSummary = computed(() => {
         ? "扫图中地图画面已自动刷新；松开后会再刷新一次用于保存。"
         : "地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。"
       : mapSavedThisSession.value
-        ? "地图已保存，刷新后检查覆盖效果。"
+        ? plainFreeRoamSavedMapPreviewFreshForSession.value
+          ? "地图已保存，地图画面已自动刷新；现在检查覆盖效果。"
+          : "地图已保存，刷新后检查覆盖效果。"
         : "当前显示最近地图画面，开始记录后可边扫边刷新。",
     barStyle: { "--coverage-known": percentText(knownPercent) },
     quality: preview.navigation_quality || (preview.has_free_cells ? "has_free_cells" : "not_loaded"),

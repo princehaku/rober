@@ -2112,6 +2112,9 @@ base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd
 并把 `扫图状态` 和 `地图画面` 提示更新为“地图已保存，地图画面已自动刷新”。该刷新只读取
 `/api/robot-control/map/preview`，不发送 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 03:05 起，保存后自动刷新成功时，`扫图覆盖` 的 guidance 也会同步显示“地图已保存，地图画面已自动刷新；
+现在检查覆盖效果”。如果保存成功但 preview 没有成功转发，仍保留“刷新后检查覆盖效果”的保守提示。
+
 2026-06-26 02:20 起，普通首屏地图上的 Nav2 目标 marker 会在本轮 `delivery success` 已通过且 route/map ref 对齐当前
 Nav2 execution evidence 时，从 `已到达` 提升为 `已送达`。该 marker 只消费已读到的 Nav2 latest/execute 和
 delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。
