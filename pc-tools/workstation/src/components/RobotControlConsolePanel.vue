@@ -2466,12 +2466,15 @@ const deliveryOperatorConfirmationReady = computed(() => {
     && confirmations.delivery_success;
 });
 
+const plainDeliveryMapWysiwygPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
+
 const plainDeliveryConfirmMissingLabels = computed(() => {
   // 最终确认区要先提示材料缺口，再提示现场勾选项，避免现场在按钮之间来回猜。
   const confirmations = deliveryOperatorConfirmations.value;
   const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim());
   return [
     { label: "本轮行程", ready: deliveryNav2GoalReady.value },
+    { label: "地图画面刷新完成", ready: !plainDeliveryMapWysiwygPending.value },
     { label: "本轮行程材料", ready: !deliveryNav2GoalReady.value || deliveryRouteMapMatchesFreshNav2.value },
     { label: "送达材料", ready: materialReady },
     { label: "人在旁边可接管", ready: confirmations.operator_present },
@@ -2536,6 +2539,9 @@ function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
       return "确认送达（先启动雷达）";
     }
     return "确认送达（先重新行程）";
+  }
+  if (missingLabels.includes("地图画面刷新完成")) {
+    return "确认送达（等待地图刷新）";
   }
   if (missingLabels.includes("本轮行程材料")) {
     return "确认送达（先更新行程材料）";
@@ -2662,6 +2668,9 @@ const plainDeliveryNextActionSummary = computed(() => {
       return "下一步：检查或重新执行完整行程。";
     }
     return plainTripHasSucceededEvidence.value ? "下一步：重新执行本轮行程。" : "下一步：先完成行程。";
+  }
+  if (plainDeliveryMapWysiwygPending.value) {
+    return `下一步：等待${plainTripMapWysiwygWaitText()}。`;
   }
   if (!deliveryRouteMapMatchesFreshNav2.value) {
     return "下一步：更新行程材料。";
@@ -2933,6 +2942,9 @@ const plainDeliveryPrefillButtonLabel = computed(() => {
   if (navGoalExecutionLatestPending.value || cameraFirstFrameProbePending.value || deliveryLatestPending.value) {
     return "准备中";
   }
+  if (plainDeliveryMapWysiwygPending.value) {
+    return "等待地图刷新";
+  }
   const hasVideoRef = deliveryOperatorVideoRef.value.trim().length > 0;
   const hasRouteRef = deliveryOperatorRouteMapRef.value.trim().length > 0;
   if (hasRouteRef && !hasVideoRef) {
@@ -2951,6 +2963,9 @@ const plainDeliveryMaterialSummary = computed(() => {
   }
   if (navGoalExecutionLatestPending.value || cameraFirstFrameProbePending.value || deliveryLatestPending.value) {
     return { state: "准备中", hint: "正在读取最近行程和画面材料。" };
+  }
+  if (plainDeliveryMapWysiwygPending.value) {
+    return { state: "刷新中", hint: `${plainTripMapWysiwygPendingText()}；刷新完成后再准备或保存送达材料。` };
   }
   if (deliveryDraftMaterialPresent()) {
     const ageText = formatEvidenceAge(
@@ -2985,6 +3000,7 @@ const plainDeliveryConfirmReady = computed(() => {
     && !operatorReportPending.value
     && !deliveryCompletionPending.value
     && !deliverySuccessReady.value
+    && !plainDeliveryMapWysiwygPending.value
     && robotApiBaseUrl.value.trim().length > 0
     && deliveryNav2GoalReady.value
     && deliveryRouteMapMatchesFreshNav2.value
@@ -3006,6 +3022,9 @@ const plainDeliveryConfirmSummary = computed(() => {
   }
   if (deliverySuccessEvidenceRouteMismatch.value) {
     return { state: "待材料", hint: "送达成功记录的行程材料不是本轮记录，先重新准备材料并确认送达。" };
+  }
+  if (plainDeliveryMapWysiwygPending.value) {
+    return { state: "刷新中", hint: `${plainTripMapWysiwygPendingText()}；刷新完成后再提交送达确认。` };
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
@@ -6209,7 +6228,7 @@ async function fillDeliveryVideoRefFromCameraProbe(): Promise<void> {
 
 async function prefillDeliveryMaterialRefs(): Promise<void> {
   // 一键预填只收集 ref，不提交 operator report；最终送达仍由现场人员显式确认。
-  if (!robotApiBaseUrl.value.trim()) {
+  if (!robotApiBaseUrl.value.trim() || plainDeliveryMapWysiwygPending.value) {
     return;
   }
   const routeRefNeedsRefresh = !deliveryOperatorRouteMapRef.value.trim()
@@ -6234,6 +6253,7 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
   if (
     !robotApiBaseUrl.value.trim()
     || operatorReportPending.value
+    || plainDeliveryMapWysiwygPending.value
     || !deliveryOperatorVideoRef.value.trim()
     || !deliveryOperatorRouteMapRef.value.trim()
   ) {
@@ -6289,6 +6309,7 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
     !robotApiBaseUrl.value.trim()
     || operatorReportPending.value
     || deliveryCompletionPending.value
+    || plainDeliveryMapWysiwygPending.value
     || !deliveryNav2GoalReady.value
     || !deliveryRouteMapMatchesFreshNav2.value
     || !deliveryOperatorConfirmationReady.value
@@ -7766,7 +7787,7 @@ onBeforeUnmount(() => {
                 ref="plainDeliveryPrefillButton"
                 type="button"
                 class="secondary compact-stop"
-                :disabled="loading || navGoalExecutionLatestPending || cameraFirstFrameProbePending || deliveryLatestPending || !robotApiBaseUrl.trim()"
+                :disabled="loading || plainDeliveryMapWysiwygPending || navGoalExecutionLatestPending || cameraFirstFrameProbePending || deliveryLatestPending || !robotApiBaseUrl.trim()"
                 data-testid="plain-delivery-prefill-material"
                 @click="prefillDeliveryMaterialRefs"
               >
@@ -7776,7 +7797,7 @@ onBeforeUnmount(() => {
                 ref="plainDeliveryDraftSaveButton"
                 type="button"
                 class="secondary compact-stop"
-                :disabled="loading || operatorReportPending || !robotApiBaseUrl.trim() || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()"
+                :disabled="loading || plainDeliveryMapWysiwygPending || operatorReportPending || !robotApiBaseUrl.trim() || !deliveryOperatorVideoRef.trim() || !deliveryOperatorRouteMapRef.trim()"
                 data-testid="plain-delivery-draft-save"
                 @click="submitDeliveryDraftMaterial"
               >

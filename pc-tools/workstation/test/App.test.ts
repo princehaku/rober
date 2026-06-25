@@ -10794,6 +10794,11 @@ describe("App", () => {
     const deliveryCompleteResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
       resolveDeliveryComplete = resolve;
     });
+    let resolveMapPreview!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedMapPreviewResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveMapPreview = resolve;
+    });
+    let delayNextMapPreview = false;
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execute": {
@@ -10844,6 +10849,10 @@ describe("App", () => {
       },
     });
     const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/preview?") && delayNextMapPreview) {
+        delayNextMapPreview = false;
+        return delayedMapPreviewResponse;
+      }
       if (String(url).startsWith("/api/robot-control/delivery/complete?")) {
         return deliveryCompleteResponse;
       }
@@ -10874,6 +10883,48 @@ describe("App", () => {
     await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+
+    delayNextMapPreview = true;
+    const mapRefreshClick = wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：等待地图画面刷新。");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-draft-save"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（等待地图刷新）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("地图画面刷新完成");
+    expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').text()).toContain("地图画面刷新中；刷新完成后再提交送达确认。");
+    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("地图画面刷新中；刷新完成后再准备或保存送达材料。");
+
+    const reportCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([callUrl]) =>
+      String(callUrl).startsWith("/api/robot-control/operator/report?"),
+    ).length;
+    const completeCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([callUrl]) =>
+      String(callUrl).startsWith("/api/robot-control/delivery/complete?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-delivery-prefill-material"]').trigger("click");
+    await wrapper.find('[data-testid="plain-delivery-draft-save"]').trigger("click");
+    await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([callUrl]) =>
+      String(callUrl).startsWith("/api/robot-control/operator/report?"),
+    ).length).toBe(reportCallsBeforeMapRefreshRelease);
+    expect(mockedFetch.mock.calls.filter(([callUrl]) =>
+      String(callUrl).startsWith("/api/robot-control/delivery/complete?"),
+    ).length).toBe(completeCallsBeforeMapRefreshRelease);
+
+    resolveMapPreview({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/map/preview"],
+    });
+    await mapRefreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
 
     const submitClick = wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
     await flushPromises();
