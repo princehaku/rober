@@ -221,7 +221,6 @@ const NAV_GOAL_PREFLIGHT_GOAL_LIMITS = {
 const NAV_GOAL_PREFLIGHT_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
   { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
   { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
 ];
 
@@ -559,6 +558,16 @@ export function notRequiredOperatorReportPreflight(): RobotControlOperatorReport
     material_summary: notLoadedHilMaterialSummary("not_loaded"),
     failure_reason: "",
     hard_dangerous_true_fields: [],
+  };
+}
+
+function notRequiredNav2OperatorReportPreflight(): RobotControlOperatorReportPreflight {
+  // Nav2 发车前预检按最新产品口径只要求本地安全确认；operator report 材料不再阻塞导航预检。
+  return {
+    ...notRequiredOperatorReportPreflight(),
+    status: "not_required_for_nav2_minimal_safety_precheck",
+    report_status: "not_required_for_nav2_minimal_safety_precheck",
+    evidence_ref: "not_required_for_nav2_minimal_safety_precheck",
   };
 }
 
@@ -1544,7 +1553,7 @@ export async function buildNavGoalPreflightProxy(
   baseUrl: string,
   body: unknown,
 ): Promise<RobotControlNavGoalPreflightResponse> {
-  // 这是“执行导航前门禁”，不是导航执行入口；无论是否通过，都只做固定 GET readback。
+  // 这是“执行导航前门禁”，不是导航执行入口；按最新产品口径只要求本地安全确认和固定只读定位/路径状态。
   const sanitized = sanitizeNavGoalPreflightBody(body);
   if (!sanitized.ok) {
     return blockedNavGoalPreflightResponse(baseUrl, sanitized.reason);
@@ -1557,12 +1566,7 @@ export async function buildNavGoalPreflightProxy(
   const readbacks = await Promise.all(NAV_GOAL_PREFLIGHT_ENDPOINTS.map((endpoint) => readEndpoint(normalized.normalized, endpoint)));
   const localize = readbackById(readbacks, "localize_proof_latest");
   const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
-  const operator = readbackById(readbacks, "operator_report_latest");
-  const operatorReportPreflight = buildOperatorReportPreflightFromPayload(
-    operator?.payload ?? null,
-    operator?.http_status ?? null,
-    operator?.request_status === "loaded" ? "loaded" : operator?.request_status ?? "blocked",
-  );
+  const operatorReportPreflight = notRequiredNav2OperatorReportPreflight();
   const hardDangerous = readbacks.flatMap((item) => item.dangerous_true_fields.map((field) => `${item.id}.${field}`));
   const localizationResetObserved =
     booleanObserved(localize?.payload ?? null, ["localization_reset_observed"]) ||
@@ -1580,7 +1584,6 @@ export async function buildNavGoalPreflightProxy(
     nav2Proof?.request_status === "loaded" ? "" : "nav2_proof_latest_not_loaded",
     pathGenerated || pathSucceeded ? "" : "path_generation_not_observed",
     pathPointCount > 0 ? "" : "path_point_count_not_positive",
-    operatorReportPreflight.status === "passed" ? "" : "operator_report_preflight_required",
     ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
   ].filter(Boolean);
   const proxyStatus = missingRequirements.length === 0 ? "preflight_passed" : "preflight_rejected";

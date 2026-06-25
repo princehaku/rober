@@ -3886,7 +3886,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。雷达未运行，先启动雷达，再检查或执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：先启动雷达，再检查或执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先启动雷达，再完成本轮行程。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达未运行，先启动雷达，再执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达未运行，先启动雷达，再检查或执行本轮行程。");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：先启动雷达，再完成本轮行程。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先启动雷达）");
     const navClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
@@ -4094,7 +4094,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达未运行，先启动雷达，再重新执行本轮行程。");
     const navClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("完整 Nav2 路线执行"));
-    expect(navClosureItem?.text()).toContain("雷达未运行，先启动雷达，再重新执行本轮完整行程");
+    expect(navClosureItem?.text()).toContain("雷达未运行，先启动雷达，再重新执行完整行程");
     const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("delivery success"));
     expect(deliveryClosureItem?.text()).toContain("送达确认前先启动雷达并重新执行本轮完整行程");
@@ -7509,6 +7509,48 @@ describe("App", () => {
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("/api/radar/start");
   });
 
+  it("treats running lidar with incomplete proof as refresh-only before trip execution", async () => {
+    // 真实上位机可能 lifecycle 已 running，但 latest proof stale/incomplete；这时不能再引导用户重复启动雷达。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.radar_start_configured = "true";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("雷达待刷新");
+    expect(firstScreenText).toContain("雷达正在运行，但最新记录不完整；先刷新雷达确认。");
+    expect(firstScreenText).toContain("刷新雷达");
+    expect(firstScreenText).not.toContain("启动雷达");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先刷新雷达");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先刷新雷达");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去刷新雷达");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：先刷新雷达，再检查或执行行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达在运行，先刷新雷达，再检查或执行本轮行程。");
+
+    await wrapper.find('[data-testid="plain-radar-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows radar start configuration as the trip blocker before sending start", async () => {
     // 真实上位机可能处于 LiDAR 停止但 start command 未配置；普通首屏要先提示配置缺口，避免点击 dry-run。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
@@ -7535,7 +7577,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去配置雷达");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：先配置雷达启动命令。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先配置雷达启动命令。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达启动命令未配置，先在上位机配置后再执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：雷达启动命令未配置，先在上位机配置后再执行本轮行程。");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：先配置雷达启动命令。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先配置雷达）");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先配置雷达");

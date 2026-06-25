@@ -2009,6 +2009,7 @@ export interface RobotControlOperatorHilMaterialSummary {
 
 export type RobotControlOperatorReportPreflightStatus =
   | "not_required_for_stop"
+  | "not_required_for_nav2_minimal_safety_precheck"
   | "passed"
   | "blocked";
 

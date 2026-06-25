@@ -5520,8 +5520,8 @@ describe("workstation fail-closed API contracts", () => {
     expect(unsafe.robot_control_executed).toBe(false);
   });
 
-  it("Nav2 goal preflight uses fixed GET readbacks and never executes navigation", async () => {
-    // 通过态也只是“材料满足、未执行”；上游不能收到 /api/nav2/start、NavigateToPose、/cmd_vel 或 base manual。
+  it("Nav2 goal preflight uses minimal safety readbacks and never executes navigation", async () => {
+    // 最新普通流程只要求安全确认和定位/路径只读状态；不再把 operator report 材料作为发车前预检。
     const upstream = await listenRobotBaseCommandApi({}, {
       "/api/localize/proof/latest": {
         payload: {
@@ -5602,11 +5602,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(helperResponse.remote_read_endpoints.map((endpoint) => endpoint.endpoint)).toEqual(expect.arrayContaining([
         "/api/localize/proof/latest",
         "/api/nav2/proof/latest",
-        "/api/operator/report",
         "/api/nav2/status",
       ]));
+      expect(helperResponse.remote_read_endpoints.map((endpoint) => endpoint.endpoint)).not.toContain("/api/operator/report");
       expect(JSON.stringify(helperResponse.remote_read_endpoints)).not.toContain("\"payload\"");
-      expect(helperResponse.operator_report_preflight.status).toBe("passed");
+      expect(helperResponse.operator_report_preflight.status).toBe("not_required_for_nav2_minimal_safety_precheck");
+      expect(helperResponse.operator_report_preflight.report_status).toBe("not_required_for_nav2_minimal_safety_precheck");
       expect(helperResponse.missing_requirements).toEqual([]);
       expect(helperResponse.forbidden_remote_endpoints_not_called).toEqual(["/api/nav2/start", "NavigateToPose", "/cmd_vel", "/api/base/manual"]);
       expect(helperResponse.robot_control_executed).toBe(false);
@@ -5632,8 +5633,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Nav2 goal preflight rejects unknown fields and incomplete materials before execution", async () => {
-    // 未知字段先本机拒绝；材料不足时也只读 GET 并返回缺项，不向任何执行 endpoint 发 POST。
+  it("Nav2 goal preflight rejects unknown fields and incomplete localization/path before execution", async () => {
+    // 未知字段先本机拒绝；定位/路径不足时只读 GET 并返回缺项，不向任何执行 endpoint 发 POST。
     const unknown = await buildNavGoalPreflightProxy("http://127.0.0.1:8787", {
       goal_x: 0.8,
       confirm_navigation_preflight: true,
@@ -5703,9 +5704,10 @@ describe("workstation fail-closed API contracts", () => {
         "map_to_base_link_tf_not_observed",
         "path_generation_not_observed",
         "path_point_count_not_positive",
-        "operator_report_preflight_required",
       ]));
+      expect(rejected.missing_requirements).not.toContain("operator_report_preflight_required");
       expect(rejected.operator_report_preflight.missing_fields).not.toContain("delivery_success");
+      expect(rejected.operator_report_preflight.status).toBe("not_required_for_nav2_minimal_safety_precheck");
       expect(JSON.stringify(rejected.remote_read_endpoints)).not.toContain("\"payload\"");
       expect(rejected.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/nav2/start"]).toBeUndefined();

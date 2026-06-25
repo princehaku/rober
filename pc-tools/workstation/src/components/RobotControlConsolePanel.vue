@@ -383,7 +383,9 @@ function radarStartCommandConfigured(): boolean {
   return robotSummary.value?.readback_summary.lidar.radar_start_configured !== "false";
 }
 
-function summarizeRadarState(): { state: "雷达未运行" | "刷新中" | "雷达已运行" | "刷新失败"; hint: string } {
+type PlainRadarState = "雷达未运行" | "雷达待刷新" | "刷新中" | "雷达已运行" | "刷新失败";
+
+function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
   if (radarRefreshPending.value) {
     return { state: "刷新中", hint: "正在刷新雷达状态。" };
@@ -407,13 +409,13 @@ function summarizeRadarState(): { state: "雷达未运行" | "刷新中" | "雷�
     return { state: "雷达已运行", hint: "当前窗口已看到新的雷达状态。" };
   }
   if (lifecycleRunning) {
-    return { state: "雷达未运行", hint: "雷达正在准备，先点刷新再看结果。" };
+    return { state: "雷达待刷新", hint: "雷达正在运行，但最新记录不完整；先刷新雷达确认。" };
   }
   if (!radarStartCommandConfigured()) {
     return { state: "雷达未运行", hint: "上位机雷达启动命令未配置，先配置后再启动雷达。" };
   }
   if (radarStartSucceeded(radarLifecycleResult.value)) {
-    return { state: "雷达未运行", hint: "雷达启动已返回，请点刷新雷达确认状态。" };
+    return { state: "雷达待刷新", hint: "雷达启动已返回，请点刷新雷达确认状态。" };
   }
   if (radarLifecycleResult.value?.action === "start" && radarLifecycleResult.value) {
     return { state: "雷达未运行", hint: radarLifecycleResult.value.failure_reason ? `雷达启动没有成功：${radarLifecycleResult.value.failure_reason}。` : "雷达启动没有成功，请检查上位机配置。" };
@@ -549,6 +551,7 @@ const evidenceSweepSummary = computed(() => {
   return evidenceSweepLines.value.join(" | ");
 });
 const radarSummary = computed(() => summarizeRadarState());
+const plainRadarRequiresRefresh = computed(() => ["雷达待刷新", "刷新失败"].includes(radarSummary.value.state));
 const plainRadarStartUnavailable = computed(() => {
   // 配置缺失时普通首屏仍展示卡点，但不让按钮发送一个注定 dry-run 的 start 请求。
   return radarSummary.value.state === "雷达未运行" && !radarStartCommandConfigured();
@@ -558,6 +561,57 @@ const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarSummary.value.state === "雷达未运行";
 });
+
+function plainRadarTripBlockedHint(rerun: boolean): string {
+  // lifecycle 已运行但 proof 不完整时，下一步是刷新记录，不是重复启动雷达。
+  if (plainRadarStartUnavailable.value) {
+    return rerun ? "雷达启动命令未配置，先在上位机配置后再重新执行本轮行程。" : "雷达启动命令未配置，先在上位机配置后再检查或执行行程。";
+  }
+  if (plainRadarRequiresRefresh.value) {
+    return rerun ? "雷达在运行，先刷新雷达，再重新执行本轮行程。" : "雷达在运行，先刷新雷达，再检查或执行行程。";
+  }
+  return rerun ? "雷达未运行，先启动雷达，再重新执行本轮行程。" : "雷达未运行，先启动雷达，再检查或执行行程。";
+}
+
+function plainRadarTripBlockedNextAction(rerun: boolean): string {
+  if (plainRadarStartUnavailable.value) {
+    return "下一步：先配置雷达启动命令。";
+  }
+  if (plainRadarRequiresRefresh.value) {
+    return rerun ? "下一步：先刷新雷达，再重新执行本轮行程。" : "下一步：先刷新雷达，再检查或执行行程。";
+  }
+  return rerun ? "下一步：先启动雷达，再重新执行本轮行程。" : "下一步：先启动雷达，再检查或执行行程。";
+}
+
+function plainRadarDeliveryNextAction(rerun: boolean): string {
+  if (plainRadarStartUnavailable.value) {
+    return "下一步：先配置雷达启动命令。";
+  }
+  if (plainRadarRequiresRefresh.value) {
+    return rerun ? "下一步：先刷新雷达，再重新执行本轮行程。" : "下一步：先刷新雷达，再完成本轮行程。";
+  }
+  return rerun ? "下一步：先启动雷达，再重新执行本轮行程。" : "下一步：先启动雷达，再完成本轮行程。";
+}
+
+function plainRadarDeliveryBlockedHint(rerun: boolean): string {
+  if (plainRadarStartUnavailable.value) {
+    return "送达确认前先配置雷达启动命令并完成本轮完整行程";
+  }
+  if (plainRadarRequiresRefresh.value) {
+    return rerun ? "送达确认前先刷新雷达并重新执行本轮完整行程" : "送达确认前先刷新雷达并完成本轮完整行程";
+  }
+  return rerun ? "送达确认前先启动雷达并重新执行本轮完整行程" : "送达确认前先启动雷达并完成本轮完整行程";
+}
+
+function plainRadarTripClosureHint(rerun: boolean): string {
+  if (plainRadarStartUnavailable.value) {
+    return rerun ? "雷达启动命令未配置，先在上位机配置后再重新执行完整行程" : "雷达启动命令未配置，先在上位机配置后再执行完整行程";
+  }
+  if (plainRadarRequiresRefresh.value) {
+    return rerun ? "雷达在运行，先刷新雷达，再重新执行完整行程" : "雷达在运行，先刷新雷达，再检查或执行完整行程";
+  }
+  return rerun ? "雷达未运行，先启动雷达，再重新执行完整行程" : "雷达未运行，先启动雷达，再检查或执行完整行程";
+}
 const radarLifecycleSummary = computed(() => {
   // 雷达 lifecycle 是高级诊断动作；摘要只说明代理和 guard 结果，不证明 runtime 已启动。
   if (radarLifecyclePending.value) {
@@ -773,6 +827,9 @@ function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
       if (plainRadarStartUnavailable.value) {
         return "确认送达（先配置雷达）";
       }
+      if (plainRadarRequiresRefresh.value) {
+        return "确认送达（先刷新雷达）";
+      }
       if (plainTripNeedsFreshRunAfterRadar.value) {
         return "确认送达（先雷达再行程）";
       }
@@ -890,13 +947,7 @@ const plainDeliveryNextActionSummary = computed(() => {
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
-      if (plainRadarStartUnavailable.value) {
-        return "下一步：先配置雷达启动命令。";
-      }
-      if (plainTripNeedsFreshRunAfterRadar.value) {
-        return "下一步：先启动雷达，再重新执行本轮行程。";
-      }
-      return "下一步：先启动雷达，再完成本轮行程。";
+      return plainRadarDeliveryNextAction(plainTripNeedsFreshRunAfterRadar.value);
     }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return "下一步：重新读取或执行完整行程。";
@@ -1169,13 +1220,7 @@ const plainDeliveryConfirmSummary = computed(() => {
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
-      if (plainRadarStartUnavailable.value) {
-        return { state: "待行程", hint: "雷达启动命令未配置，先在上位机配置后再完成本轮行程。" };
-      }
-      if (plainTripNeedsFreshRunAfterRadar.value) {
-        return { state: "待行程", hint: "雷达未运行，先启动雷达，再重新执行本轮行程。" };
-      }
-      return { state: "待行程", hint: "雷达未运行，先启动雷达，再完成本轮行程。" };
+      return { state: "待行程", hint: plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) };
     }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return { state: "待行程", hint: "最近行程缺少反馈样本，先重新读取或执行完整行程。" };
@@ -1333,7 +1378,7 @@ const goalClosureChecklist = computed(() => {
       ready: nav2Ready,
       hint: nav2Ready
         ? "已有本轮 goal_succeeded 和反馈样本"
-        : plainTripRadarBlocked.value ? (plainRadarStartUnavailable.value ? "雷达启动命令未配置，先在上位机配置后再执行完整行程" : plainTripNeedsFreshRunAfterRadar.value ? "雷达未运行，先启动雷达，再重新执行本轮完整行程" : "雷达未运行，先启动雷达，再检查或执行完整行程")
+        : plainTripRadarBlocked.value ? plainRadarTripClosureHint(plainTripNeedsFreshRunAfterRadar.value)
         : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本，需重新读取或执行完整行程" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需检查或重新执行完整行程" : "读取最近 Nav2 结果或执行受限目标后确认",
     },
     {
@@ -1344,7 +1389,7 @@ const goalClosureChecklist = computed(() => {
         ? "delivery gate 已确认成功"
         : deliverySuccessEvidenceIsStale.value ? "已有旧 delivery success，需本轮重新确认"
           : deliverySuccessEvidenceRouteMismatch.value ? "已有 delivery success，但行程材料不是本轮记录"
-            : !deliveryNav2GoalReady.value ? (plainTripRadarBlocked.value ? (plainRadarStartUnavailable.value ? "送达确认前先配置雷达启动命令并完成本轮完整行程" : plainTripNeedsFreshRunAfterRadar.value ? "送达确认前先启动雷达并重新执行本轮完整行程" : "送达确认前先启动雷达并完成本轮完整行程") : "送达确认前先完成本轮完整行程")
+            : !deliveryNav2GoalReady.value ? (plainTripRadarBlocked.value ? plainRadarDeliveryBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : "送达确认前先完成本轮完整行程")
             : "仍需现场最终确认并通过 delivery gate",
     },
     {
@@ -1411,13 +1456,7 @@ const plainTripGoalNextAction = computed(() => {
     return "已完成。";
   }
   if (plainTripRadarBlocked.value) {
-    if (plainRadarStartUnavailable.value) {
-      return "下一步：先配置雷达启动命令。";
-    }
-    if (plainTripNeedsFreshRunAfterRadar.value) {
-      return "下一步：先启动雷达，再重新执行本轮行程。";
-    }
-    return "下一步：先启动雷达，再检查或执行行程。";
+    return plainRadarTripBlockedNextAction(plainTripNeedsFreshRunAfterRadar.value);
   }
   if (plainTripHasFreshIncompleteEvidence.value) {
     return "下一步：重新读取或执行完整行程。";
@@ -1534,7 +1573,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? (plainRadarStartUnavailable.value ? "雷达启动命令未配置，先在上位机配置后再检查或执行行程。" : plainTripNeedsFreshRunAfterRadar.value ? "雷达未运行，先启动雷达，再重新执行本轮行程。" : "雷达未运行，先启动雷达，再检查或执行行程。") : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -1578,6 +1617,9 @@ const plainGoalProgressPrimaryActionLabel = computed(() => {
   if (target?.id === "trip" && plainTripRadarBlocked.value) {
     if (plainRadarStartUnavailable.value) {
       return "去配置雷达";
+    }
+    if (plainRadarRequiresRefresh.value) {
+      return "去刷新雷达";
     }
     return "去启动雷达";
   }
@@ -1627,13 +1669,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
-      if (plainRadarStartUnavailable.value) {
-        return "验收卡点：雷达启动命令未配置，先在上位机配置后再执行完整行程。";
-      }
-      if (plainTripNeedsFreshRunAfterRadar.value) {
-        return "验收卡点：雷达未运行，先启动雷达，再重新执行本轮行程。";
-      }
-      return "验收卡点：雷达未运行，先启动雷达，再执行完整行程。";
+      return `验收卡点：${plainRadarTripClosureHint(plainTripNeedsFreshRunAfterRadar.value).replace("完整行程", "本轮行程")}。`;
     }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return "验收卡点：行程成功但缺少反馈样本，需要重新读取或执行完整行程。";
@@ -1667,7 +1703,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
 const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value);
 const plainTripRadarBlocked = computed(() => {
   // 完整行程依赖雷达运行；普通首屏先卡住行程按钮，避免用户在传感器未就绪时误点 Nav2。
-  return !deliveryNav2GoalReady.value && showPlainRadarStart.value;
+  return !deliveryNav2GoalReady.value && radarSummary.value.state !== "雷达已运行";
 });
 
 const plainTripSummary = computed(() => {
@@ -1685,10 +1721,7 @@ const plainTripSummary = computed(() => {
     return { state: "已完成", hint: plainTripEvidenceSummary.value || "已读到最近行程完成，可以准备送达材料。" };
   }
   if (plainTripRadarBlocked.value && plainTripNeedsFreshRunAfterRadar.value) {
-    if (plainRadarStartUnavailable.value) {
-      return { state: "待雷达", hint: "雷达启动命令未配置，先在上位机配置后再重新执行本轮行程。" };
-    }
-    return { state: "待雷达", hint: "雷达未运行，先启动雷达，再重新执行本轮行程。" };
+    return { state: "待雷达", hint: plainRadarTripBlockedHint(true) };
   }
   if (plainTripHasFreshIncompleteEvidence.value) {
     return { state: "需复验", hint: plainTripEvidenceSummary.value || "最近行程缺少反馈样本，需要重新读取或执行完整行程。" };
@@ -1709,10 +1742,7 @@ const plainTripSummary = computed(() => {
     return { state: "检查失败", hint: "行程条件还没满足，请看高级诊断。" };
   }
   if (plainTripRadarBlocked.value) {
-    if (plainRadarStartUnavailable.value) {
-      return { state: "待雷达", hint: "雷达启动命令未配置，先在上位机配置后再检查或执行行程。" };
-    }
-    return { state: "待雷达", hint: "雷达未运行，先启动雷达，再检查或执行行程。" };
+    return { state: "待雷达", hint: plainRadarTripBlockedHint(false) };
   }
   if (!plainTripSafetyConfirmed.value) {
     return { state: "待确认", hint: "先勾选行程前确认，再检查或执行。" };
@@ -1745,6 +1775,9 @@ const plainTripPreflightButtonLabel = computed(() => {
     if (plainRadarStartUnavailable.value) {
       return "先配置雷达";
     }
+    if (plainRadarRequiresRefresh.value) {
+      return "先刷新雷达";
+    }
     return "先启动雷达";
   }
   return plainTripSafetyConfirmed.value ? "检查行程" : "先勾选确认";
@@ -1764,6 +1797,9 @@ const plainTripExecutionButtonLabel = computed(() => {
   if (plainTripRadarBlocked.value) {
     if (plainRadarStartUnavailable.value) {
       return "先配置雷达";
+    }
+    if (plainRadarRequiresRefresh.value) {
+      return "先刷新雷达";
     }
     return "先启动雷达";
   }
@@ -2314,6 +2350,9 @@ const plainKeyboardNextActionSummary = computed(() => {
   if (materialMissing.includes("physical_motion_lidar_delta_proven")) {
     if (plainRadarStartUnavailable.value) {
       return "下一步：先配置雷达启动命令，再试动读取雷达移动记录。";
+    }
+    if (plainRadarRequiresRefresh.value) {
+      return "下一步：先刷新雷达，再试动读取雷达移动记录。";
     }
     return showPlainRadarStart.value ? "下一步：先启动雷达，再试动读取雷达移动记录。" : "下一步：试动读取雷达移动记录。";
   }
