@@ -1686,6 +1686,10 @@ const freeRoamAutonomySaveBlocked = computed(() => (
     && freeRoamAutonomyResult.value.action === "start"
   )
 ));
+const freeRoamMapWysiwygPending = computed(() => (
+  // 自动扫图 start 必须等地图画面/状态刷新结束，不能拿旧图当本轮所见即所得证据。
+  mapPreviewPending.value || mapRefreshPending.value
+));
 const canSavePlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
@@ -1700,6 +1704,7 @@ const canStartFreeRoamAutonomy = computed(() => (
   && plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
   && plainFreeRoamMapPreviewFreshForSession.value
+  && !freeRoamMapWysiwygPending.value
   && radarSummary.value.state === "雷达已运行"
   && canSendStop.value
   && !freeRoamAutonomyPending.value
@@ -2012,6 +2017,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   if (!mapRuntimeStarted.value) {
     blockers.push("地图记录未启动");
   }
+  if (freeRoamMapWysiwygPending.value) {
+    blockers.push(mapPreviewPending.value ? "地图画面正在刷新" : "地图状态正在刷新");
+  }
   if (!previewLoaded) {
     blockers.push("地图画面未刷新");
   } else if (plainCellCount(preview, "free") <= 0) {
@@ -2101,6 +2109,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     state: autonomyReady && blockers.length === 0 ? "已就绪" : autonomyReady ? "待处理" : "未满足",
     buttonLabel: freeRoamAutonomyPending.value && freeRoamAutonomyPendingAction.value === "start"
       ? "启动中"
+      : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
       : autonomyLocked ? "按步骤人工扫图" : (boundary?.free_roam_autonomy_label ?? "自动扫图"),
     // ready 后才走固定上车状态机 start；未 ready 时按钮仍只做流程定位。
     disabled: autonomyReady ? !canStartFreeRoamAutonomy.value : false,

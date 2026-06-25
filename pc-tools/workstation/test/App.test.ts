@@ -3721,10 +3721,23 @@ describe("App", () => {
       artifact_only: false,
       cmd_vel_publish_enabled: true,
     };
-    const mockedFetch = stubWorkstationFetch({
+    let delayNextMapPreview = false;
+    let resolveMapPreviewRefresh!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedMapPreviewRefresh = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveMapPreviewRefresh = resolve;
+    });
+    const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
     });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/map/preview") && delayNextMapPreview) {
+        delayNextMapPreview = false;
+        return delayedMapPreviewRefresh;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const wrapper = mount(App);
@@ -3749,6 +3762,27 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；运动发布已解锁，PC 仍等待真车 HIL 记录。");
+
+    delayNextMapPreview = true;
+    const delayedRefreshClick = wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("地图画面正在刷新");
+    const callsBeforeBlockedStart = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toHaveLength(0);
+    expect(mockedFetch.mock.calls.length).toBe(callsBeforeBlockedStart);
+    resolveMapPreviewRefresh({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/map/preview"],
+    });
+    await delayedRefreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
     const radarRefreshCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
