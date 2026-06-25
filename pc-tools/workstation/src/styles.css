@@ -1015,6 +1015,16 @@ h3 {
   color: #174ea6;
 }
 
+.plain-map-free-roam-direction-marker[data-wheel-state="非零已读到"] {
+  box-shadow:
+    0 2px 8px rgba(20, 63, 117, 0.16),
+    0 0 0 2px rgba(35, 134, 54, 0.18);
+}
+
+.plain-map-free-roam-direction-marker[data-wheel-state="等待非零"] {
+  border-style: dashed;
+}
+
 .plain-map-route-endpoint-marker {
   transform: translate(-50%, -50%);
   min-width: 34px;

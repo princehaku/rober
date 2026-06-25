@@ -1478,6 +1478,7 @@ function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRob
   return {
     label: `扫图方向：${label}${wheelSuffix}`,
     state: direction,
+    wheelState: keyboardWheelFeedbackState(),
     style: robotPose
       ? robotPose.style
       : { left: "12px", top: "48px" },
@@ -1799,6 +1800,7 @@ const plainMapVisualSummary = computed(() => {
     showFreeRoamDirectionMarker: Boolean(freeRoamDirectionMarker),
     freeRoamDirectionMarkerLabel: freeRoamDirectionMarker?.label ?? "",
     freeRoamDirectionMarkerState: freeRoamDirectionMarker?.state ?? "",
+    freeRoamDirectionMarkerWheelState: freeRoamDirectionMarker?.wheelState ?? "",
     freeRoamDirectionMarkerStyle: freeRoamDirectionMarker?.style ?? {},
     freeRoamDirectionMarkerAria: freeRoamDirectionMarker?.aria ?? "",
     showFreeRoamActionMarker: Boolean(freeRoamActionMarker),
@@ -2504,6 +2506,20 @@ function keyboardWheelFeedbackPlainText(): string {
   return nonzero
     ? `；轮速 L/R=${left}/${right}，非零已读到`
     : `；轮速 L/R=${left}/${right}，等待非零`;
+}
+
+function keyboardWheelFeedbackState(): "未读取" | "等待非零" | "非零已读到" {
+  // 地图上的扫图方向 marker 需要结构化轮速证据，避免只靠短文案判断 wheel raw L/R 是否已非零。
+  const values = keyboardLastWheelFeedbackValues.value;
+  if (!values) {
+    return "未读取";
+  }
+  const left = values.wheel_feedback_latest_raw_left ?? values.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = values.wheel_feedback_latest_raw_right ?? values.wheel_feedback_latest_right_speed ?? "not_loaded";
+  if (left === "not_loaded" && right === "not_loaded") {
+    return "未读取";
+  }
+  return values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true" ? "非零已读到" : "等待非零";
 }
 
 function keyboardWheelFeedbackMapSuffix(): string {
@@ -7735,7 +7751,7 @@ onBeforeUnmount(() => {
                 <span v-if="plainMapVisualSummary.showFreeRoamSweepStart" class="plain-map-free-roam-start-marker" data-testid="plain-map-free-roam-start-marker" :style="plainMapVisualSummary.freeRoamSweepStartStyle" aria-label="扫图草图从机器人当前位置接入">扫图起点</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamRuntimeMarker" class="plain-map-free-roam-runtime-marker" data-testid="plain-map-free-roam-runtime-marker" :data-state="plainMapVisualSummary.freeRoamRuntimeMarkerState" :style="plainMapVisualSummary.freeRoamRuntimeMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamRuntimeMarkerAria">{{ plainMapVisualSummary.freeRoamRuntimeMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamActionMarker" class="plain-map-free-roam-action-marker" data-testid="plain-map-free-roam-action-marker" :data-state="plainMapVisualSummary.freeRoamActionMarkerState" :style="plainMapVisualSummary.freeRoamActionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamActionMarkerAria">{{ plainMapVisualSummary.freeRoamActionMarkerLabel }}</span>
-                <span v-if="plainMapVisualSummary.showFreeRoamDirectionMarker" class="plain-map-free-roam-direction-marker" data-testid="plain-map-free-roam-direction-marker" :data-state="plainMapVisualSummary.freeRoamDirectionMarkerState" :style="plainMapVisualSummary.freeRoamDirectionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamDirectionMarkerAria">{{ plainMapVisualSummary.freeRoamDirectionMarkerLabel }}</span>
+                <span v-if="plainMapVisualSummary.showFreeRoamDirectionMarker" class="plain-map-free-roam-direction-marker" data-testid="plain-map-free-roam-direction-marker" :data-state="plainMapVisualSummary.freeRoamDirectionMarkerState" :data-wheel-state="plainMapVisualSummary.freeRoamDirectionMarkerWheelState" :style="plainMapVisualSummary.freeRoamDirectionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamDirectionMarkerAria">{{ plainMapVisualSummary.freeRoamDirectionMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">
                   <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.15" />

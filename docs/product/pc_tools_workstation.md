@@ -2103,6 +2103,8 @@ manual pulse、stop、Nav2、delivery complete 或 `/cmd_vel` 行为。
 轮速反馈和扫图状态三处保持一致。该状态只读取固定 manual pulse 返回值，不新增 manual、stop、Nav2、delivery complete
 或 `/cmd_vel` 调用。
 
+2026-06-26 08:30 起，上述扫图方向 marker 额外带 `data-wheel-state=非零已读到/等待非零/未读取`，并用样式区分 wheel raw L/R 证据状态。测试锁定 `非零已读到` 的 DOM 状态和 CSS 选择器，避免地图 marker 只靠短文案表达轮速证据。该呈现只消费既有 keyboard manual pulse 摘要，不额外发送 manual/stop，不执行 Nav2/delivery，不调用 `/cmd_vel`。
+
 2026-06-25 23:02 起，普通首屏地图上的行程终点 marker 不再只写 `终点/本轮目标`，而是直接显示执行证据：
 `已到达`、`到达缺反馈`、`旧到达` 或 `行程未通过`。这样 operator 看地图时能直接区分“完整路线已到达且有反馈样本”和
 “只读到 goal_succeeded 但还不能收口”。该 marker 仍只消费 Nav2 execution/latest readback 和地图坐标，不改变
