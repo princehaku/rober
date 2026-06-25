@@ -7448,60 +7448,92 @@ describe("App", () => {
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.external_video = "not_loaded";
     summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
-    const mockedFetch = stubWorkstationFetch({
-      "/api/robot-control/summary": summaryFixture,
-      "/api/robot-control/camera/first-frame/probe": {
-        schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
-        proxy_status: "probe_forwarded",
-        source: "software_proof",
-        proof_status: "not_proven",
-        safe_to_control: false,
-        delivery_success: false,
-        primary_actions_enabled: false,
-        pc_only: true,
-        source_base_url: "http://192.168.1.11:8787",
-        normalized_base_url: "http://192.168.1.11:8787",
-        remote_endpoint: "/api/camera/first-frame/probe",
-        remote_http_status: 200,
-        status: "frame_read",
-        probe_key_values: {
-          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
-          device: "/dev/video1",
-          requested_fourcc: "MJPG",
-          open_ok: "true",
-          read_ok: "true",
-          first_frame_timeout: "false",
-          failure_reason: "",
-          visible_content_proven: "true",
-          visible_content_candidate: "true",
-          sample_path: "/root/rober/onboard/runtime/camera/plain_current_frame.jpg",
-          sample_write_ok: "true",
-          elapsed_ms: "120",
-          mean_luma: "42.0",
-          max_luma: "220",
-          dynamic_range_luma: "180",
-          non_black_ratio: "0.8",
-          backend_smoke_status: "not_requested",
-          backend_frame_observed: "false",
-          backend_attempts: "0",
-        },
+    let resolveCameraProbe!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const pendingCameraProbe = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveCameraProbe = resolve;
+    });
+    const cameraProbeFixture = {
+      schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+      proxy_status: "probe_forwarded",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      remote_endpoint: "/api/camera/first-frame/probe",
+      remote_http_status: 200,
+      status: "frame_read",
+      probe_key_values: {
+        schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
+        device: "/dev/video1",
+        requested_fourcc: "MJPG",
+        open_ok: "true",
+        read_ok: "true",
+        first_frame_timeout: "false",
         failure_reason: "",
-        blocked_reasons: [],
-        hard_dangerous_true_fields: [],
-        robot_control_executed: false,
+        visible_content_proven: "true",
+        visible_content_candidate: "true",
+        sample_path: "/root/rober/onboard/runtime/camera/plain_current_frame.jpg",
+        sample_write_ok: "true",
+        elapsed_ms: "120",
+        mean_luma: "42.0",
+        max_luma: "220",
+        dynamic_range_luma: "180",
+        non_black_ratio: "0.8",
+        backend_smoke_status: "not_requested",
+        backend_frame_observed: "false",
+        backend_attempts: "0",
       },
+      failure_reason: "",
+      blocked_reasons: [],
+      hard_dangerous_true_fields: [],
+      robot_control_executed: false,
+    };
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/first-frame/probe": cameraProbeFixture,
       "/api/robot-control/base/first-jog": { proxy_status: "should_not_be_called" },
       "/api/robot-control/base/manual": { proxy_status: "should_not_be_called" },
       "/api/robot-control/nav2/goal/execute": { proxy_status: "should_not_be_called" },
       "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
     });
+    let delayCameraProbe = true;
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/camera/first-frame/probe?") && delayCameraProbe) {
+        delayCameraProbe = false;
+        return pendingCameraProbe;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
 
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
 
-    await wrapper.find('[data-testid="plain-record-current-camera"]').trigger("click");
+    const pendingRecordClick = wrapper.find('[data-testid="plain-record-current-camera"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("正在检查画面");
+    expect(wrapper.find('[data-testid="plain-record-current-camera"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("检查中");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("正在检查当前画面，等待上位机返回样张。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在检查当前画面，等待上位机返回样张。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+
+    resolveCameraProbe({
+      ok: true,
+      json: async () => cameraProbeFixture,
+    });
+    await pendingRecordClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
 

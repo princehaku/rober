@@ -2100,6 +2100,10 @@ Nav2 execute gate、delivery complete、manual/keyboard pulse、stop 或 `/cmd_v
 `visible_content_proven` 和 `camera_artifacts_ref` 来自这张样张。它不会发送 first-jog、manual、Nav2 execute、
 delivery complete、stop 或 `/cmd_vel`。原 `记录画面` 仍保留给手填手机视频编号。
 
+2026-06-26 04:33 起，点击 `用当前画面记录` 后，在固定 `camera/first-frame/probe` 尚未返回时，实时画面卡片会显示
+`检查中 / 正在检查当前画面，等待上位机返回样张。`，按钮文案切到 `正在检查画面` 并临时禁用；probe 返回前不会提交
+operator report，也不会调用 first-jog、manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-25 23:14 起，普通首屏键盘手控在显式点击 `启用键盘` 后，不再要求焦点停留在键盘面板内；
 operator 可以一边看地图/雷达/画面，一边用全局 W/A/S/D 或方向键按住连续低速手控。输入框、文本域和下拉框内
 仍不会截获这些按键，窗口失焦、页面隐藏或进入可编辑控件仍会退出连续手控窗口；所有运动仍只走固定
