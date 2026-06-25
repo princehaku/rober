@@ -1152,6 +1152,41 @@ function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRob
   };
 }
 
+function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
+  // 扫图流程 marker 把“记录中/已停/可保存/保存中”贴回地图，避免状态只散落在按钮文案里。
+  const style = robotPose
+    ? robotPose.style
+    : { left: "12px", top: "84px" };
+  const locatedSuffix = robotPose ? "，贴近机器人当前位置" : "，机器人地图位置未读到，标记不代表坐标";
+  if (mapLifecyclePendingAction.value === "start") {
+    return { label: "扫图记录启动中", state: "starting", style, aria: `扫图记录启动中${locatedSuffix}` };
+  }
+  if (mapLifecyclePendingAction.value === "save") {
+    return { label: "地图保存中", state: "saving", style, aria: `当前扫图地图正在保存${locatedSuffix}` };
+  }
+  if (mapPreviewPending.value && mapRuntimeStarted.value) {
+    return { label: "扫图画面刷新中", state: "refreshing", style, aria: `扫图地图画面正在刷新${locatedSuffix}` };
+  }
+  if (keyboardHeldDirection.value && mapRuntimeStarted.value) {
+    return { label: "扫图移动中", state: "driving", style, aria: `正在${keyboardDirectionPlainLabel.value}扫图${locatedSuffix}` };
+  }
+  if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("stop_sent")) {
+    return plainFreeRoamMapPreviewFreshForSession.value
+      ? { label: "已停止，可保存", state: "stopped_fresh", style, aria: `扫图已停止，地图画面已刷新，可以保存${locatedSuffix}` }
+      : { label: "已停止，待刷新", state: "stopped_needs_refresh", style, aria: `扫图已停止，需要刷新地图画面${locatedSuffix}` };
+  }
+  if (mapRuntimeStarted.value && keyboardControlArmed.value && canUseKeyboardControl.value) {
+    return { label: "键盘已启用", state: "armed", style, aria: `键盘扫图已启用，按住方向键才会移动${locatedSuffix}` };
+  }
+  if (mapRuntimeStarted.value) {
+    return { label: "地图记录中", state: "recording", style, aria: `地图记录已启动，等待扫图移动${locatedSuffix}` };
+  }
+  if (mapSavedThisSession.value) {
+    return { label: "地图已保存", state: "saved", style, aria: `扫图地图已保存${locatedSuffix}` };
+  }
+  return null;
+}
+
 const plainMapVisualSummary = computed(() => {
   // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
   const proof = robotSummary.value?.o3_proof_summary;
@@ -1163,6 +1198,7 @@ const plainMapVisualSummary = computed(() => {
   const freeRoamSweepPlan = latestFreeRoamSweepPlanOverlay(robotPose);
   const freeRoamRuntimeMarker = freeRoamRuntimeMapMarker(robotPose);
   const freeRoamDirectionMarker = freeRoamManualDirectionMapMarker(robotPose);
+  const freeRoamActionMarker = freeRoamActionMapMarker(robotPose);
   const mapObserved = proof?.map_once_observed === true
     || mapReadback.map_once_observed === "true"
     || mapReadback.latest_map_once_observed === "true";
@@ -1280,6 +1316,11 @@ const plainMapVisualSummary = computed(() => {
     freeRoamDirectionMarkerState: freeRoamDirectionMarker?.state ?? "",
     freeRoamDirectionMarkerStyle: freeRoamDirectionMarker?.style ?? {},
     freeRoamDirectionMarkerAria: freeRoamDirectionMarker?.aria ?? "",
+    showFreeRoamActionMarker: Boolean(freeRoamActionMarker),
+    freeRoamActionMarkerLabel: freeRoamActionMarker?.label ?? "",
+    freeRoamActionMarkerState: freeRoamActionMarker?.state ?? "",
+    freeRoamActionMarkerStyle: freeRoamActionMarker?.style ?? {},
+    freeRoamActionMarkerAria: freeRoamActionMarker?.aria ?? "",
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -6459,6 +6500,7 @@ onBeforeUnmount(() => {
                 <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamSweepStart" class="plain-map-free-roam-start-marker" data-testid="plain-map-free-roam-start-marker" :style="plainMapVisualSummary.freeRoamSweepStartStyle" aria-label="扫图草图从机器人当前位置接入">扫图起点</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamRuntimeMarker" class="plain-map-free-roam-runtime-marker" data-testid="plain-map-free-roam-runtime-marker" :data-state="plainMapVisualSummary.freeRoamRuntimeMarkerState" :style="plainMapVisualSummary.freeRoamRuntimeMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamRuntimeMarkerAria">{{ plainMapVisualSummary.freeRoamRuntimeMarkerLabel }}</span>
+                <span v-if="plainMapVisualSummary.showFreeRoamActionMarker" class="plain-map-free-roam-action-marker" data-testid="plain-map-free-roam-action-marker" :data-state="plainMapVisualSummary.freeRoamActionMarkerState" :style="plainMapVisualSummary.freeRoamActionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamActionMarkerAria">{{ plainMapVisualSummary.freeRoamActionMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamDirectionMarker" class="plain-map-free-roam-direction-marker" data-testid="plain-map-free-roam-direction-marker" :data-state="plainMapVisualSummary.freeRoamDirectionMarkerState" :style="plainMapVisualSummary.freeRoamDirectionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamDirectionMarkerAria">{{ plainMapVisualSummary.freeRoamDirectionMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">

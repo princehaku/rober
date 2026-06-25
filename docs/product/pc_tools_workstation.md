@@ -2038,3 +2038,9 @@ manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 `上次方向：前进；停止原因：松开键盘` 或 `上次方向：右转；停止原因：松开屏幕方向键`。这样 operator 在当前方向回到
 `未按键` 后仍能确认刚才哪一个方向完成了停止收口。该状态只读本地键盘状态机，不改变 manual pulse、stop、Nav2、
 delivery complete 或 `/cmd_vel` 行为。
+
+2026-06-25 22:58 起，普通首屏地图会把扫地式建图流程状态直接叠成 `地图记录中`、`键盘已启用`、`扫图移动中`、
+`已停止，可保存`、`地图保存中` 等 marker。它和既有 `扫图方向：前进` marker 分工：流程 marker 说明这张地图现在
+处于记录、移动、停止、保存哪个阶段，方向 marker 只在按住方向键时说明当前移动方向。缺 map-frame 机器人位置时 marker
+固定在地图角落并声明“不代表坐标”。该状态只消费本机 map lifecycle、map preview 和键盘状态机，不改变 map start/save、
+manual pulse、stop、Nav2、delivery complete 或 `/cmd_vel` 行为。

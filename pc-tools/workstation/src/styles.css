@@ -605,6 +605,7 @@ h3 {
 .plain-map-route-goal-marker,
 .plain-map-free-roam-start-marker,
 .plain-map-free-roam-runtime-marker,
+.plain-map-free-roam-action-marker,
 .plain-map-free-roam-direction-marker {
   position: absolute;
   z-index: 3;
@@ -820,6 +821,43 @@ h3 {
 
 .plain-map-free-roam-runtime-marker[data-state="locked"],
 .plain-map-free-roam-runtime-marker[data-state="stopping"] {
+  border-color: #d8adb0;
+  background: #fff1f2;
+  color: #7c2d35;
+}
+
+.plain-map-free-roam-action-marker {
+  padding: 5px 8px;
+  border-color: #b8c5d4;
+  background: #f8fafc;
+  color: #334155;
+  box-shadow: 0 2px 8px rgba(21, 31, 43, 0.14);
+}
+
+.plain-map-free-roam-action-marker[data-state="recording"],
+.plain-map-free-roam-action-marker[data-state="armed"],
+.plain-map-free-roam-action-marker[data-state="driving"] {
+  border-color: #9fd4b3;
+  background: #f0fbf4;
+  color: #176039;
+}
+
+.plain-map-free-roam-action-marker[data-state="starting"],
+.plain-map-free-roam-action-marker[data-state="refreshing"],
+.plain-map-free-roam-action-marker[data-state="stopped_needs_refresh"] {
+  border-color: #d5d2a9;
+  background: #fbf8e8;
+  color: #6a5710;
+}
+
+.plain-map-free-roam-action-marker[data-state="stopped_fresh"],
+.plain-map-free-roam-action-marker[data-state="saved"] {
+  border-color: #9ebee8;
+  background: #edf5ff;
+  color: #174ea6;
+}
+
+.plain-map-free-roam-action-marker[data-state="saving"] {
   border-color: #d8adb0;
   background: #fff1f2;
   color: #7c2d35;
