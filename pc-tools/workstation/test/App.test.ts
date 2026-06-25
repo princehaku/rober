@@ -3906,15 +3906,16 @@ describe("App", () => {
     const route = wrapper.find('[data-testid="plain-map-route-path"]');
     expect(route.exists()).toBe(true);
     expect(route.find("polyline").attributes("points")).toBe("10.00,90.00 40.00,90.00 80.00,98.00");
-    expect(route.attributes("aria-label")).toBe("已读取 3 个路线点");
-    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
+    expect(route.attributes("aria-label")).toBe("已读取最近路线 3 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("最近路线已显示 3/15 个点，待重新规划");
     const startMarker = wrapper.find('[data-testid="plain-map-route-start-marker"]');
     expect(startMarker.exists()).toBe(true);
     expect(startMarker.text()).toBe("起点");
-    expect(startMarker.attributes("data-state")).toBe("路线起点");
-    expect(startMarker.attributes("aria-label")).toContain("地图坐标 x=0.10, y=0.10");
+    expect(startMarker.attributes("data-state")).toBe("最近路线起点");
+    expect(startMarker.attributes("aria-label")).toContain("最近路线起点，地图坐标 x=0.10, y=0.10");
     expect(startMarker.attributes("style")).toContain("left: 10%");
     expect(startMarker.attributes("style")).toContain("top: 90%");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近路线 3/15 个点按地图坐标显示，雷达不贴图。");
     expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').exists()).toBe(false);
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
@@ -3926,6 +3927,39 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("marks stale path preview points as a recent route instead of an executable route", async () => {
+    // path_preview_points 可以照实画在地图上，但 path_generated=false 时不能暗示这是当前可执行路线。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = false;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = false;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const route = wrapper.find('[data-testid="plain-map-route-path"]');
+    expect(route.exists()).toBe(true);
+    expect(route.attributes("aria-label")).toBe("已读取最近路线 3 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("最近路线已显示 3/15 个点，待重新规划");
+    expect(wrapper.find('[data-testid="plain-map-route-start-marker"]').attributes("data-state")).toBe("最近路线起点");
+    expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').attributes("data-state")).toBe("最近路线终点");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近路线 3/15 个点按地图坐标显示，雷达不贴图。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("draws no-motion route start and end markers when no executed goal is available", async () => {

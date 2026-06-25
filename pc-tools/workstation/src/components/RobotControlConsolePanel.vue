@@ -856,28 +856,33 @@ function latestNavPathOverlay() {
   const lastPoint = projectedPoints[projectedPoints.length - 1];
   const sourceCount = Number(proof?.path_preview_source_point_count ?? proof?.path_point_count ?? svgPoints.length);
   const totalCount = Number.isFinite(sourceCount) && sourceCount > 0 ? sourceCount : svgPoints.length;
+  const currentRoute = proof?.path_generated === true || proof?.path_generation_succeeded === true;
+  const routePrefix = currentRoute ? "路线" : "最近路线";
   return {
     points: svgPoints.join(" "),
     endpoints: [
       {
         id: "start",
         label: "起点",
-        state: "路线起点",
+        state: `${routePrefix}起点`,
         style: { left: `${firstPoint.percent.left.toFixed(2)}%`, top: `${firstPoint.percent.top.toFixed(2)}%` },
-        aria: `路线起点，地图坐标 x=${firstPoint.source.x.toFixed(2)}, y=${firstPoint.source.y.toFixed(2)}`,
+        aria: `${routePrefix}起点，地图坐标 x=${firstPoint.source.x.toFixed(2)}, y=${firstPoint.source.y.toFixed(2)}`,
       },
       {
         id: "end",
         label: "终点",
-        state: "路线终点",
+        state: `${routePrefix}终点`,
         style: { left: `${lastPoint.percent.left.toFixed(2)}%`, top: `${lastPoint.percent.top.toFixed(2)}%` },
-        aria: `路线终点，地图坐标 x=${lastPoint.source.x.toFixed(2)}, y=${lastPoint.source.y.toFixed(2)}`,
+        aria: `${routePrefix}终点，地图坐标 x=${lastPoint.source.x.toFixed(2)}, y=${lastPoint.source.y.toFixed(2)}`,
       },
     ],
     displayedCount: svgPoints.length,
     totalCount,
-    label: `已读取 ${svgPoints.length} 个路线点`,
-    caption: `路线已显示 ${svgPoints.length}/${totalCount} 个点`,
+    coordinateLabel: `${routePrefix} ${svgPoints.length}/${totalCount} 个点`,
+    label: currentRoute ? `已读取 ${svgPoints.length} 个路线点` : `已读取最近路线 ${svgPoints.length} 个点`,
+    caption: currentRoute
+      ? `路线已显示 ${svgPoints.length}/${totalCount} 个点`
+      : `最近路线已显示 ${svgPoints.length}/${totalCount} 个点，待重新规划`,
   };
 }
 
@@ -907,11 +912,11 @@ function plainMapCoordinateTruthLabel(
   // 所见即所得的核心是把“贴在地图坐标”和“只显示局部轮廓”说清楚，避免误把局部雷达当地图定位。
   if (poseObserved) {
     const scanText = radarScanOverlay.dots.length > 0 ? `雷达点 ${radarScanOverlay.dots.length} 个已贴到地图` : "雷达点未贴图";
-    const routeText = routePath ? `路线 ${routePath.displayedCount}/${routePath.totalCount} 个点已贴到地图` : "路线未显示";
+    const routeText = routePath ? `${routePath.coordinateLabel}已贴到地图` : "路线未显示";
     return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
   }
   if (radarLocalScanOverlay.dots.length > 0) {
-    const routeText = routePath ? `路线 ${routePath.displayedCount}/${routePath.totalCount} 个点仍按地图坐标显示` : "路线未显示";
+    const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "路线未显示";
     const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
     const scanText = liveRadar
       ? `雷达只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点`
@@ -919,7 +924,7 @@ function plainMapCoordinateTruthLabel(
     return `坐标口径：机器人位置未读到，${scanText}，不贴到地图；${routeText}。`;
   }
   if (routePath) {
-    return `坐标口径：机器人位置未读到，路线 ${routePath.displayedCount}/${routePath.totalCount} 个点按地图坐标显示，雷达不贴图。`;
+    return `坐标口径：机器人位置未读到，${routePath.coordinateLabel}按地图坐标显示，雷达不贴图。`;
   }
   return "坐标口径：机器人位置未读到，地图上的雷达和小车位置仍待定位。";
 }
