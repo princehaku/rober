@@ -4292,7 +4292,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url, options]) =>
       String(url).startsWith("/api/robot-control/nav2/proof/refresh?") && options?.method === "POST",
     ).length).toBe(nav2RefreshCallsBeforePrepare + 1);
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，点检查行程确认条件；不会发车。");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，已读到路线 17 个点；点检查行程确认条件，不会发车。");
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
     ).length).toBe(navExecuteCallsBeforeTripFocus);
@@ -4345,6 +4345,37 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).not.toContain("/cmd_vel");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("shows prepared trip state from summary path points before refreshing proof again", async () => {
+    // 上位机 summary 已读到 no-motion 路线时，普通首屏直接告诉用户路线已准备，不逼现场先重复点准备行程。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_point_count = 36;
+    summaryFixture.o3_proof_summary.path_preview_point_count = 36;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.text()).toContain("已准备");
+    expect(tripPanel.text()).toContain("已读到路线 36 个点；勾选安全确认后可检查或执行行程。");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
   it("translates plain trip preparation planner blocker without executing navigation", async () => {

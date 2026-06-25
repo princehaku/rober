@@ -2336,6 +2336,21 @@ const plainTripPreparedByRefresh = computed(() => {
   const pointCount = Number(values.path_point_count ?? "0");
   return (values.path_generated === "true" || values.path_generation_succeeded === "true") && Number.isFinite(pointCount) && pointCount > 0;
 });
+const plainTripPreparedPointCount = computed(() => {
+  // summary 可能已经带着最近 no-motion 路线；普通用户不应被迫再点一次“准备行程”才知道路线已可检查。
+  const refreshValues = nav2RefreshResult.value?.latest_readback_key_values;
+  const refreshCount = Number(refreshValues?.path_point_count ?? "0");
+  if (plainTripPreparedByRefresh.value && Number.isFinite(refreshCount) && refreshCount > 0) {
+    return refreshCount;
+  }
+  const proof = robotSummary.value?.o3_proof_summary;
+  const summaryCount = Number(proof?.path_preview_point_count ?? proof?.path_point_count ?? 0);
+  const summaryPrepared = (proof?.path_generated === true || proof?.path_generation_succeeded === true)
+    && Number.isFinite(summaryCount)
+    && summaryCount > 0;
+  return summaryPrepared ? summaryCount : 0;
+});
+const plainTripPreparedBySummary = computed(() => plainTripPreparedPointCount.value > 0);
 
 function plainTripPreparationFailureHint(): string {
   // 底层 root cause 可能是英文诊断字段；普通首屏只翻译成下一步，不泄露 planner_server_not_active 等术语。
@@ -2383,10 +2398,13 @@ const plainTripSummary = computed(() => {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
   }
   if (plainTripPreparedByRefresh.value) {
-    return { state: "已准备", hint: "行程准备已刷新，点检查行程确认条件；不会发车。" };
+    return { state: "已准备", hint: `行程准备已刷新，已读到路线 ${plainTripPreparedPointCount.value} 个点；点检查行程确认条件，不会发车。` };
   }
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
     return { state: "待准备", hint: plainTripPreparationFailureHint() };
+  }
+  if (plainTripPreparedBySummary.value) {
+    return { state: "已准备", hint: `已读到路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可检查或执行行程。` };
   }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
     return { state: "可执行", hint: "检查通过，确认人在旁边后可执行一次行程。" };

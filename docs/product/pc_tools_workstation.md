@@ -1561,6 +1561,9 @@ WYSIWYG 提示里展示，不再作为 `检查行程` 或 `执行行程` 的前�
 底层只调用固定 `POST /api/robot-control/nav2/proof/refresh` 刷新 no-motion planner proof，并把结果翻译成
 `行程准备已刷新` 或 `行程准备还没完成`。它不会调用 `/api/robot-control/nav2/goal/execute`、`NavigateToPose`、
 `/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`；真正发车仍必须再点 `执行行程` 并通过后端 execute gate。
+2026-06-25 19:30 起，若 `GET /api/robot-control/summary` 已带 `path_generated/path_generation_succeeded=true` 和正数
+`path_point_count/path_preview_point_count`，普通首屏 `行程操作` 会直接显示 `已准备` 和路线点数，例如 `已读到路线 36 个点`，
+不要求现场先重复点击 `准备行程（不发车）`。按钮 gate 不变：检查/执行仍必须先勾同一个安全确认，真正执行仍由后端 execute gate 复查。
 2026-06-25 18:06 起，若 `准备行程（不发车）` 返回 `planner_server_not_active` root cause，普通首屏会翻译为
 `行程服务还没准备好，先点重新定位，或稍后再准备一次。`，不把 `planner_server_not_active/root_causes` 暴露给普通用户。
 本轮真实 7001 no-motion proof 结果为 `proxy_status=refresh_forwarded`、`robot_control_executed=false`、`hard_dangerous_true_fields=[]`、
