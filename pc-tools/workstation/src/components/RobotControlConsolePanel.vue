@@ -471,6 +471,23 @@ function radarStartFailureLabel(result: RobotControlRadarLifecycleResponse | nul
   return result?.failure_reason ? `雷达启动失败：${result.failure_reason}` : "雷达启动失败";
 }
 
+function radarRefreshFailed(result: RobotControlProofRefreshProxyResponse | null): boolean {
+  // refresh 失败也要贴到地图，避免雷达卡说失败、地图 marker 只剩泛化“刷新失败”。
+  return Boolean(result && (
+    result.proxy_status === "refresh_failed" ||
+    result.status === "blocked" ||
+    result.last_result_status === "fetch_failed"
+  ));
+}
+
+function radarRefreshFailureLabel(result: RobotControlProofRefreshProxyResponse | null): string {
+  // 普通首屏只显示短原因；endpoint、blocked reasons 仍留在高级诊断区。
+  if (!radarRefreshFailed(result)) {
+    return "";
+  }
+  return result?.failure_reason ? `雷达刷新失败：${result.failure_reason}` : "雷达刷新失败";
+}
+
 function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
   if (radarLifecyclePendingAction.value === "start") {
@@ -482,12 +499,7 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   if (radarRefreshPending.value) {
     return { state: "刷新中", hint: "正在刷新雷达状态。" };
   }
-  if (
-    radarRefreshResult.value &&
-    (radarRefreshResult.value.proxy_status === "refresh_failed" ||
-      radarRefreshResult.value.status === "blocked" ||
-      radarRefreshResult.value.last_result_status === "fetch_failed")
-  ) {
+  if (radarRefreshFailed(radarRefreshResult.value)) {
     return { state: "刷新失败", hint: radarRefreshResult.value.failure_reason || "暂时没有拿到新的雷达状态。" };
   }
   const lidar = robotSummary.value?.readback_summary.lidar;
@@ -1143,6 +1155,9 @@ function plainRadarFreshnessLabel(
   if (radarState === "雷达启动失败") {
     return "雷达点口径：雷达启动失败，未显示新点位。";
   }
+  if (radarState === "雷达刷新失败") {
+    return "雷达点口径：雷达刷新失败，未显示新点位。";
+  }
   if (radarState === "雷达待刷新" || radarState === "刷新中") {
     return localPointCount > 0
       ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
@@ -1386,7 +1401,8 @@ const plainMapVisualSummary = computed(() => {
   const lidar = robotSummary.value?.readback_summary.lidar;
   const radarStartAwaitingRefresh = radarStartSucceeded(radarLifecycleResult.value) && !radarFieldIsTrue(lidar?.lifecycle_running);
   const radarStartFailureText = radarStartFailureLabel(radarLifecycleResult.value);
-  const displayedRadarState = radarStartFailureText ? "雷达启动失败" : radarState;
+  const radarRefreshFailureText = radarRefreshFailureLabel(radarRefreshResult.value);
+  const displayedRadarState = radarStartFailureText ? "雷达启动失败" : radarRefreshFailureText ? "雷达刷新失败" : radarState;
   const radarNeedsMapPose = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarOverlayMode = poseObserved
     ? radarState === "雷达已运行"
@@ -1404,6 +1420,8 @@ const plainMapVisualSummary = computed(() => {
   const radarOverlayLabel = poseObserved
     ? radarStartFailureText
       ? radarStartFailureText
+      : radarRefreshFailureText
+      ? radarRefreshFailureText
       : radarStartAwaitingRefresh
       ? "雷达已启动，待刷新"
       : radarState === "雷达已运行"
@@ -1411,6 +1429,8 @@ const plainMapVisualSummary = computed(() => {
       : radarState
     : radarStartFailureText
       ? radarStartFailureText
+      : radarRefreshFailureText
+      ? radarRefreshFailureText
       : radarStartAwaitingRefresh
       ? "雷达已启动，位置未读到"
       : radarNeedsMapPose
@@ -1427,11 +1447,15 @@ const plainMapVisualSummary = computed(() => {
   const radarOverlayAria = poseObserved
     ? radarStartFailureText
       ? `${radarStartFailureText}，已叠在机器人位置`
+      : radarRefreshFailureText
+      ? `${radarRefreshFailureText}，已叠在机器人位置`
       : radarStartAwaitingRefresh
       ? "雷达已启动，已叠在机器人位置，等待刷新确认"
       : `${radarState}，已叠在机器人位置`
     : radarStartFailureText
       ? `${radarStartFailureText}，地图位置未读到`
+      : radarRefreshFailureText
+      ? `${radarRefreshFailureText}，地图位置未读到`
       : radarStartAwaitingRefresh
       ? "雷达已启动，地图位置未读到，等待刷新确认"
       : radarNeedsMapPose && radarLocalPointCount > 0

@@ -2190,6 +2190,11 @@ operator report，也不会调用 first-jog、manual、Nav2、delivery、stop �
 `/api/robot-control/radar/scan-proof/refresh`。地图 marker 因此能尽快从 `雷达启动中/雷达已启动待刷新` 更新到真实
 `雷达已运行` 或仍需处理的读回状态。该自动刷新不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-26 03:01 起，普通首屏点击 `刷新雷达` 失败时，地图 marker 会同步显示
+`雷达刷新失败：<failure_reason>`，`data-state=雷达刷新失败`，freshness 明确说明未显示新点位，并隐藏扫描范围占位。
+该失败态只消费固定 radar proof refresh 响应，不自动重试、不启动雷达、不发送 manual、keyboard pulse、Nav2、
+delivery、stop 或 `/cmd_vel`。
+
 2026-06-26 04:05 起，雷达已运行但机器人 map-frame 位置未读到时，普通首屏地图 marker 会直接显示局部点数，例如
 `雷达已运行，局部点 3 个`；点云仍画成车身局部轮廓，不贴到地图坐标。该状态只消费只读 scan proof 和定位读回，
 不启动雷达、不刷新 proof、不发送 manual、keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
