@@ -2177,6 +2177,10 @@ camera probe、manual、Nav2、delivery、stop 或 `/cmd_vel`。
 普通首屏继续显示 `失败 / 相机没有出画面，检查摄像头/视频线`，不再被 streaming 状态覆盖成“等待画面”。该判断只读取
 summary 和本地 video 元素状态，不自动调用 camera probe、manual、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-26 02:52 起，普通首屏点击 `用当前画面记录` 后，如果固定 `camera/first-frame/probe` 返回 timeout、open/read
+失败或本机 fallback，实时画面框和 `画面状态` 会同步显示 `相机没有出画面，检查摄像头/视频线`。没有样张 ref 时不会提交
+operator report，也不会调用 first-jog、manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-26 02:50 起，普通首屏点击 `启动雷达` 且固定 radar lifecycle 代理返回 `ok=true` 后，会自动追加一次只读
 `/api/robot-control/radar/scan-proof/refresh`。地图 marker 因此能尽快从 `雷达启动中/雷达已启动待刷新` 更新到真实
 `雷达已运行` 或仍需处理的读回状态。该自动刷新不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。

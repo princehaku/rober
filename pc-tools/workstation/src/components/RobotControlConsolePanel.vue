@@ -342,15 +342,35 @@ function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有�
 function cameraSourcePlainFailureHint(): string {
   // summary 已经完成工程归因；普通首屏只翻译成可处理的现场动作。
   const camera = robotSummary.value?.readback_summary.camera;
-  if (!camera) {
+  const probeFailureHint = cameraProbePlainFailureHint();
+  const sourceFailed =
+    camera?.status === "source_first_frame_failed"
+    || camera?.source_readiness === "first_frame_failed"
+    || camera?.source_failure_reason === "first_frame_timeout"
+    || camera?.last_offer_failure_reason === "first_frame_timeout";
+  if (sourceFailed || probeFailureHint) {
+    return probeFailureHint || "相机没有出画面，检查摄像头/视频线。";
+  }
+  return "";
+}
+
+function cameraProbePlainFailureHint(): string {
+  // 用户主动做过首帧探针后，普通首屏也要消费结果；不能只把失败藏在高级诊断。
+  const result = cameraFirstFrameProbeResult.value;
+  if (!result) {
     return "";
   }
-  const sourceFailed =
-    camera.status === "source_first_frame_failed"
-    || camera.source_readiness === "first_frame_failed"
-    || camera.source_failure_reason === "first_frame_timeout"
-    || camera.last_offer_failure_reason === "first_frame_timeout";
-  return sourceFailed ? "相机没有出画面，检查摄像头/视频线。" : "";
+  const values = result.probe_key_values;
+  const failed =
+    result.proxy_status === "probe_failed"
+    || result.proxy_status === "probe_rejected"
+    || values.first_frame_timeout === "true"
+    || values.open_ok === "false"
+    || values.read_ok === "false";
+  if (!failed) {
+    return "";
+  }
+  return "相机没有出画面，检查摄像头/视频线。";
 }
 
 function browserVideoFrameDrawn(): boolean {
