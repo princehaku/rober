@@ -9819,6 +9819,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
     expect(armButton.text()).toBe("启用键盘（按键才动）");
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    expect(keyboardPanel.attributes("data-state")).toBe("可手控");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-keyboard-control[data-state="可手控"]');
+    expect(workstationStyles).toContain('.plain-keyboard-control[data-state="手控中"]');
+    expect(workstationStyles).toContain('.plain-keyboard-control[data-state="已验证"]');
     expect(wrapper.find('[data-testid="keyboard-control-guide"]').text()).toBe("W/A/S/D 或方向键：前进、左转、后退、右转。按住会持续低速移动，约每 0.26 秒续一次；松开即停。");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("未启用，先点启用键盘。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：未记录。");
@@ -9844,6 +9850,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("已启用");
+    expect(keyboardPanel.attributes("data-state")).toBe("已启用");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
     const manualCallsBeforeEditableKey = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
@@ -9856,6 +9863,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("手控中");
+    expect(keyboardPanel.attributes("data-state")).toBe("手控中");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("正在按住：前进");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
@@ -9887,6 +9895,7 @@ describe("App", () => {
     await vi.advanceTimersByTimeAsync(260);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(keyboardPanel.attributes("data-state")).toBe("手控中");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，已连续 2/2 次；松开后完成停止收口。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
@@ -9911,6 +9920,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
     expect(visiblePlainHomeText(wrapper)).toContain("已验证");
+    expect(keyboardPanel.attributes("data-state")).toBe("已验证");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘手控已验证，已连续 2/2 次，停止已发送；需要继续移动可按住方向键。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：松开键盘。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控已验证");

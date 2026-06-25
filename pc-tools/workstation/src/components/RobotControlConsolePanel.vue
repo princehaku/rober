@@ -7976,6 +7976,7 @@ onBeforeUnmount(() => {
             ref="keyboardControlPanel"
             class="keyboard-control-box plain-keyboard-control"
             tabindex="0"
+            :data-state="plainKeyboardControlSummary.state"
             data-testid="keyboard-control-panel"
             @keydown="handleGlobalKeyDown"
             @keyup="handleGlobalKeyUp"
