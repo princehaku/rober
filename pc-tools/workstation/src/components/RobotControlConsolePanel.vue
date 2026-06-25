@@ -222,7 +222,6 @@ const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmButton = ref<HTMLButtonElement | null>(null);
 const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainTripSafetyCheckbox = ref<HTMLInputElement | null>(null);
-const plainTripPreflightButton = ref<HTMLButtonElement | null>(null);
 const plainTripPrepareButton = ref<HTMLButtonElement | null>(null);
 const plainTripExecuteButton = ref<HTMLButtonElement | null>(null);
 const plainTripLatestButton = ref<HTMLButtonElement | null>(null);
@@ -3112,7 +3111,7 @@ const plainTripRunStatus = computed(() => {
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
     return `行程状态：${plainTripPreparationFailureHint()}`;
   }
-  return "行程状态：已勾安全确认；可以准备图上路线，可选复查不会发车。";
+  return "行程状态：已勾安全确认；可以准备图上路线。";
 });
 const plainTripCurrentRouteVisible = computed(() => {
   // 只有当前路线真正画到地图上，普通首屏才允许执行“图上路线”；最近路线不能作为执行依据。
@@ -3134,11 +3133,6 @@ function plainTripVisibleRouteGoal() {
   };
 }
 
-const canRunPlainTripPreflight = computed(() => {
-  // 普通首屏保留可选复查，但主发车门槛只看安全确认和图上路线。
-  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
-});
-
 const canRefreshPlainTripPreparation = computed(() => {
   // 准备行程只刷新 no-motion planner proof；仍要求 operator 先完成同一个现场安全确认。
   return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
@@ -3152,20 +3146,6 @@ const canRunPlainTripExecution = computed(() => {
     && robotApiBaseUrl.value.trim().length > 0
     && plainManualSafetyConfirmed.value
     && plainTripCurrentRouteVisible.value;
-});
-
-const plainTripPreflightButtonLabel = computed(() => {
-  // 禁用态也显示下一步；复查是可选动作，不是执行图上路线的必经前置。
-  if (deliveryNav2GoalReady.value) {
-    return "行程已完成";
-  }
-  if (!robotApiBaseUrl.value.trim()) {
-    return "连接后可选复查";
-  }
-  if (loading.value || plainTripActionPending.value) {
-    return "复查中";
-  }
-  return plainManualSafetyConfirmed.value ? "可选复查（不发车）" : "先勾选确认";
 });
 
 const plainTripPreparationButtonLabel = computed(() => {
@@ -5076,15 +5056,6 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
   }
 }
 
-async function runPlainTripPreflight(): Promise<void> {
-  // 普通入口固定使用当前目标参数，只是把高级预检入口翻译成普通操作。
-  if (!canRunPlainTripPreflight.value) {
-    return;
-  }
-  confirmNavigationPreflight.value = true;
-  await runNavGoalPreflight();
-}
-
 async function runPlainTripExecution(): Promise<void> {
   // 普通入口只执行当前可见路线终点，真正发车仍走固定 PC 代理和上位机 gate。
   if (!canRunPlainTripExecution.value) {
@@ -5237,7 +5208,6 @@ function plainTripGoalTarget(): HTMLElement | null {
   return enabledButton(plainTripExecuteButton.value)
     ?? enabledButton(plainTripPrepareButton.value)
     ?? enabledButton(plainTripLatestButton.value)
-    ?? enabledButton(plainTripPreflightButton.value)
     ?? plainTripRunPanel.value;
 }
 
@@ -6888,9 +6858,6 @@ onBeforeUnmount(() => {
               <span>人在旁边、周围安全、停止手段就绪</span>
             </label>
             <div class="simple-status-row">
-              <button ref="plainTripPreflightButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainTripPreflight" data-testid="plain-trip-preflight" @click="runPlainTripPreflight">
-                {{ plainTripPreflightButtonLabel }}
-              </button>
               <button ref="plainTripPrepareButton" type="button" class="secondary compact-stop" :disabled="!canRefreshPlainTripPreparation" data-testid="plain-trip-prepare" @click="refreshNav2Proof">
                 {{ plainTripPreparationButtonLabel }}
               </button>
