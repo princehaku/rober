@@ -1990,6 +1990,14 @@ export interface RobotApiScanPreviewPoint {
   source_index: number | null;
 }
 
+export interface RobotApiMapPose {
+  x: number;
+  y: number;
+  yaw: number | null;
+  frame_id: string;
+  source: string;
+}
+
 export interface RobotApiProofSummary {
   managed_runtime_started: boolean | null;
   scan_once_observed: boolean | null;
@@ -2009,6 +2017,7 @@ export interface RobotApiProofSummary {
   scan_preview_point_count: number;
   scan_preview_source_point_count: number | null;
   scan_preview_frame_id: string;
+  robot_pose: RobotApiMapPose | null;
   root_causes: string[];
   not_proven: string[];
 }

@@ -4434,6 +4434,19 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
         },
       },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_proof_latest",
+          status: "localization_reset_observed",
+          evidence_ref: "localize-proof",
+          amcl_pose_observed: true,
+          localization_tf_observed: { map_to_odom: true, map_to_base_link: true },
+          amcl_pose: { frame_id: "map", x: 0.25, y: 0.75, yaw: 1.57, source: "/amcl_pose" },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
       "/api/nav2/status": {
         payload: {
           schema: "trashbot.upper_robot_api.v1.nav2_status",
@@ -4540,7 +4553,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(cameraHealth?.request_status).toBe("loaded");
       expect(cameraDevices?.request_status).toBe("loaded");
       expect(summary.robot_api_connection.failed_count).toBe(0);
-      expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(2);
+      expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(1);
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.sends_commands");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_feedback_samples_latest.latest_result.sends_commands");
       expect(summary.readback_summary.camera.status).toBe("ready");
@@ -4571,6 +4584,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.scan_preview_point_count).toBe(3);
       expect(summary.o3_proof_summary.scan_preview_source_point_count).toBe(5);
       expect(summary.o3_proof_summary.scan_preview_frame_id).toBe("laser");
+      expect(summary.o3_proof_summary.robot_pose).toEqual({
+        x: 0.25,
+        y: 0.75,
+        yaw: 1.57,
+        frame_id: "map",
+        source: "/amcl_pose",
+      });
       expect(summary.o3_proof_summary.scan_preview_points[0]).toEqual(expect.objectContaining({
         range_m: 1,
         angle_rad: 0,

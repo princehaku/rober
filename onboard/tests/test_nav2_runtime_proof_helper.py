@@ -80,6 +80,33 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertEqual(0.0, args.path_goal_y)
         self.assertEqual(0.0, args.path_goal_yaw)
 
+    def test_parse_amcl_pose_extracts_map_pose(self) -> None:
+        """AMCL YAML 只读解析要给 PC 地图 overlay 提供 x/y/yaw，解析失败时由调用方保持空值。"""
+        pose = HELPER.parse_amcl_pose(
+            """
+header:
+  frame_id: map
+pose:
+  pose:
+    position:
+      x: 0.25
+      y: 0.75
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.7071068
+      w: 0.7071068
+"""
+        )
+
+        self.assertIsNotNone(pose)
+        self.assertEqual("map", pose["frame_id"])
+        self.assertAlmostEqual(0.25, pose["x"])
+        self.assertAlmostEqual(0.75, pose["y"])
+        self.assertAlmostEqual(1.5708, pose["yaw"], places=3)
+        self.assertEqual("/amcl_pose", pose["source"])
+
     def test_parse_args_managed_without_initialpose(self) -> None:
         """managed runtime 与 initialpose 解耦，单独开启 runtime 时不能隐式发布 pose。"""
         args = HELPER.parse_args(

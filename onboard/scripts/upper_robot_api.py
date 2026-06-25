@@ -2594,6 +2594,7 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
     tf_chain_value = proof.get("tf_chain_observed") if isinstance(proof.get("tf_chain_observed"), dict) else {}
     initialpose_published = proof.get("initialpose_published") is True
     amcl_pose_observed = proof.get("amcl_pose_observed") is True
+    amcl_pose = proof.get("amcl_pose") if isinstance(proof.get("amcl_pose"), dict) else None
     odom_to_base_link = tf_chain_value.get("odom_to_base_link") is True
     base_link_to_laser_frame = tf_chain_value.get("base_link_to_laser_frame") is True
     map_to_odom = tf_value.get("map_to_odom") is True or tf_chain_value.get("map_to_odom") is True
@@ -2620,6 +2621,7 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
         "latest_initialpose_published": initialpose_published,
         "amcl_pose_observed": amcl_pose_observed,
         "latest_amcl_pose_observed": amcl_pose_observed,
+        "amcl_pose": amcl_pose,
         "localization_tf_observed": {"map_to_odom": map_to_odom, "map_to_base_link": map_to_base_link},
         "tf_chain_observed": {
             "map_to_odom": map_to_odom,
@@ -5543,6 +5545,7 @@ class UpperRobotApi:
                 "proof_latest": summarize_localization_latest_artifact(self.localization_artifact_path),
                 "initialpose_published": readback_contract["initialpose_published"],
                 "amcl_pose_observed": readback_contract["amcl_pose_observed"],
+                "amcl_pose": readback_contract["amcl_pose"],
                 "localization_tf_observed": readback_contract["localization_tf_observed"],
                 "tf_chain_observed": readback_contract["tf_chain_observed"],
                 "tf_chain_diagnostics": readback_contract["tf_chain_diagnostics"],

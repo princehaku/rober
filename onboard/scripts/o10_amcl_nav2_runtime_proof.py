@@ -1284,6 +1284,48 @@ def parse_pose_frame_id(text: str) -> str | None:
     return None
 
 
+def parse_amcl_pose(text: str) -> dict[str, Any] | None:
+    """从 `/amcl_pose` YAML 输出提取 map-frame 位姿；解析失败时不伪造坐标。"""
+    frame_id = parse_pose_frame_id(text)
+    section: str | None = None
+    position: dict[str, float] = {}
+    orientation: dict[str, float] = {}
+    for line in text.splitlines():
+        stripped = line.strip().strip("'\"")
+        if stripped == "position:":
+            section = "position"
+            continue
+        if stripped == "orientation:":
+            section = "orientation"
+            continue
+        if ":" not in stripped or section not in {"position", "orientation"}:
+            continue
+        key, raw_value = stripped.split(":", 1)
+        if key not in {"x", "y", "z", "w"}:
+            continue
+        try:
+            value = float(raw_value.strip().strip("'\""))
+        except ValueError:
+            continue
+        if section == "position":
+            position[key] = value
+        else:
+            orientation[key] = value
+    if "x" not in position or "y" not in position:
+        return None
+    z = orientation.get("z")
+    w = orientation.get("w")
+    yaw = math.atan2(2.0 * (w or 0.0) * (z or 0.0), 1.0 - 2.0 * (z or 0.0) * (z or 0.0)) if z is not None and w is not None else None
+    return {
+        "frame_id": frame_id or "not_loaded",
+        "x": position["x"],
+        "y": position["y"],
+        "z": position.get("z", 0.0),
+        "yaw": yaw,
+        "source": "/amcl_pose",
+    }
+
+
 def parse_node_info_topics(text: str, section_name: str) -> list[dict[str, str]]:
     """解析 `ros2 node info` 的 Publishers/Subscribers，保留 topic/type 便于远端复盘。"""
     capture = False
@@ -3043,6 +3085,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     scan_observed = topic_once_observed(scan_once)
     map_observed = topic_once_observed(map_once)
     amcl_pose_observed = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
+    amcl_pose = parse_amcl_pose(str(post_initialpose_amcl_pose_once.get("stdout") or "")) or parse_amcl_pose(str(amcl_pose_once.get("stdout") or ""))
     amcl_broadcast_conditions = dict(tf_source_diagnostics.get("amcl_broadcast_conditions") or {})
     amcl_broadcast_conditions.update(
         {
@@ -3296,6 +3339,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "package_checks_batch_ok": bool(package_batch_result.get("ok")),
         "map_server_active": lifecycle_active.get("map_server", False),
         "amcl_active": lifecycle_active.get("amcl", False),
+        "amcl_pose": amcl_pose,
         "planner_server_active": planner_server_active,
         "controller_server_active": controller_server_active,
         "controller_server_requested": controller_server_requested,

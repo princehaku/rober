@@ -388,6 +388,7 @@ const fixtures: Record<string, unknown> = {
       scan_preview_point_count: 0,
       scan_preview_source_point_count: null,
       scan_preview_frame_id: "",
+      robot_pose: null,
       root_causes: ["planner_server_not_active"],
       not_proven: ["path_generated", "delivery_success"],
     },
@@ -3527,10 +3528,17 @@ describe("App", () => {
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     summaryFixture.o3_proof_summary.amcl_pose_observed = true;
     summaryFixture.o3_proof_summary.localization_tf_observed = true;
+    summaryFixture.o3_proof_summary.robot_pose = {
+      x: 0.5,
+      y: 0.5,
+      yaw: 0,
+      frame_id: "map",
+      source: "/amcl_pose",
+    };
     summaryFixture.o3_proof_summary.scan_preview_points = [
-      { x_m: 1, y_m: 0, range_m: 1, angle_rad: 0, frame_id: "laser", source_index: 0 },
-      { x_m: 0, y_m: 1, range_m: 1, angle_rad: 1.5708, frame_id: "laser", source_index: 1 },
-      { x_m: -1, y_m: 0, range_m: 1, angle_rad: 3.1416, frame_id: "laser", source_index: 2 },
+      { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser", source_index: 0 },
+      { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser", source_index: 1 },
+      { x_m: -0.1, y_m: 0, range_m: 0.1, angle_rad: 3.1416, frame_id: "laser", source_index: 2 },
     ];
     summaryFixture.o3_proof_summary.scan_preview_point_count = 3;
     summaryFixture.o3_proof_summary.scan_preview_source_point_count = 3;
@@ -3549,6 +3557,7 @@ describe("App", () => {
     const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
     expect(marker.text()).toBe("雷达");
     expect(marker.classes()).toContain("mode-known-pose-running");
+    expect(marker.attributes("style")).toContain("left: 50%; top: 50%;");
     expect(marker.attributes("aria-label")).toBe("雷达已运行，已叠在机器人位置");
     const sweep = wrapper.find('[data-testid="plain-map-radar-sweep"]');
     expect(sweep.exists()).toBe(true);
@@ -3557,10 +3566,18 @@ describe("App", () => {
     const scanPoints = wrapper.find('[data-testid="plain-map-radar-scan-points"]');
     expect(scanPoints.exists()).toBe(true);
     expect(scanPoints.attributes("aria-label")).toBe("雷达点位，雷达点 3 个");
-    expect(scanPoints.findAll("circle")).toHaveLength(3);
+    const circles = scanPoints.findAll("circle");
+    expect(circles).toHaveLength(3);
+    const firstCircle = circles[0];
+    expect(firstCircle).toBeDefined();
+    expect(firstCircle?.attributes("cx")).toBe("60");
+    expect(firstCircle?.attributes("cy")).toBe("50");
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点 3 个");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(true);
+    const robotMarker = wrapper.find('[data-testid="plain-map-robot-marker"]');
+    expect(robotMarker.exists()).toBe(true);
+    expect(robotMarker.attributes("style")).toContain("left: 50%; top: 50%;");
+    expect(robotMarker.attributes("aria-label")).toBe("机器人位置，地图坐标 x=0.50, y=0.50");
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
   });
 

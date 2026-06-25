@@ -1,6 +1,7 @@
 import { PROOF_FLAGS } from "../shared/contracts";
 import type {
   RobotApiEndpointReadback,
+  RobotApiMapPose,
   RobotApiPathPreviewPoint,
   RobotApiProofSummary,
   RobotApiReadEndpointId,
@@ -2703,6 +2704,28 @@ function proofScanPreview(readbacks: InternalRobotApiEndpointReadback[]): Pick<
   };
 }
 
+function proofRobotPose(readbacks: InternalRobotApiEndpointReadback[]): RobotApiMapPose | null {
+  // 机器人位置只能来自定位 proof 的结构化 amcl_pose；只有 observed=true 不足以画真实地图坐标。
+  const localizePayload = readbackById(readbacks, "localize_proof_latest")?.payload ?? null;
+  const rawPose = asRecord(findFirstKey(localizePayload, ["amcl_pose", "robot_pose", "map_pose"]));
+  if (!rawPose) {
+    return null;
+  }
+  const x = finitePathCoordinate(rawPose.x ?? rawPose.x_m);
+  const y = finitePathCoordinate(rawPose.y ?? rawPose.y_m);
+  if (x === null || y === null) {
+    return null;
+  }
+  const yaw = finitePathCoordinate(rawPose.yaw ?? rawPose.yaw_rad);
+  return {
+    x,
+    y,
+    yaw,
+    frame_id: asString(rawPose.frame_id, "map"),
+    source: asString(rawPose.source, "localize_proof_latest.amcl_pose"),
+  };
+}
+
 function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): RobotApiProofSummary {
   // O3 proof 只聚合已读回来的 status/latest 字段；没有字段时保持 null/not_proven。
   const payload = readbacks;
@@ -2713,6 +2736,7 @@ function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): Robot
   const proofComplete = pathGenerated === true || pathSucceeded === true;
   const pathPreview = proofPathPreview(readbacks);
   const scanPreview = proofScanPreview(readbacks);
+  const robotPose = proofRobotPose(readbacks);
   return {
     managed_runtime_started: proofBoolean(readbacks, ["managed_runtime_started"]),
     scan_once_observed: proofBoolean(readbacks, ["scan_once_observed", "latest_scan_once_observed"]),
@@ -2726,6 +2750,7 @@ function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): Robot
     path_point_count: proofNumber(readbacks, ["path_point_count", "latest_path_point_count"]),
     ...pathPreview,
     ...scanPreview,
+    robot_pose: robotPose,
     root_causes: rootCauses.length && !proofComplete ? rootCauses : [],
     not_proven: notProven.length && !proofComplete ? notProven : [],
   };
@@ -2767,6 +2792,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       scan_preview_point_count: 0,
       scan_preview_source_point_count: null,
       scan_preview_frame_id: "",
+      robot_pose: null,
       root_causes: [reason],
       not_proven: ["robot_api_not_loaded", "path_generated", "delivery_success"],
     },

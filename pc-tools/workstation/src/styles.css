@@ -558,13 +558,14 @@ h3 {
 .plain-map-radar-pulse {
   /* 雷达只在有地图坐标时画同心圈；缺定位时只显示文字缺口，避免假坐标。 */
   position: absolute;
-  top: calc(50% - 24px);
-  left: calc(50% - 24px);
+  top: 50%;
+  left: 50%;
   width: 48px;
   height: 48px;
   border: 2px solid rgba(23, 96, 57, 0.48);
   border-radius: 50%;
   box-shadow: 0 0 0 8px rgba(23, 96, 57, 0.08);
+  transform: translate(-50%, -50%);
 }
 
 .plain-map-radar-sweep {
@@ -581,10 +582,11 @@ h3 {
 
 .plain-map-radar-sweep.mode-known-pose-running,
 .plain-map-radar-sweep.mode-known-pose-pending {
-  top: calc(50% - 44px);
-  left: calc(50% - 44px);
+  top: 50%;
+  left: 50%;
   width: 88px;
   height: 88px;
+  transform: translate(-50%, -50%);
 }
 
 .plain-map-radar-sweep.mode-pose-missing {
@@ -625,13 +627,14 @@ h3 {
 }
 
 .plain-map-robot-marker {
-  top: calc(50% - 8px);
-  left: calc(50% - 8px);
+  top: 50%;
+  left: 50%;
   width: 16px;
   height: 16px;
   border-radius: 50%;
   border-color: #1f6feb;
   background: #1f6feb;
+  transform: translate(-50%, -50%);
 }
 
 .plain-map-unknown-pose {
@@ -649,8 +652,9 @@ h3 {
 .plain-map-radar-marker.mode-known-pose-running,
 .plain-map-radar-marker.mode-known-pose-pending,
 .plain-map-radar-marker.mode-known-pose-stopped {
-  top: calc(50% - 38px);
-  left: calc(50% + 12px);
+  top: 50%;
+  left: 50%;
+  transform: translate(12px, -38px);
 }
 
 .plain-map-radar-marker.mode-pose-missing {

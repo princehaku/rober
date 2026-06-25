@@ -1233,6 +1233,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                     "static_edges": [{"parent": "odom", "child": "base_link", "topic": "/tf_static"}],
                 },
                 "amcl_pose_frame_id": "map",
+                "amcl_pose": {"frame_id": "map", "x": 0.25, "y": 0.75, "yaw": 1.57, "source": "/amcl_pose"},
                 "amcl_node_publishers": [{"topic": "/amcl_pose", "type": "geometry_msgs/msg/PoseWithCovarianceStamped"}],
                 "amcl_node_subscribers": [{"topic": "/scan", "type": "sensor_msgs/msg/LaserScan"}],
                 "amcl_tf_broadcast_param": "True",
@@ -1297,6 +1298,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["tf_topics_observed"]["/tf"])
         self.assertTrue(payload["tf_static_observed"])
         self.assertEqual("map", payload["amcl_pose_frame_id"])
+        self.assertEqual({"frame_id": "map", "x": 0.25, "y": 0.75, "yaw": 1.57, "source": "/amcl_pose"}, payload["amcl_pose"])
         self.assertEqual("True", payload["amcl_tf_broadcast_param"])
         self.assertEqual("source_inventory_observed", payload["amcl_tf_root_cause"])
         self.assertEqual("observed", payload["tf_failure_classification"]["map_to_base_link"])
@@ -1318,6 +1320,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(latest["tf_chain_observed"]["map_to_base_link"])
         self.assertTrue(latest["tf_topics_observed"]["/tf_static"])
         self.assertEqual("map", latest["amcl_frame_params"]["global_frame_id"])
+        self.assertEqual({"frame_id": "map", "x": 0.25, "y": 0.75, "yaw": 1.57, "source": "/amcl_pose"}, latest["amcl_pose"])
         self.assertFalse(latest["safe_to_control"])
 
     def test_localize_proof_latest_exposes_phase_partial_fields(self) -> None:
