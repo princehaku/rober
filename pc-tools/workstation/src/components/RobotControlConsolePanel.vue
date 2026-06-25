@@ -1589,6 +1589,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const preview = mapPreviewResult.value;
   const previewLoaded = preview?.proxy_status === "preview_forwarded";
   const autonomyLocked = boundary?.free_roam_autonomy !== "ready";
+  const autonomyReady = boundary?.free_roam_autonomy === "ready";
   const hasRuntimeGateRows = Boolean(boundary?.free_roam_autonomy_gates?.length);
   const manualFallbackHint = "自动扫图未开放；当前用人工按住扫图：开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图。";
   const blockers: string[] = [];
@@ -1684,15 +1685,15 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const speedLimit = policy?.max_speed_mps ?? manualSpeedLimit.value;
   const runtimeLimit = policy?.max_runtime_s ?? 60;
   return {
-    state: "未满足",
+    state: autonomyReady && blockers.length === 0 ? "已就绪" : autonomyReady ? "待处理" : "未满足",
     buttonLabel: autonomyLocked ? "按步骤人工扫图" : (boundary?.free_roam_autonomy_label ?? "自动扫图"),
-    // 自动扫图没解锁时按钮只做流程导航；真正自动发车入口仍等待上车端安全状态机和 HIL 证据。
-    disabled: !autonomyLocked,
+    // 这里没有上车端 start 代理；按钮始终只做流程定位，不直接触发自动发车。
+    disabled: false,
     hint: autonomyLocked
       ? manualFallbackHint
       : blockers.length
         ? `还差：${blockers.slice(0, 3).join("、")}。`
-        : "材料已接近，但自动扫图仍需上车端安全状态机开放后才能启用。",
+        : "上车端自动扫图已就绪；PC 继续负责地图/雷达所见即所得监看和停止兜底。",
     blockers: blockers.slice(0, 4),
     gateRows: contractGateRows,
     runtimeText: runtimeModeText,

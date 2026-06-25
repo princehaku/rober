@@ -3628,6 +3628,59 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
+  it("shows free-roam autonomy as ready from summary without starting robot motion", async () => {
+    // PC 首屏只消费上车端 readiness；没有固定 start 代理前，点击自动扫图按钮只能做流程定位。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "ready";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自动扫图";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = [
+      { id: "operator_confirmed", label: "现场安全确认", state: "ready", evidence: "已勾选现场安全确认", next_action: "继续保持现场可接管" },
+      { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
+      { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
+      { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+    ];
+    summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
+      status: "loaded",
+      state: "running",
+      reason: "门禁满足，低速直行",
+      stop_required: false,
+      artifact_only: false,
+      cmd_vel_publish_enabled: true,
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
+    expect(readiness.text()).toContain("已就绪");
+    expect(readiness.text()).toContain("自动扫图");
+    expect(readiness.text()).toContain("上车端自动扫图已就绪");
+    expect(readiness.text()).toContain("真车低速放行");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；运动发布已解锁，PC 仍等待真车 HIL 记录。");
+
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-start"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/api/free-roam/autonomy/start"))).toBe(false);
+  });
+
   it("reuses one plain safety confirmation for trip, keyboard, and free-roam mapping", async () => {
     // 普通首屏只让现场确认一次；扫图卡片和行程卡片同步这个确认，但不会自动触发任何动作。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

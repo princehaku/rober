@@ -2970,12 +2970,12 @@ function freeRoamRuntimeGatesFromReadbacks(
   gateRows.push({
     id: "motion_hil_unlock",
     label: "真车低速放行",
-    state: cmdVelPublishEnabled ? "not_proven" : "blocked",
+    state: cmdVelPublishEnabled ? "ready" : "blocked",
     evidence: cmdVelPublishEnabled
-      ? "自动扫图节点已解锁运动发布，PC 仍等待真车 HIL 记录"
+      ? "自动扫图节点已双重解锁运动发布"
       : "自动扫图节点默认只写记录，不发布运动",
     next_action: cmdVelPublishEnabled
-      ? "补齐真车低速验证记录后再讨论开放 PC 按钮"
+      ? "PC 继续只读监看地图、雷达和停止兜底，不在 summary 中直接发车"
       : "完成 stop 兜底、雷达避障和地图覆盖验证后再解锁",
   });
   return gateRows.length > 0 ? gateRows : null;
@@ -3016,6 +3016,12 @@ function lockedBoundary(
   freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
 ): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
+  const freeRoamReady = Boolean(
+    freeRoamRuntime?.status === "loaded"
+    && freeRoamRuntime.cmd_vel_publish_enabled
+    && freeRoamRuntimeGates?.length
+    && freeRoamRuntimeGates.every((gate) => gate.state === "ready"),
+  );
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",
@@ -3031,8 +3037,8 @@ function lockedBoundary(
     keyboard_jog_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
     keyboard_stop_triggers: ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"],
     keyboard_reuses_manual_gate: true,
-    free_roam_autonomy: "locked",
-    free_roam_autonomy_label: "自动扫图（未开放）",
+    free_roam_autonomy: freeRoamReady ? "ready" : "locked",
+    free_roam_autonomy_label: freeRoamReady ? "自动扫图" : "自动扫图（未开放）",
     free_roam_autonomy_policy: {
       // 自动扫图不是 PC 端无限发点动；必须先有上车端避障、watchdog 和真车验证证据。
       mode: "requires_onboard_watchdog_lidar_obstacle_gate_and_hil",
