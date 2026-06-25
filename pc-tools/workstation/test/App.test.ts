@@ -4899,8 +4899,19 @@ describe("App", () => {
       },
     });
     const previewRefreshControl: { finish?: () => void } = {};
+    const proofRefreshControl: { finish?: () => void } = {};
     let delayNextPreview = false;
+    let delayNextProof = false;
     const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextProof) {
+        delayNextProof = false;
+        return new Promise((resolve) => {
+          proofRefreshControl.finish = () => resolve({
+            ok: true,
+            json: async () => fixtures["/api/robot-control/map/proof/refresh"],
+          });
+        });
+      }
       if (String(url).startsWith("/api/robot-control/map/preview?") && delayNextPreview) {
         delayNextPreview = false;
         return new Promise((resolve) => {
@@ -4932,9 +4943,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图画面刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点）。");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，正在刷新地图画面；刷新完成后再执行图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，地图画面刷新中；刷新完成后再执行图上路线。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图画面刷新。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("正在刷新地图画面，刷新完成后再执行");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图画面刷新中，刷新完成后再执行");
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：正在刷新当前地图。");
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await wrapper.vm.$nextTick();
@@ -4951,6 +4962,32 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+
+    delayNextProof = true;
+    const proofRefreshClick = wrapper.findAll("button").find((button) => button.text() === "刷新地图")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图处理中");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图状态刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，地图状态刷新中；刷新完成后再执行图上路线。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图状态刷新。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图状态刷新中，刷新完成后再执行");
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    const finishProofRefresh = proofRefreshControl.finish;
+    if (!finishProofRefresh) {
+      throw new Error("map proof refresh request was not captured");
+    }
+    finishProofRefresh();
+    await proofRefreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
   });
