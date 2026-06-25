@@ -1987,3 +1987,8 @@ L/R 结论，帮助现场判断连续手控是否真的读到 wheel feedback。�
 点击只聚焦扫地式建图当前下一步（安全确认、开始记录、启用键盘、停止或保存），不会启动自动扫图、不会调用
 map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。真实自动扫图按钮仍等待上车端安全状态机和 HIL
 证据开放；当前这一步只是把“像扫地机一样扫图”的人工流程从死按钮改成可操作向导。
+
+2026-06-25 22:13 起，普通首屏地图 caption 新增 `地图画面` 口径：显示当前图像是最近读取的真实地图、地图记录中等待刷新、
+本轮扫图已刷新过、按住扫图后已自动刷新一次，还是保存后需要重新刷新检查。该文案只解释地图 preview 的新鲜度，
+不把地图画面伪装成实时视频流；继续移动后仍必须再刷新确认最新覆盖，保存 gate 仍按既有 stop 后刷新结果判断。
+该状态不调用 map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。

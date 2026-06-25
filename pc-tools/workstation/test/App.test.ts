@@ -3361,6 +3361,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("已扫出 1 个可通行格");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("未知区域 0.0%");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("当前显示最近地图画面，开始记录后可边扫边刷新。");
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：显示最近读取的真实地图。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]').attributes("aria-label")).toContain("扫地图草图");
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("只读计划，不会自动移动。");
@@ -3785,6 +3786,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先刷新画面");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。");
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：地图记录中，先刷新扫图画面再保存。");
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("先刷新扫图画面，再保存地图");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘");
     const manualCallsBeforeKeyboardNext = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
@@ -3828,6 +3830,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeLiveRefresh + 1);
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，地图画面已跟随刷新；已连续 2/2 次；轮速 L/R=0.07/0.08，非零已读到。");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("扫图中地图画面已自动刷新；松开后会再刷新一次用于保存。");
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：本次按住后已刷新一次；继续移动后还要再刷新确认最新覆盖。");
     const previewCallsBeforeRelease = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     const nav2ExecuteCallsBeforeRelease = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length;
     const deliveryCompleteCallsBeforeRelease = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length;
