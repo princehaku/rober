@@ -1235,7 +1235,42 @@ h3 {
   gap: 8px;
   margin-top: 12px;
   border-top: 1px solid #d7dee6;
+  border-left: 3px solid transparent;
   padding-top: 12px;
+  padding-left: 10px;
+}
+
+.plain-trip-run[data-state="已准备"],
+.plain-trip-run[data-state="已完成"] {
+  border-left-color: #238636;
+  background: linear-gradient(90deg, rgba(35, 134, 54, 0.08), transparent 42%);
+}
+
+.plain-trip-run[data-state="执行中"] {
+  border-left-color: #1f6feb;
+  background: linear-gradient(90deg, rgba(31, 111, 235, 0.1), transparent 42%);
+}
+
+.plain-trip-run[data-state="准备中"],
+.plain-trip-run[data-state="复查中"],
+.plain-trip-run[data-state="读取中"],
+.plain-trip-run[data-state="刷新中"],
+.plain-trip-run[data-state="停止中"],
+.plain-trip-run[data-state="停止已发送"] {
+  border-left-color: #bf8700;
+  background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 42%);
+}
+
+.plain-trip-run[data-state="待确认"],
+.plain-trip-run[data-state="待准备"] {
+  border-left-color: #d5d2a9;
+}
+
+.plain-trip-run[data-state="需复验"],
+.plain-trip-run[data-state="需检查"],
+.plain-trip-run[data-state="执行失败"] {
+  border-left-color: #d97706;
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), transparent 42%);
 }
 
 .plain-trip-run strong {

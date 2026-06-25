@@ -8073,7 +8073,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </div>
-          <div ref="plainTripRunPanel" class="plain-trip-run" tabindex="-1" data-testid="plain-trip-run">
+          <div ref="plainTripRunPanel" class="plain-trip-run" tabindex="-1" :data-state="plainTripSummary.state" data-testid="plain-trip-run">
             <div class="simple-status-row">
               <strong>行程操作</strong>
               <span class="status-chip" :data-state="plainTripSummary.state">{{ plainTripSummary.state }}</span>

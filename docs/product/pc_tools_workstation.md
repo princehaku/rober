@@ -2262,6 +2262,8 @@ delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不�
 
 2026-06-26 08:35 起，普通首屏 `任务收口` 和 `最终确认` 面板也会分别带 `data-state`，外框跟随 `已送达/确认中/需复验/已完成` 等状态变化。测试锁定送达成功和确认提交中的面板状态、地图 marker 状态和 CSS 选择器，避免地图已经显示 `已送达` 但送达卡片仍像普通待办。该呈现只影响 PC 前端 WYSIWYG，不自动提交送达、不执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。
 
+2026-06-26 08:40 起，普通首屏 `行程操作` 面板也会带 `data-state`，外框跟随 `已准备/执行中/停止中/需复验/执行失败` 等状态变化。测试锁定图上路线可执行和 Nav2 execute pending 两种状态的面板 `data-state` 与 CSS 选择器，避免地图已经显示可执行或行程中，但行程卡片仍像普通待办。该呈现只影响 PC 前端 WYSIWYG，不自动执行 Nav2、不发送 manual/keyboard pulse、delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-26 03:35 起，普通首屏 Nav2 图上路线执行完成且读到本轮 feedback 样本后，地图 caption 会显示
 `行程执行：已到达，反馈 N 次，准备送达材料`，终点 marker 的可访问说明也会提示“下一步准备送达材料”。该提示只同步
 execute/latest readback 到地图 WYSIWYG 状态，不自动准备材料、不提交送达、不再次执行 Nav2、不发送 manual/keyboard pulse、

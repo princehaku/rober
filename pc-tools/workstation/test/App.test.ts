@@ -5279,6 +5279,9 @@ describe("App", () => {
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点）。");
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.attributes("data-state")).toBe("已准备");
+    expect(workstationStyles).toContain('.plain-trip-run[data-state="已准备"]');
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已可执行；点击执行前确认起点、终点和路径。");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
@@ -6286,6 +6289,9 @@ describe("App", () => {
     expect(pendingGoal.text()).toBe("行程中");
     expect(pendingGoal.attributes("data-state")).toBe("执行中");
     expect(pendingGoal.attributes("aria-label")).toBe("正在执行图上路线，目标地图坐标 x=0.80, y=0.00");
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.attributes("data-state")).toBe("执行中");
+    expect(readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8")).toContain('.plain-trip-run[data-state="执行中"]');
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在执行图上路线（目标 x=0.80, y=0.00；路线 3/15 个点）");
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
