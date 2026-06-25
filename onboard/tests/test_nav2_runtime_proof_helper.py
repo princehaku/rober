@@ -1089,6 +1089,13 @@ __TF_STATIC_ONCE__
         }
 
         self.assertTrue(HELPER.tf_echo_transform_observed(result))
+        transform = HELPER.parse_tf_echo_transform(result, parent_frame_id="base_link", child_frame_id="laser_frame")
+        self.assertIsNotNone(transform)
+        self.assertEqual("base_link", transform["parent_frame_id"])
+        self.assertEqual("laser_frame", transform["child_frame_id"])
+        self.assertAlmostEqual(1.0, transform["translation"]["x"])
+        self.assertAlmostEqual(2.0, transform["translation"]["y"])
+        self.assertAlmostEqual(0.0, transform["rotation"]["yaw"])
 
     def test_tf_echo_failure_or_empty_output_not_observed(self) -> None:
         """TF 判定必须保守，lookup failure 或空输出不能被当成 transform。"""

@@ -4442,6 +4442,13 @@ describe("workstation fail-closed API contracts", () => {
           amcl_pose_observed: true,
           localization_tf_observed: { map_to_odom: true, map_to_base_link: true },
           amcl_pose: { frame_id: "map", x: 0.25, y: 0.75, yaw: 1.57, source: "/amcl_pose" },
+          base_link_to_laser_frame_transform: {
+            parent_frame_id: "base_link",
+            child_frame_id: "laser_frame",
+            translation: { x: 0.1, y: 0 },
+            rotation: { yaw: 0.05 },
+            source: "tf2_echo base_link laser_frame",
+          },
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
@@ -4590,6 +4597,14 @@ describe("workstation fail-closed API contracts", () => {
         yaw: 1.57,
         frame_id: "map",
         source: "/amcl_pose",
+      });
+      expect(summary.o3_proof_summary.frame_transforms.base_link_to_laser_frame).toEqual({
+        parent_frame_id: "base_link",
+        child_frame_id: "laser_frame",
+        x: 0.1,
+        y: 0,
+        yaw: 0.05,
+        source: "tf2_echo base_link laser_frame",
       });
       expect(summary.o3_proof_summary.scan_preview_points[0]).toEqual(expect.objectContaining({
         range_m: 1,

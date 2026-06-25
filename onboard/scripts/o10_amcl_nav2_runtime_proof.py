@@ -7,6 +7,7 @@ import argparse
 import json
 import math
 import os
+import re
 import shlex
 import signal
 import subprocess
@@ -1176,6 +1177,33 @@ def tf_echo_transform_observed(result: dict[str, Any]) -> bool:
     if text_contains_any(lowered, failure_needles):
         return False
     return bool(has_translation and has_rotation)
+
+
+def parse_tf_echo_transform(result: dict[str, Any], *, parent_frame_id: str, child_frame_id: str) -> dict[str, Any] | None:
+    """从 tf2_echo 文本提取 2D 外参；没有完整数值时不返回默认偏移。"""
+    if not tf_echo_transform_observed(result):
+        return None
+    text = str(result.get("stdout") or "")
+    translation_match = re.search(r"Translation:\s*\[([^\]]+)\]", text)
+    rotation_match = re.search(r"Rotation:[^\[]*\[([^\]]+)\]", text)
+    if not translation_match or not rotation_match:
+        return None
+    try:
+        translation_values = [float(value.strip()) for value in translation_match.group(1).split(",")]
+        rotation_values = [float(value.strip()) for value in rotation_match.group(1).split(",")]
+    except ValueError:
+        return None
+    if len(translation_values) < 2 or len(rotation_values) < 4:
+        return None
+    qx, qy, qz, qw = rotation_values[:4]
+    yaw = math.atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz))
+    return {
+        "parent_frame_id": parent_frame_id,
+        "child_frame_id": child_frame_id,
+        "translation": {"x": translation_values[0], "y": translation_values[1], "z": translation_values[2] if len(translation_values) > 2 else 0.0},
+        "rotation": {"yaw": yaw, "quaternion": {"x": qx, "y": qy, "z": qz, "w": qw}},
+        "source": "tf2_echo",
+    }
 
 
 def default_tf_chain_observed() -> dict[str, bool]:
@@ -3086,6 +3114,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     map_observed = topic_once_observed(map_once)
     amcl_pose_observed = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
     amcl_pose = parse_amcl_pose(str(post_initialpose_amcl_pose_once.get("stdout") or "")) or parse_amcl_pose(str(amcl_pose_once.get("stdout") or ""))
+    base_link_to_laser_frame_transform = parse_tf_echo_transform(
+        base_link_to_laser_frame_tf,
+        parent_frame_id=tf_chain_frame_contract(args)["actual"]["base"],
+        child_frame_id=tf_chain_frame_contract(args)["actual"]["laser"],
+    )
     amcl_broadcast_conditions = dict(tf_source_diagnostics.get("amcl_broadcast_conditions") or {})
     amcl_broadcast_conditions.update(
         {
@@ -3340,6 +3373,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "map_server_active": lifecycle_active.get("map_server", False),
         "amcl_active": lifecycle_active.get("amcl", False),
         "amcl_pose": amcl_pose,
+        "base_link_to_laser_frame_transform": base_link_to_laser_frame_transform,
         "planner_server_active": planner_server_active,
         "controller_server_active": controller_server_active,
         "controller_server_requested": controller_server_requested,

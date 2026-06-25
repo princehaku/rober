@@ -2595,6 +2595,11 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
     initialpose_published = proof.get("initialpose_published") is True
     amcl_pose_observed = proof.get("amcl_pose_observed") is True
     amcl_pose = proof.get("amcl_pose") if isinstance(proof.get("amcl_pose"), dict) else None
+    base_link_to_laser_frame_transform = (
+        proof.get("base_link_to_laser_frame_transform")
+        if isinstance(proof.get("base_link_to_laser_frame_transform"), dict)
+        else None
+    )
     odom_to_base_link = tf_chain_value.get("odom_to_base_link") is True
     base_link_to_laser_frame = tf_chain_value.get("base_link_to_laser_frame") is True
     map_to_odom = tf_value.get("map_to_odom") is True or tf_chain_value.get("map_to_odom") is True
@@ -2622,6 +2627,7 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
         "amcl_pose_observed": amcl_pose_observed,
         "latest_amcl_pose_observed": amcl_pose_observed,
         "amcl_pose": amcl_pose,
+        "base_link_to_laser_frame_transform": base_link_to_laser_frame_transform,
         "localization_tf_observed": {"map_to_odom": map_to_odom, "map_to_base_link": map_to_base_link},
         "tf_chain_observed": {
             "map_to_odom": map_to_odom,
@@ -5546,6 +5552,7 @@ class UpperRobotApi:
                 "initialpose_published": readback_contract["initialpose_published"],
                 "amcl_pose_observed": readback_contract["amcl_pose_observed"],
                 "amcl_pose": readback_contract["amcl_pose"],
+                "base_link_to_laser_frame_transform": readback_contract["base_link_to_laser_frame_transform"],
                 "localization_tf_observed": readback_contract["localization_tf_observed"],
                 "tf_chain_observed": readback_contract["tf_chain_observed"],
                 "tf_chain_diagnostics": readback_contract["tf_chain_diagnostics"],

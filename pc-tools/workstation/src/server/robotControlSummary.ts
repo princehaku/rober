@@ -1,6 +1,7 @@
 import { PROOF_FLAGS } from "../shared/contracts";
 import type {
   RobotApiEndpointReadback,
+  RobotApiFrameTransform,
   RobotApiMapPose,
   RobotApiPathPreviewPoint,
   RobotApiProofSummary,
@@ -2726,6 +2727,42 @@ function proofRobotPose(readbacks: InternalRobotApiEndpointReadback[]): RobotApi
   };
 }
 
+function proofFrameTransform(readbacks: InternalRobotApiEndpointReadback[], keys: string[], fallbackParent: string, fallbackChild: string): RobotApiFrameTransform | null {
+  // 外参必须来自定位 proof 的显式结构化 transform；没有数值时保持 null，前端不能猜安装偏移。
+  const localizePayload = readbackById(readbacks, "localize_proof_latest")?.payload ?? null;
+  const rawTransform = asRecord(findFirstKey(localizePayload, keys));
+  if (!rawTransform) {
+    return null;
+  }
+  const translation = asRecord(rawTransform.translation) ?? rawTransform;
+  const rotation = asRecord(rawTransform.rotation) ?? rawTransform;
+  const x = finitePathCoordinate(translation.x ?? translation.x_m);
+  const y = finitePathCoordinate(translation.y ?? translation.y_m);
+  if (x === null || y === null) {
+    return null;
+  }
+  const yaw = finitePathCoordinate(rotation.yaw ?? rotation.yaw_rad) ?? 0;
+  return {
+    parent_frame_id: asString(rawTransform.parent_frame_id ?? rawTransform.parent, fallbackParent),
+    child_frame_id: asString(rawTransform.child_frame_id ?? rawTransform.child, fallbackChild),
+    x,
+    y,
+    yaw,
+    source: asString(rawTransform.source, "localize_proof_latest.frame_transform"),
+  };
+}
+
+function proofFrameTransforms(readbacks: InternalRobotApiEndpointReadback[]): RobotApiProofSummary["frame_transforms"] {
+  return {
+    base_link_to_laser_frame: proofFrameTransform(
+      readbacks,
+      ["base_link_to_laser_frame_transform", "base_to_laser_transform", "laser_frame_transform"],
+      "base_link",
+      "laser_frame",
+    ),
+  };
+}
+
 function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): RobotApiProofSummary {
   // O3 proof 只聚合已读回来的 status/latest 字段；没有字段时保持 null/not_proven。
   const payload = readbacks;
@@ -2737,6 +2774,7 @@ function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): Robot
   const pathPreview = proofPathPreview(readbacks);
   const scanPreview = proofScanPreview(readbacks);
   const robotPose = proofRobotPose(readbacks);
+  const frameTransforms = proofFrameTransforms(readbacks);
   return {
     managed_runtime_started: proofBoolean(readbacks, ["managed_runtime_started"]),
     scan_once_observed: proofBoolean(readbacks, ["scan_once_observed", "latest_scan_once_observed"]),
@@ -2751,6 +2789,7 @@ function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): Robot
     ...pathPreview,
     ...scanPreview,
     robot_pose: robotPose,
+    frame_transforms: frameTransforms,
     root_causes: rootCauses.length && !proofComplete ? rootCauses : [],
     not_proven: notProven.length && !proofComplete ? notProven : [],
   };
@@ -2793,6 +2832,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       scan_preview_source_point_count: null,
       scan_preview_frame_id: "",
       robot_pose: null,
+      frame_transforms: {
+        base_link_to_laser_frame: null,
+      },
       root_causes: [reason],
       not_proven: ["robot_api_not_loaded", "path_generated", "delivery_success"],
     },

@@ -389,6 +389,9 @@ const fixtures: Record<string, unknown> = {
       scan_preview_source_point_count: null,
       scan_preview_frame_id: "",
       robot_pose: null,
+      frame_transforms: {
+        base_link_to_laser_frame: null,
+      },
       root_causes: ["planner_server_not_active"],
       not_proven: ["path_generated", "delivery_success"],
     },
@@ -3543,6 +3546,14 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.scan_preview_point_count = 3;
     summaryFixture.o3_proof_summary.scan_preview_source_point_count = 3;
     summaryFixture.o3_proof_summary.scan_preview_frame_id = "laser";
+    summaryFixture.o3_proof_summary.frame_transforms.base_link_to_laser_frame = {
+      parent_frame_id: "base_link",
+      child_frame_id: "laser_frame",
+      x: 0.1,
+      y: 0,
+      yaw: 0,
+      source: "localize_proof_latest.base_link_to_laser_frame_transform",
+    };
     summaryFixture.readback_summary.lidar.lifecycle_running = "true";
     summaryFixture.readback_summary.lidar.continuous_window_observed = "true";
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
@@ -3565,14 +3576,14 @@ describe("App", () => {
     expect(sweep.attributes("aria-label")).toBe("雷达已运行扫描范围，跟随机器人位置");
     const scanPoints = wrapper.find('[data-testid="plain-map-radar-scan-points"]');
     expect(scanPoints.exists()).toBe(true);
-    expect(scanPoints.attributes("aria-label")).toBe("雷达点位，雷达点 3 个");
+    expect(scanPoints.attributes("aria-label")).toBe("雷达点位，雷达点 3 个，已套用雷达外参");
     const circles = scanPoints.findAll("circle");
     expect(circles).toHaveLength(3);
     const firstCircle = circles[0];
     expect(firstCircle).toBeDefined();
-    expect(firstCircle?.attributes("cx")).toBe("60");
+    expect(firstCircle?.attributes("cx")).toBe("70");
     expect(firstCircle?.attributes("cy")).toBe("50");
-    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点 3 个");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点 3 个，已套用雷达外参");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(true);
     const robotMarker = wrapper.find('[data-testid="plain-map-robot-marker"]');
     expect(robotMarker.exists()).toBe(true);

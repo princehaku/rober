@@ -47,6 +47,7 @@ import type {
   RobotControlPreviewStatus,
   RobotControlProofRefreshProxyResponse,
   RobotControlRadarLifecycleResponse,
+  RobotApiFrameTransform,
   RobotApiScanPreviewPoint,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
@@ -702,22 +703,42 @@ function latestRobotPoseOverlay() {
   };
 }
 
-function radarScanPointToMapPercent(point: RobotApiScanPreviewPoint, pose: { x: number; y: number; yaw: number | null }, preview: RobotControlMapPreviewResponse): { left: number; top: number } | null {
-  // scan 点是机器人局部坐标；只有拿到 map-frame 位姿后，才旋转平移到真实地图坐标。
+function scanPointInBaseFrame(point: RobotApiScanPreviewPoint, transform: RobotApiFrameTransform | null): { x: number; y: number; transformApplied: boolean } | null {
+  // scan 点若来自 laser_frame，只有显式外参存在时才做 base_link 转换；否则按旧相对坐标展示但不声称外参已应用。
   const localX = finitePlainNumber(point.x_m);
   const localY = finitePlainNumber(point.y_m);
   if (localX === null || localY === null) {
     return null;
   }
+  const pointFrame = point.frame_id || "";
+  if (!["laser", "laser_frame"].includes(pointFrame) || !transform) {
+    return { x: localX, y: localY, transformApplied: false };
+  }
+  const yaw = finitePlainNumber(transform.yaw) ?? 0;
+  return {
+    x: transform.x + localX * Math.cos(yaw) - localY * Math.sin(yaw),
+    y: transform.y + localX * Math.sin(yaw) + localY * Math.cos(yaw),
+    transformApplied: true,
+  };
+}
+
+function radarScanPointToMapPercent(point: RobotApiScanPreviewPoint, pose: { x: number; y: number; yaw: number | null }, preview: RobotControlMapPreviewResponse, transform: RobotApiFrameTransform | null): { left: number; top: number; transformApplied: boolean } | null {
+  // scan 点先按可用外参转 base_link，再用 map-frame robot pose 转成地图坐标。
+  const basePoint = scanPointInBaseFrame(point, transform);
+  if (!basePoint) {
+    return null;
+  }
   const yaw = finitePlainNumber(pose.yaw) ?? 0;
-  const mapX = pose.x + localX * Math.cos(yaw) - localY * Math.sin(yaw);
-  const mapY = pose.y + localX * Math.sin(yaw) + localY * Math.cos(yaw);
-  return mapCoordinatePercent(mapX, mapY, preview);
+  const mapX = pose.x + basePoint.x * Math.cos(yaw) - basePoint.y * Math.sin(yaw);
+  const mapY = pose.y + basePoint.x * Math.sin(yaw) + basePoint.y * Math.cos(yaw);
+  const percent = mapCoordinatePercent(mapX, mapY, preview);
+  return percent ? { ...percent, transformApplied: basePoint.transformApplied } : null;
 }
 
 function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
   // 没有 map-frame 位姿时不把雷达点强行落到地图坐标，只返回待定位提示。
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
+  const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
   const preview = mapPreviewResult.value;
   if (!robotPose || !preview || preview.proxy_status !== "preview_forwarded" || points.length === 0) {
     return {
@@ -727,7 +748,7 @@ function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOver
   }
   const dots = points
     .map((point, index) => {
-      const percent = radarScanPointToMapPercent(point, robotPose.pose, preview);
+      const percent = radarScanPointToMapPercent(point, robotPose.pose, preview, transform);
       if (!percent) {
         return null;
       }
@@ -738,9 +759,11 @@ function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOver
       };
     })
     .filter((point): point is { key: string; left: number; top: number } => point !== null);
+  const transformedCount = points.filter((point) => ["laser", "laser_frame"].includes(point.frame_id || "")).length;
+  const transformLabel = transform && transformedCount > 0 ? "，已套用雷达外参" : "";
   return {
     dots,
-    label: dots.length > 0 ? `雷达点 ${dots.length} 个` : "雷达点位未读取",
+    label: dots.length > 0 ? `雷达点 ${dots.length} 个${transformLabel}` : "雷达点位未读取",
   };
 }
 
