@@ -28,6 +28,7 @@ import {
   postRobotControlCameraPeerClose,
   postRobotControlCameraFirstFrameProbe,
 } from "../client/workstationApi";
+import { DEFAULT_ROBOT_API_BASE_URL } from "../shared/robotDefaults";
 import type {
   O7ConsumerTaskDetailResponse,
   RobotControlBaseCommandRequest,
@@ -52,8 +53,6 @@ import type {
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
-// 本组件仍然是 fail-closed 控制台；默认地址固定到当前上位机，减少普通用户每次手输。
-const DEFAULT_ROBOT_API_BASE_URL = "http://192.168.1.11:8787";
 type ManualDirection = "forward" | "back" | "left" | "right";
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
@@ -2163,7 +2162,7 @@ const plainTripGoalNextAction = computed(() => {
     return "下一步：检查或重新执行行程。";
   }
   if (plainTripPreparedBySummary.value && plainManualSafetyConfirmed.value) {
-    return "下一步：执行行程。";
+    return plainTripCurrentRouteVisible.value ? "下一步：执行行程。" : "下一步：刷新地图画面。";
   }
   return plainManualSafetyConfirmed.value ? "下一步：检查或执行行程。" : "下一步：勾选行程前确认。";
 });
@@ -2271,7 +2270,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -2375,7 +2374,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return plainTripHasSucceededEvidence.value
       ? "验收卡点：行程成功记录较旧，需要重新执行本轮行程。"
       : plainTripLatestNotProvenEvidence.value ? "验收卡点：最近行程未通过，需要检查或重新执行完整行程。"
-      : plainTripPreparedBySummary.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程并读到成功结果。`
+      : plainTripPreparedBySummary.value ? (plainTripCurrentRouteVisible.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程并读到成功结果。` : `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要刷新地图画面确认图上路线。`)
         : "验收卡点：还没读到行程成功结果。";
   }
   if (!deliverySuccessReady.value) {
@@ -2515,6 +2514,11 @@ const plainTripRouteWysiwygSummary = computed(() => {
   }
   return "";
 });
+const plainTripCurrentRouteVisible = computed(() => {
+  // 只有当前路线真正画到地图上，普通首屏才允许执行“图上路线”；最近路线不能作为执行依据。
+  const routePath = latestNavPathOverlay();
+  return Boolean(routePath && !routePath.caption.startsWith("最近"));
+});
 
 const canRunPlainTripPreflight = computed(() => {
   // 预检不发车，只要求现场完成同一个安全确认。
@@ -2528,7 +2532,12 @@ const canRefreshPlainTripPreparation = computed(() => {
 
 const canRunPlainTripExecution = computed(() => {
   // 真正执行仍由后端 confirm_navigation_execution + 定位/路线 readback gate 再次校验。
-  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
+  return !deliveryNav2GoalReady.value
+    && !loading.value
+    && !plainTripActionPending.value
+    && robotApiBaseUrl.value.trim().length > 0
+    && plainManualSafetyConfirmed.value
+    && plainTripCurrentRouteVisible.value;
 });
 
 const plainTripPreflightButtonLabel = computed(() => {
@@ -2572,6 +2581,9 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   if (!plainManualSafetyConfirmed.value) {
     return "先勾选确认";
+  }
+  if (!plainTripCurrentRouteVisible.value) {
+    return plainTripPreparedBySummary.value ? "先刷新地图画面" : "先准备图上路线";
   }
   return plainTripPreparedBySummary.value ? "执行图上路线" : "执行行程";
 });

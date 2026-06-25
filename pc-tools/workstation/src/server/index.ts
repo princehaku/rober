@@ -37,6 +37,7 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "./catalog";
+import { DEFAULT_ROBOT_API_BASE_URL } from "../shared/robotDefaults";
 import {
   endpointUrl,
   normalizeRobotApiBaseUrl,
@@ -113,6 +114,12 @@ function queryString(value: unknown): string {
   // Express query 可能是数组或对象；只接受单个字符串，其他形态 fail closed 为空。
   // 为空会让 catalog 返回 not_proven/blocked，而不是把异常 query 当路径读取。
   return typeof value === "string" ? value : "";
+}
+
+export function robotControlSummaryQueryBaseUrl(value: unknown): string {
+  // summary 是普通首屏的只读入口；没有 query 时默认连固定小车，控制类代理仍要求显式 baseUrl。
+  const requested = queryString(value).trim();
+  return requested || DEFAULT_ROBOT_API_BASE_URL;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -1017,8 +1024,8 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.get("/api/robot-control/summary", async (req, res) => {
-    // Robot Control V1 只读代理上位机 GET status/latest/readback，拒绝浏览器直连和危险 URL。
-    res.json(await buildRobotControlSummary(queryString(req.query.baseUrl)));
+    // Robot Control V1 只读代理默认连固定上位机；危险 URL 仍由 summary builder fail-closed。
+    res.json(await buildRobotControlSummary(robotControlSummaryQueryBaseUrl(req.query.baseUrl)));
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {

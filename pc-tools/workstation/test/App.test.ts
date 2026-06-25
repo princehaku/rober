@@ -3585,7 +3585,8 @@ describe("App", () => {
     expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（按键才动）");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
 
@@ -4024,6 +4025,11 @@ describe("App", () => {
     expect(endMarker.attributes("style")).toContain("top: 98%");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，路线 3/15 个点按地图坐标显示，雷达不贴图。");
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -4396,16 +4402,16 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先准备图上路线");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     const navExecuteCallsBeforeTripFocus = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
     ).length;
     await wrapper.find('[data-testid="plain-goal-progress-go-trip"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-preflight"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
     ).length).toBe(navExecuteCallsBeforeTripFocus);
@@ -4421,7 +4427,8 @@ describe("App", () => {
     ).length).toBe(nav2RefreshCallsBeforePrepare + 1);
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，路线 17 个点已准备；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 17 个点；先刷新地图画面确认图上路线。");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先刷新地图画面");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
     ).length).toBe(navExecuteCallsBeforeTripFocus);
@@ -4440,33 +4447,15 @@ describe("App", () => {
       confirm_navigation_preflight: true,
     });
 
-    const focusCallsBeforeExecute = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     const executeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"));
-    expect(executeCall).toBeTruthy();
-    expect(JSON.parse(String((executeCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual({
-      goal_frame_id: "map",
-      goal_x: 0.8,
-      goal_y: 0,
-      goal_yaw: 0,
-      result_timeout_s: 8,
-      confirm_navigation_execution: true,
-    });
-    expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("plain-trip-execution-fixture");
-    expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-plain-trip-execution-fixture");
-    expect(visiblePlainHomeText(wrapper)).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程成功，反馈 8 次；送达仍需现场确认。");
-    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("行程已完成");
-    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("行程已完成");
+    expect(executeCall).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先刷新地图画面");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程（只读）");
-    expect(visiblePlainHomeText(wrapper)).toContain("行程材料已在，点准备送达材料补画面。");
-    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeExecute);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-status"]').element);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(visiblePlainHomeText(wrapper)).not.toContain("Nav2");
@@ -4497,7 +4486,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 36 个点；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，先勾选行程前确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("路线已准备 36 点");
-    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("路线已准备 36 个点，还需要点击执行行程并读到成功结果。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("路线已准备 36 个点，还需要刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
 
@@ -4507,9 +4496,10 @@ describe("App", () => {
     expect(tripPanel.text()).toContain("路线 36 个点已准备；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 36 个点；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，可执行行程。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：执行行程。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先刷新地图画面");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，先刷新地图画面确认图上路线。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：刷新地图画面。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -4571,8 +4561,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
-  it("keeps plain trip execution available after safety confirmation while lidar is stopped", async () => {
-    // 发车前 PC 首屏只要求现场安全确认；真正执行仍由后端定位/路线预检兜底。
+  it("keeps plain trip execution blocked until a visible route is confirmed while lidar is stopped", async () => {
+    // 发车前只要求现场安全确认，但执行图上路线必须先看到地图路线；后端仍会复查定位和路线。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
     summaryFixture.readback_summary.lidar.lifecycle_running = "false";
@@ -4615,13 +4605,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
 
     const callsBeforeTripFocus = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-go-trip"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-preflight"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeTripFocus);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight?"))).toBe(false);
@@ -8232,8 +8222,8 @@ describe("App", () => {
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("/api/radar/start");
   });
 
-  it("allows plain trip preflight and exposes execution after safety while lidar is stopped", async () => {
-    // 路线预检不发车；执行按钮只要求安全确认，后端会在真正执行前复查定位和路线。
+  it("allows plain trip preflight but blocks execution until the route is visible while lidar is stopped", async () => {
+    // 路线预检不发车；执行按钮还要求地图上看得到当前路线。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
     summaryFixture.readback_summary.lidar.lifecycle_running = "false";
@@ -8258,8 +8248,8 @@ describe("App", () => {
     const executeButton = wrapper.find('[data-testid="plain-trip-execute"]');
     expect(preflightButton.text()).toBe("检查行程");
     expect(preflightButton.attributes("disabled")).toBeUndefined();
-    expect(executeButton.text()).toBe("执行行程");
-    expect(executeButton.attributes("disabled")).toBeUndefined();
+    expect(executeButton.text()).toBe("先准备图上路线");
+    expect(executeButton.attributes("disabled")).toBeDefined();
 
     await preflightButton.trigger("click");
     await flushPromises();
@@ -8321,8 +8311,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
 
     await wrapper.find('[data-testid="plain-radar-refresh"]').trigger("click");
     await flushPromises();
@@ -8380,8 +8370,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);

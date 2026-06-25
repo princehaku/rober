@@ -1878,3 +1878,13 @@ keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。高级诊断�
 时才提示 `执行图上路线` 对应地图上的起点、终点和路线；如果只读到路线点数但地图尚未画出路线，则提示先刷新地图画面确认
 图上路线。该提示只改变 WYSIWYG 文案，不自动刷新地图、不执行 Nav2、不发送 manual/keyboard pulse/delivery complete/stop
 或 `/cmd_vel`。
+
+2026-06-25 23:35 起，普通首屏 `执行图上路线` 按钮也遵循同一 WYSIWYG gate：安全确认已勾但当前路线还没画到地图时，
+按钮保持禁用并显示 `先刷新地图画面` 或 `先准备图上路线`；只有当前路线已在地图上画出时才允许点击执行。该 gate
+只约束 PC 首屏入口，不自动刷新地图、不自动准备路线、不执行 Nav2、不发送 manual/keyboard pulse/delivery complete/stop
+或 `/cmd_vel`；真正执行仍由后端固定 Nav2 execute 代理继续复查定位和路线。
+
+同轮起，Node `GET /api/robot-control/summary` 在缺少 `baseUrl` query 时默认使用固定上位机
+`http://192.168.1.11:8787`，与普通首屏默认小车地址保持一致；控制类代理仍要求显式 baseUrl 并继续走原有
+fail-closed 校验。PC 工作站仍监听 `0.0.0.0:7001`，该默认值只减少普通访问/直接 curl 的地址配置成本，不改 Clash，
+不自动发送 manual、keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。

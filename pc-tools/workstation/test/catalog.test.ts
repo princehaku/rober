@@ -37,7 +37,7 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
-import { createWorkstationApp, listenFailureHint, workstationListenAddress } from "../src/server/index";
+import { createWorkstationApp, listenFailureHint, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
 
 function sampleStatus(evidenceRef: string) {
   // 样例只提供 Node loader 生成 safe summary 所需字段，不模拟真实 Nav2 或现场成功。
@@ -1160,6 +1160,13 @@ describe("workstation fail-closed API contracts", () => {
   it("defaults workstation Node API to the public operator port", () => {
     // 现场默认要能从局域网访问；仍允许 HOST/PORT 环境变量在启动前覆盖。
     expect(workstationListenAddress()).toBe("http://0.0.0.0:7001");
+  });
+
+  it("defaults Robot Control summary reads to the fixed robot API address", () => {
+    // 普通首屏 summary 是只读入口；缺省 query 时必须默认连固定小车，避免现场手填地址。
+    expect(robotControlSummaryQueryBaseUrl(undefined)).toBe("http://192.168.1.11:8787");
+    expect(robotControlSummaryQueryBaseUrl("")).toBe("http://192.168.1.11:8787");
+    expect(robotControlSummaryQueryBaseUrl("http://127.0.0.1:8787")).toBe("http://127.0.0.1:8787");
   });
 
   it("formats public API port conflict with operator next steps", () => {
