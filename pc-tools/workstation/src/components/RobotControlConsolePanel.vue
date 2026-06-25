@@ -1286,6 +1286,7 @@ const plainMapVisualSummary = computed(() => {
       : "stopped";
   const radarScanOverlay = latestRadarScanOverlay(robotPose);
   const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose, radarState);
+  const radarLocalPointCount = radarLocalScanOverlay.dots.length;
   const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;
   const radarOverlayLabel = poseObserved
     ? radarStartAwaitingRefresh
@@ -1296,7 +1297,7 @@ const plainMapVisualSummary = computed(() => {
     : radarStartAwaitingRefresh
       ? "雷达已启动，位置未读到"
       : radarNeedsMapPose
-      ? `${radarState}，位置未读到`
+      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarState;
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
@@ -1312,7 +1313,9 @@ const plainMapVisualSummary = computed(() => {
       : `${radarState}，已叠在机器人位置`
     : radarStartAwaitingRefresh
       ? "雷达已启动，地图位置未读到，等待刷新确认"
-      : `${radarState}，地图位置未读到`;
+      : radarNeedsMapPose && radarLocalPointCount > 0
+        ? `${radarState}，地图位置未读到，局部轮廓 ${radarLocalPointCount} 个点等待定位`
+        : `${radarState}，地图位置未读到`;
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref

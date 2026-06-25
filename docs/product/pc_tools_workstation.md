@@ -2141,3 +2141,7 @@ camera probe、manual、Nav2、delivery、stop 或 `/cmd_vel`。
 2026-06-26 02:50 起，普通首屏点击 `启动雷达` 且固定 radar lifecycle 代理返回 `ok=true` 后，会自动追加一次只读
 `/api/robot-control/radar/scan-proof/refresh`。地图 marker 因此能尽快从 `雷达启动中/雷达已启动待刷新` 更新到真实
 `雷达已运行` 或仍需处理的读回状态。该自动刷新不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-26 04:05 起，雷达已运行但机器人 map-frame 位置未读到时，普通首屏地图 marker 会直接显示局部点数，例如
+`雷达已运行，局部点 3 个`；点云仍画成车身局部轮廓，不贴到地图坐标。该状态只消费只读 scan proof 和定位读回，
+不启动雷达、不刷新 proof、不发送 manual、keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
