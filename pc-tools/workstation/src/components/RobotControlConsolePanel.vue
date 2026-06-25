@@ -3190,6 +3190,9 @@ const plainTripGoalNextAction = computed(() => {
     return "下一步：检查或重新执行行程。";
   }
   if (plainTripPreparedBySummary.value && plainManualSafetyConfirmed.value) {
+    if (mapPreviewPending.value) {
+      return "下一步：等待地图画面刷新。";
+    }
     return plainTripCurrentRouteVisible.value ? "下一步：执行行程。" : "下一步：刷新地图画面。";
   }
   return plainManualSafetyConfirmed.value ? "下一步：检查或执行行程。" : "下一步：勾选行程前确认。";
@@ -3468,7 +3471,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return plainTripHasSucceededEvidence.value
       ? "验收卡点：行程成功记录较旧，需要重新执行本轮行程。"
       : plainTripLatestNotProvenEvidence.value ? "验收卡点：最近行程未通过，需要检查或重新执行完整行程。"
-      : plainTripPreparedBySummary.value ? (plainTripCurrentRouteVisible.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程并读到成功结果。` : `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要刷新地图画面确认图上路线。`)
+      : plainTripPreparedBySummary.value ? (mapPreviewPending.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，正在刷新地图画面，刷新完成后再执行。` : plainTripCurrentRouteVisible.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程并读到成功结果。` : `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要刷新地图画面确认图上路线。`)
         : "验收卡点：还没读到行程成功结果。";
   }
   if (!deliverySuccessReady.value) {
@@ -3571,6 +3574,9 @@ const plainTripSummary = computed(() => {
   }
   if (plainTripPreparedByRefresh.value) {
     const routeVisible = latestNavPathOverlay() !== null;
+    if (mapPreviewPending.value) {
+      return { state: "刷新中", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备；正在刷新地图画面，刷新完成后再执行图上路线。` };
+    }
     return plainManualSafetyConfirmed.value
       ? { state: "已准备", hint: routeVisible ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可执行图上路线，后端仍会复查定位和路线。` : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
       : { state: "已准备", hint: routeVisible ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
@@ -3580,6 +3586,9 @@ const plainTripSummary = computed(() => {
   }
   if (plainTripPreparedBySummary.value) {
     const routeVisible = latestNavPathOverlay() !== null;
+    if (mapPreviewPending.value) {
+      return { state: "刷新中", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备；正在刷新地图画面，刷新完成后再执行图上路线。` };
+    }
     return plainManualSafetyConfirmed.value
       ? { state: "已准备", hint: routeVisible ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可直接执行图上路线，后端仍会复查定位和路线。` : `路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
       : { state: "已准备", hint: routeVisible ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
@@ -3600,6 +3609,9 @@ const plainTripRouteWysiwygSummary = computed(() => {
   // 行程执行必须和当前地图画面绑定：看得到路线才说“执行图上路线”，看不到就提示先刷新地图。
   const routePath = latestNavPathOverlay();
   if (routePath) {
+    if (mapPreviewPending.value) {
+      return `地图画面刷新中；刷新完成后再执行这条图上路线（${routePath.coordinateLabel}）。`;
+    }
     return routePath.caption.startsWith("最近")
       ? "地图上显示的是最近路线；先准备行程，再执行新的图上路线。"
       : `执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（${routePath.coordinateLabel}）。`;
@@ -3638,6 +3650,9 @@ const plainTripRunStatus = computed(() => {
   }
   if (plainTripHasSucceededEvidence.value) {
     return "行程状态：读到旧行程成功记录；如需本轮验收，请重新执行图上路线。";
+  }
+  if (mapPreviewPending.value && plainTripPreparedBySummary.value) {
+    return `行程状态：路线已准备 ${plainTripPreparedPointCount.value} 个点，正在刷新地图画面；刷新完成后再执行图上路线。`;
   }
   if (plainTripPreparedBySummary.value && !plainTripCurrentRouteVisible.value) {
     return `行程状态：路线已准备 ${plainTripPreparedPointCount.value} 个点，但地图上还没显示；先刷新地图画面。`;
@@ -3685,6 +3700,7 @@ const canRunPlainTripExecution = computed(() => {
     && !plainTripActionPending.value
     && robotApiBaseUrl.value.trim().length > 0
     && plainManualSafetyConfirmed.value
+    && !mapPreviewPending.value
     && plainTripCurrentRouteVisible.value;
 });
 
@@ -3715,6 +3731,9 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   if (!plainManualSafetyConfirmed.value) {
     return "先勾选确认";
+  }
+  if (mapPreviewPending.value && plainTripPreparedBySummary.value) {
+    return "等待地图刷新";
   }
   if (!plainTripCurrentRouteVisible.value) {
     return plainTripPreparedBySummary.value ? "先刷新地图画面" : "先准备图上路线";

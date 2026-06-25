@@ -4863,6 +4863,98 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("blocks visible-route execution while the map preview is refreshing", async () => {
+    // 地图画面刷新中时，旧图上的路线只能看，不能立刻拿来执行，避免“图上路线”口径和当前画面不同步。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_missing",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 404,
+        status: "not_loaded",
+        goal_execution_key_values: {},
+        failure_reason: "latest_goal_execution_missing",
+        blocked_reasons: ["latest_goal_execution_missing"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+    const previewRefreshControl: { finish?: () => void } = {};
+    let delayNextPreview = false;
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/preview?") && delayNextPreview) {
+        delayNextPreview = false;
+        return new Promise((resolve) => {
+          previewRefreshControl.finish = () => resolve({
+            ok: true,
+            json: async () => fixtures["/api/robot-control/map/preview"],
+          });
+        });
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+
+    delayNextPreview = true;
+    const refreshClick = wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图画面刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，正在刷新地图画面；刷新完成后再执行图上路线。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图画面刷新。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("正在刷新地图画面，刷新完成后再执行");
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：正在刷新当前地图。");
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    const finishPreviewRefresh = previewRefreshControl.finish;
+    if (!finishPreviewRefresh) {
+      throw new Error("map preview refresh request was not captured");
+    }
+    finishPreviewRefresh();
+    await refreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+  });
+
   it("syncs latest readbacks and pre-fills delivery route material after visible-route trip execution", async () => {
     // 执行图上路线后只做只读同步和材料预填；不会自动确认送达，也不会发送手控或 cmd_vel。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
