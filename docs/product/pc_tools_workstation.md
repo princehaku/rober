@@ -1845,7 +1845,7 @@ operator report、轮速非零、LiDAR delta 和送达材料继续作为证据/�
 Nav2、keyboard pulse、delivery complete 或 `/cmd_vel`。
 
 2026-06-25 17:57 起，普通首屏“扫图覆盖”会额外显示当前画面口径：未开始记录时说明这是最近地图画面，地图记录中显示
-`地图记录中，可边扫边刷新画面。`，地图已保存后提示刷新检查覆盖效果。该提示只来自本页 map lifecycle 和只读
+`地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。`，地图已保存后提示刷新检查覆盖效果。该提示只来自本页 map lifecycle 和只读
 map preview 状态，不推断真实底盘运动、不自动刷新、不调用 map start、manual、Nav2、keyboard pulse、delivery complete
 或 `/cmd_vel`。
 

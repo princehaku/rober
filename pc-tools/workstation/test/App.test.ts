@@ -3679,7 +3679,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').text()).toBe("刷新扫图画面");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("地图记录中，可边扫边刷新画面。");
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘");
     const manualCallsBeforeKeyboardNext = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
