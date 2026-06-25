@@ -1918,6 +1918,24 @@ function keyboardWheelFeedbackPlainText(): string {
     : `；轮速 L/R=${left}/${right}，等待非零`;
 }
 
+const plainKeyboardWheelFeedbackSummary = computed(() => {
+  // 最近键盘脉冲的轮速读数要在松开后继续可见，方便现场复核连续手控是否真的带出底盘反馈。
+  const values = keyboardLastWheelFeedbackValues.value;
+  if (!values) {
+    return "";
+  }
+  const left = values.wheel_feedback_latest_raw_left ?? values.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = values.wheel_feedback_latest_raw_right ?? values.wheel_feedback_latest_right_speed ?? "not_loaded";
+  if (left === "not_loaded" && right === "not_loaded") {
+    return "";
+  }
+  const frameCount = values.wheel_feedback_nonzero_frame_count ?? values.feedback_during_motion_t1001_frame_count ?? "0";
+  const nonzero = values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true";
+  return nonzero
+    ? `键盘轮速：L/R=${left}/${right}，非零已读到 ${frameCount} 帧。`
+    : `键盘轮速：L/R=${left}/${right}，还没读到非零。`;
+});
+
 const plainKeyboardLiveStatus = computed(() => {
   // 这行只解释本地键盘循环状态，不作为任何控制 gate 或成功证据。
   if (keyboardHeldDirection.value) {
@@ -6928,6 +6946,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
+            <p v-if="plainKeyboardWheelFeedbackSummary" class="panel-note" data-testid="keyboard-wheel-feedback-summary">{{ plainKeyboardWheelFeedbackSummary }}</p>
             <p class="panel-note" data-testid="keyboard-last-stop-summary">{{ plainKeyboardLastStopSummary }}</p>
             <div class="keyboard-direction-pad" data-testid="keyboard-direction-pad">
               <button

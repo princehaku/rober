@@ -1983,6 +1983,10 @@ keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。
 L/R 结论，帮助现场判断连续手控是否真的读到 wheel feedback。该状态只消费已返回的 `/api/robot-control/base/manual`
 响应，不改变按住才动、松开即停、最小安全确认、stop 兜底或 `/cmd_vel` 禁止边界。
 
+2026-06-26 01:50 起，普通首屏键盘手控面板会在松开后继续保留一行 `键盘轮速`，例如
+`键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。`。这让 operator 停车后仍能复核刚才连续手控的底盘反馈，
+不用展开高级诊断；该行只复用最近一次键盘 manual pulse 响应，不新增任何请求或控制动作。
+
 2026-06-25 22:04 起，普通首屏送达最终确认在 `delivery_success=true` 后会明确显示成功态下一步：
 `送达已完成，可继续键盘手控或结束本轮`，并把最终确认按钮改为禁用的 `送达已完成`，避免 operator 成功后重复提交。
 该状态只消费 `/api/robot-control/delivery/complete` 或 latest 的成功读回，不自动确认送达、不跳过现场 checklist、

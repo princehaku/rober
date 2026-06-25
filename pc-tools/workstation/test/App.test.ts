@@ -3965,6 +3965,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').text()).toBe("扫图方向：前进");
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').attributes("data-state")).toBe("forward");
@@ -3990,6 +3991,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length).toBe(nav2ExecuteCallsBeforeRelease);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length).toBe(deliveryCompleteCallsBeforeRelease);
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已停止，地图画面已刷新，可以保存当前地图。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("已停止，可保存");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("stopped_fresh");
