@@ -931,6 +931,35 @@ function plainMapCoordinateTruthLabel(
   return "坐标口径：机器人位置未读到，地图上的雷达和小车位置仍待定位。";
 }
 
+function plainRadarFreshnessLabel(
+  radarState: string,
+  poseObserved: boolean,
+  radarScanOverlay: ReturnType<typeof latestRadarScanOverlay>,
+  radarLocalScanOverlay: ReturnType<typeof latestRadarLocalScanOverlay>,
+): string {
+  // 雷达点可能来自最近一次 artifact；首屏必须说清它是不是当前运行中的实时点。
+  const mapPointCount = radarScanOverlay.dots.length;
+  const localPointCount = radarLocalScanOverlay.dots.length;
+  if (radarState === "雷达已运行") {
+    if (poseObserved && mapPointCount > 0) {
+      return `雷达点口径：实时雷达 ${mapPointCount} 个已贴到地图。`;
+    }
+    if (localPointCount > 0) {
+      return `雷达点口径：实时雷达 ${localPointCount} 个只显示局部轮廓，等定位后再贴地图。`;
+    }
+    return "雷达点口径：雷达已运行，但当前还没读到点位。";
+  }
+  if (radarState === "雷达待刷新" || radarState === "刷新中") {
+    return localPointCount > 0
+      ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
+      : "雷达点口径：正在确认实时性，刷新后才显示新点位。";
+  }
+  if (localPointCount > 0) {
+    return `雷达点口径：这是最近记录 ${localPointCount} 个点，不是实时雷达。`;
+  }
+  return "雷达点口径：未读到可显示的实时雷达点。";
+}
+
 const plainMapVisualSummary = computed(() => {
   // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
   const proof = robotSummary.value?.o3_proof_summary;
@@ -996,6 +1025,7 @@ const plainMapVisualSummary = computed(() => {
     radarSweepAria,
     radarScanDots: radarScanOverlay.dots,
     radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : radarScanOverlay.label,
+    radarFreshnessLabel: plainRadarFreshnessLabel(radarState, poseObserved, radarScanOverlay, radarLocalScanOverlay),
     coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath, radarState),
     showRadarScanPoints: showRadarSweep && radarScanOverlay.dots.length > 0,
     radarScanAria: `雷达点位，${radarScanOverlay.label}`,
@@ -5859,6 +5889,7 @@ onBeforeUnmount(() => {
               <span class="muted">{{ plainMapVisualSummary.mapRefLabel }}</span>
               <span v-if="plainMapVisualSummary.routePathLabel" class="muted" data-testid="plain-map-route-label">{{ plainMapVisualSummary.routePathLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
+              <span class="muted" data-testid="plain-map-radar-freshness-label">{{ plainMapVisualSummary.radarFreshnessLabel }}</span>
               <span class="muted" data-testid="plain-map-coordinate-truth-label">{{ plainMapVisualSummary.coordinateTruthLabel }}</span>
             </div>
           </div>

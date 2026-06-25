@@ -1864,3 +1864,8 @@ map preview 状态，不推断真实底盘运动、不自动刷新、不调用 m
 自动扫图未开放，当前只支持人工按住扫图流程 `开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图`。
 该提示只改变文案和首屏误操作预期，不打开自动扫图按钮，不调用 map start、manual、Nav2、keyboard pulse、
 delivery complete 或 `/cmd_vel`。
+
+2026-06-25 22:35 起，普通首屏地图 caption 新增 `雷达点口径`：雷达运行且有地图位姿时显示“实时雷达已贴到地图”，
+雷达运行但缺地图位姿时显示“实时雷达只显示局部轮廓，等定位后再贴地图”，雷达已停但仍有 scan preview 时显示
+“这是最近记录，不是实时雷达”。该提示只消费现有 summary/map preview，不刷新雷达、不启动雷达、不发送
+manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。
