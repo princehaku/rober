@@ -1505,8 +1505,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const runtimeLimit = policy?.max_runtime_s ?? 60;
   return {
     state: "未满足",
-    buttonLabel: boundary?.free_roam_autonomy_label ?? "自动扫图（未开放）",
-    disabled: true,
+    buttonLabel: autonomyLocked ? "按步骤人工扫图" : (boundary?.free_roam_autonomy_label ?? "自动扫图"),
+    // 自动扫图没解锁时按钮只做流程导航；真正自动发车入口仍等待上车端安全状态机和 HIL 证据。
+    disabled: !autonomyLocked,
     hint: autonomyLocked
       ? manualFallbackHint
       : blockers.length
@@ -6354,7 +6355,7 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainFreeRoamAutonomyReadiness.state">{{ plainFreeRoamAutonomyReadiness.state }}</span>
             </div>
             <div class="panel-action-row wrap-actions">
-              <button type="button" class="secondary compact-stop" :disabled="plainFreeRoamAutonomyReadiness.disabled" data-testid="plain-free-roam-auto-start">
+              <button type="button" class="secondary compact-stop" :disabled="plainFreeRoamAutonomyReadiness.disabled" data-testid="plain-free-roam-auto-start" @click="focusPlainFreeRoamNextTarget">
                 {{ plainFreeRoamAutonomyReadiness.buttonLabel }}
               </button>
               <span class="muted">{{ plainFreeRoamAutonomyReadiness.policyText }}</span>

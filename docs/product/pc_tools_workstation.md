@@ -1982,3 +1982,8 @@ L/R 结论，帮助现场判断连续手控是否真的读到 wheel feedback。�
 `送达已完成，可继续键盘手控或结束本轮`，并把最终确认按钮改为禁用的 `送达已完成`，避免 operator 成功后重复提交。
 该状态只消费 `/api/robot-control/delivery/complete` 或 latest 的成功读回，不自动确认送达、不跳过现场 checklist、
 不执行 Nav2、不发送 manual/keyboard pulse/stop 或 `/cmd_vel`。
+
+2026-06-25 22:09 起，普通首屏“自动扫图准备”在上车端自动扫图仍锁定时，主按钮改为 `按步骤人工扫图`。
+点击只聚焦扫地式建图当前下一步（安全确认、开始记录、启用键盘、停止或保存），不会启动自动扫图、不会调用
+map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。真实自动扫图按钮仍等待上车端安全状态机和 HIL
+证据开放；当前这一步只是把“像扫地机一样扫图”的人工流程从死按钮改成可操作向导。

@@ -3320,6 +3320,7 @@ describe("App", () => {
   it("renders Robot Control V1 by default with Robot API proxy and locked command boundary", async () => {
     // 首屏默认就是 Robot Control；测试只验证 Node proxy 摘要和 locked UI，不触发任何真实控制 endpoint。
     const mockedFetch = stubWorkstationFetch();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const wrapper = mount(App);
     await flushPromises();
@@ -3380,8 +3381,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("前方障碍");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("已满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("真车低速放行");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图（未开放）");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("按步骤人工扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+    const callsBeforeAutoGuide = mockedFetch.mock.calls.length;
+    const focusCallsBeforeAutoGuide = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeAutoGuide);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeAutoGuide);
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid="plain-free-roam-steps"] .plain-progress-row')).toHaveLength(5);
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("安全确认");
