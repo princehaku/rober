@@ -2337,3 +2337,7 @@ WebRTC 画面正在打开或关闭时，普通按钮显示 `等待画面稳定` 
 2026-06-26 07:15 起，普通首屏执行图上路线期间，`行程操作` 区会就地显示红色 `行程停止（随时可点）`。
 点击后只调用已有固定 `/api/robot-control/base/stop` 兜底代理，pending 时显示 `停止中`，不新增 Nav2 cancel、manual/keyboard pulse、
 delivery complete 或 `/cmd_vel` 调用。原移动/导航卡片的 `停止` 按钮仍保留，行程区按钮只是让执行路线时的接管动作离状态更近。
+
+2026-06-26 07:20 起，行程执行中点击 `行程停止（随时可点）` 后，地图终点 marker、地图行程 caption、行程状态和行程进度都会同步切到
+`行程停止中` 或 `停止已发送`。该状态只表达 base stop 兜底请求链路，不宣称 Nav2 action 已取消；Nav2 执行最终结果仍以后端
+`/api/robot-control/nav2/goal/execute` 返回为准。

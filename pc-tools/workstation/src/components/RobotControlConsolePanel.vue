@@ -91,6 +91,8 @@ const navGoalExecutionResult = ref<RobotControlNavGoalExecutionResponse | null>(
 const navGoalExecutionLatestResult = ref<RobotControlNavGoalExecutionLatestResponse | null>(null);
 const navGoalExecutionPendingGoal = ref<MapNavGoal | null>(null);
 const navGoalExecutionAttemptGoal = ref<MapNavGoal | null>(null);
+const plainTripStopRequestedDuringExecution = ref(false);
+const plainTripStopSettledDuringExecution = ref(false);
 const deliveryLatestResult = ref<RobotControlDeliveryLatestResponse | null>(null);
 const deliveryGapCheckResult = ref<RobotControlDeliveryGapCheckResponse | null>(null);
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
@@ -1115,11 +1117,12 @@ function latestNavGoalOverlay() {
     if (!style) {
       return null;
     }
+    const stopState = plainTripStopOverlayState();
     return {
-      label: "行程中",
-      state: "执行中",
+      label: stopState.label,
+      state: stopState.state,
       style,
-      aria: `正在执行图上路线，目标地图坐标 x=${pendingGoal.goal_x.toFixed(2)}, y=${pendingGoal.goal_y.toFixed(2)}`,
+      aria: `${stopState.ariaPrefix}，目标地图坐标 x=${pendingGoal.goal_x.toFixed(2)}, y=${pendingGoal.goal_y.toFixed(2)}`,
     };
   }
   if (navGoalExecutionLatestPending.value) {
@@ -3551,11 +3554,34 @@ function plainTripPendingRouteText(): string {
   return `目标 x=${goal.goal_x.toFixed(2)}, y=${goal.goal_y.toFixed(2)}${routeText}`;
 }
 
+function plainTripStopOverlayState(): { label: string; state: string; ariaPrefix: string; actionText: string } {
+  // 行程 stop 是 base stop 兜底，不代表 Nav2 action 已取消；地图和状态只表达 stop 请求链路。
+  if (!plainTripStopRequestedDuringExecution.value) {
+    return { label: "行程中", state: "执行中", ariaPrefix: "正在执行图上路线", actionText: "正在执行图上路线" };
+  }
+  if (manualCommandPending.value) {
+    return { label: "行程停止中", state: "停止中", ariaPrefix: "正在发送行程停止请求", actionText: "正在发送行程停止请求" };
+  }
+  const stopResult = manualCommandResult.value?.command_kind === "stop" ? manualCommandResult.value : null;
+  const stopFailed = stopResult && (stopResult.proxy_status === "command_failed" || stopResult.proxy_status === "command_rejected" || stopResult.status === "blocked");
+  if (stopResult && !stopFailed) {
+    return { label: "停止已发送", state: "停止已发送", ariaPrefix: "行程停止请求已发送", actionText: "行程停止请求已发送" };
+  }
+  if (stopResult) {
+    return { label: "停止失败", state: "停止失败", ariaPrefix: "行程停止请求失败", actionText: "行程停止请求失败，人在旁边接管" };
+  }
+  if (plainTripStopSettledDuringExecution.value) {
+    return { label: "停止已发送", state: "停止已发送", ariaPrefix: "行程停止请求已发送", actionText: "行程停止请求已发送" };
+  }
+  return { label: "停止已请求", state: "停止已请求", ariaPrefix: "行程停止已请求", actionText: "行程停止已请求" };
+}
+
 function plainMapTripExecutionLabel(): string {
   // 地图 caption 要短，只表达当前执行结果；详细下一步放在行程卡。
   if (navGoalExecutionPending.value) {
     const targetText = plainTripPendingRouteText();
-    return targetText ? `行程执行：正在执行图上路线（${targetText}）` : "行程执行：正在执行图上路线";
+    const stopState = plainTripStopOverlayState();
+    return targetText ? `行程执行：${stopState.actionText}（${targetText}）` : `行程执行：${stopState.actionText}`;
   }
   if (navGoalExecutionLatestPending.value) {
     return "行程执行：正在读取最近行程结果";
@@ -3588,7 +3614,9 @@ const plainTripExecutionProgress = computed(() => {
   // 这行只解释已有执行证据，不会触发读取、执行、送达确认或任何底盘命令。
   if (navGoalExecutionPending.value) {
     const targetText = plainTripPendingRouteText();
-    return targetText ? `行程进度：正在执行图上路线，${targetText}；人在旁边准备停止。` : "行程进度：正在执行图上路线，人在旁边准备停止。";
+    const stopState = plainTripStopOverlayState();
+    const suffix = stopState.state === "执行中" ? "人在旁边准备停止。" : "人在旁边接管，等待行程结果返回。";
+    return targetText ? `行程进度：${stopState.actionText}，${targetText}；${suffix}` : `行程进度：${stopState.actionText}，${suffix}`;
   }
   if (navGoalExecutionLatestPending.value) {
     return "行程进度：正在读取最近行程结果，返回前不把旧结果当作当前结论。";
@@ -3825,7 +3853,9 @@ const plainTripSummary = computed(() => {
   // 普通首屏只说“行程”，不把 Nav2、goal 或 proof 术语放到默认界面。
   if (navGoalExecutionPending.value) {
     const targetText = plainTripPendingRouteText();
-    return { state: "执行中", hint: targetText ? `正在执行图上路线，${targetText}；人在旁边准备停止。` : "正在执行行程；人在旁边准备停止。" };
+    const stopState = plainTripStopOverlayState();
+    const suffix = stopState.state === "执行中" ? "人在旁边准备停止。" : "人在旁边接管，等待行程结果返回。";
+    return { state: stopState.state, hint: targetText ? `${stopState.actionText}，${targetText}；${suffix}` : `${stopState.actionText}；${suffix}` };
   }
   if (nav2RefreshPending.value) {
     return { state: "准备中", hint: "正在准备行程；不会发车。" };
@@ -3904,7 +3934,9 @@ const plainTripRunStatus = computed(() => {
   // 行程状态只解释当前 UI gate；真正执行仍必须显式点击按钮并由后端复查定位和路线。
   if (navGoalExecutionPending.value) {
     const targetText = plainTripPendingRouteText();
-    return targetText ? `行程状态：正在执行图上路线，${targetText}；人在旁边准备停止。` : "行程状态：正在执行图上路线，人在旁边准备停止。";
+    const stopState = plainTripStopOverlayState();
+    const suffix = stopState.state === "执行中" ? "人在旁边准备停止。" : "人在旁边接管，等待行程结果返回。";
+    return targetText ? `行程状态：${stopState.actionText}，${targetText}；${suffix}` : `行程状态：${stopState.actionText}，${suffix}`;
   }
   if (nav2RefreshPending.value) {
     return "行程状态：正在准备路线，不会发车。";
@@ -6034,6 +6066,8 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
   };
   navGoalExecutionAttemptGoal.value = goalRequest;
   navGoalExecutionPendingGoal.value = goalRequest;
+  plainTripStopRequestedDuringExecution.value = false;
+  plainTripStopSettledDuringExecution.value = false;
   navGoalExecutionPending.value = true;
   try {
     navGoalExecutionResult.value = await postRobotControlNav2GoalExecute(robotApiBaseUrl.value, {
@@ -6049,6 +6083,8 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
   } finally {
     navGoalExecutionPending.value = false;
     navGoalExecutionPendingGoal.value = null;
+    plainTripStopRequestedDuringExecution.value = false;
+    plainTripStopSettledDuringExecution.value = false;
     await refreshConsole();
   }
 }
@@ -6072,6 +6108,18 @@ async function runPlainTripExecution(): Promise<void> {
   if (deliveryNav2GoalReady.value) {
     await loadDeliveryLatest();
     await focusPlainDeliveryStatusPanel();
+  }
+}
+
+async function stopPlainTripExecution(): Promise<void> {
+  // 行程区 stop 只做就近兜底显示；实际请求仍复用统一 base stop，不声明 Nav2 action 已取消。
+  if (navGoalExecutionPending.value) {
+    plainTripStopRequestedDuringExecution.value = true;
+    plainTripStopSettledDuringExecution.value = false;
+  }
+  await sendStop();
+  if (navGoalExecutionPending.value && plainTripStopRequestedDuringExecution.value && !manualCommandPending.value) {
+    plainTripStopSettledDuringExecution.value = true;
   }
 }
 
@@ -7998,7 +8046,7 @@ onBeforeUnmount(() => {
               <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="!canLoadNavGoalExecutionLatest" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
                 {{ plainTripLatestButtonLabel }}
               </button>
-              <button v-if="navGoalExecutionPending" type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-trip-stop" @click="sendStop">
+              <button v-if="navGoalExecutionPending" type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-trip-stop" @click="stopPlainTripExecution">
                 {{ plainTripStopButtonLabel }}
               </button>
             </div>
