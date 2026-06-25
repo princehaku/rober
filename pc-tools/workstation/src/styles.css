@@ -858,6 +858,7 @@ h3 {
 .plain-map-free-roam-action-marker[data-state="saved_refreshing"],
 .plain-map-free-roam-action-marker[data-state="stopped_needs_refresh"],
 .plain-map-free-roam-action-marker[data-state="auto_starting"],
+.plain-map-free-roam-action-marker[data-state="auto_stop_queued"],
 .plain-map-free-roam-action-marker[data-state="auto_stopping"],
 .plain-map-free-roam-action-marker[data-state="auto_refreshing"] {
   border-color: #d5d2a9;
