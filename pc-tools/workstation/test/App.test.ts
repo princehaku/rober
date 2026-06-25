@@ -4271,7 +4271,7 @@ describe("App", () => {
     expect(startMarker.attributes("style")).toContain("left: 10%");
     expect(startMarker.attributes("style")).toContain("top: 90%");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近路线 3/15 个点按地图坐标显示，雷达不贴图。");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
     expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').exists()).toBe(false);
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
@@ -4372,7 +4372,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("已送达");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
     expect(marker.text()).toBe("已送达");
@@ -5258,6 +5258,12 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toBe("已到达，下一步准备送达材料，地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，可以准备送达材料。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("下一步准备送达材料");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("已完成。");
   });
 
   it("keeps the attempted visible route goal on the map when trip execution fails without goal coordinates", async () => {

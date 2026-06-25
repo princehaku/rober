@@ -2123,6 +2123,11 @@ base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd
 Nav2 execution evidence 时，从 `已到达` 提升为 `已送达`。该 marker 只消费已读到的 Nav2 latest/execute 和
 delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。
 
+2026-06-26 03:35 起，普通首屏 Nav2 图上路线执行完成且读到本轮 feedback 样本后，地图 caption 会显示
+`行程执行：已到达，反馈 N 次，准备送达材料`，终点 marker 的可访问说明也会提示“下一步准备送达材料”。该提示只同步
+execute/latest readback 到地图 WYSIWYG 状态，不自动准备材料、不提交送达、不再次执行 Nav2、不发送 manual/keyboard pulse、
+stop 或 `/cmd_vel`。
+
 2026-06-26 02:35 起，普通首屏实时画面在 WebRTC video track 已到达但浏览器 `<video>` 还没有可绘制帧时，显示
 `等待画面` 和“视频已接入，等待浏览器绘出第一帧”，不再提前显示 `已打开`。只有本地 video 元素读到尺寸/readyState
 或 frame callback 后，才进入已打开/画面可见/画面偏暗判断。该状态只消费浏览器本地 video 诊断，不调用

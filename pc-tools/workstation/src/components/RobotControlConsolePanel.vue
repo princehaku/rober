@@ -933,7 +933,7 @@ function latestNavGoalOverlay() {
   const state = complete && !stale && deliverySuccessReady.value
     ? "已送达"
     : complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : succeeded ? "到达缺反馈" : "行程未通过";
-  const deliveryText = state === "已送达" ? "，delivery gate 已确认" : "";
+  const deliveryText = state === "已送达" ? "，delivery gate 已确认" : state === "已到达" ? "，下一步准备送达材料" : "";
   return {
     label: state,
     state,
@@ -2882,7 +2882,7 @@ function plainMapTripExecutionLabel(): string {
     return "";
   }
   if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
-    return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次`;
+    return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，准备送达材料`;
   }
   if (nav2GoalSucceeded(values) && evidenceIsStale(values)) {
     return "行程执行：旧到达记录";
