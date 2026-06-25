@@ -10914,6 +10914,127 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).includes("/api/robot-control/camera/peers/peer-preview-001/close") && options?.method === "POST")).toBe(true);
   });
 
+  it("shows camera closing state while peer cleanup is still pending", async () => {
+    // 关闭画面时本地 video 会马上清空，但远端 peer close 没返回前，首屏要明确显示关闭中。
+    const baseFetch = stubWorkstationFetch();
+    let resolvePeerClose!: (value: { ok: boolean; status: number; json: () => Promise<unknown> }) => void;
+    const peerCloseResponse = new Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>((resolve) => {
+      resolvePeerClose = resolve;
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).includes("/api/robot-control/camera/peers/peer-preview-001/close")) {
+        return peerCloseResponse;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    class FakeMediaStream {
+      tracks: Array<{ kind: string; readyState: string; stop: () => void }>;
+
+      constructor(tracks: Array<{ kind: string; readyState: string; stop: () => void }>) {
+        this.tracks = tracks;
+      }
+
+      getTracks() {
+        return this.tracks;
+      }
+    }
+
+    class FakePeerConnection {
+      iceConnectionState = "new";
+      iceGatheringState = "complete";
+      localDescription: { type: "offer"; sdp: string } | null = null;
+      remoteDescription: { type: "answer"; sdp: string } | null = null;
+      oniceconnectionstatechange: (() => void) | null = null;
+      ontrack: ((
+        event: {
+          track: { kind: string; readyState: string; stop: () => void; onended: (() => void) | null };
+          streams: FakeMediaStream[];
+        },
+      ) => void) | null = null;
+
+      addTransceiver() {
+        return undefined;
+      }
+
+      async createOffer() {
+        return { type: "offer" as const, sdp: "v=0\r\ns=local-offer\r\n" };
+      }
+
+      async setLocalDescription(description: { type: "offer"; sdp: string }) {
+        this.localDescription = description;
+      }
+
+      async setRemoteDescription(description: { type: "answer"; sdp: string }) {
+        const videoTrack = {
+          kind: "video",
+          readyState: "live",
+          stop: () => undefined,
+          onended: null,
+        };
+        this.remoteDescription = description;
+        this.iceConnectionState = "connected";
+        this.oniceconnectionstatechange?.();
+        this.ontrack?.({
+          track: videoTrack,
+          streams: [new FakeMediaStream([videoTrack])],
+        });
+      }
+
+      getReceivers() {
+        return [];
+      }
+
+      close() {
+        this.iceConnectionState = "closed";
+        this.oniceconnectionstatechange?.();
+      }
+    }
+
+    vi.stubGlobal("MediaStream", FakeMediaStream as unknown as typeof MediaStream);
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection as unknown as typeof RTCPeerConnection);
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("等待画面");
+    expect(wrapper.find('[data-testid="robot-camera-preview-video"]').element).toHaveProperty("srcObject");
+
+    const stopClick = wrapper.findAll("button").find((button) => button.text() === "关闭画面")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("关闭中");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("正在关闭实时画面，等待上位机释放视频会话。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在关闭实时画面，等待上位机释放视频会话。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-video"]').element).toHaveProperty("srcObject", null);
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).includes("/api/robot-control/camera/peers/peer-preview-001/close") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    resolvePeerClose({
+      ok: true,
+      status: 200,
+      json: async () => fixtures["/api/robot-control/camera/peers/peer-preview-001/close"],
+    });
+    await stopClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
+    expect(wrapper.find("details").text()).toContain("peer_closed:closed");
+  });
+
   it("marks near-black preview as 画面偏暗 instead of optimistic 已打开", async () => {
     // 只要本地像素采样接近纯黑，就必须给普通用户更真实的“画面偏暗”而不是“已打开”。
     vi.useFakeTimers();

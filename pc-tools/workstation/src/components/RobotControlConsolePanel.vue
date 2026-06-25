@@ -402,11 +402,14 @@ function browserVideoFrameDrawn(): boolean {
   return videoElementFrameStatus.value === "frame_callback_observed" || videoElementFrameStatus.value === "visible_frame_ready";
 }
 
-function summarizeCameraState(): { state: "未打开" | "连接中" | "等待画面" | "已打开" | "画面可见" | "画面偏暗" | "失败"; hint: string } {
+function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中" | "等待画面" | "已打开" | "画面可见" | "画面偏暗" | "失败"; hint: string } {
   // 摄像头首屏只暴露普通用户能理解的结论，不泄露 peer / ICE / SDP / canvas 细节。
   const sourceFailureHint = cameraSourcePlainFailureHint();
   const camera = robotSummary.value?.readback_summary.camera;
   const cameraOnline = camera?.status === "ready" || camera?.devices_status === "loaded";
+  if (previewStopPending.value) {
+    return { state: "关闭中", hint: "正在关闭实时画面，等待上位机释放视频会话。" };
+  }
   switch (previewStatus.value) {
     case "starting_local_peer":
     case "connecting_offer_posted":
@@ -648,6 +651,8 @@ const plainCameraWysiwygStatus = computed(() => {
       return `画面状态：视频已接入，等待浏览器绘出第一帧。${frameTruth}`;
     case "连接中":
       return `画面状态：正在连接真实画面。${frameTruth}`;
+    case "关闭中":
+      return "画面状态：正在关闭实时画面，等待上位机释放视频会话。";
     case "失败":
       return `画面状态：${cameraSummary.value.hint}`;
     default:
