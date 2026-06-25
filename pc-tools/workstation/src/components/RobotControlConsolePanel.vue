@@ -1690,6 +1690,7 @@ const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
 ));
+const mapWysiwygRefreshPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
 const canStartPlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
   && !loading.value
@@ -1706,13 +1707,20 @@ const freeRoamAutonomySaveBlocked = computed(() => (
 ));
 const freeRoamMapWysiwygPending = computed(() => (
   // 自动扫图 start 必须等地图画面/状态刷新结束，不能拿旧图当本轮所见即所得证据。
-  mapPreviewPending.value || mapRefreshPending.value
+  mapWysiwygRefreshPending.value
+));
+const canSaveMapLifecycle = computed(() => (
+  !loading.value
+  && !mapLifecyclePending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
 ));
 const canSavePlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
   && plainFreeRoamMapPreviewFreshForSession.value
   && !freeRoamAutonomySaveBlocked.value
+  && !freeRoamMapWysiwygPending.value
   && !loading.value
   && !mapLifecyclePending.value
   && robotApiBaseUrl.value.trim().length > 0
@@ -1793,6 +1801,8 @@ const plainFreeRoamMappingSaveLabel = computed(() => (
     ? "保存中"
     : freeRoamAutonomySaveBlocked.value
       ? "先停止自动扫图"
+    : freeRoamMapWysiwygPending.value && mapRuntimeStarted.value
+      ? "等待地图刷新"
     : mapRuntimeStarted.value && !plainFreeRoamMapPreviewFreshForSession.value
       ? "先刷新画面"
       : "保存当前地图"
@@ -6408,6 +6418,9 @@ async function startMapRuntime(): Promise<void> {
 
 async function saveMap(): Promise<void> {
   // 保存只调用固定 /api/map/save；普通入口不暴露 map_name/artifact_path 输入。
+  if (mapWysiwygRefreshPending.value) {
+    return;
+  }
   await runMapLifecycleAction("save", () => postRobotControlMapSave(robotApiBaseUrl.value, mapLifecycleRequestBody()));
 }
 
@@ -7415,7 +7428,7 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="startMapRuntime">
               重新建图
             </button>
-            <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="saveMap">
+            <button type="button" :disabled="!canSaveMapLifecycle" @click="saveMap">
               保存地图
             </button>
             <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>
@@ -8131,7 +8144,7 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
               地图列表
             </button>
-            <button class="secondary" type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="saveMap">
+            <button class="secondary" type="button" :disabled="!canSaveMapLifecycle" @click="saveMap">
               保存地图
             </button>
             <button class="secondary" type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="startMapRuntime">
