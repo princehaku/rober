@@ -1231,9 +1231,11 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label: "扫图移动中", state: "driving", style, aria: `正在${keyboardDirectionPlainLabel.value}扫图，${keyboardForwardedPulseProgressText.value}${wheelAria}${locatedSuffix}` };
   }
   if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("stop_sent")) {
+    const stopLabelSuffix = keyboardLastStopMapSuffix();
+    const stopAriaSuffix = keyboardLastStopMapAria();
     return plainFreeRoamMapPreviewFreshForSession.value
-      ? { label: "已停止，可保存", state: "stopped_fresh", style, aria: `扫图已停止，地图画面已刷新，可以保存${locatedSuffix}` }
-      : { label: "已停止，待刷新", state: "stopped_needs_refresh", style, aria: `扫图已停止，需要刷新地图画面${locatedSuffix}` };
+      ? { label: `已停可保存${stopLabelSuffix}`, state: "stopped_fresh", style, aria: `扫图已停止${stopAriaSuffix}，地图画面已刷新，可以保存${locatedSuffix}` }
+      : { label: `已停待刷新${stopLabelSuffix}`, state: "stopped_needs_refresh", style, aria: `扫图已停止${stopAriaSuffix}，需要刷新地图画面${locatedSuffix}` };
   }
   if (mapRuntimeStarted.value && keyboardControlArmed.value && canUseKeyboardControl.value) {
     return { label: "键盘已启用", state: "armed", style, aria: `键盘扫图已启用，按住方向键才会移动${locatedSuffix}` };
@@ -1988,6 +1990,27 @@ function keyboardWheelFeedbackMapSuffix(): string {
   }
   const nonzero = values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true";
   return nonzero ? "，轮速非零" : "，轮速待非零";
+}
+
+function keyboardLastStopMapSuffix(): string {
+  // 松开后地图 marker 继续保留上次方向，方便现场把“已停”与刚才的按住动作对上。
+  if (keyboardLastDirection.value === "not_loaded") {
+    return "";
+  }
+  return `：${manualDirectionPlainLabel(keyboardLastDirection.value)}${keyboardWheelFeedbackMapSuffix()}`;
+}
+
+function keyboardLastStopMapAria(): string {
+  // aria 里保留停止原因和 L/R，地图可见信息与键盘状态行保持一致。
+  if (keyboardLastDirection.value === "not_loaded") {
+    return "";
+  }
+  const direction = `，上次方向${manualDirectionPlainLabel(keyboardLastDirection.value)}`;
+  const reason = keyboardLastStopReason.value && keyboardLastStopReason.value !== "not_loaded"
+    ? `，停止原因${keyboardStopReasonPlainLabel(keyboardLastStopReason.value)}`
+    : "";
+  const wheel = keyboardWheelFeedbackPlainText().replace(/^；/, "，");
+  return `${direction}${reason}${wheel}`;
 }
 
 const plainKeyboardWheelFeedbackSummary = computed(() => {

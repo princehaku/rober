@@ -4016,8 +4016,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已停止，地图画面已刷新，可以保存当前地图。");
     expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("已停止，可保存");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("已停可保存：前进，轮速非零");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("stopped_fresh");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("扫图已停止，上次方向前进，停止原因松开屏幕方向键，轮速 L/R=0.07/0.08，非零已读到，地图画面已刷新，可以保存，机器人地图位置未读到，标记不代表坐标");
     const originalFetch = mockedFetch.getMockImplementation();
     const saveControl: { finish?: () => void } = {};
     const mapSaveResponse = fixtures["/api/robot-control/map/save"] as Record<string, unknown>;
