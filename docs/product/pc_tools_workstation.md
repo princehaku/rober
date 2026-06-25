@@ -1962,3 +1962,8 @@ runtime artifact 的 `decision.state/reason/stop_required` 翻译为 `门禁锁�
 `原地找新覆盖`、`已完成并要求停止` 等普通文案，同时明确 `节点只写记录，不发布运动` 或运动发布边界。
 它只让自动扫图状态机所见即所得，不开放自动扫图按钮，不提交 delivery complete，不发送 manual/keyboard pulse/stop
 或 `/cmd_vel`。
+
+2026-06-25 21:44 起，普通首屏地图画面也叠加只读 `自动扫图` runtime 标记：例如 `自动扫图：避障换向`、
+`自动扫图：低速直行`、`自动扫图：找新覆盖`。有 map-frame 机器人位姿时标记贴近小车；没有位姿时固定在地图角落，
+并明确“不代表坐标”。该标记只把上车端状态机最近判断叠到地图上，不生成路线、不启动自动扫图、不发送 manual/
+keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。

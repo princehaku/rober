@@ -1013,6 +1013,35 @@ function plainRadarFreshnessLabel(
   return "雷达点口径：未读到可显示的实时雷达点。";
 }
 
+function freeRoamRuntimeMapMarker(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
+  // 自动扫图 runtime 标记只表达上车端状态机判断；缺地图位姿时固定角落展示，不能冒充真实坐标。
+  const runtime = robotSummary.value?.safe_command_boundary.free_roam_autonomy_runtime;
+  if (!runtime || runtime.status !== "loaded") {
+    return null;
+  }
+  const stateLabels: Record<string, string> = {
+    locked: "门禁锁定",
+    ready: "等待启动",
+    running: "低速直行",
+    avoiding: "避障换向",
+    turning_for_coverage: "找新覆盖",
+    stopping: "停止中",
+    completed: "已完成",
+  };
+  const label = stateLabels[runtime.state] ?? runtime.state;
+  const stopSuffix = runtime.stop_required ? "，要求停止" : "";
+  return {
+    label: `自动扫图：${label}`,
+    state: runtime.state,
+    style: robotPose
+      ? robotPose.style
+      : { left: "12px", top: "12px" },
+    aria: robotPose
+      ? `自动扫图状态 ${label}${stopSuffix}，贴近机器人当前位置`
+      : `自动扫图状态 ${label}${stopSuffix}，机器人地图位置未读到，标记不代表坐标`,
+  };
+}
+
 const plainMapVisualSummary = computed(() => {
   // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
   const proof = robotSummary.value?.o3_proof_summary;
@@ -1022,6 +1051,7 @@ const plainMapVisualSummary = computed(() => {
   const routePath = latestNavPathOverlay();
   const robotPose = latestRobotPoseOverlay();
   const freeRoamSweepPlan = latestFreeRoamSweepPlanOverlay(robotPose);
+  const freeRoamRuntimeMarker = freeRoamRuntimeMapMarker(robotPose);
   const mapObserved = proof?.map_once_observed === true
     || mapReadback.map_once_observed === "true"
     || mapReadback.latest_map_once_observed === "true";
@@ -1128,6 +1158,11 @@ const plainMapVisualSummary = computed(() => {
     freeRoamSweepPlanLabel: freeRoamSweepPlan?.label ?? "",
     showFreeRoamSweepStart: freeRoamSweepPlan?.showStart ?? false,
     freeRoamSweepStartStyle: freeRoamSweepPlan?.startStyle ?? {},
+    showFreeRoamRuntimeMarker: Boolean(freeRoamRuntimeMarker),
+    freeRoamRuntimeMarkerLabel: freeRoamRuntimeMarker?.label ?? "",
+    freeRoamRuntimeMarkerState: freeRoamRuntimeMarker?.state ?? "",
+    freeRoamRuntimeMarkerStyle: freeRoamRuntimeMarker?.style ?? {},
+    freeRoamRuntimeMarkerAria: freeRoamRuntimeMarker?.aria ?? "",
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -6155,6 +6190,7 @@ onBeforeUnmount(() => {
                 >{{ marker.label }}</span>
                 <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamSweepStart" class="plain-map-free-roam-start-marker" data-testid="plain-map-free-roam-start-marker" :style="plainMapVisualSummary.freeRoamSweepStartStyle" aria-label="扫图草图从机器人当前位置接入">扫图起点</span>
+                <span v-if="plainMapVisualSummary.showFreeRoamRuntimeMarker" class="plain-map-free-roam-runtime-marker" data-testid="plain-map-free-roam-runtime-marker" :data-state="plainMapVisualSummary.freeRoamRuntimeMarkerState" :style="plainMapVisualSummary.freeRoamRuntimeMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamRuntimeMarkerAria">{{ plainMapVisualSummary.freeRoamRuntimeMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">
                   <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.15" />

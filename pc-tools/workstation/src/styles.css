@@ -603,7 +603,8 @@ h3 {
 .plain-map-radar-marker,
 .plain-map-route-endpoint-marker,
 .plain-map-route-goal-marker,
-.plain-map-free-roam-start-marker {
+.plain-map-free-roam-start-marker,
+.plain-map-free-roam-runtime-marker {
   position: absolute;
   z-index: 3;
   border: 1px solid #99a7b7;
@@ -793,6 +794,34 @@ h3 {
   background: #fff4df;
   color: #6c4610;
   box-shadow: 0 2px 8px rgba(67, 48, 18, 0.16);
+}
+
+.plain-map-free-roam-runtime-marker {
+  padding: 5px 8px;
+  border-color: #d2b26f;
+  background: #fff9e7;
+  color: #62480c;
+  box-shadow: 0 2px 8px rgba(67, 48, 18, 0.16);
+}
+
+.plain-map-free-roam-runtime-marker[data-state="running"] {
+  border-color: #9fd4b3;
+  background: #f0fbf4;
+  color: #176039;
+}
+
+.plain-map-free-roam-runtime-marker[data-state="avoiding"],
+.plain-map-free-roam-runtime-marker[data-state="turning_for_coverage"] {
+  border-color: #d5d2a9;
+  background: #fbf8e8;
+  color: #6a5710;
+}
+
+.plain-map-free-roam-runtime-marker[data-state="locked"],
+.plain-map-free-roam-runtime-marker[data-state="stopping"] {
+  border-color: #d8adb0;
+  background: #fff1f2;
+  color: #7c2d35;
 }
 
 .plain-map-route-endpoint-marker {
