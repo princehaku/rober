@@ -894,6 +894,28 @@ function plainRouteMapCaption(routePath: ReturnType<typeof latestNavPathOverlay>
   return "";
 }
 
+function plainMapCoordinateTruthLabel(
+  poseObserved: boolean,
+  radarScanOverlay: ReturnType<typeof latestRadarScanOverlay>,
+  radarLocalScanOverlay: ReturnType<typeof latestRadarLocalScanOverlay>,
+  routePath: ReturnType<typeof latestNavPathOverlay>,
+): string {
+  // 所见即所得的核心是把“贴在地图坐标”和“只显示局部轮廓”说清楚，避免误把局部雷达当地图定位。
+  if (poseObserved) {
+    const scanText = radarScanOverlay.dots.length > 0 ? `雷达点 ${radarScanOverlay.dots.length} 个已贴到地图` : "雷达点未贴图";
+    const routeText = routePath ? `路线 ${routePath.displayedCount}/${routePath.totalCount} 个点已贴到地图` : "路线未显示";
+    return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
+  }
+  if (radarLocalScanOverlay.dots.length > 0) {
+    const routeText = routePath ? `路线 ${routePath.displayedCount}/${routePath.totalCount} 个点仍按地图坐标显示` : "路线未显示";
+    return `坐标口径：机器人位置未读到，雷达只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点，不贴到地图；${routeText}。`;
+  }
+  if (routePath) {
+    return `坐标口径：机器人位置未读到，路线 ${routePath.displayedCount}/${routePath.totalCount} 个点按地图坐标显示，雷达不贴图。`;
+  }
+  return "坐标口径：机器人位置未读到，地图上的雷达和小车位置仍待定位。";
+}
+
 const plainMapVisualSummary = computed(() => {
   // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
   const proof = robotSummary.value?.o3_proof_summary;
@@ -958,6 +980,7 @@ const plainMapVisualSummary = computed(() => {
     radarSweepAria,
     radarScanDots: radarScanOverlay.dots,
     radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : radarScanOverlay.label,
+    coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath),
     showRadarScanPoints: showRadarSweep && radarScanOverlay.dots.length > 0,
     radarScanAria: `雷达点位，${radarScanOverlay.label}`,
     radarLocalScanDots: radarLocalScanOverlay.dots,
@@ -5753,6 +5776,7 @@ onBeforeUnmount(() => {
               <span class="muted">{{ plainMapVisualSummary.mapRefLabel }}</span>
               <span v-if="plainMapVisualSummary.routePathLabel" class="muted" data-testid="plain-map-route-label">{{ plainMapVisualSummary.routePathLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
+              <span class="muted" data-testid="plain-map-coordinate-truth-label">{{ plainMapVisualSummary.coordinateTruthLabel }}</span>
             </div>
           </div>
           <div class="panel-action-row wrap-actions">

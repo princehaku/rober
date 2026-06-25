@@ -3719,6 +3719,7 @@ describe("App", () => {
     expect(firstCircle?.attributes("cx")).toBe("70");
     expect(firstCircle?.attributes("cy")).toBe("50");
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点 3 个，已套用雷达外参");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，雷达点 3 个已贴到地图，路线未显示。");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(true);
     const robotMarker = wrapper.find('[data-testid="plain-map-robot-marker"]');
     expect(robotMarker.exists()).toBe(true);
@@ -3759,6 +3760,7 @@ describe("App", () => {
     expect(localScan.attributes("aria-label")).toBe("雷达局部点位，雷达局部点 3 个，等待地图位置");
     expect(localScan.findAll("circle")).toHaveLength(3);
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达局部点 3 个，等待地图位置");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示车身局部轮廓 3 个点，不贴到地图；路线未显示。");
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -3894,6 +3896,7 @@ describe("App", () => {
     expect(endMarker.attributes("style")).toContain("left: 80%");
     expect(endMarker.attributes("style")).toContain("top: 98%");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，路线 3/15 个点按地图坐标显示，雷达不贴图。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
