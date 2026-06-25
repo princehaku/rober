@@ -404,6 +404,149 @@ h3 {
   min-height: 34px;
 }
 
+.robot-console video[data-testid="robot-camera-preview-video"] {
+  /* 首屏保留真实 video 容器；未打开时显示空画面，打开后同一位置承载真实帧。 */
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-top: 10px;
+  border: 1px solid #c8d2dc;
+  border-radius: 6px;
+  background: #111827;
+  object-fit: contain;
+}
+
+.plain-map-viewport {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.plain-map-layer {
+  position: relative;
+  min-height: 172px;
+  overflow: hidden;
+  border: 1px solid #c8d2dc;
+  border-radius: 6px;
+  background:
+    linear-gradient(#e4e9ef 1px, transparent 1px),
+    linear-gradient(90deg, #e4e9ef 1px, transparent 1px),
+    #f8fafc;
+  background-size: 24px 24px;
+}
+
+.plain-map-grid-line {
+  position: absolute;
+  background: #bdc7d3;
+}
+
+.plain-map-grid-line.horizontal {
+  top: 50%;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+}
+
+.plain-map-grid-line.vertical {
+  top: 12%;
+  bottom: 12%;
+  left: 50%;
+  width: 1px;
+}
+
+.plain-map-wall {
+  position: absolute;
+  background: #768497;
+}
+
+.plain-map-wall.top,
+.plain-map-wall.bottom {
+  left: 12%;
+  right: 12%;
+  height: 3px;
+}
+
+.plain-map-wall.top {
+  top: 22%;
+}
+
+.plain-map-wall.bottom {
+  bottom: 18%;
+}
+
+.plain-map-wall.left,
+.plain-map-wall.right {
+  top: 22%;
+  bottom: 18%;
+  width: 3px;
+}
+
+.plain-map-wall.left {
+  left: 12%;
+}
+
+.plain-map-wall.right {
+  right: 12%;
+}
+
+.plain-map-robot-marker,
+.plain-map-unknown-pose,
+.plain-map-radar-marker {
+  position: absolute;
+  border: 1px solid #99a7b7;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #17202a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plain-map-robot-marker {
+  top: calc(50% - 8px);
+  left: calc(50% - 8px);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border-color: #1f6feb;
+  background: #1f6feb;
+}
+
+.plain-map-unknown-pose {
+  left: 14px;
+  bottom: 14px;
+  padding: 5px 8px;
+  border-style: dashed;
+  color: #526171;
+}
+
+.plain-map-radar-marker {
+  top: 12px;
+  right: 12px;
+  padding: 5px 8px;
+}
+
+.plain-map-radar-marker[data-state="雷达已运行"] {
+  border-color: #a7d3bf;
+  background: #eefaf4;
+  color: #176039;
+}
+
+.plain-map-radar-marker[data-state="雷达待刷新"],
+.plain-map-radar-marker[data-state="刷新中"],
+.plain-map-radar-marker[data-state="刷新失败"] {
+  border-color: #d5d2a9;
+  background: #fbf8e8;
+  color: #6a5710;
+}
+
+.plain-map-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
 .wrap-actions {
   justify-content: space-between;
 }

@@ -3214,6 +3214,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("雷达");
     expect(firstScreenText).toContain("雷达已运行");
     expect(firstScreenText).toContain("地图");
+    expect(firstScreenText).toContain("地图可见");
+    expect(firstScreenText).toContain("地图记录已读取");
+    expect(firstScreenText).toContain("位置未读到");
     expect(firstScreenText).toContain("移动/导航");
     expect(firstScreenText).toContain("已连接");
     expect(firstScreenText).toContain("部分项目未通过，可展开高级诊断。");
@@ -3266,6 +3269,11 @@ describe("App", () => {
     expect(firstScreenText).toContain("先完成本轮行程，再做最终确认。");
     expect(firstScreenText).toContain("还差 9 项：本轮行程、送达材料、人在旁边可接管、周围安全、停止手段就绪、已观察到到达/移动、已观察到停止、视频和行程材料已核对、确认已投放/送达。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="robot-camera-preview-video"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行");
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid^="plain-goal-progress-go-"]')).toHaveLength(4);
     expect(wrapper.find('[data-testid="plain-trip-run"]').exists()).toBe(true);
@@ -7532,6 +7540,10 @@ describe("App", () => {
     expect(firstScreenText).toContain("雷达正在运行，但最新记录不完整；先刷新雷达确认。");
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).not.toContain("启动雷达");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先刷新雷达");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先刷新雷达");

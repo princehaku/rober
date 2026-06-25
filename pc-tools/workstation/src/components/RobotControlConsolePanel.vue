@@ -626,6 +626,39 @@ const radarLifecycleSummary = computed(() => {
 const mapSummary = computed(() => summarizeProofState(mapRefreshPending.value, mapRefreshResult.value));
 const nav2PlanningSummary = computed(() => summarizeNav2Planning());
 const mapLifecycleSummary = computed(() => summarizeMapLifecycle());
+type PlainMapVisualState = "地图未读取" | "地图处理中" | "地图待刷新" | "地图可见" | "地图不可用";
+const plainMapVisualSummary = computed(() => {
+  // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
+  const proof = robotSummary.value?.o3_proof_summary;
+  const mapReadback = mapRefreshResult.value?.latest_readback_key_values ?? {};
+  const mapObserved = proof?.map_once_observed === true
+    || mapReadback.map_once_observed === "true"
+    || mapReadback.latest_map_once_observed === "true";
+  const lifecycle = mapLifecycleResult.value;
+  const lifecycleUsable = Boolean(lifecycle?.map_usable_for_navigation || (lifecycle?.map_quality_summary.usable_map_count ?? 0) > 0);
+  const lifecycleFailed = mapLifecycleSummary.value.state === "失败";
+  const state: PlainMapVisualState = mapRefreshPending.value || mapLifecyclePending.value
+    ? "地图处理中"
+    : lifecycleFailed
+      ? "地图不可用"
+      : mapObserved || lifecycleUsable
+        ? "地图可见"
+        : mapRefreshResult.value || lifecycle
+          ? "地图待刷新"
+          : "地图未读取";
+  const poseObserved = proof?.amcl_pose_observed === true || proof?.localization_tf_observed === true;
+  const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
+    || lifecycle?.map_names?.[0]
+    || mapRefreshResult.value?.last_result_evidence_ref
+    || "";
+  return {
+    state,
+    poseLabel: poseObserved ? "位置已读到" : "位置未读到",
+    radarLabel: radarSummary.value.state,
+    mapRefLabel: mapRef ? "地图记录已读取" : "地图记录未读到",
+    showRobotPose: poseObserved,
+  };
+});
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
 const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ?? 0.12);
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
@@ -5101,6 +5134,23 @@ onBeforeUnmount(() => {
 
         <article class="snapshot-panel">
           <h3>地图</h3>
+          <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state">
+            <div class="plain-map-layer">
+              <span class="plain-map-grid-line horizontal" />
+              <span class="plain-map-grid-line vertical" />
+              <span class="plain-map-wall top" />
+              <span class="plain-map-wall bottom" />
+              <span class="plain-map-wall left" />
+              <span class="plain-map-wall right" />
+              <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" aria-label="机器人位置" />
+              <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing">{{ plainMapVisualSummary.poseLabel }}</span>
+              <span class="plain-map-radar-marker" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel">{{ plainMapVisualSummary.radarLabel }}</span>
+            </div>
+            <div class="plain-map-caption">
+              <span class="status-chip" :data-state="plainMapVisualSummary.state">{{ plainMapVisualSummary.state }}</span>
+              <span class="muted">{{ plainMapVisualSummary.mapRefLabel }}</span>
+            </div>
+          </div>
           <div class="panel-action-row wrap-actions">
             <button type="button" :disabled="loading || mapRefreshPending || !robotApiBaseUrl.trim()" @click="refreshMapProof">
               刷新地图
