@@ -4103,6 +4103,8 @@ describe("App", () => {
     expect(marker.text()).toBe("地图记录启动失败：上位机等待超时");
     expect(marker.attributes("data-state")).toBe("map_failed");
     expect(marker.attributes("aria-label")).toBe("地图记录启动失败：上位机等待超时，机器人地图位置未读到，标记不代表坐标");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-free-roam-action-marker[data-state="map_failed"]');
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("启动地图记录失败：上位机等待超时");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图记录启动失败：上位机等待超时，小车不会移动；检查上位机地图服务后重试。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -4593,6 +4595,8 @@ describe("App", () => {
     expect(marker.text()).toBe("停止发送中：前进，轮速非零");
     expect(marker.attributes("data-state")).toBe("stopping");
     expect(marker.attributes("aria-label")).toBe("已松开方向键，上次方向前进，停止原因松开屏幕方向键，轮速 L/R=0.07/0.08，非零已读到，正在发送停止，机器人地图位置未读到，标记不代表坐标");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-free-roam-action-marker[data-state="stopping"]');
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
 
     resolveStop({
