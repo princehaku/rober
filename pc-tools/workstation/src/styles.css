@@ -418,6 +418,26 @@ h3 {
   background: #111827;
 }
 
+.camera-preview-frame[data-state="画面可见"] {
+  border-color: #9fd4b3;
+  box-shadow: inset 0 0 0 1px rgb(23 96 57 / 32%);
+}
+
+.camera-preview-frame[data-state="连接中"],
+.camera-preview-frame[data-state="关闭中"],
+.camera-preview-frame[data-state="检查中"],
+.camera-preview-frame[data-state="等待画面"],
+.camera-preview-frame[data-state="已打开"] {
+  border-color: #d5d2a9;
+  box-shadow: inset 0 0 0 1px rgb(106 87 16 / 30%);
+}
+
+.camera-preview-frame[data-state="画面偏暗"],
+.camera-preview-frame[data-state="失败"] {
+  border-color: #d8adb0;
+  box-shadow: inset 0 0 0 1px rgb(124 45 53 / 32%);
+}
+
 .robot-console video[data-testid="robot-camera-preview-video"] {
   /* video 元素只承载真实 WebRTC 帧；状态遮罩负责解释未打开、连接中和失败。 */
   display: block;
@@ -446,6 +466,14 @@ h3 {
   color: #dce6f0;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.camera-preview-overlay[data-state="连接中"],
+.camera-preview-overlay[data-state="关闭中"],
+.camera-preview-overlay[data-state="检查中"],
+.camera-preview-overlay[data-state="等待画面"],
+.camera-preview-overlay[data-state="已打开"] {
+  background: linear-gradient(180deg, rgb(59 52 19 / 88%), rgb(17 24 39 / 76%));
 }
 
 .camera-preview-overlay[data-state="画面偏暗"],

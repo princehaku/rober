@@ -11978,12 +11978,16 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("等待画面");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.camera-preview-frame[data-state="等待画面"]');
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').element).toHaveProperty("srcObject");
 
     const stopClick = wrapper.findAll("button").find((button) => button.text() === "关闭画面")?.trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("关闭中");
+    expect(workstationStyles).toContain('.camera-preview-frame[data-state="关闭中"]');
+    expect(workstationStyles).toContain('.camera-preview-overlay[data-state="关闭中"]');
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("正在关闭实时画面，等待上位机释放视频会话。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在关闭实时画面，等待上位机释放视频会话。");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("等待画面稳定");
@@ -12121,6 +12125,8 @@ describe("App", () => {
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面偏暗");
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面太暗，先检查镜头/光线。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面偏暗");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.camera-preview-frame[data-state="画面偏暗"]');
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("画面偏暗");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前画面偏暗，先检查镜头或光线。浏览器已绘制视频帧 640x480。");
     expect(wrapper.find("details").text()).toContain("near_black");
@@ -12309,6 +12315,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("失败");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.camera-preview-frame[data-state="失败"]');
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("相机没有出画面，检查摄像头/视频线。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机没有出画面，检查摄像头/视频线。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("first_frame_timeout");
