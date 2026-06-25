@@ -839,6 +839,11 @@ const canCheckDeliveryGap = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canRunBaseFeedbackSamples = computed(() => (
+  !baseFeedbackSamplesPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarSummary.value.state === "雷达未运行";
@@ -4217,7 +4222,11 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
 });
 
 const plainWheelReadbackButtonLabel = computed(() => (
-  baseFeedbackSamplesPending.value ? "刷新中" : "刷新当前轮速（只读）"
+  baseFeedbackSamplesPending.value
+    ? "刷新中"
+    : mapWysiwygRefreshPending.value
+      ? "等待地图刷新"
+      : "刷新当前轮速（只读）"
 ));
 
 const plainWheelEvidenceSaveSummary = computed(() => {
@@ -6797,7 +6806,7 @@ async function sendPlainFirstJog(): Promise<void> {
   } finally {
     manualCommandResult.value = plainFirstJogResult.value;
     manualCommandPending.value = false;
-    await runBaseFeedbackSamples({ refreshAfter: false });
+    await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
     await refreshConsole();
     if (plainFirstJogWheelEvidenceReady.value) {
       await nextTick();
@@ -6848,9 +6857,11 @@ async function runCameraFirstFrameProbe(): Promise<void> {
   }
 }
 
-async function runBaseFeedbackSamples(options: { refreshAfter?: boolean } = {}): Promise<void> {
+async function runBaseFeedbackSamples(options: { refreshAfter?: boolean; allowDuringMapRefresh?: boolean } = {}): Promise<void> {
   // 反馈样本采集只走固定 T=130 只读代理，不发送方向、速度或 stop/manual 命令。
-  if (!robotApiBaseUrl.value.trim() || baseFeedbackSamplesPending.value) {
+  if (!robotApiBaseUrl.value.trim()
+    || baseFeedbackSamplesPending.value
+    || (!options.allowDuringMapRefresh && mapWysiwygRefreshPending.value)) {
     return;
   }
   baseFeedbackSamplesPending.value = true;
@@ -7916,7 +7927,7 @@ onBeforeUnmount(() => {
               <button ref="plainWheelTrialButton" type="button" class="secondary compact-stop" :disabled="plainWheelTrialDisabled" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
                 {{ plainWheelTrialButtonLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="loading || baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
+              <button type="button" class="secondary compact-stop" :disabled="loading || !canRunBaseFeedbackSamples" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
                 {{ plainWheelReadbackButtonLabel }}
               </button>
               <button v-if="plainWheelZeroBlockerActive" ref="plainWheelZeroCheckButton" type="button" class="secondary compact-stop" data-testid="plain-wheel-zero-check" @click="markPlainWheelZeroBlockerChecked">
@@ -8854,8 +8865,8 @@ onBeforeUnmount(() => {
             轮速非零试采（高级）
           </button>
           <p class="panel-note">键盘连续手控入口已放在普通首屏；此处只保留完整状态、pulse 和 stop trigger 诊断。</p>
-          <button class="secondary" type="button" :disabled="baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" @click="runBaseFeedbackSamples">
-            {{ baseFeedbackSamplesPending ? "采集中..." : "采集底盘反馈（高级）" }}
+          <button class="secondary" type="button" :disabled="!canRunBaseFeedbackSamples" @click="runBaseFeedbackSamples">
+            {{ baseFeedbackSamplesPending ? "采集中..." : mapWysiwygRefreshPending ? "等待地图刷新" : "采集底盘反馈（高级）" }}
           </button>
           <dl class="kv compact-kv">
             <dt>base feedback samples</dt>

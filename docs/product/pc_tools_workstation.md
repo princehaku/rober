@@ -2313,3 +2313,8 @@ delivery、stop 或 `/cmd_vel`。
 地图 proof/preview 正在刷新时普通按钮显示 `等待地图刷新` 并禁用，函数入口同步早退，不再允许 `/api/robot-control/delivery/check`
 在旧地图画面上复算并改写送达缺口。该状态只等待地图只读刷新完成，不提交送达确认、不发送 Nav2、manual/keyboard pulse、
 stop 或 `/cmd_vel`。
+
+2026-06-26 06:55 起，普通首屏 `刷新当前轮速（只读）` 和高级 `采集底盘反馈（高级）` 也接入地图 WYSIWYG gate。
+地图 proof/preview 正在刷新时显示 `等待地图刷新` 并禁用，用户点击入口不再允许 `/api/robot-control/base/feedback-samples`
+在旧地图画面上改写轮速读数和本轮进度。first-jog 后的内部反馈采样仍保留，用于动作证据闭环；该状态不发送 manual/keyboard pulse、
+Nav2、delivery、stop 或 `/cmd_vel`。
