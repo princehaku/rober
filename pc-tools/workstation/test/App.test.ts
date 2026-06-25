@@ -4129,8 +4129,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').exists()).toBe(false);
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
-    expect(marker.text()).toBe("终点");
-    expect(marker.attributes("data-state")).toBe("本轮目标");
+    expect(marker.text()).toBe("已到达");
+    expect(marker.attributes("data-state")).toBe("已到达");
     expect(marker.attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
     expect(marker.attributes("style")).toContain("left: 80%");
     expect(marker.attributes("style")).toContain("top: 98%");
@@ -4954,8 +4954,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("终点");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("本轮目标");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("已到达");
   });
 
   it("translates plain trip preparation planner blocker without executing navigation", async () => {
@@ -5341,6 +5341,9 @@ describe("App", () => {
           response_generated_at_ms: "1782150442201",
           result_status: "succeeded",
           feedback_sample_count: "0",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
           delivery_success: "false",
         },
         failure_reason: "",
@@ -5359,6 +5362,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，未读到反馈样本，刚刚；需重新读取或执行完整行程。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，但没有执行反馈样本，刚刚；重新读取或执行完整行程。");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，缺反馈");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达缺反馈");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("到达缺反馈");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toContain("到达缺反馈，地图坐标 x=0.80, y=0.00");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程缺少反馈样本，需要重新读取或执行完整行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：行程成功但缺少反馈样本，需要重新读取或执行完整行程。");

@@ -913,7 +913,8 @@ h3 {
   color: #174ea6;
 }
 
-.plain-map-route-goal-marker[data-state="本轮目标"] {
+.plain-map-route-goal-marker[data-state="本轮目标"],
+.plain-map-route-goal-marker[data-state="已到达"] {
   border-color: #1f6feb;
   background: #edf5ff;
   color: #174ea6;
@@ -925,13 +926,16 @@ h3 {
   color: #176039;
 }
 
-.plain-map-route-goal-marker[data-state="历史目标"] {
+.plain-map-route-goal-marker[data-state="历史目标"],
+.plain-map-route-goal-marker[data-state="旧到达"],
+.plain-map-route-goal-marker[data-state="到达缺反馈"] {
   border-color: #d1b66a;
   background: #fff8d6;
   color: #6a5710;
 }
 
-.plain-map-route-goal-marker[data-state="目标待复验"] {
+.plain-map-route-goal-marker[data-state="目标待复验"],
+.plain-map-route-goal-marker[data-state="行程未通过"] {
   border-style: dashed;
   color: #526171;
 }

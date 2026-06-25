@@ -904,10 +904,10 @@ function latestNavGoalOverlay() {
   const complete = nav2ExecutionComplete(values);
   const succeeded = nav2GoalSucceeded(values);
   const stale = evidenceIsStale(values);
-  const state = complete && !stale ? "本轮目标" : succeeded ? "历史目标" : "目标待复验";
-  const label = state === "本轮目标" ? "终点" : state;
+  // 终点 marker 直接表达执行证据，避免把“本轮目标”误读成已经完整到达。
+  const state = complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : succeeded ? "到达缺反馈" : "行程未通过";
   return {
-    label,
+    label: state,
     state,
     style,
     aria: `${state}，地图坐标 x=${goalX.toFixed(2)}, y=${goalY.toFixed(2)}`,

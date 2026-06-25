@@ -2044,3 +2044,8 @@ delivery complete 或 `/cmd_vel` 行为。
 处于记录、移动、停止、保存哪个阶段，方向 marker 只在按住方向键时说明当前移动方向。缺 map-frame 机器人位置时 marker
 固定在地图角落并声明“不代表坐标”。该状态只消费本机 map lifecycle、map preview 和键盘状态机，不改变 map start/save、
 manual pulse、stop、Nav2、delivery complete 或 `/cmd_vel` 行为。
+
+2026-06-25 23:02 起，普通首屏地图上的行程终点 marker 不再只写 `终点/本轮目标`，而是直接显示执行证据：
+`已到达`、`到达缺反馈`、`旧到达` 或 `行程未通过`。这样 operator 看地图时能直接区分“完整路线已到达且有反馈样本”和
+“只读到 goal_succeeded 但还不能收口”。该 marker 仍只消费 Nav2 execution/latest readback 和地图坐标，不改变
+Nav2 execute gate、delivery complete、manual/keyboard pulse、stop 或 `/cmd_vel` 行为。
