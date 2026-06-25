@@ -1944,3 +1944,8 @@ delivery complete/stop 或 `/cmd_vel`。
 `trashbot.free_roam_autonomy.runtime.v1` runtime artifact，并在策略要求停止时调用 `/trashbot/stop` 兜底。该节点默认
 `enable_cmd_vel_publish=false`、`motion_hil_unlocked=false`，即使策略输出可前进也不会发布 `/cmd_vel`。PC 首屏仍只显示
 自动扫图门禁，等 summary 读取 artifact 和真车 HIL 后再讨论开放按钮。
+
+2026-06-25 21:24 起，PC summary 增加只读 `free_roam_autonomy_latest` 读回。新上位机提供
+`/api/free-roam/autonomy/latest` 时，普通首屏“自动扫图准备”会优先显示 runtime artifact 中的 `decision.gates`，
+例如现场安全确认、地图记录、雷达新鲜、前方障碍和真车低速放行；旧上位机没有该 endpoint 时按 optional missing 处理，
+继续显示默认锁定门禁。该读回不开放自动扫图按钮，不发送 `/cmd_vel`。

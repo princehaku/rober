@@ -1366,6 +1366,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const preview = mapPreviewResult.value;
   const previewLoaded = preview?.proxy_status === "preview_forwarded";
   const autonomyLocked = boundary?.free_roam_autonomy !== "ready";
+  const hasRuntimeGateRows = Boolean(boundary?.free_roam_autonomy_gates?.length);
   const manualFallbackHint = "自动扫图未开放；当前用人工按住扫图：开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图。";
   const blockers: string[] = [];
   if (!robotApiBaseUrl.value.trim()) {
@@ -1389,7 +1390,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     blockers.push("停止兜底暂不可用");
   }
   if (autonomyLocked) {
-    blockers.push("上车端避障和 watchdog 未验证");
+    blockers.push(hasRuntimeGateRows ? "自动扫图真车验证未完成" : "上车端避障和自动停止未验证");
   }
   const policyGates = policy?.required_gates ?? [
     "onboard_watchdog",
@@ -1447,7 +1448,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
         : "材料已接近，但自动扫图仍需上车端安全状态机开放后才能启用。",
     blockers: blockers.slice(0, 4),
     gateRows: contractGateRows,
-    policyText: `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，必须先通过 ${policyGates.slice(0, 3).map(gateLabel).join("、")}。`,
+    policyText: hasRuntimeGateRows
+      ? `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，正在读取上车端自动扫图门禁。`
+      : `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，必须先通过 ${policyGates.slice(0, 3).map(gateLabel).join("、")}。`,
   };
 });
 const plainFreeRoamMappingSteps = computed(() => {

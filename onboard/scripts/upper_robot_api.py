@@ -55,6 +55,7 @@ DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecycle_latest.json"
 DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_goal_execution_latest.json"
 DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH = "/root/rober/onboard/runtime/delivery_completion_latest.json"
+DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH = "/root/rober/onboard/runtime/free_roam_autonomy_latest.json"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
 NAV2_PROOF_PROCESS_BASE_MARGIN_S = 12.0
 NAV2_PROOF_PROCESS_PATH_MARGIN_S = 8.0
@@ -178,6 +179,7 @@ ROUTE_PATHS = {
     "nav2_goal_execution_latest": "/api/nav2/goal/execution/latest",
     "delivery_complete": "/api/delivery/complete",
     "delivery_latest": "/api/delivery/latest",
+    "free_roam_autonomy_latest": "/api/free-roam/autonomy/latest",
     "nav2_start": "/api/nav2/start",
     "nav2_stop": "/api/nav2/stop",
     "elevator_status": "/api/elevator/status",
@@ -1623,6 +1625,26 @@ def delivery_completion_artifact_info(path: str) -> dict[str, Any]:
             "structured_hil_claims.delivery_success=true",
             "route/map evidence ref",
             "motion/stop observation",
+        ],
+    }
+
+
+def free_roam_autonomy_artifact_info(path: str) -> dict[str, Any]:
+    """自动扫图 runtime artifact 只证明状态机读数，不等同 PC 自动发车已开放。"""
+    resolved_path = resolve_onboard_runtime_path(path)
+    return {
+        "path": resolved_path,
+        "configured_path": path,
+        "resolved_path": resolved_path,
+        "canonical_path": DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+        "configured_by": "ROBER_FREE_ROAM_AUTONOMY_ARTIFACT_PATH or --free-roam-autonomy-artifact-path",
+        "format": "json",
+        "schema": "trashbot.free_roam_autonomy.runtime.v1",
+        "expected_material": [
+            "/scan finite min distance and freshness",
+            "/map free/unknown coverage metrics",
+            "FreeRoamDecision state and gates",
+            "stop_required and artifact_only/cmd_vel publish boundary",
         ],
     }
 
@@ -5020,6 +5042,7 @@ class UpperRobotApi:
         nav2_lifecycle_artifact_path: str = DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH,
         nav2_goal_execution_artifact_path: str = DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH,
         delivery_completion_artifact_path: str = DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH,
+        free_roam_autonomy_artifact_path: str = DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
         elevator_status_artifact_path: str = DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH,
         operator_report_artifact_path: str = DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH,
         radar_start_command: str | None = DEFAULT_RADAR_START_COMMAND,
@@ -5047,6 +5070,7 @@ class UpperRobotApi:
         self.nav2_lifecycle_artifact_path = resolve_onboard_runtime_path(nav2_lifecycle_artifact_path)
         self.nav2_goal_execution_artifact_path = resolve_onboard_runtime_path(nav2_goal_execution_artifact_path)
         self.delivery_completion_artifact_path = resolve_onboard_runtime_path(delivery_completion_artifact_path)
+        self.free_roam_autonomy_artifact_path = resolve_onboard_runtime_path(free_roam_autonomy_artifact_path)
         self.elevator_status_artifact_path = elevator_status_artifact_path
         self.operator_report_artifact_path = operator_report_artifact_path
         self.radar_start_command = radar_start_command
@@ -6075,6 +6099,66 @@ class UpperRobotApi:
         """只读交付完成 latest artifact。"""
         return read_delivery_completion_latest_artifact(self.delivery_completion_artifact_path)
 
+    def free_roam_autonomy_latest(self) -> tuple[int, dict[str, Any]]:
+        """只读自动扫图 runtime artifact，不探 ROS graph，不发布 /cmd_vel。"""
+        http_status, payload = read_runtime_artifact_latest(
+            self.free_roam_autonomy_artifact_path,
+            artifact_info=free_roam_autonomy_artifact_info(self.free_roam_autonomy_artifact_path),
+            schema_suffix="free_roam_autonomy_latest",
+            endpoint=ROUTE_PATHS["free_roam_autonomy_latest"],
+            boundary="readback_only_free_roam_autonomy_not_unlocked",
+            source="free_roam_autonomy_runtime_artifact",
+        )
+        latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else {}
+        decision = latest.get("decision") if isinstance(latest.get("decision"), dict) else {}
+        payload.update(
+            {
+                "runtime_status": "loaded" if http_status == 200 else "not_loaded",
+                "decision_state": decision.get("state") or "not_loaded",
+                "decision_reason": decision.get("reason") or "not_loaded",
+                "stop_required": bool(decision.get("stop_required")) if isinstance(decision, dict) else True,
+                "artifact_only": bool(latest.get("artifact_only")) if isinstance(latest, dict) else True,
+                "cmd_vel_publish_enabled": bool(latest.get("cmd_vel_publish_enabled")) if isinstance(latest, dict) else False,
+                "safe_to_control": False,
+                "primary_actions_enabled": False,
+                "publishes_cmd_vel": False,
+                "robot_control_executed": False,
+                "delivery_success": False,
+            }
+        )
+        return http_status, payload
+
+    def free_roam_autonomy_status(self) -> dict[str, Any]:
+        """自动扫图状态给 PC 消费；有 artifact 也继续保持 fail-closed。"""
+        http_status, payload = self.free_roam_autonomy_latest()
+        latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else {}
+        decision = latest.get("decision") if isinstance(latest.get("decision"), dict) else {}
+        snapshot = latest.get("snapshot") if isinstance(latest.get("snapshot"), dict) else {}
+        map_metrics = latest.get("map_metrics") if isinstance(latest.get("map_metrics"), dict) else {}
+        return {
+            "schema": f"{SCHEMA}.free_roam_autonomy_status",
+            "generated_at_ms": now_ms(),
+            "status": "artifact_loaded" if http_status == 200 else "artifact_missing",
+            "http_status": http_status,
+            "latest": payload,
+            "artifact": free_roam_autonomy_artifact_info(self.free_roam_autonomy_artifact_path),
+            "decision_state": decision.get("state") or "not_loaded",
+            "decision_reason": decision.get("reason") or "not_loaded",
+            "decision_gates": decision.get("gates") if isinstance(decision.get("gates"), list) else [],
+            "snapshot": snapshot,
+            "map_metrics": map_metrics,
+            "artifact_only": bool(latest.get("artifact_only")) if isinstance(latest, dict) else True,
+            "cmd_vel_publish_enabled": bool(latest.get("cmd_vel_publish_enabled")) if isinstance(latest, dict) else False,
+            "routes": {"latest": ROUTE_PATHS["free_roam_autonomy_latest"]},
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "publishes_cmd_vel": False,
+            "robot_control_executed": False,
+            "delivery_success": False,
+            "not_proven": http_status != 200,
+            "software_guard": True,
+        }
+
     def nav2_status(self) -> dict[str, Any]:
         """Nav2 lifecycle 状态只读 artifact；真实 graph 查询由外部 collector 写材料。"""
         return {
@@ -6257,6 +6341,7 @@ class UpperRobotApi:
                 **proof_flags(),
             },
             "nav2": self.nav2_status(),
+            "free_roam_autonomy": self.free_roam_autonomy_status(),
             "elevator": self.elevator_status(),
             "operator_report": summarize_operator_report_latest_artifact(self.operator_report_artifact_path),
             "base": self.base_status(),
@@ -6270,6 +6355,7 @@ class UpperRobotApi:
             "map_lifecycle_proof_artifact": map_lifecycle_proof_artifact_info(self.map_lifecycle_proof_artifact_path),
             "localization_artifact": localization_artifact_info(self.localization_artifact_path),
             "nav2_lifecycle_artifact": nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+            "free_roam_autonomy_artifact": free_roam_autonomy_artifact_info(self.free_roam_autonomy_artifact_path),
             "elevator_status_artifact": elevator_status_artifact_info(self.elevator_status_artifact_path),
             "operator_report_artifact": operator_report_artifact_info(self.operator_report_artifact_path),
             "sends_commands": False,
@@ -6540,6 +6626,10 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("ROBER_DELIVERY_COMPLETION_ARTIFACT_PATH", DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH),
     )
     parser.add_argument(
+        "--free-roam-autonomy-artifact-path",
+        default=os.getenv("ROBER_FREE_ROAM_AUTONOMY_ARTIFACT_PATH", DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH),
+    )
+    parser.add_argument(
         "--elevator-status-artifact-path",
         default=os.getenv("ROBER_ELEVATOR_STATUS_ARTIFACT_PATH", DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH),
     )
@@ -6583,6 +6673,7 @@ async def run_server(args: argparse.Namespace) -> None:
         nav2_lifecycle_artifact_path=args.nav2_lifecycle_artifact_path,
         nav2_goal_execution_artifact_path=args.nav2_goal_execution_artifact_path,
         delivery_completion_artifact_path=args.delivery_completion_artifact_path,
+        free_roam_autonomy_artifact_path=args.free_roam_autonomy_artifact_path,
         elevator_status_artifact_path=args.elevator_status_artifact_path,
         operator_report_artifact_path=args.operator_report_artifact_path,
         radar_start_command=args.radar_start_command,
@@ -6739,6 +6830,10 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = api.delivery_latest()
         return json_response(payload, status=http_status)
 
+    async def free_roam_autonomy_latest(_: web.Request) -> Any:
+        http_status, payload = api.free_roam_autonomy_latest()
+        return json_response(payload, status=http_status)
+
     async def nav2_start(_: web.Request) -> Any:
         return json_response(api.nav2_control("start"))
 
@@ -6821,6 +6916,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_get(ROUTE_PATHS["nav2_goal_execution_latest"], nav2_goal_execution_latest)
     app.router.add_post(ROUTE_PATHS["delivery_complete"], delivery_complete)
     app.router.add_get(ROUTE_PATHS["delivery_latest"], delivery_latest)
+    app.router.add_get(ROUTE_PATHS["free_roam_autonomy_latest"], free_roam_autonomy_latest)
     app.router.add_post(ROUTE_PATHS["nav2_start"], nav2_start)
     app.router.add_post(ROUTE_PATHS["nav2_stop"], nav2_stop)
     app.router.add_get(ROUTE_PATHS["elevator_status"], elevator_status)

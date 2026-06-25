@@ -485,39 +485,39 @@ const fixtures: Record<string, unknown> = {
       },
       free_roam_autonomy_gates: [
         {
-          id: "onboard_watchdog",
-          label: "上车端自动停止",
-          state: "blocked",
-          evidence: "未读到上车端自动扫图停止保护",
-          next_action: "先实现并验证上车端自动停止",
-        },
-        {
-          id: "lidar_obstacle_gate",
-          label: "雷达避障",
-          state: "blocked",
-          evidence: "未读到自动扫图专用雷达避障检查",
-          next_action: "接入实时障碍距离检查并验证会停",
-        },
-        {
-          id: "fresh_map_preview",
-          label: "地图刷新",
-          state: "not_proven",
-          evidence: "PC 可只读刷新地图画面，但不是上车端自动探索证据",
-          next_action: "把地图覆盖变化写入自动扫图验证记录",
-        },
-        {
-          id: "operator_stop_fallback",
-          label: "停止按钮兜底",
+          id: "operator_confirmed",
+          label: "现场安全确认",
           state: "ready",
-          evidence: "PC 固定停止按钮已存在，仍需现场保持可点击",
-          next_action: "现场验证自动扫图停止响应时间",
+          evidence: "已勾选现场安全确认",
+          next_action: "继续保持现场可接管",
         },
         {
-          id: "free_roam_hil_artifact",
-          label: "自动扫图真车验证",
+          id: "mapping_active",
+          label: "地图记录",
+          state: "ready",
+          evidence: "地图记录已启动",
+          next_action: "继续保持现场可接管",
+        },
+        {
+          id: "lidar_fresh",
+          label: "雷达新鲜",
+          state: "ready",
+          evidence: "雷达距离 1.00m，延迟 0.10s",
+          next_action: "继续保持雷达运行",
+        },
+        {
+          id: "obstacle_clear",
+          label: "前方障碍",
+          state: "not_proven",
+          evidence: "最近障碍 0.30m",
+          next_action: "原地换向避让，不继续直行",
+        },
+        {
+          id: "motion_hil_unlock",
+          label: "真车低速放行",
           state: "blocked",
-          evidence: "未提交自动扫图真车验证记录",
-          next_action: "完成真车低速自动扫图验证后再开放按钮",
+          evidence: "自动扫图节点默认只写记录，不发布运动",
+          next_action: "完成 stop 兜底、雷达避障和地图覆盖验证后再解锁",
         },
       ],
       map_click_goal: "map click goal locked",
@@ -3361,13 +3361,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达避障");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图未开放；当前用人工按住扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("上车端避障和 watchdog 未验证");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("上车端自动停止");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图真车验证未完成");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("现场安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("未满足");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达避障");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("停止按钮兜底");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达新鲜");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("前方障碍");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("已满足");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("自动扫图真车验证");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("真车低速放行");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图（未开放）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').exists()).toBe(true);

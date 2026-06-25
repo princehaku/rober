@@ -34,6 +34,8 @@
 - 每个 tick 生成 `FreeRoamSnapshot`，调用策略内核并写出 `trashbot.free_roam_autonomy.runtime.v1` artifact。
 - 当 `decision.stop_required=true` 且停止服务可用时，调用 `/trashbot/stop` 兜底。
 - 默认 `enable_cmd_vel_publish=false` 且 `motion_hil_unlocked=false`，不会发布 `/cmd_vel`。
+- 上位机 `GET /api/free-roam/autonomy/latest` 只读该 artifact，`GET /api/status` 同步提供 `free_roam_autonomy` 摘要。
+- PC `GET /api/robot-control/summary` 会消费该摘要并把 `decision.gates` 显示到“自动扫图准备”门禁。
 
 ## 当前边界
 
@@ -41,7 +43,6 @@
 
 下一步接线顺序：
 
-1. 上位机 summary 读取 runtime artifact，把策略门禁和状态回传给 PC。
-2. 在真实小车低速 HIL 中验证 stop fallback 响应时间、雷达避障换向和地图覆盖增长。
-3. HIL 通过后，才允许用双参数显式解锁 `/cmd_vel` 发布。
-4. 把每个 tick 的 decision、传感器摘要和 stop 响应写入验收 artifact。
+1. 在真实小车低速 HIL 中验证 stop fallback 响应时间、雷达避障换向和地图覆盖增长。
+2. HIL 通过后，才允许用双参数显式解锁 `/cmd_vel` 发布。
+3. 把每个 tick 的 decision、传感器摘要和 stop 响应写入验收 artifact。

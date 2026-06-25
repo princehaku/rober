@@ -1953,6 +1953,7 @@ export type RobotApiReadEndpointId =
   | "nav2_status"
   | "nav2_proof_latest"
   | "operator_report_latest"
+  | "free_roam_autonomy_latest"
   | "camera_health"
   | "camera_devices"
   | "radar_status"

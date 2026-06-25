@@ -4271,6 +4271,7 @@ describe("workstation fail-closed API contracts", () => {
       "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
       "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
       "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": { statusCode: 405, payload: { error: "method_not_allowed" } },
       "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready") },
       "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
       "/api/radar/status": {
@@ -4310,6 +4311,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.latest_raw_packet_proof_status).toBe("missing");
       expect(summary.read_endpoints.find((item) => item.id === "radar_scan_proof_latest")).toEqual(expect.objectContaining({
         http_status: 404,
+        request_status: "loaded",
+        status: "missing",
+        blocked_reasons: [],
+      }));
+      expect(summary.read_endpoints.find((item) => item.id === "free_roam_autonomy_latest")).toEqual(expect.objectContaining({
+        http_status: 405,
         request_status: "loaded",
         status: "missing",
         blocked_reasons: [],

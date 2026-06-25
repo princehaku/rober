@@ -129,7 +129,7 @@ class FreeRoamAutonomyNode(Node):
         self.declare_parameter("map_topic", "/map")
         self.declare_parameter("cmd_vel_topic", "/cmd_vel")
         self.declare_parameter("stop_service", "/trashbot/stop")
-        self.declare_parameter("artifact_path", "/tmp/trashbot_free_roam_autonomy.json")
+        self.declare_parameter("artifact_path", "/root/rober/onboard/runtime/free_roam_autonomy_latest.json")
         self.declare_parameter("operator_confirmed", False)
         self.declare_parameter("mapping_active", False)
         self.declare_parameter("stop_available", True)

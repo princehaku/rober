@@ -67,6 +67,7 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "free_roam_autonomy_latest", endpoint: "/api/free-roam/autonomy/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   // camera 端点在真实板端会探测设备与健康摘要，允许更长只读窗口，避免误判成离线。
   { id: "camera_health", endpoint: "/api/camera/health", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
   { id: "camera_devices", endpoint: "/api/camera/devices", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
@@ -81,7 +82,9 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
 const OPTIONAL_MISSING_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([
   "radar_scan_proof_latest",
   "radar_raw_packet_proof_latest",
+  "free_roam_autonomy_latest",
 ]);
+const OPTIONAL_MISSING_HTTP_STATUSES = new Set([404, 405, 501]);
 
 export type RobotProofRefreshConfig = {
   kind: RobotControlProofRefreshKind;
@@ -345,6 +348,7 @@ const HARD_DANGEROUS_TRUE_FIELDS = new Set([
   "sends_motion_commands",
   "sends_base_motion_commands",
   "publishes_cmd_vel",
+  "cmd_vel_publish_enabled",
   "calls_base_manual",
   "starts_nav2",
   "opens_serial",
@@ -411,6 +415,12 @@ const STATUS_KEYS = [
   "lifecycle_running",
   "lifecycle_state",
   "latest_scan_proof_fresh",
+  "runtime_status",
+  "decision_state",
+  "decision_reason",
+  "stop_required",
+  "artifact_only",
+  "cmd_vel_publish_enabled",
 ] as const;
 
 function asRecord(value: unknown): JsonRecord | null {
@@ -2172,6 +2182,23 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
     };
   }
 
+  if (OPTIONAL_MISSING_HTTP_STATUSES.has(response.status) && OPTIONAL_MISSING_READ_ENDPOINT_IDS.has(id)) {
+    // 旧上位机可能还没有该 latest 端点；只读 artifact 缺失不能把 PC 整体连接打成 blocked。
+    return {
+      id,
+      endpoint,
+      http_status: response.status,
+      request_status: "loaded",
+      schema: "not_loaded",
+      status: "missing",
+      evidence_ref: "not_loaded",
+      key_values: {},
+      blocked_reasons: [],
+      dangerous_true_fields: [],
+      payload: null,
+    };
+  }
+
   let body: unknown;
   try {
     body = await response.json();
@@ -2208,8 +2235,8 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
     };
   }
 
-  if (response.status === 404 && OPTIONAL_MISSING_READ_ENDPOINT_IDS.has(id)) {
-    // 旧上位机可能还没有独立 radar latest 端点；这只说明雷达证据缺失，不该把整机连接打成 blocked。
+  if (OPTIONAL_MISSING_HTTP_STATUSES.has(response.status) && OPTIONAL_MISSING_READ_ENDPOINT_IDS.has(id)) {
+    // 旧上位机可能还没有独立 latest 端点；这只说明证据缺失，不该把整机连接打成 blocked。
     return {
       id,
       endpoint,
@@ -2916,7 +2943,54 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
   };
 }
 
-function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] {
+function freeRoamRuntimeGatesFromReadbacks(
+  readbacks: InternalRobotApiEndpointReadback[],
+): RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null {
+  // 优先消费独立 latest 端点；旧上位机没有该端点时，再看 /api/status 聚合字段。
+  const endpointPayload = readbackById(readbacks, "free_roam_autonomy_latest")?.payload ?? null;
+  const statusPayload = readbackById(readbacks, "status")?.payload ?? null;
+  const statusFreeRoam = asRecord(statusPayload?.free_roam_autonomy);
+  const statusLatest = asRecord(statusFreeRoam?.latest);
+  const latest = asRecord(endpointPayload?.latest_result)
+    ?? asRecord(statusLatest?.latest_result)
+    ?? asRecord(statusFreeRoam?.latest_result);
+  if (!latest) {
+    return null;
+  }
+  const decision = asRecord(latest.decision);
+  const rawGates = Array.isArray(decision?.gates) ? decision.gates : [];
+  const gateRows = rawGates
+    .map((item) => asRecord(item))
+    .filter((item): item is JsonRecord => item !== null)
+    .map((gate) => {
+      const rawState = asString(gate.state, "blocked");
+      const state: "ready" | "blocked" | "not_proven" = rawState === "ready" || rawState === "not_proven" ? rawState : "blocked";
+      return {
+        id: asString(gate.id, "free_roam_runtime_gate"),
+        label: asString(gate.label, "自动扫图门禁"),
+        state,
+        evidence: asString(gate.evidence, "未读到自动扫图门禁证据"),
+        next_action: asString(gate.next_action, "等待上车端自动扫图节点更新"),
+      };
+    });
+  const cmdVelPublishEnabled = latest.cmd_vel_publish_enabled === true;
+  gateRows.push({
+    id: "motion_hil_unlock",
+    label: "真车低速放行",
+    state: cmdVelPublishEnabled ? "not_proven" : "blocked",
+    evidence: cmdVelPublishEnabled
+      ? "自动扫图节点已解锁运动发布，PC 仍等待真车 HIL 记录"
+      : "自动扫图节点默认只写记录，不发布运动",
+    next_action: cmdVelPublishEnabled
+      ? "补齐真车低速验证记录后再讨论开放 PC 按钮"
+      : "完成 stop 兜底、雷达避障和地图覆盖验证后再解锁",
+  });
+  return gateRows.length > 0 ? gateRows : null;
+}
+
+function lockedBoundary(
+  freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null = null,
+): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
   return {
     manual_endpoint: "/api/base/manual",
@@ -2948,7 +3022,7 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
         "free_roam_hil_artifact",
       ],
     },
-    free_roam_autonomy_gates: [
+    free_roam_autonomy_gates: freeRoamRuntimeGates ?? [
       {
         id: "onboard_watchdog",
         label: "上车端自动停止",
@@ -3132,6 +3206,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
     ...dangerous.map((field) => `dangerous_true_field:${field}`),
   ];
   const operatorHilMaterialSummary = buildOperatorHilMaterialSummary(readbacks);
+  const freeRoamRuntimeGates = freeRoamRuntimeGatesFromReadbacks(readbacks);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -3165,7 +3240,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
     },
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),
-    safe_command_boundary: lockedBoundary(),
+    safe_command_boundary: lockedBoundary(freeRoamRuntimeGates),
     blocked_reasons: blockedReasons.length ? blockedReasons : ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success", "safe_to_control_true", "real_robot_ack"],
     ...PROOF_FLAGS,
