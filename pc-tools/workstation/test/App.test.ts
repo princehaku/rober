@@ -4069,6 +4069,7 @@ describe("App", () => {
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已可执行；点击执行前确认起点、终点和路径。");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -4438,9 +4439,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：先勾安全确认，小车不会出发。");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：已勾安全确认；先准备图上路线或检查行程。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先准备图上路线");
@@ -4467,6 +4470,7 @@ describe("App", () => {
       String(url).startsWith("/api/robot-control/nav2/proof/refresh?") && options?.method === "POST",
     ).length).toBe(nav2RefreshCallsBeforePrepare + 1);
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，路线 17 个点已准备；先刷新地图画面确认图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 17 个点，但地图上还没显示；先刷新地图画面。");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 17 个点；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先刷新地图画面");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();

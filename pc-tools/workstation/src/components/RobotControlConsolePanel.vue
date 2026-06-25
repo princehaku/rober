@@ -2560,6 +2560,46 @@ const plainTripRouteWysiwygSummary = computed(() => {
   }
   return "";
 });
+const plainTripRunStatus = computed(() => {
+  // 行程状态只解释当前 UI gate；真正执行仍必须显式点击按钮并由后端复查定位和路线。
+  if (navGoalExecutionPending.value) {
+    return "行程状态：正在执行图上路线，人在旁边准备停止。";
+  }
+  if (nav2RefreshPending.value) {
+    return "行程状态：正在准备路线，不会发车。";
+  }
+  if (navGoalPreflightPending.value) {
+    return "行程状态：正在检查行程条件，不会发车。";
+  }
+  if (deliveryNav2GoalReady.value) {
+    return "行程状态：本轮行程已完成，可以准备送达材料。";
+  }
+  if (!plainManualSafetyConfirmed.value) {
+    return "行程状态：先勾安全确认，小车不会出发。";
+  }
+  if (plainTripHasFreshIncompleteEvidence.value) {
+    return "行程状态：最近行程缺少反馈样本，重新读取或重新执行后再送达。";
+  }
+  if (plainTripLatestNotProvenEvidence.value) {
+    return "行程状态：最近行程未通过，先检查或重新执行完整行程。";
+  }
+  if (plainTripHasSucceededEvidence.value) {
+    return "行程状态：读到旧行程成功记录；如需本轮验收，请重新执行图上路线。";
+  }
+  if (plainTripPreparedBySummary.value && !plainTripCurrentRouteVisible.value) {
+    return `行程状态：路线已准备 ${plainTripPreparedPointCount.value} 个点，但地图上还没显示；先刷新地图画面。`;
+  }
+  if (plainTripCurrentRouteVisible.value) {
+    return "行程状态：图上路线已可执行；点击执行前确认起点、终点和路径。";
+  }
+  if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
+    return "行程状态：检查通过；准备好后执行一次图上路线。";
+  }
+  if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
+    return `行程状态：${plainTripPreparationFailureHint()}`;
+  }
+  return "行程状态：已勾安全确认；先准备图上路线或检查行程。";
+});
 const plainTripCurrentRouteVisible = computed(() => {
   // 只有当前路线真正画到地图上，普通首屏才允许执行“图上路线”；最近路线不能作为执行依据。
   const routePath = latestNavPathOverlay();
@@ -6165,6 +6205,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
+            <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
             <p v-if="plainTripRouteWysiwygSummary" class="panel-note" data-testid="plain-trip-route-wysiwyg">
               {{ plainTripRouteWysiwygSummary }}
             </p>
