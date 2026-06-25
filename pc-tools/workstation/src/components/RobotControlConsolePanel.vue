@@ -767,6 +767,33 @@ function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOver
   };
 }
 
+function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
+  // 缺 map-frame 位姿时只能画雷达局部轮廓，不能冒充地图坐标。
+  const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
+  const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
+  if (robotPose || points.length === 0) {
+    return { dots: [], label: points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取" };
+  }
+  const localPoints = points
+    .map((point) => scanPointInBaseFrame(point, transform))
+    .filter((point): point is { x: number; y: number; transformApplied: boolean } => point !== null);
+  if (localPoints.length === 0) {
+    return { dots: [], label: "雷达点位未读取" };
+  }
+  const radius = Math.max(0.4, ...localPoints.map((point) => Math.hypot(point.x, point.y)));
+  const dots = localPoints.map((point, index) => ({
+    key: `${index}-${point.x.toFixed(2)}-${point.y.toFixed(2)}`,
+    left: clampPercent(50 + (point.x / radius) * 44),
+    top: clampPercent(50 - (point.y / radius) * 44),
+  }));
+  const transformedCount = localPoints.filter((point) => point.transformApplied).length;
+  const transformLabel = transform && transformedCount > 0 ? "，已套用雷达外参" : "";
+  return {
+    dots,
+    label: `雷达局部点 ${dots.length} 个${transformLabel}，等待地图位置`,
+  };
+}
+
 function latestNavGoalOverlay() {
   const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
   const preview = mapPreviewResult.value;
@@ -862,6 +889,7 @@ const plainMapVisualSummary = computed(() => {
     ? `${radarState}扫描范围，跟随机器人位置`
     : `${radarState}扫描范围占位，等待机器人地图位置`;
   const radarScanOverlay = latestRadarScanOverlay(robotPose);
+  const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose);
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref
@@ -877,9 +905,12 @@ const plainMapVisualSummary = computed(() => {
     showRadarSweep,
     radarSweepAria,
     radarScanDots: radarScanOverlay.dots,
-    radarScanLabel: radarScanOverlay.label,
+    radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : radarScanOverlay.label,
     showRadarScanPoints: showRadarSweep && radarScanOverlay.dots.length > 0,
     radarScanAria: `雷达点位，${radarScanOverlay.label}`,
+    radarLocalScanDots: radarLocalScanOverlay.dots,
+    showRadarLocalScan: showRadarSweep && radarLocalScanOverlay.dots.length > 0,
+    radarLocalScanAria: `雷达局部点位，${radarLocalScanOverlay.label}`,
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
@@ -5514,6 +5545,11 @@ onBeforeUnmount(() => {
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">
                   <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.15" />
+                </svg>
+                <svg v-if="plainMapVisualSummary.showRadarLocalScan" class="plain-map-radar-local-scan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-local-scan" :aria-label="plainMapVisualSummary.radarLocalScanAria">
+                  <line x1="50" y1="44" x2="50" y2="56" />
+                  <line x1="44" y1="50" x2="56" y2="50" />
+                  <circle v-for="point in plainMapVisualSummary.radarLocalScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.6" />
                 </svg>
                 <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" :style="plainMapVisualSummary.radarOverlayStyle" aria-hidden="true" />
                 <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" :style="plainMapVisualSummary.robotPoseStyle" :aria-label="plainMapVisualSummary.robotPoseAria" />

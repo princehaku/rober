@@ -626,6 +626,37 @@ h3 {
   filter: drop-shadow(0 1px 2px rgba(11, 53, 28, 0.24));
 }
 
+.plain-map-radar-local-scan {
+  /* 缺 map 位姿时只展示雷达局部轮廓，不把点位落到全局地图坐标。 */
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 4;
+  width: 72px;
+  height: 72px;
+  overflow: visible;
+  pointer-events: none;
+  border: 1px dashed rgba(23, 96, 57, 0.42);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle, rgba(23, 96, 57, 0.1) 0 2px, transparent 3px),
+    rgba(248, 250, 252, 0.9);
+  box-shadow: 0 2px 8px rgba(21, 31, 43, 0.12);
+}
+
+.plain-map-radar-local-scan line {
+  stroke: rgba(23, 96, 57, 0.38);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.plain-map-radar-local-scan circle {
+  fill: rgba(16, 124, 16, 0.68);
+  stroke: rgba(255, 255, 255, 0.86);
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
 .plain-map-robot-marker {
   top: 50%;
   left: 50%;

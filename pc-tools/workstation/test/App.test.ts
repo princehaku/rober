@@ -3580,6 +3580,44 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
   });
 
+  it("shows local radar scan dots instead of fake map dots when pose is missing", async () => {
+    // 有 scan 点但没有 map-frame 位姿时，只能展示局部雷达轮廓，不能落到真实地图坐标。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.o3_proof_summary.amcl_pose_observed = false;
+    summaryFixture.o3_proof_summary.localization_tf_observed = false;
+    summaryFixture.o3_proof_summary.scan_preview_points = [
+      { x_m: 1.0, y_m: 0, range_m: 1.0, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
+      { x_m: 0.0, y_m: 1.0, range_m: 1.0, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
+      { x_m: -0.8, y_m: 0.2, range_m: 0.82, angle_rad: 2.8966, frame_id: "laser_frame", source_index: 2 },
+    ];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = 84;
+    summaryFixture.o3_proof_summary.scan_preview_frame_id = "laser_frame";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "true";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
+    const localScan = wrapper.find('[data-testid="plain-map-radar-local-scan"]');
+    expect(localScan.exists()).toBe(true);
+    expect(localScan.attributes("aria-label")).toBe("雷达局部点位，雷达局部点 3 个，等待地图位置");
+    expect(localScan.findAll("circle")).toHaveLength(3);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达局部点 3 个，等待地图位置");
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+  });
+
   it("draws the latest Nav2 goal on the real map when goal coordinates are available", async () => {
     // 最近行程目标点只读自 latest artifact；它是地图 overlay，不会重新执行 Nav2 或确认送达。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
