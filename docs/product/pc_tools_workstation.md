@@ -1972,3 +1972,8 @@ keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。
 `goal_x/goal_y` 来自路线 overlay 最后一个 map-frame 点，高级区 `目标 x/y` 只影响高级 Nav2 表单，不再影响普通用户按钮。
 路线预览暂不提供终点朝向，因此 `goal_yaw` 仍沿用显式目标朝向输入。该改动只修正 operator 点击后的 Nav2 goal 请求体，
 不自动执行路线、不绕过安全确认、不发送 manual/keyboard pulse/delivery complete/stop 或 `/cmd_vel`。
+
+2026-06-25 21:57 起，普通首屏键盘连续手控和扫地式建图的按住状态会显示最近一次键盘 manual pulse 返回的轮速
+`L/R` 摘要，例如 `轮速 L/R=0.07/0.08，非零已读到`。高级诊断仍保留完整 raw key-value；普通首屏只显示可理解的
+L/R 结论，帮助现场判断连续手控是否真的读到 wheel feedback。该状态只消费已返回的 `/api/robot-control/base/manual`
+响应，不改变按住才动、松开即停、最小安全确认、stop 兜底或 `/cmd_vel` 禁止边界。

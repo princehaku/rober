@@ -240,6 +240,7 @@ const keyboardControlStatus = ref("idle_not_started");
 const keyboardLastDirection = ref("not_loaded");
 const keyboardVerifiedPulseCount = ref(0);
 const keyboardHoldPulseCount = ref(0);
+const keyboardLastWheelFeedbackValues = ref<Record<string, string> | null>(null);
 const keyboardLastStopReason = ref("not_loaded");
 let previewFrameSampleTimers: number[] = [];
 let keyboardJogTimer: number | null = null;
@@ -1311,13 +1312,14 @@ const plainFreeRoamDriveStatus = computed(() => {
     return "扫图状态：还没开始记录，键盘扫图锁定。";
   }
   if (keyboardHeldDirection.value) {
+    const wheelText = keyboardWheelFeedbackPlainText();
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
-      return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面刷新中；${keyboardForwardedPulseProgressText.value}。`;
+      return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面刷新中；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
     }
     if (plainFreeRoamLiveMapPreviewRefreshedForHold.value) {
-      return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面已跟随刷新；${keyboardForwardedPulseProgressText.value}。`;
+      return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面已跟随刷新；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
     }
-    return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，松开即停；${keyboardForwardedPulseProgressText.value}。`;
+    return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，松开即停；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
   }
   if (keyboardControlStatus.value.startsWith("stop_sent")) {
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
@@ -1594,13 +1596,30 @@ const keyboardDirectionPlainLabel = computed(() => {
   }
 });
 
+function keyboardWheelFeedbackPlainText(): string {
+  const values = keyboardLastWheelFeedbackValues.value;
+  if (!values) {
+    return "";
+  }
+  const left = values.wheel_feedback_latest_raw_left ?? values.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = values.wheel_feedback_latest_raw_right ?? values.wheel_feedback_latest_right_speed ?? "not_loaded";
+  if (left === "not_loaded" && right === "not_loaded") {
+    return "";
+  }
+  const nonzero = values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true";
+  return nonzero
+    ? `；轮速 L/R=${left}/${right}，非零已读到`
+    : `；轮速 L/R=${left}/${right}，等待非零`;
+}
+
 const plainKeyboardLiveStatus = computed(() => {
   // 这行只解释本地键盘循环状态，不作为任何控制 gate 或成功证据。
   if (keyboardHeldDirection.value) {
+    const wheelText = keyboardWheelFeedbackPlainText();
     if (keyboardManualPulseObserved.value) {
-      return `正在${keyboardDirectionPlainLabel.value}，${keyboardForwardedPulseProgressText.value}；松开后完成停止收口。`;
+      return `正在${keyboardDirectionPlainLabel.value}，${keyboardForwardedPulseProgressText.value}${wheelText}；松开后完成停止收口。`;
     }
-    return `正在${keyboardDirectionPlainLabel.value}，松开即停；${keyboardForwardedPulseProgressText.value}。`;
+    return `正在${keyboardDirectionPlainLabel.value}，松开即停；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
   }
   if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
     return "键盘手控请求未成功，未记为已验证。";
@@ -5704,6 +5723,9 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
     manualCommandPending.value = true;
     const result = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForKeyboardDirection(direction));
     manualCommandResult.value = result;
+    if (result.remote_motion_key_values) {
+      keyboardLastWheelFeedbackValues.value = result.remote_motion_key_values;
+    }
     const pulseForwarded = result.proxy_status === "command_forwarded"
       && typeof result.remote_http_status === "number"
       && result.remote_http_status >= 200
@@ -5855,6 +5877,7 @@ function startKeyboardControl(direction: ManualDirection): void {
   clearKeyboardJogTimer();
   keyboardHeldDirection.value = direction;
   keyboardHoldPulseCount.value = 0;
+  keyboardLastWheelFeedbackValues.value = null;
   plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
   keyboardLastDirection.value = direction;
   keyboardControlStatus.value = "holding_keyboard_jog";
