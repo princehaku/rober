@@ -1007,6 +1007,19 @@ const plainFreeRoamMappingStartLabel = computed(() => (
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecycleResult.value?.action === "save" ? "保存中" : "保存当前地图"
 ));
+const canRefreshPlainFreeRoamMapPreview = computed(() => (
+  (mapRuntimeStarted.value || mapSavedThisSession.value)
+  && !loading.value
+  && !mapPreviewPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const plainFreeRoamMapPreviewLabel = computed(() => {
+  // 扫图卡片内的画面刷新只读地图预览，必须等记录启动后才作为流程按钮出现。
+  if (mapPreviewPending.value) {
+    return "刷新中";
+  }
+  return mapRuntimeStarted.value || mapSavedThisSession.value ? "刷新扫图画面" : "先开始记录";
+});
 const plainFreeRoamKeyboardLabel = computed(() => {
   // 按扫地式建图顺序提示下一步，避免 operator 在未记录地图时先移动。
   if (!plainFreeRoamMappingConfirmed.value) {
@@ -5632,6 +5645,9 @@ onBeforeUnmount(() => {
             </button>
             <button type="button" class="secondary compact-stop" :disabled="!canArmPlainFreeRoamKeyboard" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
               {{ plainFreeRoamKeyboardLabel }}
+            </button>
+            <button type="button" class="secondary compact-stop" :disabled="!canRefreshPlainFreeRoamMapPreview" data-testid="plain-free-roam-map-refresh" @click="refreshMapPreview">
+              {{ plainFreeRoamMapPreviewLabel }}
             </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
               停止

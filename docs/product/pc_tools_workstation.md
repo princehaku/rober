@@ -1806,3 +1806,8 @@ operator report、轮速非零、LiDAR delta 和送达材料继续作为证据/�
 `先开始记录`，只有固定 `/api/robot-control/map/start` 返回 `command_result.executed=true` 后才恢复为
 `启用键盘扫图`；点击启用仍只聚焦键盘面板，不发送 `/api/base/manual`，真正移动必须后续按住方向键/WASD。
 这保持普通键盘手控的最小安全确认入口，同时避免 operator 在未记录地图时先移动。
+
+2026-06-25 17:53 起，普通首屏“扫地式建图”卡片在地图记录启动或保存后新增 `刷新扫图画面`。该按钮只复用
+`GET /api/robot-control/map/preview` 读取真实地图图片和 cell 统计，让 operator 在扫图流程内直接看到最新地图覆盖；
+记录未启动前按钮显示 `先开始记录` 并禁用。它不调用 `/api/robot-control/map/start`、`/api/base/manual`、
+Nav2、keyboard pulse、delivery complete 或 `/cmd_vel`。
