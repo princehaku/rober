@@ -3750,9 +3750,15 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，松开即停；本次按住 1/2 次。");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：松开或停止");
+    const previewCallsBeforeRelease = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
+    const nav2ExecuteCallsBeforeRelease = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length;
+    const deliveryCompleteCallsBeforeRelease = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length;
     await wrapper.find('[data-testid="keyboard-screen-forward"]').trigger("pointerup");
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeRelease + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length).toBe(nav2ExecuteCallsBeforeRelease);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length).toBe(deliveryCompleteCallsBeforeRelease);
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已停止，地图画面已刷新，可以保存当前地图。");
   });
 

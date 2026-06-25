@@ -1919,3 +1919,8 @@ manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`；真实移动�
 把已到达且有反馈、已到达但缺反馈、旧到达记录、未通过、执行中翻译为普通用户可见文案。该状态只消费
 `/api/robot-control/nav2/goal/execute` 或 `/api/robot-control/nav2/goal/execution/latest` 已返回的 key-value，
 不自动读取 latest、不自动执行 Nav2、不提交送达确认、不发送 manual/keyboard pulse/stop 或 `/cmd_vel`。
+
+2026-06-25 20:48 起，普通首屏“扫地式建图”在地图记录已启动且键盘扫图 stop 成功后，会自动刷新一次 `扫图画面`，
+让 operator 松开方向键后直接看到更新后的地图覆盖并继续保存地图。该刷新只调用只读
+`GET /api/robot-control/map/preview`，不自动再次发送 manual/keyboard pulse、不启动 Nav2、不提交 delivery complete、
+不发送额外 stop 或 `/cmd_vel`；若地图画面刷新成功，`保存当前地图` 会按原有 gate 变为可用。

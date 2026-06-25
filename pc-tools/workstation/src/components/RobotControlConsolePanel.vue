@@ -1272,6 +1272,9 @@ const plainFreeRoamDriveStatus = computed(() => {
     return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，松开即停；${keyboardForwardedPulseProgressText.value}。`;
   }
   if (keyboardControlStatus.value.startsWith("stop_sent")) {
+    if (mapPreviewPending.value && mapRuntimeStarted.value) {
+      return "扫图状态：已停止，正在刷新扫图画面。";
+    }
     return plainFreeRoamMapPreviewFreshForSession.value
       ? "扫图状态：已停止，地图画面已刷新，可以保存当前地图。"
       : "扫图状态：已停止，先刷新扫图画面，再保存地图。";
@@ -5684,6 +5687,9 @@ async function sendKeyboardReleaseStop(reason: string): Promise<void> {
     && result.remote_http_status >= 200
     && result.remote_http_status < 300;
   keyboardControlStatus.value = stopForwarded ? `stop_sent:${reason}` : `blocked_keyboard_stop_failed:${result?.failure_reason || result?.proxy_status || "stop_not_forwarded"}`;
+  if (stopForwarded && mapRuntimeStarted.value && robotApiBaseUrl.value.trim()) {
+    void refreshMapPreview({ countForFreeRoamSession: true });
+  }
 }
 
 function startKeyboardControl(direction: ManualDirection): void {
