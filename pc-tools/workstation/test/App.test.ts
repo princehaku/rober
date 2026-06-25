@@ -3637,6 +3637,30 @@ describe("App", () => {
         robot_control_executed: false,
         ...PROOF_FLAGS,
       },
+      "/api/robot-control/base/manual": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "forward",
+        applied_direction: "forward",
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+      "/api/robot-control/base/stop": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "stop",
+        applied_direction: "stop",
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
     });
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
@@ -3644,6 +3668,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：先勾安全确认，小车不会移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先勾安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：勾安全确认");
@@ -3658,6 +3683,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：还没开始记录，键盘扫图锁定。");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录");
@@ -3676,6 +3702,7 @@ describe("App", () => {
 
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST")).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("建图已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图记录中，先启用键盘扫图；启用本身不会移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').text()).toBe("刷新扫图画面");
@@ -3703,11 +3730,25 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm);
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：键盘已启用，按住方向键/WASD 低速扫图；松开即停。");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：按住方向键扫图");
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-panel"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm);
+    await wrapper.find('[data-testid="plain-free-roam-keyboard"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
+    await wrapper.find('[data-testid="keyboard-screen-forward"]').trigger("pointerdown");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，松开即停；本次按住 1/2 次。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：松开或停止");
+    await wrapper.find('[data-testid="keyboard-screen-forward"]').trigger("pointerup");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已停止，地图画面已刷新，可以保存当前地图。");
   });
 
   it("draws radar pulse on the robot marker only after map-frame pose is observed", async () => {

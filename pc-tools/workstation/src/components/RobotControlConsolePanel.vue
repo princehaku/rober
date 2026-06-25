@@ -1197,6 +1197,35 @@ const plainFreeRoamNextActionLabel = computed(() => {
   }
   return "下一步：检查地图画面";
 });
+const plainFreeRoamDriveStatus = computed(() => {
+  // 扫图状态只解释当前本地流程，不自动启用键盘、不发送 manual，也不把自动扫图说成已开放。
+  if (!plainManualSafetyConfirmed.value) {
+    return "扫图状态：先勾安全确认，小车不会移动。";
+  }
+  if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    return "扫图状态：还没开始记录，键盘扫图锁定。";
+  }
+  if (keyboardHeldDirection.value) {
+    return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，松开即停；${keyboardForwardedPulseProgressText.value}。`;
+  }
+  if (keyboardControlStatus.value.startsWith("stop_sent")) {
+    return plainFreeRoamMapPreviewFreshForSession.value
+      ? "扫图状态：已停止，地图画面已刷新，可以保存当前地图。"
+      : "扫图状态：已停止，先刷新扫图画面，再保存地图。";
+  }
+  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+    return "扫图状态：键盘已启用，按住方向键/WASD 低速扫图；松开即停。";
+  }
+  if (mapSavedThisSession.value) {
+    return "扫图状态：地图已保存，刷新地图画面检查效果。";
+  }
+  if (mapRuntimeStarted.value) {
+    return canArmPlainFreeRoamKeyboard.value
+      ? "扫图状态：地图记录中，先启用键盘扫图；启用本身不会移动。"
+      : "扫图状态：地图记录中，键盘条件未满足，不能扫图移动。";
+  }
+  return "扫图状态：等待地图记录状态。";
+});
 const plainFreeRoamCoverageSummary = computed(() => {
   // 像扫地机一样给出“已经扫到多少”的直观反馈；只读地图预览，不触发建图或移动。
   const preview = mapPreviewResult.value;
@@ -5940,6 +5969,7 @@ onBeforeUnmount(() => {
             </button>
           </div>
           <p class="panel-note" data-testid="plain-free-roam-hint">{{ plainFreeRoamMappingSummary.hint }}</p>
+          <p class="panel-note" data-testid="plain-free-roam-drive-status">{{ plainFreeRoamDriveStatus }}</p>
           <p class="panel-note">按住方向键或 W/A/S/D 移动，松开即停；保存后刷新地图画面检查效果。</p>
           <div class="plain-free-roam-coverage" data-testid="plain-free-roam-coverage">
             <div class="simple-status-row">
