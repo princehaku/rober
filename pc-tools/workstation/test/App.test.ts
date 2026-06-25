@@ -4644,6 +4644,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，可以准备送达材料。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-visible-route-fixture");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("补送达画面");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：准备送达材料。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -10057,6 +10058,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-fresh-fixture");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("重新准备材料");
     expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-o11-nav2-goal-execution-fresh-fixture");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");

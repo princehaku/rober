@@ -2485,6 +2485,22 @@ const plainDeliveryLatestButtonLabel = computed(() => {
   return deliveryLatestPending.value ? "刷新中" : "刷新送达状态（只读）";
 });
 
+const plainDeliveryPrefillButtonLabel = computed(() => {
+  // 按钮文案跟随当前缺哪类材料；点击仍只做 latest/probe 预填，不提交送达。
+  if (navGoalExecutionLatestPending.value || cameraFirstFrameProbePending.value || deliveryLatestPending.value) {
+    return "准备中";
+  }
+  const hasVideoRef = deliveryOperatorVideoRef.value.trim().length > 0;
+  const hasRouteRef = deliveryOperatorRouteMapRef.value.trim().length > 0;
+  if (hasRouteRef && !hasVideoRef) {
+    return "补送达画面";
+  }
+  if (hasVideoRef && hasRouteRef) {
+    return "重新准备材料";
+  }
+  return "准备送达材料";
+});
+
 const plainDeliveryMaterialSummary = computed(() => {
   // 送达材料草稿只说明“有没有准备好”；不显示 ref、字段名或 delivery claim。
   if (operatorReportPending.value) {
@@ -7183,7 +7199,7 @@ onBeforeUnmount(() => {
                 data-testid="plain-delivery-prefill-material"
                 @click="prefillDeliveryMaterialRefs"
               >
-                准备送达材料
+                {{ plainDeliveryPrefillButtonLabel }}
               </button>
               <button
                 ref="plainDeliveryDraftSaveButton"
