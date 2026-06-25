@@ -4981,7 +4981,7 @@ async function runRefreshAction(
   }
 }
 
-async function refreshRadarProof(): Promise<void> {
+async function refreshRadarProof(options: { focusAfterReady?: boolean } = {}): Promise<void> {
   // Radar refresh 只刷新 no-motion scan proof snapshot，不开启任何底盘动作。
   await runRefreshAction(
     "radar_scan_proof_refresh",
@@ -4989,7 +4989,9 @@ async function refreshRadarProof(): Promise<void> {
     radarRefreshResult,
     radarRefreshPending,
   );
-  await focusPlainGoalProgressAfterRadarReady();
+  if (options.focusAfterReady !== false) {
+    await focusPlainGoalProgressAfterRadarReady();
+  }
 }
 
 async function focusPlainGoalProgressAfterRadarReady(): Promise<void> {
@@ -5782,6 +5784,9 @@ async function startFreeRoamAutonomy(): Promise<void> {
     freeRoamAutonomyPending.value = false;
     freeRoamAutonomyPendingAction.value = null;
     await refreshConsole();
+    if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
+      await refreshRadarProof({ focusAfterReady: false });
+    }
     await refreshMapPreview({ countForFreeRoamSession: true });
   }
 }

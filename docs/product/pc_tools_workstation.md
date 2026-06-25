@@ -2098,3 +2098,8 @@ PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboar
 `自动扫图已启动`，状态行显示 `自动扫图状态机已启动，地图和雷达监看中`；stop 成功后显示停止请求已发送，失败时显示
 未证明启动或停止。该反馈只消费 PC 固定代理响应，不新增任意 endpoint、manual、keyboard pulse、Nav2、delivery complete
 或 `/cmd_vel` 调用，也不修改 Clash 或系统代理配置。
+
+2026-06-26 01:35 起，普通首屏 `自动扫图` start 成功后会自动串一次只读监看刷新：固定
+`POST /api/robot-control/radar/scan-proof/refresh` 读取最新雷达 proof，然后固定
+`GET /api/robot-control/map/preview` 读取最新地图画面。该链路只更新地图/雷达所见即所得反馈，不再发
+base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。

@@ -3733,6 +3733,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；运动发布已解锁，PC 仍等待真车 HIL 记录。");
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
+    const radarRefreshCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
+    ).length;
+    const mapPreviewCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length;
     await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -3749,6 +3755,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("地图和雷达监看中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已启动");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
+    ).length).toBe(radarRefreshCallsBeforeClick + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length).toBe(mapPreviewCallsBeforeClick + 1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
