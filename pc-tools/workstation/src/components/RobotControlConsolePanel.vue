@@ -7802,7 +7802,7 @@ onBeforeUnmount(() => {
           <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
         </article>
 
-        <article class="snapshot-panel plain-free-roam-map" data-testid="plain-free-roam-mapping">
+        <article class="snapshot-panel plain-free-roam-map" :data-state="plainFreeRoamMappingSummary.state" data-testid="plain-free-roam-mapping">
           <h3>扫地式建图</h3>
           <div class="simple-status-row">
             <span class="status-chip" :data-state="plainFreeRoamMappingSummary.state">{{ plainFreeRoamMappingSummary.state }}</span>

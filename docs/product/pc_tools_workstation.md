@@ -2082,6 +2082,8 @@ manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 完成，避免 operator 在保存未完成时继续扫图。该状态只跟随 `/api/robot-control/map/*` 请求 pending，不发送
 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 08:50 起，普通首屏 `扫地式建图` 卡片也会带 `data-state`，外框跟随 `待确认/可开始/扫图中/保存中/刷新中/已保存/失败` 等流程状态变化。测试锁定初始待确认、地图记录启动后的扫图中、保存 pending、保存后刷新和已保存状态，以及对应 CSS 选择器，避免地图 marker 已显示扫图流程而扫图卡片仍像普通静态卡。该呈现只影响 PC 前端 WYSIWYG，不自动启动建图、不发送 manual/keyboard pulse、不执行 Nav2、delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-25 22:52 起，普通首屏键盘连续手控会保留一行 `上次方向/停止原因`：按住时显示 `正在按住：前进`，松开后显示
 `上次方向：前进；停止原因：松开键盘` 或 `上次方向：右转；停止原因：松开屏幕方向键`。这样 operator 在当前方向回到
 `未按键` 后仍能确认刚才哪一个方向完成了停止收口。该状态只读本地键盘状态机，不改变 manual pulse、stop、Nav2、
