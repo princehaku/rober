@@ -3790,6 +3790,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已启动");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：监看或停止自动扫图");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("自动扫图运行中");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("不是固定路线");
+    expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toContain("自动扫图运行中");
+    expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).not.toContain("不会自动移动");
     const callsBeforeAutoNext = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();

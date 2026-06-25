@@ -1077,6 +1077,20 @@ function latestNavPathOverlay() {
   };
 }
 
+function freeRoamAutonomyRuntimeActive(): boolean {
+  // 自动扫图 start 已转发或上车端 runtime 正在动作时，草图只能作为监看覆盖参考，不能再说“不会自动移动”。
+  const resultActive = freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded"
+    && freeRoamAutonomyResult.value.action === "start";
+  const runtime = robotSummary.value?.safe_command_boundary.free_roam_autonomy_runtime;
+  const runtimeMotionUnlocked = robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready"
+    && runtime?.cmd_vel_publish_enabled === true
+    && runtime.artifact_only === false;
+  const runtimeActive = runtime?.status === "loaded"
+    && runtimeMotionUnlocked
+    && ["running", "avoiding", "turning_for_coverage", "stopping"].includes(runtime.state);
+  return resultActive || runtimeActive;
+}
+
 function latestFreeRoamSweepPlanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
   // 这里只画“扫地图草图”，不生成真实导航目标；缺占用栅格明细时不能把草图说成避障路径。
   const preview = mapPreviewResult.value;
@@ -1101,14 +1115,17 @@ function latestFreeRoamSweepPlanOverlay(robotPose: ReturnType<typeof latestRobot
     points.push(`${startX.toFixed(2)},${y.toFixed(2)}`);
     points.push(`${endX.toFixed(2)},${y.toFixed(2)}`);
   }
+  const activeAutonomyText = freeRoamAutonomyRuntimeActive()
+    ? "自动扫图运行中，草图用于监看覆盖，不是固定路线。"
+    : "只读计划，不会自动移动。";
   return {
     points: points.join(" "),
     laneCount,
     showStart: Boolean(robotStart),
     startStyle: robotStart ? { left: `${robotStart.left.toFixed(2)}%`, top: `${robotStart.top.toFixed(2)}%` } : {},
     label: robotStart
-      ? `扫地图草图，从当前位置接入 ${laneCount} 段覆盖线；只读计划，不会自动移动。`
-      : `扫地图草图 ${laneCount} 段，等待定位后从当前位置接入；只读计划，不会自动移动。`,
+      ? `扫地图草图，从当前位置接入 ${laneCount} 段覆盖线；${activeAutonomyText}`
+      : `扫地图草图 ${laneCount} 段，等待定位后从当前位置接入；${activeAutonomyText}`,
   };
 }
 
@@ -1848,6 +1865,11 @@ const plainFreeRoamSweepPlanSummary = computed(() => {
   const plan = latestFreeRoamSweepPlanOverlay(latestRobotPoseOverlay());
   if (!plan) {
     return "扫地图草图：等待地图画面和可通行区域。";
+  }
+  if (freeRoamAutonomyRuntimeActive()) {
+    return plan.showStart
+      ? "扫地图草图：自动扫图运行中，蛇形草图用于监看覆盖，不是固定路线。"
+      : "扫地图草图：自动扫图运行中，等待定位后接入当前位置；草图只作覆盖监看参考。";
   }
   return plan.showStart
     ? "扫地图草图：已从当前位置画出蛇形覆盖草图；不会自动移动。"

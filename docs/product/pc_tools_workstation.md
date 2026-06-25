@@ -2154,6 +2154,11 @@ delivery complete、stop 或 `/cmd_vel`。
 `GET /api/robot-control/map/preview` 读取最新地图画面。该链路只更新地图/雷达所见即所得反馈，不再发
 base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
 
+2026-06-26 03:40 起，地图里的 `扫地图草图` 会跟随自动扫图 runtime 改口径：未启动自动扫图时仍说明“只读计划，不会自动移动”；
+自动扫图 start 已转发或上车端 runtime 处于 `running/avoiding/turning_for_coverage/stopping` 时，改为“自动扫图运行中，
+草图用于监看覆盖，不是固定路线”。这只修正同屏 WYSIWYG 文案，不生成 Nav2 路线、不改自动扫图状态机、不发送
+manual/keyboard pulse/stop/Nav2/delivery 或 `/cmd_vel`。
+
 2026-06-26 02:05 起，普通首屏扫地式建图点击 `保存当前地图` 后，保存代理返回成功会自动触发一次只读地图 preview 刷新，
 并把 `扫图状态` 和 `地图画面` 提示更新为“地图已保存，地图画面已自动刷新”。该刷新只读取
 `/api/robot-control/map/preview`，不发送 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
