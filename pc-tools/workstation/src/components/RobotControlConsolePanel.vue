@@ -4443,6 +4443,9 @@ const plainKeyboardArmButtonLabel = computed(() => {
 
 const plainKeyboardRecheckButtonLabel = computed(() => {
   // 复查按钮同样显示缺项数量；点击仍只刷新只读进度，不会发送手控。
+  if (mapWysiwygRefreshPending.value) {
+    return "等待地图刷新";
+  }
   if (navGoalExecutionPending.value) {
     return "复查手控条件（行程中，不发车）";
   }
@@ -4454,6 +4457,11 @@ const plainKeyboardRecheckButtonLabel = computed(() => {
   }
   return missingCount > 0 ? `复查手控条件（还差 ${missingCount} 项，不发车）` : "复查手控条件";
 });
+const canRefreshPlainKeyboardGate = computed(() => (
+  !plainGoalProgressPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 
 const plainKeyboardNextActionSummary = computed(() => {
   // 键盘 gate 缺项可能较多；现场只需要知道当前先做哪个普通动作。
@@ -6045,6 +6053,9 @@ async function refreshPlainGoalProgress(): Promise<void> {
 
 async function refreshPlainKeyboardGate(): Promise<void> {
   // 键盘复查仍只读刷新；刷新后把焦点带到下一步按钮，不自动启用键盘或发送手控。
+  if (!canRefreshPlainKeyboardGate.value) {
+    return;
+  }
   await refreshPlainGoalProgress();
   await nextTick();
   focusPlainKeyboardNextTarget();
@@ -7765,7 +7776,7 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
-              <button ref="keyboardControlRecheckButton" class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainKeyboardGate">{{ plainKeyboardRecheckButtonLabel }}</button>
+              <button ref="keyboardControlRecheckButton" class="secondary compact-stop" type="button" :disabled="!canRefreshPlainKeyboardGate" data-testid="keyboard-control-recheck" @click="refreshPlainKeyboardGate">{{ plainKeyboardRecheckButtonLabel }}</button>
               <button ref="keyboardControlArmButton" class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canRequestKeyboardStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>

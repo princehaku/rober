@@ -5237,6 +5237,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-preview-refresh"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");
@@ -5253,6 +5254,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-preview-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("等待地图刷新");
@@ -5270,6 +5273,9 @@ describe("App", () => {
     expect(mapProofRefreshCallCount()).toBe(mapProofCallsBeforePreviewBlockedClick);
     const goalProgressCallsBeforePreviewBlockedClick = goalProgressReadbackCallCount();
     await wrapper.find('[data-testid="plain-goal-progress-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(goalProgressReadbackCallCount()).toBe(goalProgressCallsBeforePreviewBlockedClick);
+    await wrapper.find('[data-testid="keyboard-control-recheck"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(goalProgressReadbackCallCount()).toBe(goalProgressCallsBeforePreviewBlockedClick);
     const nav2CallsBeforePreviewBlockedClicks = nav2ProofRefreshCallCount();
@@ -5300,6 +5306,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-preview-refresh"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");
@@ -5317,6 +5324,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-preview-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("等待地图刷新");
@@ -5333,6 +5342,9 @@ describe("App", () => {
     expect(mapPreviewRefreshCallCount()).toBe(mapPreviewCallsBeforeProofBlockedClick);
     const goalProgressCallsBeforeProofBlockedClick = goalProgressReadbackCallCount();
     await wrapper.find('[data-testid="plain-goal-progress-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(goalProgressReadbackCallCount()).toBe(goalProgressCallsBeforeProofBlockedClick);
+    await wrapper.find('[data-testid="keyboard-control-recheck"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(goalProgressReadbackCallCount()).toBe(goalProgressCallsBeforeProofBlockedClick);
     const nav2CallsBeforeProofBlockedClicks = nav2ProofRefreshCallCount();
@@ -5359,6 +5371,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-preview-refresh"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");

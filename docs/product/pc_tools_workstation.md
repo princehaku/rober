@@ -2304,3 +2304,7 @@ delivery、stop 或 `/cmd_vel`。
 `坐标口径：机器人定位失败：amcl_timeout，地图上的雷达和小车位置仍待定位。`。这样地图 marker、坐标口径和移动卡片不再出现
 一个说失败、另一个只说“位置未读到”的割裂反馈。该 caption 只消费固定 localization reset 代理结果，不自动重新定位、
 不启动雷达、不执行 Nav2、不发送 manual/keyboard pulse、delivery、stop 或 `/cmd_vel`。
+
+2026-06-26 06:45 起，普通首屏键盘区 `复查手控条件` 也接入地图 WYSIWYG gate。地图 proof/preview 正在刷新时按钮显示
+`等待地图刷新` 并禁用，函数入口同步早退，不再允许键盘 gate 的只读聚合在旧地图画面上刷新轮速、行程或送达状态。
+该状态只等待地图只读刷新完成，不启用键盘、不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
