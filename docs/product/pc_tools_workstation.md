@@ -2138,6 +2138,10 @@ stop 或 `/cmd_vel`。
 或 frame callback 后，才进入已打开/画面可见/画面偏暗判断。该状态只消费浏览器本地 video 诊断，不调用
 camera probe、manual、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-26 04:20 起，如果上位机 summary 已把相机归因为 source first-frame 失败，而浏览器 streaming 仍未绘出第一帧，
+普通首屏继续显示 `失败 / 相机没有出画面，检查摄像头/视频线`，不再被 streaming 状态覆盖成“等待画面”。该判断只读取
+summary 和本地 video 元素状态，不自动调用 camera probe、manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-26 02:50 起，普通首屏点击 `启动雷达` 且固定 radar lifecycle 代理返回 `ok=true` 后，会自动追加一次只读
 `/api/robot-control/radar/scan-proof/refresh`。地图 marker 因此能尽快从 `雷达启动中/雷达已启动待刷新` 更新到真实
 `雷达已运行` 或仍需处理的读回状态。该自动刷新不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。

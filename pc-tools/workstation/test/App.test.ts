@@ -10420,6 +10420,102 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("keeps camera source first-frame failure visible while streaming waits for a drawable frame", async () => {
+    // 上位机已经归因为摄像头首帧失败时，不能让 streaming-but-no-frame 状态把失败覆盖成“等待画面”。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "first_frame_timeout";
+    summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "first_frame_timeout";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    class FakeMediaStream {
+      tracks: Array<{ kind: string; readyState: string; stop: () => void }>;
+
+      constructor(tracks: Array<{ kind: string; readyState: string; stop: () => void }>) {
+        this.tracks = tracks;
+      }
+
+      getTracks() {
+        return this.tracks;
+      }
+    }
+
+    class FakePeerConnection {
+      iceConnectionState = "new";
+      iceGatheringState = "complete";
+      localDescription: { type: "offer"; sdp: string } | null = null;
+      remoteDescription: { type: "answer"; sdp: string } | null = null;
+      oniceconnectionstatechange: (() => void) | null = null;
+      ontrack: ((
+        event: {
+          track: { kind: string; readyState: string; stop: () => void; onended: (() => void) | null };
+          streams: FakeMediaStream[];
+        },
+      ) => void) | null = null;
+
+      addTransceiver() {
+        return undefined;
+      }
+
+      async createOffer() {
+        return { type: "offer" as const, sdp: "v=0\r\ns=local-offer\r\n" };
+      }
+
+      async setLocalDescription(description: { type: "offer"; sdp: string }) {
+        this.localDescription = description;
+      }
+
+      async setRemoteDescription(description: { type: "answer"; sdp: string }) {
+        const videoTrack = {
+          kind: "video",
+          readyState: "live",
+          stop: () => undefined,
+          onended: null,
+        };
+        this.remoteDescription = description;
+        this.iceConnectionState = "connected";
+        this.oniceconnectionstatechange?.();
+        this.ontrack?.({
+          track: videoTrack,
+          streams: [new FakeMediaStream([videoTrack])],
+        });
+      }
+
+      getReceivers() {
+        return [];
+      }
+
+      close() {
+        this.iceConnectionState = "closed";
+        this.oniceconnectionstatechange?.();
+      }
+    }
+
+    vi.stubGlobal("MediaStream", FakeMediaStream as unknown as typeof MediaStream);
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection as unknown as typeof RTCPeerConnection);
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await flushPromises();
+    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(1100);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("失败");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("相机没有出画面，检查摄像头/视频线。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机没有出画面，检查摄像头/视频线。");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("first_frame_timeout");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("keeps failure status after Start Preview fails instead of collapsing to stopped_by_user", async () => {
     // Start 失败后仍要保留失败态，避免 operator 只看到 stopped_by_user 而丢失归因。
     const mockedFetch = vi.fn(async (url: string) => {

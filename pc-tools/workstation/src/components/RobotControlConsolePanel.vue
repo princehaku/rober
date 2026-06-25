@@ -373,6 +373,9 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "等待画
       if (previewFrameSampleStatus.value === "near_black") {
         return { state: "画面偏暗", hint: "画面太暗，先检查镜头/光线。" };
       }
+      if (sourceFailureHint && !browserVideoFrameDrawn()) {
+        return { state: "失败", hint: sourceFailureHint };
+      }
       if (!browserVideoFrameDrawn()) {
         return { state: "等待画面", hint: "视频已接入，等待浏览器绘出第一帧。" };
       }
