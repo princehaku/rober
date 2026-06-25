@@ -2033,3 +2033,8 @@ manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 `保存当前地图` 后，保存请求未返回前会显示 `正在保存当前扫图地图；保存完成前不要继续移动`，下一步锁定为等待地图动作
 完成，避免 operator 在保存未完成时继续扫图。该状态只跟随 `/api/robot-control/map/*` 请求 pending，不发送
 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
+
+2026-06-25 22:52 起，普通首屏键盘连续手控会保留一行 `上次方向/停止原因`：按住时显示 `正在按住：前进`，松开后显示
+`上次方向：前进；停止原因：松开键盘` 或 `上次方向：右转；停止原因：松开屏幕方向键`。这样 operator 在当前方向回到
+`未按键` 后仍能确认刚才哪一个方向完成了停止收口。该状态只读本地键盘状态机，不改变 manual pulse、stop、Nav2、
+delivery complete 或 `/cmd_vel` 行为。

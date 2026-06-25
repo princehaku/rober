@@ -1725,6 +1725,66 @@ const keyboardDirectionPlainLabel = computed(() => {
   }
 });
 
+function manualDirectionPlainLabel(direction: string): string {
+  // 上次方向来自内部 enum；普通首屏统一翻译成现场能听懂的中文。
+  switch (direction) {
+    case "forward":
+      return "前进";
+    case "back":
+      return "后退";
+    case "left":
+      return "左转";
+    case "right":
+      return "右转";
+    default:
+      return "未记录";
+  }
+}
+
+function keyboardStopReasonPlainLabel(reason: string): string {
+  // 停止原因只解释 operator 关心的入口，避免把底层事件名直接暴露到普通界面。
+  if (reason.includes("key_released")) {
+    return "松开键盘";
+  }
+  if (reason.includes("screen_button_released") || reason.includes("free_roam_screen_button_released")) {
+    return "松开屏幕方向键";
+  }
+  if (reason.includes("screen_button_left") || reason.includes("free_roam_screen_button_left")) {
+    return "手指移出方向键";
+  }
+  if (reason.includes("screen_button_cancelled") || reason.includes("free_roam_screen_button_cancelled")) {
+    return "方向键触控取消";
+  }
+  if (reason.includes("window_blur") || reason.includes("focus")) {
+    return "窗口或面板失焦";
+  }
+  if (reason.includes("page_hidden")) {
+    return "页面隐藏";
+  }
+  if (reason.includes("button_stop") || reason.includes("mapping_stop")) {
+    return "点击停止";
+  }
+  if (reason.includes("direction_changed")) {
+    return "切换方向";
+  }
+  return "停止已触发";
+}
+
+const plainKeyboardLastStopSummary = computed(() => {
+  // 连续手控松开后要留下一句“刚才停的是哪个方向”，否则现场很难复核按住-松开闭环。
+  if (keyboardHeldDirection.value) {
+    return `正在按住：${keyboardDirectionPlainLabel.value}`;
+  }
+  if (keyboardLastDirection.value === "not_loaded") {
+    return "上次方向：未记录。";
+  }
+  const directionText = manualDirectionPlainLabel(keyboardLastDirection.value);
+  if (!keyboardLastStopReason.value || keyboardLastStopReason.value === "not_loaded") {
+    return `上次方向：${directionText}；等待停止收口。`;
+  }
+  return `上次方向：${directionText}；停止原因：${keyboardStopReasonPlainLabel(keyboardLastStopReason.value)}。`;
+});
+
 function keyboardWheelFeedbackPlainText(): string {
   const values = keyboardLastWheelFeedbackValues.value;
   if (!values) {
@@ -6632,6 +6692,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
+            <p class="panel-note" data-testid="keyboard-last-stop-summary">{{ plainKeyboardLastStopSummary }}</p>
             <div class="keyboard-direction-pad" data-testid="keyboard-direction-pad">
               <button
                 type="button"
