@@ -947,6 +947,18 @@ h3 {
   color: #6a5710;
 }
 
+.plain-map-route-goal-marker[data-state="停止中"] {
+  border-color: #d97706;
+  background: #fff7ed;
+  color: #7c2d12;
+}
+
+.plain-map-route-goal-marker[data-state="停止已发送"] {
+  border-color: #9ebee8;
+  background: #edf5ff;
+  color: #174ea6;
+}
+
 .plain-map-route-goal-marker[data-state="已送达"] {
   border-color: #238636;
   background: #e7f7ed;
