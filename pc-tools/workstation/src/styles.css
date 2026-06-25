@@ -455,6 +455,27 @@ h3 {
   border-left-color: #cf222e;
 }
 
+.plain-map-panel {
+  border-left: 3px solid transparent;
+}
+
+.plain-map-panel[data-state="地图可见"] {
+  border-left-color: #238636;
+}
+
+.plain-map-panel[data-state="地图处理中"],
+.plain-map-panel[data-state="地图待刷新"] {
+  border-left-color: #9a6700;
+}
+
+.plain-map-panel[data-state="地图未读取"] {
+  border-left-color: #8c959f;
+}
+
+.plain-map-panel[data-state="地图不可用"] {
+  border-left-color: #cf222e;
+}
+
 .camera-preview-frame {
   /* 画面框必须先表达“现在看到了什么”，避免空 video 被误读成真实黑屏。 */
   position: relative;

@@ -3493,10 +3493,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("还没有打开实时画面。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
+    const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
+    expect(mapPanel.exists()).toBe(true);
+    expect(mapPanel.attributes("data-state")).toBe("地图可见");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
+    expect(workstationStyles).toContain('.plain-map-panel[data-state="地图可见"]');
+    expect(workstationStyles).toContain('.plain-map-panel[data-state="地图处理中"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面可见"][data-frame-state="已绘制帧"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面偏暗"]');
     expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达已运行"]');
@@ -5507,6 +5512,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-state")).toBe("地图处理中");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图处理中");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图处理中"] .plain-map-layer');

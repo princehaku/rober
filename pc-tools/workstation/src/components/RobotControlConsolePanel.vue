@@ -7732,7 +7732,7 @@ onBeforeUnmount(() => {
           <p class="panel-note">{{ radarSummary.hint }}</p>
         </article>
 
-        <article class="snapshot-panel">
+        <article class="snapshot-panel plain-map-panel" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state">
           <h3>地图</h3>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state">
             <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
