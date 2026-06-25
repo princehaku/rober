@@ -982,6 +982,8 @@ const plainMapVisualSummary = computed(() => {
           : "地图未读取";
   const poseObserved = Boolean(robotPose);
   const radarState = radarSummary.value.state;
+  const lidar = robotSummary.value?.readback_summary.lidar;
+  const radarStartAwaitingRefresh = radarStartSucceeded(radarLifecycleResult.value) && !radarFieldIsTrue(lidar?.lifecycle_running);
   const radarNeedsMapPose = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
   const radarOverlayMode = poseObserved
     ? radarState === "雷达已运行"
@@ -996,16 +998,31 @@ const plainMapVisualSummary = computed(() => {
   const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose, radarState);
   const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;
   const radarOverlayLabel = poseObserved
-    ? radarState === "雷达已运行"
+    ? radarStartAwaitingRefresh
+      ? "雷达已启动，待刷新"
+      : radarState === "雷达已运行"
       ? "雷达"
       : radarState
-    : radarNeedsMapPose
+    : radarStartAwaitingRefresh
+      ? "雷达已启动，位置未读到"
+      : radarNeedsMapPose
       ? `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarState;
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
   const radarSweepAria = poseObserved
-    ? `${radarState}扫描范围，跟随机器人位置`
-    : `${radarState}扫描范围占位，等待机器人地图位置`;
+    ? radarStartAwaitingRefresh
+      ? "雷达已启动扫描范围，跟随机器人位置，等待刷新确认"
+      : `${radarState}扫描范围，跟随机器人位置`
+    : radarStartAwaitingRefresh
+      ? "雷达已启动扫描范围占位，等待刷新确认和机器人地图位置"
+      : `${radarState}扫描范围占位，等待机器人地图位置`;
+  const radarOverlayAria = poseObserved
+    ? radarStartAwaitingRefresh
+      ? "雷达已启动，已叠在机器人位置，等待刷新确认"
+      : `${radarState}，已叠在机器人位置`
+    : radarStartAwaitingRefresh
+      ? "雷达已启动，地图位置未读到，等待刷新确认"
+      : `${radarState}，地图位置未读到`;
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref
@@ -1016,7 +1033,7 @@ const plainMapVisualSummary = computed(() => {
     radarLabel: radarState,
     radarOverlayLabel,
     radarOverlayMode,
-    radarOverlayAria: poseObserved ? `${radarState}，已叠在机器人位置` : `${radarState}，地图位置未读到`,
+    radarOverlayAria,
     radarOverlayStyle: poseObserved ? (robotPose?.style ?? {}) : {},
     showRadarSweep,
     radarSweepAria,

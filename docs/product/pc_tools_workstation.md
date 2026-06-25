@@ -1888,3 +1888,8 @@ keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。高级诊断�
 `http://192.168.1.11:8787`，与普通首屏默认小车地址保持一致；控制类代理仍要求显式 baseUrl 并继续走原有
 fail-closed 校验。PC 工作站仍监听 `0.0.0.0:7001`，该默认值只减少普通访问/直接 curl 的地址配置成本，不改 Clash，
 不自动发送 manual、keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
+
+2026-06-26 00:20 起，普通首屏点击 `启动雷达` 且上位机 lifecycle proxy 明确返回 ok 后，地图上的雷达 marker
+会立即从旧 summary 的 `雷达未运行` 切到 `雷达已启动，位置未读到` / `雷达已启动，待刷新`，扫描范围 aria
+也标明等待刷新确认。该状态只表达“启动命令已返回，下一步刷新确认”，不把雷达冒充为实时运行、不贴假地图坐标，
+不自动刷新 proof、不发送 manual、keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。

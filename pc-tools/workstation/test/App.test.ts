@@ -8416,6 +8416,11 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，请点刷新雷达确认状态。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已启动，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已启动，地图位置未读到，等待刷新确认");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已启动扫描范围占位，等待刷新确认和机器人地图位置");
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
