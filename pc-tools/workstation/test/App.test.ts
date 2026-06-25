@@ -8831,6 +8831,79 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("shows a map radar-starting marker while the plain radar start request is in flight", async () => {
+    // 点击启动到上位机返回之间也要所见即所得，不能继续把地图标成“雷达未运行”。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const radarStartResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+      action: "start",
+      proxy_status: "lifecycle_forwarded",
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      remote_endpoint: "/api/radar/start",
+      remote_method: "POST",
+      remote_http_status: 200,
+      status: "loaded_fail_closed_summary",
+      command_result: { mode: "configured_command", executed: true, ok: true },
+      failure_reason: "",
+      blocked_reasons: [],
+      hard_dangerous_true_fields: [],
+      robot_control_executed: false,
+      ...PROOF_FLAGS,
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/radar/start": radarStartResponse,
+    });
+    const originalFetch = mockedFetch.getMockImplementation();
+    const radarStartControl: { finish?: () => void } = {};
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/radar/start?")) {
+        return new Promise((resolve) => {
+          radarStartControl.finish = () => resolve({
+            ok: true,
+            json: async () => radarStartResponse,
+          });
+        });
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const startClick = wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(visiblePlainHomeText(wrapper)).toContain("正在启动雷达，等待上位机返回。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达启动中，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达启动中");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动中，地图位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达启动中扫描范围占位，等待机器人地图位置");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达启动命令发送中，返回并刷新后才显示新点位。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+
+    const finishRadarStart = radarStartControl.finish;
+    if (!finishRadarStart) {
+      throw new Error("radar start request was not captured");
+    }
+    finishRadarStart();
+    await startClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+  });
+
   it("returns to the current goal blocker after radar refresh confirms running", async () => {
     // 雷达刷新只是前置确认；雷达已运行后要回到本轮第一缺口，不能固定把现场带去轮速面板。
     const mockedFetch = stubWorkstationFetch();

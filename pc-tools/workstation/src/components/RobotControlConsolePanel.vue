@@ -80,6 +80,7 @@ const robotSummary = ref<RobotControlSummaryResponse | null>(null);
 const taskDetail = ref<O7ConsumerTaskDetailResponse | null>(null);
 const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const radarLifecycleResult = ref<RobotControlRadarLifecycleResponse | null>(null);
+const radarLifecyclePendingAction = ref<"start" | "stop" | null>(null);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(null);
@@ -409,10 +410,16 @@ function radarStartCommandConfigured(): boolean {
   return robotSummary.value?.readback_summary.lidar.radar_start_configured !== "false";
 }
 
-type PlainRadarState = "雷达未运行" | "雷达待刷新" | "刷新中" | "雷达已运行" | "刷新失败";
+type PlainRadarState = "雷达未运行" | "雷达启动中" | "雷达待刷新" | "刷新中" | "雷达已运行" | "刷新失败";
 
 function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
+  if (radarLifecyclePendingAction.value === "start") {
+    return { state: "雷达启动中", hint: "正在启动雷达，等待上位机返回。" };
+  }
+  if (radarLifecyclePendingAction.value === "stop") {
+    return { state: "刷新中", hint: "正在停止雷达，等待上位机返回。" };
+  }
   if (radarRefreshPending.value) {
     return { state: "刷新中", hint: "正在刷新雷达状态。" };
   }
@@ -1004,7 +1011,7 @@ function plainMapCoordinateTruthLabel(
   }
   if (radarLocalScanOverlay.dots.length > 0) {
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "路线未显示";
-    const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+    const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
     const scanText = liveRadar
       ? `雷达只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点`
       : `最近雷达记录只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点，当前${radarState}`;
@@ -1033,6 +1040,9 @@ function plainRadarFreshnessLabel(
       return `雷达点口径：实时雷达 ${localPointCount} 个只显示局部轮廓，等定位后再贴地图。`;
     }
     return "雷达点口径：雷达已运行，但当前还没读到点位。";
+  }
+  if (radarState === "雷达启动中") {
+    return "雷达点口径：雷达启动命令发送中，返回并刷新后才显示新点位。";
   }
   if (radarState === "雷达待刷新" || radarState === "刷新中") {
     return localPointCount > 0
@@ -1146,11 +1156,11 @@ const plainMapVisualSummary = computed(() => {
   const radarState = radarSummary.value.state;
   const lidar = robotSummary.value?.readback_summary.lidar;
   const radarStartAwaitingRefresh = radarStartSucceeded(radarLifecycleResult.value) && !radarFieldIsTrue(lidar?.lifecycle_running);
-  const radarNeedsMapPose = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+  const radarNeedsMapPose = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarOverlayMode = poseObserved
     ? radarState === "雷达已运行"
       ? "known-pose-running"
-      : radarState === "雷达待刷新" || radarState === "刷新中"
+      : radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中"
         ? "known-pose-pending"
         : "known-pose-stopped"
     : radarNeedsMapPose
@@ -1170,7 +1180,7 @@ const plainMapVisualSummary = computed(() => {
       : radarNeedsMapPose
       ? `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarState;
-  const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+  const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
     ? radarStartAwaitingRefresh
       ? "雷达已启动扫描范围，跟随机器人位置，等待刷新确认"
@@ -4778,12 +4788,14 @@ async function runRadarLifecycleAction(
     return;
   }
   radarLifecyclePending.value = true;
+  radarLifecyclePendingAction.value = action;
   try {
     radarLifecycleResult.value = await request();
   } catch (err) {
     radarLifecycleResult.value = makeRadarLifecycleFallback(action, err instanceof Error ? err.message : `${action}_request_failed`);
   } finally {
     radarLifecyclePending.value = false;
+    radarLifecyclePendingAction.value = null;
     await refreshConsole();
   }
 }
