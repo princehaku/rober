@@ -1176,6 +1176,10 @@ function plainMapImageFreshnessLabel(previewLoaded: boolean): string {
   if (mapPreviewPending.value) {
     return "地图画面：正在刷新当前地图。";
   }
+  if (mapPreviewResult.value && mapPreviewResult.value.proxy_status !== "preview_forwarded") {
+    const reason = mapPreviewResult.value.failure_reason || mapPreviewResult.value.blocked_reasons[0] || "地图画面读取失败";
+    return `地图画面：刷新失败：${reason}。`;
+  }
   if (keyboardHeldDirection.value && mapRuntimeStarted.value) {
     return plainFreeRoamLiveMapPreviewRefreshedForHold.value
       ? "地图画面：本次按住后已刷新一次；继续移动后还要再刷新确认最新覆盖。"
@@ -4683,6 +4687,42 @@ function makeMapLifecycleFallback(action: "list" | "start" | "save", reason: str
   };
 }
 
+function makeMapPreviewFallback(reason: string): RobotControlMapPreviewResponse {
+  // 地图画面刷新失败也要留在普通首屏；不能清空成“还没读到”而丢掉本轮失败原因。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "preview_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    remote_endpoint: "/api/map/preview",
+    remote_http_status: null,
+    status: "blocked",
+    map_name: "",
+    map_yaml_name: "",
+    map_image_name: "",
+    width: 0,
+    height: 0,
+    resolution: null,
+    origin: [],
+    cell_counts: {},
+    has_free_cells: false,
+    navigation_quality: "not_loaded",
+    image_mime_type: "not_loaded",
+    image_data_url: "",
+    source_image_format: "not_loaded",
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function operatorReportRequestBody(): RobotControlOperatorReportRequest {
   // 现场材料提交只组装白名单字段；空 ref 不发送，减少上位机保存无意义空字符串。
   const claims = {
@@ -5325,8 +5365,8 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
     if (refreshAfterSavedMap && mapSavedThisSession.value && mapPreviewResult.value?.proxy_status === "preview_forwarded") {
       plainFreeRoamSavedMapPreviewFreshForSession.value = true;
     }
-  } catch {
-    mapPreviewResult.value = null;
+  } catch (err) {
+    mapPreviewResult.value = makeMapPreviewFallback(err instanceof Error ? err.message : "map_preview_request_failed");
   } finally {
     mapPreviewPending.value = false;
   }

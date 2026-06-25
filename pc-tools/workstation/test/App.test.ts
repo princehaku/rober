@@ -3677,6 +3677,40 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
+  it("shows map preview refresh failure reason on the plain map", async () => {
+    // 地图画面读取失败要留在地图 caption 上，不能退回成泛化“还没读到真实地图图像”。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/map/preview": {
+        ...(fixtures["/api/robot-control/map/preview"] as Record<string, unknown>),
+        proxy_status: "preview_failed",
+        remote_http_status: 502,
+        status: "blocked",
+        image_data_url: "",
+        width: 0,
+        height: 0,
+        failure_reason: "map_preview_timeout",
+        blocked_reasons: ["map_preview_timeout"],
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：刷新失败：map_preview_timeout。");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("starts free-roam autonomy through the fixed proxy only after ready readback and safety confirmation", async () => {
     // PC 首屏只触发固定状态机代理；不会调用 base/manual、Nav2、delivery 或浏览器侧 /cmd_vel。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

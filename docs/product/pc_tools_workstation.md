@@ -2169,6 +2169,11 @@ base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd
 `地图已保存`。该 marker 只消费本页 map save 与 map preview 结果，不再次保存、不发送 manual/keyboard pulse、Nav2、
 delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 03:19 起，普通首屏 `刷新地图画面` 如果固定 map preview 代理失败，地图 caption 会保留失败原因，例如
+`地图画面：刷新失败：map_preview_timeout。`，不再退回泛化的“还没读到真实地图图像”。该失败态只消费
+`GET /api/robot-control/map/preview` 结果或本机 fallback，不自动重新刷新、不启动建图、不发送 manual/keyboard pulse、Nav2、
+delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-26 02:20 起，普通首屏地图上的 Nav2 目标 marker 会在本轮 `delivery success` 已通过且 route/map ref 对齐当前
 Nav2 execution evidence 时，从 `已到达` 提升为 `已送达`。该 marker 只消费已读到的 Nav2 latest/execute 和
 delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。
