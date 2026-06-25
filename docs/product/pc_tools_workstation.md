@@ -1852,3 +1852,8 @@ map preview 状态，不推断真实底盘运动、不自动刷新、不调用 m
 启用键盘、按住方向键扫图、停止或保存地图。该按钮只做 `scrollIntoView + focus`，不会自动勾选确认、不会调用
 `/api/robot-control/map/start`、不会发送 `/api/base/manual`、不会 stop、不会保存地图，也不会调用 Nav2、delivery complete
 或 `/cmd_vel`；真实动作仍必须由现场人员点击对应按钮或按住方向键触发。
+
+2026-06-25 20:45 起，普通首屏“自动扫图准备”在 `free_roam_autonomy=locked` 时明确显示能力边界：
+自动扫图未开放，当前只支持人工按住扫图流程 `开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图`。
+该提示只改变文案和首屏误操作预期，不打开自动扫图按钮，不调用 map start、manual、Nav2、keyboard pulse、
+delivery complete 或 `/cmd_vel`。

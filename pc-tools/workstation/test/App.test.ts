@@ -3318,6 +3318,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图准备");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达避障");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图未开放；当前用人工按住扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("上车端避障和 watchdog 未验证");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图（未开放）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeDefined();
@@ -3446,6 +3448,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     const simpleUserConsoleText = wrapper.find(".simple-user-console").text();
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(simpleUserConsoleText).not.toContain(token);
