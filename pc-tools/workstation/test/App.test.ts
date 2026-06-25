@@ -461,6 +461,20 @@ const fixtures: Record<string, unknown> = {
       map_start: "map start locked",
       radar_start: "radar start locked",
       keyboard_control: "keyboard control locked",
+      free_roam_autonomy: "locked",
+      free_roam_autonomy_label: "自动扫图（未开放）",
+      free_roam_autonomy_policy: {
+        mode: "requires_onboard_watchdog_lidar_obstacle_gate_and_hil",
+        max_speed_mps: 0.12,
+        max_runtime_s: 60,
+        required_gates: [
+          "onboard_watchdog",
+          "lidar_obstacle_gate",
+          "fresh_map_preview",
+          "operator_stop_fallback",
+          "free_roam_hil_artifact",
+        ],
+      },
       map_click_goal: "map click goal locked",
       locked_reason: "requires safety lock, checklist, operator report materials, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
       manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report",
@@ -3268,6 +3282,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("扫图覆盖");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("已扫出 1 个可通行格");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("未知区域 0.0%");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图准备");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达避障");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("上车端避障和 watchdog 未验证");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图（未开放）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid="plain-free-roam-steps"] .plain-progress-row')).toHaveLength(5);
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("安全确认");

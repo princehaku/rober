@@ -824,6 +824,14 @@ h3 {
   padding-top: 12px;
 }
 
+.plain-free-roam-readiness {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  border-top: 1px solid #d7dee6;
+  padding-top: 12px;
+}
+
 .plain-free-roam-coverage-bar {
   position: relative;
   height: 8px;
@@ -838,6 +846,18 @@ h3 {
   height: 100%;
   border-radius: inherit;
   background: #23715a;
+}
+
+.plain-readiness-blockers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plain-readiness-blockers span {
+  border-radius: 999px;
+  background: #edf2f7;
+  padding: 3px 8px;
 }
 
 .plain-delivery-status {

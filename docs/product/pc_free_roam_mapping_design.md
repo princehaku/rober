@@ -13,6 +13,7 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 小车移动继续复用既有键盘连续手控 gate：低速、短时、按住才走、松开即停。
 - 停止按钮始终可见，继续走固定 PC 代理 `/api/robot-control/base/stop`。
 - 浏览器不允许传入串口、ROS 参数、任意 Robot API endpoint、`/cmd_vel` 或 Nav2 自动目标。
+- 2026-06-25 起，PC 卡片新增“自动扫图准备”只读区：它读取 `safe_command_boundary.free_roam_autonomy` 和 policy，展示上车端 watchdog、LiDAR 避障、停止兜底、地图刷新和 HIL artifact 缺口；按钮固定显示“自动扫图（未开放）”且禁用，不绑定任何发车动作。
 
 ## 用户流程
 
@@ -35,3 +36,5 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 地图质量实时指标：free cell 增量、unknown 占比下降、回环/定位健康。
 - 完整 artifact：启动、每段速度命令、传感器状态、停止原因、保存地图结果。
 - HIL 验证后才能把 `safe_to_control` 或自动探索能力提升为真。
+
+当前 PC 合同固定为 `free_roam_autonomy=locked`。即使地图、雷达和键盘低速手控材料都满足，真正自动扫图仍必须先由上车端实现安全状态机，并在 summary 中显式升级合同后才能讨论 UI 放开。

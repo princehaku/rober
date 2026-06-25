@@ -2378,6 +2378,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_jog_duration_ms: number;
     keyboard_stop_triggers: string[];
     keyboard_reuses_manual_gate: true;
+    free_roam_autonomy: "locked" | "ready";
+    free_roam_autonomy_label: "自动扫图（未开放）" | "自动扫图";
+    free_roam_autonomy_policy: {
+      mode: "requires_onboard_watchdog_lidar_obstacle_gate_and_hil";
+      max_speed_mps: number;
+      max_runtime_s: number;
+      required_gates: string[];
+    };
     map_click_goal: "map click goal locked";
     locked_reason: string;
     manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report";

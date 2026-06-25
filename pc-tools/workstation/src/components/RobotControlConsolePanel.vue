@@ -900,6 +900,65 @@ const plainFreeRoamCoverageSummary = computed(() => {
     quality: preview.navigation_quality || (preview.has_free_cells ? "has_free_cells" : "not_loaded"),
   };
 });
+const plainFreeRoamAutonomyReadiness = computed(() => {
+  // 自动扫图需要上车端闭环保护；PC 端这里只展示 readiness，不生成任何运动命令。
+  const boundary = robotSummary.value?.safe_command_boundary;
+  const policy = boundary?.free_roam_autonomy_policy;
+  const preview = mapPreviewResult.value;
+  const previewLoaded = preview?.proxy_status === "preview_forwarded";
+  const blockers: string[] = [];
+  if (!robotApiBaseUrl.value.trim()) {
+    blockers.push("默认小车未连接");
+  }
+  if (!plainFreeRoamMappingConfirmed.value) {
+    blockers.push("现场安全确认未勾选");
+  }
+  if (!previewLoaded) {
+    blockers.push("地图画面未刷新");
+  } else if (plainCellCount(preview, "free") <= 0) {
+    blockers.push("地图还没有可通行区域");
+  }
+  if (radarSummary.value.state !== "雷达已运行") {
+    blockers.push("雷达未保持运行");
+  }
+  if (!canUseKeyboardControl.value) {
+    blockers.push("键盘低速手控条件未满足");
+  }
+  if (!canSendStop.value) {
+    blockers.push("停止兜底暂不可用");
+  }
+  if (boundary?.free_roam_autonomy !== "ready") {
+    blockers.push("上车端避障和 watchdog 未验证");
+  }
+  const policyGates = policy?.required_gates ?? [
+    "onboard_watchdog",
+    "lidar_obstacle_gate",
+    "operator_stop_fallback",
+  ];
+  const gateLabel = (gate: string): string => {
+    // 后端合同保留英文 token 便于测试和集成，普通首屏只显示现场可理解的中文。
+    const labels: Record<string, string> = {
+      onboard_watchdog: "上车端 watchdog",
+      lidar_obstacle_gate: "雷达避障",
+      fresh_map_preview: "地图刷新",
+      operator_stop_fallback: "停止兜底",
+      free_roam_hil_artifact: "自动扫图 HIL 证据",
+    };
+    return labels[gate] ?? gate;
+  };
+  const speedLimit = policy?.max_speed_mps ?? manualSpeedLimit.value;
+  const runtimeLimit = policy?.max_runtime_s ?? 60;
+  return {
+    state: "未满足",
+    buttonLabel: boundary?.free_roam_autonomy_label ?? "自动扫图（未开放）",
+    disabled: true,
+    hint: blockers.length
+      ? `还差：${blockers.slice(0, 3).join("、")}。`
+      : "材料已接近，但自动扫图仍需上车端安全状态机开放后才能启用。",
+    blockers: blockers.slice(0, 4),
+    policyText: `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，必须先通过 ${policyGates.slice(0, 3).map(gateLabel).join("、")}。`,
+  };
+});
 const plainFreeRoamMappingSteps = computed(() => {
   // 步骤条只表达本地向导状态；真正动作仍由每个固定按钮和后端 gate 执行。
   const safetyReady = plainFreeRoamMappingConfirmed.value;
@@ -5508,6 +5567,22 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainFreeRoamCoverageSummary.primary }}</p>
             <p class="panel-note">{{ plainFreeRoamCoverageSummary.secondary }}</p>
+          </div>
+          <div class="plain-free-roam-readiness" data-testid="plain-free-roam-autonomy-readiness">
+            <div class="simple-status-row">
+              <strong>自动扫图准备</strong>
+              <span class="status-chip" :data-state="plainFreeRoamAutonomyReadiness.state">{{ plainFreeRoamAutonomyReadiness.state }}</span>
+            </div>
+            <div class="panel-action-row wrap-actions">
+              <button type="button" class="secondary compact-stop" :disabled="plainFreeRoamAutonomyReadiness.disabled" data-testid="plain-free-roam-auto-start">
+                {{ plainFreeRoamAutonomyReadiness.buttonLabel }}
+              </button>
+              <span class="muted">{{ plainFreeRoamAutonomyReadiness.policyText }}</span>
+            </div>
+            <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
+            <div v-if="plainFreeRoamAutonomyReadiness.blockers.length" class="plain-readiness-blockers">
+              <span v-for="blocker in plainFreeRoamAutonomyReadiness.blockers" :key="blocker" class="muted">{{ blocker }}</span>
+            </div>
           </div>
           <div class="plain-goal-progress" data-testid="plain-free-roam-steps">
             <div v-for="step in plainFreeRoamMappingSteps" :key="step.id" class="plain-progress-row">
