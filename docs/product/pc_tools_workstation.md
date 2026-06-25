@@ -2204,6 +2204,11 @@ delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不�
 execute/latest readback 到地图 WYSIWYG 状态，不自动准备材料、不提交送达、不再次执行 Nav2、不发送 manual/keyboard pulse、
 stop 或 `/cmd_vel`。
 
+2026-06-26 04:12 起，普通首屏点击 `读取行程结果（只读）/重新读取行程（只读）` 后，在 latest 请求未返回期间，
+地图终点 marker 会临时显示 `读取中`，地图 caption 显示 `行程执行：正在读取最近行程结果`，行程进度提示旧结果暂不作为
+当前结论。该状态只等待固定只读 `/api/robot-control/nav2/goal/execution/latest` 返回，不执行 Nav2、不提交 delivery、
+不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。
+
 2026-06-26 03:12 起，如果本轮 `delivery success` 已通过且 route/map ref 对齐当前 Nav2 execution evidence，
 普通首屏地图 caption 也会从 `已到达，准备送达材料` 升级为 `行程执行：已送达，反馈 N 次，delivery gate 已确认`，和地图终点
 marker 的 `已送达` 保持一致。该 caption 只消费已读到的 delivery latest/complete 与 Nav2 evidence，不自动提交送达、

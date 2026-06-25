@@ -4668,6 +4668,101 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("shows a map-level pending state while rereading the latest Nav2 goal result", async () => {
+    // 用户手动只读刷新 latest 时，旧到达记录不能继续装作当前结论显示在地图上。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const latestLoaded = {
+      schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+      proxy_status: "latest_loaded",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+      remote_endpoint: "/api/nav2/goal/execution/latest",
+      remote_http_status: 200,
+      status: "loaded_fail_closed_summary",
+      goal_execution_key_values: {
+        status: "goal_succeeded",
+        evidence_ref: "o11-nav2-goal-execution-map-goal-fixture",
+        generated_at_ms: "1782150441201",
+        response_generated_at_ms: "1782150442201",
+        result_status: "succeeded",
+        feedback_sample_count: "8",
+        goal_frame_id: "map",
+        goal_x: "0.8",
+        goal_y: "0",
+        goal_yaw: "0",
+        delivery_success: "false",
+      },
+      failure_reason: "",
+      blocked_reasons: [],
+      hard_dangerous_true_fields: [],
+      robot_control_executed: false,
+    };
+    let latestCallCount = 0;
+    let resolveLatestRefresh!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const latestRefreshResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveLatestRefresh = resolve;
+    });
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": latestLoaded,
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/nav2/goal/execution/latest")) {
+        latestCallCount += 1;
+        return latestCallCount === 1 ? baseFetch(url, options) : latestRefreshResponse;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
+
+    const latestClick = wrapper.find('[data-testid="plain-trip-latest"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    const pendingGoal = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(pendingGoal.text()).toBe("读取中");
+    expect(pendingGoal.attributes("data-state")).toBe("读取中");
+    expect(pendingGoal.attributes("aria-label")).toBe("正在读取最近行程结果，旧结果暂不作为当前结论，地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在读取最近行程结果");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在读取最近行程结果，返回前不把旧结果当作当前结论。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    resolveLatestRefresh({
+      ok: true,
+      json: async () => latestLoaded,
+    });
+    await latestClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
+  });
+
   it("marks the map goal as delivered only when delivery success matches the current Nav2 route", async () => {
     // 地图上的“已送达”只能来自对齐本轮 Nav2 evidence_ref 的 delivery gate 读回；不能由旧 latest 或前端推断点亮。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

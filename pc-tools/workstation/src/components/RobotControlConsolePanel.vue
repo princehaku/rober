@@ -989,6 +989,28 @@ function latestNavGoalOverlay() {
       aria: `正在执行图上路线，目标地图坐标 x=${pendingGoal.goal_x.toFixed(2)}, y=${pendingGoal.goal_y.toFixed(2)}`,
     };
   }
+  if (navGoalExecutionLatestPending.value) {
+    // latest 读取未返回前不能继续把旧到达结果画成当前结论，先明确标成只读刷新中。
+    const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
+    const attemptedGoal = navGoalExecutionResult.value ? navGoalExecutionAttemptGoal.value : null;
+    const routeGoal = latestNavPathOverlay()?.executionGoal;
+    const goalX = finitePlainNumber(values?.goal_x) ?? attemptedGoal?.goal_x ?? routeGoal?.x ?? null;
+    const goalY = finitePlainNumber(values?.goal_y) ?? attemptedGoal?.goal_y ?? routeGoal?.y ?? null;
+    const goalFrameId = values?.goal_frame_id || attemptedGoal?.goal_frame_id || routeGoal?.frame_id;
+    if (goalX === null || goalY === null || (goalFrameId && goalFrameId !== "map")) {
+      return null;
+    }
+    const style = mapCoordinateStyle(goalX, goalY, preview);
+    if (!style) {
+      return null;
+    }
+    return {
+      label: "读取中",
+      state: "读取中",
+      style,
+      aria: `正在读取最近行程结果，旧结果暂不作为当前结论，地图坐标 x=${goalX.toFixed(2)}, y=${goalY.toFixed(2)}`,
+    };
+  }
   const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
   if (!values) {
     return null;
@@ -3296,6 +3318,9 @@ function plainMapTripExecutionLabel(): string {
     const targetText = plainTripPendingRouteText();
     return targetText ? `行程执行：正在执行图上路线（${targetText}）` : "行程执行：正在执行图上路线";
   }
+  if (navGoalExecutionLatestPending.value) {
+    return "行程执行：正在读取最近行程结果";
+  }
   const values = directNav2ExecutionValues();
   const status = nav2EvidenceStatus(values);
   if (!status || status === "not_loaded") {
@@ -3325,6 +3350,9 @@ const plainTripExecutionProgress = computed(() => {
   if (navGoalExecutionPending.value) {
     const targetText = plainTripPendingRouteText();
     return targetText ? `行程进度：正在执行图上路线，${targetText}；人在旁边准备停止。` : "行程进度：正在执行图上路线，人在旁边准备停止。";
+  }
+  if (navGoalExecutionLatestPending.value) {
+    return "行程进度：正在读取最近行程结果，返回前不把旧结果当作当前结论。";
   }
   const values = directNav2ExecutionValues();
   const status = nav2EvidenceStatus(values);
