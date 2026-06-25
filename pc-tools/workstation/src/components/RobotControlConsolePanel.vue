@@ -1172,11 +1172,35 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     ? robotPose.style
     : { left: "12px", top: "84px" };
   const locatedSuffix = robotPose ? "，贴近机器人当前位置" : "，机器人地图位置未读到，标记不代表坐标";
+  const autonomyResult = freeRoamAutonomyResult.value;
   if (mapLifecyclePendingAction.value === "start") {
     return { label: "扫图记录启动中", state: "starting", style, aria: `扫图记录启动中${locatedSuffix}` };
   }
   if (mapLifecyclePendingAction.value === "save") {
     return { label: "地图保存中", state: "saving", style, aria: `当前扫图地图正在保存${locatedSuffix}` };
+  }
+  if (freeRoamAutonomyPendingAction.value === "start") {
+    return { label: "自动扫图启动中", state: "auto_starting", style, aria: `上车端自动扫图状态机正在启动${locatedSuffix}` };
+  }
+  if (freeRoamAutonomyPendingAction.value === "stop") {
+    return { label: "自动扫图停止中", state: "auto_stopping", style, aria: `上车端自动扫图状态机正在停止${locatedSuffix}` };
+  }
+  if (autonomyResult?.proxy_status === "autonomy_failed") {
+    return {
+      label: autonomyResult.action === "start" ? "自动扫图启动失败" : "自动扫图停止失败",
+      state: "auto_failed",
+      style,
+      aria: `自动扫图${autonomyResult.action === "start" ? "启动" : "停止"}请求失败${locatedSuffix}`,
+    };
+  }
+  if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "start") {
+    if (mapPreviewPending.value && mapRuntimeStarted.value) {
+      return { label: "自动扫图已启动，刷新中", state: "auto_refreshing", style, aria: `自动扫图状态机已启动，地图画面正在刷新${locatedSuffix}` };
+    }
+    return { label: "自动扫图已启动", state: "auto_running", style, aria: `自动扫图状态机已启动，PC 正在监看地图和雷达${locatedSuffix}` };
+  }
+  if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "stop") {
+    return { label: "自动扫图已停止", state: "auto_stopped", style, aria: `自动扫图停止请求已发送${locatedSuffix}` };
   }
   if (mapPreviewPending.value && mapRuntimeStarted.value) {
     return { label: "扫图画面刷新中", state: "refreshing", style, aria: `扫图地图画面正在刷新${locatedSuffix}` };
@@ -1506,6 +1530,23 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return "扫图状态：还没开始记录，键盘扫图锁定。";
+  }
+  if (freeRoamAutonomyPendingAction.value === "start") {
+    return "扫图状态：正在启动上车端自动扫图状态机，PC 保持地图、雷达和停止兜底。";
+  }
+  if (freeRoamAutonomyPendingAction.value === "stop") {
+    return "扫图状态：正在请求上车端自动扫图停止，红色停止仍可随时兜底。";
+  }
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
+    return freeRoamAutonomyResult.value.action === "start"
+      ? "扫图状态：自动扫图启动失败，未证明上车状态机已启动；继续人工按住扫图或重试。"
+      : "扫图状态：自动扫图停止失败，未证明上车状态机已停止；必要时点击红色停止。";
+  }
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
+    return "扫图状态：自动扫图状态机已启动，地图和雷达监看中；需要收口时点击停止自动扫图或红色停止。";
+  }
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
+    return "扫图状态：自动扫图停止请求已发送，继续看地图和雷达确认现场收口。";
   }
   if (keyboardHeldDirection.value) {
     const wheelText = keyboardWheelFeedbackPlainText();

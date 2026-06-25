@@ -2088,3 +2088,8 @@ PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboar
 确认布尔值到上位机固定 `/api/free-roam/autonomy/start`，上位机只设置 `free_roam_autonomy_node` 状态机参数，不设置
 `enable_cmd_vel_publish`、`motion_hil_unlocked` 或 `cmd_vel_topic`。`停止自动扫图` 调用固定 stop 代理请求状态机停止；
 红色底盘停止仍保留为独立兜底。
+
+2026-06-26 01:05 起，普通首屏会把自动扫图 start/stop 的固定代理结果贴回地图和 `扫图状态`：start 成功后地图显示
+`自动扫图已启动`，状态行显示 `自动扫图状态机已启动，地图和雷达监看中`；stop 成功后显示停止请求已发送，失败时显示
+未证明启动或停止。该反馈只消费 PC 固定代理响应，不新增任意 endpoint、manual、keyboard pulse、Nav2、delivery complete
+或 `/cmd_vel` 调用，也不修改 Clash 或系统代理配置。

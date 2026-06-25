@@ -3745,6 +3745,10 @@ describe("App", () => {
       confirm_mapping_active: true,
     });
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图状态机已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自动扫图状态机已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("地图和雷达监看中");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已启动");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

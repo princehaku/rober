@@ -836,7 +836,8 @@ h3 {
 
 .plain-map-free-roam-action-marker[data-state="recording"],
 .plain-map-free-roam-action-marker[data-state="armed"],
-.plain-map-free-roam-action-marker[data-state="driving"] {
+.plain-map-free-roam-action-marker[data-state="driving"],
+.plain-map-free-roam-action-marker[data-state="auto_running"] {
   border-color: #9fd4b3;
   background: #f0fbf4;
   color: #176039;
@@ -844,20 +845,25 @@ h3 {
 
 .plain-map-free-roam-action-marker[data-state="starting"],
 .plain-map-free-roam-action-marker[data-state="refreshing"],
-.plain-map-free-roam-action-marker[data-state="stopped_needs_refresh"] {
+.plain-map-free-roam-action-marker[data-state="stopped_needs_refresh"],
+.plain-map-free-roam-action-marker[data-state="auto_starting"],
+.plain-map-free-roam-action-marker[data-state="auto_stopping"],
+.plain-map-free-roam-action-marker[data-state="auto_refreshing"] {
   border-color: #d5d2a9;
   background: #fbf8e8;
   color: #6a5710;
 }
 
 .plain-map-free-roam-action-marker[data-state="stopped_fresh"],
-.plain-map-free-roam-action-marker[data-state="saved"] {
+.plain-map-free-roam-action-marker[data-state="saved"],
+.plain-map-free-roam-action-marker[data-state="auto_stopped"] {
   border-color: #9ebee8;
   background: #edf5ff;
   color: #174ea6;
 }
 
-.plain-map-free-roam-action-marker[data-state="saving"] {
+.plain-map-free-roam-action-marker[data-state="saving"],
+.plain-map-free-roam-action-marker[data-state="auto_failed"] {
   border-color: #d8adb0;
   background: #fff1f2;
   color: #7c2d35;
