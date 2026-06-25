@@ -686,8 +686,20 @@ const cameraFirstFrameProbeSummary = computed(() => {
   const values = result.probe_key_values;
   return `${result.proxy_status}; status=${result.status}; open=${values.open_ok}; read=${values.read_ok}; backend=${values.backend_smoke_status}; reason=${result.failure_reason || values.failure_reason}`;
 });
+const canSubmitPlainVisualFromCamera = computed(() => (
+  !loading.value
+  && !previewBusy.value
+  && !cameraFirstFrameProbePending.value
+  && !plainVisualMaterialPending.value
+  && !operatorReportPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const plainRecordCurrentCameraLabel = computed(() => (
-  cameraFirstFrameProbePending.value ? "正在检查画面" : "用当前画面记录"
+  previewBusy.value
+    ? "等待画面稳定"
+    : cameraFirstFrameProbePending.value
+      ? "正在检查画面"
+      : "用当前画面记录"
 ));
 const baseFeedbackSamplesSummary = computed(() => {
   // 底盘反馈样本只说明 T=130/T=1001 只读链路，不能解释成手动运动已经可用。
@@ -6664,7 +6676,7 @@ async function submitPlainVisualMaterial(options: { videoRef?: string; cameraArt
 
 async function submitPlainVisualMaterialFromCameraProbe(): Promise<void> {
   // 当前画面记录只走固定 camera probe，再提交 operator report；不会打开运动、Nav2 或 delivery gate。
-  if (!robotApiBaseUrl.value.trim() || cameraFirstFrameProbePending.value || plainVisualMaterialPending.value || operatorReportPending.value) {
+  if (!robotApiBaseUrl.value.trim() || previewBusy.value || cameraFirstFrameProbePending.value || plainVisualMaterialPending.value || operatorReportPending.value) {
     return;
   }
   // 每次点击都重新读取一帧，避免把旧 probe 样张误当成 operator 眼前的当前画面。
@@ -7714,7 +7726,7 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="loading || plainVisualMaterialPending || operatorReportPending || !robotApiBaseUrl.trim() || !plainExternalVideoRef.trim()" @click="submitPlainVisualMaterial">
               记录画面
             </button>
-            <button type="button" class="secondary compact-stop" :disabled="loading || cameraFirstFrameProbePending || plainVisualMaterialPending || operatorReportPending || !robotApiBaseUrl.trim()" data-testid="plain-record-current-camera" @click="submitPlainVisualMaterialFromCameraProbe">
+            <button type="button" class="secondary compact-stop" :disabled="!canSubmitPlainVisualFromCamera" data-testid="plain-record-current-camera" @click="submitPlainVisualMaterialFromCameraProbe">
               {{ plainRecordCurrentCameraLabel }}
             </button>
             <button
