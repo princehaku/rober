@@ -3391,10 +3391,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("勾选现场安全确认");
-    expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("扫图覆盖");
-    expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("已扫出 1 个可通行格");
-    expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("未知区域 0.0%");
+    const freeRoamCoverage = wrapper.find('[data-testid="plain-free-roam-coverage"]');
+    expect(freeRoamCoverage.exists()).toBe(true);
+    expect(freeRoamCoverage.attributes("data-state")).toBe("已扫出");
+    expect(freeRoamCoverage.text()).toContain("扫图覆盖");
+    expect(freeRoamCoverage.text()).toContain("已扫出 1 个可通行格");
+    expect(freeRoamCoverage.text()).toContain("未知区域 0.0%");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("当前显示最近地图画面，开始记录后可边扫边刷新。");
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：显示最近读取的真实地图。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]').exists()).toBe(true);
@@ -3487,6 +3489,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="待确认"]');
     expect(workstationStyles).toContain('.plain-free-roam-readiness[data-state="未满足"]');
+    expect(workstationStyles).toContain('.plain-free-roam-coverage[data-state="已扫出"]');
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
@@ -4493,6 +4496,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(freeRoamPanel.attributes("data-state")).toBe("刷新中");
+    const coveragePanel = wrapper.find('[data-testid="plain-free-roam-coverage"]');
+    expect(coveragePanel.attributes("data-state")).toBe("已扫出");
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeSave + 1);
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("地图已保存，正在自动刷新最新画面。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图已保存，正在自动刷新最新画面。");
@@ -4519,6 +4524,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
     expect(freeRoamPanel.attributes("data-state")).toBe("已保存");
+    expect(coveragePanel.attributes("data-state")).toBe("已扫出");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("地图已保存，地图画面已自动刷新；现在可以检查 free cell 和路线可用性。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图已保存，地图画面已自动刷新，可以检查效果。");
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：地图已保存，已自动刷新最新画面，可检查效果。");

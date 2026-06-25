@@ -1370,7 +1370,25 @@ h3 {
   gap: 7px;
   margin-top: 12px;
   border-top: 1px solid #d7dee6;
+  border-left: 3px solid transparent;
   padding-top: 12px;
+  padding-left: 10px;
+}
+
+.plain-free-roam-coverage[data-state="已扫出"] {
+  border-left-color: #238636;
+  background: linear-gradient(90deg, rgba(35, 134, 54, 0.08), transparent 42%);
+}
+
+.plain-free-roam-coverage[data-state="刷新中"] {
+  border-left-color: #1f6feb;
+  background: linear-gradient(90deg, rgba(31, 111, 235, 0.1), transparent 42%);
+}
+
+.plain-free-roam-coverage[data-state="待继续"],
+.plain-free-roam-coverage[data-state="待刷新"] {
+  border-left-color: #bf8700;
+  background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 42%);
 }
 
 .plain-free-roam-readiness {

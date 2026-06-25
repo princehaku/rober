@@ -1876,6 +1876,9 @@ Nav2、keyboard pulse、delivery complete 或 `/cmd_vel`。
 `地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。`，地图已保存后提示刷新检查覆盖效果。该提示只来自本页 map lifecycle 和只读
 map preview 状态，不推断真实底盘运动、不自动刷新、不调用 map start、manual、Nav2、keyboard pulse、delivery complete
 或 `/cmd_vel`。
+
+2026-06-26 09:00 起，普通首屏 `扫图覆盖` 面板也会带 `data-state`，外框跟随 `已扫出/待继续/待刷新/刷新中` 状态变化。测试锁定已有地图画面读到 free cell 时的 `已扫出` 状态、保存后自动刷新期间仍保留旧覆盖数据的口径和 CSS 选择器，避免覆盖条已经有真实 map preview 读数但覆盖面板仍像普通说明块。该呈现只影响 PC 前端 WYSIWYG，不自动刷新地图、不启动建图、不发送 manual/keyboard pulse、不执行 Nav2、delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-25 21:30 起，普通首屏“扫地式建图”在地图记录启动后会先把 `保存当前地图` 收紧为 `先刷新画面` 并禁用；
 只有本轮点击 `刷新扫图画面` 且只读 map preview 成功返回后，普通保存按钮才恢复可点。该 gate 只保证 operator 保存前看过当前地图画面，
 不自动刷新、不自动保存、不发送 manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。

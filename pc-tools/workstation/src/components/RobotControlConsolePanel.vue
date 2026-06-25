@@ -7887,7 +7887,7 @@ onBeforeUnmount(() => {
               后退
             </button>
           </div>
-          <div class="plain-free-roam-coverage" data-testid="plain-free-roam-coverage">
+          <div class="plain-free-roam-coverage" :data-state="plainFreeRoamCoverageSummary.state" data-testid="plain-free-roam-coverage">
             <div class="simple-status-row">
               <strong>扫图覆盖</strong>
               <span class="status-chip" :data-state="plainFreeRoamCoverageSummary.state">{{ plainFreeRoamCoverageSummary.state }}</span>
