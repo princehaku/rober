@@ -5064,6 +5064,31 @@ describe("workstation fail-closed API contracts", () => {
           command_result: { mode: "read_only_local_files", executed: false, ok: true },
         },
       },
+      "/api/map/preview": {
+        method: "GET",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_preview_result",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          map_name: "floor_1",
+          map_yaml_name: "floor_1.yaml",
+          map_image_name: "floor_1.pgm",
+          width: 1,
+          height: 1,
+          resolution: 0.05,
+          origin: [0, 0, 0],
+          cell_counts: { free: 1, unknown: 0, occupied: 0, other: 0 },
+          has_free_cells: true,
+          navigation_quality: "has_free_cells",
+          image_mime_type: "image/png",
+          image_data_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lJK3GQAAAABJRU5ErkJggg==",
+          source_image_format: "pgm_p5",
+          command_result: { mode: "read_only_local_files", executed: false, ok: true },
+        },
+      },
       "/api/map/save": {
         method: "POST",
         payload: {
@@ -5128,6 +5153,24 @@ describe("workstation fail-closed API contracts", () => {
       expect(listBody.map_needs_rebuild).toBe(true);
       expect(listBody.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/map/list"]);
+
+      const previewResponse = await fetch(`${workstation.baseUrl}/api/robot-control/map/preview?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const previewBody = (await previewResponse.json()) as {
+        proxy_status: string;
+        remote_endpoint: string;
+        image_mime_type: string;
+        image_data_url: string;
+        robot_control_executed: boolean;
+        safe_to_control: boolean;
+      };
+      expect(previewResponse.status).toBe(200);
+      expect(previewBody.proxy_status).toBe("preview_forwarded");
+      expect(previewBody.remote_endpoint).toBe("/api/map/preview");
+      expect(previewBody.image_mime_type).toBe("image/png");
+      expect(previewBody.image_data_url).toContain("data:image/png;base64,");
+      expect(previewBody.robot_control_executed).toBe(false);
+      expect(previewBody.safe_to_control).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/map/list", "/api/map/preview"]);
 
       const rejected = await fetch(`${workstation.baseUrl}/api/robot-control/map/save?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
         method: "POST",

@@ -10,6 +10,7 @@ import type {
   RobotControlMapQualitySummary,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
+  RobotControlMapPreviewResponse,
   RobotControlNavGoalPreflightRequest,
   RobotControlNavGoalPreflightResponse,
   RobotControlOperatorReportProxyResponse,
@@ -792,6 +793,14 @@ function stringList(value: unknown, limit = 8): string[] {
     }
     return String(item).slice(0, 180);
   });
+}
+
+function numberList(value: unknown, limit = 8): number[] {
+  // origin 这类短数组只保留有限数值，避免异常 payload 进入前端计算。
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.slice(0, limit).flatMap((item) => (typeof item === "number" && Number.isFinite(item) ? [item] : []));
 }
 
 function compactValueText(value: unknown, limit = 120): string {
@@ -1862,6 +1871,138 @@ function blockedMapLifecycleResponse(
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+function blockedMapPreviewResponse(sourceBaseUrl: string, reason: string): RobotControlMapPreviewResponse {
+  // 地图预览失败也必须保持完整合同，前端才能稳定回退到状态视图。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
+    ...PROOF_FLAGS,
+    proxy_status: "preview_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: "/api/map/preview",
+    remote_http_status: null,
+    status: "blocked",
+    map_name: "",
+    map_yaml_name: "",
+    map_image_name: "",
+    width: 0,
+    height: 0,
+    resolution: null,
+    origin: [],
+    cell_counts: {},
+    has_free_cells: false,
+    navigation_quality: "not_loaded",
+    image_mime_type: "not_loaded",
+    image_data_url: "",
+    source_image_format: "not_loaded",
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotControlMapPreviewResponse> {
+  // Map preview 是只读固定代理；它只能读上位机 /api/map/preview，不能转成任意文件或控制代理。
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return blockedMapPreviewResponse(baseUrl, normalized.reason);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(normalized.normalized, "/api/map/preview"), {
+      method: "GET",
+      signal: AbortSignal.timeout(8_000),
+    });
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.name === "TimeoutError"
+        ? "fetch_timeout_8000ms"
+        : error instanceof Error
+          ? error.message.slice(0, 180)
+          : "fetch_failed";
+    return {
+      ...blockedMapPreviewResponse(baseUrl, reason),
+      proxy_status: "preview_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    };
+  }
+
+  let bodyJson: unknown;
+  try {
+    bodyJson = await response.json();
+  } catch {
+    return {
+      ...blockedMapPreviewResponse(baseUrl, "response_json_parse_failed"),
+      proxy_status: "preview_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_parse_failed", `map_preview_http_status_${response.status}`],
+    };
+  }
+
+  const payload = asRecord(bodyJson);
+  if (!payload) {
+    return {
+      ...blockedMapPreviewResponse(baseUrl, "response_json_not_object"),
+      proxy_status: "preview_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_not_object", `map_preview_http_status_${response.status}`],
+    };
+  }
+
+  const hardDangerous = scanDangerousTrueFields(payload, "", HARD_DANGEROUS_TRUE_FIELDS);
+  const imageDataUrl = asString(findFirstKey(payload, ["image_data_url"]), "");
+  const imageLooksSafe = imageDataUrl.startsWith("data:image/png;base64,") && imageDataUrl.length < 2_000_000;
+  const resolutionValue = findFirstKey(payload, ["resolution"]);
+  const cellCountsRaw = asRecord(findFirstKey(payload, ["cell_counts"]));
+  const cellCounts = cellCountsRaw
+    ? Object.fromEntries(
+      Object.entries(cellCountsRaw)
+        .filter((entry): entry is [string, number] => typeof entry[1] === "number" && Number.isFinite(entry[1])),
+    )
+    : {};
+  const blockedReasons = [
+    ...(response.ok ? [] : [`map_preview_http_status_${response.status}`]),
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+    ...remoteFailureReasons(payload, "map_preview"),
+    ...(imageLooksSafe ? [] : ["map_preview_image_data_url_missing_or_invalid"]),
+  ];
+  const forwarded = response.ok && blockedReasons.length === 0;
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
+    ...PROOF_FLAGS,
+    proxy_status: forwarded ? "preview_forwarded" : "preview_failed",
+    source_base_url: baseUrl,
+    normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    remote_endpoint: "/api/map/preview",
+    remote_http_status: response.status,
+    status: forwarded ? "loaded_fail_closed_summary" : "blocked",
+    map_name: asString(findFirstKey(payload, ["map_name"]), ""),
+    map_yaml_name: asString(findFirstKey(payload, ["map_yaml_name"]), ""),
+    map_image_name: asString(findFirstKey(payload, ["map_image_name"]), ""),
+    width: finiteNumberOrZero(findFirstKey(payload, ["width"])),
+    height: finiteNumberOrZero(findFirstKey(payload, ["height"])),
+    resolution: typeof resolutionValue === "number" && Number.isFinite(resolutionValue) ? resolutionValue : null,
+    origin: numberList(findFirstKey(payload, ["origin"]), 3),
+    cell_counts: cellCounts,
+    has_free_cells: findFirstKey(payload, ["has_free_cells"]) === true,
+    navigation_quality: asString(findFirstKey(payload, ["navigation_quality"]), "not_loaded"),
+    image_mime_type: imageLooksSafe ? "image/png" : "not_loaded",
+    image_data_url: imageLooksSafe ? imageDataUrl : "",
+    source_image_format: asString(findFirstKey(payload, ["source_image_format"]), "not_loaded"),
+    failure_reason:
+      blockedReasons.length > 0
+        ? blockedReasons[0] ?? "map_preview_blocked"
+        : asString(findFirstKey(payload, ["failure_reason", "error"]), ""),
+    blocked_reasons: blockedReasons,
+    hard_dangerous_true_fields: hardDangerous,
     robot_control_executed: false,
   };
 }

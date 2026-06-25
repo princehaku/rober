@@ -27,6 +27,7 @@ import type {
   RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
+  RobotControlMapPreviewResponse,
   RobotControlNavGoalPreflightRequest,
   RobotControlNavGoalPreflightResponse,
   RobotControlNavGoalExecutionRequest,
@@ -110,6 +111,7 @@ const API_ENDPOINTS = {
   robotControlRadarStart: "/api/robot-control/radar/start",
   robotControlRadarStop: "/api/robot-control/radar/stop",
   robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
+  robotControlMapPreview: "/api/robot-control/map/preview",
   robotControlNav2ProofRefresh: "/api/robot-control/nav2/proof/refresh",
   robotControlNav2GoalPreflight: "/api/robot-control/nav2/goal/preflight",
   robotControlNav2GoalExecute: "/api/robot-control/nav2/goal/execute",
@@ -597,6 +599,11 @@ export async function postRobotControlLocalizeReset(baseUrl: string): Promise<Ro
 export async function getRobotControlMapList(baseUrl: string): Promise<RobotControlMapLifecycleResponse> {
   // Map list 是固定 GET 代理，不允许组件拼接 /api/map/list 或直接跨域访问上位机。
   return loadJson<RobotControlMapLifecycleResponse>(robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlMapList, baseUrl));
+}
+
+export async function getRobotControlMapPreview(baseUrl: string): Promise<RobotControlMapPreviewResponse> {
+  // Map preview 是固定只读代理，只拿上位机 YAML/PGM 转出的 PNG data URL，不启动建图或导航。
+  return loadJson<RobotControlMapPreviewResponse>(robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlMapPreview, baseUrl));
 }
 
 export async function postRobotControlMapStart(

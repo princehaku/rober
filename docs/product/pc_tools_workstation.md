@@ -111,6 +111,7 @@ pc-tools/workstation/
 - 2026-06-25 起，PC workstation 的 Node API 和 Vite dev 默认公开入口改为 `0.0.0.0:7001`，避开本机 Clash Verge 常用的 `7071`。`HOST/PORT` 仍可覆盖，`api:public` / `dev:public` 也显式使用 `7001`；该变更只影响 PC 工具监听地址，不改 Clash 配置、不调用上位机控制接口、不执行 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-25 起，普通首屏区分 `雷达未运行` 和 `雷达待刷新`：当上位机只读状态显示 `lifecycle_running=true` 但最新 scan proof stale/incomplete 时，首屏显示“雷达待刷新”，行程/送达/键盘下一步都指向 `刷新雷达`，不再提示重复 `启动雷达`。该刷新仍只走固定 radar proof refresh，不触发底盘、Nav2 execute、delivery complete、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-25 起，普通首屏 `实时画面` 保留固定尺寸的真实 `<video>` 画面框，`地图` 卡片新增现场地图视口：只消费已有 summary、map refresh、map lifecycle 和 operator route/map readback；读到地图时显示 `地图可见/地图记录已读取`，读不到定位时明确显示 `位置未读到`，雷达 marker 直接显示 `雷达已运行/雷达待刷新/雷达未运行`。该视口不伪造机器人坐标，不显示 route/map ref、endpoint 或 proof 字段，不自动启动雷达/建图/发车，也不调用 Nav2 execute、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
+- 2026-06-25 14:50 起，地图视口优先读取真实地图画面：PC 后端新增 `GET /api/robot-control/map/preview?baseUrl=<robot-api-base-url>`，固定只读转发到上位机 `/api/map/preview`，只接受 PNG data URL 摘要并继续固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。普通首屏新增 `刷新地图画面`，加载成功时在地图卡片内显示真实 YAML/PGM 渲染图，失败或缺图时才回退到原来的状态网格；该刷新不调用 `/api/map/start`、Nav2 execute、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-25 起，Nav2 目标预检按普通发车前最小确认口径收敛：PC 后端只要求 `confirm_navigation_preflight=true` 与固定只读定位/路径 readback，不再读取或要求 `/api/operator/report` 现场材料；普通首屏执行行程仍要求先勾“行程前安全确认”，后端执行代理仍只接受固定 `/api/nav2/goal/execute` 且需要 `confirm_navigation_execution=true`。
 - 2026-06-23 13:45 起，上位机 `upper_robot_api.py` 不再依赖手工设置 `ROBER_RADAR_START_COMMAND` / `ROBER_RADAR_STOP_COMMAND` 才能启动雷达；默认命令使用受管 `o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame` 与 `o1_lidar_lifecycle.sh stop`，并继续通过白名单校验拒绝 `/dev/ttyS5`、`T=1/T=13/T=130/T=131`、`/cmd_vel` 和 `/api/base/manual`。部署该上位机版本后，PC summary 应读到 `radar_start_configured=true`，普通首屏才会恢复可点击 `启动雷达`；这仍只启动 LiDAR lifecycle，不开放底盘、Nav2 execute、delivery complete、keyboard pulse 或 `/cmd_vel`。
 - 2026-06-23 12:30 起，普通首屏 `本轮进度` 的 `去键盘` 复用键盘 gate 的下一步聚焦规则：键盘条件满足时聚焦 `启用键盘（按键才动）`，仍缺恢复确认、轮速记录或雷达移动记录时聚焦对应补证动作，其它缺项时聚焦 `复查手控条件`。该聚焦不启用键盘、不发送 keyboard pulse、manual、stop、Nav2、delivery complete 或 `/cmd_vel`。
@@ -402,6 +403,7 @@ UI：
 
 普通入口和 `高级诊断` 的地图详情都只能调用固定 map lifecycle 代理：
 
+- `刷新地图画面`：GET-only 固定代理到上位机 `/api/map/preview`，仅返回 PGM 转 PNG 的 data URL 摘要。
 - `地图列表`：GET-only 固定代理到上位机 `/api/map/list`。
 - 普通 `重新建图` / 高级 `开始建图（高级）`：POST 固定代理到上位机 `/api/map/start`。
 - `保存地图`：POST 固定代理到上位机 `/api/map/save`。
@@ -450,6 +452,13 @@ PC `GET /api/robot-control/map/list` 当前返回的是截断摘要：`map_count
 PGM 可能被截断；完整 YAML/PGM 仍以远端 `/api/map/list` 或 latest proof 的
 `proof.map_files` 为准。后续如需 PC 页面逐项核对 YAML/PGM，应扩展 PC server 的 list
 摘要，而不是放宽上位机 map lifecycle gate。
+
+2026-06-25 14:50 起，上位机新增 `/api/map/preview`，只读 `runtime/maps` 下的安全
+地图名，解析 YAML 中的相对 PGM，并用 Python 标准库把 P5 PGM 转成 PNG data URL。
+PC 端固定代理 `GET /api/robot-control/map/preview` 只接受 `data:image/png;base64,`
+且限制摘要大小；普通首屏地图视口成功时直接渲染真实地图图片，保留雷达/定位短 marker，
+失败时回退为状态网格。该链路只读文件和 HTTP GET，不启动 SLAM、不保存地图、不发车、
+不调用 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 
 ## PC Localization Reset Controls V1
 

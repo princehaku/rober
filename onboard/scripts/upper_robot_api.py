@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import glob
 import json
 import math
@@ -12,9 +13,11 @@ import os
 import re
 import shlex
 import signal
+import struct
 import subprocess
 import sys
 import time
+import zlib
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -162,6 +165,7 @@ ROUTE_PATHS = {
     "map_save": "/api/map/save",
     "map_load": "/api/map/load",
     "map_list": "/api/map/list",
+    "map_preview": "/api/map/preview",
     "map_proof_refresh": "/api/map/proof/refresh",
     "map_proof_latest": "/api/map/proof/latest",
     "localize_reset": "/api/localize/reset",
@@ -491,6 +495,63 @@ def read_pgm_cell_counts(image_path: Path) -> dict[str, Any]:
     }
 
 
+def read_pgm_image(image_path: Path) -> dict[str, Any]:
+    """读取 P5 PGM 原始像素；地图预览只做格式转换，不改变地图内容。"""
+    with image_path.open("rb") as pgm_file:
+        if pgm_file.readline().strip() != b"P5":
+            raise ValueError("map image is not binary PGM P5")
+        size_line = pgm_file.readline()
+        while size_line.startswith(b"#"):
+            size_line = pgm_file.readline()
+        width, height = [int(value) for value in size_line.split()]
+        max_value = int(pgm_file.readline().strip() or b"255")
+        if max_value <= 0 or max_value > 255:
+            raise ValueError("unsupported PGM max value")
+        data = pgm_file.read()
+    expected_size = width * height
+    if len(data) < expected_size:
+        raise ValueError("PGM pixel data is shorter than width*height")
+    # PGM 可能多带换行或尾部字节；预览只取声明尺寸，避免浏览器展示与 YAML 尺寸分叉。
+    return {"width": width, "height": height, "pixels": data[:expected_size]}
+
+
+def png_chunk(chunk_type: bytes, payload: bytes) -> bytes:
+    """PNG chunk 编码保持在本文件内，避免上位机为了地图预览新增图像库依赖。"""
+    return (
+        struct.pack(">I", len(payload))
+        + chunk_type
+        + payload
+        + struct.pack(">I", zlib.crc32(chunk_type + payload) & 0xFFFFFFFF)
+    )
+
+
+def grayscale_png_bytes(width: int, height: int, pixels: bytes) -> bytes:
+    """把 8-bit 灰度栅格写成 PNG；每行 filter=0，像素值保持 PGM 原样。"""
+    if width <= 0 or height <= 0 or len(pixels) < width * height:
+        raise ValueError("invalid grayscale image dimensions")
+    rows = [b"\x00" + pixels[row * width : (row + 1) * width] for row in range(height)]
+    raw = b"".join(rows)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0))
+        + png_chunk(b"IDAT", zlib.compress(raw, level=6))
+        + png_chunk(b"IEND", b"")
+    )
+
+
+def data_url_for_pgm(image_path: Path) -> dict[str, Any]:
+    """把本地 PGM 转成浏览器可直接显示的 PNG data URL。"""
+    pgm = read_pgm_image(image_path)
+    png_bytes = grayscale_png_bytes(int(pgm["width"]), int(pgm["height"]), bytes(pgm["pixels"]))
+    return {
+        "width": int(pgm["width"]),
+        "height": int(pgm["height"]),
+        "image_mime_type": "image/png",
+        "image_data_url": "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii"),
+        "source_image_format": "pgm_p5",
+    }
+
+
 def analyze_map_yaml_quality(path: Path) -> dict[str, Any]:
     """地图文件存在不等于可导航；free cell 为 0 时必须提示重新建图。"""
     result: dict[str, Any] = {
@@ -562,6 +623,45 @@ def summarize_map_quality(entries: list[dict[str, Any]]) -> dict[str, Any]:
             else "没有可分析的 YAML 地图。"
         ),
     }
+
+
+def safe_preview_map_name(value: str | None) -> str | None:
+    """预览只接受地图基名；不允许路径、穿越或任意文件读取。"""
+    if value is None:
+        return None
+    trimmed = str(value).strip()
+    if not trimmed:
+        return None
+    if trimmed.endswith(".yaml"):
+        trimmed = trimmed[:-5]
+    if not SAFE_MAP_NAME_PATTERN.fullmatch(trimmed):
+        raise ValueError("map_name_invalid_or_too_long")
+    return trimmed
+
+
+def path_is_under(child: Path, parent: Path) -> bool:
+    """YAML image 字段也必须落在地图目录内，避免借预览读取任意文件。"""
+    try:
+        child.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def map_preview_candidates(root: Path, requested_map_name: str | None) -> list[Path]:
+    """按现场直觉选择地图：指定优先，其次 canonical，再选最近可用 YAML。"""
+    if requested_map_name:
+        return [root / f"{requested_map_name}.yaml"]
+    canonical = root / "trashbot_map.yaml"
+    yaml_files = sorted(root.glob("*.yaml"), key=lambda path: path.stat().st_mtime if path.exists() else 0, reverse=True)
+    usable = [path for path in yaml_files if analyze_map_yaml_quality(path).get("has_free_cells")]
+    candidates: list[Path] = []
+    if canonical.exists():
+        candidates.append(canonical)
+    for path in usable + yaml_files:
+        if path not in candidates:
+            candidates.append(path)
+    return candidates
 
 
 def resolve_onboard_runtime_path(path: str) -> str:
@@ -5220,6 +5320,102 @@ class UpperRobotApi:
             },
         )
 
+    def map_preview(self, map_name: str | None = None) -> dict[str, Any]:
+        """读取真实 YAML/PGM 并返回浏览器可显示的 PNG data URL；不启动任何 ROS2 或底盘动作。"""
+        root = Path(self.map_artifact_dir)
+        try:
+            requested_map_name = safe_preview_map_name(map_name)
+        except ValueError as exc:
+            return software_guard_payload(
+                schema_suffix="map_preview_result",
+                action="map_preview",
+                endpoint=ROUTE_PATHS["map_preview"],
+                artifact=map_artifact_info(self.map_artifact_dir),
+                extra={
+                    "status": "blocked",
+                    "failure_reason": str(exc),
+                    "blocked_reasons": [str(exc)],
+                    "map_name": map_name,
+                    "image_data_url": "",
+                    "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
+                },
+            )
+        if not root.exists() or not root.is_dir():
+            return software_guard_payload(
+                schema_suffix="map_preview_result",
+                action="map_preview",
+                endpoint=ROUTE_PATHS["map_preview"],
+                artifact=map_artifact_info(self.map_artifact_dir),
+                extra={
+                    "status": "blocked",
+                    "failure_reason": "map_artifact_dir_missing",
+                    "blocked_reasons": ["map_artifact_dir_missing"],
+                    "map_name": requested_map_name or "",
+                    "image_data_url": "",
+                    "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
+                },
+            )
+        failures: list[str] = []
+        for yaml_path in map_preview_candidates(root, requested_map_name):
+            if not path_is_under(yaml_path, root):
+                failures.append("map_yaml_outside_artifact_dir")
+                continue
+            if not yaml_path.exists() or not yaml_path.is_file():
+                failures.append(f"map_yaml_missing:{yaml_path.name}")
+                continue
+            try:
+                quality = analyze_map_yaml_quality(yaml_path)
+                image_path = Path(str(quality.get("image") or ""))
+                if not path_is_under(image_path, root):
+                    raise ValueError("map_image_outside_artifact_dir")
+                image_preview = data_url_for_pgm(image_path)
+                return software_guard_payload(
+                    schema_suffix="map_preview_result",
+                    action="map_preview",
+                    endpoint=ROUTE_PATHS["map_preview"],
+                    artifact=map_artifact_info(self.map_artifact_dir),
+                    extra={
+                        "status": "loaded",
+                        "map_name": yaml_path.stem,
+                        "map_yaml_name": yaml_path.name,
+                        "map_image_name": image_path.name,
+                        "resolution": quality.get("resolution"),
+                        "origin": quality.get("origin"),
+                        "cell_counts": quality.get("cell_counts", {}),
+                        "has_free_cells": bool(quality.get("has_free_cells")),
+                        "navigation_quality": quality.get("navigation_quality"),
+                        "width": image_preview["width"],
+                        "height": image_preview["height"],
+                        "image_mime_type": image_preview["image_mime_type"],
+                        "image_data_url": image_preview["image_data_url"],
+                        "source_image_format": image_preview["source_image_format"],
+                        "failure_reason": None,
+                        "blocked_reasons": [],
+                        "command_result": {"mode": "read_only_local_files", "executed": False, "ok": True},
+                        "opens_base_uart": False,
+                        "publishes_cmd_vel": False,
+                        "calls_base_manual": False,
+                        "sends_base_motion_commands": False,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001 - 单张坏图不能阻断 fallback 候选。
+                failures.append(f"{yaml_path.name}:{compact_error(exc)}")
+        reason = failures[0] if failures else "map_yaml_missing"
+        return software_guard_payload(
+            schema_suffix="map_preview_result",
+            action="map_preview",
+            endpoint=ROUTE_PATHS["map_preview"],
+            artifact=map_artifact_info(self.map_artifact_dir),
+            extra={
+                "status": "blocked",
+                "failure_reason": reason,
+                "blocked_reasons": failures[:8] or [reason],
+                "map_name": requested_map_name or "",
+                "image_data_url": "",
+                "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
+            },
+        )
+
     async def map_proof_refresh(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """触发 no-motion `/map` lifecycle proof，并把失败写成可回放 artifact。"""
         body = body if isinstance(body, dict) else {}
@@ -6279,6 +6475,10 @@ def create_app(api: UpperRobotApi) -> Any:
     async def map_list(_: web.Request) -> Any:
         return json_response(api.map_list())
 
+    async def map_preview(request: web.Request) -> Any:
+        # 地图预览只读本地 YAML/PGM，不触发 SLAM、Nav2、底盘或串口。
+        return json_response(api.map_preview(request.query.get("map_name")))
+
     async def map_proof_refresh(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
         payload = await api.map_proof_refresh(body if isinstance(body, dict) else {})
@@ -6394,6 +6594,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["map_save"], map_save)
     app.router.add_post(ROUTE_PATHS["map_load"], map_load)
     app.router.add_get(ROUTE_PATHS["map_list"], map_list)
+    app.router.add_get(ROUTE_PATHS["map_preview"], map_preview)
     app.router.add_post(ROUTE_PATHS["map_proof_refresh"], map_proof_refresh)
     app.router.add_get(ROUTE_PATHS["map_proof_latest"], map_proof_latest)
     app.router.add_post(ROUTE_PATHS["localize_reset"], localize_reset)

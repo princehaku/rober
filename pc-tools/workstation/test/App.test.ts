@@ -829,6 +829,33 @@ const fixtures: Record<string, unknown> = {
     robot_control_executed: false,
     ...PROOF_FLAGS,
   },
+  "/api/robot-control/map/preview": {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
+    proxy_status: "preview_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/map/preview",
+    remote_http_status: 200,
+    status: "loaded_fail_closed_summary",
+    map_name: "fixed_free_cells_20260622_0112",
+    map_yaml_name: "fixed_free_cells_20260622_0112.yaml",
+    map_image_name: "fixed_free_cells_20260622_0112.pgm",
+    width: 1,
+    height: 1,
+    resolution: 0.05,
+    origin: [0, 0, 0],
+    cell_counts: { free: 1, unknown: 0, occupied: 0, other: 0 },
+    has_free_cells: true,
+    navigation_quality: "has_free_cells",
+    image_mime_type: "image/png",
+    image_data_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lJK3GQAAAABJRU5ErkJggg==",
+    source_image_format: "pgm_p5",
+    failure_reason: "",
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
   "/api/robot-control/map/save": {
     schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
     action: "save",
@@ -3026,6 +3053,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/localize/reset";
     } else if (url.startsWith("/api/robot-control/map/list")) {
       fixtureKey = "/api/robot-control/map/list";
+    } else if (url.startsWith("/api/robot-control/map/preview")) {
+      fixtureKey = "/api/robot-control/map/preview";
     } else if (url.startsWith("/api/robot-control/map/save")) {
       fixtureKey = "/api/robot-control/map/save";
     } else if (url.startsWith("/api/robot-control/operator/report")) {
@@ -3154,6 +3183,7 @@ describe("App", () => {
 
     const wrapper = mount(App);
     await flushPromises();
+    await flushPromises();
     await wrapper.vm.$nextTick();
 
     const advancedToolsText = wrapper.find(".advanced-tools-details").text();
@@ -3215,7 +3245,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("雷达已运行");
     expect(firstScreenText).toContain("地图");
     expect(firstScreenText).toContain("地图可见");
-    expect(firstScreenText).toContain("地图记录已读取");
+    expect(firstScreenText).toContain("真实地图 1x1");
     expect(firstScreenText).toContain("位置未读到");
     expect(firstScreenText).toContain("移动/导航");
     expect(firstScreenText).toContain("已连接");
@@ -3272,6 +3302,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
+    expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行");
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);

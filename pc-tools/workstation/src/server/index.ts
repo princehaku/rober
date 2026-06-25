@@ -28,6 +28,7 @@ import {
   buildRadarLifecycleProxy,
   buildRadarScanProofRefreshProxy,
   buildMapLifecycleProxy,
+  buildMapPreviewProxy,
   buildMapProofRefreshProxy,
   buildNavGoalPreflightProxy,
   buildNav2NoMotionProofRefreshProxy,
@@ -1828,6 +1829,12 @@ export function createWorkstationApp(): express.Express {
     // Map list 是固定 GET 代理；它只读取地图 artifact 候选，不开放任意 Robot API endpoint。
     const response = await buildMapLifecycleProxy(queryString(req.query.baseUrl), "list");
     res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
+  });
+
+  workstationApp.get("/api/robot-control/map/preview", async (req, res) => {
+    // Map preview 只读取固定上位机 /api/map/preview；不会启动建图、Nav2、底盘或串口。
+    const response = await buildMapPreviewProxy(queryString(req.query.baseUrl));
+    res.status(response.proxy_status === "preview_forwarded" ? 200 : response.proxy_status === "preview_rejected" ? 400 : 502).json(response);
   });
 
   ([

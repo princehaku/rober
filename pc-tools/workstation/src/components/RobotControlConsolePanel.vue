@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import {
   getO7ConsumerTaskDetail,
   getRobotControlSummary,
+  getRobotControlMapPreview,
   getRobotControlMapList,
   getRobotControlDeliveryLatest,
   postRobotControlBaseFeedbackSamples,
@@ -37,6 +38,7 @@ import type {
   RobotControlDeliveryLatestResponse,
   RobotControlDeliveryGapCheckResponse,
   RobotControlMapLifecycleResponse,
+  RobotControlMapPreviewResponse,
   RobotControlNavGoalExecutionLatestResponse,
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalPreflightResponse,
@@ -81,9 +83,11 @@ const deliveryGapCheckResult = ref<RobotControlDeliveryGapCheckResponse | null>(
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
 const localizationResetResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
+const mapPreviewResult = ref<RobotControlMapPreviewResponse | null>(null);
 const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const manualCommandPending = ref(false);
 const mapLifecyclePending = ref(false);
+const mapPreviewPending = ref(false);
 const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
 const operatorReportPending = ref(false);
@@ -631,17 +635,18 @@ const plainMapVisualSummary = computed(() => {
   // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
   const proof = robotSummary.value?.o3_proof_summary;
   const mapReadback = mapRefreshResult.value?.latest_readback_key_values ?? {};
+  const previewLoaded = mapPreviewResult.value?.proxy_status === "preview_forwarded" && Boolean(mapPreviewResult.value.image_data_url);
   const mapObserved = proof?.map_once_observed === true
     || mapReadback.map_once_observed === "true"
     || mapReadback.latest_map_once_observed === "true";
   const lifecycle = mapLifecycleResult.value;
   const lifecycleUsable = Boolean(lifecycle?.map_usable_for_navigation || (lifecycle?.map_quality_summary.usable_map_count ?? 0) > 0);
   const lifecycleFailed = mapLifecycleSummary.value.state === "失败";
-  const state: PlainMapVisualState = mapRefreshPending.value || mapLifecyclePending.value
+  const state: PlainMapVisualState = mapRefreshPending.value || mapLifecyclePending.value || mapPreviewPending.value
     ? "地图处理中"
     : lifecycleFailed
       ? "地图不可用"
-      : mapObserved || lifecycleUsable
+      : previewLoaded || mapObserved || lifecycleUsable
         ? "地图可见"
         : mapRefreshResult.value || lifecycle
           ? "地图待刷新"
@@ -655,7 +660,9 @@ const plainMapVisualSummary = computed(() => {
     state,
     poseLabel: poseObserved ? "位置已读到" : "位置未读到",
     radarLabel: radarSummary.value.state,
-    mapRefLabel: mapRef ? "地图记录已读取" : "地图记录未读到",
+    mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
+    imageDataUrl: mapPreviewResult.value?.image_data_url || "",
+    imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
     showRobotPose: poseObserved,
   };
 });
@@ -3630,6 +3637,21 @@ async function refreshConsole(): Promise<void> {
   }
 }
 
+async function refreshMapPreview(): Promise<void> {
+  // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
+  if (!robotApiBaseUrl.value.trim() || mapPreviewPending.value) {
+    return;
+  }
+  mapPreviewPending.value = true;
+  try {
+    mapPreviewResult.value = await getRobotControlMapPreview(robotApiBaseUrl.value);
+  } catch {
+    mapPreviewResult.value = null;
+  } finally {
+    mapPreviewPending.value = false;
+  }
+}
+
 async function runRefreshAction(
   kind: "radar_scan_proof_refresh" | "map_proof_refresh" | "nav2_no_motion_proof_refresh",
   action: () => Promise<RobotControlProofRefreshProxyResponse>,
@@ -3720,6 +3742,7 @@ async function refreshMapProof(): Promise<void> {
     mapRefreshResult,
     mapRefreshPending,
   );
+  await refreshMapPreview();
 }
 
 async function refreshNav2Proof(): Promise<void> {
@@ -4322,6 +4345,7 @@ async function runMapLifecycleAction(
     mapLifecyclePending.value = false;
     await refreshConsole();
   }
+  await refreshMapPreview();
 }
 
 async function loadMapList(): Promise<void> {
@@ -5032,6 +5056,7 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
   if (nextValue.trim() === previousValue.trim()) {
     return;
   }
+  mapPreviewResult.value = null;
   if (keyboardHeldDirection.value) {
     stopKeyboardControl("base_url_changed");
   }
@@ -5051,7 +5076,10 @@ onMounted(() => {
   window.addEventListener("keyup", handleGlobalKeyUp);
   window.addEventListener("blur", handleWindowBlur);
   document.addEventListener("visibilitychange", handlePageVisibilityChange);
-  void refreshConsole().then(() => preloadGoalClosureReadbacks());
+  void refreshConsole().then(() => {
+    void refreshMapPreview();
+    void preloadGoalClosureReadbacks();
+  });
 });
 
 onBeforeUnmount(() => {
@@ -5135,13 +5163,16 @@ onBeforeUnmount(() => {
         <article class="snapshot-panel">
           <h3>地图</h3>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state">
-            <div class="plain-map-layer">
-              <span class="plain-map-grid-line horizontal" />
-              <span class="plain-map-grid-line vertical" />
-              <span class="plain-map-wall top" />
-              <span class="plain-map-wall bottom" />
-              <span class="plain-map-wall left" />
-              <span class="plain-map-wall right" />
+            <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
+              <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt">
+              <template v-else>
+                <span class="plain-map-grid-line horizontal" />
+                <span class="plain-map-grid-line vertical" />
+                <span class="plain-map-wall top" />
+                <span class="plain-map-wall bottom" />
+                <span class="plain-map-wall left" />
+                <span class="plain-map-wall right" />
+              </template>
               <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" aria-label="机器人位置" />
               <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing">{{ plainMapVisualSummary.poseLabel }}</span>
               <span class="plain-map-radar-marker" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel">{{ plainMapVisualSummary.radarLabel }}</span>
@@ -5154,6 +5185,9 @@ onBeforeUnmount(() => {
           <div class="panel-action-row wrap-actions">
             <button type="button" :disabled="loading || mapRefreshPending || !robotApiBaseUrl.trim()" @click="refreshMapProof">
               刷新地图
+            </button>
+            <button type="button" :disabled="loading || mapPreviewPending || !robotApiBaseUrl.trim()" data-testid="plain-map-preview-refresh" @click="refreshMapPreview">
+              刷新地图画面
             </button>
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
               地图列表

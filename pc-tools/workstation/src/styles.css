@@ -435,6 +435,20 @@ h3 {
   background-size: 24px 24px;
 }
 
+.plain-map-layer.has-real-map {
+  background: #eef2f6;
+}
+
+.plain-map-image {
+  /* 真实地图保持 contain，避免把 PGM 比例拉坏；marker 覆盖在同一个坐标视图上。 */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
 .plain-map-grid-line {
   position: absolute;
   background: #bdc7d3;

@@ -2502,6 +2502,33 @@ export interface RobotControlMapLifecycleResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface RobotControlMapPreviewResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1";
+  proxy_status: "preview_forwarded" | "preview_rejected" | "preview_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: "/api/map/preview";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  map_name: string;
+  map_yaml_name: string;
+  map_image_name: string;
+  width: number;
+  height: number;
+  resolution: number | null;
+  origin: number[];
+  cell_counts: Record<string, number>;
+  has_free_cells: boolean;
+  navigation_quality: string;
+  image_mime_type: "image/png" | "not_loaded";
+  image_data_url: string;
+  source_image_format: string;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export interface RobotControlCameraAnswerSummary {
   type: "answer" | "pranswer";
   sdp: string;
@@ -2909,6 +2936,7 @@ export const API_ROUTES = [
   "/api/robot-control/radar/stop?baseUrl=<robot-api-base-url>",
   "/api/robot-control/map/proof/refresh?baseUrl=<robot-api-base-url>",
   "/api/robot-control/map/list?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/map/preview?baseUrl=<robot-api-base-url>",
   "/api/robot-control/map/start?baseUrl=<robot-api-base-url>",
   "/api/robot-control/map/save?baseUrl=<robot-api-base-url>",
   "/api/robot-control/map/reset?baseUrl=<robot-api-base-url>",

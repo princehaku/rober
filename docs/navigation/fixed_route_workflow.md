@@ -2147,6 +2147,13 @@ LiDAR+SLAM 窗口并得到 `o3-map-lifecycle-1781190084998`，但随后 `/api/ma
 仍显示 `usable_map_count=0`、`no_free_cell_map_count=13`。因此建图控制入口已通，
 可导航地图仍未完成；进入定位移动前仍必须采到含 free cell 的地图。
 
+2026-06-25 14:50 起，上位机新增只读 `/api/map/preview`。该入口仅从
+`/root/rober/onboard/runtime/maps` 读取安全 basename 对应的 YAML/PGM，校验 YAML 和
+image 路径仍在 maps 目录内，并把 P5 PGM 用标准库转成 PNG data URL 给 PC 视口展示。
+PC 代理固定为 `GET /api/robot-control/map/preview?baseUrl=...`，不接受动态 endpoint，
+不启动雷达/建图，不执行 Nav2，不调用 `/api/base/manual` 或 `/cmd_vel`。它只解决“地图
+所见即所得”的读图入口；fixed-route 是否能执行仍取决于定位、Nav2 execution 和送达证据。
+
 2026-06-12 04:45 起，PC 普通 `移动/导航` 卡片新增 `重新定位`。该入口仍只调用
 workstation 固定 `POST /api/robot-control/localize/reset?baseUrl=<upper-api>`，由 PC
 后端转发到上位机固定 `POST /api/localize/reset`，不会接收浏览器传入的 goal、
