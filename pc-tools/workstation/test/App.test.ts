@@ -7607,6 +7607,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
     expect(armButton.text()).toBe("启用键盘（按键才动）");
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
+    expect(wrapper.find('[data-testid="keyboard-control-guide"]').text()).toBe("W/A/S/D 或方向键：前进、左转、后退、右转。按住会持续低速移动，约每 0.26 秒续一次；松开即停。");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("未启用，先点启用键盘。");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').text()).not.toContain("还差：");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();

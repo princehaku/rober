@@ -1368,6 +1368,12 @@ const plainKeyboardLiveStatus = computed(() => {
   return plainKeyboardMissingSummary.value || "键盘手控暂未满足。";
 });
 
+const plainKeyboardControlGuide = computed(() => {
+  // 普通首屏需要说明“按住连续、松开停止”；具体接口和 raw pulse 细节仍留在高级诊断。
+  const intervalSeconds = (keyboardJogIntervalMs.value / 1000).toFixed(2).replace(/0$/, "");
+  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会持续低速移动，约每 ${intervalSeconds} 秒续一次；松开即停。`;
+});
+
 function claimWithRefReady(value: string | undefined): boolean {
   // 现场材料的四类引用型 claim 必须同时满足 true 且带 ref，缺任一条件都按未满足处理。
   return typeof value === "string" && value.startsWith("true; ref=") && !value.endsWith("not_loaded");
@@ -6057,7 +6063,7 @@ onBeforeUnmount(() => {
             <p v-if="plainKeyboardNextActionSummary" class="panel-note" data-testid="plain-keyboard-next-action">
               {{ plainKeyboardNextActionSummary }}
             </p>
-            <p class="panel-note">W/A/S/D 或方向键：前进、左转、后退、右转。</p>
+            <p class="panel-note" data-testid="keyboard-control-guide">{{ plainKeyboardControlGuide }}</p>
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
           <div class="plain-goal-progress" data-testid="plain-goal-progress">
