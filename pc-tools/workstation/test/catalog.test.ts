@@ -4326,6 +4326,86 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("surfaces free-roam autonomy runtime state from latest artifact readback", async () => {
+    // 自动扫图 runtime 只读上车端 artifact；PC summary 展示状态机判断，但继续保持自动发车锁定。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "turning_for_coverage",
+              reason: "地图覆盖暂未增长，原地扫描寻找新方向",
+              stop_required: false,
+              gates: [
+                {
+                  id: "operator_confirmed",
+                  label: "现场安全确认",
+                  state: "ready",
+                  evidence: "已勾选现场安全确认",
+                  next_action: "继续保持现场可接管",
+                },
+              ],
+            },
+          },
+        },
+      },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "lifecycle_running") },
+      "/api/radar/scan-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
+      expect(summary.safe_command_boundary.free_roam_autonomy_runtime).toEqual({
+        status: "loaded",
+        state: "turning_for_coverage",
+        reason: "地图覆盖暂未增长，原地扫描寻找新方向",
+        stop_required: false,
+        artifact_only: true,
+        cmd_vel_publish_enabled: false,
+      });
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: "operator_confirmed",
+          state: "ready",
+          evidence: "已勾选现场安全确认",
+        }),
+        expect.objectContaining({
+          id: "motion_hil_unlock",
+          state: "blocked",
+        }),
+      ]));
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("operator report proxy posts only whitelisted material fields to fixed endpoint", async () => {
     // 现场材料提交只能命中 /api/operator/report；delivery_success 只允许作为 structured claim 保留。
     const upstream = await listenRobotProofRefreshApi({

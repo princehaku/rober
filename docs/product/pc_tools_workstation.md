@@ -1955,3 +1955,10 @@ delivery complete/stop 或 `/cmd_vel`。
 Nav2 execution `evidence_ref` 预填送达 `route/map` 材料。这样执行按钮、行程进度、送达材料入口和页面刷新后的 latest
 读回保持同一证据口径。该同步只发生在 operator 已显式点击执行且后端 execute proxy 已返回后；不会自动确认送达、
 不会提交 delivery complete、不发送 manual/keyboard pulse/stop 或 `/cmd_vel`。
+
+2026-06-25 21:40 起，PC summary 的 `safe_command_boundary` 增加只读
+`free_roam_autonomy_runtime` 摘要，并在普通首屏“自动扫图准备”里显示 `自动扫图状态`。该状态把上车端
+runtime artifact 的 `decision.state/reason/stop_required` 翻译为 `门禁锁定`、`低速直行判断`、`避障换向`、
+`原地找新覆盖`、`已完成并要求停止` 等普通文案，同时明确 `节点只写记录，不发布运动` 或运动发布边界。
+它只让自动扫图状态机所见即所得，不开放自动扫图按钮，不提交 delivery complete，不发送 manual/keyboard pulse/stop
+或 `/cmd_vel`。

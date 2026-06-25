@@ -1422,6 +1422,29 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     const text = value?.trim() || "等待上车端报告";
     return /[。！？.!?]$/.test(text) ? text : `${text}。`;
   };
+  const runtime = boundary?.free_roam_autonomy_runtime;
+  const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
+  const runtimeModeText = (() => {
+    // runtime state 来自上车端 artifact；这里只做翻译，不把任何状态外推成 PC 自动发车。
+    if (!runtime || runtime.status !== "loaded") {
+      return "自动扫图状态：未读取上车端 runtime，当前只能人工按住扫图。";
+    }
+    const motionBoundary = runtime.cmd_vel_publish_enabled
+      ? "运动发布已解锁，PC 仍等待真车 HIL 记录。"
+      : "节点只写记录，不发布运动。";
+    const stateLabels: Record<string, string> = {
+      locked: "门禁锁定",
+      ready: "等待启动",
+      running: "低速直行判断",
+      avoiding: "避障换向",
+      turning_for_coverage: "原地找新覆盖",
+      stopping: "停止中",
+      completed: "已完成并要求停止",
+    };
+    const stateText = stateLabels[runtime.state] ?? runtime.state;
+    const stopText = runtime.stop_required ? "，要求停止兜底" : "";
+    return `自动扫图状态：${stateText}${runtimeReason}${stopText}；${motionBoundary}`;
+  })();
   const contractGateRows = boundary?.free_roam_autonomy_gates?.length
     ? boundary.free_roam_autonomy_gates.map((gate) => ({
       id: gate.id,
@@ -1448,6 +1471,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
         : "材料已接近，但自动扫图仍需上车端安全状态机开放后才能启用。",
     blockers: blockers.slice(0, 4),
     gateRows: contractGateRows,
+    runtimeText: runtimeModeText,
     policyText: hasRuntimeGateRows
       ? `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，正在读取上车端自动扫图门禁。`
       : `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，必须先通过 ${policyGates.slice(0, 3).map(gateLabel).join("、")}。`,
@@ -6238,6 +6262,7 @@ onBeforeUnmount(() => {
               <span class="muted">{{ plainFreeRoamAutonomyReadiness.policyText }}</span>
             </div>
             <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
+            <p class="panel-note" data-testid="plain-free-roam-autonomy-runtime">{{ plainFreeRoamAutonomyReadiness.runtimeText }}</p>
             <div v-if="plainFreeRoamAutonomyReadiness.blockers.length" class="plain-readiness-blockers">
               <span v-for="blocker in plainFreeRoamAutonomyReadiness.blockers" :key="blocker" class="muted">{{ blocker }}</span>
             </div>

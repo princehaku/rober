@@ -2946,14 +2946,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
 function freeRoamRuntimeGatesFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
 ): RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null {
-  // 优先消费独立 latest 端点；旧上位机没有该端点时，再看 /api/status 聚合字段。
-  const endpointPayload = readbackById(readbacks, "free_roam_autonomy_latest")?.payload ?? null;
-  const statusPayload = readbackById(readbacks, "status")?.payload ?? null;
-  const statusFreeRoam = asRecord(statusPayload?.free_roam_autonomy);
-  const statusLatest = asRecord(statusFreeRoam?.latest);
-  const latest = asRecord(endpointPayload?.latest_result)
-    ?? asRecord(statusLatest?.latest_result)
-    ?? asRecord(statusFreeRoam?.latest_result);
+  const latest = freeRoamRuntimeLatestFromReadbacks(readbacks);
   if (!latest) {
     return null;
   }
@@ -2988,8 +2981,39 @@ function freeRoamRuntimeGatesFromReadbacks(
   return gateRows.length > 0 ? gateRows : null;
 }
 
+function freeRoamRuntimeLatestFromReadbacks(readbacks: InternalRobotApiEndpointReadback[]): JsonRecord | null {
+  // 优先消费独立 latest 端点；旧上位机没有该端点时，再看 /api/status 聚合字段。
+  const endpointPayload = readbackById(readbacks, "free_roam_autonomy_latest")?.payload ?? null;
+  const statusPayload = readbackById(readbacks, "status")?.payload ?? null;
+  const statusFreeRoam = asRecord(statusPayload?.free_roam_autonomy);
+  const statusLatest = asRecord(statusFreeRoam?.latest);
+  return asRecord(endpointPayload?.latest_result)
+    ?? asRecord(statusLatest?.latest_result)
+    ?? asRecord(statusFreeRoam?.latest_result);
+}
+
+function freeRoamRuntimeSummaryFromReadbacks(
+  readbacks: InternalRobotApiEndpointReadback[],
+): RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null {
+  // runtime 摘要只解释上车状态机最近一次判断；PC 按钮仍保持锁定。
+  const latest = freeRoamRuntimeLatestFromReadbacks(readbacks);
+  if (!latest) {
+    return null;
+  }
+  const decision = asRecord(latest.decision);
+  return {
+    status: "loaded",
+    state: asString(decision?.state, "not_loaded"),
+    reason: asString(decision?.reason, "not_loaded"),
+    stop_required: decision?.stop_required === true,
+    artifact_only: latest.artifact_only !== false,
+    cmd_vel_publish_enabled: latest.cmd_vel_publish_enabled === true,
+  };
+}
+
 function lockedBoundary(
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null = null,
+  freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
 ): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
   return {
@@ -3059,6 +3083,14 @@ function lockedBoundary(
         next_action: "完成真车低速自动扫图验证后再开放按钮",
       },
     ],
+    free_roam_autonomy_runtime: freeRoamRuntime ?? {
+      status: "not_loaded",
+      state: "not_loaded",
+      reason: "not_loaded",
+      stop_required: true,
+      artifact_only: true,
+      cmd_vel_publish_enabled: false,
+    },
     map_click_goal: "map click goal locked",
     locked_reason: "bounded manual and keyboard pulse control require operator safety confirmation; primary autonomy and safe_control remain locked",
     manual_motion_entry_status: "controlled_jog_requires_safety_confirmation_only",
@@ -3207,6 +3239,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
   ];
   const operatorHilMaterialSummary = buildOperatorHilMaterialSummary(readbacks);
   const freeRoamRuntimeGates = freeRoamRuntimeGatesFromReadbacks(readbacks);
+  const freeRoamRuntime = freeRoamRuntimeSummaryFromReadbacks(readbacks);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -3240,7 +3273,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
     },
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),
-    safe_command_boundary: lockedBoundary(freeRoamRuntimeGates),
+    safe_command_boundary: lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime),
     blocked_reasons: blockedReasons.length ? blockedReasons : ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success", "safe_to_control_true", "real_robot_ack"],
     ...PROOF_FLAGS,

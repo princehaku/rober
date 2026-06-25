@@ -35,7 +35,9 @@
 - 当 `decision.stop_required=true` 且停止服务可用时，调用 `/trashbot/stop` 兜底。
 - 默认 `enable_cmd_vel_publish=false` 且 `motion_hil_unlocked=false`，不会发布 `/cmd_vel`。
 - 上位机 `GET /api/free-roam/autonomy/latest` 只读该 artifact，`GET /api/status` 同步提供 `free_roam_autonomy` 摘要。
-- PC `GET /api/robot-control/summary` 会消费该摘要并把 `decision.gates` 显示到“自动扫图准备”门禁。
+- PC `GET /api/robot-control/summary` 会消费该摘要并把 `decision.gates` 显示到“自动扫图准备”门禁，同时把
+  `decision.state/reason/stop_required` 压缩为 `safe_command_boundary.free_roam_autonomy_runtime`，让首屏显示
+  上车端状态机当前是锁定、直行判断、避障换向、补覆盖、停止中还是完成。
 
 ## 当前边界
 

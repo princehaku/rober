@@ -520,6 +520,14 @@ const fixtures: Record<string, unknown> = {
           next_action: "完成 stop 兜底、雷达避障和地图覆盖验证后再解锁",
         },
       ],
+      free_roam_autonomy_runtime: {
+        status: "loaded",
+        state: "avoiding",
+        reason: "雷达检测到近距离障碍，原地换向",
+        stop_required: false,
+        artifact_only: true,
+        cmd_vel_publish_enabled: false,
+      },
       map_click_goal: "map click goal locked",
       locked_reason: "bounded manual and keyboard pulse control require operator safety confirmation; primary autonomy and safe_control remain locked",
       manual_motion_entry_status: "controlled_jog_requires_safety_confirmation_only",
@@ -3362,6 +3370,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图未开放；当前用人工按住扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图真车验证未完成");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：避障换向：雷达检测到近距离障碍，原地换向；节点只写记录，不发布运动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("现场安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("未满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达新鲜");
