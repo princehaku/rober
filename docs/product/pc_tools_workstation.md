@@ -1552,6 +1552,10 @@ operator report，不再次发送运动命令、不补 LiDAR/route/delivery。�
 底层只调用固定 `POST /api/robot-control/nav2/proof/refresh` 刷新 no-motion planner proof，并把结果翻译成
 `行程准备已刷新` 或 `行程准备还没完成`。它不会调用 `/api/robot-control/nav2/goal/execute`、`NavigateToPose`、
 `/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`；真正发车仍必须再点 `执行行程` 并通过后端 execute gate。
+2026-06-25 18:06 起，若 `准备行程（不发车）` 返回 `planner_server_not_active` root cause，普通首屏会翻译为
+`行程服务还没准备好，先点重新定位，或稍后再准备一次。`，不把 `planner_server_not_active/root_causes` 暴露给普通用户。
+本轮真实 7001 no-motion proof 结果为 `proxy_status=refresh_forwarded`、`robot_control_executed=false`、`hard_dangerous_true_fields=[]`、
+`path_generated=false`、`path_point_count=0`、`root_causes=[planner_server_not_active]`；这证明 PC 准备入口安全转发，但不证明完整行程可执行。
 
 2026-06-25 17:56 起，PC 后端 `POST /api/robot-control/nav2/goal/execute` 在转发真实
 `/api/nav2/goal/execute` 前，会先复用同一套本机导航预检读取

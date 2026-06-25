@@ -4255,6 +4255,62 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("translates plain trip preparation planner blocker without executing navigation", async () => {
+    // no-motion 行程准备失败时，普通首屏要给下一步，不把 planner_server_not_active 暴露给普通用户。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/proof/refresh": {
+        schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+        robot_control_executed: false,
+        refresh_kind: "nav2_no_motion_proof_refresh",
+        proxy_status: "refresh_forwarded",
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/nav2/proof/refresh",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        last_result_status: "blocked_with_root_cause",
+        last_result_schema: "trashbot.upper_robot_api.v1.nav2_proof_refresh",
+        last_result_evidence_ref: "nav2-refresh-blocked-fixture",
+        last_refreshed_at_ms: 1781040817776,
+        latest_readback_key_values: {
+          status: "blocked_with_root_cause",
+          latest_proof_status: "blocked_with_root_cause",
+          path_generation_succeeded: "false",
+          path_generated: "false",
+          path_point_count: "0",
+          planner_server_active: "false",
+          root_causes: '[{"layer":"planner readiness","reason":"planner_server_not_active"}]',
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        non_motion_evidence_actions_observed: ["starts_ros2"],
+        ...PROOF_FLAGS,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-trip-prepare"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程服务还没准备好，先点重新定位，或稍后再准备一次。");
+    expect(firstScreenText).not.toContain("planner_server_not_active");
+    expect(firstScreenText).not.toContain("root_causes");
+    expect(mockedFetch.mock.calls.some(([url, options]) =>
+      String(url).startsWith("/api/robot-control/nav2/proof/refresh?") && options?.method === "POST",
+    )).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("blocks plain trip execution on the first screen until radar is running", async () => {
     // 完整行程执行依赖雷达运行；预检允许先看路线 gate，但不会启动雷达或执行行程。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

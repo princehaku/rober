@@ -2246,6 +2246,22 @@ const plainTripPreparedByRefresh = computed(() => {
   return (values.path_generated === "true" || values.path_generation_succeeded === "true") && Number.isFinite(pointCount) && pointCount > 0;
 });
 
+function plainTripPreparationFailureHint(): string {
+  // 底层 root cause 可能是英文诊断字段；普通首屏只翻译成下一步，不泄露 planner_server_not_active 等术语。
+  const values = nav2RefreshResult.value?.latest_readback_key_values;
+  const rootCauseText = String(values?.root_causes ?? values?.status ?? values?.latest_proof_status ?? "");
+  if (rootCauseText.includes("planner_server_not_active")) {
+    return "行程服务还没准备好，先点重新定位，或稍后再准备一次。";
+  }
+  if (rootCauseText.includes("map") || rootCauseText.includes("no_free")) {
+    return "地图还不能用于行程，先刷新地图或重新建图。";
+  }
+  if (rootCauseText.includes("localization") || rootCauseText.includes("tf")) {
+    return "位置还没对上地图，先点重新定位后再准备。";
+  }
+  return "行程准备还没完成，确认地图和定位后再试一次。";
+}
+
 const plainTripSummary = computed(() => {
   // 普通首屏只说“行程”，不把 Nav2、goal 或 proof 术语放到默认界面。
   if (navGoalExecutionPending.value) {
@@ -2282,7 +2298,7 @@ const plainTripSummary = computed(() => {
     return { state: "已准备", hint: "行程准备已刷新，点检查行程确认条件；不会发车。" };
   }
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
-    return { state: "待准备", hint: "行程准备还没完成，确认地图和定位后再试一次。" };
+    return { state: "待准备", hint: plainTripPreparationFailureHint() };
   }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
     return { state: "可执行", hint: "检查通过，确认人在旁边后可执行一次行程。" };
