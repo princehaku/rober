@@ -833,6 +833,12 @@ const canLoadDeliveryLatest = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canCheckDeliveryGap = computed(() => (
+  !loading.value
+  && !deliveryGapCheckPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarSummary.value.state === "雷达未运行";
@@ -2764,6 +2770,9 @@ const plainDeliveryGapCheckButtonLabel = computed(() => {
   // 复查固定 confirm=false，只重新算缺口；按钮文案直接说明不会确认送达。
   if (deliveryGapCheckPending.value) {
     return "复查中";
+  }
+  if (plainDeliveryMapWysiwygPending.value) {
+    return "等待地图刷新";
   }
   const missingCount = deliveryGateBlockedReasons.value.length;
   return missingCount > 0 ? `复查送达条件（还差 ${missingCount} 项，不确认）` : "复查送达条件（不确认）";
@@ -6316,7 +6325,7 @@ async function markAllDeliveryConfirmations(): Promise<void> {
 
 async function checkDeliveryGap(): Promise<void> {
   // 复算缺口固定 confirm=false；它刷新 gate artifact，但不能确认送达。
-  if (!robotApiBaseUrl.value.trim() || deliveryGapCheckPending.value) {
+  if (!canCheckDeliveryGap.value) {
     return;
   }
   deliveryGapCheckPending.value = true;
@@ -7939,7 +7948,7 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="!canLoadDeliveryLatest" data-testid="plain-delivery-latest" @click="loadDeliveryLatest">
                 {{ plainDeliveryLatestButtonLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" data-testid="plain-delivery-gap-check" @click="checkDeliveryGap">
+              <button type="button" class="secondary compact-stop" :disabled="!canCheckDeliveryGap" data-testid="plain-delivery-gap-check" @click="checkDeliveryGap">
                 {{ plainDeliveryGapCheckButtonLabel }}
               </button>
             </div>
@@ -8416,7 +8425,7 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="!canLoadDeliveryLatest" @click="loadDeliveryLatest">
               读取送达缺口（高级）
             </button>
-            <button class="secondary" type="button" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" @click="checkDeliveryGap">
+            <button class="secondary" type="button" :disabled="!canCheckDeliveryGap" @click="checkDeliveryGap">
               复算送达缺口（高级）
             </button>
           </div>

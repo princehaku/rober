@@ -2308,3 +2308,8 @@ delivery、stop 或 `/cmd_vel`。
 2026-06-26 06:45 起，普通首屏键盘区 `复查手控条件` 也接入地图 WYSIWYG gate。地图 proof/preview 正在刷新时按钮显示
 `等待地图刷新` 并禁用，函数入口同步早退，不再允许键盘 gate 的只读聚合在旧地图画面上刷新轮速、行程或送达状态。
 该状态只等待地图只读刷新完成，不启用键盘、不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-26 06:50 起，普通首屏 `复查送达条件（不确认）` 和高级 `复算送达缺口（高级）` 也接入地图 WYSIWYG gate。
+地图 proof/preview 正在刷新时普通按钮显示 `等待地图刷新` 并禁用，函数入口同步早退，不再允许 `/api/robot-control/delivery/check`
+在旧地图画面上复算并改写送达缺口。该状态只等待地图只读刷新完成，不提交送达确认、不发送 Nav2、manual/keyboard pulse、
+stop 或 `/cmd_vel`。
