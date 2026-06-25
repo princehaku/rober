@@ -973,6 +973,62 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(latest["safe_to_control"])
         self.assertFalse(latest["robot_control_executed"])
 
+    def test_radar_scan_proof_latest_lifts_scan_preview_points_from_stdout_preview(self) -> None:
+        """latest readback 必须把已有 LaserScan 文本转成地图可叠加的只读点位。"""
+        artifact = {
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "generated_at_ms": 1781154494512,
+            "proof": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "scan_once_observed": True,
+                "scan_hz_observed": True,
+                "raw_packet_once_observed": True,
+                "tf_observed": True,
+                "all_required_observations_observed": True,
+            },
+            "topic_reads": {
+                "results": {
+                    "scan_once": {
+                        "stdout_preview": "\n".join(
+                            [
+                                "header:",
+                                "  frame_id: laser_frame",
+                                "angle_min: 0.0",
+                                "angle_increment: 1.57079632679",
+                                "range_min: 0.05",
+                                "range_max: 8.0",
+                                "ranges:",
+                                "- 0.03",
+                                "- 1.0",
+                                "- 9.0",
+                                "- 0.5",
+                                "intensities: []",
+                            ]
+                        ),
+                    }
+                }
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+
+            http_status, latest = upper_robot_api.read_lidar_scan_proof_latest_artifact(str(artifact_path))
+            summary = upper_robot_api.summarize_lidar_scan_proof_latest_artifact(str(artifact_path))
+
+        # 低于 range_min 和高于 range_max 的读数会被过滤，但 source_count 保留原始槽位数量。
+        self.assertEqual(200, http_status)
+        self.assertEqual(2, latest["scan_preview_point_count"])
+        self.assertEqual(4, latest["scan_preview_source_point_count"])
+        self.assertEqual("laser_frame", latest["scan_preview_frame_id"])
+        self.assertEqual("topic_reads.results.scan_once.stdout_preview", latest["scan_preview_source"])
+        self.assertEqual(1, latest["scan_preview_points"][0]["source_index"])
+        self.assertAlmostEqual(1.0, latest["scan_preview_points"][0]["range_m"])
+        self.assertEqual(2, summary["scan_preview_point_count"])
+        self.assertEqual("laser_frame", summary["scan_preview_frame_id"])
+        self.assertFalse(latest["safe_to_control"])
+        self.assertFalse(latest["robot_control_executed"])
+
     def test_radar_scan_proof_latest_derives_safe_evidence_ref_from_iso_generated_at(self) -> None:
         """旧 artifact 只有 ISO generated_at 时，也要派生安全可读 ref。"""
         artifact = {

@@ -69,6 +69,7 @@ NAV2_PROOF_PC_PROXY_TIMEOUT_BUDGET_S = 150.0
 DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
 DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH = "runtime/operator_report_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
+LIDAR_SCAN_PREVIEW_POINT_LIMIT = 240
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
 MAX_FEEDBACK_SAMPLE_COUNT = 8
@@ -407,6 +408,139 @@ def derive_lidar_scan_proof_evidence_ref(artifact_payload: dict[str, Any]) -> st
     if suffix:
         return f"o1-lidar-scan-proof-{suffix}"
     return None
+
+
+def finite_lidar_scan_number(value: Any) -> float | None:
+    """LaserScan 文本来自 ROS2 CLI，只接受有限数字，NaN/inf 不能进入地图点位。"""
+    try:
+        number = float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
+
+
+def parse_lidar_scan_scalar(stdout_preview: str, key: str) -> float | None:
+    """从 YAML 预览中读取简单数字标量，避免为一个只读预览引入额外依赖。"""
+    pattern = re.compile(rf"^\s*{re.escape(key)}:\s*([^#\s]+)")
+    for line in stdout_preview.splitlines():
+        match = pattern.match(line)
+        if match:
+            return finite_lidar_scan_number(match.group(1))
+    return None
+
+
+def parse_lidar_scan_frame_id(stdout_preview: str) -> str:
+    """frame_id 是地图叠点的坐标系来源；缺失时前端必须继续显示等待材料。"""
+    for line in stdout_preview.splitlines():
+        match = re.match(r"^\s*frame_id:\s*(.+?)\s*$", line)
+        if match:
+            return match.group(1).strip().strip("'\"")
+    return ""
+
+
+def parse_lidar_scan_ranges(stdout_preview: str) -> list[float | None]:
+    """只解析 `ranges:` 下的列表值，保留无效槽位用于维持 source_index 和角度。"""
+    ranges: list[float | None] = []
+    in_ranges = False
+    for raw_line in stdout_preview.splitlines():
+        line = raw_line.strip()
+        if line == "ranges:":
+            in_ranges = True
+            continue
+        if not in_ranges:
+            continue
+        if not line.startswith("- "):
+            # ROS2 YAML 的下一个顶层字段代表 ranges 已结束。
+            if line and not raw_line.startswith(" "):
+                break
+            continue
+        ranges.append(finite_lidar_scan_number(line[2:].strip()))
+    return ranges
+
+
+def parse_lidar_scan_stdout_preview(stdout_preview: Any) -> dict[str, Any] | None:
+    """把 scan_once 的 YAML 预览转成 PC 可直接消费的相对雷达点，不启动 ROS2。"""
+    if not isinstance(stdout_preview, str) or "ranges:" not in stdout_preview:
+        return None
+    ranges = parse_lidar_scan_ranges(stdout_preview)
+    if not ranges:
+        return None
+    angle_min = parse_lidar_scan_scalar(stdout_preview, "angle_min")
+    angle_increment = parse_lidar_scan_scalar(stdout_preview, "angle_increment")
+    range_min = parse_lidar_scan_scalar(stdout_preview, "range_min") or 0.05
+    range_max = parse_lidar_scan_scalar(stdout_preview, "range_max") or 30.0
+    if angle_min is None:
+        angle_min = -math.pi
+    if angle_increment is None:
+        angle_increment = (2 * math.pi) / max(len(ranges), 1)
+    frame_id = parse_lidar_scan_frame_id(stdout_preview)
+    step = max(1, math.ceil(len(ranges) / LIDAR_SCAN_PREVIEW_POINT_LIMIT))
+    points: list[dict[str, Any]] = []
+    for index in range(0, len(ranges), step):
+        scan_range = ranges[index]
+        # 低于 range_min 的贴脸噪声和高于 range_max 的值都不能画成真实障碍物。
+        if scan_range is None or scan_range < range_min or scan_range > range_max:
+            continue
+        angle = angle_min + angle_increment * index
+        points.append(
+            {
+                "x_m": scan_range * math.cos(angle),
+                "y_m": scan_range * math.sin(angle),
+                "range_m": scan_range,
+                "angle_rad": angle,
+                "frame_id": frame_id,
+                "source_index": index,
+            }
+        )
+        if len(points) >= LIDAR_SCAN_PREVIEW_POINT_LIMIT:
+            break
+    return {
+        "scan_preview_points": points,
+        "scan_preview_point_count": len(points),
+        "scan_preview_source_point_count": len(ranges),
+        "scan_preview_frame_id": frame_id,
+        "scan_preview_angle_min": angle_min,
+        "scan_preview_angle_increment": angle_increment,
+        "scan_preview_range_min": range_min,
+        "scan_preview_range_max": range_max,
+        "scan_preview_source": "topic_reads.results.scan_once.stdout_preview",
+    }
+
+
+def lidar_scan_stdout_preview_from_artifact(artifact_payload: dict[str, Any]) -> str | None:
+    """优先读取 collector 固定位置；找不到时再递归寻找像 LaserScan 的 stdout 预览。"""
+    topic_reads = artifact_payload.get("topic_reads") if isinstance(artifact_payload.get("topic_reads"), dict) else {}
+    results = topic_reads.get("results") if isinstance(topic_reads.get("results"), dict) else {}
+    scan_once = results.get("scan_once") if isinstance(results.get("scan_once"), dict) else {}
+    fixed_preview = scan_once.get("stdout_preview")
+    if isinstance(fixed_preview, str) and "ranges:" in fixed_preview:
+        return fixed_preview
+
+    def visit(value: Any) -> str | None:
+        if isinstance(value, dict):
+            preview = value.get("stdout_preview")
+            if isinstance(preview, str) and "ranges:" in preview and "angle_increment:" in preview:
+                return preview
+            for child in value.values():
+                found = visit(child)
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = visit(child)
+                if found:
+                    return found
+        return None
+
+    return visit(artifact_payload)
+
+
+def lidar_scan_preview_from_artifact(artifact_payload: dict[str, Any]) -> dict[str, Any] | None:
+    """从 artifact 已有文本材料派生点位；失败时返回 None，调用方保持 fail-closed。"""
+    stdout_preview = lidar_scan_stdout_preview_from_artifact(artifact_payload)
+    return parse_lidar_scan_stdout_preview(stdout_preview)
 
 
 def lidar_raw_packet_proof_artifact_info(path: str) -> dict[str, Any]:
@@ -2987,6 +3121,10 @@ def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any
     payload["evidence_ref"] = evidence_ref
     payload["latest_evidence_ref"] = evidence_ref
     payload["latest_result"] = parsed
+    scan_preview = lidar_scan_preview_from_artifact(parsed)
+    if scan_preview:
+        # 点位来自 artifact 内已记录的 `/scan` stdout，不会在 latest readback 阶段触发硬件。
+        payload.update(scan_preview)
     return 200, payload
 
 
@@ -3045,6 +3183,13 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
     http_status, payload = read_lidar_scan_proof_latest_artifact(path)
     latest_result = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
     proof = latest_result.get("proof", {}) if isinstance(latest_result, dict) else {}
+    scan_preview = {
+        "scan_preview_points": payload.get("scan_preview_points", []),
+        "scan_preview_point_count": payload.get("scan_preview_point_count", 0),
+        "scan_preview_source_point_count": payload.get("scan_preview_source_point_count"),
+        "scan_preview_frame_id": payload.get("scan_preview_frame_id", ""),
+        "scan_preview_source": payload.get("scan_preview_source"),
+    }
     required_observations = proof.get("required_observations") if isinstance(proof, dict) else None
     generated_at_ms = now_ms()
     stale_after_ms = DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS
@@ -3101,6 +3246,7 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
         "latest_required_observations": compact_required_observations,
         "latest_runtime_summary_fallback_used": proof.get("runtime_summary_fallback_used") if isinstance(proof, dict) else None,
         "latest_runtime_summary_path": proof.get("runtime_summary_path") if isinstance(proof, dict) else None,
+        **scan_preview,
         "freshness": freshness,
         "readback_sends_commands": False,
         "sends_commands": False,
