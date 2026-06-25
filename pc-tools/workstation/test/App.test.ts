@@ -4243,6 +4243,125 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：检查地图画面");
   });
 
+  it("shows free-roam keyboard release while stop is still pending", async () => {
+    // 松开方向键后 stop 还没返回时，地图和扫图卡必须显示“正在停止”，不能退回成可继续按键。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    let resolveStop!: (response: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedStop = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveStop = resolve;
+    });
+    const fallbackFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": {
+        schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+        action: "start",
+        proxy_status: "lifecycle_forwarded",
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/map/start",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        map_count: 0,
+        map_names: [],
+        map_quality_summary: {
+          status: "not_loaded",
+          message: "地图记录已启动，保存后再检查质量。",
+          checked_yaml_count: 0,
+          usable_map_count: 0,
+          no_free_cell_map_count: 0,
+          analysis_failed_count: 0,
+        },
+        map_usable_for_navigation: false,
+        map_needs_rebuild: false,
+        command_result: { mode: "configured_command", executed: true, ok: true },
+        request_body: {},
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+      "/api/robot-control/base/manual": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "forward",
+        applied_direction: "forward",
+        remote_motion_key_values: {
+          feedback_during_motion_t1001_frame_count: "2",
+          wheel_feedback_latest_raw_left: "0.07",
+          wheel_feedback_latest_raw_right: "0.08",
+          wheel_feedback_nonzero_frame_count: "2",
+          wheel_feedback_lr_nonzero_proven: "true",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/base/stop?")) {
+        return delayedStop;
+      }
+      return fallbackFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerdown");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("扫图移动中");
+
+    await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerup");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已松开，正在发送停止；完成前不要继续移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待停止完成");
+    const marker = wrapper.find('[data-testid="plain-map-free-roam-action-marker"]');
+    expect(marker.text()).toBe("停止发送中：前进，轮速非零");
+    expect(marker.attributes("data-state")).toBe("stopping");
+    expect(marker.attributes("aria-label")).toBe("已松开方向键，上次方向前进，停止原因松开屏幕方向键，轮速 L/R=0.07/0.08，非零已读到，正在发送停止，机器人地图位置未读到，标记不代表坐标");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
+
+    resolveStop({
+      ok: true,
+      json: async () => ({
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "stop",
+        applied_direction: "stop",
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      }),
+    });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已停止，地图画面已刷新，可以保存当前地图。");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("已停可保存：前进，轮速非零");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("draws radar pulse on the robot marker only after map-frame pose is observed", async () => {
     // 雷达 overlay 只有在 AMCL/map-frame 位置存在时才画成地图坐标；否则必须显式标缺定位。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

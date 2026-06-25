@@ -1410,6 +1410,11 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     const wheelAria = keyboardWheelFeedbackPlainText().replace(/^；/, "，");
     return { label: "扫图移动中", state: "driving", style, aria: `正在${keyboardDirectionPlainLabel.value}扫图，${keyboardForwardedPulseProgressText.value}${wheelAria}${locatedSuffix}` };
   }
+  if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("released")) {
+    const stopLabelSuffix = keyboardLastStopMapSuffix();
+    const stopAriaSuffix = keyboardLastStopMapAria();
+    return { label: `停止发送中${stopLabelSuffix}`, state: "stopping", style, aria: `已松开方向键${stopAriaSuffix}，正在发送停止${locatedSuffix}` };
+  }
   if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("stop_sent")) {
     const stopLabelSuffix = keyboardLastStopMapSuffix();
     const stopAriaSuffix = keyboardLastStopMapAria();
@@ -1773,6 +1778,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (keyboardHeldDirection.value) {
     return "下一步：松开或停止";
   }
+  if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("released")) {
+    return "下一步：等待停止完成";
+  }
   if (mapRuntimeStarted.value && !mapSavedThisSession.value) {
     if (keyboardStopSettledAfterPulse.value) {
       return plainFreeRoamMapPreviewFreshForSession.value ? "下一步：保存地图" : "下一步：刷新扫图画面";
@@ -1834,6 +1842,9 @@ const plainFreeRoamDriveStatus = computed(() => {
       return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面已跟随刷新；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
     }
     return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，松开即停；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
+  }
+  if (keyboardControlStatus.value.startsWith("released")) {
+    return "扫图状态：已松开，正在发送停止；完成前不要继续移动。";
   }
   if (keyboardControlStatus.value.startsWith("stop_sent")) {
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
