@@ -352,7 +352,12 @@ function cameraSourcePlainFailureHint(): string {
   return sourceFailed ? "相机没有出画面，检查摄像头/视频线。" : "";
 }
 
-function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开" | "画面可见" | "画面偏暗" | "失败"; hint: string } {
+function browserVideoFrameDrawn(): boolean {
+  // 只有浏览器 video 元素真的进入可绘制状态，才允许把 WebRTC track 说成“画面已打开”。
+  return videoElementFrameStatus.value === "frame_callback_observed" || videoElementFrameStatus.value === "visible_frame_ready";
+}
+
+function summarizeCameraState(): { state: "未打开" | "连接中" | "等待画面" | "已打开" | "画面可见" | "画面偏暗" | "失败"; hint: string } {
   // 摄像头首屏只暴露普通用户能理解的结论，不泄露 peer / ICE / SDP / canvas 细节。
   const sourceFailureHint = cameraSourcePlainFailureHint();
   const camera = robotSummary.value?.readback_summary.camera;
@@ -367,6 +372,9 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开
       }
       if (previewFrameSampleStatus.value === "near_black") {
         return { state: "画面偏暗", hint: "画面太暗，先检查镜头/光线。" };
+      }
+      if (!browserVideoFrameDrawn()) {
+        return { state: "等待画面", hint: "视频已接入，等待浏览器绘出第一帧。" };
       }
       if (previewFrameSampleStatus.value === "sampling") {
         return { state: "已打开", hint: "画面已打开，正在确认内容。" };
@@ -563,6 +571,8 @@ const plainCameraWysiwygStatus = computed(() => {
       return `画面状态：当前画面偏暗，先检查镜头或光线。${frameTruth}`;
     case "已打开":
       return `画面状态：画面已打开，正在确认是否有可见内容。${frameTruth}`;
+    case "等待画面":
+      return `画面状态：视频已接入，等待浏览器绘出第一帧。${frameTruth}`;
     case "连接中":
       return `画面状态：正在连接真实画面。${frameTruth}`;
     case "失败":

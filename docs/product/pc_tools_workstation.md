@@ -2115,3 +2115,8 @@ base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd
 2026-06-26 02:20 起，普通首屏地图上的 Nav2 目标 marker 会在本轮 `delivery success` 已通过且 route/map ref 对齐当前
 Nav2 execution evidence 时，从 `已到达` 提升为 `已送达`。该 marker 只消费已读到的 Nav2 latest/execute 和
 delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。
+
+2026-06-26 02:35 起，普通首屏实时画面在 WebRTC video track 已到达但浏览器 `<video>` 还没有可绘制帧时，显示
+`等待画面` 和“视频已接入，等待浏览器绘出第一帧”，不再提前显示 `已打开`。只有本地 video 元素读到尺寸/readyState
+或 frame callback 后，才进入已打开/画面可见/画面偏暗判断。该状态只消费浏览器本地 video 诊断，不调用
+camera probe、manual、Nav2、delivery、stop 或 `/cmd_vel`。

@@ -10292,6 +10292,99 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
   });
 
+  it("keeps camera preview in waiting state until the browser draws a video frame", async () => {
+    // WebRTC track 到达不等于人眼已经看到画面；video 元素没有可绘制帧时不能显示“已打开”。
+    vi.useFakeTimers();
+    const mockedFetch = stubWorkstationFetch();
+    class FakeMediaStream {
+      tracks: Array<{ kind: string; readyState: string; stop: () => void }>;
+
+      constructor(tracks: Array<{ kind: string; readyState: string; stop: () => void }>) {
+        this.tracks = tracks;
+      }
+
+      getTracks() {
+        return this.tracks;
+      }
+    }
+
+    class FakePeerConnection {
+      iceConnectionState = "new";
+      iceGatheringState = "complete";
+      localDescription: { type: "offer"; sdp: string } | null = null;
+      remoteDescription: { type: "answer"; sdp: string } | null = null;
+      oniceconnectionstatechange: (() => void) | null = null;
+      ontrack: ((
+        event: {
+          track: { kind: string; readyState: string; stop: () => void; onended: (() => void) | null };
+          streams: FakeMediaStream[];
+        },
+      ) => void) | null = null;
+
+      addTransceiver() {
+        return undefined;
+      }
+
+      async createOffer() {
+        return { type: "offer" as const, sdp: "v=0\r\ns=local-offer\r\n" };
+      }
+
+      async setLocalDescription(description: { type: "offer"; sdp: string }) {
+        this.localDescription = description;
+      }
+
+      async setRemoteDescription(description: { type: "answer"; sdp: string }) {
+        const videoTrack = {
+          kind: "video",
+          readyState: "live",
+          stop: () => undefined,
+          onended: null,
+        };
+        this.remoteDescription = description;
+        this.iceConnectionState = "connected";
+        this.oniceconnectionstatechange?.();
+        this.ontrack?.({
+          track: videoTrack,
+          streams: [new FakeMediaStream([videoTrack])],
+        });
+      }
+
+      getReceivers() {
+        return [];
+      }
+
+      close() {
+        this.iceConnectionState = "closed";
+        this.oniceconnectionstatechange?.();
+      }
+    }
+
+    vi.stubGlobal("MediaStream", FakeMediaStream as unknown as typeof MediaStream);
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection as unknown as typeof RTCPeerConnection);
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await flushPromises();
+    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(1100);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("等待画面");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("视频已接入，等待浏览器绘出第一帧。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toContain("画面状态：视频已接入，等待浏览器绘出第一帧。");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("画面可见");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("画面已打开，正在确认内容。");
+    expect(wrapper.find("details").text()).toContain("video_track_state");
+    expect(wrapper.find("details").text()).toContain("live");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("keeps failure status after Start Preview fails instead of collapsing to stopped_by_user", async () => {
     // Start 失败后仍要保留失败态，避免 operator 只看到 stopped_by_user 而丢失归因。
     const mockedFetch = vi.fn(async (url: string) => {

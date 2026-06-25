@@ -272,6 +272,7 @@ h3 {
 }
 
 .status-chip[data-state="连接中"],
+.status-chip[data-state="等待画面"],
 .status-chip[data-state="刷新中"],
 .status-chip[data-state="检查中"],
 .status-chip[data-state="确认中"],
