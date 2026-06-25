@@ -2159,6 +2159,11 @@ delivery complete、stop 或 `/cmd_vel`。
 回到 `保存当前地图` 或 `刷新扫图画面`。该调整只修正自动扫图运行/收口流程的焦点和文案，不自动停止、不自动保存、
 不发送 manual、keyboard pulse、Nav2、delivery、stop 兜底之外的控制或 `/cmd_vel`。
 
+2026-06-26 04:16 起，普通首屏自动扫图状态机启动或启停请求未返回时，`保存当前地图` 会锁定为
+`先停止自动扫图`，步骤条提示 `先停止自动扫图，再保存地图`；只有点击 `停止自动扫图` 且 stop 代理返回后，
+才允许保存刚刷新过的地图。该 gate 只约束 PC 向导收口顺序，不自动保存、不自动停止、不调用 manual/keyboard pulse、
+Nav2、delivery complete 或 `/cmd_vel`。
+
 2026-06-26 01:35 起，普通首屏 `自动扫图` start 成功后会自动串一次只读监看刷新：固定
 `POST /api/robot-control/radar/scan-proof/refresh` 读取最新雷达 proof，然后固定
 `GET /api/robot-control/map/preview` 读取最新地图画面。该链路只更新地图/雷达所见即所得反馈，不再发

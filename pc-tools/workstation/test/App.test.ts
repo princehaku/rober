@@ -3778,6 +3778,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("不是固定路线");
     expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toContain("自动扫图运行中");
     expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).not.toContain("不会自动移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先停止自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("先停止自动扫图，再保存地图");
     const callsBeforeAutoNext = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();
@@ -3801,6 +3804,8 @@ describe("App", () => {
     )).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：保存地图");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("保存当前地图");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeUndefined();
     const callsBeforeStopNext = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();

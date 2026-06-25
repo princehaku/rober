@@ -1678,10 +1678,19 @@ const canStartPlainFreeRoamMapping = computed(() => (
   && !mapLifecyclePending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const freeRoamAutonomySaveBlocked = computed(() => (
+  // 自动扫图状态机未明确停止前不能保存地图，避免把运行中的覆盖过程误收口。
+  freeRoamAutonomyPendingAction.value !== null
+  || (
+    freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded"
+    && freeRoamAutonomyResult.value.action === "start"
+  )
+));
 const canSavePlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
   && plainFreeRoamMapPreviewFreshForSession.value
+  && !freeRoamAutonomySaveBlocked.value
   && !loading.value
   && !mapLifecyclePending.value
   && robotApiBaseUrl.value.trim().length > 0
@@ -1759,6 +1768,8 @@ const plainFreeRoamMappingStartLabel = computed(() => (
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
     ? "保存中"
+    : freeRoamAutonomySaveBlocked.value
+      ? "先停止自动扫图"
     : mapRuntimeStarted.value && !plainFreeRoamMapPreviewFreshForSession.value
       ? "先刷新画面"
       : "保存当前地图"
@@ -2159,6 +2170,7 @@ const plainFreeRoamMappingSteps = computed(() => {
           : "已保存，刷新地图画面检查效果"
         : canSavePlainFreeRoamMapping.value
           ? "扫图结束后保存刚刷新过的地图"
+          : freeRoamAutonomySaveBlocked.value ? "先停止自动扫图，再保存地图"
           : mapRuntimeStarted.value ? "先刷新扫图画面，再保存地图" : "启动地图记录后才能保存",
     },
   ];
