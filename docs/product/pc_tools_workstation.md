@@ -2023,3 +2023,8 @@ bounded manual pulse，松开走统一 stop。这样 operator 不需要跳到下
 图上目标，例如 `目标 x=0.80, y=0.00；路线 3/15 个点`。这和地图上的 `行程中` 终点 marker 使用同一个点击时的
 可见路线终点，避免 operator 只看到泛化的“执行中”而不知道正在执行哪条路线。该摘要不改变后端执行 gate，不自动确认
 送达，不发送 manual/keyboard pulse/stop 或额外 `/cmd_vel`。
+
+2026-06-25 22:44 起，普通首屏实时画面的 `画面状态` 会追加浏览器真实绘帧口径，例如 `浏览器已绘制视频帧 640x480`、
+`视频轨道已接入，浏览器正在等待可绘制帧` 或 `视频元素还没绑定实时流`。这样 `画面可见/画面偏暗/已打开` 不只依赖
+连接状态，而是把本页 video 元素是否真的收到并绘制帧说清楚。该状态只读本地 video 元素诊断，不触发 camera offer、
+manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。

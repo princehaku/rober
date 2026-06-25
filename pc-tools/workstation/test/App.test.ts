@@ -9662,7 +9662,7 @@ describe("App", () => {
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面可见。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面可见");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示真实视频帧。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示真实视频帧。浏览器已绘制视频帧 640x480。");
     expect(wrapper.find("details").text()).toContain("preview_status");
     expect(wrapper.find("details").text()).toContain("streaming");
     expect(wrapper.find("details").text()).toContain("peer-preview-001");
@@ -9804,7 +9804,7 @@ describe("App", () => {
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面太暗，先检查镜头/光线。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面偏暗");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("画面偏暗");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前画面偏暗，先检查镜头或光线。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前画面偏暗，先检查镜头或光线。浏览器已绘制视频帧 640x480。");
     expect(wrapper.find("details").text()).toContain("near_black");
     expect(wrapper.find("details").text()).toContain("max_luma");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);

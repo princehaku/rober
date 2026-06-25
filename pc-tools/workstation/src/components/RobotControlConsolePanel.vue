@@ -515,17 +515,36 @@ function syncJogInputsToBoundary(): void {
 
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
+function plainCameraVideoFrameTruth(): string {
+  // 普通首屏只说浏览器是否真的绘制出帧，不暴露 readyState/srcObject 等工程字段。
+  const hasSize = videoElementWidth.value > 0 && videoElementHeight.value > 0;
+  const sizeText = hasSize ? ` ${videoElementWidth.value}x${videoElementHeight.value}` : "";
+  switch (videoElementFrameStatus.value) {
+    case "frame_callback_observed":
+      return `浏览器已收到视频帧${sizeText}。`;
+    case "visible_frame_ready":
+      return `浏览器已绘制视频帧${sizeText}。`;
+    case "metadata_or_loading":
+      return "视频轨道已接入，浏览器正在等待可绘制帧。";
+    case "not_bound":
+      return cameraSummary.value.state === "未打开" ? "" : "视频元素还没绑定实时流。";
+    default:
+      return "";
+  }
+}
+
 const plainCameraWysiwygStatus = computed(() => {
   // 普通首屏要把“按钮状态”和“真实看到的画面”分开说清，避免把已连接误解成已出图。
+  const frameTruth = plainCameraVideoFrameTruth();
   switch (cameraSummary.value.state) {
     case "画面可见":
-      return "画面状态：当前显示真实视频帧。";
+      return `画面状态：当前显示真实视频帧。${frameTruth}`;
     case "画面偏暗":
-      return "画面状态：当前画面偏暗，先检查镜头或光线。";
+      return `画面状态：当前画面偏暗，先检查镜头或光线。${frameTruth}`;
     case "已打开":
-      return "画面状态：画面已打开，正在确认是否有可见内容。";
+      return `画面状态：画面已打开，正在确认是否有可见内容。${frameTruth}`;
     case "连接中":
-      return "画面状态：正在连接真实画面。";
+      return `画面状态：正在连接真实画面。${frameTruth}`;
     case "失败":
       return `画面状态：${cameraSummary.value.hint}`;
     default:
