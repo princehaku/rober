@@ -493,7 +493,7 @@ function radarStartCommandConfigured(): boolean {
   return robotSummary.value?.readback_summary.lidar.radar_start_configured !== "false";
 }
 
-type PlainRadarState = "雷达未运行" | "雷达启动中" | "雷达待刷新" | "刷新中" | "雷达已运行" | "刷新失败";
+type PlainRadarState = "雷达未运行" | "雷达启动中" | "雷达待刷新" | "刷新中" | "雷达已运行" | "刷新失败" | "雷达启动失败";
 
 function radarStartFailed(result: RobotControlRadarLifecycleResponse | null): boolean {
   // start 失败要贴回地图，避免按钮区说失败、地图却仍只显示泛化“未运行”。
@@ -562,7 +562,7 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
     return { state: "雷达待刷新", hint: "雷达启动已返回，请点刷新雷达确认状态。" };
   }
   if (radarLifecycleResult.value?.action === "start" && radarLifecycleResult.value) {
-    return { state: "雷达未运行", hint: radarLifecycleResult.value.failure_reason ? `雷达启动没有成功：${radarLifecycleResult.value.failure_reason}。` : "雷达启动没有成功，请检查上位机配置。" };
+    return { state: "雷达启动失败", hint: radarLifecycleResult.value.failure_reason ? `雷达启动没有成功：${radarLifecycleResult.value.failure_reason}。` : "雷达启动没有成功，请检查上位机配置。" };
   }
   return { state: "雷达未运行", hint: "还没有看到雷达正在运行。" };
 }
@@ -893,7 +893,7 @@ const plainFreeRoamAutoStopButtonLabel = computed(() => {
 });
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
-  return radarSummary.value.state === "雷达未运行";
+  return radarSummary.value.state === "雷达未运行" || radarSummary.value.state === "雷达启动失败";
 });
 
 function plainRadarTripBlockedHint(rerun: boolean): string {
@@ -7718,7 +7718,7 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
         </article>
 
-        <article class="snapshot-panel">
+        <article class="snapshot-panel plain-radar-panel" data-testid="plain-radar-panel" :data-state="radarSummary.state">
           <h3>雷达</h3>
           <div class="panel-action-row">
             <button ref="plainRadarRefreshButton" type="button" :disabled="!canRefreshRadarProof" data-testid="plain-radar-refresh" @click="refreshRadarProof">

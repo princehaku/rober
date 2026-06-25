@@ -3368,6 +3368,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("实时画面");
     expect(firstScreenText).toContain("雷达");
     expect(firstScreenText).toContain("雷达已运行");
+    const radarPanel = wrapper.find('[data-testid="plain-radar-panel"]');
+    expect(radarPanel.exists()).toBe(true);
+    expect(radarPanel.attributes("data-state")).toBe("雷达已运行");
     expect(firstScreenText).toContain("地图");
     expect(firstScreenText).toContain("地图可见");
     expect(firstScreenText).toContain("真实地图 100x100");
@@ -3496,6 +3499,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面可见"][data-frame-state="已绘制帧"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面偏暗"]');
+    expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达已运行"]');
+    expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达启动失败"]');
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="待确认"]');
     expect(workstationStyles).toContain('.plain-free-roam-readiness[data-state="未满足"]');
     expect(workstationStyles).toContain('.plain-free-roam-coverage[data-state="已扫出"]');
@@ -10496,6 +10501,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("雷达未运行");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达未运行");
     expect(firstScreenText).toContain("启动雷达");
     expect(firstScreenText).not.toContain("停止雷达");
     expect(firstScreenText).not.toContain("/api/radar/start");
@@ -10509,6 +10515,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达启动没有成功：command_not_configured。");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达启动失败");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达启动失败：command_not_configured");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达启动失败");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动失败：command_not_configured，地图位置未读到");
@@ -10582,6 +10589,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达待刷新");
     expect(firstScreenText).toContain("雷达正在运行，但最新记录不完整；先刷新雷达确认。");
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).not.toContain("启动雷达");
@@ -10657,6 +10665,7 @@ describe("App", () => {
     expect(marker.attributes("data-state")).toBe("雷达刷新失败");
     expect(marker.attributes("aria-label")).toBe("雷达刷新失败：fetch_timeout，地图位置未读到");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达待刷新"]');
     expect(workstationStyles).toContain('.plain-map-radar-marker[data-state="雷达刷新失败"]');
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达刷新失败，未显示新点位。");
@@ -10923,11 +10932,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(visiblePlainHomeText(wrapper)).toContain("正在启动雷达，等待上位机返回。");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达启动中");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达启动中，位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达启动中");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动中，地图位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达启动中"]');
     expect(workstationStyles).toContain('.plain-map-radar-marker[data-state="雷达启动中"]');
     expect(workstationStyles).toContain('.plain-map-radar-sweep[data-state="雷达启动中"]');
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达启动中扫描范围占位，等待机器人地图位置");
