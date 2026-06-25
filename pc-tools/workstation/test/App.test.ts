@@ -4852,6 +4852,70 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("refreshes the map automatically after plain trip preparation so the route becomes visible", async () => {
+    // 准备行程是 no-motion proof；刷新完成后要把路线贴到地图上，不再要求普通用户额外点刷新地图。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.o3_proof_summary.path_generated = false;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = false;
+    summaryFixture.o3_proof_summary.path_preview_points = [];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 0;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = null;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const defaultFetch = mockedFetch.getMockImplementation();
+    mockedFetch.mockImplementation(async (url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/summary?")) {
+        return {
+          ok: true,
+          json: async () => cloneFixture(summaryFixture),
+        };
+      }
+      if (String(url).startsWith("/api/robot-control/nav2/proof/refresh?")) {
+        summaryFixture.o3_proof_summary.path_generated = true;
+        summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+        summaryFixture.o3_proof_summary.path_preview_points = [
+          { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+          { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+          { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+        ];
+        summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+        summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+        summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+      }
+      if (!defaultFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return defaultFetch(url, options);
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(false);
+    const mapPreviewCallsBeforePrepare = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
+    await wrapper.find('[data-testid="plain-trip-prepare"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?")).length).toBe(1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBeforePrepare + 1);
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("marks the visible route goal as executing while the plain trip request is pending", async () => {
     // 点击执行后地图应立即标出“正在去的图上终点”；真正完成仍以后端 execute 返回为准。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

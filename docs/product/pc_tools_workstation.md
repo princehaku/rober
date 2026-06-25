@@ -2068,3 +2068,8 @@ operator 可以一边看地图/雷达/画面，一边用全局 W/A/S/D 或方向
 2026-06-25 23:25 起，普通首屏 `扫地式建图` 在 `开始扫地式建图` 成功返回地图记录已启动后，会自动进入
 `键盘已启用` 状态。该自动启用只设置 PC 全局键盘窗口和焦点，不发送方向脉冲、不调用 `base/manual`、Nav2、
 delivery、stop 或 `/cmd_vel`；真正移动仍必须 operator 按住 W/A/S/D、方向键或屏幕方向键。
+
+2026-06-25 23:29 起，普通首屏点击 `准备行程（不发车）` 后，PC 会在 Nav2 no-motion proof 刷新完成后自动刷新
+地图画面。只要 summary 读到当前 `path_preview_points`，地图会直接显示路线 polyline、起点/终点和 `路线已显示 N/M 个点`，
+`执行图上路线` 按钮也会按这条可见路线放开；不再要求普通用户额外点击 `刷新地图画面`。该自动刷新只读 map preview，
+不调用 Nav2 execute、manual、keyboard、delivery、stop 或 `/cmd_vel`。

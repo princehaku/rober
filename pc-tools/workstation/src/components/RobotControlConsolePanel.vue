@@ -4987,13 +4987,14 @@ async function refreshMapProof(): Promise<void> {
 }
 
 async function refreshNav2Proof(): Promise<void> {
-  // Nav2 refresh 只做 no-motion planner proof，不调用 Nav2 start/stop、NavigateToPose 或底盘接口。
+  // Nav2 refresh 只做 no-motion planner proof；随后刷新地图画面，让路线点和真实底图一起显示。
   await runRefreshAction(
     "nav2_no_motion_proof_refresh",
     () => postRobotControlNav2ProofRefresh(robotApiBaseUrl.value),
     nav2RefreshResult,
     nav2RefreshPending,
   );
+  await refreshMapPreview();
 }
 
 async function resetLocalizationProof(): Promise<void> {
