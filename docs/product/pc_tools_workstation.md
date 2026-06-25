@@ -1873,3 +1873,8 @@ manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。
 2026-06-25 23:00 起，普通首屏 `移动/导航` 不再显示 `移动前检查` 按钮。发车前最小预检收敛为勾选
 `人在旁边、周围安全、停止手段就绪`；勾选只改变本地 gate，不自动提交 operator report、不发送 manual、
 keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。高级诊断中的现场材料提交仍保留给送达和验收材料。
+
+2026-06-25 23:20 起，普通首屏 `行程操作` 会把路线准备和地图可见性分开说清楚：只有真实地图画面上已经画出路线
+时才提示 `执行图上路线` 对应地图上的起点、终点和路线；如果只读到路线点数但地图尚未画出路线，则提示先刷新地图画面确认
+图上路线。该提示只改变 WYSIWYG 文案，不自动刷新地图、不执行 Nav2、不发送 manual/keyboard pulse/delivery complete/stop
+或 `/cmd_vel`。

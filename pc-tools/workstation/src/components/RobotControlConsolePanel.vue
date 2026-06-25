@@ -2476,17 +2476,19 @@ const plainTripSummary = computed(() => {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
   }
   if (plainTripPreparedByRefresh.value) {
+    const routeVisible = latestNavPathOverlay() !== null;
     return plainManualSafetyConfirmed.value
-      ? { state: "已准备", hint: `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可执行图上路线，后端仍会复查定位和路线。` }
-      : { state: "已准备", hint: `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` };
+      ? { state: "已准备", hint: routeVisible ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可执行图上路线，后端仍会复查定位和路线。` : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
+      : { state: "已准备", hint: routeVisible ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
   }
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
     return { state: "待准备", hint: plainTripPreparationFailureHint() };
   }
   if (plainTripPreparedBySummary.value) {
+    const routeVisible = latestNavPathOverlay() !== null;
     return plainManualSafetyConfirmed.value
-      ? { state: "已准备", hint: `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可直接执行图上路线，后端仍会复查定位和路线。` }
-      : { state: "已准备", hint: `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` };
+      ? { state: "已准备", hint: routeVisible ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可直接执行图上路线，后端仍会复查定位和路线。` : `路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
+      : { state: "已准备", hint: routeVisible ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
   }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
     return { state: "可执行", hint: "检查通过，确认人在旁边后可执行一次行程。" };
@@ -2498,6 +2500,20 @@ const plainTripSummary = computed(() => {
     return { state: "待确认", hint: "先勾选行程前确认，再检查或执行。" };
   }
   return { state: "可执行", hint: "已完成最小确认；执行前后端会复查定位和路线。" };
+});
+
+const plainTripRouteWysiwygSummary = computed(() => {
+  // 行程执行必须和当前地图画面绑定：看得到路线才说“执行图上路线”，看不到就提示先刷新地图。
+  const routePath = latestNavPathOverlay();
+  if (routePath) {
+    return routePath.caption.startsWith("最近")
+      ? "地图上显示的是最近路线；先准备行程，再执行新的图上路线。"
+      : `执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（${routePath.coordinateLabel}）。`;
+  }
+  if (plainTripPreparedBySummary.value) {
+    return `路线已准备 ${plainTripPreparedPointCount.value} 个点；先刷新地图画面确认图上路线。`;
+  }
+  return "";
 });
 
 const canRunPlainTripPreflight = computed(() => {
@@ -6090,6 +6106,9 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
+            <p v-if="plainTripRouteWysiwygSummary" class="panel-note" data-testid="plain-trip-route-wysiwyg">
+              {{ plainTripRouteWysiwygSummary }}
+            </p>
             <p v-if="plainTripEvidenceSummary" class="panel-note" data-testid="plain-trip-evidence-summary">
               {{ plainTripEvidenceSummary }}
             </p>
