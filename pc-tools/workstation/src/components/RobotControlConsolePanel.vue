@@ -5504,17 +5504,23 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
             <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
           </div>
-          <video
-            ref="previewVideo"
-            data-testid="robot-camera-preview-video"
-            autoplay
-            muted
-            playsinline
-            @loadedmetadata="syncPreviewVideoElementDiagnostics"
-            @loadeddata="handlePreviewVideoReady"
-            @playing="handlePreviewVideoReady"
-            @resize="syncPreviewVideoElementDiagnostics"
-          />
+          <div class="camera-preview-frame" data-testid="robot-camera-preview-frame" :data-state="cameraSummary.state">
+            <video
+              ref="previewVideo"
+              data-testid="robot-camera-preview-video"
+              autoplay
+              muted
+              playsinline
+              @loadedmetadata="syncPreviewVideoElementDiagnostics"
+              @loadeddata="handlePreviewVideoReady"
+              @playing="handlePreviewVideoReady"
+              @resize="syncPreviewVideoElementDiagnostics"
+            />
+            <div v-if="cameraSummary.state !== '画面可见'" class="camera-preview-overlay" data-testid="robot-camera-preview-overlay" :data-state="cameraSummary.state">
+              <strong>{{ cameraSummary.state }}</strong>
+              <span>{{ cameraSummary.hint }}</span>
+            </div>
+          </div>
           <p class="panel-note">{{ cameraSummary.hint }}</p>
         </article>
 

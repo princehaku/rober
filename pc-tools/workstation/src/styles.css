@@ -404,16 +404,51 @@ h3 {
   min-height: 34px;
 }
 
-.robot-console video[data-testid="robot-camera-preview-video"] {
-  /* 首屏保留真实 video 容器；未打开时显示空画面，打开后同一位置承载真实帧。 */
-  display: block;
+.camera-preview-frame {
+  /* 画面框必须先表达“现在看到了什么”，避免空 video 被误读成真实黑屏。 */
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   margin-top: 10px;
   border: 1px solid #c8d2dc;
   border-radius: 6px;
+  overflow: hidden;
   background: #111827;
+}
+
+.robot-console video[data-testid="robot-camera-preview-video"] {
+  /* video 元素只承载真实 WebRTC 帧；状态遮罩负责解释未打开、连接中和失败。 */
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+}
+
+.camera-preview-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  padding: 16px;
+  color: #f8fafc;
+  text-align: center;
+  background: linear-gradient(180deg, rgb(17 24 39 / 88%), rgb(17 24 39 / 72%));
+}
+
+.camera-preview-overlay strong {
+  font-size: 16px;
+}
+
+.camera-preview-overlay span {
+  color: #dce6f0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.camera-preview-overlay[data-state="画面偏暗"],
+.camera-preview-overlay[data-state="失败"] {
+  background: linear-gradient(180deg, rgb(91 33 33 / 90%), rgb(17 24 39 / 78%));
 }
 
 .plain-map-viewport {
