@@ -3820,11 +3820,15 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').exists()).toBe(false);
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerdown");
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').text()).toBe("扫图方向：前进");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').attributes("data-state")).toBe("forward");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').attributes("aria-label")).toBe("正在前进扫图，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：松开或停止");
     const previewCallsBeforeLiveRefresh = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     await new Promise((resolve) => setTimeout(resolve, 320));
@@ -3844,6 +3848,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length).toBe(nav2ExecuteCallsBeforeRelease);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length).toBe(deliveryCompleteCallsBeforeRelease);
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已停止，地图画面已刷新，可以保存当前地图。");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').exists()).toBe(false);
   });
 
   it("draws radar pulse on the robot marker only after map-frame pose is observed", async () => {

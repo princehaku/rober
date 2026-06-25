@@ -604,7 +604,8 @@ h3 {
 .plain-map-route-endpoint-marker,
 .plain-map-route-goal-marker,
 .plain-map-free-roam-start-marker,
-.plain-map-free-roam-runtime-marker {
+.plain-map-free-roam-runtime-marker,
+.plain-map-free-roam-direction-marker {
   position: absolute;
   z-index: 3;
   border: 1px solid #99a7b7;
@@ -822,6 +823,33 @@ h3 {
   border-color: #d8adb0;
   background: #fff1f2;
   color: #7c2d35;
+}
+
+.plain-map-free-roam-direction-marker {
+  padding: 5px 8px;
+  border-color: #9ebee8;
+  background: #edf5ff;
+  color: #174ea6;
+  box-shadow: 0 2px 8px rgba(20, 63, 117, 0.16);
+}
+
+.plain-map-free-roam-direction-marker[data-state="forward"] {
+  border-color: #8fd2aa;
+  background: #edfbf2;
+  color: #14643a;
+}
+
+.plain-map-free-roam-direction-marker[data-state="back"] {
+  border-color: #d9c785;
+  background: #fff8dc;
+  color: #66510b;
+}
+
+.plain-map-free-roam-direction-marker[data-state="left"],
+.plain-map-free-roam-direction-marker[data-state="right"] {
+  border-color: #9ebee8;
+  background: #edf5ff;
+  color: #174ea6;
 }
 
 .plain-map-route-endpoint-marker {

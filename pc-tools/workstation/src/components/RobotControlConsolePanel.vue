@@ -1097,6 +1097,25 @@ function freeRoamRuntimeMapMarker(robotPose: ReturnType<typeof latestRobotPoseOv
   };
 }
 
+function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
+  // 手控扫图方向来自本机按住状态；只在地图记录中显示，避免待机时误导 operator。
+  const direction = keyboardHeldDirection.value;
+  if (!direction || !mapRuntimeStarted.value) {
+    return null;
+  }
+  const label = keyboardDirectionPlainLabel.value;
+  return {
+    label: `扫图方向：${label}`,
+    state: direction,
+    style: robotPose
+      ? robotPose.style
+      : { left: "12px", top: "48px" },
+    aria: robotPose
+      ? `正在${label}扫图，标记贴近机器人当前位置`
+      : `正在${label}扫图，机器人地图位置未读到，标记不代表坐标`,
+  };
+}
+
 const plainMapVisualSummary = computed(() => {
   // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
   const proof = robotSummary.value?.o3_proof_summary;
@@ -1107,6 +1126,7 @@ const plainMapVisualSummary = computed(() => {
   const robotPose = latestRobotPoseOverlay();
   const freeRoamSweepPlan = latestFreeRoamSweepPlanOverlay(robotPose);
   const freeRoamRuntimeMarker = freeRoamRuntimeMapMarker(robotPose);
+  const freeRoamDirectionMarker = freeRoamManualDirectionMapMarker(robotPose);
   const mapObserved = proof?.map_once_observed === true
     || mapReadback.map_once_observed === "true"
     || mapReadback.latest_map_once_observed === "true";
@@ -1219,6 +1239,11 @@ const plainMapVisualSummary = computed(() => {
     freeRoamRuntimeMarkerState: freeRoamRuntimeMarker?.state ?? "",
     freeRoamRuntimeMarkerStyle: freeRoamRuntimeMarker?.style ?? {},
     freeRoamRuntimeMarkerAria: freeRoamRuntimeMarker?.aria ?? "",
+    showFreeRoamDirectionMarker: Boolean(freeRoamDirectionMarker),
+    freeRoamDirectionMarkerLabel: freeRoamDirectionMarker?.label ?? "",
+    freeRoamDirectionMarkerState: freeRoamDirectionMarker?.state ?? "",
+    freeRoamDirectionMarkerStyle: freeRoamDirectionMarker?.style ?? {},
+    freeRoamDirectionMarkerAria: freeRoamDirectionMarker?.aria ?? "",
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -6301,6 +6326,7 @@ onBeforeUnmount(() => {
                 <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamSweepStart" class="plain-map-free-roam-start-marker" data-testid="plain-map-free-roam-start-marker" :style="plainMapVisualSummary.freeRoamSweepStartStyle" aria-label="扫图草图从机器人当前位置接入">扫图起点</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamRuntimeMarker" class="plain-map-free-roam-runtime-marker" data-testid="plain-map-free-roam-runtime-marker" :data-state="plainMapVisualSummary.freeRoamRuntimeMarkerState" :style="plainMapVisualSummary.freeRoamRuntimeMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamRuntimeMarkerAria">{{ plainMapVisualSummary.freeRoamRuntimeMarkerLabel }}</span>
+                <span v-if="plainMapVisualSummary.showFreeRoamDirectionMarker" class="plain-map-free-roam-direction-marker" data-testid="plain-map-free-roam-direction-marker" :data-state="plainMapVisualSummary.freeRoamDirectionMarkerState" :style="plainMapVisualSummary.freeRoamDirectionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamDirectionMarkerAria">{{ plainMapVisualSummary.freeRoamDirectionMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">
                   <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.15" />
