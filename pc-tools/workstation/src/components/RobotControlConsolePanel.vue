@@ -96,8 +96,6 @@ const plainFreeRoamMappingConfirmed = ref(false);
 const plainFreeRoamMapPreviewFreshForSession = ref(false);
 const operatorReportPending = ref(false);
 const operatorReportResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
-const plainMotionPrecheckPending = ref(false);
-const plainMotionPrecheckResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainVisualMaterialPending = ref(false);
 const plainVisualMaterialResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainFirstJogMaterialRestorePending = ref(false);
@@ -2144,7 +2142,7 @@ const plainWheelGoalNextAction = computed(() => {
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
     return "下一步：记录现场画面。";
   }
-  return "下一步：完成移动前检查。";
+  return "下一步：勾选安全确认。";
 });
 
 const plainTripGoalNextAction = computed(() => {
@@ -3098,12 +3096,9 @@ const manualMotionSummary = computed(() => {
 });
 
 const plainMotionSummary = computed(() => {
-  // 首屏只呈现定位/停靠状态和普通检查提示，不暴露点动、路径、材料或接口细节。
+  // 首屏只呈现定位/停靠状态和最小安全确认，不再要求普通用户额外点“移动前检查”。
   if (localizationResetPending.value) {
     return { state: "定位中", hint: "正在重新定位；不会发车。" };
-  }
-  if (plainMotionPrecheckPending.value) {
-    return { state: "检查中", hint: "正在记录移动前检查；不会发车。" };
   }
   if (plainVisualMaterialPending.value) {
     return { state: "记录中", hint: "正在记录现场画面；不会发车。" };
@@ -3138,12 +3133,6 @@ const plainMotionSummary = computed(() => {
     }
     return { state: "记录失败", hint: "现场画面记录失败，小车没有移动。" };
   }
-  if (plainMotionPrecheckResult.value) {
-    if (plainMotionPrecheckResult.value.proxy_status === "report_forwarded" && plainMotionPrecheckResult.value.status !== "blocked") {
-      return { state: "已记录", hint: "移动前检查已记录；还需要现场画面。" };
-    }
-    return { state: "检查失败", hint: plainMotionPrecheckResult.value.failure_reason || "移动前检查提交失败。" };
-  }
   if (manualCommandPending.value) {
     return { state: "处理中", hint: "正在处理请求。" };
   }
@@ -3163,7 +3152,7 @@ const plainMotionSummary = computed(() => {
     return { state: "停止失败", hint: manualCommandResult.value.failure_reason || "停止请求失败。" };
   }
   return operatorMaterialReady.value
-    ? { state: "待命", hint: "已完成移动前检查；需要时可直接停止。" }
+    ? { state: "待命", hint: "安全确认已勾；需要时可直接停止。" }
     : { state: "待记录", hint: "先记录现场画面，再试动一下；需要时可直接停止。" };
 });
 
@@ -3683,28 +3672,6 @@ function makeOperatorReportFallback(reason: string, requestBody: RobotControlOpe
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
     robot_control_executed: false,
-  };
-}
-
-function plainMotionPrecheckRequestBody(): RobotControlOperatorReportRequest {
-  // 普通检查只确认人在场、周围安全和急停可用；已有进度材料只保留，不补造。
-  const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
-  return {
-    operator_present: true,
-    evidence_ref: `plain-motion-precheck-${Date.now()}`,
-    physical_clearance_confirmed: true,
-    emergency_stop_ready: true,
-    observed_motion: false,
-    observed_stop: true,
-    reported_at: new Date().toISOString(),
-    operator_notes: "plain PC motion precheck only; does not prove video, wheel feedback, lidar delta, or motion.",
-    structured_hil_claims: {
-      external_video_recorded: false,
-      visible_content_proven: false,
-      ...inheritedProgressClaims,
-      delivery_success: false,
-      site_state: "plain_motion_precheck_ready_for_review",
-    },
   };
 }
 
@@ -5055,25 +5022,6 @@ async function submitOperatorReport(): Promise<void> {
   }
 }
 
-async function submitPlainMotionPrecheck(): Promise<void> {
-  // 普通首屏只提交基础现场确认，不伪造视频、轮速或 LiDAR motion delta 材料。
-  if (!robotApiBaseUrl.value.trim() || plainMotionPrecheckPending.value || operatorReportPending.value) {
-    return;
-  }
-  const requestBody = plainMotionPrecheckRequestBody();
-  plainMotionPrecheckPending.value = true;
-  localizationResetResult.value = null;
-  try {
-    plainMotionPrecheckResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, requestBody);
-  } catch (err) {
-    plainMotionPrecheckResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "plain_motion_precheck_failed", requestBody);
-  } finally {
-    operatorReportResult.value = plainMotionPrecheckResult.value;
-    plainMotionPrecheckPending.value = false;
-    await refreshConsole();
-  }
-}
-
 async function submitPlainVisualMaterial(): Promise<void> {
   // 记录画面只更新 operator report；没有填写视频索引时不提交，避免制造空 ref。
   if (!robotApiBaseUrl.value.trim() || plainVisualMaterialPending.value || operatorReportPending.value || !plainExternalVideoRef.value.trim()) {
@@ -5995,9 +5943,6 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
             <button type="button" :disabled="loading || localizationResetPending || !robotApiBaseUrl.trim()" @click="resetLocalizationProof">
               重新定位
-            </button>
-            <button type="button" :disabled="loading || plainMotionPrecheckPending || operatorReportPending || !robotApiBaseUrl.trim()" @click="submitPlainMotionPrecheck">
-              移动前检查
             </button>
             <label class="plain-video-ref">
               <span>现场画面记录</span>

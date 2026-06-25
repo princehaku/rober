@@ -72,7 +72,7 @@ pc-tools/workstation/
 - Evidence Tools：索引 `pc-tools/evidence/fixtures/**/*.json`，展示 JSON fixture 资产分组。
 - Hardware Materials：`GET /api/hardware/wave-rover/material-coverage` 扫描 `pc-tools/evidence/fixtures/wave_rover_*` 下的 WAVE ROVER 材料组，识别 `feedback_T1001.log`、项目侧 `odom_once.jsonl`、项目侧 `imu_once.jsonl`、项目侧 `battery_once.jsonl`、`operator_hil_report` / `operator_hil_report.json` 的 present/missing coverage，并在 Vue 面板中展示 `fixture_groups`、`gaps`、vendor source、串口参考、命令事实和 `not_proven_boundaries`。兼容旧路径 `GET /api/tools/hardware-materials`，但新 UI 入口使用前者。
 - Training/Labeling：`GET /api/tools/training-labeling` 扫描 `pc-tools/training/` 和 `pc-tools/labeling/` 下的非 Python 资产，返回两个工作区的 roots、asset counts、manifest candidates、image/annotation counts、readiness、missing requirements 和 next actions；仍明确未接真实训练或标注流水线。
-- Robot Control：`RobotControlConsolePanel` 是工作站默认首屏，不再藏在 `WorkstationTabs` 内。`GET /api/robot-control/summary?baseUrl=<robot-api-base-url>` 继续作为状态入口，路线、O7 控制台、预览、证据、硬件、数据和安全边界等工程 tab 统一下沉到默认关闭的 `高级工具`。普通用户首屏必须保持 `Rober 小车控制台` + `.simple-user-console` 五卡片、短状态和少量普通按钮；`task_id`、`O6`、`O7`、`HIL`、`proof`、`key values`、`/cmd_vel`、`/api/base/manual`、`field manifest` 等工程词必须留在默认关闭的 `高级诊断`。`task_id`、O6 base URL、Mock/field manifest、peer/ICE/SDP、readback table、O3 proof summary、route replay、map lifecycle HTTP 细节、raw evidence/readback、非 stop 点动、速度/时长输入、HIL checklist、检查路径、导航目标预检、Nav2 目标执行、送达确认、定位重置和 proof flags 都收进默认关闭的 `高级诊断`。首屏的 `地图` 卡片现在允许普通用户动作 `刷新地图 / 地图列表 / 重新建图 / 保存地图`；其中 `重新建图` 和 `保存地图` 仍只走固定 map lifecycle 代理，不暴露 `map_name`、`artifact_path`、Start/Reset 风格按钮或任何 ROS/串口参数。首屏的 `移动/导航` 卡片保留普通状态、`重新定位`、`移动前检查`、`现场画面记录`、`记录画面`、`试动一下` 和 `停止`；不显示自动导航、最近证据摘要、方向点动、路径检查、速度上限、时长上限、目标坐标、送达确认或 HIL checklist。`记录画面` 只把人工填写的视频编号作为 external video ref 提交到固定 operator report 代理，不伪造轮速、LiDAR delta、route map 或 delivery success；`试动一下` 只调用固定 first-jog 代理，当前无可视材料时显示“还需要先记录现场画面，小车没有移动”。当前普通首屏仍只支持一次性低速短时 jog；受限 Nav2 目标执行和送达确认只允许在默认关闭的高级诊断里显式勾选确认后触发。2026-06-11 新增 `/api/operator/report` 结构化 HIL 材料 readback：summary 会把 `operator_report_latest` 顶层现场确认和 `structured_hil_claims` 压缩成 `operator_hil_material_summary`，仅在默认关闭的 `高级诊断` 中展示 operator_present、physical_clearance、emergency_stop、外部视频、相机可见、轮速反馈、LiDAR delta、route/map、delivery claim、site_state、evidence_ref 和 report status。同区块新增“现场 HIL 材料”高级提交表单，允许现场人员填写 evidence_ref、site_state、外部视频 ref、相机 artifact ref、feedback ref、scan delta ref、route/map ref、operator notes 和若干 checkbox，然后通过 `提交现场材料（高级）` 走 workstation 固定 POST 代理提交给真实上位机。提交成功后页面自动刷新 Robot Control summary，并在高级诊断显示最近 submit 的 proxy status、HTTP、failure、rejected fields、dangerous fields 和 request claims。该表单不进入 `.simple-user-console` 首屏，首屏不得出现 HIL、delivery_success、structured_hil_claims、外部视频、轮速反馈等工程词。只有 `operator_report_latest` readback 中的精确人工 claim 路径（含真实上位机回显的 `latest_result.operator_report.structured_hil_claims.delivery_success`）不触发 hard-block；其它 endpoint/payload 伪造 `structured_hil_claims.delivery_success=true`，或任何非 claim 路径的 `delivery_success=true`、`hil_pass=true`、`safe_to_control=true` 仍然 fail-closed。
+- Robot Control：`RobotControlConsolePanel` 是工作站默认首屏，不再藏在 `WorkstationTabs` 内。`GET /api/robot-control/summary?baseUrl=<robot-api-base-url>` 继续作为状态入口，路线、O7 控制台、预览、证据、硬件、数据和安全边界等工程 tab 统一下沉到默认关闭的 `高级工具`。普通用户首屏必须保持 `Rober 小车控制台` + `.simple-user-console` 五卡片、短状态和少量普通按钮；`task_id`、`O6`、`O7`、`HIL`、`proof`、`key values`、`/cmd_vel`、`/api/base/manual`、`field manifest` 等工程词必须留在默认关闭的 `高级诊断`。`task_id`、O6 base URL、Mock/field manifest、peer/ICE/SDP、readback table、O3 proof summary、route replay、map lifecycle HTTP 细节、raw evidence/readback、非 stop 点动、速度/时长输入、HIL checklist、检查路径、导航目标预检、Nav2 目标执行、送达确认、定位重置和 proof flags 都收进默认关闭的 `高级诊断`。首屏的 `地图` 卡片现在允许普通用户动作 `刷新地图 / 地图列表 / 重新建图 / 保存地图`；其中 `重新建图` 和 `保存地图` 仍只走固定 map lifecycle 代理，不暴露 `map_name`、`artifact_path`、Start/Reset 风格按钮或任何 ROS/串口参数。首屏的 `移动/导航` 卡片只保留最小安全确认、普通状态、`重新定位`、`现场画面记录`、`记录画面`、`试动一下` 和 `停止`；不再显示额外 `移动前检查` 按钮，也不显示自动导航、最近证据摘要、方向点动、路径检查、速度上限、时长上限、目标坐标、送达确认或 HIL checklist。`记录画面` 只把人工填写的视频编号作为 external video ref 提交到固定 operator report 代理，不伪造轮速、LiDAR delta、route map 或 delivery success；`试动一下` 只调用固定 first-jog 代理，当前无可视材料时显示“还需要先记录现场画面，小车没有移动”。当前普通首屏仍只支持一次性低速短时 jog；受限 Nav2 目标执行和送达确认只允许在默认关闭的高级诊断里显式勾选确认后触发。2026-06-11 新增 `/api/operator/report` 结构化 HIL 材料 readback：summary 会把 `operator_report_latest` 顶层现场确认和 `structured_hil_claims` 压缩成 `operator_hil_material_summary`，仅在默认关闭的 `高级诊断` 中展示 operator_present、physical_clearance、emergency_stop、外部视频、相机可见、轮速反馈、LiDAR delta、route/map、delivery claim、site_state、evidence_ref 和 report status。同区块新增“现场 HIL 材料”高级提交表单，允许现场人员填写 evidence_ref、site_state、外部视频 ref、相机 artifact ref、feedback ref、scan delta ref、route/map ref、operator notes 和若干 checkbox，然后通过 `提交现场材料（高级）` 走 workstation 固定 POST 代理提交给真实上位机。提交成功后页面自动刷新 Robot Control summary，并在高级诊断显示最近 submit 的 proxy status、HTTP、failure、rejected fields、dangerous fields 和 request claims。该表单不进入 `.simple-user-console` 首屏，首屏不得出现 HIL、delivery_success、structured_hil_claims、外部视频、轮速反馈等工程词。只有 `operator_report_latest` readback 中的精确人工 claim 路径（含真实上位机回显的 `latest_result.operator_report.structured_hil_claims.delivery_success`）不触发 hard-block；其它 endpoint/payload 伪造 `structured_hil_claims.delivery_success=true`，或任何非 claim 路径的 `delivery_success=true`、`hil_pass=true`、`safe_to_control=true` 仍然 fail-closed。
 - 2026-06-23 05:05 起，普通首屏不再显示 `小车地址` 输入框或默认上位机 URL；页面固定使用默认上位机 `http://192.168.1.11:8787` 自动加载 summary，首屏只显示“默认小车 / 已使用默认地址 / 连接刷新”。地址输入与恢复默认地址按钮下沉到默认关闭的 `高级诊断 -> 连接详情`，仅用于高级联调；恢复默认不会自动发送控制动作，也不会调用 Nav2、manual、delivery complete 或 `/cmd_vel`。
 - 2026-06-23 21:05 起，普通首屏 `默认小车` 行会展示短地址 `192.168.1.11:8787`，用于现场确认当前固定上位机；仍不展示完整 `http://...` URL 输入框，改地址继续只能在默认关闭的高级连接详情里进行。该展示只读本页 base URL，不自动刷新、不调用 Nav2、manual、delivery complete、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-23 08:10 起，PC 工作站 Node API 支持通过 `HOST` 环境变量覆盖监听地址，并新增 `npm run api:public`，方便局域网访问。2026-06-25 起默认公开端口统一改为 `7001`：`npm run api`、`npm run api:public`、`npm run dev` 和 `npm run dev:public` 默认都是 `HOST=0.0.0.0 PORT=7001`，仍可用 `HOST/PORT` 覆盖。public 脚本只暴露 PC 工作站本机服务，不自动执行 Nav2、manual、delivery complete、keyboard pulse 或 `/cmd_vel`。
@@ -593,7 +593,7 @@ one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
 - 默认首屏固定使用默认小车地址，不显示地址输入框；可见主体是五张普通用户卡片：`小车连接`、`实时画面`、`雷达`、
   `地图`、`移动/导航`。
 - 默认可见动作只允许：`连接/刷新`、`恢复默认`、`检查小车`、`打开画面/关闭画面`、`刷新雷达`、
-  `刷新地图`、`地图列表`、`重新建图`、`保存地图`、`重新定位`、`移动前检查`、`停止`。
+  `刷新地图`、`地图列表`、`重新建图`、`保存地图`、`重新定位`、`记录画面`、`试动一下`、`停止`。
 - 默认首屏不展示工程词、协议词、证据词、调参控件或危险动作，包括但不限于：
   `HIL`、`proof`、`Nav2`、`/cmd_vel`、`/api/base/manual`、`O6`、`O7`、
   `Mock`、`field manifest`、`task_id`、`key values`、`现场材料`、`检查路径`、
@@ -618,9 +618,9 @@ one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
   initialpose、AMCL、Nav2 goal 或坐标输入。`重新定位` 只调用固定 no-motion
   `/api/localize/reset` 代理；定位重置详情、no-motion path generation、导航目标预检都只作为
   高级诊断里的“检查/预检”能力；通过只表示 readiness / preflight，不表示 NavigateToPose 已执行。
-- `移动/导航`：首屏默认只显示普通状态、`重新定位`、`移动前检查` 和 `停止`。`移动前检查`
-  只提交人在场、周围安全、急停就绪三项基础确认，不提交外部视频、可见图传、轮速非零或
-  LiDAR motion delta。停止是 fail-safe 常驻动作；非 stop 手动移动、
+- `移动/导航`：首屏默认只显示最小安全确认、普通状态、`重新定位`、`记录画面`、`试动一下` 和
+  `停止`。勾选安全确认就是普通发车前最小预检，不再额外展示 `移动前检查` 按钮，也不会因为勾选
+  自动提交 operator report。停止是 fail-safe 常驻动作；非 stop 手动移动、
   方向点动、速度/时长、键盘连续控制、地图点击目标、自动导航下发全部默认隐藏。只有在真实
   operator report、可见图传、轮速反馈、LiDAR delta 和外部视频引用等现场材料全部通过后，
   才能在高级诊断中做一次低速短时 jog；首屏仍不得出现方向按钮。缺少运动前材料时，首屏只显示
@@ -1869,3 +1869,7 @@ delivery complete 或 `/cmd_vel`。
 雷达运行但缺地图位姿时显示“实时雷达只显示局部轮廓，等定位后再贴地图”，雷达已停但仍有 scan preview 时显示
 “这是最近记录，不是实时雷达”。该提示只消费现有 summary/map preview，不刷新雷达、不启动雷达、不发送
 manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。
+
+2026-06-25 23:00 起，普通首屏 `移动/导航` 不再显示 `移动前检查` 按钮。发车前最小预检收敛为勾选
+`人在旁边、周围安全、停止手段就绪`；勾选只改变本地 gate，不自动提交 operator report、不发送 manual、
+keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。高级诊断中的现场材料提交仍保留给送达和验收材料。

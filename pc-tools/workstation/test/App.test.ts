@@ -3331,7 +3331,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("待试动");
     expect(firstScreenText).toContain("现场画面已记录；可以试动一下。");
     expect(firstScreenText).toContain("重新定位");
-    expect(firstScreenText).toContain("移动前检查");
+    expect(firstScreenText).not.toContain("移动前检查");
     expect(firstScreenText).toContain("启用键盘");
     expect(wrapper.find('[data-testid="keyboard-control-stop"]').text()).toBe("键盘停止（随时可点）");
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
@@ -5408,8 +5408,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
-  it("submits a plain motion precheck without unlocking non-stop motion", async () => {
-    // 普通首屏只能提交基础现场确认；视频、轮速和 LiDAR delta 材料不能被它伪造成已满足。
+  it("keeps plain motion precheck out of the first screen safety flow", async () => {
+    // 普通首屏只要求勾安全确认；不会再额外暴露“移动前检查”按钮或提交 operator report。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.external_video = "not_loaded";
     summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
@@ -5458,39 +5458,18 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
 
-    const plainPrecheckButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "移动前检查");
-    expect(plainPrecheckButton).toBeTruthy();
-    await plainPrecheckButton?.trigger("click");
+    const plainPrecheckButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text().includes("移动前检查"));
+    expect(plainPrecheckButton).toBeUndefined();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
     const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
-    expect(reportCall).toBeTruthy();
-    const [url, options] = reportCall ?? ["", {} as RequestInit];
-    const parsed = new URL(String(url), "http://workstation.local");
-    const body = JSON.parse(String((options as RequestInit).body ?? "{}")) as Record<string, any>;
-    expect(parsed.searchParams.get("baseUrl")).toBe("http://192.168.1.11:8787");
-    expect((options as RequestInit).method).toBe("POST");
-    expect(body.operator_present).toBe(true);
-    expect(body.physical_clearance_confirmed).toBe(true);
-    expect(body.emergency_stop_ready).toBe(true);
-    expect(body.observed_motion).toBe(false);
-    expect(body.observed_stop).toBe(true);
-    expect(String(body.evidence_ref)).toMatch(/^plain-motion-precheck-/);
-    expect(body.structured_hil_claims).toEqual(expect.objectContaining({
-      external_video_recorded: false,
-      visible_content_proven: false,
-      wheel_feedback_lr_nonzero_proven: false,
-      physical_motion_lidar_delta_proven: false,
-      delivery_success: false,
-      site_state: "plain_motion_precheck_ready_for_review",
-    }));
-    expect(body.safe_to_control).toBeUndefined();
-    expect(body.delivery_success).toBeUndefined();
+    expect(reportCall).toBeUndefined();
 
     const firstScreenText = visiblePlainHomeText(wrapper);
-    expect(firstScreenText).toContain("已记录");
-    expect(firstScreenText).toContain("移动前检查已记录；还需要现场画面。");
+    expect(firstScreenText).not.toContain("移动前检查");
+    expect(firstScreenText).toContain("人在旁边、周围安全、停止手段就绪");
     expect(firstScreenText).not.toContain("operator_report");
     expect(firstScreenText).not.toContain("structured_hil_claims");
     expect(firstScreenText).not.toContain("external_video_recorded");
@@ -7589,7 +7568,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("待命");
-    expect(firstScreenText).toContain("已完成移动前检查；需要时可直接停止。");
+    expect(firstScreenText).toContain("安全确认已勾；需要时可直接停止。");
     for (const token of DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS) {
       expect(firstScreenText).not.toContain(token);
     }
@@ -8026,7 +8005,7 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("scan_once_observed");
     expect(firstScreenText).not.toContain("map_once_observed");
     expect(firstScreenText).not.toContain("path_generation_succeeded");
-    expect(firstScreenText).toContain("移动前检查");
+    expect(firstScreenText).not.toContain("移动前检查");
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).not.toContain("定位重置");
     expect(firstScreenText).not.toContain("AMCL");
