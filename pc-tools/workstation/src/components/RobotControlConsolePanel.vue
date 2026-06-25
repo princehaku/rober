@@ -4723,8 +4723,12 @@ async function runPlainTripExecution(): Promise<void> {
   }
   confirmNavigationExecution.value = true;
   await runNavGoalExecution();
+  if (navGoalExecutionResult.value?.proxy_status === "execution_forwarded") {
+    await loadNavGoalExecutionLatest();
+  }
   fillDeliveryRouteRefFromLatestNav2();
   if (deliveryNav2GoalReady.value) {
+    await loadDeliveryLatest();
     await focusPlainDeliveryStatusPanel();
   }
 }

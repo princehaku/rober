@@ -1949,3 +1949,9 @@ delivery complete/stop 或 `/cmd_vel`。
 `/api/free-roam/autonomy/latest` 时，普通首屏“自动扫图准备”会优先显示 runtime artifact 中的 `decision.gates`，
 例如现场安全确认、地图记录、雷达新鲜、前方障碍和真车低速放行；旧上位机没有该 endpoint 时按 optional missing 处理，
 继续显示默认锁定门禁。该读回不开放自动扫图按钮，不发送 `/cmd_vel`。
+
+2026-06-25 21:34 起，普通首屏 `执行图上路线` 成功返回后，会自动追加一次只读
+`/api/robot-control/nav2/goal/execution/latest` 和 `/api/robot-control/delivery/latest` 同步，并用本轮
+Nav2 execution `evidence_ref` 预填送达 `route/map` 材料。这样执行按钮、行程进度、送达材料入口和页面刷新后的 latest
+读回保持同一证据口径。该同步只发生在 operator 已显式点击执行且后端 execute proxy 已返回后；不会自动确认送达、
+不会提交 delivery complete、不发送 manual/keyboard pulse/stop 或 `/cmd_vel`。
