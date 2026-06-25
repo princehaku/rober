@@ -3480,6 +3480,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
@@ -5438,6 +5440,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图处理中");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图处理中"] .plain-map-layer');
     expect(wrapper.find('[data-testid="plain-map-proof-refresh"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-map-proof-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-map-preview-refresh"]').text()).toBe("等待地图刷新");

@@ -504,6 +504,22 @@ h3 {
   background-size: 24px 24px;
 }
 
+.plain-map-viewport[data-state="地图可见"] .plain-map-layer {
+  border-color: #9fd4b3;
+  box-shadow: inset 0 0 0 1px rgb(23 96 57 / 22%);
+}
+
+.plain-map-viewport[data-state="地图处理中"] .plain-map-layer,
+.plain-map-viewport[data-state="地图待刷新"] .plain-map-layer {
+  border-color: #d5d2a9;
+  box-shadow: inset 0 0 0 1px rgb(106 87 16 / 24%);
+}
+
+.plain-map-viewport[data-state="地图不可用"] .plain-map-layer {
+  border-color: #d8adb0;
+  box-shadow: inset 0 0 0 1px rgb(124 45 53 / 28%);
+}
+
 .plain-map-layer.has-real-map {
   background: #eef2f6;
 }
