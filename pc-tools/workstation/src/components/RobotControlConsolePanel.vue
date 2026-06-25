@@ -1237,6 +1237,7 @@ function latestNavPathOverlay() {
       x: lastPoint.source.x,
       y: lastPoint.source.y,
     },
+    state: currentRoute ? "当前路线" : "最近路线",
     label: currentRoute ? `已读取 ${svgPoints.length} 个路线点` : `已读取最近路线 ${svgPoints.length} 个点`,
     caption: currentRoute
       ? `路线已显示 ${svgPoints.length}/${totalCount} 个点`
@@ -1754,6 +1755,7 @@ const plainMapVisualSummary = computed(() => {
     routeGoalAria: routeGoal?.aria ?? "",
     showRoutePath: Boolean(routePath),
     routePathPoints: routePath?.points ?? "",
+    routePathState: routePath?.state ?? "",
     routePathAria: routePath?.label ?? "",
     routeEndpointMarkers: routePath?.endpoints.filter((point) => point.id === "start" || !routeGoal) ?? [],
     showFreeRoamSweepPlan: Boolean(freeRoamSweepPlan),
@@ -7686,7 +7688,7 @@ onBeforeUnmount(() => {
                   <span class="plain-map-wall left" />
                   <span class="plain-map-wall right" />
                 </template>
-                <svg v-if="plainMapVisualSummary.showRoutePath" class="plain-map-route-path" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-route-path" :aria-label="plainMapVisualSummary.routePathAria">
+                <svg v-if="plainMapVisualSummary.showRoutePath" class="plain-map-route-path" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-route-path" :data-state="plainMapVisualSummary.routePathState" :aria-label="plainMapVisualSummary.routePathAria">
                   <polyline :points="plainMapVisualSummary.routePathPoints" />
                 </svg>
                 <svg v-if="plainMapVisualSummary.showFreeRoamSweepPlan" class="plain-map-free-roam-sweep-plan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-free-roam-sweep-plan" :aria-label="plainMapVisualSummary.freeRoamSweepPlanAria">

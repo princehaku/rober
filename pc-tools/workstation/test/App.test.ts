@@ -4930,13 +4930,18 @@ describe("App", () => {
 
     const route = wrapper.find('[data-testid="plain-map-route-path"]');
     expect(route.exists()).toBe(true);
+    expect(route.attributes("data-state")).toBe("最近路线");
     expect(route.find("polyline").attributes("points")).toBe("10.00,90.00 40.00,90.00 80.00,98.00");
     expect(route.attributes("aria-label")).toBe("已读取最近路线 3 个点");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-route-path[data-state="最近路线"] polyline');
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("最近路线已显示 3/15 个点，待重新规划");
     const startMarker = wrapper.find('[data-testid="plain-map-route-start-marker"]');
     expect(startMarker.exists()).toBe(true);
     expect(startMarker.text()).toBe("起点");
     expect(startMarker.attributes("data-state")).toBe("最近路线起点");
+    expect(workstationStyles).toContain('.plain-map-route-endpoint-marker[data-state="最近路线起点"]');
+    expect(workstationStyles).toContain('.plain-map-route-endpoint-marker[data-state="最近路线终点"]');
     expect(startMarker.attributes("aria-label")).toContain("最近路线起点，地图坐标 x=0.10, y=0.10");
     expect(startMarker.attributes("style")).toContain("left: 10%");
     expect(startMarker.attributes("style")).toContain("top: 90%");
@@ -5173,6 +5178,7 @@ describe("App", () => {
 
     const route = wrapper.find('[data-testid="plain-map-route-path"]');
     expect(route.exists()).toBe(true);
+    expect(route.attributes("data-state")).toBe("最近路线");
     expect(route.attributes("aria-label")).toBe("已读取最近路线 3 个点");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("最近路线已显示 3/15 个点，待重新规划");
     expect(wrapper.find('[data-testid="plain-map-route-start-marker"]').attributes("data-state")).toBe("最近路线起点");
