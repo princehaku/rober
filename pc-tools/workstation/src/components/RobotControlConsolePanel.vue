@@ -1444,6 +1444,9 @@ const plainFreeRoamKeyboardLabel = computed(() => {
   if (!mapRuntimeStarted.value) {
     return "先开始记录";
   }
+  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+    return "键盘已启用";
+  }
   return canArmKeyboardControl.value ? "启用键盘扫图" : "键盘条件未满足";
 });
 const plainFreeRoamNextActionLabel = computed(() => {
@@ -5643,6 +5646,10 @@ async function startMapRuntime(): Promise<void> {
   plainFreeRoamMapPreviewFreshForSession.value = false;
   plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
   await runMapLifecycleAction("start", () => postRobotControlMapStart(robotApiBaseUrl.value, mapLifecycleRequestBody()));
+  if (mapRuntimeStarted.value && canArmPlainFreeRoamKeyboard.value) {
+    // 启动建图后只打开键盘窗口，不发送方向脉冲；真正移动仍要 operator 按住方向键。
+    activateKeyboardControl();
+  }
 }
 
 async function saveMap(): Promise<void> {
