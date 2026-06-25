@@ -11865,7 +11865,12 @@ describe("App", () => {
 
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面可见");
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面可见。");
-    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面可见");
+    const previewFrame = wrapper.find('[data-testid="robot-camera-preview-frame"]');
+    expect(previewFrame.attributes("data-state")).toBe("画面可见");
+    expect(previewFrame.attributes("data-frame-state")).toBe("已绘制帧");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('video[data-testid="robot-camera-preview-video"][data-frame-state="已绘制帧"]');
+    expect(wrapper.find('[data-testid="robot-camera-preview-video"]').attributes("data-frame-state")).toBe("已绘制帧");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示真实视频帧。浏览器已绘制视频帧 640x480。");
     expect(wrapper.find("details").text()).toContain("preview_status");
@@ -12002,9 +12007,13 @@ describe("App", () => {
     await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("等待画面");
+    const previewFrame = wrapper.find('[data-testid="robot-camera-preview-frame"]');
+    expect(previewFrame.attributes("data-state")).toBe("等待画面");
+    expect(previewFrame.attributes("data-frame-state")).toBe("等待绘帧");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.camera-preview-frame[data-state="等待画面"]');
+    expect(workstationStyles).toContain('video[data-testid="robot-camera-preview-video"][data-frame-state="等待绘帧"]');
+    expect(wrapper.find('[data-testid="robot-camera-preview-video"]').attributes("data-frame-state")).toBe("等待绘帧");
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').element).toHaveProperty("srcObject");
 
     const stopClick = wrapper.findAll("button").find((button) => button.text() === "关闭画面")?.trigger("click");
@@ -12045,6 +12054,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-frame-state")).toBe("未绑定");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("用当前画面记录");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').attributes("disabled")).toBeUndefined();

@@ -446,6 +446,19 @@ h3 {
   object-fit: contain;
 }
 
+.robot-console video[data-testid="robot-camera-preview-video"][data-frame-state="已绘制帧"] {
+  background: #020617;
+}
+
+.robot-console video[data-testid="robot-camera-preview-video"][data-frame-state="等待绘帧"] {
+  opacity: 0.72;
+}
+
+.robot-console video[data-testid="robot-camera-preview-video"][data-frame-state="未绑定"],
+.robot-console video[data-testid="robot-camera-preview-video"][data-frame-state="未观测"] {
+  opacity: 0.42;
+}
+
 .camera-preview-overlay {
   position: absolute;
   inset: 0;

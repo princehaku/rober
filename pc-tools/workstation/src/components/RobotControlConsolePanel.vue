@@ -650,6 +650,25 @@ function plainCameraVideoFrameTruth(): string {
   }
 }
 
+const plainCameraFrameEvidenceState = computed(() => {
+  // data-state 表达业务结论；这里单独表达浏览器帧证据，避免“已连接”和“已出图”被混在一起。
+  switch (videoElementFrameStatus.value) {
+    case "frame_callback_observed":
+    case "visible_frame_ready":
+      return "已绘制帧";
+    case "metadata_or_loading":
+      return "等待绘帧";
+    default:
+      if (["连接中", "等待画面", "已打开"].includes(cameraSummary.value.state)) {
+        return "等待绘帧";
+      }
+      if (videoElementFrameStatus.value === "not_bound") {
+        return "未绑定";
+      }
+      return "未观测";
+  }
+});
+
 const plainCameraWysiwygStatus = computed(() => {
   // 普通首屏要把“按钮状态”和“真实看到的画面”分开说清，避免把已连接误解成已出图。
   const frameTruth = plainCameraVideoFrameTruth();
@@ -7647,10 +7666,11 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
             <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
           </div>
-          <div class="camera-preview-frame" data-testid="robot-camera-preview-frame" :data-state="cameraSummary.state">
+          <div class="camera-preview-frame" data-testid="robot-camera-preview-frame" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
             <video
               ref="previewVideo"
               data-testid="robot-camera-preview-video"
+              :data-frame-state="plainCameraFrameEvidenceState"
               autoplay
               muted
               playsinline
