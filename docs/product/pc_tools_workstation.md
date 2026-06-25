@@ -2049,3 +2049,8 @@ manual pulse、stop、Nav2、delivery complete 或 `/cmd_vel` 行为。
 `已到达`、`到达缺反馈`、`旧到达` 或 `行程未通过`。这样 operator 看地图时能直接区分“完整路线已到达且有反馈样本”和
 “只读到 goal_succeeded 但还不能收口”。该 marker 仍只消费 Nav2 execution/latest readback 和地图坐标，不改变
 Nav2 execute gate、delivery complete、manual/keyboard pulse、stop 或 `/cmd_vel` 行为。
+
+2026-06-25 23:08 起，普通首屏 `移动/导航` 新增 `用当前画面记录`。该按钮只调用固定 `camera/first-frame/probe`
+读取一张当前相机样张，再把样张 ref 作为现场画面材料提交到固定 operator report 代理；提交时会标明
+`visible_content_proven` 和 `camera_artifacts_ref` 来自这张样张。它不会发送 first-jog、manual、Nav2 execute、
+delivery complete、stop 或 `/cmd_vel`。原 `记录画面` 仍保留给手填手机视频编号。

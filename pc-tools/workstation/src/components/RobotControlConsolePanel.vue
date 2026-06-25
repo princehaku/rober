@@ -3736,6 +3736,9 @@ const plainMotionSummary = computed(() => {
   if (localizationResetPending.value) {
     return { state: "定位中", hint: "正在重新定位；不会发车。" };
   }
+  if (cameraFirstFrameProbePending.value) {
+    return { state: "记录中", hint: "正在读取当前画面；不会发车。" };
+  }
   if (plainVisualMaterialPending.value) {
     return { state: "记录中", hint: "正在记录现场画面；不会发车。" };
   }
@@ -4311,13 +4314,15 @@ function makeOperatorReportFallback(reason: string, requestBody: RobotControlOpe
   };
 }
 
-function plainVisualMaterialRequestBody(): RobotControlOperatorReportRequest {
-  // 普通记录画面只提交人工外部视频索引；已有进度材料只保留，不补造。
-  const videoRef = plainExternalVideoRef.value.trim();
+function plainVisualMaterialRequestBody(options: { videoRef?: string; cameraArtifactRef?: string; visibleContentProven?: boolean } = {}): RobotControlOperatorReportRequest {
+  // 普通记录画面只提交可追溯 ref；当前画面样张来自固定 camera probe，不能手写任意工程字段。
+  const videoRef = (options.videoRef ?? plainExternalVideoRef.value).trim();
+  const cameraArtifactRef = options.cameraArtifactRef?.trim() ?? "";
+  const visibleContentProven = options.visibleContentProven === true;
   const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   return {
     operator_present: true,
-    evidence_ref: `plain-first-jog-video-${Date.now()}`,
+    evidence_ref: `${visibleContentProven ? "plain-first-jog-camera" : "plain-first-jog-video"}-${Date.now()}`,
     physical_clearance_confirmed: true,
     emergency_stop_ready: true,
     observed_motion: false,
@@ -4327,7 +4332,8 @@ function plainVisualMaterialRequestBody(): RobotControlOperatorReportRequest {
     structured_hil_claims: {
       external_video_recorded: true,
       external_video_ref: videoRef,
-      visible_content_proven: false,
+      visible_content_proven: visibleContentProven,
+      ...(cameraArtifactRef ? { camera_artifacts_ref: cameraArtifactRef } : {}),
       ...inheritedProgressClaims,
       delivery_success: false,
       site_state: "plain_first_jog_visual_ready_for_review",
@@ -5684,12 +5690,13 @@ async function submitOperatorReport(): Promise<void> {
   }
 }
 
-async function submitPlainVisualMaterial(): Promise<void> {
+async function submitPlainVisualMaterial(options: { videoRef?: string; cameraArtifactRef?: string; visibleContentProven?: boolean } = {}): Promise<void> {
   // 记录画面只更新 operator report；没有填写视频索引时不提交，避免制造空 ref。
-  if (!robotApiBaseUrl.value.trim() || plainVisualMaterialPending.value || operatorReportPending.value || !plainExternalVideoRef.value.trim()) {
+  const videoRef = (options.videoRef ?? plainExternalVideoRef.value).trim();
+  if (!robotApiBaseUrl.value.trim() || plainVisualMaterialPending.value || operatorReportPending.value || !videoRef) {
     return;
   }
-  const requestBody = plainVisualMaterialRequestBody();
+  const requestBody = plainVisualMaterialRequestBody({ ...options, videoRef });
   plainVisualMaterialPending.value = true;
   localizationResetResult.value = null;
   plainFirstJogResult.value = null;
@@ -5702,6 +5709,21 @@ async function submitPlainVisualMaterial(): Promise<void> {
     plainVisualMaterialPending.value = false;
     await refreshConsole();
   }
+}
+
+async function submitPlainVisualMaterialFromCameraProbe(): Promise<void> {
+  // 当前画面记录只走固定 camera probe，再提交 operator report；不会打开运动、Nav2 或 delivery gate。
+  if (!robotApiBaseUrl.value.trim() || cameraFirstFrameProbePending.value || plainVisualMaterialPending.value || operatorReportPending.value) {
+    return;
+  }
+  // 每次点击都重新读取一帧，避免把旧 probe 样张误当成 operator 眼前的当前画面。
+  await runCameraFirstFrameProbe();
+  const sampleRef = latestCameraProbeSampleRef();
+  if (!sampleRef) {
+    return;
+  }
+  plainExternalVideoRef.value = sampleRef;
+  await submitPlainVisualMaterial({ videoRef: sampleRef, cameraArtifactRef: sampleRef, visibleContentProven: true });
 }
 
 async function restorePlainFirstJogMaterial(): Promise<void> {
@@ -6699,6 +6721,9 @@ onBeforeUnmount(() => {
             </label>
             <button type="button" :disabled="loading || plainVisualMaterialPending || operatorReportPending || !robotApiBaseUrl.trim() || !plainExternalVideoRef.trim()" @click="submitPlainVisualMaterial">
               记录画面
+            </button>
+            <button type="button" class="secondary compact-stop" :disabled="loading || cameraFirstFrameProbePending || plainVisualMaterialPending || operatorReportPending || !robotApiBaseUrl.trim()" data-testid="plain-record-current-camera" @click="submitPlainVisualMaterialFromCameraProbe">
+              用当前画面记录
             </button>
             <button
               v-if="firstJogMaterialRestoreBlocksMotion"
