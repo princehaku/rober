@@ -1110,6 +1110,7 @@ function plainMapCoordinateTruthLabel(
   radarLocalScanOverlay: ReturnType<typeof latestRadarLocalScanOverlay>,
   routePath: ReturnType<typeof latestNavPathOverlay>,
   radarState: string,
+  localizationFailureLabel = "",
 ): string {
   // 所见即所得的核心是把“贴在地图坐标”和“只显示局部轮廓”说清楚，避免误把局部雷达当地图定位。
   if (poseObserved) {
@@ -1117,18 +1118,19 @@ function plainMapCoordinateTruthLabel(
     const routeText = routePath ? `${routePath.coordinateLabel}已贴到地图` : "路线未显示";
     return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
   }
+  const poseText = localizationFailureLabel ? `机器人定位失败：${localizationFailureLabel}` : "机器人位置未读到";
   if (radarLocalScanOverlay.dots.length > 0) {
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "路线未显示";
     const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
     const scanText = liveRadar
       ? `雷达只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点`
       : `最近雷达记录只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点，当前${radarState}`;
-    return `坐标口径：机器人位置未读到，${scanText}，不贴到地图；${routeText}。`;
+    return `坐标口径：${poseText}，${scanText}，不贴到地图；${routeText}。`;
   }
   if (routePath) {
-    return `坐标口径：机器人位置未读到，${routePath.coordinateLabel}按地图坐标显示，雷达不贴图。`;
+    return `坐标口径：${poseText}，${routePath.coordinateLabel}按地图坐标显示，雷达不贴图。`;
   }
-  return "坐标口径：机器人位置未读到，地图上的雷达和小车位置仍待定位。";
+  return `坐标口径：${poseText}，地图上的雷达和小车位置仍待定位。`;
 }
 
 function plainRadarFreshnessLabel(
@@ -1497,7 +1499,7 @@ const plainMapVisualSummary = computed(() => {
     radarScanDots: radarScanOverlay.dots,
     radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : radarScanOverlay.label,
     radarFreshnessLabel: plainRadarFreshnessLabel(displayedRadarState, poseObserved, radarScanOverlay, radarLocalScanOverlay),
-    coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath, displayedRadarState),
+    coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath, displayedRadarState, localizationFailureLabel),
     tripExecutionLabel: plainMapTripExecutionLabel(),
     showRadarScanPoints: showRadarSweep && radarScanOverlay.dots.length > 0,
     radarScanAria: `雷达点位，${radarScanOverlay.label}`,
