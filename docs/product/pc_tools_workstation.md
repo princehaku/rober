@@ -1848,6 +1848,9 @@ Nav2、keyboard pulse、delivery complete 或 `/cmd_vel`。
 `地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。`，地图已保存后提示刷新检查覆盖效果。该提示只来自本页 map lifecycle 和只读
 map preview 状态，不推断真实底盘运动、不自动刷新、不调用 map start、manual、Nav2、keyboard pulse、delivery complete
 或 `/cmd_vel`。
+2026-06-25 21:30 起，普通首屏“扫地式建图”在地图记录启动后会先把 `保存当前地图` 收紧为 `先刷新画面` 并禁用；
+只有本轮点击 `刷新扫图画面` 且只读 map preview 成功返回后，普通保存按钮才恢复可点。该 gate 只保证 operator 保存前看过当前地图画面，
+不自动刷新、不自动保存、不发送 manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。
 
 2026-06-25 19:10 起，普通首屏“扫地式建图”卡片新增 `下一步` 流程按钮，把 operator 依次带到安全确认、开始记录、
 启用键盘、按住方向键扫图、停止或保存地图。该按钮只做 `scrollIntoView + focus`，不会自动勾选确认、不会调用
