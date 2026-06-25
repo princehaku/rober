@@ -2230,16 +2230,29 @@ const plainGoalProgressBlockerSummary = computed(() => {
   return "验收卡点：四项都已满足，保持待命。";
 });
 
-const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value);
+const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value || nav2RefreshPending.value);
 const plainTripRadarBlocked = computed(() => {
   // 完整行程依赖雷达运行；普通首屏先卡住行程按钮，避免用户在传感器未就绪时误点 Nav2。
   return !deliveryNav2GoalReady.value && radarSummary.value.state !== "雷达已运行";
+});
+
+const plainTripPreparedByRefresh = computed(() => {
+  // 普通首屏“准备行程”复用 no-motion Nav2 proof refresh，只看路径点是否已由上位机生成。
+  const values = nav2RefreshResult.value?.latest_readback_key_values;
+  if (!values) {
+    return false;
+  }
+  const pointCount = Number(values.path_point_count ?? "0");
+  return (values.path_generated === "true" || values.path_generation_succeeded === "true") && Number.isFinite(pointCount) && pointCount > 0;
 });
 
 const plainTripSummary = computed(() => {
   // 普通首屏只说“行程”，不把 Nav2、goal 或 proof 术语放到默认界面。
   if (navGoalExecutionPending.value) {
     return { state: "执行中", hint: "正在执行行程；人在旁边准备停止。" };
+  }
+  if (nav2RefreshPending.value) {
+    return { state: "准备中", hint: "正在准备行程；不会发车。" };
   }
   if (navGoalPreflightPending.value) {
     return { state: "检查中", hint: "正在检查行程条件；不会发车。" };
@@ -2265,6 +2278,12 @@ const plainTripSummary = computed(() => {
   if (navGoalExecutionResult.value?.proxy_status === "execution_failed" || navGoalExecutionResult.value?.proxy_status === "execution_rejected") {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
   }
+  if (plainTripPreparedByRefresh.value) {
+    return { state: "已准备", hint: "行程准备已刷新，点检查行程确认条件；不会发车。" };
+  }
+  if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
+    return { state: "待准备", hint: "行程准备还没完成，确认地图和定位后再试一次。" };
+  }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
     return { state: "可执行", hint: "检查通过，确认人在旁边后可执行一次行程。" };
   }
@@ -2282,6 +2301,11 @@ const plainTripSummary = computed(() => {
 
 const canRunPlainTripPreflight = computed(() => {
   // 预检不发车，因此允许在雷达未就绪时先看路线 gate；真正执行仍单独被雷达状态挡住。
+  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+});
+
+const canRefreshPlainTripPreparation = computed(() => {
+  // 准备行程只刷新 no-motion planner proof；仍要求 operator 先完成同一个现场安全确认。
   return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
@@ -2314,6 +2338,20 @@ const plainTripPreflightButtonLabel = computed(() => {
     return "先启动雷达";
   }
   return plainTripSafetyConfirmed.value ? "检查行程" : "先勾选确认";
+});
+
+const plainTripPreparationButtonLabel = computed(() => {
+  // 普通用户只看到“准备行程”；底层 no-motion Nav2 proof refresh 留在高级诊断。
+  if (deliveryNav2GoalReady.value) {
+    return "行程已完成";
+  }
+  if (!robotApiBaseUrl.value.trim()) {
+    return "连接后准备行程";
+  }
+  if (nav2RefreshPending.value) {
+    return "准备中";
+  }
+  return plainTripSafetyConfirmed.value ? "准备行程（不发车）" : "先勾选确认";
 });
 
 const plainTripExecutionButtonLabel = computed(() => {
@@ -5852,6 +5890,9 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <button ref="plainTripPreflightButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainTripPreflight" data-testid="plain-trip-preflight" @click="runPlainTripPreflight">
                 {{ plainTripPreflightButtonLabel }}
+              </button>
+              <button type="button" class="secondary compact-stop" :disabled="!canRefreshPlainTripPreparation" data-testid="plain-trip-prepare" @click="refreshNav2Proof">
+                {{ plainTripPreparationButtonLabel }}
               </button>
               <button ref="plainTripExecuteButton" type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
                 {{ plainTripExecutionButtonLabel }}

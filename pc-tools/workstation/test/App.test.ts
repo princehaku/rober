@@ -3390,6 +3390,8 @@ describe("App", () => {
     expect(wrapper.findAll('[data-testid^="plain-goal-progress-go-"]')).toHaveLength(4);
     expect(wrapper.find('[data-testid="plain-trip-run"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-record"]').exists()).toBe(true);
@@ -4166,14 +4168,18 @@ describe("App", () => {
     expect(tripPanel.text()).toContain("待确认");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     const navExecuteCallsBeforeTripFocus = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
@@ -4184,6 +4190,21 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
     ).length).toBe(navExecuteCallsBeforeTripFocus);
+
+    const nav2RefreshCallsBeforePrepare = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/nav2/proof/refresh?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-trip-prepare"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url, options]) =>
+      String(url).startsWith("/api/robot-control/nav2/proof/refresh?") && options?.method === "POST",
+    ).length).toBe(nav2RefreshCallsBeforePrepare + 1);
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，点检查行程确认条件；不会发车。");
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
+    ).length).toBe(navExecuteCallsBeforeTripFocus);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
 
     await wrapper.find('[data-testid="plain-trip-preflight"]').trigger("click");
     await flushPromises();

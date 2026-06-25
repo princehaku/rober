@@ -1548,6 +1548,11 @@ operator report，不再次发送运动命令、不补 LiDAR/route/delivery。�
 仍必须走 `confirm_navigation_execution` 与后端固定 execute gate；该改动不会调用 `/api/robot-control/nav2/goal/execute`、
 `/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`。
 
+2026-06-25 18:01 起，普通首屏 `行程操作` 新增 `准备行程（不发车）`。该按钮在勾选同一个现场安全确认后可用，
+底层只调用固定 `POST /api/robot-control/nav2/proof/refresh` 刷新 no-motion planner proof，并把结果翻译成
+`行程准备已刷新` 或 `行程准备还没完成`。它不会调用 `/api/robot-control/nav2/goal/execute`、`NavigateToPose`、
+`/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`；真正发车仍必须再点 `执行行程` 并通过后端 execute gate。
+
 2026-06-25 17:56 起，PC 后端 `POST /api/robot-control/nav2/goal/execute` 在转发真实
 `/api/nav2/goal/execute` 前，会先复用同一套本机导航预检读取
 `/api/localize/proof/latest`、`/api/nav2/proof/latest`、`/api/nav2/status`。即使有人绕过前端按钮直接 POST
