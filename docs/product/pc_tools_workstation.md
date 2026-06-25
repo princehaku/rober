@@ -2065,6 +2065,11 @@ delivery complete 或 `/cmd_vel` 行为。
 固定在地图角落并声明“不代表坐标”。该状态只消费本机 map lifecycle、map preview 和键盘状态机，不改变 map start/save、
 manual pulse、stop、Nav2、delivery complete 或 `/cmd_vel` 行为。
 
+2026-06-26 02:57 起，普通首屏地图记录启动或地图保存失败时，地图流程 marker 会保留失败态，例如
+`地图记录启动失败：上位机等待超时` 或 `地图保存失败：请求被阻止`，`扫图状态` 和扫地图卡片也显示同一短原因，
+不会回落成 `还没开始记录`。该状态只消费固定 map lifecycle 代理响应，不自动重试、不发送 manual pulse、Nav2、
+delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-26 03:50 起，普通首屏地图上的扫图方向 marker 会同步键盘连续手控轮速结论：按住方向键后显示
 `扫图方向：前进，轮速非零` 或 `轮速待非零`，marker 说明中带本次连续脉冲进度和 L/R 读数。这样地图上的移动方向、键盘区
 轮速反馈和扫图状态三处保持一致。该状态只读取固定 manual pulse 返回值，不新增 manual、stop、Nav2、delivery complete

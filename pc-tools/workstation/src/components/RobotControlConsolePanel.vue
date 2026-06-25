@@ -1253,6 +1253,36 @@ function freeRoamAutonomyFailureText(result: RobotControlFreeRoamAutonomyRespons
   return "请求失败";
 }
 
+function mapLifecycleFailed(result: RobotControlMapLifecycleResponse | null): boolean {
+  // 地图记录/保存失败必须继续贴在扫图地图上，不能回落成“尚未开始”的空状态。
+  return Boolean(result && (result.proxy_status !== "lifecycle_forwarded" || result.status === "blocked"));
+}
+
+function mapLifecycleFailureText(result: RobotControlMapLifecycleResponse | null): string {
+  // 普通首屏只给可执行短原因；endpoint、blocked reasons 全量细节留在高级诊断。
+  if (!mapLifecycleFailed(result)) {
+    return "";
+  }
+  const raw = result?.failure_reason || result?.blocked_reasons?.[0] || result?.command_result.mode || "request_failed";
+  const reason = raw.toLowerCase();
+  if (reason.includes("timeout")) {
+    return "上位机等待超时";
+  }
+  if (reason.includes("fetch") || reason.includes("network")) {
+    return "上位机没有回应";
+  }
+  if (reason.includes("command_not_configured") || reason.includes("not_configured")) {
+    return "上位机命令未配置";
+  }
+  if (reason.includes("map") && (reason.includes("unusable") || reason.includes("no_free") || reason.includes("quality"))) {
+    return "地图不可用";
+  }
+  if (reason.includes("blocked") || reason.includes("rejected")) {
+    return "请求被阻止";
+  }
+  return "请求失败";
+}
+
 function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
   // 扫图流程 marker 把“记录中/已停/可保存/保存中”贴回地图，避免状态只散落在按钮文案里。
   const style = robotPose
@@ -1265,6 +1295,12 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
   }
   if (mapLifecyclePendingAction.value === "save") {
     return { label: "地图保存中", state: "saving", style, aria: `当前扫图地图正在保存${locatedSuffix}` };
+  }
+  if (mapLifecycleFailed(mapLifecycleResult.value) && mapLifecycleResult.value?.action !== "list") {
+    const actionText = mapLifecycleResult.value?.action === "save" ? "保存" : "记录启动";
+    const failureText = mapLifecycleFailureText(mapLifecycleResult.value);
+    const label = failureText ? `地图${actionText}失败：${failureText}` : `地图${actionText}失败`;
+    return { label, state: "map_failed", style, aria: `${label}${locatedSuffix}` };
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
     return { label: "自动扫图启动中", state: "auto_starting", style, aria: `上车端自动扫图状态机正在启动${locatedSuffix}` };
@@ -1562,6 +1598,12 @@ const plainFreeRoamMappingSummary = computed(() => {
   if (mapPreviewPending.value) {
     return { state: "刷新中", hint: "正在刷新扫图画面；刷新完成后再保存。" };
   }
+  if (mapLifecycleFailed(mapLifecycleResult.value) && mapLifecycleResult.value?.action !== "list") {
+    const actionText = mapLifecycleResult.value?.action === "save" ? "保存地图" : "启动地图记录";
+    const failureText = mapLifecycleFailureText(mapLifecycleResult.value);
+    const reasonSuffix = failureText ? `：${failureText}` : "";
+    return { state: "失败", hint: `${actionText}失败${reasonSuffix}；检查上位机地图服务后重试。` };
+  }
   if (mapSavedThisSession.value) {
     return plainFreeRoamSavedMapPreviewFreshForSession.value
       ? { state: "已保存", hint: "地图已保存，地图画面已自动刷新；现在可以检查 free cell 和路线可用性。" }
@@ -1657,6 +1699,12 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (mapLifecyclePendingAction.value === "save") {
     return "扫图状态：正在保存当前地图，保存完成前不要继续移动。";
+  }
+  if (mapLifecycleFailed(mapLifecycleResult.value) && mapLifecycleResult.value?.action !== "list") {
+    const actionText = mapLifecycleResult.value?.action === "save" ? "地图保存" : "地图记录启动";
+    const failureText = mapLifecycleFailureText(mapLifecycleResult.value);
+    const reasonSuffix = failureText ? `：${failureText}` : "";
+    return `扫图状态：${actionText}失败${reasonSuffix}，小车不会移动；检查上位机地图服务后重试。`;
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return "扫图状态：还没开始记录，键盘扫图锁定。";
