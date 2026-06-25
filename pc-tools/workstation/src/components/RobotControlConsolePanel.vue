@@ -652,6 +652,24 @@ const plainMapVisualSummary = computed(() => {
           ? "地图待刷新"
           : "地图未读取";
   const poseObserved = proof?.amcl_pose_observed === true || proof?.localization_tf_observed === true;
+  const radarState = radarSummary.value.state;
+  const radarNeedsMapPose = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+  const radarOverlayMode = poseObserved
+    ? radarState === "雷达已运行"
+      ? "known-pose-running"
+      : radarState === "雷达待刷新" || radarState === "刷新中"
+        ? "known-pose-pending"
+        : "known-pose-stopped"
+    : radarNeedsMapPose
+      ? "pose-missing"
+      : "stopped";
+  const radarOverlayLabel = poseObserved
+    ? radarState === "雷达已运行"
+      ? "雷达"
+      : radarState
+    : radarNeedsMapPose
+      ? `${radarState}，位置未读到`
+      : radarState;
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref
@@ -659,11 +677,15 @@ const plainMapVisualSummary = computed(() => {
   return {
     state,
     poseLabel: poseObserved ? "位置已读到" : "位置未读到",
-    radarLabel: radarSummary.value.state,
+    radarLabel: radarState,
+    radarOverlayLabel,
+    radarOverlayMode,
+    radarOverlayAria: poseObserved ? `${radarState}，已叠在机器人位置` : `${radarState}，地图位置未读到`,
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
     showRobotPose: poseObserved,
+    showRadarPulse: poseObserved && radarState === "雷达已运行",
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -5173,9 +5195,10 @@ onBeforeUnmount(() => {
                 <span class="plain-map-wall left" />
                 <span class="plain-map-wall right" />
               </template>
+              <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" aria-hidden="true" />
               <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" aria-label="机器人位置" />
               <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing">{{ plainMapVisualSummary.poseLabel }}</span>
-              <span class="plain-map-radar-marker" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel">{{ plainMapVisualSummary.radarLabel }}</span>
+              <span class="plain-map-radar-marker" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel" :aria-label="plainMapVisualSummary.radarOverlayAria">{{ plainMapVisualSummary.radarOverlayLabel }}</span>
             </div>
             <div class="plain-map-caption">
               <span class="status-chip" :data-state="plainMapVisualSummary.state">{{ plainMapVisualSummary.state }}</span>

@@ -2154,6 +2154,11 @@ PC 代理固定为 `GET /api/robot-control/map/preview?baseUrl=...`，不接受�
 不启动雷达/建图，不执行 Nav2，不调用 `/api/base/manual` 或 `/cmd_vel`。它只解决“地图
 所见即所得”的读图入口；fixed-route 是否能执行仍取决于定位、Nav2 execution 和送达证据。
 
+2026-06-25 15:00 起，PC 地图视口的雷达 marker 只在 map-frame pose 已读到时叠在机器人
+marker 上并显示脉冲圈；若雷达 lifecycle 已运行但 AMCL/map-frame pose 未读到，视口直接
+显示“雷达已运行，位置未读到”。该规则是 fixed-route 前的显示围栏：不能用运行中的雷达
+替代定位，也不能把未知坐标画成已知坐标。
+
 2026-06-12 04:45 起，PC 普通 `移动/导航` 卡片新增 `重新定位`。该入口仍只调用
 workstation 固定 `POST /api/robot-control/localize/reset?baseUrl=<upper-api>`，由 PC
 后端转发到上位机固定 `POST /api/localize/reset`，不会接收浏览器传入的 goal、

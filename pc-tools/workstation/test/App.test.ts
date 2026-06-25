@@ -3304,7 +3304,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').classes()).toContain("mode-pose-missing");
+    expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid^="plain-goal-progress-go-"]')).toHaveLength(4);
@@ -3471,6 +3473,31 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("draws radar pulse on the robot marker only after map-frame pose is observed", async () => {
+    // 雷达 overlay 只有在 AMCL/map-frame 位置存在时才画成地图坐标；否则必须显式标缺定位。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.amcl_pose_observed = true;
+    summaryFixture.o3_proof_summary.localization_tf_observed = true;
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "true";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
+    stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
+    expect(marker.text()).toBe("雷达");
+    expect(marker.classes()).toContain("mode-known-pose-running");
+    expect(marker.attributes("aria-label")).toBe("雷达已运行，已叠在机器人位置");
+    expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
   });
 
   it("shows a plain timeout hint when the robot API does not respond", async () => {
@@ -7573,8 +7600,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).not.toContain("启动雷达");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').classes()).toContain("mode-pose-missing");
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先刷新雷达");
