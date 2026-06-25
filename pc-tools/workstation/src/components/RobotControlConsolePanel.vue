@@ -2596,10 +2596,22 @@ const plainTripEvidenceSummary = computed(() => {
   return `最近行程成功${feedbackText}${formatEvidenceAge(values)}；${nextText}`;
 });
 
+function plainTripPendingRouteText(): string {
+  // 执行中状态必须把“正在去哪”说清楚；目标来自刚点击的图上路线终点，不从高级表单再推断。
+  const goal = navGoalExecutionPendingGoal.value;
+  if (!goal) {
+    return "";
+  }
+  const routePath = latestNavPathOverlay();
+  const routeText = routePath && !routePath.caption.startsWith("最近") ? `；${routePath.coordinateLabel}` : "";
+  return `目标 x=${goal.goal_x.toFixed(2)}, y=${goal.goal_y.toFixed(2)}${routeText}`;
+}
+
 function plainMapTripExecutionLabel(): string {
   // 地图 caption 要短，只表达当前执行结果；详细下一步放在行程卡。
   if (navGoalExecutionPending.value) {
-    return "行程执行：正在执行图上路线";
+    const targetText = plainTripPendingRouteText();
+    return targetText ? `行程执行：正在执行图上路线（${targetText}）` : "行程执行：正在执行图上路线";
   }
   const values = directNav2ExecutionValues();
   const status = nav2EvidenceStatus(values);
@@ -2621,7 +2633,8 @@ function plainMapTripExecutionLabel(): string {
 const plainTripExecutionProgress = computed(() => {
   // 这行只解释已有执行证据，不会触发读取、执行、送达确认或任何底盘命令。
   if (navGoalExecutionPending.value) {
-    return "行程进度：正在执行图上路线，人在旁边准备停止。";
+    const targetText = plainTripPendingRouteText();
+    return targetText ? `行程进度：正在执行图上路线，${targetText}；人在旁边准备停止。` : "行程进度：正在执行图上路线，人在旁边准备停止。";
   }
   const values = directNav2ExecutionValues();
   const status = nav2EvidenceStatus(values);
@@ -2842,7 +2855,8 @@ function plainTripPreparationFailureHint(): string {
 const plainTripSummary = computed(() => {
   // 普通首屏只说“行程”，不把 Nav2、goal 或 proof 术语放到默认界面。
   if (navGoalExecutionPending.value) {
-    return { state: "执行中", hint: "正在执行行程；人在旁边准备停止。" };
+    const targetText = plainTripPendingRouteText();
+    return { state: "执行中", hint: targetText ? `正在执行图上路线，${targetText}；人在旁边准备停止。` : "正在执行行程；人在旁边准备停止。" };
   }
   if (nav2RefreshPending.value) {
     return { state: "准备中", hint: "正在准备行程；不会发车。" };
@@ -2911,7 +2925,8 @@ const plainTripRouteWysiwygSummary = computed(() => {
 const plainTripRunStatus = computed(() => {
   // 行程状态只解释当前 UI gate；真正执行仍必须显式点击按钮并由后端复查定位和路线。
   if (navGoalExecutionPending.value) {
-    return "行程状态：正在执行图上路线，人在旁边准备停止。";
+    const targetText = plainTripPendingRouteText();
+    return targetText ? `行程状态：正在执行图上路线，${targetText}；人在旁边准备停止。` : "行程状态：正在执行图上路线，人在旁边准备停止。";
   }
   if (nav2RefreshPending.value) {
     return "行程状态：正在准备路线，不会发车。";
