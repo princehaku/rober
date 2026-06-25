@@ -3808,6 +3808,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已启动");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：监看或停止自动扫图");
+    const sweepPlan = wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]');
+    expect(sweepPlan.attributes("data-state")).toBe("自动扫图运行中");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-free-roam-sweep-plan[data-state="自动扫图运行中"] polyline');
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("自动扫图运行中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("不是固定路线");
     expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toContain("自动扫图运行中");
@@ -4689,7 +4693,9 @@ describe("App", () => {
     expect(robotMarker.exists()).toBe(true);
     expect(robotMarker.attributes("style")).toContain("left: 50%; top: 50%;");
     expect(robotMarker.attributes("aria-label")).toBe("机器人位置，地图坐标 x=0.50, y=0.50");
-    expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]').exists()).toBe(true);
+    const sweepPlan = wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]');
+    expect(sweepPlan.exists()).toBe(true);
+    expect(sweepPlan.attributes("data-state")).toBe("只读计划");
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("从当前位置接入");
     const sweepStart = wrapper.find('[data-testid="plain-map-free-roam-start-marker"]');
     expect(sweepStart.exists()).toBe(true);

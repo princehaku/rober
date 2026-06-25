@@ -1283,12 +1283,14 @@ function latestFreeRoamSweepPlanOverlay(robotPose: ReturnType<typeof latestRobot
     points.push(`${startX.toFixed(2)},${y.toFixed(2)}`);
     points.push(`${endX.toFixed(2)},${y.toFixed(2)}`);
   }
-  const activeAutonomyText = freeRoamAutonomyRuntimeActive()
+  const activeAutonomy = freeRoamAutonomyRuntimeActive();
+  const activeAutonomyText = activeAutonomy
     ? "自动扫图运行中，草图用于监看覆盖，不是固定路线。"
     : "只读计划，不会自动移动。";
   return {
     points: points.join(" "),
     laneCount,
+    state: activeAutonomy ? "自动扫图运行中" : "只读计划",
     showStart: Boolean(robotStart),
     startStyle: robotStart ? { left: `${robotStart.left.toFixed(2)}%`, top: `${robotStart.top.toFixed(2)}%` } : {},
     label: robotStart
@@ -1760,6 +1762,7 @@ const plainMapVisualSummary = computed(() => {
     routeEndpointMarkers: routePath?.endpoints.filter((point) => point.id === "start" || !routeGoal) ?? [],
     showFreeRoamSweepPlan: Boolean(freeRoamSweepPlan),
     freeRoamSweepPlanPoints: freeRoamSweepPlan?.points ?? "",
+    freeRoamSweepPlanState: freeRoamSweepPlan?.state ?? "",
     freeRoamSweepPlanAria: freeRoamSweepPlan?.label ?? "",
     freeRoamSweepPlanLabel: freeRoamSweepPlan?.label ?? "",
     showFreeRoamSweepStart: freeRoamSweepPlan?.showStart ?? false,
@@ -7691,7 +7694,7 @@ onBeforeUnmount(() => {
                 <svg v-if="plainMapVisualSummary.showRoutePath" class="plain-map-route-path" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-route-path" :data-state="plainMapVisualSummary.routePathState" :aria-label="plainMapVisualSummary.routePathAria">
                   <polyline :points="plainMapVisualSummary.routePathPoints" />
                 </svg>
-                <svg v-if="plainMapVisualSummary.showFreeRoamSweepPlan" class="plain-map-free-roam-sweep-plan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-free-roam-sweep-plan" :aria-label="plainMapVisualSummary.freeRoamSweepPlanAria">
+                <svg v-if="plainMapVisualSummary.showFreeRoamSweepPlan" class="plain-map-free-roam-sweep-plan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-free-roam-sweep-plan" :data-state="plainMapVisualSummary.freeRoamSweepPlanState" :aria-label="plainMapVisualSummary.freeRoamSweepPlanAria">
                   <polyline :points="plainMapVisualSummary.freeRoamSweepPlanPoints" />
                 </svg>
                 <span

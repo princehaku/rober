@@ -580,6 +580,12 @@ h3 {
   filter: drop-shadow(0 1px 2px rgba(67, 48, 18, 0.22));
 }
 
+.plain-map-free-roam-sweep-plan[data-state="自动扫图运行中"] polyline {
+  stroke: #1f8a50;
+  stroke-dasharray: 7 2;
+  filter: drop-shadow(0 1px 2px rgba(23, 96, 57, 0.28));
+}
+
 .plain-map-grid-line {
   position: absolute;
   background: #bdc7d3;

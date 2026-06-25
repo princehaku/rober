@@ -2219,6 +2219,11 @@ Nav2、delivery complete、stop 或 `/cmd_vel`。
 草图用于监看覆盖，不是固定路线”。这只修正同屏 WYSIWYG 文案，不生成 Nav2 路线、不改自动扫图状态机、不发送
 manual/keyboard pulse/stop/Nav2/delivery 或 `/cmd_vel`。
 
+2026-06-26 08:00 起，`扫地图草图` SVG 也带 `data-state`：普通人工扫图阶段为 `只读计划`，自动扫图 start 已转发或上车端
+runtime 运行时为 `自动扫图运行中` 并使用独立监看覆盖视觉态。测试锁定运行态 CSS 选择器，避免文字已经提示自动扫图运行中，
+但地图草图仍看起来像未启动的只读计划。该状态只影响 PC 地图呈现，不生成 Nav2 路线、不发送 manual/keyboard pulse、
+stop、Nav2、delivery 或 `/cmd_vel`。
+
 2026-06-26 02:05 起，普通首屏扫地式建图点击 `保存当前地图` 后，保存代理返回成功会自动触发一次只读地图 preview 刷新，
 并把 `扫图状态` 和 `地图画面` 提示更新为“地图已保存，地图画面已自动刷新”。该刷新只读取
 `/api/robot-control/map/preview`，不发送 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
