@@ -3760,6 +3760,20 @@ const plainGoalProgressPrimaryActionLabel = computed(() => {
   return target ? `去${target.label.replace("执行", "").replace("确认", "")}卡点` : "全部完成";
 });
 
+const plainGoalProgressPanelState = computed(() => {
+  // 外层状态只汇总现有四个收口目标；不把历史材料或单项成功误写成整轮完成。
+  if (deliveryCompletionPending.value) {
+    return "确认中";
+  }
+  if (navGoalExecutionPending.value) {
+    return "执行中";
+  }
+  if (plainGoalProgressPending.value || mapWysiwygRefreshPending.value) {
+    return "刷新中";
+  }
+  return plainGoalProgressPrimaryTarget.value ? "待处理" : "已完成";
+});
+
 const plainGoalProgressStateSummary = computed(() => {
   // 四个目标的当前结论压成一行，方便现场先看全局状态再按下一步执行。
   const fragments = plainGoalProgressItems.value.map((item) => `${item.label}${item.state}`);
@@ -8050,9 +8064,10 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="keyboard-control-guide">{{ plainKeyboardControlGuide }}</p>
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
-          <div class="plain-goal-progress" data-testid="plain-goal-progress">
+          <div class="plain-goal-progress" :data-state="plainGoalProgressPanelState" data-testid="plain-goal-progress">
             <div class="simple-status-row">
               <strong>本轮进度</strong>
+              <span class="status-chip" :data-state="plainGoalProgressPanelState" data-testid="plain-goal-progress-panel-state">{{ plainGoalProgressPanelState }}</span>
               <button type="button" class="secondary compact-stop" :disabled="!plainGoalProgressPrimaryTarget" data-testid="plain-goal-progress-primary-action" @click="focusPlainGoalProgressTarget(plainGoalProgressPrimaryTarget)">
                 {{ plainGoalProgressPrimaryActionLabel }}
               </button>

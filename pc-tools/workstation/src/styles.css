@@ -1318,6 +1318,26 @@ h3 {
   padding-top: 12px;
 }
 
+.plain-goal-progress[data-testid="plain-goal-progress"] {
+  border-left: 3px solid #8c959f;
+  padding-left: 10px;
+  background: #f8fafc;
+}
+
+.plain-goal-progress[data-testid="plain-goal-progress"][data-state="待处理"],
+.plain-goal-progress[data-testid="plain-goal-progress"][data-state="执行中"],
+.plain-goal-progress[data-testid="plain-goal-progress"][data-state="确认中"] {
+  border-left-color: #9a6700;
+}
+
+.plain-goal-progress[data-testid="plain-goal-progress"][data-state="刷新中"] {
+  border-left-color: #0969da;
+}
+
+.plain-goal-progress[data-testid="plain-goal-progress"][data-state="已完成"] {
+  border-left-color: #1a7f37;
+}
+
 .plain-goal-progress strong,
 .plain-progress-label {
   color: #253341;

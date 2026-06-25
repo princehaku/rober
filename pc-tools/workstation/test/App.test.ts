@@ -3443,6 +3443,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(firstScreenText).toContain("当前方向：未按键");
     expect(firstScreenText).toContain("本轮进度");
+    const plainGoalProgress = wrapper.find('[data-testid="plain-goal-progress"]');
+    expect(plainGoalProgress.attributes("data-state")).toBe("待处理");
+    expect(wrapper.find('[data-testid="plain-goal-progress-panel-state"]').text()).toBe("待处理");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
@@ -3490,6 +3493,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="待确认"]');
     expect(workstationStyles).toContain('.plain-free-roam-readiness[data-state="未满足"]');
     expect(workstationStyles).toContain('.plain-free-roam-coverage[data-state="已扫出"]');
+    expect(workstationStyles).toContain('.plain-goal-progress[data-testid="plain-goal-progress"][data-state="待处理"]');
+    expect(workstationStyles).toContain('.plain-goal-progress[data-testid="plain-goal-progress"][data-state="已完成"]');
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
@@ -11553,9 +11558,12 @@ describe("App", () => {
     expect(deliveryStatus.text()).toContain("正在提交送达确认；不会发车，结果返回前先保持现场接管。");
     const deliveryFinal = wrapper.find('[data-testid="plain-delivery-final-confirm"]');
     expect(deliveryFinal.attributes("data-state")).toBe("确认中");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').attributes("data-state")).toBe("确认中");
+    expect(wrapper.find('[data-testid="plain-goal-progress-panel-state"]').text()).toBe("确认中");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-delivery-status[data-state="确认中"]');
     expect(workstationStyles).toContain('.plain-delivery-final[data-state="确认中"]');
+    expect(workstationStyles).toContain('.plain-goal-progress[data-testid="plain-goal-progress"][data-state="确认中"]');
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认中");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(true);
