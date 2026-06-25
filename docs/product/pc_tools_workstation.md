@@ -2173,6 +2173,11 @@ delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不�
 execute/latest readback 到地图 WYSIWYG 状态，不自动准备材料、不提交送达、不再次执行 Nav2、不发送 manual/keyboard pulse、
 stop 或 `/cmd_vel`。
 
+2026-06-26 03:12 起，如果本轮 `delivery success` 已通过且 route/map ref 对齐当前 Nav2 execution evidence，
+普通首屏地图 caption 也会从 `已到达，准备送达材料` 升级为 `行程执行：已送达，反馈 N 次，delivery gate 已确认`，和地图终点
+marker 的 `已送达` 保持一致。该 caption 只消费已读到的 delivery latest/complete 与 Nav2 evidence，不自动提交送达、
+不再次执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。
+
 2026-06-26 02:35 起，普通首屏实时画面在 WebRTC video track 已到达但浏览器 `<video>` 还没有可绘制帧时，显示
 `等待画面` 和“视频已接入，等待浏览器绘出第一帧”，不再提前显示 `已打开`。只有本地 video 元素读到尺寸/readyState
 或 frame callback 后，才进入已打开/画面可见/画面偏暗判断。该状态只消费浏览器本地 video 诊断，不调用

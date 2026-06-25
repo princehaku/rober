@@ -3200,6 +3200,9 @@ function plainMapTripExecutionLabel(): string {
     return "";
   }
   if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    if (deliverySuccessReady.value) {
+      return `行程执行：已送达，反馈 ${nav2FeedbackSampleCount(values)} 次，delivery gate 已确认`;
+    }
     return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，准备送达材料`;
   }
   if (nav2GoalSucceeded(values) && evidenceIsStale(values)) {
