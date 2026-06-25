@@ -3239,7 +3239,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const firstScreenCards = wrapper.findAll(".robot-console-grid > .snapshot-panel");
-    expect(firstScreenCards).toHaveLength(5);
+    expect(firstScreenCards).toHaveLength(6);
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("Rober 小车控制台");
     expect(firstScreenText).toContain("连接小车、查看画面和地图，必要时一键停止。");
@@ -3259,6 +3259,11 @@ describe("App", () => {
     expect(firstScreenText).toContain("地图列表");
     expect(firstScreenText).toContain("重新建图");
     expect(firstScreenText).toContain("保存地图");
+    expect(firstScreenText).toContain("扫地式建图");
+    expect(firstScreenText).toContain("先建图，再低速扫一圈，最后保存。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("勾选现场安全确认");
     expect(firstScreenText).toContain("待试动");
     expect(firstScreenText).toContain("现场画面已记录；可以试动一下。");
     expect(firstScreenText).toContain("重新定位");
@@ -3369,6 +3374,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
     const simpleUserConsoleText = wrapper.find(".simple-user-console").text();
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(simpleUserConsoleText).not.toContain(token);

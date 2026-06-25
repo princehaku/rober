@@ -90,6 +90,7 @@ const mapLifecyclePending = ref(false);
 const mapPreviewPending = ref(false);
 const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
+const plainFreeRoamMappingConfirmed = ref(false);
 const operatorReportPending = ref(false);
 const operatorReportResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainMotionPrecheckPending = ref(false);
@@ -808,6 +809,55 @@ const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
 const canPressKeyboardDirection = computed(() => keyboardControlArmed.value && canUseKeyboardControl.value);
 const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES);
 const keyboardStopSettledAfterPulse = computed(() => keyboardManualPulseObserved.value && !keyboardHeldDirection.value && keyboardControlStatus.value.startsWith("stop_sent"));
+const mapRuntimeStarted = computed(() => (
+  mapLifecycleResult.value?.action === "start"
+  && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
+  && mapLifecycleResult.value.command_result.executed === true
+));
+const mapSavedThisSession = computed(() => (
+  mapLifecycleResult.value?.action === "save"
+  && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
+));
+const canStartPlainFreeRoamMapping = computed(() => (
+  plainFreeRoamMappingConfirmed.value
+  && !loading.value
+  && !mapLifecyclePending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const canSavePlainFreeRoamMapping = computed(() => (
+  plainFreeRoamMappingConfirmed.value
+  && mapRuntimeStarted.value
+  && !loading.value
+  && !mapLifecyclePending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const plainFreeRoamMappingSummary = computed(() => {
+  // 扫地式建图向导只编排已有安全入口；自由跑动仍必须由键盘低速脉冲和停止按钮兜底。
+  if (!robotApiBaseUrl.value.trim()) {
+    return { state: "未连接", hint: "先连接默认小车，再开始扫地式建图。" };
+  }
+  if (!plainFreeRoamMappingConfirmed.value) {
+    return { state: "待确认", hint: "勾选现场安全确认后，才允许启动建图向导。" };
+  }
+  if (mapLifecyclePending.value || mapPreviewPending.value) {
+    return { state: "处理中", hint: "正在处理地图动作，请等状态回到稳定后再移动或保存。" };
+  }
+  if (mapSavedThisSession.value) {
+    return { state: "已保存", hint: "地图已保存；刷新地图画面后可检查 free cell 和路线可用性。" };
+  }
+  if (mapRuntimeStarted.value) {
+    return canUseKeyboardControl.value
+      ? { state: "扫图中", hint: "建图已启动。按住方向键/WASD 低速扫一圈，松开即停，随时点停止。" }
+      : { state: "待手控", hint: `建图已启动，但键盘移动条件还没满足。${plainKeyboardNextActionSummary.value}` };
+  }
+  return { state: "可开始", hint: "先开始建图，再按住方向键让小车低速走一圈，最后保存地图。" };
+});
+const plainFreeRoamMappingStartLabel = computed(() => (
+  mapLifecyclePending.value && mapLifecycleResult.value?.action !== "save" ? "启动中" : mapRuntimeStarted.value ? "重新开始建图" : "开始扫地式建图"
+));
+const plainFreeRoamMappingSaveLabel = computed(() => (
+  mapLifecyclePending.value && mapLifecycleResult.value?.action === "save" ? "保存中" : "保存当前地图"
+));
 const keyboardForwardedPulseProgressText = computed(() => {
   // 验证必须来自同一次按住会话；历史最佳只用于提示，不把分散单脉冲累加成连续手控。
   if (keyboardManualPulseObserved.value) {
@@ -5333,6 +5383,34 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note">{{ mapSummary.hint }}</p>
           <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
+        </article>
+
+        <article class="snapshot-panel plain-free-roam-map" data-testid="plain-free-roam-mapping">
+          <h3>扫地式建图</h3>
+          <div class="simple-status-row">
+            <span class="status-chip" :data-state="plainFreeRoamMappingSummary.state">{{ plainFreeRoamMappingSummary.state }}</span>
+            <span class="muted">先建图，再低速扫一圈，最后保存。</span>
+          </div>
+          <label class="plain-trip-confirm">
+            <input v-model="plainFreeRoamMappingConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
+            <span>人在旁边、周围安全、可以随时按停止</span>
+          </label>
+          <div class="panel-action-row wrap-actions">
+            <button type="button" :disabled="!canStartPlainFreeRoamMapping" data-testid="plain-free-roam-start" @click="startMapRuntime">
+              {{ plainFreeRoamMappingStartLabel }}
+            </button>
+            <button type="button" class="secondary compact-stop" :disabled="!canArmKeyboardControl || !plainFreeRoamMappingConfirmed" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
+              启用键盘扫图
+            </button>
+            <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
+              停止
+            </button>
+            <button type="button" class="secondary compact-stop" :disabled="!canSavePlainFreeRoamMapping" data-testid="plain-free-roam-save" @click="saveMap">
+              {{ plainFreeRoamMappingSaveLabel }}
+            </button>
+          </div>
+          <p class="panel-note" data-testid="plain-free-roam-hint">{{ plainFreeRoamMappingSummary.hint }}</p>
+          <p class="panel-note">按住方向键或 W/A/S/D 移动，松开即停；保存后刷新地图画面检查效果。</p>
         </article>
 
         <article class="snapshot-panel">
