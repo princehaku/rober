@@ -2133,6 +2133,11 @@ Nav2 execute/latest readback，不自动重试、不执行 Nav2、不发送 manu
 未证明启动或停止。该反馈只消费 PC 固定代理响应，不新增任意 endpoint、manual、keyboard pulse、Nav2、delivery complete
 或 `/cmd_vel` 调用，也不修改 Clash 或系统代理配置。
 
+2026-06-26 01:51 起，普通首屏自动扫图 start/stop 失败时，地图 marker 和 `扫图状态` 会同步显示短失败原因，例如
+`自动扫图启动失败：安全确认未通过`、`自动扫图条件未满足`、`等待上车端超时`。该短文案只翻译 PC 固定代理的
+`failure_reason/blocked_reasons`，完整诊断仍留在高级区；不会自动重试、不发送 manual、keyboard pulse、Nav2、
+delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-26 01:25 起，普通首屏 `自动扫图` start 成功后，扫地式建图卡片的 `下一步` 不再继续指向人工键盘；
 按钮改为 `下一步：监看或停止自动扫图`，点击只聚焦 `停止自动扫图`。stop 请求转发成功后，`下一步` 再按扫图画面是否已刷新
 回到 `保存当前地图` 或 `刷新扫图画面`。该调整只修正自动扫图运行/收口流程的焦点和文案，不自动停止、不自动保存、

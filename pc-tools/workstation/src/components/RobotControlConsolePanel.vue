@@ -1208,6 +1208,31 @@ function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRob
   };
 }
 
+function freeRoamAutonomyFailureText(result: RobotControlFreeRoamAutonomyResponse | null): string {
+  // 自动扫图失败原因要在普通首屏可读；完整 blocked reasons 仍留在高级诊断。
+  if (!result || result.proxy_status !== "autonomy_failed") {
+    return "";
+  }
+  const raw = result.failure_reason || result.blocked_reasons?.[0] || result.command_result.mode || "request_failed";
+  const reason = raw.toLowerCase();
+  if (reason.includes("safety") || reason.includes("confirm_operator")) {
+    return "安全确认未通过";
+  }
+  if (reason.includes("mapping") || reason.includes("map_runtime") || reason.includes("map lifecycle")) {
+    return "地图记录未启动";
+  }
+  if (reason.includes("not_ready") || reason.includes("gate") || reason.includes("locked")) {
+    return "自动扫图条件未满足";
+  }
+  if (reason.includes("timeout")) {
+    return "等待上车端超时";
+  }
+  if (reason.includes("fetch") || reason.includes("network")) {
+    return "上位机没有回应";
+  }
+  return "请求失败";
+}
+
 function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
   // 扫图流程 marker 把“记录中/已停/可保存/保存中”贴回地图，避免状态只散落在按钮文案里。
   const style = robotPose
@@ -1228,11 +1253,14 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label: "自动扫图停止中", state: "auto_stopping", style, aria: `上车端自动扫图状态机正在停止${locatedSuffix}` };
   }
   if (autonomyResult?.proxy_status === "autonomy_failed") {
+    const actionText = autonomyResult.action === "start" ? "启动" : "停止";
+    const failureText = freeRoamAutonomyFailureText(autonomyResult);
+    const label = failureText ? `自动扫图${actionText}失败：${failureText}` : `自动扫图${actionText}失败`;
     return {
-      label: autonomyResult.action === "start" ? "自动扫图启动失败" : "自动扫图停止失败",
+      label,
       state: "auto_failed",
       style,
-      aria: `自动扫图${autonomyResult.action === "start" ? "启动" : "停止"}请求失败${locatedSuffix}`,
+      aria: `${label}${locatedSuffix}`,
     };
   }
   if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "start") {
@@ -1620,9 +1648,11 @@ const plainFreeRoamDriveStatus = computed(() => {
     return "扫图状态：正在请求上车端自动扫图停止，红色停止仍可随时兜底。";
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
+    const failureText = freeRoamAutonomyFailureText(freeRoamAutonomyResult.value);
+    const reasonSuffix = failureText ? `：${failureText}` : "";
     return freeRoamAutonomyResult.value.action === "start"
-      ? "扫图状态：自动扫图启动失败，未证明上车状态机已启动；继续人工按住扫图或重试。"
-      : "扫图状态：自动扫图停止失败，未证明上车状态机已停止；必要时点击红色停止。";
+      ? `扫图状态：自动扫图启动失败${reasonSuffix}，未证明上车状态机已启动；继续人工按住扫图或重试。`
+      : `扫图状态：自动扫图停止失败${reasonSuffix}，未证明上车状态机已停止；必要时点击红色停止。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
     return "扫图状态：自动扫图状态机已启动，地图和雷达监看中；需要收口时点击停止自动扫图或红色停止。";
