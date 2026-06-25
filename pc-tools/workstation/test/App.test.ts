@@ -5334,9 +5334,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
-    expect(marker.text()).toBe("行程未通过");
+    expect(marker.text()).toBe("行程未通过：规划失败");
     expect(marker.attributes("data-state")).toBe("行程未通过");
-    expect(marker.attributes("aria-label")).toBe("行程未通过，地图坐标 x=0.80, y=0.00");
+    expect(marker.attributes("aria-label")).toBe("行程未通过，失败原因规划失败，地图坐标 x=0.80, y=0.00");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：最近行程未通过，先检查或重新执行完整行程。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

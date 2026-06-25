@@ -938,11 +938,16 @@ function latestNavGoalOverlay() {
     ? "已送达"
     : complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : succeeded ? "到达缺反馈" : "行程未通过";
   const deliveryText = state === "已送达" ? "，delivery gate 已确认" : state === "已到达" ? "，下一步准备送达材料" : "";
+  const failureText = state === "行程未通过"
+    ? plainTripFailureReasonText(navGoalExecutionResult.value ?? navGoalExecutionLatestResult.value, values)
+    : "";
+  const label = failureText ? `${state}：${failureText}` : state;
+  const failureAria = failureText ? `，失败原因${failureText}` : "";
   return {
-    label: state,
+    label,
     state,
     style,
-    aria: `${state}${deliveryText}，地图坐标 x=${goalX.toFixed(2)}, y=${goalY.toFixed(2)}`,
+    aria: `${state}${failureAria}${deliveryText}，地图坐标 x=${goalX.toFixed(2)}, y=${goalY.toFixed(2)}`,
   };
 }
 
@@ -2360,6 +2365,39 @@ function nav2FeedbackSampleCount(values: Record<string, string> | undefined): nu
   // 完整行程不仅要 success，还要读到执行过程反馈样本；缺字段按 0 处理，避免把空摘要当成完整路线。
   const parsed = Number(values?.feedback_sample_count ?? values?.nav2_feedback_sample_count ?? "0");
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function plainTripFailureReasonText(result: { failure_reason?: string } | null | undefined, values: Record<string, string> | undefined): string {
+  // 地图 marker 空间有限；把常见后端英文原因翻译成普通用户能判断的短原因。
+  const raw = [
+    result?.failure_reason,
+    values?.failure_reason,
+    values?.result_status,
+    nav2EvidenceStatus(values),
+  ].find((item) => item && item !== "not_loaded" && item !== "goal_succeeded") ?? "";
+  const reason = raw.toLowerCase();
+  if (!reason) {
+    return "";
+  }
+  if (reason.includes("planner")) {
+    return "规划失败";
+  }
+  if (reason.includes("timeout")) {
+    return "等待超时";
+  }
+  if (reason.includes("obstacle") || reason.includes("collision")) {
+    return "被障碍挡住";
+  }
+  if (reason.includes("controller") || reason.includes("control")) {
+    return "控制失败";
+  }
+  if (reason.includes("rejected") || reason.includes("preflight") || reason.includes("blocked")) {
+    return "条件未通过";
+  }
+  if (reason.includes("abort") || reason.includes("cancel")) {
+    return "已中止";
+  }
+  return "执行失败";
 }
 
 function directNav2ExecutionValues(): Record<string, string> | undefined {
