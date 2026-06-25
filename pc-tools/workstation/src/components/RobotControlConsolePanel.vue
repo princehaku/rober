@@ -256,6 +256,12 @@ let previewFrameSampleTimers: number[] = [];
 let keyboardJogTimer: number | null = null;
 let keyboardJogInFlight = false;
 let keyboardStopAfterPulseReason: string | null = null;
+const keyboardControlOwnerId = `keyboard-owner-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const KEYBOARD_CONTROL_OWNER_KEY = "__roberPcKeyboardControlOwner" as const;
+
+type KeyboardControlWindow = Window & typeof globalThis & {
+  __roberPcKeyboardControlOwner?: string;
+};
 
 const selectedTaskSummary = computed(() => {
   // task_id 是回放和 evidence 的主键；没有 task_id 时保持 blocked 空状态。
@@ -6069,13 +6075,41 @@ function eventTargetIsEditable(target: EventTarget | null): boolean {
 }
 
 function eventTargetIsKeyboardControlScope(target: EventTarget | null): boolean {
-  // 连续手控必须发生在明确聚焦的键盘面板里，避免普通页面快捷键误触底盘。
-  const panel = keyboardControlPanel.value;
-  return Boolean(panel && target instanceof Node && panel.contains(target));
+  // 启用后就是全页面键盘窗口；真正的安全边界由 armed、editable 拦截和后端 manual gate 负责。
+  void target;
+  return true;
+}
+
+function keyboardControlWindow(): KeyboardControlWindow {
+  // 全局键盘事件可能被测试或热更新留下多个组件实例监听；owner 令牌保证只有当前启用的实例响应。
+  return window as KeyboardControlWindow;
+}
+
+function setKeyboardControlOwner(): void {
+  // 点击启用键盘才拿到全局按键所有权；新挂载实例会先清空旧 owner。
+  keyboardControlWindow()[KEYBOARD_CONTROL_OWNER_KEY] = keyboardControlOwnerId;
+}
+
+function clearKeyboardControlOwner(): void {
+  // 只清理自己的 owner，避免误关掉另一个刚启用的控制台实例。
+  if (keyboardControlWindow()[KEYBOARD_CONTROL_OWNER_KEY] === keyboardControlOwnerId) {
+    keyboardControlWindow()[KEYBOARD_CONTROL_OWNER_KEY] = "";
+  }
+}
+
+function resetKeyboardControlOwnerOnMount(): void {
+  // 新控制台挂载时默认没有任何实例持有全局按键，必须重新点“启用键盘”。
+  keyboardControlWindow()[KEYBOARD_CONTROL_OWNER_KEY] = "";
+}
+
+function ownsKeyboardControl(): boolean {
+  // armed 只是本实例状态；owner 才能证明当前全局按键应由这个实例处理。
+  return keyboardControlWindow()[KEYBOARD_CONTROL_OWNER_KEY] === keyboardControlOwnerId;
 }
 
 function activateKeyboardControl(): void {
-  // 现场 operator 需要先显式进入键盘面板；页面其他区域按键不触发手控。
+  // 现场 operator 需要先显式启用键盘；启用后全局按键才进入同一个 manual gate。
+  setKeyboardControlOwner();
   keyboardControlArmed.value = true;
   keyboardControlStatus.value = canSendManualMotion.value ? "armed_waiting_for_key" : `blocked_keyboard_manual_gate:${manualBlockedReason.value}`;
   keyboardControlPanel.value?.focus();
@@ -6083,6 +6117,7 @@ function activateKeyboardControl(): void {
 
 function disarmKeyboardControl(reason: string): void {
   // 面板失焦或页面失焦时退出 armed 状态；如果正在运动，先通过统一 stop 路径收口。
+  clearKeyboardControlOwner();
   keyboardControlArmed.value = false;
   if (keyboardHeldDirection.value) {
     stopKeyboardControl(reason);
@@ -6183,7 +6218,7 @@ function handleKeyboardDirectionPointerEnd(direction: ManualDirection, reason: s
 function handleGlobalKeyDown(event: KeyboardEvent): void {
   // 长按产生的 repeat 事件由 timer 接管，避免浏览器 repeat 频率影响底盘命令节奏。
   const direction = keyboardDirectionFromKey(event.key);
-  if (!direction || eventTargetIsEditable(event.target) || !keyboardControlArmed.value || !eventTargetIsKeyboardControlScope(event.target)) {
+  if (!direction || eventTargetIsEditable(event.target) || !keyboardControlArmed.value || !ownsKeyboardControl() || !eventTargetIsKeyboardControlScope(event.target)) {
     return;
   }
   event.preventDefault();
@@ -6199,7 +6234,7 @@ function handleGlobalKeyDown(event: KeyboardEvent): void {
 function handleGlobalKeyUp(event: KeyboardEvent): void {
   // 松开当前方向键即停；松开非当前方向键不影响正在按住的方向。
   const direction = keyboardDirectionFromKey(event.key);
-  if (!direction || !keyboardControlArmed.value || !eventTargetIsKeyboardControlScope(event.target) || keyboardHeldDirection.value !== direction) {
+  if (!direction || !keyboardControlArmed.value || !ownsKeyboardControl() || !eventTargetIsKeyboardControlScope(event.target) || keyboardHeldDirection.value !== direction) {
     return;
   }
   event.preventDefault();
@@ -6207,12 +6242,12 @@ function handleGlobalKeyUp(event: KeyboardEvent): void {
 }
 
 function handleKeyboardControlFocusOut(event: FocusEvent): void {
-  // 焦点离开键盘面板就退出手控窗口，防止 operator 去填表时旧按键状态继续有效。
+  // 启用后允许 operator 看地图或点击空白处继续按键；只有进入可编辑控件才退出手控窗口。
   const nextTarget = event.relatedTarget;
-  if (nextTarget instanceof Node && keyboardControlPanel.value?.contains(nextTarget)) {
+  if (!(nextTarget instanceof HTMLElement) || !eventTargetIsEditable(nextTarget)) {
     return;
   }
-  disarmKeyboardControl("focus_lost");
+  disarmKeyboardControl("editable_focus");
 }
 
 function handlePageVisibilityChange(): void {
@@ -6395,6 +6430,7 @@ watch(manualBoundary, () => {
 
 onMounted(() => {
   // 初次加载直接读取固定上位机地址的摘要；控制动作仍需要显式点击或按键。
+  resetKeyboardControlOwnerOnMount();
   window.addEventListener("keydown", handleGlobalKeyDown);
   window.addEventListener("keyup", handleGlobalKeyUp);
   window.addEventListener("blur", handleWindowBlur);
@@ -6407,6 +6443,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   // 卸载时先退出键盘循环，再释放视频资源；远端 cleanup 尽量执行但不能阻塞组件销毁。
+  clearKeyboardControlOwner();
   clearKeyboardJogTimer();
   window.removeEventListener("keydown", handleGlobalKeyDown);
   window.removeEventListener("keyup", handleGlobalKeyUp);

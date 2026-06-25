@@ -8157,8 +8157,13 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("已启用");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
-    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
-    await keyboardPanel.trigger("keydown", { key: "w" });
+    const manualCallsBeforeEditableKey = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    wrapper.find('input[name="plainExternalVideoRef"]').element.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeEditableKey);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("手控中");
@@ -8170,7 +8175,7 @@ describe("App", () => {
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItemAfterFirstPulse?.attributes("data-ready")).toBe("false");
     expect(keyboardClosureItemAfterFirstPulse?.text()).toContain("本次按住 1/2 次");
-    await keyboardPanel.trigger("keyup", { key: "w" });
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
@@ -8182,7 +8187,7 @@ describe("App", () => {
     expect(keyboardClosureItemAfterSplitPulse?.attributes("data-ready")).toBe("false");
     expect(keyboardClosureItemAfterSplitPulse?.text()).toContain("最佳连续 1/2 次");
 
-    await keyboardPanel.trigger("keydown", { key: "w" });
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次。");
@@ -8212,7 +8217,7 @@ describe("App", () => {
       duration_ms: 240,
       confirm_hil_checklist: true,
     }));
-    await keyboardPanel.trigger("keyup", { key: "w" });
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");

@@ -2054,3 +2054,8 @@ Nav2 execute gate、delivery complete、manual/keyboard pulse、stop 或 `/cmd_v
 读取一张当前相机样张，再把样张 ref 作为现场画面材料提交到固定 operator report 代理；提交时会标明
 `visible_content_proven` 和 `camera_artifacts_ref` 来自这张样张。它不会发送 first-jog、manual、Nav2 execute、
 delivery complete、stop 或 `/cmd_vel`。原 `记录画面` 仍保留给手填手机视频编号。
+
+2026-06-25 23:14 起，普通首屏键盘手控在显式点击 `启用键盘` 后，不再要求焦点停留在键盘面板内；
+operator 可以一边看地图/雷达/画面，一边用全局 W/A/S/D 或方向键按住连续低速手控。输入框、文本域和下拉框内
+仍不会截获这些按键，窗口失焦、页面隐藏或进入可编辑控件仍会退出连续手控窗口；所有运动仍只走固定
+`base/manual` 短脉冲代理和松开 stop 收口，不新增浏览器直连 `/cmd_vel`。
