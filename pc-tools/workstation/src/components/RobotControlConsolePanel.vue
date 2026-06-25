@@ -769,6 +769,16 @@ const canRefreshNav2Proof = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canRefreshMapProof = computed(() => (
+  !loading.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const canRefreshMapPreview = computed(() => (
+  !loading.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const plainRadarStartButtonLabel = computed(() => {
   if (plainRadarStartUnavailable.value) {
     return "雷达未配置";
@@ -783,6 +793,12 @@ const plainLocalizationResetButtonLabel = computed(() => (
 ));
 const nav2ProofRefreshButtonLabel = computed(() => (
   mapWysiwygRefreshPending.value ? "等待地图刷新" : "检查路径（高级）"
+));
+const mapProofRefreshButtonLabel = computed(() => (
+  mapWysiwygRefreshPending.value ? "等待地图刷新" : "刷新地图"
+));
+const mapPreviewRefreshButtonLabel = computed(() => (
+  mapWysiwygRefreshPending.value ? "等待地图刷新" : "刷新地图画面"
 ));
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
@@ -1858,14 +1874,12 @@ const plainFreeRoamMappingSaveLabel = computed(() => (
 ));
 const canRefreshPlainFreeRoamMapPreview = computed(() => (
   (mapRuntimeStarted.value || mapSavedThisSession.value)
-  && !loading.value
-  && !mapPreviewPending.value
-  && robotApiBaseUrl.value.trim().length > 0
+  && canRefreshMapPreview.value
 ));
 const plainFreeRoamMapPreviewLabel = computed(() => {
   // 扫图卡片内的画面刷新只读地图预览，必须等记录启动后才作为流程按钮出现。
-  if (mapPreviewPending.value) {
-    return "刷新中";
+  if (mapWysiwygRefreshPending.value) {
+    return "等待地图刷新";
   }
   return mapRuntimeStarted.value || mapSavedThisSession.value ? "刷新扫图画面" : "先开始记录";
 });
@@ -5657,7 +5671,7 @@ async function refreshConsole(): Promise<void> {
 
 async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean } = {}): Promise<void> {
   // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
-  if (!robotApiBaseUrl.value.trim() || mapPreviewPending.value) {
+  if (!robotApiBaseUrl.value.trim() || mapWysiwygRefreshPending.value) {
     return;
   }
   const refreshStartedDuringFreeRoamRuntime = options.countForFreeRoamSession === true && mapRuntimeStarted.value;
@@ -5778,6 +5792,9 @@ async function stopRadarLifecycle(): Promise<void> {
 
 async function refreshMapProof(): Promise<void> {
   // Map refresh 只刷新 no-motion map proof snapshot，不开启建图、导航或路径执行。
+  if (mapWysiwygRefreshPending.value) {
+    return;
+  }
   await runRefreshAction(
     "map_proof_refresh",
     () => postRobotControlMapProofRefresh(robotApiBaseUrl.value),
@@ -7483,11 +7500,11 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="panel-action-row wrap-actions">
-            <button type="button" :disabled="loading || mapRefreshPending || !robotApiBaseUrl.trim()" @click="refreshMapProof">
-              刷新地图
+            <button type="button" :disabled="!canRefreshMapProof" data-testid="plain-map-proof-refresh" @click="refreshMapProof">
+              {{ mapProofRefreshButtonLabel }}
             </button>
-            <button type="button" :disabled="loading || mapPreviewPending || !robotApiBaseUrl.trim()" data-testid="plain-map-preview-refresh" @click="refreshMapPreview">
-              刷新地图画面
+            <button type="button" :disabled="!canRefreshMapPreview" data-testid="plain-map-preview-refresh" @click="refreshMapPreview">
+              {{ mapPreviewRefreshButtonLabel }}
             </button>
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
               地图列表
