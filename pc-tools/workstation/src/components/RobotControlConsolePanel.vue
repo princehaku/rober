@@ -93,6 +93,7 @@ const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
 const plainFreeRoamMappingConfirmed = ref(false);
 const plainFreeRoamMapPreviewFreshForSession = ref(false);
+const plainFreeRoamLiveMapPreviewRefreshedForHold = ref(false);
 const operatorReportPending = ref(false);
 const operatorReportResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainVisualMaterialPending = ref(false);
@@ -1269,6 +1270,12 @@ const plainFreeRoamDriveStatus = computed(() => {
     return "扫图状态：还没开始记录，键盘扫图锁定。";
   }
   if (keyboardHeldDirection.value) {
+    if (mapPreviewPending.value && mapRuntimeStarted.value) {
+      return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面刷新中；${keyboardForwardedPulseProgressText.value}。`;
+    }
+    if (plainFreeRoamLiveMapPreviewRefreshedForHold.value) {
+      return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面已跟随刷新；${keyboardForwardedPulseProgressText.value}。`;
+    }
     return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，松开即停；${keyboardForwardedPulseProgressText.value}。`;
   }
   if (keyboardControlStatus.value.startsWith("stop_sent")) {
@@ -1342,7 +1349,9 @@ const plainFreeRoamCoverageSummary = computed(() => {
     primary: free > 0 ? `已扫出 ${free} 个可通行格` : "还没扫出可通行区域",
     secondary: `未知区域 ${percentText(unknownPercent)}，已知区域 ${percentText(knownPercent)}。`,
     guidance: mapRuntimeStarted.value
-      ? "地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。"
+      ? plainFreeRoamLiveMapPreviewRefreshedForHold.value && keyboardHeldDirection.value
+        ? "扫图中地图画面已自动刷新；松开后会再刷新一次用于保存。"
+        : "地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。"
       : mapSavedThisSession.value
         ? "地图已保存，刷新后检查覆盖效果。"
         : "当前显示最近地图画面，开始记录后可边扫边刷新。",
@@ -4486,17 +4495,21 @@ async function refreshConsole(): Promise<void> {
   }
 }
 
-async function refreshMapPreview(options: { countForFreeRoamSession?: boolean } = {}): Promise<void> {
+async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean } = {}): Promise<void> {
   // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
   if (!robotApiBaseUrl.value.trim() || mapPreviewPending.value) {
     return;
   }
   const refreshStartedDuringFreeRoamRuntime = options.countForFreeRoamSession === true && mapRuntimeStarted.value;
+  const liveRefreshDuringFreeRoam = options.freeRoamLiveRefresh === true && mapRuntimeStarted.value;
   mapPreviewPending.value = true;
   try {
     mapPreviewResult.value = await getRobotControlMapPreview(robotApiBaseUrl.value);
     if (refreshStartedDuringFreeRoamRuntime && mapRuntimeStarted.value && mapPreviewResult.value?.proxy_status === "preview_forwarded") {
       plainFreeRoamMapPreviewFreshForSession.value = true;
+    }
+    if (liveRefreshDuringFreeRoam && mapRuntimeStarted.value && mapPreviewResult.value?.proxy_status === "preview_forwarded") {
+      plainFreeRoamLiveMapPreviewRefreshedForHold.value = true;
     }
   } catch {
     mapPreviewResult.value = null;
@@ -5247,6 +5260,7 @@ async function loadMapList(): Promise<void> {
 async function startMapRuntime(): Promise<void> {
   // 普通按钮只走固定 /api/map/start，不接受浏览器传运动、串口或 ROS 参数。
   plainFreeRoamMapPreviewFreshForSession.value = false;
+  plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
   await runMapLifecycleAction("start", () => postRobotControlMapStart(robotApiBaseUrl.value, mapLifecycleRequestBody()));
 }
 
@@ -5568,6 +5582,13 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
     if (pulseForwarded) {
       keyboardHoldPulseCount.value += 1;
       keyboardVerifiedPulseCount.value = Math.max(keyboardVerifiedPulseCount.value, keyboardHoldPulseCount.value);
+      if (
+        mapRuntimeStarted.value
+        && !plainFreeRoamLiveMapPreviewRefreshedForHold.value
+        && keyboardHoldPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES
+      ) {
+        void refreshMapPreview({ freeRoamLiveRefresh: true });
+      }
     }
     if (keyboardHeldDirection.value === direction && pulseForwarded) {
       keyboardControlStatus.value = "holding_keyboard_jog";
@@ -5705,6 +5726,7 @@ function startKeyboardControl(direction: ManualDirection): void {
   clearKeyboardJogTimer();
   keyboardHeldDirection.value = direction;
   keyboardHoldPulseCount.value = 0;
+  plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
   keyboardLastDirection.value = direction;
   keyboardControlStatus.value = "holding_keyboard_jog";
   void sendKeyboardManualPulse(direction);

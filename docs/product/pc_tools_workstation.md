@@ -1924,3 +1924,8 @@ manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`；真实移动�
 让 operator 松开方向键后直接看到更新后的地图覆盖并继续保存地图。该刷新只调用只读
 `GET /api/robot-control/map/preview`，不自动再次发送 manual/keyboard pulse、不启动 Nav2、不提交 delivery complete、
 不发送额外 stop 或 `/cmd_vel`；若地图画面刷新成功，`保存当前地图` 会按原有 gate 变为可用。
+
+2026-06-25 20:52 起，普通首屏“扫地式建图”在按住方向键/WASD 连续扫图达到键盘验证阈值后，会自动刷新一次只读地图画面，
+让覆盖条在扫图过程中跟随更新；状态会显示 `地图画面已跟随刷新`。这次按住中的刷新不计入保存 gate，保存仍需松开并完成
+stop 后的刷新；因此不会鼓励边移动边保存。该刷新不新增 manual/keyboard pulse、不执行 Nav2、不提交 delivery complete、
+不发送 stop 或 `/cmd_vel`。
