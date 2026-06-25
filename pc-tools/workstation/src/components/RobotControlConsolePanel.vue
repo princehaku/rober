@@ -7689,7 +7689,7 @@ onBeforeUnmount(() => {
           <p class="panel-note">{{ plainEvidenceSweepSummary.hint }}</p>
         </article>
 
-        <article class="snapshot-panel">
+        <article class="snapshot-panel plain-camera-panel" data-testid="plain-camera-panel" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
           <h3>实时画面</h3>
           <div class="panel-action-row">
             <button type="button" :disabled="!canStartPreview" @click="startPreview">打开画面</button>

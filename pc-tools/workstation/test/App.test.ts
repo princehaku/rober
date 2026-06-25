@@ -3481,6 +3481,10 @@ describe("App", () => {
     expect(firstScreenText).toContain("先完成本轮行程，再做最终确认。");
     expect(firstScreenText).toContain("还差 9 项：本轮行程、送达材料、人在旁边可接管、周围安全、停止手段就绪、已观察到到达/移动、已观察到停止、视频和行程材料已核对、确认已投放/送达。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
+    const cameraPanel = wrapper.find('[data-testid="plain-camera-panel"]');
+    expect(cameraPanel.exists()).toBe(true);
+    expect(cameraPanel.attributes("data-state")).toBe("未打开");
+    expect(cameraPanel.attributes("data-frame-state")).toBe("未绑定");
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("未打开");
@@ -3490,6 +3494,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
+    expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面可见"][data-frame-state="已绘制帧"]');
+    expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面偏暗"]');
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="待确认"]');
     expect(workstationStyles).toContain('.plain-free-roam-readiness[data-state="未满足"]');
     expect(workstationStyles).toContain('.plain-free-roam-coverage[data-state="已扫出"]');
@@ -11942,7 +11948,10 @@ describe("App", () => {
     const previewFrame = wrapper.find('[data-testid="robot-camera-preview-frame"]');
     expect(previewFrame.attributes("data-state")).toBe("画面可见");
     expect(previewFrame.attributes("data-frame-state")).toBe("已绘制帧");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面可见");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-frame-state")).toBe("已绘制帧");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面可见"][data-frame-state="已绘制帧"]');
     expect(workstationStyles).toContain('video[data-testid="robot-camera-preview-video"][data-frame-state="已绘制帧"]');
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').attributes("data-frame-state")).toBe("已绘制帧");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').exists()).toBe(false);
@@ -12234,7 +12243,10 @@ describe("App", () => {
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面偏暗");
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面太暗，先检查镜头/光线。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面偏暗");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面偏暗");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-frame-state")).toBe("已绘制帧");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面偏暗"]');
     expect(workstationStyles).toContain('.camera-preview-frame[data-state="画面偏暗"]');
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("画面偏暗");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前画面偏暗，先检查镜头或光线。浏览器已绘制视频帧 640x480。");
