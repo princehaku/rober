@@ -1080,13 +1080,13 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
   if (robotPose || points.length === 0) {
-    return { dots: [], label: points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取" };
+    return { dots: [], label: points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取", state: "" };
   }
   const localPoints = points
     .map((point) => scanPointInBaseFrame(point, transform))
     .filter((point): point is { x: number; y: number; transformApplied: boolean } => point !== null);
   if (localPoints.length === 0) {
-    return { dots: [], label: "雷达点位未读取" };
+    return { dots: [], label: "雷达点位未读取", state: "" };
   }
   const radius = Math.max(0.4, ...localPoints.map((point) => Math.hypot(point.x, point.y)));
   const dots = localPoints.map((point, index) => ({
@@ -1097,11 +1097,13 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
   const transformedCount = localPoints.filter((point) => point.transformApplied).length;
   const transformLabel = transform && transformedCount > 0 ? "，已套用雷达外参" : "";
   const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+  const state = liveRadar || !radarState ? "实时局部点" : "最近局部点";
   const statusLabel = liveRadar || !radarState ? "" : `，${radarState}`;
   const prefix = liveRadar || !radarState ? "雷达局部点" : "最近雷达局部点";
   return {
     dots,
     label: `${prefix} ${dots.length} 个${transformLabel}${statusLabel}，等待地图位置`,
+    state,
   };
 }
 
@@ -1741,6 +1743,7 @@ const plainMapVisualSummary = computed(() => {
     radarScanAria: `雷达点位，${radarScanOverlay.label}`,
     radarLocalScanDots: radarLocalScanOverlay.dots,
     showRadarLocalScan: radarLocalScanOverlay.dots.length > 0,
+    radarLocalScanState: radarLocalScanOverlay.state,
     radarLocalScanAria: `雷达局部点位，${radarLocalScanOverlay.label}`,
     mapImageFreshnessLabel: plainMapImageFreshnessLabel(previewLoaded),
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
@@ -7717,7 +7720,7 @@ onBeforeUnmount(() => {
                 <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">
                   <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.15" />
                 </svg>
-                <svg v-if="plainMapVisualSummary.showRadarLocalScan" class="plain-map-radar-local-scan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-local-scan" :aria-label="plainMapVisualSummary.radarLocalScanAria">
+                <svg v-if="plainMapVisualSummary.showRadarLocalScan" class="plain-map-radar-local-scan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-local-scan" :data-state="plainMapVisualSummary.radarLocalScanState" :aria-label="plainMapVisualSummary.radarLocalScanAria">
                   <line x1="50" y1="44" x2="50" y2="56" />
                   <line x1="44" y1="50" x2="56" y2="50" />
                   <circle v-for="point in plainMapVisualSummary.radarLocalScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.6" />

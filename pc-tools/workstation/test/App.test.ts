@@ -4737,8 +4737,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
     const localScan = wrapper.find('[data-testid="plain-map-radar-local-scan"]');
     expect(localScan.exists()).toBe(true);
+    expect(localScan.attributes("data-state")).toBe("实时局部点");
     expect(localScan.attributes("aria-label")).toBe("雷达局部点位，雷达局部点 3 个，等待地图位置");
     expect(localScan.findAll("circle")).toHaveLength(3);
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-radar-local-scan[data-state="实时局部点"]');
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达局部点 3 个，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达 3 个只显示局部轮廓，等定位后再贴地图。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示车身局部轮廓 3 个点，不贴到地图；路线未显示。");
@@ -4874,8 +4877,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
     const localScan = wrapper.find('[data-testid="plain-map-radar-local-scan"]');
     expect(localScan.exists()).toBe(true);
+    expect(localScan.attributes("data-state")).toBe("最近局部点");
     expect(localScan.attributes("aria-label")).toBe("雷达局部点位，最近雷达局部点 3 个，雷达未运行，等待地图位置");
     expect(localScan.findAll("circle")).toHaveLength(3);
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-radar-local-scan[data-state="最近局部点"]');
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("最近雷达局部点 3 个，雷达未运行，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：这是最近记录 3 个点，不是实时雷达。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近雷达记录只显示车身局部轮廓 3 个点，当前雷达未运行，不贴到地图；路线未显示。");
