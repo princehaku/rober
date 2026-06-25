@@ -4426,6 +4426,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm);
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-free-roam-trail"]').exists()).toBe(false);
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerdown");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4437,11 +4438,18 @@ describe("App", () => {
     expect(directionMarker.attributes("data-state")).toBe("forward");
     expect(directionMarker.attributes("data-wheel-state")).toBe("非零已读到");
     expect(directionMarker.attributes("aria-label")).toBe("正在前进扫图，本次按住 1/2 次，轮速 L/R=0.07/0.08，非零已读到，机器人地图位置未读到，标记不代表坐标");
+    const freeRoamTrail = wrapper.find('[data-testid="plain-map-free-roam-trail"]');
+    expect(freeRoamTrail.exists()).toBe(true);
+    expect(freeRoamTrail.attributes("data-state")).toBe("扫图中");
+    expect(freeRoamTrail.attributes("aria-label")).toContain("扫图短轨迹：前进，扫图中");
+    expect(freeRoamTrail.attributes("aria-label")).toContain("轮速 L/R=0.07/0.08，非零已读到");
+    expect(freeRoamTrail.attributes("aria-label")).toContain("不代表里程计轨迹");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="扫图中"]');
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="保存中"]');
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="已保存"]');
     expect(workstationStyles).toContain('.plain-map-free-roam-direction-marker[data-wheel-state="非零已读到"]');
+    expect(workstationStyles).toContain('.plain-map-free-roam-trail[data-state="已停止"] polyline');
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("扫图移动中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("driving");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("正在前进扫图，本次按住 1/2 次，轮速 L/R=0.07/0.08，非零已读到，机器人地图位置未读到，标记不代表坐标");
@@ -4469,6 +4477,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("已停可保存：前进，轮速非零");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("stopped_fresh");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("扫图已停止，上次方向前进，停止原因松开屏幕方向键，轮速 L/R=0.07/0.08，非零已读到，地图画面已刷新，可以保存，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-trail"]').attributes("data-state")).toBe("已停止");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-trail"]').attributes("aria-label")).toContain("扫图短轨迹：前进，已停止");
     const originalFetch = mockedFetch.getMockImplementation();
     const saveControl: { finish?: () => void } = {};
     const savedPreviewControl: { finish?: () => void } = {};

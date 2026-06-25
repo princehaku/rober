@@ -1488,6 +1488,69 @@ function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRob
   };
 }
 
+function manualDirectionOrNull(direction: string | null): ManualDirection | null {
+  // 历史方向来自字符串 ref；画地图轨迹前先收窄类型，避免未知状态被画成假轨迹。
+  return direction === "forward" || direction === "back" || direction === "left" || direction === "right" ? direction : null;
+}
+
+function freeRoamManualTrailOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
+  // 短轨迹只是把“刚才按住的方向”贴回地图，不是里程计轨迹，也不参与任何控制 gate。
+  const preview = mapPreviewResult.value;
+  if (!mapRuntimeStarted.value || !preview || preview.proxy_status !== "preview_forwarded" || !preview.image_data_url) {
+    return null;
+  }
+  const liveDirection = keyboardHeldDirection.value;
+  const stoppedDirection = keyboardControlStatus.value.startsWith("released") || keyboardControlStatus.value.startsWith("stop_sent")
+    ? manualDirectionOrNull(keyboardLastDirection.value)
+    : null;
+  const direction = liveDirection ?? stoppedDirection;
+  if (!direction) {
+    return null;
+  }
+  const base = robotPose ? mapCoordinatePercent(robotPose.pose.x, robotPose.pose.y, preview) : { left: 18, top: 74 };
+  if (!base) {
+    return null;
+  }
+  const yaw = robotPose ? finitePlainNumber(robotPose.pose.yaw) : null;
+  const fallbackVectors: Record<ManualDirection, { dx: number; dy: number }> = {
+    forward: { dx: 0, dy: -1 },
+    back: { dx: 0, dy: 1 },
+    left: { dx: -1, dy: 0 },
+    right: { dx: 1, dy: 0 },
+  };
+  const yawOffset: Record<ManualDirection, number> = {
+    forward: 0,
+    back: Math.PI,
+    left: Math.PI / 2,
+    right: -Math.PI / 2,
+  };
+  const vector = yaw === null
+    ? fallbackVectors[direction]
+    : {
+      dx: Math.cos(yaw + yawOffset[direction]),
+      dy: -Math.sin(yaw + yawOffset[direction]),
+    };
+  const length = liveDirection ? (keyboardManualPulseObserved.value ? 20 : 13) : 11;
+  const start = {
+    left: clampPercent(base.left - vector.dx * length),
+    top: clampPercent(base.top - vector.dy * length),
+  };
+  const end = {
+    left: clampPercent(base.left),
+    top: clampPercent(base.top),
+  };
+  const state = liveDirection ? "扫图中" : keyboardControlStatus.value.startsWith("released") ? "停止中" : "已停止";
+  const directionLabel = manualDirectionPlainLabel(direction);
+  const progressText = liveDirection ? keyboardForwardedPulseProgressText.value : plainFreeRoamMapPreviewFreshForSession.value ? "地图画面已刷新" : "等待刷新地图画面";
+  const wheelText = keyboardWheelFeedbackPlainText().replace(/^；/, "，");
+  const locatedSuffix = robotPose ? "贴近机器人当前位置" : "机器人地图位置未读到，轨迹不代表坐标";
+  return {
+    points: `${start.left.toFixed(2)},${start.top.toFixed(2)} ${end.left.toFixed(2)},${end.top.toFixed(2)}`,
+    state,
+    aria: `扫图短轨迹：${directionLabel}，${state}，${progressText}${wheelText}，${locatedSuffix}；短轨迹按按住方向推导，不代表里程计轨迹`,
+  };
+}
+
 function freeRoamAutonomyFailureText(result: RobotControlFreeRoamAutonomyResponse | null): string {
   // 自动扫图失败原因要在普通首屏可读；完整 blocked reasons 仍留在高级诊断。
   if (!result || result.proxy_status !== "autonomy_failed") {
@@ -1651,6 +1714,7 @@ const plainMapVisualSummary = computed(() => {
   const freeRoamSweepPlan = latestFreeRoamSweepPlanOverlay(robotPose);
   const freeRoamRuntimeMarker = freeRoamRuntimeMapMarker(robotPose);
   const freeRoamDirectionMarker = freeRoamManualDirectionMapMarker(robotPose);
+  const freeRoamTrail = freeRoamManualTrailOverlay(robotPose);
   const freeRoamActionMarker = freeRoamActionMapMarker(robotPose);
   const mapObserved = proof?.map_once_observed === true
     || mapReadback.map_once_observed === "true"
@@ -1803,6 +1867,10 @@ const plainMapVisualSummary = computed(() => {
     freeRoamDirectionMarkerWheelState: freeRoamDirectionMarker?.wheelState ?? "",
     freeRoamDirectionMarkerStyle: freeRoamDirectionMarker?.style ?? {},
     freeRoamDirectionMarkerAria: freeRoamDirectionMarker?.aria ?? "",
+    showFreeRoamTrail: Boolean(freeRoamTrail),
+    freeRoamTrailPoints: freeRoamTrail?.points ?? "",
+    freeRoamTrailState: freeRoamTrail?.state ?? "",
+    freeRoamTrailAria: freeRoamTrail?.aria ?? "",
     showFreeRoamActionMarker: Boolean(freeRoamActionMarker),
     freeRoamActionMarkerLabel: freeRoamActionMarker?.label ?? "",
     freeRoamActionMarkerState: freeRoamActionMarker?.state ?? "",
@@ -7751,6 +7819,9 @@ onBeforeUnmount(() => {
                 </svg>
                 <svg v-if="plainMapVisualSummary.showFreeRoamSweepPlan" class="plain-map-free-roam-sweep-plan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-free-roam-sweep-plan" :data-state="plainMapVisualSummary.freeRoamSweepPlanState" :aria-label="plainMapVisualSummary.freeRoamSweepPlanAria">
                   <polyline :points="plainMapVisualSummary.freeRoamSweepPlanPoints" />
+                </svg>
+                <svg v-if="plainMapVisualSummary.showFreeRoamTrail" class="plain-map-free-roam-trail" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-free-roam-trail" :data-state="plainMapVisualSummary.freeRoamTrailState" :aria-label="plainMapVisualSummary.freeRoamTrailAria">
+                  <polyline :points="plainMapVisualSummary.freeRoamTrailPoints" />
                 </svg>
                 <span
                   v-for="marker in plainMapVisualSummary.routeEndpointMarkers"

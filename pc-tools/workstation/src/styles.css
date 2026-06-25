@@ -741,6 +741,37 @@ h3 {
   filter: drop-shadow(0 1px 2px rgba(23, 96, 57, 0.28));
 }
 
+.plain-map-free-roam-trail {
+  /* 手控扫图短轨迹只解释本机按住方向，不冒充 SLAM/里程计轨迹。 */
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.plain-map-free-roam-trail polyline {
+  fill: none;
+  stroke: #1f8a50;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 2px rgba(23, 96, 57, 0.28));
+}
+
+.plain-map-free-roam-trail[data-state="停止中"] polyline {
+  stroke: #b28a12;
+  stroke-dasharray: 4 2;
+}
+
+.plain-map-free-roam-trail[data-state="已停止"] polyline {
+  stroke: #1f6feb;
+  stroke-dasharray: 5 2;
+}
+
 .plain-map-grid-line {
   position: absolute;
   background: #bdc7d3;
