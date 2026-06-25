@@ -1811,3 +1811,8 @@ operator report、轮速非零、LiDAR delta 和送达材料继续作为证据/�
 `GET /api/robot-control/map/preview` 读取真实地图图片和 cell 统计，让 operator 在扫图流程内直接看到最新地图覆盖；
 记录未启动前按钮显示 `先开始记录` 并禁用。它不调用 `/api/robot-control/map/start`、`/api/base/manual`、
 Nav2、keyboard pulse、delivery complete 或 `/cmd_vel`。
+
+2026-06-25 17:57 起，普通首屏“扫图覆盖”会额外显示当前画面口径：未开始记录时说明这是最近地图画面，地图记录中显示
+`地图记录中，可边扫边刷新画面。`，地图已保存后提示刷新检查覆盖效果。该提示只来自本页 map lifecycle 和只读
+map preview 状态，不推断真实底盘运动、不自动刷新、不调用 map start、manual、Nav2、keyboard pulse、delivery complete
+或 `/cmd_vel`。

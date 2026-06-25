@@ -3314,6 +3314,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("扫图覆盖");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("已扫出 1 个可通行格");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("未知区域 0.0%");
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("当前显示最近地图画面，开始记录后可边扫边刷新。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图准备");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达避障");
@@ -3620,6 +3621,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').text()).toBe("刷新扫图画面");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("地图记录中，可边扫边刷新画面。");
     const previewCallsBeforeRefresh = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
     await flushPromises();

@@ -1035,10 +1035,14 @@ const plainFreeRoamCoverageSummary = computed(() => {
   const preview = mapPreviewResult.value;
   const previewLoaded = preview?.proxy_status === "preview_forwarded";
   if (!previewLoaded) {
+    const guidance = mapRuntimeStarted.value || mapSavedThisSession.value
+      ? "地图记录已启动，点刷新扫图画面查看最新覆盖。"
+      : "当前还没读到地图画面，先开始记录或刷新地图画面。";
     return {
       state: "待刷新",
       primary: "地图覆盖还没读取",
       secondary: "刷新地图画面后显示可通行区域和未知区域。",
+      guidance,
       barStyle: { "--coverage-known": "0%" },
       quality: "not_loaded",
     };
@@ -1058,6 +1062,11 @@ const plainFreeRoamCoverageSummary = computed(() => {
     state,
     primary: free > 0 ? `已扫出 ${free} 个可通行格` : "还没扫出可通行区域",
     secondary: `未知区域 ${percentText(unknownPercent)}，已知区域 ${percentText(knownPercent)}。`,
+    guidance: mapRuntimeStarted.value
+      ? "地图记录中，可边扫边刷新画面。"
+      : mapSavedThisSession.value
+        ? "地图已保存，刷新后检查覆盖效果。"
+        : "当前显示最近地图画面，开始记录后可边扫边刷新。",
     barStyle: { "--coverage-known": percentText(knownPercent) },
     quality: preview.navigation_quality || (preview.has_free_cells ? "has_free_cells" : "not_loaded"),
   };
@@ -5668,6 +5677,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainFreeRoamCoverageSummary.primary }}</p>
             <p class="panel-note">{{ plainFreeRoamCoverageSummary.secondary }}</p>
+            <p class="panel-note" data-testid="plain-free-roam-coverage-guidance">{{ plainFreeRoamCoverageSummary.guidance }}</p>
           </div>
           <div class="plain-free-roam-readiness" data-testid="plain-free-roam-autonomy-readiness">
             <div class="simple-status-row">
