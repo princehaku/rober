@@ -900,6 +900,107 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["base_uart_touched"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_free_roam_start_requires_operator_confirmation(self) -> None:
+        """自动扫图 start 必须来自普通首屏安全确认，裸 POST 不能放开状态机。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        with mock.patch.object(upper_robot_api, "run_free_roam_param_sequence") as run_mock:
+            payload = api.free_roam_autonomy_control("start", {})
+
+        run_mock.assert_not_called()
+        self.assertEqual("blocked_missing_confirmation", payload["status"])
+        self.assertIn("confirm_operator_safety", payload["missing_confirmations"])
+        self.assertIn("confirm_mapping_active", payload["missing_confirmations"])
+        self.assertFalse(payload["command_result"]["executed"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+
+    def test_free_roam_param_sequence_never_touches_motion_unlocks(self) -> None:
+        """参数序列只改状态机门禁，不写运动发布双锁。"""
+        calls: list[list[str]] = []
+
+        def fake_run(argv, timeout_s=8.0):  # noqa: ANN001 - 测试 stub 保持签名宽松。
+            calls.append(argv)
+            return {"mode": "fixed_argv", "executed": True, "ok": True, "argv": argv, "returncode": 0}
+
+        with mock.patch.object(upper_robot_api, "run_fixed_argv_command", side_effect=fake_run):
+            result = upper_robot_api.run_free_roam_param_sequence("start")
+
+        flattened = " ".join(" ".join(argv) for argv in calls)
+        self.assertTrue(result["ok"])
+        self.assertIn("operator_confirmed", flattened)
+        self.assertIn("mapping_active", flattened)
+        self.assertIn("external_stop_requested", flattened)
+        self.assertNotIn("enable_cmd_vel_publish", flattened)
+        self.assertNotIn("motion_hil_unlocked", flattened)
+
+    def test_free_roam_start_sets_only_state_machine_parameters(self) -> None:
+        """start 只设置状态机门禁参数，不设置运动发布双锁。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        command_result = {
+            "mode": "free_roam_param_sequence",
+            "action": "start",
+            "executed": True,
+            "ok": True,
+            "results": [],
+            "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+        }
+
+        with mock.patch.object(upper_robot_api, "run_free_roam_param_sequence", return_value=command_result) as run_mock:
+            with mock.patch.object(api, "free_roam_autonomy_latest", return_value=(200, {"decision_state": "ready"})):
+                payload = api.free_roam_autonomy_control(
+                    "start",
+                    {"confirm_operator_safety": True, "confirm_mapping_active": True},
+                )
+
+        run_mock.assert_called_once_with("start")
+        self.assertEqual("requested", payload["status"])
+        self.assertTrue(payload["sets_state_machine_parameters"])
+        self.assertTrue(payload["does_not_set_motion_unlock"])
+        self.assertFalse(payload["direct_cmd_vel_publish"])
+        self.assertEqual(payload["blocked_parameters_not_touched"], ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+        self.assertFalse(payload["uses_base_uart"])
+
+    def test_free_roam_stop_sets_external_stop_without_confirmation(self) -> None:
+        """stop 必须随时可用，但仍只通过状态机参数请求停止。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        command_result = {
+            "mode": "free_roam_param_sequence",
+            "action": "stop",
+            "executed": True,
+            "ok": True,
+            "results": [],
+            "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+        }
+
+        with mock.patch.object(upper_robot_api, "run_free_roam_param_sequence", return_value=command_result) as run_mock:
+            with mock.patch.object(api, "free_roam_autonomy_latest", return_value=(200, {"decision_state": "stopping"})):
+                payload = api.free_roam_autonomy_control("stop", {})
+
+        run_mock.assert_called_once_with("stop")
+        self.assertEqual("requested", payload["status"])
+        self.assertTrue(payload["sets_state_machine_parameters"])
+        self.assertFalse(payload["direct_cmd_vel_publish"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+
     def test_radar_scan_proof_latest_preserves_explicit_evidence_ref(self) -> None:
         """LiDAR artifact 已有 evidence_ref 时，API 必须保持 producer 原值。"""
         artifact = {

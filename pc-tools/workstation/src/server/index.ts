@@ -63,6 +63,9 @@ import type {
   RobotControlEvidenceCaptureStatus,
   RobotControlEvidenceEndpointCapture,
   RobotControlEvidenceReadbackSummary,
+  RobotControlFreeRoamAutonomyAction,
+  RobotControlFreeRoamAutonomyEndpoint,
+  RobotControlFreeRoamAutonomyResponse,
   RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
   RobotControlRadarLifecycleAction,
@@ -698,7 +701,7 @@ function baseCommandFailure(
 
 async function fetchFixedRobotPostSummary(
   baseUrl: string,
-  endpoint: "/api/base/manual" | "/api/base/stop",
+  endpoint: "/api/base/manual" | "/api/base/stop" | RobotControlFreeRoamAutonomyEndpoint,
   body: Record<string, unknown>,
 ): Promise<{ remote_http_status: number | null; payload: Record<string, unknown> | null; error: string }> {
   // 这里专门服务固定 base manual/stop 代理，不接受动态 endpoint，避免扩展成万能 POST 转发器。
@@ -728,6 +731,100 @@ async function fetchFixedRobotPostSummary(
       error: error instanceof Error ? shortText(error.message, "upper_api_unreachable") : "upper_api_unreachable",
     };
   }
+}
+
+function freeRoamAutonomyProxyFailure(
+  sourceBaseUrl: string,
+  action: RobotControlFreeRoamAutonomyAction,
+  remoteEndpoint: RobotControlFreeRoamAutonomyEndpoint,
+  reason: string,
+  requestBody: Record<string, boolean> = {},
+): RobotControlFreeRoamAutonomyResponse {
+  // 自动扫图代理失败也要保持完整合同，避免前端把异常当成已经启动。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    action,
+    proxy_status: "autonomy_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: remoteEndpoint,
+    remote_method: "POST",
+    remote_http_status: null,
+    status: "blocked",
+    request_body: requestBody,
+    command_result: { mode: "not_sent", executed: false, ok: false },
+    latest_decision_state: "not_loaded",
+    sets_state_machine_parameters: false,
+    direct_cmd_vel_publish: false,
+    does_not_set_motion_unlock: true,
+    blocked_parameters_not_touched: ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+function freeRoamAutonomyProxyResponse(
+  sourceBaseUrl: string,
+  action: RobotControlFreeRoamAutonomyAction,
+  remoteEndpoint: RobotControlFreeRoamAutonomyEndpoint,
+  requestBody: Record<string, boolean>,
+  remote: { remote_http_status: number | null; payload: Record<string, unknown> | null; error: string },
+): RobotControlFreeRoamAutonomyResponse {
+  // 只摘取上位机短字段；完整 runtime 仍通过 latest/readback 展示。
+  if (remote.error || !remote.payload) {
+    return {
+      ...freeRoamAutonomyProxyFailure(sourceBaseUrl, action, remoteEndpoint, remote.error || "upper_api_bad_response", requestBody),
+      proxy_status: "autonomy_failed",
+      remote_http_status: remote.remote_http_status,
+    };
+  }
+  const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+  const commandResult = asRecord(remote.payload.command_result);
+  const forwarded = remote.remote_http_status !== null && remote.remote_http_status >= 200 && remote.remote_http_status < 300 && remote.payload.status === "requested";
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    action,
+    proxy_status: forwarded ? "autonomy_forwarded" : "autonomy_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+    remote_endpoint: remoteEndpoint,
+    remote_method: "POST",
+    remote_http_status: remote.remote_http_status,
+    status: forwarded ? "requested" : "blocked",
+    request_body: requestBody,
+    command_result: {
+      mode: shortValue(commandResult?.mode, "not_loaded"),
+      executed: commandResult?.executed === true,
+      ok: typeof commandResult?.ok === "boolean" ? commandResult.ok : null,
+    },
+    latest_decision_state: shortValue(remote.payload.latest_decision_state, "not_loaded"),
+    sets_state_machine_parameters: remote.payload.sets_state_machine_parameters === true,
+    direct_cmd_vel_publish: false,
+    does_not_set_motion_unlock: true,
+    blocked_parameters_not_touched: Array.isArray(remote.payload.blocked_parameters_not_touched)
+      ? remote.payload.blocked_parameters_not_touched.map((item) => shortValue(item, "unknown"))
+      : [],
+    failure_reason: shortValue(remote.payload.failure_reason, forwarded ? "none" : "free_roam_autonomy_rejected"),
+    blocked_reasons: Array.isArray(remote.payload.blocked_reasons)
+      ? remote.payload.blocked_reasons.map((item) => shortValue(item, "unknown"))
+      : forwarded ? [] : ["free_roam_autonomy_rejected"],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
 }
 
 function unsafeProxyFailure(
@@ -1864,6 +1961,37 @@ export function createWorkstationApp(): express.Express {
       const response = await buildMapLifecycleProxy(queryString(req.query.baseUrl), action, req.body);
       res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
     });
+  });
+
+  workstationApp.post("/api/robot-control/free-roam/autonomy/start", async (req, res) => {
+    // 自动扫图 start 只能转固定上位机 endpoint，body 只保留两个安全确认布尔值。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const requestBody = {
+      confirm_operator_safety: req.body?.confirm_operator_safety === true,
+      confirm_mapping_active: req.body?.confirm_mapping_active === true,
+    };
+    if (!requestBody.confirm_operator_safety || !requestBody.confirm_mapping_active) {
+      const response = freeRoamAutonomyProxyFailure(
+        sourceBaseUrl,
+        "start",
+        "/api/free-roam/autonomy/start",
+        "missing_free_roam_operator_confirmation",
+        requestBody,
+      );
+      res.status(400).json(response);
+      return;
+    }
+    const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/free-roam/autonomy/start", requestBody);
+    const response = freeRoamAutonomyProxyResponse(sourceBaseUrl, "start", "/api/free-roam/autonomy/start", requestBody, remote);
+    res.status(response.proxy_status === "autonomy_forwarded" ? 200 : response.proxy_status === "autonomy_rejected" ? 400 : 502).json(response);
+  });
+
+  workstationApp.post("/api/robot-control/free-roam/autonomy/stop", async (req, res) => {
+    // stop 不需要确认，但仍只请求上车端状态机 stop，不发布浏览器侧速度。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/free-roam/autonomy/stop", {});
+    const response = freeRoamAutonomyProxyResponse(sourceBaseUrl, "stop", "/api/free-roam/autonomy/stop", {}, remote);
+    res.status(response.proxy_status === "autonomy_forwarded" ? 200 : 502).json(response);
   });
 
   workstationApp.post("/api/robot-control/camera/offer", async (req, res) => {

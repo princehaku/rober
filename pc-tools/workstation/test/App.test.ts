@@ -975,6 +975,52 @@ const fixtures: Record<string, unknown> = {
     robot_control_executed: false,
     ...PROOF_FLAGS,
   },
+  "/api/robot-control/free-roam/autonomy/start": {
+    schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1",
+    action: "start",
+    proxy_status: "autonomy_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/free-roam/autonomy/start",
+    remote_method: "POST",
+    remote_http_status: 200,
+    status: "requested",
+    request_body: { confirm_operator_safety: true, confirm_mapping_active: true },
+    command_result: { mode: "free_roam_param_sequence", executed: true, ok: true },
+    latest_decision_state: "running",
+    sets_state_machine_parameters: true,
+    direct_cmd_vel_publish: false,
+    does_not_set_motion_unlock: true,
+    blocked_parameters_not_touched: ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+    failure_reason: "none",
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
+  "/api/robot-control/free-roam/autonomy/stop": {
+    schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1",
+    action: "stop",
+    proxy_status: "autonomy_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/free-roam/autonomy/stop",
+    remote_method: "POST",
+    remote_http_status: 200,
+    status: "requested",
+    request_body: {},
+    command_result: { mode: "free_roam_param_sequence", executed: true, ok: true },
+    latest_decision_state: "stopping",
+    sets_state_machine_parameters: true,
+    direct_cmd_vel_publish: false,
+    does_not_set_motion_unlock: true,
+    blocked_parameters_not_touched: ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+    failure_reason: "none",
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
   "/api/robot-control/camera/offer": {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
     proxy_status: "offer_forwarded",
@@ -3148,6 +3194,10 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/map/start";
     } else if (url.startsWith("/api/robot-control/map/save")) {
       fixtureKey = "/api/robot-control/map/save";
+    } else if (url.startsWith("/api/robot-control/free-roam/autonomy/start")) {
+      fixtureKey = "/api/robot-control/free-roam/autonomy/start";
+    } else if (url.startsWith("/api/robot-control/free-roam/autonomy/stop")) {
+      fixtureKey = "/api/robot-control/free-roam/autonomy/stop";
     } else if (url.startsWith("/api/robot-control/operator/report")) {
       fixtureKey = "/api/robot-control/operator/report";
     } else if (url.startsWith("/api/robot-control/camera/first-frame/probe")) {
@@ -3628,9 +3678,13 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
-  it("shows free-roam autonomy as ready from summary without starting robot motion", async () => {
-    // PC 首屏只消费上车端 readiness；没有固定 start 代理前，点击自动扫图按钮只能做流程定位。
+  it("starts free-roam autonomy through the fixed proxy only after ready readback and safety confirmation", async () => {
+    // PC 首屏只触发固定状态机代理；不会调用 base/manual、Nav2、delivery 或浏览器侧 /cmd_vel。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     summaryFixture.safe_command_boundary.free_roam_autonomy = "ready";
@@ -3652,13 +3706,21 @@ describe("App", () => {
     };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
     });
-    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("还差：地图记录未启动");
+
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
 
     const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
@@ -3672,13 +3734,20 @@ describe("App", () => {
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-start"]').element);
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
+    const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
+    const startCall = newCalls.find(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"));
+    expect(startCall).toBeDefined();
+    expect(JSON.parse(String((startCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual({
+      confirm_operator_safety: true,
+      confirm_mapping_active: true,
+    });
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图状态机已启动");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/api/free-roam/autonomy/start"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
   it("reuses one plain safety confirmation for trip, keyboard, and free-roam mapping", async () => {

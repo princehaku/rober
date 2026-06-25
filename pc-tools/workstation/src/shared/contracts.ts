@@ -2573,6 +2573,44 @@ export interface RobotControlMapLifecycleResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export type RobotControlFreeRoamAutonomyAction = "start" | "stop";
+export type RobotControlFreeRoamAutonomyProxyStatus = "autonomy_forwarded" | "autonomy_rejected" | "autonomy_failed";
+export type RobotControlFreeRoamAutonomyEndpoint =
+  | "/api/free-roam/autonomy/start"
+  | "/api/free-roam/autonomy/stop";
+
+export interface RobotControlFreeRoamAutonomyRequest {
+  confirm_operator_safety?: boolean;
+  confirm_mapping_active?: boolean;
+}
+
+export interface RobotControlFreeRoamAutonomyResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1";
+  action: RobotControlFreeRoamAutonomyAction;
+  proxy_status: RobotControlFreeRoamAutonomyProxyStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: RobotControlFreeRoamAutonomyEndpoint;
+  remote_method: "POST";
+  remote_http_status: number | null;
+  status: "blocked" | "requested";
+  request_body: RobotControlFreeRoamAutonomyRequest;
+  command_result: {
+    mode: string;
+    executed: boolean;
+    ok: boolean | null;
+  };
+  latest_decision_state: string;
+  sets_state_machine_parameters: boolean;
+  direct_cmd_vel_publish: false;
+  does_not_set_motion_unlock: true;
+  blocked_parameters_not_touched: string[];
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export interface RobotControlMapPreviewResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1";
   proxy_status: "preview_forwarded" | "preview_rejected" | "preview_failed";
@@ -3011,6 +3049,8 @@ export const API_ROUTES = [
   "/api/robot-control/map/start?baseUrl=<robot-api-base-url>",
   "/api/robot-control/map/save?baseUrl=<robot-api-base-url>",
   "/api/robot-control/map/reset?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/free-roam/autonomy/start?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/free-roam/autonomy/stop?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/proof/refresh?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/goal/preflight?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/goal/execute?baseUrl=<robot-api-base-url>",

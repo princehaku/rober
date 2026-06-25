@@ -25,6 +25,8 @@ import type {
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
   RobotControlBaseFeedbackSamplesProxyResponse,
+  RobotControlFreeRoamAutonomyRequest,
+  RobotControlFreeRoamAutonomyResponse,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
   RobotControlMapPreviewResponse,
@@ -124,6 +126,8 @@ const API_ENDPOINTS = {
   robotControlMapStart: "/api/robot-control/map/start",
   robotControlMapSave: "/api/robot-control/map/save",
   robotControlMapReset: "/api/robot-control/map/reset",
+  robotControlFreeRoamAutonomyStart: "/api/robot-control/free-roam/autonomy/start",
+  robotControlFreeRoamAutonomyStop: "/api/robot-control/free-roam/autonomy/stop",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
   robotControlCameraFirstFrameProbe: "/api/robot-control/camera/first-frame/probe",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
@@ -628,6 +632,25 @@ export async function postRobotControlMapReset(
 ): Promise<RobotControlMapLifecycleResponse> {
   // Reset 只保留高级诊断入口，默认不会在普通用户首屏变成可误点动作。
   return postJson<RobotControlMapLifecycleResponse>(robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlMapReset, baseUrl), body);
+}
+
+export async function postRobotControlFreeRoamAutonomyStart(
+  baseUrl: string,
+  body: RobotControlFreeRoamAutonomyRequest,
+): Promise<RobotControlFreeRoamAutonomyResponse> {
+  // 自动扫图 start 只走固定 PC 代理；body 只允许安全确认布尔值。
+  return postJson<RobotControlFreeRoamAutonomyResponse>(
+    robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlFreeRoamAutonomyStart, baseUrl),
+    body,
+  );
+}
+
+export async function postRobotControlFreeRoamAutonomyStop(baseUrl: string): Promise<RobotControlFreeRoamAutonomyResponse> {
+  // stop 固定转发上车状态机停止请求，不发布浏览器侧速度命令。
+  return postJson<RobotControlFreeRoamAutonomyResponse>(
+    robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlFreeRoamAutonomyStop, baseUrl),
+    {},
+  );
 }
 
 export async function postRobotControlCameraOffer(

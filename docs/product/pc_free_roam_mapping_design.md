@@ -23,8 +23,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   这一步只打开全局 W/A/S/D/方向键手控窗口，不发送 manual pulse、不调用 `/cmd_vel`。小车仍必须由 operator 按住方向键才会低速移动，松开或停止按钮会收口。
 - 2026-06-25 23:45 起，PC summary 会从 `/api/free-roam/autonomy/latest` 的 runtime artifact 推导自动扫图 readiness：
   只有 `cmd_vel_publish_enabled=true` 且所有 `decision.gates` 加 PC 侧 `motion_hil_unlock` 门禁都为 `ready` 时，才把
-  `safe_command_boundary.free_roam_autonomy` 显示为 `ready`。这只改变普通首屏“自动扫图准备”的所见即所得状态；PC 仍没有
-  `/api/free-roam/autonomy/start` 固定代理，不会由这个按钮直接发车。
+  `safe_command_boundary.free_roam_autonomy` 显示为 `ready`。这只改变普通首屏“自动扫图准备”的所见即所得状态。
+- 2026-06-25 23:52 起，上位机新增固定 `POST /api/free-roam/autonomy/start|stop`，PC 新增对应固定代理
+  `/api/robot-control/free-roam/autonomy/start|stop`。start 必须带 `confirm_operator_safety=true` 和
+  `confirm_mapping_active=true`；它只设置 `free_roam_autonomy_node` 的 `operator_confirmed/mapping_active/stop_available/external_stop_requested`
+  状态机参数，不设置 `enable_cmd_vel_publish`、`motion_hil_unlocked` 或 `cmd_vel_topic`。stop 只请求上车状态机停止。
 
 ## 用户流程
 
@@ -35,6 +38,7 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 5. 地图记录启动后键盘会自动启用；按住方向键或 W/A/S/D 低速移动。
 6. 松开按键或点击“停止”收口。
 7. 点击“保存当前地图”，再刷新地图画面检查 free cell、地图尺寸和可导航状态。
+8. 如果“自动扫图准备”已显示 `自动扫图 / 已就绪`，可点击“自动扫图”启动上车端状态机；PC 继续负责地图/雷达监看和停止兜底。
 
 ## 后续全自动探索要求
 
@@ -49,4 +53,5 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 真车低速验证通过后才能把 `safe_to_control` 或自动探索能力提升为真。
 
 当前 PC 合同默认 `free_roam_autonomy=locked`。只有上车端 runtime artifact 明确报告双重解锁和逐项 gate ready 时，PC 才显示
-`free_roam_autonomy=ready`；这仍不等于 PC 发车按钮已经接入，真正自动扫图 start/stop 还需要上车端提供固定 API 后再接。
+`free_roam_autonomy=ready`；PC 自动扫图按钮只调用固定 start 代理设置状态机门禁。真正运动发布仍由上车端
+`enable_cmd_vel_publish` 与 `motion_hil_unlocked` 双重锁决定，不由浏览器或 Node 代理直接发布。

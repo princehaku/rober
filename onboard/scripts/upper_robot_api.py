@@ -180,6 +180,8 @@ ROUTE_PATHS = {
     "delivery_complete": "/api/delivery/complete",
     "delivery_latest": "/api/delivery/latest",
     "free_roam_autonomy_latest": "/api/free-roam/autonomy/latest",
+    "free_roam_autonomy_start": "/api/free-roam/autonomy/start",
+    "free_roam_autonomy_stop": "/api/free-roam/autonomy/stop",
     "nav2_start": "/api/nav2/start",
     "nav2_stop": "/api/nav2/stop",
     "elevator_status": "/api/elevator/status",
@@ -1858,6 +1860,71 @@ def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict
         "returncode": completed.returncode,
         "stdout_preview": completed.stdout[-1200:],
         "stderr_preview": completed.stderr[-1200:],
+    }
+
+
+def run_fixed_argv_command(argv: list[str], timeout_s: float = 8.0) -> dict[str, Any]:
+    """执行代码内固定 argv；不经过 shell，避免 HTTP body 变成任意命令入口。"""
+    if not argv:
+        return {"mode": "fixed_argv", "executed": False, "ok": False, "reason": "empty_argv"}
+    try:
+        completed = subprocess.run(
+            argv,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except Exception as exc:  # noqa: BLE001 - ROS2 CLI 缺失或 graph 不通都要结构化返回。
+        return {"mode": "fixed_argv", "executed": False, "ok": False, "argv": argv, "error": compact_error(exc)}
+    return {
+        "mode": "fixed_argv",
+        "executed": True,
+        "ok": completed.returncode == 0,
+        "argv": argv,
+        "returncode": completed.returncode,
+        "stdout_preview": completed.stdout[-1200:],
+        "stderr_preview": completed.stderr[-1200:],
+    }
+
+
+def run_free_roam_param_sequence(action: str) -> dict[str, Any]:
+    """自动扫图 start/stop 只改状态机参数，不触碰运动解锁参数。"""
+    sequences = {
+        "start": [
+            ("operator_confirmed", "true"),
+            ("mapping_active", "true"),
+            ("stop_available", "true"),
+            ("external_stop_requested", "false"),
+        ],
+        "stop": [
+            ("external_stop_requested", "true"),
+            ("mapping_active", "false"),
+            ("operator_confirmed", "false"),
+        ],
+    }
+    if action not in sequences:
+        return {
+            "mode": "free_roam_param_sequence",
+            "executed": False,
+            "ok": False,
+            "reason": "unsupported_free_roam_action",
+        }
+    results = []
+    for name, value in sequences[action]:
+        # 这里只允许固定节点名、固定参数名和 bool 字符串；不会写 enable_cmd_vel_publish 或 motion_hil_unlocked。
+        result = run_fixed_argv_command(["ros2", "param", "set", "/free_roam_autonomy", name, value])
+        results.append({"parameter": name, "value": value, **result})
+        if not result.get("ok"):
+            break
+    return {
+        "mode": "free_roam_param_sequence",
+        "action": action,
+        "executed": any(bool(item.get("executed")) for item in results),
+        "ok": len(results) == len(sequences[action]) and all(bool(item.get("ok")) for item in results),
+        "results": results,
+        "touched_parameters": [item["parameter"] for item in results],
+        "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
     }
 
 
@@ -6149,7 +6216,11 @@ class UpperRobotApi:
             "map_metrics": map_metrics,
             "artifact_only": bool(latest.get("artifact_only")) if isinstance(latest, dict) else True,
             "cmd_vel_publish_enabled": bool(latest.get("cmd_vel_publish_enabled")) if isinstance(latest, dict) else False,
-            "routes": {"latest": ROUTE_PATHS["free_roam_autonomy_latest"]},
+            "routes": {
+                "latest": ROUTE_PATHS["free_roam_autonomy_latest"],
+                "start": ROUTE_PATHS["free_roam_autonomy_start"],
+                "stop": ROUTE_PATHS["free_roam_autonomy_stop"],
+            },
             "safe_to_control": False,
             "primary_actions_enabled": False,
             "publishes_cmd_vel": False,
@@ -6158,6 +6229,81 @@ class UpperRobotApi:
             "not_proven": http_status != 200,
             "software_guard": True,
         }
+
+    def free_roam_autonomy_control(self, action: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """固定 start/stop 入口只设置 free_roam_autonomy_node 参数，不直接发布速度。"""
+        request = body if isinstance(body, dict) else {}
+        if action == "start":
+            endpoint = ROUTE_PATHS["free_roam_autonomy_start"]
+            missing_confirms = [
+                name
+                for name in ("confirm_operator_safety", "confirm_mapping_active")
+                if request.get(name) is not True
+            ]
+            if missing_confirms:
+                return software_guard_payload(
+                    schema_suffix="free_roam_autonomy_control_result",
+                    action="free_roam_autonomy_start",
+                    endpoint=endpoint,
+                    artifact=free_roam_autonomy_artifact_info(self.free_roam_autonomy_artifact_path),
+                    extra={
+                        "status": "blocked_missing_confirmation",
+                        "failure_reason": "missing_free_roam_operator_confirmation",
+                        "missing_confirmations": missing_confirms,
+                        "command_result": {
+                            "mode": "free_roam_param_sequence",
+                            "executed": False,
+                            "ok": False,
+                            "reason": "missing_free_roam_operator_confirmation",
+                        },
+                        "publishes_cmd_vel": False,
+                        "sends_motion_commands": False,
+                        "robot_control_executed": False,
+                    },
+                )
+        elif action == "stop":
+            endpoint = ROUTE_PATHS["free_roam_autonomy_stop"]
+        else:
+            return software_guard_payload(
+                schema_suffix="free_roam_autonomy_control_result",
+                action=action,
+                endpoint="/api/free-roam/autonomy/{action}",
+                artifact=free_roam_autonomy_artifact_info(self.free_roam_autonomy_artifact_path),
+                extra={"error": {"type": "unsupported_free_roam_action", "message": "action must be start or stop"}},
+            )
+
+        command_result = run_free_roam_param_sequence(action)
+        http_status, latest = self.free_roam_autonomy_latest()
+        return software_guard_payload(
+            schema_suffix="free_roam_autonomy_control_result",
+            action=f"free_roam_autonomy_{action}",
+            endpoint=endpoint,
+            artifact=free_roam_autonomy_artifact_info(self.free_roam_autonomy_artifact_path),
+            command_result=command_result,
+            extra={
+                "status": "requested" if command_result.get("ok") else "blocked",
+                "failure_reason": None if command_result.get("ok") else "free_roam_param_sequence_failed",
+                "blocked_reasons": [] if command_result.get("ok") else ["free_roam_param_sequence_failed"],
+                "request_body": {
+                    key: bool(request.get(key))
+                    for key in ("confirm_operator_safety", "confirm_mapping_active")
+                    if key in request
+                },
+                "latest_http_status": http_status,
+                "latest_decision_state": (
+                    latest.get("decision_state")
+                    if isinstance(latest, dict)
+                    else "not_loaded"
+                ),
+                "sets_state_machine_parameters": True,
+                "direct_cmd_vel_publish": False,
+                "does_not_set_motion_unlock": True,
+                "publishes_cmd_vel": False,
+                "sends_motion_commands": False,
+                "robot_control_executed": False,
+                "blocked_parameters_not_touched": command_result.get("blocked_parameters_not_touched", []),
+            },
+        )
 
     def nav2_status(self) -> dict[str, Any]:
         """Nav2 lifecycle 状态只读 artifact；真实 graph 查询由外部 collector 写材料。"""
@@ -6834,6 +6980,16 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = api.free_roam_autonomy_latest()
         return json_response(payload, status=http_status)
 
+    async def free_roam_autonomy_start(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        payload = api.free_roam_autonomy_control("start", body if isinstance(body, dict) else {})
+        return json_response(payload, status=200 if payload.get("status") == "requested" else 400)
+
+    async def free_roam_autonomy_stop(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        payload = api.free_roam_autonomy_control("stop", body if isinstance(body, dict) else {})
+        return json_response(payload, status=200 if payload.get("status") == "requested" else 502)
+
     async def nav2_start(_: web.Request) -> Any:
         return json_response(api.nav2_control("start"))
 
@@ -6917,6 +7073,8 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["delivery_complete"], delivery_complete)
     app.router.add_get(ROUTE_PATHS["delivery_latest"], delivery_latest)
     app.router.add_get(ROUTE_PATHS["free_roam_autonomy_latest"], free_roam_autonomy_latest)
+    app.router.add_post(ROUTE_PATHS["free_roam_autonomy_start"], free_roam_autonomy_start)
+    app.router.add_post(ROUTE_PATHS["free_roam_autonomy_stop"], free_roam_autonomy_stop)
     app.router.add_post(ROUTE_PATHS["nav2_start"], nav2_start)
     app.router.add_post(ROUTE_PATHS["nav2_stop"], nav2_stop)
     app.router.add_get(ROUTE_PATHS["elevator_status"], elevator_status)

@@ -2082,3 +2082,9 @@ PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboar
 `/api/free-roam/autonomy/latest`：只有 runtime `cmd_vel_publish_enabled=true` 且所有自动扫图 gates 都为 `ready`
 时，才显示 `自动扫图 / 已就绪`；否则仍显示人工按住扫图流程。该状态只用于所见即所得反馈，不新增
 `/api/free-roam/autonomy/start`、manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel` 调用。
+
+2026-06-25 23:52 起，普通首屏 `自动扫图` 按钮在上车端 readiness 已就绪、现场安全确认已勾选、地图记录已启动、
+地图画面已刷新且雷达运行时，会调用固定 PC 代理 `/api/robot-control/free-roam/autonomy/start`。该代理只转发两个
+确认布尔值到上位机固定 `/api/free-roam/autonomy/start`，上位机只设置 `free_roam_autonomy_node` 状态机参数，不设置
+`enable_cmd_vel_publish`、`motion_hil_unlocked` 或 `cmd_vel_topic`。`停止自动扫图` 调用固定 stop 代理请求状态机停止；
+红色底盘停止仍保留为独立兜底。
