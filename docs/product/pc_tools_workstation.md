@@ -2028,3 +2028,8 @@ bounded manual pulse，松开走统一 stop。这样 operator 不需要跳到下
 `视频轨道已接入，浏览器正在等待可绘制帧` 或 `视频元素还没绑定实时流`。这样 `画面可见/画面偏暗/已打开` 不只依赖
 连接状态，而是把本页 video 元素是否真的收到并绘制帧说清楚。该状态只读本地 video 元素诊断，不触发 camera offer、
 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
+
+2026-06-25 22:49 起，普通首屏扫地式建图区会区分地图 lifecycle 的 `启动中/保存中/读取中/刷新中`。尤其点击
+`保存当前地图` 后，保存请求未返回前会显示 `正在保存当前扫图地图；保存完成前不要继续移动`，下一步锁定为等待地图动作
+完成，避免 operator 在保存未完成时继续扫图。该状态只跟随 `/api/robot-control/map/*` 请求 pending，不发送
+manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。

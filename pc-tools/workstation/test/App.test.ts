@@ -3849,6 +3849,43 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length).toBe(deliveryCompleteCallsBeforeRelease);
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已停止，地图画面已刷新，可以保存当前地图。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').exists()).toBe(false);
+    const originalFetch = mockedFetch.getMockImplementation();
+    const saveControl: { finish?: () => void } = {};
+    const mapSaveResponse = fixtures["/api/robot-control/map/save"] as Record<string, unknown>;
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/save?")) {
+        return new Promise((resolve) => {
+          saveControl.finish = () => resolve({
+            ok: true,
+            json: async () => mapSaveResponse,
+          });
+        });
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+    const manualCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    const nav2ExecuteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length;
+    const deliveryCompleteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length;
+    const saveClick = wrapper.find('[data-testid="plain-free-roam-save"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("保存中");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("正在保存当前扫图地图；保存完成前不要继续移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在保存当前地图，保存完成前不要继续移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待地图动作完成");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
+    const finishSave = saveControl.finish;
+    if (!finishSave) {
+      throw new Error("map save request was not captured");
+    }
+    finishSave();
+    await saveClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
   });
 
   it("draws radar pulse on the robot marker only after map-frame pose is observed", async () => {

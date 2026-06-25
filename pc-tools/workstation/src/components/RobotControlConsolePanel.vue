@@ -92,6 +92,7 @@ const deliveryGapCheckResult = ref<RobotControlDeliveryGapCheckResponse | null>(
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
 const localizationResetResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
+const mapLifecyclePendingAction = ref<"list" | "start" | "save" | null>(null);
 const mapPreviewResult = ref<RobotControlMapPreviewResponse | null>(null);
 const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const manualCommandPending = ref(false);
@@ -481,7 +482,13 @@ function summarizeNav2Planning(): { state: "未检查" | "检查中" | "路径�
 function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读取" | "失败"; hint: string } {
   // lifecycle 摘要只说普通建图动作结果，不把 endpoint、proof 或命令细节放回首页。
   if (mapLifecyclePending.value) {
-    return { state: "处理中", hint: "正在读取或保存地图。" };
+    if (mapLifecyclePendingAction.value === "start") {
+      return { state: "处理中", hint: "正在启动地图记录，返回前先不要移动。" };
+    }
+    if (mapLifecyclePendingAction.value === "save") {
+      return { state: "处理中", hint: "正在保存当前地图，保存完成前不要继续移动。" };
+    }
+    return { state: "处理中", hint: "正在读取地图列表。" };
   }
   const result = mapLifecycleResult.value;
   if (!result) {
@@ -1338,8 +1345,17 @@ const plainFreeRoamMappingSummary = computed(() => {
   if (!plainManualSafetyConfirmed.value) {
     return { state: "待确认", hint: "勾选现场安全确认后，才允许启动建图向导。" };
   }
-  if (mapLifecyclePending.value || mapPreviewPending.value) {
-    return { state: "处理中", hint: "正在处理地图动作，请等状态回到稳定后再移动或保存。" };
+  if (mapLifecyclePending.value) {
+    if (mapLifecyclePendingAction.value === "start") {
+      return { state: "启动中", hint: "正在启动地图记录；启动返回前不要移动小车。" };
+    }
+    if (mapLifecyclePendingAction.value === "save") {
+      return { state: "保存中", hint: "正在保存当前扫图地图；保存完成前不要继续移动。" };
+    }
+    return { state: "读取中", hint: "正在读取地图列表。" };
+  }
+  if (mapPreviewPending.value) {
+    return { state: "刷新中", hint: "正在刷新扫图画面；刷新完成后再保存。" };
   }
   if (mapSavedThisSession.value) {
     return { state: "已保存", hint: "地图已保存；刷新地图画面后可检查 free cell 和路线可用性。" };
@@ -1352,10 +1368,10 @@ const plainFreeRoamMappingSummary = computed(() => {
   return { state: "可开始", hint: "先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图。" };
 });
 const plainFreeRoamMappingStartLabel = computed(() => (
-  mapLifecyclePending.value && mapLifecycleResult.value?.action !== "save" ? "启动中" : mapRuntimeStarted.value ? "重新启动记录" : "开始扫地式建图"
+  mapLifecyclePending.value && mapLifecyclePendingAction.value === "start" ? "启动中" : mapRuntimeStarted.value ? "重新启动记录" : "开始扫地式建图"
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
-  mapLifecyclePending.value && mapLifecycleResult.value?.action === "save"
+  mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
     ? "保存中"
     : mapRuntimeStarted.value && !plainFreeRoamMapPreviewFreshForSession.value
       ? "先刷新画面"
@@ -1389,6 +1405,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (!plainManualSafetyConfirmed.value) {
     return "下一步：勾安全确认";
   }
+  if (mapLifecyclePending.value) {
+    return "下一步：等待地图动作完成";
+  }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
   }
@@ -1410,6 +1429,12 @@ const plainFreeRoamDriveStatus = computed(() => {
   // 扫图状态只解释当前本地流程，不自动启用键盘、不发送 manual，也不把自动扫图说成已开放。
   if (!plainManualSafetyConfirmed.value) {
     return "扫图状态：先勾安全确认，小车不会移动。";
+  }
+  if (mapLifecyclePendingAction.value === "start") {
+    return "扫图状态：正在启动地图记录，等记录启动后再移动。";
+  }
+  if (mapLifecyclePendingAction.value === "save") {
+    return "扫图状态：正在保存当前地图，保存完成前不要继续移动。";
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return "扫图状态：还没开始记录，键盘扫图锁定。";
@@ -5512,12 +5537,14 @@ async function runMapLifecycleAction(
     return;
   }
   mapLifecyclePending.value = true;
+  mapLifecyclePendingAction.value = action;
   try {
     mapLifecycleResult.value = await request();
   } catch (err) {
     mapLifecycleResult.value = makeMapLifecycleFallback(action, err instanceof Error ? err.message : `${action}_request_failed`);
   } finally {
     mapLifecyclePending.value = false;
+    mapLifecyclePendingAction.value = null;
     await refreshConsole();
   }
   await refreshMapPreview();
