@@ -1997,3 +1997,9 @@ map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。真
 `/api/robot-control/nav2/goal/execute` 返回真实结果后再切回 `终点`、历史目标或待复验状态。这个 pending 标记来自
 点击时的图上路线终点坐标，帮助 operator 确认“正在执行的就是地图上这条路线”，不代表后端已到达、不自动确认送达、
 不新增 manual/keyboard pulse/delivery complete/stop 或 `/cmd_vel`。
+
+2026-06-25 22:22 起，普通首屏 `行程操作` 把原 `检查行程` 收敛为 `可选复查（不发车）`。发车主路径仍是：
+勾选现场安全确认 -> 准备/刷新图上路线 -> 点击 `执行图上路线`；`可选复查` 只保留给 operator 需要额外确认时使用，
+不会作为执行按钮的前置步骤。本轮进度跳转在安全确认后优先聚焦 `准备行程（不发车）` 或 `执行图上路线`，
+不再把用户带到可选复查按钮。该改动不改变后端固定 Nav2 preflight/execute 代理和安全边界，不发送 manual/keyboard
+pulse/delivery complete/stop 或 `/cmd_vel`。

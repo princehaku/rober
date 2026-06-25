@@ -221,6 +221,7 @@ const keyboardControlArmButton = ref<HTMLButtonElement | null>(null);
 const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainTripSafetyCheckbox = ref<HTMLInputElement | null>(null);
 const plainTripPreflightButton = ref<HTMLButtonElement | null>(null);
+const plainTripPrepareButton = ref<HTMLButtonElement | null>(null);
 const plainTripExecuteButton = ref<HTMLButtonElement | null>(null);
 const plainTripLatestButton = ref<HTMLButtonElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
@@ -2812,7 +2813,7 @@ const plainTripSummary = computed(() => {
     return { state: "准备中", hint: "正在准备行程；不会发车。" };
   }
   if (navGoalPreflightPending.value) {
-    return { state: "检查中", hint: "正在检查行程条件；不会发车。" };
+    return { state: "复查中", hint: "正在可选复查行程条件；不会发车。" };
   }
   if (navGoalExecutionLatestPending.value) {
     return { state: "读取中", hint: "正在读取最近行程结果。" };
@@ -2848,13 +2849,13 @@ const plainTripSummary = computed(() => {
       : { state: "已准备", hint: routeVisible ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
   }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
-    return { state: "可执行", hint: "检查通过，确认人在旁边后可执行一次行程。" };
+    return { state: "可执行", hint: "可选复查通过；确认人在旁边后可执行一次图上路线。" };
   }
   if (navGoalPreflightResult.value && navGoalPreflightResult.value.proxy_status !== "preflight_passed") {
-    return { state: "检查失败", hint: "行程条件还没满足，请看高级诊断。" };
+    return { state: "复查失败", hint: "可选复查未通过；行程条件还没满足，请看高级诊断。" };
   }
   if (!plainManualSafetyConfirmed.value) {
-    return { state: "待确认", hint: "先勾选行程前确认，再检查或执行。" };
+    return { state: "待确认", hint: "先勾选行程前确认，再准备或执行行程。" };
   }
   return { state: "可执行", hint: "已完成最小确认；执行前后端会复查定位和路线。" };
 });
@@ -2881,7 +2882,7 @@ const plainTripRunStatus = computed(() => {
     return "行程状态：正在准备路线，不会发车。";
   }
   if (navGoalPreflightPending.value) {
-    return "行程状态：正在检查行程条件，不会发车。";
+    return "行程状态：正在可选复查行程条件，不会发车。";
   }
   if (deliveryNav2GoalReady.value) {
     return "行程状态：本轮行程已完成，可以准备送达材料。";
@@ -2905,12 +2906,12 @@ const plainTripRunStatus = computed(() => {
     return "行程状态：图上路线已可执行；点击执行前确认起点、终点和路径。";
   }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
-    return "行程状态：检查通过；准备好后执行一次图上路线。";
+    return "行程状态：可选复查通过；准备好后执行一次图上路线。";
   }
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
     return `行程状态：${plainTripPreparationFailureHint()}`;
   }
-  return "行程状态：已勾安全确认；先准备图上路线或检查行程。";
+  return "行程状态：已勾安全确认；可以准备图上路线，可选复查不会发车。";
 });
 const plainTripCurrentRouteVisible = computed(() => {
   // 只有当前路线真正画到地图上，普通首屏才允许执行“图上路线”；最近路线不能作为执行依据。
@@ -2933,7 +2934,7 @@ function plainTripVisibleRouteGoal() {
 }
 
 const canRunPlainTripPreflight = computed(() => {
-  // 预检不发车，只要求现场完成同一个安全确认。
+  // 普通首屏保留可选复查，但主发车门槛只看安全确认和图上路线。
   return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
 });
 
@@ -2953,17 +2954,17 @@ const canRunPlainTripExecution = computed(() => {
 });
 
 const plainTripPreflightButtonLabel = computed(() => {
-  // 禁用态也显示下一步；预检本身不发车，但仍要求先完成现场确认。
+  // 禁用态也显示下一步；复查是可选动作，不是执行图上路线的必经前置。
   if (deliveryNav2GoalReady.value) {
     return "行程已完成";
   }
   if (!robotApiBaseUrl.value.trim()) {
-    return "连接后检查行程";
+    return "连接后可选复查";
   }
   if (loading.value || plainTripActionPending.value) {
-    return "检查中";
+    return "复查中";
   }
-  return plainManualSafetyConfirmed.value ? "检查行程" : "先勾选确认";
+  return plainManualSafetyConfirmed.value ? "可选复查（不发车）" : "先勾选确认";
 });
 
 const plainTripPreparationButtonLabel = computed(() => {
@@ -5025,8 +5026,9 @@ function plainTripGoalTarget(): HTMLElement | null {
     return plainTripSafetyCheckbox.value ?? plainTripRunPanel.value;
   }
   return enabledButton(plainTripExecuteButton.value)
-    ?? enabledButton(plainTripPreflightButton.value)
+    ?? enabledButton(plainTripPrepareButton.value)
     ?? enabledButton(plainTripLatestButton.value)
+    ?? enabledButton(plainTripPreflightButton.value)
     ?? plainTripRunPanel.value;
 }
 
@@ -6574,7 +6576,7 @@ onBeforeUnmount(() => {
               <button ref="plainTripPreflightButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainTripPreflight" data-testid="plain-trip-preflight" @click="runPlainTripPreflight">
                 {{ plainTripPreflightButtonLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="!canRefreshPlainTripPreparation" data-testid="plain-trip-prepare" @click="refreshNav2Proof">
+              <button ref="plainTripPrepareButton" type="button" class="secondary compact-stop" :disabled="!canRefreshPlainTripPreparation" data-testid="plain-trip-prepare" @click="refreshNav2Proof">
                 {{ plainTripPreparationButtonLabel }}
               </button>
               <button ref="plainTripExecuteButton" type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
