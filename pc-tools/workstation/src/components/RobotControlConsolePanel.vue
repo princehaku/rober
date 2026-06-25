@@ -809,6 +809,18 @@ const mapPreviewRefreshButtonLabel = computed(() => (
 const radarProofRefreshButtonLabel = computed(() => (
   mapWysiwygRefreshPending.value ? "等待地图刷新" : "刷新雷达"
 ));
+const canLoadNavGoalExecutionLatest = computed(() => (
+  !loading.value
+  && !navGoalExecutionLatestPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const canLoadDeliveryLatest = computed(() => (
+  !loading.value
+  && !deliveryLatestPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarSummary.value.state === "雷达未运行";
@@ -3019,6 +3031,9 @@ const plainDeliverySummary = computed(() => {
 
 const plainDeliveryLatestButtonLabel = computed(() => {
   // latest 只读最近送达 gate 结果；按钮文案直接说明不会提交确认。
+  if (plainDeliveryMapWysiwygPending.value) {
+    return "等待地图刷新";
+  }
   return deliveryLatestPending.value ? "刷新中" : "刷新送达状态（只读）";
 });
 
@@ -3936,7 +3951,12 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   return plainTripPreparedBySummary.value ? "执行图上路线" : "执行行程";
 });
-const plainTripLatestButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "重新读取行程（只读）" : "读取行程结果（只读）"));
+const plainTripLatestButtonLabel = computed(() => {
+  if (mapWysiwygRefreshPending.value) {
+    return "等待地图刷新";
+  }
+  return deliveryNav2GoalReady.value ? "重新读取行程（只读）" : "读取行程结果（只读）";
+});
 
 const plainGoalProgressPending = computed(() => (
   loading.value
@@ -5919,9 +5939,9 @@ async function runPlainTripExecution(): Promise<void> {
   }
 }
 
-async function loadNavGoalExecutionLatest(): Promise<void> {
+async function loadNavGoalExecutionLatest(options: { allowDuringMapRefresh?: boolean } = {}): Promise<void> {
   // 读取最近执行结果只走固定 GET 代理；用于页面刷新后补回 route/map evidence ref。
-  if (!robotApiBaseUrl.value.trim() || navGoalExecutionLatestPending.value) {
+  if (!robotApiBaseUrl.value.trim() || navGoalExecutionLatestPending.value || (!options.allowDuringMapRefresh && mapWysiwygRefreshPending.value)) {
     return;
   }
   navGoalExecutionLatestPending.value = true;
@@ -5934,9 +5954,9 @@ async function loadNavGoalExecutionLatest(): Promise<void> {
   }
 }
 
-async function loadDeliveryLatest(): Promise<void> {
+async function loadDeliveryLatest(options: { allowDuringMapRefresh?: boolean } = {}): Promise<void> {
   // delivery latest 只读最近 gate 结论；用于明确现场还缺哪些送达材料。
-  if (!robotApiBaseUrl.value.trim() || deliveryLatestPending.value) {
+  if (!robotApiBaseUrl.value.trim() || deliveryLatestPending.value || (!options.allowDuringMapRefresh && mapWysiwygRefreshPending.value)) {
     return;
   }
   deliveryLatestPending.value = true;
@@ -5977,8 +5997,8 @@ async function preloadGoalClosureReadbacks(): Promise<void> {
     return;
   }
   await Promise.all([
-    loadNavGoalExecutionLatest(),
-    loadDeliveryLatest(),
+    loadNavGoalExecutionLatest({ allowDuringMapRefresh: true }),
+    loadDeliveryLatest({ allowDuringMapRefresh: true }),
   ]);
 }
 
@@ -7821,7 +7841,7 @@ onBeforeUnmount(() => {
               <button ref="plainTripExecuteButton" type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
                 {{ plainTripExecutionButtonLabel }}
               </button>
-              <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
+              <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="!canLoadNavGoalExecutionLatest" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
                 {{ plainTripLatestButtonLabel }}
               </button>
             </div>
@@ -7876,7 +7896,7 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <strong>任务收口</strong>
               <span class="status-chip" :data-state="plainDeliverySummary.state">{{ plainDeliverySummary.state }}</span>
-              <button type="button" class="secondary compact-stop" :disabled="loading || deliveryLatestPending || !robotApiBaseUrl.trim()" data-testid="plain-delivery-latest" @click="loadDeliveryLatest">
+              <button type="button" class="secondary compact-stop" :disabled="!canLoadDeliveryLatest" data-testid="plain-delivery-latest" @click="loadDeliveryLatest">
                 {{ plainDeliveryLatestButtonLabel }}
               </button>
               <button type="button" class="secondary compact-stop" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" data-testid="plain-delivery-gap-check" @click="checkDeliveryGap">
@@ -8350,10 +8370,10 @@ onBeforeUnmount(() => {
             </button>
           </form>
           <div class="robot-control-form">
-            <button class="secondary" type="button" :disabled="loading || navGoalExecutionLatestPending || !robotApiBaseUrl.trim()" @click="loadNavGoalExecutionLatest">
+            <button class="secondary" type="button" :disabled="!canLoadNavGoalExecutionLatest" @click="loadNavGoalExecutionLatest">
               读取最近 Nav2 结果（高级）
             </button>
-            <button class="secondary" type="button" :disabled="loading || deliveryLatestPending || !robotApiBaseUrl.trim()" @click="loadDeliveryLatest">
+            <button class="secondary" type="button" :disabled="!canLoadDeliveryLatest" @click="loadDeliveryLatest">
               读取送达缺口（高级）
             </button>
             <button class="secondary" type="button" :disabled="loading || deliveryGapCheckPending || !robotApiBaseUrl.trim()" @click="checkDeliveryGap">

@@ -11126,6 +11126,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-draft-save"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-trip-latest"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-latest"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-delivery-latest"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（等待地图刷新）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("地图画面刷新完成");
@@ -11138,6 +11142,14 @@ describe("App", () => {
     const completeCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([callUrl]) =>
       String(callUrl).startsWith("/api/robot-control/delivery/complete?"),
     ).length;
+    const tripLatestCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([callUrl]) =>
+      String(callUrl).startsWith("/api/robot-control/nav2/goal/execution/latest?"),
+    ).length;
+    const deliveryLatestCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([callUrl]) =>
+      String(callUrl).startsWith("/api/robot-control/delivery/latest?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-trip-latest"]').trigger("click");
+    await wrapper.find('[data-testid="plain-delivery-latest"]').trigger("click");
     await wrapper.find('[data-testid="plain-delivery-prefill-material"]').trigger("click");
     await wrapper.find('[data-testid="plain-delivery-draft-save"]').trigger("click");
     await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
@@ -11149,6 +11161,12 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([callUrl]) =>
       String(callUrl).startsWith("/api/robot-control/delivery/complete?"),
     ).length).toBe(completeCallsBeforeMapRefreshRelease);
+    expect(mockedFetch.mock.calls.filter(([callUrl]) =>
+      String(callUrl).startsWith("/api/robot-control/nav2/goal/execution/latest?"),
+    ).length).toBe(tripLatestCallsBeforeMapRefreshRelease);
+    expect(mockedFetch.mock.calls.filter(([callUrl]) =>
+      String(callUrl).startsWith("/api/robot-control/delivery/latest?"),
+    ).length).toBe(deliveryLatestCallsBeforeMapRefreshRelease);
 
     resolveMapPreview({
       ok: true,
