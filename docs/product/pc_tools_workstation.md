@@ -2136,6 +2136,9 @@ Nav2 no-motion proof 覆盖路线 readback。刷新完成后两个入口恢复�
 2026-06-26 06:15 起，普通首屏 `刷新地图` 和 `刷新地图画面` 互斥：任一地图 proof/preview 刷新进行中，两个按钮都显示
 `等待地图刷新` 并禁用，函数入口也同步早退。这样地图状态和画面不会并发刷新，避免旧图、旧 proof 或路线 overlay 互相覆盖。
 扫地式建图卡片里的 `刷新扫图画面` 复用同一 gate；proof 刷新完成后的自动地图画面刷新仍保留。
+2026-06-26 06:20 起，普通首屏 `刷新雷达` 也接入同一地图 WYSIWYG gate：地图 proof/preview 正在刷新时显示
+`等待地图刷新` 并禁用，函数入口同步早退，不再允许雷达点在旧地图底图或旧坐标状态上抢先更新。雷达启动成功后的自动
+radar proof refresh 仍保留；该动作只刷新 no-motion scan proof，不调用 Nav2 execute、manual、keyboard、delivery、stop 或 `/cmd_vel`。
 
 2026-06-25 23:34 起，普通首屏执行图上路线时会保留“本次点击的图上终点”。如果上位机 Nav2 execute 失败或拒绝，
 且响应没有回传 `goal_x/goal_y`，地图仍会在这次图上终点显示 `行程未通过`，避免失败后目标 marker 消失。该兜底只用于

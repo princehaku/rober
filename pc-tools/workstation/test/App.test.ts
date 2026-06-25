@@ -10441,6 +10441,8 @@ describe("App", () => {
     }
     const mapProofRefreshClick = mapProofButton.trigger("click");
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-radar-refresh"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-radar-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeDefined();
     await wrapper.find(".robot-console .advanced-details").element.setAttribute("open", "");
@@ -10450,12 +10452,19 @@ describe("App", () => {
     const radarStartCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/radar/start?"),
     ).length;
+    const radarProofRefreshCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-radar-refresh"]').trigger("click");
     await wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
     await advancedRadarStart?.trigger("click");
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/radar/start?"),
     ).length).toBe(radarStartCallsBeforeMapRefreshRelease);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
+    ).length).toBe(radarProofRefreshCallsBeforeMapRefreshRelease);
     const finishMapProofRefresh = mapProofRefreshControl.finish;
     if (!finishMapProofRefresh) {
       throw new Error("map proof refresh before radar start was not captured");
@@ -10464,6 +10473,8 @@ describe("App", () => {
     await mapProofRefreshClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-radar-refresh"]').text()).toBe("刷新雷达");
+    expect(wrapper.find('[data-testid="plain-radar-refresh"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("启动雷达");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeUndefined();
 

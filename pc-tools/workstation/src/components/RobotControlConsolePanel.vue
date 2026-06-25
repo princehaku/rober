@@ -779,6 +779,12 @@ const canRefreshMapPreview = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canRefreshRadarProof = computed(() => (
+  !loading.value
+  && !radarRefreshPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const plainRadarStartButtonLabel = computed(() => {
   if (plainRadarStartUnavailable.value) {
     return "雷达未配置";
@@ -799,6 +805,9 @@ const mapProofRefreshButtonLabel = computed(() => (
 ));
 const mapPreviewRefreshButtonLabel = computed(() => (
   mapWysiwygRefreshPending.value ? "等待地图刷新" : "刷新地图画面"
+));
+const radarProofRefreshButtonLabel = computed(() => (
+  mapWysiwygRefreshPending.value ? "等待地图刷新" : "刷新雷达"
 ));
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
@@ -5717,6 +5726,9 @@ async function runRefreshAction(
 
 async function refreshRadarProof(options: { focusAfterReady?: boolean } = {}): Promise<void> {
   // Radar refresh 只刷新 no-motion scan proof snapshot，不开启任何底盘动作。
+  if (mapWysiwygRefreshPending.value) {
+    return;
+  }
   await runRefreshAction(
     "radar_scan_proof_refresh",
     () => postRobotControlRadarScanProofRefresh(robotApiBaseUrl.value),
@@ -7427,8 +7439,8 @@ onBeforeUnmount(() => {
         <article class="snapshot-panel">
           <h3>雷达</h3>
           <div class="panel-action-row">
-            <button ref="plainRadarRefreshButton" type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" data-testid="plain-radar-refresh" @click="refreshRadarProof">
-              刷新雷达
+            <button ref="plainRadarRefreshButton" type="button" :disabled="!canRefreshRadarProof" data-testid="plain-radar-refresh" @click="refreshRadarProof">
+              {{ radarProofRefreshButtonLabel }}
             </button>
             <button v-if="showPlainRadarStart" ref="plainRadarStartButton" type="button" class="secondary compact-stop" :disabled="!canStartRadarLifecycle || plainRadarStartUnavailable" data-testid="plain-radar-start" @click="startPlainRadarLifecycle">
               {{ plainRadarStartButtonLabel }}
