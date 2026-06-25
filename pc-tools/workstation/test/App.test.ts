@@ -5162,7 +5162,14 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("已送达");
+    const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
+    expect(deliveryStatus.text()).toContain("已送达");
+    expect(deliveryStatus.attributes("data-state")).toBe("已送达");
+    const deliveryFinal = wrapper.find('[data-testid="plain-delivery-final-confirm"]');
+    expect(deliveryFinal.attributes("data-state")).toBe("已完成");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-delivery-status[data-state="已送达"]');
+    expect(workstationStyles).toContain('.plain-delivery-final[data-state="已完成"]');
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已送达，反馈 8 次，delivery gate 已确认");
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
@@ -11498,8 +11505,15 @@ describe("App", () => {
     expect(pendingGoal.attributes("data-state")).toBe("送达确认中");
     expect(pendingGoal.attributes("aria-label")).toBe("送达确认中，正在提交送达确认，地图坐标 x=0.80, y=0.00");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，送达确认中");
-    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("确认中");
-    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("正在提交送达确认；不会发车，结果返回前先保持现场接管。");
+    const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
+    expect(deliveryStatus.attributes("data-state")).toBe("确认中");
+    expect(deliveryStatus.text()).toContain("确认中");
+    expect(deliveryStatus.text()).toContain("正在提交送达确认；不会发车，结果返回前先保持现场接管。");
+    const deliveryFinal = wrapper.find('[data-testid="plain-delivery-final-confirm"]');
+    expect(deliveryFinal.attributes("data-state")).toBe("确认中");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-delivery-status[data-state="确认中"]');
+    expect(workstationStyles).toContain('.plain-delivery-final[data-state="确认中"]');
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认中");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(true);

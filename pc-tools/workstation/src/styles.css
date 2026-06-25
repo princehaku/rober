@@ -1323,12 +1323,30 @@ h3 {
 .plain-delivery-status {
   margin-top: 12px;
   border-top: 1px solid #d7dee6;
+  border-left: 3px solid transparent;
   padding-top: 12px;
+  padding-left: 10px;
 }
 
 .plain-delivery-status strong {
   color: #253341;
   font-size: 14px;
+}
+
+.plain-delivery-status[data-state="已送达"] {
+  border-left-color: #238636;
+  background: linear-gradient(90deg, rgba(35, 134, 54, 0.08), transparent 42%);
+}
+
+.plain-delivery-status[data-state="确认中"],
+.plain-delivery-status[data-state="检查中"] {
+  border-left-color: #bf8700;
+  background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 42%);
+}
+
+.plain-delivery-status[data-state="需复验"] {
+  border-left-color: #d97706;
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), transparent 42%);
 }
 
 .plain-delivery-material-row {
@@ -1340,7 +1358,25 @@ h3 {
   gap: 8px;
   margin-top: 12px;
   border-top: 1px solid #d7dee6;
+  border-left: 3px solid transparent;
   padding-top: 12px;
+  padding-left: 10px;
+}
+
+.plain-delivery-final[data-state="已完成"] {
+  border-left-color: #238636;
+  background: linear-gradient(90deg, rgba(35, 134, 54, 0.08), transparent 42%);
+}
+
+.plain-delivery-final[data-state="确认中"] {
+  border-left-color: #bf8700;
+  background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 42%);
+}
+
+.plain-delivery-final[data-state="待确认"],
+.plain-delivery-final[data-state="待材料"],
+.plain-delivery-final[data-state="待行程"] {
+  border-left-color: #d5d2a9;
 }
 
 .plain-confirm-grid {

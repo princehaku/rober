@@ -8143,7 +8143,7 @@ onBeforeUnmount(() => {
             </p>
             <p v-if="plainWheelEvidenceSaveSummary" class="panel-note">{{ plainWheelEvidenceSaveSummary }}</p>
           </div>
-          <div ref="plainDeliveryStatusPanel" class="plain-delivery-status" tabindex="-1" data-testid="plain-delivery-status">
+          <div ref="plainDeliveryStatusPanel" class="plain-delivery-status" tabindex="-1" data-testid="plain-delivery-status" :data-state="plainDeliverySummary.state">
             <div class="simple-status-row">
               <strong>任务收口</strong>
               <span class="status-chip" :data-state="plainDeliverySummary.state">{{ plainDeliverySummary.state }}</span>
@@ -8185,7 +8185,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainDeliveryMaterialSummary.hint }}</p>
-            <div ref="plainDeliveryFinalPanel" class="plain-delivery-final" tabindex="-1" data-testid="plain-delivery-final-confirm">
+            <div ref="plainDeliveryFinalPanel" class="plain-delivery-final" tabindex="-1" data-testid="plain-delivery-final-confirm" :data-state="plainDeliveryConfirmSummary.state">
               <div class="simple-status-row">
                 <strong>最终确认</strong>
                 <span class="status-chip" :data-state="plainDeliveryConfirmSummary.state">{{ plainDeliveryConfirmSummary.state }}</span>
