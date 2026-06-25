@@ -326,6 +326,8 @@ function cameraSourcePlainFailureHint(): string {
 function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开" | "画面可见" | "画面偏暗" | "失败"; hint: string } {
   // 摄像头首屏只暴露普通用户能理解的结论，不泄露 peer / ICE / SDP / canvas 细节。
   const sourceFailureHint = cameraSourcePlainFailureHint();
+  const camera = robotSummary.value?.readback_summary.camera;
+  const cameraOnline = camera?.status === "ready" || camera?.devices_status === "loaded";
   switch (previewStatus.value) {
     case "starting_local_peer":
     case "connecting_offer_posted":
@@ -353,6 +355,9 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开
     default:
       if (sourceFailureHint) {
         return { state: "失败", hint: sourceFailureHint };
+      }
+      if (cameraOnline) {
+        return { state: "未打开", hint: "相机在线，点打开画面。" };
       }
       return { state: "未打开", hint: "还没有打开实时画面。" };
   }

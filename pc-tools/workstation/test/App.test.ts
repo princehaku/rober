@@ -4504,6 +4504,29 @@ describe("App", () => {
     }
   });
 
+  it("tells the operator to open the picture when camera readback is online", async () => {
+    // camera ready 只说明服务在线；首屏仍必须保持未打开，不能冒充已经看到画面。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "ready";
+    summaryFixture.readback_summary.camera.devices_status = "loaded";
+    summaryFixture.readback_summary.camera.preview_status = "idle_not_started";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("实时画面");
+    expect(firstScreenText).toContain("未打开");
+    expect(firstScreenText).toContain("相机在线，点打开画面。");
+    expect(firstScreenText).not.toContain("画面可见");
+    expect(firstScreenText).not.toContain("preview_status");
+    expect(firstScreenText).not.toContain("/dev/video1");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/offer?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(false);
+  });
+
   it("submits operator report material from advanced diagnostics without leaking it to the first screen", async () => {
     // 表单只在高级诊断里出现；提交走固定 workstation proxy，不把 delivery claim 升成顶层成功。
     const mockedFetch = stubWorkstationFetch();
