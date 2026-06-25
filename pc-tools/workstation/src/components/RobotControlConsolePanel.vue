@@ -2088,6 +2088,9 @@ const plainTripGoalNextAction = computed(() => {
   if (plainTripLatestNotProvenEvidence.value) {
     return "下一步：检查或重新执行行程。";
   }
+  if (plainTripPreparedBySummary.value && plainTripSafetyConfirmed.value) {
+    return "下一步：执行行程。";
+  }
   return plainTripSafetyConfirmed.value ? "下一步：检查或执行行程。" : "下一步：勾选行程前确认。";
 });
 
@@ -2194,7 +2197,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? (plainTripSafetyConfirmed.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，下一步检查或执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? (plainTripSafetyConfirmed.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -2298,7 +2301,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return plainTripHasSucceededEvidence.value
       ? "验收卡点：行程成功记录较旧，需要重新执行本轮行程。"
       : plainTripLatestNotProvenEvidence.value ? "验收卡点：最近行程未通过，需要检查或重新执行完整行程。"
-      : plainTripPreparedBySummary.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要执行完整行程并读到成功结果。`
+      : plainTripPreparedBySummary.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程并读到成功结果。`
         : "验收卡点：还没读到行程成功结果。";
   }
   if (!deliverySuccessReady.value) {
@@ -2399,13 +2402,17 @@ const plainTripSummary = computed(() => {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
   }
   if (plainTripPreparedByRefresh.value) {
-    return { state: "已准备", hint: `行程准备已刷新，已读到路线 ${plainTripPreparedPointCount.value} 个点；点检查行程确认条件，不会发车。` };
+    return plainTripSafetyConfirmed.value
+      ? { state: "已准备", hint: `行程准备已刷新，已读到路线 ${plainTripPreparedPointCount.value} 个点；可执行行程，后端仍会复查定位和路线。` }
+      : { state: "已准备", hint: `行程准备已刷新，已读到路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行行程。` };
   }
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
     return { state: "待准备", hint: plainTripPreparationFailureHint() };
   }
   if (plainTripPreparedBySummary.value) {
-    return { state: "已准备", hint: `已读到路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可检查或执行行程。` };
+    return plainTripSafetyConfirmed.value
+      ? { state: "已准备", hint: `已读到路线 ${plainTripPreparedPointCount.value} 个点；可直接执行行程，后端仍会复查定位和路线。` }
+      : { state: "已准备", hint: `已读到路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行行程。` };
   }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
     return { state: "可执行", hint: "检查通过，确认人在旁边后可执行一次行程。" };
