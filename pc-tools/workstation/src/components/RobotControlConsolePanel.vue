@@ -1003,10 +1003,14 @@ function latestNavGoalOverlay() {
   const succeeded = nav2GoalSucceeded(values);
   const stale = evidenceIsStale(values);
   // 终点 marker 直接表达执行证据，避免把“本轮目标”误读成已经完整到达。
-  const state = complete && !stale && deliverySuccessReady.value
+  const state = complete && !stale && deliveryCompletionPending.value
+    ? "送达确认中"
+    : complete && !stale && deliverySuccessReady.value
     ? "已送达"
     : complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : succeeded ? "到达缺反馈" : "行程未通过";
-  const deliveryText = state === "已送达" ? "，delivery gate 已确认" : state === "已到达" ? "，下一步准备送达材料" : "";
+  const deliveryText = state === "送达确认中"
+    ? "，正在提交送达确认"
+    : state === "已送达" ? "，delivery gate 已确认" : state === "已到达" ? "，下一步准备送达材料" : "";
   const failureText = state === "行程未通过"
     ? plainTripFailureReasonText(navGoalExecutionResult.value ?? navGoalExecutionLatestResult.value, values)
     : "";
@@ -2463,6 +2467,9 @@ function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
 
 const plainDeliveryConfirmButtonLabel = computed(() => {
   // 按钮禁用时也直接显示下一步动作；可提交时明确“不发车”，避免送达收口被误解成运动命令。
+  if (operatorReportPending.value || deliveryCompletionPending.value) {
+    return "确认中";
+  }
   if (deliverySuccessReady.value) {
     return "送达已完成";
   }
@@ -2787,7 +2794,10 @@ const deliveryRouteMapMatchesFreshNav2 = computed(() => {
 const plainDeliverySummary = computed(() => {
   // 普通首屏只做收口状态提示；按钮只读 latest 或复算缺口，不提交送达确认。
   const deliveryConfirmed = deliverySuccessReady.value;
-  if (deliveryCompletionPending.value || deliveryLatestPending.value || deliveryGapCheckPending.value) {
+  if (deliveryCompletionPending.value) {
+    return { state: "确认中", hint: "正在提交送达确认；不会发车，结果返回前先保持现场接管。" };
+  }
+  if (deliveryLatestPending.value || deliveryGapCheckPending.value) {
     return { state: "检查中", hint: "正在读取最近行程和送达状态；不会发车。" };
   }
   if (deliveryConfirmed) {
@@ -3263,6 +3273,9 @@ function plainMapTripExecutionLabel(): string {
     return "";
   }
   if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    if (deliveryCompletionPending.value) {
+      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，送达确认中`;
+    }
     if (deliverySuccessReady.value) {
       return `行程执行：已送达，反馈 ${nav2FeedbackSampleCount(values)} 次，delivery gate 已确认`;
     }

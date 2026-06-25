@@ -933,6 +933,12 @@ h3 {
   color: #176039;
 }
 
+.plain-map-route-goal-marker[data-state="送达确认中"] {
+  border-color: #bf8700;
+  background: #fff8d6;
+  color: #6a5710;
+}
+
 .plain-map-route-goal-marker[data-state="已送达"] {
   border-color: #238636;
   background: #e7f7ed;

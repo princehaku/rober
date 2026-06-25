@@ -106,6 +106,7 @@ pc-tools/workstation/
 - 2026-06-22 19:55 起，普通首屏 `最终确认` 区新增 `确认已投放/送达` 本地按钮，只在 operator 显式点击后勾选最后一项；它仍不提交 operator report 或 delivery complete，必须再点击红色 `确认送达` 才会进入后端 delivery gate。
 - 2026-06-23 01:32 起，普通首屏 `最终确认` 区新增 `全部已确认` 本地按钮，用于现场人员一次性勾选安全、到达停稳、材料核对和确认投放七项。它仍只修改本页 checkbox，不保存材料、不提交 operator report、不调用 delivery complete、不执行 Nav2、manual、stop 或 `/cmd_vel`；红色 `确认送达（不发车）` 仍是唯一进入后端 delivery gate 的动作。
 - 2026-06-23 02:20 起，普通首屏 `最终确认` 区会显示红色 `确认送达（不发车）` 的后端 gate 结果：通过时显示 `送达提交已通过：上位机已确认送达完成`，被 gate 拒绝时显示 `送达提交未通过：还差...` 的普通缺口摘要。该提示只消费本次 `delivery/complete` 响应，不自动重试、不再次提交 operator report、不执行 Nav2、manual、stop 或 `/cmd_vel`。
+- 2026-06-26 03:40 起，普通首屏点击 `确认送达（不发车）` 后，在 operator report / delivery complete 请求未返回期间，地图上的行程终点会从 `已到达` 切到 `送达确认中`，地图 caption 显示 `已到达，反馈 N 次，送达确认中`，任务收口状态显示 `确认中`。该状态只表达本次送达确认请求正在进行，不把 delivery success 提前置真，不重复提交，不执行 Nav2、manual、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-23 07:20 起，普通首屏 `执行行程` 成功后会自动聚焦到 `任务收口` 的送达材料状态区，让现场人员自然看到 `准备送达材料` 下一步。该聚焦只改变滚动位置和焦点，不自动准备材料、不提交 operator report、不调用 delivery complete、manual、stop 或 `/cmd_vel`；失败、旧行程或缺反馈样本不会触发该跳转。
 - 2026-06-23 07:35 起，普通首屏 `准备送达材料` 成功预填视频和行程材料后会自动聚焦 `保存送达草稿（不确认）`。该聚焦只帮助现场继续下一步，仍不自动保存草稿、不提交 delivery complete、不执行 Nav2、manual、stop 或 `/cmd_vel`；草稿保存成功后才继续聚焦最终确认区。
 - 2026-06-26 04:35 起，普通首屏送达材料按钮会按当前缺口改文案：已有本轮行程材料但缺画面时显示 `补送达画面`，视频和行程材料都在时显示 `重新准备材料`。按钮仍只调用固定 latest/probe 预填逻辑，不提交 operator report、不确认送达、不执行 Nav2、manual、stop 或 `/cmd_vel`。
