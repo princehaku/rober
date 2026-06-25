@@ -251,6 +251,7 @@ const plainFreeRoamKeyboardButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamMapRefreshButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamStopButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamSaveButton = ref<HTMLButtonElement | null>(null);
+const plainFreeRoamAutoStopButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
@@ -1444,6 +1445,16 @@ const canStartFreeRoamAutonomy = computed(() => (
   && !freeRoamAutonomyPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const freeRoamAutonomyStartedThisSession = computed(() => (
+  // 自动扫图代理结果只代表状态机请求已转发；下一步提示必须从人工键盘流程切回监看/停止流程。
+  freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded"
+  && freeRoamAutonomyResult.value.action === "start"
+));
+const freeRoamAutonomyStoppedThisSession = computed(() => (
+  // stop 请求已转发后，现场下一步应回到刷新/保存地图，而不是继续引导键盘扫图。
+  freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded"
+  && freeRoamAutonomyResult.value.action === "stop"
+));
 const canArmPlainFreeRoamKeyboard = computed(() => (
   // 扫图键盘入口必须等地图记录真的启动；普通键盘手控仍保持最小安全确认入口。
   plainManualSafetyConfirmed.value
@@ -1528,6 +1539,18 @@ const plainFreeRoamNextActionLabel = computed(() => {
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
+  }
+  if (freeRoamAutonomyPendingAction.value === "start") {
+    return "下一步：等待自动扫图启动";
+  }
+  if (freeRoamAutonomyPendingAction.value === "stop") {
+    return "下一步：等待自动扫图停止";
+  }
+  if (freeRoamAutonomyStartedThisSession.value) {
+    return "下一步：监看或停止自动扫图";
+  }
+  if (freeRoamAutonomyStoppedThisSession.value) {
+    return plainFreeRoamMapPreviewFreshForSession.value ? "下一步：保存地图" : "下一步：刷新扫图画面";
   }
   if (mapRuntimeStarted.value && !keyboardControlArmed.value) {
     return canArmPlainFreeRoamKeyboard.value ? "下一步：启用键盘" : "下一步：补齐键盘条件";
@@ -5497,6 +5520,21 @@ function plainFreeRoamNextTarget(): HTMLElement | null {
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return enabledButton(plainFreeRoamStartButton.value) ?? plainFreeRoamStartButton.value;
   }
+  if (freeRoamAutonomyPendingAction.value) {
+    return plainFreeRoamAutoStopButton.value
+      ?? enabledButton(plainFreeRoamMapRefreshButton.value)
+      ?? plainFreeRoamStartButton.value;
+  }
+  if (freeRoamAutonomyStartedThisSession.value) {
+    return enabledButton(plainFreeRoamAutoStopButton.value)
+      ?? enabledButton(plainFreeRoamMapRefreshButton.value)
+      ?? plainFreeRoamStartButton.value;
+  }
+  if (freeRoamAutonomyStoppedThisSession.value) {
+    return plainFreeRoamMapPreviewFreshForSession.value
+      ? enabledButton(plainFreeRoamSaveButton.value) ?? plainFreeRoamSaveButton.value
+      : enabledButton(plainFreeRoamMapRefreshButton.value) ?? plainFreeRoamMapRefreshButton.value;
+  }
   if (mapRuntimeStarted.value && !keyboardControlArmed.value) {
     return enabledButton(plainFreeRoamKeyboardButton.value) ?? plainKeyboardNextTarget();
   }
@@ -6939,7 +6977,7 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="plainFreeRoamAutonomyReadiness.disabled" data-testid="plain-free-roam-auto-start" @click="startFreeRoamAutonomy">
                 {{ plainFreeRoamAutonomyReadiness.buttonLabel }}
               </button>
-              <button type="button" class="danger-button compact-stop" :disabled="freeRoamAutonomyPending || !robotApiBaseUrl.trim()" data-testid="plain-free-roam-auto-stop" @click="stopFreeRoamAutonomy">
+              <button ref="plainFreeRoamAutoStopButton" type="button" class="danger-button compact-stop" :disabled="freeRoamAutonomyPending || !robotApiBaseUrl.trim()" data-testid="plain-free-roam-auto-stop" @click="stopFreeRoamAutonomy">
                 停止自动扫图
               </button>
               <span class="muted">{{ plainFreeRoamAutonomyReadiness.policyText }}</span>

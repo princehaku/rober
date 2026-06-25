@@ -3707,6 +3707,7 @@ describe("App", () => {
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
     });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const wrapper = mount(App);
     await flushPromises();
@@ -3754,12 +3755,35 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("地图和雷达监看中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已启动");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：监看或停止自动扫图");
+    const callsBeforeAutoNext = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeAutoNext);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
     ).length).toBe(radarRefreshCallsBeforeClick + 1);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/map/preview?"),
     ).length).toBe(mapPreviewCallsBeforeClick + 1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+
+    await wrapper.find('[data-testid="plain-free-roam-auto-stop"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url, options]) =>
+      String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?") && options?.method === "POST",
+    )).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：保存地图");
+    const callsBeforeStopNext = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-save"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStopNext);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

@@ -2109,6 +2109,11 @@ PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboar
 未证明启动或停止。该反馈只消费 PC 固定代理响应，不新增任意 endpoint、manual、keyboard pulse、Nav2、delivery complete
 或 `/cmd_vel` 调用，也不修改 Clash 或系统代理配置。
 
+2026-06-26 01:25 起，普通首屏 `自动扫图` start 成功后，扫地式建图卡片的 `下一步` 不再继续指向人工键盘；
+按钮改为 `下一步：监看或停止自动扫图`，点击只聚焦 `停止自动扫图`。stop 请求转发成功后，`下一步` 再按扫图画面是否已刷新
+回到 `保存当前地图` 或 `刷新扫图画面`。该调整只修正自动扫图运行/收口流程的焦点和文案，不自动停止、不自动保存、
+不发送 manual、keyboard pulse、Nav2、delivery、stop 兜底之外的控制或 `/cmd_vel`。
+
 2026-06-26 01:35 起，普通首屏 `自动扫图` start 成功后会自动串一次只读监看刷新：固定
 `POST /api/robot-control/radar/scan-proof/refresh` 读取最新雷达 proof，然后固定
 `GET /api/robot-control/map/preview` 读取最新地图画面。该链路只更新地图/雷达所见即所得反馈，不再发
