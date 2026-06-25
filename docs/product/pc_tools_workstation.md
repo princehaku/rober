@@ -1541,6 +1541,12 @@ operator report，不再次发送运动命令、不补 LiDAR/route/delivery。�
 `map` frame 的 `x=0.8,y=0,yaw=0` 受限参数。普通首屏文案继续只显示“行程”，不展示 `Nav2/proof/API`
 字段；执行结果只用于“行程执行”状态和后续送达材料，不自动确认 delivery success。
 
+2026-06-25 17:32 起，普通首屏 `检查行程` 作为不发车预检动作，不再被雷达 lifecycle 状态禁用：现场勾选
+`人在旁边、周围安全、停止手段就绪` 后，即使雷达未运行或待刷新，也可以先调用固定
+`/api/robot-control/nav2/goal/preflight` 查看路线 gate。`执行行程` 仍继续被雷达未运行/待刷新状态挡住，并且
+仍必须走 `confirm_navigation_execution` 与后端固定 execute gate；该改动不会调用 `/api/robot-control/nav2/goal/execute`、
+`/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`。
+
 2026-06-22 15:14 起，普通首屏点击 `执行行程` 后如果固定代理返回 `goal_succeeded` 和 evidence ref，PC 会自动把
 这次行程材料填入送达材料候选，并把“任务收口”材料状态显示为“待画面”。这一步不调用 camera probe、
 不提交 operator report、不调用 delivery complete，也不替现场勾选最终确认；用途只是省掉用户从“行程成功”

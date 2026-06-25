@@ -2243,8 +2243,8 @@ const plainTripSummary = computed(() => {
 });
 
 const canRunPlainTripPreflight = computed(() => {
-  // 预检不发车，但也要求现场先确认，避免普通入口被误当成随手按钮。
-  return !deliveryNav2GoalReady.value && !plainTripRadarBlocked.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+  // 预检不发车，因此允许在雷达未就绪时先看路线 gate；真正执行仍单独被雷达状态挡住。
+  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
 });
 
 const canRunPlainTripExecution = computed(() => {
@@ -2264,6 +2264,9 @@ const plainTripPreflightButtonLabel = computed(() => {
     return "检查中";
   }
   if (plainTripRadarBlocked.value) {
+    if (plainTripSafetyConfirmed.value) {
+      return "检查行程（不发车）";
+    }
     if (plainRadarStartUnavailable.value) {
       return "先配置雷达";
     }

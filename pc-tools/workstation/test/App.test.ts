@@ -4113,8 +4113,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
-  it("blocks plain trip actions on the first screen until radar is running", async () => {
-    // 完整行程依赖雷达运行；普通入口只把现场带到雷达按钮，不自动启动雷达或执行行程。
+  it("blocks plain trip execution on the first screen until radar is running", async () => {
+    // 完整行程执行依赖雷达运行；预检允许先看路线 gate，但不会启动雷达或执行行程。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
     summaryFixture.readback_summary.lidar.lifecycle_running = "false";
@@ -4155,8 +4155,8 @@ describe("App", () => {
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先启动雷达");
-    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-preflight"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先启动雷达");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
 
@@ -7790,6 +7790,51 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("/api/radar/start");
+  });
+
+  it("allows plain trip preflight while lidar is stopped without enabling trip execution", async () => {
+    // 路线预检不发车，允许现场先看 Nav2 gate；真正执行仍被雷达状态和二次执行 gate 挡住。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "missing";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const preflightButton = wrapper.find('[data-testid="plain-trip-preflight"]');
+    const executeButton = wrapper.find('[data-testid="plain-trip-execute"]');
+    expect(preflightButton.text()).toBe("检查行程（不发车）");
+    expect(preflightButton.attributes("disabled")).toBeUndefined();
+    expect(executeButton.text()).toBe("先启动雷达");
+    expect(executeButton.attributes("disabled")).toBeDefined();
+
+    await preflightButton.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const preflightCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight?"));
+    expect(preflightCall).toBeTruthy();
+    expect((preflightCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
+    expect(JSON.parse(String((preflightCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual(expect.objectContaining({
+      goal_frame_id: "map",
+      confirm_navigation_preflight: true,
+    }));
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("treats running lidar with incomplete proof as refresh-only before trip execution", async () => {
