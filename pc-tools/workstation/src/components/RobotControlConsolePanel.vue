@@ -54,6 +54,12 @@ import type {
 } from "../shared/contracts";
 
 type ManualDirection = "forward" | "back" | "left" | "right";
+type MapNavGoal = {
+  goal_frame_id: "map";
+  goal_x: number;
+  goal_y: number;
+  goal_yaw: number;
+};
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
@@ -79,6 +85,7 @@ const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null
 const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(null);
 const navGoalExecutionResult = ref<RobotControlNavGoalExecutionResponse | null>(null);
 const navGoalExecutionLatestResult = ref<RobotControlNavGoalExecutionLatestResponse | null>(null);
+const navGoalExecutionPendingGoal = ref<MapNavGoal | null>(null);
 const deliveryLatestResult = ref<RobotControlDeliveryLatestResponse | null>(null);
 const deliveryGapCheckResult = ref<RobotControlDeliveryGapCheckResponse | null>(null);
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
@@ -829,9 +836,26 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
 }
 
 function latestNavGoalOverlay() {
-  const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
   const preview = mapPreviewResult.value;
-  if (!values || !preview || preview.proxy_status !== "preview_forwarded") {
+  if (!preview || preview.proxy_status !== "preview_forwarded") {
+    return null;
+  }
+  if (navGoalExecutionPending.value && navGoalExecutionPendingGoal.value) {
+    // pending 标记来自用户刚点击的图上路线终点；只做 UI 读图提示，不替代后端执行结果。
+    const pendingGoal = navGoalExecutionPendingGoal.value;
+    const style = mapCoordinateStyle(pendingGoal.goal_x, pendingGoal.goal_y, preview);
+    if (!style) {
+      return null;
+    }
+    return {
+      label: "行程中",
+      state: "执行中",
+      style,
+      aria: `正在执行图上路线，目标地图坐标 x=${pendingGoal.goal_x.toFixed(2)}, y=${pendingGoal.goal_y.toFixed(2)}`,
+    };
+  }
+  const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
+  if (!values) {
     return null;
   }
   const goalX = finitePlainNumber(values.goal_x);
@@ -4811,12 +4835,7 @@ async function runNavGoalPreflight(): Promise<void> {
   }
 }
 
-async function runNavGoalExecution(goalOverride?: {
-  goal_frame_id: "map";
-  goal_x: number;
-  goal_y: number;
-  goal_yaw: number;
-}): Promise<void> {
+async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
   // 真正执行 NavigateToPose 必须显式确认；结果只作为执行证据，不自动标记交付成功。
   if (!robotApiBaseUrl.value.trim() || navGoalExecutionPending.value) {
     return;
@@ -4827,6 +4846,7 @@ async function runNavGoalExecution(goalOverride?: {
     goal_y: navGoalY.value,
     goal_yaw: navGoalYaw.value,
   };
+  navGoalExecutionPendingGoal.value = goalRequest;
   navGoalExecutionPending.value = true;
   try {
     navGoalExecutionResult.value = await postRobotControlNav2GoalExecute(robotApiBaseUrl.value, {
@@ -4841,6 +4861,7 @@ async function runNavGoalExecution(goalOverride?: {
     navGoalExecutionResult.value = makeNavGoalExecutionFallback(err instanceof Error ? err.message : "nav_goal_execution_request_failed");
   } finally {
     navGoalExecutionPending.value = false;
+    navGoalExecutionPendingGoal.value = null;
     await refreshConsole();
   }
 }

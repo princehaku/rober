@@ -1992,3 +1992,8 @@ map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。真
 本轮扫图已刷新过、按住扫图后已自动刷新一次，还是保存后需要重新刷新检查。该文案只解释地图 preview 的新鲜度，
 不把地图画面伪装成实时视频流；继续移动后仍必须再刷新确认最新覆盖，保存 gate 仍按既有 stop 后刷新结果判断。
 该状态不调用 map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。
+
+2026-06-25 22:18 起，普通首屏点击 `执行图上路线` 后，地图会立刻把当前可见路线终点标为 `行程中`，直到
+`/api/robot-control/nav2/goal/execute` 返回真实结果后再切回 `终点`、历史目标或待复验状态。这个 pending 标记来自
+点击时的图上路线终点坐标，帮助 operator 确认“正在执行的就是地图上这条路线”，不代表后端已到达、不自动确认送达、
+不新增 manual/keyboard pulse/delivery complete/stop 或 `/cmd_vel`。

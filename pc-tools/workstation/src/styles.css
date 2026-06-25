@@ -853,6 +853,12 @@ h3 {
   color: #174ea6;
 }
 
+.plain-map-route-goal-marker[data-state="执行中"] {
+  border-color: #238636;
+  background: #ecfdf3;
+  color: #176039;
+}
+
 .plain-map-route-goal-marker[data-state="历史目标"] {
   border-color: #d1b66a;
   background: #fff8d6;
