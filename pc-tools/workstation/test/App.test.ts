@@ -10996,6 +10996,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find(".robot-console-grid").text()).toContain("失败");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("失败");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("上位机没有返回视频应答；检查相机服务后重试。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：上位机没有返回视频应答；检查相机服务后重试。");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("remote_answer_missing");
     expect(wrapper.find("details").text()).toContain("start_failed");
     expect(wrapper.find("details").text()).toContain("remote_answer_missing");
     expect(wrapper.find("details").text()).not.toContain("preview_statusstopped_by_user");

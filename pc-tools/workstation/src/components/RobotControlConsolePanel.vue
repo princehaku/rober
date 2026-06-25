@@ -176,6 +176,7 @@ const hilChecklist = ref([
 // WebRTC 状态单独维护，是为了把“上位机 readback”与“本地页面会话状态”区分开。
 const previewStatus = ref<RobotControlPreviewStatus>("idle_not_started");
 const failureReason = ref("");
+const rawFailureReason = ref("");
 const previewPeerId = ref("");
 const previewPeerBaseUrl = ref("");
 const iceConnectionState = ref("new");
@@ -373,6 +374,29 @@ function cameraProbePlainFailureHint(): string {
   return "相机没有出画面，检查摄像头/视频线。";
 }
 
+function cameraOfferPlainFailureHint(reason: string): string {
+  // offer 失败原因来自上位机/信令层；首屏要翻成现场可执行动作，原始字段留在高级诊断。
+  if (!reason) {
+    return "";
+  }
+  if (reason.includes("remote_answer_missing") || reason.includes("answer_missing")) {
+    return "上位机没有返回视频应答；检查相机服务后重试。";
+  }
+  if (reason.includes("webrtc_not_supported")) {
+    return "当前浏览器不支持实时画面；换 Chrome 后重试。";
+  }
+  if (reason.includes("invalid_local_offer")) {
+    return "本机没有生成有效视频请求；刷新页面后重试。";
+  }
+  if (reason.includes("fetch_timeout")) {
+    return "打开画面超时；检查小车网络和相机服务后重试。";
+  }
+  if (reason.includes("offer_rejected")) {
+    return "上位机拒绝打开画面；检查相机服务状态后重试。";
+  }
+  return `打开画面失败：${reason}`;
+}
+
 function browserVideoFrameDrawn(): boolean {
   // 只有浏览器 video 元素真的进入可绘制状态，才允许把 WebRTC track 说成“画面已打开”。
   return videoElementFrameStatus.value === "frame_callback_observed" || videoElementFrameStatus.value === "visible_frame_ready";
@@ -412,7 +436,7 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "等待画
       if (sourceFailureHint) {
         return { state: "失败", hint: sourceFailureHint };
       }
-      return { state: "失败", hint: failureReason.value || "打开画面失败。" };
+      return { state: "失败", hint: cameraOfferPlainFailureHint(rawFailureReason.value || failureReason.value) || "打开画面失败。" };
     default:
       if (sourceFailureHint) {
         return { state: "失败", hint: sourceFailureHint };
@@ -5274,6 +5298,7 @@ function bindVideoTrack(track: MediaStreamTrack, remoteStream: MediaStream | nul
   replacePreviewStream(track, remoteStream, epoch);
   previewStatus.value = "streaming";
   failureReason.value = "";
+  rawFailureReason.value = "";
   track.onended = () => {
     if (sessionEpoch.value !== epoch) {
       return;
@@ -5315,10 +5340,12 @@ async function cleanupPreview(reason: RobotControlPreviewStatus, cleanupReason: 
     if (response.proxy_status !== "peer_closed") {
       previewStatus.value = "peer_cleanup_failed";
       failureReason.value = response.failure_reason || response.error || "peer_cleanup_failed";
+      rawFailureReason.value = failureReason.value;
     }
   } catch (err) {
     previewStatus.value = "peer_cleanup_failed";
     failureReason.value = err instanceof Error ? err.message : "peer_cleanup_failed";
+    rawFailureReason.value = failureReason.value;
     cleanupStatus.value = "peer_cleanup_failed";
     lastStopAt.value = stampNow();
   }
@@ -6882,6 +6909,7 @@ async function startPreview(): Promise<void> {
   }
   previewStartPending.value = true;
   failureReason.value = "";
+  rawFailureReason.value = "";
   cleanupStatus.value = "starting_new_session";
   const epoch = sessionEpoch.value + 1;
   sessionEpoch.value = epoch;
@@ -6943,7 +6971,8 @@ async function startPreview(): Promise<void> {
     const nextFailureReason = err instanceof Error ? err.message : "offer_request_failed";
     await cleanupPreview("stopped_by_user", "start_failed_cleanup");
     previewStatus.value = "start_failed";
-    failureReason.value = nextFailureReason;
+    rawFailureReason.value = nextFailureReason;
+    failureReason.value = cameraOfferPlainFailureHint(nextFailureReason) || nextFailureReason;
   } finally {
     previewStartPending.value = false;
   }
@@ -6956,6 +6985,7 @@ async function stopPreview(): Promise<void> {
   }
   previewStopPending.value = true;
   failureReason.value = "";
+  rawFailureReason.value = "";
   await cleanupPreview("stopped_by_user", "stopped_by_user");
   previewStopPending.value = false;
 }
@@ -7744,6 +7774,8 @@ onBeforeUnmount(() => {
             <dd>{{ previewStatus }}</dd>
             <dt>failure_reason</dt>
             <dd>{{ failureReason || "none" }}</dd>
+            <dt>raw_failure_reason</dt>
+            <dd>{{ rawFailureReason || "none" }}</dd>
             <dt>peer_id</dt>
             <dd>{{ previewPeerId || "not_assigned" }}</dd>
             <dt>peer base URL</dt>
