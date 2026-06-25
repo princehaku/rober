@@ -187,6 +187,10 @@ const cleanupStatus = ref("not_started");
 const radarRefreshPending = ref(false);
 const radarLifecyclePending = ref(false);
 const mapRefreshPending = ref(false);
+const mapWysiwygRefreshPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
+function mapWysiwygRefreshPendingText(): string {
+  return mapPreviewPending.value ? "地图画面刷新中" : "地图状态刷新中";
+}
 const nav2RefreshPending = ref(false);
 const navGoalPreflightPending = ref(false);
 const navGoalExecutionPending = ref(false);
@@ -747,7 +751,21 @@ const plainRadarStartUnavailable = computed(() => {
   // 配置缺失时普通首屏仍展示卡点，但不让按钮发送一个注定 dry-run 的 start 请求。
   return radarSummary.value.state === "雷达未运行" && !radarStartCommandConfigured();
 });
-const plainRadarStartButtonLabel = computed(() => (plainRadarStartUnavailable.value ? "雷达未配置" : "启动雷达"));
+const canStartRadarLifecycle = computed(() => (
+  !loading.value
+  && !radarLifecyclePending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const plainRadarStartButtonLabel = computed(() => {
+  if (plainRadarStartUnavailable.value) {
+    return "雷达未配置";
+  }
+  if (mapWysiwygRefreshPending.value) {
+    return "等待地图刷新";
+  }
+  return "启动雷达";
+});
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarSummary.value.state === "雷达未运行";
@@ -1681,14 +1699,10 @@ const mapRuntimeStarted = computed(() => (
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
   && mapLifecycleResult.value.command_result.executed === true
 ));
-const mapWysiwygRefreshPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
 const keyboardMapWysiwygBlocked = computed(() => (
   // 地图画面或 proof 刷新中不能开始新的扫图移动；已经按住移动时仍允许松开并发送 stop。
   mapRuntimeStarted.value && mapWysiwygRefreshPending.value && !keyboardHeldDirection.value
 ));
-function mapWysiwygRefreshPendingText(): string {
-  return mapPreviewPending.value ? "地图画面刷新中" : "地图状态刷新中";
-}
 const canPressKeyboardDirection = computed(() => keyboardControlArmed.value && canUseKeyboardControl.value && !keyboardMapWysiwygBlocked.value);
 const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
@@ -5700,6 +5714,9 @@ async function runRadarLifecycleAction(
   if (!robotApiBaseUrl.value.trim() || radarLifecyclePending.value) {
     return;
   }
+  if (action === "start" && mapWysiwygRefreshPending.value) {
+    return;
+  }
   radarLifecyclePending.value = true;
   radarLifecyclePendingAction.value = action;
   try {
@@ -7369,7 +7386,7 @@ onBeforeUnmount(() => {
             <button ref="plainRadarRefreshButton" type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" data-testid="plain-radar-refresh" @click="refreshRadarProof">
               刷新雷达
             </button>
-            <button v-if="showPlainRadarStart" ref="plainRadarStartButton" type="button" class="secondary compact-stop" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim() || plainRadarStartUnavailable" data-testid="plain-radar-start" @click="startPlainRadarLifecycle">
+            <button v-if="showPlainRadarStart" ref="plainRadarStartButton" type="button" class="secondary compact-stop" :disabled="!canStartRadarLifecycle || plainRadarStartUnavailable" data-testid="plain-radar-start" @click="startPlainRadarLifecycle">
               {{ plainRadarStartButtonLabel }}
             </button>
             <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
@@ -8102,7 +8119,7 @@ onBeforeUnmount(() => {
         <section class="advanced-block">
           <h3>雷达详情</h3>
           <div class="robot-control-form">
-            <button class="secondary" type="button" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" @click="startRadarLifecycle">
+            <button class="secondary" type="button" :disabled="!canStartRadarLifecycle" @click="startRadarLifecycle">
               启动雷达（高级）
             </button>
             <button class="secondary" type="button" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" @click="stopRadarLifecycle">

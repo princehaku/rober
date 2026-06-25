@@ -10288,6 +10288,8 @@ describe("App", () => {
     const originalFetch = mockedFetch.getMockImplementation();
     let radarProofRefreshed = false;
     let radarProofRefreshStarted = false;
+    let delayNextMapProofRefresh = false;
+    const mapProofRefreshControl: { finish?: () => void } = {};
     let resolveRadarProofRefresh!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
     const delayedRadarProofRefresh = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
       resolveRadarProofRefresh = (value) => {
@@ -10300,6 +10302,15 @@ describe("App", () => {
         return Promise.resolve({
           ok: true,
           json: async () => (radarProofRefreshed ? runningSummaryFixture : summaryFixture),
+        });
+      }
+      if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextMapProofRefresh) {
+        delayNextMapProofRefresh = false;
+        return new Promise((resolve) => {
+          mapProofRefreshControl.finish = () => resolve({
+            ok: true,
+            json: async () => fixtures["/api/robot-control/map/proof/refresh"],
+          });
         });
       }
       if (String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?")) {
@@ -10315,6 +10326,39 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+
+    delayNextMapProofRefresh = true;
+    const mapProofButton = wrapper.findAll("button").find((button) => button.text() === "刷新地图");
+    if (!mapProofButton) {
+      throw new Error("plain map proof refresh button was not found");
+    }
+    const mapProofRefreshClick = mapProofButton.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeDefined();
+    await wrapper.find(".robot-console .advanced-details").element.setAttribute("open", "");
+    await wrapper.vm.$nextTick();
+    const advancedRadarStart = wrapper.findAll("button").find((button) => button.text() === "启动雷达（高级）");
+    expect(advancedRadarStart?.attributes("disabled")).toBeDefined();
+    const radarStartCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/start?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
+    await advancedRadarStart?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/start?"),
+    ).length).toBe(radarStartCallsBeforeMapRefreshRelease);
+    const finishMapProofRefresh = mapProofRefreshControl.finish;
+    if (!finishMapProofRefresh) {
+      throw new Error("map proof refresh before radar start was not captured");
+    }
+    finishMapProofRefresh();
+    await mapProofRefreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("启动雷达");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeUndefined();
 
     const startClick = wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
     await flushPromises();
