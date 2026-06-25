@@ -8206,7 +8206,7 @@ onBeforeUnmount(() => {
             <dd>{{ JSON.stringify(navGoalPreflightResult?.localization_summary ?? {}) }}</dd>
             <dt>goal path summary</dt>
             <dd>{{ JSON.stringify(navGoalPreflightResult?.nav2_path_summary ?? {}) }}</dd>
-            <dt>goal operator material gate</dt>
+            <dt>goal minimal safety gate</dt>
             <dd>
               {{ navGoalPreflightResult?.operator_report_preflight.status ?? "not_loaded" }} /
               {{ navGoalPreflightResult?.operator_report_preflight.failure_reason || "none" }}

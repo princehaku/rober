@@ -719,8 +719,8 @@ const fixtures: Record<string, unknown> = {
     },
     "/api/robot-control/nav2/goal/preflight": {
       schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1",
-      proxy_status: "preflight_rejected",
-      preflight_status: "preflight_rejected",
+      proxy_status: "preflight_passed",
+      preflight_status: "ready_for_navigation_goal_not_executed",
       source_base_url: "http://192.168.1.11:8787",
       normalized_base_url: "http://192.168.1.11:8787",
       workstation_endpoint: "/api/robot-control/nav2/goal/preflight",
@@ -776,32 +776,16 @@ const fixtures: Record<string, unknown> = {
         yaw_max_rad: 3.1416,
       },
       operator_report_preflight: {
-        status: "blocked",
+        status: "not_required_for_nav2_minimal_safety_precheck",
         source_endpoint: "/api/operator/report",
-        request_status: "loaded",
-        http_status: 200,
-        report_status: "ready_for_review",
-        evidence_ref: "field-hil-20260611-0605-op",
-        required_fields: ["scan_delta_ref"],
-        missing_fields: ["physical_motion_lidar_delta_proven"],
-        material_summary: {
-          status: "loaded",
-          source_endpoint_id: "operator_report_latest",
-          source_path: "operator_report_latest.structured_hil_claims",
-          report_status: "ready_for_review",
-          evidence_ref: "field-hil-20260611-0605-op",
-          operator_present: "true",
-          physical_clearance: "true",
-          emergency_stop: "true",
-          external_video: "true; ref=phone-video-0605.mp4",
-          camera_visible: "true; ref=runtime/camera/latest_metrics.json",
-          wheel_feedback: "true; ref=runtime/wave_rover_feedback_debug.jsonl",
-          lidar_delta: "false; ref=runtime/scan_delta/latest_metrics.json",
-          route_map: "true; ref=runtime/routes/field-route.csv",
-          delivery_claim: "true",
-          site_state: "field_operator_claim_ready_for_review",
-        },
-        failure_reason: "operator_report_preflight_required",
+        request_status: "not_required",
+        http_status: null,
+        report_status: "not_required_for_nav2_minimal_safety_precheck",
+        evidence_ref: "not_required_for_nav2_minimal_safety_precheck",
+        required_fields: [],
+        missing_fields: [],
+        material_summary: null,
+        failure_reason: "",
         hard_dangerous_true_fields: [],
       },
       localization_summary: {
@@ -822,9 +806,9 @@ const fixtures: Record<string, unknown> = {
         request_status: "loaded",
         status: "inactive",
       },
-      missing_requirements: ["operator_report_preflight_required"],
-      failure_reason: "operator_report_preflight_required",
-      blocked_reasons: ["operator_report_preflight_required"],
+      missing_requirements: [],
+      failure_reason: "",
+      blocked_reasons: [],
       hard_dangerous_true_fields: [],
       robot_control_executed: false,
       ...PROOF_FLAGS,
@@ -9542,11 +9526,14 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).not.toContain("导航目标预检");
-    expect(wrapper.find("details").text()).toContain("preflight_rejected");
-    expect(wrapper.find("details").text()).toContain("operator_report_preflight_required");
+    expect(wrapper.find("details").text()).toContain("preflight_passed");
+    expect(wrapper.find("details").text()).toContain("ready_for_navigation_goal_not_executed");
+    expect(wrapper.find("details").text()).toContain("goal minimal safety gate");
+    expect(wrapper.find("details").text()).toContain("not_required_for_nav2_minimal_safety_precheck");
+    expect(wrapper.find("details").text()).not.toContain("operator_report_preflight_required");
     expect(wrapper.find("details").text()).toContain("/api/localize/proof/latest");
     expect(wrapper.find("details").text()).toContain("/api/nav2/proof/latest");
-    expect(wrapper.find("details").text()).toContain("/api/operator/report");
+    expect(wrapper.find("details").text()).not.toContain("/api/operator/report:loaded");
     expect(wrapper.find("details").text()).toContain("robot_control_executed=false");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight") && options?.method === "POST")).toBe(true);
     const navGoalCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight"));

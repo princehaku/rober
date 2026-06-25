@@ -400,7 +400,7 @@ Robot Control V1 读取到 Robot API status/latest/readback 也只能证明“PC
 - 请求体只允许 `goal_frame_id`、`goal_x`、`goal_y`、`goal_yaw`、`confirm_navigation_preflight` 五个字段。
 - `goal_frame_id` 固定为 `map`；坐标和 yaw 只接受有限数字，并在 Node 端 clamp 到 `x/y [-3, 3] m`、`yaw [-3.1416, 3.1416] rad`。
 - 未知字段、非 object body、非法 frame、非数字 goal 或非法 `baseUrl` 都由 workstation 本机 HTTP 400 拒绝。
-- Node 代理只读取固定 GET：`/api/localize/proof/latest`、`/api/nav2/proof/latest`、`/api/operator/report`、可选 `/api/nav2/status`。
+- Node 代理只读取固定 GET：`/api/localize/proof/latest`、`/api/nav2/proof/latest`、可选 `/api/nav2/status`。
 - 该 endpoint 永远不调用 `/api/nav2/start`、NavigateToPose、`/cmd_vel` 或 `/api/base/manual`；响应固定 `robot_control_executed=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
 
 放行口径：
@@ -409,9 +409,9 @@ Robot Control V1 读取到 Robot API status/latest/readback 也只能证明“PC
 - localization latest 已加载，且 `status/latest proof` 显示 `localization_reset_observed` 或 `nav2_no_motion_localization_runtime_observed`。
 - `localization_tf_observed.map_to_base_link=true` 或 `tf_chain_observed.map_to_base_link=true`。
 - Nav2 proof latest 已加载，且 `path_generated=true` 或 `path_generation_succeeded=true`，同时 `path_point_count>0`。
-- `/api/operator/report` 的材料 preflight passed；`delivery_success` claim 不参与放行。
+- `/api/operator/report` 现场材料不参与 Nav2 目标预检；响应内 `operator_report_preflight.status` 固定说明 `not_required_for_nav2_minimal_safety_precheck`。
 
-通过时只返回 `proxy_status=preflight_passed`、`preflight_status=ready_for_navigation_goal_not_executed`。材料不足时返回 HTTP 400 `preflight_rejected`，带 `missing_requirements`、各 readback 摘要和 operator material gate 摘要，供 PC 高级诊断复核。
+通过时只返回 `proxy_status=preflight_passed`、`preflight_status=ready_for_navigation_goal_not_executed`。定位、TF 或路径 readback 不足时返回 HTTP 400 `preflight_rejected`，带 `missing_requirements`、各 readback 摘要和最小安全门禁摘要，供 PC 高级诊断复核。
 
 UI：
 
@@ -549,6 +549,8 @@ AMCL localization material，不证明路径执行、真实运动、HIL 或 deli
 `导航目标预检（高级）` 仍因 operator report 材料不足返回 HTTP 400，只剩
 `operator_report_preflight_required`，没有执行 NavigateToPose、`/cmd_vel` 或
 `/api/base/manual`。
+该 2026-06-11 现场记录是旧门禁证据；2026-06-25 以后 Nav2 目标预检不再读取或要求
+`/api/operator/report`，只要求 `confirm_navigation_preflight=true` 与固定只读定位/路径 readback。
 
 2026-06-12 04:45 起，普通首屏 `移动/导航` 卡片新增 `重新定位`。本轮 Browser DOM
 smoke 确认 `.simple-user-console` 默认可见按钮包含 `重新定位` 和 `停止`，高级诊断
@@ -1239,7 +1241,7 @@ Get-ChildItem -Path pc-tools -Recurse -File -Include *.py | Where-Object { $_.Fu
 - summary 可通过默认地址读取，但当前 `robot_api_connection.status=degraded`，camera health 有 `fetch_timeout_4000ms`，`delivery_success=false`，`primary_actions_enabled=false`。
 - `/api/robot-control/map/list` 返回 `map_usable_for_navigation=true`，`usable_map_count=1`。
 - `/api/robot-control/base/feedback-samples` 返回 3/3 个 `T=1001` 样本，`sends_motion_commands=false`，但 `wheel_feedback_lr_nonzero_proven=false`，左右轮速仍为 `0/0`。
-- `/api/robot-control/nav2/goal/preflight` 仍拒绝，缺 `localization_runtime_or_reset_not_observed`、`path_generation_not_observed`、`path_point_count_not_positive` 和 `operator_report_preflight_required`，且确认没有调用 `/api/nav2/start`、NavigateToPose、`/cmd_vel` 或 `/api/base/manual`。
+- `/api/robot-control/nav2/goal/preflight` 在当时仍拒绝，缺 `localization_runtime_or_reset_not_observed`、`path_generation_not_observed`、`path_point_count_not_positive` 和旧 `operator_report_preflight_required`，且确认没有调用 `/api/nav2/start`、NavigateToPose、`/cmd_vel` 或 `/api/base/manual`。该旧 operator report 缺口已在 2026-06-25 后移除，当前只保留定位/路径 readback 缺口。
 - `/api/robot-control/base/stop` 可转发并返回 `status=stopped`。
 
 因此本轮只完成 PC 易用性和 gated 键盘入口；完整 Nav2 路线执行、wheel raw L/R 非零和 delivery success 仍是未证明现场能力。
