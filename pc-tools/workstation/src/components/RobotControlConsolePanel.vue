@@ -229,6 +229,11 @@ const plainDeliveryDraftSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
 const plainDeliveryAllConfirmedButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryConfirmSubmitButton = ref<HTMLButtonElement | null>(null);
+const plainFreeRoamConfirmCheckbox = ref<HTMLInputElement | null>(null);
+const plainFreeRoamStartButton = ref<HTMLButtonElement | null>(null);
+const plainFreeRoamKeyboardButton = ref<HTMLButtonElement | null>(null);
+const plainFreeRoamStopButton = ref<HTMLButtonElement | null>(null);
+const plainFreeRoamSaveButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
@@ -1073,6 +1078,25 @@ const plainFreeRoamKeyboardLabel = computed(() => {
     return "先开始记录";
   }
   return canArmKeyboardControl.value ? "启用键盘扫图" : "键盘条件未满足";
+});
+const plainFreeRoamNextActionLabel = computed(() => {
+  // “下一步”只做流程导航，不能替现场确认、启动建图、发送手控或保存地图。
+  if (!plainFreeRoamMappingConfirmed.value) {
+    return "下一步：勾安全确认";
+  }
+  if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
+  }
+  if (mapRuntimeStarted.value && !keyboardControlArmed.value) {
+    return canArmPlainFreeRoamKeyboard.value ? "下一步：启用键盘" : "下一步：补齐键盘条件";
+  }
+  if (keyboardHeldDirection.value) {
+    return "下一步：松开或停止";
+  }
+  if (mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    return keyboardStopSettledAfterPulse.value ? "下一步：保存地图" : "下一步：按住方向键扫图";
+  }
+  return "下一步：检查地图画面";
 });
 const plainFreeRoamCoverageSummary = computed(() => {
   // 像扫地机一样给出“已经扫到多少”的直观反馈；只读地图预览，不触发建图或移动。
@@ -4554,6 +4578,41 @@ function plainKeyboardNextTarget(): HTMLElement | null {
   return enabledButton(keyboardControlRecheckButton.value) ?? keyboardControlPanel.value;
 }
 
+function plainFreeRoamNextTarget(): HTMLElement | null {
+  // 扫图向导只把焦点带到下一手动作；不会自动勾选、启动地图、发送手控或保存。
+  if (!plainFreeRoamMappingConfirmed.value) {
+    return plainFreeRoamConfirmCheckbox.value;
+  }
+  if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    return enabledButton(plainFreeRoamStartButton.value) ?? plainFreeRoamStartButton.value;
+  }
+  if (mapRuntimeStarted.value && !keyboardControlArmed.value) {
+    return enabledButton(plainFreeRoamKeyboardButton.value) ?? plainKeyboardNextTarget();
+  }
+  if (keyboardHeldDirection.value) {
+    return enabledButton(plainFreeRoamStopButton.value) ?? keyboardControlPanel.value;
+  }
+  if (mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    return keyboardStopSettledAfterPulse.value
+      ? enabledButton(plainFreeRoamSaveButton.value) ?? plainFreeRoamSaveButton.value
+      : keyboardControlPanel.value;
+  }
+  return enabledButton(plainFreeRoamSaveButton.value)
+    ?? enabledButton(plainFreeRoamStartButton.value)
+    ?? plainFreeRoamConfirmCheckbox.value;
+}
+
+async function focusPlainFreeRoamNextTarget(): Promise<void> {
+  // 这里刻意只做 scroll/focus，所有真实动作仍由用户按对应按钮触发。
+  await nextTick();
+  const target = plainFreeRoamNextTarget();
+  if (!target) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
+}
+
 function markDeliveryBasicSafetyConfirmed(): void {
   // 只减少现场重复勾选；到达、停稳和送达成功仍必须由 operator 分开确认。
   deliveryOperatorConfirmations.value.operator_present = true;
@@ -5726,23 +5785,26 @@ onBeforeUnmount(() => {
             <span class="muted">先建图，再低速扫一圈，最后保存。</span>
           </div>
           <label class="plain-trip-confirm">
-            <input v-model="plainFreeRoamMappingConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
+            <input ref="plainFreeRoamConfirmCheckbox" v-model="plainFreeRoamMappingConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
             <span>人在旁边、周围安全、可以随时按停止</span>
           </label>
           <div class="panel-action-row wrap-actions">
-            <button type="button" :disabled="!canStartPlainFreeRoamMapping" data-testid="plain-free-roam-start" @click="startMapRuntime">
+            <button ref="plainFreeRoamStartButton" type="button" :disabled="!canStartPlainFreeRoamMapping" data-testid="plain-free-roam-start" @click="startMapRuntime">
               {{ plainFreeRoamMappingStartLabel }}
             </button>
-            <button type="button" class="secondary compact-stop" :disabled="!canArmPlainFreeRoamKeyboard" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
+            <button ref="plainFreeRoamKeyboardButton" type="button" class="secondary compact-stop" :disabled="!canArmPlainFreeRoamKeyboard" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
               {{ plainFreeRoamKeyboardLabel }}
+            </button>
+            <button type="button" class="secondary compact-stop" data-testid="plain-free-roam-next-action" @click="focusPlainFreeRoamNextTarget">
+              {{ plainFreeRoamNextActionLabel }}
             </button>
             <button type="button" class="secondary compact-stop" :disabled="!canRefreshPlainFreeRoamMapPreview" data-testid="plain-free-roam-map-refresh" @click="refreshMapPreview">
               {{ plainFreeRoamMapPreviewLabel }}
             </button>
-            <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
+            <button ref="plainFreeRoamStopButton" type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
               停止
             </button>
-            <button type="button" class="secondary compact-stop" :disabled="!canSavePlainFreeRoamMapping" data-testid="plain-free-roam-save" @click="saveMap">
+            <button ref="plainFreeRoamSaveButton" type="button" class="secondary compact-stop" :disabled="!canSavePlainFreeRoamMapping" data-testid="plain-free-roam-save" @click="saveMap">
               {{ plainFreeRoamMappingSaveLabel }}
             </button>
           </div>

@@ -1833,3 +1833,8 @@ Nav2、keyboard pulse、delivery complete 或 `/cmd_vel`。
 `地图记录中，可边扫边刷新画面。`，地图已保存后提示刷新检查覆盖效果。该提示只来自本页 map lifecycle 和只读
 map preview 状态，不推断真实底盘运动、不自动刷新、不调用 map start、manual、Nav2、keyboard pulse、delivery complete
 或 `/cmd_vel`。
+
+2026-06-25 19:10 起，普通首屏“扫地式建图”卡片新增 `下一步` 流程按钮，把 operator 依次带到安全确认、开始记录、
+启用键盘、按住方向键扫图、停止或保存地图。该按钮只做 `scrollIntoView + focus`，不会自动勾选确认、不会调用
+`/api/robot-control/map/start`、不会发送 `/api/base/manual`、不会 stop、不会保存地图，也不会调用 Nav2、delivery complete
+或 `/cmd_vel`；真实动作仍必须由现场人员点击对应按钮或按住方向键触发。
