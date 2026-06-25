@@ -253,6 +253,7 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
 function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
   // 上位机执行响应里 latest_result 是真正的 action artifact；PC 只展示短摘要。
   const latestResult = asRecord(payload?.latest_result);
+  const goalRequest = asRecord(latestResult?.goal_request) ?? asRecord(payload?.goal_request);
   const cancelResponse = asRecord(latestResult?.cancel_response);
   return {
     status: shortValue(latestResult?.status ?? payload?.status),
@@ -264,6 +265,11 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     goal_accepted: shortValue(payload?.goal_accepted ?? latestResult?.goal_accepted),
     result_received: shortValue(payload?.result_received ?? latestResult?.result_received),
     result_status: shortValue(payload?.result_status ?? latestResult?.result_status),
+    goal_frame_id: shortValue(goalRequest?.frame_id ?? goalRequest?.goal_frame_id, "map"),
+    goal_x: shortValue(goalRequest?.x ?? goalRequest?.goal_x),
+    goal_y: shortValue(goalRequest?.y ?? goalRequest?.goal_y),
+    goal_yaw: shortValue(goalRequest?.yaw ?? goalRequest?.goal_yaw),
+    result_timeout_s: shortValue(goalRequest?.result_timeout_s),
     cancel_requested: shortValue(payload?.cancel_requested ?? latestResult?.cancel_requested),
     cancel_accepted: shortValue(cancelResponse?.accepted, "false"),
     feedback_sample_count: shortValue(payload?.feedback_sample_count ?? latestResult?.feedback_sample_count, "0"),

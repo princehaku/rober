@@ -424,6 +424,10 @@ h3 {
 
 .plain-map-layer {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 172px;
   min-height: 172px;
   overflow: hidden;
   border: 1px solid #c8d2dc;
@@ -439,13 +443,26 @@ h3 {
   background: #eef2f6;
 }
 
+.plain-map-overlay-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.plain-map-layer.has-real-map .plain-map-overlay-frame {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: var(--map-aspect, 1);
+}
+
 .plain-map-image {
   /* 真实地图保持 contain，避免把 PGM 比例拉坏；marker 覆盖在同一个坐标视图上。 */
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   image-rendering: pixelated;
 }
 
@@ -505,7 +522,8 @@ h3 {
 
 .plain-map-robot-marker,
 .plain-map-unknown-pose,
-.plain-map-radar-marker {
+.plain-map-radar-marker,
+.plain-map-route-goal-marker {
   position: absolute;
   border: 1px solid #99a7b7;
   border-radius: 6px;
@@ -582,6 +600,34 @@ h3 {
   border-color: #d5d2a9;
   background: #fbf8e8;
   color: #6a5710;
+}
+
+.plain-map-route-goal-marker {
+  transform: translate(-50%, -50%);
+  min-width: 40px;
+  padding: 5px 8px;
+  border-color: #c4b06a;
+  background: #fff8d6;
+  color: #5f4b00;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(21, 31, 43, 0.16);
+}
+
+.plain-map-route-goal-marker[data-state="本轮目标"] {
+  border-color: #1f6feb;
+  background: #edf5ff;
+  color: #174ea6;
+}
+
+.plain-map-route-goal-marker[data-state="历史目标"] {
+  border-color: #d1b66a;
+  background: #fff8d6;
+  color: #6a5710;
+}
+
+.plain-map-route-goal-marker[data-state="目标待复验"] {
+  border-style: dashed;
+  color: #526171;
 }
 
 .plain-map-caption {

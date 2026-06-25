@@ -5777,6 +5777,13 @@ describe("workstation fail-closed API contracts", () => {
             goal_accepted: true,
             result_received: true,
             result_status: "succeeded",
+            goal_request: {
+              frame_id: "map",
+              x: 0.8,
+              y: -0.2,
+              yaw: 0.1,
+              result_timeout_s: 4,
+            },
             feedback_sample_count: 8,
             robot_control_executed: true,
             sends_motion_commands: true,
@@ -5800,6 +5807,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.proxy_status).toBe("latest_loaded");
       expect(body.goal_execution_key_values.status).toBe("goal_succeeded");
       expect(body.goal_execution_key_values.evidence_ref).toBe("o11-nav2-goal-execution-test");
+      expect(body.goal_execution_key_values.goal_frame_id).toBe("map");
+      expect(body.goal_execution_key_values.goal_x).toBe("0.8");
+      expect(body.goal_execution_key_values.goal_y).toBe("-0.2");
+      expect(body.goal_execution_key_values.goal_yaw).toBe("0.1");
       expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
       expect(body.goal_execution_key_values.delivery_success).toBe("false");
       expect(body.hard_dangerous_true_fields).toEqual([]);

@@ -631,11 +631,73 @@ const mapSummary = computed(() => summarizeProofState(mapRefreshPending.value, m
 const nav2PlanningSummary = computed(() => summarizeNav2Planning());
 const mapLifecycleSummary = computed(() => summarizeMapLifecycle());
 type PlainMapVisualState = "地图未读取" | "地图处理中" | "地图待刷新" | "地图可见" | "地图不可用";
+function finitePlainNumber(value: string | number | null | undefined): number | null {
+  // 地图 overlay 只能使用明确数字；not_loaded/空值不能被当作 0 坐标。
+  if (value === null || value === undefined || value === "" || value === "not_loaded") {
+    return null;
+  }
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function clampPercent(value: number): number {
+  // marker 保留在地图框内，避免目标点落在边缘时文字被裁掉。
+  return Math.min(98, Math.max(2, value));
+}
+
+function mapFrameStyle(width: number, height: number): Record<string, string> {
+  return width > 0 && height > 0 ? { "--map-aspect": `${width} / ${height}` } : {};
+}
+
+function mapCoordinateStyle(goalX: number, goalY: number, preview: RobotControlMapPreviewResponse): Record<string, string> | null {
+  // ROS map origin 是地图左下角；浏览器图像坐标从左上角开始，因此 y 轴需要反转。
+  const originX = finitePlainNumber(preview.origin?.[0]);
+  const originY = finitePlainNumber(preview.origin?.[1]);
+  const resolution = finitePlainNumber(preview.resolution);
+  if (originX === null || originY === null || resolution === null || resolution <= 0 || preview.width <= 0 || preview.height <= 0) {
+    return null;
+  }
+  const mapXCell = (goalX - originX) / resolution;
+  const mapYCell = (goalY - originY) / resolution;
+  const left = clampPercent((mapXCell / preview.width) * 100);
+  const top = clampPercent((1 - mapYCell / preview.height) * 100);
+  return { left: `${left.toFixed(2)}%`, top: `${top.toFixed(2)}%` };
+}
+
+function latestNavGoalOverlay() {
+  const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
+  const preview = mapPreviewResult.value;
+  if (!values || !preview || preview.proxy_status !== "preview_forwarded") {
+    return null;
+  }
+  const goalX = finitePlainNumber(values.goal_x);
+  const goalY = finitePlainNumber(values.goal_y);
+  if (goalX === null || goalY === null || (values.goal_frame_id && values.goal_frame_id !== "map")) {
+    return null;
+  }
+  const style = mapCoordinateStyle(goalX, goalY, preview);
+  if (!style) {
+    return null;
+  }
+  const complete = nav2ExecutionComplete(values);
+  const succeeded = nav2GoalSucceeded(values);
+  const stale = evidenceIsStale(values);
+  const state = complete && !stale ? "本轮目标" : succeeded ? "历史目标" : "目标待复验";
+  const label = state === "本轮目标" ? "终点" : state;
+  return {
+    label,
+    state,
+    style,
+    aria: `${state}，地图坐标 x=${goalX.toFixed(2)}, y=${goalY.toFixed(2)}`,
+  };
+}
+
 const plainMapVisualSummary = computed(() => {
   // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
   const proof = robotSummary.value?.o3_proof_summary;
   const mapReadback = mapRefreshResult.value?.latest_readback_key_values ?? {};
   const previewLoaded = mapPreviewResult.value?.proxy_status === "preview_forwarded" && Boolean(mapPreviewResult.value.image_data_url);
+  const routeGoal = latestNavGoalOverlay();
   const mapObserved = proof?.map_once_observed === true
     || mapReadback.map_once_observed === "true"
     || mapReadback.latest_map_once_observed === "true";
@@ -684,8 +746,14 @@ const plainMapVisualSummary = computed(() => {
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
+    frameStyle: mapFrameStyle(mapPreviewResult.value?.width ?? 0, mapPreviewResult.value?.height ?? 0),
     showRobotPose: poseObserved,
     showRadarPulse: poseObserved && radarState === "雷达已运行",
+    showRouteGoal: Boolean(routeGoal),
+    routeGoalLabel: routeGoal?.label ?? "",
+    routeGoalState: routeGoal?.state ?? "",
+    routeGoalStyle: routeGoal?.style ?? {},
+    routeGoalAria: routeGoal?.aria ?? "",
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -5186,19 +5254,22 @@ onBeforeUnmount(() => {
           <h3>地图</h3>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state">
             <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
-              <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt">
-              <template v-else>
-                <span class="plain-map-grid-line horizontal" />
-                <span class="plain-map-grid-line vertical" />
-                <span class="plain-map-wall top" />
-                <span class="plain-map-wall bottom" />
-                <span class="plain-map-wall left" />
-                <span class="plain-map-wall right" />
-              </template>
-              <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" aria-hidden="true" />
-              <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" aria-label="机器人位置" />
-              <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing">{{ plainMapVisualSummary.poseLabel }}</span>
-              <span class="plain-map-radar-marker" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel" :aria-label="plainMapVisualSummary.radarOverlayAria">{{ plainMapVisualSummary.radarOverlayLabel }}</span>
+              <div class="plain-map-overlay-frame" :style="plainMapVisualSummary.frameStyle">
+                <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt">
+                <template v-else>
+                  <span class="plain-map-grid-line horizontal" />
+                  <span class="plain-map-grid-line vertical" />
+                  <span class="plain-map-wall top" />
+                  <span class="plain-map-wall bottom" />
+                  <span class="plain-map-wall left" />
+                  <span class="plain-map-wall right" />
+                </template>
+                <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
+                <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" aria-hidden="true" />
+                <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" aria-label="机器人位置" />
+                <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing">{{ plainMapVisualSummary.poseLabel }}</span>
+                <span class="plain-map-radar-marker" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel" :aria-label="plainMapVisualSummary.radarOverlayAria">{{ plainMapVisualSummary.radarOverlayLabel }}</span>
+              </div>
             </div>
             <div class="plain-map-caption">
               <span class="status-chip" :data-state="plainMapVisualSummary.state">{{ plainMapVisualSummary.state }}</span>

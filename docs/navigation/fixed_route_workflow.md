@@ -2159,6 +2159,12 @@ marker 上并显示脉冲圈；若雷达 lifecycle 已运行但 AMCL/map-frame p
 显示“雷达已运行，位置未读到”。该规则是 fixed-route 前的显示围栏：不能用运行中的雷达
 替代定位，也不能把未知坐标画成已知坐标。
 
+2026-06-25 15:10 起，PC 地图视口还会画最近 Nav2 goal 的目标点。PC latest 代理只读
+`/api/nav2/goal/execution/latest`，把 `latest_result.goal_request` 的 map-frame x/y/yaw
+压成短 key values；前端用真实地图 `origin + resolution + width/height` 换算到 PGM 视图。
+这推进 fixed-route 的所见即所得：现场能看到最近目标点落在地图哪里。它仍不是完整路径
+轨迹，也不会重新发送 NavigateToPose；完整路径线需要后续上位机暴露 path/trajectory 点。
+
 2026-06-12 04:45 起，PC 普通 `移动/导航` 卡片新增 `重新定位`。该入口仍只调用
 workstation 固定 `POST /api/robot-control/localize/reset?baseUrl=<upper-api>`，由 PC
 后端转发到上位机固定 `POST /api/localize/reset`，不会接收浏览器传入的 goal、

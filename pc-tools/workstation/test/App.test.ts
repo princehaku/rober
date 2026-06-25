@@ -840,9 +840,9 @@ const fixtures: Record<string, unknown> = {
     map_name: "fixed_free_cells_20260622_0112",
     map_yaml_name: "fixed_free_cells_20260622_0112.yaml",
     map_image_name: "fixed_free_cells_20260622_0112.pgm",
-    width: 1,
-    height: 1,
-    resolution: 0.05,
+    width: 100,
+    height: 100,
+    resolution: 0.01,
     origin: [0, 0, 0],
     cell_counts: { free: 1, unknown: 0, occupied: 0, other: 0 },
     has_free_cells: true,
@@ -3245,7 +3245,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("雷达已运行");
     expect(firstScreenText).toContain("地图");
     expect(firstScreenText).toContain("地图可见");
-    expect(firstScreenText).toContain("真实地图 1x1");
+    expect(firstScreenText).toContain("真实地图 100x100");
     expect(firstScreenText).toContain("位置未读到");
     expect(firstScreenText).toContain("移动/导航");
     expect(firstScreenText).toContain("已连接");
@@ -3498,6 +3498,60 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
+  });
+
+  it("draws the latest Nav2 goal on the real map when goal coordinates are available", async () => {
+    // 最近行程目标点只读自 latest artifact；它是地图 overlay，不会重新执行 Nav2 或确认送达。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-map-goal-fixture",
+          generated_at_ms: "1782150441201",
+          response_generated_at_ms: "1782150442201",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
+          goal_yaw: "0",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(marker.exists()).toBe(true);
+    expect(marker.text()).toBe("终点");
+    expect(marker.attributes("data-state")).toBe("本轮目标");
+    expect(marker.attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
+    expect(marker.attributes("style")).toContain("left: 80%");
+    expect(marker.attributes("style")).toContain("top: 98%");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
   it("shows a plain timeout hint when the robot API does not respond", async () => {
