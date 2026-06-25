@@ -2163,7 +2163,14 @@ marker 上并显示脉冲圈；若雷达 lifecycle 已运行但 AMCL/map-frame p
 `/api/nav2/goal/execution/latest`，把 `latest_result.goal_request` 的 map-frame x/y/yaw
 压成短 key values；前端用真实地图 `origin + resolution + width/height` 换算到 PGM 视图。
 这推进 fixed-route 的所见即所得：现场能看到最近目标点落在地图哪里。它仍不是完整路径
-轨迹，也不会重新发送 NavigateToPose；完整路径线需要后续上位机暴露 path/trajectory 点。
+轨迹，也不会重新发送 NavigateToPose。
+
+2026-06-25 18:40 起，PC 普通地图 caption 会直接显示最新 no-motion planner path preview
+是否已经叠到地图上：例如 `路线已显示 36/36 个点`。该路线线段只消费
+`/api/nav2/proof/latest` 经 PC summary 提升的 `path_preview_points`，按真实地图
+`origin/resolution/width/height` 转成 SVG polyline；没有地图预览时只提示“路线已准备，
+刷新地图画面查看”。它仍不发送 NavigateToPose，不调用 `/api/nav2/goal/execute`、
+manual、keyboard、delivery 或 `/cmd_vel`。
 
 2026-06-12 04:45 起，PC 普通 `移动/导航` 卡片新增 `重新定位`。该入口仍只调用
 workstation 固定 `POST /api/robot-control/localize/reset?baseUrl=<upper-api>`，由 PC

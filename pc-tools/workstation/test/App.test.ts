@@ -3797,6 +3797,7 @@ describe("App", () => {
     expect(route.exists()).toBe(true);
     expect(route.find("polyline").attributes("points")).toBe("10.00,90.00 40.00,90.00 80.00,98.00");
     expect(route.attributes("aria-label")).toBe("已读取 3 个路线点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
     expect(marker.text()).toBe("终点");

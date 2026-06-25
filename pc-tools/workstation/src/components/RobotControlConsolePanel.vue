@@ -829,7 +829,8 @@ function latestNavGoalOverlay() {
 
 function latestNavPathOverlay() {
   const preview = mapPreviewResult.value;
-  const points = robotSummary.value?.o3_proof_summary.path_preview_points ?? [];
+  const proof = robotSummary.value?.o3_proof_summary;
+  const points = proof?.path_preview_points ?? [];
   if (!preview || preview.proxy_status !== "preview_forwarded" || points.length < 2) {
     return null;
   }
@@ -841,10 +842,31 @@ function latestNavPathOverlay() {
   if (svgPoints.length < 2) {
     return null;
   }
+  const sourceCount = Number(proof?.path_preview_source_point_count ?? proof?.path_point_count ?? svgPoints.length);
+  const totalCount = Number.isFinite(sourceCount) && sourceCount > 0 ? sourceCount : svgPoints.length;
   return {
     points: svgPoints.join(" "),
+    displayedCount: svgPoints.length,
+    totalCount,
     label: `已读取 ${svgPoints.length} 个路线点`,
+    caption: `路线已显示 ${svgPoints.length}/${totalCount} 个点`,
   };
+}
+
+function plainRouteMapCaption(routePath: ReturnType<typeof latestNavPathOverlay>): string {
+  // 路线 caption 只解释当前地图上是否能看到路线；不作为执行行程的放行条件。
+  if (routePath) {
+    return routePath.caption;
+  }
+  const proof = robotSummary.value?.o3_proof_summary;
+  if (!proof?.path_generated && !proof?.path_generation_succeeded) {
+    return "";
+  }
+  const pointCount = Number(proof.path_point_count ?? 0);
+  if (Number.isFinite(pointCount) && pointCount > 0) {
+    return "路线已准备，刷新地图画面查看";
+  }
+  return "";
 }
 
 const plainMapVisualSummary = computed(() => {
@@ -917,6 +939,7 @@ const plainMapVisualSummary = computed(() => {
     showRadarLocalScan: showRadarSweep && radarLocalScanOverlay.dots.length > 0,
     radarLocalScanAria: `雷达局部点位，${radarLocalScanOverlay.label}`,
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
+    routePathLabel: plainRouteMapCaption(routePath),
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
     frameStyle: mapFrameStyle(mapPreviewResult.value?.width ?? 0, mapPreviewResult.value?.height ?? 0),
@@ -5666,6 +5689,7 @@ onBeforeUnmount(() => {
             <div class="plain-map-caption">
               <span class="status-chip" :data-state="plainMapVisualSummary.state">{{ plainMapVisualSummary.state }}</span>
               <span class="muted">{{ plainMapVisualSummary.mapRefLabel }}</span>
+              <span v-if="plainMapVisualSummary.routePathLabel" class="muted" data-testid="plain-map-route-label">{{ plainMapVisualSummary.routePathLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
             </div>
           </div>
