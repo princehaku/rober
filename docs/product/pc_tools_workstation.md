@@ -2143,6 +2143,9 @@ radar proof refresh 仍保留；该动作只刷新 no-motion scan proof，不调
 地图 proof/preview 正在刷新时，两者显示 `等待地图刷新` 并禁用，函数入口同步早退，避免 latest readback 在旧地图画面上
 提前改写到达/送达 marker。高级诊断的两个只读 latest 按钮复用同一 gate；该 gate 不影响行程执行完成后在地图画面刷新结束
 再自动读取 latest 的链路。
+2026-06-26 06:30 起，普通首屏 `本轮进度 / 刷新进度（只读）` 也接入地图 WYSIWYG gate。地图 proof/preview 正在刷新时显示
+`等待地图刷新` 并禁用，函数入口同步早退，不再允许 summary、底盘反馈、Nav2 latest 和 delivery latest 在旧地图画面上聚合改写
+轮速/行程/送达/键盘进度。该 gate 只拦截手动进度刷新，不影响页面初始化和内部收口链路。
 
 2026-06-25 23:34 起，普通首屏执行图上路线时会保留“本次点击的图上终点”。如果上位机 Nav2 execute 失败或拒绝，
 且响应没有回传 `goal_x/goal_y`，地图仍会在这次图上终点显示 `行程未通过`，避免失败后目标 marker 消失。该兜底只用于

@@ -3964,8 +3964,17 @@ const plainGoalProgressPending = computed(() => (
   || deliveryLatestPending.value
   || baseFeedbackSamplesPending.value
 ));
+const canRefreshPlainGoalProgress = computed(() => (
+  !plainGoalProgressPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const plainGoalProgressRefreshButtonLabel = computed(() => (
-  plainGoalProgressPending.value ? "刷新中" : "刷新进度（只读）"
+  plainGoalProgressPending.value
+    ? "刷新中"
+    : mapWysiwygRefreshPending.value
+      ? "等待地图刷新"
+      : "刷新进度（只读）"
 ));
 
 const firstJogVisualMaterialReady = computed(() => {
@@ -6004,7 +6013,7 @@ async function preloadGoalClosureReadbacks(): Promise<void> {
 
 async function refreshPlainGoalProgress(): Promise<void> {
   // 普通首屏刷新进度只读 summary、底盘反馈、最近行程和送达状态，不执行行程、不保存材料、不确认送达。
-  if (!robotApiBaseUrl.value.trim() || plainGoalProgressPending.value) {
+  if (!robotApiBaseUrl.value.trim() || plainGoalProgressPending.value || mapWysiwygRefreshPending.value) {
     return;
   }
   await refreshConsole();
@@ -7807,7 +7816,7 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="!plainGoalProgressPrimaryTarget" data-testid="plain-goal-progress-primary-action" @click="focusPlainGoalProgressTarget(plainGoalProgressPrimaryTarget)">
                 {{ plainGoalProgressPrimaryActionLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="plainGoalProgressPending" data-testid="plain-goal-progress-refresh" @click="refreshPlainGoalProgress">
+              <button type="button" class="secondary compact-stop" :disabled="!canRefreshPlainGoalProgress" data-testid="plain-goal-progress-refresh" @click="refreshPlainGoalProgress">
                 {{ plainGoalProgressRefreshButtonLabel }}
               </button>
             </div>
