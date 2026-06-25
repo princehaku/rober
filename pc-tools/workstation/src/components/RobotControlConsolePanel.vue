@@ -1666,7 +1666,6 @@ const keyboardContractReady = computed(() => {
 });
 const canUseKeyboardControl = computed(() => keyboardContractReady.value && canSendManualMotion.value);
 const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
-const canPressKeyboardDirection = computed(() => keyboardControlArmed.value && canUseKeyboardControl.value);
 const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES);
 const keyboardStopSettledAfterPulse = computed(() => keyboardManualPulseObserved.value && !keyboardHeldDirection.value && keyboardControlStatus.value.startsWith("stop_sent"));
 const mapRuntimeStarted = computed(() => (
@@ -1674,6 +1673,11 @@ const mapRuntimeStarted = computed(() => (
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
   && mapLifecycleResult.value.command_result.executed === true
 ));
+const keyboardMapWysiwygBlocked = computed(() => (
+  // 地图画面刷新中不能开始新的扫图移动；已经按住移动时仍允许松开并发送 stop。
+  mapRuntimeStarted.value && mapPreviewPending.value && !keyboardHeldDirection.value
+));
+const canPressKeyboardDirection = computed(() => keyboardControlArmed.value && canUseKeyboardControl.value && !keyboardMapWysiwygBlocked.value);
 const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
@@ -1840,6 +1844,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (mapRuntimeStarted.value && !keyboardControlArmed.value) {
     return canArmPlainFreeRoamKeyboard.value ? "下一步：启用键盘" : "下一步：补齐键盘条件";
   }
+  if (keyboardMapWysiwygBlocked.value) {
+    return "下一步：等待地图刷新";
+  }
   if (keyboardHeldDirection.value) {
     return "下一步：松开或停止";
   }
@@ -1900,6 +1907,9 @@ const plainFreeRoamDriveStatus = computed(() => {
     return plainFreeRoamSavedMapPreviewFreshForSession.value
       ? "扫图状态：地图已保存，地图画面已自动刷新，可以检查效果。"
       : "扫图状态：地图已保存，刷新地图画面检查效果。";
+  }
+  if (keyboardMapWysiwygBlocked.value) {
+    return "扫图状态：地图画面刷新中，等刷新完成后再继续按住移动。";
   }
   if (keyboardHeldDirection.value) {
     const wheelText = keyboardWheelFeedbackPlainText();
@@ -6921,6 +6931,10 @@ function startKeyboardControl(direction: ManualDirection): void {
   }
   if (!canSendManualMotion.value) {
     keyboardControlStatus.value = `blocked_keyboard_manual_gate:${manualBlockedReason.value}`;
+    return;
+  }
+  if (keyboardMapWysiwygBlocked.value) {
+    keyboardControlStatus.value = "blocked_map_preview_pending";
     return;
   }
   clearKeyboardJogTimer();
