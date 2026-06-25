@@ -11867,14 +11867,19 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在关闭实时画面，等待上位机释放视频会话。");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("等待画面稳定");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("等待画面稳定");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("实时画面正在打开或关闭；画面稳定后再准备送达材料。");
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').element).toHaveProperty("srcObject", null);
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).includes("/api/robot-control/camera/peers/peer-preview-001/close") && options?.method === "POST")).toBe(true);
     const cameraProbeCallsBeforeBlockedRecord = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?")).length;
     const reportCallsBeforeBlockedRecord = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/operator/report?")).length;
     await wrapper.find('[data-testid="plain-record-current-camera"]').trigger("click");
+    await wrapper.find('[data-testid="plain-delivery-prefill-material"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?")).length).toBe(cameraProbeCallsBeforeBlockedRecord);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/operator/report?")).length).toBe(reportCallsBeforeBlockedRecord);
+    expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe("");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -11893,6 +11898,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("用当前画面记录");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("准备送达材料");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find("details").text()).toContain("peer_closed:closed");
   });
 

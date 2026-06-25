@@ -845,6 +845,18 @@ const canRunBaseFeedbackSamples = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canFillDeliveryVideoRefFromCameraProbe = computed(() => (
+  !loading.value
+  && !previewBusy.value
+  && !cameraFirstFrameProbePending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const canPrefillDeliveryMaterialRefs = computed(() => (
+  canFillDeliveryVideoRefFromCameraProbe.value
+  && !plainDeliveryMapWysiwygPending.value
+  && !navGoalExecutionLatestPending.value
+  && !deliveryLatestPending.value
+));
 const canStopFreeRoamAutonomy = computed(() => (
   robotApiBaseUrl.value.trim().length > 0
   && freeRoamAutonomyPendingAction.value !== "stop"
@@ -3102,6 +3114,9 @@ const plainDeliveryPrefillButtonLabel = computed(() => {
   if (plainDeliveryMapWysiwygPending.value) {
     return "等待地图刷新";
   }
+  if (previewBusy.value) {
+    return "等待画面稳定";
+  }
   const hasVideoRef = deliveryOperatorVideoRef.value.trim().length > 0;
   const hasRouteRef = deliveryOperatorRouteMapRef.value.trim().length > 0;
   if (hasRouteRef && !hasVideoRef) {
@@ -3123,6 +3138,9 @@ const plainDeliveryMaterialSummary = computed(() => {
   }
   if (plainDeliveryMapWysiwygPending.value) {
     return { state: "刷新中", hint: `${plainTripMapWysiwygPendingText()}；刷新完成后再准备或保存送达材料。` };
+  }
+  if (previewBusy.value) {
+    return { state: "等待画面", hint: "实时画面正在打开或关闭；画面稳定后再准备送达材料。" };
   }
   if (deliveryDraftMaterialPresent()) {
     const ageText = formatEvidenceAge(
@@ -6417,7 +6435,7 @@ function latestCameraProbeSampleRef(): string {
 
 async function fillDeliveryVideoRefFromCameraProbe(): Promise<void> {
   // 送达视频 ref 预填只采集可追溯样张路径；仍要求现场显式确认送达。
-  if (!robotApiBaseUrl.value.trim() || cameraFirstFrameProbePending.value) {
+  if (!canFillDeliveryVideoRefFromCameraProbe.value) {
     return;
   }
   let sampleRef = latestCameraProbeSampleRef();
@@ -6432,7 +6450,7 @@ async function fillDeliveryVideoRefFromCameraProbe(): Promise<void> {
 
 async function prefillDeliveryMaterialRefs(): Promise<void> {
   // 一键预填只收集 ref，不提交 operator report；最终送达仍由现场人员显式确认。
-  if (!robotApiBaseUrl.value.trim() || plainDeliveryMapWysiwygPending.value) {
+  if (!canPrefillDeliveryMaterialRefs.value) {
     return;
   }
   const routeRefNeedsRefresh = !deliveryOperatorRouteMapRef.value.trim()
@@ -8012,7 +8030,7 @@ onBeforeUnmount(() => {
                 ref="plainDeliveryPrefillButton"
                 type="button"
                 class="secondary compact-stop"
-                :disabled="loading || plainDeliveryMapWysiwygPending || navGoalExecutionLatestPending || cameraFirstFrameProbePending || deliveryLatestPending || !robotApiBaseUrl.trim()"
+                :disabled="!canPrefillDeliveryMaterialRefs"
                 data-testid="plain-delivery-prefill-material"
                 @click="prefillDeliveryMaterialRefs"
               >
@@ -8507,7 +8525,7 @@ onBeforeUnmount(() => {
               <span>送达视频 ref</span>
               <input v-model="deliveryOperatorVideoRef" name="deliveryOperatorVideoRef" maxlength="512" placeholder="phone-video-or-camera-artifact-ref">
             </label>
-            <button class="secondary" type="button" :disabled="loading || cameraFirstFrameProbePending || !robotApiBaseUrl.trim()" @click="fillDeliveryVideoRefFromCameraProbe">
+            <button class="secondary" type="button" :disabled="!canFillDeliveryVideoRefFromCameraProbe" @click="fillDeliveryVideoRefFromCameraProbe">
               使用最近画面 ref
             </button>
             <label>

@@ -2323,3 +2323,8 @@ Nav2、delivery、stop 或 `/cmd_vel`。
 `停止已排队`，地图扫图 marker 和状态区同步显示“启动返回后会立刻请求停止”；start 返回后 PC 自动发送固定
 `/api/robot-control/free-roam/autonomy/stop`。该排队只作用于上车端自动扫图状态机 stop 参数，不发送 manual/keyboard pulse、
 Nav2、delivery、base stop 或 `/cmd_vel`。
+
+2026-06-26 07:05 起，普通首屏 `准备送达材料 / 补送达画面` 和高级 `使用最近画面 ref` 也接入实时画面稳定 gate。
+WebRTC 画面正在打开或关闭时，普通按钮显示 `等待画面稳定` 并禁用，函数入口同步早退，不再允许 camera first-frame probe
+在视频框仍处于连接中/关闭中时写入送达画面 ref。该状态只等待画面状态稳定，不提交 operator report、不确认 delivery、
+不发送 manual/keyboard pulse、Nav2、stop 或 `/cmd_vel`。
