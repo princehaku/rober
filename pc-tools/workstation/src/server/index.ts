@@ -73,7 +73,7 @@ import type {
 } from "../shared/contracts";
 
 const DEFAULT_PUBLIC_HOST = "0.0.0.0";
-const DEFAULT_PUBLIC_PORT = 7071;
+const DEFAULT_PUBLIC_PORT = 7001;
 const PORT = Number(process.env.PORT ?? DEFAULT_PUBLIC_PORT);
 const HOST = process.env.HOST ?? DEFAULT_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -85,7 +85,7 @@ export function workstationListenAddress(): string {
 }
 
 export function listenFailureHint(error: NodeJS.ErrnoException, host = HOST, port = PORT): string {
-  // 7071 常用于局域网公开访问；端口被占时必须给出下一手，而不是只吐 Node 栈。
+  // 7001 是 PC 工作站自己的公开入口；端口被占时必须给出下一手，而不是只吐 Node 栈。
   if (error.code !== "EADDRINUSE") {
     return `pc-tools workstation API failed to listen on ${host}:${port}: ${error.message}`;
   }
@@ -2039,7 +2039,7 @@ export function createWorkstationApp(): express.Express {
 export const app = createWorkstationApp();
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  // 启动前先探测端口，避免 7071 被 Clash/其他服务占用时出现“已监听又失败”的误导日志。
+  // 启动前先探测端口，避免 7001 被其他服务占用时出现“已监听又失败”的误导日志。
   void preflightListenAddress(HOST, PORT).then(() => {
     // 显式保留 server 引用，确保 public API 进程在 CLI 启动后持续监听。
     const server = app.listen(PORT, HOST, () => {

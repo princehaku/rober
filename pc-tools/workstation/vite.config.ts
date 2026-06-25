@@ -2,7 +2,7 @@ import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
 
 const DEFAULT_PUBLIC_HOST = "0.0.0.0";
-const DEFAULT_PUBLIC_PORT = 7071;
+const DEFAULT_PUBLIC_PORT = 7001;
 const host = process.env.HOST ?? DEFAULT_PUBLIC_HOST;
 const parsedPort = Number(process.env.PORT ?? DEFAULT_PUBLIC_PORT);
 const port = Number.isFinite(parsedPort) ? parsedPort : DEFAULT_PUBLIC_PORT;

@@ -16,15 +16,14 @@ pc-tools/workstation/
 - `training/`、`labeling/`：保留占位目录和后续工作入口，不代表真实训练或标注流水线已接入。
 
 `workstation/` 构建后可直接用 `npm run api` 启动 Node/Express 工作站；默认监听
-`0.0.0.0:7071`，方便同局域网设备访问。需要临时换地址或端口时，在启动前设置
+`0.0.0.0:7001`，方便同局域网设备访问。需要临时换地址或端口时，在启动前设置
 `HOST=<host> PORT=<port>`；`api:public` 只是兼容旧入口。该 HTTP 入口只暴露 PC
 工作站，不会自动执行 Nav2、manual、delivery complete、keyboard pulse、stop 或
 `/cmd_vel`。
 
-若启动时报 `0.0.0.0:7071: address already in use`，先查
-`netstat -anv | rg '[.:]7071 .*LISTEN|7071'`。2026-06-23 本机实测该端口可被
-Clash Verge 的 root `verge-mihomo` 占用；在这种情况下 Node 代码仍然按
-`0.0.0.0:7071` 绑定，但需要先从 Clash Verge 侧释放 7071 后才能成功启动。
+若启动时报 `0.0.0.0:7001: address already in use`，先查
+`netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
+Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
 ## Robot Control Console V1
 

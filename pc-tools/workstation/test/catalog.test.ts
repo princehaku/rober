@@ -1159,7 +1159,7 @@ function expectNoLegacyPythonGateSemantics(value: unknown, allowVendorSerialRefe
 describe("workstation fail-closed API contracts", () => {
   it("defaults workstation Node API to the public operator port", () => {
     // 现场默认要能从局域网访问；仍允许 HOST/PORT 环境变量在启动前覆盖。
-    expect(workstationListenAddress()).toBe("http://0.0.0.0:7071");
+    expect(workstationListenAddress()).toBe("http://0.0.0.0:7001");
   });
 
   it("formats public API port conflict with operator next steps", () => {
@@ -1167,12 +1167,12 @@ describe("workstation fail-closed API contracts", () => {
     const message = listenFailureHint(
       Object.assign(new Error("listen EADDRINUSE"), { code: "EADDRINUSE" }),
       "0.0.0.0",
-      7071,
+      7001,
     );
 
-    expect(message).toContain("0.0.0.0:7071");
+    expect(message).toContain("0.0.0.0:7001");
     expect(message).toContain("address already in use");
-    expect(message).toContain("lsof -nP -iTCP:7071");
+    expect(message).toContain("lsof -nP -iTCP:7001");
     expect(message).toContain("PORT=<free-port> npm run api");
   });
 

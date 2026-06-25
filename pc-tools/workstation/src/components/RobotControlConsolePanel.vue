@@ -744,6 +744,28 @@ function deliveryDraftMaterialPresent(): boolean {
     || deliveryLatestResult.value?.delivery_material_refs?.site_state === "delivery_material_draft_not_operator_confirmed";
 }
 
+function usableMaterialRef(value: string | undefined): string {
+  // delivery latest 和 operator summary 都可能用 not_loaded 占位；恢复材料时只能采用真实 ref。
+  const trimmed = value?.trim() ?? "";
+  return trimmed && trimmed !== "not_loaded" ? trimmed : "";
+}
+
+function deliveryLatestDraftVisualRefs(): { externalVideoRef: string; cameraArtifactRef: string; routeMapRef: string } {
+  // delivery latest 是当前真实上位机里最容易保留画面草稿的位置；这里只读 ref，不当成送达确认。
+  const refs = deliveryLatestResult.value?.delivery_material_refs;
+  return {
+    externalVideoRef: usableMaterialRef(refs?.external_video_ref) || usableMaterialRef(refs?.camera_artifacts_ref),
+    cameraArtifactRef: usableMaterialRef(refs?.camera_artifacts_ref) || usableMaterialRef(refs?.external_video_ref),
+    routeMapRef: usableMaterialRef(refs?.route_map_ref),
+  };
+}
+
+const deliveryDraftVisualMaterialReady = computed(() => {
+  // 恢复 first-jog 至少要有可追溯的画面 ref；否则仍要求现场重新记录画面。
+  const refs = deliveryLatestDraftVisualRefs();
+  return deliveryDraftMaterialPresent() && Boolean(refs.externalVideoRef && refs.cameraArtifactRef);
+});
+
 function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
   // 已有草稿后，按钮直接指向下一组人工确认，避免现场只看到抽象数量。
   if (missingLabels.includes("本轮行程")) {
@@ -1767,7 +1789,10 @@ const firstJogVisualMaterialReady = computed(() => {
 const firstJogMaterialRestoreReady = computed(() => {
   // delivery draft 会覆盖 latest operator report；已有视觉材料时允许 operator 重新确认基础安全三项。
   const firstJog = robotSummary.value?.first_jog_readiness_summary;
-  return firstJog?.status === "blocked_missing_basic_safety" && firstJog.visual_material_ready === true;
+  if (firstJog?.status === "blocked_missing_basic_safety" && firstJog.visual_material_ready === true) {
+    return true;
+  }
+  return firstJog?.status !== "ready_for_first_jog" && deliveryDraftVisualMaterialReady.value;
 });
 
 const firstJogMaterialRestoreSummary = computed(() => {
@@ -1778,7 +1803,11 @@ const firstJogMaterialRestoreSummary = computed(() => {
     return "operator report not loaded";
   }
   if (firstJogMaterialRestoreReady.value) {
-    return `latest-only operator report is ${summary.site_state}; visual material kept; missing=${firstJog.missing_fields.join(",")}; action=restore first-jog confirmation`;
+    if (firstJog.status === "blocked_missing_basic_safety" && firstJog.visual_material_ready === true) {
+      return `latest-only operator report is ${summary.site_state}; visual material kept; missing=${firstJog.missing_fields.join(",")}; action=restore first-jog confirmation`;
+    }
+    const refs = deliveryLatestDraftVisualRefs();
+    return `delivery latest draft visual material kept; external=${refs.externalVideoRef || "not_loaded"}; camera=${refs.cameraArtifactRef || "not_loaded"}; first_jog=${firstJog.status}; action=restore first-jog confirmation`;
   }
   if (firstJog.status === "ready_for_first_jog") {
     return "first-jog material ready; next=run observed trial";
@@ -1918,7 +1947,7 @@ const plainWheelTrialButtonLabel = computed(() => {
   if (firstJogMaterialRestoreBlocksMotion.value) {
     return "先恢复确认再试动";
   }
-  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
+  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value && !plainFirstJogMaterialRestored.value) {
     return "先记录画面再试动";
   }
   if (plainWheelZeroBlockerActive.value && plainWheelZeroBlockerChecked.value) {
@@ -1953,7 +1982,7 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
   if (firstJogMaterialRestoreBlocksMotion.value) {
     return "保存轮速记录（先恢复确认）";
   }
-  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
+  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value && !plainFirstJogMaterialRestored.value) {
     return "保存轮速记录（先记录画面）";
   }
   if (!plainFirstJogResult.value) {
@@ -3012,9 +3041,10 @@ function inheritedProgressClaimsFromSummary(): Pick<
 > {
   // latest-only operator report 不能把已有 wheel/LiDAR/route 材料冲掉；只有明确 true; ref=... 才继承。
   const summary = robotSummary.value?.operator_hil_material_summary;
+  const deliveryRefs = deliveryLatestDraftVisualRefs();
   const wheelRef = claimRefFromSummary(summary?.wheel_feedback);
   const scanDeltaRef = claimRefFromSummary(summary?.lidar_delta);
-  const routeMapRef = claimRefFromSummary(summary?.route_map);
+  const routeMapRef = claimRefFromSummary(summary?.route_map) || deliveryRefs.routeMapRef;
   return {
     wheel_feedback_lr_nonzero_proven: Boolean(wheelRef),
     ...(wheelRef ? { wheel_feedback_ref: wheelRef } : {}),
@@ -3038,8 +3068,9 @@ function inheritedBasicSafetyFromSummary(): Pick<RobotControlOperatorReportReque
 function plainFirstJogMaterialRestoreRequestBody(): RobotControlOperatorReportRequest {
   // 恢复试动材料只重写 first-jog 前置项；已有进度材料只保留，不补造。
   const summary = robotSummary.value?.operator_hil_material_summary;
-  const externalVideoRef = claimRefFromSummary(summary?.external_video);
-  const cameraArtifactRef = claimRefFromSummary(summary?.camera_visible);
+  const deliveryRefs = deliveryLatestDraftVisualRefs();
+  const externalVideoRef = claimRefFromSummary(summary?.external_video) || deliveryRefs.externalVideoRef;
+  const cameraArtifactRef = claimRefFromSummary(summary?.camera_visible) || deliveryRefs.cameraArtifactRef;
   const inheritedProgressClaims = inheritedProgressClaimsFromSummary();
   return {
     operator_present: true,

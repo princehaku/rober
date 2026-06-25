@@ -5046,6 +5046,151 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("restores first-jog material from delivery latest draft refs when operator latest is missing", async () => {
+    // 真实上位机可能让 /api/operator/report 停在旧报告，但 delivery/latest 仍保留送达草稿画面 ref；恢复只补材料不发车。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.status = "missing";
+    summaryFixture.operator_hil_material_summary.report_status = "unsafe_or_incomplete";
+    summaryFixture.operator_hil_material_summary.evidence_ref = "old-operator-report";
+    summaryFixture.operator_hil_material_summary.operator_present = "false";
+    summaryFixture.operator_hil_material_summary.physical_clearance = "false";
+    summaryFixture.operator_hil_material_summary.emergency_stop = "false";
+    summaryFixture.operator_hil_material_summary.external_video = "not_loaded";
+    summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "not_loaded";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "not_loaded";
+    summaryFixture.operator_hil_material_summary.route_map = "not_loaded";
+    summaryFixture.operator_hil_material_summary.delivery_claim = "not_loaded";
+    summaryFixture.operator_hil_material_summary.site_state = "not_loaded";
+    summaryFixture.first_jog_readiness_summary = {
+      status: "not_loaded",
+      basic_safety_ready: false,
+      visual_material_ready: false,
+      missing_fields: ["operator_report_latest"],
+      next_action: "connect_robot_api",
+    };
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "12";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/delivery/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/latest",
+        remote_endpoint: "/api/delivery/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_status: "goal_succeeded",
+          nav2_feedback_sample_count: "8",
+          operator_report_status: "unsafe_or_incomplete",
+        },
+        delivery_material_refs: {
+          operator_evidence_ref: "delivery-draft-smoke-1782102952",
+          external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg",
+          camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg",
+          route_map_ref: "o11-nav2-goal-execution-1782099547218",
+          site_state: "delivery_material_draft_not_operator_confirmed",
+        },
+        missing_required_material: [
+          "confirm_delivery_completion",
+          "operator_report_ready_for_review",
+          "operator_observed_motion",
+          "operator_observed_stop",
+          "structured_hil_claims.delivery_success",
+        ],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": {
+        schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+        proxy_status: "report_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/operator/report",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        structured_hil_claims: { delivery_success: false },
+        rejected_fields: [],
+        ignored_fields: [],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/base/first-jog": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/base/manual": { proxy_status: "should_not_be_called" },
+    });
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    expect(visiblePlainHomeText(wrapper)).toContain("已有现场画面；请恢复试动确认后再试动，恢复确认不会发车。");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("先点“恢复试动确认”（不会发车），再试动读取轮速。");
+    expect(wrapper.find(".robot-console .advanced-details").text()).toContain("delivery latest draft visual material kept");
+    expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-first-jog-restore"]').attributes("disabled")).toBeUndefined();
+
+    const callsBeforeRestore = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-first-jog-restore"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCall).toBeTruthy();
+    const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(reportBody).toEqual(expect.objectContaining({
+      operator_present: true,
+      physical_clearance_confirmed: true,
+      emergency_stop_ready: true,
+      observed_motion: false,
+      observed_stop: true,
+    }));
+    expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      external_video_recorded: true,
+      external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg",
+      visible_content_proven: true,
+      camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg",
+      real_route_map_proven: true,
+      route_map_ref: "o11-nav2-goal-execution-1782099547218",
+      wheel_feedback_lr_nonzero_proven: false,
+      physical_motion_lidar_delta_proven: false,
+      delivery_success: false,
+      site_state: "plain_first_jog_material_restored_for_trial",
+    }));
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先查卡点再重试读非零 L/R");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-zero-check"]').element);
+    expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeRestore);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("records a plain video reference and sends first-jog through the fixed proxy only", async () => {
     // 普通首屏可以走 first-jog 入口，但不会伪造轮速/LiDAR，也不会退回旧 manual 代理。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
