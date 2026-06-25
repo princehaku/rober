@@ -663,6 +663,7 @@ h3 {
   opacity: 0.78;
 }
 
+.plain-map-radar-sweep[data-state="雷达启动中"],
 .plain-map-radar-sweep[data-state="雷达待刷新"],
 .plain-map-radar-sweep[data-state="刷新中"] {
   border-color: rgba(106, 87, 16, 0.32);
@@ -772,12 +773,19 @@ h3 {
   color: #176039;
 }
 
+.plain-map-radar-marker[data-state="雷达启动中"],
 .plain-map-radar-marker[data-state="雷达待刷新"],
 .plain-map-radar-marker[data-state="刷新中"],
 .plain-map-radar-marker[data-state="刷新失败"] {
   border-color: #d5d2a9;
   background: #fbf8e8;
   color: #6a5710;
+}
+
+.plain-map-radar-marker[data-state="雷达启动失败"] {
+  border-color: #d8adb0;
+  background: #fff1f2;
+  color: #7c2d35;
 }
 
 .plain-map-route-goal-marker {
