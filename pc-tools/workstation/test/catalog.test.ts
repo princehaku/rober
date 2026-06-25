@@ -5893,6 +5893,90 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Nav2 goal execution reuses PC preflight and refuses to forward when route proof is incomplete", async () => {
+    // 执行入口不能只靠前端禁用按钮；即使直接 POST，也必须先读固定路线门禁，缺路径时不发 NavigateToPose。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/nav2/goal/execute": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result",
+          status: "should_not_execute",
+          robot_control_executed: true,
+        },
+      },
+    }, {
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "localization_reset_observed",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          localization_reset_observed: true,
+          localization_tf_observed: { map_to_base_link: true },
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "path_not_generated",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          path_generated: false,
+          path_generation_succeeded: false,
+          path_point_count: 0,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "active",
+          robot_control_executed: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/goal/execute?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          goal_x: 0.8,
+          goal_y: 0,
+          goal_yaw: 0,
+          confirm_navigation_execution: true,
+        }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        blocked_reasons: string[];
+        goal_execution_key_values: Record<string, string>;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(400);
+      expect(body.proxy_status).toBe("execution_rejected");
+      expect(body.blocked_reasons).toEqual(expect.arrayContaining([
+        "path_generation_not_observed",
+        "path_point_count_not_positive",
+      ]));
+      expect(body.goal_execution_key_values.preflight_status).toBe("preflight_rejected");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual([
+        "/api/localize/proof/latest",
+        "/api/nav2/proof/latest",
+        "/api/nav2/status",
+      ]);
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("Nav2 latest execution proxy reads fixed GET artifact without replaying navigation", async () => {
     // latest 入口只帮 PC 页面找回最近 NavigateToPose artifact ref，不重新发送 Nav2 goal。
     const upstream = await listenRobotBaseCommandApi({}, {

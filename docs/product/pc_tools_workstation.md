@@ -1548,6 +1548,13 @@ operator report，不再次发送运动命令、不补 LiDAR/route/delivery。�
 仍必须走 `confirm_navigation_execution` 与后端固定 execute gate；该改动不会调用 `/api/robot-control/nav2/goal/execute`、
 `/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`。
 
+2026-06-25 17:56 起，PC 后端 `POST /api/robot-control/nav2/goal/execute` 在转发真实
+`/api/nav2/goal/execute` 前，会先复用同一套本机导航预检读取
+`/api/localize/proof/latest`、`/api/nav2/proof/latest`、`/api/nav2/status`。即使有人绕过前端按钮直接 POST
+执行接口，只要定位 TF、路线生成或路径点数缺失，PC 也会返回 `execution_rejected`，并且不会向上位机发送
+NavigateToPose 执行请求。该后端门禁仍只要求现场安全确认加路线/定位材料，不重新引入 operator report/HIL
+材料作为普通行程预检前置；它也不会调用 `/api/base/manual`、keyboard pulse、delivery complete 或 `/cmd_vel`。
+
 2026-06-22 15:14 起，普通首屏点击 `执行行程` 后如果固定代理返回 `goal_succeeded` 和 evidence ref，PC 会自动把
 这次行程材料填入送达材料候选，并把“任务收口”材料状态显示为“待画面”。这一步不调用 camera probe、
 不提交 operator report、不调用 delivery complete，也不替现场勾选最终确认；用途只是省掉用户从“行程成功”

@@ -1467,6 +1467,27 @@ export function createWorkstationApp(): express.Express {
       });
       return;
     }
+    // 真正发车前也复用 PC 本机最小路线门禁，防止用户绕过前端按钮直接打执行接口。
+    const preflight = await buildNavGoalPreflightProxy(sourceBaseUrl, {
+      goal_x: goalX,
+      goal_y: goalY,
+      goal_yaw: goalYaw,
+      confirm_navigation_preflight: true,
+    });
+    if (preflight.proxy_status !== "preflight_passed") {
+      const blockedReasons = preflight.blocked_reasons.length > 0 ? preflight.blocked_reasons : ["nav_goal_preflight_failed"];
+      res.status(400).json({
+        ...fallbackBase,
+        goal_execution_key_values: {
+          preflight_status: preflight.preflight_status,
+          missing_requirements: blockedReasons.join(","),
+        },
+        failure_reason: blockedReasons[0],
+        blocked_reasons: blockedReasons,
+        hard_dangerous_true_fields: preflight.hard_dangerous_true_fields,
+      });
+      return;
+    }
     try {
       const remote = await fetch(endpointUrl(normalized.normalized, "/api/nav2/goal/execute"), {
         method: "POST",
