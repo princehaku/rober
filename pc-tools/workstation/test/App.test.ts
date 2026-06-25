@@ -4659,15 +4659,61 @@ describe("App", () => {
       failure_reason: "amcl_timeout",
       blocked_reasons: ["amcl_timeout"],
     };
-    const mockedFetch = stubWorkstationFetch({
+    const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/localize/reset": localizationFailure,
     });
+    let delayNextMapProofRefresh = false;
+    const mapProofRefreshControl: { finish?: () => void } = {};
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextMapProofRefresh) {
+        delayNextMapProofRefresh = false;
+        return new Promise((resolve) => {
+          mapProofRefreshControl.finish = () => resolve({
+            ok: true,
+            json: async () => fixtures["/api/robot-control/map/proof/refresh"],
+          });
+        });
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
 
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
+
+    delayNextMapProofRefresh = true;
+    const mapProofButton = wrapper.findAll("button").find((button) => button.text() === "刷新地图");
+    if (!mapProofButton) {
+      throw new Error("plain map proof refresh button was not found");
+    }
+    const mapProofRefreshClick = mapProofButton.trigger("click");
+    await wrapper.vm.$nextTick();
+    const blockedResetButton = wrapper.findAll("button").find((button) => button.text() === "等待地图刷新");
+    expect(blockedResetButton?.attributes("disabled")).toBeDefined();
+    await wrapper.find(".robot-console .advanced-details").element.setAttribute("open", "");
+    await wrapper.vm.$nextTick();
+    const advancedResetButton = wrapper.findAll("button").find((button) => button.text() === "定位重置（高级）");
+    expect(advancedResetButton?.attributes("disabled")).toBeDefined();
+    const localizationCallsBeforeBlockedReset = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/localize/reset?"),
+    ).length;
+    await blockedResetButton?.trigger("click");
+    await advancedResetButton?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/localize/reset?"),
+    ).length).toBe(localizationCallsBeforeBlockedReset);
+    const finishMapProofRefresh = mapProofRefreshControl.finish;
+    if (!finishMapProofRefresh) {
+      throw new Error("map proof refresh before localization reset was not captured");
+    }
+    finishMapProofRefresh();
+    await mapProofRefreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
 
     const resetButton = wrapper.findAll("button").find((button) => button.text() === "重新定位");
     expect(resetButton).toBeTruthy();

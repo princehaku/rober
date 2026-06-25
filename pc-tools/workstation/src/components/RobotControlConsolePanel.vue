@@ -757,6 +757,12 @@ const canStartRadarLifecycle = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canResetLocalization = computed(() => (
+  !loading.value
+  && !localizationResetPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const plainRadarStartButtonLabel = computed(() => {
   if (plainRadarStartUnavailable.value) {
     return "雷达未配置";
@@ -766,6 +772,9 @@ const plainRadarStartButtonLabel = computed(() => {
   }
   return "启动雷达";
 });
+const plainLocalizationResetButtonLabel = computed(() => (
+  mapWysiwygRefreshPending.value ? "等待地图刷新" : "重新定位"
+));
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarSummary.value.state === "雷达未运行";
@@ -5779,6 +5788,9 @@ async function refreshNav2Proof(): Promise<void> {
 
 async function resetLocalizationProof(): Promise<void> {
   // 重新定位只走固定 /api/localize/reset；发布一次初始位姿，不请求路径、不发 /cmd_vel。
+  if (mapWysiwygRefreshPending.value) {
+    return;
+  }
   await runRefreshAction(
     "localization_reset",
     () => postRobotControlLocalizeReset(robotApiBaseUrl.value),
@@ -7619,8 +7631,8 @@ onBeforeUnmount(() => {
           </label>
           <div class="panel-action-row wrap-actions">
             <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
-            <button type="button" :disabled="loading || localizationResetPending || !robotApiBaseUrl.trim()" @click="resetLocalizationProof">
-              重新定位
+            <button type="button" :disabled="!canResetLocalization" @click="resetLocalizationProof">
+              {{ plainLocalizationResetButtonLabel }}
             </button>
             <label class="plain-video-ref">
               <span>现场画面记录</span>
@@ -8254,7 +8266,7 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="loading || nav2RefreshPending || !robotApiBaseUrl.trim()" @click="refreshNav2Proof">
               检查路径（高级）
             </button>
-            <button class="secondary" type="button" :disabled="loading || localizationResetPending || !robotApiBaseUrl.trim()" @click="resetLocalizationProof">
+            <button class="secondary" type="button" :disabled="!canResetLocalization" @click="resetLocalizationProof">
               定位重置（高级）
             </button>
           </div>
