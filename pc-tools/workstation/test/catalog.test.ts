@@ -3677,10 +3677,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.manual_endpoint).toBe("/api/base/manual");
       expect(summary.safe_command_boundary.stop_endpoint).toBe("/api/base/stop");
       expect(summary.safe_command_boundary.cmd_vel_topic).toBe("/cmd_vel");
-      expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_hil_checklist_and_operator_report");
+      expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_safety_confirmation_only");
       expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);
       expect(summary.safe_command_boundary.operator_report_preflight_endpoint).toBe("/api/operator/report");
-      expect(summary.safe_command_boundary.operator_report_preflight_required_fields).toContain("scan_delta_ref");
+      expect(summary.safe_command_boundary.operator_report_preflight_required_fields).toEqual([]);
       expect(summary.safe_command_boundary.allowed_directions).toEqual(["forward", "back", "left", "right", "stop"]);
       expect(summary.safe_command_boundary.manual_control_enabled).toBe(false);
       expect(summary.safe_command_boundary.keyboard_control).toBe("bounded repeating manual pulse gated");

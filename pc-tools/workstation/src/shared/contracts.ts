@@ -2423,8 +2423,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     };
     map_click_goal: "map click goal locked";
     locked_reason: string;
-    manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report";
-    manual_motion_entry_label: "受控点动（需现场确认）";
+    manual_motion_entry_status: "controlled_jog_requires_safety_confirmation_only";
+    manual_motion_entry_label: "低速手控（勾安全确认即可）";
     allowed_directions: Array<"forward" | "back" | "left" | "right" | "stop">;
     non_stop_requires_confirm_hil_checklist: true;
     non_stop_requires_operator_report_preflight: boolean;
