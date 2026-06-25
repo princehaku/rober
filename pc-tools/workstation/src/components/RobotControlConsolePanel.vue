@@ -5074,13 +5074,18 @@ async function startRadarLifecycle(): Promise<void> {
 }
 
 async function startPlainRadarLifecycle(): Promise<void> {
-  // 普通首屏启动成功后才带到刷新；失败时留在启动按钮，避免现场误以为已进入刷新阶段。
+  // 普通首屏启动成功后自动做一次只读刷新；失败时留在启动按钮，避免现场误以为已进入运行阶段。
   await startRadarLifecycle();
+  if (radarStartSucceeded(radarLifecycleResult.value)) {
+    await refreshRadarProof();
+    await nextTick();
+    if (radarSummary.value.state !== "雷达已运行") {
+      plainRadarRefreshButton.value?.focus({ preventScroll: true });
+    }
+    return;
+  }
   await nextTick();
-  const target = radarStartSucceeded(radarLifecycleResult.value)
-    ? plainRadarRefreshButton.value
-    : plainRadarStartButton.value ?? plainRadarRefreshButton.value;
-  target?.focus({ preventScroll: true });
+  (plainRadarStartButton.value ?? plainRadarRefreshButton.value)?.focus({ preventScroll: true });
 }
 
 async function stopRadarLifecycle(): Promise<void> {

@@ -2120,3 +2120,7 @@ delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不�
 `等待画面` 和“视频已接入，等待浏览器绘出第一帧”，不再提前显示 `已打开`。只有本地 video 元素读到尺寸/readyState
 或 frame callback 后，才进入已打开/画面可见/画面偏暗判断。该状态只消费浏览器本地 video 诊断，不调用
 camera probe、manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-26 02:50 起，普通首屏点击 `启动雷达` 且固定 radar lifecycle 代理返回 `ok=true` 后，会自动追加一次只读
+`/api/robot-control/radar/scan-proof/refresh`。地图 marker 因此能尽快从 `雷达启动中/雷达已启动待刷新` 更新到真实
+`雷达已运行` 或仍需处理的读回状态。该自动刷新不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。

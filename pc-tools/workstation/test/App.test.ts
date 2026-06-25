@@ -3371,7 +3371,6 @@ describe("App", () => {
     // 首屏默认就是 Robot Control；测试只验证 Node proxy 摘要和 locked UI，不触发任何真实控制 endpoint。
     const mockedFetch = stubWorkstationFetch();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -3877,7 +3876,6 @@ describe("App", () => {
       },
     });
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -9269,13 +9267,18 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
-  it("focuses plain radar refresh only after radar start reports ok", async () => {
-    // 只有上位机 lifecycle 明确 ok=true，普通首屏才进入“刷新雷达确认状态”这一步。
+  it("auto-refreshes radar proof after plain radar start reports ok", async () => {
+    // 只有上位机 lifecycle 明确 ok=true，普通首屏才自动刷新雷达 proof，并把地图 marker 更新为真实运行读回。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.lidar.lifecycle_running = "false";
     summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
     summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const runningSummaryFixture = cloneFixture(summaryFixture) as Record<string, any>;
+    runningSummaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    runningSummaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    runningSummaryFixture.readback_summary.lidar.continuous_window_observed = "true";
+    runningSummaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/radar/start": {
@@ -9296,7 +9299,23 @@ describe("App", () => {
         ...PROOF_FLAGS,
       },
     });
-    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    const originalFetch = mockedFetch.getMockImplementation();
+    let radarProofRefreshed = false;
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/summary?")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => (radarProofRefreshed ? runningSummaryFixture : summaryFixture),
+        });
+      }
+      if (String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?")) {
+        radarProofRefreshed = true;
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
 
     const wrapper = mount(App);
     await flushPromises();
@@ -9306,14 +9325,17 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，请点刷新雷达确认状态。");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已启动，位置未读到");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已启动，地图位置未读到，等待刷新确认");
+    expect(visiblePlainHomeText(wrapper)).toContain("雷达已运行");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达已运行");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已运行，地图位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已启动扫描范围占位，等待刷新确认和机器人地图位置");
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已运行扫描范围占位，等待机器人地图位置");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达已运行，但当前还没读到点位。");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-radar-refresh"]').exists()).toBe(true);
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
