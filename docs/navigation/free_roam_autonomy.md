@@ -2,7 +2,7 @@
 
 ## 目标
 
-`ros2_trashbot_nav.free_roam_autonomy` 是“像扫地机一样自由跑动建图”的上车端策略内核。它先定义安全状态机和 artifact 合同，再接 ROS2 发布链，避免 PC 按钮直接变成无限运动。
+`ros2_trashbot_nav.free_roam_autonomy` 是“像扫地机一样自由跑动建图”的上车端策略内核。`ros2_trashbot_nav.free_roam_autonomy_node` 负责把 ROS2 `/scan`、`/map` 和停止兜底接到该策略，并写出 runtime artifact。
 
 ## 输入
 
@@ -25,13 +25,23 @@
 - `state=completed`：达到最长运行时间或 unknown 占比低于目标，输出停止。
 - `stop_required=true`：上层必须执行停止兜底，不能继续沿用旧速度。
 
+## ROS2 节点
+
+`free_roam_autonomy_node` 当前已完成以下接线：
+
+- 订阅 `/scan`，只接受有限正数距离，计算最近障碍距离和数据年龄。
+- 订阅 `/map`，统计 free、unknown、occupied 和 unknown ratio。
+- 每个 tick 生成 `FreeRoamSnapshot`，调用策略内核并写出 `trashbot.free_roam_autonomy.runtime.v1` artifact。
+- 当 `decision.stop_required=true` 且停止服务可用时，调用 `/trashbot/stop` 兜底。
+- 默认 `enable_cmd_vel_publish=false` 且 `motion_hil_unlocked=false`，不会发布 `/cmd_vel`。
+
 ## 当前边界
 
-当前实现是纯 Python 策略内核和 `free_roam_autonomy` 离线 console script，默认空输入会输出 `locked`。它不订阅 `/scan`、不订阅 `/map`、不发布 `/cmd_vel`，因此不会触发真实小车运动。
+`free_roam_autonomy` 离线 console script 默认空输入会输出 `locked`。`free_roam_autonomy_node` 默认 artifact-only，不发布 `/cmd_vel`；即使策略输出 `running`，也必须同时设置 `enable_cmd_vel_publish=true` 和 `motion_hil_unlocked=true` 才会发布受限 Twist。该双参数门禁用于防止单个误配参数让真车运动。
 
 下一步接线顺序：
 
-1. ROS2 节点订阅 `/scan` 和 `/map`，把实时雷达距离、free cell 增量和 unknown 占比写入 snapshot。
-2. 接入停止服务或 `/trashbot/stop`，确保 `stop_required=true` 时真实发 stop。
-3. 只在 HIL 低速验证通过后，才把 `FreeRoamDecision` 中的受限速度发布到 `/cmd_vel`。
-4. 把每个 tick 的 decision 写入 artifact，并由上位机 summary 转成 PC 的 `free_roam_autonomy_gates`。
+1. 上位机 summary 读取 runtime artifact，把策略门禁和状态回传给 PC。
+2. 在真实小车低速 HIL 中验证 stop fallback 响应时间、雷达避障换向和地图覆盖增长。
+3. HIL 通过后，才允许用双参数显式解锁 `/cmd_vel` 发布。
+4. 把每个 tick 的 decision、传感器摘要和 stop 响应写入验收 artifact。

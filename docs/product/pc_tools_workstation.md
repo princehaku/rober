@@ -1939,3 +1939,8 @@ delivery complete/stop 或 `/cmd_vel`。
 但“自动扫图准备”的五项门禁已对应策略内核的安全输入：现场确认、地图记录、停止兜底、雷达新鲜、障碍距离。下一步需要把
 上车端 `/scan`、`/map` 覆盖变化和 stop fallback 接入 artifact，再由 summary 把策略状态回传给 PC；在此之前自动扫图按钮
 继续禁用，不发送 `/cmd_vel`。
+
+2026-06-25 21:18 起，上车端 nav 包新增 `free_roam_autonomy_node`：订阅 `/scan` 和 `/map`，写
+`trashbot.free_roam_autonomy.runtime.v1` runtime artifact，并在策略要求停止时调用 `/trashbot/stop` 兜底。该节点默认
+`enable_cmd_vel_publish=false`、`motion_hil_unlocked=false`，即使策略输出可前进也不会发布 `/cmd_vel`。PC 首屏仍只显示
+自动扫图门禁，等 summary 读取 artifact 和真车 HIL 后再讨论开放按钮。
