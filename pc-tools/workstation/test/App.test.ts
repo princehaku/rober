@@ -5247,6 +5247,12 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').exists()).toBe(false);
+    const route = wrapper.find('[data-testid="plain-map-route-path"]');
+    expect(route.exists()).toBe(true);
+    expect(route.attributes("data-state")).toBe("当前路线");
+    expect(route.attributes("aria-label")).toBe("已读取 3 个路线点");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-route-path[data-state="当前路线"] polyline');
     const startMarker = wrapper.find('[data-testid="plain-map-route-start-marker"]');
     const endMarker = wrapper.find('[data-testid="plain-map-route-end-marker"]');
     expect(startMarker.exists()).toBe(true);

@@ -581,6 +581,12 @@ h3 {
   filter: drop-shadow(0 1px 2px rgba(10, 35, 77, 0.35));
 }
 
+.plain-map-route-path[data-state="当前路线"] polyline {
+  stroke: #1f6feb;
+  stroke-width: 2.1;
+  filter: drop-shadow(0 1px 3px rgba(10, 35, 77, 0.42));
+}
+
 .plain-map-route-path[data-state="最近路线"] polyline {
   stroke: #b28a12;
   stroke-dasharray: 4 3;
