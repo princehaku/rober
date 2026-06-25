@@ -10134,6 +10134,14 @@ describe("App", () => {
     });
     const originalFetch = mockedFetch.getMockImplementation();
     let radarProofRefreshed = false;
+    let radarProofRefreshStarted = false;
+    let resolveRadarProofRefresh!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedRadarProofRefresh = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveRadarProofRefresh = (value) => {
+        radarProofRefreshed = true;
+        resolve(value);
+      };
+    });
     mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
       if (String(url).startsWith("/api/robot-control/summary?")) {
         return Promise.resolve({
@@ -10142,7 +10150,8 @@ describe("App", () => {
         });
       }
       if (String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?")) {
-        radarProofRefreshed = true;
+        radarProofRefreshStarted = true;
+        return delayedRadarProofRefresh;
       }
       if (!originalFetch) {
         throw new Error("missing default fetch mock");
@@ -10154,7 +10163,22 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
+    const startClick = wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(radarProofRefreshStarted).toBe(true);
+    expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，正在刷新新雷达点。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已启动，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已启动，地图位置未读到，等待刷新确认");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达启动已返回，正在刷新新点位。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+
+    resolveRadarProofRefresh({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/radar/scan-proof/refresh"],
+    });
+    await startClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
 

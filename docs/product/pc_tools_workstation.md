@@ -2241,6 +2241,12 @@ operator report，也不会调用 first-jog、manual、Nav2、delivery、stop �
 `/api/robot-control/radar/scan-proof/refresh`。地图 marker 因此能尽快从 `雷达启动中/雷达已启动待刷新` 更新到真实
 `雷达已运行` 或仍需处理的读回状态。该自动刷新不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-26 04:24 起，上述自动 scan proof 刷新请求未返回期间，普通首屏会明确显示
+`雷达启动已返回，正在刷新新雷达点`；地图 marker 保持 `雷达已启动，位置未读到/等待刷新确认`，点位口径显示
+`雷达启动已返回，正在刷新新点位`。刷新返回后才切到真实 `雷达已运行/待刷新/失败` 读回。该 pending 状态只等待固定
+`/api/robot-control/radar/scan-proof/refresh`，不启动底盘、不执行 Nav2、不发送 manual/keyboard pulse、delivery、
+stop 或 `/cmd_vel`。
+
 2026-06-26 03:01 起，普通首屏点击 `刷新雷达` 失败时，地图 marker 会同步显示
 `雷达刷新失败：<failure_reason>`，`data-state=雷达刷新失败`，freshness 明确说明未显示新点位，并隐藏扫描范围占位。
 该失败态只消费固定 radar proof refresh 响应，不自动重试、不启动雷达、不发送 manual、keyboard pulse、Nav2、

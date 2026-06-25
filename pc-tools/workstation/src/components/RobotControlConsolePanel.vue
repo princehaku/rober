@@ -524,6 +524,9 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
     return { state: "刷新中", hint: "正在停止雷达，等待上位机返回。" };
   }
   if (radarRefreshPending.value) {
+    if (radarStartSucceeded(radarLifecycleResult.value)) {
+      return { state: "刷新中", hint: "雷达启动已返回，正在刷新新雷达点。" };
+    }
     return { state: "刷新中", hint: "正在刷新雷达状态。" };
   }
   if (radarRefreshFailed(radarRefreshResult.value)) {
@@ -1233,6 +1236,9 @@ function plainRadarFreshnessLabel(
     return "雷达点口径：雷达刷新失败，未显示新点位。";
   }
   if (radarState === "雷达待刷新" || radarState === "刷新中") {
+    if (radarState === "刷新中" && radarStartSucceeded(radarLifecycleResult.value)) {
+      return "雷达点口径：雷达启动已返回，正在刷新新点位。";
+    }
     return localPointCount > 0
       ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
       : "雷达点口径：正在确认实时性，刷新后才显示新点位。";
