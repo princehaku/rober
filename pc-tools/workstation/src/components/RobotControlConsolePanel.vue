@@ -2194,7 +2194,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，下一步检查或执行行程。` : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? (plainTripSafetyConfirmed.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，下一步检查或执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {

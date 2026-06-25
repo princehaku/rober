@@ -4365,7 +4365,7 @@ describe("App", () => {
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.text()).toContain("已准备");
     expect(tripPanel.text()).toContain("已读到路线 36 个点；勾选安全确认后可检查或执行行程。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，下一步检查或执行行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，先勾选行程前确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("路线已准备 36 点");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
@@ -4375,6 +4375,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，下一步检查或执行行程。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

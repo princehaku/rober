@@ -1566,6 +1566,8 @@ WYSIWYG 提示里展示，不再作为 `检查行程` 或 `执行行程` 的前�
 不要求现场先重复点击 `准备行程（不发车）`。按钮 gate 不变：检查/执行仍必须先勾同一个安全确认，真正执行仍由后端 execute gate 复查。
 2026-06-25 19:40 起，同一个 summary 路线准备状态也会进入普通首屏 `本轮进度`：`行程执行` 行显示 `路线已准备 N 个点`，
 `当前读数` 显示 `路线已准备 N 点`，验收卡点说明仍需执行完整行程并读到成功结果。该展示不自动调用 nav2 refresh、execute、manual 或 `/cmd_vel`。
+2026-06-25 19:50 起，`本轮进度 / 行程执行` 的路线准备提示会跟随安全确认状态：未勾选时提示 `先勾选行程前确认`，
+勾选后才提示 `下一步检查或执行行程`，避免普通用户在未完成最小确认时误以为可以直接发车。
 2026-06-25 18:06 起，若 `准备行程（不发车）` 返回 `planner_server_not_active` root cause，普通首屏会翻译为
 `行程服务还没准备好，先点重新定位，或稍后再准备一次。`，不把 `planner_server_not_active/root_causes` 暴露给普通用户。
 本轮真实 7001 no-motion proof 结果为 `proxy_status=refresh_forwarded`、`robot_control_executed=false`、`hard_dangerous_true_fields=[]`、
