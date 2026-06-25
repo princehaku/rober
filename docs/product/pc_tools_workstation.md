@@ -2054,6 +2054,11 @@ delivery complete 或 `/cmd_vel` 行为。
 固定在地图角落并声明“不代表坐标”。该状态只消费本机 map lifecycle、map preview 和键盘状态机，不改变 map start/save、
 manual pulse、stop、Nav2、delivery complete 或 `/cmd_vel` 行为。
 
+2026-06-26 03:50 起，普通首屏地图上的扫图方向 marker 会同步键盘连续手控轮速结论：按住方向键后显示
+`扫图方向：前进，轮速非零` 或 `轮速待非零`，marker 说明中带本次连续脉冲进度和 L/R 读数。这样地图上的移动方向、键盘区
+轮速反馈和扫图状态三处保持一致。该状态只读取固定 manual pulse 返回值，不新增 manual、stop、Nav2、delivery complete
+或 `/cmd_vel` 调用。
+
 2026-06-25 23:02 起，普通首屏地图上的行程终点 marker 不再只写 `终点/本轮目标`，而是直接显示执行证据：
 `已到达`、`到达缺反馈`、`旧到达` 或 `行程未通过`。这样 operator 看地图时能直接区分“完整路线已到达且有反馈样本”和
 “只读到 goal_succeeded 但还不能收口”。该 marker 仍只消费 Nav2 execution/latest readback 和地图坐标，不改变

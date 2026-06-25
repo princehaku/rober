@@ -1168,15 +1168,18 @@ function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRob
     return null;
   }
   const label = keyboardDirectionPlainLabel.value;
+  const wheelSuffix = keyboardWheelFeedbackMapSuffix();
+  const wheelAria = keyboardWheelFeedbackPlainText().replace(/^；/, "，");
+  const progressText = keyboardForwardedPulseProgressText.value;
   return {
-    label: `扫图方向：${label}`,
+    label: `扫图方向：${label}${wheelSuffix}`,
     state: direction,
     style: robotPose
       ? robotPose.style
       : { left: "12px", top: "48px" },
     aria: robotPose
-      ? `正在${label}扫图，标记贴近机器人当前位置`
-      : `正在${label}扫图，机器人地图位置未读到，标记不代表坐标`,
+      ? `正在${label}扫图，${progressText}${wheelAria}，标记贴近机器人当前位置`
+      : `正在${label}扫图，${progressText}${wheelAria}，机器人地图位置未读到，标记不代表坐标`,
   };
 }
 
@@ -1220,7 +1223,8 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label: "扫图画面刷新中", state: "refreshing", style, aria: `扫图地图画面正在刷新${locatedSuffix}` };
   }
   if (keyboardHeldDirection.value && mapRuntimeStarted.value) {
-    return { label: "扫图移动中", state: "driving", style, aria: `正在${keyboardDirectionPlainLabel.value}扫图${locatedSuffix}` };
+    const wheelAria = keyboardWheelFeedbackPlainText().replace(/^；/, "，");
+    return { label: "扫图移动中", state: "driving", style, aria: `正在${keyboardDirectionPlainLabel.value}扫图，${keyboardForwardedPulseProgressText.value}${wheelAria}${locatedSuffix}` };
   }
   if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("stop_sent")) {
     return plainFreeRoamMapPreviewFreshForSession.value
@@ -1940,6 +1944,21 @@ function keyboardWheelFeedbackPlainText(): string {
   return nonzero
     ? `；轮速 L/R=${left}/${right}，非零已读到`
     : `；轮速 L/R=${left}/${right}，等待非零`;
+}
+
+function keyboardWheelFeedbackMapSuffix(): string {
+  // 地图 marker 空间有限，只显示轮速结论；完整 L/R 数值继续放在状态行和 aria 说明里。
+  const values = keyboardLastWheelFeedbackValues.value;
+  if (!values) {
+    return "";
+  }
+  const left = values.wheel_feedback_latest_raw_left ?? values.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = values.wheel_feedback_latest_raw_right ?? values.wheel_feedback_latest_right_speed ?? "not_loaded";
+  if (left === "not_loaded" && right === "not_loaded") {
+    return "";
+  }
+  const nonzero = values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true";
+  return nonzero ? "，轮速非零" : "，轮速待非零";
 }
 
 const plainKeyboardWheelFeedbackSummary = computed(() => {

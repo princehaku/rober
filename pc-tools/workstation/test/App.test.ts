@@ -3965,11 +3965,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
     expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
-    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').text()).toBe("扫图方向：前进");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').text()).toBe("扫图方向：前进，轮速非零");
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').attributes("data-state")).toBe("forward");
-    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').attributes("aria-label")).toBe("正在前进扫图，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').attributes("aria-label")).toBe("正在前进扫图，本次按住 1/2 次，轮速 L/R=0.07/0.08，非零已读到，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("扫图移动中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("driving");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("正在前进扫图，本次按住 1/2 次，轮速 L/R=0.07/0.08，非零已读到，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：松开或停止");
     const previewCallsBeforeLiveRefresh = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     await new Promise((resolve) => setTimeout(resolve, 320));
