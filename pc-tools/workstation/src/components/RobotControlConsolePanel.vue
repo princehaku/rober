@@ -1716,12 +1716,14 @@ const plainMapVisualSummary = computed(() => {
     || "";
   const localizationFailureLabel = localizationResetFailureLabel(localizationResetResult.value);
   const poseLabel = poseObserved ? "位置已读到" : localizationFailureLabel ? `定位失败：${localizationFailureLabel}` : "位置未读到";
+  const poseMissingState = localizationFailureLabel ? "定位失败" : "位置未读到";
   const poseMissingAria = localizationFailureLabel
     ? `定位失败：${localizationFailureLabel}，地图上的小车位置未读到`
     : "机器人位置未读到";
   return {
     state,
     poseLabel,
+    poseMissingState,
     poseMissingAria,
     radarLabel: displayedRadarState,
     radarOverlayLabel,
@@ -7722,7 +7724,7 @@ onBeforeUnmount(() => {
                 </svg>
                 <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" :style="plainMapVisualSummary.radarOverlayStyle" aria-hidden="true" />
                 <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" :style="plainMapVisualSummary.robotPoseStyle" :aria-label="plainMapVisualSummary.robotPoseAria" />
-                <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing" :aria-label="plainMapVisualSummary.poseMissingAria">{{ plainMapVisualSummary.poseLabel }}</span>
+                <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing" :data-state="plainMapVisualSummary.poseMissingState" :aria-label="plainMapVisualSummary.poseMissingAria">{{ plainMapVisualSummary.poseLabel }}</span>
                 <span class="plain-map-radar-marker" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarOverlayAria">{{ plainMapVisualSummary.radarOverlayLabel }}</span>
               </div>
             </div>

@@ -781,6 +781,12 @@ h3 {
   color: #526171;
 }
 
+.plain-map-unknown-pose[data-state="定位失败"] {
+  border-color: #d8adb0;
+  background: #fff1f2;
+  color: #7c2d35;
+}
+
 .plain-map-radar-marker {
   padding: 5px 8px;
 }

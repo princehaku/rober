@@ -2308,6 +2308,10 @@ stop 或 `/cmd_vel`。
 不执行 Nav2、不发送 manual、keyboard pulse、delivery、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置；PC 工作站
 默认公开入口继续是 `0.0.0.0:7001`。
 
+2026-06-26 08:05 起，地图位置缺位 marker 也带 `data-state`：普通缺位为 `位置未读到`，localization reset 失败为
+`定位失败` 并使用失败视觉态。测试锁定 `定位失败` CSS 选择器，避免定位失败和普通未读到在地图上看起来一样。该状态只影响
+PC 地图呈现，不自动重新定位、不启动雷达、不执行 Nav2、不发送 manual/keyboard pulse、delivery、stop 或 `/cmd_vel`。
+
 2026-06-26 03:09 起，同一 localization reset 失败原因也同步进入普通首屏地图 caption 的 `坐标口径` 行，例如
 `坐标口径：机器人定位失败：amcl_timeout，地图上的雷达和小车位置仍待定位。`。这样地图 marker、坐标口径和移动卡片不再出现
 一个说失败、另一个只说“位置未读到”的割裂反馈。该 caption 只消费固定 localization reset 代理结果，不自动重新定位、

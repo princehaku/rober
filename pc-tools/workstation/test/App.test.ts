@@ -4825,7 +4825,10 @@ describe("App", () => {
 
     const poseMissing = wrapper.find('[data-testid="plain-map-pose-missing"]');
     expect(poseMissing.text()).toBe("定位失败：amcl_timeout");
+    expect(poseMissing.attributes("data-state")).toBe("定位失败");
     expect(poseMissing.attributes("aria-label")).toBe("定位失败：amcl_timeout，地图上的小车位置未读到");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-unknown-pose[data-state="定位失败"]');
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人定位失败：amcl_timeout，地图上的雷达和小车位置仍待定位。");
     expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(false);
     expect(visiblePlainHomeText(wrapper)).toContain("定位失败");
