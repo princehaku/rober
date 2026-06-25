@@ -406,6 +406,22 @@ h3 {
   min-height: 34px;
 }
 
+.plain-connection-panel {
+  border-left: 3px solid transparent;
+}
+
+.plain-connection-panel[data-state="已连接"] {
+  border-left-color: #238636;
+}
+
+.plain-connection-panel[data-state="未连接"] {
+  border-left-color: #8c959f;
+}
+
+.plain-connection-panel[data-state="有异常"] {
+  border-left-color: #cf222e;
+}
+
 .plain-camera-panel {
   border-left: 3px solid transparent;
 }

@@ -7676,7 +7676,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen">
-        <article class="snapshot-panel">
+        <article class="snapshot-panel plain-connection-panel" data-testid="plain-connection-panel" :data-state="robotConnectionSummary.state">
           <h3>小车连接</h3>
           <div class="simple-status-row">
             <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>

@@ -3378,6 +3378,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("移动/导航");
     expect(firstScreenText).toContain("已连接");
     expect(firstScreenText).toContain("部分项目未通过，可展开高级诊断。");
+    const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
+    expect(connectionPanel.exists()).toBe(true);
+    expect(connectionPanel.attributes("data-state")).toBe("已连接");
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("地图列表");
@@ -3505,6 +3508,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-panel[data-state="地图可见"]');
     expect(workstationStyles).toContain('.plain-map-panel[data-state="地图处理中"]');
+    expect(workstationStyles).toContain('.plain-connection-panel[data-state="已连接"]');
+    expect(workstationStyles).toContain('.plain-connection-panel[data-state="有异常"]');
     expect(workstationStyles).toContain('.plain-motion-panel[data-state="待试动"]');
     expect(workstationStyles).toContain('.plain-motion-panel[data-state="已试动"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面可见"][data-frame-state="已绘制帧"]');
@@ -5784,6 +5789,7 @@ describe("App", () => {
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("小车连接");
     expect(firstScreenText).toContain("有异常");
+    expect(wrapper.find('[data-testid="plain-connection-panel"]').attributes("data-state")).toBe("有异常");
     expect(firstScreenText).toContain("上位机没回应；检查小车电源、网络和上位机服务后再点连接/刷新。");
     expect(firstScreenText).not.toContain("fetch_timeout");
     expect(firstScreenText).not.toContain("/api/base");
