@@ -2003,3 +2003,8 @@ map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。真
 不会作为执行按钮的前置步骤。本轮进度跳转在安全确认后优先聚焦 `准备行程（不发车）` 或 `执行图上路线`，
 不再把用户带到可选复查按钮。该改动不改变后端固定 Nav2 preflight/execute 代理和安全边界，不发送 manual/keyboard
 pulse/delivery complete/stop 或 `/cmd_vel`。
+
+2026-06-25 22:26 起，普通首屏“扫地式建图”卡片内直接提供一组屏幕方向键：前进、左转、右转、后退和停止。
+这些按钮完全复用既有键盘连续手控状态机，仍必须先勾安全确认、开始地图记录并点击 `启用键盘扫图`；按住方向键才发送
+bounded manual pulse，松开走统一 stop。这样 operator 不需要跳到下方“移动/导航”卡片寻找方向键，扫图流程更接近
+扫地机式操作。该入口不新增控制通道、不绕过安全确认、不执行 Nav2、不提交 delivery complete、不发送 `/cmd_vel`。

@@ -6385,6 +6385,57 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="plain-free-roam-drive-status">{{ plainFreeRoamDriveStatus }}</p>
           <p class="panel-note" data-testid="plain-free-roam-sweep-plan-summary">{{ plainFreeRoamSweepPlanSummary }}</p>
           <p class="panel-note">按住方向键或 W/A/S/D 移动，松开即停；保存后刷新地图画面检查效果。</p>
+          <div class="keyboard-direction-pad" data-testid="plain-free-roam-direction-pad">
+            <button
+              type="button"
+              :disabled="!canPressKeyboardDirection"
+              data-testid="plain-free-roam-screen-forward"
+              @pointerdown="handleKeyboardDirectionPointerDown('forward', $event)"
+              @pointerup="handleKeyboardDirectionPointerEnd('forward', 'free_roam_screen_button_released')"
+              @pointerleave="handleKeyboardDirectionPointerEnd('forward', 'free_roam_screen_button_left')"
+              @pointercancel="handleKeyboardDirectionPointerEnd('forward', 'free_roam_screen_button_cancelled')"
+            >
+              前进
+            </button>
+            <div class="motion-middle-row">
+              <button
+                type="button"
+                :disabled="!canPressKeyboardDirection"
+                data-testid="plain-free-roam-screen-left"
+                @pointerdown="handleKeyboardDirectionPointerDown('left', $event)"
+                @pointerup="handleKeyboardDirectionPointerEnd('left', 'free_roam_screen_button_released')"
+                @pointerleave="handleKeyboardDirectionPointerEnd('left', 'free_roam_screen_button_left')"
+                @pointercancel="handleKeyboardDirectionPointerEnd('left', 'free_roam_screen_button_cancelled')"
+              >
+                左转
+              </button>
+              <button class="danger-button" type="button" :disabled="!canSendStop" data-testid="plain-free-roam-screen-stop" @click="stopKeyboardControl('free_roam_screen_button_stop')">
+                停止
+              </button>
+              <button
+                type="button"
+                :disabled="!canPressKeyboardDirection"
+                data-testid="plain-free-roam-screen-right"
+                @pointerdown="handleKeyboardDirectionPointerDown('right', $event)"
+                @pointerup="handleKeyboardDirectionPointerEnd('right', 'free_roam_screen_button_released')"
+                @pointerleave="handleKeyboardDirectionPointerEnd('right', 'free_roam_screen_button_left')"
+                @pointercancel="handleKeyboardDirectionPointerEnd('right', 'free_roam_screen_button_cancelled')"
+              >
+                右转
+              </button>
+            </div>
+            <button
+              type="button"
+              :disabled="!canPressKeyboardDirection"
+              data-testid="plain-free-roam-screen-back"
+              @pointerdown="handleKeyboardDirectionPointerDown('back', $event)"
+              @pointerup="handleKeyboardDirectionPointerEnd('back', 'free_roam_screen_button_released')"
+              @pointerleave="handleKeyboardDirectionPointerEnd('back', 'free_roam_screen_button_left')"
+              @pointercancel="handleKeyboardDirectionPointerEnd('back', 'free_roam_screen_button_cancelled')"
+            >
+              后退
+            </button>
+          </div>
           <div class="plain-free-roam-coverage" data-testid="plain-free-roam-coverage">
             <div class="simple-status-row">
               <strong>扫图覆盖</strong>
