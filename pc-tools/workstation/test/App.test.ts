@@ -384,6 +384,10 @@ const fixtures: Record<string, unknown> = {
       path_preview_point_count: 0,
       path_preview_source_point_count: null,
       path_preview_frame_id: "",
+      scan_preview_points: [],
+      scan_preview_point_count: 0,
+      scan_preview_source_point_count: null,
+      scan_preview_frame_id: "",
       root_causes: ["planner_server_not_active"],
       not_proven: ["path_generated", "delivery_success"],
     },
@@ -3347,6 +3351,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').classes()).toContain("mode-pose-missing");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已运行扫描范围占位，等待机器人地图位置");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点位未读取");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
@@ -3522,6 +3527,14 @@ describe("App", () => {
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     summaryFixture.o3_proof_summary.amcl_pose_observed = true;
     summaryFixture.o3_proof_summary.localization_tf_observed = true;
+    summaryFixture.o3_proof_summary.scan_preview_points = [
+      { x_m: 1, y_m: 0, range_m: 1, angle_rad: 0, frame_id: "laser", source_index: 0 },
+      { x_m: 0, y_m: 1, range_m: 1, angle_rad: 1.5708, frame_id: "laser", source_index: 1 },
+      { x_m: -1, y_m: 0, range_m: 1, angle_rad: 3.1416, frame_id: "laser", source_index: 2 },
+    ];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = 3;
+    summaryFixture.o3_proof_summary.scan_preview_frame_id = "laser";
     summaryFixture.readback_summary.lidar.lifecycle_running = "true";
     summaryFixture.readback_summary.lidar.continuous_window_observed = "true";
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
@@ -3541,6 +3554,11 @@ describe("App", () => {
     expect(sweep.exists()).toBe(true);
     expect(sweep.classes()).toContain("mode-known-pose-running");
     expect(sweep.attributes("aria-label")).toBe("雷达已运行扫描范围，跟随机器人位置");
+    const scanPoints = wrapper.find('[data-testid="plain-map-radar-scan-points"]');
+    expect(scanPoints.exists()).toBe(true);
+    expect(scanPoints.attributes("aria-label")).toBe("雷达点位，雷达点 3 个");
+    expect(scanPoints.findAll("circle")).toHaveLength(3);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点 3 个");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);

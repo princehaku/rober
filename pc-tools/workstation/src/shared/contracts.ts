@@ -1981,6 +1981,15 @@ export interface RobotApiPathPreviewPoint {
   source_index: number | null;
 }
 
+export interface RobotApiScanPreviewPoint {
+  x_m: number;
+  y_m: number;
+  range_m: number;
+  angle_rad: number;
+  frame_id: string;
+  source_index: number | null;
+}
+
 export interface RobotApiProofSummary {
   managed_runtime_started: boolean | null;
   scan_once_observed: boolean | null;
@@ -1996,6 +2005,10 @@ export interface RobotApiProofSummary {
   path_preview_point_count: number;
   path_preview_source_point_count: number | null;
   path_preview_frame_id: string;
+  scan_preview_points: RobotApiScanPreviewPoint[];
+  scan_preview_point_count: number;
+  scan_preview_source_point_count: number | null;
+  scan_preview_frame_id: string;
   root_causes: string[];
   not_proven: string[];
 }

@@ -4486,6 +4486,10 @@ describe("workstation fail-closed API contracts", () => {
           schema: "trashbot.upper_robot_api.v1.radar_scan_proof_latest",
           status: "scan_once_observed",
           evidence_ref: "radar-scan-proof",
+          ranges: [1, 2, null, "bad", 1.5],
+          angle_min: 0,
+          angle_increment: 1.57079632679,
+          frame_id: "laser",
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
@@ -4564,6 +4568,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.path_preview_point_count).toBe(3);
       expect(summary.o3_proof_summary.path_preview_source_point_count).toBe(31);
       expect(summary.o3_proof_summary.path_preview_frame_id).toBe("map");
+      expect(summary.o3_proof_summary.scan_preview_point_count).toBe(3);
+      expect(summary.o3_proof_summary.scan_preview_source_point_count).toBe(5);
+      expect(summary.o3_proof_summary.scan_preview_frame_id).toBe("laser");
+      expect(summary.o3_proof_summary.scan_preview_points[0]).toEqual(expect.objectContaining({
+        range_m: 1,
+        angle_rad: 0,
+        frame_id: "laser",
+        source_index: 0,
+      }));
+      expect(summary.o3_proof_summary.scan_preview_points[1]?.x_m).toBeCloseTo(0, 5);
+      expect(summary.o3_proof_summary.scan_preview_points[1]?.y_m).toBeCloseTo(2, 5);
       expect(summary.readback_summary.base.feedback_link_status).toBe("not_observed");
       expect(summary.o3_proof_summary.path_generated).toBe(true);
     } finally {

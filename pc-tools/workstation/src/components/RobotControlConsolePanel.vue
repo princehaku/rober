@@ -47,6 +47,7 @@ import type {
   RobotControlPreviewStatus,
   RobotControlProofRefreshProxyResponse,
   RobotControlRadarLifecycleResponse,
+  RobotApiScanPreviewPoint,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
@@ -684,6 +685,49 @@ function mapCoordinateStyle(goalX: number, goalY: number, preview: RobotControlM
   return { left: `${left.toFixed(2)}%`, top: `${top.toFixed(2)}%` };
 }
 
+function radarScanPointToPercent(point: RobotApiScanPreviewPoint): { left: number; top: number } | null {
+  // 雷达点是相对机器人坐标，不是全局地图坐标；这里只能围绕已知机器人 marker 做局部点云 overlay。
+  const x = finitePlainNumber(point.x_m);
+  const y = finitePlainNumber(point.y_m);
+  const range = finitePlainNumber(point.range_m);
+  if (x === null || y === null || range === null || range <= 0) {
+    return null;
+  }
+  const visualRadiusPercent = 34;
+  const maxDisplayRangeM = 3;
+  const left = clampPercent(50 + (x / maxDisplayRangeM) * visualRadiusPercent);
+  const top = clampPercent(50 - (y / maxDisplayRangeM) * visualRadiusPercent);
+  return { left, top };
+}
+
+function latestRadarScanOverlay(poseObserved: boolean) {
+  // 没有 map-frame 位姿时不把雷达点强行落到地图坐标，只返回待定位提示。
+  const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
+  if (!poseObserved || points.length === 0) {
+    return {
+      dots: [],
+      label: points.length > 0 ? `雷达点已读取 ${points.length} 个，等待位置` : "雷达点位未读取",
+    };
+  }
+  const dots = points
+    .map((point, index) => {
+      const percent = radarScanPointToPercent(point);
+      if (!percent) {
+        return null;
+      }
+      return {
+        key: `${point.source_index ?? index}-${percent.left.toFixed(2)}-${percent.top.toFixed(2)}`,
+        left: percent.left,
+        top: percent.top,
+      };
+    })
+    .filter((point): point is { key: string; left: number; top: number } => point !== null);
+  return {
+    dots,
+    label: dots.length > 0 ? `雷达点 ${dots.length} 个` : "雷达点位未读取",
+  };
+}
+
 function latestNavGoalOverlay() {
   const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
   const preview = mapPreviewResult.value;
@@ -777,6 +821,7 @@ const plainMapVisualSummary = computed(() => {
   const radarSweepAria = poseObserved
     ? `${radarState}扫描范围，跟随机器人位置`
     : `${radarState}扫描范围占位，等待机器人地图位置`;
+  const radarScanOverlay = latestRadarScanOverlay(poseObserved);
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref
@@ -790,6 +835,10 @@ const plainMapVisualSummary = computed(() => {
     radarOverlayAria: poseObserved ? `${radarState}，已叠在机器人位置` : `${radarState}，地图位置未读到`,
     showRadarSweep,
     radarSweepAria,
+    radarScanDots: radarScanOverlay.dots,
+    radarScanLabel: radarScanOverlay.label,
+    showRadarScanPoints: showRadarSweep && radarScanOverlay.dots.length > 0,
+    radarScanAria: `雷达点位，${radarScanOverlay.label}`,
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
@@ -5420,6 +5469,9 @@ onBeforeUnmount(() => {
                 </svg>
                 <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :aria-label="plainMapVisualSummary.radarSweepAria" />
+                <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">
+                  <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.15" />
+                </svg>
                 <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" aria-hidden="true" />
                 <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" aria-label="机器人位置" />
                 <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing">{{ plainMapVisualSummary.poseLabel }}</span>
@@ -5429,6 +5481,7 @@ onBeforeUnmount(() => {
             <div class="plain-map-caption">
               <span class="status-chip" :data-state="plainMapVisualSummary.state">{{ plainMapVisualSummary.state }}</span>
               <span class="muted">{{ plainMapVisualSummary.mapRefLabel }}</span>
+              <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
             </div>
           </div>
           <div class="panel-action-row wrap-actions">

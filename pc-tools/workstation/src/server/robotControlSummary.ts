@@ -4,6 +4,7 @@ import type {
   RobotApiPathPreviewPoint,
   RobotApiProofSummary,
   RobotApiReadEndpointId,
+  RobotApiScanPreviewPoint,
   RobotControlOperatorHilMaterialSummary,
   RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
@@ -39,6 +40,9 @@ export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
 export const ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS = 260;
 export const ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS = 240;
 const ROBOT_CONTROL_PATH_PREVIEW_POINT_LIMIT = 64;
+const ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT = 72;
+const ROBOT_CONTROL_SCAN_PREVIEW_MIN_RANGE_M = 0.03;
+const ROBOT_CONTROL_SCAN_PREVIEW_MAX_RANGE_M = 8;
 export const ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
 export const ROBOT_CONTROL_HIL_CHECKLIST = [
   { id: "operator_ready", label: "现场有人扶控并准备急停" },
@@ -2601,6 +2605,104 @@ function proofPathPreview(readbacks: InternalRobotApiEndpointReadback[]): Pick<
   };
 }
 
+function finiteScanRange(value: unknown): number | null {
+  // LaserScan ranges 里可能有 inf/null/字符串；只接受有限正数，避免无效点污染地图视图。
+  const numberValue = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
+  if (!Number.isFinite(numberValue) || numberValue < ROBOT_CONTROL_SCAN_PREVIEW_MIN_RANGE_M || numberValue > ROBOT_CONTROL_SCAN_PREVIEW_MAX_RANGE_M) {
+    return null;
+  }
+  return numberValue;
+}
+
+function appendStructuredScanPreviewPoints(rawPoints: unknown, payload: JsonRecord | null, points: RobotApiScanPreviewPoint[]): void {
+  // 新版上位机若直接给出结构化点，就优先按点读取；字段缺失的点直接跳过。
+  if (!Array.isArray(rawPoints)) {
+    return;
+  }
+  for (const rawPoint of rawPoints.slice(0, ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT)) {
+    const record = asRecord(rawPoint);
+    const range = finiteScanRange(record?.range_m ?? record?.range ?? record?.distance_m);
+    const angle = finitePathCoordinate(record?.angle_rad ?? record?.angle);
+    if (!record || range === null || angle === null) {
+      continue;
+    }
+    const x = finitePathCoordinate(record.x_m ?? record.x) ?? range * Math.cos(angle);
+    const y = finitePathCoordinate(record.y_m ?? record.y) ?? range * Math.sin(angle);
+    const sourceIndex = finitePathCoordinate(record.source_index);
+    points.push({
+      x_m: x,
+      y_m: y,
+      range_m: range,
+      angle_rad: angle,
+      frame_id: asString(record.frame_id, asString(findFirstKey(payload, ["scan_preview_frame_id", "frame_id"]), "")),
+      source_index: sourceIndex === null ? null : Math.trunc(sourceIndex),
+    });
+  }
+}
+
+function appendRangeScanPreviewPoints(payload: JsonRecord | null, points: RobotApiScanPreviewPoint[]): number | null {
+  // 旧 artifact 常见形态是 LaserScan ranges；只抽样生成相对雷达点，不推导机器人全局坐标。
+  const rawRanges = findFirstKey(payload, ["ranges"]);
+  if (!Array.isArray(rawRanges)) {
+    return null;
+  }
+  const angleMin = finitePathCoordinate(findFirstKey(payload, ["angle_min"])) ?? -Math.PI;
+  const angleIncrement = finitePathCoordinate(findFirstKey(payload, ["angle_increment"]))
+    ?? (rawRanges.length > 1 ? (2 * Math.PI) / rawRanges.length : 0);
+  const frameId = asString(findFirstKey(payload, ["frame_id", "scan_frame_id"]), "");
+  const step = Math.max(1, Math.ceil(rawRanges.length / ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT));
+  for (let index = 0; index < rawRanges.length && points.length < ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT; index += step) {
+    const range = finiteScanRange(rawRanges[index]);
+    if (range === null) {
+      continue;
+    }
+    const angle = angleMin + angleIncrement * index;
+    points.push({
+      x_m: range * Math.cos(angle),
+      y_m: range * Math.sin(angle),
+      range_m: range,
+      angle_rad: angle,
+      frame_id: frameId,
+      source_index: index,
+    });
+  }
+  return rawRanges.length;
+}
+
+function proofScanPreview(readbacks: InternalRobotApiEndpointReadback[]): Pick<
+  RobotApiProofSummary,
+  "scan_preview_points" | "scan_preview_point_count" | "scan_preview_source_point_count" | "scan_preview_frame_id"
+> {
+  // 雷达点位只读 latest/status payload；没有点或 ranges 时返回空数组，前端明确展示“点位未读取”。
+  const scanProofPayload = readbackById(readbacks, "radar_scan_proof_latest")?.payload ?? null;
+  const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
+  const candidatePayloads = [scanProofPayload, radarStatusPayload].filter((payload): payload is JsonRecord => payload !== null);
+  const points: RobotApiScanPreviewPoint[] = [];
+  let sourceCount: number | null = null;
+  for (const payload of candidatePayloads) {
+    appendStructuredScanPreviewPoints(findFirstKey(payload, ["scan_preview_points", "scan_points"]), payload, points);
+    if (points.length === 0) {
+      sourceCount = appendRangeScanPreviewPoints(payload, points) ?? sourceCount;
+    } else {
+      sourceCount = proofNumber(readbacks, ["scan_preview_source_point_count", "scan_point_count"]) ?? points.length;
+    }
+    if (points.length > 0) {
+      return {
+        scan_preview_points: points.slice(0, ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT),
+        scan_preview_point_count: Math.min(points.length, ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT),
+        scan_preview_source_point_count: sourceCount,
+        scan_preview_frame_id: points[0]?.frame_id ?? "",
+      };
+    }
+  }
+  return {
+    scan_preview_points: [],
+    scan_preview_point_count: 0,
+    scan_preview_source_point_count: sourceCount,
+    scan_preview_frame_id: "",
+  };
+}
+
 function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): RobotApiProofSummary {
   // O3 proof 只聚合已读回来的 status/latest 字段；没有字段时保持 null/not_proven。
   const payload = readbacks;
@@ -2610,6 +2712,7 @@ function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): Robot
   const pathSucceeded = proofBoolean(readbacks, ["path_generation_succeeded", "latest_path_generation_succeeded"]);
   const proofComplete = pathGenerated === true || pathSucceeded === true;
   const pathPreview = proofPathPreview(readbacks);
+  const scanPreview = proofScanPreview(readbacks);
   return {
     managed_runtime_started: proofBoolean(readbacks, ["managed_runtime_started"]),
     scan_once_observed: proofBoolean(readbacks, ["scan_once_observed", "latest_scan_once_observed"]),
@@ -2622,6 +2725,7 @@ function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): Robot
     path_generated: pathGenerated,
     path_point_count: proofNumber(readbacks, ["path_point_count", "latest_path_point_count"]),
     ...pathPreview,
+    ...scanPreview,
     root_causes: rootCauses.length && !proofComplete ? rootCauses : [],
     not_proven: notProven.length && !proofComplete ? notProven : [],
   };
@@ -2659,6 +2763,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       path_preview_point_count: 0,
       path_preview_source_point_count: null,
       path_preview_frame_id: "",
+      scan_preview_points: [],
+      scan_preview_point_count: 0,
+      scan_preview_source_point_count: null,
+      scan_preview_frame_id: "",
       root_causes: [reason],
       not_proven: ["robot_api_not_loaded", "path_generated", "delivery_success"],
     },
