@@ -2107,3 +2107,7 @@ PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboar
 `POST /api/robot-control/radar/scan-proof/refresh` 读取最新雷达 proof，然后固定
 `GET /api/robot-control/map/preview` 读取最新地图画面。该链路只更新地图/雷达所见即所得反馈，不再发
 base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
+
+2026-06-26 02:05 起，普通首屏扫地式建图点击 `保存当前地图` 后，保存代理返回成功会自动触发一次只读地图 preview 刷新，
+并把 `扫图状态` 和 `地图画面` 提示更新为“地图已保存，地图画面已自动刷新”。该刷新只读取
+`/api/robot-control/map/preview`，不发送 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。

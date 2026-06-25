@@ -110,6 +110,7 @@ const mapLifecycleArtifactPath = ref("");
 const plainFreeRoamMappingConfirmed = ref(false);
 const plainFreeRoamMapPreviewFreshForSession = ref(false);
 const plainFreeRoamLiveMapPreviewRefreshedForHold = ref(false);
+const plainFreeRoamSavedMapPreviewFreshForSession = ref(false);
 const operatorReportPending = ref(false);
 const operatorReportResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainVisualMaterialPending = ref(false);
@@ -1111,8 +1112,8 @@ function plainMapImageFreshnessLabel(previewLoaded: boolean): string {
       : "地图画面：地图记录中，先刷新扫图画面再保存。";
   }
   if (mapSavedThisSession.value) {
-    return plainFreeRoamMapPreviewFreshForSession.value
-      ? "地图画面：已显示保存前刷新过的地图，必要时再刷新检查效果。"
+    return plainFreeRoamSavedMapPreviewFreshForSession.value
+      ? "地图画面：地图已保存，已自动刷新最新画面，可检查效果。"
       : "地图画面：地图已保存，刷新地图画面后检查效果。";
   }
   return previewLoaded ? "地图画面：显示最近读取的真实地图。" : "地图画面：还没读到真实地图图像。";
@@ -1447,7 +1448,9 @@ const plainFreeRoamMappingSummary = computed(() => {
     return { state: "刷新中", hint: "正在刷新扫图画面；刷新完成后再保存。" };
   }
   if (mapSavedThisSession.value) {
-    return { state: "已保存", hint: "地图已保存；刷新地图画面后可检查 free cell 和路线可用性。" };
+    return plainFreeRoamSavedMapPreviewFreshForSession.value
+      ? { state: "已保存", hint: "地图已保存，地图画面已自动刷新；现在可以检查 free cell 和路线可用性。" }
+      : { state: "已保存", hint: "地图已保存；刷新地图画面后可检查 free cell 和路线可用性。" };
   }
   if (mapRuntimeStarted.value) {
     return canUseKeyboardControl.value
@@ -1548,6 +1551,11 @@ const plainFreeRoamDriveStatus = computed(() => {
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
     return "扫图状态：自动扫图停止请求已发送，继续看地图和雷达确认现场收口。";
   }
+  if (mapSavedThisSession.value) {
+    return plainFreeRoamSavedMapPreviewFreshForSession.value
+      ? "扫图状态：地图已保存，地图画面已自动刷新，可以检查效果。"
+      : "扫图状态：地图已保存，刷新地图画面检查效果。";
+  }
   if (keyboardHeldDirection.value) {
     const wheelText = keyboardWheelFeedbackPlainText();
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
@@ -1568,9 +1576,6 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return "扫图状态：键盘已启用，按住方向键/WASD 低速扫图；松开即停。";
-  }
-  if (mapSavedThisSession.value) {
-    return "扫图状态：地图已保存，刷新地图画面检查效果。";
   }
   if (mapRuntimeStarted.value) {
     return canArmPlainFreeRoamKeyboard.value
@@ -4957,13 +4962,14 @@ async function refreshConsole(): Promise<void> {
   }
 }
 
-async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean } = {}): Promise<void> {
+async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean } = {}): Promise<void> {
   // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
   if (!robotApiBaseUrl.value.trim() || mapPreviewPending.value) {
     return;
   }
   const refreshStartedDuringFreeRoamRuntime = options.countForFreeRoamSession === true && mapRuntimeStarted.value;
   const liveRefreshDuringFreeRoam = options.freeRoamLiveRefresh === true && mapRuntimeStarted.value;
+  const refreshAfterSavedMap = (options.savedMapRefresh === true || mapSavedThisSession.value) && mapSavedThisSession.value;
   mapPreviewPending.value = true;
   try {
     mapPreviewResult.value = await getRobotControlMapPreview(robotApiBaseUrl.value);
@@ -4972,6 +4978,9 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
     }
     if (liveRefreshDuringFreeRoam && mapRuntimeStarted.value && mapPreviewResult.value?.proxy_status === "preview_forwarded") {
       plainFreeRoamLiveMapPreviewRefreshedForHold.value = true;
+    }
+    if (refreshAfterSavedMap && mapSavedThisSession.value && mapPreviewResult.value?.proxy_status === "preview_forwarded") {
+      plainFreeRoamSavedMapPreviewFreshForSession.value = true;
     }
   } catch {
     mapPreviewResult.value = null;
@@ -5727,7 +5736,7 @@ async function runMapLifecycleAction(
     mapLifecyclePendingAction.value = null;
     await refreshConsole();
   }
-  await refreshMapPreview();
+  await refreshMapPreview({ savedMapRefresh: action === "save" });
 }
 
 async function loadMapList(): Promise<void> {
@@ -5739,6 +5748,7 @@ async function startMapRuntime(): Promise<void> {
   // 普通按钮只走固定 /api/map/start，不接受浏览器传运动、串口或 ROS 参数。
   plainFreeRoamMapPreviewFreshForSession.value = false;
   plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
+  plainFreeRoamSavedMapPreviewFreshForSession.value = false;
   await runMapLifecycleAction("start", () => postRobotControlMapStart(robotApiBaseUrl.value, mapLifecycleRequestBody()));
   if (mapRuntimeStarted.value && canArmPlainFreeRoamKeyboard.value) {
     // 启动建图后只打开键盘窗口，不发送方向脉冲；真正移动仍要 operator 按住方向键。
