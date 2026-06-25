@@ -777,7 +777,7 @@ function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOver
   };
 }
 
-function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
+function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>, radarState = "") {
   // 缺 map-frame 位姿时只能画雷达局部轮廓，不能冒充地图坐标。
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
@@ -798,9 +798,12 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
   }));
   const transformedCount = localPoints.filter((point) => point.transformApplied).length;
   const transformLabel = transform && transformedCount > 0 ? "，已套用雷达外参" : "";
+  const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+  const statusLabel = liveRadar || !radarState ? "" : `，${radarState}`;
+  const prefix = liveRadar || !radarState ? "雷达局部点" : "最近雷达局部点";
   return {
     dots,
-    label: `雷达局部点 ${dots.length} 个${transformLabel}，等待地图位置`,
+    label: `${prefix} ${dots.length} 个${transformLabel}${statusLabel}，等待地图位置`,
   };
 }
 
@@ -899,6 +902,7 @@ function plainMapCoordinateTruthLabel(
   radarScanOverlay: ReturnType<typeof latestRadarScanOverlay>,
   radarLocalScanOverlay: ReturnType<typeof latestRadarLocalScanOverlay>,
   routePath: ReturnType<typeof latestNavPathOverlay>,
+  radarState: string,
 ): string {
   // 所见即所得的核心是把“贴在地图坐标”和“只显示局部轮廓”说清楚，避免误把局部雷达当地图定位。
   if (poseObserved) {
@@ -908,7 +912,11 @@ function plainMapCoordinateTruthLabel(
   }
   if (radarLocalScanOverlay.dots.length > 0) {
     const routeText = routePath ? `路线 ${routePath.displayedCount}/${routePath.totalCount} 个点仍按地图坐标显示` : "路线未显示";
-    return `坐标口径：机器人位置未读到，雷达只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点，不贴到地图；${routeText}。`;
+    const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+    const scanText = liveRadar
+      ? `雷达只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点`
+      : `最近雷达记录只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点，当前${radarState}`;
+    return `坐标口径：机器人位置未读到，${scanText}，不贴到地图；${routeText}。`;
   }
   if (routePath) {
     return `坐标口径：机器人位置未读到，路线 ${routePath.displayedCount}/${routePath.totalCount} 个点按地图坐标显示，雷达不贴图。`;
@@ -963,7 +971,7 @@ const plainMapVisualSummary = computed(() => {
     ? `${radarState}扫描范围，跟随机器人位置`
     : `${radarState}扫描范围占位，等待机器人地图位置`;
   const radarScanOverlay = latestRadarScanOverlay(robotPose);
-  const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose);
+  const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose, radarState);
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref
@@ -980,11 +988,11 @@ const plainMapVisualSummary = computed(() => {
     radarSweepAria,
     radarScanDots: radarScanOverlay.dots,
     radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : radarScanOverlay.label,
-    coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath),
+    coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath, radarState),
     showRadarScanPoints: showRadarSweep && radarScanOverlay.dots.length > 0,
     radarScanAria: `雷达点位，${radarScanOverlay.label}`,
     radarLocalScanDots: radarLocalScanOverlay.dots,
-    showRadarLocalScan: showRadarSweep && radarLocalScanOverlay.dots.length > 0,
+    showRadarLocalScan: radarLocalScanOverlay.dots.length > 0,
     radarLocalScanAria: `雷达局部点位，${radarLocalScanOverlay.label}`,
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     routePathLabel: plainRouteMapCaption(routePath),
