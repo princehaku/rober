@@ -100,6 +100,7 @@ const mapLifecyclePendingAction = ref<"list" | "start" | "save" | null>(null);
 const mapPreviewResult = ref<RobotControlMapPreviewResponse | null>(null);
 const freeRoamAutonomyResult = ref<RobotControlFreeRoamAutonomyResponse | null>(null);
 const freeRoamAutonomyPendingAction = ref<"start" | "stop" | null>(null);
+const freeRoamAutonomyStopQueuedAfterStart = ref(false);
 const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const manualCommandPending = ref(false);
 const mapLifecyclePending = ref(false);
@@ -844,6 +845,19 @@ const canRunBaseFeedbackSamples = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canStopFreeRoamAutonomy = computed(() => (
+  robotApiBaseUrl.value.trim().length > 0
+  && freeRoamAutonomyPendingAction.value !== "stop"
+));
+const plainFreeRoamAutoStopButtonLabel = computed(() => {
+  if (freeRoamAutonomyPendingAction.value === "stop") {
+    return "停止中";
+  }
+  if (freeRoamAutonomyStopQueuedAfterStart.value) {
+    return "停止已排队";
+  }
+  return "停止自动扫图";
+});
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarSummary.value.state === "雷达未运行";
@@ -1521,6 +1535,9 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     const label = failureText ? `地图${actionText}失败：${failureText}` : `地图${actionText}失败`;
     return { label, state: "map_failed", style, aria: `${label}${locatedSuffix}` };
   }
+  if (freeRoamAutonomyStopQueuedAfterStart.value) {
+    return { label: "自动扫图停止已排队", state: "auto_stop_queued", style, aria: `上车端自动扫图启动返回后会立刻请求停止${locatedSuffix}` };
+  }
   if (freeRoamAutonomyPendingAction.value === "start") {
     return { label: "自动扫图启动中", state: "auto_starting", style, aria: `上车端自动扫图状态机正在启动${locatedSuffix}` };
   }
@@ -1965,6 +1982,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
     }
     return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
   }
+  if (freeRoamAutonomyStopQueuedAfterStart.value) {
+    return "下一步：等待启动返回后自动停止";
+  }
   if (freeRoamAutonomyPendingAction.value === "start") {
     return "下一步：等待自动扫图启动";
   }
@@ -2019,6 +2039,9 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (mapPreviewPending.value && mapSavedThisSession.value) {
     return "扫图状态：地图已保存，正在自动刷新最新画面。";
+  }
+  if (freeRoamAutonomyStopQueuedAfterStart.value) {
+    return "扫图状态：停止自动扫图已排队，启动请求返回后会立刻请求上车端停止。";
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
     return "扫图状态：正在启动上车端自动扫图状态机，PC 保持地图、雷达和停止兜底。";
@@ -6636,6 +6659,7 @@ async function startFreeRoamAutonomy(): Promise<void> {
     focusPlainFreeRoamNextTarget();
     return;
   }
+  let stopQueuedAfterStart = false;
   freeRoamAutonomyPending.value = true;
   freeRoamAutonomyPendingAction.value = "start";
   try {
@@ -6648,17 +6672,29 @@ async function startFreeRoamAutonomy(): Promise<void> {
   } finally {
     freeRoamAutonomyPending.value = false;
     freeRoamAutonomyPendingAction.value = null;
-    await refreshConsole();
-    if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
-      await refreshRadarProof({ focusAfterReady: false });
+    if (freeRoamAutonomyStopQueuedAfterStart.value) {
+      freeRoamAutonomyStopQueuedAfterStart.value = false;
+      stopQueuedAfterStart = true;
     }
-    await refreshMapPreview({ countForFreeRoamSession: true });
   }
+  if (stopQueuedAfterStart) {
+    await stopFreeRoamAutonomy();
+    return;
+  }
+  await refreshConsole();
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
+    await refreshRadarProof({ focusAfterReady: false });
+  }
+  await refreshMapPreview({ countForFreeRoamSession: true });
 }
 
 async function stopFreeRoamAutonomy(): Promise<void> {
   // 自动 stop 请求只改变上车状态机 stop 参数；底盘 stop 按钮仍保留为独立兜底。
-  if (!robotApiBaseUrl.value.trim() || freeRoamAutonomyPending.value) {
+  if (!robotApiBaseUrl.value.trim() || freeRoamAutonomyPendingAction.value === "stop") {
+    return;
+  }
+  if (freeRoamAutonomyPendingAction.value === "start") {
+    freeRoamAutonomyStopQueuedAfterStart.value = true;
     return;
   }
   freeRoamAutonomyPending.value = true;
@@ -7720,8 +7756,8 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="plainFreeRoamAutonomyReadiness.disabled" data-testid="plain-free-roam-auto-start" @click="startFreeRoamAutonomy">
                 {{ plainFreeRoamAutonomyReadiness.buttonLabel }}
               </button>
-              <button ref="plainFreeRoamAutoStopButton" type="button" class="danger-button compact-stop" :disabled="freeRoamAutonomyPending || !robotApiBaseUrl.trim()" data-testid="plain-free-roam-auto-stop" @click="stopFreeRoamAutonomy">
-                停止自动扫图
+              <button ref="plainFreeRoamAutoStopButton" type="button" class="danger-button compact-stop" :disabled="!canStopFreeRoamAutonomy" data-testid="plain-free-roam-auto-stop" @click="stopFreeRoamAutonomy">
+                {{ plainFreeRoamAutoStopButtonLabel }}
               </button>
               <span class="muted">{{ plainFreeRoamAutonomyReadiness.policyText }}</span>
             </div>

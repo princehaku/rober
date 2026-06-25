@@ -2318,3 +2318,8 @@ stop 或 `/cmd_vel`。
 地图 proof/preview 正在刷新时显示 `等待地图刷新` 并禁用，用户点击入口不再允许 `/api/robot-control/base/feedback-samples`
 在旧地图画面上改写轮速读数和本轮进度。first-jog 后的内部反馈采样仍保留，用于动作证据闭环；该状态不发送 manual/keyboard pulse、
 Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-26 07:00 起，普通首屏自动扫图 `停止自动扫图` 在 start 请求 pending 时不再灰掉。operator 点击后按钮显示
+`停止已排队`，地图扫图 marker 和状态区同步显示“启动返回后会立刻请求停止”；start 返回后 PC 自动发送固定
+`/api/robot-control/free-roam/autonomy/stop`。该排队只作用于上车端自动扫图状态机 stop 参数，不发送 manual/keyboard pulse、
+Nav2、delivery、base stop 或 `/cmd_vel`。
