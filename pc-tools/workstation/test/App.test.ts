@@ -3405,6 +3405,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').attributes("aria-label")).toBe("自动扫图状态 避障换向，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toBe("扫地图草图：已在地图上画出蛇形覆盖草图；等待定位后接入当前位置，不会自动移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').attributes("data-state")).toBe("未满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图准备");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达避障");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图未开放；当前用人工按住扫图");
@@ -3485,6 +3486,7 @@ describe("App", () => {
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="待确认"]');
+    expect(workstationStyles).toContain('.plain-free-roam-readiness[data-state="未满足"]');
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
@@ -3750,7 +3752,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("还差：地图记录未启动");
+    const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
+    expect(readiness.attributes("data-state")).toBe("待处理");
+    expect(readiness.text()).toContain("还差：地图记录未启动");
 
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
     await flushPromises();
@@ -3759,7 +3763,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
+    expect(readiness.attributes("data-state")).toBe("已就绪");
     expect(readiness.text()).toContain("已就绪");
     expect(readiness.text()).toContain("自动扫图");
     expect(readiness.text()).toContain("上车端自动扫图已就绪");
@@ -3773,6 +3777,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeDefined();
+    expect(readiness.attributes("data-state")).toBe("待处理");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("地图画面正在刷新");
     const callsBeforeBlockedStart = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
@@ -3816,6 +3821,8 @@ describe("App", () => {
     const sweepPlan = wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]');
     expect(sweepPlan.attributes("data-state")).toBe("自动扫图运行中");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-free-roam-readiness[data-state="已就绪"]');
+    expect(workstationStyles).toContain('.plain-free-roam-readiness[data-state="待处理"]');
     expect(workstationStyles).toContain('.plain-map-free-roam-sweep-plan[data-state="自动扫图运行中"] polyline');
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("自动扫图运行中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("不是固定路线");

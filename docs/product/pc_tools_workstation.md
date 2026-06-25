@@ -2002,6 +2002,8 @@ runtime artifact 的 `decision.state/reason/stop_required` 翻译为 `门禁锁�
 它只让自动扫图状态机所见即所得，不开放自动扫图按钮，不提交 delivery complete，不发送 manual/keyboard pulse/stop
 或 `/cmd_vel`。
 
+2026-06-26 08:55 起，普通首屏 `自动扫图准备` 面板也会带 `data-state`，外框跟随 `未满足/待处理/已就绪` 状态变化。测试锁定默认未满足、ready 但仍缺地图记录/地图刷新时的待处理、以及可启动自动扫图时的已就绪状态与 CSS 选择器，避免上车端自动扫图 runtime 已读到但准备面板仍像普通说明块。该呈现只影响 PC 前端 WYSIWYG，不自动启动自动扫图、不发送 manual/keyboard pulse、不执行 Nav2、delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-25 21:44 起，普通首屏地图画面也叠加只读 `自动扫图` runtime 标记：例如 `自动扫图：避障换向`、
 `自动扫图：低速直行`、`自动扫图：找新覆盖`。有 map-frame 机器人位姿时标记贴近小车；没有位姿时固定在地图角落，
 并明确“不代表坐标”。该标记只把上车端状态机最近判断叠到地图上，不生成路线、不启动自动扫图、不发送 manual/

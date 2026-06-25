@@ -7899,7 +7899,7 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainFreeRoamCoverageSummary.secondary }}</p>
             <p class="panel-note" data-testid="plain-free-roam-coverage-guidance">{{ plainFreeRoamCoverageSummary.guidance }}</p>
           </div>
-          <div class="plain-free-roam-readiness" data-testid="plain-free-roam-autonomy-readiness">
+          <div class="plain-free-roam-readiness" :data-state="plainFreeRoamAutonomyReadiness.state" data-testid="plain-free-roam-autonomy-readiness">
             <div class="simple-status-row">
               <strong>自动扫图准备</strong>
               <span class="status-chip" :data-state="plainFreeRoamAutonomyReadiness.state">{{ plainFreeRoamAutonomyReadiness.state }}</span>

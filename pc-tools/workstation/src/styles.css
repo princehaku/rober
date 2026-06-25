@@ -1378,7 +1378,24 @@ h3 {
   gap: 7px;
   margin-top: 12px;
   border-top: 1px solid #d7dee6;
+  border-left: 3px solid transparent;
   padding-top: 12px;
+  padding-left: 10px;
+}
+
+.plain-free-roam-readiness[data-state="已就绪"] {
+  border-left-color: #238636;
+  background: linear-gradient(90deg, rgba(35, 134, 54, 0.08), transparent 42%);
+}
+
+.plain-free-roam-readiness[data-state="待处理"] {
+  border-left-color: #bf8700;
+  background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 42%);
+}
+
+.plain-free-roam-readiness[data-state="未满足"] {
+  border-left-color: #d97706;
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), transparent 42%);
 }
 
 .plain-free-roam-coverage-bar {
