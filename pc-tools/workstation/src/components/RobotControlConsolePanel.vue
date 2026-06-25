@@ -2194,7 +2194,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，下一步检查或执行行程。` : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -2262,7 +2262,7 @@ const plainGoalProgressEvidenceSummary = computed(() => {
     : left !== "not_loaded" && right !== "not_loaded" ? `轮速 L/R=${left}/${right}` : "轮速未读到";
   const tripText = deliveryNav2GoalReady.value || plainTripHasSucceededEvidence.value
     ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成"
-    : plainTripLatestNotProvenEvidence.value ? "最近行程未通过" : "行程未完成";
+    : plainTripLatestNotProvenEvidence.value ? "最近行程未通过" : plainTripPreparedBySummary.value ? `路线已准备 ${plainTripPreparedPointCount.value} 点` : "行程未完成";
   const deliveryText = deliverySuccessReady.value
     ? "送达已完成"
     : deliverySuccessEvidenceIsStale.value ? "送达有旧成功记录"
@@ -2298,7 +2298,8 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return plainTripHasSucceededEvidence.value
       ? "验收卡点：行程成功记录较旧，需要重新执行本轮行程。"
       : plainTripLatestNotProvenEvidence.value ? "验收卡点：最近行程未通过，需要检查或重新执行完整行程。"
-      : "验收卡点：还没读到行程成功结果。";
+      : plainTripPreparedBySummary.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要执行完整行程并读到成功结果。`
+        : "验收卡点：还没读到行程成功结果。";
   }
   if (!deliverySuccessReady.value) {
     if (deliverySuccessEvidenceIsStale.value) {
