@@ -3841,7 +3841,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达未运行");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达未运行，显示最近点");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达未运行，地图位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
     const localScan = wrapper.find('[data-testid="plain-map-radar-local-scan"]');

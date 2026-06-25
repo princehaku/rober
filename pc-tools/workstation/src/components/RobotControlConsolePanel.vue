@@ -966,19 +966,20 @@ const plainMapVisualSummary = computed(() => {
     : radarNeedsMapPose
       ? "pose-missing"
       : "stopped";
+  const radarScanOverlay = latestRadarScanOverlay(robotPose);
+  const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose, radarState);
+  const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;
   const radarOverlayLabel = poseObserved
     ? radarState === "雷达已运行"
       ? "雷达"
       : radarState
     : radarNeedsMapPose
       ? `${radarState}，位置未读到`
-      : radarState;
+      : hasRecentLocalScan ? `${radarState}，显示最近点` : radarState;
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
   const radarSweepAria = poseObserved
     ? `${radarState}扫描范围，跟随机器人位置`
     : `${radarState}扫描范围占位，等待机器人地图位置`;
-  const radarScanOverlay = latestRadarScanOverlay(robotPose);
-  const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose, radarState);
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref
