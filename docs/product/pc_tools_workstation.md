@@ -2328,3 +2328,8 @@ Nav2、delivery、base stop 或 `/cmd_vel`。
 WebRTC 画面正在打开或关闭时，普通按钮显示 `等待画面稳定` 并禁用，函数入口同步早退，不再允许 camera first-frame probe
 在视频框仍处于连接中/关闭中时写入送达画面 ref。该状态只等待画面状态稳定，不提交 operator report、不确认 delivery、
 不发送 manual/keyboard pulse、Nav2、stop 或 `/cmd_vel`。
+
+2026-06-26 07:10 起，普通首屏 `恢复试动确认` 和 `保存轮速记录` 也接入材料写入前的 WYSIWYG gate。
+`恢复试动确认` 会等待实时画面打开/关闭完成和地图 proof/preview 刷新完成；`保存轮速记录` 会等待地图刷新完成。等待期间按钮显示
+`等待画面稳定` 或 `等待地图刷新` 并禁用，函数入口同步早退，不再允许用过期画面、路线图或轮速上下文改写 latest operator report。
+该状态只等待只读画面/地图状态稳定，不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。

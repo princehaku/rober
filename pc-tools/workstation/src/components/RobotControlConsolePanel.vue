@@ -4100,6 +4100,30 @@ const firstJogMaterialRestoreBlocksMotion = computed(() => (
   firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value
 ));
 
+const canRestorePlainFirstJogMaterial = computed(() => (
+  !loading.value
+  && !previewBusy.value
+  && !mapWysiwygRefreshPending.value
+  && !plainFirstJogMaterialRestorePending.value
+  && !operatorReportPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+  && firstJogMaterialRestoreReady.value
+));
+
+const plainFirstJogMaterialRestoreButtonLabel = computed(() => {
+  // 恢复会重写 latest operator report，必须等画面和地图读回稳定，避免把过期材料写成新结论。
+  if (plainFirstJogMaterialRestorePending.value || operatorReportPending.value) {
+    return "恢复中";
+  }
+  if (previewBusy.value) {
+    return "等待画面稳定";
+  }
+  if (mapWysiwygRefreshPending.value) {
+    return "等待地图刷新";
+  }
+  return "恢复试动确认";
+});
+
 const canSendPlainFirstJog = computed(() => {
   // 普通试动必须先有 first-jog 材料；送达草稿覆盖状态下必须先点“恢复试动确认”。
   if (!robotApiBaseUrl.value.trim() || loading.value || manualCommandPending.value) {
@@ -4247,6 +4271,9 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
   if (plainWheelEvidenceSavePending.value || operatorReportPending.value) {
     return "保存中";
   }
+  if (mapWysiwygRefreshPending.value) {
+    return "等待地图刷新";
+  }
   if (plainFirstJogWheelEvidenceReady.value) {
     return "保存轮速记录";
   }
@@ -4261,6 +4288,15 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
   }
   return "保存轮速记录（等非零 L/R）";
 });
+
+const canSavePlainWheelEvidence = computed(() => (
+  !loading.value
+  && !mapWysiwygRefreshPending.value
+  && !plainWheelEvidenceSavePending.value
+  && !operatorReportPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+  && plainFirstJogWheelEvidenceReady.value
+));
 
 const plainWheelReadbackButtonLabel = computed(() => (
   baseFeedbackSamplesPending.value
@@ -6782,7 +6818,7 @@ async function submitPlainVisualMaterialFromCameraProbe(): Promise<void> {
 
 async function restorePlainFirstJogMaterial(): Promise<void> {
   // 送达草稿会覆盖 latest report；恢复按钮只补 first-jog 前置材料，不发送任何运动命令。
-  if (!robotApiBaseUrl.value.trim() || plainFirstJogMaterialRestorePending.value || operatorReportPending.value || !firstJogMaterialRestoreReady.value) {
+  if (!canRestorePlainFirstJogMaterial.value) {
     return;
   }
   const requestBody = plainFirstJogMaterialRestoreRequestBody();
@@ -6872,7 +6908,7 @@ async function sendPlainFirstJog(): Promise<void> {
 
 async function savePlainWheelEvidence(): Promise<void> {
   // 保存轮速材料只写 operator report；不补 LiDAR/route/delivery，也不再次发送运动命令。
-  if (!robotApiBaseUrl.value.trim() || plainWheelEvidenceSavePending.value || operatorReportPending.value || !plainFirstJogWheelEvidenceReady.value) {
+  if (!canSavePlainWheelEvidence.value) {
     return;
   }
   const requestBody = plainWheelEvidenceReportRequestBody();
@@ -7827,11 +7863,11 @@ onBeforeUnmount(() => {
               ref="plainMotionRestoreButton"
               type="button"
               class="secondary compact-stop"
-              :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim()"
+              :disabled="!canRestorePlainFirstJogMaterial"
               data-testid="plain-motion-restore"
               @click="restorePlainFirstJogMaterial"
             >
-              恢复试动确认
+              {{ plainFirstJogMaterialRestoreButtonLabel }}
             </button>
             <button type="button" :disabled="!canSendPlainFirstJog" @click="sendPlainFirstJog">
               试动一下
@@ -7975,8 +8011,8 @@ onBeforeUnmount(() => {
             <div class="simple-status-row">
               <strong>轮速记录</strong>
               <span class="status-chip" :data-state="plainWheelRecordSummary.state">{{ plainWheelRecordSummary.state }}</span>
-              <button ref="plainFirstJogRestoreButton" type="button" class="secondary compact-stop" :disabled="loading || plainFirstJogMaterialRestorePending || operatorReportPending || !robotApiBaseUrl.trim() || !firstJogMaterialRestoreReady" data-testid="plain-first-jog-restore" @click="restorePlainFirstJogMaterial">
-                恢复试动确认
+              <button ref="plainFirstJogRestoreButton" type="button" class="secondary compact-stop" :disabled="!canRestorePlainFirstJogMaterial" data-testid="plain-first-jog-restore" @click="restorePlainFirstJogMaterial">
+                {{ plainFirstJogMaterialRestoreButtonLabel }}
               </button>
               <button ref="plainWheelTrialButton" type="button" class="secondary compact-stop" :disabled="plainWheelTrialDisabled" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
                 {{ plainWheelTrialButtonLabel }}
@@ -7987,7 +8023,7 @@ onBeforeUnmount(() => {
               <button v-if="plainWheelZeroBlockerActive" ref="plainWheelZeroCheckButton" type="button" class="secondary compact-stop" data-testid="plain-wheel-zero-check" @click="markPlainWheelZeroBlockerChecked">
                 {{ plainWheelZeroBlockerButtonLabel }}
               </button>
-              <button ref="plainWheelSaveButton" type="button" class="secondary compact-stop" :disabled="loading || plainWheelEvidenceSavePending || operatorReportPending || !robotApiBaseUrl.trim() || !plainFirstJogWheelEvidenceReady" data-testid="plain-wheel-save" @click="savePlainWheelEvidence">
+              <button ref="plainWheelSaveButton" type="button" class="secondary compact-stop" :disabled="!canSavePlainWheelEvidence" data-testid="plain-wheel-save" @click="savePlainWheelEvidence">
                 {{ plainWheelEvidenceSaveButtonLabel }}
               </button>
             </div>

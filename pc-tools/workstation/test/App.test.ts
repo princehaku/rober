@@ -7540,7 +7540,12 @@ describe("App", () => {
     };
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
-    const mockedFetch = stubWorkstationFetch({
+    let delayNextMapPreview = false;
+    let resolveMapPreview!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedMapPreview = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveMapPreview = resolve;
+    });
+    const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/operator/report": {
         schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
@@ -7567,6 +7572,15 @@ describe("App", () => {
         robot_control_executed: false,
       },
     });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/preview?") && delayNextMapPreview) {
+        delayNextMapPreview = false;
+        return delayedMapPreview;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+    const operatorReportCallCount = () => mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/operator/report?")).length;
 
     const wrapper = mount(App);
     await flushPromises();
@@ -7594,6 +7608,27 @@ describe("App", () => {
     const restoreButton = wrapper.find('[data-testid="plain-motion-restore"]');
     expect(restoreButton.exists()).toBe(true);
     expect(restoreButton.attributes("disabled")).toBeUndefined();
+    delayNextMapPreview = true;
+    const mapRefreshClick = wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-motion-restore"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-first-jog-restore"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-first-jog-restore"]').attributes("disabled")).toBeDefined();
+    const callsBeforeBlockedRestore = operatorReportCallCount();
+    await wrapper.find('[data-testid="plain-motion-restore"]').trigger("click");
+    await wrapper.find('[data-testid="plain-first-jog-restore"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(operatorReportCallCount()).toBe(callsBeforeBlockedRestore);
+    resolveMapPreview({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/map/preview"],
+    });
+    await mapRefreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-motion-restore"]').text()).toBe("恢复试动确认");
+    expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
     const callsBeforeRestore = mockedFetch.mock.calls.length;
     await restoreButton.trigger("click");
     await flushPromises();
@@ -8117,7 +8152,12 @@ describe("App", () => {
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
     summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
     summaryFixture.operator_hil_material_summary.route_map = "true; ref=o11-nav2-goal-execution-before-wheel-save";
-    const mockedFetch = stubWorkstationFetch({
+    let delayNextMapPreview = false;
+    let resolveMapPreview!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedMapPreview = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveMapPreview = resolve;
+    });
+    const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/first-jog": {
         schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
@@ -8212,6 +8252,15 @@ describe("App", () => {
         proxy_status: "should_not_be_called",
       },
     });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/preview?") && delayNextMapPreview) {
+        delayNextMapPreview = false;
+        return delayedMapPreview;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+    const operatorReportCallCount = () => mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/operator/report?")).length;
 
     const wrapper = mount(App);
     await flushPromises();
@@ -8239,7 +8288,24 @@ describe("App", () => {
     expect(saveWheelButton.text()).toBe("保存轮速记录");
     expect(saveWheelButton.attributes("disabled")).toBeUndefined();
     expect(focusSpy).toHaveBeenCalled();
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(operatorReportCallCount()).toBe(0);
+    delayNextMapPreview = true;
+    const mapRefreshClick = wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
+    await wrapper.find('[data-testid="plain-wheel-save"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(operatorReportCallCount()).toBe(0);
+    resolveMapPreview({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/map/preview"],
+    });
+    await mapRefreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeUndefined();
     const focusCallsBeforeSave = focusSpy.mock.calls.length;
     await saveWheelButton.trigger("click");
     await flushPromises();
