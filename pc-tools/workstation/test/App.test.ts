@@ -4187,14 +4187,32 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("扫图已停止，上次方向前进，停止原因松开屏幕方向键，轮速 L/R=0.07/0.08，非零已读到，地图画面已刷新，可以保存，机器人地图位置未读到，标记不代表坐标");
     const originalFetch = mockedFetch.getMockImplementation();
     const saveControl: { finish?: () => void } = {};
+    const savedPreviewControl: { finish?: () => void } = {};
+    let delaySavedPreview = false;
+    let savedPreviewReleased = false;
     const mapSaveResponse = fixtures["/api/robot-control/map/save"] as Record<string, unknown>;
+    const mapPreviewResponse = fixtures["/api/robot-control/map/preview"] as Record<string, unknown>;
     mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
       if (String(url).startsWith("/api/robot-control/map/save?")) {
         return new Promise((resolve) => {
           saveControl.finish = () => resolve({
             ok: true,
-            json: async () => mapSaveResponse,
+            json: async () => {
+              delaySavedPreview = true;
+              return mapSaveResponse;
+            },
           });
+        });
+      }
+      if (String(url).startsWith("/api/robot-control/map/preview?") && delaySavedPreview && !savedPreviewReleased) {
+        return new Promise((resolve) => {
+          savedPreviewControl.finish = () => {
+            savedPreviewReleased = true;
+            resolve({
+              ok: true,
+              json: async () => mapPreviewResponse,
+            });
+          };
         });
       }
       if (!originalFetch) {
@@ -4222,6 +4240,26 @@ describe("App", () => {
       throw new Error("map save request was not captured");
     }
     finishSave();
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeSave + 1);
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("地图已保存，正在自动刷新最新画面。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图已保存，正在自动刷新最新画面。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待画面刷新");
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：地图已保存，正在自动刷新最新画面。");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("保存后刷新中");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("saved_refreshing");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("扫图地图已保存，正在自动刷新最新画面，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("地图已保存，正在自动刷新最新画面；刷新后检查覆盖效果。");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("已保存，正在刷新地图画面");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
+    const finishSavedPreview = savedPreviewControl.finish;
+    if (!finishSavedPreview) {
+      throw new Error("saved map preview request was not captured");
+    }
+    finishSavedPreview();
     await saveClick;
     await flushPromises();
     await wrapper.vm.$nextTick();

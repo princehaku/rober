@@ -1223,6 +1223,9 @@ function plainRadarFreshnessLabel(
 
 function plainMapImageFreshnessLabel(previewLoaded: boolean): string {
   // 地图画面和建图动作不是实时视频流；首屏必须明确当前看到的是刷新结果还是上次结果。
+  if (mapPreviewPending.value && mapSavedThisSession.value) {
+    return "地图画面：地图已保存，正在自动刷新最新画面。";
+  }
   if (mapPreviewPending.value) {
     return "地图画面：正在刷新当前地图。";
   }
@@ -1411,6 +1414,9 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
   }
   if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "stop") {
     return { label: "自动扫图已停止", state: "auto_stopped", style, aria: `自动扫图停止请求已发送${locatedSuffix}` };
+  }
+  if (mapPreviewPending.value && mapSavedThisSession.value) {
+    return { label: "保存后刷新中", state: "saved_refreshing", style, aria: `扫图地图已保存，正在自动刷新最新画面${locatedSuffix}` };
   }
   if (mapPreviewPending.value && mapRuntimeStarted.value) {
     return { label: "扫图画面刷新中", state: "refreshing", style, aria: `扫图地图画面正在刷新${locatedSuffix}` };
@@ -1701,6 +1707,9 @@ const plainFreeRoamMappingSummary = computed(() => {
     }
     return { state: "读取中", hint: "正在读取地图列表。" };
   }
+  if (mapPreviewPending.value && mapSavedThisSession.value) {
+    return { state: "刷新中", hint: "地图已保存，正在自动刷新最新画面。" };
+  }
   if (mapPreviewPending.value) {
     return { state: "刷新中", hint: "正在刷新扫图画面；刷新完成后再保存。" };
   }
@@ -1766,6 +1775,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (mapLifecyclePending.value) {
     return "下一步：等待地图动作完成";
   }
+  if (mapPreviewPending.value && mapSavedThisSession.value) {
+    return "下一步：等待画面刷新";
+  }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
   }
@@ -1817,6 +1829,9 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return "扫图状态：还没开始记录，键盘扫图锁定。";
+  }
+  if (mapPreviewPending.value && mapSavedThisSession.value) {
+    return "扫图状态：地图已保存，正在自动刷新最新画面。";
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
     return "扫图状态：正在启动上车端自动扫图状态机，PC 保持地图、雷达和停止兜底。";
@@ -1901,11 +1916,13 @@ const plainFreeRoamCoverageSummary = computed(() => {
   const previewLoaded = preview?.proxy_status === "preview_forwarded";
   if (!previewLoaded) {
     const guidance = mapRuntimeStarted.value || mapSavedThisSession.value
-      ? "地图记录已启动，点刷新扫图画面查看最新覆盖。"
+      ? mapPreviewPending.value && mapSavedThisSession.value
+        ? "地图已保存，正在自动刷新最新画面；刷新后检查覆盖效果。"
+        : "地图记录已启动，点刷新扫图画面查看最新覆盖。"
       : "当前还没读到地图画面，先开始记录或刷新地图画面。";
     return {
-      state: "待刷新",
-      primary: "地图覆盖还没读取",
+      state: mapPreviewPending.value && mapSavedThisSession.value ? "刷新中" : "待刷新",
+      primary: mapPreviewPending.value && mapSavedThisSession.value ? "地图覆盖正在刷新" : "地图覆盖还没读取",
       secondary: "刷新地图画面后显示可通行区域和未知区域。",
       guidance,
       barStyle: { "--coverage-known": "0%" },
@@ -1932,7 +1949,9 @@ const plainFreeRoamCoverageSummary = computed(() => {
         ? "扫图中地图画面已自动刷新；松开后会再刷新一次用于保存。"
         : "地图记录中；覆盖条是上次刷新结果，点刷新扫图画面才是当前画面。"
       : mapSavedThisSession.value
-        ? plainFreeRoamSavedMapPreviewFreshForSession.value
+        ? mapPreviewPending.value
+          ? "地图已保存，正在自动刷新最新画面；刷新后检查覆盖效果。"
+          : plainFreeRoamSavedMapPreviewFreshForSession.value
           ? "地图已保存，地图画面已自动刷新；现在检查覆盖效果。"
           : "地图已保存，刷新后检查覆盖效果。"
         : "当前显示最近地图画面，开始记录后可边扫边刷新。",
@@ -2111,7 +2130,9 @@ const plainFreeRoamMappingSteps = computed(() => {
       label: "保存地图",
       state: saved ? "已保存" : canSavePlainFreeRoamMapping.value ? "可保存" : "待完成",
       hint: saved
-        ? plainFreeRoamSavedMapPreviewFreshForSession.value
+        ? mapPreviewPending.value
+          ? "已保存，正在刷新地图画面"
+          : plainFreeRoamSavedMapPreviewFreshForSession.value
           ? "已保存，地图画面已自动刷新，可以检查效果"
           : "已保存，刷新地图画面检查效果"
         : canSavePlainFreeRoamMapping.value

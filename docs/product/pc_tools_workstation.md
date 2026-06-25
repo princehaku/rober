@@ -2182,6 +2182,11 @@ manual/keyboard pulse/stop/Nav2/delivery 或 `/cmd_vel`。
 `地图已保存`。该 marker 只消费本页 map save 与 map preview 结果，不再次保存、不发送 manual/keyboard pulse、Nav2、
 delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 04:05 起，普通首屏在保存成功后、保存后的只读地图 preview 尚未返回期间，会显式显示“保存后刷新中”。
+扫图 hint、`扫图状态`、`下一步`、地图画面新鲜度、地图 marker、步骤条和覆盖提示都会说清正在自动刷新最新画面。
+该状态只等待 `/api/robot-control/map/preview` 的只读结果，不再次保存、不发送 manual/keyboard pulse、Nav2、
+delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-26 03:19 起，普通首屏 `刷新地图画面` 如果固定 map preview 代理失败，地图 caption 会保留失败原因，例如
 `地图画面：刷新失败：map_preview_timeout。`，不再退回泛化的“还没读到真实地图图像”。该失败态只消费
 `GET /api/robot-control/map/preview` 结果或本机 fallback，不自动重新刷新、不启动建图、不发送 manual/keyboard pulse、Nav2、
