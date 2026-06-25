@@ -1807,6 +1807,9 @@ function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
 
 const plainDeliveryConfirmButtonLabel = computed(() => {
   // 按钮禁用时也直接显示下一步动作；可提交时明确“不发车”，避免送达收口被误解成运动命令。
+  if (deliverySuccessReady.value) {
+    return "送达已完成";
+  }
   const missingLabels = plainDeliveryConfirmMissingLabels.value;
   const missingCount = missingLabels.length;
   if (missingCount > 0) {
@@ -1890,7 +1893,7 @@ const plainDeliveryGapCheckButtonLabel = computed(() => {
 const plainDeliveryNextActionSummary = computed(() => {
   // 送达 gate 缺项很多时，普通首屏只给一个下一步，避免现场人员在多按钮之间来回猜。
   if (deliverySuccessReady.value) {
-    return "";
+    return "下一步：送达已完成，可继续键盘手控或结束本轮。";
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
@@ -2149,6 +2152,7 @@ const plainDeliveryConfirmReady = computed(() => {
   return !loading.value
     && !operatorReportPending.value
     && !deliveryCompletionPending.value
+    && !deliverySuccessReady.value
     && robotApiBaseUrl.value.trim().length > 0
     && deliveryNav2GoalReady.value
     && deliveryRouteMapMatchesFreshNav2.value

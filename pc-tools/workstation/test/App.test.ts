@@ -8909,7 +8909,34 @@ describe("App", () => {
         hard_dangerous_true_fields: [],
         robot_control_executed: false,
       },
-      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_complete_proxy.v1",
+        proxy_status: "completion_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: true,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/complete",
+        remote_endpoint: "/api/delivery/complete",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        delivery_key_values: {
+          status: "delivery_complete",
+          delivery_success: "true",
+          nav2_status: "goal_succeeded",
+          nav2_feedback_sample_count: "8",
+          nav2_evidence_ref: "o11-nav2-goal-execution-plain-fixture",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
     });
 
     const wrapper = mount(App);
@@ -9117,6 +9144,13 @@ describe("App", () => {
     expect(completeCall).toBeTruthy();
     const completeBody = JSON.parse(String((completeCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
     expect(completeBody).toEqual(expect.objectContaining({ confirm_delivery_completion: true }));
+    expect(deliveryStatus.text()).toContain("已送达");
+    expect(deliveryStatus.text()).toContain("送达 gate 已确认成功。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：送达已完成，可继续键盘手控或结束本轮。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("送达已完成");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("送达确认已完成");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("送达已完成");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
