@@ -850,14 +850,59 @@ const plainFreeRoamMappingSummary = computed(() => {
       ? { state: "扫图中", hint: "建图已启动。按住方向键/WASD 低速扫一圈，松开即停，随时点停止。" }
       : { state: "待手控", hint: `建图已启动，但键盘移动条件还没满足。${plainKeyboardNextActionSummary.value}` };
   }
-  return { state: "可开始", hint: "先开始建图，再按住方向键让小车低速走一圈，最后保存地图。" };
+  return { state: "可开始", hint: "先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图。" };
 });
 const plainFreeRoamMappingStartLabel = computed(() => (
-  mapLifecyclePending.value && mapLifecycleResult.value?.action !== "save" ? "启动中" : mapRuntimeStarted.value ? "重新开始建图" : "开始扫地式建图"
+  mapLifecyclePending.value && mapLifecycleResult.value?.action !== "save" ? "启动中" : mapRuntimeStarted.value ? "重新启动记录" : "开始扫地式建图"
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecycleResult.value?.action === "save" ? "保存中" : "保存当前地图"
 ));
+const plainFreeRoamMappingSteps = computed(() => {
+  // 步骤条只表达本地向导状态；真正动作仍由每个固定按钮和后端 gate 执行。
+  const safetyReady = plainFreeRoamMappingConfirmed.value;
+  const mappingStarted = mapRuntimeStarted.value || mapSavedThisSession.value;
+  const keyboardReady = canUseKeyboardControl.value;
+  const keyboardMoving = keyboardHeldDirection.value !== null;
+  const stopObserved = keyboardStopSettledAfterPulse.value || keyboardControlStatus.value.startsWith("stop_sent");
+  const saved = mapSavedThisSession.value;
+  return [
+    {
+      id: "confirm",
+      label: "安全确认",
+      state: safetyReady ? "已完成" : "待确认",
+      hint: safetyReady ? "现场已确认可以低速扫图" : "先勾选现场安全确认",
+    },
+    {
+      id: "start",
+      label: "启动记录",
+      state: mappingStarted ? "已完成" : safetyReady ? "可执行" : "待确认",
+      hint: mappingStarted ? "地图记录已启动" : safetyReady ? "点击开始扫地式建图" : "需要先做安全确认",
+    },
+    {
+      id: "drive",
+      label: "低速扫图",
+      state: keyboardMoving ? "手控中" : keyboardReady && mappingStarted ? "可手控" : mappingStarted ? "待手控" : "待完成",
+      hint: keyboardMoving
+        ? `正在${keyboardDirectionPlainLabel.value}，松开即停`
+        : keyboardReady && mappingStarted
+          ? "启用键盘后按住方向键/WASD 扫一圈"
+          : mappingStarted ? plainKeyboardNextActionSummary.value : "先启动地图记录",
+    },
+    {
+      id: "stop",
+      label: "停止收口",
+      state: stopObserved ? "已完成" : mappingStarted ? "可执行" : "待完成",
+      hint: stopObserved ? "停止已发送" : mappingStarted ? "松开按键或点击停止" : "先启动地图记录",
+    },
+    {
+      id: "save",
+      label: "保存地图",
+      state: saved ? "已保存" : canSavePlainFreeRoamMapping.value ? "可保存" : "待完成",
+      hint: saved ? "已保存，刷新地图画面检查效果" : canSavePlainFreeRoamMapping.value ? "扫图结束后保存当前地图" : "启动地图记录后才能保存",
+    },
+  ];
+});
 const keyboardForwardedPulseProgressText = computed(() => {
   // 验证必须来自同一次按住会话；历史最佳只用于提示，不把分散单脉冲累加成连续手控。
   if (keyboardManualPulseObserved.value) {
@@ -5411,6 +5456,13 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note" data-testid="plain-free-roam-hint">{{ plainFreeRoamMappingSummary.hint }}</p>
           <p class="panel-note">按住方向键或 W/A/S/D 移动，松开即停；保存后刷新地图画面检查效果。</p>
+          <div class="plain-goal-progress" data-testid="plain-free-roam-steps">
+            <div v-for="step in plainFreeRoamMappingSteps" :key="step.id" class="plain-progress-row">
+              <span class="plain-progress-label">{{ step.label }}</span>
+              <span class="status-chip" :data-state="step.state">{{ step.state }}</span>
+              <span class="muted">{{ step.hint }}</span>
+            </div>
+          </div>
         </article>
 
         <article class="snapshot-panel">

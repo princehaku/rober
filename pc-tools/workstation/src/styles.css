@@ -812,6 +812,10 @@ h3 {
   gap: 8px;
 }
 
+.plain-free-roam-map .plain-progress-row {
+  grid-template-columns: minmax(72px, auto) auto minmax(0, 1fr);
+}
+
 .plain-delivery-status {
   margin-top: 12px;
   border-top: 1px solid #d7dee6;

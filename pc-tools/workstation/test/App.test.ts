@@ -3264,6 +3264,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("勾选现场安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').exists()).toBe(true);
+    expect(wrapper.findAll('[data-testid="plain-free-roam-steps"] .plain-progress-row')).toHaveLength(5);
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("待确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("保存地图");
     expect(firstScreenText).toContain("待试动");
     expect(firstScreenText).toContain("现场画面已记录；可以试动一下。");
     expect(firstScreenText).toContain("重新定位");
