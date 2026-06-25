@@ -4166,7 +4166,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_points = [
       { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
       { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
-      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+      { x: 0.6, y: 0.2, frame_id: "map", source_index: 14 },
     ];
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
@@ -4273,10 +4273,13 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    await wrapper.find('input[name="navGoalX"]').setValue("0.2");
+    await wrapper.find('input[name="navGoalY"]').setValue("-0.2");
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').attributes("aria-label")).toContain("地图坐标 x=0.60, y=0.20");
 
     const latestCallsBeforeExecute = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?"),
@@ -4291,6 +4294,16 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url, options]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execute?") && options?.method === "POST",
     ).length).toBe(1);
+    const executeCall = mockedFetch.mock.calls.find(([url, options]) =>
+      String(url).startsWith("/api/robot-control/nav2/goal/execute?") && options?.method === "POST",
+    );
+    expect(JSON.parse(String(executeCall?.[1]?.body ?? "{}"))).toEqual(expect.objectContaining({
+      goal_frame_id: "map",
+      goal_x: 0.6,
+      goal_y: 0.2,
+      goal_yaw: 0,
+      confirm_navigation_execution: true,
+    }));
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?"),
     ).length).toBe(latestCallsBeforeExecute + 1);

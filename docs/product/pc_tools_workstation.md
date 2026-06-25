@@ -1967,3 +1967,8 @@ runtime artifact 的 `decision.state/reason/stop_required` 翻译为 `门禁锁�
 `自动扫图：低速直行`、`自动扫图：找新覆盖`。有 map-frame 机器人位姿时标记贴近小车；没有位姿时固定在地图角落，
 并明确“不代表坐标”。该标记只把上车端状态机最近判断叠到地图上，不生成路线、不启动自动扫图、不发送 manual/
 keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。
+
+2026-06-25 21:52 起，普通首屏 `执行图上路线` 的请求体坐标绑定到地图上当前可见路线的终点：
+`goal_x/goal_y` 来自路线 overlay 最后一个 map-frame 点，高级区 `目标 x/y` 只影响高级 Nav2 表单，不再影响普通用户按钮。
+路线预览暂不提供终点朝向，因此 `goal_yaw` 仍沿用显式目标朝向输入。该改动只修正 operator 点击后的 Nav2 goal 请求体，
+不自动执行路线、不绕过安全确认、不发送 manual/keyboard pulse/delivery complete/stop 或 `/cmd_vel`。

@@ -899,6 +899,12 @@ function latestNavPathOverlay() {
     displayedCount: svgPoints.length,
     totalCount,
     coordinateLabel: `${routePrefix} ${svgPoints.length}/${totalCount} 个点`,
+    executionGoal: {
+      // 普通用户入口必须执行“图上看到的终点”，避免被高级表单里的默认 X/Y 悄悄带偏。
+      frame_id: "map",
+      x: lastPoint.source.x,
+      y: lastPoint.source.y,
+    },
     label: currentRoute ? `已读取 ${svgPoints.length} 个路线点` : `已读取最近路线 ${svgPoints.length} 个点`,
     caption: currentRoute
       ? `路线已显示 ${svgPoints.length}/${totalCount} 个点`
@@ -2840,6 +2846,20 @@ const plainTripCurrentRouteVisible = computed(() => {
   return Boolean(routePath && !routePath.caption.startsWith("最近"));
 });
 
+function plainTripVisibleRouteGoal() {
+  const routePath = latestNavPathOverlay();
+  if (!routePath || routePath.caption.startsWith("最近")) {
+    return null;
+  }
+  return {
+    goal_frame_id: routePath.executionGoal.frame_id,
+    goal_x: routePath.executionGoal.x,
+    goal_y: routePath.executionGoal.y,
+    // 路线预览只有平面终点；朝向仍沿用当前显式设置，避免新增隐藏推断。
+    goal_yaw: navGoalYaw.value,
+  };
+}
+
 const canRunPlainTripPreflight = computed(() => {
   // 预检不发车，只要求现场完成同一个安全确认。
   return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
@@ -4743,18 +4763,29 @@ async function runNavGoalPreflight(): Promise<void> {
   }
 }
 
-async function runNavGoalExecution(): Promise<void> {
+async function runNavGoalExecution(goalOverride?: {
+  goal_frame_id: "map";
+  goal_x: number;
+  goal_y: number;
+  goal_yaw: number;
+}): Promise<void> {
   // 真正执行 NavigateToPose 必须显式确认；结果只作为执行证据，不自动标记交付成功。
   if (!robotApiBaseUrl.value.trim() || navGoalExecutionPending.value) {
     return;
   }
+  const goalRequest = goalOverride ?? {
+    goal_frame_id: "map" as const,
+    goal_x: navGoalX.value,
+    goal_y: navGoalY.value,
+    goal_yaw: navGoalYaw.value,
+  };
   navGoalExecutionPending.value = true;
   try {
     navGoalExecutionResult.value = await postRobotControlNav2GoalExecute(robotApiBaseUrl.value, {
-      goal_frame_id: "map",
-      goal_x: navGoalX.value,
-      goal_y: navGoalY.value,
-      goal_yaw: navGoalYaw.value,
+      goal_frame_id: goalRequest.goal_frame_id,
+      goal_x: goalRequest.goal_x,
+      goal_y: goalRequest.goal_y,
+      goal_yaw: goalRequest.goal_yaw,
       result_timeout_s: navGoalExecutionTimeoutS.value,
       confirm_navigation_execution: confirmNavigationExecution.value,
     });
@@ -4776,12 +4807,16 @@ async function runPlainTripPreflight(): Promise<void> {
 }
 
 async function runPlainTripExecution(): Promise<void> {
-  // 普通入口只设置显式确认位，真正执行仍走固定 PC 代理和上位机 gate。
+  // 普通入口只执行当前可见路线终点，真正发车仍走固定 PC 代理和上位机 gate。
   if (!canRunPlainTripExecution.value) {
     return;
   }
+  const routeGoal = plainTripVisibleRouteGoal();
+  if (!routeGoal) {
+    return;
+  }
   confirmNavigationExecution.value = true;
-  await runNavGoalExecution();
+  await runNavGoalExecution(routeGoal);
   if (navGoalExecutionResult.value?.proxy_status === "execution_forwarded") {
     await loadNavGoalExecutionLatest();
   }
