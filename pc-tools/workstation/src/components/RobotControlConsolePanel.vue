@@ -3015,7 +3015,8 @@ function plainMapTripExecutionLabel(): string {
   if (nav2GoalSucceeded(values)) {
     return "行程执行：已到达，缺反馈";
   }
-  return "行程执行：未通过";
+  const failureText = plainTripFailureReasonText(navGoalExecutionResult.value ?? navGoalExecutionLatestResult.value, values);
+  return failureText ? `行程执行：未通过（${failureText}）` : "行程执行：未通过";
 }
 
 const plainTripExecutionProgress = computed(() => {
