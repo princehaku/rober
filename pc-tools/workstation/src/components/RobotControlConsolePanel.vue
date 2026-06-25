@@ -835,17 +835,37 @@ function latestNavPathOverlay() {
     return null;
   }
   const mapPoints = points.filter((point) => !point.frame_id || point.frame_id === "map");
-  const svgPoints = mapPoints
-    .map((point) => mapCoordinatePercent(point.x, point.y, preview))
-    .filter((point): point is { left: number; top: number } => point !== null)
+  const projectedPoints = mapPoints
+    .map((point) => ({ source: point, percent: mapCoordinatePercent(point.x, point.y, preview) }))
+    .filter((point): point is { source: typeof mapPoints[number]; percent: { left: number; top: number } } => point.percent !== null);
+  const svgPoints = projectedPoints
+    .map((point) => point.percent)
     .map((point) => `${point.left.toFixed(2)},${point.top.toFixed(2)}`);
   if (svgPoints.length < 2) {
     return null;
   }
+  const firstPoint = projectedPoints[0];
+  const lastPoint = projectedPoints[projectedPoints.length - 1];
   const sourceCount = Number(proof?.path_preview_source_point_count ?? proof?.path_point_count ?? svgPoints.length);
   const totalCount = Number.isFinite(sourceCount) && sourceCount > 0 ? sourceCount : svgPoints.length;
   return {
     points: svgPoints.join(" "),
+    endpoints: [
+      {
+        id: "start",
+        label: "起点",
+        state: "路线起点",
+        style: { left: `${firstPoint.percent.left.toFixed(2)}%`, top: `${firstPoint.percent.top.toFixed(2)}%` },
+        aria: `路线起点，地图坐标 x=${firstPoint.source.x.toFixed(2)}, y=${firstPoint.source.y.toFixed(2)}`,
+      },
+      {
+        id: "end",
+        label: "终点",
+        state: "路线终点",
+        style: { left: `${lastPoint.percent.left.toFixed(2)}%`, top: `${lastPoint.percent.top.toFixed(2)}%` },
+        aria: `路线终点，地图坐标 x=${lastPoint.source.x.toFixed(2)}, y=${lastPoint.source.y.toFixed(2)}`,
+      },
+    ],
     displayedCount: svgPoints.length,
     totalCount,
     label: `已读取 ${svgPoints.length} 个路线点`,
@@ -955,6 +975,7 @@ const plainMapVisualSummary = computed(() => {
     showRoutePath: Boolean(routePath),
     routePathPoints: routePath?.points ?? "",
     routePathAria: routePath?.label ?? "",
+    routeEndpointMarkers: routePath?.endpoints.filter((point) => point.id === "start" || !routeGoal) ?? [],
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -5670,6 +5691,15 @@ onBeforeUnmount(() => {
                 <svg v-if="plainMapVisualSummary.showRoutePath" class="plain-map-route-path" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-route-path" :aria-label="plainMapVisualSummary.routePathAria">
                   <polyline :points="plainMapVisualSummary.routePathPoints" />
                 </svg>
+                <span
+                  v-for="marker in plainMapVisualSummary.routeEndpointMarkers"
+                  :key="marker.id"
+                  class="plain-map-route-endpoint-marker"
+                  :data-testid="`plain-map-route-${marker.id}-marker`"
+                  :data-state="marker.state"
+                  :style="marker.style"
+                  :aria-label="marker.aria"
+                >{{ marker.label }}</span>
                 <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">

@@ -3798,6 +3798,14 @@ describe("App", () => {
     expect(route.find("polyline").attributes("points")).toBe("10.00,90.00 40.00,90.00 80.00,98.00");
     expect(route.attributes("aria-label")).toBe("已读取 3 个路线点");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
+    const startMarker = wrapper.find('[data-testid="plain-map-route-start-marker"]');
+    expect(startMarker.exists()).toBe(true);
+    expect(startMarker.text()).toBe("起点");
+    expect(startMarker.attributes("data-state")).toBe("路线起点");
+    expect(startMarker.attributes("aria-label")).toContain("地图坐标 x=0.10, y=0.10");
+    expect(startMarker.attributes("style")).toContain("left: 10%");
+    expect(startMarker.attributes("style")).toContain("top: 90%");
+    expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').exists()).toBe(false);
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
     expect(marker.text()).toBe("终点");
@@ -3807,6 +3815,62 @@ describe("App", () => {
     expect(marker.attributes("style")).toContain("top: 98%");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("draws no-motion route start and end markers when no executed goal is available", async () => {
+    // 没有真实执行目标时，planner path 的首尾点可以帮助现场看懂路线，但仍不是机器人当前位置。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_missing",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 404,
+        status: "not_loaded",
+        goal_execution_key_values: {},
+        failure_reason: "latest_goal_execution_missing",
+        blocked_reasons: ["latest_goal_execution_missing"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').exists()).toBe(false);
+    const startMarker = wrapper.find('[data-testid="plain-map-route-start-marker"]');
+    const endMarker = wrapper.find('[data-testid="plain-map-route-end-marker"]');
+    expect(startMarker.exists()).toBe(true);
+    expect(endMarker.exists()).toBe(true);
+    expect(startMarker.text()).toBe("起点");
+    expect(endMarker.text()).toBe("终点");
+    expect(endMarker.attributes("data-state")).toBe("路线终点");
+    expect(endMarker.attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
+    expect(endMarker.attributes("style")).toContain("left: 80%");
+    expect(endMarker.attributes("style")).toContain("top: 98%");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

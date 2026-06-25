@@ -2172,6 +2172,11 @@ marker 上并显示脉冲圈；若雷达 lifecycle 已运行但 AMCL/map-frame p
 刷新地图画面查看”。它仍不发送 NavigateToPose，不调用 `/api/nav2/goal/execute`、
 manual、keyboard、delivery 或 `/cmd_vel`。
 
+2026-06-25 18:50 起，PC 普通地图还会把同一条 path preview 的首尾点画成路线端点。
+若已有真实 Nav2 execution latest 目标点，地图只额外显示 `起点`，避免和 `本轮目标`
+重复；若没有执行目标，则显示 `起点/终点`。这些端点只表示规划 path 的首尾，不是机器人
+当前位置，也不是完整路线执行成功证明。
+
 2026-06-12 04:45 起，PC 普通 `移动/导航` 卡片新增 `重新定位`。该入口仍只调用
 workstation 固定 `POST /api/robot-control/localize/reset?baseUrl=<upper-api>`，由 PC
 后端转发到上位机固定 `POST /api/localize/reset`，不会接收浏览器传入的 goal、

@@ -579,6 +579,7 @@ h3 {
 .plain-map-robot-marker,
 .plain-map-unknown-pose,
 .plain-map-radar-marker,
+.plain-map-route-endpoint-marker,
 .plain-map-route-goal-marker {
   position: absolute;
   z-index: 3;
@@ -760,6 +761,29 @@ h3 {
   color: #5f4b00;
   text-align: center;
   box-shadow: 0 2px 8px rgba(21, 31, 43, 0.16);
+}
+
+.plain-map-route-endpoint-marker {
+  transform: translate(-50%, -50%);
+  min-width: 34px;
+  padding: 4px 7px;
+  border-color: #9ebee8;
+  background: #f4f8ff;
+  color: #174ea6;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(21, 31, 43, 0.12);
+}
+
+.plain-map-route-endpoint-marker[data-state="路线起点"] {
+  border-color: #9fd4b3;
+  background: #f0fbf4;
+  color: #176039;
+}
+
+.plain-map-route-endpoint-marker[data-state="路线终点"] {
+  border-color: #9ebee8;
+  background: #edf5ff;
+  color: #174ea6;
 }
 
 .plain-map-route-goal-marker[data-state="本轮目标"] {

@@ -6,7 +6,7 @@ micro
 
 ## 实际改动
 
-- `pc-tools/workstation/src/components/RobotControlConsolePanel.vue`：普通首屏地图 caption 新增路线状态，已把 no-motion planner `path_preview_points` 叠到真实地图上时显示 `路线已显示 N/M 个点`；路线已生成但地图画面未加载时提示刷新地图画面；未生成时显示 `路线未准备`。
+- `pc-tools/workstation/src/components/RobotControlConsolePanel.vue`：普通首屏地图 caption 新增路线状态，已把 no-motion planner `path_preview_points` 叠到真实地图上时显示 `路线已显示 N/M 个点`；路线已生成但地图画面未加载时提示刷新地图画面；未生成时不额外显示路线文案，保持默认首屏简洁。
 - `pc-tools/workstation/test/App.test.ts`：扩展路线 overlay 回归测试，锁定地图 caption 的路线点数显示，并继续断言不触发 Nav2 execute、delivery complete 或 manual。
 - `docs/product/pc_tools_workstation.md`、`docs/navigation/fixed_route_workflow.md`：同步普通地图路线 WYSIWYG 口径和不发车边界。
 
