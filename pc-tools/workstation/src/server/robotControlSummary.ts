@@ -2728,9 +2728,19 @@ function proofRobotPose(readbacks: InternalRobotApiEndpointReadback[]): RobotApi
 }
 
 function proofFrameTransform(readbacks: InternalRobotApiEndpointReadback[], keys: string[], fallbackParent: string, fallbackChild: string): RobotApiFrameTransform | null {
-  // 外参必须来自定位 proof 的显式结构化 transform；没有数值时保持 null，前端不能猜安装偏移。
-  const localizePayload = readbackById(readbacks, "localize_proof_latest")?.payload ?? null;
-  const rawTransform = asRecord(findFirstKey(localizePayload, keys));
+  // 外参必须来自 proof/status 的显式结构化 transform；没有数值时保持 null，前端不能猜安装偏移。
+  const sourceIds: RobotApiReadEndpointId[] = ["localize_proof_latest", "nav2_proof_latest", "nav2_status", "status"];
+  let rawTransform: JsonRecord | null = null;
+  let sourceId: RobotApiReadEndpointId = "localize_proof_latest";
+  for (const id of sourceIds) {
+    const payload = readbackById(readbacks, id)?.payload ?? null;
+    const candidate = asRecord(findFirstKey(payload, keys));
+    if (candidate) {
+      rawTransform = candidate;
+      sourceId = id;
+      break;
+    }
+  }
   if (!rawTransform) {
     return null;
   }
@@ -2748,7 +2758,7 @@ function proofFrameTransform(readbacks: InternalRobotApiEndpointReadback[], keys
     x,
     y,
     yaw,
-    source: asString(rawTransform.source, "localize_proof_latest.frame_transform"),
+    source: asString(rawTransform.source, `${sourceId}.frame_transform`),
   };
 }
 

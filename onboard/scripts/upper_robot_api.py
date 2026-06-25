@@ -847,6 +847,7 @@ def write_nav2_helper_failure_artifact(
     )
     partial_root_causes = partial_proof.get("root_causes") if isinstance(partial_proof.get("root_causes"), list) else []
     root_cause = {"layer": "upper API helper process", "reason": reason}
+    base_link_to_laser_frame_transform = extract_base_link_to_laser_frame_transform(partial_proof)
     proof = {
         "status": status,
         "evidence_ref": f"o10-amcl-nav2-runtime-wrapper-failure-{now_ms()}",
@@ -864,6 +865,7 @@ def write_nav2_helper_failure_artifact(
         "initialpose_publish_attempted": bool(partial_proof.get("initialpose_publish_attempted", initialpose_opt_in)),
         "initialpose_published": bool(partial_proof.get("initialpose_published")),
         "amcl_pose_observed": bool(partial_proof.get("amcl_pose_observed")),
+        "base_link_to_laser_frame_transform": base_link_to_laser_frame_transform,
         "localization_tf_observed": (
             partial_proof.get("localization_tf_observed")
             if isinstance(partial_proof.get("localization_tf_observed"), dict)
@@ -893,7 +895,7 @@ def write_nav2_helper_failure_artifact(
         "tf_frame_inventory": (
             partial_proof.get("tf_frame_inventory")
             if isinstance(partial_proof.get("tf_frame_inventory"), dict)
-            else {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": []}
+            else {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": [], "transforms": []}
         ),
         "amcl_pose_frame_id": partial_proof.get("amcl_pose_frame_id"),
         "amcl_node_publishers": (
@@ -2587,6 +2589,29 @@ def read_latest_result_from_summary(summary: dict[str, Any]) -> dict[str, Any] |
     return parsed if isinstance(parsed, dict) else None
 
 
+def extract_base_link_to_laser_frame_transform(proof: dict[str, Any]) -> dict[str, Any] | None:
+    """从 O10 proof 的多个兼容位置提升雷达外参，避免 timeout fallback 丢顶层合同。"""
+    direct = proof.get("base_link_to_laser_frame_transform")
+    if isinstance(direct, dict):
+        return direct
+    detail = proof.get("tf_source_root_cause_detail") if isinstance(proof.get("tf_source_root_cause_detail"), dict) else {}
+    from_detail = detail.get("base_link_to_laser_frame_source_transform")
+    if isinstance(from_detail, dict):
+        return from_detail
+    inventory = proof.get("tf_frame_inventory") if isinstance(proof.get("tf_frame_inventory"), dict) else {}
+    candidates: list[Any] = []
+    for key in ("static_transforms", "transforms"):
+        values = inventory.get(key)
+        if isinstance(values, list):
+            candidates.extend(values)
+    for transform in candidates:
+        if not isinstance(transform, dict):
+            continue
+        if transform.get("parent_frame_id") == "base_link" and transform.get("child_frame_id") == "laser_frame":
+            return transform
+    return None
+
+
 def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dict[str, Any]:
     """把 O10 helper artifact 折成定位 reset 可读合同，安全字段仍全部 fail-closed。"""
     proof = latest.get("proof") if isinstance(latest, dict) and isinstance(latest.get("proof"), dict) else {}
@@ -2595,11 +2620,7 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
     initialpose_published = proof.get("initialpose_published") is True
     amcl_pose_observed = proof.get("amcl_pose_observed") is True
     amcl_pose = proof.get("amcl_pose") if isinstance(proof.get("amcl_pose"), dict) else None
-    base_link_to_laser_frame_transform = (
-        proof.get("base_link_to_laser_frame_transform")
-        if isinstance(proof.get("base_link_to_laser_frame_transform"), dict)
-        else None
-    )
+    base_link_to_laser_frame_transform = extract_base_link_to_laser_frame_transform(proof)
     odom_to_base_link = tf_chain_value.get("odom_to_base_link") is True
     base_link_to_laser_frame = tf_chain_value.get("base_link_to_laser_frame") is True
     map_to_odom = tf_value.get("map_to_odom") is True or tf_chain_value.get("map_to_odom") is True
@@ -2731,7 +2752,7 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
 
 def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
     """压缩 Nav2 lifecycle proof；Nav2 消费 /scan+map 仍由 runtime artifact 证明。"""
-    return runtime_artifact_summary(
+    summary = runtime_artifact_summary(
         path,
         artifact_info=nav2_lifecycle_artifact_info(path),
         schema_suffix="nav2_lifecycle_proof_latest",
@@ -2756,6 +2777,25 @@ def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
             "latest_path_point_count": ("path_point_count", "global_path_point_count"),
         },
     )
+    latest = read_latest_result_from_summary(summary)
+    readback = localization_runtime_readback_contract(latest)
+    # Nav2 summary 保持自己的 status，只把 PC 叠图/定位诊断需要的只读字段提升到顶层。
+    for key in (
+        "base_link_to_laser_frame_transform",
+        "tf_chain_observed",
+        "tf_chain_diagnostics",
+        "tf_topics_observed",
+        "tf_static_observed",
+        "tf_frame_inventory",
+        "localization_tf_observed",
+        "amcl_pose",
+        "amcl_pose_observed",
+        "last_phase",
+        "last_successful_phase",
+        "partial_artifact_preserved",
+    ):
+        summary[key] = readback.get(key)
+    return summary
 
 
 def build_amcl_nav2_readiness_from_map_proof(map_proof_path: str, map_artifact_dir: str) -> dict[str, Any]:
@@ -5745,7 +5785,7 @@ class UpperRobotApi:
 
     def nav2_proof_latest(self) -> tuple[int, dict[str, Any]]:
         """只读 AMCL/Nav2 proof artifact，不探 ROS graph，不发布 initialpose/goal。"""
-        return read_runtime_artifact_latest(
+        http_status, payload = read_runtime_artifact_latest(
             self.nav2_lifecycle_artifact_path,
             artifact_info=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
             schema_suffix="nav2_runtime_proof_latest",
@@ -5753,6 +5793,25 @@ class UpperRobotApi:
             boundary="software_guard_only_not_real_nav2_path_execution_or_delivery",
             source="nav2_lifecycle_runtime_artifact",
         )
+        latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
+        readback = localization_runtime_readback_contract(latest)
+        # 保留 nav2 proof latest 的原始 status，只提升 no-motion readback 证据字段。
+        for key in (
+            "base_link_to_laser_frame_transform",
+            "tf_chain_observed",
+            "tf_chain_diagnostics",
+            "tf_topics_observed",
+            "tf_static_observed",
+            "tf_frame_inventory",
+            "localization_tf_observed",
+            "amcl_pose",
+            "amcl_pose_observed",
+            "last_phase",
+            "last_successful_phase",
+            "partial_artifact_preserved",
+        ):
+            payload[key] = readback.get(key)
+        return http_status, payload
 
     async def nav2_goal_execute(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """显式执行 bounded NavigateToPose；超时自动 cancel，不宣称 delivery success。"""

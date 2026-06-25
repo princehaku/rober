@@ -1374,12 +1374,30 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                     "edges": [{"parent": "odom", "child": "base_link", "topic": "/tf_static"}],
                     "dynamic_edges": [],
                     "static_edges": [{"parent": "odom", "child": "base_link", "topic": "/tf_static"}],
+                    "static_transforms": [
+                        {
+                            "parent_frame_id": "base_link",
+                            "child_frame_id": "laser_frame",
+                            "translation": {"x": 0.0, "y": 0.0, "z": 0.0},
+                            "rotation": {"yaw": 0.0, "quaternion": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}},
+                            "source": "/tf_static",
+                        }
+                    ],
                 },
                 "amcl_pose_frame_id": "map",
                 "amcl_node_publishers": [{"topic": "/amcl_pose", "type": "geometry_msgs/msg/PoseWithCovarianceStamped"}],
                 "amcl_node_subscribers": [{"topic": "/initialpose", "type": "geometry_msgs/msg/PoseWithCovarianceStamped"}],
                 "amcl_tf_broadcast_param": "True",
                 "amcl_frame_params": {"global_frame_id": "map", "odom_frame_id": "odom", "base_frame_id": "base_link"},
+                "tf_source_root_cause_detail": {
+                    "base_link_to_laser_frame_source_transform": {
+                        "parent_frame_id": "base_link",
+                        "child_frame_id": "laser_frame",
+                        "translation": {"x": 0.0, "y": 0.0, "z": 0.0},
+                        "rotation": {"yaw": 0.0, "quaternion": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}},
+                        "source": "/tf_static",
+                    }
+                },
                 "map_frame_observed": False,
                 "odom_frame_observed": True,
                 "amcl_tf_root_cause": "amcl_map_to_odom_tf_not_observed_on_tf",
@@ -1423,6 +1441,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("blocked_by_missing_odom_to_base_link", latest["tf_failure_classification"]["map_to_base_link"])
         self.assertTrue(latest["tf_topics_observed"]["/tf"])
         self.assertEqual("map", latest["amcl_pose_frame_id"])
+        self.assertEqual("/tf_static", latest["base_link_to_laser_frame_transform"]["source"])
+        self.assertEqual("laser_frame", latest["base_link_to_laser_frame_transform"]["child_frame_id"])
         self.assertEqual("amcl_map_to_odom_tf_not_observed_on_tf", latest["amcl_tf_root_cause"])
         self.assertFalse(latest["map_frame_observed"])
         self.assertTrue(latest["odom_frame_observed"])

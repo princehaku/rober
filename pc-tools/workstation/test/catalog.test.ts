@@ -3705,6 +3705,68 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary accepts lidar extrinsic from Nav2 proof latest when localize proof has no transform", async () => {
+    // 真实 timeout fallback 里 Nav2 latest 可能先拿到 /tf_static 外参；PC 不能只看 localize latest。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_proof_latest",
+          status: "blocked_with_root_cause",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          status: "not_proven",
+          tf_chain_observed: {
+            map_to_odom: true,
+            odom_to_base_link: true,
+            base_link_to_laser_frame: true,
+            map_to_base_link: true,
+          },
+          base_link_to_laser_frame_transform: {
+            parent_frame_id: "base_link",
+            child_frame_id: "laser_frame",
+            translation: { x: 0, y: 0, z: 0 },
+            rotation: { yaw: 0, quaternion: { x: 0, y: 0, z: 0, w: 1 } },
+            source: "/tf_static",
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.o3_proof_summary.frame_transforms.base_link_to_laser_frame).toEqual({
+        parent_frame_id: "base_link",
+        child_frame_id: "laser_frame",
+        x: 0,
+        y: 0,
+        yaw: 0,
+        source: "/tf_static",
+      });
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.delivery_success).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control first-jog proxy exposes raw during-motion L/R key values", async () => {
     // 只模拟上位机 HTTP contract，验证 PC 代理把 T=1001 during-motion raw L/R 抬给高级诊断。
     const server = http.createServer((req, res) => {

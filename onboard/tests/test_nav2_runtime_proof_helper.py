@@ -1097,6 +1097,80 @@ __TF_STATIC_ONCE__
         self.assertAlmostEqual(2.0, transform["translation"]["y"])
         self.assertAlmostEqual(0.0, transform["rotation"]["yaw"])
 
+    def test_tf_static_yaml_transform_is_parsed_for_lidar_extrinsic(self) -> None:
+        """`/tf_static` 的 YAML echo 已有外参时，helper 不能只记录 edge 而丢数值。"""
+        text = (
+            "transforms:\n"
+            "- header:\n"
+            "    stamp:\n"
+            "      sec: 1782364051\n"
+            "      nanosec: 613206066\n"
+            "    frame_id: base_link\n"
+            "  child_frame_id: laser_frame\n"
+            "  transform:\n"
+            "    translation:\n"
+            "      x: 0.0\n"
+            "      y: 0.0\n"
+            "      z: 0.0\n"
+            "    rotation:\n"
+            "      x: 0.0\n"
+            "      y: 0.0\n"
+            "      z: 0.0\n"
+            "      w: 1.0\n"
+        )
+
+        transforms = HELPER.parse_tf_topic_transforms(text, source_topic="/tf_static")
+        transform = HELPER.find_tf_topic_transform(
+            transforms,
+            parent_frame_id="base_link",
+            child_frame_id="laser_frame",
+        )
+
+        self.assertIsNotNone(transform)
+        self.assertEqual("/tf_static", transform["source"])
+        self.assertAlmostEqual(0.0, transform["translation"]["x"])
+        self.assertAlmostEqual(0.0, transform["translation"]["y"])
+        self.assertAlmostEqual(0.0, transform["translation"]["z"])
+        self.assertAlmostEqual(0.0, transform["rotation"]["yaw"])
+
+    def test_tf_source_diagnostics_exposes_lidar_extrinsic_transform(self) -> None:
+        """source inventory 快路径必须把 `base_link -> laser_frame` 数值交给 upper/PC。"""
+        args = HELPER.parse_args([])
+        transform = {
+            "parent_frame_id": "base_link",
+            "child_frame_id": "laser_frame",
+            "translation": {"x": 0.12, "y": -0.03, "z": 0.08},
+            "rotation": {"yaw": 0.0, "quaternion": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}},
+            "source": "/tf_static",
+        }
+        probe = {
+            "topic_types": {"/tf": "tf2_msgs/msg/TFMessage", "/tf_static": "tf2_msgs/msg/TFMessage"},
+            "params": {"tf_broadcast": "true", "global_frame_id": "map", "odom_frame_id": "odom", "base_frame_id": "base_link"},
+            "dynamic_edges": [{"parent": "map", "child": "odom", "topic": "/tf"}],
+            "static_edges": [
+                {"parent": "odom", "child": "base_link", "topic": "/tf_static"},
+                {"parent": "base_link", "child": "laser_frame", "topic": "/tf_static"},
+            ],
+            "static_transforms": [transform],
+            "publishers": [{"topic": "/tf", "type": "tf2_msgs/msg/TFMessage"}],
+            "subscribers": [{"topic": "/scan", "type": "sensor_msgs/msg/LaserScan"}],
+            "node_info_observed": True,
+            "param_probe_ok": True,
+            "command_statuses": {"rclpy_graph": 0, "tf": 0, "tf_static": 0},
+            "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+        }
+
+        diagnostics = HELPER.build_tf_source_diagnostics(
+            args,
+            {"stdout": ""},
+            amcl_pose_result={"stdout": ""},
+            amcl_probe=probe,
+        )
+
+        self.assertTrue(diagnostics["base_link_to_laser_frame_source_observed"])
+        self.assertEqual(transform, diagnostics["base_link_to_laser_frame_source_transform"])
+        self.assertIn(transform, diagnostics["tf_frame_inventory"]["static_transforms"])
+
     def test_tf_echo_failure_or_empty_output_not_observed(self) -> None:
         """TF 判定必须保守，lookup failure 或空输出不能被当成 transform。"""
         failure = {

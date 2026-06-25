@@ -110,12 +110,13 @@ class PhaseArtifactWriter:
             "initialpose_publish_attempted": bool(getattr(args, "initialpose_opt_in", False)),
             "initialpose_published": False,
             "amcl_pose_observed": False,
+            "base_link_to_laser_frame_transform": None,
             "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
             "tf_chain_observed": default_tf_chain_observed(),
             "tf_chain_diagnostics": {},
             "tf_topics_observed": {"/tf": False, "/tf_static": False},
             "tf_static_observed": False,
-            "tf_frame_inventory": {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": []},
+            "tf_frame_inventory": {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": [], "transforms": []},
             "amcl_pose_frame_id": None,
             "amcl_node_publishers": [],
             "amcl_node_subscribers": [],
@@ -1302,6 +1303,74 @@ def parse_tf_edges(text: str, *, source_topic: str) -> list[dict[str, str]]:
     return edges
 
 
+def parse_tf_topic_transforms(text: str, *, source_topic: str) -> list[dict[str, Any]]:
+    """从 `/tf(_static)` echo 的 YAML 文本提取 transform 数值，超时时也能保留雷达外参。"""
+    transforms: list[dict[str, Any]] = []
+    for block in text.split("- header:"):
+        parent_match = None
+        child_match = None
+        section = None
+        translation: dict[str, float] = {}
+        rotation: dict[str, float] = {}
+        for line in block.splitlines():
+            stripped = line.strip().strip("'\"")
+            if stripped.startswith("frame_id:"):
+                parent_match = stripped.split(":", 1)[1].strip().strip("'\"")
+            elif stripped.startswith("child_frame_id:"):
+                child_match = stripped.split(":", 1)[1].strip().strip("'\"")
+            elif stripped == "translation:":
+                section = "translation"
+            elif stripped == "rotation:":
+                section = "rotation"
+            elif section in {"translation", "rotation"} and ":" in stripped:
+                name, raw_value = stripped.split(":", 1)
+                name = name.strip()
+                if name not in {"x", "y", "z", "w"}:
+                    continue
+                try:
+                    value = float(raw_value.strip())
+                except ValueError:
+                    continue
+                if section == "translation":
+                    translation[name] = value
+                else:
+                    rotation[name] = value
+        if not parent_match or not child_match:
+            continue
+        if not all(axis in translation for axis in ("x", "y", "z")):
+            continue
+        if not all(axis in rotation for axis in ("x", "y", "z", "w")):
+            continue
+        qx = rotation["x"]
+        qy = rotation["y"]
+        qz = rotation["z"]
+        qw = rotation["w"]
+        yaw = math.atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz))
+        transforms.append(
+            {
+                "parent_frame_id": parent_match,
+                "child_frame_id": child_match,
+                "translation": {"x": translation["x"], "y": translation["y"], "z": translation["z"]},
+                "rotation": {"yaw": yaw, "quaternion": {"x": qx, "y": qy, "z": qz, "w": qw}},
+                "source": source_topic,
+            }
+        )
+    return transforms
+
+
+def find_tf_topic_transform(
+    transforms: list[dict[str, Any]],
+    *,
+    parent_frame_id: str,
+    child_frame_id: str,
+) -> dict[str, Any] | None:
+    """按 parent/child 精确取 transform，避免 frame 名相近时串用外参。"""
+    for transform in transforms:
+        if transform.get("parent_frame_id") == parent_frame_id and transform.get("child_frame_id") == child_frame_id:
+            return transform
+    return None
+
+
 def parse_pose_frame_id(text: str) -> str | None:
     """提取 `/amcl_pose` header.frame_id，用于区分 pose 有了但 map frame 未进 TF。"""
     for line in text.splitlines():
@@ -1435,6 +1504,39 @@ def tf_message_edges(message: Any, *, source_topic: str) -> list[dict[str, str]]
     return edges
 
 
+def tf_message_transforms(message: Any, *, source_topic: str) -> list[dict[str, Any]]:
+    """从 rclpy TFMessage 直接提取 transform 数值，避免 partial artifact 缺少雷达外参。"""
+    transforms: list[dict[str, Any]] = []
+    for transform in getattr(message, "transforms", []) or []:
+        header = getattr(transform, "header", None)
+        parent = str(getattr(header, "frame_id", "") or "")
+        child = str(getattr(transform, "child_frame_id", "") or "")
+        value = getattr(transform, "transform", None)
+        translation = getattr(value, "translation", None)
+        rotation = getattr(value, "rotation", None)
+        if not parent or not child or translation is None or rotation is None:
+            continue
+        qx = float(getattr(rotation, "x", 0.0))
+        qy = float(getattr(rotation, "y", 0.0))
+        qz = float(getattr(rotation, "z", 0.0))
+        qw = float(getattr(rotation, "w", 1.0))
+        yaw = math.atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz))
+        transforms.append(
+            {
+                "parent_frame_id": parent,
+                "child_frame_id": child,
+                "translation": {
+                    "x": float(getattr(translation, "x", 0.0)),
+                    "y": float(getattr(translation, "y", 0.0)),
+                    "z": float(getattr(translation, "z", 0.0)),
+                },
+                "rotation": {"yaw": yaw, "quaternion": {"x": qx, "y": qy, "z": qz, "w": qw}},
+                "source": source_topic,
+            }
+        )
+    return transforms
+
+
 def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
     """用 rclpy 一次性取 /amcl 参数、graph 和 TF 样本，替代多条串行 ROS CLI。"""
     result: dict[str, Any] = {
@@ -1449,6 +1551,8 @@ def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
         "topic_types": {},
         "dynamic_edges": [],
         "static_edges": [],
+        "dynamic_transforms": [],
+        "static_transforms": [],
         "command_statuses": {"rclpy_graph": None, "tf": None, "tf_static": None},
         "error": None,
         "elapsed_ms": 0,
@@ -1502,12 +1606,16 @@ def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
             param_boundary = "amcl_parameter_response_pending"
         dynamic_edges: list[dict[str, str]] = []
         static_edges: list[dict[str, str]] = []
+        dynamic_transforms: list[dict[str, Any]] = []
+        static_transforms: list[dict[str, Any]] = []
 
         def on_dynamic_tf(message: Any) -> None:
             dynamic_edges.extend(tf_message_edges(message, source_topic="/tf"))
+            dynamic_transforms.extend(tf_message_transforms(message, source_topic="/tf"))
 
         def on_static_tf(message: Any) -> None:
             static_edges.extend(tf_message_edges(message, source_topic="/tf_static"))
+            static_transforms.extend(tf_message_transforms(message, source_topic="/tf_static"))
 
         # transient local QoS 是读取 /tf_static 的关键，避免 CLI echo 的启动成本和时序抖动。
         node.create_subscription(TFMessage, "/tf", on_dynamic_tf, QoSProfile(depth=10))
@@ -1553,6 +1661,8 @@ def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
                 break
         result["dynamic_edges"] = dynamic_edges
         result["static_edges"] = static_edges
+        result["dynamic_transforms"] = dynamic_transforms
+        result["static_transforms"] = static_transforms
         result["command_statuses"]["tf"] = 0 if dynamic_edges else 124
         result["command_statuses"]["tf_static"] = 0 if static_edges else 124
         result["tf_inventory_observed"] = bool(dynamic_edges or static_edges or result["topic_types"])
@@ -1645,7 +1755,7 @@ def default_tf_source_diagnostics(
     return {
         "tf_topics_observed": {"/tf": False, "/tf_static": False},
         "tf_static_observed": False,
-        "tf_frame_inventory": {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": []},
+        "tf_frame_inventory": {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": [], "transforms": []},
         "amcl_pose_frame_id": amcl_pose_frame_id,
         "amcl_node_publishers": [],
         "amcl_node_subscribers": [],
@@ -1662,6 +1772,7 @@ def default_tf_source_diagnostics(
         "map_to_odom_source_observed": False,
         "odom_to_base_link_source_observed": False,
         "base_link_to_laser_frame_source_observed": False,
+        "base_link_to_laser_frame_source_transform": None,
         "amcl_tf_root_cause": "tf_source_probe_not_executed",
         "frame_contract": {"actual": frame_ids},
     }
@@ -1704,16 +1815,28 @@ def build_tf_source_diagnostics(
         }
     dynamic_edges = parse_tf_edges(dynamic_text, source_topic="/tf")
     static_edges = parse_tf_edges(static_text, source_topic="/tf_static")
+    dynamic_transforms = parse_tf_topic_transforms(dynamic_text, source_topic="/tf")
+    static_transforms = parse_tf_topic_transforms(static_text, source_topic="/tf_static")
     if isinstance(probe.get("dynamic_edges"), list):
         dynamic_edges = [edge for edge in probe["dynamic_edges"] if isinstance(edge, dict)]
     if isinstance(probe.get("static_edges"), list):
         static_edges = [edge for edge in probe["static_edges"] if isinstance(edge, dict)]
+    if isinstance(probe.get("dynamic_transforms"), list):
+        dynamic_transforms = [transform for transform in probe["dynamic_transforms"] if isinstance(transform, dict)]
+    if isinstance(probe.get("static_transforms"), list):
+        static_transforms = [transform for transform in probe["static_transforms"] if isinstance(transform, dict)]
     edges = [*dynamic_edges, *static_edges]
+    transforms = [*dynamic_transforms, *static_transforms]
     frames = sorted({value for edge in edges for value in (edge.get("parent"), edge.get("child")) if value})
     frame_ids = tf_chain_frame_contract(args)["actual"]
     map_to_odom_source_observed = edge_observed(dynamic_edges, "map", frame_ids["odom"])
     odom_to_base_source_observed = edge_observed(static_edges, frame_ids["odom"], frame_ids["base"])
     base_to_laser_source_observed = edge_observed(static_edges, frame_ids["base"], frame_ids["laser"])
+    base_to_laser_source_transform = find_tf_topic_transform(
+        static_transforms,
+        parent_frame_id=frame_ids["base"],
+        child_frame_id=frame_ids["laser"],
+    )
     param_probe_ok = bool(probe.get("param_probe_ok") or all(params.get(name) is not None for name in ("tf_broadcast", "global_frame_id", "odom_frame_id", "base_frame_id")))
     amcl_publishers = (
         probe.get("publishers")
@@ -1773,6 +1896,7 @@ def build_tf_source_diagnostics(
         "map_to_odom_source_observed": map_to_odom_source_observed,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
         "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
+        "base_link_to_laser_frame_source_transform": base_to_laser_source_transform,
     }
     conditions = {
         "initialpose_published": None,
@@ -1798,6 +1922,9 @@ def build_tf_source_diagnostics(
             "edges": edges,
             "dynamic_edges": dynamic_edges,
             "static_edges": static_edges,
+            "dynamic_transforms": dynamic_transforms,
+            "static_transforms": static_transforms,
+            "transforms": transforms,
             "topic_types": topic_types,
             "command_statuses": command_statuses,
         },
@@ -1819,6 +1946,7 @@ def build_tf_source_diagnostics(
         "map_to_odom_source_observed": map_to_odom_source_observed,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
         "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
+        "base_link_to_laser_frame_source_transform": base_to_laser_source_transform,
         "amcl_tf_root_cause": root_cause,
         "tf_source_root_cause_detail": detail,
         "amcl_broadcast_conditions": conditions,
@@ -2779,13 +2907,15 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     phase_writer.record_phase("tf_source_probe")
     tf_source_probe_result, tf_source_diagnostics = collect_tf_source_diagnostics(
         args,
-        ros2_ok=ros2_ok and initialpose_request_payload["enabled"],
+        # `/tf_static` 是只读现有 graph；即使没有 initialpose opt-in，也要读取雷达外参给 PC 叠图。
+        ros2_ok=ros2_ok,
         amcl_pose_result=post_initialpose_amcl_pose_once,
     )
     phase_writer.update_snapshot(
         tf_topics_observed=tf_source_diagnostics["tf_topics_observed"],
         tf_static_observed=tf_source_diagnostics["tf_static_observed"],
         tf_frame_inventory=tf_source_diagnostics["tf_frame_inventory"],
+        base_link_to_laser_frame_transform=tf_source_diagnostics["base_link_to_laser_frame_source_transform"],
         amcl_pose_frame_id=tf_source_diagnostics["amcl_pose_frame_id"],
         amcl_node_publishers=tf_source_diagnostics["amcl_node_publishers"],
         amcl_node_subscribers=tf_source_diagnostics["amcl_node_subscribers"],
@@ -3114,7 +3244,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     map_observed = topic_once_observed(map_once)
     amcl_pose_observed = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
     amcl_pose = parse_amcl_pose(str(post_initialpose_amcl_pose_once.get("stdout") or "")) or parse_amcl_pose(str(amcl_pose_once.get("stdout") or ""))
-    base_link_to_laser_frame_transform = parse_tf_echo_transform(
+    base_link_to_laser_frame_transform = tf_source_diagnostics.get("base_link_to_laser_frame_source_transform") or parse_tf_echo_transform(
         base_link_to_laser_frame_tf,
         parent_frame_id=tf_chain_frame_contract(args)["actual"]["base"],
         child_frame_id=tf_chain_frame_contract(args)["actual"]["laser"],
@@ -3190,6 +3320,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         tf_topics_observed=tf_source_diagnostics["tf_topics_observed"],
         tf_static_observed=tf_source_diagnostics["tf_static_observed"],
         tf_frame_inventory=tf_source_diagnostics["tf_frame_inventory"],
+        base_link_to_laser_frame_transform=base_link_to_laser_frame_transform,
         amcl_pose_frame_id=tf_source_diagnostics["amcl_pose_frame_id"],
         amcl_node_publishers=tf_source_diagnostics["amcl_node_publishers"],
         amcl_node_subscribers=tf_source_diagnostics["amcl_node_subscribers"],
