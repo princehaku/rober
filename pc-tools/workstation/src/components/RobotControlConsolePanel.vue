@@ -1751,6 +1751,14 @@ const plainUnifiedSafetyConfirmed = computed({
   },
 });
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
+const canRequestKeyboardStop = computed(() => (
+  canSendStop.value
+  || (
+    manualCommandPending.value
+    && keyboardHeldDirection.value !== null
+    && robotApiBaseUrl.value.trim().length > 0
+  )
+));
 const canRunEvidenceSweep = computed(() => !evidenceSweepPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const keyboardContractReady = computed(() => {
   // 键盘手控必须由后端 summary 明确声明 bounded pulse 合同，不能只靠前端默认值放开。
@@ -7598,7 +7606,7 @@ onBeforeUnmount(() => {
             <button ref="plainFreeRoamMapRefreshButton" type="button" class="secondary compact-stop" :disabled="!canRefreshPlainFreeRoamMapPreview" data-testid="plain-free-roam-map-refresh" @click="refreshMapPreview({ countForFreeRoamSession: true })">
               {{ plainFreeRoamMapPreviewLabel }}
             </button>
-            <button ref="plainFreeRoamStopButton" type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
+            <button ref="plainFreeRoamStopButton" type="button" class="danger-button compact-stop" :disabled="!canRequestKeyboardStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
               停止
             </button>
             <button ref="plainFreeRoamSaveButton" type="button" class="secondary compact-stop" :disabled="!canSavePlainFreeRoamMapping" data-testid="plain-free-roam-save" @click="saveMap">
@@ -7633,7 +7641,7 @@ onBeforeUnmount(() => {
               >
                 左转
               </button>
-              <button class="danger-button" type="button" :disabled="!canSendStop" data-testid="plain-free-roam-screen-stop" @click="stopKeyboardControl('free_roam_screen_button_stop')">
+              <button class="danger-button" type="button" :disabled="!canRequestKeyboardStop" data-testid="plain-free-roam-screen-stop" @click="stopKeyboardControl('free_roam_screen_button_stop')">
                 停止
               </button>
               <button
@@ -7759,7 +7767,7 @@ onBeforeUnmount(() => {
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
               <button ref="keyboardControlRecheckButton" class="secondary compact-stop" type="button" :disabled="plainGoalProgressPending || !robotApiBaseUrl.trim()" data-testid="keyboard-control-recheck" @click="refreshPlainKeyboardGate">{{ plainKeyboardRecheckButtonLabel }}</button>
               <button ref="keyboardControlArmButton" class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
-              <button class="danger-button compact-stop" type="button" :disabled="!canSendStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
+              <button class="danger-button compact-stop" type="button" :disabled="!canRequestKeyboardStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
@@ -7789,7 +7797,7 @@ onBeforeUnmount(() => {
                 >
                   左转
                 </button>
-                <button class="danger-button" type="button" :disabled="!canSendStop" data-testid="keyboard-screen-stop" @click="stopKeyboardControl('screen_button_stop')">
+                <button class="danger-button" type="button" :disabled="!canRequestKeyboardStop" data-testid="keyboard-screen-stop" @click="stopKeyboardControl('screen_button_stop')">
                   停止
                 </button>
                 <button

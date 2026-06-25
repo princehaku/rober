@@ -9850,8 +9850,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
   });
 
-  it("queues release stop when keyup happens during an in-flight keyboard pulse", async () => {
-    // 松开时若 manual pulse 仍在请求中，stop 不能被 pending gate 吃掉；pulse 返回后必须补发一次 stop。
+  it("queues release stop when the stop button is clicked during an in-flight keyboard pulse", async () => {
+    // 点击停止时若 manual pulse 仍在请求中，stop 不能被 pending gate 吃掉；pulse 返回后必须补发一次 stop。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
     summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
@@ -9910,10 +9910,13 @@ describe("App", () => {
     await keyboardPanel.trigger("keydown", { key: "w" });
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
+    expect(wrapper.find('[data-testid="keyboard-control-stop"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-screen-stop"]').attributes("disabled")).toBeUndefined();
 
-    await keyboardPanel.trigger("keyup", { key: "w" });
+    await wrapper.find('[data-testid="keyboard-control-stop"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已松开，正在发送停止。");
+    expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：点击停止。");
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(0);
 
     resolveManual({
