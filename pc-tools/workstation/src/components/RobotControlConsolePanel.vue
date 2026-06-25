@@ -87,6 +87,7 @@ const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(
 const navGoalExecutionResult = ref<RobotControlNavGoalExecutionResponse | null>(null);
 const navGoalExecutionLatestResult = ref<RobotControlNavGoalExecutionLatestResponse | null>(null);
 const navGoalExecutionPendingGoal = ref<MapNavGoal | null>(null);
+const navGoalExecutionAttemptGoal = ref<MapNavGoal | null>(null);
 const deliveryLatestResult = ref<RobotControlDeliveryLatestResponse | null>(null);
 const deliveryGapCheckResult = ref<RobotControlDeliveryGapCheckResponse | null>(null);
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
@@ -897,9 +898,11 @@ function latestNavGoalOverlay() {
   if (!values) {
     return null;
   }
-  const goalX = finitePlainNumber(values.goal_x);
-  const goalY = finitePlainNumber(values.goal_y);
-  if (goalX === null || goalY === null || (values.goal_frame_id && values.goal_frame_id !== "map")) {
+  const attemptedGoal = navGoalExecutionResult.value ? navGoalExecutionAttemptGoal.value : null;
+  const goalX = finitePlainNumber(values.goal_x) ?? attemptedGoal?.goal_x ?? null;
+  const goalY = finitePlainNumber(values.goal_y) ?? attemptedGoal?.goal_y ?? null;
+  const goalFrameId = values.goal_frame_id || attemptedGoal?.goal_frame_id;
+  if (goalX === null || goalY === null || (goalFrameId && goalFrameId !== "map")) {
     return null;
   }
   const style = mapCoordinateStyle(goalX, goalY, preview);
@@ -3099,6 +3102,9 @@ const plainTripRunStatus = computed(() => {
   if (plainTripLatestNotProvenEvidence.value) {
     return "行程状态：最近行程未通过，先检查或重新执行完整行程。";
   }
+  if (navGoalExecutionResult.value?.proxy_status === "execution_failed" || navGoalExecutionResult.value?.proxy_status === "execution_rejected") {
+    return "行程状态：最近行程未通过，先检查或重新执行完整行程。";
+  }
   if (plainTripHasSucceededEvidence.value) {
     return "行程状态：读到旧行程成功记录；如需本轮验收，请重新执行图上路线。";
   }
@@ -5040,6 +5046,7 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
     goal_y: navGoalY.value,
     goal_yaw: navGoalYaw.value,
   };
+  navGoalExecutionAttemptGoal.value = goalRequest;
   navGoalExecutionPendingGoal.value = goalRequest;
   navGoalExecutionPending.value = true;
   try {

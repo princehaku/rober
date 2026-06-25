@@ -5003,6 +5003,55 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("已到达");
   });
 
+  it("keeps the attempted visible route goal on the map when trip execution fails without goal coordinates", async () => {
+    // 失败响应有时只返回状态和原因；地图仍要标出刚刚尝试执行的图上终点，避免 operator 找不到失败位置。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execute": {
+        ...(fixtures["/api/robot-control/nav2/goal/execute"] as Record<string, unknown>),
+        proxy_status: "execution_rejected",
+        failure_reason: "planner_failed_before_goal_feedback",
+        blocked_reasons: ["planner_failed_before_goal_feedback"],
+        goal_execution_key_values: {
+          status: "goal_failed",
+          result_status: "failed",
+          evidence_ref: "plain-trip-execution-failed-no-coords",
+          delivery_success: "false",
+        },
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(marker.text()).toBe("行程未通过");
+    expect(marker.attributes("data-state")).toBe("行程未通过");
+    expect(marker.attributes("aria-label")).toBe("行程未通过，地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：最近行程未通过，先检查或重新执行完整行程。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("translates plain trip preparation planner blocker without executing navigation", async () => {
     // no-motion 行程准备失败时，普通首屏要给下一步，不把 planner_server_not_active 暴露给普通用户。
     const mockedFetch = stubWorkstationFetch({
