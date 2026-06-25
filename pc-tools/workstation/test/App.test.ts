@@ -4668,6 +4668,8 @@ describe("App", () => {
       { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
       { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
     ];
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
@@ -5888,6 +5890,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').exists()).toBe(false);
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
     await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
@@ -5904,6 +5910,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（行程中）");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("行程正在执行，暂不启动键盘手控。");
     const executeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"));
     expect(executeCall).toBeTruthy();
     expect(JSON.parse(String((executeCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual(expect.objectContaining({
@@ -5913,6 +5923,12 @@ describe("App", () => {
       confirm_navigation_execution: true,
     }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    const manualCallsBeforeBlockedKeyboard = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    await wrapper.find('[data-testid="keyboard-screen-forward"]').trigger("pointerdown");
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeBlockedKeyboard);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 

@@ -3570,6 +3570,10 @@ const plainGoalProgressBlockerSummary = computed(() => {
 
 const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value || nav2RefreshPending.value);
 const plainTripMapWysiwygPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
+const manualMotionActiveForTrip = computed(() => (
+  // 行程执行和手控/键盘不能同时作为新动作启动；stop 仍走独立兜底入口。
+  manualCommandPending.value || Boolean(keyboardHeldDirection.value)
+));
 function plainTripMapWysiwygPendingText(): string {
   // 地图 proof 和地图画面任一刷新中，都不能把旧路线当成当前可执行图上路线。
   return mapPreviewPending.value ? "地图画面刷新中" : "地图状态刷新中";
@@ -3779,6 +3783,7 @@ const canRunPlainTripExecution = computed(() => {
   return !deliveryNav2GoalReady.value
     && !loading.value
     && !plainTripActionPending.value
+    && !manualMotionActiveForTrip.value
     && robotApiBaseUrl.value.trim().length > 0
     && plainManualSafetyConfirmed.value
     && !plainTripMapWysiwygPending.value
@@ -3809,6 +3814,9 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   if (loading.value || plainTripActionPending.value) {
     return "执行中";
+  }
+  if (manualMotionActiveForTrip.value) {
+    return "等待手控停止";
   }
   if (!plainManualSafetyConfirmed.value) {
     return "先勾选确认";
@@ -4169,7 +4177,11 @@ const plainFirstJogLidarDeltaReady = computed(() => {
 
 const canSendManualMotion = computed(() => {
   // 普通手控预检收敛为一个用户可见安全确认；后端仍负责固定方向、限速、限时和 stop 兜底。
-  return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
+  return !manualCommandPending.value
+    && !navGoalExecutionPending.value
+    && !loading.value
+    && robotApiBaseUrl.value.trim().length > 0
+    && plainManualSafetyConfirmed.value;
 });
 
 const keyboardControlSummary = computed(() => {
@@ -4221,6 +4233,9 @@ const plainKeyboardMissingSummary = computed(() => {
   if (manualCommandPending.value || loading.value) {
     return "正在处理上一条请求，请稍等。";
   }
+  if (navGoalExecutionPending.value) {
+    return "行程正在执行，暂不启动键盘手控。";
+  }
   const missingLabels = plainKeyboardMissingLabels.value;
   return `还差：${missingLabels.join("、")}。`;
 });
@@ -4258,6 +4273,9 @@ function plainKeyboardBlockedActionLabel(missingLabels: string[]): string {
 
 const plainKeyboardArmButtonLabel = computed(() => {
   // 启用只让键盘面板获得焦点；真正手控必须后续按住方向键。
+  if (navGoalExecutionPending.value) {
+    return "启用键盘（行程中）";
+  }
   const missingLabels = plainKeyboardMissingLabels.value;
   const missingCount = missingLabels.length;
   const actionLabel = plainKeyboardBlockedActionLabel(missingLabels);
@@ -4269,6 +4287,9 @@ const plainKeyboardArmButtonLabel = computed(() => {
 
 const plainKeyboardRecheckButtonLabel = computed(() => {
   // 复查按钮同样显示缺项数量；点击仍只刷新只读进度，不会发送手控。
+  if (navGoalExecutionPending.value) {
+    return "复查手控条件（行程中，不发车）";
+  }
   const missingLabels = plainKeyboardMissingLabels.value;
   const missingCount = missingLabels.length;
   const actionLabel = plainKeyboardBlockedActionLabel(missingLabels);
@@ -4288,6 +4309,9 @@ const plainKeyboardNextActionSummary = computed(() => {
   }
   if (!keyboardContractReady.value) {
     return "下一步：复查手控条件。";
+  }
+  if (navGoalExecutionPending.value) {
+    return "下一步：等待行程执行返回，必要时按停止接管。";
   }
   if (!plainManualSafetyConfirmed.value) {
     return "下一步：勾选安全确认。";
@@ -4333,6 +4357,9 @@ const manualBlockedReason = computed(() => {
   }
   if (manualCommandPending.value || loading.value) {
     return "当前仍有请求处理中；本机不会并发发送点动。";
+  }
+  if (navGoalExecutionPending.value) {
+    return "行程正在执行；暂不发送新的手控动作，必要时按停止接管。";
   }
   if (!plainManualSafetyConfirmed.value) {
     return "先勾选安全确认：人在旁边、周围安全、停止手段就绪。";
