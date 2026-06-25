@@ -1914,3 +1914,8 @@ complete/stop 或 `/cmd_vel`。
 `扫地图草图` 状态，明确这是只读计划草图，不会自动移动。该草图不解析为 Nav2 路线、不生成导航目标、不发送 camera offer、
 manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`；真实移动仍必须由现场 operator 按安全流程或后续上车端
 安全状态机放行。
+
+2026-06-25 20:45 起，普通首屏“行程操作”新增 `行程进度`，地图 caption 新增 `行程执行`：直接读取本轮执行或最近执行结果，
+把已到达且有反馈、已到达但缺反馈、旧到达记录、未通过、执行中翻译为普通用户可见文案。该状态只消费
+`/api/robot-control/nav2/goal/execute` 或 `/api/robot-control/nav2/goal/execution/latest` 已返回的 key-value，
+不自动读取 latest、不自动执行 Nav2、不提交送达确认、不发送 manual/keyboard pulse/stop 或 `/cmd_vel`。

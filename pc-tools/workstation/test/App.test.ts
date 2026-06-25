@@ -3979,6 +3979,8 @@ describe("App", () => {
     expect(startMarker.attributes("style")).toContain("left: 10%");
     expect(startMarker.attributes("style")).toContain("top: 90%");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近路线 3/15 个点按地图坐标显示，雷达不贴图。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
     expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').exists()).toBe(false);
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
@@ -4899,6 +4901,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("需检查");
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("最近行程未通过，需要检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：最近行程未通过，先检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：未通过");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程未通过，需要检查或重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程未通过");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：最近行程未通过，需要检查或重新执行完整行程。");
@@ -4959,6 +4963,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，未读到反馈样本，刚刚；需重新读取或执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，但没有执行反馈样本，刚刚；重新读取或执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，缺反馈");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程缺少反馈样本，需要重新读取或执行完整行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：行程成功但缺少反馈样本，需要重新读取或执行完整行程。");

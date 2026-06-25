@@ -1097,6 +1097,7 @@ const plainMapVisualSummary = computed(() => {
     radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : radarScanOverlay.label,
     radarFreshnessLabel: plainRadarFreshnessLabel(radarState, poseObserved, radarScanOverlay, radarLocalScanOverlay),
     coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath, radarState),
+    tripExecutionLabel: plainMapTripExecutionLabel(),
     showRadarScanPoints: showRadarSweep && radarScanOverlay.dots.length > 0,
     radarScanAria: `雷达点位，${radarScanOverlay.label}`,
     radarLocalScanDots: radarLocalScanOverlay.dots,
@@ -1812,6 +1813,12 @@ function nav2FeedbackSampleCount(values: Record<string, string> | undefined): nu
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+function directNav2ExecutionValues(): Record<string, string> | undefined {
+  // 地图和行程卡只展示直接执行/最近执行结果；delivery 摘要只用于收口，不反推地图执行进度。
+  return navGoalExecutionResult.value?.goal_execution_key_values
+    ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
+}
+
 function nav2ExecutionComplete(values: Record<string, string> | undefined): boolean {
   return nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0;
 }
@@ -2371,6 +2378,52 @@ const plainTripEvidenceSummary = computed(() => {
   const feedbackText = hasFeedbackSamples ? `，反馈 ${feedbackCount} 次` : "，未读到反馈样本";
   const nextText = hasFeedbackSamples ? "送达仍需现场确认。" : "需重新读取或执行完整行程。";
   return `最近行程成功${feedbackText}${formatEvidenceAge(values)}；${nextText}`;
+});
+
+function plainMapTripExecutionLabel(): string {
+  // 地图 caption 要短，只表达当前执行结果；详细下一步放在行程卡。
+  if (navGoalExecutionPending.value) {
+    return "行程执行：正在执行图上路线";
+  }
+  const values = directNav2ExecutionValues();
+  const status = nav2EvidenceStatus(values);
+  if (!status || status === "not_loaded") {
+    return "";
+  }
+  if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次`;
+  }
+  if (nav2GoalSucceeded(values) && evidenceIsStale(values)) {
+    return "行程执行：旧到达记录";
+  }
+  if (nav2GoalSucceeded(values)) {
+    return "行程执行：已到达，缺反馈";
+  }
+  return "行程执行：未通过";
+}
+
+const plainTripExecutionProgress = computed(() => {
+  // 这行只解释已有执行证据，不会触发读取、执行、送达确认或任何底盘命令。
+  if (navGoalExecutionPending.value) {
+    return "行程进度：正在执行图上路线，人在旁边准备停止。";
+  }
+  const values = directNav2ExecutionValues();
+  const status = nav2EvidenceStatus(values);
+  if (!status || status === "not_loaded") {
+    return "";
+  }
+  const ageText = formatEvidenceAge(values, "这条行程较旧，如需本轮验收，请重新执行图上路线");
+  if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    return `行程进度：已到达，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈${ageText}；下一步准备送达材料。`;
+  }
+  if (nav2GoalSucceeded(values) && evidenceIsStale(values)) {
+    const feedbackText = nav2FeedbackSampleCount(values) > 0 ? `，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈` : "，未读到反馈样本";
+    return `行程进度：读到旧的到达记录${feedbackText}${ageText}。`;
+  }
+  if (nav2GoalSucceeded(values)) {
+    return `行程进度：已到达，但没有执行反馈样本${ageText}；重新读取或执行完整行程。`;
+  }
+  return "行程进度：最近行程未通过，先检查或重新执行完整行程。";
 });
 
 const plainGoalProgressItems = computed(() => {
@@ -6038,6 +6091,7 @@ onBeforeUnmount(() => {
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-freshness-label">{{ plainMapVisualSummary.radarFreshnessLabel }}</span>
               <span class="muted" data-testid="plain-map-coordinate-truth-label">{{ plainMapVisualSummary.coordinateTruthLabel }}</span>
+              <span v-if="plainMapVisualSummary.tripExecutionLabel" class="muted" data-testid="plain-map-trip-execution-label">{{ plainMapVisualSummary.tripExecutionLabel }}</span>
             </div>
           </div>
           <div class="panel-action-row wrap-actions">
@@ -6292,6 +6346,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
+            <p v-if="plainTripExecutionProgress" class="panel-note" data-testid="plain-trip-execution-progress">{{ plainTripExecutionProgress }}</p>
             <p v-if="plainTripRouteWysiwygSummary" class="panel-note" data-testid="plain-trip-route-wysiwyg">
               {{ plainTripRouteWysiwygSummary }}
             </p>
