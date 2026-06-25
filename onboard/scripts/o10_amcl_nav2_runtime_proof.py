@@ -791,8 +791,10 @@ def build_planner_readiness_summary(
     managed_runtime: dict[str, Any],
     localization_ready: bool,
     planner_server_active: bool,
+    planner_server_observed: bool,
     controller_server_requested: bool,
     controller_server_active: bool,
+    controller_server_observed: bool,
     path_generation_request: dict[str, Any],
     path_generation_attempted: bool,
     path_generation_succeeded: bool,
@@ -807,12 +809,50 @@ def build_planner_readiness_summary(
         "path_generation_requested": bool(path_generation_request["enabled"]),
         "path_generation_attempted": bool(path_generation_attempted),
         "planner_server_active": bool(planner_server_active),
+        "planner_server_observed": bool(planner_server_observed),
         "controller_server_requested": bool(controller_server_requested),
         "controller_server_active": bool(controller_server_active),
+        "controller_server_observed": bool(controller_server_observed),
         "path_generation_succeeded": bool(path_generation_succeeded),
         "path_generated": bool(path_generation_succeeded and path_point_count > 0),
         "path_point_count": int(path_point_count),
     }
+
+
+def normalize_ros_node_name(name: str) -> str:
+    """ROS graph 有时带斜杠、有时不带；统一成 `/node` 便于 proof 稳定比较。"""
+    stripped = str(name or "").strip()
+    if not stripped:
+        return ""
+    return f"/{stripped.lstrip('/')}"
+
+
+def node_names_from_graph_result(result: dict[str, Any]) -> set[str]:
+    """从 `ros2 node list` 或 rclpy probe 结果里提取规范化节点名。"""
+    names: set[str] = set()
+    for raw_name in result.get("node_names") or []:
+        normalized = normalize_ros_node_name(str(raw_name))
+        if normalized:
+            names.add(normalized)
+    for raw_line in str(result.get("stdout") or "").splitlines():
+        normalized = normalize_ros_node_name(raw_line)
+        if normalized:
+            names.add(normalized)
+    return names
+
+
+def managed_runtime_observed_node_names(managed_runtime: dict[str, Any]) -> set[str]:
+    """managed wait 的 history 是最早证据源；即使最终 CLI 超时，也不能丢掉曾观测到的节点。"""
+    observed: set[str] = set()
+    wait_result = managed_runtime.get("wait_result") or {}
+    observed.update(node_names_from_graph_result(wait_result.get("node_list") or {}))
+    observed.update(node_names_from_graph_result({"node_names": wait_result.get("observed_node_names") or []}))
+    for snapshot in wait_result.get("history") or []:
+        if not isinstance(snapshot, dict):
+            continue
+        observed.update(node_names_from_graph_result({"node_names": snapshot.get("cumulative_node_names") or []}))
+        observed.update(node_names_from_graph_result(snapshot.get("node_list_command") or {}))
+    return observed
 
 
 def parse_pose_stamped(request: dict[str, Any]) -> str:
@@ -2682,6 +2722,7 @@ def wait_for_managed_runtime(
     required_nodes = dict(LOCALIZATION_LIFECYCLE_NODES)
     if require_planner_server:
         required_nodes["planner_server"] = "/planner_server"
+    cumulative_node_lines: set[str] = set()
     while time.time() < deadline:
         process: subprocess.Popen[str] | None = runtime.get("process")
         if process is not None and process.poll() is not None:
@@ -2695,12 +2736,18 @@ def wait_for_managed_runtime(
         # runtime wait 只确认节点已出现；用 rclpy graph 避免 ROS CLI 启动成本吃掉定位预算。
         node_list = rclpy_node_names(timeout_s=0.8)
         node_lines = {f"/{line.lstrip('/')}" for line in node_list.get("node_names", []) if isinstance(line, str)}
+        cumulative_node_lines.update(node_lines)
         lifecycle_active = {
             "map_server": "/map_server" in node_lines,
             "amcl": "/amcl" in node_lines,
         }
+        cumulative_lifecycle_active = {
+            "map_server": "/map_server" in cumulative_node_lines,
+            "amcl": "/amcl" in cumulative_node_lines,
+        }
         if require_planner_server:
             lifecycle_active["planner_server"] = "/planner_server" in node_lines
+            cumulative_lifecycle_active["planner_server"] = "/planner_server" in cumulative_node_lines
         if not node_list.get("ok"):
             history.append({"node_list": node_list, "lifecycle_active": lifecycle_active})
             time.sleep(0.6)
@@ -2708,17 +2755,27 @@ def wait_for_managed_runtime(
         snapshot = {
             "elapsed_ms": now_ms() - int(runtime["started_at_ms"]),
             "lifecycle_active": lifecycle_active,
+            "cumulative_lifecycle_active": cumulative_lifecycle_active,
+            "cumulative_node_names": sorted(cumulative_node_lines),
             "node_list_command": node_list,
         }
         history.append(snapshot)
-        if lifecycle_active.get("map_server") and lifecycle_active.get("amcl") and (
-            not require_planner_server or lifecycle_active.get("planner_server")
+        # ROS graph 在 Orange Pi 上会抖动；proof 要求是在窗口内观测到节点，而不是同一瞬间全在线。
+        if cumulative_lifecycle_active.get("map_server") and cumulative_lifecycle_active.get("amcl") and (
+            not require_planner_server or cumulative_lifecycle_active.get("planner_server")
         ):
-            return {"ok": True, "history": history, "node_list": node_list, "boundary": "managed_runtime_nodes_observed"}
+            return {
+                "ok": True,
+                "history": history,
+                "node_list": node_list,
+                "observed_node_names": sorted(cumulative_node_lines),
+                "boundary": "managed_runtime_nodes_observed",
+            }
         time.sleep(0.8)
     return {
         "ok": False,
         "reason": "managed_runtime_wait_timeout",
+        "boundary": "managed_runtime_wait_timeout",
         "history": history,
         "log_tail": preview_file(runtime["log_path"]),
     }
@@ -2832,12 +2889,12 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
                         "map_yaml": managed_runtime.get("map_yaml"),
                     },
                 )
-                # planner_server 的 costmap 激活依赖 map->base_link；必须先让 AMCL 接收 initialpose。
-                # 因此 runtime 启动阶段只等待 localization 节点，planner 在定位 ready 后再复查。
+                # planner_server 的 active 状态依赖 map->base_link；这里只等节点入 graph。
+                # 后续仍要单独复查 lifecycle，但 ComputePathToPose 本身也是 no-motion，可作为最终证据。
                 managed_runtime["wait_result"] = wait_for_managed_runtime(
                     args,
                     managed_runtime,
-                    require_planner_server=False,
+                    require_planner_server=bool(args.path_generation_opt_in),
                 )
                 phase_writer.record_phase(
                     "managed_runtime_wait",
@@ -3374,6 +3431,12 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             controller_server_active = True
             planner_lifecycle_active["controller_server"] = True
             planner_lifecycle_results["controller_server"] = recheck_planner_results["controller_server"]
+    graph_node_names = node_names_from_graph_result(node_list) | managed_runtime_observed_node_names(managed_runtime)
+    planner_server_observed = "/planner_server" in graph_node_names
+    controller_server_observed = "/controller_server" in graph_node_names
+    # lifecycle CLI 在板端偶发慢过 proof 窗口；ComputePathToPose 是只读 planner action，
+    # 节点已出现时允许 action 自己给出成功/超时证据，不把前置 CLI 超时误报成未启动。
+    planner_server_ready_for_path_generation = bool(planner_server_active or planner_server_observed)
     localization_root_causes = classify_root_causes(
         map_inputs=effective_map_inputs,
         ros2_ok=ros2_ok,
@@ -3395,7 +3458,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         args,
         ros2_ok=ros2_ok,
         localization_ready=path_generation_preconditions_ready,
-        planner_server_active=planner_server_active,
+        planner_server_active=planner_server_ready_for_path_generation,
         map_analysis=managed_map_analysis,
         initialpose_payload=initialpose_request_payload,
     )
@@ -3458,8 +3521,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         managed_runtime=managed_runtime,
         localization_ready=path_generation_preconditions_ready,
         planner_server_active=planner_server_active,
+        planner_server_observed=planner_server_observed,
         controller_server_requested=controller_server_requested,
         controller_server_active=controller_server_active,
+        controller_server_observed=controller_server_observed,
         path_generation_request=path_generation_request,
         path_generation_attempted=bool(path_generation_result.get("attempted")),
         path_generation_succeeded=bool(path_generation_result.get("ok")),
@@ -3507,6 +3572,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "base_link_to_laser_frame_transform": base_link_to_laser_frame_transform,
         "planner_server_active": planner_server_active,
         "controller_server_active": controller_server_active,
+        "planner_server_observed": planner_server_observed,
+        "controller_server_observed": controller_server_observed,
+        "planner_server_ready_for_path_generation": planner_server_ready_for_path_generation,
         "controller_server_requested": controller_server_requested,
         "planner_active": planner_server_active,
         "controller_active": controller_server_active,
@@ -3571,6 +3639,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "managed_runtime_boundary": managed_runtime.get("boundary"),
         "managed_runtime_map_yaml": managed_runtime.get("map_yaml"),
         "managed_runtime_map_yaml_source": managed_runtime.get("map_yaml_source"),
+        "managed_runtime_wait_result": managed_runtime.get("wait_result"),
         "managed_runtime_map_analysis": managed_map_analysis,
         "managed_runtime_vendor_boundary": managed_runtime.get("vendor_boundary"),
         "root_causes": root_causes,

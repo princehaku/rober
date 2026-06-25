@@ -384,6 +384,29 @@ pose:
 
         self.assertIs(map_inputs, effective)
 
+    def test_managed_runtime_observed_node_names_uses_wait_history(self) -> None:
+        """planner lifecycle CLI 超时时，也要保留 wait history 里的节点观测证据。"""
+        managed_runtime = {
+            "wait_result": {
+                "node_list": {"node_names": ["map_server"]},
+                "observed_node_names": ["planner_server"],
+                "history": [
+                    {"node_list_command": {"node_names": ["amcl", "planner_server"]}},
+                    {
+                        "cumulative_node_names": ["controller_server"],
+                        "node_list_command": {"stdout": "/lifecycle_manager\n"},
+                    },
+                ],
+            }
+        }
+
+        names = HELPER.managed_runtime_observed_node_names(managed_runtime)
+
+        self.assertIn("/map_server", names)
+        self.assertIn("/amcl", names)
+        self.assertIn("/planner_server", names)
+        self.assertIn("/controller_server", names)
+
     def test_path_generation_blocks_unknown_only_map_before_action(self) -> None:
         """没有 free cell 的地图不能进入 Nav2 action，避免把弱地图误报为可规划。"""
         args = HELPER.parse_args(
@@ -749,9 +772,14 @@ __TF_STATIC_ONCE__
             "package_checks_batch",
             "single_sourced_pkg_list_diagnostic",
             "planner_server_active",
+            "planner_server_observed",
+            "planner_server_ready_for_path_generation",
             "controller_server_active",
+            "controller_server_observed",
             "controller_server_requested",
             "planner_readiness_summary",
+            "managed_runtime_wait_result",
+            "require_planner_server=bool(args.path_generation_opt_in)",
             "explicit_opt_in_compute_path_to_pose_action_no_motion",
             "if source_chain_complete:",
             "planner_recheck_deferred_until_localization_ready",
