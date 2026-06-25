@@ -3344,6 +3344,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').classes()).toContain("mode-pose-missing");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').classes()).toContain("mode-pose-missing");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已运行扫描范围占位，等待机器人地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
@@ -3534,6 +3537,10 @@ describe("App", () => {
     expect(marker.text()).toBe("雷达");
     expect(marker.classes()).toContain("mode-known-pose-running");
     expect(marker.attributes("aria-label")).toBe("雷达已运行，已叠在机器人位置");
+    const sweep = wrapper.find('[data-testid="plain-map-radar-sweep"]');
+    expect(sweep.exists()).toBe(true);
+    expect(sweep.classes()).toContain("mode-known-pose-running");
+    expect(sweep.attributes("aria-label")).toBe("雷达已运行扫描范围，跟随机器人位置");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
@@ -7717,6 +7724,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').classes()).toContain("mode-pose-missing");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').classes()).toContain("mode-pose-missing");
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("先刷新雷达");

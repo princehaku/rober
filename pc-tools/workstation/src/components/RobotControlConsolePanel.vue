@@ -773,6 +773,10 @@ const plainMapVisualSummary = computed(() => {
     : radarNeedsMapPose
       ? `${radarState}，位置未读到`
       : radarState;
+  const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+  const radarSweepAria = poseObserved
+    ? `${radarState}扫描范围，跟随机器人位置`
+    : `${radarState}扫描范围占位，等待机器人地图位置`;
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]
     || mapRefreshResult.value?.last_result_evidence_ref
@@ -784,6 +788,8 @@ const plainMapVisualSummary = computed(() => {
     radarOverlayLabel,
     radarOverlayMode,
     radarOverlayAria: poseObserved ? `${radarState}，已叠在机器人位置` : `${radarState}，地图位置未读到`,
+    showRadarSweep,
+    radarSweepAria,
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
@@ -5413,6 +5419,7 @@ onBeforeUnmount(() => {
                   <polyline :points="plainMapVisualSummary.routePathPoints" />
                 </svg>
                 <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
+                <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" aria-hidden="true" />
                 <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" aria-label="机器人位置" />
                 <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing">{{ plainMapVisualSummary.poseLabel }}</span>
