@@ -2020,6 +2020,7 @@ export interface RobotControlOperatorHilMaterialSummary {
 
 export type RobotControlOperatorReportPreflightStatus =
   | "not_required_for_stop"
+  | "not_required_for_confirmed_manual"
   | "not_required_for_nav2_minimal_safety_precheck"
   | "passed"
   | "blocked";
@@ -2392,7 +2393,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     manual_motion_entry_label: "受控点动（需现场确认）";
     allowed_directions: Array<"forward" | "back" | "left" | "right" | "stop">;
     non_stop_requires_confirm_hil_checklist: true;
-    non_stop_requires_operator_report_preflight: true;
+    non_stop_requires_operator_report_preflight: boolean;
     operator_report_preflight_endpoint: "/api/operator/report";
     operator_report_preflight_required_fields: string[];
     speed_limit_mps: number;

@@ -805,8 +805,7 @@ const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ??
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
 const keyboardJogDurationMs = computed(() => manualBoundary.value?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS);
-const checklistMissing = computed(() => hilChecklist.value.filter((item) => !item.checked).map((item) => item.label));
-const hilChecklistConfirmed = computed(() => checklistMissing.value.length === 0);
+const plainManualSafetyConfirmed = computed(() => plainTripSafetyConfirmed.value || plainFreeRoamMappingConfirmed.value);
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const canRunEvidenceSweep = computed(() => !evidenceSweepPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const keyboardContractReady = computed(() => {
@@ -2443,27 +2442,6 @@ const plainWheelZeroBlockerButtonLabel = computed(() => (
   plainWheelZeroBlockerChecked.value ? "轮速卡点已检查" : "已检查轮速卡点"
 ));
 
-const plainWheelKeyboardBlockerPrefix = computed(() => {
-  // 键盘 gate 被轮速挡住时，也要在键盘区复述当前读数，避免用户来回翻轮速卡片。
-  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
-  const base = robotSummary.value?.readback_summary.base;
-  const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
-  const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
-  if (!isZeroWheelPair(left, right)) {
-    return "";
-  }
-  const frameCount = sample?.t1001_observed_count ?? base?.latest_t1001_observed_count ?? "not_loaded";
-  const voltage = formatPlainVoltage(base?.feedback_voltage_v);
-  const details = [`当前轮速 L/R=${left}/${right}`];
-  if (frameCount !== "not_loaded") {
-    details.push(`已读到 ${frameCount} 帧`);
-  }
-  if (voltage) {
-    details.push(`反馈电压约 ${voltage}V`);
-  }
-  return `${details.join("，")}；`;
-});
-
 const plainWheelReadbackSummary = computed(() => {
   // 只读底盘反馈可以解释“当前为什么还不是非零证据”，但不能替代试动窗口材料。
   const base = robotSummary.value?.readback_summary.base;
@@ -2532,8 +2510,8 @@ const plainFirstJogLidarDeltaReady = computed(() => {
 });
 
 const canSendManualMotion = computed(() => {
-  // 非 stop 方向必须同时满足地址、checklist、现场材料和“当前无 pending”。
-  return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
+  // 普通手控预检收敛为一个用户可见安全确认；后端仍负责固定方向、限速、限时和 stop 兜底。
+  return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
 });
 
 const keyboardControlSummary = computed(() => {
@@ -2571,24 +2549,8 @@ const plainKeyboardMissingLabels = computed(() => {
   if (!keyboardContractReady.value) {
     missing.add("键盘入口");
   }
-  if (!hilChecklistConfirmed.value) {
-    missing.add("移动前检查");
-  }
-  const materialMissing = operatorMaterialMissingFields.value;
-  if (materialMissing.some((field) => ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready"].includes(field))) {
-    missing.add(firstJogMaterialRestoreBlocksMotion.value ? "恢复试动确认" : "移动前检查");
-  }
-  if (materialMissing.some((field) => ["external_video_recorded", "visible_content_proven"].includes(field))) {
-    missing.add("现场画面");
-  }
-  if (materialMissing.includes("wheel_feedback_lr_nonzero_proven")) {
-    missing.add("轮速记录");
-  }
-  if (materialMissing.includes("physical_motion_lidar_delta_proven")) {
-    missing.add("雷达移动记录");
-  }
-  if (missing.size === 0 && !operatorMaterialReady.value) {
-    missing.add("现场材料读取");
+  if (!plainManualSafetyConfirmed.value) {
+    missing.add("安全确认");
   }
   return Array.from(missing);
 });
@@ -2607,7 +2569,7 @@ const plainKeyboardMissingSummary = computed(() => {
 
 const plainKeyboardMotionProofNextStep = computed(() => {
   const missingLabels = plainKeyboardMissingLabels.value;
-  const higherPriorityMissing = ["小车连接", "键盘入口", "移动前检查", "恢复试动确认", "现场画面"]
+  const higherPriorityMissing = ["小车连接", "键盘入口", "安全确认"]
     .some((label) => missingLabels.includes(label));
   // 只有连接、安全和画面这些前置步骤都过了，运动证据才是键盘 gate 的第一下一步。
   if (higherPriorityMissing) {
@@ -2630,23 +2592,8 @@ function plainKeyboardBlockedActionLabel(missingLabels: string[]): string {
   if (missingLabels.includes("键盘入口")) {
     return "先复查入口";
   }
-  if (missingLabels.includes("恢复试动确认")) {
-    return "先恢复确认";
-  }
-  if (missingLabels.includes("移动前检查")) {
-    return "先做检查";
-  }
-  if (missingLabels.includes("现场画面")) {
-    return "先记录画面";
-  }
-  if (plainKeyboardMotionProofNextStep.value === "wheel") {
-    return "先补轮速";
-  }
-  if (plainKeyboardMotionProofNextStep.value === "lidar") {
-    return "先补雷达";
-  }
-  if (missingLabels.includes("现场材料读取")) {
-    return "先复查材料";
+  if (missingLabels.includes("安全确认")) {
+    return "先勾安全确认";
   }
   return "";
 }
@@ -2684,38 +2631,10 @@ const plainKeyboardNextActionSummary = computed(() => {
   if (!keyboardContractReady.value) {
     return "下一步：复查手控条件。";
   }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return "下一步：恢复试动确认（不会发车）。";
+  if (!plainManualSafetyConfirmed.value) {
+    return "下一步：勾选安全确认。";
   }
-  if (!hilChecklistConfirmed.value) {
-    return "下一步：完成移动前检查。";
-  }
-  const materialMissing = operatorMaterialMissingFields.value;
-  if (materialMissing.some((field) => ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready"].includes(field))) {
-    return firstJogMaterialRestoreBlocksMotion.value ? "下一步：恢复试动确认（不会发车）。" : "下一步：完成移动前检查。";
-  }
-  if (materialMissing.some((field) => ["external_video_recorded", "visible_content_proven"].includes(field))) {
-    return "下一步：记录现场画面。";
-  }
-  if (materialMissing.includes("wheel_feedback_lr_nonzero_proven")) {
-    if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
-      return `${plainWheelKeyboardBlockerPrefix.value}下一步：检查轮速卡点，再重试读非零 L/R。`;
-    }
-    if (plainWheelZeroBlockerActive.value) {
-      return `${plainWheelKeyboardBlockerPrefix.value}下一步：重试读非零 L/R，并保存轮速记录。`;
-    }
-    return "下一步：读取并保存轮速记录。";
-  }
-  if (materialMissing.includes("physical_motion_lidar_delta_proven")) {
-    if (plainRadarStartUnavailable.value) {
-      return "下一步：先配置雷达启动命令，再试动读取雷达移动记录。";
-    }
-    if (plainRadarRequiresRefresh.value) {
-      return "下一步：先刷新雷达，再试动读取雷达移动记录。";
-    }
-    return showPlainRadarStart.value ? "下一步：先启动雷达，再试动读取雷达移动记录。" : "下一步：试动读取雷达移动记录。";
-  }
-  return "下一步：复查手控条件。";
+  return "下一步：点启用键盘，按住方向键才会动。";
 });
 
 const plainKeyboardControlSummary = computed(() => {
@@ -2757,11 +2676,8 @@ const manualBlockedReason = computed(() => {
   if (manualCommandPending.value || loading.value) {
     return "当前仍有请求处理中；本机不会并发发送点动。";
   }
-  if (!hilChecklistConfirmed.value) {
-    return `还缺现场确认：${checklistMissing.value.join("；")}。`;
-  }
-  if (!operatorMaterialReady.value) {
-    return `材料未满足，本机不会发送点动。缺项：${operatorMaterialMissingFields.value.join("、")}。`;
+  if (!plainManualSafetyConfirmed.value) {
+    return "先勾选安全确认：人在旁边、周围安全、停止手段就绪。";
   }
   return "允许发送一次低速短时点动；安全锁定不会解除。";
 });
@@ -2924,7 +2840,7 @@ function requestBodyForDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
-    confirm_hil_checklist: hilChecklistConfirmed.value,
+    confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
 }
 
@@ -2934,7 +2850,7 @@ function requestBodyForKeyboardDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
-    confirm_hil_checklist: hilChecklistConfirmed.value,
+    confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
 }
 
@@ -4976,10 +4892,10 @@ async function sendManualMotion(direction: ManualDirection): Promise<void> {
       clamped_speed_mps: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
       requested_duration_ms: jogDurationMs.value,
       clamped_duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
-      confirm_hil_checklist: hilChecklistConfirmed.value,
+      confirm_hil_checklist: plainManualSafetyConfirmed.value,
       non_stop_requires_confirm_hil_checklist: true,
-      hil_checklist_gate_status: hilChecklistConfirmed.value ? "manual_allowed" : "manual_blocked_missing_checklist",
-      checklist_missing: checklistMissing.value,
+      hil_checklist_gate_status: plainManualSafetyConfirmed.value ? "manual_allowed" : "manual_blocked_missing_checklist",
+      checklist_missing: plainManualSafetyConfirmed.value ? [] : ["安全确认"],
       operator_report_preflight: commandOperatorReportPreflightFallback("manual", err instanceof Error ? err.message : "manual_request_failed"),
       request_contract: {
         max_speed_mps: manualSpeedLimit.value,
@@ -5595,6 +5511,10 @@ onBeforeUnmount(() => {
 
         <article class="snapshot-panel">
           <h3>移动/导航</h3>
+          <label class="plain-trip-confirm">
+            <input v-model="plainTripSafetyConfirmed" type="checkbox" data-testid="plain-motion-safety-confirm">
+            <span>人在旁边、周围安全、停止手段就绪</span>
+          </label>
           <div class="panel-action-row wrap-actions">
             <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
             <button type="button" :disabled="loading || localizationResetPending || !robotApiBaseUrl.trim()" @click="resetLocalizationProof">
@@ -6736,17 +6656,17 @@ onBeforeUnmount(() => {
             <dd>{{ operatorMaterialMissingFields.length ? operatorMaterialMissingFields.join(", ") : "none" }}</dd>
             <dt>operator report preflight</dt>
             <dd>
-              {{ manualCommandResult?.operator_report_preflight.status ?? "not_loaded" }} /
-              {{ manualCommandResult?.operator_report_preflight.failure_reason || "none" }}
+              {{ manualCommandResult?.operator_report_preflight?.status ?? "not_loaded" }} /
+              {{ manualCommandResult?.operator_report_preflight?.failure_reason || "none" }}
             </dd>
             <dt>operator report preflight missing</dt>
-            <dd>{{ listText(manualCommandResult?.operator_report_preflight.missing_fields, "none") }}</dd>
+            <dd>{{ listText(manualCommandResult?.operator_report_preflight?.missing_fields, "none") }}</dd>
             <dt>operator report preflight summary</dt>
             <dd>
-              endpoint={{ manualCommandResult?.operator_report_preflight.source_endpoint ?? "/api/operator/report" }},
-              http={{ manualCommandResult?.operator_report_preflight.http_status ?? "n/a" }},
-              report={{ manualCommandResult?.operator_report_preflight.report_status ?? "not_loaded" }},
-              evidence={{ manualCommandResult?.operator_report_preflight.evidence_ref ?? "not_loaded" }}
+              endpoint={{ manualCommandResult?.operator_report_preflight?.source_endpoint ?? "/api/operator/report" }},
+              http={{ manualCommandResult?.operator_report_preflight?.http_status ?? "n/a" }},
+              report={{ manualCommandResult?.operator_report_preflight?.report_status ?? "not_loaded" }},
+              evidence={{ manualCommandResult?.operator_report_preflight?.evidence_ref ?? "not_loaded" }}
             </dd>
             <dt>manual stop endpoint</dt>
             <dd>{{ robotSummary?.safe_command_boundary.stop_endpoint ?? "/api/base/stop" }}</dd>

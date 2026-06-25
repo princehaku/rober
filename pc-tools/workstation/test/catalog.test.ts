@@ -3678,7 +3678,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.stop_endpoint).toBe("/api/base/stop");
       expect(summary.safe_command_boundary.cmd_vel_topic).toBe("/cmd_vel");
       expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_hil_checklist_and_operator_report");
-      expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(true);
+      expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);
       expect(summary.safe_command_boundary.operator_report_preflight_endpoint).toBe("/api/operator/report");
       expect(summary.safe_command_boundary.operator_report_preflight_required_fields).toContain("scan_delta_ref");
       expect(summary.safe_command_boundary.allowed_directions).toEqual(["forward", "back", "left", "right", "stop"]);
@@ -6072,7 +6072,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("workstation base manual proxy clamps request and requires confirm_hil_checklist", async () => {
-    // 受控点动代理只允许固定 manual endpoint，并且必须经过 checklist gate、现场材料 gate 与速度/时长 clamp。
+    // 受控点动代理只允许固定 manual endpoint，并且必须经过安全确认 gate 与速度/时长 clamp。
     const upstream = await listenRobotBaseCommandApi({
       "/api/base/manual": {
         payload: {
@@ -6143,9 +6143,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(forwardedBody.applied_direction).toBe("forward");
       expect(forwardedBody.clamped_speed_mps).toBe(0.12);
       expect(forwardedBody.clamped_duration_ms).toBe(800);
-      expect(forwardedBody.operator_report_preflight.status).toBe("passed");
+      expect(forwardedBody.operator_report_preflight.status).toBe("not_required_for_confirmed_manual");
       expect(forwardedBody.operator_report_preflight.missing_fields).toEqual([]);
-      expect(forwardedBody.operator_report_preflight.evidence_ref).toBe("field-hil-manual-preflight");
+      expect(forwardedBody.operator_report_preflight.evidence_ref).toBe("not_required_for_confirmed_manual");
       expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
         {
           direction: "forward",
@@ -6154,15 +6154,15 @@ describe("workstation fail-closed API contracts", () => {
           confirm_hil_checklist: true,
         },
       ]);
-      expect(upstream.receivedGets).toContain("/api/operator/report");
+      expect(upstream.receivedGets).not.toContain("/api/operator/report");
     } finally {
       await workstation.close();
       await upstream.close();
     }
   });
 
-  it("workstation base manual proxy rejects checklist-confirmed motion when operator report material is incomplete", async () => {
-    // 材料 gate 失败必须在本机 400 截断，不能把 forward/back/left/right 透传给真实上位机。
+  it("workstation base manual proxy no longer blocks confirmed low-speed motion on operator report material", async () => {
+    // 最新普通首屏口径：勾安全确认即可低速手控；operator report 材料不再阻塞 manual pulse。
     const upstream = await listenRobotBaseCommandApi({
       "/api/base/manual": {
         payload: { schema: "trashbot.upper_robot_api.v1.base_manual", status: "should_not_be_called" },
@@ -6207,22 +6207,25 @@ describe("workstation fail-closed API contracts", () => {
         failure_reason: string;
         operator_report_preflight: { status: string; missing_fields: string[]; failure_reason: string };
         robot_control_executed: boolean;
+        safe_to_control: boolean;
       };
 
-      expect(response.status).toBe(400);
-      expect(body.proxy_status).toBe("command_rejected");
-      expect(body.failure_reason).toBe("operator_report_preflight_required");
-      expect(body.operator_report_preflight.status).toBe("blocked");
-      expect(body.operator_report_preflight.missing_fields).toEqual(expect.arrayContaining([
-        "wheel_feedback_lr_nonzero_proven",
-        "wheel_feedback_ref",
-        "physical_motion_lidar_delta_proven",
-        "scan_delta_ref",
-      ]));
-      expect(body.operator_report_preflight.missing_fields).not.toContain("delivery_success");
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("command_forwarded");
+      expect(body.failure_reason).toBe("");
+      expect(body.operator_report_preflight.status).toBe("not_required_for_confirmed_manual");
+      expect(body.operator_report_preflight.missing_fields).toEqual([]);
+      expect(body.safe_to_control).toBe(false);
       expect(body.robot_control_executed).toBe(false);
-      expect(upstream.receivedGets).toContain("/api/operator/report");
-      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+      expect(upstream.receivedGets).not.toContain("/api/operator/report");
+      expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
+        {
+          direction: "forward",
+          speed: 0.08,
+          duration_ms: 500,
+          confirm_hil_checklist: true,
+        },
+      ]);
     } finally {
       await workstation.close();
       await upstream.close();

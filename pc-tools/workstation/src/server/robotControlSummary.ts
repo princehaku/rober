@@ -567,6 +567,17 @@ export function notRequiredOperatorReportPreflight(): RobotControlOperatorReport
   };
 }
 
+export function notRequiredConfirmedManualOperatorReportPreflight(): RobotControlOperatorReportPreflight {
+  // 最新普通首屏口径：非 stop 手控只要求本地安全确认，operator report 材料不再阻塞低速脉冲。
+  return {
+    ...notRequiredOperatorReportPreflight(),
+    status: "not_required_for_confirmed_manual",
+    report_status: "not_required_for_confirmed_manual",
+    evidence_ref: "not_required_for_confirmed_manual",
+    required_fields: [],
+  };
+}
+
 function notRequiredNav2OperatorReportPreflight(): RobotControlOperatorReportPreflight {
   // Nav2 发车前预检按最新产品口径只要求本地安全确认；operator report 材料不再阻塞导航预检。
   return {
@@ -2742,12 +2753,12 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
       ],
     },
     map_click_goal: "map click goal locked",
-    locked_reason: "bounded manual and keyboard pulse control require checklist and operator report materials; primary autonomy and safe_control remain locked",
+    locked_reason: "bounded manual and keyboard pulse control require operator safety confirmation; primary autonomy and safe_control remain locked",
     manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report",
     manual_motion_entry_label: "受控点动（需现场确认）",
     allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
     non_stop_requires_confirm_hil_checklist: true,
-    non_stop_requires_operator_report_preflight: true,
+    non_stop_requires_operator_report_preflight: false,
     operator_report_preflight_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
     operator_report_preflight_required_fields: [...ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS],
     speed_limit_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,

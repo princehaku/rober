@@ -481,7 +481,7 @@ const fixtures: Record<string, unknown> = {
       manual_motion_entry_label: "受控点动（需现场确认）",
       allowed_directions: ["forward", "back", "left", "right", "stop"],
       non_stop_requires_confirm_hil_checklist: true,
-      non_stop_requires_operator_report_preflight: true,
+      non_stop_requires_operator_report_preflight: false,
       operator_report_preflight_endpoint: "/api/operator/report",
       operator_report_preflight_required_fields: [
         "operator_present",
@@ -3322,11 +3322,11 @@ describe("App", () => {
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
-    expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口、移动前检查、雷达移动记录。");
+    expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口、安全确认。");
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先复查入口，不发车）");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先复查入口）");
     expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：复查手控条件。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口、移动前检查、雷达移动记录。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口、安全确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：复查手控条件。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("已完成。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
@@ -3869,10 +3869,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：送达草稿覆盖了试动确认，先恢复试动确认，再低速试动读非零 L/R。");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去恢复确认");
     expect(wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').text()).toBe("去恢复");
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先恢复确认）");
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先恢复确认，不发车）");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：恢复试动确认（不会发车）。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：移动前检查、恢复试动确认、轮速记录、雷达移动记录。");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：勾选安全确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：安全确认。");
     const callsBeforeFocus = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     expect(focusSpy).toHaveBeenCalled();
@@ -4597,11 +4597,12 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
     const diagnostics = wrapper.find(".robot-console .advanced-details");
-    expect(diagnostics.text()).toContain("材料未满足，本机不会发送点动");
+    expect(diagnostics.text()).toContain("材料未满足");
     expect(diagnostics.text()).toContain("external_video_recorded");
     expect(diagnostics.text()).toContain("visible_content_proven");
     expect(diagnostics.text()).toContain("wheel_feedback_lr_nonzero_proven");
@@ -4620,16 +4621,17 @@ describe("App", () => {
     const motionButtons = wrapper.findAll(".motion-pad button");
     const forwardButton = motionButtons.find((button) => button.text() === "前进");
     const stopButton = motionButtons.find((button) => button.text() === "停止");
-    expect(forwardButton?.attributes("disabled")).toBeDefined();
+    expect(forwardButton?.attributes("disabled")).toBeUndefined();
     expect(stopButton?.attributes("disabled")).toBeUndefined();
 
     await forwardButton?.trigger("click");
     await flushPromises();
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    const manualCallsAfterForward = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    expect(manualCallsAfterForward).toBe(1);
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterForward);
     expect(wrapper.find(".robot-console .advanced-details").text()).not.toContain("blocked_keyboard_manual_gate");
 
     const blockedArmButton = wrapper.find('[data-testid="keyboard-control-arm"]');
@@ -4641,7 +4643,7 @@ describe("App", () => {
     await blockedKeyboardPanel.trigger("keydown", { key: "w" });
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterForward);
     expect(wrapper.find(".robot-console .advanced-details").text()).not.toContain("blocked_keyboard_manual_gate");
     const feedbackCallsBeforeKeyboardRecheck = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/feedback-samples?"),
@@ -4652,7 +4654,7 @@ describe("App", () => {
     expect(
       mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?")).length,
     ).toBe(feedbackCallsBeforeKeyboardRecheck + 1);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterForward);
 
     await stopButton?.trigger("click");
     await flushPromises();
@@ -4706,18 +4708,17 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
     const armButton = wrapper.find('[data-testid="keyboard-control-arm"]');
-    expect(armButton.text()).toBe("启用键盘（先补轮速）");
-    expect(armButton.attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先补轮速，不发车）");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V；下一步：检查轮速卡点，再重试读非零 L/R。");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).not.toContain("12.43049049V");
+    expect(armButton.text()).toBe("启用键盘（按键才动）");
+    expect(armButton.attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').exists()).toBe(false);
 
     await armButton.trigger("click");
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -4733,8 +4734,8 @@ describe("App", () => {
       mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?")).length,
     ).toBe(feedbackCallsBeforeKeyboardRecheck + 1);
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeKeyboardRecheck);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-zero-check"]').element);
-    expect(visiblePlainHomeText(wrapper)).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V；下一步：检查轮速卡点，再重试读非零 L/R。");
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-arm"]').element);
+    expect(visiblePlainHomeText(wrapper)).toContain("键盘已解锁；点击启用键盘后按住方向键连续验证");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
@@ -4771,18 +4772,18 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
     const armButton = wrapper.find('[data-testid="keyboard-control-arm"]');
-    expect(armButton.text()).toBe("启用键盘（先补雷达）");
-    expect(armButton.attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先补雷达，不发车）");
-    expect(visiblePlainHomeText(wrapper)).toContain("下一步：先启动雷达，再试动读取雷达移动记录。");
+    expect(armButton.text()).toBe("启用键盘（按键才动）");
+    expect(armButton.attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
+    expect(visiblePlainHomeText(wrapper)).toContain("键盘已解锁；点击启用键盘后按住方向键连续验证");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(true);
 
     await armButton.trigger("click");
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -4790,7 +4791,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-goal-progress-go-keyboard"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-arm"]').element);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
   });
 
@@ -4818,6 +4819,7 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -5168,9 +5170,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先恢复确认）");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先恢复确认）");
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先恢复确认，不发车）");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：恢复试动确认（不会发车）。");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：勾选安全确认。");
     const firstJogButtonBeforeRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButtonBeforeRestore).toBeTruthy();
     expect(firstJogButtonBeforeRestore?.attributes("disabled")).toBeDefined();
@@ -6322,6 +6324,7 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
     const confirmButton = wrapper.findAll(".advanced-details button").find((button) => button.text() === "提交送达材料并确认（高级）");
@@ -6999,6 +7002,7 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -7244,6 +7248,7 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -7315,6 +7320,7 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -7394,6 +7400,7 @@ describe("App", () => {
     for (const checkbox of checklistInputs) {
       await checkbox.setValue(true);
     }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
 

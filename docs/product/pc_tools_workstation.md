@@ -1770,3 +1770,11 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 “最佳连续”：松开方向键后当前按住计数清零，只有同一次按住会话内连续成功转发至少 2 个 bounded manual pulse，
 `本轮进度` 才显示键盘已验证。两次分开的单脉冲只会显示 `最佳连续 1/2 次`，仍要求继续按住完成连续验证。
 该规则不放宽 manual gate，不发送额外 Nav2、delivery complete、first-jog、stop 或 `/cmd_vel`。
+
+2026-06-25 16:06 起，PC 普通首屏手控预检精简为最小安全确认：勾选 `人在旁边、周围安全、停止手段就绪`
+或扫地式建图卡片的同等安全确认后，即可启用键盘连续手控和固定低速点动。`POST /api/robot-control/base/manual`
+仍只允许固定 `/api/base/manual`、固定方向枚举、速度 `<=0.12 m/s`、时长 `<=800 ms`，并继续要求
+`confirm_hil_checklist=true`；但 Node 代理不再为了普通手控额外读取 `/api/operator/report`，响应中的
+`operator_report_preflight.status` 记录为 `not_required_for_confirmed_manual`，
+`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false` 仍不变。
+operator report、轮速非零、LiDAR delta 和送达材料继续作为证据/验收流程展示，但不再阻塞普通低速手控入口。

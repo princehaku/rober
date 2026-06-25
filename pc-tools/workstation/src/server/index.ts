@@ -45,7 +45,7 @@ import {
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
   fetchFirstJogOperatorReportPreflight,
-  fetchManualMotionOperatorReportPreflight,
+  notRequiredConfirmedManualOperatorReportPreflight,
   notRequiredOperatorReportPreflight,
   scanDangerousTrueFields,
 } from "./robotControlSummary";
@@ -1148,7 +1148,7 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.post("/api/robot-control/base/manual", async (req, res) => {
-    // 点动代理只允许固定 manual endpoint；非 stop 动作必须明确通过 HIL checklist gate。
+    // 点动代理只允许固定 manual endpoint；非 stop 动作必须明确通过本地安全确认 gate。
     const sourceBaseUrl = queryString(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
@@ -1185,24 +1185,7 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
-    const operatorReportPreflight = await fetchManualMotionOperatorReportPreflight(normalized.normalized);
-    if (operatorReportPreflight.status !== "passed") {
-      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
-      res.status(400).json(baseCommandFailure(
-        sourceBaseUrl,
-        "manual",
-        "/api/base/manual",
-        "operator_report_preflight_required",
-        direction,
-        speed,
-        durationMs,
-        confirmHilChecklist,
-        evidenceCapture,
-        operatorReportPreflight,
-      ));
-      return;
-    }
+    const operatorReportPreflight = notRequiredConfirmedManualOperatorReportPreflight();
 
     const clampedSpeed = clamp(speed, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS);
     const clampedDurationMs = clamp(durationMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS);
