@@ -1900,6 +1900,11 @@ fail-closed 校验。PC 工作站仍监听 `0.0.0.0:7001`，该默认值只减�
 也标明等待刷新确认。该状态只表达“启动命令已返回，下一步刷新确认”，不把雷达冒充为实时运行、不贴假地图坐标，
 不自动刷新 proof、不发送 manual、keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 01:42 起，普通首屏点击 `启动雷达` 且固定 radar lifecycle 代理返回失败时，地图上的雷达 marker
+同步显示 `雷达启动失败：<failure_reason>`，`data-state=雷达启动失败`，freshness 明确说明未显示新点位，
+并隐藏扫描范围占位。该失败态只消费本次 start proxy 响应，不自动重试、不自动刷新 proof、不触发底盘 manual、
+keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-26 00:35 起，普通首屏“扫地式建图”新增 `扫图状态` 行：未确认时显示小车不会移动，记录未启动时显示键盘扫图锁定，
 记录中显示先启用键盘，键盘已启用时提示按住方向键/WASD 低速扫图，按住时显示当前方向和本次连续 pulse 进度，松开并发送
 stop 后提示刷新扫图画面或保存地图。该状态只解释现有本地流程和 bounded manual pulse 结果，不自动启用键盘、不自动移动、

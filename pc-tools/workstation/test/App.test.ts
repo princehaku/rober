@@ -9152,6 +9152,11 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达启动没有成功：command_not_configured。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达启动失败：command_not_configured");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达启动失败");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动失败：command_not_configured，地图位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达启动失败，未显示新点位。");
     expect(focusSpy).toHaveBeenCalled();
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-start"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) =>

@@ -438,6 +438,19 @@ function radarStartCommandConfigured(): boolean {
 
 type PlainRadarState = "雷达未运行" | "雷达启动中" | "雷达待刷新" | "刷新中" | "雷达已运行" | "刷新失败";
 
+function radarStartFailed(result: RobotControlRadarLifecycleResponse | null): boolean {
+  // start 失败要贴回地图，避免按钮区说失败、地图却仍只显示泛化“未运行”。
+  return Boolean(result && result.action === "start" && !radarStartSucceeded(result));
+}
+
+function radarStartFailureLabel(result: RobotControlRadarLifecycleResponse | null): string {
+  // 普通首屏沿用上位机短 failure_reason；完整 guard 细节仍留在高级诊断。
+  if (!radarStartFailed(result)) {
+    return "";
+  }
+  return result?.failure_reason ? `雷达启动失败：${result.failure_reason}` : "雷达启动失败";
+}
+
 function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
   if (radarLifecyclePendingAction.value === "start") {
@@ -1107,6 +1120,9 @@ function plainRadarFreshnessLabel(
   if (radarState === "雷达启动中") {
     return "雷达点口径：雷达启动命令发送中，返回并刷新后才显示新点位。";
   }
+  if (radarState === "雷达启动失败") {
+    return "雷达点口径：雷达启动失败，未显示新点位。";
+  }
   if (radarState === "雷达待刷新" || radarState === "刷新中") {
     return localPointCount > 0
       ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
@@ -1285,6 +1301,8 @@ const plainMapVisualSummary = computed(() => {
   const radarState = radarSummary.value.state;
   const lidar = robotSummary.value?.readback_summary.lidar;
   const radarStartAwaitingRefresh = radarStartSucceeded(radarLifecycleResult.value) && !radarFieldIsTrue(lidar?.lifecycle_running);
+  const radarStartFailureText = radarStartFailureLabel(radarLifecycleResult.value);
+  const displayedRadarState = radarStartFailureText ? "雷达启动失败" : radarState;
   const radarNeedsMapPose = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarOverlayMode = poseObserved
     ? radarState === "雷达已运行"
@@ -1300,12 +1318,16 @@ const plainMapVisualSummary = computed(() => {
   const radarLocalPointCount = radarLocalScanOverlay.dots.length;
   const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;
   const radarOverlayLabel = poseObserved
-    ? radarStartAwaitingRefresh
+    ? radarStartFailureText
+      ? radarStartFailureText
+      : radarStartAwaitingRefresh
       ? "雷达已启动，待刷新"
       : radarState === "雷达已运行"
       ? "雷达"
       : radarState
-    : radarStartAwaitingRefresh
+    : radarStartFailureText
+      ? radarStartFailureText
+      : radarStartAwaitingRefresh
       ? "雷达已启动，位置未读到"
       : radarNeedsMapPose
       ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : `${radarState}，位置未读到`
@@ -1319,10 +1341,14 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达已启动扫描范围占位，等待刷新确认和机器人地图位置"
       : `${radarState}扫描范围占位，等待机器人地图位置`;
   const radarOverlayAria = poseObserved
-    ? radarStartAwaitingRefresh
+    ? radarStartFailureText
+      ? `${radarStartFailureText}，已叠在机器人位置`
+      : radarStartAwaitingRefresh
       ? "雷达已启动，已叠在机器人位置，等待刷新确认"
       : `${radarState}，已叠在机器人位置`
-    : radarStartAwaitingRefresh
+    : radarStartFailureText
+      ? `${radarStartFailureText}，地图位置未读到`
+      : radarStartAwaitingRefresh
       ? "雷达已启动，地图位置未读到，等待刷新确认"
       : radarNeedsMapPose && radarLocalPointCount > 0
         ? `${radarState}，地图位置未读到，局部轮廓 ${radarLocalPointCount} 个点等待定位`
@@ -1334,7 +1360,7 @@ const plainMapVisualSummary = computed(() => {
   return {
     state,
     poseLabel: poseObserved ? "位置已读到" : "位置未读到",
-    radarLabel: radarState,
+    radarLabel: displayedRadarState,
     radarOverlayLabel,
     radarOverlayMode,
     radarOverlayAria,
@@ -1343,8 +1369,8 @@ const plainMapVisualSummary = computed(() => {
     radarSweepAria,
     radarScanDots: radarScanOverlay.dots,
     radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : radarScanOverlay.label,
-    radarFreshnessLabel: plainRadarFreshnessLabel(radarState, poseObserved, radarScanOverlay, radarLocalScanOverlay),
-    coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath, radarState),
+    radarFreshnessLabel: plainRadarFreshnessLabel(displayedRadarState, poseObserved, radarScanOverlay, radarLocalScanOverlay),
+    coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath, displayedRadarState),
     tripExecutionLabel: plainMapTripExecutionLabel(),
     showRadarScanPoints: showRadarSweep && radarScanOverlay.dots.length > 0,
     radarScanAria: `雷达点位，${radarScanOverlay.label}`,
