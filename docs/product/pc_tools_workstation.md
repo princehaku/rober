@@ -2164,6 +2164,11 @@ base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd
 `停止收口` 显示“扫图已停止并保存”，`保存地图` 在保存后 preview 已转发时显示“已保存，地图画面已自动刷新，可以检查效果”。
 该变化只调整本地 WYSIWYG 文案，不发送 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 03:15 起，普通首屏地图上的扫图流程 marker 也会同步保存后地图画面新鲜度：保存成功且 preview 已自动刷新时显示
+`地图已保存，画面已刷新`，可访问说明写明“地图画面已自动刷新，可以检查效果”；保存成功但还没读到刷新画面时仍只显示
+`地图已保存`。该 marker 只消费本页 map save 与 map preview 结果，不再次保存、不发送 manual/keyboard pulse、Nav2、
+delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-26 02:20 起，普通首屏地图上的 Nav2 目标 marker 会在本轮 `delivery success` 已通过且 route/map ref 对齐当前
 Nav2 execution evidence 时，从 `已到达` 提升为 `已送达`。该 marker 只消费已读到的 Nav2 latest/execute 和
 delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。

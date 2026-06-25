@@ -1379,7 +1379,9 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label: "地图记录中", state: "recording", style, aria: `地图记录已启动，等待扫图移动${locatedSuffix}` };
   }
   if (mapSavedThisSession.value) {
-    return { label: "地图已保存", state: "saved", style, aria: `扫图地图已保存${locatedSuffix}` };
+    const label = plainFreeRoamSavedMapPreviewFreshForSession.value ? "地图已保存，画面已刷新" : "地图已保存";
+    const freshnessText = plainFreeRoamSavedMapPreviewFreshForSession.value ? "，地图画面已自动刷新，可以检查效果" : "";
+    return { label, state: "saved", style, aria: `扫图地图已保存${freshnessText}${locatedSuffix}` };
   }
   return null;
 }
