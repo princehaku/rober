@@ -2936,7 +2936,7 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
     free_roam_autonomy: "locked",
     free_roam_autonomy_label: "自动扫图（未开放）",
     free_roam_autonomy_policy: {
-      // 自动扫图不是 PC 端无限发点动；必须先有上车端避障、watchdog 和 HIL 证据。
+      // 自动扫图不是 PC 端无限发点动；必须先有上车端避障、watchdog 和真车验证证据。
       mode: "requires_onboard_watchdog_lidar_obstacle_gate_and_hil",
       max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
       max_runtime_s: 60,
@@ -2948,6 +2948,43 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
         "free_roam_hil_artifact",
       ],
     },
+    free_roam_autonomy_gates: [
+      {
+        id: "onboard_watchdog",
+        label: "上车端自动停止",
+        state: "blocked",
+        evidence: "未读到上车端自动扫图停止保护",
+        next_action: "先实现并验证上车端自动停止",
+      },
+      {
+        id: "lidar_obstacle_gate",
+        label: "雷达避障",
+        state: "blocked",
+        evidence: "未读到自动扫图专用雷达避障检查",
+        next_action: "接入实时障碍距离检查并验证会停",
+      },
+      {
+        id: "fresh_map_preview",
+        label: "地图刷新",
+        state: "not_proven",
+        evidence: "PC 可只读刷新地图画面，但不是上车端自动探索证据",
+        next_action: "把地图覆盖变化写入自动扫图验证记录",
+      },
+      {
+        id: "operator_stop_fallback",
+        label: "停止按钮兜底",
+        state: "ready",
+        evidence: "PC 固定停止按钮已存在，仍需现场保持可点击",
+        next_action: "现场验证自动扫图停止响应时间",
+      },
+      {
+        id: "free_roam_hil_artifact",
+        label: "自动扫图真车验证",
+        state: "blocked",
+        evidence: "未提交自动扫图真车验证记录",
+        next_action: "完成真车低速自动扫图验证后再开放按钮",
+      },
+    ],
     map_click_goal: "map click goal locked",
     locked_reason: "bounded manual and keyboard pulse control require operator safety confirmation; primary autonomy and safe_control remain locked",
     manual_motion_entry_status: "controlled_jog_requires_safety_confirmation_only",

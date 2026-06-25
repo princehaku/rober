@@ -1929,3 +1929,8 @@ manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`；真实移动�
 让覆盖条在扫图过程中跟随更新；状态会显示 `地图画面已跟随刷新`。这次按住中的刷新不计入保存 gate，保存仍需松开并完成
 stop 后的刷新；因此不会鼓励边移动边保存。该刷新不新增 manual/keyboard pulse、不执行 Nav2、不提交 delivery complete、
 不发送 stop 或 `/cmd_vel`。
+
+2026-06-25 20:58 起，普通首屏“自动扫图准备”会读取 `safe_command_boundary.free_roam_autonomy_gates` 并显示逐项门禁：
+上车端自动停止、雷达避障、地图刷新、停止按钮兜底、自动扫图真车验证。状态只显示 `已满足/未满足/待验证` 和下一步提示，
+用于解释为什么自动扫图按钮仍锁定。该门禁展示不开放自动扫图、不自动开始记录、不发送 manual/keyboard pulse/Nav2/
+delivery complete/stop 或 `/cmd_vel`。

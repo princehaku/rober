@@ -2422,6 +2422,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       max_runtime_s: number;
       required_gates: string[];
     };
+    free_roam_autonomy_gates: Array<{
+      id: string;
+      label: string;
+      state: "ready" | "blocked" | "not_proven";
+      evidence: string;
+      next_action: string;
+    }>;
     map_click_goal: "map click goal locked";
     locked_reason: string;
     manual_motion_entry_status: "controlled_jog_requires_safety_confirmation_only";

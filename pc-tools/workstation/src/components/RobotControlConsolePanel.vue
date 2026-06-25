@@ -1399,14 +1399,41 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const gateLabel = (gate: string): string => {
     // 后端合同保留英文 token 便于测试和集成，普通首屏只显示现场可理解的中文。
     const labels: Record<string, string> = {
-      onboard_watchdog: "上车端 watchdog",
+      onboard_watchdog: "上车端自动停止",
       lidar_obstacle_gate: "雷达避障",
       fresh_map_preview: "地图刷新",
       operator_stop_fallback: "停止兜底",
-      free_roam_hil_artifact: "自动扫图 HIL 证据",
+      free_roam_hil_artifact: "自动扫图真车验证",
     };
     return labels[gate] ?? gate;
   };
+  const gateStateLabel = (state: string): string => {
+    if (state === "ready") {
+      return "已满足";
+    }
+    if (state === "blocked") {
+      return "未满足";
+    }
+    return "待验证";
+  };
+  const gateHintText = (value: string | undefined): string => {
+    // 多行 gate 在测试和读屏时会拼成连续文本；补句号避免“停止”“雷达”等跨行误连。
+    const text = value?.trim() || "等待上车端报告";
+    return /[。！？.!?]$/.test(text) ? text : `${text}。`;
+  };
+  const contractGateRows = boundary?.free_roam_autonomy_gates?.length
+    ? boundary.free_roam_autonomy_gates.map((gate) => ({
+      id: gate.id,
+      label: gate.label || gateLabel(gate.id),
+      state: gateStateLabel(gate.state),
+      hint: gateHintText(gate.next_action || gate.evidence),
+    }))
+    : policyGates.map((gate) => ({
+      id: gate,
+      label: gateLabel(gate),
+      state: "待验证",
+      hint: gateHintText(undefined),
+    }));
   const speedLimit = policy?.max_speed_mps ?? manualSpeedLimit.value;
   const runtimeLimit = policy?.max_runtime_s ?? 60;
   return {
@@ -1419,6 +1446,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
         ? `还差：${blockers.slice(0, 3).join("、")}。`
         : "材料已接近，但自动扫图仍需上车端安全状态机开放后才能启用。",
     blockers: blockers.slice(0, 4),
+    gateRows: contractGateRows,
     policyText: `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，必须先通过 ${policyGates.slice(0, 3).map(gateLabel).join("、")}。`,
   };
 });
@@ -6205,6 +6233,13 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
             <div v-if="plainFreeRoamAutonomyReadiness.blockers.length" class="plain-readiness-blockers">
               <span v-for="blocker in plainFreeRoamAutonomyReadiness.blockers" :key="blocker" class="muted">{{ blocker }}</span>
+            </div>
+            <div class="plain-goal-progress" data-testid="plain-free-roam-autonomy-gates">
+              <div v-for="gate in plainFreeRoamAutonomyReadiness.gateRows" :key="gate.id" class="plain-progress-row">
+                <span class="plain-progress-label">{{ gate.label }}</span>
+                <span class="status-chip" :data-state="gate.state">{{ gate.state }}</span>
+                <span class="muted">{{ gate.hint }}</span>
+              </div>
             </div>
           </div>
           <div class="plain-goal-progress" data-testid="plain-free-roam-steps">
