@@ -870,6 +870,36 @@ const fixtures: Record<string, unknown> = {
     robot_control_executed: false,
     ...PROOF_FLAGS,
   },
+  "/api/robot-control/map/start": {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+    action: "start",
+    proxy_status: "lifecycle_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/map/start",
+    remote_method: "POST",
+    remote_http_status: 200,
+    status: "loaded_fail_closed_summary",
+    map_count: 0,
+    map_names: [],
+    map_quality_summary: {
+      status: "not_loaded",
+      message: "地图质量还没有读取。",
+      checked_yaml_count: 0,
+      usable_map_count: 0,
+      no_free_cell_map_count: 0,
+      analysis_failed_count: 0,
+    },
+    map_usable_for_navigation: false,
+    map_needs_rebuild: false,
+    command_result: { mode: "software_guard_command_not_configured", executed: false, ok: false },
+    request_body: {},
+    failure_reason: "software_guard_command_not_configured",
+    blocked_reasons: ["software_guard_command_not_configured"],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
   "/api/robot-control/map/save": {
     schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
     action: "save",
@@ -3069,6 +3099,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/map/list";
     } else if (url.startsWith("/api/robot-control/map/preview")) {
       fixtureKey = "/api/robot-control/map/preview";
+    } else if (url.startsWith("/api/robot-control/map/start")) {
+      fixtureKey = "/api/robot-control/map/start";
     } else if (url.startsWith("/api/robot-control/map/save")) {
       fixtureKey = "/api/robot-control/map/save";
     } else if (url.startsWith("/api/robot-control/operator/report")) {
@@ -3273,6 +3305,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("先建图，再低速扫一圈，最后保存。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先勾安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("勾选现场安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("扫图覆盖");
@@ -3515,6 +3549,79 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("keeps free-roam keyboard locked until map recording starts", async () => {
+    // 扫地式建图必须先打开地图记录，再允许 operator 用键盘低速扫图；启用键盘本身不发送底盘命令。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": {
+        schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+        action: "start",
+        proxy_status: "lifecycle_forwarded",
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/map/start",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        map_count: 0,
+        map_names: [],
+        map_quality_summary: {
+          status: "not_loaded",
+          message: "地图记录已启动，保存后再检查质量。",
+          checked_yaml_count: 0,
+          usable_map_count: 0,
+          no_free_cell_map_count: 0,
+          analysis_failed_count: 0,
+        },
+        map_usable_for_navigation: false,
+        map_needs_rebuild: false,
+        command_result: { mode: "configured_command", executed: true, ok: true },
+        request_body: {},
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先勾安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
+
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
+    await wrapper.find('[data-testid="plain-free-roam-keyboard"]').trigger("click");
+    await flushPromises();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST")).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("建图已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
+    const manualCallsBeforeArm = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    await wrapper.find('[data-testid="plain-free-roam-keyboard"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm);
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
   });
 
   it("draws radar pulse on the robot marker only after map-frame pose is observed", async () => {

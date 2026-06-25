@@ -974,6 +974,12 @@ const canSavePlainFreeRoamMapping = computed(() => (
   && !mapLifecyclePending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canArmPlainFreeRoamKeyboard = computed(() => (
+  // 扫图键盘入口必须等地图记录真的启动；普通键盘手控仍保持最小安全确认入口。
+  plainFreeRoamMappingConfirmed.value
+  && mapRuntimeStarted.value
+  && canArmKeyboardControl.value
+));
 const plainFreeRoamMappingSummary = computed(() => {
   // 扫地式建图向导只编排已有安全入口；自由跑动仍必须由键盘低速脉冲和停止按钮兜底。
   if (!robotApiBaseUrl.value.trim()) {
@@ -1001,6 +1007,16 @@ const plainFreeRoamMappingStartLabel = computed(() => (
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecycleResult.value?.action === "save" ? "保存中" : "保存当前地图"
 ));
+const plainFreeRoamKeyboardLabel = computed(() => {
+  // 按扫地式建图顺序提示下一步，避免 operator 在未记录地图时先移动。
+  if (!plainFreeRoamMappingConfirmed.value) {
+    return "先勾安全确认";
+  }
+  if (!mapRuntimeStarted.value) {
+    return "先开始记录";
+  }
+  return canArmKeyboardControl.value ? "启用键盘扫图" : "键盘条件未满足";
+});
 const plainFreeRoamCoverageSummary = computed(() => {
   // 像扫地机一样给出“已经扫到多少”的直观反馈；只读地图预览，不触发建图或移动。
   const preview = mapPreviewResult.value;
@@ -5614,8 +5630,8 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canStartPlainFreeRoamMapping" data-testid="plain-free-roam-start" @click="startMapRuntime">
               {{ plainFreeRoamMappingStartLabel }}
             </button>
-            <button type="button" class="secondary compact-stop" :disabled="!canArmKeyboardControl || !plainFreeRoamMappingConfirmed" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
-              启用键盘扫图
+            <button type="button" class="secondary compact-stop" :disabled="!canArmPlainFreeRoamKeyboard" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
+              {{ plainFreeRoamKeyboardLabel }}
             </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
               停止

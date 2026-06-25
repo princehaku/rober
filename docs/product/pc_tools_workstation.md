@@ -1794,3 +1794,8 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 `operator_report_preflight.status` 记录为 `not_required_for_confirmed_manual`，
 `safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false` 仍不变。
 operator report、轮速非零、LiDAR delta 和送达材料继续作为证据/验收流程展示，但不再阻塞普通低速手控入口。
+
+2026-06-25 17:44 起，普通首屏“扫地式建图”的 `启用键盘扫图` 入口必须等地图记录启动成功后才可用。现场确认后按钮先显示
+`先开始记录`，只有固定 `/api/robot-control/map/start` 返回 `command_result.executed=true` 后才恢复为
+`启用键盘扫图`；点击启用仍只聚焦键盘面板，不发送 `/api/base/manual`，真正移动必须后续按住方向键/WASD。
+这保持普通键盘手控的最小安全确认入口，同时避免 operator 在未记录地图时先移动。
