@@ -15,6 +15,7 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 停止按钮始终可见，继续走固定 PC 代理 `/api/robot-control/base/stop`。
 - 浏览器不允许传入串口、ROS 参数、任意 Robot API endpoint、`/cmd_vel` 或 Nav2 自动目标。
 - 2026-06-25 起，PC 卡片新增“自动扫图准备”只读区：它读取 `safe_command_boundary.free_roam_autonomy`、policy 和逐项 gates，展示上车端 watchdog、LiDAR 避障、停止兜底、地图刷新和真车验证记录缺口；按钮固定显示“自动扫图（未开放）”且禁用，不绑定任何发车动作。
+- 2026-06-25 21:07 起，`ros2_trashbot_nav.free_roam_autonomy` 提供上车端自动扫图策略内核：默认 fail-closed，只在现场安全确认、地图记录、停止兜底、雷达新鲜和障碍距离满足时输出低速前进；遇障碍原地换向，覆盖停滞时原地扫描，超时或未知区域达标时输出停止。该内核尚未接 ROS2 publisher，不会自动发 `/cmd_vel`，PC 自动扫图按钮仍锁定。
 
 ## 用户流程
 
@@ -30,11 +31,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 
 如果要升级成真正“像扫地机一样自己跑”的无人值守/半无人值守模式，需要新增上车端状态机，而不是把 PC 按钮直接变成无限运动：
 
-- 实时 LiDAR/障碍物距离 gate。
-- 最大运行时间、最大线速度、最大角速度和最小电量限制。
-- 自动 stop fallback 和 watchdog。
-- 探索覆盖策略，例如边界沿墙、随机反弹或 frontier exploration。
-- 地图质量实时指标：free cell 增量、unknown 占比下降、回环/定位健康。
+- 实时 LiDAR/障碍物距离 gate：策略内核已有，仍需接真实 `/scan` 和上车 artifact。
+- 最大运行时间、最大线速度、最大角速度限制：策略内核已有；最小电量限制仍待接底盘反馈。
+- 自动 stop fallback 和 watchdog：策略内核已有 stop_required 输出，仍需 ROS2 节点执行 stop fallback。
+- 探索覆盖策略：策略内核已有低速直行、遇障碍换向、覆盖停滞原地扫描；后续可升级边界沿墙或 frontier exploration。
+- 地图质量实时指标：策略内核已消费 free cell 增量和 unknown 占比，仍需真实 map delta artifact。
 - 完整验证记录：启动、每段速度命令、传感器状态、停止原因、保存地图结果。
 - 真车低速验证通过后才能把 `safe_to_control` 或自动探索能力提升为真。
 
