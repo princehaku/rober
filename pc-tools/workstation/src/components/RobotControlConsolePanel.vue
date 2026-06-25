@@ -763,6 +763,12 @@ const canResetLocalization = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canRefreshNav2Proof = computed(() => (
+  !loading.value
+  && !nav2RefreshPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const plainRadarStartButtonLabel = computed(() => {
   if (plainRadarStartUnavailable.value) {
     return "雷达未配置";
@@ -774,6 +780,9 @@ const plainRadarStartButtonLabel = computed(() => {
 });
 const plainLocalizationResetButtonLabel = computed(() => (
   mapWysiwygRefreshPending.value ? "等待地图刷新" : "重新定位"
+));
+const nav2ProofRefreshButtonLabel = computed(() => (
+  mapWysiwygRefreshPending.value ? "等待地图刷新" : "检查路径（高级）"
 ));
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
@@ -3847,7 +3856,7 @@ function plainTripVisibleRouteGoal() {
 
 const canRefreshPlainTripPreparation = computed(() => {
   // 准备行程只刷新 no-motion planner proof；仍要求 operator 先完成同一个现场安全确认。
-  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
+  return !deliveryNav2GoalReady.value && canRefreshNav2Proof.value && plainManualSafetyConfirmed.value;
 });
 
 const canRunPlainTripExecution = computed(() => {
@@ -3872,6 +3881,9 @@ const plainTripPreparationButtonLabel = computed(() => {
   }
   if (nav2RefreshPending.value) {
     return "准备中";
+  }
+  if (mapWysiwygRefreshPending.value) {
+    return "等待地图刷新";
   }
   return plainManualSafetyConfirmed.value ? "准备行程（不发车）" : "先勾选确认";
 });
@@ -5777,6 +5789,9 @@ async function refreshMapProof(): Promise<void> {
 
 async function refreshNav2Proof(): Promise<void> {
   // Nav2 refresh 只做 no-motion planner proof；随后刷新地图画面，让路线点和真实底图一起显示。
+  if (mapWysiwygRefreshPending.value) {
+    return;
+  }
   await runRefreshAction(
     "nav2_no_motion_proof_refresh",
     () => postRobotControlNav2ProofRefresh(robotApiBaseUrl.value),
@@ -8263,8 +8278,8 @@ onBeforeUnmount(() => {
         <section class="advanced-block">
           <h3>Nav2 规划详情</h3>
           <div class="robot-control-form">
-            <button class="secondary" type="button" :disabled="loading || nav2RefreshPending || !robotApiBaseUrl.trim()" @click="refreshNav2Proof">
-              检查路径（高级）
+            <button class="secondary" type="button" :disabled="!canRefreshNav2Proof" data-testid="advanced-nav2-proof-refresh" @click="refreshNav2Proof">
+              {{ nav2ProofRefreshButtonLabel }}
             </button>
             <button class="secondary" type="button" :disabled="!canResetLocalization" @click="resetLocalizationProof">
               定位重置（高级）

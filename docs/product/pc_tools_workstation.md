@@ -2129,6 +2129,10 @@ delivery、stop 或 `/cmd_vel`；真正移动仍必须 operator 按住 W/A/S/D�
 地图画面。只要 summary 读到当前 `path_preview_points`，地图会直接显示路线 polyline、起点/终点和 `路线已显示 N/M 个点`，
 `执行图上路线` 按钮也会按这条可见路线放开；不再要求普通用户额外点击 `刷新地图画面`。该自动刷新只读 map preview，
 不调用 Nav2 execute、manual、keyboard、delivery、stop 或 `/cmd_vel`。
+2026-06-26 06:10 起，地图画面或地图 proof 正在刷新时，普通首屏 `准备行程（不发车）` 和高级诊断
+`检查路径（高级）` 也会显示 `等待地图刷新` 并禁用；函数入口同步 fail-closed，不再允许在旧图尚未同步时刷新
+Nav2 no-motion proof 覆盖路线 readback。刷新完成后两个入口恢复原文案和可用状态。该 gate 只拦截 planner proof refresh，
+不调用 Nav2 execute、manual、keyboard、delivery、stop 或 `/cmd_vel`。
 
 2026-06-25 23:34 起，普通首屏执行图上路线时会保留“本次点击的图上终点”。如果上位机 Nav2 execute 失败或拒绝，
 且响应没有回传 `goal_x/goal_y`，地图仍会在这次图上终点显示 `行程未通过`，避免失败后目标 marker 消失。该兜底只用于

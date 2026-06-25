@@ -5211,6 +5211,7 @@ describe("App", () => {
       return baseFetch(url, options);
     });
     vi.stubGlobal("fetch", mockedFetch);
+    const nav2ProofRefreshCallCount = () => mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?")).length;
 
     const wrapper = mount(App);
     await flushPromises();
@@ -5221,12 +5222,20 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeUndefined();
 
     delayNextPreview = true;
     const refreshClick = wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图画面刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点）。");
@@ -5234,6 +5243,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图画面刷新。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图画面刷新中，刷新完成后再执行");
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：正在刷新当前地图。");
+    const nav2CallsBeforePreviewBlockedClicks = nav2ProofRefreshCallCount();
+    await wrapper.find('[data-testid="plain-trip-prepare"]').trigger("click");
+    await wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(nav2ProofRefreshCallCount()).toBe(nav2CallsBeforePreviewBlockedClicks);
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -5251,6 +5265,10 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeUndefined();
 
     delayNextProof = true;
     const proofRefreshClick = wrapper.findAll("button").find((button) => button.text() === "刷新地图")?.trigger("click");
@@ -5258,12 +5276,21 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图处理中");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("等待地图刷新");
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图状态刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点）。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，地图状态刷新中；刷新完成后再执行图上路线。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图状态刷新。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图状态刷新中，刷新完成后再执行");
+    const nav2CallsBeforeProofBlockedClicks = nav2ProofRefreshCallCount();
+    await wrapper.find('[data-testid="plain-trip-prepare"]').trigger("click");
+    await wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(nav2ProofRefreshCallCount()).toBe(nav2CallsBeforeProofBlockedClicks);
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -5277,6 +5304,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");
+    expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeUndefined();
   });
 
   it("syncs latest readbacks and pre-fills delivery route material after visible-route trip execution", async () => {
