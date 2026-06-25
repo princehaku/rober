@@ -5344,6 +5344,51 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("keeps failed plain trip visible when execution fallback has no key values", async () => {
+    // 网络异常或本机 fallback 可能没有 key_values；首屏仍要把失败贴回刚点击的图上终点。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execute": {
+        ...(fixtures["/api/robot-control/nav2/goal/execute"] as Record<string, unknown>),
+        proxy_status: "execution_failed",
+        failure_reason: "request_timeout",
+        blocked_reasons: ["request_timeout"],
+        goal_execution_key_values: {},
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(marker.text()).toBe("行程未通过：等待超时");
+    expect(marker.attributes("data-state")).toBe("行程未通过");
+    expect(marker.attributes("aria-label")).toBe("行程未通过，失败原因等待超时，地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：未通过（等待超时）");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：最近行程未通过，先检查或重新执行完整行程。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("translates plain trip preparation planner blocker without executing navigation", async () => {
     // no-motion 行程准备失败时，普通首屏要给下一步，不把 planner_server_not_active 暴露给普通用户。
     const mockedFetch = stubWorkstationFetch({

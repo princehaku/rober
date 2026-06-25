@@ -2112,6 +2112,11 @@ PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboar
 `行程执行：未通过（规划失败）`，避免 marker 写明原因但 caption 仍只显示泛化失败。该 caption 只消费已有
 Nav2 execute/latest readback，不自动重试、不执行 Nav2、不发送 manual/keyboard/delivery/stop 或 `/cmd_vel`。
 
+2026-06-26 01:46 起，如果普通首屏 `执行图上路线` 返回本机 fallback、网络失败或上位机拒绝，且响应连
+`goal_execution_key_values` 都为空，PC 会用本次点击的图上终点和失败原因生成仅用于 UI 的失败读数。地图 marker、
+地图 caption 和 `行程进度` 继续显示 `行程未通过` / `行程执行：未通过（原因）`，不会退回空白或旧成功记录。
+该合成读数不带 `evidence_ref`，不算 Nav2 成功证据，不提交送达、不重试执行、不发送 manual/keyboard/stop 或 `/cmd_vel`。
+
 2026-06-25 23:45 起，普通首屏“自动扫图准备”不再把上车端已解锁 runtime 永久显示成未开放。PC summary 会读取
 `/api/free-roam/autonomy/latest`：只有 runtime `cmd_vel_publish_enabled=true` 且所有自动扫图 gates 都为 `ready`
 时，才显示 `自动扫图 / 已就绪`；否则仍显示人工按住扫图流程。该状态只用于所见即所得反馈，不新增

@@ -2387,6 +2387,30 @@ function nav2EvidenceStatus(values: Record<string, string> | undefined): string 
   return values?.nav2_status ?? values?.status ?? "";
 }
 
+function directNav2ExecutionFallbackValues(): Record<string, string> | undefined {
+  // 直接执行失败可能只返回 proxy 失败和原因；首屏需要保留本次图上终点，但不能伪造成成功证据。
+  const result = navGoalExecutionResult.value;
+  if (!result || Object.keys(result.goal_execution_key_values ?? {}).length > 0) {
+    return undefined;
+  }
+  if (result.proxy_status !== "execution_failed" && result.proxy_status !== "execution_rejected") {
+    return undefined;
+  }
+  const attemptedGoal = navGoalExecutionAttemptGoal.value ?? result.goal_request;
+  const fallbackValues: Record<string, string> = {
+    status: "goal_failed",
+    result_status: result.failure_reason || result.proxy_status,
+    failure_reason: result.failure_reason || result.proxy_status,
+    delivery_success: "false",
+  };
+  if (attemptedGoal?.goal_frame_id === "map") {
+    fallbackValues.goal_frame_id = "map";
+    fallbackValues.goal_x = String(attemptedGoal.goal_x);
+    fallbackValues.goal_y = String(attemptedGoal.goal_y);
+  }
+  return fallbackValues;
+}
+
 function nav2FeedbackSampleCount(values: Record<string, string> | undefined): number {
   // 完整行程不仅要 success，还要读到执行过程反馈样本；缺字段按 0 处理，避免把空摘要当成完整路线。
   const parsed = Number(values?.feedback_sample_count ?? values?.nav2_feedback_sample_count ?? "0");
@@ -2428,7 +2452,8 @@ function plainTripFailureReasonText(result: { failure_reason?: string } | null |
 
 function directNav2ExecutionValues(): Record<string, string> | undefined {
   // 地图和行程卡只展示直接执行/最近执行结果；delivery 摘要只用于收口，不反推地图执行进度。
-  return navGoalExecutionResult.value?.goal_execution_key_values
+  return directNav2ExecutionFallbackValues()
+    ?? navGoalExecutionResult.value?.goal_execution_key_values
     ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
 }
 
@@ -2438,12 +2463,9 @@ function nav2ExecutionComplete(values: Record<string, string> | undefined): bool
 
 function nav2EvidenceValues(): Array<Record<string, string> | undefined> {
   // 直接 Nav2 执行/最近结果是本轮行程的权威来源；一旦已读到，就不能再用 delivery latest 的旧摘要补完成。
-  const directValues = [
-    navGoalExecutionResult.value?.goal_execution_key_values,
-    navGoalExecutionLatestResult.value?.goal_execution_key_values,
-  ].filter((values): values is Record<string, string> => Boolean(values));
-  if (directValues.length > 0) {
-    return directValues;
+  const directValue = directNav2ExecutionValues();
+  if (directValue) {
+    return [directValue];
   }
   return [
     deliveryLatestResult.value?.delivery_key_values,
@@ -2508,10 +2530,12 @@ const plainTripHasFreshIncompleteEvidence = computed(() => nav2EvidenceValues().
   nav2GoalSucceeded(values) && !nav2ExecutionComplete(values) && !evidenceIsStale(values)
 )));
 const plainTripLatestNotProvenEvidence = computed(() => {
-  // latest 已经读到但不是 success 时，要告诉普通用户“未通过”，不能继续显示成“没读到”。
-  const values = navGoalExecutionLatestResult.value?.goal_execution_key_values;
+  // 直接执行或 latest 已经读到失败时，要告诉普通用户“未通过”，不能继续显示成“没读到”。
+  const values = directNav2ExecutionValues();
   const status = nav2EvidenceStatus(values);
-  return navGoalExecutionLatestResult.value?.proxy_status === "latest_loaded"
+  const directFailed = navGoalExecutionResult.value?.proxy_status === "execution_failed"
+    || navGoalExecutionResult.value?.proxy_status === "execution_rejected";
+  return (directFailed || navGoalExecutionLatestResult.value?.proxy_status === "latest_loaded")
     && Boolean(status)
     && status !== "not_loaded"
     && status !== "goal_succeeded";
