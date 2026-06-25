@@ -4416,7 +4416,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url, options]) =>
       String(url).startsWith("/api/robot-control/nav2/proof/refresh?") && options?.method === "POST",
     ).length).toBe(nav2RefreshCallsBeforePrepare + 1);
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，已读到路线 17 个点；可执行行程，后端仍会复查定位和路线。");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，地图上已显示路线 17 个点；可执行图上路线，后端仍会复查定位和路线。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
     ).length).toBe(navExecuteCallsBeforeTripFocus);
@@ -4488,7 +4489,7 @@ describe("App", () => {
 
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.text()).toContain("已准备");
-    expect(tripPanel.text()).toContain("已读到路线 36 个点；勾选安全确认后可执行行程。");
+    expect(tripPanel.text()).toContain("地图上已显示路线 36 个点；勾选安全确认后可执行图上路线。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，先勾选行程前确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("路线已准备 36 点");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("路线已准备 36 个点，还需要点击执行行程并读到成功结果。");
@@ -4498,9 +4499,9 @@ describe("App", () => {
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(tripPanel.text()).toContain("已读到路线 36 个点；可直接执行行程，后端仍会复查定位和路线。");
+    expect(tripPanel.text()).toContain("地图上已显示路线 36 个点；可直接执行图上路线，后端仍会复查定位和路线。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').text()).toBe("检查行程");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行行程");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，可执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：执行行程。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toBe(false);
