@@ -1810,25 +1810,29 @@ const plainFreeRoamMappingSteps = computed(() => {
     {
       id: "drive",
       label: "低速扫图",
-      state: keyboardMoving ? "手控中" : keyboardReady && mappingStarted ? "可手控" : mappingStarted ? "待手控" : "待完成",
-      hint: keyboardMoving
-        ? `正在${keyboardDirectionPlainLabel.value}，松开即停`
-        : keyboardReady && mappingStarted
-          ? "启用键盘后按住方向键/WASD 扫一圈"
-          : mappingStarted ? plainKeyboardNextActionSummary.value : "先启动地图记录",
+      state: saved ? "已完成" : keyboardMoving ? "手控中" : keyboardReady && mappingStarted ? "可手控" : mappingStarted ? "待手控" : "待完成",
+      hint: saved
+        ? "扫图已收口，检查地图效果"
+        : keyboardMoving
+          ? `正在${keyboardDirectionPlainLabel.value}，松开即停`
+          : keyboardReady && mappingStarted
+            ? "启用键盘后按住方向键/WASD 扫一圈"
+            : mappingStarted ? plainKeyboardNextActionSummary.value : "先启动地图记录",
     },
     {
       id: "stop",
       label: "停止收口",
-      state: stopObserved ? "已完成" : mappingStarted ? "可执行" : "待完成",
-      hint: stopObserved ? "停止已发送" : mappingStarted ? "松开按键或点击停止" : "先启动地图记录",
+      state: saved || stopObserved ? "已完成" : mappingStarted ? "可执行" : "待完成",
+      hint: saved ? "扫图已停止并保存" : stopObserved ? "停止已发送" : mappingStarted ? "松开按键或点击停止" : "先启动地图记录",
     },
     {
       id: "save",
       label: "保存地图",
       state: saved ? "已保存" : canSavePlainFreeRoamMapping.value ? "可保存" : "待完成",
       hint: saved
-        ? "已保存，刷新地图画面检查效果"
+        ? plainFreeRoamSavedMapPreviewFreshForSession.value
+          ? "已保存，地图画面已自动刷新，可以检查效果"
+          : "已保存，刷新地图画面检查效果"
         : canSavePlainFreeRoamMapping.value
           ? "扫图结束后保存刚刷新过的地图"
           : mapRuntimeStarted.value ? "先刷新扫图画面，再保存地图" : "启动地图记录后才能保存",

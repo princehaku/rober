@@ -4041,6 +4041,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图已保存，地图画面已自动刷新，可以检查效果。");
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：地图已保存，已自动刷新最新画面，可检查效果。");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("地图已保存，地图画面已自动刷新；现在检查覆盖效果。");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("低速扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("扫图已收口，检查地图效果");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("扫图已停止并保存");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("已保存，地图画面已自动刷新，可以检查效果");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：检查地图画面");
   });
 
