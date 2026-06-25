@@ -816,6 +816,30 @@ h3 {
   grid-template-columns: minmax(72px, auto) auto minmax(0, 1fr);
 }
 
+.plain-free-roam-coverage {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  border-top: 1px solid #d7dee6;
+  padding-top: 12px;
+}
+
+.plain-free-roam-coverage-bar {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8ef;
+}
+
+.plain-free-roam-coverage-bar span {
+  display: block;
+  width: var(--coverage-known, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: #23715a;
+}
+
 .plain-delivery-status {
   margin-top: 12px;
   border-top: 1px solid #d7dee6;

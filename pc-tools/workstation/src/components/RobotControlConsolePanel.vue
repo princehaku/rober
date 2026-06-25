@@ -650,6 +650,16 @@ function mapFrameStyle(width: number, height: number): Record<string, string> {
   return width > 0 && height > 0 ? { "--map-aspect": `${width} / ${height}` } : {};
 }
 
+function plainCellCount(preview: RobotControlMapPreviewResponse | null, key: string): number {
+  // cell_counts 是地图质量的直接来源；缺字段按 0 处理，避免把未知地图说成已扫完。
+  const value = preview?.cell_counts?.[key];
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function percentText(value: number): string {
+  return `${Math.max(0, Math.min(100, value)).toFixed(1)}%`;
+}
+
 function mapCoordinatePercent(goalX: number, goalY: number, preview: RobotControlMapPreviewResponse): { left: number; top: number } | null {
   // ROS map origin 是地图左下角；浏览器图像坐标从左上角开始，因此 y 轴需要反转。
   const originX = finitePlainNumber(preview.origin?.[0]);
@@ -858,6 +868,38 @@ const plainFreeRoamMappingStartLabel = computed(() => (
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecycleResult.value?.action === "save" ? "保存中" : "保存当前地图"
 ));
+const plainFreeRoamCoverageSummary = computed(() => {
+  // 像扫地机一样给出“已经扫到多少”的直观反馈；只读地图预览，不触发建图或移动。
+  const preview = mapPreviewResult.value;
+  const previewLoaded = preview?.proxy_status === "preview_forwarded";
+  if (!previewLoaded) {
+    return {
+      state: "待刷新",
+      primary: "地图覆盖还没读取",
+      secondary: "刷新地图画面后显示可通行区域和未知区域。",
+      barStyle: { "--coverage-known": "0%" },
+      quality: "not_loaded",
+    };
+  }
+  const free = plainCellCount(preview, "free");
+  const occupied = plainCellCount(preview, "occupied");
+  const unknown = plainCellCount(preview, "unknown");
+  const other = plainCellCount(preview, "other");
+  const countedTotal = free + occupied + unknown + other;
+  const imageTotal = Math.max(0, Math.trunc((preview?.width ?? 0) * (preview?.height ?? 0)));
+  const total = countedTotal > 0 ? countedTotal : imageTotal;
+  const known = free + occupied + other;
+  const knownPercent = total > 0 ? (known / total) * 100 : 0;
+  const unknownPercent = total > 0 ? (unknown / total) * 100 : 100;
+  const state = free > 0 ? (unknownPercent > 80 ? "待继续" : "已扫出") : "待继续";
+  return {
+    state,
+    primary: free > 0 ? `已扫出 ${free} 个可通行格` : "还没扫出可通行区域",
+    secondary: `未知区域 ${percentText(unknownPercent)}，已知区域 ${percentText(knownPercent)}。`,
+    barStyle: { "--coverage-known": percentText(knownPercent) },
+    quality: preview.navigation_quality || (preview.has_free_cells ? "has_free_cells" : "not_loaded"),
+  };
+});
 const plainFreeRoamMappingSteps = computed(() => {
   // 步骤条只表达本地向导状态；真正动作仍由每个固定按钮和后端 gate 执行。
   const safetyReady = plainFreeRoamMappingConfirmed.value;
@@ -5456,6 +5498,17 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note" data-testid="plain-free-roam-hint">{{ plainFreeRoamMappingSummary.hint }}</p>
           <p class="panel-note">按住方向键或 W/A/S/D 移动，松开即停；保存后刷新地图画面检查效果。</p>
+          <div class="plain-free-roam-coverage" data-testid="plain-free-roam-coverage">
+            <div class="simple-status-row">
+              <strong>扫图覆盖</strong>
+              <span class="status-chip" :data-state="plainFreeRoamCoverageSummary.state">{{ plainFreeRoamCoverageSummary.state }}</span>
+            </div>
+            <div class="plain-free-roam-coverage-bar" :style="plainFreeRoamCoverageSummary.barStyle" aria-hidden="true">
+              <span />
+            </div>
+            <p class="panel-note">{{ plainFreeRoamCoverageSummary.primary }}</p>
+            <p class="panel-note">{{ plainFreeRoamCoverageSummary.secondary }}</p>
+          </div>
           <div class="plain-goal-progress" data-testid="plain-free-roam-steps">
             <div v-for="step in plainFreeRoamMappingSteps" :key="step.id" class="plain-progress-row">
               <span class="plain-progress-label">{{ step.label }}</span>
