@@ -3556,6 +3556,46 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
+  it("reuses one plain safety confirmation for trip, keyboard, and free-roam mapping", async () => {
+    // 普通首屏只让现场确认一次；扫图卡片和行程卡片同步这个确认，但不会自动触发任何动作。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
+    expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(false);
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+
+    const callsBeforeSharedSafety = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（按键才动）");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
+
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(false);
+    await wrapper.vm.$nextTick();
+
+    expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
+    expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(false);
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
+  });
+
   it("keeps free-roam keyboard locked until map recording starts", async () => {
     // 扫地式建图必须先打开地图记录，再允许 operator 用键盘低速扫图；启用键盘本身不发送底盘命令。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

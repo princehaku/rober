@@ -1012,6 +1012,14 @@ const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
 const keyboardJogDurationMs = computed(() => manualBoundary.value?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS);
 const plainManualSafetyConfirmed = computed(() => plainTripSafetyConfirmed.value || plainFreeRoamMappingConfirmed.value);
+const plainUnifiedSafetyConfirmed = computed({
+  // 普通首屏只有一个真实安全确认语义；两个可见复选框同步显示，避免现场重复确认。
+  get: () => plainManualSafetyConfirmed.value,
+  set: (confirmed: boolean) => {
+    plainTripSafetyConfirmed.value = confirmed;
+    plainFreeRoamMappingConfirmed.value = confirmed;
+  },
+});
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const canRunEvidenceSweep = computed(() => !evidenceSweepPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const keyboardContractReady = computed(() => {
@@ -1034,13 +1042,13 @@ const mapSavedThisSession = computed(() => (
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
 ));
 const canStartPlainFreeRoamMapping = computed(() => (
-  plainFreeRoamMappingConfirmed.value
+  plainManualSafetyConfirmed.value
   && !loading.value
   && !mapLifecyclePending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
 const canSavePlainFreeRoamMapping = computed(() => (
-  plainFreeRoamMappingConfirmed.value
+  plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
   && !loading.value
   && !mapLifecyclePending.value
@@ -1048,7 +1056,7 @@ const canSavePlainFreeRoamMapping = computed(() => (
 ));
 const canArmPlainFreeRoamKeyboard = computed(() => (
   // 扫图键盘入口必须等地图记录真的启动；普通键盘手控仍保持最小安全确认入口。
-  plainFreeRoamMappingConfirmed.value
+  plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
   && canArmKeyboardControl.value
 ));
@@ -1057,7 +1065,7 @@ const plainFreeRoamMappingSummary = computed(() => {
   if (!robotApiBaseUrl.value.trim()) {
     return { state: "未连接", hint: "先连接默认小车，再开始扫地式建图。" };
   }
-  if (!plainFreeRoamMappingConfirmed.value) {
+  if (!plainManualSafetyConfirmed.value) {
     return { state: "待确认", hint: "勾选现场安全确认后，才允许启动建图向导。" };
   }
   if (mapLifecyclePending.value || mapPreviewPending.value) {
@@ -1094,7 +1102,7 @@ const plainFreeRoamMapPreviewLabel = computed(() => {
 });
 const plainFreeRoamKeyboardLabel = computed(() => {
   // 按扫地式建图顺序提示下一步，避免 operator 在未记录地图时先移动。
-  if (!plainFreeRoamMappingConfirmed.value) {
+  if (!plainManualSafetyConfirmed.value) {
     return "先勾安全确认";
   }
   if (!mapRuntimeStarted.value) {
@@ -1104,7 +1112,7 @@ const plainFreeRoamKeyboardLabel = computed(() => {
 });
 const plainFreeRoamNextActionLabel = computed(() => {
   // “下一步”只做流程导航，不能替现场确认、启动建图、发送手控或保存地图。
-  if (!plainFreeRoamMappingConfirmed.value) {
+  if (!plainManualSafetyConfirmed.value) {
     return "下一步：勾安全确认";
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
@@ -1172,7 +1180,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   if (!robotApiBaseUrl.value.trim()) {
     blockers.push("默认小车未连接");
   }
-  if (!plainFreeRoamMappingConfirmed.value) {
+  if (!plainManualSafetyConfirmed.value) {
     blockers.push("现场安全确认未勾选");
   }
   if (!previewLoaded) {
@@ -1223,7 +1231,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
 });
 const plainFreeRoamMappingSteps = computed(() => {
   // 步骤条只表达本地向导状态；真正动作仍由每个固定按钮和后端 gate 执行。
-  const safetyReady = plainFreeRoamMappingConfirmed.value;
+  const safetyReady = plainManualSafetyConfirmed.value;
   const mappingStarted = mapRuntimeStarted.value || mapSavedThisSession.value;
   const keyboardReady = canUseKeyboardControl.value;
   const keyboardMoving = keyboardHeldDirection.value !== null;
@@ -2088,10 +2096,10 @@ const plainTripGoalNextAction = computed(() => {
   if (plainTripLatestNotProvenEvidence.value) {
     return "下一步：检查或重新执行行程。";
   }
-  if (plainTripPreparedBySummary.value && plainTripSafetyConfirmed.value) {
+  if (plainTripPreparedBySummary.value && plainManualSafetyConfirmed.value) {
     return "下一步：执行行程。";
   }
-  return plainTripSafetyConfirmed.value ? "下一步：检查或执行行程。" : "下一步：勾选行程前确认。";
+  return plainManualSafetyConfirmed.value ? "下一步：检查或执行行程。" : "下一步：勾选行程前确认。";
 });
 
 const plainDeliveryGoalProgressHint = computed(() => {
@@ -2197,7 +2205,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? (plainTripSafetyConfirmed.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -2402,7 +2410,7 @@ const plainTripSummary = computed(() => {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
   }
   if (plainTripPreparedByRefresh.value) {
-    return plainTripSafetyConfirmed.value
+    return plainManualSafetyConfirmed.value
       ? { state: "已准备", hint: `行程准备已刷新，已读到路线 ${plainTripPreparedPointCount.value} 个点；可执行行程，后端仍会复查定位和路线。` }
       : { state: "已准备", hint: `行程准备已刷新，已读到路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行行程。` };
   }
@@ -2410,7 +2418,7 @@ const plainTripSummary = computed(() => {
     return { state: "待准备", hint: plainTripPreparationFailureHint() };
   }
   if (plainTripPreparedBySummary.value) {
-    return plainTripSafetyConfirmed.value
+    return plainManualSafetyConfirmed.value
       ? { state: "已准备", hint: `已读到路线 ${plainTripPreparedPointCount.value} 个点；可直接执行行程，后端仍会复查定位和路线。` }
       : { state: "已准备", hint: `已读到路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行行程。` };
   }
@@ -2420,7 +2428,7 @@ const plainTripSummary = computed(() => {
   if (navGoalPreflightResult.value && navGoalPreflightResult.value.proxy_status !== "preflight_passed") {
     return { state: "检查失败", hint: "行程条件还没满足，请看高级诊断。" };
   }
-  if (!plainTripSafetyConfirmed.value) {
+  if (!plainManualSafetyConfirmed.value) {
     return { state: "待确认", hint: "先勾选行程前确认，再检查或执行。" };
   }
   return { state: "可执行", hint: "已完成最小确认；执行前后端会复查定位和路线。" };
@@ -2428,17 +2436,17 @@ const plainTripSummary = computed(() => {
 
 const canRunPlainTripPreflight = computed(() => {
   // 预检不发车，只要求现场完成同一个安全确认。
-  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
 });
 
 const canRefreshPlainTripPreparation = computed(() => {
   // 准备行程只刷新 no-motion planner proof；仍要求 operator 先完成同一个现场安全确认。
-  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
 });
 
 const canRunPlainTripExecution = computed(() => {
   // 真正执行仍由后端 confirm_navigation_execution + 定位/路线 readback gate 再次校验。
-  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainTripSafetyConfirmed.value;
+  return !deliveryNav2GoalReady.value && !loading.value && !plainTripActionPending.value && robotApiBaseUrl.value.trim().length > 0 && plainManualSafetyConfirmed.value;
 });
 
 const plainTripPreflightButtonLabel = computed(() => {
@@ -2452,7 +2460,7 @@ const plainTripPreflightButtonLabel = computed(() => {
   if (loading.value || plainTripActionPending.value) {
     return "检查中";
   }
-  return plainTripSafetyConfirmed.value ? "检查行程" : "先勾选确认";
+  return plainManualSafetyConfirmed.value ? "检查行程" : "先勾选确认";
 });
 
 const plainTripPreparationButtonLabel = computed(() => {
@@ -2466,7 +2474,7 @@ const plainTripPreparationButtonLabel = computed(() => {
   if (nav2RefreshPending.value) {
     return "准备中";
   }
-  return plainTripSafetyConfirmed.value ? "准备行程（不发车）" : "先勾选确认";
+  return plainManualSafetyConfirmed.value ? "准备行程（不发车）" : "先勾选确认";
 });
 
 const plainTripExecutionButtonLabel = computed(() => {
@@ -2480,7 +2488,7 @@ const plainTripExecutionButtonLabel = computed(() => {
   if (loading.value || plainTripActionPending.value) {
     return "执行中";
   }
-  return plainTripSafetyConfirmed.value ? "执行行程" : "先勾选确认";
+  return plainManualSafetyConfirmed.value ? "执行行程" : "先勾选确认";
 });
 const plainTripLatestButtonLabel = computed(() => (deliveryNav2GoalReady.value ? "重新读取行程（只读）" : "读取行程结果（只读）"));
 
@@ -4511,7 +4519,7 @@ function plainTripGoalTarget(): HTMLElement | null {
   if (plainTripRadarBlocked.value) {
     return plainRadarNextTarget() ?? plainTripRunPanel.value;
   }
-  if (!plainTripSafetyConfirmed.value) {
+  if (!plainManualSafetyConfirmed.value) {
     return plainTripSafetyCheckbox.value ?? plainTripRunPanel.value;
   }
   return enabledButton(plainTripExecuteButton.value)
@@ -4629,7 +4637,7 @@ function plainKeyboardNextTarget(): HTMLElement | null {
 
 function plainFreeRoamNextTarget(): HTMLElement | null {
   // 扫图向导只把焦点带到下一手动作；不会自动勾选、启动地图、发送手控或保存。
-  if (!plainFreeRoamMappingConfirmed.value) {
+  if (!plainManualSafetyConfirmed.value) {
     return plainFreeRoamConfirmCheckbox.value;
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
@@ -5835,7 +5843,7 @@ onBeforeUnmount(() => {
             <span class="muted">先建图，再低速扫一圈，最后保存。</span>
           </div>
           <label class="plain-trip-confirm">
-            <input ref="plainFreeRoamConfirmCheckbox" v-model="plainFreeRoamMappingConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
+            <input ref="plainFreeRoamConfirmCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
             <span>人在旁边、周围安全、可以随时按停止</span>
           </label>
           <div class="panel-action-row wrap-actions">
@@ -5900,7 +5908,7 @@ onBeforeUnmount(() => {
         <article class="snapshot-panel">
           <h3>移动/导航</h3>
           <label class="plain-trip-confirm">
-            <input v-model="plainTripSafetyConfirmed" type="checkbox" data-testid="plain-motion-safety-confirm">
+            <input v-model="plainUnifiedSafetyConfirmed" type="checkbox" data-testid="plain-motion-safety-confirm">
             <span>人在旁边、周围安全、停止手段就绪</span>
           </label>
           <div class="panel-action-row wrap-actions">
@@ -6039,7 +6047,7 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainTripSummary.state">{{ plainTripSummary.state }}</span>
             </div>
             <label class="plain-trip-confirm">
-              <input ref="plainTripSafetyCheckbox" v-model="plainTripSafetyConfirmed" name="plainTripSafetyConfirmed" type="checkbox">
+              <input ref="plainTripSafetyCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainTripSafetyConfirmed" type="checkbox">
               <span>人在旁边、周围安全、停止手段就绪</span>
             </label>
             <div class="simple-status-row">

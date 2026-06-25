@@ -1828,6 +1828,9 @@ manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 `operator_report_preflight.status` 记录为 `not_required_for_confirmed_manual`，
 `safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false` 仍不变。
 operator report、轮速非零、LiDAR delta 和送达材料继续作为证据/验收流程展示，但不再阻塞普通低速手控入口。
+2026-06-25 20:15 起，普通首屏把 `移动/导航` 和 `扫地式建图` 的安全确认同步为同一个确认状态：勾任一处都会让
+行程、键盘和扫图流程共享“人在旁边、周围安全、停止手段就绪”的最小确认；取消任一处也会同步取消。该同步只改变本地 gate
+和复选框显示，不自动启动地图记录、不启用键盘、不执行 Nav2、不发送 manual/stop 或 `/cmd_vel`。
 
 2026-06-25 17:44 起，普通首屏“扫地式建图”的 `启用键盘扫图` 入口必须等地图记录启动成功后才可用。现场确认后按钮先显示
 `先开始记录`，只有固定 `/api/robot-control/map/start` 返回 `command_result.executed=true` 后才恢复为
