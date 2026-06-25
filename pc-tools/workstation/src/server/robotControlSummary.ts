@@ -1,6 +1,7 @@
 import { PROOF_FLAGS } from "../shared/contracts";
 import type {
   RobotApiEndpointReadback,
+  RobotApiPathPreviewPoint,
   RobotApiProofSummary,
   RobotApiReadEndpointId,
   RobotControlOperatorHilMaterialSummary,
@@ -37,6 +38,7 @@ export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
 export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
 export const ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS = 260;
 export const ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS = 240;
+const ROBOT_CONTROL_PATH_PREVIEW_POINT_LIMIT = 64;
 export const ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
 export const ROBOT_CONTROL_HIL_CHECKLIST = [
   { id: "operator_ready", label: "现场有人扶控并准备急停" },
@@ -171,6 +173,9 @@ const NAV2_NO_MOTION_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     "path_generated",
     "path_generation_succeeded",
     "path_point_count",
+    "path_preview_point_count",
+    "path_preview_source_point_count",
+    "path_preview_frame_id",
     "planner_server_active",
     "root_causes",
     "blocked_reasons",
@@ -2544,7 +2549,48 @@ function proofNumber(readbacks: RobotApiEndpointReadback[], keys: string[]): num
   return best;
 }
 
-function buildProofSummary(readbacks: RobotApiEndpointReadback[]): RobotApiProofSummary {
+function finitePathCoordinate(value: unknown): number | null {
+  // 路线点来自上位机 artifact；只接受有限数字，防止异常字符串进入 SVG 坐标。
+  const numberValue = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function proofPathPreview(readbacks: InternalRobotApiEndpointReadback[]): Pick<
+  RobotApiProofSummary,
+  "path_preview_points" | "path_preview_point_count" | "path_preview_source_point_count" | "path_preview_frame_id"
+> {
+  // 只从 nav2 proof 原始 payload 抽取结构化点；readback key_values 只保留短文本摘要。
+  const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
+  const payload = nav2Proof?.payload ?? null;
+  const rawPoints = findFirstKey(payload, ["path_preview_points"]);
+  const points: RobotApiPathPreviewPoint[] = [];
+  if (Array.isArray(rawPoints)) {
+    for (const rawPoint of rawPoints.slice(0, ROBOT_CONTROL_PATH_PREVIEW_POINT_LIMIT)) {
+      const record = asRecord(rawPoint);
+      const x = finitePathCoordinate(record?.x);
+      const y = finitePathCoordinate(record?.y);
+      if (!record || x === null || y === null) {
+        continue;
+      }
+      const frameId = asString(record.frame_id, asString(findFirstKey(payload, ["path_preview_frame_id"]), ""));
+      const sourceIndex = finitePathCoordinate(record.source_index);
+      points.push({
+        x,
+        y,
+        frame_id: frameId,
+        source_index: sourceIndex === null ? null : Math.trunc(sourceIndex),
+      });
+    }
+  }
+  return {
+    path_preview_points: points,
+    path_preview_point_count: points.length,
+    path_preview_source_point_count: proofNumber(readbacks, ["path_preview_source_point_count"]) ?? proofNumber(readbacks, ["path_point_count", "latest_path_point_count"]),
+    path_preview_frame_id: asString(findFirstKey(payload, ["path_preview_frame_id"]), points[0]?.frame_id ?? ""),
+  };
+}
+
+function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): RobotApiProofSummary {
   // O3 proof 只聚合已读回来的 status/latest 字段；没有字段时保持 null/not_proven。
   const payload = readbacks;
   const rootCauses = stringList(findFirstKey(payload, ["root_causes"]));
@@ -2552,6 +2598,7 @@ function buildProofSummary(readbacks: RobotApiEndpointReadback[]): RobotApiProof
   const pathGenerated = proofBoolean(readbacks, ["path_generated", "latest_path_generated"]);
   const pathSucceeded = proofBoolean(readbacks, ["path_generation_succeeded", "latest_path_generation_succeeded"]);
   const proofComplete = pathGenerated === true || pathSucceeded === true;
+  const pathPreview = proofPathPreview(readbacks);
   return {
     managed_runtime_started: proofBoolean(readbacks, ["managed_runtime_started"]),
     scan_once_observed: proofBoolean(readbacks, ["scan_once_observed", "latest_scan_once_observed"]),
@@ -2563,6 +2610,7 @@ function buildProofSummary(readbacks: RobotApiEndpointReadback[]): RobotApiProof
     path_generation_succeeded: pathSucceeded,
     path_generated: pathGenerated,
     path_point_count: proofNumber(readbacks, ["path_point_count", "latest_path_point_count"]),
+    ...pathPreview,
     root_causes: rootCauses.length && !proofComplete ? rootCauses : [],
     not_proven: notProven.length && !proofComplete ? notProven : [],
   };
@@ -2596,6 +2644,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       path_generation_succeeded: null,
       path_generated: null,
       path_point_count: null,
+      path_preview_points: [],
+      path_preview_point_count: 0,
+      path_preview_source_point_count: null,
+      path_preview_frame_id: "",
       root_causes: [reason],
       not_proven: ["robot_api_not_loaded", "path_generated", "delivery_success"],
     },

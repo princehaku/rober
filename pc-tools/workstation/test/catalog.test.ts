@@ -4449,6 +4449,14 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
           path_generated: true,
           path_point_count: 31,
+          path_preview_points: [
+            { x: 0, y: 0, frame_id: "map", source_index: 0 },
+            { x: 0.4, y: 0.1, frame_id: "map", source_index: 12 },
+            { x: 0.8, y: 0, frame_id: "map", source_index: 30 },
+          ],
+          path_preview_point_count: 3,
+          path_preview_source_point_count: 31,
+          path_preview_frame_id: "map",
         },
       },
       "/api/radar/status": {
@@ -4543,6 +4551,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.continuous_window_observed).toBe("true");
       expect(summary.readback_summary.lidar.continuity_window_status).toBe("fresh_window_observed");
       expect(summary.readback_summary.lidar.latest_scan_proof_fresh).toBe("true");
+      expect(summary.o3_proof_summary.path_preview_points).toEqual([
+        { x: 0, y: 0, frame_id: "map", source_index: 0 },
+        { x: 0.4, y: 0.1, frame_id: "map", source_index: 12 },
+        { x: 0.8, y: 0, frame_id: "map", source_index: 30 },
+      ]);
+      expect(summary.o3_proof_summary.path_preview_point_count).toBe(3);
+      expect(summary.o3_proof_summary.path_preview_source_point_count).toBe(31);
+      expect(summary.o3_proof_summary.path_preview_frame_id).toBe("map");
       expect(summary.readback_summary.base.feedback_link_status).toBe("not_observed");
       expect(summary.o3_proof_summary.path_generated).toBe(true);
     } finally {

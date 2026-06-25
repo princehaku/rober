@@ -749,6 +749,41 @@ def path_goal_pose(request: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def compact_path_preview_points(path: Any, poses: list[Any], *, limit: int = 64) -> list[dict[str, Any]]:
+    """把 Nav2 path 压成可视化预览点，避免 artifact 因完整路线过长而拖慢 PC 首屏。"""
+    if not poses or limit <= 0:
+        return []
+    if len(poses) <= limit:
+        indexes = list(range(len(poses)))
+    else:
+        # 等距抽样并强制保留首尾，PC 端能看到完整路线方向但不会接收超大数组。
+        indexes = sorted({round(i * (len(poses) - 1) / (limit - 1)) for i in range(limit)})
+    frame_id = getattr(getattr(path, "header", None), "frame_id", None) if path is not None else None
+    points: list[dict[str, Any]] = []
+    for index in indexes:
+        pose_stamped = poses[index]
+        pose = getattr(pose_stamped, "pose", None)
+        position = getattr(pose, "position", None)
+        if position is None:
+            continue
+        try:
+            x = float(getattr(position, "x"))
+            y = float(getattr(position, "y"))
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(x) or not math.isfinite(y):
+            continue
+        points.append(
+            {
+                "x": round(x, 4),
+                "y": round(y, 4),
+                "frame_id": str(frame_id or ""),
+                "source_index": int(index),
+            }
+        )
+    return points
+
+
 def build_planner_readiness_summary(
     *,
     managed_runtime: dict[str, Any],
@@ -946,6 +981,10 @@ def maybe_compute_path_generation(
         "result_ok": False,
         "path_generated": False,
         "path_point_count": 0,
+        "path_preview_points": [],
+        "path_preview_point_count": 0,
+        "path_preview_source_point_count": 0,
+        "path_preview_frame_id": None,
         "path_goal_request": {
             "goal_frame_id": request["frame_id"],
             "goal_x": request["x"],
@@ -1028,6 +1067,8 @@ def maybe_compute_path_generation(
                 planning_time = getattr(result.result, "planning_time", None)
                 error_code = getattr(result.result, "error_code", None)
                 error_msg = getattr(result.result, "error_msg", None)
+                path_preview_points = compact_path_preview_points(path, poses)
+                path_frame_id = getattr(path.header, "frame_id", None) if path is not None else None
                 planning_time_ms = None
                 if planning_time is not None:
                     planning_time_ms = int((float(getattr(planning_time, "sec", 0)) * 1000) + (float(getattr(planning_time, "nanosec", 0)) / 1_000_000.0))
@@ -1037,12 +1078,17 @@ def maybe_compute_path_generation(
                         "result_ok": True,
                         "path_generated": bool(poses),
                         "path_point_count": len(poses),
+                        "path_preview_points": path_preview_points,
+                        "path_preview_point_count": len(path_preview_points),
+                        "path_preview_source_point_count": len(poses),
+                        "path_preview_frame_id": path_frame_id,
                         "planning_time_ms": planning_time_ms,
                         "path_goal_response": {
                             "accepted": True,
                             "result_received": True,
-                            "path_frame_id": getattr(path.header, "frame_id", None) if path is not None else None,
+                            "path_frame_id": path_frame_id,
                             "path_point_count": len(poses),
+                            "path_preview_point_count": len(path_preview_points),
                             "planning_time_ms": planning_time_ms,
                             "error_code": error_code,
                             "error_msg": error_msg,
@@ -3263,6 +3309,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "path_generation_service_available": bool(path_generation_result.get("service_available")),
         "path_generated": bool(path_generation_result.get("path_generated")),
         "path_point_count": int(path_generation_result.get("path_point_count") or 0),
+        "path_preview_points": path_generation_result.get("path_preview_points") if isinstance(path_generation_result.get("path_preview_points"), list) else [],
+        "path_preview_point_count": int(path_generation_result.get("path_preview_point_count") or 0),
+        "path_preview_source_point_count": int(path_generation_result.get("path_preview_source_point_count") or 0),
+        "path_preview_frame_id": path_generation_result.get("path_preview_frame_id"),
         "path_goal_request": path_goal_request_summary,
         "path_goal_response": path_goal_response_summary,
         "path_generation_boundary": path_generation_result.get("boundary"),

@@ -380,6 +380,10 @@ const fixtures: Record<string, unknown> = {
       path_generation_succeeded: false,
       path_generated: false,
       path_point_count: 0,
+      path_preview_points: [],
+      path_preview_point_count: 0,
+      path_preview_source_point_count: null,
+      path_preview_frame_id: "",
       root_causes: ["planner_server_not_active"],
       not_proven: ["path_generated", "delivery_success"],
     },
@@ -3502,7 +3506,17 @@ describe("App", () => {
 
   it("draws the latest Nav2 goal on the real map when goal coordinates are available", async () => {
     // 最近行程目标点只读自 latest artifact；它是地图 overlay，不会重新执行 Nav2 或确认送达。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
     const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execution/latest": {
         schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
         proxy_status: "latest_loaded",
@@ -3542,6 +3556,10 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    const route = wrapper.find('[data-testid="plain-map-route-path"]');
+    expect(route.exists()).toBe(true);
+    expect(route.find("polyline").attributes("points")).toBe("10.00,90.00 40.00,90.00 80.00,98.00");
+    expect(route.attributes("aria-label")).toBe("已读取 3 个路线点");
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
     expect(marker.text()).toBe("终点");

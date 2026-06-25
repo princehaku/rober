@@ -649,7 +649,7 @@ function mapFrameStyle(width: number, height: number): Record<string, string> {
   return width > 0 && height > 0 ? { "--map-aspect": `${width} / ${height}` } : {};
 }
 
-function mapCoordinateStyle(goalX: number, goalY: number, preview: RobotControlMapPreviewResponse): Record<string, string> | null {
+function mapCoordinatePercent(goalX: number, goalY: number, preview: RobotControlMapPreviewResponse): { left: number; top: number } | null {
   // ROS map origin 是地图左下角；浏览器图像坐标从左上角开始，因此 y 轴需要反转。
   const originX = finitePlainNumber(preview.origin?.[0]);
   const originY = finitePlainNumber(preview.origin?.[1]);
@@ -661,6 +661,15 @@ function mapCoordinateStyle(goalX: number, goalY: number, preview: RobotControlM
   const mapYCell = (goalY - originY) / resolution;
   const left = clampPercent((mapXCell / preview.width) * 100);
   const top = clampPercent((1 - mapYCell / preview.height) * 100);
+  return { left, top };
+}
+
+function mapCoordinateStyle(goalX: number, goalY: number, preview: RobotControlMapPreviewResponse): Record<string, string> | null {
+  const percent = mapCoordinatePercent(goalX, goalY, preview);
+  if (!percent) {
+    return null;
+  }
+  const { left, top } = percent;
   return { left: `${left.toFixed(2)}%`, top: `${top.toFixed(2)}%` };
 }
 
@@ -692,12 +701,33 @@ function latestNavGoalOverlay() {
   };
 }
 
+function latestNavPathOverlay() {
+  const preview = mapPreviewResult.value;
+  const points = robotSummary.value?.o3_proof_summary.path_preview_points ?? [];
+  if (!preview || preview.proxy_status !== "preview_forwarded" || points.length < 2) {
+    return null;
+  }
+  const mapPoints = points.filter((point) => !point.frame_id || point.frame_id === "map");
+  const svgPoints = mapPoints
+    .map((point) => mapCoordinatePercent(point.x, point.y, preview))
+    .filter((point): point is { left: number; top: number } => point !== null)
+    .map((point) => `${point.left.toFixed(2)},${point.top.toFixed(2)}`);
+  if (svgPoints.length < 2) {
+    return null;
+  }
+  return {
+    points: svgPoints.join(" "),
+    label: `已读取 ${svgPoints.length} 个路线点`,
+  };
+}
+
 const plainMapVisualSummary = computed(() => {
   // 首屏现场视图只使用真实 readback；缺地图或缺定位时显式标缺口，不能画一个假坐标。
   const proof = robotSummary.value?.o3_proof_summary;
   const mapReadback = mapRefreshResult.value?.latest_readback_key_values ?? {};
   const previewLoaded = mapPreviewResult.value?.proxy_status === "preview_forwarded" && Boolean(mapPreviewResult.value.image_data_url);
   const routeGoal = latestNavGoalOverlay();
+  const routePath = latestNavPathOverlay();
   const mapObserved = proof?.map_once_observed === true
     || mapReadback.map_once_observed === "true"
     || mapReadback.latest_map_once_observed === "true";
@@ -754,6 +784,9 @@ const plainMapVisualSummary = computed(() => {
     routeGoalState: routeGoal?.state ?? "",
     routeGoalStyle: routeGoal?.style ?? {},
     routeGoalAria: routeGoal?.aria ?? "",
+    showRoutePath: Boolean(routePath),
+    routePathPoints: routePath?.points ?? "",
+    routePathAria: routePath?.label ?? "",
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -5264,6 +5297,9 @@ onBeforeUnmount(() => {
                   <span class="plain-map-wall left" />
                   <span class="plain-map-wall right" />
                 </template>
+                <svg v-if="plainMapVisualSummary.showRoutePath" class="plain-map-route-path" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-route-path" :aria-label="plainMapVisualSummary.routePathAria">
+                  <polyline :points="plainMapVisualSummary.routePathPoints" />
+                </svg>
                 <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" aria-hidden="true" />
                 <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" aria-label="机器人位置" />

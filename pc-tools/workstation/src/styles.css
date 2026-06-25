@@ -466,6 +466,27 @@ h3 {
   image-rendering: pixelated;
 }
 
+.plain-map-route-path {
+  /* 路线只做证据可视化，不参与交互，避免覆盖地图刷新和标记点击区域。 */
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.plain-map-route-path polyline {
+  fill: none;
+  stroke: #1f6feb;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 2px rgba(10, 35, 77, 0.35));
+}
+
 .plain-map-grid-line {
   position: absolute;
   background: #bdc7d3;
@@ -525,6 +546,7 @@ h3 {
 .plain-map-radar-marker,
 .plain-map-route-goal-marker {
   position: absolute;
+  z-index: 3;
   border: 1px solid #99a7b7;
   border-radius: 6px;
   background: #ffffff;
