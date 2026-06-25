@@ -3438,6 +3438,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("待确认");
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("保存地图");
     expect(firstScreenText).toContain("待试动");
+    const motionPanel = wrapper.find('[data-testid="plain-motion-panel"]');
+    expect(motionPanel.exists()).toBe(true);
+    expect(motionPanel.attributes("data-state")).toBe("待试动");
     expect(firstScreenText).toContain("现场画面已记录；可以试动一下。");
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).not.toContain("移动前检查");
@@ -3502,6 +3505,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-panel[data-state="地图可见"]');
     expect(workstationStyles).toContain('.plain-map-panel[data-state="地图处理中"]');
+    expect(workstationStyles).toContain('.plain-motion-panel[data-state="待试动"]');
+    expect(workstationStyles).toContain('.plain-motion-panel[data-state="已试动"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面可见"][data-frame-state="已绘制帧"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面偏暗"]');
     expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达已运行"]');
@@ -4073,6 +4078,7 @@ describe("App", () => {
 
     expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
     expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-motion-panel"]').attributes("data-state")).toBe("待试动");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先准备图上路线");

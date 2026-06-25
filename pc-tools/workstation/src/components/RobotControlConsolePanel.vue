@@ -7949,7 +7949,7 @@ onBeforeUnmount(() => {
           </div>
         </article>
 
-        <article class="snapshot-panel">
+        <article class="snapshot-panel plain-motion-panel" data-testid="plain-motion-panel" :data-state="plainMotionSummary.state">
           <h3>移动/导航</h3>
           <label class="plain-trip-confirm">
             <input v-model="plainUnifiedSafetyConfirmed" type="checkbox" data-testid="plain-motion-safety-confirm">
