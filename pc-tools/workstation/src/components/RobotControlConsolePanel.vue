@@ -920,12 +920,15 @@ function latestNavGoalOverlay() {
   const succeeded = nav2GoalSucceeded(values);
   const stale = evidenceIsStale(values);
   // 终点 marker 直接表达执行证据，避免把“本轮目标”误读成已经完整到达。
-  const state = complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : succeeded ? "到达缺反馈" : "行程未通过";
+  const state = complete && !stale && deliverySuccessReady.value
+    ? "已送达"
+    : complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : succeeded ? "到达缺反馈" : "行程未通过";
+  const deliveryText = state === "已送达" ? "，delivery gate 已确认" : "";
   return {
     label: state,
     state,
     style,
-    aria: `${state}，地图坐标 x=${goalX.toFixed(2)}, y=${goalY.toFixed(2)}`,
+    aria: `${state}${deliveryText}，地图坐标 x=${goalX.toFixed(2)}, y=${goalY.toFixed(2)}`,
   };
 }
 

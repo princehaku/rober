@@ -2111,3 +2111,7 @@ base manual、keyboard pulse、Nav2 execute、delivery complete、stop 或 `/cmd
 2026-06-26 02:05 起，普通首屏扫地式建图点击 `保存当前地图` 后，保存代理返回成功会自动触发一次只读地图 preview 刷新，
 并把 `扫图状态` 和 `地图画面` 提示更新为“地图已保存，地图画面已自动刷新”。该刷新只读取
 `/api/robot-control/map/preview`，不发送 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
+
+2026-06-26 02:20 起，普通首屏地图上的 Nav2 目标 marker 会在本轮 `delivery success` 已通过且 route/map ref 对齐当前
+Nav2 execution evidence 时，从 `已到达` 提升为 `已送达`。该 marker 只消费已读到的 Nav2 latest/execute 和
+delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。

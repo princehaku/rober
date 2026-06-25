@@ -932,6 +932,12 @@ h3 {
   color: #176039;
 }
 
+.plain-map-route-goal-marker[data-state="已送达"] {
+  border-color: #238636;
+  background: #e7f7ed;
+  color: #14532d;
+}
+
 .plain-map-route-goal-marker[data-state="历史目标"],
 .plain-map-route-goal-marker[data-state="旧到达"],
 .plain-map-route-goal-marker[data-state="到达缺反馈"] {

@@ -4283,6 +4283,105 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("marks the map goal as delivered only when delivery success matches the current Nav2 route", async () => {
+    // 地图上的“已送达”只能来自对齐本轮 Nav2 evidence_ref 的 delivery gate 读回；不能由旧 latest 或前端推断点亮。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 2;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-delivered-fixture",
+          generated_at_ms: "1782150441201",
+          response_generated_at_ms: "1782150442201",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
+          goal_yaw: "0",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: true,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/latest",
+        remote_endpoint: "/api/delivery/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        delivery_key_values: {
+          status: "delivery_complete",
+          delivery_success: "true",
+          generated_at_ms: "1782150441301",
+          response_generated_at_ms: "1782150442301",
+          route_map_ref: "o11-nav2-goal-execution-delivered-fixture",
+        },
+        delivery_material_refs: {
+          external_video_ref: "camera-frame-delivered.png",
+          camera_artifacts_ref: "camera-frame-delivered.png",
+          route_map_ref: "o11-nav2-goal-execution-delivered-fixture",
+          operator_evidence_ref: "operator-delivered-fixture",
+        },
+        missing_required_material: [],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("已送达");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次");
+    const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(marker.exists()).toBe(true);
+    expect(marker.text()).toBe("已送达");
+    expect(marker.attributes("data-state")).toBe("已送达");
+    expect(marker.attributes("aria-label")).toBe("已送达，delivery gate 已确认，地图坐标 x=0.80, y=0.00");
+    expect(marker.attributes("style")).toContain("left: 80%");
+    expect(marker.attributes("style")).toContain("top: 98%");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("marks stale path preview points as a recent route instead of an executable route", async () => {
     // path_preview_points 可以照实画在地图上，但 path_generated=false 时不能暗示这是当前可执行路线。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
