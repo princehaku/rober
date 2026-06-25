@@ -1681,16 +1681,19 @@ const mapRuntimeStarted = computed(() => (
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
   && mapLifecycleResult.value.command_result.executed === true
 ));
+const mapWysiwygRefreshPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
 const keyboardMapWysiwygBlocked = computed(() => (
-  // 地图画面刷新中不能开始新的扫图移动；已经按住移动时仍允许松开并发送 stop。
-  mapRuntimeStarted.value && mapPreviewPending.value && !keyboardHeldDirection.value
+  // 地图画面或 proof 刷新中不能开始新的扫图移动；已经按住移动时仍允许松开并发送 stop。
+  mapRuntimeStarted.value && mapWysiwygRefreshPending.value && !keyboardHeldDirection.value
 ));
+function mapWysiwygRefreshPendingText(): string {
+  return mapPreviewPending.value ? "地图画面刷新中" : "地图状态刷新中";
+}
 const canPressKeyboardDirection = computed(() => keyboardControlArmed.value && canUseKeyboardControl.value && !keyboardMapWysiwygBlocked.value);
 const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
 ));
-const mapWysiwygRefreshPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
 const canStartPlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
   && !loading.value
@@ -1927,12 +1930,12 @@ const plainFreeRoamDriveStatus = computed(() => {
       : "扫图状态：地图已保存，刷新地图画面检查效果。";
   }
   if (keyboardMapWysiwygBlocked.value) {
-    return "扫图状态：地图画面刷新中，等刷新完成后再继续按住移动。";
+    return `扫图状态：${mapWysiwygRefreshPendingText()}，等刷新完成后再继续按住移动。`;
   }
   if (keyboardHeldDirection.value) {
     const wheelText = keyboardWheelFeedbackPlainText();
-    if (mapPreviewPending.value && mapRuntimeStarted.value) {
-      return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面刷新中；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
+    if (mapWysiwygRefreshPending.value && mapRuntimeStarted.value) {
+      return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，${mapWysiwygRefreshPendingText()}；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
     }
     if (plainFreeRoamLiveMapPreviewRefreshedForHold.value) {
       return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面已跟随刷新；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
