@@ -5143,6 +5143,7 @@ async function runPlainTripExecution(): Promise<void> {
   }
   confirmNavigationExecution.value = true;
   await runNavGoalExecution(routeGoal);
+  await refreshMapPreview();
   if (navGoalExecutionResult.value?.proxy_status === "execution_forwarded") {
     await loadNavGoalExecutionLatest();
   }

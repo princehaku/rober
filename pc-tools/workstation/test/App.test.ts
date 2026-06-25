@@ -4485,6 +4485,9 @@ describe("App", () => {
     const deliveryLatestCallsBeforeExecute = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/delivery/latest?"),
     ).length;
+    const mapPreviewCallsBeforeExecute = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length;
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4508,6 +4511,9 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/delivery/latest?"),
     ).length).toBe(deliveryLatestCallsBeforeExecute + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length).toBe(mapPreviewCallsBeforeExecute + 1);
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，可以准备送达材料。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-visible-route-fixture");

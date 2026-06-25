@@ -1550,6 +1550,11 @@ operator report，不再次发送运动命令、不补 LiDAR/route/delivery。�
 `map` frame 的 `x=0.8,y=0,yaw=0` 受限参数。普通首屏文案继续只显示“行程”，不展示 `Nav2/proof/API`
 字段；执行结果只用于“行程执行”状态和后续送达材料，不自动确认 delivery success。
 
+2026-06-26 01:20 起，普通首屏 `执行图上路线` 返回后会自动调用一次只读
+`GET /api/robot-control/map/preview`，把执行后的地图画面、路线终点 marker 和机器人/雷达叠图尽快同步回地图卡片。
+该刷新只读取地图预览，不再次调用 Nav2 execute、不发送 manual/keyboard pulse/stop、delivery complete 或 `/cmd_vel`，
+也不修改 Clash 或系统代理配置。
+
 2026-06-25 17:32 起，普通首屏 `检查行程` 作为不发车预检动作，不再被雷达 lifecycle 状态禁用：现场勾选
 `人在旁边、周围安全、停止手段就绪` 后，即使雷达未运行或待刷新，也可以先调用固定
 `/api/robot-control/nav2/goal/preflight` 查看路线 gate。
