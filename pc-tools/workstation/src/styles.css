@@ -522,6 +522,28 @@ h3 {
   filter: drop-shadow(0 1px 2px rgba(10, 35, 77, 0.35));
 }
 
+.plain-map-free-roam-sweep-plan {
+  /* 扫地图草图是只读计划层，放在路线层下方，避免被误认为当前 Nav2 执行路线。 */
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.plain-map-free-roam-sweep-plan polyline {
+  fill: none;
+  stroke: #8a5a13;
+  stroke-width: 1.35;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 2px rgba(67, 48, 18, 0.22));
+}
+
 .plain-map-grid-line {
   position: absolute;
   background: #bdc7d3;
@@ -580,7 +602,8 @@ h3 {
 .plain-map-unknown-pose,
 .plain-map-radar-marker,
 .plain-map-route-endpoint-marker,
-.plain-map-route-goal-marker {
+.plain-map-route-goal-marker,
+.plain-map-free-roam-start-marker {
   position: absolute;
   z-index: 3;
   border: 1px solid #99a7b7;
@@ -761,6 +784,15 @@ h3 {
   color: #5f4b00;
   text-align: center;
   box-shadow: 0 2px 8px rgba(21, 31, 43, 0.16);
+}
+
+.plain-map-free-roam-start-marker {
+  transform: translate(-50%, -120%);
+  padding: 4px 7px;
+  border-color: #d1ac73;
+  background: #fff4df;
+  color: #6c4610;
+  box-shadow: 0 2px 8px rgba(67, 48, 18, 0.16);
 }
 
 .plain-map-route-endpoint-marker {

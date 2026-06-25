@@ -1908,3 +1908,9 @@ stop 后提示刷新扫图画面或保存地图。该状态只解释现有本地
 打开画面，连接中/已打开/画面可见/画面偏暗/失败分别给出普通用户可理解的当前画面结论。该状态只消费现有 camera summary
 和本地视频帧采样结果，不自动打开摄像头、不发送 camera offer、不调用 Nav2、不发送 manual/keyboard pulse/delivery
 complete/stop 或 `/cmd_vel`。
+
+2026-06-25 20:40 起，普通首屏真实地图画面上新增 `扫地图草图` overlay：地图 preview 已读取且存在可通行区域时，地图上画出
+蛇形覆盖草图；如果已有 map-frame 机器人位姿，则额外标出 `扫图起点` 并从当前位置接入。扫地式建图卡片同步显示
+`扫地图草图` 状态，明确这是只读计划草图，不会自动移动。该草图不解析为 Nav2 路线、不生成导航目标、不发送 camera offer、
+manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`；真实移动仍必须由现场 operator 按安全流程或后续上车端
+安全状态机放行。

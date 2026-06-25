@@ -905,6 +905,41 @@ function latestNavPathOverlay() {
   };
 }
 
+function latestFreeRoamSweepPlanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
+  // 这里只画“扫地图草图”，不生成真实导航目标；缺占用栅格明细时不能把草图说成避障路径。
+  const preview = mapPreviewResult.value;
+  if (!preview || preview.proxy_status !== "preview_forwarded" || !preview.image_data_url || !preview.has_free_cells) {
+    return null;
+  }
+  const left = 14;
+  const right = 86;
+  const top = 16;
+  const bottom = 84;
+  const laneCount = Math.max(4, Math.min(7, Math.round((preview.height || 100) / 18)));
+  const laneStep = laneCount > 1 ? (bottom - top) / (laneCount - 1) : 0;
+  const robotStart = robotPose ? mapCoordinatePercent(robotPose.pose.x, robotPose.pose.y, preview) : null;
+  const points: string[] = [];
+  if (robotStart) {
+    points.push(`${robotStart.left.toFixed(2)},${robotStart.top.toFixed(2)}`);
+  }
+  for (let index = 0; index < laneCount; index += 1) {
+    const y = top + laneStep * index;
+    const startX = index % 2 === 0 ? left : right;
+    const endX = index % 2 === 0 ? right : left;
+    points.push(`${startX.toFixed(2)},${y.toFixed(2)}`);
+    points.push(`${endX.toFixed(2)},${y.toFixed(2)}`);
+  }
+  return {
+    points: points.join(" "),
+    laneCount,
+    showStart: Boolean(robotStart),
+    startStyle: robotStart ? { left: `${robotStart.left.toFixed(2)}%`, top: `${robotStart.top.toFixed(2)}%` } : {},
+    label: robotStart
+      ? `扫地图草图，从当前位置接入 ${laneCount} 段覆盖线；只读计划，不会自动移动。`
+      : `扫地图草图 ${laneCount} 段，等待定位后从当前位置接入；只读计划，不会自动移动。`,
+  };
+}
+
 function plainRouteMapCaption(routePath: ReturnType<typeof latestNavPathOverlay>): string {
   // 路线 caption 只解释当前地图上是否能看到路线；不作为执行行程的放行条件。
   if (routePath) {
@@ -985,6 +1020,7 @@ const plainMapVisualSummary = computed(() => {
   const routeGoal = latestNavGoalOverlay();
   const routePath = latestNavPathOverlay();
   const robotPose = latestRobotPoseOverlay();
+  const freeRoamSweepPlan = latestFreeRoamSweepPlanOverlay(robotPose);
   const mapObserved = proof?.map_once_observed === true
     || mapReadback.map_once_observed === "true"
     || mapReadback.latest_map_once_observed === "true";
@@ -1084,6 +1120,12 @@ const plainMapVisualSummary = computed(() => {
     routePathPoints: routePath?.points ?? "",
     routePathAria: routePath?.label ?? "",
     routeEndpointMarkers: routePath?.endpoints.filter((point) => point.id === "start" || !routeGoal) ?? [],
+    showFreeRoamSweepPlan: Boolean(freeRoamSweepPlan),
+    freeRoamSweepPlanPoints: freeRoamSweepPlan?.points ?? "",
+    freeRoamSweepPlanAria: freeRoamSweepPlan?.label ?? "",
+    freeRoamSweepPlanLabel: freeRoamSweepPlan?.label ?? "",
+    showFreeRoamSweepStart: freeRoamSweepPlan?.showStart ?? false,
+    freeRoamSweepStartStyle: freeRoamSweepPlan?.startStyle ?? {},
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -1245,6 +1287,23 @@ const plainFreeRoamDriveStatus = computed(() => {
       : "扫图状态：地图记录中，键盘条件未满足，不能扫图移动。";
   }
   return "扫图状态：等待地图记录状态。";
+});
+const plainFreeRoamSweepPlanSummary = computed(() => {
+  // 这是给 operator 的地图读图辅助，不是自动驾驶承诺；真实移动仍由键盘或后端安全状态机放行。
+  const preview = mapPreviewResult.value;
+  if (!preview || preview.proxy_status !== "preview_forwarded" || !preview.image_data_url) {
+    return "扫地图草图：先刷新地图画面；本页不会自动移动。";
+  }
+  if (!preview.has_free_cells || plainCellCount(preview, "free") <= 0) {
+    return "扫地图草图：地图还没读到可通行区域，先继续建图或刷新。";
+  }
+  const plan = latestFreeRoamSweepPlanOverlay(latestRobotPoseOverlay());
+  if (!plan) {
+    return "扫地图草图：等待地图画面和可通行区域。";
+  }
+  return plan.showStart
+    ? "扫地图草图：已从当前位置画出蛇形覆盖草图；不会自动移动。"
+    : "扫地图草图：已在地图上画出蛇形覆盖草图；等待定位后接入当前位置，不会自动移动。";
 });
 const plainFreeRoamCoverageSummary = computed(() => {
   // 像扫地机一样给出“已经扫到多少”的直观反馈；只读地图预览，不触发建图或移动。
@@ -5942,6 +6001,9 @@ onBeforeUnmount(() => {
                 <svg v-if="plainMapVisualSummary.showRoutePath" class="plain-map-route-path" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-route-path" :aria-label="plainMapVisualSummary.routePathAria">
                   <polyline :points="plainMapVisualSummary.routePathPoints" />
                 </svg>
+                <svg v-if="plainMapVisualSummary.showFreeRoamSweepPlan" class="plain-map-free-roam-sweep-plan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-free-roam-sweep-plan" :aria-label="plainMapVisualSummary.freeRoamSweepPlanAria">
+                  <polyline :points="plainMapVisualSummary.freeRoamSweepPlanPoints" />
+                </svg>
                 <span
                   v-for="marker in plainMapVisualSummary.routeEndpointMarkers"
                   :key="marker.id"
@@ -5952,6 +6014,7 @@ onBeforeUnmount(() => {
                   :aria-label="marker.aria"
                 >{{ marker.label }}</span>
                 <span v-if="plainMapVisualSummary.showRouteGoal" class="plain-map-route-goal-marker" data-testid="plain-map-route-goal-marker" :data-state="plainMapVisualSummary.routeGoalState" :style="plainMapVisualSummary.routeGoalStyle" :aria-label="plainMapVisualSummary.routeGoalAria">{{ plainMapVisualSummary.routeGoalLabel }}</span>
+                <span v-if="plainMapVisualSummary.showFreeRoamSweepStart" class="plain-map-free-roam-start-marker" data-testid="plain-map-free-roam-start-marker" :style="plainMapVisualSummary.freeRoamSweepStartStyle" aria-label="扫图草图从机器人当前位置接入">扫图起点</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">
                   <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.15" />
@@ -5971,6 +6034,7 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainMapVisualSummary.state">{{ plainMapVisualSummary.state }}</span>
               <span class="muted">{{ plainMapVisualSummary.mapRefLabel }}</span>
               <span v-if="plainMapVisualSummary.routePathLabel" class="muted" data-testid="plain-map-route-label">{{ plainMapVisualSummary.routePathLabel }}</span>
+              <span v-if="plainMapVisualSummary.freeRoamSweepPlanLabel" class="muted" data-testid="plain-map-free-roam-sweep-label">{{ plainMapVisualSummary.freeRoamSweepPlanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-freshness-label">{{ plainMapVisualSummary.radarFreshnessLabel }}</span>
               <span class="muted" data-testid="plain-map-coordinate-truth-label">{{ plainMapVisualSummary.coordinateTruthLabel }}</span>
@@ -6031,6 +6095,7 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note" data-testid="plain-free-roam-hint">{{ plainFreeRoamMappingSummary.hint }}</p>
           <p class="panel-note" data-testid="plain-free-roam-drive-status">{{ plainFreeRoamDriveStatus }}</p>
+          <p class="panel-note" data-testid="plain-free-roam-sweep-plan-summary">{{ plainFreeRoamSweepPlanSummary }}</p>
           <p class="panel-note">按住方向键或 W/A/S/D 移动，松开即停；保存后刷新地图画面检查效果。</p>
           <div class="plain-free-roam-coverage" data-testid="plain-free-roam-coverage">
             <div class="simple-status-row">

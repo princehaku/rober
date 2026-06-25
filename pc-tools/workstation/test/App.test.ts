@@ -3315,6 +3315,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("已扫出 1 个可通行格");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("未知区域 0.0%");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("当前显示最近地图画面，开始记录后可边扫边刷新。");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]').attributes("aria-label")).toContain("扫地图草图");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("只读计划，不会自动移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toBe("扫地图草图：已在地图上画出蛇形覆盖草图；等待定位后接入当前位置，不会自动移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图准备");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达避障");
@@ -3817,6 +3821,13 @@ describe("App", () => {
     expect(robotMarker.exists()).toBe(true);
     expect(robotMarker.attributes("style")).toContain("left: 50%; top: 50%;");
     expect(robotMarker.attributes("aria-label")).toBe("机器人位置，地图坐标 x=0.50, y=0.50");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-free-roam-sweep-label"]').text()).toContain("从当前位置接入");
+    const sweepStart = wrapper.find('[data-testid="plain-map-free-roam-start-marker"]');
+    expect(sweepStart.exists()).toBe(true);
+    expect(sweepStart.text()).toBe("扫图起点");
+    expect(sweepStart.attributes("style")).toContain("left: 50%; top: 50%;");
+    expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toBe("扫地图草图：已从当前位置画出蛇形覆盖草图；不会自动移动。");
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
   });
 
