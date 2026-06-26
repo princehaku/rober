@@ -2234,7 +2234,7 @@ const canSavePlainFreeRoamMapping = computed(() => (
   && robotApiBaseUrl.value.trim().length > 0
 ));
 const canStartFreeRoamAutonomy = computed(() => (
-  robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready"
+  robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
   && plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
   && plainFreeRoamMapPreviewFreshForSession.value
@@ -2685,8 +2685,10 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const policy = boundary?.free_roam_autonomy_policy;
   const preview = mapPreviewResult.value;
   const previewLoaded = preview?.proxy_status === "preview_forwarded";
-  const autonomyLocked = boundary?.free_roam_autonomy !== "ready";
-  const autonomyReady = boundary?.free_roam_autonomy === "ready";
+  const autonomyRunningUnlocked = boundary?.free_roam_autonomy === "ready";
+  const autonomyStartReady = boundary?.free_roam_autonomy_start_ready === true;
+  const autonomyLocked = !autonomyStartReady;
+  const autonomyReady = autonomyStartReady;
   const hasRuntimeGateRows = Boolean(boundary?.free_roam_autonomy_gates?.length);
   const manualFallbackHint = "自动扫图未开放；当前用人工按住扫图：开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图。";
   const blockers: string[] = [];
@@ -2710,14 +2712,14 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   if (radarSummary.value.state !== "雷达已运行") {
     blockers.push(radarSummary.value.state);
   }
-  if (autonomyLocked && !canUseKeyboardControl.value) {
+  if (!autonomyStartReady && !canUseKeyboardControl.value) {
     blockers.push("键盘低速手控条件未满足");
   }
   if (!canSendStop.value) {
     blockers.push("停止兜底暂不可用");
   }
-  if (autonomyLocked) {
-    blockers.push(hasRuntimeGateRows ? "自动扫图真车验证未完成" : "上车端避障和自动停止未验证");
+  if (!autonomyStartReady) {
+    blockers.push(hasRuntimeGateRows ? "自动扫图启动条件未满足" : "上车端避障和自动停止未验证");
   }
   const policyGates = policy?.required_gates ?? [
     "onboard_watchdog",
@@ -2760,6 +2762,8 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       ? "当前只是记录模式，不会自己跑；真车自动扫图还要完成安全确认、地图记录、雷达和停止兜底。"
       : runtime.cmd_vel_publish_enabled
       ? "运动发布已解锁，PC 仍等待真车 HIL 记录。"
+      : autonomyStartReady
+      ? "启动条件已满足；点击开始后由上车端复检相机和雷达，再打开运动双锁。"
       : "运动发布未解锁，不会自己跑。";
     const stateLabels: Record<string, string> = {
       locked: "门禁锁定",
@@ -2824,12 +2828,14 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     disabled: autonomyReady ? (freeRoamAutonomyPending.value || freeRoamMapWysiwygPending.value) : false,
     hint: autonomyLocked
       ? manualFallbackHint
-      : freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
+      : autonomyRunningUnlocked || (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start")
+      ? freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
         ? radarRefreshFailureLabel(radarRefreshResult.value)
           ? `自动扫图状态机已启动；${radarRefreshFailureLabel(radarRefreshResult.value)}，PC 继续保留停止兜底。`
           : plainFreeRoamMapPreviewRefreshFailedForSession.value
             ? `自动扫图状态机已启动；地图画面刷新失败${mapPreviewFailureText(mapPreviewResult.value) ? `：${mapPreviewFailureText(mapPreviewResult.value)}` : ""}，PC 继续保留停止兜底。`
           : "自动扫图状态机已启动；PC 继续监看地图、雷达和停止兜底。"
+        : "上车端自动扫图已解锁；PC 继续监看地图、雷达和停止兜底。"
       : blockers.length
         ? `还差：${blockers.slice(0, 3).join("、")}。`
         : "上车端自动扫图已就绪；点击后只启动上车状态机，PC 继续负责地图/雷达所见即所得监看和停止兜底。",

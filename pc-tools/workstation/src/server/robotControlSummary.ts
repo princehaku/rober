@@ -3013,6 +3013,13 @@ function lockedBoundary(
   freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
 ): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
+  const startGateIds = new Set(["stop_available", "lidar_fresh"]);
+  const startGates = (freeRoamRuntimeGates ?? []).filter((gate) => startGateIds.has(gate.id));
+  const freeRoamStartReady = Boolean(
+    freeRoamRuntime?.status === "loaded"
+    && startGates.length === startGateIds.size
+    && startGates.every((gate) => gate.state === "ready"),
+  );
   const freeRoamReady = Boolean(
     freeRoamRuntime?.status === "loaded"
     && freeRoamRuntime.cmd_vel_publish_enabled
@@ -3035,6 +3042,7 @@ function lockedBoundary(
     keyboard_stop_triggers: ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"],
     keyboard_reuses_manual_gate: true,
     free_roam_autonomy: freeRoamReady ? "ready" : "locked",
+    free_roam_autonomy_start_ready: freeRoamStartReady,
     free_roam_autonomy_label: freeRoamReady ? "自动扫图" : "自动扫图（未开放）",
     free_roam_autonomy_policy: {
       // 自动扫图不是 PC 端无限发点动；必须先有上车端避障、watchdog 和真车验证证据。

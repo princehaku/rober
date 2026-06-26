@@ -2348,6 +2348,12 @@ delivery complete、manual、keyboard pulse、stop 或 `/cmd_vel`。
 采集源失败或雷达未 fresh 时，按钮显示 `检查摄像头后开始` / `刷新雷达后开始`，点击只做引导，不调用 start。
 该 gate 不影响键盘连续手控；键盘手控继续只依赖默认小车连接、现场安全确认、按住才动和停止兜底，不把雷达作为前置。
 
+2026-06-27 16:25 起，Robot Control summary 新增 `safe_command_boundary.free_roam_autonomy_start_ready`，用于表达
+“上车端 stop 兜底 + 实时雷达已经满足，可以发起 start 请求”。它不同于 `free_roam_autonomy=ready`：
+后者仍表示 runtime 已经 `cmd_vel_publish_enabled=true` 并进入运动发布解锁状态。普通首屏启动按钮改用
+`free_roam_autonomy_start_ready` 叠加本地安全确认、地图记录、地图画面刷新、摄像头 ready 和停止兜底，避免 start 按钮
+被 `cmd_vel_publish_enabled=false` 永久锁住。点击后仍只走固定 `/api/robot-control/free-roam/autonomy/start`，不由浏览器或 Node 直接发布 `/cmd_vel`。
+
 2026-06-26 10:17 起，如果上车端自动扫图 readiness 仍未 ready，普通首屏同一个按钮会作为人工扫图向导：
 安全确认未勾时显示 `先勾安全确认` 并只聚焦 checkbox；已勾安全确认但还没开始记录时，显示 `开始记录并继续`，点击只调用固定 `/api/robot-control/map/start` 启动地图记录，并在成功后启用键盘窗口等待按住；
 记录已启动但键盘未启用时，点击只启用键盘窗口。它不会调用 `/api/robot-control/free-roam/autonomy/start`，不会发送方向

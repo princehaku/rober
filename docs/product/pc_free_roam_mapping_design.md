@@ -86,6 +86,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-27 15:10 起，“自动扫图准备”从只读状态机门禁推进到上车端受控发车门禁：PC 按钮仍只调用固定 start 代理，
   不直接发布 `/cmd_vel`，但上车端在相机和雷达都 ready 时会打开 free-roam 节点双锁，让策略节点按 `/scan`、`/map`
   和 watchdog 决策低速移动。若摄像头或雷达任一不 ready，start 返回 `blocked_sensor_readiness`，不会写任何 free-roam 参数。
+- 2026-06-27 16:25 起，PC summary 拆出 `free_roam_autonomy_start_ready`：它只表示上车端 stop 兜底与实时雷达已满足，
+  不要求 `cmd_vel_publish_enabled=true`。普通首屏是否真正能点 `开始自动扫图（低速）` 还要叠加本地安全确认、地图记录、
+  地图画面刷新、摄像头 ready 和停止兜底；点击后再由上车端复检 camera/radar readiness 并打开双锁。这样避免“必须先解锁才能点击解锁”的循环。
 
 ## 用户流程
 
