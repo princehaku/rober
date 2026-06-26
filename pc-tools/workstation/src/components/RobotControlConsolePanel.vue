@@ -1713,7 +1713,7 @@ function plainRadarFreshnessLabel(
       return `雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 ${mapPointCount} 个。`;
     }
     if (obstacleDistanceLabel) {
-      return `雷达点口径：正在确认实时性，当前只显示${obstacleDistanceLabel}，刷新后再确认点位。`;
+      return `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
     }
     return localPointCount > 0
       ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
