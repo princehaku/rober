@@ -3322,16 +3322,26 @@ function freeRoamRuntimeGatesFromReadbacks(
       };
     });
   const cmdVelPublishEnabled = latest.cmd_vel_publish_enabled === true;
+  const startFallbackReady = gateRows.some((gate) => gate.id === "stop_available" && gate.state === "ready");
+  const motionGateState: "ready" | "blocked" | "not_proven" = cmdVelPublishEnabled
+    ? "ready"
+    : startFallbackReady
+      ? "not_proven"
+      : "blocked";
   gateRows.push({
     id: "motion_hil_unlock",
     label: "真车低速放行",
-    state: cmdVelPublishEnabled ? "ready" : "blocked",
+    state: motionGateState,
     evidence: cmdVelPublishEnabled
       ? "自动扫图节点已双重解锁运动发布"
-      : "自动扫图节点默认只写记录，不发布运动",
+      : startFallbackReady
+        ? "当前尚未启动自动扫图，点击开始后由上车端打开运动双锁"
+        : "自动扫图节点默认只写记录，不发布运动",
     next_action: cmdVelPublishEnabled
       ? "PC 继续只读监看地图、雷达和停止兜底，不在 summary 中直接发车"
-      : "完成 stop 兜底、雷达避障和地图覆盖验证后再解锁",
+      : startFallbackReady
+        ? "勾选现场安全确认后点击开始自动扫图（低速）"
+        : "先确认上车端停止兜底和自动扫图 runtime",
   });
   return gateRows.length > 0 ? gateRows : null;
 }

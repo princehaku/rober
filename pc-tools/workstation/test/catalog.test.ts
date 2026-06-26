@@ -4917,6 +4917,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（勾确认后可启动）");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
         expect.objectContaining({ id: "lidar_fresh", state: "blocked" }),
+        expect.objectContaining({
+          id: "motion_hil_unlock",
+          state: "not_proven",
+          evidence: "当前尚未启动自动扫图，点击开始后由上车端打开运动双锁",
+          next_action: "勾选现场安全确认后点击开始自动扫图（低速）",
+        }),
       ]));
       expect(summary.safe_to_control).toBe(false);
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);

@@ -116,6 +116,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `enable_cmd_vel_publish=false`、`motion_hil_unlocked=false` 并设置 `external_stop_requested=true`。
   HTTP 仍不直接发布 `/cmd_vel`，也不允许修改 `cmd_vel_topic`；真正运动只由上车 `free_roam_autonomy_node`
   在双锁打开后按策略输出 0.12m/s 以内的受限 Twist。
+- 2026-06-27 17:45 起，PC summary 的 `motion_hil_unlock` gate 区分“尚未启动”和“不能启动”：
+  当 `stop_available=ready` 且 runtime 仍是 `artifact_only=true/cmd_vel_publish_enabled=false` 时，gate 显示
+  `not_proven` 和 `当前尚未启动自动扫图，点击开始后由上车端打开运动双锁`；只有停止兜底或 runtime 本身缺失时才显示
+  blocked。这样 live 首屏不会在 `free_roam_autonomy_start_ready=true` 时又误提示“完成 HIL 后再解锁”。
 
 ## 用户流程
 
