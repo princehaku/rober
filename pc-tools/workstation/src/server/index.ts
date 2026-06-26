@@ -767,7 +767,12 @@ function freeRoamAutonomyProxyFailure(
     latest_decision_state: "not_loaded",
     sets_state_machine_parameters: false,
     direct_cmd_vel_publish: false,
+    motion_unlock_requested: false,
     does_not_set_motion_unlock: true,
+    sensor_readiness: {
+      ready: false,
+      missing: ["not_checked"],
+    },
     blocked_parameters_not_touched: ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
     failure_reason: reason,
     blocked_reasons: [reason],
@@ -793,6 +798,8 @@ function freeRoamAutonomyProxyResponse(
   }
   const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
   const commandResult = asRecord(remote.payload.command_result);
+  const sensorReadiness = asRecord(remote.payload.sensor_readiness);
+  const motionUnlockRequested = remote.payload.motion_unlock_requested === true;
   const forwarded = remote.remote_http_status !== null && remote.remote_http_status >= 200 && remote.remote_http_status < 300 && remote.payload.status === "requested";
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1",
@@ -819,7 +826,16 @@ function freeRoamAutonomyProxyResponse(
     latest_decision_state: shortValue(remote.payload.latest_decision_state, "not_loaded"),
     sets_state_machine_parameters: remote.payload.sets_state_machine_parameters === true,
     direct_cmd_vel_publish: false,
-    does_not_set_motion_unlock: true,
+    motion_unlock_requested: motionUnlockRequested,
+    does_not_set_motion_unlock: remote.payload.does_not_set_motion_unlock === false ? false : true,
+    sensor_readiness: {
+      ready: sensorReadiness?.ready === true,
+      missing: Array.isArray(sensorReadiness?.missing)
+        ? sensorReadiness.missing.map((item) => shortValue(item, "unknown"))
+        : [],
+      camera: asRecord(sensorReadiness?.camera) ?? {},
+      radar: asRecord(sensorReadiness?.radar) ?? {},
+    },
     blocked_parameters_not_touched: Array.isArray(remote.payload.blocked_parameters_not_touched)
       ? remote.payload.blocked_parameters_not_touched.map((item) => shortValue(item, "unknown"))
       : [],

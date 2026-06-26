@@ -2585,6 +2585,13 @@ export interface RobotControlFreeRoamAutonomyRequest {
   confirm_mapping_active?: boolean;
 }
 
+export interface RobotControlFreeRoamAutonomySensorReadiness {
+  ready?: boolean;
+  missing?: string[];
+  camera?: Record<string, unknown>;
+  radar?: Record<string, unknown>;
+}
+
 export interface RobotControlFreeRoamAutonomyResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1";
   action: RobotControlFreeRoamAutonomyAction;
@@ -2604,7 +2611,9 @@ export interface RobotControlFreeRoamAutonomyResponse extends ProofFlags {
   latest_decision_state: string;
   sets_state_machine_parameters: boolean;
   direct_cmd_vel_publish: false;
-  does_not_set_motion_unlock: true;
+  motion_unlock_requested: boolean;
+  does_not_set_motion_unlock: boolean;
+  sensor_readiness: RobotControlFreeRoamAutonomySensorReadiness;
   blocked_parameters_not_touched: string[];
   failure_reason: string;
   blocked_reasons: string[];

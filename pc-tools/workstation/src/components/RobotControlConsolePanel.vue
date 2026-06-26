@@ -723,6 +723,15 @@ function syncJogInputsToBoundary(): void {
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
 const cameraFrameTooDark = computed(() => cameraSummary.value.state === "画面偏暗");
+const plainCameraReadyForFreeRoamAutonomy = computed(() => {
+  // 自动扫图发车只要求上位机相机采集源 ready，不强制浏览器已经打开 WebRTC 画面。
+  const camera = robotSummary.value?.readback_summary.camera;
+  const sourceFailure =
+    camera?.source_readiness === "first_frame_failed"
+    || camera?.source_failure_reason === "first_frame_timeout"
+    || camera?.last_offer_failure_reason === "first_frame_timeout";
+  return Boolean(camera?.status === "ready" && camera?.video_source && !sourceFailure);
+});
 function plainCameraVideoFrameTruth(): string {
   // 普通首屏只说浏览器是否真的绘制出帧，不暴露 readyState/srcObject 等工程字段。
   const hasSize = videoElementWidth.value > 0 && videoElementHeight.value > 0;
@@ -2230,6 +2239,7 @@ const canStartFreeRoamAutonomy = computed(() => (
   && mapRuntimeStarted.value
   && plainFreeRoamMapPreviewFreshForSession.value
   && !freeRoamMapWysiwygPending.value
+  && plainCameraReadyForFreeRoamAutonomy.value
   && radarSummary.value.state === "雷达已运行"
   && canSendStop.value
   && !freeRoamAutonomyPending.value
@@ -2450,6 +2460,9 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
   }
   if (!plainFreeRoamMapPreviewFreshForSession.value) {
     return "刷新扫图画面";
+  }
+  if (!plainCameraReadyForFreeRoamAutonomy.value) {
+    return cameraSummary.value.state === "失败" ? "检查摄像头后开始" : "打开画面后开始";
   }
   if (radarSummary.value.state !== "雷达已运行") {
     return plainRadarRequiresRefresh.value ? "刷新雷达后开始" : "启动雷达后开始";

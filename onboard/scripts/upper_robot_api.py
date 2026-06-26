@@ -1888,8 +1888,8 @@ def run_fixed_argv_command(argv: list[str], timeout_s: float = 8.0) -> dict[str,
     }
 
 
-def run_free_roam_param_sequence(action: str) -> dict[str, Any]:
-    """自动扫图 start/stop 只改状态机参数，不触碰运动解锁参数。"""
+def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False) -> dict[str, Any]:
+    """自动扫图只在传感器预检通过后写运动双锁，停止时必须重新上锁。"""
     sequences = {
         "start": [
             ("operator_confirmed", "true"),
@@ -1898,6 +1898,8 @@ def run_free_roam_param_sequence(action: str) -> dict[str, Any]:
             ("external_stop_requested", "false"),
         ],
         "stop": [
+            ("enable_cmd_vel_publish", "false"),
+            ("motion_hil_unlocked", "false"),
             ("external_stop_requested", "true"),
             ("mapping_active", "false"),
             ("operator_confirmed", "false"),
@@ -1910,21 +1912,34 @@ def run_free_roam_param_sequence(action: str) -> dict[str, Any]:
             "ok": False,
             "reason": "unsupported_free_roam_action",
         }
+    if action == "start" and enable_motion:
+        # 双锁放在状态机门禁之后设置；任何一步失败都会停止后续写入，避免半启动。
+        sequences[action].extend([
+            ("motion_hil_unlocked", "true"),
+            ("enable_cmd_vel_publish", "true"),
+        ])
     results = []
     for name, value in sequences[action]:
-        # 这里只允许固定节点名、固定参数名和 bool 字符串；不会写 enable_cmd_vel_publish 或 motion_hil_unlocked。
+        # 这里只允许固定节点名、固定参数名和 bool 字符串；不会接受浏览器传入的任意参数名。
         result = run_fixed_argv_command(["ros2", "param", "set", "/free_roam_autonomy", name, value])
         results.append({"parameter": name, "value": value, **result})
         if not result.get("ok"):
             break
+    touched = [item["parameter"] for item in results]
+    blocked_not_touched = [
+        name
+        for name in ("motion_hil_unlocked", "enable_cmd_vel_publish", "cmd_vel_topic")
+        if name not in touched
+    ]
     return {
         "mode": "free_roam_param_sequence",
         "action": action,
+        "motion_unlock_requested": bool(action == "start" and enable_motion),
         "executed": any(bool(item.get("executed")) for item in results),
         "ok": len(results) == len(sequences[action]) and all(bool(item.get("ok")) for item in results),
         "results": results,
-        "touched_parameters": [item["parameter"] for item in results],
-        "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+        "touched_parameters": touched,
+        "blocked_parameters_not_touched": blocked_not_touched,
     }
 
 
@@ -6230,6 +6245,75 @@ class UpperRobotApi:
             "software_guard": True,
         }
 
+    def camera_motion_readiness(self) -> dict[str, Any]:
+        """自动扫图发车前同步确认相机子服务和采集源在线，避免异步 route 依赖泄漏到控制路径。"""
+        import urllib.error
+        import urllib.request
+
+        health_url = urljoin(self.camera_base_url + "/", "health")
+        try:
+            # start 路径不能长期卡住 ROS 参数写入；2s 足够判断本机 8088 是否健康。
+            with urllib.request.urlopen(health_url, timeout=2.0) as response:  # noqa: S310 - URL 来自上车端固定配置。
+                text = response.read(256 * 1024).decode("utf-8", errors="replace")
+                parsed = json.loads(text) if text else {}
+                payload = parsed if isinstance(parsed, dict) else {"error": "camera_health_not_object"}
+                http_status = int(response.status)
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            return {
+                "ready": False,
+                "http_status": None,
+                "health_url": health_url,
+                "status": "blocked",
+                "missing": ["camera_health_unreachable"],
+                "failure_reason": compact_error(exc),
+            }
+
+        status = str(payload.get("status") or "not_loaded")
+        video_source = str(payload.get("video_source") or "")
+        source_failure_reason = str(payload.get("source_failure_reason") or "")
+        source_readiness = str(payload.get("source_readiness") or "")
+        ready = (
+            http_status == 200
+            and status == "ready"
+            and bool(video_source)
+            and not source_failure_reason
+            and source_readiness not in {"first_frame_failed", "source_failed"}
+        )
+        return {
+            "ready": ready,
+            "http_status": http_status,
+            "health_url": health_url,
+            "status": status,
+            "video_source": video_source or "not_loaded",
+            "source_readiness": source_readiness or "not_loaded",
+            "source_failure_reason": source_failure_reason,
+            "missing": [] if ready else ["camera_not_ready"],
+        }
+
+    def free_roam_motion_readiness(self) -> dict[str, Any]:
+        """自由自助移动必须等相机和雷达同时 ready；人工键盘手控不走这个门禁。"""
+        camera = self.camera_motion_readiness()
+        radar = self.radar_status()
+        radar_ready = bool(radar.get("lifecycle_running")) and bool(radar.get("latest_scan_proof_fresh"))
+        missing = []
+        if not camera.get("ready"):
+            missing.extend(camera.get("missing") if isinstance(camera.get("missing"), list) else ["camera_not_ready"])
+        if not radar_ready:
+            missing.append("radar_not_ready")
+        return {
+            "ready": not missing,
+            "missing": list(dict.fromkeys(str(item) for item in missing)),
+            "camera": camera,
+            "radar": {
+                "ready": radar_ready,
+                "lifecycle_running": bool(radar.get("lifecycle_running")),
+                "lifecycle_state": radar.get("lifecycle_state") or "not_loaded",
+                "latest_scan_proof_fresh": bool(radar.get("latest_scan_proof_fresh")),
+                "continuous_window_observed": bool(radar.get("continuous_window_observed")),
+                "continuity_blocked_reasons": radar.get("continuity_blocked_reasons", []),
+            },
+        }
+
     def free_roam_autonomy_control(self, action: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """固定 start/stop 入口只设置 free_roam_autonomy_node 参数，不直接发布速度。"""
         request = body if isinstance(body, dict) else {}
@@ -6261,8 +6345,37 @@ class UpperRobotApi:
                         "robot_control_executed": False,
                     },
                 )
+            sensor_readiness = self.free_roam_motion_readiness()
+            if not sensor_readiness.get("ready"):
+                return software_guard_payload(
+                    schema_suffix="free_roam_autonomy_control_result",
+                    action="free_roam_autonomy_start",
+                    endpoint=endpoint,
+                    artifact=free_roam_autonomy_artifact_info(self.free_roam_autonomy_artifact_path),
+                    extra={
+                        "status": "blocked_sensor_readiness",
+                        "failure_reason": "free_roam_motion_sensors_not_ready",
+                        "blocked_reasons": sensor_readiness.get("missing", ["sensor_readiness_not_ready"]),
+                        "sensor_readiness": sensor_readiness,
+                        "command_result": {
+                            "mode": "free_roam_param_sequence",
+                            "executed": False,
+                            "ok": False,
+                            "reason": "free_roam_motion_sensors_not_ready",
+                        },
+                        "sets_state_machine_parameters": False,
+                        "motion_unlock_requested": False,
+                        "direct_cmd_vel_publish": False,
+                        "does_not_set_motion_unlock": True,
+                        "publishes_cmd_vel": False,
+                        "sends_motion_commands": False,
+                        "robot_control_executed": False,
+                        "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+                    },
+                )
         elif action == "stop":
             endpoint = ROUTE_PATHS["free_roam_autonomy_stop"]
+            sensor_readiness = {"ready": False, "missing": ["not_required_for_stop"]}
         else:
             return software_guard_payload(
                 schema_suffix="free_roam_autonomy_control_result",
@@ -6272,8 +6385,9 @@ class UpperRobotApi:
                 extra={"error": {"type": "unsupported_free_roam_action", "message": "action must be start or stop"}},
             )
 
-        command_result = run_free_roam_param_sequence(action)
+        command_result = run_free_roam_param_sequence(action, enable_motion=(action == "start"))
         http_status, latest = self.free_roam_autonomy_latest()
+        motion_unlock_requested = bool(command_result.get("motion_unlock_requested"))
         return software_guard_payload(
             schema_suffix="free_roam_autonomy_control_result",
             action=f"free_roam_autonomy_{action}",
@@ -6297,9 +6411,11 @@ class UpperRobotApi:
                 ),
                 "sets_state_machine_parameters": True,
                 "direct_cmd_vel_publish": False,
-                "does_not_set_motion_unlock": True,
-                "publishes_cmd_vel": False,
-                "sends_motion_commands": False,
+                "motion_unlock_requested": motion_unlock_requested,
+                "does_not_set_motion_unlock": not motion_unlock_requested,
+                "sensor_readiness": sensor_readiness,
+                "publishes_cmd_vel": bool(motion_unlock_requested and command_result.get("ok")),
+                "sends_motion_commands": bool(motion_unlock_requested and command_result.get("ok")),
                 "robot_control_executed": False,
                 "blocked_parameters_not_touched": command_result.get("blocked_parameters_not_touched", []),
             },
