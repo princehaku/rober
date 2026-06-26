@@ -26,6 +26,7 @@ import type {
   RobotControlBaseCommandRequest,
   RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlFreeRoamAutonomyRequest,
+  RobotControlFreeRoamAutonomyLatestResponse,
   RobotControlFreeRoamAutonomyResponse,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
@@ -128,6 +129,7 @@ const API_ENDPOINTS = {
   robotControlMapReset: "/api/robot-control/map/reset",
   robotControlFreeRoamAutonomyStart: "/api/robot-control/free-roam/autonomy/start",
   robotControlFreeRoamAutonomyStop: "/api/robot-control/free-roam/autonomy/stop",
+  robotControlFreeRoamAutonomyLatest: "/api/robot-control/free-roam/autonomy/latest",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
   robotControlCameraFirstFrameProbe: "/api/robot-control/camera/first-frame/probe",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
@@ -642,6 +644,13 @@ export async function postRobotControlFreeRoamAutonomyStart(
   return postJson<RobotControlFreeRoamAutonomyResponse>(
     robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlFreeRoamAutonomyStart, baseUrl),
     body,
+  );
+}
+
+export async function getRobotControlFreeRoamAutonomyLatest(baseUrl: string): Promise<RobotControlFreeRoamAutonomyLatestResponse> {
+  // 自动扫图 latest 只读取上车端 runtime artifact，不启动或停止自动扫图。
+  return loadJson<RobotControlFreeRoamAutonomyLatestResponse>(
+    robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlFreeRoamAutonomyLatest, baseUrl),
   );
 }
 

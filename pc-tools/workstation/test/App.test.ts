@@ -1002,6 +1002,32 @@ const fixtures: Record<string, unknown> = {
     robot_control_executed: false,
     ...PROOF_FLAGS,
   },
+  "/api/robot-control/free-roam/autonomy/latest": {
+    schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_latest_proxy.v1",
+    proxy_status: "latest_loaded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    workstation_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+    remote_endpoint: "/api/free-roam/autonomy/latest",
+    remote_method: "GET",
+    remote_http_status: 200,
+    status: "loaded_fail_closed_summary",
+    latest_key_values: {
+      status: "not_proven",
+      runtime_status: "loaded",
+      decision_state: "locked",
+      decision_reason: "还未勾选现场安全确认",
+      stop_required: "true",
+      artifact_only: "true",
+      cmd_vel_publish_enabled: "false",
+      gate_count: "5",
+    },
+    failure_reason: "",
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
   "/api/robot-control/camera/offer": {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
     proxy_status: "offer_forwarded",
@@ -3179,6 +3205,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/free-roam/autonomy/start";
     } else if (url.startsWith("/api/robot-control/free-roam/autonomy/stop")) {
       fixtureKey = "/api/robot-control/free-roam/autonomy/stop";
+    } else if (url.startsWith("/api/robot-control/free-roam/autonomy/latest")) {
+      fixtureKey = "/api/robot-control/free-roam/autonomy/latest";
     } else if (url.startsWith("/api/robot-control/operator/report")) {
       fixtureKey = "/api/robot-control/operator/report";
     } else if (url.startsWith("/api/robot-control/camera/first-frame/probe")) {
@@ -3735,6 +3763,34 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("refreshes free-roam autonomy latest as a read-only first-screen action", async () => {
+    // latest 只读按钮只拉 runtime artifact 和 summary，不允许误触发自动扫图或底盘运动。
+    const mockedFetch = stubWorkstationFetch();
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const button = wrapper.find('[data-testid="plain-free-roam-autonomy-latest"]');
+    expect(button.exists()).toBe(true);
+    expect(button.text()).toBe("刷新自动扫图状态（只读）");
+    expect(button.attributes("disabled")).toBeUndefined();
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+
+    await button.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/latest?"))).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-latest-summary"]').text()).toBe(
+      "最新读取：locked：还未勾选现场安全确认，要求停止兜底；当前只是记录模式，不会自己跑。",
+    );
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("starts free-roam autonomy through the fixed proxy only after ready readback and safety confirmation", async () => {

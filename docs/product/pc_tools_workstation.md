@@ -2041,6 +2041,12 @@ delivery complete/stop 或 `/cmd_vel`。
 即使 runtime 摘要里 `cmd_vel_publish_enabled=true`，PC 顶层仍固定 `safe_to_control=false` 和
 `robot_control_executed=false`。
 
+2026-06-27 00:00 起，普通首屏“自动扫图准备”新增“刷新自动扫图状态（只读）”按钮。该按钮只调用
+`GET /api/robot-control/free-roam/autonomy/latest` 并随后刷新 summary，把上车端 latest artifact 中的
+`decision_state/reason/stop_required/artifact_only/cmd_vel_publish_enabled` 翻译成一句普通用户能看懂的当前状态。
+它不触发 `/api/free-roam/autonomy/start`、`/api/free-roam/autonomy/stop`、manual、Nav2、delivery 或 `/cmd_vel`；
+用于让“扫地式建图/自动扫图准备”所见即所得，而不是开放 PC 侧自动发车。
+
 2026-06-25 21:34 起，普通首屏 `执行图上路线` 成功返回后，会自动追加一次只读
 `/api/robot-control/nav2/goal/execution/latest` 和 `/api/robot-control/delivery/latest` 同步，并用本轮
 Nav2 execution `evidence_ref` 预填送达 `route/map` 材料。这样执行按钮、行程进度、送达材料入口和页面刷新后的 latest

@@ -6,6 +6,7 @@ import {
   getRobotControlMapPreview,
   getRobotControlMapList,
   getRobotControlDeliveryLatest,
+  getRobotControlFreeRoamAutonomyLatest,
   postRobotControlBaseFeedbackSamples,
   postRobotControlBaseFirstJog,
   postRobotControlBaseManual,
@@ -40,6 +41,7 @@ import type {
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
   RobotControlDeliveryGapCheckResponse,
+  RobotControlFreeRoamAutonomyLatestResponse,
   RobotControlFreeRoamAutonomyResponse,
   RobotControlMapLifecycleResponse,
   RobotControlMapPreviewResponse,
@@ -110,6 +112,8 @@ const manualCommandPending = ref(false);
 const mapLifecyclePending = ref(false);
 const mapPreviewPending = ref(false);
 const freeRoamAutonomyPending = ref(false);
+const freeRoamAutonomyLatestPending = ref(false);
+const freeRoamAutonomyLatestResult = ref<RobotControlFreeRoamAutonomyLatestResponse | null>(null);
 const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
 const plainFreeRoamMappingConfirmed = ref(false);
@@ -978,6 +982,28 @@ const plainFreeRoamAutoStopButtonLabel = computed(() => {
     return "停止已排队";
   }
   return "停止自动扫图（随时可点）";
+});
+const plainFreeRoamLatestButtonLabel = computed(() => (
+  freeRoamAutonomyLatestPending.value ? "刷新中" : "刷新自动扫图状态（只读）"
+));
+const plainFreeRoamLatestSummary = computed(() => {
+  const latest = freeRoamAutonomyLatestResult.value;
+  if (!latest) {
+    return "";
+  }
+  if (latest.proxy_status !== "latest_loaded") {
+    return `自动扫图状态读取失败：${latest.failure_reason || latest.proxy_status}。`;
+  }
+  const kv = latest.latest_key_values;
+  const state = kv.decision_state || "not_loaded";
+  const reason = kv.decision_reason && kv.decision_reason !== "not_loaded" ? `：${kv.decision_reason}` : "";
+  const mode = kv.artifact_only === "true"
+    ? "当前只是记录模式，不会自己跑"
+    : kv.cmd_vel_publish_enabled === "true"
+      ? "运动发布已解锁，等待真车 HIL"
+      : "运动发布未解锁";
+  const stop = kv.stop_required === "true" ? "，要求停止兜底" : "";
+  return `最新读取：${state}${reason}${stop}；${mode}。`;
 });
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
@@ -7580,6 +7606,44 @@ function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string):
   };
 }
 
+async function refreshFreeRoamAutonomyLatest(): Promise<void> {
+  // 只读刷新自动扫图 runtime；不启动/停止状态机，也不发送底盘命令。
+  if (!robotApiBaseUrl.value.trim() || freeRoamAutonomyLatestPending.value) {
+    return;
+  }
+  freeRoamAutonomyLatestPending.value = true;
+  try {
+    freeRoamAutonomyLatestResult.value = await getRobotControlFreeRoamAutonomyLatest(robotApiBaseUrl.value);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "free_roam_autonomy_latest_failed";
+    freeRoamAutonomyLatestResult.value = {
+      schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_latest_proxy.v1",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: robotApiBaseUrl.value,
+      normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+      workstation_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+      remote_endpoint: "/api/free-roam/autonomy/latest",
+      remote_method: "GET",
+      remote_http_status: null,
+      proxy_status: "latest_failed",
+      status: "blocked",
+      latest_key_values: {},
+      failure_reason: reason,
+      blocked_reasons: [reason],
+      hard_dangerous_true_fields: [],
+    };
+  } finally {
+    freeRoamAutonomyLatestPending.value = false;
+  }
+  await refreshConsole();
+}
+
 async function startFreeRoamAutonomy(): Promise<void> {
   // 真正自动扫图 start 只走固定上车状态机代理；未 ready 时推进人工扫图的非运动向导。
   if (!canStartFreeRoamAutonomy.value) {
@@ -8713,6 +8777,9 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary compact-stop" :disabled="plainFreeRoamAutonomyReadiness.disabled" data-testid="plain-free-roam-auto-start" @click="startFreeRoamAutonomy">
                 {{ plainFreeRoamAutonomyReadiness.buttonLabel }}
               </button>
+              <button type="button" class="secondary compact-stop" :disabled="freeRoamAutonomyLatestPending || !robotApiBaseUrl.trim()" data-testid="plain-free-roam-autonomy-latest" @click="refreshFreeRoamAutonomyLatest">
+                {{ plainFreeRoamLatestButtonLabel }}
+              </button>
               <button ref="plainFreeRoamAutoStopButton" type="button" class="danger-button compact-stop" :disabled="!canStopFreeRoamAutonomy" data-testid="plain-free-roam-auto-stop" @click="stopFreeRoamAutonomy">
                 {{ plainFreeRoamAutoStopButtonLabel }}
               </button>
@@ -8721,6 +8788,7 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-runtime">{{ plainFreeRoamAutonomyReadiness.runtimeText }}</p>
+            <p v-if="plainFreeRoamLatestSummary" class="panel-note" data-testid="plain-free-roam-autonomy-latest-summary">{{ plainFreeRoamLatestSummary }}</p>
             <div v-if="plainFreeRoamAutonomyReadiness.blockers.length" class="plain-readiness-blockers">
               <span v-for="blocker in plainFreeRoamAutonomyReadiness.blockers" :key="blocker" class="muted">{{ blocker }}。</span>
             </div>
