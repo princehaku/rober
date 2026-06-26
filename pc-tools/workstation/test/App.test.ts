@@ -3650,7 +3650,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("点“试动一下”后读取轮速。");
     expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。");
     expect(firstScreenText).toContain("行程操作");
-    expect(firstScreenText).toContain("先勾选行程前确认，再准备或执行行程。");
+    expect(firstScreenText).toContain("先勾选现场安全确认，再用主按钮准备或执行行程。");
     expect(firstScreenText).toContain("先勾选确认");
     expect(firstScreenText).toContain("读取行程结果（只读）");
     expect(firstScreenText).toContain("行程执行");
@@ -4872,7 +4872,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；先准备图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；点主按钮准备图上路线。");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（按键才动）");
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
@@ -6749,7 +6749,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；最近路线 3/15 个点仍按地图坐标显示。");
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图上显示的是最近路线（最近路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）；先准备行程，再执行新的图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图上显示的是最近路线（最近路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）；点主按钮重新准备新的图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("重新准备路线（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
@@ -6931,7 +6931,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("可选刷新路线");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeUndefined();
@@ -7007,7 +7007,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("可选刷新路线");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeUndefined();
@@ -7082,7 +7082,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("可选刷新路线");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').text()).toBe("检查路径（高级）");
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeUndefined();
@@ -7614,10 +7614,10 @@ describe("App", () => {
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：已勾安全确认；可以准备图上路线。");
-    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；先准备图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：已勾安全确认；点主按钮准备图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；点主按钮准备图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("可选刷新路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
@@ -7695,7 +7695,7 @@ describe("App", () => {
     expect(tripPanel.text()).toContain("已准备");
     expect(tripPanel.text()).toContain("路线 36 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 36 个点；先刷新地图画面确认图上路线。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，先勾选行程前确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，先勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("路线已准备 36 点");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("路线已准备 36 个点，还需要刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
@@ -7819,7 +7819,7 @@ describe("App", () => {
     const mapPreviewCallsBeforePrepare = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     const prepareClick = wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备中（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("刷新路线中（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备路线中（不发车）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     const finishNav2Refresh = nav2RefreshControl.finish;
@@ -8400,7 +8400,7 @@ describe("App", () => {
 
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.text()).toContain("待确认");
-    expect(tripPanel.text()).toContain("先勾选行程前确认，再准备或执行行程。");
+    expect(tripPanel.text()).toContain("先勾选现场安全确认，再用主按钮准备或执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-go-trip"]').text()).toBe("去行程");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");

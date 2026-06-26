@@ -2780,3 +2780,10 @@ readiness 只决定本轮是否能按“可建图”验收：二者都 ready 时
 `画面未 ready` 或 `雷达未 ready`，本轮只能按移动练习处理，ready 后再算可建图。该主按钮仍只调用固定 map lifecycle
 代理 `/api/robot-control/map/start`，不会直接调用 base manual、keyboard pulse、Nav2 execute、delivery、stop、
 free-roam autonomy start 或 `/cmd_vel`，也不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
+
+2026-06-26 23:15 起，普通首屏 `行程操作` 收敛成一个主按钮心智：勾选现场安全确认后，`执行图上路线` 按当前状态自动承担
+`准备图上路线 / 刷新图上路线 / 执行图上路线`。旁边的 no-motion planner 刷新按钮改名为 `可选刷新路线`，只作为 operator
+想手动重读路线时的只读兜底，不再表现成发车前必做预检。没有当前图上路线时，主按钮仍只走固定 Nav2 no-motion proof refresh
+并刷新地图画面；只有地图上看得到当前路线且小车位置可见时，主按钮才调用固定
+`/api/robot-control/nav2/goal/execute`，后端仍会复查定位、路线和确认字段。该改动不新增自动发车、不绕过 WYSIWYG 地图 gate、
+不发送 manual/keyboard pulse/delivery/stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
