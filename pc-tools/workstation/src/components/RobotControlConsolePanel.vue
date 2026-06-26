@@ -939,7 +939,7 @@ const plainFreeRoamAutoStopButtonLabel = computed(() => {
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
     return "停止已排队";
   }
-  return "停止自动扫图";
+  return "停止自动扫图（随时可点）";
 });
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。

@@ -4192,7 +4192,7 @@ describe("App", () => {
     const startClick = wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("启动中");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自动扫图（随时可点）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').attributes("disabled")).toBeUndefined();
 
     await wrapper.find('[data-testid="plain-free-roam-auto-stop"]').trigger("click");
@@ -4216,7 +4216,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) =>
       String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?") && options?.method === "POST",
     )).toBe(true);
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自动扫图（随时可点）");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止，待刷新");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopped_needs_refresh");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先刷新画面");
