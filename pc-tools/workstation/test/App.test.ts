@@ -5825,7 +5825,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，路线 3/15 个点按地图坐标显示，雷达不贴图。");
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.attributes("data-state")).toBe("已准备");
     expect(workstationStyles).toContain('.plain-trip-run[data-state="已准备"]');
@@ -5952,7 +5952,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图画面刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图画面刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，地图画面刷新中；刷新完成后再执行图上路线。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图画面刷新。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图画面刷新中，刷新完成后再执行");
@@ -6032,7 +6032,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="advanced-nav2-proof-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图状态刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图状态刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，地图状态刷新中；刷新完成后再执行图上路线。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图状态刷新。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图状态刷新中，刷新完成后再执行");
@@ -6769,7 +6769,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBeforePrepare + 1);
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
-    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点）。");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

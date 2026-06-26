@@ -1286,6 +1286,7 @@ function latestNavPathOverlay() {
   const routeStopState = routeExecuting ? plainTripStopOverlayState() : null;
   const routePrefix = currentRoute ? "路线" : "最近路线";
   const routeState = routeStopState?.state ?? (currentRoute ? "当前路线" : "最近路线");
+  const endpointSummary = `起点 x=${firstPoint.source.x.toFixed(2)}, y=${firstPoint.source.y.toFixed(2)}，终点 x=${lastPoint.source.x.toFixed(2)}, y=${lastPoint.source.y.toFixed(2)}`;
   const routeLabel = routeExecuting
     ? `${routeStopState?.actionText ?? "正在执行图上路线"} ${svgPoints.length}/${totalCount} 个点`
     : currentRoute ? `已读取 ${svgPoints.length} 个路线点` : `已读取最近路线 ${svgPoints.length} 个点`;
@@ -1317,6 +1318,7 @@ function latestNavPathOverlay() {
     displayedCount: svgPoints.length,
     totalCount,
     coordinateLabel: `${routePrefix} ${svgPoints.length}/${totalCount} 个点`,
+    endpointSummary,
     executionGoal: {
       // 普通用户入口必须执行“图上看到的终点”，避免被高级表单里的默认 X/Y 悄悄带偏。
       frame_id: "map",
@@ -4288,12 +4290,13 @@ const plainTripRouteWysiwygSummary = computed(() => {
   // 行程执行必须和当前地图画面绑定：看得到路线才说“执行图上路线”，看不到就提示先刷新地图。
   const routePath = latestNavPathOverlay();
   if (routePath) {
+    const routeIdentity = `${routePath.coordinateLabel}，${routePath.endpointSummary}`;
     if (plainTripMapWysiwygPending.value) {
-      return `${plainTripMapWysiwygPendingText()}；刷新完成后再执行这条图上路线（${routePath.coordinateLabel}）。`;
+      return `${plainTripMapWysiwygPendingText()}；刷新完成后再执行这条图上路线（${routeIdentity}）。`;
     }
     return routePath.caption.startsWith("最近")
-      ? "地图上显示的是最近路线；先准备行程，再执行新的图上路线。"
-      : `执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（${routePath.coordinateLabel}）。`;
+      ? `地图上显示的是最近路线（${routeIdentity}）；先准备行程，再执行新的图上路线。`
+      : `执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（${routeIdentity}）。`;
   }
   if (plainTripPreparedBySummary.value) {
     return `路线已准备 ${plainTripPreparedPointCount.value} 个点；先刷新地图画面确认图上路线。`;

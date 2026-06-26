@@ -2308,6 +2308,12 @@ delivery latest/complete 结果，不自动提交送达、不执行 Nav2、不�
 
 2026-06-26 08:40 起，普通首屏 `行程操作` 面板也会带 `data-state`，外框跟随 `已准备/执行中/停止中/需复验/执行失败` 等状态变化。测试锁定图上路线可执行和 Nav2 execute pending 两种状态的面板 `data-state` 与 CSS 选择器，避免地图已经显示可执行或行程中，但行程卡片仍像普通待办。该呈现只影响 PC 前端 WYSIWYG，不自动执行 Nav2、不发送 manual/keyboard pulse、delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 15:20 起，普通首屏 `行程操作` 的图上路线说明会同步写出起点/终点地图坐标，例如
+`路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00`。这样地图上的起点、终点 marker 和执行按钮旁的文字使用同一条
+route overlay，避免高级表单里的默认目标或旧路线让用户误解将要执行的终点。该呈现只读自 summary/map preview，不自动执行
+Nav2、不发送 manual/keyboard pulse、delivery complete、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置；PC 工作站公开入口
+继续是 `0.0.0.0:7001`。
+
 2026-06-26 03:35 起，普通首屏 Nav2 图上路线执行完成且读到本轮 feedback 样本后，地图 caption 会显示
 `行程执行：已到达，反馈 N 次，准备送达材料`，终点 marker 的可访问说明也会提示“下一步准备送达材料”。该提示只同步
 execute/latest readback 到地图 WYSIWYG 状态，不自动准备材料、不提交送达、不再次执行 Nav2、不发送 manual/keyboard pulse、
