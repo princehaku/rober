@@ -173,12 +173,9 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
                 str(output_path),
             ]
 
+            completed = probe.subprocess.CompletedProcess(command, None, stdout="", stderr="")
             with mock.patch.object(probe.shutil, "which", return_value="/usr/bin/v4l2-ctl"):
-                with mock.patch.object(
-                    probe.subprocess,
-                    "run",
-                    side_effect=probe.subprocess.TimeoutExpired(command, 0.01, output="", stderr=""),
-                ):
+                with mock.patch.object(probe, "run_subprocess_group", return_value=(completed, True)):
                     result = probe.run_backend_command("v4l2_mjpg_mmap", command, timeout_s=0.01)
 
         self.assertTrue(result["available"])
@@ -195,12 +192,12 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
             output_path = Path(temp_dir) / "frame.jpg"
             command = ["ffmpeg", "-i", "/dev/video1", "-frames:v", "1", "-y", str(output_path)]
 
-            def write_frame(*_args: object, **_kwargs: object) -> object:
+            def write_frame(*_args: object, **_kwargs: object) -> tuple[object, bool]:
                 output_path.write_bytes(b"\xff\xd8fake-jpeg")
-                return probe.subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+                return probe.subprocess.CompletedProcess(command, returncode=0, stdout="", stderr=""), False
 
             with mock.patch.object(probe.shutil, "which", return_value="/usr/bin/ffmpeg"):
-                with mock.patch.object(probe.subprocess, "run", side_effect=write_frame):
+                with mock.patch.object(probe, "run_subprocess_group", side_effect=write_frame):
                     result = probe.run_backend_command("ffmpeg_mjpg", command, timeout_s=0.01)
 
         self.assertTrue(result["ok"])
@@ -208,6 +205,37 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
         self.assertIsNone(result["failure_reason"])
         self.assertGreater(result["output_bytes"], 0)
         self.assertTrue(result["jpeg_soi_observed"])
+
+    def test_subprocess_group_timeout_kills_process_group(self) -> None:
+        """外部工具超时时必须杀掉整个进程组，避免 ffmpeg 残留占用摄像头。"""
+
+        class FakeProcess:
+            pid = 4321
+            returncode = None
+
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                self.calls += 1
+                if timeout is not None:
+                    raise probe.subprocess.TimeoutExpired(["ffmpeg"], timeout, output="out", stderr="err")
+                return "tail-out", "tail-err"
+
+            def kill(self) -> None:
+                return None
+
+        fake_process = FakeProcess()
+        with mock.patch.object(probe.subprocess, "Popen", return_value=fake_process) as popen_mock:
+            with mock.patch.object(probe.os, "killpg") as killpg_mock:
+                completed, timed_out = probe.run_subprocess_group(["ffmpeg", "-i", "/dev/video1"], 0.01)
+
+        self.assertTrue(timed_out)
+        self.assertIsNone(completed.returncode)
+        self.assertIn("out", completed.stdout)
+        self.assertIn("tail-out", completed.stdout)
+        killpg_mock.assert_called_once_with(4321, probe.signal.SIGKILL)
+        popen_mock.assert_called_once()
 
     def test_backend_smoke_summarizes_kernel_no_frame_without_control_flags(self) -> None:
         """后端矩阵只做相机诊断，不得因为底层取帧成功或失败解锁运动。"""

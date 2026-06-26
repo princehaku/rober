@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import shutil
 import signal
 import subprocess
@@ -25,6 +26,8 @@ DEFAULT_READ_CALL_TIMEOUT_S = 4.0
 DEFAULT_DARK_THRESHOLD = 8.0
 BACKEND_SMOKE_TIMEOUT_S = 8.0
 BACKEND_INFO_TIMEOUT_S = 4.0
+BACKEND_V4L2_STREAM_TIMEOUT_S = 4.0
+BACKEND_FFMPEG_STREAM_TIMEOUT_S = 5.0
 
 
 def now_ms() -> int:
@@ -80,6 +83,34 @@ def classify_backend_attempt(timed_out: bool, returncode: int | None, output_byt
     return "no_frame_output", "backend_command_zero_bytes"
 
 
+def run_subprocess_group(command: list[str], timeout_s: float) -> tuple[subprocess.CompletedProcess[str], bool]:
+    """外部取帧命令必须整组超时清理，避免 ffmpeg/v4l2 残留继续占用摄像头。"""
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout_s)
+        return subprocess.CompletedProcess(command, process.returncode, stdout=stdout, stderr=stderr), False
+    except subprocess.TimeoutExpired as exc:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except OSError:
+            process.kill()
+        stdout, stderr = process.communicate()
+        return subprocess.CompletedProcess(
+            command,
+            None,
+            stdout=preview_text(exc.stdout) + preview_text(stdout),
+            stderr=preview_text(exc.stderr) + preview_text(stderr),
+        ), True
+
+
 def run_info_command(name: str, command: list[str]) -> dict[str, Any]:
     """采集 v4l2 设备静态信息；不取帧、不触碰底盘，只帮助区分枚举和格式问题。"""
     started = time.monotonic()
@@ -94,23 +125,7 @@ def run_info_command(name: str, command: list[str]) -> dict[str, Any]:
             "stdout_preview": "",
             "stderr_preview": f"{command[0]} not found",
         }
-    try:
-        completed = subprocess.run(
-            command,
-            check=False,
-            text=True,
-            capture_output=True,
-            timeout=BACKEND_INFO_TIMEOUT_S,
-        )
-        timed_out = False
-    except subprocess.TimeoutExpired as exc:
-        completed = subprocess.CompletedProcess(
-            command,
-            returncode=None,
-            stdout=preview_text(exc.stdout),
-            stderr=preview_text(exc.stderr),
-        )
-        timed_out = True
+    completed, timed_out = run_subprocess_group(command, BACKEND_INFO_TIMEOUT_S)
     return {
         "name": name,
         "available": True,
@@ -148,23 +163,7 @@ def run_backend_command(name: str, command: list[str], timeout_s: float = BACKEN
             output_path.unlink(missing_ok=True)
         except OSError:
             pass
-    try:
-        completed = subprocess.run(
-            command,
-            check=False,
-            text=True,
-            capture_output=True,
-            timeout=timeout_s,
-        )
-        timed_out = False
-    except subprocess.TimeoutExpired as exc:
-        completed = subprocess.CompletedProcess(
-            command,
-            returncode=None,
-            stdout=preview_text(exc.stdout),
-            stderr=preview_text(exc.stderr),
-        )
-        timed_out = True
+    completed, timed_out = run_subprocess_group(command, timeout_s)
     output_bytes = output_path.stat().st_size if output_path is not None and output_path.exists() else 0
     status, failure_reason = classify_backend_attempt(timed_out, completed.returncode, output_bytes)
     return {
@@ -209,6 +208,7 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
                 "--stream-to",
                 str(output_dir / "v4l2_mjpg.raw"),
             ],
+            timeout_s=BACKEND_V4L2_STREAM_TIMEOUT_S,
         ),
         run_backend_command(
             "v4l2_yuyv_mmap",
@@ -222,6 +222,7 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
                 "--stream-to",
                 str(output_dir / "v4l2_yuyv.raw"),
             ],
+            timeout_s=BACKEND_V4L2_STREAM_TIMEOUT_S,
         ),
         run_backend_command(
             "ffmpeg_mjpg",
@@ -243,7 +244,7 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
                 "-y",
                 str(output_dir / "ffmpeg_mjpg.jpg"),
             ],
-            timeout_s=12.0,
+            timeout_s=BACKEND_FFMPEG_STREAM_TIMEOUT_S,
         ),
         run_backend_command(
             "ffmpeg_yuyv",
@@ -265,7 +266,7 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
                 "-y",
                 str(output_dir / "ffmpeg_yuyv.jpg"),
             ],
-            timeout_s=12.0,
+            timeout_s=BACKEND_FFMPEG_STREAM_TIMEOUT_S,
         ),
     ]
     frame_observed = any(item.get("status") == "frame_observed" for item in attempts)

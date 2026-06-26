@@ -202,3 +202,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 读回 `lifecycle_running=true`、`continuous_window_observed=true`、`latest_scan_proof_fresh=true`、
 `scan_preview_point_count=72`，且机器人 map pose 已读到。该证据证明雷达可以从 stopped 拉到 running/fresh，
 地图雷达 marker 可以使用本轮真实点位；仍不等于 camera 首帧、Nav2 完整路线 HIL 或 delivery success 已完成。
+
+2026-06-27 04:38 起，上车端 `camera_first_frame_probe.py` 的 backend smoke 使用进程组超时清理，并把
+v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后遗留 `ffmpeg` 或 probe 进程占用
+`/dev/video1`。现场复测 `backendSmoke=1` 在 23s 内结构化返回 `first_frame_timeout/capture_read_call_timeout`，
+`backend_smoke_status=backend_no_frame_observed`，且远端无残留进程。该证据说明当前仍是硬件/驱动无首帧，
+但 PC 画面失败态现在不会因为诊断工具残留而被二次污染。
