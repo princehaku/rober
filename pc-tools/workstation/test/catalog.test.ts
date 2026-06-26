@@ -4104,6 +4104,67 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary keeps Nav2 IMU motion material visible when wheel HIL is still false", async () => {
+    // 现场这类 artifact 代表 Nav2 已经驱动车身产生姿态变化，但轮速 L/R 同窗口仍要单独复验。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "not_proven",
+          latest_result: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            hil_pass: false,
+            nav2_goal_execution_proven: false,
+            evidence_ref: "o11-nav2-goal-execution-imu-material",
+            feedback_sample_count: 8,
+            robot_control_executed: true,
+            sends_base_motion_commands: true,
+            uses_base_uart: true,
+            goal_request: { frame_id: "map", x: 0.8, y: 0 },
+            base_feedback_summary: {
+              sample_count: 239,
+              nonzero_sample_count: 0,
+              wheel_feedback_lr_nonzero_proven: false,
+              latest_pair: { left_speed: 0, right_speed: 0 },
+              imu_attitude_delta_observed: true,
+              imu_attitude_delta_summary: {
+                max_abs_pitch_delta: 24.210531,
+                max_abs_roll_delta: 4.387221,
+              },
+            },
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.status).toBe("goal_succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("false");
+      expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_imu_attitude_delta_observed).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed).toBe("0");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary accepts lidar extrinsic from Nav2 proof latest when localize proof has no transform", async () => {
     // 真实 timeout fallback 里 Nav2 latest 可能先拿到 /tf_static 外参；PC 不能只看 localize latest。
     const robotApi = await listenRobotApiReadbackByPath({

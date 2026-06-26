@@ -3128,31 +3128,52 @@ function nav2SummaryFromReadbacks(
 function nav2GoalExecutionProvenText(goalResultPayload: JsonRecord | null): string {
   // 兼容新旧上位机 artifact：旧版直接给 nav2_goal_execution_proven，新版给执行事实字段。
   const hilPass = summaryValueText(goalResultPayload, ["hil_pass"]);
-  if (hilPass === "false") {
-    return "false";
-  }
   const explicit = summaryValueText(goalResultPayload, ["nav2_goal_execution_proven"]);
-  if (explicit !== "not_loaded") {
+  if (explicit === "true" || hilPass === "true") {
+    return "true";
+  }
+
+  const baseFeedbackSummary = asRecord(goalResultPayload?.base_feedback_summary);
+  const wheelFeedback = summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]);
+  const imuDelta = summaryValueText(baseFeedbackSummary, ["imu_attitude_delta_observed"]);
+  const baseMotionSignalObserved = wheelFeedback === "true" || imuDelta === "true";
+  if (explicit === "false" && !baseMotionSignalObserved) {
     return explicit;
   }
 
   const robotControlExecuted = summaryValueText(goalResultPayload, ["robot_control_executed"]);
   const sendsMotionCommands = summaryValueText(goalResultPayload, ["sends_motion_commands"]);
+  const sendsBaseMotionCommands = summaryValueText(goalResultPayload, ["sends_base_motion_commands"]);
+  const usesBaseUart = summaryValueText(goalResultPayload, ["uses_base_uart"]);
   const status = summaryValueText(goalResultPayload, ["status"]);
   const resultStatus = summaryValueText(goalResultPayload, ["result_status"]);
   const feedbackCountText = summaryValueText(goalResultPayload, ["feedback_sample_count", "nav2_feedback_sample_count"]);
-  const feedbackCount = Number(feedbackCountText);
+  const feedbackCount = Math.max(
+    Number(feedbackCountText),
+    Number(summaryValueText(baseFeedbackSummary, ["sample_count"])),
+  );
   const succeeded = status === "goal_succeeded" || resultStatus === "succeeded";
+  const motionCommandAllowed = sendsMotionCommands === "true"
+    || sendsBaseMotionCommands === "true"
+    || (sendsMotionCommands !== "false" && sendsBaseMotionCommands !== "false" && hilPass !== "false");
   if (
     robotControlExecuted === "true"
-    && sendsMotionCommands === "true"
+    && motionCommandAllowed
+    && usesBaseUart !== "false"
     && succeeded
     && Number.isFinite(feedbackCount)
     && feedbackCount > 0
+    && (baseMotionSignalObserved || hilPass === "true")
   ) {
     return "true";
   }
-  if (robotControlExecuted === "false" || sendsMotionCommands === "false") {
+  if (
+    hilPass === "false"
+    || robotControlExecuted === "false"
+    || sendsMotionCommands === "false"
+    || sendsBaseMotionCommands === "false"
+    || usesBaseUart === "false"
+  ) {
     return "false";
   }
   return "not_loaded";
