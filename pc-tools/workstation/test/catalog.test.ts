@@ -4032,6 +4032,7 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
+      expect(summary.readback_summary.nav2.status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_result_status).toBe("succeeded");
       expect(summary.readback_summary.nav2.goal_execution_robot_control_executed).toBe("true");

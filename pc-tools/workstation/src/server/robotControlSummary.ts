@@ -3026,14 +3026,19 @@ function nav2SummaryFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
   proof: RobotApiProofSummary,
 ): RobotControlSummaryResponse["readback_summary"]["nav2"] {
-  // Nav2 摘要只说明当前读到的路线和 planner 状态；不等价于 NavigateToPose 已执行成功。
+  // Nav2 摘要优先呈现最近完整路线执行结果；路线规划状态仍由 path_* 和 nav2_status 字段单独解释。
   const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
   const nav2Status = readbackById(readbacks, "nav2_status");
   const goalExecution = readbackById(readbacks, "nav2_goal_execution_latest");
   const goalPayload = goalExecution?.payload ?? null;
   const goalResultPayload = asRecord(goalPayload?.latest_result) ?? goalPayload;
+  const goalExecutionStatus = summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded");
+  const goalExecutionProven = nav2GoalExecutionProvenText(goalResultPayload);
+  const summaryStatus = goalExecutionProven === "true" && goalExecutionStatus !== "not_loaded"
+    ? goalExecutionStatus
+    : nav2Proof?.status ?? "not_loaded";
   return {
-    status: nav2Proof?.status ?? "not_loaded",
+    status: summaryStatus,
     nav2_status: nav2Status?.status ?? "not_loaded",
     planner_server_active: booleanSummaryValue(proof.planner_server_active),
     path_generated: booleanSummaryValue(proof.path_generated),
@@ -3041,8 +3046,8 @@ function nav2SummaryFromReadbacks(
     path_point_count: proof.path_point_count === null ? "not_loaded" : String(proof.path_point_count),
     path_preview_point_count: String(proof.path_preview_point_count),
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
-    goal_execution_status: summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded"),
-    goal_execution_proven: nav2GoalExecutionProvenText(goalResultPayload),
+    goal_execution_status: goalExecutionStatus,
+    goal_execution_proven: goalExecutionProven,
     goal_execution_result_status: summaryValueText(goalResultPayload, ["result_status"]),
     goal_execution_evidence_ref: summaryValueText(goalResultPayload, ["evidence_ref"]),
     goal_execution_robot_control_executed: summaryValueText(goalResultPayload, ["robot_control_executed"]),

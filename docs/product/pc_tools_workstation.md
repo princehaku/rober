@@ -2772,7 +2772,9 @@ delivery、free-roam start/stop、stop 或 `/cmd_vel`。
 `result_status=succeeded` 和正数 `feedback_sample_count`，但没有旧字段 `nav2_goal_execution_proven` 时，PC summary 会把
 `readback_summary.nav2.goal_execution_proven` 推导为 `true`。现场复测中 7001 返回
 `goal_execution_status=goal_succeeded`、`goal_execution_proven=true`、`goal_execution_robot_control_executed=true`、
-`goal_execution_feedback_sample_count=8`。这只修正“看得到/解释得准”的状态合同，不调用 manual、keyboard pulse、Nav2 execute、
+`goal_execution_feedback_sample_count=8`。2026-06-26 23:57 起，若该最近执行已证明成功，summary 顶层
+`readback_summary.nav2.status` 也优先显示 `goal_succeeded`，不再和 `goal_execution_proven=true` 同屏显示为 `not_proven`。
+这只修正“看得到/解释得准”的状态合同，不调用 manual、keyboard pulse、Nav2 execute、
 delivery、free-roam start/stop、stop 或 `/cmd_vel`；真实底盘是否产生非零 `T=1001 L/R` 仍需下一轮低速运动 HIL 验证。
 
 2026-06-26 23:00 起，普通首屏雷达卡和地图雷达标记会把 `readback_summary.lidar.scan_preview_point_count`
