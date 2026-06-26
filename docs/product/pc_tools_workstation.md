@@ -2198,6 +2198,10 @@ PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboar
 `行程执行：未通过（规划失败）`，避免 marker 写明原因但 caption 仍只显示泛化失败。该 caption 只消费已有
 Nav2 execute/latest readback，不自动重试、不执行 Nav2、不发送 manual/keyboard/delivery/stop 或 `/cmd_vel`。
 
+2026-06-26 13:30 起，同一行程失败短原因也同步到 `行程操作` 卡片、`本轮进度`、送达前置检查和高级收口 checklist；
+例如地图显示 `行程执行：未通过（规划失败）` 时，行程状态同步显示 `最近行程未通过（规划失败）`。这只统一普通首屏
+WYSIWYG 文案，不自动重试、不执行 Nav2、delivery complete、manual、keyboard pulse、stop 或 `/cmd_vel`。
+
 2026-06-26 01:46 起，如果普通首屏 `执行图上路线` 返回本机 fallback、网络失败或上位机拒绝，且响应连
 `goal_execution_key_values` 都为空，PC 会用本次点击的图上终点和失败原因生成仅用于 UI 的失败读数。地图 marker、
 地图 caption 和 `行程进度` 继续显示 `行程未通过` / `行程执行：未通过（原因）`，不会退回空白或旧成功记录。

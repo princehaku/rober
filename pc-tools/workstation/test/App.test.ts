@@ -6981,7 +6981,7 @@ describe("App", () => {
     expect(marker.attributes("data-state")).toBe("行程未通过");
     expect(marker.attributes("aria-label")).toBe("行程未通过，失败原因规划失败，地图坐标 x=0.80, y=0.00");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：未通过（规划失败）");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：最近行程未通过，先检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：最近行程未通过（规划失败），先检查或重新执行完整行程。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -7026,7 +7026,7 @@ describe("App", () => {
     expect(marker.attributes("data-state")).toBe("行程未通过");
     expect(marker.attributes("aria-label")).toBe("行程未通过，失败原因等待超时，地图坐标 x=0.80, y=0.00");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：未通过（等待超时）");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：最近行程未通过，先检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：最近行程未通过（等待超时），先检查或重新执行完整行程。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -7367,21 +7367,21 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("需检查");
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("最近行程未通过，需要检查或重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：最近行程未通过，先检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("最近行程未通过（执行失败），需要检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：最近行程未通过（执行失败），先检查或重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：未通过（执行失败）");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程未通过，需要检查或重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程未通过");
-    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：最近行程未通过，需要检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程未通过（执行失败），需要检查或重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程未通过（执行失败）");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：最近行程未通过（执行失败），需要检查或重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：检查或重新执行完整行程。");
     const navClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("完整 Nav2 路线执行"));
     expect(navClosureItem?.attributes("data-ready")).toBe("false");
-    expect(navClosureItem?.text()).toContain("最近行程未通过，需检查或重新执行完整行程");
+    expect(navClosureItem?.text()).toContain("最近行程未通过（执行失败），需检查或重新执行完整行程");
     const deliveryNavItem = wrapper.findAll('[data-testid="delivery-closure-check"] li')
       .find((item) => item.text().includes("Nav2 路线执行成功"));
     expect(deliveryNavItem?.attributes("data-ready")).toBe("false");
-    expect(deliveryNavItem?.text()).toContain("最近行程未通过，需检查或重新执行完整行程");
+    expect(deliveryNavItem?.text()).toContain("最近行程未通过（执行失败），需检查或重新执行完整行程");
     expect(visiblePlainHomeText(wrapper)).not.toContain("not_proven");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);

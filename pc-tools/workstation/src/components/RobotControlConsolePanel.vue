@@ -3292,6 +3292,17 @@ const plainTripLatestNotProvenEvidence = computed(() => {
     && status !== "not_loaded"
     && status !== "goal_succeeded";
 });
+function plainTripFailureSummaryText(): string {
+  // 行程失败原因要和地图 marker 同口径，避免地图说“规划失败”、行程卡只说“未通过”。
+  const reason = plainTripFailureReasonText(navGoalExecutionResult.value ?? navGoalExecutionLatestResult.value, directNav2ExecutionValues());
+  return reason
+    ? `最近行程未通过（${reason}），需要检查或重新执行完整行程。`
+    : "最近行程未通过，需要检查或重新执行完整行程。";
+}
+function plainTripFailureShortText(): string {
+  const reason = plainTripFailureReasonText(navGoalExecutionResult.value ?? navGoalExecutionLatestResult.value, directNav2ExecutionValues());
+  return reason ? `最近行程未通过（${reason}）` : "最近行程未通过";
+}
 const plainTripNeedsFreshRunAfterRadar = computed(() => {
   // 雷达未运行时如果已经读到旧/失败/不完整行程，现场需要先恢复传感器，再重新跑本轮路线。
   return plainTripHasFreshIncompleteEvidence.value
@@ -3360,7 +3371,7 @@ const plainDeliverySummary = computed(() => {
       return { state: "待行程结果", hint: "最近行程缺少反馈样本，需要重新读取或执行完整行程。" };
     }
     if (plainTripLatestNotProvenEvidence.value) {
-      return { state: "待行程结果", hint: "最近行程未通过，需要检查或重新执行完整行程。" };
+      return { state: "待行程结果", hint: plainTripFailureSummaryText() };
     }
     return plainTripHasSucceededEvidence.value
       ? { state: "需复验", hint: "读到旧行程成功记录；本轮送达前需要重新执行行程。" }
@@ -3480,7 +3491,7 @@ const plainDeliveryConfirmSummary = computed(() => {
       return { state: "待行程", hint: "最近行程缺少反馈样本，先重新读取或执行完整行程。" };
     }
     if (plainTripLatestNotProvenEvidence.value) {
-      return { state: "待行程", hint: "最近行程未通过，先检查或重新执行完整行程。" };
+      return { state: "待行程", hint: plainTripFailureSummaryText() };
     }
     return plainTripHasSucceededEvidence.value
       ? { state: "待行程", hint: "旧行程记录不能用于本轮送达，先重新执行本轮行程。" }
@@ -3527,7 +3538,7 @@ const deliveryClosureChecklist = computed(() => {
       ready: deliveryNav2GoalReady.value && !deliveryGateMissing("nav2_goal_succeeded"),
       hint: deliveryNav2GoalReady.value
         ? "已有本轮 goal_succeeded 和反馈样本"
-        : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需检查或重新执行完整行程" : "先读取或执行最近 Nav2 目标",
+        : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText().replace("需要", "需").replace(/。$/, "") : "先读取或执行最近 Nav2 目标",
     },
     {
       id: "operator_report_ready",
@@ -3639,7 +3650,7 @@ const goalClosureChecklist = computed(() => {
       hint: nav2Ready
         ? "已有本轮 goal_succeeded 和反馈样本"
         : plainTripRadarBlocked.value ? plainRadarTripClosureHint(plainTripNeedsFreshRunAfterRadar.value)
-        : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本，需重新读取或执行完整行程" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需检查或重新执行完整行程" : "读取最近 Nav2 结果或执行受限目标后确认",
+        : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本，需重新读取或执行完整行程" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText().replace("需要", "需").replace(/。$/, "") : "读取最近 Nav2 结果或执行受限目标后确认",
     },
     {
       id: "delivery_success",
@@ -3936,7 +3947,7 @@ const plainTripExecutionProgress = computed(() => {
   if (nav2GoalSucceeded(values)) {
     return `行程进度：已到达，但没有执行反馈样本${ageText}；重新读取或执行完整行程。`;
   }
-  return "行程进度：最近行程未通过，先检查或重新执行完整行程。";
+  return `行程进度：${plainTripFailureSummaryText().replace("需要", "先")}`;
 });
 
 const plainGoalProgressItems = computed(() => {
@@ -3961,7 +3972,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? "最近行程未通过，需要检查或重新执行完整行程。" : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText() : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -4043,7 +4054,7 @@ const plainGoalProgressEvidenceSummary = computed(() => {
     : left !== "not_loaded" && right !== "not_loaded" ? `轮速 L/R=${left}/${right}` : "轮速未读到";
   const tripText = deliveryNav2GoalReady.value || plainTripHasSucceededEvidence.value
     ? plainTripEvidenceSummary.value.replace("；送达仍需现场确认。", "") || "行程已完成"
-    : plainTripLatestNotProvenEvidence.value ? "最近行程未通过" : plainTripPreparedBySummary.value ? `路线已准备 ${plainTripPreparedPointCount.value} 点` : "行程未完成";
+    : plainTripLatestNotProvenEvidence.value ? plainTripFailureShortText() : plainTripPreparedBySummary.value ? `路线已准备 ${plainTripPreparedPointCount.value} 点` : "行程未完成";
   const deliveryText = deliverySuccessReady.value
     ? "送达已完成"
     : deliverySuccessEvidenceIsStale.value ? "送达有旧成功记录"
@@ -4081,7 +4092,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
     }
     return plainTripHasSucceededEvidence.value
       ? "验收卡点：行程成功记录较旧，需要重新执行本轮行程。"
-      : plainTripLatestNotProvenEvidence.value ? "验收卡点：最近行程未通过，需要检查或重新执行完整行程。"
+      : plainTripLatestNotProvenEvidence.value ? `验收卡点：${plainTripFailureSummaryText()}`
       : plainTripPreparedBySummary.value ? (plainTripMapWysiwygPending.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，${plainTripMapWysiwygPendingText()}，刷新完成后再执行。` : plainTripCurrentRouteVisible.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程并读到成功结果。` : `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要刷新地图画面确认图上路线。`)
         : "验收卡点：还没读到行程成功结果。";
   }
@@ -4192,7 +4203,7 @@ const plainTripSummary = computed(() => {
     return { state: "需复验", hint: plainTripEvidenceSummary.value || "最近行程记录较旧，需要重新执行本轮行程。" };
   }
   if (plainTripLatestNotProvenEvidence.value) {
-    return { state: "需检查", hint: "最近行程未通过，需要检查或重新执行完整行程。" };
+    return { state: "需检查", hint: plainTripFailureSummaryText() };
   }
   if (navGoalExecutionResult.value?.proxy_status === "execution_failed" || navGoalExecutionResult.value?.proxy_status === "execution_rejected") {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
@@ -4270,10 +4281,10 @@ const plainTripRunStatus = computed(() => {
     return "行程状态：最近行程缺少反馈样本，重新读取或重新执行后再送达。";
   }
   if (plainTripLatestNotProvenEvidence.value) {
-    return "行程状态：最近行程未通过，先检查或重新执行完整行程。";
+    return `行程状态：${plainTripFailureSummaryText().replace("需要", "先")}`;
   }
   if (navGoalExecutionResult.value?.proxy_status === "execution_failed" || navGoalExecutionResult.value?.proxy_status === "execution_rejected") {
-    return "行程状态：最近行程未通过，先检查或重新执行完整行程。";
+    return `行程状态：${plainTripFailureSummaryText().replace("需要", "先")}`;
   }
   if (plainTripHasSucceededEvidence.value) {
     return "行程状态：读到旧行程成功记录；如需本轮验收，请重新执行图上路线。";
