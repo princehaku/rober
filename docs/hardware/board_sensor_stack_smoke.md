@@ -2327,3 +2327,39 @@ ROVER 上下位机链路为 UART newline-delimited JSON，`T=130` 是只读 base
 结论：当前链路已经能证明不是 PC 或 API 丢失 L/R 字段；本轮真实板端材料仍未证明
 轮速非零。车辆移动仍以 2026-06-22 LiDAR delta 材料作为物理变化证据，wheel raw
 nonzero 仍是后续 HIL/固件反馈待解项。
+
+## 2026-06-26 21:50 Camera MJPEG Format Fallback
+
+`sprints/2026.06.26_21-50_camera_mjpeg_format_fallback/` 继续定位普通首屏实时画面
+不可见问题。本轮没有发现 PC 或其它进程独占 `/dev/video1`：
+
+- `/api/camera/health` 返回 `source_usage.status=not_in_use`、`owner_count=0`。
+- `fuser -v /dev/video1` 无占用输出。
+- 上车 8088 camera service 仍能枚举 USB DV20 摄像头，auto 选中 `/dev/video1`。
+
+本轮把上车 `local_webrtc_camera_smoke.py` 的 WebRTC/MJPEG 首帧路径从单一默认
+OpenCV 格式，扩展为固定白名单格式 fallback：
+
+- `MJPG@640x480`
+- `YUYV@640x480`
+- OpenCV 默认协商
+
+每个候选都必须读到真实首帧才算成功；失败会释放当前 capture，再尝试下一个格式。失败响应会返回
+`first_frame_format_attempts`，不会发送黑帧、占位帧、Nav2、manual、delivery、stop、
+free-roam start 或 `/cmd_vel`。
+
+真实上位机验证结果：
+
+- `GET http://192.168.1.11:8787/api/camera/mjpeg` 仍返回 HTTP `502`，远端 camera
+  service 为 HTTP `503`。
+- `first_frame_format_attempts` 显示 `MJPG`、`YUYV`、`default` 三个候选全部
+  `first_frame_unreadable/capture_read_returned_false`。
+- 固定后端 smoke：
+  - `v4l2-ctl -d /dev/video1 --set-fmt-video=width=640,height=480,pixelformat=MJPG --stream-mmap=3 --stream-count=1`
+    生成 `/tmp/rober_v4l2_mjpg_frame.bin`，大小 `0` 字节。
+  - `v4l2-ctl -d /dev/video1 --set-fmt-video=width=640,height=480,pixelformat=YUYV --stream-mmap=3 --stream-count=1`
+    生成 `/tmp/rober_v4l2_yuyv_frame.bin`，大小 `0` 字节。
+
+结论：当前实时画面不可见已经不是 PC 独占或只试错格式导致；证据指向 `/dev/video1`
+设备可打开但没有输出视频帧。下一步应查摄像头输入、USB 线/供电、采集设备模式或更换
+known-good UVC 摄像头复测。

@@ -2715,3 +2715,10 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 支持 MJPG 和 YUYV；live smoke 显示四个组合全部 `first_frame_timeout/capture_read_call_timeout`。因此当前画面不可见不是
 PC 只试 MJPG 或 PC 独占导致，而是摄像头设备可打开但所有白名单格式都没有返回首帧。该 fallback 不调用 backend smoke、
 MJPEG/WebRTC、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`，也不改变 Clash 或系统代理。
+
+2026-06-26 21:50 起，上车 8088 camera service 自身的 WebRTC offer 和 MJPEG fallback 也同步采用格式 fallback：
+`MJPG@640x480 -> YUYV@640x480 -> default@640x480`。PC 7001 拉取 `/api/robot-control/camera/mjpeg` 时，如果三种格式都失败，
+上车响应会带 `first_frame_format_attempts`；PC summary/status 继续保留最近 `camera_mjpeg_proxy_failed`。现场复测中，
+`/api/camera/health.source_usage.status=not_in_use`、`fuser /dev/video1` 无占用、三种 OpenCV 格式均
+`first_frame_unreadable/capture_read_returned_false`，固定 `v4l2-ctl` MJPG/YUYV 采样文件也都是 0 字节。普通首屏应把这解释为
+`摄像头设备可打开但没有输出视频帧`，下一步查摄像头输入、USB 线/供电或更换 known-good UVC，而不是提示 PC 页面独占。

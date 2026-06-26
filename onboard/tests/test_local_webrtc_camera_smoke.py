@@ -354,6 +354,103 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertTrue(shared.released)
         self.assertTrue(raw_capture.released)
 
+    def test_shared_capture_first_frame_warmup_retries_false_reads(self) -> None:
+        """UVC 刚打开时允许短暂 false 帧 warmup，但成功边界仍必须是真实帧。"""
+
+        frame = object()
+
+        class WarmupRawCapture:
+            def __init__(self) -> None:
+                self.read_count = 0
+                self.released = False
+
+            def read(self) -> tuple[bool, object | None]:
+                self.read_count += 1
+                if self.read_count < 3:
+                    return False, None
+                return True, frame
+
+            def release(self) -> None:
+                self.released = True
+
+        raw_capture = WarmupRawCapture()
+        shared = camera.SharedCameraCapture(
+            source="/dev/video1",
+            capture=raw_capture,
+            width=640,
+            height=480,
+            fps=15,
+        )
+
+        ok, observed, attempts = shared.read_frame_until_success(0.5)
+
+        self.assertTrue(ok)
+        self.assertIs(frame, observed)
+        self.assertEqual(3, attempts)
+        self.assertEqual(1, shared.frames_read)
+        self.assertEqual(2, shared.read_failures)
+        self.assertFalse(shared.released)
+        self.assertFalse(raw_capture.released)
+
+    def test_first_frame_capture_falls_back_to_yuyv_after_mjpg_failure(self) -> None:
+        """MJPG 首帧失败时应释放句柄再试 YUYV，避免一个格式失败挡住真实画面。"""
+
+        frame = object()
+
+        class FormatCapture:
+            def __init__(self, name: str) -> None:
+                self.name = name
+                self.released = False
+                self.fourcc_value: int | None = None
+
+            def isOpened(self) -> bool:  # noqa: N802 - 模拟 OpenCV API。
+                return True
+
+            def set(self, prop: int, value: object) -> None:
+                if prop == 6:
+                    self.fourcc_value = int(value)
+
+            def read(self) -> tuple[bool, object | None]:
+                if self.name == "mjpg":
+                    return False, None
+                return True, frame
+
+            def release(self) -> None:
+                self.released = True
+
+        class FakeCv2:
+            CAP_PROP_FOURCC = 6
+            CAP_PROP_FRAME_WIDTH = 3
+            CAP_PROP_FRAME_HEIGHT = 4
+            CAP_PROP_FPS = 5
+
+            def __init__(self) -> None:
+                self.captures: list[FormatCapture] = []
+
+            def VideoWriter_fourcc(self, *letters: str) -> int:  # noqa: N802 - 模拟 OpenCV API。
+                return 100 if "".join(letters) == "MJPG" else 200
+
+            def VideoCapture(self, _source: str) -> FormatCapture:  # noqa: N802 - 模拟 OpenCV API。
+                capture = FormatCapture("mjpg" if not self.captures else "yuyv")
+                self.captures.append(capture)
+                return capture
+
+        state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
+        fake_cv2 = FakeCv2()
+        with mock.patch.object(camera, "FIRST_FRAME_TIMEOUT_S", 0.02):
+            shared, observed, attempts, error = state.acquire_first_frame_capture("/dev/video1", fake_cv2)
+
+        self.assertIsNone(error)
+        self.assertIs(frame, observed)
+        self.assertIsNotNone(shared)
+        assert shared is not None
+        self.assertEqual("YUYV", shared.fourcc)
+        self.assertTrue(fake_cv2.captures[0].released)
+        self.assertFalse(fake_cv2.captures[1].released)
+        self.assertEqual(["MJPG", "YUYV"], [item["fourcc"] for item in attempts])
+        self.assertEqual("first_frame_unreadable", attempts[0]["status"])
+        self.assertEqual("frame_read", attempts[1]["status"])
+
     def test_stale_no_frame_peer_is_closed_before_new_offer(self) -> None:
         """卡在 new/0 帧的旧 peer 必须自动释放，避免长期占用 `/dev/video1`。"""
 

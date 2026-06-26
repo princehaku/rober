@@ -40,6 +40,8 @@ DEFAULT_WIDTH = 640
 DEFAULT_HEIGHT = 480
 DEFAULT_FPS = 15
 FIRST_FRAME_TIMEOUT_S = 3.0
+FIRST_FRAME_WARMUP_INTERVAL_S = 0.05
+CAMERA_CAPTURE_FOURCC_FALLBACKS: tuple[str | None, ...] = ("MJPG", "YUYV", None)
 COMMAND_TIMEOUT_S = 2.5
 STALE_PEER_NO_FRAME_MAX_AGE_MS = 30_000
 PEER_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,32}$")
@@ -598,6 +600,15 @@ def encode_mjpeg_part(cv2: Any, frame: Any) -> bytes | None:
     ).encode("ascii") + jpeg + b"\r\n"
 
 
+def apply_camera_capture_settings(cv2: Any, capture: Any, width: int, height: int, fps: int, fourcc: str | None) -> None:
+    """请求 UVC 采集格式；set 失败不算成功或失败，首帧 read 才是最终事实。"""
+    if fourcc:
+        capture.set(getattr(cv2, "CAP_PROP_FOURCC", 6), cv2.VideoWriter_fourcc(*fourcc))
+    capture.set(getattr(cv2, "CAP_PROP_FRAME_WIDTH", 3), width)
+    capture.set(getattr(cv2, "CAP_PROP_FRAME_HEIGHT", 4), height)
+    capture.set(getattr(cv2, "CAP_PROP_FPS", 5), fps)
+
+
 @dataclass
 class SharedCameraCapture:
     """同一摄像头源的共享 OpenCV capture，避免多客户端重复独占打开设备。"""
@@ -607,6 +618,7 @@ class SharedCameraCapture:
     width: int
     height: int
     fps: int
+    fourcc: str | None = None
     created_ts_ms: int = field(default_factory=now_ms)
     ref_count: int = 0
     frames_read: int = 0
@@ -659,6 +671,24 @@ class SharedCameraCapture:
             return False, None
         return result[0]
 
+    def read_frame_until_success(self, timeout_s: float) -> tuple[bool, Any, int]:
+        """首帧允许短 warmup 重试；有些 UVC 刚打开会先返回几次 false。"""
+        deadline = time.monotonic() + max(0.1, timeout_s)
+        attempts = 0
+        while time.monotonic() < deadline:
+            attempts += 1
+            remaining = max(0.05, deadline - time.monotonic())
+            # 首帧 read 自身可能慢于普通帧；用剩余总预算，避免过早释放 UVC 句柄。
+            ok, frame = self.read_frame_with_timeout(remaining)
+            if ok and frame is not None:
+                return True, frame, attempts
+            if self.released:
+                return False, None, attempts
+            time.sleep(min(FIRST_FRAME_WARMUP_INTERVAL_S, max(0.0, deadline - time.monotonic())))
+        if not self.last_error:
+            self.last_error = "first_frame_warmup_timeout"
+        return False, None, attempts
+
     def release_ref(self) -> bool:
         """最后一个 peer 退出时释放底层设备句柄。"""
         self.ref_count = max(self.ref_count - 1, 0)
@@ -685,6 +715,7 @@ class SharedCameraCapture:
         """共享 capture 摘要只用于媒体诊断，不参与控制 gate。"""
         return {
             "source": self.source,
+            "fourcc": self.fourcc or "default",
             "created_ts_ms": self.created_ts_ms,
             "ref_count": self.ref_count,
             "frames_read": self.frames_read,
@@ -790,7 +821,7 @@ class CameraServiceState:
             closed.append({"peer_id": peer_id, "http_status": int(status), "status": payload.get("status")})
         return closed
 
-    def acquire_shared_capture(self, source: str, cv2: Any) -> tuple[SharedCameraCapture | None, dict[str, Any] | None]:
+    def acquire_shared_capture(self, source: str, cv2: Any, fourcc: str | None = None) -> tuple[SharedCameraCapture | None, dict[str, Any] | None]:
         """获取共享摄像头句柄；已有句柄可复用，避免第二个客户端再次打开 `/dev/video1`。"""
         shared = self.shared_captures.get(source)
         if shared and not shared.released:
@@ -803,13 +834,54 @@ class CameraServiceState:
             except Exception:  # noqa: BLE001 - release 失败不改变打开失败根因。
                 pass
             return None, error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
-        capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        capture.set(cv2.CAP_PROP_FPS, self.fps)
-        shared = SharedCameraCapture(source=source, capture=capture, width=self.width, height=self.height, fps=self.fps)
+        apply_camera_capture_settings(cv2, capture, self.width, self.height, self.fps, fourcc)
+        shared = SharedCameraCapture(source=source, capture=capture, width=self.width, height=self.height, fps=self.fps, fourcc=fourcc)
         shared.add_ref()
         self.shared_captures[source] = shared
         return shared, None
+
+    def acquire_first_frame_capture(
+        self,
+        source: str,
+        cv2: Any,
+    ) -> tuple[SharedCameraCapture | None, Any, list[dict[str, Any]], dict[str, Any] | None]:
+        """按 MJPG/YUYV/default 尝试首帧；每次失败都释放，不能长期占用坏格式。"""
+        attempts: list[dict[str, Any]] = []
+        last_payload: dict[str, Any] | None = None
+        for fourcc in CAMERA_CAPTURE_FOURCC_FALLBACKS:
+            shared_capture, open_error = self.acquire_shared_capture(source, cv2, fourcc)
+            label = fourcc or "default"
+            if shared_capture is None:
+                attempts.append({"fourcc": label, "status": "open_failed", "failure_reason": open_error.get("failure_reason") if open_error else "opencv_capture_not_opened"})
+                last_payload = open_error or error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
+                continue
+            ok, frame, first_frame_attempts = shared_capture.read_frame_until_success(FIRST_FRAME_TIMEOUT_S)
+            if ok and frame is not None:
+                attempts.append({"fourcc": label, "status": "frame_read", "attempts": first_frame_attempts})
+                return shared_capture, frame, attempts, None
+            first_error = shared_capture.last_error or "capture_read_returned_false"
+            attempts.append({
+                "fourcc": label,
+                "status": "first_frame_unreadable",
+                "attempts": first_frame_attempts,
+                "failure_reason": first_error,
+            })
+            if shared_capture.release_ref():
+                self.shared_captures.pop(source, None)
+            last_payload = error_payload(
+                "first_frame_unreadable",
+                first_error or "first_frame_timeout",
+                video_source=source,
+                first_frame_timeout_s=FIRST_FRAME_TIMEOUT_S,
+                first_frame_attempts=first_frame_attempts,
+                first_frame_format_attempts=attempts,
+                selected_fourcc=label,
+                last_read_error=first_error,
+            )
+        if last_payload is None:
+            last_payload = error_payload("first_frame_unreadable", "no_capture_format_attempted", video_source=source)
+        last_payload["first_frame_format_attempts"] = attempts
+        return None, None, attempts, last_payload
 
     def release_peer_capture(self, peer: PeerRecord) -> dict[str, Any]:
         """释放 peer 持有的 capture 引用；兼容测试里的 FakeCapture。"""
@@ -997,27 +1069,18 @@ class CameraServiceState:
         from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack  # type: ignore[import-not-found]
         from av import VideoFrame  # type: ignore[import-not-found]
 
-        shared_capture, open_error = self.acquire_shared_capture(source, cv2)
-        if shared_capture is None:
-            payload = open_error or error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
-            self.last_offer_error = payload
-            return HTTPStatus.SERVICE_UNAVAILABLE, payload
-
-        first_frame = None
-        first_error = None
-        ok, frame = await asyncio.to_thread(shared_capture.read_frame_with_timeout, FIRST_FRAME_TIMEOUT_S)
-        if ok and frame is not None:
-            first_frame = frame
-        first_error = shared_capture.last_error or "capture_read_returned_false"
-        if first_frame is None:
-            if shared_capture.release_ref():
-                self.shared_captures.pop(source, None)
-            payload = error_payload(
+        shared_capture, first_frame, format_attempts, first_frame_error = await asyncio.to_thread(
+            self.acquire_first_frame_capture,
+            source,
+            cv2,
+        )
+        if shared_capture is None or first_frame is None:
+            payload = first_frame_error or error_payload(
                 "first_frame_unreadable",
-                first_error or "first_frame_timeout",
+                "first_frame_format_attempts_failed",
                 video_source=source,
                 first_frame_timeout_s=FIRST_FRAME_TIMEOUT_S,
-                last_read_error=first_error,
+                first_frame_format_attempts=format_attempts,
             )
             self.last_offer_error = payload
             return HTTPStatus.SERVICE_UNAVAILABLE, payload
@@ -1192,20 +1255,14 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         if not selected_path:
             self._send_json(error_payload("video_source_unavailable", "auto_selection_found_no_capture_device"), status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
-        shared_capture, open_error = self.state.acquire_shared_capture(str(selected_path), cv2)
-        if shared_capture is None:
-            self._send_json(open_error or error_payload("camera_open_failed", "opencv_capture_not_opened"), status=HTTPStatus.SERVICE_UNAVAILABLE)
-            return
-        ok, first_frame = shared_capture.read_frame_with_timeout(FIRST_FRAME_TIMEOUT_S)
-        if not ok or first_frame is None:
-            if shared_capture.release_ref():
-                self.state.shared_captures.pop(str(selected_path), None)
-            payload = error_payload(
+        shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_first_frame_capture(str(selected_path), cv2)
+        if shared_capture is None or first_frame is None:
+            payload = first_frame_error or error_payload(
                 "first_frame_unreadable",
-                shared_capture.last_error or "first_frame_timeout",
+                "first_frame_format_attempts_failed",
                 video_source=str(selected_path),
                 first_frame_timeout_s=FIRST_FRAME_TIMEOUT_S,
-                last_read_error=shared_capture.last_error,
+                first_frame_format_attempts=format_attempts,
             )
             self.state.last_offer_error = payload
             self._send_json(payload, status=HTTPStatus.SERVICE_UNAVAILABLE)
