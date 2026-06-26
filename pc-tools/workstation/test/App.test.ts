@@ -590,6 +590,32 @@ const fixtures: Record<string, unknown> = {
     robot_control_executed: false,
     ...PROOF_FLAGS,
   },
+    "/api/robot-control/radar/status": {
+      schema: "trashbot.pc_tools_workstation.robot_control_radar_status_proxy.v1",
+      proxy_status: "status_loaded",
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      workstation_endpoint: "/api/robot-control/radar/status",
+      remote_endpoint: "/api/radar/status",
+      remote_method: "GET",
+      remote_http_status: 200,
+      status: "loaded_fail_closed_summary",
+      radar_key_values: {
+        status: "scan_once_hz_raw_packet_tf_observed",
+        scan_status: "fresh_scan_proof_observed",
+        continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+        lifecycle_running: "true",
+        lifecycle_state: "running",
+        continuous_window_observed: "true",
+        continuity_window_status: "fresh_window_observed",
+        latest_scan_proof_fresh: "true",
+      },
+      failure_reason: "",
+      blocked_reasons: [],
+      hard_dangerous_true_fields: [],
+      robot_control_executed: false,
+      ...PROOF_FLAGS,
+    },
     "/api/robot-control/radar/scan-proof/refresh": {
       schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
       robot_control_executed: false,
@@ -3169,6 +3195,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/base/stop";
     } else if (url.startsWith("/api/robot-control/base/feedback-samples")) {
       fixtureKey = "/api/robot-control/base/feedback-samples";
+    } else if (url.startsWith("/api/robot-control/radar/status")) {
+      fixtureKey = "/api/robot-control/radar/status";
     } else if (url.startsWith("/api/robot-control/radar/scan-proof/refresh")) {
       fixtureKey = "/api/robot-control/radar/scan-proof/refresh";
     } else if (url.startsWith("/api/robot-control/radar/start")) {
@@ -4016,9 +4044,20 @@ describe("App", () => {
     summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_incomplete_while_lifecycle_running";
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
     summaryFixture.readback_summary.lidar.radar_start_configured = "true";
+    const staleRadarStatus = cloneFixture(fixtures["/api/robot-control/radar/status"]) as Record<string, any>;
+    staleRadarStatus.radar_key_values = {
+      ...staleRadarStatus.radar_key_values,
+      continuous_scan_status: "latest_proof_incomplete_while_lifecycle_running",
+      lifecycle_running: "true",
+      lifecycle_state: "running",
+      continuous_window_observed: "false",
+      continuity_window_status: "latest_proof_incomplete_while_lifecycle_running",
+      latest_scan_proof_fresh: "false",
+    };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/radar/status": staleRadarStatus,
     });
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
@@ -12423,6 +12462,52 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("updates the map radar marker from the latest read-only radar status during map preview refresh", async () => {
+    // 地图刷新必须同时更新雷达状态；不能继续显示 summary 里的旧 fresh 结论。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_fresh_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "true";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "fresh_window_observed";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
+    const staleRadarStatus = cloneFixture(fixtures["/api/robot-control/radar/status"]) as Record<string, any>;
+    staleRadarStatus.radar_key_values = {
+      ...staleRadarStatus.radar_key_values,
+      scan_status: "fresh_scan_proof_observed",
+      continuous_scan_status: "latest_proof_stale_while_lifecycle_running",
+      lifecycle_running: "true",
+      lifecycle_state: "running",
+      continuous_window_observed: "false",
+      continuity_window_status: "latest_proof_stale_while_lifecycle_running",
+      latest_scan_proof_fresh: "false",
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/radar/status": staleRadarStatus,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达已运行");
+
+    await wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，最近障碍 0.30m");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：正在确认实时性，当前只显示最近障碍 0.30m，刷新后再确认点位。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
   it("shows plain radar refresh failure reason on the map", async () => {

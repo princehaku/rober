@@ -5,6 +5,7 @@ import {
   getRobotControlSummary,
   getRobotControlMapPreview,
   getRobotControlMapList,
+  getRobotControlRadarStatus,
   getRobotControlDeliveryLatest,
   getRobotControlFreeRoamAutonomyLatest,
   postRobotControlBaseFeedbackSamples,
@@ -53,6 +54,7 @@ import type {
   RobotControlPreviewStatus,
   RobotControlProofRefreshProxyResponse,
   RobotControlRadarLifecycleResponse,
+  RobotControlRadarStatusResponse,
   RobotApiFrameTransform,
   RobotApiScanPreviewPoint,
   RobotControlSummaryResponse,
@@ -85,6 +87,7 @@ const robotSummary = ref<RobotControlSummaryResponse | null>(null);
 const taskDetail = ref<O7ConsumerTaskDetailResponse | null>(null);
 const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const radarLifecycleResult = ref<RobotControlRadarLifecycleResponse | null>(null);
+const radarStatusResult = ref<RobotControlRadarStatusResponse | null>(null);
 const radarLifecyclePendingAction = ref<"start" | "stop" | null>(null);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
@@ -535,8 +538,38 @@ function radarStartSucceeded(result: RobotControlRadarLifecycleResponse | null):
 
 function radarStartCommandConfigured(): boolean {
   // 老版本 summary 没有该字段时保持兼容；只有明确 false 才阻止现场点击 dry-run 启动。
-  return robotSummary.value?.readback_summary.lidar.radar_start_configured !== "false";
+  return effectiveLidarReadback.value?.radar_start_configured !== "false";
 }
+
+type LidarReadback = RobotControlSummaryResponse["readback_summary"]["lidar"];
+
+function radarStatusValue(key: string): string | undefined {
+  // 独立 radar/status 是刷新地图时的最新只读材料；只有成功 JSON 才覆盖 summary 的旧读数。
+  if (radarStatusResult.value?.proxy_status !== "status_loaded") {
+    return undefined;
+  }
+  return radarStatusResult.value.radar_key_values[key];
+}
+
+const effectiveLidarReadback = computed<LidarReadback | null>(() => {
+  // 地图雷达 marker 必须使用最新可用口径：radar/status 优先，summary 作为兼容兜底。
+  const summary = robotSummary.value?.readback_summary.lidar;
+  if (!summary && radarStatusResult.value?.proxy_status !== "status_loaded") {
+    return null;
+  }
+  return {
+    status: radarStatusValue("status") ?? summary?.status ?? "not_loaded",
+    latest_scan_proof_status: radarStatusValue("latest_scan_proof_status") ?? summary?.latest_scan_proof_status ?? "not_loaded",
+    latest_raw_packet_proof_status: radarStatusValue("latest_raw_packet_proof_status") ?? summary?.latest_raw_packet_proof_status ?? "not_loaded",
+    continuous_scan_status: radarStatusValue("continuous_scan_status") ?? summary?.continuous_scan_status ?? "not_loaded",
+    lifecycle_running: radarStatusValue("lifecycle_running") ?? summary?.lifecycle_running ?? "false",
+    lifecycle_state: radarStatusValue("lifecycle_state") ?? summary?.lifecycle_state ?? "not_loaded",
+    continuous_window_observed: radarStatusValue("continuous_window_observed") ?? summary?.continuous_window_observed ?? "false",
+    continuity_window_status: radarStatusValue("continuity_window_status") ?? summary?.continuity_window_status ?? "not_loaded",
+    latest_scan_proof_fresh: radarStatusValue("latest_scan_proof_fresh") ?? summary?.latest_scan_proof_fresh ?? "false",
+    radar_start_configured: summary?.radar_start_configured ?? "true",
+  };
+});
 
 type PlainRadarState = "雷达未运行" | "雷达启动中" | "雷达待刷新" | "刷新中" | "雷达已运行" | "刷新失败" | "雷达启动失败";
 
@@ -628,7 +661,7 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   if (radarRefreshFailed(radarRefreshResult.value)) {
     return { state: "刷新失败", hint: radarRefreshResult.value.failure_reason || "暂时没有拿到新的雷达状态。" };
   }
-  const lidar = robotSummary.value?.readback_summary.lidar;
+  const lidar = effectiveLidarReadback.value;
   if (!lidar) {
     return { state: "雷达未运行", hint: "先连接小车，再读取雷达状态。" };
   }
@@ -1984,7 +2017,7 @@ const plainMapVisualSummary = computed(() => {
           : "地图未读取";
   const poseObserved = Boolean(robotPose);
   const radarState = radarSummary.value.state;
-  const lidar = robotSummary.value?.readback_summary.lidar;
+  const lidar = effectiveLidarReadback.value;
   const radarStartAwaitingRefresh = radarStartSucceeded(radarLifecycleResult.value) && !radarFieldIsTrue(lidar?.lifecycle_running);
   const radarStartFailureText = radarStartFailureLabel(radarLifecycleResult.value);
   const radarRefreshFailureText = radarRefreshFailureLabel(radarRefreshResult.value);
@@ -5246,7 +5279,7 @@ const plainLidarMotionRecordSummary = computed(() => {
   if (gaps.includes("physical_motion_lidar_delta_not_proven")) {
     return "雷达移动记录还没拿到：已试动但雷达前后变化未通过，确认雷达已运行、现场空间足够后重试。";
   }
-  if (robotSummary.value?.readback_summary.lidar.lifecycle_running === "true") {
+  if (effectiveLidarReadback.value?.lifecycle_running === "true") {
     return "雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。";
   }
   return "雷达移动记录还没拿到：先确认雷达已运行，再试动读取移动变化。";
@@ -6071,6 +6104,32 @@ function makeMapPreviewFallback(reason: string): RobotControlMapPreviewResponse 
   };
 }
 
+function makeRadarStatusFallback(reason: string): RobotControlRadarStatusResponse {
+  // 地图刷新顺带读雷达状态；雷达状态失败只能影响 marker 口径，不能吞掉地图画面。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_radar_status_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "status_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    workstation_endpoint: "/api/robot-control/radar/status",
+    remote_endpoint: "/api/radar/status",
+    remote_method: "GET",
+    remote_http_status: null,
+    status: "blocked",
+    radar_key_values: {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function operatorReportRequestBody(): RobotControlOperatorReportRequest {
   // 现场材料提交只组装白名单字段；空 ref 不发送，减少上位机保存无意义空字符串。
   const claims = {
@@ -6696,7 +6755,7 @@ async function refreshConsole(): Promise<void> {
   }
 }
 
-async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean } = {}): Promise<void> {
+async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean; radarStatusRefresh?: boolean } = {}): Promise<void> {
   // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
   if (!robotApiBaseUrl.value.trim() || mapWysiwygRefreshPending.value) {
     return;
@@ -6716,7 +6775,21 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
   }
   mapPreviewPending.value = true;
   try {
-    mapPreviewResult.value = await getRobotControlMapPreview(robotApiBaseUrl.value);
+    const shouldRefreshRadarStatus = options.radarStatusRefresh === true;
+    const [mapPreview, radarStatus] = await Promise.all([
+      getRobotControlMapPreview(robotApiBaseUrl.value).catch((err: unknown) =>
+        makeMapPreviewFallback(err instanceof Error ? err.message : "map_preview_request_failed"),
+      ),
+      shouldRefreshRadarStatus
+        ? getRobotControlRadarStatus(robotApiBaseUrl.value).catch((err: unknown) =>
+          makeRadarStatusFallback(err instanceof Error ? err.message : "radar_status_request_failed"),
+        )
+        : Promise.resolve(null),
+    ]);
+    mapPreviewResult.value = mapPreview;
+    if (radarStatus) {
+      radarStatusResult.value = radarStatus;
+    }
     if (mapPreviewResult.value?.proxy_status === "preview_forwarded") {
       plainTripPostExecutionMapPreviewRefreshFailed.value = false;
     } else if (refreshAfterTripExecution) {
@@ -6739,6 +6812,7 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
     }
   } catch (err) {
     mapPreviewResult.value = makeMapPreviewFallback(err instanceof Error ? err.message : "map_preview_request_failed");
+    radarStatusResult.value = makeRadarStatusFallback(err instanceof Error ? err.message : "radar_status_request_failed");
     if (refreshAfterTripExecution) {
       plainTripPostExecutionMapPreviewRefreshFailed.value = true;
     }
@@ -8770,7 +8844,7 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canRefreshMapProof" data-testid="plain-map-proof-refresh" @click="refreshMapProof">
               {{ mapProofRefreshButtonLabel }}
             </button>
-            <button type="button" :disabled="!canRefreshMapPreview" data-testid="plain-map-preview-refresh" @click="refreshMapPreview">
+            <button type="button" :disabled="!canRefreshMapPreview" data-testid="plain-map-preview-refresh" @click="refreshMapPreview({ radarStatusRefresh: true })">
               {{ mapPreviewRefreshButtonLabel }}
             </button>
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
@@ -8809,7 +8883,7 @@ onBeforeUnmount(() => {
             <button type="button" class="secondary compact-stop" data-testid="plain-free-roam-next-action" @click="focusPlainFreeRoamNextTarget">
               {{ plainFreeRoamNextActionLabel }}
             </button>
-            <button ref="plainFreeRoamMapRefreshButton" type="button" class="secondary compact-stop" :disabled="!canRefreshPlainFreeRoamMapPreview" data-testid="plain-free-roam-map-refresh" @click="refreshMapPreview({ countForFreeRoamSession: true })">
+            <button ref="plainFreeRoamMapRefreshButton" type="button" class="secondary compact-stop" :disabled="!canRefreshPlainFreeRoamMapPreview" data-testid="plain-free-roam-map-refresh" @click="refreshMapPreview({ countForFreeRoamSession: true, radarStatusRefresh: true })">
               {{ plainFreeRoamMapPreviewLabel }}
             </button>
             <button ref="plainFreeRoamStopButton" type="button" class="danger-button compact-stop" :disabled="!canRequestKeyboardStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
@@ -10144,12 +10218,12 @@ onBeforeUnmount(() => {
             <dd>
               /api/camera/health={{ robotSummary?.readback_summary.camera.status ?? "not_loaded" }},
               /api/camera/devices={{ robotSummary?.readback_summary.camera.devices_status ?? "not_loaded" }},
-              /api/radar/status={{ robotSummary?.readback_summary.lidar.status ?? "not_loaded" }},
-              scan={{ robotSummary?.readback_summary.lidar.latest_scan_proof_status ?? "not_loaded" }},
-              raw={{ robotSummary?.readback_summary.lidar.latest_raw_packet_proof_status ?? "not_loaded" }},
-              continuous={{ robotSummary?.readback_summary.lidar.continuous_scan_status ?? "not_loaded" }},
-              lifecycle={{ robotSummary?.readback_summary.lidar.lifecycle_running ?? "not_loaded" }}/{{ robotSummary?.readback_summary.lidar.lifecycle_state ?? "not_loaded" }},
-              window={{ robotSummary?.readback_summary.lidar.continuous_window_observed ?? "not_loaded" }}/{{ robotSummary?.readback_summary.lidar.continuity_window_status ?? "not_loaded" }},
+              /api/radar/status={{ effectiveLidarReadback?.status ?? "not_loaded" }},
+              scan={{ effectiveLidarReadback?.latest_scan_proof_status ?? "not_loaded" }},
+              raw={{ effectiveLidarReadback?.latest_raw_packet_proof_status ?? "not_loaded" }},
+              continuous={{ effectiveLidarReadback?.continuous_scan_status ?? "not_loaded" }},
+              lifecycle={{ effectiveLidarReadback?.lifecycle_running ?? "not_loaded" }}/{{ effectiveLidarReadback?.lifecycle_state ?? "not_loaded" }},
+              window={{ effectiveLidarReadback?.continuous_window_observed ?? "not_loaded" }}/{{ effectiveLidarReadback?.continuity_window_status ?? "not_loaded" }},
               /api/base/status={{ robotSummary?.readback_summary.base.status ?? "not_loaded" }},
               readback={{ robotSummary?.readback_summary.base.latest_feedback_status ?? "not_loaded" }},
               t1001={{ robotSummary?.readback_summary.base.latest_t1001_observed_count ?? "not_loaded" }},
