@@ -70,6 +70,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-26 20:00 起，当上车端自动扫图门禁已报告 `ready`、地图记录和地图画面已满足，但 PC 读到 LiDAR proof stale
   或不完整时，“自动扫图准备”按钮显示 `刷新雷达后开始`，点击只把焦点带到 `刷新雷达`；不会调用自动扫图 start，
   也不会发送 manual、Nav2、delivery、stop 或 `/cmd_vel`。刷新雷达成功后才允许进入真正的固定 start 代理。
+- 2026-06-26 21:20 起，`learn.launch.py` 和 `bringup.launch.py` 默认启动 `free_roam_autonomy_node`，让上位机
+  `/api/free-roam/autonomy/latest` 能读到真实 runtime artifact 和逐项门禁，而不是因为节点不存在一直 missing。launch 层仍显式传入
+  `enable_cmd_vel_publish=false` 与 `motion_hil_unlocked=false`；节点只写 artifact、消费 `/scan` 和 `/map`，未进入自动扫图会话时
+  不会调用 stop 兜底，也不会因为进入建图或 bringup 就发布 `/cmd_vel`。
 
 ## 用户流程
 
@@ -87,6 +91,8 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 如果要升级成真正“像扫地机一样自己跑”的无人值守/半无人值守模式，需要新增上车端状态机，而不是把 PC 按钮直接变成无限运动：
 
 - 实时 LiDAR/障碍物距离 gate：策略节点已接 `/scan` 并写 artifact，仍需真车低速 HIL。
+- launch 接入：`learn.launch.py` 和 `bringup.launch.py` 已默认拉起 artifact-only runtime，PC start/stop 代理可对同名
+  `/free_roam_autonomy` 节点设置固定门禁参数；运动发布仍需额外双重解锁。
 - 最大运行时间、最大线速度、最大角速度限制：策略内核已有；最小电量限制仍待接底盘反馈。
 - 自动 stop fallback 和 watchdog：策略节点已在 `stop_required=true` 时调用 `/trashbot/stop`，仍需真车响应时间 HIL。
 - 探索覆盖策略：策略内核已有低速直行、遇障碍换向、覆盖停滞原地扫描；后续可升级边界沿墙或 frontier exploration。

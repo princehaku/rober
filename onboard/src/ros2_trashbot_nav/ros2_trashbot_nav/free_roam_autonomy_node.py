@@ -162,7 +162,7 @@ class FreeRoamAutonomyNode(Node):
         decision = self.controller.update(snapshot)
         self.last_decision = decision
 
-        if decision.stop_required:
+        if decision.stop_required and self._stop_fallback_armed(snapshot):
             self._request_stop_once()
         self._publish_motion_if_unlocked(decision)
         self._write_artifact(snapshot, decision, now_s)
@@ -206,6 +206,15 @@ class FreeRoamAutonomyNode(Node):
         self.stop_request_in_flight = True
         future = self.stop_client.call_async(Trigger.Request())
         future.add_done_callback(lambda _future: self._clear_stop_request())
+
+    def _stop_fallback_armed(self, snapshot: FreeRoamSnapshot) -> bool:
+        """只有进入自动扫图会话或运动发布已解锁时，才调用 stop 兜底服务。"""
+        return (
+            snapshot.operator_confirmed
+            or snapshot.mapping_active
+            or snapshot.external_stop_requested
+            or self._motion_publish_unlocked()
+        )
 
     def _clear_stop_request(self) -> None:
         """stop future 完成后允许下一次 stop_required 再次兜底。"""

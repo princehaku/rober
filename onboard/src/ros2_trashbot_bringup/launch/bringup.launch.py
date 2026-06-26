@@ -109,6 +109,16 @@ def generate_launch_description():
         'waypoint_file', default_value='~/.ros/trashbot_maps/waypoints.yaml',
         description='Path to saved waypoint YAML')
 
+    free_roam_autonomy_enabled_arg = DeclareLaunchArgument(
+        'free_roam_autonomy_enabled',
+        default_value='true',
+        description='Start artifact-only free-roam autonomy runtime for PC readiness and gates')
+
+    free_roam_autonomy_artifact_path_arg = DeclareLaunchArgument(
+        'free_roam_autonomy_artifact_path',
+        default_value='/root/rober/onboard/runtime/free_roam_autonomy_latest.json',
+        description='Runtime artifact read by the upper API /api/free-roam/autonomy/latest endpoint')
+
     camera_enabled_arg = DeclareLaunchArgument(
         'camera_enabled', default_value='false',
         description='Start the real camera publisher for /camera/image_raw')
@@ -258,6 +268,8 @@ def generate_launch_description():
     laser_tf_pitch = LaunchConfiguration('laser_tf_pitch')
     laser_tf_yaw = LaunchConfiguration('laser_tf_yaw')
     waypoint_file = LaunchConfiguration('waypoint_file')
+    free_roam_autonomy_enabled = LaunchConfiguration('free_roam_autonomy_enabled')
+    free_roam_autonomy_artifact_path = LaunchConfiguration('free_roam_autonomy_artifact_path')
     camera_enabled = LaunchConfiguration('camera_enabled')
     camera_device = LaunchConfiguration('camera_device')
     camera_topic = LaunchConfiguration('camera_topic')
@@ -369,6 +381,23 @@ def generate_launch_description():
             }],
         ),
 
+        # 自动扫图 runtime 默认只写门禁 artifact，给 PC/start-stop 代理提供真实节点和状态读回。
+        Node(
+            package='ros2_trashbot_nav',
+            executable='free_roam_autonomy_node',
+            name='free_roam_autonomy',
+            output='screen',
+            condition=IfCondition(free_roam_autonomy_enabled),
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'scan_topic': lidar_scan_topic,
+                'map_topic': '/map',
+                'artifact_path': free_roam_autonomy_artifact_path,
+                'enable_cmd_vel_publish': False,
+                'motion_hil_unlocked': False,
+            }],
+        ),
+
         # 真实相机只在显式启用时拉起，避免开发机或无设备环境默认失败。
         Node(
             package='ros2_trashbot_vision',
@@ -473,6 +502,8 @@ def generate_launch_description():
         laser_tf_pitch_arg,
         laser_tf_yaw_arg,
         waypoint_file_arg,
+        free_roam_autonomy_enabled_arg,
+        free_roam_autonomy_artifact_path_arg,
         camera_enabled_arg,
         camera_device_arg,
         camera_topic_arg,

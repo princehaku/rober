@@ -132,8 +132,8 @@ class FreeRoamAutonomyNodeTest(unittest.TestCase):
         self.assertEqual(metrics["total_cells"], 6)
         self.assertAlmostEqual(metrics["unknown_ratio"], 2 / 6)
 
-    def test_default_tick_writes_locked_artifact_and_calls_stop_without_cmd_vel(self) -> None:
-        """默认参数下节点只能写 locked artifact 和停止兜底，不能发布 Twist。"""
+    def test_default_tick_writes_locked_artifact_without_stop_or_cmd_vel(self) -> None:
+        """默认参数下节点只写 locked artifact，未进入自动扫图会话时不能反复调用 stop。"""
         with tempfile.TemporaryDirectory() as td:
             artifact_path = Path(td) / "free_roam.json"
             node = self.module.FreeRoamAutonomyNode()
@@ -146,6 +146,28 @@ class FreeRoamAutonomyNodeTest(unittest.TestCase):
             self.assertFalse(payload["cmd_vel_publish_enabled"])
             self.assertEqual(payload["decision"]["state"], "locked")
             self.assertEqual(payload["decision"]["linear_x_mps"], 0.0)
+            self.assertEqual(node.client.calls, 0)
+            self.assertEqual(node.publisher.messages, [])
+
+    def test_active_session_locked_decision_calls_stop_without_cmd_vel(self) -> None:
+        """自动扫图会话已被 PC start 后，如果门禁失败，节点必须调用停止兜底但不发布 Twist。"""
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "free_roam.json"
+            node = self.module.FreeRoamAutonomyNode()
+            node._parameters.update(
+                {
+                    "artifact_path": str(artifact_path),
+                    "operator_confirmed": True,
+                    "mapping_active": True,
+                    "stop_available": True,
+                }
+            )
+
+            node._tick()
+
+            payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+            self.assertTrue(payload["artifact_only"])
+            self.assertEqual(payload["decision"]["state"], "locked")
             self.assertEqual(node.client.calls, 1)
             self.assertEqual(node.publisher.messages, [])
 

@@ -227,6 +227,16 @@ def generate_launch_description():
         default_value='trashbot_map',
         description='Base filename used by map_recorder for PGM/YAML map artifacts')
 
+    free_roam_autonomy_enabled_arg = DeclareLaunchArgument(
+        'free_roam_autonomy_enabled',
+        default_value='true',
+        description='Start artifact-only free-roam autonomy runtime for PC readiness and gates')
+
+    free_roam_autonomy_artifact_path_arg = DeclareLaunchArgument(
+        'free_roam_autonomy_artifact_path',
+        default_value='/root/rober/onboard/runtime/free_roam_autonomy_latest.json',
+        description='Runtime artifact read by the upper API /api/free-roam/autonomy/latest endpoint')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     record_interval = LaunchConfiguration('record_interval')
     pose_topic = LaunchConfiguration('pose_topic')
@@ -278,6 +288,8 @@ def generate_launch_description():
     slam_base_frame = LaunchConfiguration('slam_base_frame')
     map_dir = LaunchConfiguration('map_dir')
     default_map_name = LaunchConfiguration('default_map_name')
+    free_roam_autonomy_enabled = LaunchConfiguration('free_roam_autonomy_enabled')
+    free_roam_autonomy_artifact_path = LaunchConfiguration('free_roam_autonomy_artifact_path')
     no_motion_mock_odom_command = [
         'python3',
         '-c',
@@ -363,6 +375,8 @@ def generate_launch_description():
         slam_base_frame_arg,
         map_dir_arg,
         default_map_name_arg,
+        free_roam_autonomy_enabled_arg,
+        free_roam_autonomy_artifact_path_arg,
 
         # SLAM Toolbox 是 learn 入口的建图 source；no-motion 现场采集会用它验证 map_recorder 是否真的收到 /map。
         Node(
@@ -391,6 +405,23 @@ def generate_launch_description():
                 # map proof helper 显式传 runtime/maps，防止 artifact 分散到默认 HOME。
                 'map_dir': map_dir,
                 'default_map_name': default_map_name,
+            }],
+        ),
+
+        # 自动扫图 runtime 随建图入口启动，只写 artifact 和门禁；运动发布仍被双参数锁死。
+        Node(
+            package='ros2_trashbot_nav',
+            executable='free_roam_autonomy_node',
+            name='free_roam_autonomy',
+            output='screen',
+            condition=IfCondition(free_roam_autonomy_enabled),
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'scan_topic': lidar_scan_topic,
+                'map_topic': '/map',
+                'artifact_path': free_roam_autonomy_artifact_path,
+                'enable_cmd_vel_publish': False,
+                'motion_hil_unlocked': False,
             }],
         ),
 
