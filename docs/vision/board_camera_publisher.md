@@ -936,3 +936,30 @@ known-good UVC。
 结论：本轮已排除 PC 多浏览器独占、8088 OpenCV 单一路径和一次 USB 重新枚举可恢复这三个方向。当前剩余问题在
 DV20 输入源、采集卡工作模式、USB 线/供电或设备本体；软件只能继续 fail-closed 展示“无真实首帧”，不能提供假预览或把
 `/dev/video1` 存在当成建图 ready。
+
+## 2026-06-27 03:20 systemd active 但 UVC 内核层无帧
+
+按 `docs/vendor/VENDOR_INDEX.md` 的硬件资料入口要求，本轮先确认本项目硬件栈仍以
+Orange Pi Zero 3 作为上位机入口；DV20 USB 摄像头不是 vendor 目录中已有细化资料项，
+因此本节只采用实板 `v4l2-ctl`、systemd 和 HTTP readback 证据，不猜测摄像头内部协议。
+
+真实上位机 `root@192.168.1.11 -p 37878` 复查结果：
+
+- `trashbot-local-webrtc-camera.service` 已 `active (running)`，命令行为
+  `local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15`。
+- `0.0.0.0:8088` 与 `0.0.0.0:8787` 均有 Python 服务监听；没有发现其它明显 camera owner。
+- `v4l2-ctl --list-devices` 仍显示 `/dev/video0` 是 Cedrus decoder，`/dev/video1`/`/dev/video2`
+  属于 `USB Composite Device: DV20 USB`。
+- `/dev/video1 --all` 显示 `Driver name: uvcvideo`、`Video Capture`、`Streaming`，
+  当前输入状态为 `Input 1: ok`。
+- `/dev/video1 --list-formats-ext` 显示 MJPG 支持 `640x480@30`、`1280x720@30` 等，
+  YUYV 支持 `640x480@22`、`320x240@25/20`。
+- 但 `v4l2-ctl -d /dev/video1 --set-fmt-video=width=640,height=480,pixelformat=MJPG --stream-mmap=3 --stream-count=1`
+  和 YUYV 组合均超时，输出 raw 文件为 0 字节。
+- 通过 `8787` 转发读取 `GET /api/camera/mjpeg` 同样超时，没有 JPEG header 或 body。
+
+结论保持 fail-closed：共享预览/多浏览器访问路径已由 8088 camera service 承担，当前失败不应再归因于
+PC 页面独占；更接近 DV20/UVC 设备枚举正常但内核 streaming 不产出帧。下一步应现场检查 USB 供电、
+摄像头输入源/模式、线缆或替换 known-good UVC。软件侧新增的 backend smoke 会继续把
+`no_frame_timeout`、0 字节和 `no_kernel_frame_observed` 展示给 PC，而不会伪造预览、解锁建图 ready
+或发送任何运动命令。

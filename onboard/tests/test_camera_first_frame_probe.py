@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -155,6 +156,81 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
         self.assertFalse(result["executed"])
         self.assertFalse(result["ok"])
         self.assertEqual(0, result["output_bytes"])
+        self.assertEqual("tool_missing", result["status"])
+        self.assertEqual("backend_tool_missing", result["failure_reason"])
+
+    def test_backend_command_timeout_without_bytes_marks_kernel_no_frame(self) -> None:
+        """v4l2 拉流超时且 0 字节时，要明确标记为底层无帧。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "v4l2_mjpg.raw"
+            command = [
+                "v4l2-ctl",
+                "-d",
+                "/dev/video1",
+                "--stream-mmap=3",
+                "--stream-count=1",
+                "--stream-to",
+                str(output_path),
+            ]
+
+            with mock.patch.object(probe.shutil, "which", return_value="/usr/bin/v4l2-ctl"):
+                with mock.patch.object(
+                    probe.subprocess,
+                    "run",
+                    side_effect=probe.subprocess.TimeoutExpired(command, 0.01, output="", stderr=""),
+                ):
+                    result = probe.run_backend_command("v4l2_mjpg_mmap", command, timeout_s=0.01)
+
+        self.assertTrue(result["available"])
+        self.assertTrue(result["timed_out"])
+        self.assertFalse(result["ok"])
+        self.assertEqual(0, result["output_bytes"])
+        self.assertEqual("no_frame_timeout", result["status"])
+        self.assertEqual("v4l2_stream_timeout_no_bytes", result["failure_reason"])
+        self.assertFalse(result["jpeg_soi_observed"])
+
+    def test_backend_command_frame_observed_records_jpeg_soi(self) -> None:
+        """MJPG/ffmpeg 写出 JPEG SOI 时，后端矩阵要给出强首帧证据。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "frame.jpg"
+            command = ["ffmpeg", "-i", "/dev/video1", "-frames:v", "1", "-y", str(output_path)]
+
+            def write_frame(*_args: object, **_kwargs: object) -> object:
+                output_path.write_bytes(b"\xff\xd8fake-jpeg")
+                return probe.subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+
+            with mock.patch.object(probe.shutil, "which", return_value="/usr/bin/ffmpeg"):
+                with mock.patch.object(probe.subprocess, "run", side_effect=write_frame):
+                    result = probe.run_backend_command("ffmpeg_mjpg", command, timeout_s=0.01)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual("frame_observed", result["status"])
+        self.assertIsNone(result["failure_reason"])
+        self.assertGreater(result["output_bytes"], 0)
+        self.assertTrue(result["jpeg_soi_observed"])
+
+    def test_backend_smoke_summarizes_kernel_no_frame_without_control_flags(self) -> None:
+        """后端矩阵只做相机诊断，不得因为底层取帧成功或失败解锁运动。"""
+        info = {"name": "v4l2_all", "ok": True}
+        no_frame = {
+            "name": "v4l2_mjpg_mmap",
+            "status": "no_frame_timeout",
+            "failure_reason": "v4l2_stream_timeout_no_bytes",
+            "output_bytes": 0,
+        }
+
+        with mock.patch.object(probe, "run_info_command", return_value=info):
+            with mock.patch.object(probe, "run_backend_command", return_value=no_frame):
+                result = probe.backend_smoke_probe(self.make_args())
+
+        self.assertFalse(result["frame_observed"])
+        self.assertEqual("no_kernel_frame_observed", result["overall_status"])
+        self.assertEqual("v4l2_stream_timeout_no_bytes", result["failure_reason"])
+        self.assertEqual(4, result["no_frame_timeout_count"])
+        self.assertEqual([info, info], result["v4l2_info"])
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["robot_control_executed"])
+        self.assertFalse(result["sends_motion_commands"])
 
     def test_frame_read_with_visible_sample_proves_visual_material(self) -> None:
         """读到可见帧且写出样张后，才升级为可追溯视觉材料。"""

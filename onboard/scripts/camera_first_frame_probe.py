@@ -24,6 +24,7 @@ DEFAULT_INTERVAL_S = 0.05
 DEFAULT_READ_CALL_TIMEOUT_S = 4.0
 DEFAULT_DARK_THRESHOLD = 8.0
 BACKEND_SMOKE_TIMEOUT_S = 8.0
+BACKEND_INFO_TIMEOUT_S = 4.0
 
 
 def now_ms() -> int:
@@ -48,6 +49,81 @@ def compact_error(error: BaseException) -> dict[str, str]:
     return {"type": type(error).__name__, "message": str(error)[:240]}
 
 
+def preview_text(value: object, limit: int = 1200) -> str:
+    """统一压缩外部命令输出，PC 只需要看到关键尾部证据。"""
+    if isinstance(value, bytes):
+        value = value.decode(errors="replace")
+    return str(value or "")[-limit:]
+
+
+def has_jpeg_soi(output_path: Path | None) -> bool:
+    """MJPG/ffmpeg 输出若包含 JPEG SOI，可作为比文件大小更强的首帧证据。"""
+    if output_path is None or not output_path.exists() or output_path.stat().st_size < 2:
+        return False
+    try:
+        with output_path.open("rb") as handle:
+            return handle.read(2) == b"\xff\xd8"
+    except OSError:
+        return False
+
+
+def classify_backend_attempt(timed_out: bool, returncode: int | None, output_bytes: int) -> tuple[str, str | None]:
+    """把底层取帧结果压成稳定状态，避免 UI 根据 stderr 文本猜根因。"""
+    if timed_out and output_bytes <= 0:
+        return "no_frame_timeout", "v4l2_stream_timeout_no_bytes"
+    if timed_out:
+        return "partial_output_timeout", "stream_timeout_after_partial_bytes"
+    if returncode not in (0, None):
+        return "stream_failed", "backend_command_nonzero"
+    if output_bytes > 0:
+        return "frame_observed", None
+    return "no_frame_output", "backend_command_zero_bytes"
+
+
+def run_info_command(name: str, command: list[str]) -> dict[str, Any]:
+    """采集 v4l2 设备静态信息；不取帧、不触碰底盘，只帮助区分枚举和格式问题。"""
+    started = time.monotonic()
+    if shutil.which(command[0]) is None:
+        return {
+            "name": name,
+            "available": False,
+            "executed": False,
+            "ok": False,
+            "returncode": None,
+            "elapsed_ms": 0,
+            "stdout_preview": "",
+            "stderr_preview": f"{command[0]} not found",
+        }
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=BACKEND_INFO_TIMEOUT_S,
+        )
+        timed_out = False
+    except subprocess.TimeoutExpired as exc:
+        completed = subprocess.CompletedProcess(
+            command,
+            returncode=None,
+            stdout=preview_text(exc.stdout),
+            stderr=preview_text(exc.stderr),
+        )
+        timed_out = True
+    return {
+        "name": name,
+        "available": True,
+        "executed": True,
+        "ok": bool(not timed_out and completed.returncode == 0),
+        "timed_out": timed_out,
+        "returncode": completed.returncode,
+        "elapsed_ms": int((time.monotonic() - started) * 1000),
+        "stdout_preview": preview_text(completed.stdout),
+        "stderr_preview": preview_text(completed.stderr),
+    }
+
+
 def run_backend_command(name: str, command: list[str], timeout_s: float = BACKEND_SMOKE_TIMEOUT_S) -> dict[str, Any]:
     """运行固定白名单采集命令，用于区分 OpenCV 问题和 V4L2/驱动无帧。"""
     started = time.monotonic()
@@ -62,6 +138,9 @@ def run_backend_command(name: str, command: list[str], timeout_s: float = BACKEN
             "stdout_preview": "",
             "stderr_preview": f"{command[0]} not found",
             "output_bytes": 0,
+            "jpeg_soi_observed": False,
+            "status": "tool_missing",
+            "failure_reason": "backend_tool_missing",
         }
     output_path = Path(command[-1]) if command[-2] in {"--stream-to", "-y"} else None
     if output_path is not None:
@@ -82,23 +161,27 @@ def run_backend_command(name: str, command: list[str], timeout_s: float = BACKEN
         completed = subprocess.CompletedProcess(
             command,
             returncode=None,
-            stdout=exc.stdout if isinstance(exc.stdout, str) else "",
-            stderr=exc.stderr if isinstance(exc.stderr, str) else "",
+            stdout=preview_text(exc.stdout),
+            stderr=preview_text(exc.stderr),
         )
         timed_out = True
     output_bytes = output_path.stat().st_size if output_path is not None and output_path.exists() else 0
+    status, failure_reason = classify_backend_attempt(timed_out, completed.returncode, output_bytes)
     return {
         "name": name,
         "available": True,
         "executed": True,
         "ok": bool(not timed_out and completed.returncode == 0 and output_bytes > 0),
+        "status": status,
+        "failure_reason": failure_reason,
         "timed_out": timed_out,
         "returncode": completed.returncode,
         "elapsed_ms": int((time.monotonic() - started) * 1000),
-        "stdout_preview": str(completed.stdout or "")[-400:],
-        "stderr_preview": str(completed.stderr or "")[-800:],
+        "stdout_preview": preview_text(completed.stdout, limit=400),
+        "stderr_preview": preview_text(completed.stderr, limit=800),
         "output_path": str(output_path) if output_path is not None else None,
         "output_bytes": output_bytes,
+        "jpeg_soi_observed": has_jpeg_soi(output_path),
     }
 
 
@@ -109,6 +192,10 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
     width = str(args.width)
     height = str(args.height)
     device = str(args.device)
+    v4l2_info = [
+        run_info_command("v4l2_all", ["v4l2-ctl", "-d", device, "--all"]),
+        run_info_command("v4l2_formats", ["v4l2-ctl", "-d", device, "--list-formats-ext"]),
+    ]
     attempts = [
         run_backend_command(
             "v4l2_mjpg_mmap",
@@ -181,13 +268,20 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
             timeout_s=12.0,
         ),
     ]
-    frame_observed = any(item.get("output_bytes", 0) > 0 for item in attempts)
+    frame_observed = any(item.get("status") == "frame_observed" for item in attempts)
+    primary_failure = next((item.get("failure_reason") for item in attempts if item.get("failure_reason")), None)
+    no_frame_timeouts = [item for item in attempts if item.get("status") == "no_frame_timeout"]
     return {
         "executed": True,
         "frame_observed": frame_observed,
         "status": "backend_frame_observed" if frame_observed else "backend_no_frame_observed",
+        "overall_status": "frame_observed" if frame_observed else "no_kernel_frame_observed",
+        "failure_reason": None if frame_observed else primary_failure or "backend_no_frame_observed",
+        "no_frame_timeout_count": len(no_frame_timeouts),
+        "v4l2_info": v4l2_info,
         "attempts": attempts,
         "output_dir": str(output_dir),
+        **proof_flags(),
     }
 
 
