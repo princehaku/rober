@@ -3215,9 +3215,28 @@ function freeRoamRuntimeSummaryFromReadbacks(
   };
 }
 
+function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
+  RobotControlSummaryResponse["safe_command_boundary"],
+  "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers"
+> {
+  // 完整路线执行的首屏门禁只读当前 summary 材料；真正执行前 PC 代理仍会复跑 Nav2 preflight。
+  const blockers = [
+    proof?.path_generated === true || proof?.path_generation_succeeded === true ? "" : "path_generation_not_observed",
+    (proof?.path_point_count ?? 0) > 0 || (proof?.path_preview_point_count ?? 0) > 0 ? "" : "path_point_count_not_positive",
+    proof?.robot_pose ? "" : "robot_map_pose_not_observed",
+  ].filter(Boolean);
+  const ready = blockers.length === 0;
+  return {
+    nav2_goal_ready: ready,
+    nav2_goal_label: ready ? "图上路线可执行" : "图上路线未就绪",
+    nav2_goal_blockers: blockers,
+  };
+}
+
 function lockedBoundary(
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null = null,
   freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
+  proof: RobotApiProofSummary | null = null,
 ): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
   const startGateIds = new Set(["stop_available"]);
@@ -3238,6 +3257,7 @@ function lockedBoundary(
     stop_endpoint: "/api/base/stop",
     cmd_vel_topic: "/cmd_vel",
     nav2_goal: "Nav2 NavigateToPose locked",
+    ...nav2GoalBoundaryFromProof(proof),
     map_start: "map start locked",
     radar_start: "radar start locked",
     keyboard_control: "bounded repeating manual pulse gated",
@@ -3499,7 +3519,7 @@ export async function buildRobotControlSummary(
     },
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),
-    safe_command_boundary: lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime),
+    safe_command_boundary: lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary),
     blocked_reasons: blockedReasons.length ? blockedReasons : ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success", "safe_to_control_true", "real_robot_ack"],
     ...PROOF_FLAGS,

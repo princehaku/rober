@@ -3936,6 +3936,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.manual_endpoint).toBe("/api/base/manual");
       expect(summary.safe_command_boundary.stop_endpoint).toBe("/api/base/stop");
       expect(summary.safe_command_boundary.cmd_vel_topic).toBe("/cmd_vel");
+      expect(summary.safe_command_boundary.nav2_goal).toBe("Nav2 NavigateToPose locked");
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线未就绪");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(expect.arrayContaining([
+        "path_generation_not_observed",
+        "path_point_count_not_positive",
+        "robot_map_pose_not_observed",
+      ]));
       expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_safety_confirmation_only");
       expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);
       expect(summary.safe_command_boundary.operator_report_preflight_endpoint).toBe("/api/operator/report");
@@ -5343,6 +5351,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.localization.robot_pose_x).toBe("0.0052");
       expect(summary.readback_summary.localization.robot_pose_y).toBe("0.0237");
       expect(summary.o3_proof_summary.path_generated).toBe(true);
+      expect(summary.safe_command_boundary.nav2_goal).toBe("Nav2 NavigateToPose locked");
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线可执行");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
     } finally {
