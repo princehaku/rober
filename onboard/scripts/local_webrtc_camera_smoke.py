@@ -180,6 +180,30 @@ TEMPERATURE_GLOBS = (
 # 实现边界说明 126：同一视频源只能由进程打开一次，多个 WebRTC peer 共享该 capture，避免 UVC 独占。
 # 实现边界说明 127：卡在 new/0 帧的旧 peer 会在新 offer 前释放，避免浏览器断开后长期占用 `/dev/video1`。
 # 实现边界说明 128：共享 capture 的最后一个 peer 关闭时才 release，确保多人预览不会互相踢掉画面。
+# 实现边界说明 129：首帧格式尝试必须带分辨率/fps，现场才能判断是不是卡在不兼容采集模式。
+# 实现边界说明 130：最后一轮 raw-default 不写任何 capture 属性，用当前内核协商模式兜底。
+
+
+@dataclass(frozen=True)
+class CameraCaptureAttemptSpec:
+    """首帧尝试规格必须可序列化展示，避免 PC 只看到 MJPG/YUYV 这种粗粒度信息。"""
+
+    fourcc: str | None
+    width: int | None
+    height: int | None
+    fps: int | None
+    apply_settings: bool = True
+
+    def label(self) -> str:
+        """格式标签直接进入 health/PC UI，所以要短且稳定。"""
+        codec = self.fourcc or "default"
+        if not self.apply_settings:
+            return f"{codec}@current"
+        if self.width and self.height and self.fps:
+            return f"{codec}@{self.width}x{self.height}@{self.fps}"
+        if self.width and self.height:
+            return f"{codec}@{self.width}x{self.height}"
+        return codec
 
 
 def now_ms() -> int:
@@ -473,7 +497,35 @@ def build_device_candidate(path: str, v4l2_name: str | None = None) -> dict[str,
             "v4l2_all": all_result,
             "v4l2_formats": formats_result,
         },
+        "formats_summary": summarize_v4l2_formats(formats_stdout),
     }
+
+
+def summarize_v4l2_formats(formats_stdout: str) -> str:
+    """把 v4l2 格式长文本压成一行，PC 普通诊断只需要知道可试哪些模式。"""
+    if not formats_stdout.strip():
+        return "not_loaded"
+    entries: list[str] = []
+    current_fourcc = ""
+    current_size = ""
+    for raw_line in formats_stdout.splitlines():
+        line = raw_line.strip()
+        fourcc_match = re.search(r"'([A-Z0-9]{4})'", line)
+        if fourcc_match and line.startswith("["):
+            current_fourcc = fourcc_match.group(1)
+            current_size = ""
+            continue
+        size_match = re.search(r"Size:\s+Discrete\s+(\d+x\d+)", line)
+        if size_match:
+            current_size = size_match.group(1)
+            continue
+        fps_match = re.search(r"\((\d+(?:\.\d+)?)\s+fps\)", line)
+        if current_fourcc and current_size and fps_match:
+            fps_text = fps_match.group(1).rstrip("0").rstrip(".")
+            entry = f"{current_fourcc}@{current_size}@{fps_text}"
+            if entry not in entries:
+                entries.append(entry)
+    return "；".join(entries[:8]) if entries else "not_loaded"
 
 
 def collect_video_candidates() -> dict[str, Any]:
@@ -574,15 +626,21 @@ def source_candidates_summary(snapshot: dict[str, Any], selection: dict[str, Any
                 "is_decoder": candidate.get("is_decoder"),
                 "is_metadata": candidate.get("is_metadata"),
                 "selection_score": score_candidate(candidate),
+                "formats_summary": candidate.get("formats_summary"),
             }
         )
+    selected_path = selection.get("selected_path")
+    selected_candidate = next((candidate for candidate in candidates if candidate.get("path") == selected_path), None)
     return {
         "candidate_count": len(candidates),
         "candidates": candidates,
         "current_selection": {
             "mode": selection.get("mode"),
             "requested_source": selection.get("requested_source"),
-            "selected_path": selection.get("selected_path"),
+            "selected_path": selected_path,
+            "selected_name": selected_candidate.get("name") if selected_candidate else None,
+            "selected_is_uvc_or_usb": selected_candidate.get("is_uvc_or_usb") if selected_candidate else None,
+            "selected_formats_summary": selected_candidate.get("formats_summary") if selected_candidate else None,
             "ranked": selection.get("ranked", [])[:8],
         },
     }
@@ -613,13 +671,37 @@ def encode_mjpeg_part(cv2: Any, frame: Any) -> bytes | None:
     ).encode("ascii") + jpeg + b"\r\n"
 
 
-def apply_camera_capture_settings(cv2: Any, capture: Any, width: int, height: int, fps: int, fourcc: str | None) -> None:
+def camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[CameraCaptureAttemptSpec]:
+    """优先试配置值，再试 DV20/UVC 常见离散模式，最后保留内核当前模式兜底。"""
+    raw_specs = [
+        CameraCaptureAttemptSpec("MJPG", width, height, fps),
+        CameraCaptureAttemptSpec("MJPG", width, height, 30),
+        CameraCaptureAttemptSpec("YUYV", width, height, fps),
+        CameraCaptureAttemptSpec("YUYV", width, height, 22),
+        CameraCaptureAttemptSpec("YUYV", 320, 240, 20),
+        CameraCaptureAttemptSpec(None, None, None, None, apply_settings=False),
+    ]
+    specs: list[CameraCaptureAttemptSpec] = []
+    seen: set[tuple[str | None, int | None, int | None, int | None, bool]] = set()
+    for spec in raw_specs:
+        key = (spec.fourcc, spec.width, spec.height, spec.fps, spec.apply_settings)
+        if key in seen:
+            continue
+        seen.add(key)
+        specs.append(spec)
+    return specs
+
+
+def apply_camera_capture_settings(cv2: Any, capture: Any, width: int | None, height: int | None, fps: int | None, fourcc: str | None) -> None:
     """请求 UVC 采集格式；set 失败不算成功或失败，首帧 read 才是最终事实。"""
     if fourcc:
         capture.set(getattr(cv2, "CAP_PROP_FOURCC", 6), cv2.VideoWriter_fourcc(*fourcc))
-    capture.set(getattr(cv2, "CAP_PROP_FRAME_WIDTH", 3), width)
-    capture.set(getattr(cv2, "CAP_PROP_FRAME_HEIGHT", 4), height)
-    capture.set(getattr(cv2, "CAP_PROP_FPS", 5), fps)
+    if width:
+        capture.set(getattr(cv2, "CAP_PROP_FRAME_WIDTH", 3), width)
+    if height:
+        capture.set(getattr(cv2, "CAP_PROP_FRAME_HEIGHT", 4), height)
+    if fps:
+        capture.set(getattr(cv2, "CAP_PROP_FPS", 5), fps)
 
 
 @dataclass
@@ -834,7 +916,16 @@ class CameraServiceState:
             closed.append({"peer_id": peer_id, "http_status": int(status), "status": payload.get("status")})
         return closed
 
-    def acquire_shared_capture(self, source: str, cv2: Any, fourcc: str | None = None) -> tuple[SharedCameraCapture | None, dict[str, Any] | None]:
+    def acquire_shared_capture(
+        self,
+        source: str,
+        cv2: Any,
+        fourcc: str | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        fps: int | None = None,
+        apply_settings: bool = True,
+    ) -> tuple[SharedCameraCapture | None, dict[str, Any] | None]:
         """获取共享摄像头句柄；已有句柄可复用，避免第二个客户端再次打开 `/dev/video1`。"""
         shared = self.shared_captures.get(source)
         if shared and not shared.released:
@@ -847,8 +938,16 @@ class CameraServiceState:
             except Exception:  # noqa: BLE001 - release 失败不改变打开失败根因。
                 pass
             return None, error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
-        apply_camera_capture_settings(cv2, capture, self.width, self.height, self.fps, fourcc)
-        shared = SharedCameraCapture(source=source, capture=capture, width=self.width, height=self.height, fps=self.fps, fourcc=fourcc)
+        if apply_settings:
+            apply_camera_capture_settings(cv2, capture, width or self.width, height or self.height, fps or self.fps, fourcc)
+        shared = SharedCameraCapture(
+            source=source,
+            capture=capture,
+            width=width or self.width,
+            height=height or self.height,
+            fps=fps or self.fps,
+            fourcc=fourcc,
+        )
         shared.add_ref()
         self.shared_captures[source] = shared
         return shared, None
@@ -858,23 +957,54 @@ class CameraServiceState:
         source: str,
         cv2: Any,
     ) -> tuple[SharedCameraCapture | None, Any, list[dict[str, Any]], dict[str, Any] | None]:
-        """按 MJPG/YUYV/default 尝试首帧；每次失败都释放，不能长期占用坏格式。"""
+        """按多组 UVC 常见模式尝试首帧；每次失败都释放，不能长期占用坏格式。"""
         attempts: list[dict[str, Any]] = []
         last_payload: dict[str, Any] | None = None
-        for fourcc in CAMERA_CAPTURE_FOURCC_FALLBACKS:
-            shared_capture, open_error = self.acquire_shared_capture(source, cv2, fourcc)
-            label = fourcc or "default"
+        for spec in camera_capture_attempt_specs(self.width, self.height, self.fps):
+            shared_capture, open_error = self.acquire_shared_capture(
+                source,
+                cv2,
+                spec.fourcc,
+                width=spec.width,
+                height=spec.height,
+                fps=spec.fps,
+                apply_settings=spec.apply_settings,
+            )
+            label = spec.label()
             if shared_capture is None:
-                attempts.append({"fourcc": label, "status": "open_failed", "failure_reason": open_error.get("failure_reason") if open_error else "opencv_capture_not_opened"})
+                attempts.append({
+                    "fourcc": spec.fourcc or "default",
+                    "label": label,
+                    "width": spec.width,
+                    "height": spec.height,
+                    "fps": spec.fps,
+                    "apply_settings": spec.apply_settings,
+                    "status": "open_failed",
+                    "failure_reason": open_error.get("failure_reason") if open_error else "opencv_capture_not_opened",
+                })
                 last_payload = open_error or error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
                 continue
             ok, frame, first_frame_attempts = shared_capture.read_frame_until_success(FIRST_FRAME_TIMEOUT_S)
             if ok and frame is not None:
-                attempts.append({"fourcc": label, "status": "frame_read", "attempts": first_frame_attempts})
+                attempts.append({
+                    "fourcc": spec.fourcc or "default",
+                    "label": label,
+                    "width": spec.width,
+                    "height": spec.height,
+                    "fps": spec.fps,
+                    "apply_settings": spec.apply_settings,
+                    "status": "frame_read",
+                    "attempts": first_frame_attempts,
+                })
                 return shared_capture, frame, attempts, None
             first_error = shared_capture.last_error or "capture_read_returned_false"
             attempts.append({
-                "fourcc": label,
+                "fourcc": spec.fourcc or "default",
+                "label": label,
+                "width": spec.width,
+                "height": spec.height,
+                "fps": spec.fps,
+                "apply_settings": spec.apply_settings,
                 "status": "first_frame_unreadable",
                 "attempts": first_frame_attempts,
                 "failure_reason": first_error,

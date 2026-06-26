@@ -965,7 +965,7 @@ function cameraFormatAttemptsSummary(lastOfferError: JsonRecord | null): string 
     .map((item) => asRecord(item))
     .filter((item): item is JsonRecord => item !== null)
     .map((attempt) => {
-      const fourcc = asString(attempt.fourcc, "unknown");
+      const fourcc = asString(attempt.label ?? attempt.fourcc, "unknown");
       const status = asString(attempt.status, "unknown");
       if (status === "frame_read") {
         return `${fourcc} 已出帧`;
@@ -979,8 +979,43 @@ function cameraFormatAttemptsSummary(lastOfferError: JsonRecord | null): string 
       return `${fourcc} ${status}`;
     })
     .filter(Boolean)
-    .slice(0, 4);
+    .slice(0, 6);
   return parts.length > 0 ? parts.join("；") : "none";
+}
+
+function cameraDisplayDeviceName(value: unknown): string {
+  // v4l2 名称常带 `(usb-5310000...)` 这种总线尾巴，普通首屏只需要稳定设备名。
+  return asString(value)
+    .replace(/\s+\(usb-[^)]+\)\s*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function cameraSelectedCandidateSummary(healthPayload: JsonRecord | null): JsonRecord {
+  // 设备名和格式摘要来自上车端只读 health，PC 只做压缩展示，不重新枚举或打开摄像头。
+  const sourceSummary = asRecord(findFirstKey(healthPayload, ["source_summary", "source_candidates_summary"]));
+  const currentSelection = asRecord(findFirstKey(healthPayload, ["current_selection"]));
+  const summarySelection = asRecord(sourceSummary?.current_selection);
+  const selectedPath = asString(currentSelection?.selected_path ?? summarySelection?.selected_path);
+  const selectedName = asString(currentSelection?.selected_name ?? summarySelection?.selected_name);
+  const selectedFormats = asString(currentSelection?.selected_formats_summary ?? summarySelection?.selected_formats_summary);
+  const selectedIsUvc = currentSelection?.selected_is_uvc_or_usb ?? summarySelection?.selected_is_uvc_or_usb;
+  if (selectedName || selectedFormats || selectedIsUvc !== undefined) {
+    return {
+      selected_name: selectedName,
+      selected_formats_summary: selectedFormats,
+      selected_is_uvc_or_usb: selectedIsUvc,
+    };
+  }
+  const candidates = Array.isArray(sourceSummary?.candidates) ? sourceSummary.candidates : [];
+  const selectedCandidate = candidates
+    .map((candidate) => asRecord(candidate))
+    .find((candidate) => asString(candidate?.path) === selectedPath);
+  return {
+    selected_name: asString(selectedCandidate?.name),
+    selected_formats_summary: asString(selectedCandidate?.formats_summary),
+    selected_is_uvc_or_usb: selectedCandidate?.is_uvc_or_usb,
+  };
 }
 
 function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord | null {
@@ -1090,6 +1125,7 @@ function cameraSummaryFromReadbacks(
   const sourceSummarySelection = asRecord(sourceSummary?.current_selection);
   const mediaDiagnostics = asRecord(findFirstKey(healthPayload, ["media_diagnostics"]));
   const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error);
+  const selectedCandidate = cameraSelectedCandidateSummary(healthPayload);
   const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage);
   const sourceUsageOwners = Array.isArray(sourceUsage?.owners) ? sourceUsage.owners : [];
   const sourceUsageSummary = sourceUsageOwners
@@ -1137,6 +1173,11 @@ function cameraSummaryFromReadbacks(
     video_source: summaryValueText(healthPayload, ["video_source"]),
     video_source_mode: summaryValueText(healthPayload, ["video_source_mode"]),
     selected_path: asString(currentSelection?.selected_path ?? sourceSummarySelection?.selected_path),
+    selected_name: cameraDisplayDeviceName(selectedCandidate.selected_name) || "not_loaded",
+    selected_is_uvc_or_usb: selectedCandidate.selected_is_uvc_or_usb === undefined
+      ? "not_loaded"
+      : compactValueText(selectedCandidate.selected_is_uvc_or_usb),
+    selected_formats_summary: asString(selectedCandidate.selected_formats_summary, "not_loaded"),
     source_readiness: sourceReadiness,
     source_failure_reason: sourceFailureReason,
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
@@ -3184,6 +3225,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         video_source: "not_loaded",
         video_source_mode: "not_loaded",
         selected_path: "not_loaded",
+        selected_name: "not_loaded",
+        selected_is_uvc_or_usb: "not_loaded",
+        selected_formats_summary: "not_loaded",
         source_readiness: "not_loaded",
         source_failure_reason: "not_loaded",
         source_usage_status: "not_loaded",

@@ -5177,14 +5177,17 @@ describe("workstation fail-closed API contracts", () => {
           },
           current_selection: {
             selected_path: "/dev/video1",
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_is_uvc_or_usb: true,
+            selected_formats_summary: "MJPG@640x480@30；YUYV@640x480@22",
           },
           media_diagnostics: {
             last_offer_error: {
               error: "first_frame_unreadable",
               failure_reason: "first_frame_timeout",
               first_frame_format_attempts: [
-                { fourcc: "MJPG", status: "first_frame_unreadable", failure_reason: "capture_read_returned_false" },
-                { fourcc: "YUYV", status: "first_frame_unreadable", failure_reason: "capture_read_returned_false" },
+                { fourcc: "MJPG", label: "MJPG@640x480@30", status: "first_frame_unreadable", failure_reason: "capture_read_returned_false" },
+                { fourcc: "YUYV", label: "YUYV@640x480@22", status: "first_frame_unreadable", failure_reason: "capture_read_returned_false" },
               ],
             },
           },
@@ -5348,6 +5351,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.video_source).toBe("/dev/video1");
       expect(summary.readback_summary.camera.video_source_mode).toBe("auto");
       expect(summary.readback_summary.camera.selected_path).toBe("/dev/video1");
+      expect(summary.readback_summary.camera.selected_name).toBe("USB Composite Device: DV20 USB");
+      expect(summary.readback_summary.camera.selected_is_uvc_or_usb).toBe("true");
+      expect(summary.readback_summary.camera.selected_formats_summary).toBe("MJPG@640x480@30；YUYV@640x480@22");
       expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
       expect(summary.readback_summary.camera.source_failure_reason).toBe("first_frame_timeout");
       expect(summary.readback_summary.camera.source_usage_status).toBe("in_use_by_probe");
@@ -5356,7 +5362,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.active_peer_count).toBe("0");
       expect(summary.readback_summary.camera.last_offer_error).toBe("first_frame_unreadable");
       expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("first_frame_timeout");
-      expect(summary.readback_summary.camera.last_offer_format_attempts_summary).toBe("MJPG 无首帧；YUYV 无首帧");
+      expect(summary.readback_summary.camera.last_offer_format_attempts_summary).toBe("MJPG@640x480@30 无首帧；YUYV@640x480@22 无首帧");
       expect(summary.readback_summary.lidar.status).toBe("latest_proof_fresh_while_lifecycle_running");
       expect(summary.readback_summary.lidar.continuous_scan_status).toBe("latest_proof_fresh_while_lifecycle_running");
       expect(summary.readback_summary.lidar.lifecycle_running).toBe("true");

@@ -421,6 +421,9 @@ const fixtures: Record<string, unknown> = {
         video_source: "/dev/video1",
         video_source_mode: "auto",
         selected_path: "/dev/video1",
+        selected_name: "USB Composite Device: DV20 USB",
+        selected_is_uvc_or_usb: "true",
+        selected_formats_summary: "MJPG@640x480@30；YUYV@640x480@22",
         source_readiness: "source_selected_not_probed",
         source_failure_reason: "none",
         source_usage_status: "not_loaded",
@@ -8892,7 +8895,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const firstScreenText = visiblePlainHomeText(wrapper);
-    expect(firstScreenText).toContain("不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。");
+    expect(firstScreenText).toContain("不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。");
     expect(firstScreenText).not.toContain("capture_read_returned_false");
     expect(firstScreenText).not.toContain("/dev/video1");
     expect(wrapper.find("details").text()).toContain("camera_source_usage_status");
@@ -15699,8 +15702,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
-    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：相机当前没人占用，但摄像头没有输出视频帧");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。 采集尝试：MJPG 无首帧；YUYV 无首帧；default 无首帧。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。 采集尝试：MJPG 无首帧；YUYV 无首帧；default 无首帧。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("PC 只复用同一条上游流");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

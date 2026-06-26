@@ -198,6 +198,25 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("--list-formats-ext", flattened)
         self.assertNotIn("--set-ctrl", flattened)
 
+    def test_v4l2_formats_are_compacted_for_pc_readback(self) -> None:
+        """PC 普通诊断需要一行看懂上车端实际支持哪些采集格式。"""
+        text = "\n".join(
+            [
+                "[0]: 'MJPG' (Motion-JPEG, compressed)",
+                "    Size: Discrete 640x480",
+                "        Interval: Discrete 0.033s (30.000 fps)",
+                "[1]: 'YUYV' (YUYV 4:2:2)",
+                "    Size: Discrete 640x480",
+                "        Interval: Discrete 0.045s (22.000 fps)",
+                "    Size: Discrete 320x240",
+                "        Interval: Discrete 0.050s (20.000 fps)",
+            ]
+        )
+
+        summary = camera.summarize_v4l2_formats(text)
+
+        self.assertEqual("MJPG@640x480@30；YUYV@640x480@22；YUYV@320x240@20", summary)
+
     def test_uvc_capture_with_metadata_capability_still_counts_as_video(self) -> None:
         """DV20 这类 UVC 复合设备会列出 metadata capability，但 /dev/video1 仍是图像节点。"""
 
@@ -462,7 +481,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
                 return 100 if "".join(letters) == "MJPG" else 200
 
             def VideoCapture(self, _source: str) -> FormatCapture:  # noqa: N802 - 模拟 OpenCV API。
-                capture = FormatCapture("mjpg" if not self.captures else "yuyv")
+                capture = FormatCapture("mjpg" if len(self.captures) < 2 else "yuyv")
                 self.captures.append(capture)
                 return capture
 
@@ -477,10 +496,11 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         assert shared is not None
         self.assertEqual("YUYV", shared.fourcc)
         self.assertTrue(fake_cv2.captures[0].released)
-        self.assertFalse(fake_cv2.captures[1].released)
-        self.assertEqual(["MJPG", "YUYV"], [item["fourcc"] for item in attempts])
+        self.assertTrue(fake_cv2.captures[1].released)
+        self.assertFalse(fake_cv2.captures[2].released)
+        self.assertEqual(["MJPG@640x480@15", "MJPG@640x480@30", "YUYV@640x480@15"], [item["label"] for item in attempts])
         self.assertEqual("first_frame_unreadable", attempts[0]["status"])
-        self.assertEqual("frame_read", attempts[1]["status"])
+        self.assertEqual("frame_read", attempts[2]["status"])
 
     def test_stale_no_frame_peer_is_closed_before_new_offer(self) -> None:
         """卡在 new/0 帧的旧 peer 必须自动释放，避免长期占用 `/dev/video1`。"""

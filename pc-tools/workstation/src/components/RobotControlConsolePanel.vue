@@ -401,6 +401,10 @@ function cameraSourcePlainFailureHint(): string {
   const formatAttempts = camera?.last_offer_format_attempts_summary && camera.last_offer_format_attempts_summary !== "none"
     ? ` 采集尝试：${camera.last_offer_format_attempts_summary}。`
     : "";
+  const selectedName = camera?.selected_name && !["", "not_loaded", "none"].includes(camera.selected_name)
+    ? camera.selected_name
+    : "";
+  const sourcePrefix = selectedName ? `${selectedName}：` : "";
   const sourceFailed = cameraSourceFirstFrameFailed(camera);
   if (sourceFailed || probeFailureHint) {
     if (probeFailureHint) {
@@ -413,13 +417,13 @@ function cameraSourcePlainFailureHint(): string {
       return `相机当前被 ${ownerCount} 个进程占用，等检查释放或重启相机服务后再打开。`;
     }
     if (camera?.source_usage_status === "in_use_by_camera_service") {
-      return "相机服务已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。";
+      return `${sourcePrefix}相机服务已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。${formatAttempts}`;
     }
     if (camera?.source_usage_status === "not_in_use") {
       if (camera?.source_failure_reason === "capture_read_call_timeout" || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout") {
-        return `不是页面独占：相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。${formatAttempts}`;
+        return `不是页面独占：${sourcePrefix}相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。${formatAttempts}`;
       }
-      return `不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。${formatAttempts}`;
+      return `不是页面独占：${sourcePrefix}相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。${formatAttempts}`;
     }
     return "相机没有出画面，检查摄像头/视频线。";
   }
@@ -10070,6 +10074,12 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.video_source ?? "not_loaded" }}</dd>
             <dt>camera_selected_path</dt>
             <dd>{{ robotSummary?.readback_summary.camera.selected_path ?? "not_loaded" }}</dd>
+            <dt>camera_selected_name</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.selected_name ?? "not_loaded" }}</dd>
+            <dt>camera_selected_is_uvc_or_usb</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.selected_is_uvc_or_usb ?? "not_loaded" }}</dd>
+            <dt>camera_selected_formats</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.selected_formats_summary ?? "not_loaded" }}</dd>
             <dt>camera_source_mode</dt>
             <dd>{{ robotSummary?.readback_summary.camera.video_source_mode ?? "not_loaded" }}</dd>
             <dt>camera_source_readiness</dt>

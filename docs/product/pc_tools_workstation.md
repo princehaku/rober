@@ -2641,6 +2641,13 @@ pulse、delivery、stop 或 `/cmd_vel`。
 上车 health 里。该字段只来自只读 `/api/camera/health`，不会打开 camera offer/MJPEG、不会调用 probe、manual、Nav2、
 delivery、free-roam start/stop 或 `/cmd_vel`。
 
+2026-06-27 00:29 起，上车 8088 camera smoke 的首帧尝试会带具体采集模式，并在最后保留一轮不写 OpenCV 参数的
+`default@current` 兜底。当前默认尝试顺序为 `MJPG@640x480@15`、`MJPG@640x480@30`、`YUYV@640x480@15`、
+`YUYV@640x480@22`、`YUYV@320x240@20`、`default@current`。`/api/camera/health` 同步暴露选中 UVC 设备名和
+v4l2 支持格式摘要；PC 普通首屏只显示简化设备名，例如 `USB Composite Device: DV20 USB`，不会把 `/dev/video1`
+这类工程路径塞到普通提示里。现场复测中，DV20 USB 可枚举且无人占用，但六种首帧尝试均返回
+`capture_read_returned_false`，因此结论是摄像头输入/USB/供电链路没有输出真实视频帧，而不是页面独占或多人预览抢占。
+
 2026-06-26 19:42 起，Robot Control summary 消费上车端 `/api/camera/health.source_usage`，新增
 `readback_summary.camera.source_usage_status/source_usage_owner_count/source_usage_summary`。当相机源首帧失败时，普通首屏会优先提示
 “相机当前被 N 个进程占用”或“相机当前没人占用，但底层没有读到画面”，高级诊断保留 owner 摘要。该口径只读取上车端只读诊断，不在
