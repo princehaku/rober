@@ -1439,9 +1439,10 @@ const plainCurrentFactRows = computed(() => {
 
   const nav2 = summary.readback_summary.nav2;
   if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
+    const baseReadbackText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true" ? "" : baseWheelNonzeroReadbackContextText();
     const wheelText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
       ? "轮速已复验"
-      : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}`;
+      : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}`;
     rows.push(`行程：已执行到结果，${wheelText}。`);
   } else if (nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
     rows.push("行程：图上可准备执行。");
@@ -4233,6 +4234,11 @@ function baseWheelNonzeroReadbackContextText(): string {
       : null;
   if (!values) {
     return "";
+  }
+  const nonzeroLeft = values.wheel_feedback_latest_nonzero_left_speed;
+  const nonzeroRight = values.wheel_feedback_latest_nonzero_right_speed;
+  if (nonzeroLeft && nonzeroRight && nonzeroLeft !== "not_loaded" && nonzeroRight !== "not_loaded" && !isZeroWheelPair(nonzeroLeft, nonzeroRight)) {
+    return `底盘只读轮速已出现非零 L/R=${nonzeroLeft}/${nonzeroRight}，Nav2 仍需同窗口复验`;
   }
   const left = values.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = values.wheel_feedback_latest_right_speed ?? "not_loaded";

@@ -3308,6 +3308,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         wheel_feedback_nonzero_observed: "not_loaded",
         wheel_feedback_latest_left_speed: "not_loaded",
         wheel_feedback_latest_right_speed: "not_loaded",
+        wheel_feedback_latest_nonzero_left_speed: "not_loaded",
+        wheel_feedback_latest_nonzero_right_speed: "not_loaded",
         feedback_voltage_v: "not_loaded",
         feedback_link_status: "not_observed",
       },
@@ -3686,6 +3688,12 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     ?? feedbackLatest?.key_values.wheel_feedback_latest_right_speed
     ?? feedbackLatest?.key_values.right_speed
     ?? "not_loaded";
+  const latestNonzeroLeft = baseStatus?.key_values.wheel_feedback_latest_nonzero_left_speed
+    ?? feedbackLatest?.key_values.wheel_feedback_latest_nonzero_left_speed
+    ?? "not_loaded";
+  const latestNonzeroRight = baseStatus?.key_values.wheel_feedback_latest_nonzero_right_speed
+    ?? feedbackLatest?.key_values.wheel_feedback_latest_nonzero_right_speed
+    ?? "not_loaded";
   const feedbackVoltage = baseStatus?.key_values.feedback_voltage_v
     ?? feedbackLatest?.key_values.feedback_voltage_v
     ?? "not_loaded";
@@ -3698,6 +3706,8 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     wheel_feedback_nonzero_observed: wheelFeedbackObserved,
     wheel_feedback_latest_left_speed: latestLeft,
     wheel_feedback_latest_right_speed: latestRight,
+    wheel_feedback_latest_nonzero_left_speed: latestNonzeroLeft,
+    wheel_feedback_latest_nonzero_right_speed: latestNonzeroRight,
     feedback_voltage_v: feedbackVoltage,
     feedback_link_status: wheelFeedbackProven === "true" || wheelFeedbackObserved === "true"
       ? "t1001_lr_nonzero_material_observed_not_hil"

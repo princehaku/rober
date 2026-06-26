@@ -458,6 +458,8 @@ const fixtures: Record<string, unknown> = {
         wheel_feedback_nonzero_observed: "not_loaded",
         wheel_feedback_latest_left_speed: "not_loaded",
         wheel_feedback_latest_right_speed: "not_loaded",
+        wheel_feedback_latest_nonzero_left_speed: "not_loaded",
+        wheel_feedback_latest_nonzero_right_speed: "not_loaded",
         feedback_voltage_v: "not_loaded",
         feedback_link_status: "not_observed",
       },
@@ -6653,6 +6655,8 @@ describe("App", () => {
     summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "true";
     summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
     summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_nonzero_left_speed = "164";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_nonzero_right_speed = "164";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execution/latest": {
@@ -6685,8 +6689,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 239 次，轮速 L/R=0/0 待复验，准备送达材料");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 239 次执行反馈，刚刚；下一步准备送达材料，同时处理：轮速 L/R=0/0 待复验。");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toBe("最近行程成功，反馈 239 次，刚刚；底盘已响应（车身姿态有变化，pitch 变化 24.210531；轮速 L/R=0/0 待复验；底盘只读样本已出现非零轮速，Nav2 仍需同窗口复验）；送达仍需现场确认。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：已执行到结果，当前轮速 L/R=0/0。");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toBe("最近行程成功，反馈 239 次，刚刚；底盘已响应（车身姿态有变化，pitch 变化 24.210531；轮速 L/R=0/0 待复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验）；送达仍需现场确认。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：已执行到结果，当前轮速 L/R=0/0；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("Nav2 仍需同窗口复验");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");

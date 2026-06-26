@@ -3019,3 +3019,11 @@ PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是�
 画面 ready 且雷达 ready 时，`confirm_mapping_active=true`，按钮文案显示 `开始自动扫图（低速）`；
 否则仍可 `开始自由移动（低速）`，并明确提示“当前只按自由移动记录”。该改动不开放浏览器侧
 `/cmd_vel`、不调用 base/manual、Nav2 或 delivery。
+
+2026-06-27 05:36 起，PC summary 的 `readback_summary.base` 新增
+`wheel_feedback_latest_nonzero_left_speed/right_speed`，从上车端
+`/api/base/feedback-samples/latest` 的 `latest_nonzero_pair` 提升到底盘只读摘要。普通首屏
+`当前事实` 和行程证据在 Nav2 同窗口反馈仍为 `L/R=0/0` 时，会同时展示
+“底盘只读轮速已出现非零 L/R=...，Nav2 仍需同窗口复验”。这解决了现场
+`base_feedback_samples_latest` 已读到 raw L/R 非零，但 Nav2 latest 仍显示 0/0 时的信息丢失；
+它不把历史或跨窗口非零轮速升级为 Nav2 HIL pass，也不自动确认 delivery success。
