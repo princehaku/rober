@@ -190,6 +190,34 @@ Cedrus decoder。由于本轮没有成功采集可见 frame，且 `/api/operator
 当前只能证明 camera service/device readback 可用，不能把视觉内容用于路线关键帧、
 视觉定位、障碍识别或远程可视验收。
 
+## 2026-06-26 18:55 当前 DV20 首帧 fail-fast 状态
+
+本节覆盖下面历史 smoke 中“MJPEG fallback 可见”的旧现场状态。当前真实上位机
+`root@192.168.1.11:37878` 上，`/dev/video1` 仍是 DV20 UVC capture，8088 camera
+service 已部署仓库版 `onboard/scripts/local_webrtc_camera_smoke.py` 并以
+`--fps 30` 运行，但 DV20 设备当前不出首帧：
+
+- 直连 `GET http://192.168.1.11:8787/api/camera/mjpeg` 在约 4 秒内返回 HTTP 502，
+  上游 8088 返回 HTTP 503，body 为 `error=first_frame_unreadable`、
+  `failure_reason=capture_read_returned_false`。
+- 8088 `/health` 顶层状态已从泛化 `ready` 回写为
+  `status=source_first_frame_failed`、`source_readiness=first_frame_failed`、
+  `source_failure_reason=capture_read_returned_false`。
+- PC `GET /api/robot-control/summary` 读回同一状态：
+  `camera.status=source_first_frame_failed`、`selected_path=/dev/video1`、
+  `last_offer_failure_reason=capture_read_returned_false`。
+- `camera/first-frame/probe` 仍返回 `probe_failed/open_failed`，没有
+  `visible_content_proven`，不能把摄像头用于建图可见内容证明。
+
+代码侧修正是：`SharedCameraCapture.read_frame_with_timeout()` 会在 V4L2
+`capture.read()` 卡住或返回 false 时快速 fail-closed，并释放共享 capture；MJPEG
+在写 HTTP 200 前必须先拿到真实首帧。这样 PC 画面卡片会看到明确失败态，而不是
+“相机 ready 但一直等待画面”。该修正不发布 `/cmd_vel`，不调用底盘串口，不改变
+`safe_to_control=false`、`robot_control_executed=false`。
+
+下一步仍是硬件/驱动层排查：复位或更换 DV20、检查 USB 供电和视频输入源，或接入
+known-good UVC 摄像头验证 `/dev/video1` 出帧链路。
+
 ## 2026-06-26 共享实时预览与 MJPEG fallback
 
 PC 首屏实时画面现在采用两条只读画面链路：

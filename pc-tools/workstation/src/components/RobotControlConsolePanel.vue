@@ -377,7 +377,11 @@ function cameraSourcePlainFailureHint(): string {
     camera?.status === "source_first_frame_failed"
     || camera?.source_readiness === "first_frame_failed"
     || camera?.source_failure_reason === "first_frame_timeout"
-    || camera?.last_offer_failure_reason === "first_frame_timeout";
+    || camera?.source_failure_reason === "capture_read_call_timeout"
+    || camera?.source_failure_reason === "capture_read_returned_false"
+    || camera?.last_offer_failure_reason === "first_frame_timeout"
+    || camera?.last_offer_failure_reason === "capture_read_call_timeout"
+    || camera?.last_offer_failure_reason === "capture_read_returned_false";
   if (sourceFailed || probeFailureHint) {
     return probeFailureHint || "相机没有出画面，检查摄像头/视频线。";
   }

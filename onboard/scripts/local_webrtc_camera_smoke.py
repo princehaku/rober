@@ -555,6 +555,28 @@ class SharedCameraCapture:
             self.last_error = "capture_read_returned_false"
             return False, None
 
+    def read_frame_with_timeout(self, timeout_s: float) -> tuple[bool, Any]:
+        """V4L2 卡死时按服务超时返回，避免 PC 页面长期停在等待画面。"""
+        result: list[tuple[bool, Any]] = []
+
+        def read_once() -> None:
+            # OpenCV 的 read 可能在内核 select 中卡住；放到 daemon 线程便于主流程按时 fail-closed。
+            result.append(self.read_frame())
+
+        thread = threading.Thread(target=read_once, daemon=True)
+        thread.start()
+        thread.join(max(0.1, timeout_s))
+        if thread.is_alive():
+            self.read_failures += 1
+            self.last_error = "capture_read_call_timeout"
+            self.force_release()
+            return False, None
+        if not result:
+            self.read_failures += 1
+            self.last_error = "capture_read_no_result"
+            return False, None
+        return result[0]
+
     def release_ref(self) -> bool:
         """最后一个 peer 退出时释放底层设备句柄。"""
         self.ref_count = max(self.ref_count - 1, 0)
@@ -745,7 +767,7 @@ class CameraServiceState:
         source_failed = bool(
             selected_path
             and last_offer_source == selected_path
-            and last_offer_reason in {"first_frame_timeout", "capture_read_call_timeout"}
+            and last_offer_reason in {"first_frame_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
         )
         source_readiness = "first_frame_failed" if source_failed else ("source_selected_not_probed" if selected_path else "no_video_source")
         return {
@@ -876,20 +898,16 @@ class CameraServiceState:
 
         first_frame = None
         first_error = None
-        deadline = time.monotonic() + FIRST_FRAME_TIMEOUT_S
-        while time.monotonic() < deadline:
-            ok, frame = shared_capture.read_frame()
-            if ok and frame is not None:
-                first_frame = frame
-                break
-            first_error = shared_capture.last_error or "capture_read_returned_false"
-            await asyncio.sleep(0.05)
+        ok, frame = await asyncio.to_thread(shared_capture.read_frame_with_timeout, FIRST_FRAME_TIMEOUT_S)
+        if ok and frame is not None:
+            first_frame = frame
+        first_error = shared_capture.last_error or "capture_read_returned_false"
         if first_frame is None:
             if shared_capture.release_ref():
                 self.shared_captures.pop(source, None)
             payload = error_payload(
                 "first_frame_unreadable",
-                "first_frame_timeout",
+                first_error or "first_frame_timeout",
                 video_source=source,
                 first_frame_timeout_s=FIRST_FRAME_TIMEOUT_S,
                 last_read_error=first_error,
@@ -1070,14 +1088,33 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         if shared_capture is None:
             self._send_json(open_error or error_payload("camera_open_failed", "opencv_capture_not_opened"), status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
+        ok, first_frame = shared_capture.read_frame_with_timeout(FIRST_FRAME_TIMEOUT_S)
+        if not ok or first_frame is None:
+            if shared_capture.release_ref():
+                self.state.shared_captures.pop(str(selected_path), None)
+            payload = error_payload(
+                "first_frame_unreadable",
+                shared_capture.last_error or "first_frame_timeout",
+                video_source=str(selected_path),
+                first_frame_timeout_s=FIRST_FRAME_TIMEOUT_S,
+                last_read_error=shared_capture.last_error,
+            )
+            self.state.last_offer_error = payload
+            self._send_json(payload, status=HTTPStatus.SERVICE_UNAVAILABLE)
+            return
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={MJPEG_BOUNDARY}")
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.send_header("Pragma", "no-cache")
         self.end_headers()
         try:
+            part = encode_mjpeg_part(cv2, first_frame)
+            if part is None:
+                return
+            self.wfile.write(part)
+            self.wfile.flush()
             while True:
-                ok, frame = shared_capture.read_frame()
+                ok, frame = shared_capture.read_frame_with_timeout(FIRST_FRAME_TIMEOUT_S)
                 if not ok or frame is None:
                     break
                 part = encode_mjpeg_part(cv2, frame)

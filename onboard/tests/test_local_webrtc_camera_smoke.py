@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -320,6 +321,39 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertTrue(second.release_ref())
         self.assertTrue(fake_cv2.captures[0].released)
 
+    def test_shared_capture_read_timeout_marks_source_failed_and_releases(self) -> None:
+        """V4L2 read 卡住时必须快速失败，不能让 PC 画面一直显示等待。"""
+
+        class BlockingRawCapture:
+            def __init__(self) -> None:
+                self.released = False
+
+            def read(self) -> tuple[bool, None]:
+                time.sleep(1.0)
+                return False, None
+
+            def release(self) -> None:
+                self.released = True
+
+        raw_capture = BlockingRawCapture()
+        shared = camera.SharedCameraCapture(
+            source="/dev/video1",
+            capture=raw_capture,
+            width=640,
+            height=480,
+            fps=15,
+        )
+        started = time.monotonic()
+
+        ok, frame = shared.read_frame_with_timeout(0.05)
+
+        self.assertFalse(ok)
+        self.assertIsNone(frame)
+        self.assertLess(time.monotonic() - started, 0.5)
+        self.assertEqual("capture_read_call_timeout", shared.last_error)
+        self.assertTrue(shared.released)
+        self.assertTrue(raw_capture.released)
+
     def test_stale_no_frame_peer_is_closed_before_new_offer(self) -> None:
         """卡在 new/0 帧的旧 peer 必须自动释放，避免长期占用 `/dev/video1`。"""
 
@@ -401,7 +435,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
         state.last_offer_error = {
             "error": "first_frame_unreadable",
-            "failure_reason": "first_frame_timeout",
+            "failure_reason": "capture_read_returned_false",
             "video_source": "/dev/video1",
         }
         snapshot = {
@@ -424,7 +458,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
 
         self.assertEqual("source_first_frame_failed", payload["status"])
         self.assertEqual("first_frame_failed", payload["source_readiness"])
-        self.assertEqual("first_frame_timeout", payload["source_failure_reason"])
+        self.assertEqual("capture_read_returned_false", payload["source_failure_reason"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 
