@@ -3037,6 +3037,10 @@ PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是�
 “底盘只读轮速已出现非零 L/R=...，Nav2 仍需同窗口复验”。这解决了现场
 `base_feedback_samples_latest` 已读到 raw L/R 非零，但 Nav2 latest 仍显示 0/0 时的信息丢失；
 它不把历史或跨窗口非零轮速升级为 Nav2 HIL pass，也不自动确认 delivery success。
+2026-06-27 06:34 追加实现边界：PC Node 的 `STATUS_KEYS` 已包含
+`wheel_feedback_latest_nonzero_left_speed/right_speed`，因此 live payload 即使把
+`latest_nonzero_pair` 包在 `latest_result.wheel_feedback_summary` 下，也会被只读摘要保留。
+这个字段只服务普通首屏 WYSIWYG 解释，不改变 Nav2 同执行窗口 wheel L/R 非零的严格验收口径。
 
 2026-06-27 05:50 起，PC 普通首屏和送达 gate 对 `完整 Nav2 路线执行` 的判定进一步收紧：
 如果 Nav2 latest 明确返回 `base_feedback_lr_nonzero_proven=false` 或

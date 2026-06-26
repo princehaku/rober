@@ -412,6 +412,8 @@ const STATUS_KEYS = [
   "wheel_feedback_nonzero_observed",
   "wheel_feedback_latest_left_speed",
   "wheel_feedback_latest_right_speed",
+  "wheel_feedback_latest_nonzero_left_speed",
+  "wheel_feedback_latest_nonzero_right_speed",
   "wheel_feedback_nonzero_frame_count",
   "wheel_feedback_frame_count",
   "wheel_feedback_source",

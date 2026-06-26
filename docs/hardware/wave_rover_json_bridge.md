@@ -76,6 +76,15 @@
 - 两次结果均观察到 vendor `T=1001`，PC proxy 摘要为 `completed_sample_count=3`、`t1001_observed_count=3`、`feedback_ack_t1001_observed=true`、`observed_feedback_types=[1001]`。
 - 该路径只发送 `T=130` 只读反馈请求，`sends_motion_commands=false`、`robot_control_executed=false`，不得作为轮速非零、真实运动、HIL pass 或手动点动放行证据。
 
+### 2026-06-27 PC latest nonzero wheel readback boundary
+
+本轮继续采用 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 资料口径：
+`T=1001.L/R` 是 vendor base feedback 原始轮速字段。PC Node 会把上位机
+`/api/base/feedback-samples/latest.latest_result.wheel_feedback_summary.latest_nonzero_pair`
+提升为 `readback_summary.base.wheel_feedback_latest_nonzero_left_speed/right_speed`，
+用于解释“底盘只读链路曾出现非零 L/R”。该字段不得替代 Nav2 goal execution 同窗口内的
+`base_feedback_summary.latest_nonzero_pair`，也不得单独推出路线到达、delivery success 或导航级 HIL pass。
+
 ### HIL 运行参数留存模板（与 run 级证据绑定）
 
 - 每次 `source=hil_pass` 运行前需记录参数快照：

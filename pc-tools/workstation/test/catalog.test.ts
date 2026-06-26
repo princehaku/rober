@@ -4467,7 +4467,11 @@ describe("workstation fail-closed API contracts", () => {
             wheel_feedback_nonzero_observed: false,
             wheel_feedback_summary: {
               frame_count: 13,
-              latest_nonzero_pair: null,
+              latest_nonzero_pair: {
+                left_speed: 164,
+                right_speed: 164,
+                source: "vendor_t1001_L_R",
+              },
               latest_pair: {
                 left_speed: 0,
                 right_speed: 0,
@@ -4488,11 +4492,15 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(feedbackLatestReadback?.key_values.wheel_feedback_latest_left_speed).toBe("0");
       expect(feedbackLatestReadback?.key_values.wheel_feedback_latest_right_speed).toBe("0");
+      expect(feedbackLatestReadback?.key_values.wheel_feedback_latest_nonzero_left_speed).toBe("164");
+      expect(feedbackLatestReadback?.key_values.wheel_feedback_latest_nonzero_right_speed).toBe("164");
       expect(feedbackLatestReadback?.key_values.wheel_feedback_nonzero_frame_count).toBe("0");
       expect(feedbackLatestReadback?.key_values.wheel_feedback_source).toBe("vendor_t1001_L_R");
       expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("3");
       expect(summary.readback_summary.base.wheel_feedback_latest_left_speed).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
+      expect(summary.readback_summary.base.wheel_feedback_latest_nonzero_left_speed).toBe("164");
+      expect(summary.readback_summary.base.wheel_feedback_latest_nonzero_right_speed).toBe("164");
       expect(summary.readback_summary.base.feedback_voltage_v).toBe("12.31");
       expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("false");
       expect(summary.readback_summary.base.wheel_feedback_nonzero_observed).toBe("false");
