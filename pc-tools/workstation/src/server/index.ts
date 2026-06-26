@@ -1980,7 +1980,7 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.post("/api/robot-control/nav2/goal/preflight", async (req, res) => {
-    // 目标预检只读 fixed GET 材料；即使通过也不调用 NavigateToPose、/api/nav2/start、/cmd_vel 或 base manual。
+    // 目标预检只做最小确认和 fixed GET 摘要；即使通过也不调用 NavigateToPose、/api/nav2/start、/cmd_vel 或 base manual。
     const response = await buildNavGoalPreflightProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl), req.body);
     res.status(response.proxy_status === "preflight_passed" ? 200 : 400).json(response);
   });
@@ -2038,7 +2038,7 @@ export function createWorkstationApp(): express.Express {
       });
       return;
     }
-    // 真正发车前也复用 PC 本机最小路线门禁，防止用户绕过前端按钮直接打执行接口。
+    // 真正发车前复用 PC 本机最小确认门禁，防止用户绕过前端按钮直接打执行接口。
     const preflight = await buildNavGoalPreflightProxy(sourceBaseUrl, {
       goal_x: goalX,
       goal_y: goalY,

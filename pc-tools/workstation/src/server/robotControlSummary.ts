@@ -1754,7 +1754,7 @@ export async function buildNavGoalPreflightProxy(
   baseUrl: string,
   body: unknown,
 ): Promise<RobotControlNavGoalPreflightResponse> {
-  // 这是“执行导航前门禁”，不是导航执行入口；按最新产品口径只要求本地安全确认和固定只读定位/路径状态。
+  // 这是“执行导航前最小门禁”，不是导航执行入口；定位/路线只读展示，不能再变成普通用户额外预检。
   const sanitized = sanitizeNavGoalPreflightBody(body);
   if (!sanitized.ok) {
     return blockedNavGoalPreflightResponse(baseUrl, sanitized.reason);
@@ -1783,17 +1783,8 @@ export async function buildNavGoalPreflightProxy(
   const pathGenerated = booleanObserved(nav2Proof?.payload ?? null, ["path_generated", "latest_path_generated"]);
   const pathSucceeded = booleanObserved(nav2Proof?.payload ?? null, ["path_generation_succeeded"]);
   const pathPointCount = numericField(nav2Proof?.payload ?? null, ["path_point_count", "latest_path_point_count"]);
-  const localizationReadbackLoaded = localizationPayloads.some((payload, index) =>
-    Boolean(payload && [localize, nav2Proof, nav2Status][index]?.request_status === "loaded"),
-  );
   const missingRequirements = [
     sanitized.body.confirm_navigation_preflight ? "" : "confirm_navigation_preflight_required",
-    localizationReadbackLoaded ? "" : "localization_readback_not_loaded",
-    localizationResetObserved || localizationRuntimeObserved ? "" : "localization_runtime_or_reset_not_observed",
-    mapToBaseLink ? "" : "map_to_base_link_tf_not_observed",
-    nav2Proof?.request_status === "loaded" ? "" : "nav2_proof_latest_not_loaded",
-    pathGenerated || pathSucceeded ? "" : "path_generation_not_observed",
-    pathPointCount > 0 ? "" : "path_point_count_not_positive",
     ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
   ].filter(Boolean);
   const proxyStatus = missingRequirements.length === 0 ? "preflight_passed" : "preflight_rejected";
@@ -3487,7 +3478,7 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
   "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers"
 > {
-  // 完整路线执行的首屏门禁只读当前 summary 材料；真正执行前 PC 代理仍会复跑 Nav2 preflight。
+  // 完整路线执行的首屏门禁只读当前 summary 材料；真正执行前 PC 代理只复跑最小安全确认。
   const blockers = [
     proof?.path_generated === true || proof?.path_generation_succeeded === true ? "" : "path_generation_not_observed",
     (proof?.path_point_count ?? 0) > 0 || (proof?.path_preview_point_count ?? 0) > 0 ? "" : "path_point_count_not_positive",

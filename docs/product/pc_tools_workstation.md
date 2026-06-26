@@ -2999,3 +2999,13 @@ PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是�
 也不把 `safe_to_control`、`delivery_success` 或 HIL 置 true。这样现场不必打开高级诊断也能第一眼看到：
 画面无帧不是浏览器独占；雷达启动和雷达点是两件事；Nav2 action 成功和完整真车收口是两件事；
 键盘连续手控仍是“勾确认后启用、按住才动、松开会停”。
+
+2026-06-27 05:24 起，Nav2 目标预检进一步按“发车前预检最小化”收敛到 Node 代理：
+`POST /api/robot-control/nav2/goal/preflight` 仍读取 `/api/localize/proof/latest`、
+`/api/nav2/proof/latest` 和 `/api/nav2/status` 作为只读摘要，但 `missing_requirements`
+只保留 `confirm_navigation_preflight_required` 和危险 true 字段，不再因为
+`map_to_base_link`、定位 runtime、路径生成或路径点数缺失而拒绝。真正执行入口
+`POST /api/robot-control/nav2/goal/execute` 继续要求 `confirm_navigation_execution=true`
+并复用该最小门禁，所以直接打 PC 代理也不会因为路线 proof 不完整而被本机挡住；
+是否能实际到达由上位机 `/api/nav2/goal/execute` 和真实 Nav2 结果返回。普通首屏仍保留
+“图上路线 / 小车位置可见”作为所见即所得提示和按钮引导，但它不再是隐藏的后端预检门槛。

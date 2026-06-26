@@ -6761,8 +6761,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Nav2 goal preflight rejects unknown fields and incomplete localization/path before execution", async () => {
-    // 未知字段先本机拒绝；定位/路径不足时只读 GET 并返回缺项，不向任何执行 endpoint 发 POST。
+  it("Nav2 goal preflight rejects unknown fields but treats localization/path as read-only facts", async () => {
+    // 未知字段先本机拒绝；定位/路径不足只进入只读摘要，不再作为普通发车前额外预检。
     const unknown = await buildNavGoalPreflightProxy("http://127.0.0.1:8787", {
       goal_x: 0.8,
       confirm_navigation_preflight: true,
@@ -6828,6 +6828,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(rejected.proxy_status).toBe("preflight_rejected");
       expect(rejected.missing_requirements).toEqual(expect.arrayContaining([
         "confirm_navigation_preflight_required",
+      ]));
+      expect(rejected.missing_requirements).not.toEqual(expect.arrayContaining([
         "localization_runtime_or_reset_not_observed",
         "map_to_base_link_tf_not_observed",
         "path_generation_not_observed",
@@ -6840,18 +6842,30 @@ describe("workstation fail-closed API contracts", () => {
       expect(rejected.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/nav2/start"]).toBeUndefined();
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+
+      const accepted = await buildNavGoalPreflightProxy(upstream.baseUrl, {
+        goal_x: 0.8,
+        goal_y: 0,
+        goal_yaw: 0,
+        confirm_navigation_preflight: true,
+      });
+      expect(accepted.proxy_status).toBe("preflight_passed");
+      expect(accepted.missing_requirements).toEqual([]);
+      expect(accepted.nav2_path_summary.path_generated).toBe(false);
+      expect(accepted.nav2_path_summary.path_point_count).toBe(0);
+      expect(accepted.robot_control_executed).toBe(false);
     } finally {
       await upstream.close();
     }
   });
 
-  it("Nav2 goal execution reuses PC preflight and refuses to forward when route proof is incomplete", async () => {
-    // 执行入口不能只靠前端禁用按钮；即使直接 POST，也必须先读固定路线门禁，缺路径时不发 NavigateToPose。
+  it("Nav2 goal execution reuses minimal PC preflight and forwards with safety confirmation", async () => {
+    // 执行入口不能只靠前端禁用按钮；直接 POST 也必须有确认，但缺路径 proof 不再阻断真实 NavigateToPose 请求。
     const upstream = await listenRobotBaseCommandApi({
       "/api/nav2/goal/execute": {
         payload: {
           schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result",
-          status: "should_not_execute",
+          status: "goal_forwarded_by_minimal_preflight",
           robot_control_executed: true,
         },
       },
@@ -6908,20 +6922,23 @@ describe("workstation fail-closed API contracts", () => {
         robot_control_executed: boolean;
       };
 
-      expect(response.status).toBe(400);
-      expect(body.proxy_status).toBe("execution_rejected");
-      expect(body.blocked_reasons).toEqual(expect.arrayContaining([
-        "path_generation_not_observed",
-        "path_point_count_not_positive",
-      ]));
-      expect(body.goal_execution_key_values.preflight_status).toBe("preflight_rejected");
-      expect(body.robot_control_executed).toBe(false);
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("execution_forwarded");
+      expect(body.blocked_reasons).toEqual([]);
+      expect(body.goal_execution_key_values.status).toBe("goal_forwarded_by_minimal_preflight");
+      expect(body.robot_control_executed).toBe(true);
       expect(upstream.receivedGets).toEqual([
         "/api/localize/proof/latest",
         "/api/nav2/proof/latest",
         "/api/nav2/status",
       ]);
-      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toContainEqual(expect.objectContaining({
+        goal_frame_id: "map",
+        goal_x: 0.8,
+        goal_y: 0,
+        goal_yaw: 0,
+        confirm_navigation_execution: true,
+      }));
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
     } finally {
       await workstation.close();

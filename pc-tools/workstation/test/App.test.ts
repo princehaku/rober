@@ -8660,7 +8660,7 @@ describe("App", () => {
   });
 
   it("keeps plain trip execution blocked until a visible route is confirmed while lidar is stopped", async () => {
-    // 发车前只要求现场安全确认，但执行图上路线必须先看到地图路线；后端仍会复查定位和路线。
+    // 发车前只要求现场安全确认，但执行图上路线必须先看到地图路线；后端只复核确认和固定白名单。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
     summaryFixture.readback_summary.lidar.lifecycle_running = "false";
