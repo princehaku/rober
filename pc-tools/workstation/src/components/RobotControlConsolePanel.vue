@@ -94,6 +94,7 @@ const navGoalExecutionAttemptGoal = ref<MapNavGoal | null>(null);
 const plainTripStopRequestedDuringExecution = ref(false);
 const plainTripStopSettledDuringExecution = ref(false);
 const plainTripStopResultDuringExecution = ref<RobotControlBaseCommandProxyResponse | null>(null);
+const plainTripPostExecutionMapPreviewRefreshFailed = ref(false);
 const deliveryLatestResult = ref<RobotControlDeliveryLatestResponse | null>(null);
 const deliveryGapCheckResult = ref<RobotControlDeliveryGapCheckResponse | null>(null);
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
@@ -3979,6 +3980,10 @@ function plainMapTripExecutionLabel(): string {
     return "";
   }
   if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
+    if (postExecutionMapFailure) {
+      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，地图刷新失败（${postExecutionMapFailure}）`;
+    }
     if (deliveryCompletionPending.value) {
       return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，送达确认中`;
     }
@@ -4019,6 +4024,10 @@ const plainTripExecutionProgress = computed(() => {
   }
   const ageText = formatEvidenceAge(values, "这条行程较旧，如需本轮验收，请重新执行图上路线");
   if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
+    if (postExecutionMapFailure) {
+      return `行程进度：已到达，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈${ageText}；执行后地图画面刷新失败：${postExecutionMapFailure}，先刷新地图画面再准备送达材料。`;
+    }
     return `行程进度：已到达，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈${ageText}；下一步准备送达材料。`;
   }
   if (nav2GoalSucceeded(values) && evidenceIsStale(values)) {
@@ -4211,6 +4220,13 @@ function plainTripMapWysiwygPendingText(): string {
 function plainTripMapWysiwygWaitText(): string {
   return mapPreviewPending.value ? "地图画面刷新" : "地图状态刷新";
 }
+function plainTripPostExecutionMapPreviewFailureText(): string {
+  // 行程执行后的自动地图刷新失败只影响“画面是否最新”，不能覆盖 Nav2 已返回的执行结果。
+  if (!plainTripPostExecutionMapPreviewRefreshFailed.value) {
+    return "";
+  }
+  return mapPreviewFailureText(mapPreviewResult.value) || "地图画面读取失败";
+}
 const plainTripRadarBlocked = computed(() => {
   // 雷达状态只作为普通提示；执行按钮按“安全确认 + 后端定位/路线预检”收敛，不在前端重复硬挡。
   return false;
@@ -4273,6 +4289,10 @@ const plainTripSummary = computed(() => {
   }
   if (navGoalExecutionLatestPending.value) {
     return { state: "读取中", hint: "正在读取最近行程结果。" };
+  }
+  const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
+  if (postExecutionMapFailure) {
+    return { state: "待刷新", hint: `本轮行程已返回，但执行后地图画面刷新失败：${postExecutionMapFailure}；先刷新地图画面，再准备送达材料。` };
   }
   if (deliveryNav2GoalReady.value) {
     return { state: "已完成", hint: plainTripEvidenceSummary.value || "已读到最近行程完成，可以准备送达材料。" };
@@ -4354,6 +4374,10 @@ const plainTripRunStatus = computed(() => {
     return "行程状态：正在可选复查行程条件，不会发车。";
   }
   if (deliveryNav2GoalReady.value) {
+    const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
+    if (postExecutionMapFailure) {
+      return `行程状态：本轮行程已完成，但执行后地图画面刷新失败：${postExecutionMapFailure}；先刷新地图画面。`;
+    }
     return "行程状态：本轮行程已完成，可以准备送达材料。";
   }
   if (!plainManualSafetyConfirmed.value) {
@@ -6302,7 +6326,7 @@ async function refreshConsole(): Promise<void> {
   }
 }
 
-async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean } = {}): Promise<void> {
+async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean } = {}): Promise<void> {
   // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
   if (!robotApiBaseUrl.value.trim() || mapWysiwygRefreshPending.value) {
     return;
@@ -6310,15 +6334,24 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
   const refreshStartedDuringFreeRoamRuntime = options.countForFreeRoamSession === true && mapRuntimeStarted.value;
   const liveRefreshDuringFreeRoam = options.freeRoamLiveRefresh === true && mapRuntimeStarted.value;
   const refreshAfterSavedMap = (options.savedMapRefresh === true || mapSavedThisSession.value) && mapSavedThisSession.value;
+  const refreshAfterTripExecution = options.tripExecutionRefresh === true && navGoalExecutionResult.value?.proxy_status === "execution_forwarded";
   if (refreshStartedDuringFreeRoamRuntime) {
     plainFreeRoamMapPreviewRefreshFailedForSession.value = false;
   }
   if (refreshAfterSavedMap) {
     plainFreeRoamSavedMapPreviewRefreshFailed.value = false;
   }
+  if (refreshAfterTripExecution) {
+    plainTripPostExecutionMapPreviewRefreshFailed.value = false;
+  }
   mapPreviewPending.value = true;
   try {
     mapPreviewResult.value = await getRobotControlMapPreview(robotApiBaseUrl.value);
+    if (mapPreviewResult.value?.proxy_status === "preview_forwarded") {
+      plainTripPostExecutionMapPreviewRefreshFailed.value = false;
+    } else if (refreshAfterTripExecution) {
+      plainTripPostExecutionMapPreviewRefreshFailed.value = true;
+    }
     if (refreshStartedDuringFreeRoamRuntime && mapRuntimeStarted.value && mapPreviewResult.value?.proxy_status === "preview_forwarded") {
       plainFreeRoamMapPreviewFreshForSession.value = true;
       plainFreeRoamMapPreviewRefreshFailedForSession.value = false;
@@ -6336,6 +6369,9 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
     }
   } catch (err) {
     mapPreviewResult.value = makeMapPreviewFallback(err instanceof Error ? err.message : "map_preview_request_failed");
+    if (refreshAfterTripExecution) {
+      plainTripPostExecutionMapPreviewRefreshFailed.value = true;
+    }
     if (refreshStartedDuringFreeRoamRuntime && mapRuntimeStarted.value) {
       plainFreeRoamMapPreviewRefreshFailedForSession.value = true;
     }
@@ -6550,6 +6586,7 @@ async function runPlainTripExecution(): Promise<void> {
   if (!canRunPlainTripExecution.value) {
     return;
   }
+  plainTripPostExecutionMapPreviewRefreshFailed.value = false;
   let routeGoal = plainTripVisibleRouteGoal();
   if (!routeGoal) {
     await refreshNav2Proof();
@@ -6559,7 +6596,7 @@ async function runPlainTripExecution(): Promise<void> {
   }
   confirmNavigationExecution.value = true;
   await runNavGoalExecution(routeGoal);
-  await refreshMapPreview();
+  await refreshMapPreview({ tripExecutionRefresh: true });
   if (navGoalExecutionResult.value?.proxy_status === "execution_forwarded") {
     await loadNavGoalExecutionLatest();
   }
@@ -8072,6 +8109,7 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
     return;
   }
   mapPreviewResult.value = null;
+  plainTripPostExecutionMapPreviewRefreshFailed.value = false;
   if (keyboardHeldDirection.value) {
     stopKeyboardControl("base_url_changed");
   }

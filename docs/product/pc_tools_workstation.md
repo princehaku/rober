@@ -1591,6 +1591,9 @@ operator report，不再次发送运动命令、不补 LiDAR/route/delivery。�
 `GET /api/robot-control/map/preview`，把执行后的地图画面、路线终点 marker 和机器人/雷达叠图尽快同步回地图卡片。
 该刷新只读取地图预览，不再次调用 Nav2 execute、不发送 manual/keyboard pulse/stop、delivery complete 或 `/cmd_vel`，
 也不修改 Clash 或系统代理配置。
+2026-06-26 19:15 起，如果这次执行后的只读地图画面刷新失败，行程卡片、行程状态、行程进度和地图 caption 会继续保留
+Nav2 到达结果，同时明确显示 `执行后地图画面刷新失败：<原因>`，要求先刷新地图画面再准备送达材料。该失败态只来自
+`/api/robot-control/map/preview` 回包，不重试、不再次发车、不提交 delivery、不发送 manual/keyboard pulse/stop 或 `/cmd_vel`。
 
 2026-06-25 17:32 起，普通首屏 `检查行程` 作为不发车预检动作，不再被雷达 lifecycle 状态禁用：现场勾选
 `人在旁边、周围安全、停止手段就绪` 后，即使雷达未运行或待刷新，也可以先调用固定

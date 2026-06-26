@@ -7052,6 +7052,93 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("已完成。");
   });
 
+  it("shows post-trip map refresh failure after a visible route succeeds", async () => {
+    // 行程执行成功后的自动地图刷新若失败，普通首屏必须把“结果已到达”和“画面未刷新”同时讲清楚。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    let mapPreviewCallCount = 0;
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execute": {
+        ...(fixtures["/api/robot-control/nav2/goal/execute"] as Record<string, unknown>),
+        proxy_status: "execution_forwarded",
+        remote_http_status: 200,
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "plain-trip-execution-map-refresh-failed",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
+          delivery_success: "false",
+        },
+      },
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/preview?")) {
+        mapPreviewCallCount += 1;
+        if (mapPreviewCallCount > 1) {
+          return {
+            ok: true,
+            json: async () => ({
+              schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
+              proxy_status: "preview_failed",
+              source_base_url: "http://192.168.1.11:8787",
+              normalized_base_url: "http://192.168.1.11:8787",
+              workstation_endpoint: "/api/robot-control/map/preview",
+              remote_endpoint: "/api/map/preview",
+              remote_http_status: 503,
+              status: "blocked",
+              map_name: "",
+              width: 0,
+              height: 0,
+              resolution: 0,
+              origin: [],
+              image_data_url: "",
+              failure_reason: "map_preview_timeout",
+              blocked_reasons: ["map_preview_timeout"],
+              hard_dangerous_true_fields: [],
+              robot_control_executed: false,
+              ...PROOF_FLAGS,
+            }),
+          };
+        }
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("待刷新");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("本轮行程已返回，但执行后地图画面刷新失败：map_preview_timeout；先刷新地图画面，再准备送达材料。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，地图刷新失败（map_preview_timeout）");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，但执行后地图画面刷新失败：map_preview_timeout；先刷新地图画面。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("执行后地图画面刷新失败：map_preview_timeout");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toHaveLength(2);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows visible route stop failure on the whole route path", async () => {
     // base stop 兜底失败时，地图不能只停留在“停止已请求”；整条路线和终点都要明确失败并提示现场接管。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
