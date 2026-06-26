@@ -195,3 +195,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 2026-06-27 04:20 起，PC 停止按钮、下一步和扫图状态文案按本轮模式分开：`mapping_active_applied=false`
 或当前相机/雷达不满足建图验收时显示 `自由移动`，`mapping_active_applied=true` 且建图证据满足时显示
 `自动扫图`。这只改变普通用户读到的文案；启动和停止仍走同一组固定上车端 free-roam 代理，不新增浏览器侧运动出口。
+
+2026-06-27 04:32 现场通过 PC 固定代理验证雷达启动链路：`POST /api/robot-control/radar/start`
+返回 `lifecycle_forwarded`，`command_result.executed=true/ok=true`，随后
+`POST /api/robot-control/radar/scan-proof/refresh` 生成 `o1-lidar-scan-proof-1782505841325`。PC summary
+读回 `lifecycle_running=true`、`continuous_window_observed=true`、`latest_scan_proof_fresh=true`、
+`scan_preview_point_count=72`，且机器人 map pose 已读到。该证据证明雷达可以从 stopped 拉到 running/fresh，
+地图雷达 marker 可以使用本轮真实点位；仍不等于 camera 首帧、Nav2 完整路线 HIL 或 delivery success 已完成。
