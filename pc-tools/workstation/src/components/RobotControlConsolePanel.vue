@@ -3247,6 +3247,23 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   };
   const runtime = boundary?.free_roam_autonomy_runtime;
   const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
+  const mappingReadinessText = (() => {
+    // 自由低速移动和可验收建图是两层能力：相机/雷达只决定建图验收，不阻塞低速自由移动入口。
+    const gaps: string[] = [];
+    const camera = robotSummary.value?.readback_summary.camera;
+    if (!plainCameraReadyForFreeRoamAutonomy.value) {
+      gaps.push(cameraSourceFirstFrameFailed(camera) ? "画面首帧未出" : "画面未确认");
+    }
+    if (radarSummary.value.state !== "雷达已运行") {
+      const conflict = radarEndpointConflictSummary();
+      gaps.push(conflict ? "雷达状态源不一致" : radarSummary.value.state);
+    }
+    if (gaps.length === 0) {
+      return "建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。";
+    }
+    const freeMoveText = autonomyStartReady ? "仍可在安全确认后低速自由移动" : "当前先用人工按住低速扫图";
+    return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${gaps.join("、")}；${freeMoveText}。`;
+  })();
   const runtimeModeText = (() => {
     // runtime state 来自上车端 artifact；这里只做翻译，不把任何状态外推成 PC 自动发车。
     if (!runtime || runtime.status !== "loaded") {
@@ -3335,6 +3352,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     nextActionText,
     blockers: blockers.slice(0, 4),
     gateRows: contractGateRows,
+    mappingReadinessText,
     runtimeText: runtimeModeText,
     policyText: hasRuntimeGateRows
       ? `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，正在读取上车端自动扫图门禁。`
@@ -9762,6 +9780,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
+            <p class="panel-note" data-testid="plain-free-roam-mapping-readiness">{{ plainFreeRoamAutonomyReadiness.mappingReadinessText }}</p>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-runtime">{{ plainFreeRoamAutonomyReadiness.runtimeText }}</p>
             <p v-if="plainFreeRoamAutonomyParamWriteSummary" class="panel-note" data-testid="plain-free-roam-autonomy-param-write">{{ plainFreeRoamAutonomyParamWriteSummary }}</p>
             <p v-if="plainFreeRoamLatestSummary" class="panel-note" data-testid="plain-free-roam-autonomy-latest-summary">{{ plainFreeRoamLatestSummary }}</p>

@@ -183,3 +183,7 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `free_roam_autonomy=ready`；PC 自动扫图按钮只调用固定 start 代理。真正运动发布仍由上车端确认项、停止兜底与
 `enable_cmd_vel_publish`、`motion_hil_unlocked` 双重锁共同决定，不由浏览器或 Node 代理直接发布；相机/雷达 readiness 只决定
 `mapping_readiness`，不再决定“车能不能自由低速移动”。
+
+2026-06-27 03:50 起，PC `自动扫图准备` 明确新增一行 `建图验收`：`free_roam_autonomy_start_ready=true`
+只表示可在安全确认后发起低速自由移动；如果 camera 没有首帧或雷达未达到 `雷达已运行`，本轮只能按自由移动记录，
+不能按可验收建图收口。只有画面可见证据和雷达运行证据同时满足，才把本轮标成“可按建图记录监看”。
