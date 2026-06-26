@@ -861,3 +861,40 @@ manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
 - camera service 已恢复运行，Robot API 仍保持 `safe_to_control=false`、`primary_actions_enabled=false`。
 
 该证据把当前相机问题进一步收敛到“设备可枚举但实际无帧输出/输入链路异常”，不能通过 PC 侧共享预览代码绕过。
+
+## 2026-06-26 22:45 camera service `/api/camera/*` alias
+
+上车端 `local_webrtc_camera_smoke.py` 现在同时兼容历史根路径和 Robot API 风格路径：
+
+- `GET /health` 与 `GET /api/camera/health` 等价。
+- `GET /devices` 与 `GET /api/camera/devices` 等价。
+- `GET /mjpeg` 与 `GET /api/camera/mjpeg` 等价。
+- `POST /offer` 与 `POST /api/camera/offer` 等价。
+- `POST /peers/{peer_id}/close` 与 `POST /api/camera/peers/{peer_id}/close` 等价。
+
+这样 operator 或 PC/上位机代理无论走 8088 直连还是 8787 `/api/camera/*`
+合同，都能看到同一 camera service 状态，不会再因为路径漂移得到
+`unknown_get_endpoint`。该别名层只改 HTTP 路由归一化，不打开底盘、不启动雷达、
+不调用 Nav2、manual、keyboard、delivery、free-roam start/stop 或 `/cmd_vel`。
+
+同轮还修正了首帧失败路径的清理：如果 MJPEG/WebRTC 在 MJPG、YUYV 和默认格式尝试后
+仍读不到首帧，已经 `force_release` 的 shared capture 会从 health 摘要中移除；
+客户端提前断开时只记录 `json_response_client_disconnected` 短事件，不再输出
+BrokenPipe 栈。
+
+真实上位机复测：
+
+- `http://127.0.0.1:8088/api/camera/health`：HTTP 200，
+  `schema=trashbot.local_webrtc_camera_smoke.v1`。
+- `http://127.0.0.1:8088/api/camera/devices`：HTTP 200，
+  `schema=trashbot.local_webrtc_camera_devices.v1`。
+- `http://127.0.0.1:8787/api/camera/health` 与
+  `/api/camera/devices`：均 HTTP 200。
+- 触发 `/api/camera/mjpeg` 后，最终 health 回到
+  `status=source_first_frame_failed`、`source_readiness=first_frame_failed`、
+  `source_failure_reason=capture_read_returned_false`、
+  `source_usage.status=not_in_use`、`shared_captures={}`。
+
+剩余事实没有改变：`/dev/video1` 能枚举并被选中，但仍没有输出可见视频帧；
+这不是 PC 页面独占导致，下一步仍应查摄像头输入、USB 线/供电、采集卡或替换
+known-good UVC。

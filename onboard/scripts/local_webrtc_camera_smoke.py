@@ -45,6 +45,7 @@ CAMERA_CAPTURE_FOURCC_FALLBACKS: tuple[str | None, ...] = ("MJPG", "YUYV", None)
 COMMAND_TIMEOUT_S = 2.5
 STALE_PEER_NO_FRAME_MAX_AGE_MS = 30_000
 PEER_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,32}$")
+API_CAMERA_PREFIX = "/api/camera"
 IMPORTS = ("aiortc", "cv2", "av")
 TEMPERATURE_GLOBS = (
     "/sys/class/thermal/thermal_zone*/temp",
@@ -239,6 +240,18 @@ def error_payload(error: str, reason: str, status: str = "error", **fields: Any)
         **proof_flags(),
         **json_safe(fields),
     }
+
+
+def normalize_camera_service_path(path: str) -> str:
+    """同时兼容根路径和 Robot API `/api/camera/*` 路径，避免代理合同漂移。"""
+    parsed_path = urlparse(path).path
+    if parsed_path == API_CAMERA_PREFIX:
+        return "/"
+    if parsed_path.startswith(f"{API_CAMERA_PREFIX}/"):
+        # 上位机对外暴露 `/api/camera/health`，本服务内部仍复用历史 `/health` 处理。
+        suffix = parsed_path[len(API_CAMERA_PREFIX):] or "/"
+        return suffix
+    return parsed_path
 
 
 def read_float_file(path: Path) -> float | None:
@@ -866,7 +879,7 @@ class CameraServiceState:
                 "attempts": first_frame_attempts,
                 "failure_reason": first_error,
             })
-            if shared_capture.release_ref():
+            if shared_capture.release_ref() or shared_capture.released:
                 self.shared_captures.pop(source, None)
             last_payload = error_payload(
                 "first_frame_unreadable",
@@ -1156,7 +1169,7 @@ class CameraServiceState:
                 try:
                     track.stop()
                 finally:
-                    if shared_capture.release_ref():
+                    if shared_capture.release_ref() or shared_capture.released:
                         self.shared_captures.pop(source, None)
             raise
 
@@ -1210,7 +1223,11 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type,Accept")
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            # 客户端可能在首帧失败前断开，服务只记录短事件，不把栈追踪留给现场排障。
+            log_event("json_response_client_disconnected", status=status, path=normalize_camera_service_path(self.path))
 
     def _read_json_body(self) -> Any:
         """坏 JSON 直接返回 sentinel，由调用方结构化 fail-closed。"""
@@ -1229,7 +1246,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler 固定命名。
         """GET endpoint 全部只读，不打开底盘、不发送命令。"""
-        parsed_path = urlparse(self.path).path
+        parsed_path = normalize_camera_service_path(self.path)
         if parsed_path == "/" or parsed_path == "/health":
             self._send_json(self.state.health())
             return
@@ -1292,7 +1309,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
         finally:
-            if shared_capture.release_ref():
+            if shared_capture.release_ref() or shared_capture.released:
                 self.state.shared_captures.pop(str(selected_path), None)
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler 固定命名。
@@ -1301,11 +1318,12 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         if isinstance(body, dict) and body.get("__invalid_json__"):
             self._send_json(error_payload("invalid_json", "request_body_not_json"), status=HTTPStatus.BAD_REQUEST)
             return
-        if self.path == "/offer":
+        parsed_path = normalize_camera_service_path(self.path)
+        if parsed_path == "/offer":
             status, payload = asyncio.run(self.state.create_answer(body))
             self._send_json(payload, status=status)
             return
-        match = re.fullmatch(r"/peers/([A-Za-z0-9]{1,32})/close", self.path)
+        match = re.fullmatch(r"/peers/([A-Za-z0-9]{1,32})/close", parsed_path)
         if match:
             status, payload = asyncio.run(self.state.close_peer(match.group(1)))
             self._send_json(payload, status=status)

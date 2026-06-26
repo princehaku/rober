@@ -33,6 +33,23 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual("trashbot.local_webrtc_camera_offer.v1", camera.OFFER_SCHEMA)
         self.assertEqual("trashbot.local_webrtc_camera_close.v1", camera.CLOSE_SCHEMA)
 
+    def test_api_camera_paths_alias_historical_root_paths(self) -> None:
+        """8088 服务必须同时兼容历史根路径和上位机 `/api/camera/*` 合同。"""
+        cases = {
+            "/api/camera": "/",
+            "/api/camera/health": "/health",
+            "/api/camera/devices?fresh=1": "/devices",
+            "/api/camera/mjpeg": "/mjpeg",
+            "/api/camera/offer": "/offer",
+            "/api/camera/peers/abc123/close": "/peers/abc123/close",
+            "/health": "/health",
+            "/mjpeg": "/mjpeg",
+        }
+
+        observed = {path: camera.normalize_camera_service_path(path) for path in cases}
+
+        self.assertEqual(cases, observed)
+
     def test_auto_source_skips_cedrus_and_metadata_prefers_uvc_capture(self) -> None:
         """auto 必须选真实 UVC capture，不能落到 decoder 或 metadata。"""
         candidates = [

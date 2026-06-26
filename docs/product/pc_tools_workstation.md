@@ -2744,3 +2744,15 @@ MJPEG/WebRTC、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`，
 结果为空但 summary 已读到 `goal_succeeded + feedback_sample_count>0 + robot_control_executed=true` 时，也会把地图 marker、
 行程 caption 和本轮进度显示为“已到达/行程已完成”，同时继续要求现场送达确认；这不自动执行 Nav2、不提交 delivery、
 不发送 manual/keyboard pulse、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
+
+2026-06-26 22:45 起，上车 8088 camera service 自身支持 `/api/camera/*` 别名：
+`/api/camera/health`、`/api/camera/devices`、`/api/camera/mjpeg`、
+`/api/camera/offer` 和 `/api/camera/peers/{peer_id}/close` 会归一化到历史
+`/health`、`/devices`、`/mjpeg`、`/offer`、`/peers/{peer_id}/close`。这让多个
+普通用户、PC Node 和上位机代理看到同一条实时预览服务合同，避免直连 8088 时因为
+路径不一致显示 `unknown_get_endpoint`。现场复测中，8088 直连和 8787 代理的
+health/devices 都返回 HTTP 200；MJPEG 首帧仍失败，但最终 health 会回到
+`source_usage.status=not_in_use`、`shared_captures={}`，并把失败原因稳定写成
+`capture_read_returned_false`。因此当前画面不可见仍归因于 `/dev/video1` 无帧输出，
+不是 PC 独占或共享预览 fanout 造成；该修复不调用 camera probe、manual、Nav2、
+delivery、free-roam start/stop、stop 或 `/cmd_vel`。
