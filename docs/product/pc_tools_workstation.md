@@ -2196,6 +2196,9 @@ delivery、stop 或 `/cmd_vel`；真正移动仍必须 operator 按住 W/A/S/D�
 不改变上车端状态机、速度、停止兜底或任何控制接口。
 2026-06-26 18:30 起，自动扫图 stop 入口在可点状态下显示 `停止自动扫图（随时可点）`；start pending 时仍可点并支持排队，
 stop pending 时显示 `停止中`，排队后显示 `停止已排队`。该文案只解释现有停止兜底，不改变 stop 代理或自动扫图状态机。
+2026-06-26 18:45 起，自动扫图 stop 成功后若停止后的地图画面尚未刷新，地图流程 marker 显示
+`自动扫图已停止，待刷新画面`，和 `下一步：刷新扫图画面`、保存按钮 `先刷新画面` 保持一致。该状态不自动保存地图，
+不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
 
 2026-06-25 23:29 起，普通首屏点击 `准备行程（不发车）` 后，PC 会在 Nav2 no-motion proof 刷新完成后自动刷新
 地图画面。只要 summary 读到当前 `path_preview_points`，地图会直接显示路线 polyline、起点/终点和 `路线已显示 N/M 个点`，

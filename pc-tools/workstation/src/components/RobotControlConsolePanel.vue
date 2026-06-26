@@ -1759,7 +1759,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
   if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "stop") {
     return plainFreeRoamMapPreviewFreshForSession.value
       ? { label: "自动扫图已停止，可保存", state: "auto_stopped_fresh", style, aria: `自动扫图停止请求已发送，地图画面已刷新，可以保存${locatedSuffix}` }
-      : { label: "自动扫图已停止，待刷新", state: "auto_stopped_needs_refresh", style, aria: `自动扫图停止请求已发送，需要刷新停止后的地图画面${locatedSuffix}` };
+      : { label: "自动扫图已停止，待刷新画面", state: "auto_stopped_needs_refresh", style, aria: `自动扫图停止请求已发送，需要刷新停止后的地图画面${locatedSuffix}` };
   }
   if (mapPreviewPending.value && mapSavedThisSession.value) {
     return { label: "保存后刷新中", state: "saved_refreshing", style, aria: `扫图地图已保存，正在自动刷新最新画面${locatedSuffix}` };
