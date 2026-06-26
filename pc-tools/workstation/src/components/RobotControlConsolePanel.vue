@@ -568,6 +568,21 @@ function plainRadarPointHint(live: boolean): string {
     : `已有雷达点 ${count} 个，当前先显示局部轮廓，刷新后确认实时性。`;
 }
 
+function plainRadarRefreshReason(lidar: RobotControlSummaryResponse["readback_summary"]["lidar"]): string {
+  // lifecycle 已运行但 proof 未 fresh 时，要把 stale / incomplete 区分开，避免现场误判为雷达没启动。
+  const statusText = `${lidar.continuous_scan_status ?? ""} ${lidar.continuity_window_status ?? ""}`.toLowerCase();
+  if (statusText.includes("stale")) {
+    return "最新记录已过期";
+  }
+  if (statusText.includes("incomplete")) {
+    return "最新记录不完整";
+  }
+  if (!radarFieldIsTrue(lidar.continuous_window_observed)) {
+    return "连续窗口还没读到";
+  }
+  return "最新记录未确认";
+}
+
 function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
   if (radarLifecyclePendingAction.value === "start") {
@@ -598,7 +613,8 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   }
   if (lifecycleRunning) {
     const pointHint = plainRadarPointHint(false);
-    return { state: "雷达待刷新", hint: pointHint ? `雷达正在运行，但最新记录不完整；先刷新雷达确认。${pointHint}` : "雷达正在运行，但最新记录不完整；先刷新雷达确认。" };
+    const reason = plainRadarRefreshReason(lidar);
+    return { state: "雷达待刷新", hint: pointHint ? `雷达正在运行，但${reason}；先刷新雷达确认。${pointHint}` : `雷达正在运行，但${reason}；先刷新雷达确认。` };
   }
   if (!radarStartCommandConfigured()) {
     return { state: "雷达未运行", hint: "上位机雷达启动命令未配置，先配置后再启动雷达。" };

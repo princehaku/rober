@@ -146,6 +146,9 @@ pc-tools/workstation/
 - 2026-06-26 起，实时画面 WebRTC offer 失败时，普通首屏视频框会把 `remote_answer_missing` 等信令失败翻译成“上位机没有返回视频应答；检查相机服务后重试。”这类现场可执行提示，`raw_failure_reason` 只保留在默认关闭的高级诊断。该变更只改善画面 WYSIWYG 失败展示，不修改 Clash/端口，不自动重试，不调用 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-26 08:20 起，普通首屏实时画面框和真实 `<video>` 也会带 `data-frame-state=已绘制帧/等待绘帧/未绑定/未观测`，把浏览器是否真的绘出视频帧从“画面已打开”等业务状态里拆出来。`画面可见` 必须对应 `已绘制帧`，等待/未绑定态有独立样式和测试锁定。该改动只影响 PC 前端呈现，不自动打开相机、不重试 WebRTC、不修改 Clash/端口、不调用 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-25 起，普通首屏区分 `雷达未运行` 和 `雷达待刷新`：当上位机只读状态显示 `lifecycle_running=true` 但最新 scan proof stale/incomplete 时，首屏显示“雷达待刷新”，行程/送达/键盘下一步都指向 `刷新雷达`，不再提示重复 `启动雷达`。该刷新仍只走固定 radar proof refresh，不触发底盘、Nav2 execute、delivery complete、keyboard pulse、stop 或 `/cmd_vel`。
+- 2026-06-26 20:30 起，`雷达待刷新` 的原因按 summary 真实状态区分：`latest_proof_stale_while_lifecycle_running`
+  显示 `最新记录已过期`，`latest_proof_incomplete_while_lifecycle_running` 显示 `最新记录不完整`。两者都只引导点击
+  `刷新雷达`，不会重新启动雷达，也不会触发底盘、Nav2 execute、delivery complete、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-25 起，普通首屏 `实时画面` 保留固定尺寸的真实 `<video>` 画面框，`地图` 卡片新增现场地图视口：只消费已有 summary、map refresh、map lifecycle 和 operator route/map readback；读到地图时显示 `地图可见/地图记录已读取`，读不到定位时明确显示 `位置未读到`，雷达 marker 直接显示 `雷达已运行/雷达待刷新/雷达未运行`。该视口不伪造机器人坐标，不显示 route/map ref、endpoint 或 proof 字段，不自动启动雷达/建图/发车，也不调用 Nav2 execute、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-26 08:10 起，地图视口外框也按 `data-state` 呈现视觉态：`地图可见`、`地图处理中/地图待刷新`、`地图不可用` 分别使用可见、等待、失败边框。测试锁定 `地图可见` 与 `地图处理中` CSS 选择器，避免地图状态 chip 已变化但地图框仍像普通占位网格。该改动只影响 PC 前端呈现，不刷新地图、不执行 Nav2、不调用 manual、keyboard pulse、delivery、stop 或 `/cmd_vel`。
 - 2026-06-26 09:20 起，普通首屏“地图”整张卡片也带 `data-state` 外层状态线：`地图可见` 显示可见态，`地图处理中/地图待刷新` 显示等待态，`地图未读取` 显示中性态，`地图不可用` 显示异常态。该外层状态只汇总已有地图视口 WYSIWYG 状态，不自动刷新地图、不开始/保存建图、不执行 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
