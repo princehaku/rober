@@ -3098,3 +3098,10 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 低速脉冲，并显示 `speed_limit_mps` 与 `duration_limit_ms` 上限；松开、窗口失焦或切页面仍会停。
 这让“PC 键盘连续手控”可见为受限重复 manual pulse，而不是无限时长发车；不改变实际请求体、不绕过安全确认、
 不调用 Nav2、delivery、free-roam 或 `/cmd_vel`。
+
+2026-06-27 07:40 起，PC Node 的 Robot Control summary 会消费最近一次只读首帧 probe overlay：
+如果上车 `/api/camera/health` 仍停在旧的 `source_first_frame_failed`，但用户刚点过
+`检查画面（只读）` 且 probe 回报 `open_ok=true/read_ok=true/visible_content_proven=true`，
+summary 会把首屏相机状态提升为 `ready + first_frame_observed`，并保留
+`first_frame_probe_*` 证据字段；失败或不可见 probe 仍按失败显示。这样刷新页面后不会把成功样张又退回旧无帧结论。
+该 overlay 只来自 PC Node 内存中的只读 probe 结果，不打开 motion、manual、free-roam、Nav2、delivery 或 `/cmd_vel`。

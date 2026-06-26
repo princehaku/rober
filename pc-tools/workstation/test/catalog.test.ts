@@ -5718,6 +5718,56 @@ describe("workstation fail-closed API contracts", () => {
     }
   }, 10_000);
 
+  it("Robot Control summary promotes successful camera first-frame probe overlay over stale source failure", async () => {
+    // 用户点过只读首帧检查后，summary 必须消费 PC Node 内存 overlay；刷新页面不能继续显示旧无帧结论。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/camera/health": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.camera_health",
+          status: "source_first_frame_failed",
+          video_source: "/dev/video1",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "capture_read_returned_false",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/camera/devices": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.camera_devices",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl, {
+        checked_at_ms: 1782500000000,
+        proxy_status: "probe_forwarded",
+        status: "frame_read",
+        failure_reason: "none",
+        open_ok: "true",
+        read_ok: "true",
+        visible_content_proven: "true",
+      });
+
+      expect(summary.readback_summary.camera.status).toBe("ready");
+      expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_observed");
+      expect(summary.readback_summary.camera.source_failure_reason).toBe("none");
+      expect(summary.readback_summary.camera.first_frame_probe_status).toBe("frame_read");
+      expect(summary.readback_summary.camera.first_frame_probe_open_ok).toBe("true");
+      expect(summary.readback_summary.camera.first_frame_probe_read_ok).toBe("true");
+      expect(summary.readback_summary.camera.first_frame_probe_visible_content_proven).toBe("true");
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.delivery_success).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary uses Nav2 proof amcl pose when localize latest is stale", async () => {
     // live 上位机可能 localize latest 仍是旧失败 artifact，但 Nav2 proof latest 已经带 /amcl_pose。
     const robotApi = await listenRobotApiReadbackByPath({

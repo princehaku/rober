@@ -1185,20 +1185,32 @@ function cameraSummaryFromReadbacks(
   const rawSourceReadiness = summaryValueText(healthPayload, ["source_readiness"]);
   const rawSourceFailureReason = summaryValueText(healthPayload, ["source_failure_reason"]);
   const probeFailureReason = firstFrameProbeOverlay?.failure_reason ?? "";
+  const probeVisibleContentObserved = Boolean(
+    firstFrameProbeOverlay?.proxy_status === "probe_forwarded"
+    && firstFrameProbeOverlay.open_ok === "true"
+    && firstFrameProbeOverlay.read_ok === "true"
+    && firstFrameProbeOverlay.visible_content_proven === "true",
+  );
   const probeFailed = Boolean(firstFrameProbeOverlay && firstFrameProbeOverlay.proxy_status !== "probe_forwarded");
-  const sourceReadiness = probeFailed && ["", "not_loaded", "source_selected_not_probed"].includes(rawSourceReadiness)
-    ? "first_frame_failed"
-    : rawSourceReadiness;
-  const sourceFailureReason = probeFailed && ["", "none", "not_loaded"].includes(rawSourceFailureReason)
-    ? probeFailureReason || "first_frame_probe_failed"
-    : rawSourceFailureReason;
+  const sourceReadiness = probeVisibleContentObserved && ["", "not_loaded", "source_selected_not_probed", "first_frame_failed"].includes(rawSourceReadiness)
+    ? "first_frame_observed"
+    : probeFailed && ["", "not_loaded", "source_selected_not_probed"].includes(rawSourceReadiness)
+      ? "first_frame_failed"
+      : rawSourceReadiness;
+  const sourceFailureReason = probeVisibleContentObserved && ["", "none", "not_loaded", "first_frame_timeout", "capture_read_call_timeout", "capture_read_returned_false"].includes(rawSourceFailureReason)
+    ? "none"
+    : probeFailed && ["", "none", "not_loaded"].includes(rawSourceFailureReason)
+      ? probeFailureReason || "first_frame_probe_failed"
+      : rawSourceFailureReason;
   const sharedPreviewStatus = mjpegRelayOverlay?.upstream_active === true
     ? mjpegRelayOverlay.content_type_loaded
       ? "streaming"
       : "starting_local_peer"
     : "idle_not_started";
   const rawHealthStatus = healthReadback?.status ?? "not_loaded";
-  const cameraStatus = sourceReadiness === "first_frame_failed"
+  const cameraStatus = probeVisibleContentObserved && ["", "not_loaded", "source_not_probed", "source_first_frame_failed"].includes(rawHealthStatus)
+    ? "ready"
+    : sourceReadiness === "first_frame_failed"
     ? "source_first_frame_failed"
     : rawHealthStatus === "ready" && sourceReadiness === "source_selected_not_probed" && sharedPreviewStatus !== "streaming"
       ? "source_not_probed"
