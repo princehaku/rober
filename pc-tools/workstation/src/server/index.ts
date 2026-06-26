@@ -228,6 +228,11 @@ function booleanTrueValue(value: unknown): boolean {
   return value === true || (typeof value === "string" && value.trim().toLowerCase() === "true");
 }
 
+function booleanFalseValue(value: unknown): boolean {
+  // HIL false 是强否定证据，优先级高于 action success 或旧字段推导。
+  return value === false || (typeof value === "string" && value.trim().toLowerCase() === "false");
+}
+
 function firstLoadedValue(...values: unknown[]): unknown {
   // 外层 latest 响应常带 fail-closed 摘要，真实 action 证据优先取 latest_result。
   return values.find((value) => value !== undefined && value !== null);
@@ -235,6 +240,9 @@ function firstLoadedValue(...values: unknown[]): unknown {
 
 function navGoalExecutionProvenValue(payload: Record<string, unknown> | null, latestResult: Record<string, unknown> | null): boolean {
   // 显式 proven=true 直接采信；否则用 Nav2 action 成功 + 真车控制证据推导，避免外层 fail-closed false 盖掉真实结果。
+  if (booleanFalseValue(firstLoadedValue(latestResult?.hil_pass, payload?.hil_pass))) {
+    return false;
+  }
   if (booleanTrueValue(latestResult?.nav2_goal_execution_proven) || booleanTrueValue(payload?.nav2_goal_execution_proven)) {
     return true;
   }
@@ -356,6 +364,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     response_generated_at_ms: shortValue(payload?.generated_at_ms),
     completed_at_ms: shortValue(latestResult?.completed_at_ms ?? payload?.completed_at_ms),
     nav2_goal_execution_proven: String(navGoalExecutionProvenValue(payload, latestResult)),
+    hil_pass: shortValue(latestResult?.hil_pass ?? payload?.hil_pass),
     goal_accepted: shortValue(payload?.goal_accepted ?? latestResult?.goal_accepted),
     result_received: shortValue(payload?.result_received ?? latestResult?.result_received),
     result_status: shortValue(payload?.result_status ?? latestResult?.result_status),

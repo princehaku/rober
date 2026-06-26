@@ -188,6 +188,11 @@ pc-tools/workstation/
 - 2026-06-23 09:05 起，普通首屏 `复查手控条件` 刷新后会根据最新 gate 自动聚焦下一步：键盘 gate 已满足时聚焦 `启用键盘（按键才动）`；仍缺恢复确认、轮速记录或雷达移动记录时，聚焦对应的恢复/试动/保存区域；其它缺项才保持聚焦 `复查手控条件`。该复查仍只读取 summary、底盘反馈、Nav2 latest 和 delivery latest，不启用键盘、不发送 keyboard pulse、manual、stop、Nav2 或 `/cmd_vel`。
 - 2026-06-23 02:35 起，普通首屏 `行程执行` 和 `任务收口` 会在最近 Nav2 goal 成功材料带 `generated_at_ms` 时显示“约 N 分钟/小时/天前”；超过 15 分钟的 latest 成功会额外提示“这条记录较旧，如需本轮复验，请重新执行行程”。该提示只消费 `GET /api/robot-control/nav2/goal/execution/latest`、本次受限 execute 响应或 delivery 摘要里的短时间字段，不自动执行 Nav2、不提交送达、不发送 manual/stop 或 `/cmd_vel`。
 - 2026-06-23 03:20 起，超过 15 分钟的 Nav2 `goal_succeeded` 只作为历史参考展示，不再让普通首屏 `本轮进度` 显示 `行程执行已完成`，也不再把 `检查行程/执行行程` 按钮锁成 `行程已完成`。这类旧记录会让 `任务收口` 和 `验收卡点` 指向“重新执行本轮行程”，避免现场拿旧路线证据继续做送达确认。该口径只调整前端状态和按钮可用性，不自动执行 Nav2、不提交送达、不发送 manual/stop 或 `/cmd_vel`。
+- 2026-06-27 00:37 起，Robot Control summary 和 Nav2 latest/execute 代理会显式消费上车端 `hil_pass`。如果最近 `NavigateToPose` action 返回
+  `goal_succeeded` 但 artifact 里 `hil_pass=false`，PC 仍显示 `goal_execution_proven=false`，普通首屏行程 marker 显示
+  `已到达，真车未证明`，并继续要求重新执行完整行程；只有 action success、反馈样本和真车执行/HIL 材料都成立，才允许把本轮路线视作完整执行。
+  现场复核中，当前旧 `o11-nav2-goal-execution-1782099547218` action 是 `goal_succeeded`，但 `hil_pass=false`，因此 PC summary
+  保持 `readback_summary.nav2.status=not_proven`。该口径只修正 WYSIWYG 和送达 gate，不自动重跑 Nav2、不发送 manual/stop 或 `/cmd_vel`。
 - 2026-06-23 03:35 起，普通首屏和高级区的最终送达提交也要求本轮 Nav2 成功材料未超过 15 分钟。旧路线下即使视频/行程 ref 已预填、七项最终确认都已勾选，`确认送达（不发车）` 仍保持禁用并显示 `确认送达（先重新行程）`，submit handler 也会直接返回，不提交 operator report 或 delivery complete。该 gate 只防止旧路线材料进入 delivery success，不自动执行 Nav2、不提交送达、不发送 manual/stop 或 `/cmd_vel`。
 - 2026-06-23 02:50 起，普通首屏 `任务收口` 的送达材料状态在 latest delivery 摘要带 `generated_at_ms` 时显示“送达材料草稿已保存，约 N 分钟/小时/天前”；超过 15 分钟的草稿会提示“这份草稿较旧，如本轮已重新到达，请重新准备材料或重新确认”。该提示只读 latest delivery 的短时间字段，不保存新草稿、不提交 operator report、不调用 delivery complete、Nav2、manual、stop 或 `/cmd_vel`。
 - 2026-06-22 15:18 起，`GET /api/robot-control/delivery/latest` 会从上位机 latest delivery result 的 `operator_report.structured_hil_claims` 中抽取短 `delivery_material_refs` 摘要：operator evidence ref、external video ref、camera artifact ref、route/map ref 和 site_state。前端只在本页输入为空时用这些 ref 预填“送达材料”，让 PC 页面刷新后能恢复真实上位机已有的送达草稿材料；它不提交 operator report、不调用 delivery complete、不自动勾选最终确认，也不把 `delivery_success` 或控制权限提升为 true。

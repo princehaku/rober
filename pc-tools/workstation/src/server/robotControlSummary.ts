@@ -3089,6 +3089,7 @@ function nav2SummaryFromReadbacks(
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
     goal_execution_status: goalExecutionStatus,
     goal_execution_proven: goalExecutionProven,
+    goal_execution_hil_pass: summaryValueText(goalResultPayload, ["hil_pass"]),
     goal_execution_result_status: summaryValueText(goalResultPayload, ["result_status"]),
     goal_execution_evidence_ref: summaryValueText(goalResultPayload, ["evidence_ref"]),
     goal_execution_robot_control_executed: summaryValueText(goalResultPayload, ["robot_control_executed"]),
@@ -3103,6 +3104,10 @@ function nav2SummaryFromReadbacks(
 
 function nav2GoalExecutionProvenText(goalResultPayload: JsonRecord | null): string {
   // 兼容新旧上位机 artifact：旧版直接给 nav2_goal_execution_proven，新版给执行事实字段。
+  const hilPass = summaryValueText(goalResultPayload, ["hil_pass"]);
+  if (hilPass === "false") {
+    return "false";
+  }
   const explicit = summaryValueText(goalResultPayload, ["nav2_goal_execution_proven"]);
   if (explicit !== "not_loaded") {
     return explicit;
@@ -3298,6 +3303,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         path_preview_frame_id: "not_loaded",
         goal_execution_status: "not_loaded",
         goal_execution_proven: "not_loaded",
+        goal_execution_hil_pass: "not_loaded",
         goal_execution_result_status: "not_loaded",
         goal_execution_evidence_ref: "not_loaded",
         goal_execution_robot_control_executed: "not_loaded",

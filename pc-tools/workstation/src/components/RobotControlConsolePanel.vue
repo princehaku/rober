@@ -3914,6 +3914,7 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
     nav2_status: status,
   };
   putSummaryNav2Value(values, "nav2_goal_execution_proven", nav2.goal_execution_proven);
+  putSummaryNav2Value(values, "hil_pass", nav2.goal_execution_hil_pass);
   putSummaryNav2Value(values, "result_status", nav2.goal_execution_result_status);
   putSummaryNav2Value(values, "evidence_ref", nav2.goal_execution_evidence_ref);
   putSummaryNav2Value(values, "robot_control_executed", nav2.goal_execution_robot_control_executed);
@@ -3940,6 +3941,7 @@ function explicitFalseKeyValue(value: string | undefined): boolean {
 function nav2ExecutionControlProven(values: Record<string, string> | undefined): boolean {
   // goal_succeeded 只说明 action 返回成功；完整路线还必须没有“执行/真车控制未证明”的显式 false。
   return !explicitFalseKeyValue(values?.nav2_goal_execution_proven)
+    && !explicitFalseKeyValue(values?.hil_pass)
     && !explicitFalseKeyValue(values?.robot_control_executed);
 }
 
@@ -4773,7 +4775,7 @@ function plainMapTripExecutionLabel(): string {
     return "行程执行：旧到达记录";
   }
   if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
-    return "行程执行：已到达，执行未证明";
+    return "行程执行：已到达，真车未证明";
   }
   if (nav2GoalSucceeded(values)) {
     return "行程执行：已到达，缺反馈";

@@ -3935,6 +3935,7 @@ describe("workstation fail-closed API contracts", () => {
         path_preview_point_count: "0",
         goal_execution_status: expect.any(String),
         goal_execution_proven: expect.any(String),
+        goal_execution_hil_pass: expect.any(String),
         goal_execution_result_status: expect.any(String),
         goal_execution_robot_control_executed: expect.any(String),
         goal_execution_feedback_sample_count: expect.any(String),
@@ -4017,6 +4018,7 @@ describe("workstation fail-closed API contracts", () => {
           latest_result: {
             status: "goal_succeeded",
             result_status: "succeeded",
+            hil_pass: true,
             evidence_ref: "o11-nav2-goal-execution-live-shape",
             feedback_sample_count: 8,
             robot_control_executed: true,
@@ -4038,6 +4040,65 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_robot_control_executed).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_feedback_sample_count).toBe("8");
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("true");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary does not treat Nav2 action success as route execution when HIL is false", async () => {
+    // 真实现场可出现 NavigateToPose succeeded 但 hil_pass=false；PC 不能把它说成完整路线已执行。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          status: "nav2_no_motion_path_generation_runtime_observed",
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 36,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "not_proven",
+          latest_result: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            hil_pass: false,
+            evidence_ref: "o11-nav2-goal-execution-hil-false",
+            feedback_sample_count: 8,
+            robot_control_executed: true,
+            sends_motion_commands: true,
+            goal_request: { frame_id: "map", x: 0.8, y: 0 },
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.status).toBe("nav2_no_motion_path_generation_runtime_observed");
+      expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_result_status).toBe("succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("false");
+      expect(summary.readback_summary.nav2.goal_execution_proven).toBe("false");
+      expect(summary.readback_summary.nav2.goal_execution_feedback_sample_count).toBe("8");
     } finally {
       await robotApi.close();
     }
@@ -6920,6 +6981,59 @@ describe("workstation fail-closed API contracts", () => {
       expect(upstream.receivedGets).toEqual(["/api/nav2/goal/execution/latest"]);
       expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("Nav2 latest execution proxy keeps hil_pass false as not proven", async () => {
+    // HIL false 是真车未证明的强信号，即使 action succeeded 也不能点亮完整路线。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest_result",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          latest_result: {
+            status: "goal_succeeded",
+            evidence_ref: "o11-nav2-goal-execution-hil-false",
+            goal_accepted: true,
+            result_received: true,
+            result_status: "succeeded",
+            hil_pass: false,
+            goal_request: {
+              frame_id: "map",
+              x: 0.8,
+              y: 0,
+              yaw: 0,
+              result_timeout_s: 4,
+            },
+            feedback_sample_count: 8,
+            robot_control_executed: true,
+            sends_motion_commands: true,
+            delivery_success: false,
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/goal/execution/latest?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        goal_execution_key_values: Record<string, string>;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("latest_loaded");
+      expect(body.goal_execution_key_values.status).toBe("goal_succeeded");
+      expect(body.goal_execution_key_values.hil_pass).toBe("false");
+      expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("false");
+      expect(body.goal_execution_key_values.feedback_sample_count).toBe("8");
     } finally {
       await workstation.close();
       await upstream.close();
