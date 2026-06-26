@@ -4365,6 +4365,11 @@ const plainTripCurrentRouteVisible = computed(() => {
   const routePath = latestNavPathOverlay();
   return Boolean(routePath && !routePath.caption.startsWith("最近"));
 });
+const plainTripRecentRouteVisible = computed(() => {
+  // 旧路线可以照实显示在地图上，但按钮必须明确要求重新准备，不能暗示可直接执行。
+  const routePath = latestNavPathOverlay();
+  return Boolean(routePath && routePath.caption.startsWith("最近"));
+});
 
 function plainTripVisibleRouteGoal() {
   const routePath = latestNavPathOverlay();
@@ -4433,6 +4438,9 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   if (plainTripMapWysiwygPending.value && plainTripPreparedBySummary.value) {
     return "等待地图刷新";
+  }
+  if (plainTripRecentRouteVisible.value) {
+    return "先重新准备路线";
   }
   if (!plainTripCurrentRouteVisible.value) {
     return plainTripPreparedBySummary.value ? "先刷新地图画面" : "先准备图上路线";
