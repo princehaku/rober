@@ -2361,6 +2361,12 @@ delivery complete、manual、keyboard pulse、stop 或 `/cmd_vel`。
 不再退回人工键盘扫图向导，而是补齐自动扫图 start 的非运动前置步骤：启动地图记录、刷新扫图画面并把该 preview 计入
 本轮 fresh gate。只有这些本地条件也满足后才调用固定 start 代理；未勾安全确认时仍只聚焦 checkbox。
 
+2026-06-26 18:10 起，普通首屏把 `free_roam_autonomy_start_ready=true` 与 runtime `cmd_vel_publish_enabled=true`
+区分展示：前者表示“可以点击开始自动扫图”，后者才表示“已经启动并打开运动发布”。因此当上车端 live latest 仍显示
+`artifact_only=true/cmd_vel_publish_enabled=false/stopping`，但 summary 已给出 `free_roam_autonomy_start_ready=true` 时，
+按钮仍显示 `开始自动扫图（低速）`，runtime 文案说明“当前尚未启动，所以仍是记录模式；点击开始后由上车端复检相机，再打开运动双锁”。
+这只修正普通首屏 WYSIWYG，不新增任意 endpoint，不由浏览器或 Node 直接发布 `/cmd_vel`。
+
 2026-06-26 10:17 起，如果上车端自动扫图 readiness 仍未 ready，普通首屏同一个按钮会作为人工扫图向导：
 安全确认未勾时显示 `先勾安全确认` 并只聚焦 checkbox；已勾安全确认但还没开始记录时，显示 `开始记录并继续`，点击只调用固定 `/api/robot-control/map/start` 启动地图记录，并在成功后启用键盘窗口等待按住；
 记录已启动但键盘未启用时，点击只启用键盘窗口。它不会调用 `/api/robot-control/free-roam/autonomy/start`，不会发送方向

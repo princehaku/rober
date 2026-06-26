@@ -92,6 +92,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-27 16:55 起，当 `free_roam_autonomy_start_ready=true` 但本地地图记录或扫图画面还没就绪时，普通首屏的
   `开始自动扫图（低速）` 按钮会走自动扫图向导：先启动地图记录，再把地图预览刷新计入本轮扫图 fresh gate，满足条件后再调用固定 start 代理。
   该向导仍不会自动勾选安全确认，也不会绕过上车端 camera 复检。
+- 2026-06-26 18:10 起，当 live 形状为 `free_roam_autonomy_start_ready=true`、`free_roam_autonomy=locked` 且 runtime
+  仍是 `artifact_only=true/cmd_vel_publish_enabled=false` 时，普通首屏不再把它解释成“自动扫图未开放”。这表示尚未点击 start，
+  但已经可以发起固定 start 请求；UI 会显示 `开始自动扫图（低速）`，runtime 文案写明“当前尚未启动，所以仍是记录模式；
+  点击开始后由上车端复检相机，再打开运动双锁”。这只修正所见即所得文案和按钮状态，不由浏览器或 Node 直接发布 `/cmd_vel`。
 
 ## 用户流程
 

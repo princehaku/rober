@@ -2891,12 +2891,12 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (!runtime || runtime.status !== "loaded") {
       return "自动扫图状态：未读取上车端 runtime，当前只能人工按住扫图。";
     }
-    const motionBoundary = runtime.artifact_only
+    const motionBoundary = autonomyStartReady && !runtime.cmd_vel_publish_enabled
+      ? "启动条件已满足；当前尚未启动，所以仍是记录模式；点击开始后由上车端复检相机，再打开运动双锁。"
+      : runtime.artifact_only
       ? "当前只是记录模式，不会自己跑；真车自动扫图还要完成安全确认、地图记录、相机和停止兜底。"
       : runtime.cmd_vel_publish_enabled
       ? "运动发布已解锁，PC 仍等待真车 HIL 记录。"
-      : autonomyStartReady
-      ? "启动条件已满足；点击开始后由上车端复检相机，再打开运动双锁；雷达只作为可刷新监看项。"
       : "运动发布未解锁，不会自己跑。";
     const stateLabels: Record<string, string> = {
       locked: "门禁锁定",
