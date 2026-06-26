@@ -2485,7 +2485,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_reuses_manual_gate: true;
     free_roam_autonomy: "locked" | "ready";
     free_roam_autonomy_start_ready: boolean;
-    free_roam_autonomy_label: "自动扫图（未开放）" | "自动扫图";
+    free_roam_autonomy_label: "自动扫图（未开放）" | "自动扫图（勾确认后可启动）" | "自动扫图";
     free_roam_autonomy_policy: {
       mode: "requires_onboard_watchdog_lidar_obstacle_gate_and_hil";
       max_speed_mps: number;

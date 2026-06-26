@@ -2707,6 +2707,13 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 这样刷新页面或另一个普通用户进入 7001 时，也能看到最近画面检查的真实失败，而不是误以为还没检查过。该缓存只保留 PC 只读诊断摘要，
 不会打开 MJPEG/WebRTC，不调用 backend smoke、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`。
 
+2026-06-26 21:10 起，Robot Control summary 的 `safe_command_boundary.free_roam_autonomy_label` 区分“可以发起 start 请求”和
+“已经运动发布解锁”：当 `free_roam_autonomy_start_ready=true` 但 runtime 仍是 `artifact_only=true/cmd_vel_publish_enabled=false`
+时，label 显示 `自动扫图（勾确认后可启动）`；只有 runtime 已 `cmd_vel_publish_enabled=true` 且 gates ready 时才显示
+`自动扫图`。这样 live 7001 不会在“上车端 stop 兜底已满足、普通用户勾安全确认即可点 start”的状态下继续写成
+`自动扫图（未开放）`。该改动只修正 summary/普通 UI 的所见即所得文案，不自动勾选安全确认、不调用 free-roam start/stop、
+manual、keyboard pulse、Nav2、delivery 或 `/cmd_vel`。
+
 2026-06-26 21:15 起，普通首屏 quick camera probe 请求固定开启 `auto_format_fallback=true`。上车端仍只执行白名单
 `camera_first_frame_probe.py`，但会用短超时依次尝试 `MJPG@640x480`、`YUYV@640x480`、`YUYV@320x240` 和默认协商
 `default@640x480`，读到首帧即停止；失败时 PC 响应的 `probe_key_values.fallback_attempt_count/fallback_attempts_summary`

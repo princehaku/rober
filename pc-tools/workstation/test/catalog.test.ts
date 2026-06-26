@@ -4858,6 +4858,7 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.safe_command_boundary.free_roam_autonomy_start_ready).toBe(true);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
+      expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（勾确认后可启动）");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
         expect.objectContaining({ id: "lidar_fresh", state: "blocked" }),
       ]));

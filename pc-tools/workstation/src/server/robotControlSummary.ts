@@ -3345,7 +3345,11 @@ function lockedBoundary(
     keyboard_reuses_manual_gate: true,
     free_roam_autonomy: freeRoamReady ? "ready" : "locked",
     free_roam_autonomy_start_ready: freeRoamStartReady,
-    free_roam_autonomy_label: freeRoamReady ? "自动扫图" : "自动扫图（未开放）",
+    free_roam_autonomy_label: freeRoamReady
+      ? "自动扫图"
+      : freeRoamStartReady
+        ? "自动扫图（勾确认后可启动）"
+        : "自动扫图（未开放）",
     free_roam_autonomy_policy: {
       // 自动扫图不是 PC 端无限发点动；必须先有上车端避障、watchdog 和真车验证证据。
       mode: "requires_onboard_watchdog_lidar_obstacle_gate_and_hil",
