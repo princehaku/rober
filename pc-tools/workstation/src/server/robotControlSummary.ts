@@ -3343,6 +3343,8 @@ function lockedBoundary(
     keyboard_jog_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
     keyboard_stop_triggers: ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"],
     keyboard_reuses_manual_gate: true,
+    keyboard_control_start_ready: true,
+    keyboard_control_label: "键盘手控（勾确认后可启用）",
     free_roam_autonomy: freeRoamReady ? "ready" : "locked",
     free_roam_autonomy_start_ready: freeRoamStartReady,
     free_roam_autonomy_label: freeRoamReady

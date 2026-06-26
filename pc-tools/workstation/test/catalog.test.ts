@@ -3982,6 +3982,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_jog_duration_ms).toBe(240);
       expect(summary.safe_command_boundary.keyboard_stop_triggers).toContain("window_blur");
       expect(summary.safe_command_boundary.keyboard_reuses_manual_gate).toBe(true);
+      expect(summary.safe_command_boundary.keyboard_control_start_ready).toBe(true);
+      expect(summary.safe_command_boundary.keyboard_control_label).toBe("键盘手控（勾确认后可启用）");
       expect(summary.safe_command_boundary.keyboard_control_enabled).toBe(false);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（未开放）");

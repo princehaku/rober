@@ -2483,6 +2483,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_jog_duration_ms: number;
     keyboard_stop_triggers: string[];
     keyboard_reuses_manual_gate: true;
+    keyboard_control_start_ready: boolean;
+    keyboard_control_label: "键盘手控（勾确认后可启用）";
     free_roam_autonomy: "locked" | "ready";
     free_roam_autonomy_start_ready: boolean;
     free_roam_autonomy_label: "自动扫图（未开放）" | "自动扫图（勾确认后可启动）" | "自动扫图";
