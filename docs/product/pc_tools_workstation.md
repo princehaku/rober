@@ -2024,6 +2024,11 @@ runtime artifact 的 `decision.state/reason/stop_required` 翻译为 `门禁锁�
 
 2026-06-26 08:55 起，普通首屏 `自动扫图准备` 面板也会带 `data-state`，外框跟随 `未满足/待处理/已就绪` 状态变化。测试锁定默认未满足、ready 但仍缺地图记录/地图刷新时的待处理、以及可启动自动扫图时的已就绪状态与 CSS 选择器，避免上车端自动扫图 runtime 已读到但准备面板仍像普通说明块。该呈现只影响 PC 前端 WYSIWYG，不自动启动自动扫图、不发送 manual/keyboard pulse、不执行 Nav2、delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 16:40 起，普通首屏 `自动扫图准备` 的雷达 blocker 复用雷达卡片的真实状态：例如 lifecycle 正在运行但 proof stale 时显示
+`雷达待刷新`，不再泛化成 `雷达未保持运行`。这样 operator 能直接去点 `刷新雷达`，而不是误以为需要重新启动雷达。该提示只改变
+PC 前端 WYSIWYG 文案，不自动启动/刷新雷达、不启动自动扫图、不发送 manual/keyboard pulse、Nav2、delivery、stop 或
+`/cmd_vel`，也不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
+
 2026-06-25 21:44 起，普通首屏地图画面也叠加只读 `自动扫图` runtime 标记：例如 `自动扫图：避障换向`、
 `自动扫图：低速直行`、`自动扫图：找新覆盖`。有 map-frame 机器人位姿时标记贴近小车；没有位姿时固定在地图角落，
 并明确“不代表坐标”。该标记只把上车端状态机最近判断叠到地图上，不生成路线、不启动自动扫图、不发送 manual/

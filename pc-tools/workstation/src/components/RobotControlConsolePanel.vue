@@ -2484,7 +2484,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     blockers.push("地图还没有可通行区域");
   }
   if (radarSummary.value.state !== "雷达已运行") {
-    blockers.push("雷达未保持运行");
+    blockers.push(radarSummary.value.state);
   }
   if (autonomyLocked && !canUseKeyboardControl.value) {
     blockers.push("键盘低速手控条件未满足");

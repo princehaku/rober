@@ -11466,6 +11466,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("雷达未保持运行");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
