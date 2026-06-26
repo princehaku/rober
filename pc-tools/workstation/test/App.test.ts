@@ -7529,6 +7529,32 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理轮速记录。");
   });
 
+  it("does not describe historical base nonzero material as current wheel nonzero", async () => {
+    // 真实现场可能有历史 nonzero 标记，但最新 L/R 已回到 0/0；普通首屏必须拆开这两层。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "13";
+    summaryFixture.readback_summary.base.latest_feedback_status = "fresh_base_status_readback";
+    summaryFixture.readback_summary.base.feedback_voltage_v = "12.43041039";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "true";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "true";
+    summaryFixture.readback_summary.base.feedback_link_status = "t1001_lr_nonzero_material_observed_not_hil";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const readback = wrapper.find('[data-testid="plain-wheel-readback-summary"]').text();
+    expect(readback).toBe("已有历史非零轮速材料，但当前轮速是 L/R=0/0；反馈电压约 12.43V；本轮仍需底盘试动读非零。");
+    expect(readback).not.toContain("只读轮速已出现非零");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("当前轮速 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还需要试动期间同帧 L/R 都非零。");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(0);
+  });
+
   it("shows restore-first-jog as the next wheel step when delivery draft replaced basic safety", async () => {
     // 送达草稿覆盖 basic safety 后，进度区应先引导恢复确认，再让现场试动读非零。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

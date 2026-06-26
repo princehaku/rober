@@ -2927,3 +2927,9 @@ Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达
 `camera_mjpeg_proxy_failed` 或 HTTP 502/503 时，普通文案显示为“共享预览上游没有返回可用画面，通常是相机无帧或
 相机后端不可用，不是浏览器独占”。工程 token 仍保留在高级诊断/API 响应里，普通首屏不展示
 `camera_mjpeg_proxy_failed`，也不因共享预览失败发送 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
+
+2026-06-27 03:37 起，普通首屏 `底盘读回` 会拆开“历史 wheel raw L/R 非零材料”和“当前轮速”：
+如果上位机曾经记录 `wheel_feedback_lr_nonzero_proven=true`，但最新 `T=1001 L/R` 已回到 `0/0`，
+页面显示“已有历史非零轮速材料，但当前轮速是 L/R=0/0；本轮仍需底盘试动读非零”，不再写成
+“只读轮速已出现非零”。这保证 Nav2、底盘试动和 delivery success 的排障顺序仍以当前读回为准：
+历史材料可解释曾经通路有效，不能替代本轮完整路线执行或本轮 wheel raw L/R 非零验收。

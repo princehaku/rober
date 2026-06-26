@@ -5816,6 +5816,9 @@ const plainWheelReadbackSummary = computed(() => {
     const left = sample.wheel_feedback_latest_left_speed;
     const right = sample.wheel_feedback_latest_right_speed;
     if (sample.wheel_feedback_lr_nonzero_proven === "true" || sample.wheel_feedback_nonzero_observed === "true") {
+      if (isZeroWheelPair(left, right)) {
+        return `只读采样有历史非零材料，但当前轮速是 L/R=${left}/${right}${voltage}；本轮仍需底盘试动读非零。`;
+      }
       return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
     }
     return `已读到底盘反馈，但当前轮速是 L/R=${left}/${right}${voltage}；${zeroReadbackNextStep}`;
@@ -5829,6 +5832,9 @@ const plainWheelReadbackSummary = computed(() => {
     return "";
   }
   if (base.wheel_feedback_lr_nonzero_proven === "true" || base.wheel_feedback_nonzero_observed === "true") {
+    if (isZeroWheelPair(left, right)) {
+      return `已有历史非零轮速材料，但当前轮速是 L/R=${left}/${right}${voltage}${staleSamples}；本轮仍需底盘试动读非零。`;
+    }
     return `只读轮速已出现非零：L/R=${left}/${right}；仍以试动窗口保存为准。`;
   }
   if (Number(base.latest_t1001_observed_count) > 0) {
