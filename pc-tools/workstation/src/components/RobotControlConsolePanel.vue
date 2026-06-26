@@ -1410,6 +1410,54 @@ const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const motionText = result.motion_unlock_requested ? "，运动双锁已请求" : "";
   return `状态机写入：启动参数已${strategy} ${countText}${motionText}${mappingText}${topicText}。`;
 });
+const plainCurrentFactRows = computed(() => {
+  // 首屏事实条只翻译当前 readback，不新增任何控制权限或验收结论。
+  const summary = robotSummary.value;
+  if (!summary) {
+    return ["小车：等待连接/刷新。"];
+  }
+  const rows: string[] = [];
+  const camera = summary.readback_summary.camera;
+  if (cameraSourceFirstFrameFailed(camera)) {
+    const ownerText = camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0"
+      ? "不是独占"
+      : "先看占用";
+    rows.push(`画面：${ownerText}，当前没有首帧。`);
+  } else if (cameraVisibleForFreeRoamMapping.value) {
+    rows.push("画面：已看到真实帧。");
+  } else {
+    rows.push("画面：还没确认真实帧。");
+  }
+
+  if (radarSummary.value.state === "雷达无新点") {
+    rows.push("雷达：已启动，但地图上没有新点。");
+  } else if (radarSummary.value.state === "雷达已运行") {
+    rows.push("雷达：已运行。");
+  } else {
+    rows.push(`雷达：${radarSummary.value.state}。`);
+  }
+
+  const nav2 = summary.readback_summary.nav2;
+  if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
+    const wheelText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
+      ? "轮速已复验"
+      : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}`;
+    rows.push(`行程：已执行到结果，${wheelText}。`);
+  } else if (nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
+    rows.push("行程：图上可准备执行。");
+  } else {
+    rows.push("行程：还没执行。");
+  }
+
+  if (canArmKeyboardControl.value) {
+    rows.push("键盘：可启用，按住才动，松开会停。");
+  } else if (keyboardContractReady.value) {
+    rows.push("键盘：勾安全确认后可启用。");
+  } else {
+    rows.push("键盘：先复查手控条件。");
+  }
+  return rows;
+});
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarLifecyclePendingAction.value === "start"
@@ -9636,6 +9684,10 @@ onBeforeUnmount(() => {
 
       <div v-if="error" class="notice" role="alert">
         {{ error }}；安全锁定保持不变。
+      </div>
+
+      <div class="plain-current-facts" data-testid="plain-current-facts" aria-label="当前事实">
+        <span v-for="row in plainCurrentFactRows" :key="row">{{ row }}</span>
       </div>
 
       <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen">

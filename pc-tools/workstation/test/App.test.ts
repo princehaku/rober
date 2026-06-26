@@ -3590,6 +3590,12 @@ describe("App", () => {
     expect(firstScreenText).toContain("移动/导航");
     expect(firstScreenText).toContain("已连接");
     expect(firstScreenText).toContain("部分项目未通过，可展开高级诊断。");
+    const currentFacts = wrapper.find('[data-testid="plain-current-facts"]');
+    expect(currentFacts.exists()).toBe(true);
+    expect(currentFacts.text()).toContain("画面：还没确认真实帧。");
+    expect(currentFacts.text()).toContain("雷达：已运行。");
+    expect(currentFacts.text()).toContain("行程：还没执行。");
+    expect(currentFacts.text()).toContain("键盘：先复查手控条件。");
     const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
     expect(connectionPanel.exists()).toBe(true);
     expect(connectionPanel.attributes("data-state")).toBe("已连接");
@@ -3727,6 +3733,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-motion-panel[data-state="已试动"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面可见"][data-frame-state="已绘制帧"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面偏暗"]');
+    expect(workstationStyles).toContain(".plain-current-facts");
     expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达已运行"]');
     expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达启动失败"]');
     expect(workstationStyles).toContain('.plain-free-roam-map[data-state="待确认"]');
@@ -6678,6 +6685,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 239 次，轮速 L/R=0/0 待复验，准备送达材料");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 239 次执行反馈，刚刚；下一步准备送达材料，同时处理：轮速 L/R=0/0 待复验。");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toBe("最近行程成功，反馈 239 次，刚刚；底盘已响应（车身姿态有变化，pitch 变化 24.210531；轮速 L/R=0/0 待复验；底盘只读样本已出现非零轮速，Nav2 仍需同窗口复验）；送达仍需现场确认。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：已执行到结果，当前轮速 L/R=0/0。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("Nav2 仍需同窗口复验");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
@@ -13815,6 +13823,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达无新点");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已启动，但地图上没有新点。");
     expect(firstScreenText).toContain("雷达驱动正在运行，但最新记录不完整，当前没有读到新的雷达点；检查雷达供电、串口数据和驱动日志。");
     expect(firstScreenText).not.toContain("雷达正在运行，但最新记录不完整；先刷新雷达确认。");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达无新点，位置未读到");

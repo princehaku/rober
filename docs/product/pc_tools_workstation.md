@@ -2992,3 +2992,10 @@ PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是�
 `goal_succeeded`、`base_command_mode=pwm`、`nonzero_command_count=49` 和 IMU 姿态变化材料，
 但当前 `wheel_feedback_lr_nonzero_proven=false`、`hil_pass=false`，所以完整自动驾驶验收仍卡在现场轮速/运动闭环，
 不是卡在雷达启动 gate。
+
+2026-06-27 05:18 起，普通首屏在六个卡片上方新增 `当前事实` 短条，直接翻译当前 readback：
+画面是否不是独占但无首帧、雷达是否 running-but-no-points、行程是否已执行到结果但当前 L/R 仍待复验、
+键盘是否可在安全确认后启用。该区域只读展示，不新增按钮、不调用 Robot API、不发 manual/Nav2/free-roam/delivery，
+也不把 `safe_to_control`、`delivery_success` 或 HIL 置 true。这样现场不必打开高级诊断也能第一眼看到：
+画面无帧不是浏览器独占；雷达启动和雷达点是两件事；Nav2 action 成功和完整真车收口是两件事；
+键盘连续手控仍是“勾确认后启用、按住才动、松开会停”。
