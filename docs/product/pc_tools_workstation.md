@@ -1841,6 +1841,12 @@ delivery complete、keyboard pulse 或 `/cmd_vel`，也不会把历史样本外�
 `送达材料草稿已保存；请完成下方最终确认`。该提示只消费 latest readback，不自动勾选最终确认、
 不提交 operator report、不调用 delivery complete，不发送 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 
+2026-06-26 23:59 起，普通首屏如果恢复到送达材料草稿、但当前 Nav2 行程仍不可用于本轮送达，
+`下一步` 会明确显示 `送达材料草稿已保存，可复用；下一步：...`，让现场知道草稿 ref 不必从零准备，
+但仍必须重新执行/读取本轮行程后才能继续送达确认。该提示只消费 latest readback 和本页行程 gate，
+不自动提交 operator report、不调用 delivery complete，不发送 Nav2、manual、first-jog、stop、
+keyboard pulse 或 `/cmd_vel`。
+
 2026-06-23 00:04 起，普通首屏“小车连接”会把全量 Robot API `fetch_timeout_*` 读回失败翻成
 `上位机没回应；检查小车电源、网络和上位机服务后再点连接/刷新`。该提示只消费 PC summary 的
 `robot_api_connection.blocked_reasons`，不会把 timeout 当成已连接，也不会触发 Nav2、delivery complete、

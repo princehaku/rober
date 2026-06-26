@@ -13463,7 +13463,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.length).toBe(callsBeforeFocus);
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 5 项，不确认）");
-    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新执行本轮行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("送达材料草稿已保存，可复用；下一步：重新执行本轮行程。");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，约 13 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达仍需现场确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程记录较旧，需要重新执行本轮行程。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
@@ -13471,7 +13471,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("读取行程结果（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：重新执行本轮行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("送达材料草稿已保存，可复用；下一步：重新执行本轮行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成；送达确认待完成");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，约 13 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达未完成");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：行程成功记录较旧，需要重新执行本轮行程。");

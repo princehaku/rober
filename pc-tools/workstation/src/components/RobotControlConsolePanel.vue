@@ -3303,19 +3303,21 @@ const plainDeliveryNextActionSummary = computed(() => {
     return "下一步：送达已完成，可继续键盘手控或结束本轮。";
   }
   if (!deliveryNav2GoalReady.value) {
+    // 旧行程或未证实行程会阻塞送达，但已保存的材料草稿仍可复用，避免现场误以为要从零准备。
+    const draftReusePrefix = deliveryDraftMaterialPresent() ? "送达材料草稿已保存，可复用；" : "";
     if (plainTripRadarBlocked.value) {
-      return plainRadarDeliveryNextAction(plainTripNeedsFreshRunAfterRadar.value);
+      return `${draftReusePrefix}${plainRadarDeliveryNextAction(plainTripNeedsFreshRunAfterRadar.value)}`;
     }
     if (plainTripHasFreshUnprovenControlEvidence.value) {
-      return "下一步：重新执行完整行程。";
+      return `${draftReusePrefix}下一步：重新执行完整行程。`;
     }
     if (plainTripHasFreshIncompleteEvidence.value) {
-      return "下一步：重新读取或执行完整行程。";
+      return `${draftReusePrefix}下一步：重新读取或执行完整行程。`;
     }
     if (plainTripLatestNotProvenEvidence.value) {
-      return "下一步：检查或重新执行完整行程。";
+      return `${draftReusePrefix}下一步：检查或重新执行完整行程。`;
     }
-    return plainTripHasSucceededEvidence.value ? "下一步：重新执行本轮行程。" : "下一步：先完成行程。";
+    return plainTripHasSucceededEvidence.value ? `${draftReusePrefix}下一步：重新执行本轮行程。` : `${draftReusePrefix}下一步：先完成行程。`;
   }
   if (plainDeliveryMapWysiwygPending.value) {
     return `下一步：等待${plainTripMapWysiwygWaitText()}。`;
