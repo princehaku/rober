@@ -120,6 +120,11 @@ function queryString(value: unknown): string {
 
 export function robotControlSummaryQueryBaseUrl(value: unknown): string {
   // summary 是普通首屏的只读入口；没有 query 时默认连固定小车，控制类代理仍要求显式 baseUrl。
+  return robotControlReadOnlyQueryBaseUrl(value);
+}
+
+export function robotControlReadOnlyQueryBaseUrl(value: unknown): string {
+  // 只读状态查询可以默认连固定小车；会动作的 POST 仍在各自路由里要求显式 baseUrl 与确认项。
   const requested = queryString(value).trim();
   return requested || DEFAULT_ROBOT_API_BASE_URL;
 }
@@ -1639,7 +1644,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.get("/api/robot-control/nav2/goal/execution/latest", async (req, res) => {
     // latest 只读最近 NavigateToPose artifact，用于送达材料预填；不发送新的 Nav2 goal。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlReadOnlyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const fallbackBase: RobotControlNavGoalExecutionLatestResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
@@ -1703,7 +1708,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.get("/api/robot-control/delivery/latest", async (req, res) => {
     // delivery latest 只读交付 gate 最近结论，帮助现场补材料；不会提交 operator report 或确认送达。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlReadOnlyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const fallbackBase: RobotControlDeliveryLatestResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_delivery_latest_proxy.v1",

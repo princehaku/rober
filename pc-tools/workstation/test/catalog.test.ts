@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import http from "node:http";
 import os from "node:os";
@@ -37,7 +37,7 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
-import { createWorkstationApp, listenFailureHint, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
+import { createWorkstationApp, listenFailureHint, robotControlReadOnlyQueryBaseUrl, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
 import { WORKSTATION_DEV_API_PROXY_TARGET, WORKSTATION_DEV_PORT, WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../src/shared/workstationDefaults";
 
 function sampleStatus(evidenceRef: string) {
@@ -700,6 +700,26 @@ function listen(app: ReturnType<typeof createWorkstationApp>): Promise<{ baseUrl
   });
 }
 
+function requestJson(url: string | URL): Promise<{ status: number; body: unknown }> {
+  // 用 Node http 调 workstation，避免测试里的 fetch stub 影响客户端请求本身。
+  return new Promise((resolve, reject) => {
+    http.get(url, (res) => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => {
+        body += chunk;
+      });
+      res.on("end", () => {
+        try {
+          resolve({ status: res.statusCode ?? 0, body: JSON.parse(body) as unknown });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }).on("error", reject);
+  });
+}
+
 function listenJson(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   // probe 测试用最小本机 JSON 服务模拟 relay snapshot，不连接外网或真实机器人。
   const server = http.createServer((req, res) => {
@@ -1177,6 +1197,39 @@ describe("workstation fail-closed API contracts", () => {
     expect(robotControlSummaryQueryBaseUrl(undefined)).toBe("http://192.168.1.11:8787");
     expect(robotControlSummaryQueryBaseUrl("")).toBe("http://192.168.1.11:8787");
     expect(robotControlSummaryQueryBaseUrl("http://127.0.0.1:8787")).toBe("http://127.0.0.1:8787");
+  });
+
+  it("defaults Robot Control read-only latest reads to the fixed robot API address", async () => {
+    // Nav2/latest 与 delivery/latest 都是只读读数；缺省 query 时也应走固定小车，不要求普通用户手填。
+    expect(robotControlReadOnlyQueryBaseUrl(undefined)).toBe("http://192.168.1.11:8787");
+    expect(robotControlReadOnlyQueryBaseUrl("")).toBe("http://192.168.1.11:8787");
+    const requestedUrls: string[] = [];
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      const pathname = new URL(url).pathname;
+      const payload = pathname.endsWith("/api/nav2/goal/execution/latest")
+        ? { status: "goal_succeeded", feedback_sample_count: 8, robot_control_executed: false }
+        : { delivery_success: false, latest_result: { missing_required_material: ["operator_observed_motion"] } };
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    const server = await listen(createWorkstationApp());
+
+    try {
+      const nav2 = await requestJson(new URL("/api/robot-control/nav2/goal/execution/latest", server.baseUrl));
+      const delivery = await requestJson(new URL("/api/robot-control/delivery/latest", server.baseUrl));
+
+      expect(nav2.status).toBe(200);
+      expect(delivery.status).toBe(200);
+      expect(requestedUrls).toContain("http://192.168.1.11:8787/api/nav2/goal/execution/latest");
+      expect(requestedUrls).toContain("http://192.168.1.11:8787/api/delivery/latest");
+    } finally {
+      fetchSpy.mockRestore();
+      await server.close();
+    }
   });
 
   it("formats public API port conflict with operator next steps", () => {
