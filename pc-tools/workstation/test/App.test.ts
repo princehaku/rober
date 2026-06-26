@@ -3631,8 +3631,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图未开放；当前用人工按住扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图真车验证未完成");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：勾选现场安全确认。");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：避障换向：雷达检测到近距离障碍，原地换向；当前只是记录模式，不会自己跑；真车自由移动还要完成安全确认和停止兜底，建图另看相机/雷达 readiness。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：勾选现场安全确认。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：避障换向：雷达检测到近距离障碍，原地换向；当前只是记录模式，不会自己跑；真车自由移动还要完成安全确认和停止兜底，建图另看相机/雷达 readiness。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("现场安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("未满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达监看");
@@ -4282,7 +4282,7 @@ describe("App", () => {
     expect(readiness.text()).toContain("雷达监看");
     expect(readiness.text()).toContain("可降级");
     expect(readiness.text()).not.toContain("还差：雷达待刷新");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
@@ -4437,7 +4437,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出、雷达状态源不一致；仍可在安全确认后低速自由移动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图下一步：勾选现场安全确认。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -5036,9 +5036,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录并低速移动");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toContain("当前只做自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：先启动地图记录；当前不会发车。");
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");

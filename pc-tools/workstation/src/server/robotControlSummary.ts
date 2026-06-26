@@ -3426,7 +3426,7 @@ function freeRoamRuntimeGatesFromReadbacks(
     next_action: cmdVelPublishEnabled
       ? "PC 继续只读监看地图、雷达和停止兜底，不在 summary 中直接发车"
       : startFallbackReady
-        ? "勾选现场安全确认后点击开始自动扫图（低速）"
+        ? "勾选现场安全确认后点击开始自由移动（低速）"
         : "先确认上车端停止兜底和自动扫图 runtime",
   });
   return gateRows.length > 0 ? gateRows : null;
@@ -3522,7 +3522,7 @@ function lockedBoundary(
     free_roam_autonomy_label: freeRoamReady
       ? "自动扫图"
       : freeRoamStartReady
-        ? "自动扫图（勾确认后可启动）"
+        ? "自由移动（勾确认后可启动）"
         : "自动扫图（未开放）",
     free_roam_autonomy_policy: {
       // 自动扫图不是 PC 端无限发点动；必须先有上车端避障、watchdog 和真车验证证据。

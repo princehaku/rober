@@ -3166,6 +3166,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const autonomyStartReady = boundary?.free_roam_autonomy_start_ready === true || autonomyRunningUnlocked;
   const autonomyLocked = !autonomyStartReady;
   const autonomyReady = autonomyStartReady;
+  const mappingQualityReady = plainFreeRoamMappingQualityReady.value;
+  const motionModeName = mappingQualityReady ? "自动扫图" : "自由移动";
+  const motionStartButtonText = mappingQualityReady ? "开始自动扫图（低速）" : "开始自由移动（低速）";
   const hasRuntimeGateRows = Boolean(boundary?.free_roam_autonomy_gates?.length);
   const manualFallbackHint = "自动扫图未开放；当前用人工按住扫图：开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图。";
   const blockers: string[] = [];
@@ -3267,7 +3270,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const runtimeModeText = (() => {
     // runtime state 来自上车端 artifact；这里只做翻译，不把任何状态外推成 PC 自动发车。
     if (!runtime || runtime.status !== "loaded") {
-      return "自动扫图状态：未读取上车端 runtime，当前只能人工按住扫图。";
+      return `${motionModeName}状态：未读取上车端 runtime，当前只能人工按住扫图。`;
     }
     const motionBoundary = autonomyStartReady && !runtime.cmd_vel_publish_enabled
       ? "启动条件已满足；当前尚未启动，所以仍是记录模式；点击开始后由上车端打开运动双锁，建图 readiness 单独显示。"
@@ -3287,28 +3290,28 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     };
     const stateText = stateLabels[runtime.state] ?? runtime.state;
     const stopText = runtime.stop_required ? "，要求停止兜底" : "";
-    return `自动扫图状态：${stateText}${runtimeReason}${stopText}；${motionBoundary}`;
+    return `${motionModeName}状态：${stateText}${runtimeReason}${stopText}；${motionBoundary}`;
   })();
   const nextActionText = (() => {
     // 自动扫图按钮有时只是流程向导；单独写出下一手动作，避免把“未开放”误读成会自己跑。
     if (!robotApiBaseUrl.value.trim()) {
-      return "自动扫图下一步：连接默认小车。";
+      return `${motionModeName}下一步：连接默认小车。`;
     }
     if (!plainManualSafetyConfirmed.value) {
-      return "自动扫图下一步：勾选现场安全确认。";
+      return `${motionModeName}下一步：勾选现场安全确认。`;
     }
     if (!mapRuntimeStarted.value) {
-      return "自动扫图下一步：点击开始自动扫图（低速）；当前只做自由移动，不作为可验收建图。";
+      return `${motionModeName}下一步：先启动地图记录；当前不会发车。`;
     }
     if (freeRoamMapWysiwygPending.value) {
-      return "自动扫图下一步：等待扫图画面刷新。";
+      return `${motionModeName}下一步：等待扫图画面刷新。`;
     }
     if (!canSendStop.value) {
-      return "自动扫图下一步：补齐停止兜底。";
+      return `${motionModeName}下一步：补齐停止兜底。`;
     }
     return autonomyReady && blockers.length === 0
-      ? "自动扫图下一步：点击开始自动扫图（低速）。"
-      : "自动扫图下一步：先用人工按住扫图完成本轮地图。";
+      ? `${motionModeName}下一步：点击${motionStartButtonText}。`
+      : `${motionModeName}下一步：先用人工按住扫图完成本轮地图。`;
   })();
   const contractGateRows = boundary?.free_roam_autonomy_gates?.length
     ? boundary.free_roam_autonomy_gates.map((gate) => ({
@@ -3331,7 +3334,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       ? "启动中"
       : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
       : autonomyReady && blockers.length ? plainFreeRoamAutonomyGuideButtonLabel.value
-      : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : "开始自动扫图（低速）",
+      : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : motionStartButtonText,
     // ready 后才走固定上车状态机 start；未 ready 时按钮仍只做流程定位。
     disabled: autonomyReady ? (freeRoamAutonomyPending.value || freeRoamMapWysiwygPending.value) : false,
     hint: autonomyLocked
@@ -3347,8 +3350,8 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       : blockers.length
         ? `还差：${blockers.slice(0, 3).join("、")}。`
       : autonomyRunningUnlocked
-        ? "上车端自动扫图已就绪并已解锁；PC 继续监看地图、雷达和停止兜底。"
-        : `上车端自动扫图已就绪；点击后只启动上车状态机，PC 继续负责地图、画面、雷达所见即所得监看和停止兜底。${mapPreviewWarning}`,
+        ? `上车端${motionModeName}已就绪并已解锁；PC 继续监看地图、雷达和停止兜底。`
+        : `上车端${motionModeName}已就绪；点击后只启动上车状态机，PC 继续负责地图、画面、雷达所见即所得监看和停止兜底。${mapPreviewWarning}`,
     nextActionText,
     blockers: blockers.slice(0, 4),
     gateRows: contractGateRows,
