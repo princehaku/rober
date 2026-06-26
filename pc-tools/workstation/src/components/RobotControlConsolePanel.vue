@@ -249,6 +249,7 @@ const plainWheelRecordPanel = ref<HTMLElement | null>(null);
 const plainMotionRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainFirstJogRestoreButton = ref<HTMLButtonElement | null>(null);
 const plainWheelTrialButton = ref<HTMLButtonElement | null>(null);
+const plainWheelReadbackButton = ref<HTMLButtonElement | null>(null);
 const plainWheelZeroCheckButton = ref<HTMLButtonElement | null>(null);
 const plainWheelSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
@@ -3839,6 +3840,10 @@ const currentWheelReadback = computed(() => {
     right: sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded",
   };
 });
+const currentWheelReadbackLoaded = computed(() => {
+  const { left, right } = currentWheelReadback.value;
+  return left !== "not_loaded" && right !== "not_loaded";
+});
 
 const wheelClosureEvidence = computed(() => {
   // 轮速收口必须写清证据来源，避免把历史材料、静态 T1001 读回和本轮 during-motion proof 混成一句“已完成”。
@@ -3874,7 +3879,7 @@ const wheelClosureEvidence = computed(() => {
   }
   const { left, right } = currentWheelReadback.value;
   const frameCount = sampleValues?.t1001_observed_count ?? robotSummary.value?.readback_summary.base.latest_t1001_observed_count ?? "not_loaded";
-  if (left !== "not_loaded" && right !== "not_loaded") {
+  if (currentWheelReadbackLoaded.value) {
     const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
     return {
       ready: false,
@@ -3960,6 +3965,9 @@ const plainWheelGoalProgressHint = computed(() => {
   if (firstJogMaterialRestoreReady.value) {
     return "先点恢复试动确认，再试动读取轮速。";
   }
+  if (canRunBaseFeedbackSamples.value) {
+    return "还没读到当前 L/R；先刷新当前轮速（只读），再低速试动读取非零。";
+  }
   return "等待运动窗口读到非零 L/R。";
 });
 
@@ -3979,6 +3987,9 @@ const plainWheelGoalNextAction = computed(() => {
   }
   if (firstJogMaterialRestoreBlocksMotion.value) {
     return "下一步：恢复试动确认。";
+  }
+  if (!currentWheelReadbackLoaded.value && canRunBaseFeedbackSamples.value) {
+    return "下一步：刷新当前轮速（只读）。";
   }
   if (canSendPlainFirstJog.value) {
     return "下一步：试动读取轮速。";
@@ -6954,6 +6965,9 @@ function plainWheelGoalTarget(): HTMLElement | null {
   if (plainWheelZeroBlockerChecked.value) {
     return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
   }
+  if (!currentWheelReadbackLoaded.value && canRunBaseFeedbackSamples.value) {
+    return enabledButton(plainWheelReadbackButton.value) ?? plainWheelRecordPanel.value;
+  }
   if (canSendPlainFirstJog.value) {
     return enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
   }
@@ -8894,7 +8908,7 @@ onBeforeUnmount(() => {
               <button ref="plainWheelTrialButton" type="button" class="secondary compact-stop" :disabled="plainWheelTrialDisabled" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
                 {{ plainWheelTrialButtonLabel }}
               </button>
-              <button type="button" class="secondary compact-stop" :disabled="loading || !canRunBaseFeedbackSamples" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
+              <button ref="plainWheelReadbackButton" type="button" class="secondary compact-stop" :disabled="loading || !canRunBaseFeedbackSamples" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
                 {{ plainWheelReadbackButtonLabel }}
               </button>
               <button v-if="plainWheelZeroBlockerActive" ref="plainWheelZeroCheckButton" type="button" class="secondary compact-stop" data-testid="plain-wheel-zero-check" @click="markPlainWheelZeroBlockerChecked">

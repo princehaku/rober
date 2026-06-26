@@ -8835,6 +8835,89 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("guides the wheel goal to readonly L/R refresh before trial when summary has no wheel readback", async () => {
+    // live summary 可能还没带当前 L/R；先用固定只读 samples 读出 0/0，再引导低速试动，不直接发车。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    summaryFixture.first_jog_readiness_summary.status = "ready_for_first_jog";
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "not_loaded";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "not_loaded";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "not_loaded";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "not_loaded";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "not_loaded";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/feedback-samples": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+        proxy_status: "samples_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/feedback-samples",
+        remote_http_status: 200,
+        status: "loaded",
+        requested_sample_count: 3,
+        sample_interval_s: 0.08,
+        read_timeout_s: 0.8,
+        read_window_s: 1.0,
+        sample_key_values: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          requested_sample_count: "3",
+          completed_sample_count: "3",
+          t1001_observed_count: "3",
+          all_samples_observed_t1001: "true",
+          partial_samples_observed_t1001: "false",
+          feedback_ack_t1001_observed: "true",
+          wheel_feedback_lr_nonzero_proven: "false",
+          wheel_feedback_nonzero_observed: "false",
+          wheel_feedback_nonzero_frame_count: "0",
+          wheel_feedback_latest_left_speed: "0",
+          wheel_feedback_latest_right_speed: "0",
+          wheel_feedback_source: "vendor_t1001_L_R",
+          observed_feedback_types: "[1001]",
+          sends_motion_commands: "false",
+          robot_control_executed: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        sends_motion_commands: false,
+        robot_control_executed: false,
+      },
+      "/api/robot-control/base/first-jog": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/base/manual": { proxy_status: "should_not_be_called" },
+    });
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：刷新当前轮速（只读）。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还没读到当前 L/R；先刷新当前轮速（只读），再低速试动读取非零。");
+    const callsBeforeFocus = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFocus);
+
+    await wrapper.find('[data-testid="plain-wheel-readback-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("已读到底盘反馈，但当前轮速是 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：试动读取轮速。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，下一步：低速试动读取非零 L/R。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("restores first-jog material from existing visual refs without sending motion", async () => {
     // 送达草稿可能覆盖 latest report；恢复按钮只补 first-jog 前置材料，不触发试动。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
@@ -8984,8 +9067,9 @@ describe("App", () => {
     expect(firstJogButtonAfterRestore?.attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读非零 L/R");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').attributes("disabled")).toBeUndefined();
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').element);
     expect(visiblePlainHomeText(wrapper)).not.toContain("试动按钮已锁定");
     expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeRestore);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
