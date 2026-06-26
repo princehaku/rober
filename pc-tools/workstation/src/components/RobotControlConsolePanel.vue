@@ -1142,7 +1142,12 @@ function radarScanPointToMapPercent(point: RobotApiScanPreviewPoint, pose: { x: 
   return percent ? { ...percent, transformApplied: basePoint.transformApplied } : null;
 }
 
-function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
+function radarStateUsesPendingPoints(radarState: string): boolean {
+  // 雷达 lifecycle 正在或已启动但 proof 未 fresh 时，地图点只能当待刷新材料，不能叫实时点。
+  return radarState === "雷达待刷新" || radarState === "刷新中" || radarState === "雷达启动中";
+}
+
+function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>, radarState = "") {
   // 没有 map-frame 位姿时不把雷达点强行落到地图坐标，只返回待定位提示。
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
@@ -1168,9 +1173,12 @@ function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOver
     .filter((point): point is { key: string; left: number; top: number } => point !== null);
   const transformedCount = points.filter((point) => ["laser", "laser_frame"].includes(point.frame_id || "")).length;
   const transformLabel = transform && transformedCount > 0 ? "，已套用雷达外参" : "";
+  const prefix = radarStateUsesPendingPoints(radarState)
+    ? "待刷新雷达点"
+    : radarState === "雷达已运行" || !radarState ? "雷达点" : "最近雷达点";
   return {
     dots,
-    label: dots.length > 0 ? `雷达点 ${dots.length} 个${transformLabel}` : "雷达点位未读取",
+    label: dots.length > 0 ? `${prefix} ${dots.length} 个${transformLabel}` : "雷达点位未读取",
   };
 }
 
@@ -1195,10 +1203,11 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
   }));
   const transformedCount = localPoints.filter((point) => point.transformApplied).length;
   const transformLabel = transform && transformedCount > 0 ? "，已套用雷达外参" : "";
-  const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
-  const state = liveRadar || !radarState ? "实时局部点" : "最近局部点";
-  const statusLabel = liveRadar || !radarState ? "" : `，${radarState}`;
-  const prefix = liveRadar || !radarState ? "雷达局部点" : "最近雷达局部点";
+  const freshRadar = radarState === "雷达已运行" || !radarState;
+  const pendingRadar = radarStateUsesPendingPoints(radarState);
+  const state = freshRadar ? "实时局部点" : pendingRadar ? "待刷新局部点" : "最近局部点";
+  const statusLabel = freshRadar ? "" : `，${radarState}`;
+  const prefix = freshRadar ? "雷达局部点" : pendingRadar ? "待刷新雷达局部点" : "最近雷达局部点";
   return {
     dots,
     label: `${prefix} ${dots.length} 个${transformLabel}${statusLabel}，等待地图位置`,
@@ -1444,7 +1453,10 @@ function plainMapCoordinateTruthLabel(
 ): string {
   // 所见即所得的核心是把“贴在地图坐标”和“只显示局部轮廓”说清楚，避免误把局部雷达当地图定位。
   if (poseObserved) {
-    const scanText = radarScanOverlay.dots.length > 0 ? `雷达点 ${radarScanOverlay.dots.length} 个已贴到地图` : "雷达点未贴图";
+    const scanPrefix = radarStateUsesPendingPoints(radarState)
+      ? "待刷新雷达点"
+      : radarState === "雷达已运行" ? "雷达点" : "最近雷达点";
+    const scanText = radarScanOverlay.dots.length > 0 ? `${scanPrefix} ${radarScanOverlay.dots.length} 个已贴到地图` : "雷达点未贴图";
     const routeText = routePath ? `${routePath.coordinateLabel}已贴到地图` : "路线未显示";
     return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
   }
@@ -1493,6 +1505,9 @@ function plainRadarFreshnessLabel(
   if (radarState === "雷达待刷新" || radarState === "刷新中") {
     if (radarState === "刷新中" && radarStartSucceeded(radarLifecycleResult.value)) {
       return "雷达点口径：雷达启动已返回，正在刷新新点位。";
+    }
+    if (poseObserved && mapPointCount > 0) {
+      return `雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 ${mapPointCount} 个。`;
     }
     return localPointCount > 0
       ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
@@ -1889,7 +1904,7 @@ const plainMapVisualSummary = computed(() => {
     : radarNeedsMapPose
       ? "pose-missing"
       : "stopped";
-  const radarScanOverlay = latestRadarScanOverlay(robotPose);
+  const radarScanOverlay = latestRadarScanOverlay(robotPose, radarState);
   const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose, radarState);
   const radarLocalPointCount = radarLocalScanOverlay.dots.length;
   const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;

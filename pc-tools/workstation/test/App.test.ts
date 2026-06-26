@@ -5526,6 +5526,62 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
+  it("marks mapped radar points as pending when lifecycle is running but proof is not fresh", async () => {
+    // live 上位机可能有 map-frame 位姿和 scan 点，但 latest proof 不完整；地图不能把这些点叫实时雷达点。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.amcl_pose_observed = true;
+    summaryFixture.o3_proof_summary.localization_tf_observed = true;
+    summaryFixture.o3_proof_summary.robot_pose = {
+      x: 0.5,
+      y: 0.5,
+      yaw: 0,
+      frame_id: "map",
+      source: "/amcl_pose",
+    };
+    summaryFixture.o3_proof_summary.scan_preview_points = [
+      { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser", source_index: 0 },
+      { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser", source_index: 1 },
+      { x_m: -0.1, y_m: 0, range_m: 0.1, angle_rad: 3.1416, frame_id: "laser", source_index: 2 },
+    ];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = 3;
+    summaryFixture.o3_proof_summary.scan_preview_frame_id = "laser";
+    summaryFixture.o3_proof_summary.frame_transforms.base_link_to_laser_frame = {
+      parent_frame_id: "base_link",
+      child_frame_id: "laser_frame",
+      x: 0.1,
+      y: 0,
+      yaw: 0,
+      source: "localize_proof_latest.base_link_to_laser_frame_transform",
+    };
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新");
+    const scanPoints = wrapper.find('[data-testid="plain-map-radar-scan-points"]');
+    expect(scanPoints.exists()).toBe(true);
+    expect(scanPoints.attributes("aria-label")).toBe("雷达点位，待刷新雷达点 3 个，已套用雷达外参");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("待刷新雷达点 3 个，已套用雷达外参");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 3 个。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，待刷新雷达点 3 个已贴到地图，路线未显示。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows localization reset failure on the plain map pose marker", async () => {
     // 重新定位失败必须贴在地图缺位标记上，避免普通用户只看到泛化的“位置未读到”。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

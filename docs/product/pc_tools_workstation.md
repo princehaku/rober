@@ -2453,6 +2453,12 @@ stop 或 `/cmd_vel`。
 lidar readback，不自动启动/停止雷达、不刷新 proof、不发送 manual、keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`，
 也不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
 
+2026-06-26 22:10 起，如果真实上位机显示 LiDAR lifecycle 已 running，但 latest scan proof 仍是 stale/incomplete 或
+`continuous_window_observed=false`，即使 map-frame 位姿和 scan 点都已读到，普通首屏地图也会把贴图点写成
+`待刷新雷达点 N 个`，freshness 写成 `正在确认实时性，当前地图上显示待刷新雷达点 N 个`。这样雷达卡片、地图点位和坐标口径
+不会把待刷新 artifact 误说成实时雷达点。该状态只消费只读 summary/readback，不自动刷新 proof、不启动雷达、不发送
+manual、keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
+
 2026-06-26 03:06 起，普通首屏点击 `重新定位` 后，如果固定 localization reset 代理返回失败，地图上的位置缺位 marker
 会从泛化 `位置未读到` 改为 `定位失败：<failure_reason>`，并在可访问说明里写明“小车位置未读到”。移动卡片仍显示同一失败
 短原因，完整 blocked reasons 留在高级诊断。该反馈只消费固定 `/api/robot-control/localize/reset` 响应，不自动重试、
