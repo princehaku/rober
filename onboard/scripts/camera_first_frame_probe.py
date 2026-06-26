@@ -378,6 +378,8 @@ def probe_device(args: argparse.Namespace) -> dict[str, Any]:
                 }
             )
             if getattr(args, "include_backend_smoke", False):
+                # 后端矩阵需要独占打开 V4L2；先释放 OpenCV，避免把自己制造的 busy 当作硬件根因。
+                capture.release()
                 payload["backend_smoke"] = backend_smoke_probe(args)
             return payload
 

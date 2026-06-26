@@ -846,3 +846,18 @@ manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
 - 普通首屏在首帧失败时会区分“相机被进程占用”和“没人占用但底层无帧”。后者说明问题更接近 USB/输入/供电/采集卡，而不是页面独占。
 
 本轮仍不把 `source_usage=not_in_use` 当作图传可用；真实可见画面仍必须由 WebRTC/MJPEG 像素绘制或 first-frame 样张证明。
+
+## 2026-06-26 20:30 backend smoke release-before-probe
+
+`camera_first_frame_probe.py --include-backend-smoke` 现在会在 OpenCV 首帧失败后先释放 `VideoCapture`，
+再运行 `v4l2-ctl` / `ffmpeg` 后端矩阵。这样后端矩阵看到的 `Device busy` 不再来自探针自身残留的 OpenCV 句柄，
+更适合判断问题到底在 OpenCV、V4L2、采集卡输入还是硬件链路。
+
+真实上位机 `root@192.168.1.11:37878` 复测结果：
+
+- OpenCV 可打开 `/dev/video1`，但 `read_ok=false`，`failure_reason=capture_read_call_timeout`。
+- 释放 OpenCV 后，`v4l2_mjpg_mmap`、`v4l2_yuyv_mmap`、`ffmpeg_mjpg`、`ffmpeg_yuyv` 均按超时结构化返回，
+  `frame_observed=false`，不再被探针自身占用误报为 busy。
+- camera service 已恢复运行，Robot API 仍保持 `safe_to_control=false`、`primary_actions_enabled=false`。
+
+该证据把当前相机问题进一步收敛到“设备可枚举但实际无帧输出/输入链路异常”，不能通过 PC 侧共享预览代码绕过。

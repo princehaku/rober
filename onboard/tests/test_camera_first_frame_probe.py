@@ -135,7 +135,11 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
         backend_result = {"executed": True, "status": "backend_no_frame_observed", "frame_observed": False}
 
         with mock.patch.object(probe, "import_cv2", return_value=fake_cv2):
-            with mock.patch.object(probe, "backend_smoke_probe", return_value=backend_result) as backend_mock:
+            def backend_after_release(_args: object) -> dict[str, object]:
+                self.assertTrue(capture.released)
+                return backend_result
+
+            with mock.patch.object(probe, "backend_smoke_probe", side_effect=backend_after_release) as backend_mock:
                 result = probe.probe_device(self.make_args(fourcc="MJPG", include_backend_smoke=True))
 
         self.assertEqual("first_frame_timeout", result["status"])
