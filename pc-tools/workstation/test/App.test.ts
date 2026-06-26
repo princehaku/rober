@@ -6359,9 +6359,15 @@ describe("App", () => {
     expect(pendingGoal.text()).toBe("行程中");
     expect(pendingGoal.attributes("data-state")).toBe("执行中");
     expect(pendingGoal.attributes("aria-label")).toBe("正在执行图上路线，目标地图坐标 x=0.80, y=0.00");
+    const pendingRoute = wrapper.find('[data-testid="plain-map-route-path"]');
+    expect(pendingRoute.attributes("data-state")).toBe("执行中");
+    expect(pendingRoute.attributes("aria-label")).toBe("正在执行图上路线 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("图上路线执行中 3/15 个点");
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.attributes("data-state")).toBe("执行中");
-    expect(readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8")).toContain('.plain-trip-run[data-state="执行中"]');
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-trip-run[data-state="执行中"]');
+    expect(workstationStyles).toContain('.plain-map-route-path[data-state="执行中"] polyline');
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在执行图上路线（目标 x=0.80, y=0.00；路线 3/15 个点）");
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
@@ -6396,7 +6402,6 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("行程停止中");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("停止中");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toBe("正在发送行程停止请求，目标地图坐标 x=0.80, y=0.00");
-    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-map-route-goal-marker[data-state="停止中"]');
     expect(workstationStyles).toContain('.plain-map-route-goal-marker[data-state="停止已发送"]');
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在发送行程停止请求（目标 x=0.80, y=0.00；路线 3/15 个点）");

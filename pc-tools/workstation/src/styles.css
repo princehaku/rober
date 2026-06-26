@@ -707,6 +707,13 @@ h3 {
   filter: drop-shadow(0 1px 3px rgba(10, 35, 77, 0.42));
 }
 
+.plain-map-route-path[data-state="执行中"] polyline {
+  stroke: #1f8a50;
+  stroke-width: 2.4;
+  stroke-dasharray: 8 2;
+  filter: drop-shadow(0 1px 3px rgba(23, 96, 57, 0.44));
+}
+
 .plain-map-route-path[data-state="最近路线"] polyline {
   stroke: #b28a12;
   stroke-dasharray: 4 3;
