@@ -1794,7 +1794,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
       : { label: `已停待刷新${stopLabelSuffix}`, state: "stopped_needs_refresh", style, aria: `扫图已停止${stopAriaSuffix}，需要刷新地图画面${locatedSuffix}` };
   }
   if (mapRuntimeStarted.value && keyboardControlArmed.value && canUseKeyboardControl.value) {
-    return { label: "键盘已启用", state: "armed", style, aria: `键盘扫图已启用，按住方向键才会移动${locatedSuffix}` };
+    return { label: "键盘已启用（按住才动）", state: "armed", style, aria: `键盘扫图已启用，按住方向键才会移动${locatedSuffix}` };
   }
   if (mapRuntimeStarted.value) {
     return { label: "地图记录中", state: "recording", style, aria: `地图记录已启动，等待扫图移动${locatedSuffix}` };
@@ -2204,7 +2204,7 @@ const plainFreeRoamKeyboardLabel = computed(() => {
     return "先开始记录";
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-    return "键盘已启用";
+    return "键盘已启用（按住才动）";
   }
   return canArmKeyboardControl.value ? "启用键盘扫图" : "键盘条件未满足";
 });

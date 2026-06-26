@@ -2117,7 +2117,7 @@ manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 `未按键` 后仍能确认刚才哪一个方向完成了停止收口。该状态只读本地键盘状态机，不改变 manual pulse、stop、Nav2、
 delivery complete 或 `/cmd_vel` 行为。
 
-2026-06-25 22:58 起，普通首屏地图会把扫地式建图流程状态直接叠成 `地图记录中`、`键盘已启用`、`扫图移动中`、
+2026-06-25 22:58 起，普通首屏地图会把扫地式建图流程状态直接叠成 `地图记录中`、`键盘已启用（按住才动）`、`扫图移动中`、
 `已停止，可保存`、`地图保存中` 等 marker。它和既有 `扫图方向：前进` marker 分工：流程 marker 说明这张地图现在
 处于记录、移动、停止、保存哪个阶段，方向 marker 只在按住方向键时说明当前移动方向。缺 map-frame 机器人位置时 marker
 固定在地图角落并声明“不代表坐标”。该状态只消费本机 map lifecycle、map preview 和键盘状态机，不改变 map start/save、
@@ -2186,6 +2186,8 @@ delivery、stop 或 `/cmd_vel`，不修改 Clash 或系统代理配置，PC 工�
 2026-06-25 23:25 起，普通首屏 `扫地式建图` 在 `开始扫地式建图` 成功返回地图记录已启动后，会自动进入
 `键盘已启用` 状态。该自动启用只设置 PC 全局键盘窗口和焦点，不发送方向脉冲、不调用 `base/manual`、Nav2、
 delivery、stop 或 `/cmd_vel`；真正移动仍必须 operator 按住 W/A/S/D、方向键或屏幕方向键。
+2026-06-26 17:45 起，上述自由扫图键盘启用态在按钮和地图 marker 上统一显示为 `键盘已启用（按住才动）`。
+这只改变普通首屏 WYSIWYG 文案，不改变键盘 armed、连续 pulse、release stop、manual gate 或任何后端控制接口。
 
 2026-06-25 23:29 起，普通首屏点击 `准备行程（不发车）` 后，PC 会在 Nav2 no-motion proof 刷新完成后自动刷新
 地图画面。只要 summary 读到当前 `path_preview_points`，地图会直接显示路线 polyline、起点/终点和 `路线已显示 N/M 个点`，
