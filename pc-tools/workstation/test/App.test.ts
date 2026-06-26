@@ -15929,12 +15929,16 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    const mjpegPreview = wrapper.find('[data-testid="robot-camera-mjpeg-preview"]');
+    expect(mjpegPreview.exists()).toBe(true);
+    expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。 采集尝试：MJPG 无首帧；YUYV 无首帧；default 无首帧。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_proxy_failed");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });

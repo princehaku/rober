@@ -878,11 +878,24 @@ const cameraReadyForSharedPreview = computed(() => {
   const sourceFailure = cameraSourceFirstFrameFailed(camera);
   return Boolean(camera?.status === "ready" && camera?.video_source && !sourceFailure);
 });
+const cameraCanAttemptSharedMjpegPreview = computed(() => {
+  // MJPEG relay 是只读共享流；即使首帧探针失败，也应该让新页面尝试接入并展示真实失败或真实画面。
+  const camera = robotSummary.value?.readback_summary.camera;
+  const hasSelectedSource = Boolean(camera?.video_source || camera?.selected_path);
+  const deviceKnown = camera?.devices_status === "loaded" || camera?.selected_is_uvc_or_usb === "true";
+  const sourceOpenedButNoFrame = camera?.status === "source_first_frame_failed"
+    && camera?.source_usage_status !== "in_use_by_other_process";
+  return Boolean(
+    robotApiBaseUrl.value.trim()
+    && hasSelectedSource
+    && (camera?.status === "ready" || deviceKnown || sourceOpenedButNoFrame),
+  );
+});
 const cameraMjpegPreviewUrl = computed(() => (
-  cameraReadyForSharedPreview.value ? robotControlCameraMjpegUrl(robotApiBaseUrl.value) : ""
+  cameraCanAttemptSharedMjpegPreview.value ? robotControlCameraMjpegUrl(robotApiBaseUrl.value) : ""
 ));
 const cameraMjpegFallbackVisible = computed(() => (
-  cameraReadyForSharedPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
+  cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
 ));
 const cameraMjpegFrameObserved = computed(() => cameraMjpegFallbackVisible.value && mjpegPreviewLoaded.value && !mjpegPreviewFailed.value);
 const cameraReadbackFirstFrameObserved = computed(() => {
