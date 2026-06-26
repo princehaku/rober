@@ -3468,16 +3468,16 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').attributes("data-state")).toBe("未满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图准备");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达避障");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达监看");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图未开放；当前用人工按住扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图真车验证未完成");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：勾选现场安全确认。");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：避障换向：雷达检测到近距离障碍，原地换向；当前只是记录模式，不会自己跑；真车自动扫图还要完成安全确认、地图记录、雷达和停止兜底。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：避障换向：雷达检测到近距离障碍，原地换向；当前只是记录模式，不会自己跑；真车自动扫图还要完成安全确认、地图记录、相机和停止兜底。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("现场安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("未满足");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达新鲜");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("前方障碍");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达监看");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达障碍监看");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("已满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("真车低速放行");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("先勾安全确认");
@@ -4011,8 +4011,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
-  it("guides ready free-roam autonomy to refresh stale radar proof before starting", async () => {
-    // 自动扫图门禁已开放但 LiDAR proof stale 时，按钮只能引导刷新雷达，不能偷偷 start 或发运动。
+  it("starts ready free-roam autonomy even when radar proof is stale", async () => {
+    // 雷达 freshness 只是监看证据；自动扫图门禁已开放时，按钮仍只能走固定 start 代理，不能发 PC 侧运动。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
@@ -4074,9 +4074,11 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
-    expect(readiness.attributes("data-state")).toBe("待处理");
-    expect(readiness.text()).toContain("还差：雷达待刷新");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("刷新雷达后开始");
+    expect(readiness.attributes("data-state")).toBe("已就绪");
+    expect(readiness.text()).toContain("雷达监看");
+    expect(readiness.text()).toContain("可降级");
+    expect(readiness.text()).not.toContain("还差：雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
@@ -4087,13 +4089,13 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
+    const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
+    const startCall = newCalls.find(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"));
+    expect(startCall).toBeDefined();
+    expect(focusSpy.mock.contexts).not.toContain(wrapper.find('[data-testid="plain-radar-refresh"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
-    ).length).toBe(radarRefreshCallsBeforeClick);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    ).length).toBe(radarRefreshCallsBeforeClick + 1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -12406,7 +12408,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达监看");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("还差：雷达待刷新");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("雷达未保持运行");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);

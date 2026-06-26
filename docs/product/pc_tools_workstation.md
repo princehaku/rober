@@ -2337,19 +2337,20 @@ delivery complete、manual、keyboard pulse、stop 或 `/cmd_vel`。
 `/api/free-roam/autonomy/start`、manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel` 调用。
 
 2026-06-25 23:52 起，普通首屏 `自动扫图` 按钮在上车端 readiness 已就绪、现场安全确认已勾选、地图记录已启动、
-地图画面已刷新且雷达运行时，会调用固定 PC 代理 `/api/robot-control/free-roam/autonomy/start`。该代理只转发两个
-确认布尔值到上位机固定 `/api/free-roam/autonomy/start`。2026-06-27 15:10 起，上位机 start 会先同步确认相机 health ready
-与雷达 lifecycle running + 最新 scan proof fresh；只有二者都 ready 时，才设置 `free_roam_autonomy_node` 状态机参数，
+地图画面已刷新且相机 ready 时，会调用固定 PC 代理 `/api/robot-control/free-roam/autonomy/start`。该代理只转发两个
+确认布尔值到上位机固定 `/api/free-roam/autonomy/start`。2026-06-26 22:05 起，上位机 start 会先同步确认相机 health ready；
+雷达 lifecycle running + 最新 scan proof fresh 只作为监看/降级证据回传，不再作为发车硬门禁。相机 ready 时即设置 `free_roam_autonomy_node` 状态机参数，
 并写入 `motion_hil_unlocked=true` 与 `enable_cmd_vel_publish=true`。`cmd_vel_topic` 仍不允许由 PC 或浏览器改写。
 `停止自动扫图` 调用固定 stop 代理，stop 会写回 `enable_cmd_vel_publish=false` 与 `motion_hil_unlocked=false`，
 再请求状态机停止；红色底盘停止仍保留为独立兜底。
 
-2026-06-27 15:10 起，PC 普通首屏把 camera readiness 也纳入自动扫图按钮门禁：上车 `/api/status` 中 camera health 未 ready、
-采集源失败或雷达未 fresh 时，按钮显示 `检查摄像头后开始` / `刷新雷达后开始`，点击只做引导，不调用 start。
-该 gate 不影响键盘连续手控；键盘手控继续只依赖默认小车连接、现场安全确认、按住才动和停止兜底，不把雷达作为前置。
+2026-06-26 22:05 起，PC 普通首屏把 camera readiness 纳入自动扫图按钮门禁：上车 `/api/status` 中 camera health 未 ready
+或采集源失败时，按钮显示 `检查摄像头后开始` / `打开画面后开始`，点击只做引导，不调用 start。雷达未 fresh 时仍显示
+`雷达监看 / 可降级`，但不阻止固定 start 代理。该 gate 不影响键盘连续手控；键盘手控继续只依赖默认小车连接、现场安全确认、
+按住才动和停止兜底，不把雷达作为前置。
 
 2026-06-27 16:25 起，Robot Control summary 新增 `safe_command_boundary.free_roam_autonomy_start_ready`，用于表达
-“上车端 stop 兜底 + 实时雷达已经满足，可以发起 start 请求”。它不同于 `free_roam_autonomy=ready`：
+“上车端 stop 兜底 + 自动扫图基础门禁已经满足，可以发起 start 请求”。它不同于 `free_roam_autonomy=ready`：
 后者仍表示 runtime 已经 `cmd_vel_publish_enabled=true` 并进入运动发布解锁状态。普通首屏启动按钮改用
 `free_roam_autonomy_start_ready` 叠加本地安全确认、地图记录、地图画面刷新、摄像头 ready 和停止兜底，避免 start 按钮
 被 `cmd_vel_publish_enabled=false` 永久锁住。点击后仍只走固定 `/api/robot-control/free-roam/autonomy/start`，不由浏览器或 Node 直接发布 `/cmd_vel`。

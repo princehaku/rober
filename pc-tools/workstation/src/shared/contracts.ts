@@ -2606,6 +2606,8 @@ export interface RobotControlFreeRoamAutonomyRequest {
 export interface RobotControlFreeRoamAutonomySensorReadiness {
   ready?: boolean;
   missing?: string[];
+  motion_without_radar_allowed?: boolean;
+  degraded_without_radar?: boolean;
   camera?: Record<string, unknown>;
   radar?: Record<string, unknown>;
 }

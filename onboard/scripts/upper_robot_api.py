@@ -56,6 +56,8 @@ DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecyc
 DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_goal_execution_latest.json"
 DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH = "/root/rober/onboard/runtime/delivery_completion_latest.json"
 DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH = "/root/rober/onboard/runtime/free_roam_autonomy_latest.json"
+DEFAULT_ROS_SETUP_PATH = "/opt/ros/humble/setup.bash"
+DEFAULT_ONBOARD_SETUP_PATH = "/root/rober/onboard/install/setup.bash"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
 NAV2_PROOF_PROCESS_BASE_MARGIN_S = 12.0
 NAV2_PROOF_PROCESS_PATH_MARGIN_S = 8.0
@@ -1868,24 +1870,72 @@ def run_fixed_argv_command(argv: list[str], timeout_s: float = 8.0) -> dict[str,
     """执行代码内固定 argv；不经过 shell，避免 HTTP body 变成任意命令入口。"""
     if not argv:
         return {"mode": "fixed_argv", "executed": False, "ok": False, "reason": "empty_argv"}
+    resolved_argv = argv
+    ros2_setup_used = False
+    if argv[0] == "ros2":
+        # 上位机 API 常由 system/nohup 裸 python 启动，不能假设 shell 已经 source ROS2。
+        # 这里仍只执行代码内固定 argv；shlex.join 只负责把内部参数安全传给 bash -lc。
+        setup_parts = []
+        if Path(DEFAULT_ROS_SETUP_PATH).exists():
+            setup_parts.append(f"source {shlex.quote(DEFAULT_ROS_SETUP_PATH)}")
+        if Path(DEFAULT_ONBOARD_SETUP_PATH).exists():
+            setup_parts.append(f"source {shlex.quote(DEFAULT_ONBOARD_SETUP_PATH)}")
+        setup_prefix = "; ".join(setup_parts)
+        command = f"{setup_prefix}; exec {shlex.join(argv)}" if setup_prefix else f"exec {shlex.join(argv)}"
+        resolved_argv = ["bash", "-lc", command]
+        ros2_setup_used = bool(setup_prefix)
+    process: subprocess.Popen[str] | None = None
     try:
-        completed = subprocess.run(
-            argv,
-            check=False,
-            capture_output=True,
+        # ROS2 CLI 偶尔会在 graph 抖动时卡住；单独进程组便于 timeout 时整组收口。
+        process = subprocess.Popen(
+            resolved_argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout_s,
+            start_new_session=True,
         )
+        stdout, stderr = process.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired as exc:
+        if process is not None:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            stdout, stderr = process.communicate()
+        else:
+            stdout, stderr = "", ""
+        return {
+            "mode": "fixed_argv",
+            "executed": True,
+            "ok": False,
+            "argv": argv,
+            "resolved_argv": resolved_argv if resolved_argv != argv else None,
+            "ros2_setup_used": ros2_setup_used,
+            "returncode": None,
+            "stdout_preview": stdout[-1200:],
+            "stderr_preview": stderr[-1200:],
+            "error": compact_error(exc),
+        }
     except Exception as exc:  # noqa: BLE001 - ROS2 CLI 缺失或 graph 不通都要结构化返回。
-        return {"mode": "fixed_argv", "executed": False, "ok": False, "argv": argv, "error": compact_error(exc)}
+        return {
+            "mode": "fixed_argv",
+            "executed": False,
+            "ok": False,
+            "argv": argv,
+            "resolved_argv": resolved_argv if resolved_argv != argv else None,
+            "ros2_setup_used": ros2_setup_used,
+            "error": compact_error(exc),
+        }
     return {
         "mode": "fixed_argv",
         "executed": True,
-        "ok": completed.returncode == 0,
+        "ok": process.returncode == 0 if process is not None else False,
         "argv": argv,
-        "returncode": completed.returncode,
-        "stdout_preview": completed.stdout[-1200:],
-        "stderr_preview": completed.stderr[-1200:],
+        "resolved_argv": resolved_argv if resolved_argv != argv else None,
+        "ros2_setup_used": ros2_setup_used,
+        "returncode": process.returncode if process is not None else None,
+        "stdout_preview": stdout[-1200:],
+        "stderr_preview": stderr[-1200:],
     }
 
 
@@ -6292,21 +6342,23 @@ class UpperRobotApi:
         }
 
     def free_roam_motion_readiness(self) -> dict[str, Any]:
-        """自由自助移动必须等相机和雷达同时 ready；人工键盘手控不走这个门禁。"""
+        """自由自助移动不把雷达新鲜度当硬门禁；雷达只作为降级安全证据。"""
         camera = self.camera_motion_readiness()
         radar = self.radar_status()
         radar_ready = bool(radar.get("lifecycle_running")) and bool(radar.get("latest_scan_proof_fresh"))
         missing = []
         if not camera.get("ready"):
             missing.extend(camera.get("missing") if isinstance(camera.get("missing"), list) else ["camera_not_ready"])
-        if not radar_ready:
-            missing.append("radar_not_ready")
         return {
             "ready": not missing,
             "missing": list(dict.fromkeys(str(item) for item in missing)),
+            "motion_without_radar_allowed": True,
+            "degraded_without_radar": not radar_ready,
             "camera": camera,
             "radar": {
                 "ready": radar_ready,
+                "optional": True,
+                "blocking": False,
                 "lifecycle_running": bool(radar.get("lifecycle_running")),
                 "lifecycle_state": radar.get("lifecycle_state") or "not_loaded",
                 "latest_scan_proof_fresh": bool(radar.get("latest_scan_proof_fresh")),

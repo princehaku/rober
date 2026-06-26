@@ -948,8 +948,35 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertIn("motion_hil_unlocked false", flattened)
         self.assertIn("enable_cmd_vel_publish false", flattened)
 
-    def test_free_roam_start_unlocks_motion_when_camera_and_radar_ready(self) -> None:
-        """start 只有在相机和雷达 ready 后才请求 free-roam 节点发布 cmd_vel。"""
+    def test_fixed_ros2_argv_sources_ros_environment(self) -> None:
+        """裸 python 启动上位机 API 时，固定 ros2 argv 也必须先 source ROS 环境。"""
+        class FakeProcess:
+            """测试用假进程，只验证 argv 包装，不启动真实 ROS2。"""
+
+            pid = 12345
+            returncode = 0
+
+            def communicate(self, timeout=None):  # noqa: ANN001 - 模拟 Popen.communicate 签名。
+                return ("ok", "")
+
+        with mock.patch.object(upper_robot_api.Path, "exists", return_value=True):
+            with mock.patch.object(upper_robot_api.subprocess, "Popen", return_value=FakeProcess()) as popen_mock:
+                result = upper_robot_api.run_fixed_argv_command(
+                    ["ros2", "param", "set", "/free_roam_autonomy", "operator_confirmed", "true"]
+                )
+
+        popen_mock.assert_called_once()
+        resolved_argv = popen_mock.call_args.args[0]
+        self.assertEqual(["bash", "-lc"], resolved_argv[:2])
+        self.assertIn("source /opt/ros/humble/setup.bash", resolved_argv[2])
+        self.assertIn("source /root/rober/onboard/install/setup.bash", resolved_argv[2])
+        self.assertIn("exec ros2 param set /free_roam_autonomy operator_confirmed true", resolved_argv[2])
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["ros2_setup_used"])
+        self.assertEqual(result["argv"], ["ros2", "param", "set", "/free_roam_autonomy", "operator_confirmed", "true"])
+
+    def test_free_roam_start_unlocks_motion_when_camera_ready_even_if_radar_stale(self) -> None:
+        """start 只把相机作为运动硬门禁；雷达 stale 时允许低速降级自移动。"""
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
             base_port="/dev/ttyS5",
@@ -969,7 +996,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "ready": True,
             "missing": [],
             "camera": {"ready": True},
-            "radar": {"ready": True},
+            "motion_without_radar_allowed": True,
+            "degraded_without_radar": True,
+            "radar": {"ready": False, "optional": True, "blocking": False},
         }
 
         with mock.patch.object(upper_robot_api, "run_free_roam_param_sequence", return_value=command_result) as run_mock:
@@ -992,8 +1021,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["publishes_cmd_vel"])
         self.assertFalse(payload["uses_base_uart"])
 
-    def test_free_roam_start_blocks_when_motion_sensors_not_ready(self) -> None:
-        """相机或雷达不 ready 时，start 不能写任何 free-roam ROS 参数。"""
+    def test_free_roam_start_blocks_when_camera_not_ready(self) -> None:
+        """相机不 ready 时，start 不能写任何 free-roam ROS 参数。"""
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
             base_port="/dev/ttyS5",
@@ -1002,9 +1031,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         )
         readiness = {
             "ready": False,
-            "missing": ["radar_not_ready"],
-            "camera": {"ready": True},
-            "radar": {"ready": False},
+            "missing": ["camera_not_ready"],
+            "camera": {"ready": False, "missing": ["camera_not_ready"]},
+            "motion_without_radar_allowed": True,
+            "degraded_without_radar": False,
+            "radar": {"ready": True, "optional": True, "blocking": False},
         }
 
         with mock.patch.object(upper_robot_api, "run_free_roam_param_sequence") as run_mock:
@@ -1016,14 +1047,14 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         run_mock.assert_not_called()
         self.assertEqual("blocked_sensor_readiness", payload["status"])
-        self.assertEqual(["radar_not_ready"], payload["blocked_reasons"])
+        self.assertEqual(["camera_not_ready"], payload["blocked_reasons"])
         self.assertEqual(readiness, payload["sensor_readiness"])
         self.assertFalse(payload["command_result"]["executed"])
         self.assertTrue(payload["does_not_set_motion_unlock"])
         self.assertFalse(payload["publishes_cmd_vel"])
 
-    def test_free_roam_camera_motion_readiness_uses_camera_health_and_radar_status(self) -> None:
-        """readiness 摘要把 camera health 和雷达新鲜 scan 同时作为自动扫图发车门禁。"""
+    def test_free_roam_camera_motion_readiness_allows_optional_stale_radar(self) -> None:
+        """readiness 摘要保留雷达状态，但雷达 stale 不再阻止低速自移动。"""
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
             base_port="/dev/ttyS5",
@@ -1037,17 +1068,21 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "radar_status",
                 return_value={
                     "lifecycle_running": True,
-                    "latest_scan_proof_fresh": True,
+                    "latest_scan_proof_fresh": False,
                     "lifecycle_state": "running",
-                    "continuous_window_observed": True,
-                    "continuity_blocked_reasons": [],
+                    "continuous_window_observed": False,
+                    "continuity_blocked_reasons": ["latest_proof_stale"],
                 },
             ):
                 readiness = api.free_roam_motion_readiness()
 
         self.assertTrue(readiness["ready"])
         self.assertEqual([], readiness["missing"])
-        self.assertTrue(readiness["radar"]["ready"])
+        self.assertFalse(readiness["radar"]["ready"])
+        self.assertTrue(readiness["radar"]["optional"])
+        self.assertFalse(readiness["radar"]["blocking"])
+        self.assertTrue(readiness["motion_without_radar_allowed"])
+        self.assertTrue(readiness["degraded_without_radar"])
 
     def test_free_roam_stop_relocks_motion_without_confirmation(self) -> None:
         """stop 必须随时可用，并通过参数序列关闭运动发布双锁。"""

@@ -753,6 +753,7 @@ async function fetchFixedRobotPostSummary(
   if (!normalized.ok) {
     return { remote_http_status: null, payload: null, error: normalized.reason };
   }
+  const timeoutMs = endpoint.startsWith("/api/free-roam/autonomy/") ? 60000 : 8000;
   try {
     const response = await fetch(endpointUrl(normalized.normalized, endpoint), {
       method: "POST",
@@ -760,7 +761,7 @@ async function fetchFixedRobotPostSummary(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const json = await response.json().catch(() => null);
     return {
@@ -872,6 +873,8 @@ function freeRoamAutonomyProxyResponse(
       missing: Array.isArray(sensorReadiness?.missing)
         ? sensorReadiness.missing.map((item) => shortValue(item, "unknown"))
         : [],
+      motion_without_radar_allowed: sensorReadiness?.motion_without_radar_allowed === true,
+      degraded_without_radar: sensorReadiness?.degraded_without_radar === true,
       camera: asRecord(sensorReadiness?.camera) ?? {},
       radar: asRecord(sensorReadiness?.radar) ?? {},
     },

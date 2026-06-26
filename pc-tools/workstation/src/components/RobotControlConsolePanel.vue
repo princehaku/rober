@@ -2315,7 +2315,6 @@ const canStartFreeRoamAutonomy = computed(() => (
   && plainFreeRoamMapPreviewFreshForSession.value
   && !freeRoamMapWysiwygPending.value
   && plainCameraReadyForFreeRoamAutonomy.value
-  && radarSummary.value.state === "雷达已运行"
   && canSendStop.value
   && !freeRoamAutonomyPending.value
   && robotApiBaseUrl.value.trim().length > 0
@@ -2538,9 +2537,6 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
   }
   if (!plainCameraReadyForFreeRoamAutonomy.value) {
     return cameraSummary.value.state === "失败" ? "检查摄像头后开始" : "打开画面后开始";
-  }
-  if (radarSummary.value.state !== "雷达已运行") {
-    return plainRadarRequiresRefresh.value ? "刷新雷达后开始" : "启动雷达后开始";
   }
   if (!canSendStop.value) {
     return "补停止兜底";
@@ -2784,9 +2780,6 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   } else if (plainCellCount(preview, "free") <= 0) {
     blockers.push("地图还没有可通行区域");
   }
-  if (radarSummary.value.state !== "雷达已运行") {
-    blockers.push(radarSummary.value.state);
-  }
   if (!autonomyStartReady && !canUseKeyboardControl.value) {
     blockers.push("键盘低速手控条件未满足");
   }
@@ -2805,7 +2798,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     // 后端合同保留英文 token 便于测试和集成，普通首屏只显示现场可理解的中文。
     const labels: Record<string, string> = {
       onboard_watchdog: "上车端自动停止",
-      lidar_obstacle_gate: "雷达避障",
+      lidar_obstacle_gate: "雷达监看（可降级）",
       fresh_map_preview: "地图刷新",
       operator_stop_fallback: "停止兜底",
       free_roam_hil_artifact: "自动扫图真车验证",
@@ -2826,6 +2819,29 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     const text = value?.trim() || "等待上车端报告";
     return /[。！？.!?]$/.test(text) ? text : `${text}。`;
   };
+  const freeRoamGateLabel = (gate: { id: string; label?: string }): string => {
+    // 雷达状态在本轮降级为监看证据，不能再让 gate 名称暗示“必须先有雷达才会动”。
+    if (gate.id === "lidar_fresh") {
+      return "雷达监看";
+    }
+    if (gate.id === "obstacle_clear") {
+      return "雷达障碍监看";
+    }
+    return gate.label || gateLabel(gate.id);
+  };
+  const freeRoamGateState = (gate: { id: string; state: string }): string => {
+    if ((gate.id === "lidar_fresh" || gate.id === "obstacle_clear") && gate.state !== "ready") {
+      return "可降级";
+    }
+    return gateStateLabel(gate.state);
+  };
+  const freeRoamGateHint = (gate: { id: string; next_action?: string; evidence?: string }): string => {
+    const base = gateHintText(gate.next_action || gate.evidence);
+    if (gate.id === "lidar_fresh" || gate.id === "obstacle_clear") {
+      return `${base}雷达未确认时仍允许低速自移动，现场继续监看。`;
+    }
+    return base;
+  };
   const runtime = boundary?.free_roam_autonomy_runtime;
   const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
   const runtimeModeText = (() => {
@@ -2834,11 +2850,11 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       return "自动扫图状态：未读取上车端 runtime，当前只能人工按住扫图。";
     }
     const motionBoundary = runtime.artifact_only
-      ? "当前只是记录模式，不会自己跑；真车自动扫图还要完成安全确认、地图记录、雷达和停止兜底。"
+      ? "当前只是记录模式，不会自己跑；真车自动扫图还要完成安全确认、地图记录、相机和停止兜底。"
       : runtime.cmd_vel_publish_enabled
       ? "运动发布已解锁，PC 仍等待真车 HIL 记录。"
       : autonomyStartReady
-      ? "启动条件已满足；点击开始后由上车端复检相机和雷达，再打开运动双锁。"
+      ? "启动条件已满足；点击开始后由上车端复检相机，再打开运动双锁；雷达只作为可刷新监看项。"
       : "运动发布未解锁，不会自己跑。";
     const stateLabels: Record<string, string> = {
       locked: "门禁锁定",
@@ -2867,9 +2883,6 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (freeRoamMapWysiwygPending.value || !plainFreeRoamMapPreviewFreshForSession.value) {
       return "自动扫图下一步：刷新扫图画面。";
     }
-    if (radarSummary.value.state !== "雷达已运行") {
-      return plainRadarRequiresRefresh.value ? "自动扫图下一步：刷新雷达。" : "自动扫图下一步：启动雷达。";
-    }
     if (!canSendStop.value) {
       return "自动扫图下一步：补齐停止兜底。";
     }
@@ -2880,9 +2893,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const contractGateRows = boundary?.free_roam_autonomy_gates?.length
     ? boundary.free_roam_autonomy_gates.map((gate) => ({
       id: gate.id,
-      label: gate.label || gateLabel(gate.id),
-      state: gateStateLabel(gate.state),
-      hint: gateHintText(gate.next_action || gate.evidence),
+      label: freeRoamGateLabel(gate),
+      state: freeRoamGateState(gate),
+      hint: freeRoamGateHint(gate),
     }))
     : policyGates.map((gate) => ({
       id: gate,
@@ -2915,7 +2928,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
         ? `还差：${blockers.slice(0, 3).join("、")}。`
       : autonomyRunningUnlocked
         ? "上车端自动扫图已就绪并已解锁；PC 继续监看地图、雷达和停止兜底。"
-        : "上车端自动扫图已就绪；点击后只启动上车状态机，PC 继续负责地图/雷达所见即所得监看和停止兜底。",
+        : "上车端自动扫图已就绪；点击后只启动上车状态机，PC 继续负责地图、画面、雷达所见即所得监看和停止兜底。",
     nextActionText,
     blockers: blockers.slice(0, 4),
     gateRows: contractGateRows,
@@ -7415,7 +7428,7 @@ function plainFreeRoamNextTarget(): HTMLElement | null {
 }
 
 function plainFreeRoamAutonomyNextTarget(): HTMLElement | null {
-  // 自动扫图补证优先处理真车门禁证据；缺雷达新鲜证明时不能继续引导 operator 去手控。
+  // 自动扫图补证优先处理硬门禁；雷达只作为监看证据，不再抢走 start 前的焦点。
   if (!plainManualSafetyConfirmed.value) {
     return plainFreeRoamConfirmCheckbox.value;
   }
@@ -7424,9 +7437,6 @@ function plainFreeRoamAutonomyNextTarget(): HTMLElement | null {
   }
   if (freeRoamMapWysiwygPending.value || !plainFreeRoamMapPreviewFreshForSession.value) {
     return enabledButton(plainFreeRoamMapRefreshButton.value) ?? plainFreeRoamMapRefreshButton.value;
-  }
-  if (radarSummary.value.state !== "雷达已运行") {
-    return plainRadarNextTarget() ?? plainFreeRoamStartButton.value;
   }
   if (!canSendStop.value) {
     return enabledButton(keyboardControlRecheckButton.value) ?? keyboardControlPanel.value;
