@@ -1473,9 +1473,15 @@ const plainCurrentFactRows = computed(() => {
   const nav2 = summary.readback_summary.nav2;
   if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
     const baseReadbackText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true" ? "" : baseWheelNonzeroReadbackContextText();
+    const modeText = nav2.next_execution_base_command_mode
+      && nav2.next_execution_base_command_mode !== "not_loaded"
+      && nav2.goal_execution_base_command_mode !== "not_loaded"
+      && nav2.next_execution_base_command_mode !== nav2.goal_execution_base_command_mode
+      ? `；下次将用 ${nav2.next_execution_base_command_mode} 复验`
+      : "";
     const wheelText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
       ? "轮速已复验"
-      : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}`;
+      : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}${modeText}`;
     rows.push(nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
       ? `行程：路线返回成功，${wheelText}。`
       : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);

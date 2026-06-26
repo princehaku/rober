@@ -498,6 +498,7 @@ const fixtures: Record<string, unknown> = {
         goal_execution_robot_control_executed: "not_loaded",
         goal_execution_feedback_sample_count: "not_loaded",
         goal_execution_base_command_mode: "not_loaded",
+        next_execution_base_command_mode: "not_loaded",
         goal_execution_base_command_nonzero_observed: "not_loaded",
         goal_execution_base_command_nonzero_count: "not_loaded",
         goal_execution_base_feedback_sample_count: "not_loaded",
@@ -6641,6 +6642,7 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
     summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "239";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
+    summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
     summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
@@ -6698,7 +6700,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("轮速非零未证明，但车身姿态有变化，pitch 变化 24.210531");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 239 次，刚刚；Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但同窗口轮速未证明，当前轮速 L/R=0/0；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但同窗口轮速未证明，当前轮速 L/R=0/0；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；下次将用 ros 复验。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("Nav2 仍需同窗口复验");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明");

@@ -4018,6 +4018,12 @@ describe("workstation fail-closed API contracts", () => {
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
+          base: {
+            control_policy: {
+              base_command_mode: "pwm",
+              nav2_base_command_mode: "ros",
+            },
+          },
         },
       },
       "/api/nav2/goal/execution/latest": {
@@ -4074,6 +4080,12 @@ describe("workstation fail-closed API contracts", () => {
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
+          base: {
+            control_policy: {
+              base_command_mode: "pwm",
+              nav2_base_command_mode: "ros",
+            },
+          },
         },
       },
       "/api/nav2/proof/latest": {
@@ -4132,6 +4144,12 @@ describe("workstation fail-closed API contracts", () => {
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
+          base: {
+            control_policy: {
+              base_command_mode: "pwm",
+              nav2_base_command_mode: "ros",
+            },
+          },
         },
       },
       "/api/nav2/goal/execution/latest": {
@@ -4174,6 +4192,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("false");
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("false");
+      expect(summary.readback_summary.nav2.next_execution_base_command_mode).toBe("ros");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_imu_attitude_delta_observed).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed).toBe("0");

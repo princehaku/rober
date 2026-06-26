@@ -406,6 +406,7 @@ const STATUS_KEYS = [
   "latest_path_generated",
   "latest_proof_status",
   "feedback_ack_status",
+  "nav2_base_command_mode",
   "latest_t1001_observed_count",
   "t1001_observed_count",
   "wheel_feedback_lr_nonzero_proven",
@@ -3110,6 +3111,8 @@ function nav2SummaryFromReadbacks(
   // Nav2 摘要优先呈现最近完整路线执行结果；路线规划状态仍由 path_* 和 nav2_status 字段单独解释。
   const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
   const nav2Status = readbackById(readbacks, "nav2_status");
+  const statusReadback = readbackById(readbacks, "status");
+  const baseStatusReadback = readbackById(readbacks, "base_status");
   const goalExecution = readbackById(readbacks, "nav2_goal_execution_latest");
   const goalPayload = goalExecution?.payload ?? null;
   const goalResultPayload = asRecord(goalPayload?.latest_result) ?? goalPayload;
@@ -3139,6 +3142,9 @@ function nav2SummaryFromReadbacks(
     goal_execution_robot_control_executed: summaryValueText(goalResultPayload, ["robot_control_executed"]),
     goal_execution_feedback_sample_count: summaryValueText(goalResultPayload, ["feedback_sample_count", "nav2_feedback_sample_count"]),
     goal_execution_base_command_mode: summaryValueText(goalResultPayload, ["base_command_mode"]),
+    next_execution_base_command_mode: statusReadback?.key_values.nav2_base_command_mode
+      ?? baseStatusReadback?.key_values.nav2_base_command_mode
+      ?? "not_loaded",
     goal_execution_base_command_nonzero_observed: summaryValueText(baseCommandSummary, ["nonzero_command_observed"]),
     goal_execution_base_command_nonzero_count: summaryValueText(baseCommandSummary, ["nonzero_command_count"]),
     goal_execution_base_feedback_sample_count: summaryValueText(baseFeedbackSummary, ["sample_count"]),
@@ -3390,6 +3396,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         goal_execution_robot_control_executed: "not_loaded",
         goal_execution_feedback_sample_count: "not_loaded",
         goal_execution_base_command_mode: "not_loaded",
+        next_execution_base_command_mode: "not_loaded",
         goal_execution_base_command_nonzero_observed: "not_loaded",
         goal_execution_base_command_nonzero_count: "not_loaded",
         goal_execution_base_feedback_sample_count: "not_loaded",

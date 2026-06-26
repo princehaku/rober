@@ -3056,3 +3056,10 @@ vendor `T=13` (`X/Z`) ROS 控制面进入 ESP32；普通 manual/键盘低速手�
 只允许透传白名单 `base_command_mode=ros|speed|pwm`，普通首屏不展示复杂模式选择。
 这修复了自动驾驶执行链路之前只能走 `T=11` PWM 的配置缺口；完成验收仍以同一次
 Nav2 execution artifact 内 `base_feedback_summary.latest_nonzero_pair` 非零为准。
+
+2026-06-27 06:49 起，PC summary 的 `readback_summary.nav2` 新增
+`next_execution_base_command_mode`，从上位机 `/api/status` 或 `/api/base/status`
+里的 `control_policy.nav2_base_command_mode` 提取。普通首屏 `当前事实` 在最近一次
+Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机下一次执行已经配置为
+`ros` 时，会显示“下次将用 ros 复验”。这让旧失败结果和新执行配置同时所见即所得，
+不会把旧 PWM 结果误当作新 ROS 模式已经失败，也不会把模式切换本身当成路线完成证明。
