@@ -949,6 +949,25 @@ known-good UVC。
 DV20 输入源、采集卡工作模式、USB 线/供电或设备本体；软件只能继续 fail-closed 展示“无真实首帧”，不能提供假预览或把
 `/dev/video1` 存在当成建图 ready。
 
+## 2026-06-27 06:28 source_not_probed WYSIWYG 收口
+
+真实上位机 `root@192.168.1.11 -p 37878` 再次按同一路径复测：
+
+- 停止 8088 camera service 后，对 Orange Pi USB 设备 `3-1` 执行
+  `/sys/bus/usb/drivers/usb/{unbind,bind}`，`/dev/video1` 与 `/dev/video2`
+  重新枚举，时间戳刷新到 `2026-06-27 06:24`。
+- 重启 `local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15`
+  后，8088 与 8787 均恢复监听。
+- `v4l2-ctl -d /dev/video1 --stream-mmap=3 --stream-count=3` 仍 8 秒超时，
+  输出文件 0 字节。
+- `POST http://127.0.0.1:8787/api/camera/first-frame/probe` 仍返回
+  `status=first_frame_timeout`、`failure_reason=capture_read_call_timeout`。
+
+因此本轮新增的是 PC 口径收紧：`source_readiness=source_selected_not_probed`
+不再在 Robot Control summary 中冒充 `status=ready`，而是显示为
+`status=source_not_probed`。普通首屏对应显示“相机在线但还没确认首帧”，避免
+8088 重启后只因选中了 `/dev/video1` 就把画面误判为 ready。
+
 ## 2026-06-27 03:20 systemd active 但 UVC 内核层无帧
 
 按 `docs/vendor/VENDOR_INDEX.md` 的硬件资料入口要求，本轮先确认本项目硬件栈仍以

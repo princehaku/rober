@@ -553,6 +553,7 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
   const sourceFailureHint = cameraSourcePlainFailureHint();
   const camera = robotSummary.value?.readback_summary.camera;
   const cameraOnline = camera?.status === "ready" || camera?.devices_status === "loaded";
+  const cameraSourceNotProbed = camera?.status === "source_not_probed" || camera?.source_readiness === "source_selected_not_probed";
   const visualSaveFailureHint = plainVisualMaterialSaveFailureHint();
   if (cameraFirstFrameProbePending.value && !browserVideoFrameDrawn()) {
     return { state: "检查中", hint: "正在检查当前画面，等待上位机返回样张。" };
@@ -602,6 +603,9 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
     default:
       if (sourceFailureHint) {
         return { state: "失败", hint: sourceFailureHint };
+      }
+      if (cameraSourceNotProbed && cameraOnline) {
+        return { state: "未打开", hint: "相机在线但还没确认首帧，先点检查画面或打开画面。" };
       }
       if (cameraOnline) {
         if (previewAutoConnectSuppressed.value) {
@@ -1064,6 +1068,9 @@ const plainCameraWysiwygStatus = computed(() => {
       }
       if (cameraSummary.value.hint === "相机在线，点打开画面。") {
         return "画面状态：相机在线但画面未打开，点打开画面。";
+      }
+      if (cameraSummary.value.hint === "相机在线但还没确认首帧，先点检查画面或打开画面。") {
+        return "画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。";
       }
       if (cameraSummary.value.hint === "相机在线，画面已手动关闭。") {
         return "画面状态：相机在线，画面已手动关闭；需要时点打开画面。";

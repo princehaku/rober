@@ -1194,8 +1194,14 @@ function cameraSummaryFromReadbacks(
       ? "streaming"
       : "starting_local_peer"
     : "idle_not_started";
+  const rawHealthStatus = healthReadback?.status ?? "not_loaded";
+  const cameraStatus = sourceReadiness === "first_frame_failed"
+    ? "source_first_frame_failed"
+    : rawHealthStatus === "ready" && sourceReadiness === "source_selected_not_probed" && sharedPreviewStatus !== "streaming"
+      ? "source_not_probed"
+      : rawHealthStatus;
   return {
-    status: healthReadback?.status ?? "not_loaded",
+    status: cameraStatus,
     devices_status: devicesReadback?.status ?? "not_loaded",
     // MJPEG relay 状态来自 PC Node 内存表；它只说明共享上游是否存在，不证明画面像素已经可见。
     preview_status: sharedPreviewStatus,

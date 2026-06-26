@@ -5545,7 +5545,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(1);
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.sends_commands");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_feedback_samples_latest.latest_result.sends_commands");
-      expect(summary.readback_summary.camera.status).toBe("ready");
+      expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
       expect(summary.readback_summary.camera.devices_status).toBe("devices_ready");
       expect(summary.readback_summary.camera.video_source).toBe("/dev/video1");
       expect(summary.readback_summary.camera.video_source_mode).toBe("auto");

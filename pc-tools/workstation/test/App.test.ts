@@ -9401,10 +9401,10 @@ describe("App", () => {
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("实时画面");
     expect(firstScreenText).toContain("未打开");
-    expect(firstScreenText).toContain("相机在线，点打开画面。");
+    expect(firstScreenText).toContain("相机在线但还没确认首帧，先点检查画面或打开画面。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
-    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("相机在线，点打开画面。");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但画面未打开，点打开画面。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("相机在线但还没确认首帧，先点检查画面或打开画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。");
     expect(firstScreenText).not.toContain("画面可见");
     expect(firstScreenText).not.toContain("preview_status");
     expect(firstScreenText).not.toContain("/dev/video1");
@@ -10844,7 +10844,7 @@ describe("App", () => {
     expect((probeCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：上位机样张已读到，实时窗口仍未打开。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但画面未打开，点打开画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。");
     expect(newCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer?") && options?.method === "POST")).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -11004,7 +11004,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但画面未打开，点打开画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。");
 
     await wrapper.find('[data-testid="plain-record-current-camera"]').trigger("click");
     await flushPromises();
@@ -11088,7 +11088,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但画面未打开，点打开画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。");
 
     await wrapper.find('[data-testid="plain-record-current-camera"]').trigger("click");
     await flushPromises();
