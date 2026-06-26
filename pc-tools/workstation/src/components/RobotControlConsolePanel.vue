@@ -1469,7 +1469,9 @@ const plainCurrentFactRows = computed(() => {
     const wheelText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
       ? "轮速已复验"
       : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}`;
-    rows.push(`行程：已执行到结果，${wheelText}。`);
+    rows.push(nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
+      ? `行程：路线返回成功，${wheelText}。`
+      : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);
   } else if (nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
     rows.push("行程：图上可准备执行。");
   } else {
@@ -4186,26 +4188,27 @@ function explicitTrueKeyValue(value: string | undefined): boolean {
   return value?.trim().toLowerCase() === "true";
 }
 
-function nav2BaseMotionSignalObserved(values: Record<string, string> | undefined): boolean {
-  // 轮速 L/R 非零是强证据；IMU 姿态变化是底盘运动迹象。两者都不能替代 delivery success。
+function nav2WheelLrNonzeroProven(values: Record<string, string> | undefined): boolean {
+  // 完整 Nav2 行程必须证明执行窗口内 wheel raw L/R 非零；IMU 只能作为运动迹象，不能替代轮速闭环。
   return explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)
-    || explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)
-    || explicitTrueKeyValue(values?.motion_signal_observed);
+    || explicitTrueKeyValue(values?.wheel_feedback_lr_nonzero_proven);
 }
 
 function nav2ExecutionControlProven(values: Record<string, string> | undefined): boolean {
-  // goal_succeeded 只说明 action 返回成功；完整路线还必须看到真车控制和底盘运动信号。
+  // goal_succeeded 只说明 action 返回成功；完整路线还必须看到同窗口 wheel raw L/R 非零。
   if (explicitFalseKeyValue(values?.robot_control_executed)) {
     return false;
   }
   if (explicitFalseKeyValue(values?.sends_base_motion_commands) || explicitFalseKeyValue(values?.uses_base_uart)) {
     return false;
   }
-  if (nav2BaseMotionSignalObserved(values)) {
+  if (nav2WheelLrNonzeroProven(values)) {
     return true;
   }
-  return !explicitFalseKeyValue(values?.nav2_goal_execution_proven)
-    && !explicitFalseKeyValue(values?.hil_pass);
+  if (explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven) || explicitFalseKeyValue(values?.wheel_feedback_lr_nonzero_proven)) {
+    return false;
+  }
+  return !explicitFalseKeyValue(values?.nav2_goal_execution_proven) && !explicitFalseKeyValue(values?.hil_pass);
 }
 
 function nav2BaseCommandCount(values: Record<string, string> | undefined): number {
@@ -5143,7 +5146,7 @@ function plainMapTripExecutionLabel(): string {
     return "行程执行：旧到达记录";
   }
   if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
-    return nav2BaseCommandWithoutWheelFeedback(values) ? "行程执行：已到达，底盘反馈 0/0" : "行程执行：已到达，真车未证明";
+    return nav2BaseCommandWithoutWheelFeedback(values) ? "行程执行：路线返回成功，底盘反馈 0/0" : "行程执行：路线返回成功，真车未证明";
   }
   if (nav2GoalSucceeded(values)) {
     return "行程执行：已到达，缺反馈";
@@ -5183,7 +5186,7 @@ const plainTripExecutionProgress = computed(() => {
     return `行程进度：读到旧的到达记录${feedbackText}${ageText}。`;
   }
   if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
-    return `行程进度：已到达并读到 ${nav2FeedbackSampleCount(values)} 次反馈，但${nav2UnprovenControlDetail(values)}${ageText}；修复后重新执行完整行程。`;
+    return `行程进度：路线返回成功并读到 ${nav2FeedbackSampleCount(values)} 次反馈，但${nav2UnprovenControlDetail(values)}${ageText}；修复后重新执行完整行程。`;
   }
   if (nav2GoalSucceeded(values)) {
     return `行程进度：已到达，但没有执行反馈样本${ageText}；重新读取或执行完整行程。`;

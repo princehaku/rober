@@ -6689,14 +6689,16 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 239 次，轮速 L/R=0/0 待复验，准备送达材料");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 239 次执行反馈，刚刚；下一步准备送达材料，同时处理：轮速 L/R=0/0 待复验。");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toBe("最近行程成功，反馈 239 次，刚刚；底盘已响应（车身姿态有变化，pitch 变化 24.210531；轮速 L/R=0/0 待复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验）；送达仍需现场确认。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：已执行到结果，当前轮速 L/R=0/0；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("行程进度：路线返回成功并读到 239 次反馈，但Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("轮速非零未证明，但车身姿态有变化，pitch 变化 24.210531");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 239 次，刚刚；Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但同窗口轮速未证明，当前轮速 L/R=0/0；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("Nav2 仍需同窗口复验");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先更新行程材料）");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -6758,8 +6760,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，真车未证明");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达并读到 8 次反馈，但真车执行未证明，刚刚；修复后重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，真车未证明");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：路线返回成功并读到 8 次反馈，但真车执行未证明，刚刚；修复后重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("到达未证明");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程未证明真车执行，需要重新执行完整行程。");
@@ -9087,7 +9089,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，刚刚；真车执行未证明");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，真车未证明");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，真车未证明");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新执行完整行程。");
     await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg");
@@ -9165,7 +9167,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("不是雷达阻塞");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("优先查电机使能、供电、底盘模式和控制模式");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，底盘反馈 0/0");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("Nav2 已发非零底盘命令 49 条");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新执行完整行程。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
@@ -9175,8 +9177,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
-  it("treats Nav2 success with base command and IMU motion signal as completed route evidence", async () => {
-    // 当前真机形态：Nav2 action 成功，bridge 发出 PWM164，L/R 长日志仍可能为 0，但 IMU 姿态变化证明底盘已响应。
+  it("keeps Nav2 success with IMU motion signal out of complete route evidence until wheel raw L/R is nonzero", async () => {
+    // 当前真机形态：Nav2 action 成功，bridge 发出 PWM164，L/R 长日志仍可能为 0；IMU 只能解释运动迹象，不能替代 wheel raw L/R。
     stubWorkstationFetch({
       "/api/robot-control/nav2/goal/execution/latest": {
         schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
@@ -9234,11 +9236,12 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("底盘已响应（车身姿态有变化");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速非零未证明，但车身姿态有变化");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速 L/R=0/0 待复验");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，轮速 L/R=0/0 待复验，准备送达材料");
-    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行已完成");
-    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).not.toContain("重新执行完整行程");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("重新执行完整行程");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
   });
 

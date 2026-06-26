@@ -3033,3 +3033,10 @@ PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是�
 “底盘只读轮速已出现非零 L/R=...，Nav2 仍需同窗口复验”。这解决了现场
 `base_feedback_samples_latest` 已读到 raw L/R 非零，但 Nav2 latest 仍显示 0/0 时的信息丢失；
 它不把历史或跨窗口非零轮速升级为 Nav2 HIL pass，也不自动确认 delivery success。
+
+2026-06-27 05:50 起，PC 普通首屏和送达 gate 对 `完整 Nav2 路线执行` 的判定进一步收紧：
+如果 Nav2 latest 明确返回 `base_feedback_lr_nonzero_proven=false` 或
+`wheel_feedback_lr_nonzero_proven=false`，即使 `goal_succeeded`、反馈样本、非零底盘命令和 IMU 姿态变化都存在，
+也只显示为“路线返回成功/到达未证明”，不再写成“已到达”或进入送达材料完成 gate。IMU 姿态变化继续作为
+“底盘有运动迹象”展示，帮助区分“Nav2 没发命令”和“底盘轮速闭环没证明”；但它不能替代同窗口
+wheel raw L/R 非零。旧证据缺少 wheel 字段时保持兼容，真实 live 读到明确 false 时按新 gate 阻断。
