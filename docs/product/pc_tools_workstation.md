@@ -2354,6 +2354,10 @@ delivery complete、manual、keyboard pulse、stop 或 `/cmd_vel`。
 `free_roam_autonomy_start_ready` 叠加本地安全确认、地图记录、地图画面刷新、摄像头 ready 和停止兜底，避免 start 按钮
 被 `cmd_vel_publish_enabled=false` 永久锁住。点击后仍只走固定 `/api/robot-control/free-roam/autonomy/start`，不由浏览器或 Node 直接发布 `/cmd_vel`。
 
+2026-06-27 16:55 起，当 `free_roam_autonomy_start_ready=true` 但本地地图记录或扫图画面还没就绪时，普通首屏自动扫图按钮
+不再退回人工键盘扫图向导，而是补齐自动扫图 start 的非运动前置步骤：启动地图记录、刷新扫图画面并把该 preview 计入
+本轮 fresh gate。只有这些本地条件也满足后才调用固定 start 代理；未勾安全确认时仍只聚焦 checkbox。
+
 2026-06-26 10:17 起，如果上车端自动扫图 readiness 仍未 ready，普通首屏同一个按钮会作为人工扫图向导：
 安全确认未勾时显示 `先勾安全确认` 并只聚焦 checkbox；已勾安全确认但还没开始记录时，显示 `开始记录并继续`，点击只调用固定 `/api/robot-control/map/start` 启动地图记录，并在成功后启用键盘窗口等待按住；
 记录已启动但键盘未启用时，点击只启用键盘窗口。它不会调用 `/api/robot-control/free-roam/autonomy/start`，不会发送方向

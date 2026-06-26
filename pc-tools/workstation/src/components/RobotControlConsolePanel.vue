@@ -725,6 +725,9 @@ const cameraSummary = computed(() => summarizeCameraState());
 const cameraFrameTooDark = computed(() => cameraSummary.value.state === "画面偏暗");
 const plainCameraReadyForFreeRoamAutonomy = computed(() => {
   // 自动扫图发车只要求上位机相机采集源 ready，不强制浏览器已经打开 WebRTC 画面。
+  if (robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready") {
+    return true;
+  }
   const camera = robotSummary.value?.readback_summary.camera;
   const sourceFailure =
     camera?.source_readiness === "first_frame_failed"
@@ -2234,7 +2237,10 @@ const canSavePlainFreeRoamMapping = computed(() => (
   && robotApiBaseUrl.value.trim().length > 0
 ));
 const canStartFreeRoamAutonomy = computed(() => (
-  robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
+  (
+    robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
+    || robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready"
+  )
   && plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
   && plainFreeRoamMapPreviewFreshForSession.value
@@ -2686,7 +2692,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const preview = mapPreviewResult.value;
   const previewLoaded = preview?.proxy_status === "preview_forwarded";
   const autonomyRunningUnlocked = boundary?.free_roam_autonomy === "ready";
-  const autonomyStartReady = boundary?.free_roam_autonomy_start_ready === true;
+  const autonomyStartReady = boundary?.free_roam_autonomy_start_ready === true || autonomyRunningUnlocked;
   const autonomyLocked = !autonomyStartReady;
   const autonomyReady = autonomyStartReady;
   const hasRuntimeGateRows = Boolean(boundary?.free_roam_autonomy_gates?.length);
@@ -2719,7 +2725,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     blockers.push("停止兜底暂不可用");
   }
   if (!autonomyStartReady) {
-    blockers.push(hasRuntimeGateRows ? "自动扫图启动条件未满足" : "上车端避障和自动停止未验证");
+    blockers.push(hasRuntimeGateRows ? "自动扫图真车验证未完成" : "上车端避障和自动停止未验证");
   }
   const policyGates = policy?.required_gates ?? [
     "onboard_watchdog",
@@ -2828,16 +2834,18 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     disabled: autonomyReady ? (freeRoamAutonomyPending.value || freeRoamMapWysiwygPending.value) : false,
     hint: autonomyLocked
       ? manualFallbackHint
-      : autonomyRunningUnlocked || (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start")
+      : freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
       ? freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
         ? radarRefreshFailureLabel(radarRefreshResult.value)
           ? `自动扫图状态机已启动；${radarRefreshFailureLabel(radarRefreshResult.value)}，PC 继续保留停止兜底。`
           : plainFreeRoamMapPreviewRefreshFailedForSession.value
             ? `自动扫图状态机已启动；地图画面刷新失败${mapPreviewFailureText(mapPreviewResult.value) ? `：${mapPreviewFailureText(mapPreviewResult.value)}` : ""}，PC 继续保留停止兜底。`
           : "自动扫图状态机已启动；PC 继续监看地图、雷达和停止兜底。"
-        : "上车端自动扫图已解锁；PC 继续监看地图、雷达和停止兜底。"
+        : "自动扫图状态机已启动；PC 继续监看地图、雷达和停止兜底。"
       : blockers.length
         ? `还差：${blockers.slice(0, 3).join("、")}。`
+      : autonomyRunningUnlocked
+        ? "上车端自动扫图已就绪并已解锁；PC 继续监看地图、雷达和停止兜底。"
         : "上车端自动扫图已就绪；点击后只启动上车状态机，PC 继续负责地图/雷达所见即所得监看和停止兜底。",
     nextActionText,
     blockers: blockers.slice(0, 4),
@@ -7340,15 +7348,27 @@ async function advancePlainFreeRoamManualGuide(): Promise<void> {
 }
 
 async function advancePlainFreeRoamAutonomyGuide(): Promise<void> {
-  // 上车端自动扫图已开放时，先补 start 所需证据；只有最终 ready 才会走状态机代理。
+  // 上车端自动扫图 start-ready 后，先补非运动证据；最终发车仍只走固定 start 代理。
   if (!plainManualSafetyConfirmed.value) {
     await focusPlainFreeRoamAutonomyNextTarget();
     return;
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value && canStartPlainFreeRoamMapping.value) {
     await startMapRuntime();
+    await refreshMapPreview({ countForFreeRoamSession: true });
+    if (canStartFreeRoamAutonomy.value) {
+      await startFreeRoamAutonomy();
+      return;
+    }
     await focusPlainFreeRoamAutonomyNextTarget();
     return;
+  }
+  if (mapRuntimeStarted.value && !plainFreeRoamMapPreviewFreshForSession.value && canRefreshPlainFreeRoamMapPreview.value) {
+    await refreshMapPreview({ countForFreeRoamSession: true });
+    if (canStartFreeRoamAutonomy.value) {
+      await startFreeRoamAutonomy();
+      return;
+    }
   }
   await focusPlainFreeRoamAutonomyNextTarget();
 }
@@ -7738,7 +7758,10 @@ async function refreshFreeRoamAutonomyLatest(): Promise<void> {
 async function startFreeRoamAutonomy(): Promise<void> {
   // 真正自动扫图 start 只走固定上车状态机代理；未 ready 时推进人工扫图的非运动向导。
   if (!canStartFreeRoamAutonomy.value) {
-    if (robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready") {
+    if (
+      robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
+      || robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready"
+    ) {
       await advancePlainFreeRoamAutonomyGuide();
       return;
     }

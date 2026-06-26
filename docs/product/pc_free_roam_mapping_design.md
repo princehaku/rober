@@ -89,6 +89,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-27 16:25 起，PC summary 拆出 `free_roam_autonomy_start_ready`：它只表示上车端 stop 兜底与实时雷达已满足，
   不要求 `cmd_vel_publish_enabled=true`。普通首屏是否真正能点 `开始自动扫图（低速）` 还要叠加本地安全确认、地图记录、
   地图画面刷新、摄像头 ready 和停止兜底；点击后再由上车端复检 camera/radar readiness 并打开双锁。这样避免“必须先解锁才能点击解锁”的循环。
+- 2026-06-27 16:55 起，当 `free_roam_autonomy_start_ready=true` 但本地地图记录或扫图画面还没就绪时，普通首屏的
+  `开始自动扫图（低速）` 按钮会走自动扫图向导：先启动地图记录，再把地图预览刷新计入本轮扫图 fresh gate，满足条件后再调用固定 start 代理。
+  该向导仍不会自动勾选安全确认，也不会绕过上车端 camera/radar 复检。
 
 ## 用户流程
 
