@@ -8476,7 +8476,7 @@ describe("App", () => {
     expect(armButton.text()).toBe("启用键盘（按键才动）");
     expect(armButton.attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toBe("下一步：启用键盘并按住方向键，当前 L/R=0/0；读取非零 L/R 并连续验证。");
 
     await armButton.trigger("click");
     await flushPromises();
@@ -8495,8 +8495,94 @@ describe("App", () => {
     ).toBe(feedbackCallsBeforeKeyboardRecheck + 1);
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeKeyboardRecheck);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-arm"]').element);
-    expect(visiblePlainHomeText(wrapper)).toContain("键盘已解锁；点击启用键盘后按住方向键连续验证");
+    expect(visiblePlainHomeText(wrapper)).toContain("键盘已解锁；点击启用键盘后按住方向键读取非零 L/R 并连续验证");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("counts nonzero wheel readback from keyboard pulses toward the wheel raw goal", async () => {
+    // 键盘 pulse 走固定 manual 代理；如果回包带本轮 T1001 非零 L/R，应同步推进 wheel raw 收口。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_review";
+    summaryFixture.operator_hil_material_summary.operator_present = "true";
+    summaryFixture.operator_hil_material_summary.physical_clearance = "true";
+    summaryFixture.operator_hil_material_summary.emergency_stop = "true";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "12";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "forward",
+        applied_direction: "forward",
+        remote_motion_key_values: {
+          feedback_during_motion_t1001_frame_count: "2",
+          wheel_feedback_latest_raw_left: "0.07",
+          wheel_feedback_latest_raw_right: "0.08",
+          wheel_feedback_nonzero_frame_count: "2",
+          wheel_feedback_lr_nonzero_proven: "true",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/base/stop": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "stop",
+        applied_direction: "stop",
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("当前 L/R=0/0；读取非零 L/R 并连续验证");
+
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const wheelClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("wheel raw L/R 非零"));
+    expect(wheelClosureItem?.attributes("data-ready")).toBe("true");
+    expect(wheelClosureItem?.text()).toContain("本轮键盘手控已读到非零 L/R=0.07/0.08");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。");
+    const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("PC 键盘连续手控"));
+    expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
+    expect(keyboardClosureItem?.text()).toContain("本次按住 1/2 次");
+
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("points the keyboard arm button at lidar motion once wheel proof is ready", async () => {

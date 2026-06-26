@@ -3862,6 +3862,14 @@ const wheelClosureEvidence = computed(() => {
       hint: `本轮试动已读到非零 L/R=${motionValues.wheel_feedback_latest_raw_left ?? "not_loaded"}/${motionValues.wheel_feedback_latest_raw_right ?? "not_loaded"}`,
     };
   }
+  const keyboardMotionValues = keyboardLastWheelFeedbackValues.value;
+  if (keyboardMotionValues?.wheel_feedback_lr_nonzero_proven === "true" || keyboardMotionValues?.wheel_feedback_nonzero_observed === "true") {
+    // 键盘连续手控同样走固定 manual 代理；其运动窗口读到的 T1001 非零 L/R 可以作为本轮 wheel raw 证据。
+    return {
+      ready: true,
+      hint: `本轮键盘手控已读到非零 L/R=${keyboardMotionValues.wheel_feedback_latest_raw_left ?? keyboardMotionValues.wheel_feedback_latest_left_speed ?? "not_loaded"}/${keyboardMotionValues.wheel_feedback_latest_raw_right ?? keyboardMotionValues.wheel_feedback_latest_right_speed ?? "not_loaded"}`,
+    };
+  }
   const sampleValues = baseFeedbackSamplesResult.value?.sample_key_values;
   if (sampleValues?.wheel_feedback_lr_nonzero_proven === "true") {
     return {
@@ -3934,7 +3942,7 @@ const goalClosureChecklist = computed(() => {
       hint: keyboardReady
         ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}，且停止已发送`
         : canUseKeyboardControl.value
-          ? keyboardManualPulseObserved.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}，仍需松开按键完成停止收口` : `键盘入口已就绪，仍需按住方向键连续验证，${keyboardForwardedPulseProgressText.value}`
+          ? keyboardManualPulseObserved.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}，仍需松开按键完成停止收口` : !wheelClosureEvidence.value.ready ? `键盘入口已就绪，仍需按住方向键读取非零 L/R 并连续验证，${keyboardForwardedPulseProgressText.value}` : `键盘入口已就绪，仍需按住方向键连续验证，${keyboardForwardedPulseProgressText.value}`
           : keyboardContractReady.value ? `键盘入口已在，仍需补齐：${plainKeyboardMissingSummary.value.replace(/^还差：/, "").replace(/。$/, "")}` : "键盘合同未从 summary 读到",
     },
   ];
@@ -4054,6 +4062,9 @@ const plainKeyboardGoalNextAction = computed(() => {
     }
     if (keyboardManualPulseObserved.value) {
       return "下一步：松开按键完成停止收口。";
+    }
+    if (!wheelClosureEvidence.value.ready) {
+      return plainKeyboardNextActionSummary.value;
     }
     return "下一步：启用键盘并按住方向键验证。";
   }
@@ -4280,7 +4291,7 @@ const plainGoalProgressItems = computed(() => {
       actionLabel: "去键盘",
       state: canUseKeyboardControl.value ? (keyboardStopSettledAfterPulse.value ? "已验证" : "待验证") : "未满足",
       hint: canUseKeyboardControl.value
-        ? keyboardStopSettledAfterPulse.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}，停止已发送；现场可继续按住方向键手控。` : keyboardManualPulseObserved.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}；松开按键完成停止收口。` : `键盘已解锁；点击启用键盘后按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`
+        ? keyboardStopSettledAfterPulse.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}，停止已发送；现场可继续按住方向键手控。` : keyboardManualPulseObserved.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}；松开按键完成停止收口。` : !wheelClosureEvidence.value.ready ? `键盘已解锁；点击启用键盘后按住方向键读取非零 L/R 并连续验证，${keyboardForwardedPulseProgressText.value}。` : `键盘已解锁；点击启用键盘后按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`
         : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}`,
       nextAction: plainKeyboardGoalNextAction.value,
     },
@@ -5283,6 +5294,11 @@ const canRefreshPlainKeyboardGate = computed(() => (
 const plainKeyboardNextActionSummary = computed(() => {
   // 键盘 gate 缺项可能较多；现场只需要知道当前先做哪个普通动作。
   if (canUseKeyboardControl.value) {
+    if (!wheelClosureEvidence.value.ready) {
+      const { left, right } = currentWheelReadback.value;
+      const readbackText = currentWheelReadbackLoaded.value ? `当前 L/R=${left}/${right}；` : "";
+      return `下一步：启用键盘并按住方向键，${readbackText}读取非零 L/R 并连续验证。`;
+    }
     return "";
   }
   if (!robotApiBaseUrl.value.trim()) {

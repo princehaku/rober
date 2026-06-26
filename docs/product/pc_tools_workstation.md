@@ -2073,6 +2073,12 @@ L/R 结论，帮助现场判断连续手控是否真的读到 wheel feedback。�
 `键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。`。这让 operator 停车后仍能复核刚才连续手控的底盘反馈，
 不用展开高级诊断；该行只复用最近一次键盘 manual pulse 响应，不新增任何请求或控制动作。
 
+2026-06-26 23:59 起，普通首屏总目标里的 `wheel raw L/R 非零` 也会接受键盘连续手控期间固定
+manual proxy 回包里的非零 T1001 L/R 证据。键盘已可用但 wheel raw 仍未完成时，键盘面板、本轮进度
+和目标下一步都会提示 `按住方向键读取非零 L/R 并连续验证`；读到非零后 wheel 目标显示
+`本轮键盘手控已读到非零 L/R=...`。该收口只消费已经显式按住产生的 `/api/robot-control/base/manual`
+回包，不自动启用键盘、不自动按键、不额外发送 manual/stop，不调用 Nav2、delivery complete 或 `/cmd_vel`。
+
 2026-06-25 22:04 起，普通首屏送达最终确认在 `delivery_success=true` 后会明确显示成功态下一步：
 `送达已完成，可继续键盘手控或结束本轮`，并把最终确认按钮改为禁用的 `送达已完成`，避免 operator 成功后重复提交。
 该状态只消费 `/api/robot-control/delivery/complete` 或 latest 的成功读回，不自动确认送达、不跳过现场 checklist、
