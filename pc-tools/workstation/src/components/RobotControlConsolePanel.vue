@@ -5779,7 +5779,7 @@ const keyboardControlSummary = computed(() => {
     return { state: "手控中", hint: `${keyboardLastDirection.value} 按住点动中；松开按键、窗口失焦或页面隐藏会发送停止。` };
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-    return { state: "已启用", hint: "键盘面板已聚焦：按住 W/A/S/D 或方向键连续点动，松开即停。" };
+    return { state: "已启用", hint: "键盘手控已启用：在本页非输入区按住 W/A/S/D 或方向键连续点动，松开即停。" };
   }
   if (canUseKeyboardControl.value) {
     return { state: "可手控", hint: "点击“启用键盘”后，按住 W/A/S/D 或方向键连续点动，松开即停。" };
@@ -5861,7 +5861,7 @@ function plainKeyboardBlockedActionLabel(missingLabels: string[]): string {
 }
 
 const plainKeyboardArmButtonLabel = computed(() => {
-  // 启用只让键盘面板获得焦点；真正手控必须后续按住方向键。
+  // 启用后拿到本页键盘控制权；真正手控仍必须后续按住方向键。
   if (navGoalExecutionPending.value) {
     return "启用键盘（行程中）";
   }
@@ -5957,10 +5957,10 @@ const plainKeyboardControlSummary = computed(() => {
     return { state: "待停止", hint: "已完成 2 次连续脉冲验证；松开按键后完成停止收口。" };
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-    return { state: "已启用", hint: "按住 W/A/S/D 或方向键连续手控，松开即停。" };
+    return { state: "已启用", hint: "已启用；在本页非输入区按住 W/A/S/D 或方向键连续手控，松开即停。" };
   }
   if (canUseKeyboardControl.value) {
-    return { state: "可手控", hint: "点击启用键盘，让这个小面板获得焦点后再按方向键。" };
+    return { state: "可手控", hint: "点击启用键盘后，在本页非输入区按住 W/A/S/D 或方向键；输入框内按键不会发车。" };
   }
   if (keyboardControlArmed.value || keyboardControlStatus.value.startsWith("blocked")) {
     return { state: "未满足", hint: `移动条件还没满足，暂不发送键盘手控。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}` };

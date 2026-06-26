@@ -12573,6 +12573,7 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
     const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
     expect(keyboardPanel.attributes("data-state")).toBe("可手控");
+    expect(keyboardPanel.text()).toContain("本页非输入区");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="可手控"]');
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="手控中"]');
@@ -12603,6 +12604,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("已启用");
     expect(keyboardPanel.attributes("data-state")).toBe("已启用");
+    expect(keyboardPanel.text()).toContain("本页非输入区");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
     const manualCallsBeforeEditableKey = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
@@ -12611,7 +12613,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeEditableKey);
 
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("手控中");
