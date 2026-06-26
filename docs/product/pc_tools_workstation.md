@@ -2198,6 +2198,11 @@ delivery、stop 或 `/cmd_vel`。
 该按钮仍只读取最近行程、固定 camera first-frame probe 和 delivery latest，不提交送达、不执行 Nav2、不发送 manual、
 keyboard pulse、stop 或 `/cmd_vel`。
 
+2026-06-26 16:00 起，若浏览器已经绘制出当前视频帧但帧采样判断为 `画面偏暗`，普通首屏送达材料按钮会显示
+`先检查画面光线` 并禁用，送达材料状态同步提示“当前画面偏暗，先检查镜头或光线后再准备送达材料”。该 gate 只拦截
+送达材料预填，不提交送达、不执行 Nav2、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置；
+PC 工作站公开入口继续是 `0.0.0.0:7001`。
+
 2026-06-25 23:34 起，普通首屏执行图上路线时会保留“本次点击的图上终点”。如果上位机 Nav2 execute 失败或拒绝，
 且响应没有回传 `goal_x/goal_y`，地图仍会在这次图上终点显示 `行程未通过`，避免失败后目标 marker 消失。该兜底只用于
 PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboard、delivery、stop 或 `/cmd_vel`。

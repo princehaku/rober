@@ -13307,7 +13307,9 @@ describe("App", () => {
 
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面偏暗");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("用当前画面记录");
-    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("准备送达材料");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("先检查画面光线");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("当前画面偏暗，先检查镜头或光线后再准备送达材料。");
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面太暗，先检查镜头/光线。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面偏暗");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面偏暗");
@@ -13319,6 +13321,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前画面偏暗，先检查镜头或光线。浏览器已绘制视频帧 640x480。");
     expect(wrapper.find("details").text()).toContain("near_black");
     expect(wrapper.find("details").text()).toContain("max_luma");
+    const cameraProbeCallsBeforeBlockedDeliveryMaterial = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?")).length;
+    await wrapper.find('[data-testid="plain-delivery-prefill-material"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?")).length).toBe(cameraProbeCallsBeforeBlockedDeliveryMaterial);
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
   });
 

@@ -677,6 +677,7 @@ function syncJogInputsToBoundary(): void {
 
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
+const cameraFrameTooDark = computed(() => cameraSummary.value.state === "画面偏暗");
 function plainCameraVideoFrameTruth(): string {
   // 普通首屏只说浏览器是否真的绘制出帧，不暴露 readyState/srcObject 等工程字段。
   const hasSize = videoElementWidth.value > 0 && videoElementHeight.value > 0;
@@ -925,6 +926,7 @@ const canPrefillDeliveryMaterialRefs = computed(() => (
   && !plainDeliveryMapWysiwygPending.value
   && !navGoalExecutionLatestPending.value
   && !deliveryLatestPending.value
+  && !cameraFrameTooDark.value
 ));
 const canStopFreeRoamAutonomy = computed(() => (
   robotApiBaseUrl.value.trim().length > 0
@@ -3443,6 +3445,9 @@ const plainDeliveryPrefillButtonLabel = computed(() => {
   if (previewBusy.value) {
     return "等待画面稳定";
   }
+  if (cameraFrameTooDark.value) {
+    return "先检查画面光线";
+  }
   const hasVideoRef = deliveryOperatorVideoRef.value.trim().length > 0;
   const hasRouteRef = deliveryOperatorRouteMapRef.value.trim().length > 0;
   const visualPrefix = browserVideoFrameDrawn() ? "" : "检查画面并";
@@ -3468,6 +3473,9 @@ const plainDeliveryMaterialSummary = computed(() => {
   }
   if (previewBusy.value) {
     return { state: "等待画面", hint: "实时画面正在打开或关闭；画面稳定后再准备送达材料。" };
+  }
+  if (cameraFrameTooDark.value) {
+    return { state: "待画面", hint: "当前画面偏暗，先检查镜头或光线后再准备送达材料。" };
   }
   if (deliveryDraftMaterialPresent()) {
     const ageText = formatEvidenceAge(
