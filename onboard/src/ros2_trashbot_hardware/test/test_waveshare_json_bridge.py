@@ -205,6 +205,18 @@ class _FakeLogger:
         self.warnings.append(message)
 
 
+class _FakeBridgeNode:
+    def __init__(self):
+        self.destroyed = False
+        self.logger = _FakeLogger()
+
+    def destroy_node(self):
+        self.destroyed = True
+
+    def get_logger(self):
+        return self.logger
+
+
 class WaveshareJsonBridgeTest(unittest.TestCase):
     def test_cmd_vel_defaults_to_waveshare_speed_json_line(self):
         bridge = _bridge_module()
@@ -220,6 +232,54 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
 
         self.assertEqual(json.loads(encoded.decode("utf-8")), {"T": 1, "L": 0.5, "R": 0.5})
         self.assertTrue(encoded.endswith(b"\n"))
+
+    def test_main_ignores_duplicate_rclpy_shutdown_from_managed_sigint(self):
+        bridge = _bridge_module()
+        fake_node = _FakeBridgeNode()
+        calls: list[str] = []
+        original_rclpy = bridge.rclpy
+        original_bridge = bridge.ESP32Bridge
+
+        def shutdown_once_more():
+            calls.append("shutdown")
+            raise RuntimeError("failed to shutdown: rcl_shutdown already called on the given context")
+
+        bridge.rclpy = types.SimpleNamespace(
+            init=lambda args=None: calls.append("init"),
+            spin=lambda node: calls.append("spin"),
+            shutdown=shutdown_once_more,
+        )
+        bridge.ESP32Bridge = lambda: fake_node
+        try:
+            bridge.main(args=["--ros-args"])
+        finally:
+            bridge.rclpy = original_rclpy
+            bridge.ESP32Bridge = original_bridge
+
+        self.assertEqual(calls, ["init", "spin", "shutdown"])
+        self.assertTrue(fake_node.destroyed)
+        self.assertIn("忽略重复 rclpy shutdown", fake_node.logger.warnings[0])
+
+    def test_main_reraises_unexpected_rclpy_shutdown_errors(self):
+        bridge = _bridge_module()
+        fake_node = _FakeBridgeNode()
+        original_rclpy = bridge.rclpy
+        original_bridge = bridge.ESP32Bridge
+
+        bridge.rclpy = types.SimpleNamespace(
+            init=lambda args=None: None,
+            spin=lambda node: None,
+            shutdown=lambda: (_ for _ in ()).throw(RuntimeError("different shutdown failure")),
+        )
+        bridge.ESP32Bridge = lambda: fake_node
+        try:
+            with self.assertRaisesRegex(RuntimeError, "different shutdown failure"):
+                bridge.main()
+        finally:
+            bridge.rclpy = original_rclpy
+            bridge.ESP32Bridge = original_bridge
+
+        self.assertTrue(fake_node.destroyed)
 
     def test_cmd_vel_ros_mode_uses_t13_x_z_fields(self):
         bridge = _bridge_module()

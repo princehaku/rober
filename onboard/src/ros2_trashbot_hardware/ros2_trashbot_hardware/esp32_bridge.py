@@ -46,7 +46,13 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        try:
+            rclpy.shutdown()
+        except Exception as exc:
+            # 托管 Nav2 smoke 会用 SIGINT 收尾；rclpy 可能已被回调链关过，不能把重复 shutdown 误报成底盘失败。
+            if "rcl_shutdown already called" not in str(exc):
+                raise
+            node.get_logger().warn(f"忽略重复 rclpy shutdown：{exc}")
 
 
 __all__ = [

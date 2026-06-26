@@ -2873,3 +2873,16 @@ PC 页面独占。当前 blocker 是 `/dev/video1` 可枚举/可尝试打开，�
 首帧都返回 `capture_read_returned_false`；8787 `/api/camera/mjpeg` 现在会在约 7 秒内返回
 fail-closed 502，而不是让普通页面一直等待。真实画面恢复仍需要检查摄像头输入、USB 线/供电、采集卡模式或替换
 known-good UVC。
+
+2026-06-27 01:48-01:50 继续通过 `ssh root@192.168.1.11 -p 37878` 复核真机：`trashbot-local-webrtc-camera`
+和 `trashbot-upper-robot-api` 均 active；`/dev/video1` 是 DV20 UVC，`lsof /dev/video*` 未发现其它 owner，
+camera health 仍报告 `source_usage.status=not_in_use`、`owner_count=0`、`source_readiness=first_frame_failed`，
+逐个格式尝试结果仍是 `capture_read_returned_false`。这再次确认实时预览问题不是 PC 独占或多浏览器 fanout，而是
+UVC 首帧没有出来。底盘侧 `/api/base/status` 和 `/api/base/feedback-samples` 可打开 `/dev/ttyS5 @ 115200`，
+`T=130` 能收到连续 `T=1001`，电压约 12.42V，但静态 L/R 仍为 `0/0`。同轮 Nav2 latest 继续显示
+`goal_accepted=true`、`status=goal_succeeded`、`base_command_mode=pwm`、
+`base_command_nonzero_count=49`、`latest_nonzero_command={"T":11,"L":90,"R":-90}`，同时
+`base_feedback_lr_nonzero_proven=false`、`hil_pass=false`。因此自动驾驶当前已证明“不依赖雷达也会发到底盘
+PWM 命令”，真实未动的剩余根因应继续查 WAVE ROVER 电机使能、底盘模式、PWM 执行链或现场安全状态，而不是回退到雷达 gate。
+同轮还修正 `esp32_bridge` 托管退出：SIGINT 收尾时若 rclpy 已经 shutdown，只记录中文 warning，不再把
+`rcl_shutdown already called` traceback 混进 Nav2 运行证据，避免普通诊断误读成自动驾驶失败原因。
