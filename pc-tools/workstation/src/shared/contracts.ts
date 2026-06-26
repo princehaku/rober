@@ -2524,6 +2524,23 @@ export interface RobotControlRadarLifecycleResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface RobotControlRadarStatusResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_radar_status_proxy.v1";
+  proxy_status: "status_loaded" | "status_rejected" | "status_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/radar/status";
+  remote_endpoint: "/api/radar/status";
+  remote_method: "GET";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  radar_key_values: Record<string, string>;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export type RobotControlMapLifecycleAction = "list" | "start" | "save" | "reset";
 export type RobotControlMapLifecycleProxyStatus = "lifecycle_forwarded" | "lifecycle_rejected" | "lifecycle_failed";
 export type RobotControlMapLifecycleEndpoint =
@@ -3068,6 +3085,7 @@ export const API_ROUTES = [
   "/api/robot-control/base/first-jog?baseUrl=<robot-api-base-url>",
   "/api/robot-control/base/stop?baseUrl=<robot-api-base-url>",
   "/api/robot-control/base/feedback-samples?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/radar/status?baseUrl=<robot-api-base-url>",
   "/api/robot-control/radar/scan-proof/refresh?baseUrl=<robot-api-base-url>",
   "/api/robot-control/radar/start?baseUrl=<robot-api-base-url>",
   "/api/robot-control/radar/stop?baseUrl=<robot-api-base-url>",

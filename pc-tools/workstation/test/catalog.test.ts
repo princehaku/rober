@@ -1213,6 +1213,15 @@ describe("workstation fail-closed API contracts", () => {
         payload = { status: "goal_succeeded", feedback_sample_count: 8, robot_control_executed: false };
       } else if (pathname.endsWith("/api/delivery/latest")) {
         payload = { delivery_success: false, latest_result: { missing_required_material: ["operator_observed_motion"] } };
+      } else if (pathname.endsWith("/api/radar/status")) {
+        payload = {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          status: "scan_once_hz_raw_packet_tf_observed",
+          scan_status: "fresh_scan_proof_observed",
+          continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+          latest_scan_proof_fresh: true,
+          robot_control_executed: false,
+        };
       } else if (pathname.endsWith("/api/map/list")) {
         payload = { status: "loaded", maps: [], command_result: { executed: false, ok: true } };
       } else if (pathname.endsWith("/api/free-roam/autonomy/latest")) {
@@ -1250,17 +1259,20 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const nav2 = await requestJson(new URL("/api/robot-control/nav2/goal/execution/latest", server.baseUrl));
       const delivery = await requestJson(new URL("/api/robot-control/delivery/latest", server.baseUrl));
+      const radarStatus = await requestJson(new URL("/api/robot-control/radar/status", server.baseUrl));
       const mapList = await requestJson(new URL("/api/robot-control/map/list", server.baseUrl));
       const mapPreview = await requestJson(new URL("/api/robot-control/map/preview", server.baseUrl));
       const freeRoamLatest = await requestJson(new URL("/api/robot-control/free-roam/autonomy/latest", server.baseUrl));
 
       expect(nav2.status).toBe(200);
       expect(delivery.status).toBe(200);
+      expect(radarStatus.status).toBe(200);
       expect(mapList.status).toBe(200);
       expect(mapPreview.status).toBe(200);
       expect(freeRoamLatest.status).toBe(200);
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/nav2/goal/execution/latest");
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/delivery/latest");
+      expect(requestedUrls).toContain("http://192.168.1.11:8787/api/radar/status");
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/map/list");
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/map/preview");
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/free-roam/autonomy/latest");

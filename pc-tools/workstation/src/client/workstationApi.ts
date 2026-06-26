@@ -44,6 +44,7 @@ import type {
   RobotControlOperatorReportRequest,
   RobotControlSummaryResponse,
   RobotControlRadarLifecycleResponse,
+  RobotControlRadarStatusResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
 } from "../shared/contracts";
@@ -110,6 +111,7 @@ const API_ENDPOINTS = {
   robotControlBaseFirstJog: "/api/robot-control/base/first-jog",
   robotControlBaseStop: "/api/robot-control/base/stop",
   robotControlBaseFeedbackSamples: "/api/robot-control/base/feedback-samples",
+  robotControlRadarStatus: "/api/robot-control/radar/status",
   robotControlRadarScanProofRefresh: "/api/robot-control/radar/scan-proof/refresh",
   robotControlRadarStart: "/api/robot-control/radar/start",
   robotControlRadarStop: "/api/robot-control/radar/stop",
@@ -496,6 +498,13 @@ export async function postRobotControlRadarScanProofRefresh(
   return postJson<RobotControlProofRefreshProxyResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlRadarScanProofRefresh, baseUrl),
     {},
+  );
+}
+
+export async function getRobotControlRadarStatus(baseUrl: string): Promise<RobotControlRadarStatusResponse> {
+  // 雷达状态是固定只读 GET，供地图 marker 和现场 smoke 复用，不触发雷达 start/stop。
+  return loadJson<RobotControlRadarStatusResponse>(
+    robotControlRadarLifecycleUrl(API_ENDPOINTS.robotControlRadarStatus, baseUrl),
   );
 }
 

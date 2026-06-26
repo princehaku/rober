@@ -71,6 +71,7 @@ import type {
   RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
   RobotControlRadarLifecycleAction,
+  RobotControlRadarStatusResponse,
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalExecutionLatestResponse,
   RobotControlDeliveryCompleteRequest,
@@ -433,6 +434,12 @@ const BASE_COMMAND_EVIDENCE_KEYS = [
   "latest_proof_status",
   "latest_result_status",
   "evidence_ref",
+  "latest_evidence_ref",
+  "scan_status",
+  "continuous_scan_status",
+  "continuity_window_status",
+  "latest_scan_proof_fresh",
+  "latest_raw_packet_proof_status",
   "scan_once_observed",
   "scan_hz_observed",
   "raw_packet_once_observed",
@@ -1523,6 +1530,63 @@ export function createWorkstationApp(): express.Express {
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
+  });
+
+  workstationApp.get("/api/robot-control/radar/status", async (req, res) => {
+    // Radar status 是固定只读 GET；给地图和现场 smoke 一个稳定 JSON 入口，不能退化成任意 Robot API 代理。
+    const sourceBaseUrl = robotControlReadOnlyQueryBaseUrl(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const fallbackBase: RobotControlRadarStatusResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_radar_status_proxy.v1",
+      proxy_status: "status_rejected",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+      workstation_endpoint: "/api/robot-control/radar/status",
+      remote_endpoint: "/api/radar/status",
+      remote_method: "GET",
+      remote_http_status: null,
+      status: "blocked",
+      radar_key_values: {},
+      failure_reason: normalized.ok ? "" : normalized.reason,
+      blocked_reasons: normalized.ok ? [] : [normalized.reason],
+      hard_dangerous_true_fields: [],
+    };
+    if (!normalized.ok) {
+      res.status(400).json(fallbackBase);
+      return;
+    }
+    try {
+      const remote = await fetch(endpointUrl(normalized.normalized, "/api/radar/status"), {
+        method: "GET",
+        signal: AbortSignal.timeout(8000),
+      });
+      const remotePayload = asRecord(await remote.json().catch(() => null));
+      const dangerous = scanDangerousTrueFields(remotePayload);
+      const responseBody: RobotControlRadarStatusResponse = {
+        ...fallbackBase,
+        proxy_status: remote.ok && remotePayload && dangerous.length === 0 ? "status_loaded" : "status_failed",
+        remote_http_status: remote.status,
+        status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
+        radar_key_values: compactKeyValues(remotePayload),
+        failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `radar_status_http_status_${remote.status}`,
+        blocked_reasons: [
+          ...(remote.ok ? [] : [`radar_status_http_status_${remote.status}`]),
+          ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ],
+        hard_dangerous_true_fields: dangerous,
+      };
+      res.status(responseBody.proxy_status === "status_loaded" ? 200 : 502).json(responseBody);
+    } catch (error) {
+      const reason = error instanceof Error ? shortText(error.message, "radar_status_failed") : "radar_status_failed";
+      res.status(502).json({ ...fallbackBase, proxy_status: "status_failed", failure_reason: reason, blocked_reasons: [reason] });
+    }
   });
 
   ([
