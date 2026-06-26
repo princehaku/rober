@@ -4554,6 +4554,16 @@ describe("workstation fail-closed API contracts", () => {
         status: "missing",
         blocked_reasons: [],
       }));
+      expect(summary.readback_summary.free_roam).toEqual({
+        status: "missing",
+        runtime_status: "not_loaded",
+        decision_state: "not_loaded",
+        decision_reason: "not_loaded",
+        stop_required: "not_loaded",
+        artifact_only: "not_loaded",
+        cmd_vel_publish_enabled: "not_loaded",
+        gate_count: "0",
+      });
     } finally {
       await robotApi.close();
     }
@@ -4632,6 +4642,16 @@ describe("workstation fail-closed API contracts", () => {
           state: "blocked",
         }),
       ]));
+      expect(summary.readback_summary.free_roam).toEqual({
+        status: "loaded",
+        runtime_status: "loaded",
+        decision_state: "turning_for_coverage",
+        decision_reason: "地图覆盖暂未增长，原地扫描寻找新方向",
+        stop_required: "false",
+        artifact_only: "true",
+        cmd_vel_publish_enabled: "false",
+        gate_count: "1",
+      });
       expect(summary.safe_to_control).toBe(false);
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {

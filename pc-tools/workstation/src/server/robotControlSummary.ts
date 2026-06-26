@@ -2940,6 +2940,29 @@ function nav2SummaryFromReadbacks(
   };
 }
 
+function freeRoamSummaryFromReadbacks(
+  readbacks: InternalRobotApiEndpointReadback[],
+): RobotControlSummaryResponse["readback_summary"]["free_roam"] {
+  // free-roam 摘要把自动扫图 artifact 的最近状态提升给首屏；它只解释状态，不代表 PC 可以直接发车。
+  const readback = readbackById(readbacks, "free_roam_autonomy_latest");
+  const payload = readback?.payload ?? null;
+  const latest = freeRoamRuntimeLatestFromReadbacks(readbacks);
+  const decision = asRecord(latest?.decision);
+  const rawGates = Array.isArray(decision?.gates) ? decision.gates : [];
+  const payloadGateCount = summaryValueText(payload, ["gate_count"]);
+  const gateCount = rawGates.length > 0 ? String(rawGates.length) : payloadGateCount && payloadGateCount !== "not_loaded" ? payloadGateCount : "0";
+  return {
+    status: readback?.status ?? "not_loaded",
+    runtime_status: asString(payload?.runtime_status, latest ? "loaded" : "not_loaded"),
+    decision_state: asString(decision?.state, asString(payload?.decision_state, "not_loaded")),
+    decision_reason: asString(decision?.reason, asString(payload?.decision_reason, "not_loaded")),
+    stop_required: decision ? booleanSummaryValue(decision.stop_required === true) : summaryValueText(payload, ["stop_required"]) ?? "not_loaded",
+    artifact_only: latest ? booleanSummaryValue(latest.artifact_only !== false) : summaryValueText(payload, ["artifact_only"]) ?? "not_loaded",
+    cmd_vel_publish_enabled: latest ? booleanSummaryValue(latest.cmd_vel_publish_enabled === true) : summaryValueText(payload, ["cmd_vel_publish_enabled"]) ?? "not_loaded",
+    gate_count: gateCount,
+  };
+}
+
 function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryResponse {
   // URL 被拒或未配置时也返回完整合同，前端可以稳定展示七区块和恢复路径。
   const observedAt = Date.now();
@@ -3059,6 +3082,16 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         path_point_count: "not_loaded",
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
+      },
+      free_roam: {
+        status: "not_loaded",
+        runtime_status: "not_loaded",
+        decision_state: "not_loaded",
+        decision_reason: "not_loaded",
+        stop_required: "not_loaded",
+        artifact_only: "not_loaded",
+        cmd_vel_publish_enabled: "not_loaded",
+        gate_count: "0",
       },
     },
     operator_hil_material_summary: notLoadedHilMaterialSummary("not_loaded"),
@@ -3426,6 +3459,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
       map: mapSummaryFromReadbacks(readbacks, proofSummary),
       localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
       nav2: nav2SummaryFromReadbacks(readbacks, proofSummary),
+      free_roam: freeRoamSummaryFromReadbacks(readbacks),
     },
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),

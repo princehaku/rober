@@ -2688,3 +2688,10 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 `/api/robot-control/camera/mjpeg/status` 仍返回 `shared_capture=true/exclusive_camera_claim=false/client_count=0/upstream_active=false`，
 上车 `/api/camera/health` 返回 `source_usage.status=not_in_use/owner_count=0`。这说明 PC 共享预览不是独占根因；当前真实根因是
 `/dev/video1` 能打开但底层 `capture.read()` 超时。该检查仍只读相机，不调用 manual、Nav2、delivery、stop、free-roam start 或 `/cmd_vel`。
+
+2026-06-26 20:55 起，Robot Control summary 新增 `readback_summary.free_roam`，把
+`/api/free-roam/autonomy/latest` 的 `runtime_status/decision_state/decision_reason/stop_required/artifact_only/cmd_vel_publish_enabled/gate_count`
+提升成稳定短读数。现场 PC 7001 复测可直接看到 `status=not_proven`、`runtime_status=loaded`、`decision_state=stopping`、
+`decision_reason=现场请求停止`、`stop_required=true`、`artifact_only=true`、`cmd_vel_publish_enabled=false`、`gate_count=5`。
+这让普通界面和诊断不用再只从 `safe_command_boundary.free_roam_autonomy_gates` 里反推“为什么自动扫图还没动”；但该摘要仍是只读状态，
+不解锁运动发布，不调用 free-roam start/stop、manual、Nav2、delivery、stop 或 `/cmd_vel`。

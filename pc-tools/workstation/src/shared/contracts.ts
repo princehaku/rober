@@ -2420,6 +2420,16 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       path_preview_point_count: string;
       path_preview_frame_id: string;
     };
+    free_roam: {
+      status: string;
+      runtime_status: string;
+      decision_state: string;
+      decision_reason: string;
+      stop_required: string;
+      artifact_only: string;
+      cmd_vel_publish_enabled: string;
+      gate_count: string;
+    };
   };
   operator_hil_material_summary: RobotControlOperatorHilMaterialSummary;
   first_jog_readiness_summary: {
