@@ -32,8 +32,8 @@ DEFAULT_BASE_PORT = "/dev/ttyS5"
 DEFAULT_BASE_BAUDRATE = 115200
 DEFAULT_MAX_SPEED = 0.12
 DEFAULT_BASE_COMMAND_MODE = "pwm"
-DEFAULT_MANUAL_PWM_MIN_ABS = 90
-DEFAULT_MANUAL_PWM_MAX_ABS = 90
+DEFAULT_MANUAL_PWM_MIN_ABS = 164
+DEFAULT_MANUAL_PWM_MAX_ABS = 164
 DEFAULT_PULSE_MS = 260
 MAX_PULSE_MS = 800
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
@@ -421,12 +421,12 @@ def pwm_command_for_direction(
     pwm_min_abs: int,
     pwm_max_abs: int,
 ) -> dict[str, int]:
-    """把 PC 点动速度映射到 vendor T=11 PWM；当前真机已验证该路径能产生非零 T1001。"""
+    """把 PC 点动速度映射到 vendor T=11 PWM；轮速反馈与运动证据分开判断。"""
     if direction == "stop" or speed <= 0:
         pwm = 0
     else:
-        # WAVE ROVER 当前现场 T=1/T=13 不出轮速，T=11 PWM=90 可出非零反馈；
-        # 因此非零点动使用最小起步 PWM，仍由 pwm_max_abs 把风险封顶。
+        # vendor json_cmd.h 给出的 PWM 示例是 164；当前现场 T1001 L/R 可能一直为 0，
+        # 所以这里只负责发足够短的点动命令，运动证据由 IMU/外部观察另行记录。
         scaled = round(abs(speed) / max(max_speed, 1e-6) * pwm_max_abs)
         pwm = min(max(pwm_min_abs, scaled), pwm_max_abs)
     if direction == "forward":
@@ -3984,6 +3984,10 @@ def summarize_feedback_samples_latest_artifact(
         "wheel_feedback_summary": {},
         "wheel_feedback_nonzero_observed": False,
         "wheel_feedback_lr_nonzero_proven": False,
+        "imu_attitude_delta_summary": {},
+        "imu_attitude_delta_observed": False,
+        "motion_signal_observed": False,
+        "motion_signal_source": "not_observed",
         "readback_sends_commands": False,
         "sends_commands": False,
         "sends_motion_commands": False,
@@ -4034,10 +4038,18 @@ def summarize_feedback_samples_latest_artifact(
     base_summary["latest_t1001_observed_count"] = parsed.get("t1001_observed_count")
     base_summary["latest_all_samples_observed_t1001"] = parsed.get("all_samples_observed_t1001")
     wheel_summary = parsed.get("wheel_feedback_summary") if isinstance(parsed.get("wheel_feedback_summary"), dict) else {}
+    imu_summary = parsed.get("imu_attitude_delta_summary") if isinstance(parsed.get("imu_attitude_delta_summary"), dict) else {}
     wheel_nonzero = bool(wheel_summary.get("lr_nonzero_observed") or parsed.get("wheel_feedback_lr_nonzero_proven") is True)
+    imu_delta = bool(imu_summary.get("imu_attitude_delta_observed") or parsed.get("imu_attitude_delta_observed") is True)
     base_summary["wheel_feedback_summary"] = wheel_summary
     base_summary["wheel_feedback_nonzero_observed"] = wheel_nonzero
     base_summary["wheel_feedback_lr_nonzero_proven"] = wheel_nonzero
+    base_summary["imu_attitude_delta_summary"] = imu_summary
+    base_summary["imu_attitude_delta_observed"] = imu_delta
+    base_summary["motion_signal_observed"] = bool(wheel_nonzero or imu_delta or parsed.get("motion_signal_observed") is True)
+    base_summary["motion_signal_source"] = parsed.get("motion_signal_source") or (
+        "wheel_feedback_lr" if wheel_nonzero else "imu_attitude_delta" if imu_delta else "not_observed"
+    )
     return base_summary
 
 
@@ -4090,7 +4102,14 @@ def persist_feedback_samples_artifact(path: str, payload: dict[str, Any]) -> dic
 def build_latest_readback_payload(path: str, artifact_status: dict[str, Any], latest_result: dict[str, Any] | None) -> dict[str, Any]:
     """latest 回放只描述文件读取结果，历史 payload 放在 latest_result 里。"""
     wheel_summary = latest_result.get("wheel_feedback_summary") if isinstance(latest_result, dict) and isinstance(latest_result.get("wheel_feedback_summary"), dict) else {}
+    imu_summary = latest_result.get("imu_attitude_delta_summary") if isinstance(latest_result, dict) and isinstance(latest_result.get("imu_attitude_delta_summary"), dict) else {}
     wheel_nonzero = bool(wheel_summary.get("lr_nonzero_observed") or (isinstance(latest_result, dict) and latest_result.get("wheel_feedback_lr_nonzero_proven") is True))
+    imu_delta = bool(imu_summary.get("imu_attitude_delta_observed") or (isinstance(latest_result, dict) and latest_result.get("imu_attitude_delta_observed") is True))
+    motion_signal = bool(
+        wheel_nonzero
+        or imu_delta
+        or (isinstance(latest_result, dict) and latest_result.get("motion_signal_observed") is True)
+    )
     return {
         "schema": f"{SCHEMA}.base_feedback_samples_latest_result",
         "generated_at_ms": now_ms(),
@@ -4100,6 +4119,18 @@ def build_latest_readback_payload(path: str, artifact_status: dict[str, Any], la
         "wheel_feedback_summary": wheel_summary,
         "wheel_feedback_nonzero_observed": wheel_nonzero,
         "wheel_feedback_lr_nonzero_proven": wheel_nonzero,
+        "imu_attitude_delta_summary": imu_summary,
+        "imu_attitude_delta_observed": imu_delta,
+        "motion_signal_observed": motion_signal,
+        "motion_signal_source": (
+            latest_result.get("motion_signal_source")
+            if isinstance(latest_result, dict) and latest_result.get("motion_signal_source")
+            else "wheel_feedback_lr"
+            if wheel_nonzero
+            else "imu_attitude_delta"
+            if imu_delta
+            else "not_observed"
+        ),
         "readback_sends_commands": False,
         "safe_to_control": False,
         "sends_commands": False,
@@ -4489,6 +4520,41 @@ def wheel_feedback_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str
             "same T=1001 frame contains finite nonzero L/R wheel feedback"
             if observed
             else "no same T=1001 frame contained finite nonzero L/R wheel feedback"
+        ),
+    }
+
+
+def imu_attitude_delta_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str, Any]:
+    """用 T1001 r/p 计算姿态变化迹象；它不能替代轮速闭环或交付成功。"""
+    matched_frames: list[dict[str, float]] = []
+    for frame in frames:
+        roll = finite_feedback_number(frame.get("r"))
+        pitch = finite_feedback_number(frame.get("p"))
+        if roll is None or pitch is None:
+            continue
+        matched_frames.append({"roll": roll, "pitch": pitch})
+
+    threshold_degrees = 1.0
+    max_roll_delta = 0.0
+    max_pitch_delta = 0.0
+    if matched_frames:
+        base_roll = matched_frames[0]["roll"]
+        base_pitch = matched_frames[0]["pitch"]
+        max_roll_delta = max(abs(item["roll"] - base_roll) for item in matched_frames)
+        max_pitch_delta = max(abs(item["pitch"] - base_pitch) for item in matched_frames)
+    observed = max(max_roll_delta, max_pitch_delta) >= threshold_degrees
+    return {
+        "source": "vendor_t1001_r_p",
+        "frame_count": len(frames),
+        "matched_frame_count": len(matched_frames),
+        "imu_attitude_delta_observed": observed,
+        "max_abs_roll_delta": round(max_roll_delta, 6),
+        "max_abs_pitch_delta": round(max_pitch_delta, 6),
+        "threshold_degrees": threshold_degrees,
+        "reason": (
+            "T=1001 roll/pitch changed during the sample window"
+            if observed
+            else "no T=1001 roll/pitch delta above threshold was observed"
         ),
     }
 
@@ -5116,6 +5182,7 @@ def build_base_feedback_samples_payload(
     all_samples_observed = bool(samples) and t1001_observed_count == len(samples)
     partial_samples_observed = 0 < t1001_observed_count < len(samples)
     wheel_summary = wheel_feedback_summary_from_frames(t1001_feedback_frames)
+    imu_delta_summary = imu_attitude_delta_summary_from_frames(t1001_feedback_frames)
     return {
         "schema": f"{SCHEMA}.base_feedback_samples_result",
         "generated_at_ms": now_ms(),
@@ -5142,6 +5209,19 @@ def build_base_feedback_samples_payload(
         "wheel_feedback_summary": wheel_summary,
         "wheel_feedback_nonzero_observed": wheel_summary["lr_nonzero_observed"],
         "wheel_feedback_lr_nonzero_proven": wheel_summary["lr_nonzero_observed"],
+        "imu_attitude_delta_summary": imu_delta_summary,
+        "imu_attitude_delta_observed": imu_delta_summary["imu_attitude_delta_observed"],
+        "motion_signal_observed": bool(
+            wheel_summary["lr_nonzero_observed"]
+            or imu_delta_summary["imu_attitude_delta_observed"]
+        ),
+        "motion_signal_source": (
+            "wheel_feedback_lr"
+            if wheel_summary["lr_nonzero_observed"]
+            else "imu_attitude_delta"
+            if imu_delta_summary["imu_attitude_delta_observed"]
+            else "not_observed"
+        ),
         "feedback_ack": {
             "t1001_observed": bool(t1001_observed_count),
             "robot_ack_connected": False,
@@ -6488,6 +6568,14 @@ class UpperRobotApi:
                 "cancel_requested": bool(latest_result.get("cancel_requested")) if isinstance(latest_result, dict) else False,
                 "feedback_sample_count": int(latest_result.get("feedback_sample_count") or 0) if isinstance(latest_result, dict) else 0,
                 "nav2_goal_execution_proven": latest_status == "goal_succeeded",
+                "sends_commands": bool(latest_result.get("sends_motion_commands")) if isinstance(latest_result, dict) else False,
+                "sends_motion_commands": bool(latest_result.get("sends_motion_commands")) if isinstance(latest_result, dict) else False,
+                "sends_base_motion_commands": bool(latest_result.get("sends_base_motion_commands")) if isinstance(latest_result, dict) else False,
+                "uses_base_uart": bool(latest_result.get("uses_base_uart")) if isinstance(latest_result, dict) else False,
+                "publishes_cmd_vel": latest_result.get("publishes_cmd_vel") if isinstance(latest_result, dict) else False,
+                "calls_base_manual": bool(latest_result.get("calls_base_manual")) if isinstance(latest_result, dict) else False,
+                "blocked_devices_not_touched": [],
+                "blocked_commands_not_sent": [],
                 "delivery_success": False,
                 "safe_to_control": False,
                 "primary_actions_enabled": False,
@@ -7217,6 +7305,18 @@ class UpperRobotApi:
             *t1001_frames_from_feedback_payload(feedback_evidence),
         ]
         manual_wheel_feedback_summary = wheel_feedback_summary_from_frames(wheel_feedback_frames)
+        manual_imu_delta_summary = imu_attitude_delta_summary_from_frames(wheel_feedback_frames)
+        manual_motion_signal_observed = bool(
+            manual_wheel_feedback_summary["lr_nonzero_observed"]
+            or manual_imu_delta_summary["imu_attitude_delta_observed"]
+        )
+        manual_motion_signal_source = (
+            "wheel_feedback_lr"
+            if manual_wheel_feedback_summary["lr_nonzero_observed"]
+            else "imu_attitude_delta"
+            if manual_imu_delta_summary["imu_attitude_delta_observed"]
+            else "not_observed"
+        )
         manual_feedback_samples_latest = None
         if feedback_during_motion_attempted:
             # first-jog/键盘手控的非零 T1001 必须落到 latest artifact，
@@ -7258,8 +7358,12 @@ class UpperRobotApi:
             "serial_motion_transaction": serial_motion_transaction,
             "t1001_feedback_status": feedback_evidence.get("t1001_feedback_status"),
             "manual_wheel_feedback_summary": manual_wheel_feedback_summary,
+            "manual_imu_attitude_delta_summary": manual_imu_delta_summary,
             "wheel_feedback_nonzero_observed": manual_wheel_feedback_summary["lr_nonzero_observed"],
             "wheel_feedback_lr_nonzero_proven": manual_wheel_feedback_summary["lr_nonzero_observed"],
+            "imu_attitude_delta_observed": manual_imu_delta_summary["imu_attitude_delta_observed"],
+            "motion_signal_observed": manual_motion_signal_observed,
+            "motion_signal_source": manual_motion_signal_source,
             "feedback_ack": feedback_evidence.get("feedback_ack", t1001_boundary("manual feedback evidence unavailable")),
             "safe_to_control": False,
             "sends_commands": True,

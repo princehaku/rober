@@ -31,30 +31,28 @@ AMCL。随后再等待 planner/controller/BT/behavior lifecycle active 后才发
 日志中的 `lifecycle_manager_navigation: Managed nodes are active` 作为执行层 active 证据；不能只因为
 `/navigate_to_pose` action server 出现就发送 goal，因为 BT node 未 active 时目标可能被拒绝。
 
-2026-06-27 后，常规 bringup/autonomous 的 `esp32_bridge` 默认使用 `command_mode=speed`，
-即按 vendor `CMD_SPEED_CTRL/T=1` 接收 `/cmd_vel` 后输出左右轮速。O11 托管 runtime 仍可显式选择
-`command_mode=pwm`、`pwm_min_abs=90`、`pwm_max_abs=90` 做诊断；该口径来自
+2026-06-27 后，PC 手控、上位机 `/api/base/manual` 和 O11 托管 runtime 默认走 vendor
+`CMD_PWM_INPUT/T=11` PWM 通路，并采用 `pwm_min_abs=164`、`pwm_max_abs=164`。该口径来自
 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`CMD_PWM_INPUT/T=11` 为左右轮
-PWM 输入，范围 `-255..255`。由于同轮 Nav2 托管执行已出现“非零 `T=11` 命令发出但
-`T=1001 L/R` 仍为 `0/0`”的情况，PWM 不再写成默认成功路径。O11 会通过
-`feedback_debug_log_path` 记录 bridge 解析出的 `T=1001`，并把 `base_feedback_summary` 写入 artifact。
-`nav2_goal_execution_proven=true` 必须同时满足 action 成功和
-`base_feedback_summary.wheel_feedback_lr_nonzero_proven=true`；这只证明路线执行触到底盘，不等于投放或
-`delivery_success`。
+PWM 输入，范围 `-255..255`，vendor 示例使用 `L/R=164`。O11 会通过 `feedback_debug_log_path`
+记录 bridge 解析出的 `T=1001`，并把 `base_feedback_summary` 写入 artifact。`base_feedback_summary`
+必须区分 `wheel_feedback_lr_nonzero_proven` 与 `imu_attitude_delta_observed`：前者只来自同帧
+`T1001 L/R` 非零，后者来自 `T1001 r/p` 姿态变化，只能作为运动迹象，不能冒充轮速闭环或交付成功。
+底盘命令发送和 bounded Nav2 goal execution 不以雷达 fresh 为前置；雷达仍只服务避障/建图/验收材料。
 
 O11 还会打开 `command_debug_log_path`，记录 `/cmd_vel` 转换后的 vendor JSON，并在 artifact 中写入
 `base_command_summary`。如果 `base_command_summary.nonzero_command_observed=true` 但
 `base_feedback_summary.wheel_feedback_lr_nonzero_proven=false`，说明 Nav2/bridge 已发非零命令但底盘反馈未跟上；
 如果两者都为 false，则说明 controller 没有产生非零底盘命令。
 
-同日实车 O11 复验确认，`nav2_params.yaml` 的 `FollowPath.use_collision_detection=false`
-后，bounded 路线执行不再被雷达/局部 costmap 误障碍卡住；PC 固定 execute 入口返回
-`execution_forwarded`，上车 artifact 记录 `status=goal_succeeded`、执行层 lifecycle active、
-`base_command_mode=pwm`、`base_command_summary.nonzero_command_observed=true`、
-`base_command_nonzero_count=49`。同轮 `T=1001` 反馈仍为
-`base_feedback_summary.wheel_feedback_lr_nonzero_proven=false`、`L/R=0/0`，因此
-`hil_pass=false`、`nav2_goal_execution_proven=false` 必须保持不变。该设置只证明
-Nav2 -> `/cmd_vel` -> PWM bridge 命令链路活了，不等于避障完成、真实轮速闭环、现场安全或
+同日实车 O11 复验确认，bounded 路线执行不再被雷达 freshness 卡住；上车 artifact 记录
+`status=goal_succeeded`、执行层 lifecycle active、`base_command_mode=pwm`、
+`managed_runtime.base_pwm_min_abs=164`、`managed_runtime.base_pwm_max_abs=164`、
+`base_command_summary.nonzero_command_observed=true`、非零命令 `T=11 L=164/R=-164`、
+`uses_base_uart=true`、`sends_base_motion_commands=true`。同轮长执行反馈里
+`base_feedback_summary.wheel_feedback_lr_nonzero_proven=false` 但
+`base_feedback_summary.imu_attitude_delta_observed=true`，因此可以证明 Nav2 -> `/cmd_vel` ->
+PWM bridge -> 底盘运动迹象链路已触达；它仍不等于避障完成、现场安全、operator dropoff 或
 `delivery_success`。
 
 PC summary/readback contract 从 2026-06-27 起把 O11 latest 的 `base_command_summary` 与

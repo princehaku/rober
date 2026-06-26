@@ -21,8 +21,8 @@ DEFAULT_ONBOARD_SETUP = "/root/rober/onboard/install/setup.bash"
 DEFAULT_WORKDIR = "/root/rober/onboard"
 DEFAULT_NAV2_PARAMS = "/root/rober/onboard/src/ros2_trashbot_nav/config/nav2_params.yaml"
 DEFAULT_BASE_COMMAND_MODE = "pwm"
-DEFAULT_PWM_MIN_ABS = 90
-DEFAULT_PWM_MAX_ABS = 90
+DEFAULT_PWM_MIN_ABS = 164
+DEFAULT_PWM_MAX_ABS = 164
 
 
 def now_ms() -> int:
@@ -52,7 +52,7 @@ def compact_error(exc: BaseException) -> dict[str, str]:
 
 
 def managed_esp32_bridge_command(feedback_log_path: str, command_log_path: str = "") -> str:
-    """O11 托管 Nav2 执行必须走当前真机已证明可动的 PWM 底盘通路。"""
+    """O11 托管 Nav2 执行走 vendor T=11 PWM 通路，不依赖雷达决定底盘能否发命令。"""
     command_debug_arg = (
         f" -p command_debug_log_path:={shlex.quote(command_log_path)}" if command_log_path else ""
     )
@@ -301,12 +301,21 @@ def preview_text_file(path: str, *, max_chars: int) -> str:
 
 def summarize_feedback_debug_log(path: str) -> dict[str, Any]:
     """汇总 bridge 写出的 T=1001 反馈，作为 Nav2 是否真正触底盘的材料。"""
+    attitude_pairs: list[dict[str, float]] = []
     summary: dict[str, Any] = {
         "path": path,
         "exists": False,
         "sample_count": 0,
         "nonzero_sample_count": 0,
         "wheel_feedback_lr_nonzero_proven": False,
+        "imu_attitude_delta_observed": False,
+        "imu_attitude_delta_summary": {
+            "source": "wave_rover_t1001_roll_pitch",
+            "matched_sample_count": 0,
+            "max_abs_roll_delta": 0.0,
+            "max_abs_pitch_delta": 0.0,
+            "threshold_degrees": 1.0,
+        },
         "latest_pair": None,
         "latest_nonzero_pair": None,
         "malformed_line_count": 0,
@@ -346,8 +355,27 @@ def summarize_feedback_debug_log(path: str) -> dict[str, Any]:
         if abs(float(left_speed)) > 1e-6 or abs(float(right_speed)) > 1e-6:
             summary["nonzero_sample_count"] += 1
             summary["latest_nonzero_pair"] = pair
+        roll = record.get("roll")
+        pitch = record.get("pitch")
+        if isinstance(roll, (int, float)) and isinstance(pitch, (int, float)):
+            attitude_pairs.append({"roll": float(roll), "pitch": float(pitch)})
 
     summary["wheel_feedback_lr_nonzero_proven"] = summary["nonzero_sample_count"] > 0
+    if attitude_pairs:
+        base_roll = attitude_pairs[0]["roll"]
+        base_pitch = attitude_pairs[0]["pitch"]
+        max_roll_delta = max(abs(item["roll"] - base_roll) for item in attitude_pairs)
+        max_pitch_delta = max(abs(item["pitch"] - base_pitch) for item in attitude_pairs)
+        threshold = float(summary["imu_attitude_delta_summary"]["threshold_degrees"])
+        summary["imu_attitude_delta_summary"].update(
+            {
+                "matched_sample_count": len(attitude_pairs),
+                "max_abs_roll_delta": round(max_roll_delta, 6),
+                "max_abs_pitch_delta": round(max_pitch_delta, 6),
+            }
+        )
+        # 姿态变化只能作为“车身有运动迹象”，不能替代 L/R 轮速闭环或交付成功。
+        summary["imu_attitude_delta_observed"] = max(max_roll_delta, max_pitch_delta) >= threshold
     if summary["sample_count"] == 0 and "reason" not in summary:
         summary["reason"] = "feedback_debug_log_has_no_valid_samples"
     return summary

@@ -126,12 +126,14 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   控制轮速、`T=130/T=1001` 回读反馈，固件 setpoint/feedback 节奏约 200ms；旧的 220ms
   上限容易在 first-jog 停车前漏掉非零 `T=1001 L/R`。新策略仍保留 stop 兜底，并且不要求雷达或摄像头
   ready 才能低速试动；雷达和摄像头只决定本轮是否可按“可建图”验收。
-- 同轮真机 smoke 进一步确认：`T=1 L/R=0.12` 与 `T=13 X=0.12/Z=0` 都能收到 `T=1001`，但轮速仍为
-  `0/0`；vendor direct PWM `T=11 L=90/R=90` 曾收到非零 `T=1001 L/R=90/90`，因此上位机
-  `/api/base/manual` 可用 `base_command_mode=pwm` 做显式诊断，非 stop 后同时发送 `T=11`、`T=1`、`T=13`
-  零速兜底。后续 Nav2 托管执行里 `T=11 L=90/R=-90` 仍未得到非零轮速闭环，所以 ROS
-  `esp32_bridge` 的 bringup/autonomous 默认回到 vendor `command_mode=speed/T=1`；`pwm` 仅作为
-  显式 HIL/诊断 override，不能把自动驾驶写成已真实可动。
+- 同轮后续真机复验确认：依据 vendor `json_cmd.h` 的 `T=11` PWM 示例，PC 手控、上位机
+  `/api/base/manual` 和 O11 Nav2 托管 bridge 默认使用 `pwm_min_abs=164/pwm_max_abs=164`。手控
+  `T=11 L=164/R=164` 已读到运动中 `T=1001 L/R=164/164`，停车后回到 `0/0`；Nav2 bounded
+  执行已记录 `goal_succeeded`、`uses_base_uart=true`、`sends_base_motion_commands=true`、
+  非零命令 `T=11 L=164/R=-164` 和 `imu_attitude_delta_observed=true`。接口会把
+  `wheel_feedback_lr_nonzero_proven` 与 `motion_signal_observed` 分开展示：前者只代表同帧
+  `T1001 L/R` 非零，后者还可以来自 `T1001 r/p` 姿态变化。底盘低速试动和 Nav2 执行不再以雷达或摄像头
+  ready 为前置；雷达和摄像头只决定本轮是否可按“可建图/可验收画面”收口。
 
 ## 用户流程
 

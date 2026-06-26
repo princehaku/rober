@@ -98,7 +98,7 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
         examples = proof["cmd_vel_examples"]
 
         self.assertEqual(examples["speed_mode_forward"]["command"], {"T": 1, "L": 0.5, "R": 0.5})
-        self.assertEqual(examples["pwm_mode_forward_hil_observed"]["command"], {"T": 11, "L": 90, "R": 90})
+        self.assertEqual(examples["pwm_mode_forward_vendor_sample"]["command"], {"T": 11, "L": 164, "R": 164})
         self.assertEqual(
             examples["ros_mode_forward_unverified"]["command"], {"T": 13, "X": 0.1, "Z": 0.0}
         )

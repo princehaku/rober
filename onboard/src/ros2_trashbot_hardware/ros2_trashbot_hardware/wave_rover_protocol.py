@@ -24,8 +24,8 @@ CMD_BASE_FEEDBACK_FLOW = 131
 CMD_FEEDBACK_FLOW_INTERVAL = 142
 CMD_UART_ECHO_MODE = 143
 FEEDBACK_BASE_INFO = 1001
-DEFAULT_PWM_MIN_ABS = 90
-DEFAULT_PWM_MAX_ABS = 90
+DEFAULT_PWM_MIN_ABS = 164
+DEFAULT_PWM_MAX_ABS = 164
 VALID_COMMAND_MODES = ("speed", "ros", "pwm")
 
 
@@ -40,7 +40,7 @@ def _round_float(value: float) -> float:
 
 
 def _pwm_from_wheel_speed(wheel_mps: float, max_wheel_speed_mps: float, pwm_min_abs: int, pwm_max_abs: int) -> int:
-    """把轮速映射到 T=11 PWM；非零速度使用现场验证过的最小起步 PWM。"""
+    """把轮速映射到 T=11 PWM；非零速度默认使用 vendor 示例 PWM 164。"""
     if abs(wheel_mps) <= 1e-9:
         return 0
     scaled = round(abs(wheel_mps) / max_wheel_speed_mps * pwm_max_abs)

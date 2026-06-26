@@ -307,7 +307,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
 
         self.assertEqual(command, {"T": 1, "L": 1.0, "R": 1.0})
 
-    def test_cmd_vel_pwm_mode_uses_hil_observed_t11_pwm(self):
+    def test_cmd_vel_pwm_mode_uses_vendor_sample_t11_pwm(self):
         bridge = _bridge_module()
 
         command = bridge.build_cmd_vel_command(
@@ -316,11 +316,11 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             command_mode="pwm",
             track_width_m=0.172,
             max_wheel_speed_mps=1.3,
-            pwm_min_abs=90,
-            pwm_max_abs=90,
+            pwm_min_abs=164,
+            pwm_max_abs=164,
         )
 
-        self.assertEqual(command, {"T": 11, "L": 90, "R": 90})
+        self.assertEqual(command, {"T": 11, "L": 164, "R": 164})
 
     def test_positive_angular_z_lowers_left_and_raises_right_wheel(self):
         bridge = _bridge_module()
@@ -569,8 +569,8 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             node.command_mode = "pwm"
             node.track_width_m = 0.172
             node.max_wheel_speed_mps = 1.3
-            node.pwm_min_abs = 90
-            node.pwm_max_abs = 90
+            node.pwm_min_abs = 164
+            node.pwm_max_abs = 164
             node.command_debug_log_path = str(log_path)
             node._last_cmd_linear = 0.0
             node._last_cmd_angular = 0.0
@@ -588,7 +588,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertEqual(record["source"], "esp32_bridge_cmd_vel_callback")
             self.assertEqual(record["command_mode"], "pwm")
             self.assertEqual(record["linear_x"], 0.2)
-            self.assertEqual(record["vendor_command"], {"L": 90, "R": 90, "T": 11})
+            self.assertEqual(record["vendor_command"], {"L": 164, "R": 164, "T": 11})
             self.assertEqual(node._last_cmd_linear, 0.2)
 
     def test_declare_and_load_bridge_config_defaults_publish_odom_tf_true(self):

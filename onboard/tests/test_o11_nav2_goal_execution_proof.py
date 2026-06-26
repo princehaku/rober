@@ -23,14 +23,14 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
     """锁定 O11 从 NavigateToPose 到真实底盘反馈的证明边界。"""
 
     def test_managed_bridge_uses_pwm_motion_path(self) -> None:
-        """自动驾驶托管 bridge 必须走当前真机已证明可动的 T=11 PWM 通路。"""
+        """自动驾驶托管 bridge 必须走 vendor T=11 PWM 通路，不把雷达作为底盘发命令前置。"""
         command = HELPER.managed_esp32_bridge_command("/tmp/o11_feedback.jsonl", "/tmp/o11_command.jsonl")
 
         self.assertIn("ros2_trashbot_hardware esp32_bridge", command)
         self.assertIn("-p serial_port:=/dev/ttyS5", command)
         self.assertIn("-p command_mode:=pwm", command)
-        self.assertIn("-p pwm_min_abs:=90", command)
-        self.assertIn("-p pwm_max_abs:=90", command)
+        self.assertIn("-p pwm_min_abs:=164", command)
+        self.assertIn("-p pwm_max_abs:=164", command)
         self.assertIn("-p feedback_debug_log_path:=/tmp/o11_feedback.jsonl", command)
         self.assertIn("-p command_debug_log_path:=/tmp/o11_command.jsonl", command)
         self.assertNotIn("command_mode:=speed", command)
@@ -92,6 +92,26 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
         self.assertEqual(summary["malformed_line_count"], 1)
         self.assertTrue(summary["nonzero_command_observed"])
         self.assertEqual(summary["latest_nonzero_command"]["vendor_command"], {"T": 11, "L": 90, "R": 90})
+
+    def test_feedback_debug_log_tracks_imu_delta_separately_from_wheel_feedback(self) -> None:
+        """IMU 姿态变化是运动迹象，不能被误包装成 L/R 轮速非零。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "feedback.jsonl"
+            log_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"left_speed": 0, "right_speed": 0, "roll": -1.6, "pitch": 0.3}),
+                        json.dumps({"left_speed": 0, "right_speed": 0, "roll": -9.4, "pitch": 4.5}),
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            summary = HELPER.summarize_feedback_debug_log(str(log_path))
+
+        self.assertFalse(summary["wheel_feedback_lr_nonzero_proven"])
+        self.assertTrue(summary["imu_attitude_delta_observed"])
+        self.assertGreater(summary["imu_attitude_delta_summary"]["max_abs_roll_delta"], 7.0)
 
 
 if __name__ == "__main__":

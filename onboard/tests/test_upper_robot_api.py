@@ -147,6 +147,35 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 
+    def test_feedback_samples_tracks_imu_motion_signal_without_wheel_claim(self) -> None:
+        """IMU 姿态变化只能证明运动迹象，不能冒充 L/R 轮速非零。"""
+        payload = upper_robot_api.build_base_feedback_samples_payload(
+            port="/dev/ttyS5",
+            baudrate=115200,
+            sample_count=2,
+            sample_interval_s=0.0,
+            read_timeout_s=0.2,
+            read_window_s=0.5,
+            samples=[
+                {
+                    "observed_feedback_types": [1001],
+                    "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "r": -1.6, "p": 0.3, "y": "null", "v": 12.4}],
+                    "feedback_ack": {"t1001_observed": True},
+                },
+                {
+                    "observed_feedback_types": [1001],
+                    "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "r": -9.4, "p": 4.5, "y": "null", "v": 12.4}],
+                    "feedback_ack": {"t1001_observed": True},
+                },
+            ],
+        )
+
+        self.assertFalse(payload["wheel_feedback_lr_nonzero_proven"])
+        self.assertTrue(payload["imu_attitude_delta_observed"])
+        self.assertTrue(payload["motion_signal_observed"])
+        self.assertEqual("imu_attitude_delta", payload["motion_signal_source"])
+        self.assertFalse(payload["safe_to_control"])
+
     def test_base_status_reports_non_motion_readback_without_control_enable(self) -> None:
         """status 可以做只读反馈探测，但不能开启 safe_to_control。"""
         # /api/base/status 允许发送 T=130，但不得打开运动控制或交付成功标志。
@@ -226,7 +255,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["auto_stop_executed"])
         self.assertTrue(payload["feedback_during_motion_attempted"])
         mocked_transaction.assert_called_once()
-        self.assertEqual({"T": 11, "L": 90, "R": 90}, mocked_transaction.call_args.kwargs["command"])
+        self.assertEqual({"T": 11, "L": 164, "R": 164}, mocked_transaction.call_args.kwargs["command"])
         self.assertEqual(
             [{"T": 11, "L": 0, "R": 0}, {"T": 1, "L": 0, "R": 0}, {"T": 13, "X": 0, "Z": 0}],
             mocked_transaction.call_args.kwargs["stop_commands"],
@@ -271,7 +300,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         kwargs = mocked_transaction.call_args.kwargs
         self.assertEqual(500, kwargs["pulse_ms"])
-        self.assertEqual({"T": 11, "L": 90, "R": 90}, kwargs["command"])
+        self.assertEqual({"T": 11, "L": 164, "R": 164}, kwargs["command"])
         self.assertAlmostEqual(0.45, kwargs["motion_read_window_s"])
         self.assertTrue(payload["manual_command_executed"])
 
@@ -305,7 +334,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         kwargs = mocked_transaction.call_args.kwargs
         self.assertEqual(240, kwargs["pulse_ms"])
-        self.assertEqual({"T": 11, "L": 90, "R": 90}, kwargs["command"])
+        self.assertEqual({"T": 11, "L": 164, "R": 164}, kwargs["command"])
         self.assertAlmostEqual(0.19, kwargs["motion_read_window_s"])
         self.assertTrue(payload["manual_command_executed"])
 
@@ -2296,6 +2325,43 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             upper_robot_api.resolve_onboard_runtime_path(upper_robot_api.DEFAULT_LOCALIZATION_ARTIFACT_PATH),
             api.localization_artifact_path,
         )
+
+    def test_nav2_goal_execute_lifts_base_motion_flags_from_latest_result(self) -> None:
+        """Nav2 执行外层返回必须跟随 latest_result，不能保留 no-motion 默认 blocked 字段。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        latest_result = {
+            "status": "goal_succeeded",
+            "goal_accepted": True,
+            "result_received": True,
+            "result_status": "succeeded",
+            "feedback_sample_count": 8,
+            "robot_control_executed": True,
+            "sends_motion_commands": True,
+            "sends_base_motion_commands": True,
+            "uses_base_uart": True,
+            "publishes_cmd_vel": "nav2_controller_may_publish_cmd_vel_when_goal_is_active",
+            "calls_base_manual": False,
+        }
+
+        with mock.patch.object(api, "nav2_proof_latest", return_value=(200, {"latest_result": {"proof": {"managed_runtime_map_yaml": "/tmp/map.yaml"}}})):
+            with mock.patch.object(upper_robot_api, "run_nav2_goal_execution_helper", return_value={"mode": "o11", "executed": True, "ok": True}):
+                with mock.patch.object(api, "nav2_goal_execution_latest", return_value=(200, {"latest_result": latest_result})):
+                    payload = asyncio.run(api.nav2_goal_execute({"confirm_navigation_execution": True}))
+
+        self.assertEqual("goal_succeeded", payload["status"])
+        self.assertTrue(payload["nav2_goal_execution_proven"])
+        self.assertTrue(payload["sends_motion_commands"])
+        self.assertTrue(payload["sends_base_motion_commands"])
+        self.assertTrue(payload["uses_base_uart"])
+        self.assertEqual([], payload["blocked_devices_not_touched"])
+        self.assertEqual([], payload["blocked_commands_not_sent"])
+        self.assertTrue(payload["robot_control_executed"])
+        self.assertFalse(payload["delivery_success"])
 
     def test_nav2_proof_refresh_managed_path_generation_stays_no_motion(self) -> None:
         """PC 检查路径使用 managed runtime，但不能被包装成 Nav2 start 或底盘控制。"""
