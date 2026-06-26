@@ -246,6 +246,7 @@ const evidenceSweepPending = ref(false);
 const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
 const evidenceSweepLines = ref<string[]>([]);
+const plainCameraProbeButton = ref<HTMLButtonElement | null>(null);
 const plainRadarRefreshButton = ref<HTMLButtonElement | null>(null);
 const plainRadarStartButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
@@ -369,11 +370,9 @@ function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有�
   return { state: "未连接", hint: "还没有连上可读状态。" };
 }
 
-function cameraSourcePlainFailureHint(): string {
-  // summary 已经完成工程归因；普通首屏只翻译成可处理的现场动作。
-  const camera = robotSummary.value?.readback_summary.camera;
-  const probeFailureHint = cameraProbePlainFailureHint();
-  const sourceFailed =
+function cameraSourceFirstFrameFailed(camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined): boolean {
+  // 相机源首帧失败必须同时影响提示和门禁，避免 UI 一边报错一边允许建图。
+  return Boolean(
     camera?.status === "source_first_frame_failed"
     || camera?.source_readiness === "first_frame_failed"
     || camera?.source_failure_reason === "first_frame_timeout"
@@ -381,7 +380,15 @@ function cameraSourcePlainFailureHint(): string {
     || camera?.source_failure_reason === "capture_read_returned_false"
     || camera?.last_offer_failure_reason === "first_frame_timeout"
     || camera?.last_offer_failure_reason === "capture_read_call_timeout"
-    || camera?.last_offer_failure_reason === "capture_read_returned_false";
+    || camera?.last_offer_failure_reason === "capture_read_returned_false"
+  );
+}
+
+function cameraSourcePlainFailureHint(): string {
+  // summary 已经完成工程归因；普通首屏只翻译成可处理的现场动作。
+  const camera = robotSummary.value?.readback_summary.camera;
+  const probeFailureHint = cameraProbePlainFailureHint();
+  const sourceFailed = cameraSourceFirstFrameFailed(camera);
   if (sourceFailed || probeFailureHint) {
     return probeFailureHint || "相机没有出画面，检查摄像头/视频线。";
   }
@@ -808,10 +815,7 @@ const cameraFrameTooDark = computed(() => cameraSummary.value.state === "画面�
 const cameraReadyForSharedPreview = computed(() => {
   // 上车端 WebRTC 服务已共享底层 capture；每个 PC 页面只需在相机源 ready 时接入自己的 recvonly peer。
   const camera = robotSummary.value?.readback_summary.camera;
-  const sourceFailure =
-    camera?.source_readiness === "first_frame_failed"
-    || camera?.source_failure_reason === "first_frame_timeout"
-    || camera?.last_offer_failure_reason === "first_frame_timeout";
+  const sourceFailure = cameraSourceFirstFrameFailed(camera);
   return Boolean(camera?.status === "ready" && camera?.video_source && !sourceFailure);
 });
 const cameraMjpegPreviewUrl = computed(() => (
@@ -1031,6 +1035,7 @@ const evidenceSweepSummary = computed(() => {
 });
 const radarSummary = computed(() => summarizeRadarState());
 const plainRadarRequiresRefresh = computed(() => ["雷达待刷新", "刷新失败"].includes(radarSummary.value.state));
+const plainRadarReadyForFreeRoamMapping = computed(() => radarSummary.value.state === "雷达已运行");
 const plainRadarStartUnavailable = computed(() => {
   // 配置缺失时普通首屏仍展示卡点，但不让按钮发送一个注定 dry-run 的 start 请求。
   return radarSummary.value.state === "雷达未运行" && !radarStartCommandConfigured();
@@ -1193,6 +1198,31 @@ function plainRadarTripBlockedNextAction(rerun: boolean): string {
     return rerun ? "下一步：先刷新雷达，再重新执行本轮行程。" : "下一步：先刷新雷达，再检查或执行行程。";
   }
   return rerun ? "下一步：先启动雷达，再重新执行本轮行程。" : "下一步：先启动雷达，再检查或执行行程。";
+}
+
+function plainRadarMappingBlockedHint(): string {
+  // 建图入口要求雷达点位所见即所得；基础键盘手控仍在自己的安全门禁内独立工作。
+  if (plainRadarStartUnavailable.value) {
+    return "雷达还没 ready；上位机雷达启动命令未配置，先配置后再建图。";
+  }
+  if (radarSummary.value.state === "雷达未运行") {
+    return "雷达还没运行；先启动雷达，等雷达已运行后再建图。";
+  }
+  if (plainRadarRequiresRefresh.value) {
+    return "雷达正在运行但还没确认实时点位；先刷新雷达，等雷达已运行后再建图。";
+  }
+  return "雷达还没 ready；先确认雷达已运行后再建图。";
+}
+
+function plainRadarMappingNextAction(): string {
+  // 下一步只引导到传感器按钮，不自动启动雷达或刷新 proof。
+  if (plainRadarStartUnavailable.value) {
+    return "配置雷达";
+  }
+  if (radarSummary.value.state === "雷达未运行") {
+    return "启动雷达";
+  }
+  return "刷新雷达";
 }
 
 function plainRadarDeliveryNextAction(rerun: boolean): string {
@@ -2332,6 +2362,8 @@ const mapSavedThisSession = computed(() => (
 ));
 const canStartPlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
+  && plainCameraReadyForFreeRoamAutonomy.value
+  && plainRadarReadyForFreeRoamMapping.value
   && !loading.value
   && !mapLifecyclePending.value
   && !mapWysiwygRefreshPending.value
@@ -2459,6 +2491,12 @@ const plainFreeRoamMappingSummary = computed(() => {
       ? { state: "扫图中", hint: "建图已启动。按住方向键/WASD 低速扫一圈，松开即停，随时点停止。" }
       : { state: "待手控", hint: `建图已启动，但键盘移动条件还没满足。${plainKeyboardNextActionSummary.value}` };
   }
+  if (!plainCameraReadyForFreeRoamAutonomy.value) {
+    return { state: "待画面", hint: "摄像头还没出画面；先检查摄像头，等实时画面可见后再建图。" };
+  }
+  if (!plainRadarReadyForFreeRoamMapping.value) {
+    return { state: "待雷达", hint: plainRadarMappingBlockedHint() };
+  }
   return { state: "可开始", hint: "先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图。" };
 });
 const plainFreeRoamMappingStartLabel = computed(() => (
@@ -2466,7 +2504,13 @@ const plainFreeRoamMappingStartLabel = computed(() => (
     ? "启动中"
     : mapWysiwygRefreshPending.value
       ? "等待地图刷新"
-      : mapRuntimeStarted.value ? "重新启动记录" : "开始扫地式建图"
+      : !plainManualSafetyConfirmed.value
+        ? "先勾安全确认"
+        : !plainCameraReadyForFreeRoamAutonomy.value
+          ? "检查摄像头后建图"
+          : !plainRadarReadyForFreeRoamMapping.value
+            ? plainRadarMappingNextAction()
+            : mapRuntimeStarted.value ? "重新启动记录" : "开始扫地式建图"
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
@@ -2522,6 +2566,15 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     if (mapWysiwygRefreshPending.value) {
       return "下一步：等待地图刷新";
+    }
+    if (!robotApiBaseUrl.value.trim()) {
+      return "下一步：连接小车";
+    }
+    if (!plainCameraReadyForFreeRoamAutonomy.value) {
+      return "下一步：检查摄像头";
+    }
+    if (!plainRadarReadyForFreeRoamMapping.value) {
+      return `下一步：${plainRadarMappingNextAction()}`;
     }
     return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
   }
@@ -7489,6 +7542,12 @@ function plainFreeRoamNextTarget(): HTMLElement | null {
     return plainFreeRoamConfirmCheckbox.value;
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    if (!plainCameraReadyForFreeRoamAutonomy.value) {
+      return enabledButton(plainCameraProbeButton.value) ?? plainCameraProbeButton.value;
+    }
+    if (!plainRadarReadyForFreeRoamMapping.value) {
+      return plainRadarNextTarget();
+    }
     return enabledButton(plainFreeRoamStartButton.value) ?? plainFreeRoamStartButton.value;
   }
   if (freeRoamAutonomyPendingAction.value) {
@@ -8941,7 +9000,7 @@ onBeforeUnmount(() => {
           <h3>实时画面</h3>
           <div class="panel-action-row">
             <button type="button" :disabled="!canStartPreview" @click="startPreview">打开画面</button>
-            <button type="button" class="secondary compact-stop" :disabled="!canRunPlainCameraProbe" data-testid="plain-camera-probe" @click="runCameraFirstFrameProbe">
+            <button ref="plainCameraProbeButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainCameraProbe" data-testid="plain-camera-probe" @click="runCameraFirstFrameProbe">
               {{ plainCameraProbeButtonLabel }}
             </button>
             <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>

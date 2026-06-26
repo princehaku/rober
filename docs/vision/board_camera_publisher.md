@@ -802,3 +802,14 @@ first-frame probe 得到：
 这份样张随后作为 operator report `evidence_ref=first-jog-visual-1782096252146`
 的视觉材料，使 first-jog readiness 从缺少视觉材料推进到 `ready_for_first_jog`。
 该材料仍只证明当前相机链路有可见样张，不证明检测、定位、避障、完整路线或交付成功。
+
+## 2026-06-26 PC camera gate 同步
+
+PC 普通首屏现在把上位机 camera health 的首帧失败原因统一纳入共享预览和建图门禁：
+`source_first_frame_failed`、`source_readiness=first_frame_failed`、`source_failure_reason=capture_read_returned_false`
+或 `capture_read_call_timeout` 都会显示为“相机没有出画面，检查摄像头/视频线”，并阻止 `扫地式建图` 调用
+`/api/robot-control/map/start`。这只是把真实采集失败 fail-closed 地暴露给 operator，不会自动打开摄像头、不发送
+manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
+
+当前真实上位机仍可能返回 `/dev/video1` 已选择但 `capture_read_returned_false`。该状态表示底层 V4L2/OpenCV
+没有拿到实际帧，仍需现场检查摄像头、线缆、供电、采集卡或替换 known-good UVC 后复测；不能把设备路径存在解释成画面可用。

@@ -54,3 +54,13 @@
 PC `GET /api/robot-control/summary` 中的 `free_roam_autonomy_start_ready` 只表示“基础自助移动入口可以引导 operator 开始”，不等同于完整自动扫图 ready。该字段现在只要求上车 free-roam runtime 已加载且 `stop_available` gate 为 ready；`lidar_fresh`、`obstacle_clear` 和 `motion_hil_unlock` 继续显示在门禁列表中，但不再阻塞基础启动提示。
 
 完整自动扫图仍必须满足上车端双参数 `enable_cmd_vel_publish=true` 与 `motion_hil_unlocked=true`，并且雷达避障、地图覆盖、停止兜底和真车 HIL 证据齐全后，`free_roam_autonomy` 才能从 `locked` 提升为 `ready`。当前真实上位机读回仍是 `artifact_only=true`、`cmd_vel_publish_enabled=false`，所以这次调整不会让 PC summary 直接发车或发布 `/cmd_vel`。
+
+## 2026-06-26 PC 建图入口传感器口径
+
+PC 普通首屏把“基础自助移动可引导”和“开始扫地式建图记录”分开处理。`free_roam_autonomy_start_ready`
+可以在雷达 proof 不 fresh 时继续引导 operator 处理基础自移动准备；但 `扫地式建图` 的 `开始扫地式建图`
+按钮必须同时看到相机源首帧 ready 和雷达卡片 `雷达已运行`。相机失败时只引导 `检查画面`，雷达 stale/incomplete
+时只引导 `刷新雷达`，都不会调用 map start、manual、keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
+
+这个口径保持“车能不能低速手控”不依赖雷达；低速键盘手控仍使用自己的安全确认和 stop 兜底。建图记录之所以要求相机和雷达
+ready，是为了保证 operator 开始记录时能看到实时画面和实时雷达点，不把 stale artifact 当成可用于建图的现场状态。

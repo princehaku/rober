@@ -3178,6 +3178,29 @@ function cloneFixture<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function markMappingSensorsReady(summary: RobotControlSummaryResponse | Record<string, any>): void {
+  // 建图成功路径必须显式证明相机和雷达 ready；默认 fixture 继续保留未证明状态用于 fail-closed 用例。
+  const camera = summary.readback_summary.camera;
+  camera.status = "ready";
+  camera.devices_status = "loaded";
+  camera.preview_status = "idle_not_started";
+  camera.video_source = "/dev/video1";
+  camera.selected_path = "/dev/video1";
+  camera.source_readiness = "ready";
+  camera.source_failure_reason = "none";
+  camera.last_offer_error = "none";
+  camera.last_offer_failure_reason = "none";
+
+  const lidar = summary.readback_summary.lidar;
+  lidar.continuous_scan_status = "latest_proof_fresh_while_lifecycle_running";
+  lidar.lifecycle_running = "true";
+  lidar.lifecycle_state = "running";
+  lidar.continuous_window_observed = "true";
+  lidar.continuity_window_status = "fresh_window_observed";
+  lidar.latest_scan_proof_fresh = "true";
+  lidar.radar_start_configured = "true";
+}
+
 function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
   // 测试桩允许 route debug 带 query，确保表单路径仍走同一个只读 API。
   const localFixtures = { ...fixtures, ...fixtureOverrides };
@@ -4015,6 +4038,7 @@ describe("App", () => {
     // 雷达 freshness 只是监看证据；自动扫图门禁已开放时，按钮仍只能走固定 start 代理，不能发 PC 侧运动。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markMappingSensorsReady(summaryFixture);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
     mapStartFixture.failure_reason = "";
     mapStartFixture.blocked_reasons = [];
@@ -4037,13 +4061,6 @@ describe("App", () => {
       artifact_only: false,
       cmd_vel_publish_enabled: true,
     };
-    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_incomplete_while_lifecycle_running";
-    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
-    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
-    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
-    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_incomplete_while_lifecycle_running";
-    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
-    summaryFixture.readback_summary.lidar.radar_start_configured = "true";
     const staleRadarStatus = cloneFixture(fixtures["/api/robot-control/radar/status"]) as Record<string, any>;
     staleRadarStatus.radar_key_values = {
       ...staleRadarStatus.radar_key_values,
@@ -4238,6 +4255,7 @@ describe("App", () => {
     // 自动扫图未 ready 时，普通按钮可以推进“开始记录/启用键盘”等非运动步骤；方向脉冲仍必须按住方向键才会发出。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     summaryFixture.safe_command_boundary.free_roam_autonomy = "locked";
@@ -4676,6 +4694,7 @@ describe("App", () => {
   it("reuses one plain safety confirmation for trip, keyboard, and free-roam mapping", async () => {
     // 普通首屏只让现场确认一次；扫图卡片和行程卡片同步这个确认，但不会自动触发任何动作。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mockedFetch = stubWorkstationFetch({
@@ -4723,9 +4742,92 @@ describe("App", () => {
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
   });
 
+  it("blocks free-roam mapping when the shared camera source has no first frame", async () => {
+    // 建图必须先能看到画面；相机首帧失败只阻断建图入口，不会隐式发送任何运动或地图命令。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("待画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("摄像头还没出画面；先检查摄像头，等实时画面可见后再建图。");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("检查摄像头后建图");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：检查摄像头");
+
+    const callsBeforeStart = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStart);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-camera-probe"]').element);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("blocks mapping on stale radar proof while keeping plain keyboard control independent", async () => {
+    // 雷达 ready 是建图所见即所得门禁；普通键盘手控仍只依赖安全确认和自己的手控门禁。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_stale_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_stale_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("待雷达");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("雷达正在运行但还没确认实时点位；先刷新雷达，等雷达已运行后再建图。");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("刷新雷达");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：刷新雷达");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
+
+    const callsBeforeStart = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStart);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps failed free-roam map lifecycle visible on the map", async () => {
     // 地图记录启动失败后不能回落成“还没开始”；地图和扫图状态都要保留失败原因。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mockedFetch = stubWorkstationFetch({
@@ -4789,6 +4891,7 @@ describe("App", () => {
   it("shows free-roam runtime map preview failure after map recording starts", async () => {
     // 地图记录已启动但扫图画面刷新失败时，扫图流程本身也要显示失败，不能只把原因留在地图 caption。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mockedFetch = stubWorkstationFetch({
@@ -4872,6 +4975,7 @@ describe("App", () => {
   it("keeps free-roam keyboard locked until map recording starts", async () => {
     // 扫地式建图必须先打开地图记录，再允许 operator 用键盘低速扫图；启用键盘本身不发送底盘命令。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     let delayNextMapPreview = false;
@@ -5306,6 +5410,7 @@ describe("App", () => {
   it("shows saved free-roam map preview refresh failures on the map", async () => {
     // 保存动作成功不等于最新地图画面可见；保存后的 preview 失败必须贴回扫图卡和地图 marker。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const mapStartFixture = cloneFixture(fixtures["/api/robot-control/map/start"]) as Record<string, any>;
@@ -5398,6 +5503,7 @@ describe("App", () => {
   it("shows free-roam keyboard release while stop is still pending", async () => {
     // 松开方向键后 stop 还没返回时，地图和扫图卡必须显示“正在停止”，不能退回成可继续按键。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     let resolveStop!: (response: { ok: boolean; json: () => Promise<unknown> }) => void;
@@ -5519,6 +5625,7 @@ describe("App", () => {
   it("keeps free-roam map fail-closed when keyboard release stop fails", async () => {
     // 扫图松手 stop 失败时，地图不能显示“已停可保存”；保存也必须被挡住，等 operator 再次停止并接管。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     const fallbackFetch = stubWorkstationFetch({

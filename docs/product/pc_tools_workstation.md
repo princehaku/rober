@@ -2608,3 +2608,11 @@ delivery complete 或 `/cmd_vel` 调用。原移动/导航卡片的 `停止` 按
 轮速按钮保持可点并提示 `低速试动读非零 L/R`；只有已经发出 first-jog 运动窗口且回读仍为 0/0 时，才显示“检查电机使能、供电、
 模式和现场空间后重试”。该变化不降低安全门槛，试动仍走固定 `/api/robot-control/base/first-jog` 和安全确认链路，不发送
 Nav2、delivery、keyboard pulse、base stop 或 `/cmd_vel`。
+
+2026-06-26 19:20 起，普通首屏 `扫地式建图` 的开始记录入口显式要求相机源首帧可用且雷达状态为 `雷达已运行`。如果上位机
+camera health 返回 `source_first_frame_failed`、`source_readiness=first_frame_failed`、`source_failure_reason=capture_read_returned_false`
+或 `capture_read_call_timeout`，PC 会显示 `待画面 / 检查摄像头后建图`，`下一步` 只聚焦 `检查画面`，不会调用
+`/api/robot-control/map/start`。如果雷达 lifecycle 在跑但 proof stale/incomplete，PC 会显示 `待雷达 / 刷新雷达`，`下一步`
+只聚焦 `刷新雷达`，也不会调用 map start。该门禁只作用于“建图记录必须所见即所得”，不改变普通键盘手控：键盘手控仍只依赖默认
+小车连接、现场安全确认、按住才动和停止兜底，不把雷达作为移动前置，也不修改 Clash 或系统代理配置；PC Node 公开入口仍是
+`0.0.0.0:7001`。
