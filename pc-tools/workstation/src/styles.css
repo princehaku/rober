@@ -1260,6 +1260,12 @@ h3 {
   color: #6a5710;
 }
 
+.plain-map-route-goal-marker[data-state="送达确认失败"] {
+  border-color: #d8adb0;
+  background: #fff1f2;
+  color: #7c2d35;
+}
+
 .plain-map-route-goal-marker[data-state="读取中"] {
   border-color: #bf8700;
   background: #fff8d6;
@@ -1677,6 +1683,12 @@ h3 {
 .plain-delivery-status[data-state="需复验"] {
   border-left-color: #d97706;
   background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), transparent 42%);
+}
+
+.plain-delivery-status[data-state="失败"],
+.plain-delivery-final[data-state="失败"] {
+  border-left-color: #b4232f;
+  background: linear-gradient(90deg, rgba(180, 35, 47, 0.09), transparent 42%);
 }
 
 .plain-delivery-material-row {

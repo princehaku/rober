@@ -1187,14 +1187,18 @@ function latestNavGoalOverlay() {
   const complete = nav2ExecutionComplete(values);
   const succeeded = nav2GoalSucceeded(values);
   const stale = evidenceIsStale(values);
+  const deliveryFailureText = deliveryCompletionFailureText(deliveryCompletionResult.value);
   // 终点 marker 直接表达执行证据，避免把“本轮目标”误读成已经完整到达。
   const state = complete && !stale && deliveryCompletionPending.value
     ? "送达确认中"
+    : complete && !stale && deliveryFailureText
+    ? "送达确认失败"
     : complete && !stale && deliverySuccessReady.value
     ? "已送达"
     : complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : succeeded ? "到达缺反馈" : "行程未通过";
   const deliveryText = state === "送达确认中"
     ? "，正在提交送达确认"
+    : state === "送达确认失败" ? `，送达确认失败：${deliveryFailureText}`
     : state === "已送达" ? "，delivery gate 已确认" : state === "已到达" ? "，下一步准备送达材料" : "";
   const failureText = state === "行程未通过"
     ? plainTripFailureReasonText(navGoalExecutionResult.value ?? navGoalExecutionLatestResult.value, values)
@@ -3164,6 +3168,22 @@ function deliveryResultReadyForCurrentRun(result: RobotControlDeliveryCompleteRe
     && deliveryResultMatchesFreshNav2(result);
 }
 
+function deliveryCompletionFailedForCurrentRun(result: RobotControlDeliveryCompleteResponse | null): boolean {
+  // 只有本页刚提交的 delivery complete 失败才贴回地图；latest 读取失败不能污染当前到达 marker。
+  if (!result || result.delivery_success === true || evidenceIsStale(result.delivery_key_values)) {
+    return false;
+  }
+  return result.proxy_status !== "completion_forwarded" || result.status === "blocked";
+}
+
+function deliveryCompletionFailureText(result: RobotControlDeliveryCompleteResponse | null): string {
+  // 普通首屏给短原因；完整 blocked/missing 字段仍在送达区和高级诊断里。
+  if (!deliveryCompletionFailedForCurrentRun(result)) {
+    return "";
+  }
+  return result?.failure_reason || result?.missing_required_material?.[0] || result?.blocked_reasons?.[0] || result?.status || result?.proxy_status || "delivery_completion_failed";
+}
+
 const plainTripHasSucceededEvidence = computed(() => nav2EvidenceValues().some((values) => nav2GoalSucceeded(values)));
 const plainTripHasFreshIncompleteEvidence = computed(() => nav2EvidenceValues().some((values) => (
   nav2GoalSucceeded(values) && !nav2ExecutionComplete(values) && !evidenceIsStale(values)
@@ -3764,6 +3784,10 @@ function plainMapTripExecutionLabel(): string {
   if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
     if (deliveryCompletionPending.value) {
       return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，送达确认中`;
+    }
+    const deliveryFailureText = deliveryCompletionFailureText(deliveryCompletionResult.value);
+    if (deliveryFailureText) {
+      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，送达确认失败（${deliveryFailureText}）`;
     }
     if (deliverySuccessReady.value) {
       return `行程执行：已送达，反馈 ${nav2FeedbackSampleCount(values)} 次，delivery gate 已确认`;

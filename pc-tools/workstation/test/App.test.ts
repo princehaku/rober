@@ -11939,6 +11939,143 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("送达已完成");
   });
 
+  it("shows delivery confirmation failure on the map after final completion is rejected", async () => {
+    // delivery gate 拒绝后，地图不能退回“已到达”；终点和 caption 都要明确送达确认失败。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execute": {
+        ...(fixtures["/api/robot-control/nav2/goal/execute"] as Record<string, unknown>),
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-rejected-delivery",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
+          delivery_success: "false",
+        },
+      },
+      "/api/robot-control/operator/report": {
+        schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+        proxy_status: "report_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/operator/report",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        request_body: {},
+        structured_hil_claims: {
+          external_video_recorded: true,
+          external_video_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+          visible_content_proven: true,
+          camera_artifacts_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+          real_route_map_proven: true,
+          route_map_ref: "o11-nav2-goal-execution-rejected-delivery",
+          delivery_success: true,
+          site_state: "operator_confirmed_delivery_complete",
+        },
+        rejected_fields: [],
+        ignored_fields: [],
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/complete": {
+        schema: "trashbot.pc_tools_workstation.robot_control_delivery_complete_proxy.v1",
+        proxy_status: "completion_failed",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/delivery/complete",
+        remote_endpoint: "/api/delivery/complete",
+        remote_http_status: 409,
+        status: "blocked",
+        request_body: {},
+        delivery_key_values: {
+          status: "blocked_missing_delivery_material",
+          delivery_success: "false",
+          nav2_evidence_ref: "o11-nav2-goal-execution-rejected-delivery",
+          nav2_feedback_sample_count: "8",
+        },
+        missing_required_material: ["confirm_delivery_completion"],
+        failure_reason: "delivery_gate_rejected",
+        blocked_reasons: ["delivery_gate_rejected"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => baseFetch(url, options));
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+
+    await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg");
+    await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-rejected-delivery");
+    await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(true);
+    await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(marker.text()).toBe("送达确认失败");
+    expect(marker.attributes("data-state")).toBe("送达确认失败");
+    expect(marker.attributes("aria-label")).toBe("送达确认失败，送达确认失败：delivery_gate_rejected，地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，送达确认失败（delivery_gate_rejected）");
+    const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
+    expect(deliveryStatus.attributes("data-state")).toBe("待确认");
+    expect(deliveryStatus.text()).toContain("送达提交未通过");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-route-goal-marker[data-state="送达确认失败"]');
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("prefills plain delivery material refs from latest delivery readback without submitting", async () => {
     // 页面刷新后若上位机 latest 已有送达草稿材料，PC 只恢复 ref，不能替现场确认送达。
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
