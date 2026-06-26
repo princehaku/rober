@@ -17,8 +17,11 @@ micro
 - `cd pc-tools/workstation && npm test -- App.test.ts --testNamePattern "free-roam|自动扫图"`：通过，`1 passed`，`19 passed / 122 skipped`。
 - `cd pc-tools/workstation && npm run build`：通过，TypeScript 与 Vite build OK；保留既有 chunk size warning。
 - `git diff --check`：通过。
+- 重启占用 7001 的旧 PC Node API 后，`POST http://127.0.0.1:7001/api/robot-control/free-roam/autonomy/stop?baseUrl=http://192.168.1.11:8787`：通过，回包 `proxy_status=autonomy_forwarded`、`command_result.write_strategy=ros2_param_load`、`parameter_count=5`、`mapping_active_applied=false`、`blocked_parameters_not_touched=["cmd_vel_topic"]`。
+- 经 Vite 7002 代理重放同一安全 stop 请求：通过，证明浏览器访问路径 `/api` 也能看到同一份 `ros2_param_load` 写入证据。
 
 ## 剩余风险
 
 - 本轮只让 PC 所见即所得展示状态机参数写入证据；不远程发 start 打开运动双锁。
 - 真实自由移动 start 仍需现场人员在小车旁边确认安全后 HIL。
+- 若 7001 上残留旧 `tsx src/server/index.ts` 进程，PC 可能继续看到旧回包；本轮已重启为当前源码并保留 7002 Vite 前端给局域网访问。
