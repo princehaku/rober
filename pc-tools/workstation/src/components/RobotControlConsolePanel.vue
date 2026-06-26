@@ -3868,9 +3868,10 @@ const plainKeyboardLiveStatus = computed(() => {
 });
 
 const plainKeyboardControlGuide = computed(() => {
-  // 普通首屏需要说明所有自动停止触发，避免现场误以为只有松开按键才会停。
+  // 普通首屏需要说明所有自动停止触发和后端边界，避免把连续手控误解成无限时长发车。
   const intervalSeconds = (keyboardJogIntervalMs.value / 1000).toFixed(2).replace(/0$/, "");
-  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会持续低速移动，约每 ${intervalSeconds} 秒续一次；松开、窗口失焦或切页面都会停。`;
+  const pulseSeconds = (keyboardJogDurationMs.value / 1000).toFixed(2).replace(/0$/, "");
+  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会持续低速移动，约每 ${intervalSeconds} 秒发送 ${pulseSeconds} 秒低速脉冲，最高 ${manualSpeedLimit.value} m/s、单次上限 ${manualDurationLimit.value} ms；松开、窗口失焦或切页面都会停。`;
 });
 
 function claimWithRefReady(value: string | undefined): boolean {

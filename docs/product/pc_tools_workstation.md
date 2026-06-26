@@ -3092,3 +3092,9 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 这补齐 live 场景里 `source_usage_owner_count=0`、`capture_read_returned_false` 已经说明“不是页面独占”，但
 `first_frame_probe_status=not_loaded` 时缺少下一步动作的问题。按钮仍只调用
 `POST /api/robot-control/camera/first-frame/probe`，不会打开 manual、free-roam、Nav2、delivery 或 `/cmd_vel`。
+
+2026-06-27 07:34 起，普通首屏键盘指南会直接展示当前 bounded pulse 边界：
+按住 W/A/S/D 或方向键时，页面约每 `keyboard_jog_interval_ms` 发送一次 `keyboard_jog_duration_ms`
+低速脉冲，并显示 `speed_limit_mps` 与 `duration_limit_ms` 上限；松开、窗口失焦或切页面仍会停。
+这让“PC 键盘连续手控”可见为受限重复 manual pulse，而不是无限时长发车；不改变实际请求体、不绕过安全确认、
+不调用 Nav2、delivery、free-roam 或 `/cmd_vel`。
