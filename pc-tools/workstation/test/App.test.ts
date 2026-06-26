@@ -3802,7 +3802,7 @@ describe("App", () => {
     expect(readiness.text()).toContain("自动扫图");
     expect(readiness.text()).toContain("上车端自动扫图已就绪");
     expect(readiness.text()).toContain("真车低速放行");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；运动发布已解锁，PC 仍等待真车 HIL 记录。");
 
@@ -3825,7 +3825,7 @@ describe("App", () => {
     await delayedRefreshClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
@@ -4184,7 +4184,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
 
     delayNextAutoStart = true;
     const startClick = wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");

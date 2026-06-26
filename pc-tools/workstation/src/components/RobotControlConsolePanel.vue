@@ -2591,7 +2591,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     buttonLabel: freeRoamAutonomyPending.value && freeRoamAutonomyPendingAction.value === "start"
       ? "启动中"
       : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
-      : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : (boundary?.free_roam_autonomy_label ?? "自动扫图"),
+      : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : "开始自动扫图（低速）",
     // ready 后才走固定上车状态机 start；未 ready 时按钮仍只做流程定位。
     disabled: autonomyReady ? !canStartFreeRoamAutonomy.value : false,
     hint: autonomyLocked
