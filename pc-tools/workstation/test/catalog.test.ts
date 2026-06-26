@@ -37,7 +37,7 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
-import { createWorkstationApp, listenFailureHint, robotControlReadOnlyQueryBaseUrl, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
+import { createWorkstationApp, listenFailureHint, robotControlFixedProxyQueryBaseUrl, robotControlReadOnlyQueryBaseUrl, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
 import { WORKSTATION_DEV_API_PROXY_TARGET, WORKSTATION_DEV_PORT, WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../src/shared/workstationDefaults";
 
 function sampleStatus(evidenceRef: string) {
@@ -720,6 +720,43 @@ function requestJson(url: string | URL): Promise<{ status: number; body: unknown
   });
 }
 
+function postJson(url: string | URL, body: unknown): Promise<{ status: number; body: unknown }> {
+  // POST 也走 Node http；这样 global fetch 只会截获 workstation 内部上游请求。
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify(body);
+    const target = new URL(String(url));
+    const request = http.request(
+      {
+        hostname: target.hostname,
+        port: target.port,
+        path: `${target.pathname}${target.search}`,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
+        },
+      },
+      (res) => {
+        let responseBody = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          responseBody += chunk;
+        });
+        res.on("end", () => {
+          try {
+            resolve({ status: res.statusCode ?? 0, body: JSON.parse(responseBody) as unknown });
+          } catch (error) {
+            reject(error);
+          }
+        });
+      },
+    );
+    request.on("error", reject);
+    request.write(payload);
+    request.end();
+  });
+}
+
 function listenJson(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   // probe 测试用最小本机 JSON 服务模拟 relay snapshot，不连接外网或真实机器人。
   const server = http.createServer((req, res) => {
@@ -1279,6 +1316,61 @@ describe("workstation fail-closed API contracts", () => {
     } finally {
       fetchSpy.mockRestore();
       await server.close();
+    }
+  });
+
+  it("defaults Robot Control fixed POST proxies to the fixed robot API address", async () => {
+    // 普通用户点击自动扫图不应因为 URL 栏缺 baseUrl 而卡住；安全仍由确认项和上车端传感器门禁控制。
+    expect(robotControlFixedProxyQueryBaseUrl(undefined)).toBe("http://192.168.1.11:8787");
+    expect(robotControlFixedProxyQueryBaseUrl("")).toBe("http://192.168.1.11:8787");
+    expect(robotControlFixedProxyQueryBaseUrl("http://127.0.0.1:8787")).toBe("http://127.0.0.1:8787");
+    const workstation = await listen(createWorkstationApp());
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("http://192.168.1.11:8787/api/free-roam/autonomy/start");
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body ?? "{}"))).toEqual({
+        confirm_operator_safety: true,
+        confirm_mapping_active: true,
+      });
+      return new Response(
+        JSON.stringify({
+          schema: "trashbot.upper_robot_api.v1.free_roam_autonomy_start",
+          status: "blocked",
+          command_result: { mode: "free_roam_param_sequence", executed: false, ok: false },
+          sets_state_machine_parameters: false,
+          direct_cmd_vel_publish: false,
+          motion_unlock_requested: false,
+          does_not_set_motion_unlock: true,
+          sensor_readiness: { ready: false, missing: ["camera_first_frame_not_observed"] },
+          failure_reason: "free_roam_motion_sensors_not_ready",
+          blocked_reasons: ["camera_first_frame_not_observed"],
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const response = await postJson(`${workstation.baseUrl}/api/robot-control/free-roam/autonomy/start`, {
+        confirm_operator_safety: true,
+        confirm_mapping_active: true,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(400);
+      const body = response.body as Record<string, any>;
+      expect(body.proxy_status).toBe("autonomy_rejected");
+      expect(body.source_base_url).toBe("http://192.168.1.11:8787");
+      expect(body.normalized_base_url).toBe("http://192.168.1.11:8787");
+      expect(body.blocked_reasons).toEqual(["camera_first_frame_not_observed"]);
+      expect(body.sets_state_machine_parameters).toBe(false);
+      expect(body.motion_unlock_requested).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      await workstation.close();
     }
   });
 

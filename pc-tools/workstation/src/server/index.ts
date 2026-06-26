@@ -124,14 +124,19 @@ function queryString(value: unknown): string {
 }
 
 export function robotControlSummaryQueryBaseUrl(value: unknown): string {
-  // summary 是普通首屏的只读入口；没有 query 时默认连固定小车，控制类代理仍要求显式 baseUrl。
+  // summary 是普通首屏的只读入口；没有 query 时默认连固定小车，避免现场手填地址。
   return robotControlReadOnlyQueryBaseUrl(value);
 }
 
 export function robotControlReadOnlyQueryBaseUrl(value: unknown): string {
-  // 只读状态查询可以默认连固定小车；会动作的 POST 仍在各自路由里要求显式 baseUrl 与确认项。
+  // 所有 Robot Control 固定代理都可以默认连固定小车；真正的安全边界由固定 endpoint 和确认项承担。
   const requested = queryString(value).trim();
   return requested || DEFAULT_ROBOT_API_BASE_URL;
+}
+
+export function robotControlFixedProxyQueryBaseUrl(value: unknown): string {
+  // 用户不应为每个控制按钮反复填写小车地址；缺省地址只替代 baseUrl，不替代安全确认或上车端门禁。
+  return robotControlReadOnlyQueryBaseUrl(value);
 }
 
 type CameraMjpegRelayClient = {
@@ -1373,7 +1378,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {
     // 首次试动只解除“轮速/LiDAR delta 必须先存在”的循环；仍要求现场与可视材料。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
     const direction = allowedDirection(payload?.direction);
@@ -1499,7 +1504,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/base/manual", async (req, res) => {
     // 点动代理只允许固定 manual endpoint；非 stop 动作必须明确通过本地安全确认 gate。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
     const direction = allowedDirection(payload?.direction);
@@ -1605,7 +1610,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/base/stop", async (req, res) => {
     // stop 是唯一允许在未勾 checklist 时执行的动作；它仍然只走固定 stop endpoint。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     if (!normalized.ok) {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "stop", "/api/base/stop", normalized.reason, "stop", 0, 0, false));
@@ -1671,7 +1676,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/base/feedback-samples", async (req, res) => {
     // 反馈样本只触发固定 T=130 只读采集，不接受浏览器 body，也不调用 manual/stop/cmd_vel。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     if (!normalized.ok) {
       res.status(400).json(baseFeedbackSamplesFailure(sourceBaseUrl, normalized.reason));
@@ -1721,13 +1726,13 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/operator/report", async (req, res) => {
     // 现场材料提交只转发固定 /api/operator/report；不开放底盘、Nav2、cmd_vel、map/radar start。
-    const response = await buildOperatorReportProxy(queryString(req.query.baseUrl), req.body);
+    const response = await buildOperatorReportProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl), req.body);
     res.status(response.proxy_status === "report_forwarded" ? 200 : response.proxy_status === "report_rejected" ? 400 : 502).json(response);
   });
 
   workstationApp.post("/api/robot-control/radar/scan-proof/refresh", async (req, res) => {
     // Radar refresh 只允许固定 POST body，不接受浏览器把它改造成通用控制代理。
-    const response = await buildRadarScanProofRefreshProxy(queryString(req.query.baseUrl));
+    const response = await buildRadarScanProofRefreshProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl));
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
@@ -1796,14 +1801,14 @@ export function createWorkstationApp(): express.Express {
   ] as Array<[RobotControlRadarLifecycleAction, string]>).forEach(([action, route]) => {
     workstationApp.post(route, async (req, res) => {
       // Radar lifecycle 只转发固定 start/stop；body 被忽略，避免退化成任意 Robot API POST。
-      const response = await buildRadarLifecycleProxy(queryString(req.query.baseUrl), action);
+      const response = await buildRadarLifecycleProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl), action);
       res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
     });
   });
 
   workstationApp.post("/api/robot-control/map/proof/refresh", async (req, res) => {
     // Map refresh 只允许固定 POST body，不接受浏览器把它改造成建图/导航控制代理。
-    const response = await buildMapProofRefreshProxy(queryString(req.query.baseUrl));
+    const response = await buildMapProofRefreshProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl));
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
@@ -1811,7 +1816,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/nav2/proof/refresh", async (req, res) => {
     // Nav2 refresh 只允许固定 no-motion planner proof body，不开放 start/stop、goal 或底盘动作。
-    const response = await buildNav2NoMotionProofRefreshProxy(queryString(req.query.baseUrl));
+    const response = await buildNav2NoMotionProofRefreshProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl));
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
@@ -1819,13 +1824,13 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/nav2/goal/preflight", async (req, res) => {
     // 目标预检只读 fixed GET 材料；即使通过也不调用 NavigateToPose、/api/nav2/start、/cmd_vel 或 base manual。
-    const response = await buildNavGoalPreflightProxy(queryString(req.query.baseUrl), req.body);
+    const response = await buildNavGoalPreflightProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl), req.body);
     res.status(response.proxy_status === "preflight_passed" ? 200 : 400).json(response);
   });
 
   workstationApp.post("/api/robot-control/nav2/goal/execute", async (req, res) => {
     // 目标执行只转发固定 NavigateToPose proof endpoint；不开放任意上位机 POST。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
     const confirmNavigationExecution = payload?.confirm_navigation_execution === true;
@@ -2082,7 +2087,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/delivery/check", async (req, res) => {
     // 缺口复算固定 confirm=false；只让上位机用当前 Nav2/operator report 重新生成 blocked 缺项。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const requestBody: RobotControlDeliveryCompleteRequest = {
       confirm_delivery_completion: false,
@@ -2152,7 +2157,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/delivery/complete", async (req, res) => {
     // 交付完成只调用固定 gate；不会发送 Nav2 goal、manual、stop 或底盘运动请求。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
     const confirmDeliveryCompletion = payload?.confirm_delivery_completion === true;
@@ -2239,7 +2244,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/localize/reset", async (req, res) => {
     // 定位 reset 只转发固定 /api/localize/reset body；浏览器不能传 initialpose 或任意 endpoint。
-    const response = await buildLocalizationResetProxy(queryString(req.query.baseUrl));
+    const response = await buildLocalizationResetProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl));
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
@@ -2264,7 +2269,7 @@ export function createWorkstationApp(): express.Express {
   ] as Array<[RobotControlMapLifecycleAction, string]>).forEach(([action, route]) => {
     workstationApp.post(route, async (req, res) => {
       // lifecycle POST 只能转发到 action 对应的固定上位机 endpoint，body 由 helper 做短字段白名单。
-      const response = await buildMapLifecycleProxy(queryString(req.query.baseUrl), action, req.body);
+      const response = await buildMapLifecycleProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl), action, req.body);
       res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
     });
   });
@@ -2330,7 +2335,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/free-roam/autonomy/start", async (req, res) => {
     // 自动扫图 start 只能转固定上位机 endpoint，body 只保留两个安全确认布尔值。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const requestBody = {
       confirm_operator_safety: req.body?.confirm_operator_safety === true,
       confirm_mapping_active: req.body?.confirm_mapping_active === true,
@@ -2353,7 +2358,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/free-roam/autonomy/stop", async (req, res) => {
     // stop 不需要确认，但仍只请求上车端状态机 stop，不发布浏览器侧速度。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/free-roam/autonomy/stop", {});
     const response = freeRoamAutonomyProxyResponse(sourceBaseUrl, "stop", "/api/free-roam/autonomy/stop", {}, remote);
     res.status(response.proxy_status === "autonomy_forwarded" ? 200 : 502).json(response);
@@ -2361,7 +2366,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/camera/offer", async (req, res) => {
     // camera offer 只允许本机 Node 代理固定上位机 endpoint，不开放任意 Robot API POST。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     if (!normalized.ok) {
       res.status(400).json(unsafeProxyFailure(sourceBaseUrl, normalized.reason, "/api/camera/offer"));
@@ -2419,7 +2424,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/camera/peers/:peerId/close", async (req, res) => {
     // peer cleanup 只允许关闭已知 peer_id；不接受任意路径、query 拼接或控制类 POST。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const peerId = peerIdText(req.params.peerId ?? "");
     if (!normalized.ok) {
@@ -2511,7 +2516,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/camera/first-frame/probe", async (req, res) => {
     // 首帧探针只转发到固定上位机 endpoint；body 为空，不能让浏览器指定任意设备或命令。
-    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     if (!normalized.ok) {
       res.status(400).json(cameraProbeFailure(sourceBaseUrl, normalized.reason));

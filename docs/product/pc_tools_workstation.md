@@ -2645,3 +2645,10 @@ PC 端打开摄像头，不调用 camera offer/MJPEG、manual、Nav2、delivery�
 `last_successful_frame=null`；PC 7001 转发 `/api/robot-control/free-roam/autonomy/start?baseUrl=http://192.168.1.11:8787`
 被上车端以 `camera_first_frame_not_observed` 拒绝，`sets_state_machine_parameters=false`、`motion_unlock_requested=false`。
 该门禁不改变“雷达可降级监看”的策略：自由低速自移动不硬依赖雷达，但必须先证明相机确实有画面，避免假 ready 下发车。
+
+2026-06-26 20:05 起，Robot Control 所有固定小车代理在缺省 `baseUrl` 时都默认使用
+`http://192.168.1.11:8787`，覆盖 summary、只读 latest、地图/雷达/Nav2 refresh、manual/first-jog/stop、
+地图 lifecycle、自动扫图 start/stop、camera offer/close/first-frame probe、operator report 和 delivery gate。
+该默认值只替代地址输入，不替代按钮确认、请求体白名单、固定 endpoint 白名单或上车端 fail-closed 门禁；例如无 query 的
+`POST /api/robot-control/free-roam/autonomy/start` 仍只会转发两个确认布尔值到固定上车 endpoint，且相机未出首帧时仍被
+`camera_first_frame_not_observed` 拒绝，不写运动解锁参数。
