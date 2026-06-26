@@ -641,6 +641,8 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         result["base_command_summary"] = base_command_summary
         result["base_command_mode"] = managed_runtime.get("base_command_mode") or DEFAULT_BASE_COMMAND_MODE
         base_feedback_nonzero = bool(base_feedback_summary.get("wheel_feedback_lr_nonzero_proven"))
+        base_command_nonzero = bool(base_command_summary.get("nonzero_command_observed"))
+        result["base_motion_command_nonzero_proven"] = base_command_nonzero
         if result.get("goal_accepted"):
             # 只有 goal 被 Nav2 接受后，才把底盘 UART 和运动命令标记为本轮执行材料。
             result["uses_base_uart"] = bool(managed_runtime.get("base_feedback_log_path"))
@@ -652,6 +654,16 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
             result["not_proven"] = ["delivery_success", "operator_dropoff_confirmation"]
         else:
             result["nav2_goal_execution_proven"] = False
+            if result.get("status") == "goal_succeeded" and base_command_nonzero and not base_feedback_nonzero:
+                # 厂商 T=11 PWM 命令已到达 bridge，但完整路线仍必须等待 T=1001 L/R 非零复验。
+                result["proof_status"] = "nav2_goal_succeeded_with_pwm_commands_but_wheel_lr_zero"
+                result["not_proven"] = [
+                    "wheel_feedback_lr_nonzero",
+                    "delivery_success",
+                    "operator_dropoff_confirmation",
+                ]
+            elif result.get("status") == "goal_succeeded":
+                result["proof_status"] = "nav2_goal_succeeded_without_base_feedback_nonzero"
         result["managed_runtime"] = {
             **{key: value for key, value in managed_runtime.items() if key != "process"},
             "cleanup": cleanup,

@@ -3152,18 +3152,15 @@ function nav2SummaryFromReadbacks(
 }
 
 function nav2GoalExecutionProvenText(goalResultPayload: JsonRecord | null): string {
-  // 兼容新旧上位机 artifact：旧版直接给 nav2_goal_execution_proven，新版给执行事实字段。
+  // 完整 Nav2 路线必须由同窗口 wheel raw L/R 非零收口；IMU/hil 字段只保留为诊断材料。
   const hilPass = summaryValueText(goalResultPayload, ["hil_pass"]);
   const explicit = summaryValueText(goalResultPayload, ["nav2_goal_execution_proven"]);
-  if (explicit === "true" || hilPass === "true") {
-    return "true";
-  }
-
   const baseFeedbackSummary = asRecord(goalResultPayload?.base_feedback_summary);
   const wheelFeedback = summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]);
-  const imuDelta = summaryValueText(baseFeedbackSummary, ["imu_attitude_delta_observed"]);
-  const baseMotionSignalObserved = wheelFeedback === "true" || imuDelta === "true";
-  if (explicit === "false" && !baseMotionSignalObserved) {
+  if (explicit === "true" && wheelFeedback === "true") {
+    return "true";
+  }
+  if (explicit === "false" && wheelFeedback !== "true") {
     return explicit;
   }
 
@@ -3189,12 +3186,14 @@ function nav2GoalExecutionProvenText(goalResultPayload: JsonRecord | null): stri
     && succeeded
     && Number.isFinite(feedbackCount)
     && feedbackCount > 0
-    && (baseMotionSignalObserved || hilPass === "true")
+    && wheelFeedback === "true"
   ) {
     return "true";
   }
   if (
     hilPass === "false"
+    || explicit === "false"
+    || wheelFeedback === "false"
     || robotControlExecuted === "false"
     || sendsMotionCommands === "false"
     || sendsBaseMotionCommands === "false"

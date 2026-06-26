@@ -300,6 +300,18 @@ client 只增加引用计数，最后一个 client 断开后才释放设备。�
 结论：共享预览链路已经按单上游多客户端设计；当前要让“谁进来都能看到实时预览”真正成立，
 必须先恢复由 systemd 管理的 8088 camera service，并解决 DV20 `/dev/video1` 首帧输出问题。
 
+## 2026-06-27 06:06 当前共享预览结论
+
+PC 侧仍按共享预览口径展示摄像头：每个浏览器页面接入自己的 WebRTC peer 或 MJPEG client，
+PC Node 对 MJPEG 只维护一条上游流再 fanout，8088 camera service 的 `SharedCameraCapture`
+对同一视频源只打开一个 OpenCV `VideoCapture`。因此当前“看不到效果”不能简单归因为页面独占。
+
+真实状态仍是 DV20 `/dev/video1` 首帧失败：summary 读回 `source_first_frame_failed`、
+`source_usage_status=not_in_use`、`shared_preview_exclusive_camera_claim=false`。这表示摄像头当前没有被
+其它页面抢占，但底层设备没有输出可读视频帧；恢复实时预览需要继续查 DV20 输入、USB 供电、
+格式协商或替换 known-good UVC 摄像头验证。本结论不发布 `/cmd_vel`，不调用底盘串口，不改变
+`safe_to_control=false`、`robot_control_executed=false`。
+
 ## 2026-06-11 20:05 camera visible content gate refresh
 
 `sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/` 继续只做

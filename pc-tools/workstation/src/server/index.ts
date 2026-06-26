@@ -255,13 +255,15 @@ function firstLoadedValue(...values: unknown[]): unknown {
 }
 
 function navGoalExecutionProvenValue(payload: Record<string, unknown> | null, latestResult: Record<string, unknown> | null): boolean {
-  // 显式 proven=true 直接采信；否则用 Nav2 action 成功 + 底盘运动信号推导，避免外层 fail-closed false 盖掉真实结果。
+  // 完整 Nav2 路线必须看到同窗口 wheel raw L/R 非零；IMU 姿态变化只能作为运动迹象展示。
   const baseFeedbackSummary = asRecord(latestResult?.base_feedback_summary) ?? asRecord(payload?.base_feedback_summary);
   const wheelFeedback = booleanTrueValue(baseFeedbackSummary?.wheel_feedback_lr_nonzero_proven);
-  const imuDelta = booleanTrueValue(baseFeedbackSummary?.imu_attitude_delta_observed);
   const sendsBaseMotionCommands = firstLoadedValue(latestResult?.sends_base_motion_commands, payload?.sends_base_motion_commands);
   const usesBaseUart = firstLoadedValue(latestResult?.uses_base_uart, payload?.uses_base_uart);
-  if (booleanTrueValue(latestResult?.nav2_goal_execution_proven) || booleanTrueValue(payload?.nav2_goal_execution_proven)) {
+  if (
+    (booleanTrueValue(latestResult?.nav2_goal_execution_proven) || booleanTrueValue(payload?.nav2_goal_execution_proven))
+    && wheelFeedback
+  ) {
     return true;
   }
   const status = shortValue(firstLoadedValue(latestResult?.status, payload?.status), "").toLowerCase();
@@ -273,7 +275,7 @@ function navGoalExecutionProvenValue(payload: Record<string, unknown> | null, la
     && booleanTrueValue(firstLoadedValue(latestResult?.robot_control_executed, payload?.robot_control_executed))
     && !booleanFalseValue(sendsBaseMotionCommands)
     && !booleanFalseValue(usesBaseUart)
-    && (wheelFeedback || imuDelta);
+    && wheelFeedback;
 }
 
 function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotControlCameraFirstFrameProbeProxyResponse["probe_key_values"] {

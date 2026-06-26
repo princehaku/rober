@@ -4000,7 +4000,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("Robot Control summary derives Nav2 execution proof from live execution facts", async () => {
-    // 现场上位机 latest 可能不带旧 nav2_goal_execution_proven key；PC 摘要要从执行事实推导，不能误报未证明。
+    // 现场上位机 latest 可能不带旧 nav2_goal_execution_proven key；PC 摘要必须从 action 成功和 wheel L/R 非零推导。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
         payload: {
@@ -4023,7 +4023,15 @@ describe("workstation fail-closed API contracts", () => {
             feedback_sample_count: 8,
             robot_control_executed: true,
             sends_motion_commands: true,
+            sends_base_motion_commands: true,
+            uses_base_uart: true,
             goal_request: { frame_id: "map", x: 0.8, y: 0 },
+            base_feedback_summary: {
+              sample_count: 12,
+              nonzero_sample_count: 2,
+              wheel_feedback_lr_nonzero_proven: true,
+              latest_nonzero_pair: { left_speed: 0.12, right_speed: 0.11 },
+            },
           },
           safe_to_control: false,
           delivery_success: false,
@@ -4041,6 +4049,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_feedback_sample_count).toBe("8");
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("true");
     } finally {
       await robotApi.close();
     }
@@ -4105,7 +4114,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("Robot Control summary keeps Nav2 IMU motion material visible when wheel HIL is still false", async () => {
-    // 现场这类 artifact 代表 Nav2 已经驱动车身产生姿态变化，但轮速 L/R 同窗口仍要单独复验。
+    // 现场这类 artifact 代表 Nav2 已经驱动车身产生姿态变化，但不能替代 wheel L/R 非零闭环。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
         payload: {
@@ -4152,10 +4161,10 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
-      expect(summary.readback_summary.nav2.status).toBe("goal_succeeded");
+      expect(summary.readback_summary.nav2.status).toBe("blocked");
       expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("false");
-      expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_proven).toBe("false");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_imu_attitude_delta_observed).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed).toBe("0");
@@ -5651,6 +5660,14 @@ describe("workstation fail-closed API contracts", () => {
           goal_x: 0.8,
           goal_y: 0,
           robot_control_executed: true,
+          sends_base_motion_commands: true,
+          uses_base_uart: true,
+          base_feedback_summary: {
+            sample_count: 8,
+            nonzero_sample_count: 2,
+            wheel_feedback_lr_nonzero_proven: true,
+            latest_nonzero_pair: { left_speed: 0.12, right_speed: 0.11 },
+          },
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
@@ -7085,8 +7102,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Nav2 latest execution proxy derives proven execution from top-level action success with base motion evidence", async () => {
-    // 真机 latest artifact 有时没有 latest_result 包装；顶层成功也必须带底盘运动信号才点亮行程证明。
+  it("Nav2 latest execution proxy keeps top-level action success unproven until wheel L/R is nonzero", async () => {
+    // 真机 latest artifact 有时没有 latest_result 包装；顶层成功和 IMU 运动迹象仍不能替代 wheel L/R 非零。
     const upstream = await listenRobotBaseCommandApi({}, {
       "/api/nav2/goal/execution/latest": {
         payload: {
@@ -7135,7 +7152,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("latest_loaded");
       expect(body.goal_execution_key_values.status).toBe("goal_succeeded");
-      expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("true");
+      expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("false");
       expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
       expect(body.goal_execution_key_values.sends_base_motion_commands).toBe("true");
       expect(body.goal_execution_key_values.uses_base_uart).toBe("true");
