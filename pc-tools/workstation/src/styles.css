@@ -1166,6 +1166,7 @@ h3 {
 }
 
 .plain-map-free-roam-action-marker[data-state="saving"],
+.plain-map-free-roam-action-marker[data-state="saved_refresh_failed"],
 .plain-map-free-roam-action-marker[data-state="map_failed"],
 .plain-map-free-roam-action-marker[data-state="stop_failed"],
 .plain-map-free-roam-action-marker[data-state="auto_failed"] {
@@ -1601,6 +1602,11 @@ h3 {
 .plain-free-roam-coverage[data-state="待刷新"] {
   border-left-color: #bf8700;
   background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 42%);
+}
+
+.plain-free-roam-coverage[data-state="失败"] {
+  border-left-color: #b4232f;
+  background: linear-gradient(90deg, rgba(180, 35, 47, 0.09), transparent 42%);
 }
 
 .plain-free-roam-readiness {

@@ -4581,6 +4581,98 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：检查地图画面");
   });
 
+  it("shows saved free-roam map preview refresh failures on the map", async () => {
+    // 保存动作成功不等于最新地图画面可见；保存后的 preview 失败必须贴回扫图卡和地图 marker。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mapStartFixture = cloneFixture(fixtures["/api/robot-control/map/start"]) as Record<string, any>;
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    const mapSaveFixture = cloneFixture(fixtures["/api/robot-control/map/save"]) as Record<string, any>;
+    mapSaveFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapSaveFixture.failure_reason = "";
+    mapSaveFixture.blocked_reasons = [];
+    const failedSavedPreview = {
+      ...(fixtures["/api/robot-control/map/preview"] as Record<string, unknown>),
+      proxy_status: "preview_failed",
+      remote_http_status: 504,
+      status: "blocked",
+      image_data_url: "",
+      width: 0,
+      height: 0,
+      failure_reason: "map_preview_timeout",
+      blocked_reasons: ["map_preview_timeout"],
+    };
+    let savedPreviewShouldFail = false;
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/map/save": mapSaveFixture,
+      "/api/robot-control/map/preview": fixtures["/api/robot-control/map/preview"],
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/map/save?")) {
+        savedPreviewShouldFail = true;
+      }
+      if (String(url).startsWith("/api/robot-control/map/preview?") && savedPreviewShouldFail) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => failedSavedPreview,
+        });
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeUndefined();
+
+    const mapPreviewCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
+    await wrapper.find('[data-testid="plain-free-roam-save"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBeforeSave + 1);
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("失败");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("地图已保存，但最新画面刷新失败：map_preview_timeout；重试刷新扫图画面后再检查效果。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图已保存，但最新画面刷新失败：map_preview_timeout；当前画面不是保存后的新图。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：重新刷新扫图画面");
+    const coveragePanel = wrapper.find('[data-testid="plain-free-roam-coverage"]');
+    expect(coveragePanel.attributes("data-state")).toBe("失败");
+    expect(coveragePanel.text()).toContain("地图画面刷新失败：map_preview_timeout");
+    expect(coveragePanel.text()).toContain("当前没有保存后的新地图画面可检查。");
+    expect(coveragePanel.text()).toContain("地图已保存，但需要重新刷新扫图画面后再检查覆盖效果。");
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：刷新失败：map_preview_timeout。");
+    const marker = wrapper.find('[data-testid="plain-map-free-roam-action-marker"]');
+    expect(marker.text()).toBe("保存后画面刷新失败：map_preview_timeout");
+    expect(marker.attributes("data-state")).toBe("saved_refresh_failed");
+    expect(marker.attributes("aria-label")).toBe("扫图地图已保存，但最新地图画面刷新失败：map_preview_timeout，机器人地图位置未读到，标记不代表坐标");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-free-roam-action-marker[data-state="saved_refresh_failed"]');
+    expect(workstationStyles).toContain('.plain-free-roam-coverage[data-state="失败"]');
+
+    await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').element);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows free-roam keyboard release while stop is still pending", async () => {
     // 松开方向键后 stop 还没返回时，地图和扫图卡必须显示“正在停止”，不能退回成可继续按键。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
