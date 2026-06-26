@@ -8078,6 +8078,7 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
       goal_y: goalRequest.goal_y,
       goal_yaw: goalRequest.goal_yaw,
       result_timeout_s: navGoalExecutionTimeoutS.value,
+      base_command_mode: "ros",
       confirm_navigation_execution: confirmNavigationExecution.value,
     });
   } catch (err) {

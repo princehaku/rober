@@ -31,11 +31,12 @@ AMCL。随后再等待 planner/controller/BT/behavior lifecycle active 后才发
 日志中的 `lifecycle_manager_navigation: Managed nodes are active` 作为执行层 active 证据；不能只因为
 `/navigate_to_pose` action server 出现就发送 goal，因为 BT node 未 active 时目标可能被拒绝。
 
-2026-06-27 后，PC 手控、上位机 `/api/base/manual` 和 O11 托管 runtime 默认走 vendor
-`CMD_PWM_INPUT/T=11` PWM 通路，并采用 `pwm_min_abs=164`、`pwm_max_abs=164`。该口径来自
-`docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`CMD_PWM_INPUT/T=11` 为左右轮
-PWM 输入，范围 `-255..255`，vendor 示例使用 `L/R=164`。O11 会通过 `feedback_debug_log_path`
-记录 bridge 解析出的 `T=1001`，并把 `base_feedback_summary` 写入 artifact。`base_feedback_summary`
+2026-06-27 后，PC Nav2 执行代理默认把 `base_command_mode` 固定为 `ros`，即让上车端通过 ROS
+`/cmd_vel` 进入 bridge 的 `CMD_ROS_CTRL/T=13` 控制入口；浏览器未传模式时也不得回落到旧 PWM 诊断路径。
+该口径来自 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`CMD_ROS_CTRL/T=13`
+是线速度/角速度控制入口，`CMD_SPEED_CTRL/T=1` 是左右速度控制入口，`CMD_PWM_INPUT/T=11`
+是 PWM 诊断入口。PC 和上车端仍允许 `speed`/`pwm` 作为白名单诊断 override，但普通首屏路线执行不暴露模式选择。
+O11 会通过 `feedback_debug_log_path` 记录 bridge 解析出的 `T=1001`，并把 `base_feedback_summary` 写入 artifact。`base_feedback_summary`
 必须区分 `wheel_feedback_lr_nonzero_proven` 与 `imu_attitude_delta_observed`：前者只来自同帧
 `T1001 L/R` 非零，后者来自 `T1001 r/p` 姿态变化，只能作为运动迹象，不能冒充轮速闭环或交付成功。
 底盘命令发送和 bounded Nav2 goal execution 不以雷达 fresh 为前置；雷达仍只服务避障/建图/验收材料。
@@ -53,7 +54,8 @@ O11 还会打开 `command_debug_log_path`，记录 `/cmd_vel` 转换后的 vendo
 `base_feedback_summary.wheel_feedback_lr_nonzero_proven=false` 但
 `base_feedback_summary.imu_attitude_delta_observed=true`，因此可以证明 Nav2 -> `/cmd_vel` ->
 PWM bridge -> 底盘运动迹象链路已触达；它仍不等于避障完成、现场安全、operator dropoff 或
-`delivery_success`。
+`delivery_success`。该段是旧 PWM 诊断材料；新的 PC 普通路线执行请求必须默认携带 `base_command_mode=ros`，
+用于下一轮复验 ROS 控制入口。
 
 PC summary/readback contract 从 2026-06-27 起把 O11 latest 的 `base_command_summary` 与
 `base_feedback_summary` 提升到 `readback_summary.nav2.goal_execution_base_*` 字段。普通首屏可据此区分：

@@ -3111,3 +3111,10 @@ summary 会把首屏相机状态提升为 `ready + first_frame_observed`，并�
 如果下次执行模式已从旧模式切到 `ros`，同一行继续显示 `下次将用 ros 复验`。这让“自动驾驶没法动”的第一解释
 落到电机使能、供电、底盘模式或控制模式，而不是继续怀疑雷达；不改变 Nav2、manual、keyboard、delivery、
 free-roam 或 `/cmd_vel` 行为。
+
+2026-06-27 07:53 起，PC `POST /api/robot-control/nav2/goal/execute` 在浏览器未指定底盘模式时也会默认转发
+`base_command_mode=ros`，普通首屏“执行图上路线”按钮同样显式携带 `base_command_mode=ros`。
+这让“下次将用 ros 复验”成为真实请求合同，而不是只停留在 summary 文案。`speed`/`pwm` 仍只作为白名单诊断 override，
+不在普通用户首屏暴露；该改动不自动执行路线、不放宽安全确认、不确认 delivery success。硬件资料依据
+`docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`CMD_ROS_CTRL/T=13` 是 ROS 控制入口，
+`CMD_PWM_INPUT/T=11` 是 PWM 诊断入口。

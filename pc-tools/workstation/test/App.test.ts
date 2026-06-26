@@ -7506,6 +7506,7 @@ describe("App", () => {
       goal_x: 0.6,
       goal_y: 0.2,
       goal_yaw: 0,
+      base_command_mode: "ros",
       confirm_navigation_execution: true,
     }));
     expect(mockedFetch.mock.calls.filter(([url]) =>
@@ -8231,6 +8232,7 @@ describe("App", () => {
       goal_frame_id: "map",
       goal_x: 0.8,
       goal_y: 0,
+      base_command_mode: "ros",
       confirm_navigation_execution: true,
     }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
