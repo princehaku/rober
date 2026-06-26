@@ -2769,9 +2769,19 @@ function proofScanPreview(readbacks: InternalRobotApiEndpointReadback[]): Pick<
 }
 
 function proofRobotPose(readbacks: InternalRobotApiEndpointReadback[]): RobotApiMapPose | null {
-  // 机器人位置只能来自定位 proof 的结构化 amcl_pose；只有 observed=true 不足以画真实地图坐标。
-  const localizePayload = readbackById(readbacks, "localize_proof_latest")?.payload ?? null;
-  const rawPose = asRecord(findFirstKey(localizePayload, ["amcl_pose", "robot_pose", "map_pose"]));
+  // 机器人位置只能来自定位/Nav2 proof 的结构化坐标；只有 observed=true 不足以画真实地图坐标。
+  const sourceIds: RobotApiReadEndpointId[] = ["localize_proof_latest", "nav2_proof_latest", "nav2_status", "status"];
+  let rawPose: JsonRecord | null = null;
+  let sourceId: RobotApiReadEndpointId = "localize_proof_latest";
+  for (const id of sourceIds) {
+    const payload = readbackById(readbacks, id)?.payload ?? null;
+    const candidate = asRecord(findFirstKey(payload, ["amcl_pose", "robot_pose", "map_pose"]));
+    if (candidate) {
+      rawPose = candidate;
+      sourceId = id;
+      break;
+    }
+  }
   if (!rawPose) {
     return null;
   }
@@ -2786,7 +2796,7 @@ function proofRobotPose(readbacks: InternalRobotApiEndpointReadback[]): RobotApi
     y,
     yaw,
     frame_id: asString(rawPose.frame_id, "map"),
-    source: asString(rawPose.source, "localize_proof_latest.amcl_pose"),
+    source: asString(rawPose.source, `${sourceId}.amcl_pose`),
   };
 }
 

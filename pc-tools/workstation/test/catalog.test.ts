@@ -5239,6 +5239,68 @@ describe("workstation fail-closed API contracts", () => {
     }
   }, 10_000);
 
+  it("Robot Control summary uses Nav2 proof amcl pose when localize latest is stale", async () => {
+    // live 上位机可能 localize latest 仍是旧失败 artifact，但 Nav2 proof latest 已经带 /amcl_pose。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_proof_latest",
+          status: "blocked_with_root_cause",
+          amcl_pose_observed: false,
+          localization_tf_observed: { map_to_odom: true, map_to_base_link: true },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          status: "not_proven",
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 36,
+          path_preview_point_count: 36,
+          path_preview_frame_id: "map",
+          localization_tf_observed: { map_to_odom: true, map_to_base_link: true },
+          amcl_pose_observed: true,
+          amcl_pose: { frame_id: "map", source: "/amcl_pose", x: 0.0052, y: 0.0237, yaw: 0.0013 },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.o3_proof_summary.robot_pose).toEqual({
+        x: 0.0052,
+        y: 0.0237,
+        yaw: 0.0013,
+        frame_id: "map",
+        source: "/amcl_pose",
+      });
+      expect(summary.readback_summary.localization.robot_pose_status).toBe("map_pose_observed");
+      expect(summary.readback_summary.localization.robot_pose_x).toBe("0.0052");
+      expect(summary.readback_summary.localization.robot_pose_y).toBe("0.0237");
+      expect(summary.o3_proof_summary.path_generated).toBe(true);
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.delivery_success).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  }, 10_000);
+
   it("workstation proof refresh proxies only allow fixed radar, map, and Nav2 POST bodies", async () => {
     // refresh 代理必须把 body 锁死成 workstation 预设值，且危险 true 字段仍然 fail closed。
     const upstream = await listenRobotProofRefreshApi({

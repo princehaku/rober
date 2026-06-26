@@ -2671,3 +2671,12 @@ Nav2 是否生成了图上路线。真实复测中，PC 7001 summary 返回 `map
 `图上行程已画在地图上，36 个点（map）；定位有信号，但还没有小车地图坐标；行程服务已运行`，
 不再只把这类事实藏在高级诊断里。该提示只解释“自动驾驶为什么暂时不能动”，不放宽执行门禁：真实执行仍要求安全确认、
 图上路线可见、当前小车位置可见，并由后端再次复查；雷达状态不作为普通行程执行的前端硬门禁。
+
+2026-06-26 20:35 起，Robot Control summary 的机器人地图坐标读取从只看 `/api/localize/proof/latest` 扩展为按
+`localize_proof_latest -> nav2_proof_latest -> nav2_status -> status` 顺序查找结构化 `amcl_pose/robot_pose/map_pose`。
+现场复测中，上车 `/api/localize/proof/latest` 仍是旧失败记录，但 `/api/nav2/proof/latest` 已经带
+`amcl_pose={frame_id: map, source: /amcl_pose, x: 0.0052897571185793095, y: 0.023728681034303378,
+yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
+`localization.robot_pose_status=map_pose_observed`，并继续显示 `nav2.path_preview_point_count=36`、
+`nav2.path_preview_frame_id=map`。这让普通地图可以把小车位置和图上路线一起贴出来，修复“上车端已有 Nav2 坐标但 PC 仍提示没定位”的缺口；
+但本轮仍没有证明完整 NavigateToPose 执行成功，`safe_to_control=false` 时执行门禁继续保持关闭。
