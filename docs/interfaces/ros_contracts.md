@@ -19,7 +19,7 @@ Vendor sources:
 | `serial_baudrate` | int | `115200` | Canonical UART baudrate parameter. Vendor examples use `115200`. |
 | `port` | string | empty | Deprecated alias for `serial_port`. |
 | `baudrate` | int | `0` | Deprecated alias for `serial_baudrate`; ignored when `0`. |
-| `command_mode` | string | `speed` | `speed` maps `/cmd_vel` to vendor `T=1`; `ros` maps to vendor `T=13`. |
+| `command_mode` | string | `pwm` in bringup/autonomous | `pwm` maps `/cmd_vel` to vendor `T=11` direct PWM and is the current HIL-observed motion path; `speed` maps to vendor `T=1`; `ros` maps to vendor `T=13`. |
 | `track_width_m` | double | `0.172` | Differential-drive width used by `speed` mode. Must be positive. Current default is project tuning and requires HIL confirmation before production use. |
 | `max_wheel_speed_mps` | double | `1.3` | Normalization limit for project-side `T=1` left/right values. Must be positive. Vendor WAVE ROVER materials describe `-0.5` to `0.5` as the user-facing speed range, so the current scaling/clamp remains HIL-pending. |
 | `feedback_interval_ms` | int | `100` | Sent to vendor `T=142`. Must be non-negative. |

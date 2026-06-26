@@ -31,9 +31,13 @@ DEFAULT_CAMERA_BASE_URL = "http://127.0.0.1:8088"
 DEFAULT_BASE_PORT = "/dev/ttyS5"
 DEFAULT_BASE_BAUDRATE = 115200
 DEFAULT_MAX_SPEED = 0.12
+DEFAULT_BASE_COMMAND_MODE = "pwm"
+DEFAULT_MANUAL_PWM_MIN_ABS = 90
+DEFAULT_MANUAL_PWM_MAX_ABS = 90
 DEFAULT_PULSE_MS = 260
 MAX_PULSE_MS = 800
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
+ALLOWED_BASE_COMMAND_MODES = frozenset({"speed", "pwm"})
 DEFAULT_FEEDBACK_READ_TIMEOUT_S = 0.2
 DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
 DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
@@ -323,6 +327,81 @@ def wheel_command_for_direction(direction: str, speed: float) -> dict[str, float
     else:
         raise ValueError(f"unsupported_direction:{direction}")
     return {"T": 1, "L": round(left, 3), "R": round(right, 3)}
+
+
+def pwm_command_for_direction(
+    direction: str,
+    speed: float,
+    *,
+    max_speed: float,
+    pwm_min_abs: int,
+    pwm_max_abs: int,
+) -> dict[str, int]:
+    """把 PC 点动速度映射到 vendor T=11 PWM；当前真机已验证该路径能产生非零 T1001。"""
+    if direction == "stop" or speed <= 0:
+        pwm = 0
+    else:
+        # WAVE ROVER 当前现场 T=1/T=13 不出轮速，T=11 PWM=90 可出非零反馈；
+        # 因此非零点动使用最小起步 PWM，仍由 pwm_max_abs 把风险封顶。
+        scaled = round(abs(speed) / max(max_speed, 1e-6) * pwm_max_abs)
+        pwm = min(max(pwm_min_abs, scaled), pwm_max_abs)
+    if direction == "forward":
+        left, right = pwm, pwm
+    elif direction == "back":
+        left, right = -pwm, -pwm
+    elif direction == "left":
+        left, right = -pwm, pwm
+    elif direction == "right":
+        left, right = pwm, -pwm
+    elif direction == "stop":
+        left, right = 0, 0
+    else:
+        raise ValueError(f"unsupported_direction:{direction}")
+    return {"T": 11, "L": left, "R": right}
+
+
+def manual_command_for_direction(
+    direction: str,
+    speed: float,
+    *,
+    command_mode: str,
+    max_speed: float,
+    pwm_min_abs: int,
+    pwm_max_abs: int,
+) -> dict[str, float | int]:
+    """按现场验证结果选择底盘命令；默认 pwm，不再让 PC 试动卡在无效速度模式。"""
+    if command_mode == "pwm":
+        return pwm_command_for_direction(
+            direction,
+            speed,
+            max_speed=max_speed,
+            pwm_min_abs=pwm_min_abs,
+            pwm_max_abs=pwm_max_abs,
+        )
+    return wheel_command_for_direction(direction, speed)
+
+
+def stop_commands_for_mode(command_mode: str) -> list[dict[str, float | int]]:
+    """停车同时覆盖 PWM、speed 和 ROS 三种 vendor 控制面，避免模式切换后残留运动。"""
+    primary = {"T": 11, "L": 0, "R": 0} if command_mode == "pwm" else {"T": 1, "L": 0, "R": 0}
+    backups: list[dict[str, float | int]] = [
+        {"T": 11, "L": 0, "R": 0},
+        {"T": 1, "L": 0, "R": 0},
+        {"T": 13, "X": 0, "Z": 0},
+    ]
+    ordered: list[dict[str, float | int]] = [primary]
+    for command in backups:
+        if command not in ordered:
+            ordered.append(command)
+    return ordered
+
+
+def default_motion_read_window_s(pulse_ms: int) -> float:
+    """反馈采样尽量覆盖点动窗口；预留 50ms 给停车兜底，避免错过 200ms 级底盘反馈。"""
+    pulse_s = max(pulse_ms, 0) / 1000.0
+    if pulse_s <= 0:
+        return 0.05
+    return max(0.05, min(0.75, max(pulse_s - 0.05, 0.05)))
 
 
 def write_serial_json(port: str, baudrate: int, command: dict[str, Any]) -> dict[str, Any]:
@@ -4610,6 +4689,7 @@ def manual_motion_serial_transaction(
     port: str,
     baudrate: int,
     command: dict[str, Any],
+    stop_commands: list[dict[str, Any]],
     pulse_ms: int,
     motion_read_timeout_s: float,
     motion_read_window_s: float,
@@ -4621,7 +4701,9 @@ def manual_motion_serial_transaction(
     serial_open: dict[str, Any] = {"ok": False, "port": port, "baudrate": baudrate, "timeout_s": motion_read_timeout_s}
     input_reset: dict[str, Any] = {"attempted": False, "ok": False}
     command_write: dict[str, Any] = {"ok": False, "command": command}
-    stop_write: dict[str, Any] = {"ok": False, "command": {"T": 1, "L": 0, "R": 0}}
+    stop_plan = stop_commands or [{"T": 1, "L": 0, "R": 0}]
+    stop_write: dict[str, Any] = {"ok": False, "command": stop_plan[0]}
+    additional_stop_writes: list[dict[str, Any]] = []
     motion_feedback_write: dict[str, Any] = {"ok": False, "command": BASE_FEEDBACK_REQUEST_COMMAND}
     after_stop_feedback_write: dict[str, Any] = {"ok": False, "command": BASE_FEEDBACK_REQUEST_COMMAND}
     serial_obj = None
@@ -4635,6 +4717,7 @@ def manual_motion_serial_transaction(
             "input_reset": input_reset,
             "command_result": command_write,
             "stop_result": stop_write,
+            "additional_stop_results": additional_stop_writes,
             "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "pyserial_unavailable"),
             "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "pyserial_unavailable"),
             "serial_session_error": error,
@@ -4651,6 +4734,7 @@ def manual_motion_serial_transaction(
             "input_reset": input_reset,
             "command_result": command_write,
             "stop_result": stop_write,
+            "additional_stop_results": additional_stop_writes,
             "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "serial_not_opened"),
             "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "serial_not_opened"),
             "serial_session_error": error,
@@ -4693,7 +4777,9 @@ def manual_motion_serial_transaction(
         remaining_s = max(pulse_ms / 1000.0 - (time.monotonic() - started_monotonic), 0.0)
         if remaining_s > 0:
             time.sleep(remaining_s)
-        stop_write = write_json_to_open_serial(serial_obj, {"T": 1, "L": 0, "R": 0})
+        stop_write = write_json_to_open_serial(serial_obj, stop_plan[0])
+        for stop_command in stop_plan[1:]:
+            additional_stop_writes.append(write_json_to_open_serial(serial_obj, stop_command))
         if stop_write.get("ok"):
             serial_obj.timeout = after_stop_read_timeout_s
             after_stop_feedback_write = write_json_to_open_serial(serial_obj, BASE_FEEDBACK_REQUEST_COMMAND)
@@ -4730,6 +4816,7 @@ def manual_motion_serial_transaction(
         "command_result": command_write,
         "motion_feedback_request_result": motion_feedback_write,
         "stop_result": stop_write,
+        "additional_stop_results": additional_stop_writes,
         "after_stop_feedback_request_result": after_stop_feedback_write,
         "feedback_during_motion": feedback_during_motion,
         "feedback_after_stop": feedback_after_stop,
@@ -5271,6 +5358,9 @@ class UpperRobotApi:
         base_port: str,
         base_baudrate: int,
         max_speed: float,
+        base_command_mode: str = DEFAULT_BASE_COMMAND_MODE,
+        manual_pwm_min_abs: int = DEFAULT_MANUAL_PWM_MIN_ABS,
+        manual_pwm_max_abs: int = DEFAULT_MANUAL_PWM_MAX_ABS,
         feedback_samples_artifact_path: str = DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH,
         lidar_scan_proof_artifact_path: str = DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH,
         lidar_raw_packet_proof_artifact_path: str = DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH,
@@ -5299,6 +5389,9 @@ class UpperRobotApi:
         self.base_port = base_port
         self.base_baudrate = base_baudrate
         self.max_speed = max_speed
+        self.base_command_mode = base_command_mode if base_command_mode in ALLOWED_BASE_COMMAND_MODES else DEFAULT_BASE_COMMAND_MODE
+        self.manual_pwm_min_abs = max(0, min(int(manual_pwm_min_abs), 255))
+        self.manual_pwm_max_abs = max(self.manual_pwm_min_abs, min(int(manual_pwm_max_abs), 255))
         self.feedback_samples_artifact_path = feedback_samples_artifact_path
         self.lidar_scan_proof_artifact_path = lidar_scan_proof_artifact_path
         self.lidar_raw_packet_proof_artifact_path = lidar_raw_packet_proof_artifact_path
@@ -5360,9 +5453,12 @@ class UpperRobotApi:
             "wheel_feedback_lr_nonzero_proven": wheel_feedback_nonzero,
             "control_policy": {
                 "mode": "low_speed_pulse_with_auto_stop",
+                "base_command_mode": self.base_command_mode,
                 "max_speed": self.max_speed,
+                "manual_pwm_min_abs": self.manual_pwm_min_abs,
+                "manual_pwm_max_abs": self.manual_pwm_max_abs,
                 "max_pulse_ms": MAX_PULSE_MS,
-                "stop_command": {"T": 1, "L": 0, "R": 0},
+                "stop_commands": stop_commands_for_mode(self.base_command_mode),
             },
             "readback_sends_commands": bool(feedback_readback.get("sends_commands")),
             "sends_commands": bool(feedback_readback.get("sends_commands")),
@@ -6948,12 +7044,24 @@ class UpperRobotApi:
             requested_pulse_ms = DEFAULT_PULSE_MS
         # 点动窗口强制限时，任何非 stop 方向都必须进入停车兜底。
         pulse_ms = min(max(requested_pulse_ms, 0), MAX_PULSE_MS)
-        command = wheel_command_for_direction(direction, speed)
+        request_command_mode = str(body.get("command_mode", self.base_command_mode)).strip().lower()
+        command_mode = request_command_mode if request_command_mode in ALLOWED_BASE_COMMAND_MODES else self.base_command_mode
+        command = manual_command_for_direction(
+            direction,
+            speed,
+            command_mode=command_mode,
+            max_speed=self.max_speed,
+            pwm_min_abs=self.manual_pwm_min_abs,
+            pwm_max_abs=self.manual_pwm_max_abs,
+        )
+        stop_plan = stop_commands_for_mode(command_mode)
+        # WAVE ROVER 固件的 setpoint/feedback 节奏约 200ms；first-jog 500ms 若只读 220ms，
+        # 容易在停车前错过非零 T1001。默认读窗覆盖大部分脉冲，但不超过脉冲本身。
         motion_read_window_s = clamp_float(
             body.get("motion_read_window_s"),
-            min(0.22, max(pulse_ms / 1000.0 - 0.05, 0.05)),
+            default_motion_read_window_s(pulse_ms),
             0.05,
-            min(0.35, max(pulse_ms / 1000.0, 0.05)),
+            max(0.05, min(pulse_ms / 1000.0, 0.8)),
         )
         motion_read_timeout_s = clamp_float(body.get("motion_read_timeout_s"), 0.05, 0.01, 0.2)
         read_timeout_s = clamp_float(body.get("read_timeout_s"), DEFAULT_FEEDBACK_READ_TIMEOUT_S, 0.01, MAX_FEEDBACK_READ_TIMEOUT_S)
@@ -6965,6 +7073,7 @@ class UpperRobotApi:
                 port=self.base_port,
                 baudrate=self.base_baudrate,
                 command=command,
+                stop_commands=stop_plan,
                 pulse_ms=pulse_ms,
                 motion_read_timeout_s=motion_read_timeout_s,
                 motion_read_window_s=motion_read_window_s,
@@ -6988,7 +7097,8 @@ class UpperRobotApi:
             remaining_s = max(pulse_ms / 1000.0 - elapsed_s, 0.0)
             if remaining_s > 0:
                 await asyncio.sleep(remaining_s)
-            stop = write_serial_json(self.base_port, self.base_baudrate, {"T": 1, "L": 0, "R": 0})
+            stop = write_serial_json(self.base_port, self.base_baudrate, stop_plan[0])
+            additional_stop_results = [write_serial_json(self.base_port, self.base_baudrate, stop_command) for stop_command in stop_plan[1:]]
             if first.get("ok") and stop.get("ok"):
                 # stop-only 仍可读停车后反馈，但不会产生运动窗口证据。
                 feedback_evidence = request_base_feedback_once(
@@ -7007,7 +7117,7 @@ class UpperRobotApi:
                 feedback_after_stop_attempted = False
         serial_write_failures = [
             result["error"]
-            for result in (first, stop)
+            for result in (first, stop, *((serial_motion_transaction or {}).get("additional_stop_results") or []))
             if isinstance(result, dict) and not result.get("ok") and "error" in result
         ]
         wheel_feedback_frames = [
@@ -7015,12 +7125,30 @@ class UpperRobotApi:
             *t1001_frames_from_feedback_payload(feedback_evidence),
         ]
         manual_wheel_feedback_summary = wheel_feedback_summary_from_frames(wheel_feedback_frames)
+        manual_feedback_samples_latest = None
+        if feedback_during_motion_attempted:
+            # first-jog/键盘手控的非零 T1001 必须落到 latest artifact，
+            # 否则 PC 刷新 summary 会被停车后的 0/0 读回覆盖成“看似丢证据”。
+            manual_feedback_samples_latest = persist_feedback_samples_artifact(
+                self.feedback_samples_artifact_path,
+                build_base_feedback_samples_payload(
+                    port=self.base_port,
+                    baudrate=self.base_baudrate,
+                    sample_count=2,
+                    sample_interval_s=0.0,
+                    read_timeout_s=max(motion_read_timeout_s, read_timeout_s),
+                    read_window_s=max(motion_read_window_s, read_window_s),
+                    samples=[feedback_during_motion, feedback_evidence],
+                ),
+            )
         return {
             "schema": f"{SCHEMA}.base_manual_result",
             "generated_at_ms": now_ms(),
             "accepted": True,
             "direction": direction,
             "speed": speed,
+            "base_command_mode": command_mode,
+            "stop_commands": stop_plan,
             "duration_ms": pulse_ms,
             "requested_speed": requested_speed,
             "requested_duration_ms": requested_pulse_ms,
@@ -7034,6 +7162,7 @@ class UpperRobotApi:
             "feedback_during_motion": feedback_during_motion,
             "feedback_after_stop_attempted": feedback_after_stop_attempted,
             "feedback_evidence": feedback_evidence,
+            "manual_feedback_samples_latest": manual_feedback_samples_latest,
             "serial_motion_transaction": serial_motion_transaction,
             "t1001_feedback_status": feedback_evidence.get("t1001_feedback_status"),
             "manual_wheel_feedback_summary": manual_wheel_feedback_summary,
@@ -7057,6 +7186,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-port", default=os.getenv("ROBER_BASE_SERIAL_PORT", DEFAULT_BASE_PORT))
     parser.add_argument("--base-baudrate", type=int, default=int(os.getenv("ROBER_BASE_BAUDRATE", str(DEFAULT_BASE_BAUDRATE))))
     parser.add_argument("--max-speed", type=float, default=float(os.getenv("ROBER_BASE_MAX_SPEED", str(DEFAULT_MAX_SPEED))))
+    parser.add_argument("--base-command-mode", choices=sorted(ALLOWED_BASE_COMMAND_MODES), default=os.getenv("ROBER_BASE_COMMAND_MODE", DEFAULT_BASE_COMMAND_MODE))
+    parser.add_argument("--manual-pwm-min-abs", type=int, default=int(os.getenv("ROBER_MANUAL_PWM_MIN_ABS", str(DEFAULT_MANUAL_PWM_MIN_ABS))))
+    parser.add_argument("--manual-pwm-max-abs", type=int, default=int(os.getenv("ROBER_MANUAL_PWM_MAX_ABS", str(DEFAULT_MANUAL_PWM_MAX_ABS))))
     parser.add_argument(
         "--feedback-samples-artifact-path",
         default=os.getenv("ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH", DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH),
@@ -7129,6 +7261,9 @@ async def run_server(args: argparse.Namespace) -> None:
         base_port=args.base_port,
         base_baudrate=args.base_baudrate,
         max_speed=args.max_speed,
+        base_command_mode=args.base_command_mode,
+        manual_pwm_min_abs=args.manual_pwm_min_abs,
+        manual_pwm_max_abs=args.manual_pwm_max_abs,
         feedback_samples_artifact_path=args.feedback_samples_artifact_path,
         lidar_scan_proof_artifact_path=args.lidar_scan_proof_artifact_path,
         lidar_raw_packet_proof_artifact_path=args.lidar_raw_packet_proof_artifact_path,

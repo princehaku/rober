@@ -109,7 +109,10 @@ right_mps = linear.x + angular.z * track_width_m / 2
 `esp32_bridge` + `/cmd_vel` 路径发送 `linear.x=0.03/0.05/0.07/0.09m/s`，
 每步 publish window 均小于 `0.18s`，且每步 `/trashbot/stop` 成功。
 
-在当前 `command_mode=speed`、`max_wheel_speed_mps=1.3` 下，对应 expected command：
+2026-06-27 真机 smoke 后，bringup/autonomous 默认 `command_mode=pwm`，因为当前车上
+`T=11 L=90/R=90` 已观测到非零 `T=1001 L/R=90/90`，而 `T=1`、`T=13` 低速短测仍为
+`L/R=0/0`。在保留 `command_mode=speed` 的离线示例下，`max_wheel_speed_mps=1.3`
+对应 expected command：
 
 - `0.03m/s -> {"T":1,"L":0.023077,"R":0.023077}`
 - `0.05m/s -> {"T":1,"L":0.038462,"R":0.038462}`

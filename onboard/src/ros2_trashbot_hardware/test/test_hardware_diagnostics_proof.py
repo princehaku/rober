@@ -98,6 +98,7 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
         examples = proof["cmd_vel_examples"]
 
         self.assertEqual(examples["speed_mode_forward"]["command"], {"T": 1, "L": 0.5, "R": 0.5})
+        self.assertEqual(examples["pwm_mode_forward_hil_observed"]["command"], {"T": 11, "L": 90, "R": 90})
         self.assertEqual(
             examples["ros_mode_forward_unverified"]["command"], {"T": 13, "X": 0.1, "Z": 0.0}
         )
@@ -107,7 +108,7 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
         proof_module = _proof_module()
 
         proof = proof_module.build_hardware_diagnostics_proof(
-            config={"command_mode": "pwm"}
+            config={"command_mode": "bad_mode"}
         )
 
         self.assertEqual(proof["status"], "invalid_config")
@@ -136,6 +137,8 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
             "serial_baudrate",
             "track_width_m",
             "max_wheel_speed_mps",
+            "pwm_min_abs",
+            "pwm_max_abs",
             "feedback_interval_ms",
             "odom_publish_hz",
         ):
@@ -188,7 +191,7 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
         proof_module = _proof_module()
 
         with redirect_stdout(io.StringIO()):
-            invalid = proof_module.main(["--command-mode", "pwm"])
+            invalid = proof_module.main(["--command-mode", "bad_mode"])
         with redirect_stdout(io.StringIO()):
             bad_feedback = proof_module.main(["--feedback-sample-json", "not json"])
 

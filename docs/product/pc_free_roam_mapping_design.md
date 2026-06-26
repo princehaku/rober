@@ -120,6 +120,17 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   当 `stop_available=ready` 且 runtime 仍是 `artifact_only=true/cmd_vel_publish_enabled=false` 时，gate 显示
   `not_proven` 和 `当前尚未启动自动扫图，点击开始后由上车端打开运动双锁`；只有停止兜底或 runtime 本身缺失时才显示
   blocked。这样 live 首屏不会在 `free_roam_autonomy_start_ready=true` 时又误提示“完成 HIL 后再解锁”。
+- 2026-06-27 00:42 起，上位机 `/api/base/manual` 的默认运动中反馈读窗按点动时长计算：
+  500ms first-jog 默认读约 450ms，240ms 键盘连续 pulse 默认读约 190ms。依据
+  `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料，底盘通过换行 JSON `T=1 L/R`
+  控制轮速、`T=130/T=1001` 回读反馈，固件 setpoint/feedback 节奏约 200ms；旧的 220ms
+  上限容易在 first-jog 停车前漏掉非零 `T=1001 L/R`。新策略仍保留 stop 兜底，并且不要求雷达或摄像头
+  ready 才能低速试动；雷达和摄像头只决定本轮是否可按“可建图”验收。
+- 同轮真机 smoke 进一步确认：`T=1 L/R=0.12` 与 `T=13 X=0.12/Z=0` 都能收到 `T=1001`，但轮速仍为
+  `0/0`；vendor direct PWM `T=11 L=90/R=90` 能收到非零 `T=1001 L/R=90/90`。因此上位机
+  `/api/base/manual` 默认切到 `base_command_mode=pwm`，非 stop 后同时发送 `T=11`、`T=1`、`T=13`
+  零速兜底。ROS `esp32_bridge` 也新增 `command_mode=pwm`，bringup/autonomous 默认使用该模式，让 Nav2 和
+  free-roam `/cmd_vel` 不再继续走当前真机无效的 `T=1/T=13` 路径。
 
 ## 用户流程
 

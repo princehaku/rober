@@ -247,6 +247,21 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
 
         self.assertEqual(command, {"T": 1, "L": 1.0, "R": 1.0})
 
+    def test_cmd_vel_pwm_mode_uses_hil_observed_t11_pwm(self):
+        bridge = _bridge_module()
+
+        command = bridge.build_cmd_vel_command(
+            linear_x=0.12,
+            angular_z=0.0,
+            command_mode="pwm",
+            track_width_m=0.172,
+            max_wheel_speed_mps=1.3,
+            pwm_min_abs=90,
+            pwm_max_abs=90,
+        )
+
+        self.assertEqual(command, {"T": 11, "L": 90, "R": 90})
+
     def test_positive_angular_z_lowers_left_and_raises_right_wheel(self):
         bridge = _bridge_module()
 
@@ -270,7 +285,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             bridge.build_cmd_vel_command(
                 linear_x=0.0,
                 angular_z=0.0,
-                command_mode="pwm",
+                command_mode="bad_mode",
                 track_width_m=0.172,
                 max_wheel_speed_mps=1.3,
             )
@@ -309,6 +324,8 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
                 command_mode="speed",
                 track_width_m=0.172,
                 max_wheel_speed_mps=-0.1,
+                pwm_min_abs=90,
+                pwm_max_abs=90,
                 feedback_interval_ms=100,
                 odom_publish_hz=20.0,
             )
@@ -317,11 +334,11 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         bridge = _bridge_module()
 
         with self.assertRaisesRegex(ValueError, "command_mode must be one of"):
-            bridge.validate_startup_config("pwm", 0.172, 1.3, 100, 20.0)
+            bridge.validate_startup_config("bad_mode", 0.172, 1.3, 90, 90, 100, 20.0)
         with self.assertRaisesRegex(ValueError, "track_width_m must be > 0"):
-            bridge.validate_startup_config("speed", 0.0, 1.3, 100, 20.0)
+            bridge.validate_startup_config("speed", 0.0, 1.3, 90, 90, 100, 20.0)
         with self.assertRaisesRegex(ValueError, "feedback_interval_ms must be >= 0"):
-            bridge.validate_startup_config("speed", 0.172, 1.3, -1, 20.0)
+            bridge.validate_startup_config("speed", 0.172, 1.3, 90, 90, -1, 20.0)
 
     def test_base_feedback_line_parses_imu_and_battery_fields(self):
         bridge = _bridge_module()

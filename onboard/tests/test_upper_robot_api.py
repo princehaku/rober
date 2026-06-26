@@ -209,29 +209,105 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "serial_session_error": None,
         }
 
-        with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction", return_value=transaction) as mocked_transaction:
-            payload = asyncio.run(
-                api.manual_control(
-                    {
-                        "direction": "forward",
-                        "speed": 0.04,
-                        "duration_ms": 300,
-                        "motion_read_window_s": 0.05,
-                    }
+        with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact", side_effect=lambda _path, payload: {**payload, "artifact": {"write": {"ok": True}}}):
+            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction", return_value=transaction) as mocked_transaction:
+                payload = asyncio.run(
+                    api.manual_control(
+                        {
+                            "direction": "forward",
+                            "speed": 0.04,
+                            "duration_ms": 300,
+                            "motion_read_window_s": 0.05,
+                        }
+                    )
                 )
-            )
 
         self.assertTrue(payload["manual_command_executed"])
         self.assertTrue(payload["auto_stop_executed"])
         self.assertTrue(payload["feedback_during_motion_attempted"])
         mocked_transaction.assert_called_once()
+        self.assertEqual({"T": 11, "L": 90, "R": 90}, mocked_transaction.call_args.kwargs["command"])
+        self.assertEqual(
+            [{"T": 11, "L": 0, "R": 0}, {"T": 1, "L": 0, "R": 0}, {"T": 13, "X": 0, "Z": 0}],
+            mocked_transaction.call_args.kwargs["stop_commands"],
+        )
         self.assertEqual(transaction, payload["serial_motion_transaction"])
+        self.assertEqual("pwm", payload["base_command_mode"])
+        self.assertTrue(payload["manual_feedback_samples_latest"]["wheel_feedback_lr_nonzero_proven"])
         self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
         self.assertEqual(1, payload["manual_wheel_feedback_summary"]["nonzero_frame_count"])
         self.assertEqual(0.04, payload["manual_wheel_feedback_summary"]["latest_nonzero_pair"]["left_speed"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["delivery_success"])
         self.assertFalse(payload["primary_actions_enabled"])
+
+    def test_manual_control_default_motion_window_tracks_pulse_duration(self) -> None:
+        """默认运动中读窗要覆盖大部分点动时间，避免 500ms first-jog 漏掉非零 T1001。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        transaction = {
+            "command_result": {"ok": True, "bytes_written": 26, "command": {"T": 1, "L": 0.08, "R": 0.08}},
+            "stop_result": {"ok": True, "bytes_written": 20, "command": {"T": 1, "L": 0, "R": 0}},
+            "feedback_during_motion": {
+                "t1001_feedback_status": "observed",
+                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
+                "feedback_ack": {"t1001_observed": True},
+            },
+            "feedback_after_stop": {
+                "t1001_feedback_status": "observed",
+                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
+                "feedback_ack": {"t1001_observed": True},
+            },
+            "serial_session_error": None,
+        }
+
+        with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact", side_effect=lambda _path, payload: {**payload, "artifact": {"write": {"ok": True}}}):
+            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction", return_value=transaction) as mocked_transaction:
+                payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 500}))
+
+        kwargs = mocked_transaction.call_args.kwargs
+        self.assertEqual(500, kwargs["pulse_ms"])
+        self.assertEqual({"T": 11, "L": 90, "R": 90}, kwargs["command"])
+        self.assertAlmostEqual(0.45, kwargs["motion_read_window_s"])
+        self.assertTrue(payload["manual_command_executed"])
+
+    def test_manual_control_keyboard_pulse_keeps_short_motion_window(self) -> None:
+        """键盘连续手控 240ms pulse 仍保持短读窗，避免按住续发被单次 read 阻塞太久。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        transaction = {
+            "command_result": {"ok": True, "bytes_written": 26, "command": {"T": 1, "L": 0.08, "R": 0.08}},
+            "stop_result": {"ok": True, "bytes_written": 20, "command": {"T": 1, "L": 0, "R": 0}},
+            "feedback_during_motion": {
+                "t1001_feedback_status": "observed",
+                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
+                "feedback_ack": {"t1001_observed": True},
+            },
+            "feedback_after_stop": {
+                "t1001_feedback_status": "observed",
+                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
+                "feedback_ack": {"t1001_observed": True},
+            },
+            "serial_session_error": None,
+        }
+
+        with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact", side_effect=lambda _path, payload: {**payload, "artifact": {"write": {"ok": True}}}):
+            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction", return_value=transaction) as mocked_transaction:
+                payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 240}))
+
+        kwargs = mocked_transaction.call_args.kwargs
+        self.assertEqual(240, kwargs["pulse_ms"])
+        self.assertEqual({"T": 11, "L": 90, "R": 90}, kwargs["command"])
+        self.assertAlmostEqual(0.19, kwargs["motion_read_window_s"])
+        self.assertTrue(payload["manual_command_executed"])
 
     def test_operator_report_persists_structured_hil_claims_without_hil_pass(self) -> None:
         """结构化 HIL 字段必须可机器回读，但 report 本身仍不是 HIL pass。"""

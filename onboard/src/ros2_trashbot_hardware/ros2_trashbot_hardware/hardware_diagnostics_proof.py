@@ -50,6 +50,8 @@ DEFAULT_CONFIG = {
     "command_mode": "speed",
     "track_width_m": 0.172,
     "max_wheel_speed_mps": 1.3,
+    "pwm_min_abs": 90,
+    "pwm_max_abs": 90,
     "feedback_interval_ms": 100,
     "odom_publish_hz": 20.0,
 }
@@ -107,6 +109,8 @@ def _validate_config(config: dict[str, Any]) -> dict[str, Any]:
         config["serial_baudrate"] = _coerce_int_config(config, "serial_baudrate")
         config["track_width_m"] = _coerce_float_config(config, "track_width_m")
         config["max_wheel_speed_mps"] = _coerce_float_config(config, "max_wheel_speed_mps")
+        config["pwm_min_abs"] = _coerce_int_config(config, "pwm_min_abs")
+        config["pwm_max_abs"] = _coerce_int_config(config, "pwm_max_abs")
         config["feedback_interval_ms"] = _coerce_int_config(config, "feedback_interval_ms")
         config["odom_publish_hz"] = _coerce_float_config(config, "odom_publish_hz")
         if config["serial_baudrate"] <= 0:
@@ -115,6 +119,8 @@ def _validate_config(config: dict[str, Any]) -> dict[str, Any]:
             command_mode=config["command_mode"],
             track_width_m=config["track_width_m"],
             max_wheel_speed_mps=config["max_wheel_speed_mps"],
+            pwm_min_abs=config["pwm_min_abs"],
+            pwm_max_abs=config["pwm_max_abs"],
             feedback_interval_ms=config["feedback_interval_ms"],
             odom_publish_hz=config["odom_publish_hz"],
         )
@@ -170,9 +176,19 @@ def _build_cmd_vel_examples(config: dict[str, Any]) -> dict[str, dict[str, Any]]
         track_width_m=config["track_width_m"],
         max_wheel_speed_mps=config["max_wheel_speed_mps"],
     )
+    pwm_forward = build_cmd_vel_command(
+        linear_x=0.12,
+        angular_z=0.0,
+        command_mode="pwm",
+        track_width_m=config["track_width_m"],
+        max_wheel_speed_mps=config["max_wheel_speed_mps"],
+        pwm_min_abs=config["pwm_min_abs"],
+        pwm_max_abs=config["pwm_max_abs"],
+    )
     return {
         "speed_mode_forward": {"command": speed_forward, "uart_frame": _json_frame(speed_forward)},
         "speed_mode_turn": {"command": speed_turn, "uart_frame": _json_frame(speed_turn)},
+        "pwm_mode_forward_hil_observed": {"command": pwm_forward, "uart_frame": _json_frame(pwm_forward)},
         "ros_mode_forward_unverified": {
             "command": ros_forward,
             "uart_frame": _json_frame(ros_forward),
@@ -210,6 +226,14 @@ def _risk_flags(config: dict[str, Any]) -> list[dict[str, str]]:
                 "id": "command_mode_ros_requires_hil",
                 "severity": "high",
                 "detail": "The selected command_mode is ros/T=13; do not treat it as production-ready before hardware validation.",
+            }
+        )
+    if config["command_mode"] == "pwm":
+        flags.append(
+            {
+                "id": "command_mode_pwm_hil_observed",
+                "severity": "medium",
+                "detail": "Current field smoke observed nonzero T=1001 L/R for vendor T=11 PWM=90; keep low-speed caps and stop fallback.",
             }
         )
     return flags
@@ -315,6 +339,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--max-wheel-speed-mps", type=float, default=DEFAULT_CONFIG["max_wheel_speed_mps"]
     )
+    parser.add_argument("--pwm-min-abs", type=int, default=DEFAULT_CONFIG["pwm_min_abs"])
+    parser.add_argument("--pwm-max-abs", type=int, default=DEFAULT_CONFIG["pwm_max_abs"])
     parser.add_argument(
         "--feedback-interval-ms", type=int, default=DEFAULT_CONFIG["feedback_interval_ms"]
     )
@@ -328,6 +354,8 @@ def main(argv: list[str] | None = None) -> int:
         "command_mode": args.command_mode,
         "track_width_m": args.track_width_m,
         "max_wheel_speed_mps": args.max_wheel_speed_mps,
+        "pwm_min_abs": args.pwm_min_abs,
+        "pwm_max_abs": args.pwm_max_abs,
         "feedback_interval_ms": args.feedback_interval_ms,
     }
     proof = build_hardware_diagnostics_proof(

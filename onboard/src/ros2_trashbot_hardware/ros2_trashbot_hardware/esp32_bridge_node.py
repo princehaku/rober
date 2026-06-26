@@ -32,6 +32,8 @@ from ros2_trashbot_hardware.wave_rover_feedback import (
     vendor_degrees_to_ros_radians,
 )
 from ros2_trashbot_hardware.wave_rover_protocol import (
+    CMD_PWM_INPUT,
+    CMD_ROS_CTRL,
     CMD_SPEED_CTRL,
     build_cmd_vel_command,
     build_startup_config_commands,
@@ -53,6 +55,8 @@ class ESP32Bridge(Node):
         self.command_mode = config.command_mode
         self.track_width_m = config.track_width_m
         self.max_wheel_speed_mps = config.max_wheel_speed_mps
+        self.pwm_min_abs = config.pwm_min_abs
+        self.pwm_max_abs = config.pwm_max_abs
         self.feedback_interval_ms = config.feedback_interval_ms
         self.publish_odom_tf = config.publish_odom_tf
         self.feedback_debug_log_path = config.feedback_debug_log_path
@@ -201,6 +205,8 @@ class ESP32Bridge(Node):
                 command_mode=self.command_mode,
                 track_width_m=self.track_width_m,
                 max_wheel_speed_mps=self.max_wheel_speed_mps,
+                pwm_min_abs=self.pwm_min_abs,
+                pwm_max_abs=self.pwm_max_abs,
             )
         except ValueError as exc:
             self.get_logger().error(str(exc))
@@ -255,8 +261,13 @@ class ESP32Bridge(Node):
         return transform
 
     def _send_stop(self) -> bool:
-        # 停车命令使用 T=1 零左右轮速，这是 vendor speed control 的最小安全路径。
-        return self._send_json({"T": CMD_SPEED_CTRL, "L": 0, "R": 0})
+        # 停车同时覆盖 PWM、speed 和 ROS 三种 vendor 控制面，避免现场切换模式后残留运动。
+        results = [
+            self._send_json({"T": CMD_PWM_INPUT, "L": 0, "R": 0}),
+            self._send_json({"T": CMD_SPEED_CTRL, "L": 0, "R": 0}),
+            self._send_json({"T": CMD_ROS_CTRL, "X": 0, "Z": 0}),
+        ]
+        return any(results)
 
     def _stop_callback(self, request: Any, response: Any) -> Any:
         response.success = self._send_stop()

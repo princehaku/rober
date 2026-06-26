@@ -26,8 +26,8 @@ def generate_launch_description():
         description='UART baud rate for the WAVE ROVER ESP32 controller')
 
     command_mode_arg = DeclareLaunchArgument(
-        'command_mode', default_value='speed',
-        description='WAVE ROVER command mode: speed uses T=1, ros uses T=13')
+        'command_mode', default_value='pwm',
+        description='WAVE ROVER command mode: pwm uses HIL-observed T=11, speed uses T=1, ros uses T=13')
 
     track_width_arg = DeclareLaunchArgument(
         'track_width_m', default_value='0.172',
@@ -35,7 +35,15 @@ def generate_launch_description():
 
     max_wheel_speed_arg = DeclareLaunchArgument(
         'max_wheel_speed_mps', default_value='1.3',
-        description='Wheel speed used to normalize T=1 speed commands')
+        description='Wheel speed used to normalize T=1 speed or T=11 PWM commands')
+
+    pwm_min_abs_arg = DeclareLaunchArgument(
+        'pwm_min_abs', default_value='90',
+        description='Minimum nonzero PWM for WAVE ROVER T=11 mode; 90 observed nonzero on 2026-06-27')
+
+    pwm_max_abs_arg = DeclareLaunchArgument(
+        'pwm_max_abs', default_value='90',
+        description='Maximum PWM for WAVE ROVER T=11 low-speed mode')
 
     lidar_enabled_arg = DeclareLaunchArgument(
         'lidar_enabled', default_value='false',
@@ -260,6 +268,8 @@ def generate_launch_description():
     command_mode = LaunchConfiguration('command_mode')
     track_width_m = LaunchConfiguration('track_width_m')
     max_wheel_speed_mps = LaunchConfiguration('max_wheel_speed_mps')
+    pwm_min_abs = LaunchConfiguration('pwm_min_abs')
+    pwm_max_abs = LaunchConfiguration('pwm_max_abs')
     lidar_enabled = LaunchConfiguration('lidar_enabled')
     lidar_serial_port = LaunchConfiguration('lidar_serial_port')
     lidar_serial_baudrate = LaunchConfiguration('lidar_serial_baudrate')
@@ -330,6 +340,8 @@ def generate_launch_description():
                 'command_mode': command_mode,
                 'track_width_m': track_width_m,
                 'max_wheel_speed_mps': max_wheel_speed_mps,
+                'pwm_min_abs': pwm_min_abs,
+                'pwm_max_abs': pwm_max_abs,
             }],
         ),
 
@@ -496,6 +508,8 @@ def generate_launch_description():
         command_mode_arg,
         track_width_arg,
         max_wheel_speed_arg,
+        pwm_min_abs_arg,
+        pwm_max_abs_arg,
         lidar_enabled_arg,
         lidar_serial_port_arg,
         lidar_serial_baudrate_arg,

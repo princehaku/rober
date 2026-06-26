@@ -26,6 +26,8 @@ class BridgeConfig:
     command_mode: str
     track_width_m: float
     max_wheel_speed_mps: float
+    pwm_min_abs: int
+    pwm_max_abs: int
     feedback_interval_ms: int
     odom_publish_hz: float
     publish_odom_tf: bool
@@ -38,6 +40,8 @@ def validate_startup_config(
     command_mode: str,
     track_width_m: float,
     max_wheel_speed_mps: float,
+    pwm_min_abs: int,
+    pwm_max_abs: int,
     feedback_interval_ms: int,
     odom_publish_hz: float,
 ) -> None:
@@ -48,6 +52,8 @@ def validate_startup_config(
         raise ValueError("track_width_m must be > 0")
     if max_wheel_speed_mps <= 0:
         raise ValueError("max_wheel_speed_mps must be > 0")
+    if pwm_min_abs < 0 or pwm_max_abs <= 0 or pwm_min_abs > pwm_max_abs or pwm_max_abs > 255:
+        raise ValueError("pwm_min_abs/pwm_max_abs must satisfy 0 <= min <= max <= 255")
     if feedback_interval_ms < 0:
         raise ValueError("feedback_interval_ms must be >= 0")
     if odom_publish_hz <= 0:
@@ -64,6 +70,8 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("command_mode", "speed")
     node.declare_parameter("track_width_m", 0.172)
     node.declare_parameter("max_wheel_speed_mps", 1.3)
+    node.declare_parameter("pwm_min_abs", 90)
+    node.declare_parameter("pwm_max_abs", 90)
     node.declare_parameter("feedback_interval_ms", 100)
     node.declare_parameter("odom_publish_hz", 20.0)
     # 动态 odom TF 默认开启，便于下一轮 smoke 直接复用；但它仍只代表命令积分，不是实测编码器。
@@ -86,6 +94,8 @@ def load_bridge_config(node: Any) -> BridgeConfig:
         command_mode=str(node.get_parameter("command_mode").value).lower(),
         track_width_m=float(node.get_parameter("track_width_m").value),
         max_wheel_speed_mps=float(node.get_parameter("max_wheel_speed_mps").value),
+        pwm_min_abs=int(node.get_parameter("pwm_min_abs").value),
+        pwm_max_abs=int(node.get_parameter("pwm_max_abs").value),
         feedback_interval_ms=int(node.get_parameter("feedback_interval_ms").value),
         odom_publish_hz=float(node.get_parameter("odom_publish_hz").value),
         publish_odom_tf=bool(node.get_parameter("publish_odom_tf").value),
@@ -97,6 +107,8 @@ def load_bridge_config(node: Any) -> BridgeConfig:
         config.command_mode,
         config.track_width_m,
         config.max_wheel_speed_mps,
+        config.pwm_min_abs,
+        config.pwm_max_abs,
         config.feedback_interval_ms,
         config.odom_publish_hz,
     )

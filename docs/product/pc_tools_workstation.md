@@ -2828,3 +2828,17 @@ free-roam autonomy、stop 或 `/cmd_vel`。
 雷达 lifecycle 为 `stopped`、`latest_scan_proof_fresh=false`，但 summary 仍有 `scan_preview_point_count=72`；
 它只改普通用户 WYSIWYG 表达，不调用 radar start/refresh、manual、keyboard pulse、Nav2、delivery、
 free-roam start/stop、stop 或 `/cmd_vel`。
+
+2026-06-27 00:42 起，上位机底盘 manual 点动默认读反馈窗口跟随点动时长：普通 first-jog 500ms 会在运动中读约
+450ms，键盘连续 pulse 240ms 会读约 190ms。该口径来自 `docs/vendor/VENDOR_INDEX.md` 指向的
+WAVE ROVER 本地资料：底盘使用换行 JSON `T=1 L/R` 控制轮速，`T=130/T=1001` 回读反馈，固件反馈节奏约
+200ms。PC 普通首屏仍只通过固定代理触发 first-jog 或键盘 pulse；这次不改变简易界面、不绕过安全确认、不调用
+Nav2/delivery/free-roam start，也不修改 Clash 或系统代理配置。目的只是降低“车实际收到了短点动，但运动中采样太短而读不到非零
+L/R”的误判概率。
+
+同轮真机 smoke 证明当前底盘可动路径是 vendor `T=11` direct PWM：`T=1` 和 `T=13` 短时低速命令均只回
+`T=1001 L/R=0/0`，而 `T=11 L=90/R=90` 回 `T=1001 L/R=90/90`。上位机 `/api/base/manual`
+默认改为 `base_command_mode=pwm`，PC first-jog 和键盘连续手控仍走同一个固定代理、同一个安全确认和 stop 兜底；
+普通界面风格不变。ROS bridge 新增 `command_mode=pwm`，bringup/autonomous 默认走该模式，后续 Nav2 路线执行的底盘输出不再卡在
+当前真机无效的 `T=1/T=13`。manual 运动中读到的非零 `T=1001 L/R` 会写入既有 latest artifact；PC 刷新 summary 后仍能看到
+`wheel_feedback_lr_nonzero_proven=true`，不会被停车后的只读 `0/0` 覆盖。
