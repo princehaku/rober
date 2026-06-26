@@ -3520,12 +3520,15 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-goal-progress[data-testid="plain-goal-progress"][data-state="已完成"]');
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，最近障碍 0.30m");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已运行，地图位置未读到，最近障碍 0.30m，按雷达局部距离显示，未贴到地图");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').classes()).toContain("mode-pose-missing");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').classes()).toContain("mode-pose-missing");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已运行扫描范围占位，等待机器人地图位置");
-    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点位未读取");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("最近障碍 0.30m，等待地图位置");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达未返回点数组，只显示最近障碍 0.30m，等点位或定位后再贴地图。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；目标线未显示。");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
@@ -5516,7 +5519,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达局部点 3 个，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达 3 个只显示局部轮廓，等定位后再贴地图。");
     expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("已读取雷达点 3 个，当前先显示局部轮廓。");
-    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示车身局部轮廓 3 个点，不贴到地图；路线未显示。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示车身局部轮廓 3 个点，不贴到地图；目标线未显示。");
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -5662,7 +5665,7 @@ describe("App", () => {
     expect(poseMissing.attributes("aria-label")).toBe("定位失败：amcl_timeout，地图上的小车位置未读到");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-map-unknown-pose[data-state="定位失败"]');
-    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人定位失败：amcl_timeout，地图上的雷达和小车位置仍待定位。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人定位失败：amcl_timeout，雷达只显示最近障碍 0.30m，不贴到地图；目标线未显示。");
     expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(false);
     expect(visiblePlainHomeText(wrapper)).toContain("定位失败");
     expect(visiblePlainHomeText(wrapper)).toContain("amcl_timeout");
@@ -5713,7 +5716,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("最近雷达局部点 3 个，雷达未运行，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：这是最近记录 3 个点，不是实时雷达。");
     expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("已有雷达点 3 个，当前先显示局部轮廓，刷新后确认实时性。");
-    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近雷达记录只显示车身局部轮廓 3 个点，当前雷达未运行，不贴到地图；路线未显示。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近雷达记录只显示车身局部轮廓 3 个点，当前雷达未运行，不贴到地图；目标线未显示。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -5791,7 +5794,7 @@ describe("App", () => {
     expect(startMarker.attributes("aria-label")).toContain("最近路线起点，地图坐标 x=0.10, y=0.10");
     expect(startMarker.attributes("style")).toContain("left: 10%");
     expect(startMarker.attributes("style")).toContain("top: 90%");
-    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近路线 3/15 个点按地图坐标显示，雷达不贴图。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；最近路线 3/15 个点仍按地图坐标显示。");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
     expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').exists()).toBe(false);
@@ -6104,7 +6107,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("最近路线已显示 3/15 个点，待重新规划");
     expect(wrapper.find('[data-testid="plain-map-route-start-marker"]').attributes("data-state")).toBe("最近路线起点");
     expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').attributes("data-state")).toBe("最近路线终点");
-    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近路线 3/15 个点按地图坐标显示，雷达不贴图。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；最近路线 3/15 个点仍按地图坐标显示。");
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图上显示的是最近路线（最近路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）；先准备行程，再执行新的图上路线。");
@@ -6175,7 +6178,7 @@ describe("App", () => {
     expect(endMarker.attributes("style")).toContain("left: 80%");
     expect(endMarker.attributes("style")).toContain("top: 98%");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
-    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，路线 3/15 个点按地图坐标显示，雷达不贴图。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；路线 3/15 个点仍按地图坐标显示。");
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
@@ -12020,8 +12023,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).not.toContain("启动雷达");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，最近障碍 0.30m");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达待刷新，地图位置未读到，最近障碍 0.30m，按雷达局部距离显示，未贴到地图");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').classes()).toContain("mode-pose-missing");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("data-state")).toBe("雷达待刷新");
@@ -12118,7 +12122,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，最近障碍 0.30m");
 
     await wrapper.find('[data-testid="plain-radar-refresh"]').trigger("click");
     await flushPromises();
@@ -12330,12 +12334,12 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达已运行");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，最近障碍 0.30m");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达已运行");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已运行，地图位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已运行，地图位置未读到，最近障碍 0.30m，按雷达局部距离显示，未贴到地图");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已运行扫描范围占位，等待机器人地图位置");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达已运行，但当前还没读到点位。");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达未返回点数组，只显示最近障碍 0.30m，等点位或定位后再贴地图。");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-radar-refresh"]').exists()).toBe(true);
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
@@ -12465,9 +12469,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达启动中");
     expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("雷达启动中");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达启动中，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达启动中，最近障碍 0.30m");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达启动中");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动中，地图位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动中，地图位置未读到，最近障碍 0.30m，按雷达局部距离显示，未贴到地图");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达启动中"]');
