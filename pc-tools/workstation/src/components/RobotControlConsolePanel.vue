@@ -4698,6 +4698,9 @@ const plainTripExecutionButtonLabel = computed(() => {
   if (!plainTripCurrentRouteVisible.value) {
     return plainTripPreparedBySummary.value ? "刷新图上路线" : "准备图上路线";
   }
+  if (plainTripHasFreshUnprovenControlEvidence.value || plainTripHasFreshIncompleteEvidence.value || plainTripLatestNotProvenEvidence.value) {
+    return "重新执行图上路线";
+  }
   return plainTripPreparedBySummary.value ? "执行图上路线" : "执行行程";
 });
 const plainTripLatestButtonLabel = computed(() => {

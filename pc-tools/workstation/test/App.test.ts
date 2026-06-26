@@ -5821,6 +5821,8 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execution/latest": {
@@ -5872,6 +5874,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("行程有成功结果和反馈，但真车执行未证明");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("重新执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
