@@ -1512,7 +1512,9 @@ function freeRoamManualTrailOverlay(robotPose: ReturnType<typeof latestRobotPose
     return null;
   }
   const liveDirection = keyboardHeldDirection.value;
-  const stoppedDirection = keyboardControlStatus.value.startsWith("released") || keyboardControlStatus.value.startsWith("stop_sent")
+  const stoppedDirection = keyboardControlStatus.value.startsWith("released")
+    || keyboardControlStatus.value.startsWith("stop_sent")
+    || keyboardControlStatus.value.startsWith("blocked_keyboard_stop_failed")
     ? manualDirectionOrNull(keyboardLastDirection.value)
     : null;
   const direction = liveDirection ?? stoppedDirection;
@@ -1551,7 +1553,13 @@ function freeRoamManualTrailOverlay(robotPose: ReturnType<typeof latestRobotPose
     left: clampPercent(base.left),
     top: clampPercent(base.top),
   };
-  const state = liveDirection ? "扫图中" : keyboardControlStatus.value.startsWith("released") ? "停止中" : "已停止";
+  const state = liveDirection
+    ? "扫图中"
+    : keyboardControlStatus.value.startsWith("released")
+      ? "停止中"
+      : keyboardControlStatus.value.startsWith("blocked_keyboard_stop_failed")
+        ? "停止失败"
+        : "已停止";
   const directionLabel = manualDirectionPlainLabel(direction);
   const progressText = liveDirection ? keyboardForwardedPulseProgressText.value : plainFreeRoamMapPreviewFreshForSession.value ? "地图画面已刷新" : "等待刷新地图画面";
   const wheelText = keyboardWheelFeedbackPlainText().replace(/^；/, "，");
@@ -1693,6 +1701,11 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     const stopLabelSuffix = keyboardLastStopMapSuffix();
     const stopAriaSuffix = keyboardLastStopMapAria();
     return { label: `停止发送中${stopLabelSuffix}`, state: "stopping", style, aria: `已松开方向键${stopAriaSuffix}，正在发送停止${locatedSuffix}` };
+  }
+  if (mapRuntimeStarted.value && keyboardStopFailedAfterPulse.value) {
+    const stopLabelSuffix = keyboardLastStopMapSuffix();
+    const stopAriaSuffix = keyboardLastStopMapAria();
+    return { label: `停止失败${stopLabelSuffix}`, state: "stop_failed", style, aria: `扫图停止请求失败${stopAriaSuffix}，未证明小车已停止，请点红色停止并现场接管${locatedSuffix}` };
   }
   if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("stop_sent")) {
     const stopLabelSuffix = keyboardLastStopMapSuffix();
@@ -1923,6 +1936,11 @@ const canUseKeyboardControl = computed(() => keyboardContractReady.value && canS
 const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
 const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES);
 const keyboardStopSettledAfterPulse = computed(() => keyboardManualPulseObserved.value && !keyboardHeldDirection.value && keyboardControlStatus.value.startsWith("stop_sent"));
+const keyboardStopFailedAfterPulse = computed(() => (
+  // stop 失败时不能等“连续 2 次”才告警；任何一次扫图移动后的 stop 失败都必须 fail-closed。
+  !keyboardHeldDirection.value
+  && keyboardControlStatus.value.startsWith("blocked_keyboard_stop_failed")
+));
 const mapRuntimeStarted = computed(() => (
   mapLifecycleResult.value?.action === "start"
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
@@ -1972,6 +1990,7 @@ const canSavePlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
   && plainFreeRoamMapPreviewFreshForSession.value
+  && !keyboardStopFailedAfterPulse.value
   && !freeRoamAutonomySaveBlocked.value
   && !freeRoamMapWysiwygPending.value
   && !loading.value
@@ -2043,6 +2062,9 @@ const plainFreeRoamMappingSummary = computed(() => {
       : { state: "已保存", hint: "地图已保存；刷新地图画面后可检查 free cell 和路线可用性。" };
   }
   if (mapRuntimeStarted.value) {
+    if (keyboardStopFailedAfterPulse.value) {
+      return { state: "失败", hint: "扫图停止请求失败；先点红色停止并现场接管，不能保存当前地图。" };
+    }
     return canUseKeyboardControl.value
       ? { state: "扫图中", hint: "建图已启动。按住方向键/WASD 低速扫一圈，松开即停，随时点停止。" }
       : { state: "待手控", hint: `建图已启动，但键盘移动条件还没满足。${plainKeyboardNextActionSummary.value}` };
@@ -2059,6 +2081,8 @@ const plainFreeRoamMappingStartLabel = computed(() => (
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
     ? "保存中"
+    : keyboardStopFailedAfterPulse.value
+      ? "先停止小车"
     : freeRoamAutonomySaveBlocked.value
       ? "先停止自动扫图"
     : freeRoamMapWysiwygPending.value && mapRuntimeStarted.value
@@ -2135,6 +2159,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("released")) {
     return "下一步：等待停止完成";
   }
+  if (mapRuntimeStarted.value && keyboardStopFailedAfterPulse.value) {
+    return "下一步：点红色停止";
+  }
   if (mapRuntimeStarted.value && !mapSavedThisSession.value) {
     if (keyboardStopSettledAfterPulse.value) {
       return plainFreeRoamMapPreviewFreshForSession.value ? "下一步：保存地图" : "下一步：刷新扫图画面";
@@ -2208,6 +2235,9 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (keyboardControlStatus.value.startsWith("released")) {
     return "扫图状态：已松开，正在发送停止；完成前不要继续移动。";
+  }
+  if (keyboardStopFailedAfterPulse.value) {
+    return "扫图状态：停止请求失败，未证明小车已停止；请点红色停止并现场接管。";
   }
   if (keyboardControlStatus.value.startsWith("stop_sent")) {
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
