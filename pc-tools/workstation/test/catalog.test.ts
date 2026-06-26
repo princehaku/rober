@@ -5253,6 +5253,65 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary preserves radar raw-packet parsed status", async () => {
+    // 真实 scan-proof latest 可能顶层 status=loaded，但 key_values.latest_proof_status=raw_packets_parsed；summary 不能把它盖掉。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      evidence_ref: "raw-packet-summary-fixture",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "source_first_frame_failed") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": { payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "not_proven") },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.radar_status", "partially_observed"),
+          lifecycle_running: true,
+          lifecycle_state: "running",
+          continuous_scan_status: "latest_proof_incomplete_while_lifecycle_running",
+          continuous_window_observed: false,
+          continuity_window_status: "latest_proof_incomplete_while_lifecycle_running",
+          latest_scan_proof_fresh: false,
+        },
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "loaded"),
+          latest_proof_status: "raw_packets_parsed",
+          latest_scan_once_observed: false,
+          continuous_scan_status: "latest_proof_incomplete_while_lifecycle_running",
+          continuous_window_observed: false,
+          lifecycle_running: true,
+          lifecycle_state: "running",
+          latest_scan_proof_fresh: false,
+        },
+      },
+      "/api/radar/raw-packet-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result", "loaded") },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.lidar.latest_scan_proof_status).toBe("loaded");
+      expect(summary.readback_summary.lidar.latest_scan_proof_result_status).toBe("raw_packets_parsed");
+      expect(summary.readback_summary.lidar.raw_packet_once_observed).toBe("true");
+      expect(summary.readback_summary.lidar.scan_preview_point_count).toBe("0");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary keeps slow status and camera endpoints readable with endpoint timeouts", async () => {
     // status/camera 在真实板端可能慢于 proof latest；只要仍在白名单窗口内，就不应被误记成 fetch_failed。
     const robotApi = await listenRobotApiReadbackByPath({
@@ -5492,6 +5551,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.continuous_window_observed).toBe("true");
       expect(summary.readback_summary.lidar.continuity_window_status).toBe("fresh_window_observed");
       expect(summary.readback_summary.lidar.latest_scan_proof_fresh).toBe("true");
+      expect(summary.readback_summary.lidar.latest_scan_proof_result_status).toBe("scan_once_observed");
+      expect(summary.readback_summary.lidar.raw_packet_once_observed).toBe("not_loaded");
       expect(summary.readback_summary.lidar.scan_preview_point_count).toBe("3");
       expect(summary.readback_summary.lidar.scan_preview_source_point_count).toBe("5");
       expect(summary.readback_summary.lidar.scan_preview_frame_id).toBe("laser");

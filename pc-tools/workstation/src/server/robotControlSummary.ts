@@ -1102,20 +1102,34 @@ function lidarSummaryFromReadbacks(
   const radarStatusPayload = radarStatusReadback?.payload ?? null;
   const radarScanProofPayload = radarScanProofReadback?.payload ?? null;
   const radarRawPacketProofPayload = radarRawPacketProofReadback?.payload ?? null;
-  const latestScanProofResultStatus = summaryValueText(radarScanProofPayload, ["latest_proof_status", "latest_result_status", "status", "state"]);
-  const rawPacketObservedFromScan = summaryValueText(
-    radarScanProofPayload,
+  const readbackKeyValueText = (readback: InternalRobotApiEndpointReadback | null, keys: string[], fallback = ""): string => {
+    // readback.key_values 是 endpoint 统一压缩后的事实；真实 scan-proof 的 raw_packets_parsed 可能只在这里稳定出现。
+    for (const key of keys) {
+      const value = readback?.key_values[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+    return fallback;
+  };
+  const latestScanProofResultStatus = readbackKeyValueText(
+    radarScanProofReadback,
+    ["latest_proof_status", "latest_result_status", "status", "state"],
+    summaryValueText(radarScanProofPayload, ["latest_proof_status", "latest_result_status", "status", "state"]),
+  );
+  const rawPacketObservedFromScan = readbackKeyValueText(
+    radarScanProofReadback,
     ["raw_packet_once_observed", "latest_raw_packet_once_observed"],
-    "",
+    summaryValueText(radarScanProofPayload, ["raw_packet_once_observed", "latest_raw_packet_once_observed"], ""),
   );
-  const rawPacketObservedFromRawProof = summaryValueText(
-    radarRawPacketProofPayload,
+  const rawPacketObservedFromRawProof = readbackKeyValueText(
+    radarRawPacketProofReadback,
     ["raw_packet_once_observed", "latest_raw_packet_once_observed", "packet_once_observed"],
-    "",
+    summaryValueText(radarRawPacketProofPayload, ["raw_packet_once_observed", "latest_raw_packet_once_observed", "packet_once_observed"], ""),
   );
-  const rawPacketOnceObserved = rawPacketObservedFromScan
-    || rawPacketObservedFromRawProof
-    || (latestScanProofResultStatus === "raw_packets_parsed" ? "true" : "not_loaded");
+  const rawPacketOnceObserved = latestScanProofResultStatus === "raw_packets_parsed"
+    ? "true"
+    : rawPacketObservedFromScan || rawPacketObservedFromRawProof || "not_loaded";
   const radarControls = asRecord(findFirstKey(radarStatusPayload, ["controls"]));
   const radarStartControl = asRecord(radarControls?.start);
   const radarStartCommand = asRecord(radarStartControl?.command);
