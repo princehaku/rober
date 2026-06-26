@@ -1050,6 +1050,19 @@ function sharedPreviewFailureText(reason: string | null | undefined, remoteHttpS
   return ` 最近失败：${reason}${statusText}。`;
 }
 
+function sharedPreviewSourceNoFrameText(
+  camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined,
+  existingFailureText: string,
+): string {
+  // MJPEG relay 刚重启时可能还没有 last_failure；此时仍要消费 camera health 的首帧结论。
+  if (existingFailureText || !cameraSourceFirstFrameFailed(camera)) {
+    return "";
+  }
+  const notInUse = camera?.source_usage_status === "not_in_use" || camera?.source_usage_owner_count === "0";
+  const ownerText = notInUse ? "设备没人占用，" : "";
+  return ` 当前相机源没有输出首帧；${ownerText}通常是 USB、摄像头输入或供电问题，不是浏览器独占。`;
+}
+
 const plainCameraSharedPreviewStatus = computed(() => {
   // 共享预览状态只说明 PC Node 是否在复用同一条 MJPEG 上游流，不代替真实画面像素证据。
   if (cameraMjpegStatusPending.value) {
@@ -1069,7 +1082,8 @@ const plainCameraSharedPreviewStatus = computed(() => {
         summaryCamera.shared_preview_last_failure_reason,
         summaryCamera.shared_preview_last_remote_http_status,
       );
-      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${failure}`;
+      const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
+      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${failure}${sourceNoFrame}`;
     }
     return "共享画面：未读取到共享流状态。";
   }
@@ -1077,7 +1091,8 @@ const plainCameraSharedPreviewStatus = computed(() => {
   const content = status.content_type_loaded ? "已拿到视频边界" : "等待视频边界";
   const exclusive = sharedPreviewExclusiveText(status.exclusive_camera_claim);
   const failure = sharedPreviewFailureText(status.last_failure_reason, status.last_remote_http_status);
-  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${failure}`;
+  const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
+  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${failure}${sourceNoFrame}`;
 });
 
 const cameraFirstFrameProbeSummary = computed(() => {
