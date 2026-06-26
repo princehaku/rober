@@ -2507,3 +2507,9 @@ delivery complete 或 `/cmd_vel` 调用。原移动/导航卡片的 `停止` 按
 
 2026-06-26 07:30 起，雷达地图 marker 的 `雷达启动中` 和 `雷达启动失败` 也有独立样式。启动中 marker/sweep 使用待确认警示色，
 启动失败 marker 使用失败色，避免雷达 lifecycle 状态只靠文字区分；该变化只影响地图显示，不自动重试、不发送任何运动或 Nav2/送达请求。
+
+2026-06-26 21:00 起，普通首屏轮速进度把静止读回的 `L/R=0/0` 解释为“待低速试动”，不再直接变成电机/供电/模式排障卡点。
+当 `first_jog_readiness_summary.status=ready_for_first_jog` 且只读 T1001 已在线但仍为 0/0 时，主按钮显示 `去低速试动`，
+轮速按钮保持可点并提示 `低速试动读非零 L/R`；只有已经发出 first-jog 运动窗口且回读仍为 0/0 时，才显示“检查电机使能、供电、
+模式和现场空间后重试”。该变化不降低安全门槛，试动仍走固定 `/api/robot-control/base/first-jog` 和安全确认链路，不发送
+Nav2、delivery、keyboard pulse、base stop 或 `/cmd_vel`。

@@ -3855,9 +3855,14 @@ const plainWheelGoalProgressHint = computed(() => {
   const voltageText = voltage ? `，反馈电压约 ${voltage}V` : "";
   if (left !== "not_loaded" && right !== "not_loaded") {
     const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
-    const nextStep = firstJogMaterialRestoreReady.value
-      ? "先点恢复试动确认，再试动读非零。"
-      : isZeroWheelPair(left, right) ? WHEEL_ZERO_NEXT_ACTION_SUMMARY : "仍需试动读到非零。";
+    let nextStep = "仍需试动读到非零。";
+    if (firstJogMaterialRestoreReady.value) {
+      nextStep = "先点恢复试动确认，再试动读非零。";
+    } else if (plainWheelZeroBlockerActive.value) {
+      nextStep = WHEEL_ZERO_NEXT_ACTION_SUMMARY;
+    } else if (isZeroWheelPair(left, right) && canSendPlainFirstJog.value) {
+      nextStep = "下一步：低速试动读取非零 L/R。";
+    }
     return `当前轮速 L/R=${left}/${right}${frameText}${voltageText}，${nextStep}`;
   }
   if (firstJogMaterialRestoreReady.value) {
@@ -4186,6 +4191,9 @@ const plainGoalProgressPrimaryActionLabel = computed(() => {
   if (target?.id === "wheel" && firstJogMaterialRestoreBlocksMotion.value) {
     return "去恢复确认";
   }
+  if (target?.id === "wheel" && canSendPlainWheelTrial.value) {
+    return "去低速试动";
+  }
   if (target?.id === "trip" && plainTripRadarBlocked.value) {
     if (plainRadarStartUnavailable.value) {
       return "去配置雷达";
@@ -4251,7 +4259,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
     if (firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value) {
       return "验收卡点：送达草稿覆盖了试动确认，先恢复试动确认，再低速试动读非零 L/R。";
     }
-    if (isZeroWheelPair(left, right)) {
+    if (plainWheelZeroBlockerActive.value && isZeroWheelPair(left, right)) {
       return `验收卡点：轮速 L/R=${left}/${right}，检查电机使能、供电、模式和现场空间后重试。`;
     }
     return "验收卡点：还需要试动期间同帧 L/R 都非零。";
@@ -4922,20 +4930,10 @@ const plainWheelEvidenceSaveSummary = computed(() => {
 });
 
 const plainWheelNextActionSummary = computed(() => {
-  // 当反馈链路已在线但 L/R 仍为 0/0 时，把现场排障动作直接放在轮速模块里。
+  // 静止状态下 L/R=0/0 是正常现象；只有运动窗口已发出仍为 0/0，才进入排障卡点。
   const firstJogValues = plainFirstJogResult.value?.remote_motion_key_values;
   if (plainFirstJogResult.value?.proxy_status === "command_forwarded"
     && isZeroWheelPair(firstJogValues?.wheel_feedback_latest_raw_left, firstJogValues?.wheel_feedback_latest_raw_right)) {
-    return WHEEL_ZERO_NEXT_ACTION_SUMMARY;
-  }
-  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
-  if (sample?.t1001_observed_count && sample.t1001_observed_count !== "not_loaded"
-    && isZeroWheelPair(sample.wheel_feedback_latest_left_speed, sample.wheel_feedback_latest_right_speed)) {
-    return WHEEL_ZERO_NEXT_ACTION_SUMMARY;
-  }
-  const base = robotSummary.value?.readback_summary.base;
-  if (base?.latest_t1001_observed_count && base.latest_t1001_observed_count !== "not_loaded"
-    && isZeroWheelPair(base.wheel_feedback_latest_left_speed, base.wheel_feedback_latest_right_speed)) {
     return WHEEL_ZERO_NEXT_ACTION_SUMMARY;
   }
   return "";
