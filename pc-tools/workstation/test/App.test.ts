@@ -4065,6 +4065,11 @@ describe("App", () => {
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/free-roam/autonomy/start": {
+        ...(fixtures["/api/robot-control/free-roam/autonomy/start"] as Record<string, unknown>),
+        mapping_active_requested: true,
+        mapping_active_applied: true,
+      },
     });
     const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
       if (url.startsWith("/api/robot-control/map/preview") && delayNextMapPreview) {
@@ -4145,7 +4150,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自动扫图状态机已启动");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("低速运行中");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("地图和雷达监看中");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮只按自由移动记录，未改速度话题。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮可按建图记录，未改速度话题。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图低速运行中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toContain("低速运行中");
@@ -4339,6 +4344,12 @@ describe("App", () => {
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/free-roam/autonomy/start": {
+        ...(fixtures["/api/robot-control/free-roam/autonomy/start"] as Record<string, unknown>),
+        request_body: { confirm_operator_safety: true, confirm_mapping_active: false },
+        mapping_active_requested: true,
+        mapping_active_applied: false,
+      },
     });
 
     const wrapper = mount(App);
@@ -4585,6 +4596,11 @@ describe("App", () => {
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/free-roam/autonomy/start": {
+        ...(fixtures["/api/robot-control/free-roam/autonomy/start"] as Record<string, unknown>),
+        mapping_active_requested: true,
+        mapping_active_applied: true,
+      },
       "/api/robot-control/radar/scan-proof/refresh": {
         ...(fixtures["/api/robot-control/radar/scan-proof/refresh"] as Record<string, unknown>),
         proxy_status: "refresh_failed",
@@ -4661,6 +4677,11 @@ describe("App", () => {
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/free-roam/autonomy/start": {
+        ...(fixtures["/api/robot-control/free-roam/autonomy/start"] as Record<string, unknown>),
+        mapping_active_requested: true,
+        mapping_active_applied: true,
+      },
     });
     const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
       if (String(url).startsWith("/api/robot-control/free-roam/autonomy/start?")) {
@@ -5042,6 +5063,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自由移动（随时可点）");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：先启动地图记录；当前不会发车。");
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
@@ -5066,6 +5088,9 @@ describe("App", () => {
       confirm_operator_safety: true,
       confirm_mapping_active: false,
     });
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自由移动（随时可点）");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自由移动状态机已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：监看或停止自由移动");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 

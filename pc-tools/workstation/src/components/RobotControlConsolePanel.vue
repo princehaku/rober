@@ -1332,7 +1332,7 @@ const plainFreeRoamAutoStopButtonLabel = computed(() => {
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
     return "停止已排队";
   }
-  return "停止自动扫图（随时可点）";
+  return `停止${plainFreeRoamMotionModeName.value}（随时可点）`;
 });
 const plainFreeRoamLatestButtonLabel = computed(() => (
   freeRoamAutonomyLatestPending.value ? "刷新中" : "刷新自动扫图状态（只读）"
@@ -2676,6 +2676,21 @@ const plainFreeRoamMappingQualityReady = computed(() => (
   && plainCameraReadyForFreeRoamAutonomy.value
   && plainRadarReadyForFreeRoamMapping.value
 ));
+const plainFreeRoamMotionModeName = computed(() => {
+  // start 回包最能说明本轮到底是可验收建图，还是只按自由移动记录；缺回包时再看当前 readiness。
+  const startForwarded = freeRoamAutonomyResult.value?.action === "start"
+    && freeRoamAutonomyResult.value.proxy_status === "autonomy_forwarded";
+  if (startForwarded && freeRoamAutonomyResult.value?.mapping_active_applied === true) {
+    return "自动扫图";
+  }
+  if (startForwarded && freeRoamAutonomyResult.value?.mapping_active_applied === false) {
+    return "自由移动";
+  }
+  return plainFreeRoamMappingQualityReady.value ? "自动扫图" : "自由移动";
+});
+const plainFreeRoamMotionStartButtonText = computed(() => (
+  plainFreeRoamMotionModeName.value === "自动扫图" ? "开始自动扫图（低速）" : "开始自由移动（低速）"
+));
 const canStartMapLifecycle = computed(() => (
   !loading.value
   && !mapLifecyclePending.value
@@ -2820,7 +2835,7 @@ const plainFreeRoamMappingSaveLabel = computed(() => (
     : keyboardStopFailedAfterPulse.value
       ? "先停止小车"
     : freeRoamAutonomySaveBlocked.value
-      ? "先停止自动扫图"
+      ? `先停止${plainFreeRoamMotionModeName.value}`
     : freeRoamMapWysiwygPending.value && mapRuntimeStarted.value
       ? "等待地图刷新"
     : mapRuntimeStarted.value && !plainFreeRoamMapPreviewFreshForSession.value
@@ -2878,18 +2893,18 @@ const plainFreeRoamNextActionLabel = computed(() => {
     return "下一步：等待启动返回后自动停止";
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return "下一步：等待自动扫图启动";
+    return `下一步：等待${plainFreeRoamMotionModeName.value}启动`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
-    return "下一步：等待自动扫图停止";
+    return `下一步：等待${plainFreeRoamMotionModeName.value}停止`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
     return freeRoamAutonomyResult.value.action === "stop"
       ? "下一步：点红色停止"
-      : "下一步：人工扫图或重试自动扫图";
+      : `下一步：人工扫图或重试${plainFreeRoamMotionModeName.value}`;
   }
   if (freeRoamAutonomyStartedThisSession.value) {
-    return "下一步：监看或停止自动扫图";
+    return `下一步：监看或停止${plainFreeRoamMotionModeName.value}`;
   }
   if (freeRoamAutonomyStoppedThisSession.value) {
     return plainFreeRoamMapPreviewFreshForSession.value ? "下一步：保存地图" : "下一步：刷新扫图画面";
@@ -2983,35 +2998,35 @@ const plainFreeRoamDriveStatus = computed(() => {
     return "扫图状态：地图已保存，正在自动刷新最新画面。";
   }
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
-    return "扫图状态：停止自动扫图已排队，启动请求返回后会立刻请求上车端停止。";
+    return `扫图状态：停止${plainFreeRoamMotionModeName.value}已排队，启动请求返回后会立刻请求上车端停止。`;
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return "扫图状态：正在启动上车端自动扫图状态机，PC 保持地图、雷达和停止兜底。";
+    return `扫图状态：正在启动上车端${plainFreeRoamMotionModeName.value}状态机，PC 保持地图、雷达和停止兜底。`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
-    return "扫图状态：正在请求上车端自动扫图停止，红色停止仍可随时兜底。";
+    return `扫图状态：正在请求上车端${plainFreeRoamMotionModeName.value}停止，红色停止仍可随时兜底。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
     const failureText = freeRoamAutonomyFailureText(freeRoamAutonomyResult.value);
     const reasonSuffix = failureText ? `：${failureText}` : "";
     return freeRoamAutonomyResult.value.action === "start"
-      ? `扫图状态：自动扫图启动失败${reasonSuffix}，未证明上车状态机已启动；继续人工按住扫图或重试。`
-      : `扫图状态：自动扫图停止失败${reasonSuffix}，未证明上车状态机已停止；必要时点击红色停止。`;
+      ? `扫图状态：${plainFreeRoamMotionModeName.value}启动失败${reasonSuffix}，未证明上车状态机已启动；继续人工按住扫图或重试。`
+      : `扫图状态：${plainFreeRoamMotionModeName.value}停止失败${reasonSuffix}，未证明上车状态机已停止；必要时点击红色停止。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
     const radarFailureText = radarRefreshFailureLabel(radarRefreshResult.value);
     if (radarFailureText) {
-      return `扫图状态：自动扫图状态机已启动，但${radarFailureText}；继续现场接管，必要时停止自动扫图。`;
+      return `扫图状态：${plainFreeRoamMotionModeName.value}状态机已启动，但${radarFailureText}；继续现场接管，必要时停止${plainFreeRoamMotionModeName.value}。`;
     }
     if (plainFreeRoamMapPreviewRefreshFailedForSession.value) {
       const failureText = mapPreviewFailureText(mapPreviewResult.value);
       const reasonSuffix = failureText ? `：${failureText}` : "";
-      return `扫图状态：自动扫图状态机已启动，但地图画面刷新失败${reasonSuffix}；当前地图不是自动扫图启动后的新画面。`;
+      return `扫图状态：${plainFreeRoamMotionModeName.value}状态机已启动，但地图画面刷新失败${reasonSuffix}；当前地图不是${plainFreeRoamMotionModeName.value}启动后的新画面。`;
     }
-    return "扫图状态：自动扫图状态机已启动，低速运行中，地图和雷达监看中；需要收口时点击停止自动扫图或红色停止。";
+    return `扫图状态：${plainFreeRoamMotionModeName.value}状态机已启动，低速运行中，地图和雷达监看中；需要收口时点击停止${plainFreeRoamMotionModeName.value}或红色停止。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
-    return "扫图状态：自动扫图停止请求已发送，继续看地图和雷达确认现场收口。";
+    return `扫图状态：${plainFreeRoamMotionModeName.value}停止请求已发送，继续看地图和雷达确认现场收口。`;
   }
   if (mapSavedThisSession.value) {
     if (plainFreeRoamSavedMapPreviewRefreshFailed.value) {
@@ -3176,9 +3191,8 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const autonomyStartReady = boundary?.free_roam_autonomy_start_ready === true || autonomyRunningUnlocked;
   const autonomyLocked = !autonomyStartReady;
   const autonomyReady = autonomyStartReady;
-  const mappingQualityReady = plainFreeRoamMappingQualityReady.value;
-  const motionModeName = mappingQualityReady ? "自动扫图" : "自由移动";
-  const motionStartButtonText = mappingQualityReady ? "开始自动扫图（低速）" : "开始自由移动（低速）";
+  const motionModeName = plainFreeRoamMotionModeName.value;
+  const motionStartButtonText = plainFreeRoamMotionStartButtonText.value;
   const hasRuntimeGateRows = Boolean(boundary?.free_roam_autonomy_gates?.length);
   const manualFallbackHint = "自动扫图未开放；当前用人工按住扫图：开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图。";
   const blockers: string[] = [];
@@ -3427,7 +3441,7 @@ const plainFreeRoamMappingSteps = computed(() => {
       id: "stop",
       label: "停止收口",
       state: saved || stopObserved || autoStopped ? "已完成" : autoStopFailed ? "失败" : autoStarted ? "可停止" : mappingStarted ? "可执行" : "待完成",
-      hint: saved ? "扫图已停止并保存" : stopObserved ? "停止已发送" : autoStopped ? "自动扫图已停止，刷新画面后保存" : autoStopFailed ? `自动扫图停止失败${autoFailureSuffix}，先点红色停止并现场接管` : autoStarted ? "点击停止自动扫图或红色停止" : mappingStarted ? "松开按键或点击停止" : "先启动地图记录",
+      hint: saved ? "扫图已停止并保存" : stopObserved ? "停止已发送" : autoStopped ? `${plainFreeRoamMotionModeName.value}已停止，刷新画面后保存` : autoStopFailed ? `${plainFreeRoamMotionModeName.value}停止失败${autoFailureSuffix}，先点红色停止并现场接管` : autoStarted ? `点击停止${plainFreeRoamMotionModeName.value}或红色停止` : mappingStarted ? "松开按键或点击停止" : "先启动地图记录",
     },
     {
       id: "save",
@@ -3441,7 +3455,7 @@ const plainFreeRoamMappingSteps = computed(() => {
           : "已保存，刷新地图画面检查效果"
         : canSavePlainFreeRoamMapping.value
           ? "扫图结束后保存刚刷新过的地图"
-          : freeRoamAutonomySaveBlocked.value ? "先停止自动扫图，再保存地图"
+          : freeRoamAutonomySaveBlocked.value ? `先停止${plainFreeRoamMotionModeName.value}，再保存地图`
           : mapRuntimeStarted.value ? "先刷新扫图画面，再保存地图" : "启动地图记录后才能保存",
     },
   ];
