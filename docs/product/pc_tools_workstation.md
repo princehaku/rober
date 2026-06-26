@@ -3080,3 +3080,9 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 `/api/free-roam/autonomy/latest` runtime gate 为准；如果 runtime 明确说地图记录未启动或不满足，旧的
 `map/proof` 中 `managed_runtime_started=true` 不再把它覆盖成 ready。只有旧 runtime 完全缺少
 `mapping_active` gate 时，PC 才用 map proof 兼容补一行地图记录状态。这样“自动扫图准备”不会把上轮或旧证明误报成本轮正在建图记录中。
+
+2026-06-27 07:26 起，普通首屏的自由移动面板标题和只读刷新按钮会跟随当前运动模式：
+当地图记录、共享摄像头画面和雷达点云未同时 ready 时显示 `自由移动准备`、`刷新自由移动状态（只读）` 和
+`检查自由移动条件`；只有三者满足建图验收口径时才显示 `自动扫图准备`、`刷新自动扫图状态（只读）`。
+这让“小车可以低速自己动”与“可按完整自动扫图/建图验收”分开表达，避免缺雷达或缺画面时把自由移动入口误说成自动扫图失败。
+该改动只影响 PC WYSIWYG 文案，不新增 motion API，不发送 manual pulse、Nav2 goal、delivery complete 或 `/cmd_vel`。

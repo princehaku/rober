@@ -3641,7 +3641,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toBe("扫地图草图：已在地图上画出蛇形覆盖草图；等待定位后接入当前位置，不会自动移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').attributes("data-state")).toBe("待处理");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图准备");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动准备");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("自动扫图准备");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达监看");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("仍可在安全确认后低速自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("建图验收：当前只按自由移动记录");
@@ -4028,7 +4029,7 @@ describe("App", () => {
 
     const button = wrapper.find('[data-testid="plain-free-roam-autonomy-latest"]');
     expect(button.exists()).toBe(true);
-    expect(button.text()).toBe("刷新自动扫图状态（只读）");
+    expect(button.text()).toBe("刷新自由移动状态（只读）");
     expect(button.attributes("disabled")).toBeUndefined();
     const callsBeforeClick = mockedFetch.mock.calls.length;
 
@@ -4115,6 +4116,7 @@ describe("App", () => {
 
     expect(readiness.attributes("data-state")).toBe("已就绪");
     expect(readiness.text()).toContain("已就绪");
+    expect(readiness.text()).toContain("自动扫图准备");
     expect(readiness.text()).toContain("自动扫图");
     expect(readiness.text()).toContain("上车端自动扫图已就绪");
     expect(readiness.text()).toContain("只读状态：运动发布状态");

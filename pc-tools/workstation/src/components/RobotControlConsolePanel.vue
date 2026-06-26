@@ -1405,8 +1405,9 @@ const plainFreeRoamAutoStopButtonLabel = computed(() => {
   return `停止${plainFreeRoamMotionModeName.value}（随时可点）`;
 });
 const plainFreeRoamLatestButtonLabel = computed(() => (
-  freeRoamAutonomyLatestPending.value ? "刷新中" : "刷新自动扫图状态（只读）"
+  freeRoamAutonomyLatestPending.value ? "刷新中" : `刷新${plainFreeRoamMotionModeName.value}状态（只读）`
 ));
+const plainFreeRoamAutonomyReadinessTitle = computed(() => `${plainFreeRoamMotionModeName.value}准备`);
 const plainFreeRoamLatestSummary = computed(() => {
   const latest = freeRoamAutonomyLatestResult.value;
   if (!latest) {
@@ -3134,7 +3135,7 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
   if (!canSendStop.value) {
     return "补停止兜底";
   }
-  return "检查自动扫图条件";
+  return plainFreeRoamMotionModeName.value === "自动扫图" ? "检查自动扫图条件" : "检查自由移动条件";
 });
 const plainFreeRoamDriveStatus = computed(() => {
   // 扫图状态只解释当前本地流程，不自动启用键盘、不发送 manual，也不把自动扫图说成已开放。
@@ -10068,7 +10069,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="plain-free-roam-readiness" :data-state="plainFreeRoamAutonomyReadiness.state" data-testid="plain-free-roam-autonomy-readiness">
             <div class="simple-status-row">
-              <strong>自动扫图准备</strong>
+              <strong>{{ plainFreeRoamAutonomyReadinessTitle }}</strong>
               <span class="status-chip" :data-state="plainFreeRoamAutonomyReadiness.state">{{ plainFreeRoamAutonomyReadiness.state }}</span>
             </div>
             <div class="panel-action-row wrap-actions">
