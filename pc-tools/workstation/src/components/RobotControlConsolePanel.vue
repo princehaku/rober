@@ -1726,6 +1726,51 @@ function plainRouteMapCaption(routePath: ReturnType<typeof latestNavPathOverlay>
   return "";
 }
 
+function plainNav2CountText(value: string | undefined): number {
+  // readback_summary 统一给字符串；这里集中转数值，避免把 not_loaded 误当作 0 之外的有效点数。
+  const parsed = Number(value ?? "0");
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function plainMapRouteReadbackLabel(routePath: ReturnType<typeof latestNavPathOverlay>): string {
+  // 这行给普通用户解释“自动驾驶为什么还不能动”：行程、定位、规划服务三个读数缺一不可。
+  const summary = robotSummary.value?.readback_summary;
+  if (!summary) {
+    return "";
+  }
+  const nav2 = summary.nav2;
+  const localization = summary.localization;
+  const pathGenerated = nav2.path_generated === "true" || nav2.path_generation_succeeded === "true";
+  const routePointCount = plainNav2CountText(nav2.path_preview_point_count) || plainNav2CountText(nav2.path_point_count);
+  const routeFrame = nav2.path_preview_frame_id && nav2.path_preview_frame_id !== "not_loaded"
+    ? `（${nav2.path_preview_frame_id}）`
+    : "";
+  const plannerText = nav2.planner_server_active === "true"
+    ? "行程服务已运行"
+    : nav2.planner_server_active === "false"
+      ? "行程服务未运行"
+      : "行程服务未读取";
+  const poseText = localization.robot_pose_status === "map_pose_observed"
+    ? `小车坐标已读到 x=${localization.robot_pose_x}, y=${localization.robot_pose_y}`
+    : localization.robot_pose_status === "pose_signal_observed_without_map_coordinates"
+      || localization.amcl_pose_observed === "true"
+      || localization.localization_tf_observed === "true"
+      ? "定位有信号，但还没有小车地图坐标"
+      : "小车地图坐标未读到";
+  if (pathGenerated && routePointCount > 0) {
+    const visibilityText = routePath ? "图上行程已画在地图上" : "图上行程已准备但还没画到地图上";
+    return `行程读数：${visibilityText}，${routePointCount} 个点${routeFrame}；${poseText}；${plannerText}。`;
+  }
+  if (pathGenerated) {
+    return `行程读数：图上行程已准备但点数未读到；${poseText}；${plannerText}。`;
+  }
+  const hasNav2Readback = nav2.status !== "not_loaded" || nav2.nav2_status !== "not_loaded" || nav2.planner_server_active !== "not_loaded";
+  if (hasNav2Readback) {
+    return `行程读数：尚未准备图上行程；${poseText}；${plannerText}。`;
+  }
+  return "";
+}
+
 function plainMapCoordinateTruthLabel(
   poseObserved: boolean,
   radarScanOverlay: ReturnType<typeof latestRadarScanOverlay>,
@@ -2312,6 +2357,7 @@ const plainMapVisualSummary = computed(() => {
     mapImageFreshnessLabel: plainMapImageFreshnessLabel(previewLoaded),
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     routePathLabel: plainRouteMapCaption(routePath),
+    routeReadbackLabel: plainMapRouteReadbackLabel(routePath),
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
     frameStyle: mapFrameStyle(mapPreviewResult.value?.width ?? 0, mapPreviewResult.value?.height ?? 0),
@@ -9214,6 +9260,7 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainMapVisualSummary.state">{{ plainMapVisualSummary.state }}</span>
               <span class="muted">{{ plainMapVisualSummary.mapRefLabel }}</span>
               <span v-if="plainMapVisualSummary.routePathLabel" class="muted" data-testid="plain-map-route-label">{{ plainMapVisualSummary.routePathLabel }}</span>
+              <span v-if="plainMapVisualSummary.routeReadbackLabel" class="muted" data-testid="plain-map-route-readback-label">{{ plainMapVisualSummary.routeReadbackLabel }}</span>
               <span v-if="plainMapVisualSummary.freeRoamSweepPlanLabel" class="muted" data-testid="plain-map-free-roam-sweep-label">{{ plainMapVisualSummary.freeRoamSweepPlanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-freshness-label">{{ plainMapVisualSummary.radarFreshnessLabel }}</span>

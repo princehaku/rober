@@ -3685,6 +3685,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("最近障碍 0.30m，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达未返回点数组，只显示最近障碍 0.30m，等点位或定位后再贴地图。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；目标线未显示。");
+    expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：尚未准备图上行程；小车地图坐标未读到；行程服务未运行。");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
@@ -3857,6 +3858,48 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("surfaces generated trip readback while map pose is still missing", async () => {
+    // 行程和定位 readback 要出现在普通地图区，避免用户误以为是雷达卡住自动驾驶。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.amcl_pose_observed = true;
+    summaryFixture.o3_proof_summary.localization_tf_observed = true;
+    summaryFixture.o3_proof_summary.planner_server_active = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_point_count = 36;
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 36;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.2, frame_id: "map", source_index: 12 },
+      { x: 0.8, y: 0.8, frame_id: "map", source_index: 35 },
+    ];
+    summaryFixture.readback_summary.localization.status = "blocked_with_root_cause";
+    summaryFixture.readback_summary.localization.amcl_pose_observed = "true";
+    summaryFixture.readback_summary.localization.localization_tf_observed = "true";
+    summaryFixture.readback_summary.localization.robot_pose_status = "pose_signal_observed_without_map_coordinates";
+    summaryFixture.readback_summary.nav2.status = "not_proven";
+    summaryFixture.readback_summary.nav2.nav2_status = "not_proven";
+    summaryFixture.readback_summary.nav2.planner_server_active = "true";
+    summaryFixture.readback_summary.nav2.path_generated = "true";
+    summaryFixture.readback_summary.nav2.path_generation_succeeded = "true";
+    summaryFixture.readback_summary.nav2.path_point_count = "36";
+    summaryFixture.readback_summary.nav2.path_preview_point_count = "36";
+    summaryFixture.readback_summary.nav2.path_preview_frame_id = "map";
+    stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/36 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：图上行程已画在地图上，36 个点（map）；定位有信号，但还没有小车地图坐标；行程服务已运行。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：先勾安全确认，小车不会出发。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人AMCL/TF 已观察，缺坐标，雷达只显示最近障碍 0.30m，不贴到地图；路线 3/36 个点仍按地图坐标显示。");
   });
 
   it("shows map preview refresh failure reason on the plain map", async () => {

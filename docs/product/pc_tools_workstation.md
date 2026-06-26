@@ -2659,3 +2659,9 @@ Nav2 是否生成了图上路线。真实复测中，PC 7001 summary 返回 `map
 `nav2.path_generated=true`、`nav2.path_preview_point_count=36`、`nav2.path_preview_frame_id=map`，
 同时 `localization.robot_pose_status=pose_signal_observed_without_map_coordinates`。这表示当前能画出路线，但还不能把小车位置贴到地图；
 因此“执行图上路线”仍应保持等定位坐标的 WYSIWYG 门禁。
+
+2026-06-26 20:20 起，普通首屏地图 caption 新增 `行程读数`，直接消费
+`readback_summary.nav2/localization`。当上车端已经生成路径但小车 map-frame 坐标缺失时，地图区会显示
+`图上行程已画在地图上，36 个点（map）；定位有信号，但还没有小车地图坐标；行程服务已运行`，
+不再只把这类事实藏在高级诊断里。该提示只解释“自动驾驶为什么暂时不能动”，不放宽执行门禁：真实执行仍要求安全确认、
+图上路线可见、当前小车位置可见，并由后端再次复查；雷达状态不作为普通行程执行的前端硬门禁。
