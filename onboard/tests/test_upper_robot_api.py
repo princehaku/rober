@@ -1356,6 +1356,38 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("first_frame_observed", readiness["source_readiness"])
         self.assertEqual("/dev/video1", readiness["last_successful_frame"]["source"])
 
+    def test_shared_camera_mjpeg_relay_broadcasts_one_upstream_to_multiple_clients(self) -> None:
+        """多人预览必须复用一条上游 MJPEG，避免每个浏览器都独占打开摄像头。"""
+
+        async def scenario() -> None:
+            relay = upper_robot_api.SharedCameraMjpegRelay("http://127.0.0.1:8088/mjpeg")
+            starts = 0
+
+            async def fake_upstream() -> None:
+                nonlocal starts
+                starts += 1
+                relay.content_type = "multipart/x-mixed-replace; boundary=roberframe"
+                relay.content_type_loaded.set()
+                await relay._broadcast(b"--roberframe\r\nContent-Type: image/jpeg\r\n\r\nreal\r\n")
+                await asyncio.sleep(0)
+
+            relay._run_upstream = fake_upstream
+            first = relay.register()
+            second = relay.register()
+            await asyncio.wait_for(relay.content_type_loaded.wait(), timeout=1)
+
+            self.assertEqual(1, starts)
+            self.assertEqual(2, relay.snapshot()["client_count"])
+            self.assertTrue(relay.snapshot()["shared_capture"])
+            self.assertFalse(relay.snapshot()["exclusive_camera_claim"])
+            self.assertEqual(b"--roberframe\r\nContent-Type: image/jpeg\r\n\r\nreal\r\n", await asyncio.wait_for(first.get(), timeout=1))
+            self.assertEqual(b"--roberframe\r\nContent-Type: image/jpeg\r\n\r\nreal\r\n", await asyncio.wait_for(second.get(), timeout=1))
+
+            relay.unregister(first)
+            relay.unregister(second)
+
+        asyncio.run(scenario())
+
     def test_free_roam_readiness_allows_optional_camera_and_stale_radar_for_motion(self) -> None:
         """自由移动只看安全双锁；相机/雷达缺口进入 mapping_readiness，不阻止低速启动。"""
         api = upper_robot_api.UpperRobotApi(

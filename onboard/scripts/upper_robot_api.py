@@ -255,6 +255,90 @@ def compact_error(error: BaseException) -> dict[str, str]:
     return {"type": type(error).__name__, "message": str(error)[:240]}
 
 
+class SharedCameraMjpegRelay:
+    """把 camera service 的 MJPEG 源流复用给多个浏览器，避免每人都抢一次摄像头。"""
+
+    def __init__(self, target_url: str) -> None:
+        self.target_url = target_url
+        self.clients: set[asyncio.Queue[bytes | None]] = set()
+        self.upstream_task: asyncio.Task[None] | None = None
+        self.content_type = ""
+        self.content_type_loaded = asyncio.Event()
+        self.last_failure_reason = ""
+        self.last_remote_http_status: int | None = None
+        self.last_failure_at_ms: int | None = None
+
+    def snapshot(self) -> dict[str, Any]:
+        """状态只给诊断使用；不能据此宣称画面像素已经可见。"""
+        return {
+            "client_count": len(self.clients),
+            "upstream_active": self.upstream_task is not None and not self.upstream_task.done(),
+            "content_type_loaded": self.content_type_loaded.is_set(),
+            "shared_capture": True,
+            "exclusive_camera_claim": False,
+            "last_failure_reason": self.last_failure_reason,
+            "last_remote_http_status": self.last_remote_http_status,
+            "last_failure_at_ms": self.last_failure_at_ms,
+        }
+
+    def register(self) -> asyncio.Queue[bytes | None]:
+        """每个浏览器只拿自己的队列；上游任务最多同时保留一个。"""
+        queue: asyncio.Queue[bytes | None] = asyncio.Queue(maxsize=4)
+        self.clients.add(queue)
+        if self.upstream_task is None or self.upstream_task.done():
+            self.content_type = ""
+            self.content_type_loaded.clear()
+            self.upstream_task = asyncio.create_task(self._run_upstream())
+        return queue
+
+    def unregister(self, queue: asyncio.Queue[bytes | None]) -> None:
+        """最后一个客户端离开时主动关掉上游，释放 camera service 连接。"""
+        self.clients.discard(queue)
+        if not self.clients and self.upstream_task is not None and not self.upstream_task.done():
+            self.upstream_task.cancel()
+
+    async def _broadcast(self, chunk: bytes | None) -> None:
+        """慢客户端只保留最新帧块，避免一个页面卡住整条预览流。"""
+        for queue in list(self.clients):
+            if queue.full():
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+            await queue.put(chunk)
+
+    async def _run_upstream(self) -> None:
+        """真实摄像头只由这一条协程拉取；失败后所有等待者都收到结束信号。"""
+        from aiohttp import ClientSession, ClientTimeout
+
+        try:
+            async with ClientSession(timeout=ClientTimeout(total=None, sock_connect=6, sock_read=8)) as session:
+                async with session.get(self.target_url) as upstream:
+                    self.last_remote_http_status = upstream.status
+                    content_type = upstream.headers.get("Content-Type", "")
+                    if upstream.status != 200 or "multipart/x-mixed-replace" not in content_type:
+                        self.last_failure_reason = f"camera_mjpeg_http_status_{upstream.status}"
+                        self.last_failure_at_ms = now_ms()
+                        self.content_type_loaded.set()
+                        return
+                    self.content_type = content_type
+                    self.last_failure_reason = ""
+                    self.content_type_loaded.set()
+                    async for chunk in upstream.content.iter_chunked(65536):
+                        if not self.clients:
+                            break
+                        await self._broadcast(chunk)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - 流式预览失败必须降级成诊断状态，不能拖垮主 API。
+            self.last_failure_reason = compact_error(exc)["message"]
+            self.last_remote_http_status = None
+            self.last_failure_at_ms = now_ms()
+            self.content_type_loaded.set()
+        finally:
+            await self._broadcast(None)
+
+
 def t1001_boundary(reason: str | None = None) -> dict[str, Any]:
     """当前 API 不读反馈包，避免把串口写入误包装成闭环 ACK。"""
     return {
@@ -7304,6 +7388,8 @@ def create_app(api: UpperRobotApi) -> Any:
     """集中注册 aiohttp 路由，测试可直接解析路由而不启动监听端口。"""
     from aiohttp import web
 
+    camera_mjpeg_relay = SharedCameraMjpegRelay(urljoin(api.camera_base_url + "/", "mjpeg"))
+
     async def options(_: web.Request) -> Any:
         return json_response({})
 
@@ -7339,41 +7425,60 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = await api.camera_first_frame_probe(body if isinstance(body, dict) else {})
         return json_response(payload, status=http_status)
 
-    async def camera_mjpeg(_: web.Request) -> Any:
+    async def camera_mjpeg(request: web.Request) -> Any:
         """只读 MJPEG 预览代理；用于 WebRTC ICE 未连通时仍能显示真实连续画面。"""
-        from aiohttp import ClientSession, ClientTimeout
-
-        target = urljoin(api.camera_base_url + "/", "mjpeg")
+        queue = camera_mjpeg_relay.register()
+        stream_response: Any | None = None
         try:
-            # MJPEG 是长连接流，但首包必须尽快到达；源端无帧时让 PC 得到明确 502，而不是一直转圈。
-            async with ClientSession(timeout=ClientTimeout(total=None, sock_connect=6, sock_read=8)) as session:
-                async with session.get(target) as upstream:
-                    content_type = upstream.headers.get("Content-Type", "")
-                    if upstream.status != 200 or "multipart/x-mixed-replace" not in content_type:
-                        text = await upstream.text()
-                        return json_response(
-                            {
-                                "error": "camera_mjpeg_proxy_failed",
-                                "remote_http_status": upstream.status,
-                                "body_preview": text[:200],
-                                **proof_flags(),
-                            },
-                            status=502,
-                        )
-                    response = web.StreamResponse(
-                        status=200,
-                        headers={
-                            "Content-Type": content_type,
-                            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-                            "Access-Control-Allow-Origin": "*",
-                        },
-                    )
-                    await response.prepare(_)
-                    async for chunk in upstream.content.iter_chunked(65536):
-                        await response.write(chunk)
-                    return response
+            # 首个客户端负责拉起共享上游；后续客户端只等待同一个 content-type 事件。
+            await asyncio.wait_for(camera_mjpeg_relay.content_type_loaded.wait(), timeout=8)
+            content_type = camera_mjpeg_relay.content_type
+            if "multipart/x-mixed-replace" not in content_type:
+                return json_response(
+                    {
+                        "error": "camera_mjpeg_proxy_failed",
+                        "remote_http_status": camera_mjpeg_relay.last_remote_http_status,
+                        "relay": camera_mjpeg_relay.snapshot(),
+                        **proof_flags(),
+                    },
+                    status=502,
+                )
+            response = web.StreamResponse(
+                status=200,
+                headers={
+                    "Content-Type": content_type,
+                    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                    "Access-Control-Allow-Origin": "*",
+                    "X-Rober-Camera-Relay": "shared-mjpeg",
+                },
+            )
+            await response.prepare(request)
+            stream_response = response
+            while True:
+                chunk = await queue.get()
+                if chunk is None:
+                    break
+                try:
+                    await response.write(chunk)
+                except (ConnectionResetError, asyncio.CancelledError):
+                    break
+            return response
+        except asyncio.TimeoutError:
+            return json_response(
+                {
+                    "error": "camera_mjpeg_proxy_failed",
+                    "detail": "shared_mjpeg_relay_timeout",
+                    "relay": camera_mjpeg_relay.snapshot(),
+                    **proof_flags(),
+                },
+                status=502,
+            )
         except Exception as exc:  # noqa: BLE001 - 摄像头流失败不能影响其他上位 API。
-            return json_response({"error": "camera_mjpeg_proxy_failed", "detail": compact_error(exc), **proof_flags()}, status=502)
+            if stream_response is not None:
+                return stream_response
+            return json_response({"error": "camera_mjpeg_proxy_failed", "detail": compact_error(exc), "relay": camera_mjpeg_relay.snapshot(), **proof_flags()}, status=502)
+        finally:
+            camera_mjpeg_relay.unregister(queue)
 
     async def radar_status(_: web.Request) -> Any:
         return json_response(api.radar_status())
