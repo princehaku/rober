@@ -3426,7 +3426,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("前方障碍");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("已满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("真车低速放行");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("按步骤人工扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("先勾安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     const callsBeforeAutoGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeAutoGuide = focusSpy.mock.calls.length;
@@ -3946,7 +3946,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("按步骤人工扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始记录并继续");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
 
@@ -3958,6 +3958,7 @@ describe("App", () => {
       String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST",
     )).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("键盘已启用");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("按步骤：按住方向键扫图");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-panel"]').element);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);

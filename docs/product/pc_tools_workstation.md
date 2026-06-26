@@ -2053,8 +2053,9 @@ L/R 结论，帮助现场判断连续手控是否真的读到 wheel feedback。�
 该状态只消费 `/api/robot-control/delivery/complete` 或 latest 的成功读回，不自动确认送达、不跳过现场 checklist、
 不执行 Nav2、不发送 manual/keyboard pulse/stop 或 `/cmd_vel`。
 
-2026-06-25 22:09 起，普通首屏“自动扫图准备”在上车端自动扫图仍锁定时，主按钮改为 `按步骤人工扫图`。
-点击只聚焦扫地式建图当前下一步（安全确认、开始记录、启用键盘、停止或保存），不会启动自动扫图、不会调用
+2026-06-25 22:09 起，普通首屏“自动扫图准备”在上车端自动扫图仍锁定时，主按钮改为人工扫图向导。
+2026-06-26 10:42 起，该按钮文案会直接显示下一次点击的真实动作，例如 `先勾安全确认`、`开始记录并继续`、
+`启用键盘扫图`、`刷新扫图画面`、`保存当前地图` 或 `按步骤：按住方向键扫图`。点击只聚焦或推进扫地式建图当前下一步（安全确认、开始记录、启用键盘、停止或保存），不会启动自动扫图、不会调用
 map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。真实自动扫图按钮仍等待上车端安全状态机和 HIL
 证据开放；当前这一步只是把“像扫地机一样扫图”的人工流程从死按钮改成可操作向导。
 
@@ -2248,8 +2249,8 @@ WYSIWYG 文案，不自动重试、不执行 Nav2、delivery complete、manual�
 `enable_cmd_vel_publish`、`motion_hil_unlocked` 或 `cmd_vel_topic`。`停止自动扫图` 调用固定 stop 代理请求状态机停止；
 红色底盘停止仍保留为独立兜底。
 
-2026-06-26 10:17 起，如果上车端自动扫图 readiness 仍未 ready，普通首屏同一个按钮显示 `按步骤人工扫图` 时会作为人工扫图向导：
-已勾安全确认但还没开始记录时，点击只调用固定 `/api/robot-control/map/start` 启动地图记录，并在成功后启用键盘窗口等待按住；
+2026-06-26 10:17 起，如果上车端自动扫图 readiness 仍未 ready，普通首屏同一个按钮会作为人工扫图向导：
+安全确认未勾时显示 `先勾安全确认` 并只聚焦 checkbox；已勾安全确认但还没开始记录时，显示 `开始记录并继续`，点击只调用固定 `/api/robot-control/map/start` 启动地图记录，并在成功后启用键盘窗口等待按住；
 记录已启动但键盘未启用时，点击只启用键盘窗口。它不会调用 `/api/robot-control/free-roam/autonomy/start`，不会发送方向
 manual pulse，不执行 Nav2、delivery、stop 或 `/cmd_vel`，不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
 

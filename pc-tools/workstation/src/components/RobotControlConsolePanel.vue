@@ -2271,6 +2271,29 @@ const plainFreeRoamNextActionLabel = computed(() => {
   }
   return "下一步：检查地图画面";
 });
+const plainFreeRoamManualGuideButtonLabel = computed(() => {
+  // 自动扫图未开放时，这个按钮就是人工扫图向导；文案必须显示下一次点击的真实动作。
+  const nextAction = plainFreeRoamNextActionLabel.value.replace(/^下一步：/, "");
+  if (nextAction === "勾安全确认") {
+    return "先勾安全确认";
+  }
+  if (nextAction === "开始记录") {
+    return "开始记录并继续";
+  }
+  if (nextAction === "启用键盘") {
+    return "启用键盘扫图";
+  }
+  if (nextAction === "刷新扫图画面") {
+    return "刷新扫图画面";
+  }
+  if (nextAction === "保存地图") {
+    return "保存当前地图";
+  }
+  if (nextAction === "松开或停止") {
+    return "松开或停止";
+  }
+  return `按步骤：${nextAction}`;
+});
 const plainFreeRoamDriveStatus = computed(() => {
   // 扫图状态只解释当前本地流程，不自动启用键盘、不发送 manual，也不把自动扫图说成已开放。
   if (!plainManualSafetyConfirmed.value) {
@@ -2568,7 +2591,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     buttonLabel: freeRoamAutonomyPending.value && freeRoamAutonomyPendingAction.value === "start"
       ? "启动中"
       : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
-      : autonomyLocked ? "按步骤人工扫图" : (boundary?.free_roam_autonomy_label ?? "自动扫图"),
+      : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : (boundary?.free_roam_autonomy_label ?? "自动扫图"),
     // ready 后才走固定上车状态机 start；未 ready 时按钮仍只做流程定位。
     disabled: autonomyReady ? !canStartFreeRoamAutonomy.value : false,
     hint: autonomyLocked
