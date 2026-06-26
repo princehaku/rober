@@ -134,6 +134,26 @@ class FreeRoamAutonomyTest(unittest.TestCase):
             self.assertEqual(decision["angular_z_radps"], 0.0)
             self.assertTrue(decision["stop_required"])
 
+    def test_blocked_gates_win_over_elapsed_timeout_before_session(self) -> None:
+        """会话门禁未通过时，超时和覆盖达标不能把 PC 状态误报成 completed。"""
+        decision = build_free_roam_decision(
+            {
+                "operator_confirmed": False,
+                "mapping_active": False,
+                "stop_available": True,
+                "lidar_min_distance_m": 1.0,
+                "lidar_age_s": 0.1,
+                "map_unknown_ratio": 0.1,
+                "elapsed_s": 999.0,
+            }
+        )
+
+        self.assertEqual(decision["state"], STATE_LOCKED)
+        self.assertEqual(decision["linear_x_mps"], 0.0)
+        self.assertEqual(decision["angular_z_radps"], 0.0)
+        self.assertEqual(decision["reason"], "还未勾选现场安全确认")
+        self.assertTrue(decision["stop_required"])
+
     def test_stale_lidar_locks_before_motion(self) -> None:
         """雷达旧数据不能被当成所见即所得的实时障碍信息。"""
         decision = build_free_roam_decision(

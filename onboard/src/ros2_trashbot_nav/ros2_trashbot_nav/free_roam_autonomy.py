@@ -117,12 +117,13 @@ class FreeRoamAutonomyController:
 
         if snapshot.external_stop_requested:
             return self._stop(STATE_STOPPING, "现场请求停止", gates)
+        if blocked:
+            # 未满足现场门禁时优先暴露 locked，避免 PC 把未开始会话误判为已完成。
+            return self._stop(STATE_LOCKED, blocked[0].evidence, gates)
         if snapshot.elapsed_s >= self.config.max_runtime_s:
             return self._stop(STATE_COMPLETED, "达到最长自动扫图时间", gates, stop_required=True)
         if snapshot.map_unknown_ratio is not None and snapshot.map_unknown_ratio <= self.config.target_unknown_ratio:
             return self._stop(STATE_COMPLETED, "地图未知区域已降到目标以下", gates, stop_required=True)
-        if blocked:
-            return self._stop(STATE_LOCKED, blocked[0].evidence, gates)
 
         self._record_map_progress(snapshot, now_s)
         if self._obstacle_too_close(snapshot):
