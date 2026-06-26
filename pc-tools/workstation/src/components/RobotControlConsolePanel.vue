@@ -4720,6 +4720,25 @@ const plainTripRunStatus = computed(() => {
   }
   return "行程状态：已勾安全确认；可以准备图上路线。";
 });
+const plainTripMinimalPrecheckSummary = computed(() => {
+  // 普通首屏只保留一个现场安全确认；路线和定位复查放在后端执行 gate，避免前端堆叠预检步骤。
+  if (!robotApiBaseUrl.value.trim()) {
+    return "行程前确认：先连接默认小车。";
+  }
+  if (!plainManualSafetyConfirmed.value) {
+    return "行程前确认：只需勾选现场安全确认；不会要求额外预检。";
+  }
+  if (plainTripMapWysiwygPending.value) {
+    return `行程前确认：安全确认已完成；等待${plainTripMapWysiwygPendingText()}后再执行。`;
+  }
+  if (plainTripCurrentRouteVisible.value) {
+    return "行程前确认：安全确认已完成；可以执行图上路线，后端会复查定位和路线。";
+  }
+  if (plainTripPreparedBySummary.value) {
+    return "行程前确认：安全确认已完成；先刷新地图画面确认图上路线。";
+  }
+  return "行程前确认：安全确认已完成；先准备图上路线。";
+});
 const plainTripCurrentRouteVisible = computed(() => {
   // 只有当前路线真正画到地图上，普通首屏才允许执行“图上路线”；最近路线不能作为执行依据。
   const routePath = latestNavPathOverlay();
@@ -9032,6 +9051,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
+            <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
             <p v-if="plainTripExecutionProgress" class="panel-note" data-testid="plain-trip-execution-progress">{{ plainTripExecutionProgress }}</p>
             <p v-if="plainTripRouteWysiwygSummary" class="panel-note" data-testid="plain-trip-route-wysiwyg">
               {{ plainTripRouteWysiwygSummary }}

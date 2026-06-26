@@ -2121,6 +2121,10 @@ map start/manual/keyboard pulse/Nav2/delivery complete/stop 或 `/cmd_vel`。真
 不再把用户带到可选复查按钮。该改动不改变后端固定 Nav2 preflight/execute 代理和安全边界，不发送 manual/keyboard
 pulse/delivery complete/stop 或 `/cmd_vel`。
 
+2026-06-26 20:00 起，普通首屏 `行程操作` 增加固定的 `行程前确认` 提示：未勾选时明确“只需勾选现场安全确认；不会要求额外预检”，
+勾选后按当前路线状态提示“先准备图上路线 / 先刷新地图画面 / 可以执行图上路线，后端会复查定位和路线”。这条提示只解释
+最小发车前置条件，不触发路线准备、Nav2 execute、manual/keyboard pulse、delivery complete、stop 或 `/cmd_vel`。
+
 2026-06-25 22:26 起，普通首屏“扫地式建图”卡片内直接提供一组屏幕方向键：前进、左转、右转、后退和停止。
 这些按钮完全复用既有键盘连续手控状态机，仍必须先勾安全确认、开始地图记录并点击 `启用键盘扫图`；按住方向键才发送
 bounded manual pulse，松开走统一 stop。这样 operator 不需要跳到下方“移动/导航”卡片寻找方向键，扫图流程更接近

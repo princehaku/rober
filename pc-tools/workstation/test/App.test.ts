@@ -4517,6 +4517,7 @@ describe("App", () => {
     expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(false);
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：只需勾选现场安全确认；不会要求额外预检。");
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：勾选安全确认后即可启用；按住方向键才会动。");
 
     const callsBeforeSharedSafety = mockedFetch.mock.calls.length;
@@ -4530,6 +4531,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；先准备图上路线。");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（按键才动）");
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
@@ -7031,10 +7033,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：先勾安全确认，小车不会出发。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：只需勾选现场安全确认；不会要求额外预检。");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：已勾安全确认；可以准备图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；先准备图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备行程（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
@@ -7061,6 +7065,7 @@ describe("App", () => {
     ).length).toBe(nav2RefreshCallsBeforePrepare + 1);
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，路线 17 个点已准备；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 17 个点，但地图上还没显示；先刷新地图画面。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 17 个点；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("刷新图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
