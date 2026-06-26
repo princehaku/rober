@@ -3068,3 +3068,8 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 时会直接显示 `原始包已收到，暂无地图点`；即使机器人 map pose 已读到、marker 已叠在机器人位置，
 也不会只显示泛化的 `雷达无新点`。`雷达未运行` 且没有任何可显示点时同步显示 `地图0点`。
 这只修正地图所见即所得文案和 aria，不画假雷达点，不改变雷达启动、自由移动、Nav2 或 `/cmd_vel` 行为。
+
+2026-06-27 07:01 起，PC 共享 MJPEG 预览在上游相机长时间不返回 multipart 头或首帧时，会在默认 8 秒内收口为
+`camera_mjpeg_upstream_timeout` 并写入 `/api/robot-control/camera/mjpeg/status` 与 summary 的
+`shared_preview_last_failure_reason`。普通首屏会翻译成“共享预览等不到上游画面；不是浏览器独占”，
+避免新进入的页面一直空等 60 秒。该改动只影响只读共享画面代理，不打开运动、Nav2、free-roam 或 `/cmd_vel`。

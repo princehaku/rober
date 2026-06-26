@@ -169,6 +169,12 @@ const cameraMjpegRelays = new Map<string, CameraMjpegRelay>();
 const cameraMjpegRelayLastFailures = new Map<string, CameraMjpegRelayLastFailure>();
 const cameraFirstFrameProbeOverlays = new Map<string, RobotControlCameraFirstFrameProbeOverlay>();
 
+function cameraMjpegUpstreamTimeoutMs(): number {
+  // MJPEG 预览是首屏所见即所得路径；上游长时间不回首帧时要快速失败，避免新页面一直空等。
+  const parsed = Number(process.env.ROBER_CAMERA_MJPEG_UPSTREAM_TIMEOUT_MS ?? "8000");
+  return Number.isFinite(parsed) && parsed >= 100 ? Math.min(parsed, 60000) : 8000;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   // camera proxy 只接受/返回 JSON object；数组或字符串一律 fail-closed。
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -1276,7 +1282,11 @@ async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<v
   }
   relay.upstreamActive = true;
   relay.controller = new AbortController();
-  const connectTimeout = setTimeout(() => relay.controller?.abort(), 60000);
+  let connectTimedOut = false;
+  const connectTimeout = setTimeout(() => {
+    connectTimedOut = true;
+    relay.controller?.abort();
+  }, cameraMjpegUpstreamTimeoutMs());
   try {
     const remote = await fetch(endpointUrl(relay.normalizedBaseUrl, "/api/camera/mjpeg"), {
       method: "GET",
@@ -1312,7 +1322,12 @@ async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<v
     endCameraMjpegRelayClients(relay, 502, "camera_mjpeg_upstream_closed", null);
   } catch (error) {
     clearTimeout(connectTimeout);
-    const reason = error instanceof Error ? shortText(error.message, "camera_mjpeg_proxy_failed") : "camera_mjpeg_proxy_failed";
+    if (!connectTimedOut && relay.clients.size === 0) {
+      return;
+    }
+    const reason = connectTimedOut
+      ? "camera_mjpeg_upstream_timeout"
+      : error instanceof Error ? shortText(error.message, "camera_mjpeg_proxy_failed") : "camera_mjpeg_proxy_failed";
     endCameraMjpegRelayClients(relay, 502, reason, null);
   } finally {
     clearTimeout(connectTimeout);

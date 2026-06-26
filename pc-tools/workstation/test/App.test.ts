@@ -15743,6 +15743,39 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });
 
+  it("translates shared camera MJPEG upstream timeout without exposing internal tokens", async () => {
+    // 上游无帧导致共享 MJPEG 超时时，普通用户要看到“等不到画面”，不是内部错误 token。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    summaryFixture.readback_summary.camera.shared_preview_last_failure_reason = "camera_mjpeg_upstream_timeout";
+    summaryFixture.readback_summary.camera.shared_preview_last_remote_http_status = "none";
+    const mjpegStatusFixture = cloneFixture(fixtures["/api/robot-control/camera/mjpeg/status"]) as Record<string, any>;
+    mjpegStatusFixture.client_count = 0;
+    mjpegStatusFixture.upstream_active = false;
+    mjpegStatusFixture.content_type_loaded = false;
+    mjpegStatusFixture.exclusive_camera_claim = false;
+    mjpegStatusFixture.last_failure_reason = "camera_mjpeg_upstream_timeout";
+    mjpegStatusFixture.last_remote_http_status = null;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": mjpegStatusFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览等不到上游画面；通常是相机能被选中但没有输出帧，不是浏览器独占。");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_upstream_timeout");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+  });
+
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
     // WebRTC UI 测试只验证本机代理和前端状态机，不连接真实浏览器媒体栈或机器人。
     vi.useFakeTimers();
