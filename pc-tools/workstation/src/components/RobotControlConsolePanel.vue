@@ -405,6 +405,9 @@ function cameraSourcePlainFailureHint(): string {
         : "其他";
       return `相机当前被 ${ownerCount} 个进程占用，等检查释放或重启相机服务后再打开。`;
     }
+    if (camera?.source_usage_status === "in_use_by_camera_service") {
+      return "相机服务已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。";
+    }
     if (camera?.source_usage_status === "not_in_use") {
       return "相机当前没人占用，但底层没有读到画面；检查 USB、摄像头输入或供电。";
     }

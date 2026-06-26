@@ -8728,6 +8728,33 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("not_in_use");
   });
 
+  it("explains camera service owned no-frame failures without blaming another holder", async () => {
+    // live health 里 camera service 自己会持有 /dev/video1；这不是外部独占，首屏要说清是读帧失败。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
+    summaryFixture.readback_summary.camera.source_usage_status = "in_use_by_camera_service";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "1";
+    summaryFixture.readback_summary.camera.source_usage_summary = "pid=136161 local_webrtc_camera_smoke.py self=true";
+    summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
+    stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("相机服务已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。");
+    expect(firstScreenText).not.toContain("被 1 个进程占用");
+    expect(firstScreenText).not.toContain("capture_read_returned_false");
+    expect(firstScreenText).not.toContain("local_webrtc_camera_smoke.py");
+    expect(wrapper.find("details").text()).toContain("camera_source_usage_status");
+    expect(wrapper.find("details").text()).toContain("in_use_by_camera_service");
+    expect(wrapper.find("details").text()).toContain("local_webrtc_camera_smoke.py");
+  });
+
   it("tells the operator to open the picture when camera readback is online", async () => {
     // camera ready 只说明服务在线；首屏仍必须保持未打开，不能冒充已经看到画面。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;

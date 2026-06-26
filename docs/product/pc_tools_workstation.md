@@ -2634,6 +2634,12 @@ pulse、delivery、stop 或 `/cmd_vel`。
 “相机当前被 N 个进程占用”或“相机当前没人占用，但底层没有读到画面”，高级诊断保留 owner 摘要。该口径只读取上车端只读诊断，不在
 PC 端打开摄像头，不调用 camera offer/MJPEG、manual、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-26 20:25 起，普通首屏进一步区分 `source_usage_status=in_use_by_camera_service`：这表示上车相机服务自己持有
+`/dev/video1`，不是其他进程独占。若同时出现 `source_readiness=first_frame_failed` 或
+`source_failure_reason=capture_read_returned_false`，首屏提示 `相机服务已接管摄像头，但底层没有读到画面`，下一步检查镜头、
+USB、输入或供电；高级诊断仍保留具体 owner 和失败原因。现场复测中，PC 7001 共享 MJPEG relay 没有独占相机，但上车
+`/api/camera/mjpeg` 返回 503，body 指向 `first_frame_unreadable / capture_read_returned_false`。
+
 同一轮现场口径确认：普通键盘手控和自由低速自移动不把雷达作为硬门禁；雷达状态在自动扫图里显示为 `雷达监看 / 可降级`。建图记录本身仍要求
 相机和地图/雷达画面所见即所得，Nav2 完整路线执行仍要求定位 TF 链可用，不能因为雷达降级就绕过 `map -> odom -> base_link` 的定位闭环。
 
