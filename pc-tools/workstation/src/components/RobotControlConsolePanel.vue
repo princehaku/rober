@@ -1754,7 +1754,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
       return { label: "自动扫图已启动，刷新中", state: "auto_refreshing", style, aria: `自动扫图状态机已启动，地图画面正在刷新${locatedSuffix}` };
     }
-    return { label: "自动扫图已启动", state: "auto_running", style, aria: `自动扫图状态机已启动，PC 正在监看地图和雷达${locatedSuffix}` };
+    return { label: "自动扫图低速运行中", state: "auto_running", style, aria: `自动扫图状态机已启动，低速运行中，PC 正在监看地图和雷达${locatedSuffix}` };
   }
   if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "stop") {
     return plainFreeRoamMapPreviewFreshForSession.value
@@ -2343,7 +2343,7 @@ const plainFreeRoamDriveStatus = computed(() => {
       const reasonSuffix = failureText ? `：${failureText}` : "";
       return `扫图状态：自动扫图状态机已启动，但地图画面刷新失败${reasonSuffix}；当前地图不是自动扫图启动后的新画面。`;
     }
-    return "扫图状态：自动扫图状态机已启动，地图和雷达监看中；需要收口时点击停止自动扫图或红色停止。";
+    return "扫图状态：自动扫图状态机已启动，低速运行中，地图和雷达监看中；需要收口时点击停止自动扫图或红色停止。";
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
     return "扫图状态：自动扫图停止请求已发送，继续看地图和雷达确认现场收口。";

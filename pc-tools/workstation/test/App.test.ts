@@ -3848,9 +3848,11 @@ describe("App", () => {
     });
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图状态机已启动");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自动扫图状态机已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("低速运行中");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("地图和雷达监看中");
-    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已启动");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图低速运行中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toContain("低速运行中");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：监看或停止自动扫图");
     const sweepPlan = wrapper.find('[data-testid="plain-map-free-roam-sweep-plan"]');
     expect(sweepPlan.attributes("data-state")).toBe("自动扫图运行中");

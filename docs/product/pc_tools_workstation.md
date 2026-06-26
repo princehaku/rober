@@ -2191,6 +2191,9 @@ delivery、stop 或 `/cmd_vel`；真正移动仍必须 operator 按住 W/A/S/D�
 2026-06-26 18:00 起，当上车端自动扫图 gates 全部 ready 时，普通首屏启动按钮显示 `开始自动扫图（低速）`，
 不再只写 `自动扫图`。点击仍只调用固定 `/api/robot-control/free-roam/autonomy/start`，并继续要求安全确认、
 地图记录、地图画面、雷达和停止兜底 gate；不会调用 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
+2026-06-26 18:15 起，自动扫图 start 成功后的地图流程 marker 从 `自动扫图已启动` 改为
+`自动扫图低速运行中`，状态行同步写明 `低速运行中，地图和雷达监看中`。这只同步运行态 WYSIWYG 文案，
+不改变上车端状态机、速度、停止兜底或任何控制接口。
 
 2026-06-25 23:29 起，普通首屏点击 `准备行程（不发车）` 后，PC 会在 Nav2 no-motion proof 刷新完成后自动刷新
 地图画面。只要 summary 读到当前 `path_preview_points`，地图会直接显示路线 polyline、起点/终点和 `路线已显示 N/M 个点`，
