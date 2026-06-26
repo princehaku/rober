@@ -183,12 +183,6 @@ const deliveryOperatorConfirmations = ref({
   delivery_success: false,
 });
 const navGoalExecutionTimeoutS = ref(8);
-const hilChecklist = ref([
-  { id: "operator_ready", checked: false, label: "现场有人扶控并准备急停" },
-  { id: "clearance_confirmed", checked: false, label: "已确认小车周围无人和障碍" },
-  { id: "low_speed_only", checked: false, label: "本轮仅做低速短时点动" },
-  { id: "not_autonomy_mode", checked: false, label: "本轮不是自动导航任务" },
-]);
 
 // WebRTC 状态单独维护，是为了把“上位机 readback”与“本地页面会话状态”区分开。
 const previewStatus = ref<RobotControlPreviewStatus>("idle_not_started");
@@ -10814,16 +10808,16 @@ onBeforeUnmount(() => {
           </div>
           <div class="checklist-box">
             <p class="checklist-title">现场确认</p>
-            <label v-for="item in hilChecklist" :key="item.id" class="checklist-item">
-              <input v-model="item.checked" type="checkbox">
-              <span>{{ item.label }}</span>
+            <label class="checklist-item">
+              <input v-model="plainUnifiedSafetyConfirmed" type="checkbox" data-testid="advanced-motion-safety-confirm">
+              <span>人在旁边、周围安全、停止手段就绪</span>
             </label>
           </div>
           <p class="panel-note">{{ manualMotionSummary.hint }}</p>
           <p v-if="operatorMaterialMissingFields.length" class="panel-note">
             材料未满足，本机不会发送点动。缺项：{{ operatorMaterialMissingFields.join("、") }}
           </p>
-          <p class="panel-note">非 stop 方向必须同时满足地址、checklist、现场材料且当前没有 pending；stop 可在材料缺失时单独发送。</p>
+          <p class="panel-note">非 stop 方向只要求默认地址、一个安全确认、当前无 pending；stop 可在安全确认缺失时单独发送。</p>
           <button class="secondary" type="button" :disabled="manualCommandPending || loading || !robotApiBaseUrl.trim()" @click="sendPlainFirstJog">
             轮速非零试采（高级）
           </button>
