@@ -2722,3 +2722,11 @@ MJPEG/WebRTC、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`，
 `/api/camera/health.source_usage.status=not_in_use`、`fuser /dev/video1` 无占用、三种 OpenCV 格式均
 `first_frame_unreadable/capture_read_returned_false`，固定 `v4l2-ctl` MJPG/YUYV 采样文件也都是 0 字节。普通首屏应把这解释为
 `摄像头设备可打开但没有输出视频帧`，下一步查摄像头输入、USB 线/供电或更换 known-good UVC，而不是提示 PC 页面独占。
+
+2026-06-26 22:00 起，Robot Control summary 会额外读取上车端 `/api/nav2/goal/execution/latest`，并在
+`readback_summary.nav2` 中汇总最近一次图上路线执行的状态、结果、反馈次数、目标坐标、evidence ref 和是否真的执行过控制。
+该 latest 中的 `robot_control_executed=true` 只作为历史只读证据进入 nav2 摘要，PC summary 顶层仍固定
+`safe_to_control=false`、`robot_control_executed=false`，不会把一次 summary 读取解释成当前正在发车。普通首屏在手动 latest
+结果为空但 summary 已读到 `goal_succeeded + feedback_sample_count>0 + robot_control_executed=true` 时，也会把地图 marker、
+行程 caption 和本轮进度显示为“已到达/行程已完成”，同时继续要求现场送达确认；这不自动执行 Nav2、不提交 delivery、
+不发送 manual/keyboard pulse、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。

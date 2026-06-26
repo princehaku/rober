@@ -479,6 +479,17 @@ const fixtures: Record<string, unknown> = {
         path_point_count: "0",
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
+        goal_execution_status: "not_loaded",
+        goal_execution_proven: "not_loaded",
+        goal_execution_result_status: "not_loaded",
+        goal_execution_evidence_ref: "not_loaded",
+        goal_execution_robot_control_executed: "not_loaded",
+        goal_execution_feedback_sample_count: "not_loaded",
+        goal_execution_goal_frame_id: "not_loaded",
+        goal_execution_goal_x: "not_loaded",
+        goal_execution_goal_y: "not_loaded",
+        goal_execution_generated_at_ms: "not_loaded",
+        goal_execution_response_generated_at_ms: "not_loaded",
       },
     },
     operator_hil_material_summary: {
@@ -6332,6 +6343,71 @@ describe("App", () => {
     expect(marker.attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
     expect(marker.attributes("style")).toContain("left: 80%");
     expect(marker.attributes("style")).toContain("top: 98%");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("uses Robot Control summary latest Nav2 execution readback on the plain map when latest key values are empty", async () => {
+    // summary 已经聚合上位机 latest，只读 latest 端点为空时普通首屏也不能退回“未读到行程”。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_proven = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_evidence_ref = "o11-nav2-goal-execution-summary-fixture";
+    summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_generated_at_ms = "1782150441201";
+    summaryFixture.readback_summary.nav2.goal_execution_response_generated_at_ms = "1782150442201";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {},
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toBe("最近行程成功，反馈 8 次，刚刚；送达仍需现场确认。");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("行程执行");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("已完成");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

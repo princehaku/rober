@@ -1952,6 +1952,7 @@ export type RobotApiReadEndpointId =
   | "localize_proof_latest"
   | "nav2_status"
   | "nav2_proof_latest"
+  | "nav2_goal_execution_latest"
   | "operator_report_latest"
   | "free_roam_autonomy_latest"
   | "camera_health"
@@ -2433,6 +2434,17 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       path_point_count: string;
       path_preview_point_count: string;
       path_preview_frame_id: string;
+      goal_execution_status: string;
+      goal_execution_proven: string;
+      goal_execution_result_status: string;
+      goal_execution_evidence_ref: string;
+      goal_execution_robot_control_executed: string;
+      goal_execution_feedback_sample_count: string;
+      goal_execution_goal_frame_id: string;
+      goal_execution_goal_x: string;
+      goal_execution_goal_y: string;
+      goal_execution_generated_at_ms: string;
+      goal_execution_response_generated_at_ms: string;
     };
     free_roam: {
       status: string;

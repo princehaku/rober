@@ -3933,6 +3933,16 @@ describe("workstation fail-closed API contracts", () => {
         path_generation_succeeded: "false",
         path_point_count: "0",
         path_preview_point_count: "0",
+        goal_execution_status: expect.any(String),
+        goal_execution_proven: expect.any(String),
+        goal_execution_result_status: expect.any(String),
+        goal_execution_robot_control_executed: expect.any(String),
+        goal_execution_feedback_sample_count: expect.any(String),
+        goal_execution_goal_frame_id: expect.any(String),
+        goal_execution_goal_x: expect.any(String),
+        goal_execution_goal_y: expect.any(String),
+        goal_execution_generated_at_ms: expect.any(String),
+        goal_execution_response_generated_at_ms: expect.any(String),
       });
       expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
@@ -4023,6 +4033,27 @@ describe("workstation fail-closed API contracts", () => {
             translation: { x: 0, y: 0, z: 0 },
             rotation: { yaw: 0, quaternion: { x: 0, y: 0, z: 0, w: 1 } },
             source: "/tf_static",
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "not_proven",
+          latest_result: {
+            status: "goal_succeeded",
+            evidence_ref: "o11-nav2-goal-execution-fixture",
+            nav2_goal_execution_proven: true,
+            goal_accepted: true,
+            result_received: true,
+            result_status: "succeeded",
+            feedback_sample_count: 8,
+            goal_request: { frame_id: "map", x: 0.8, y: 0 },
+            robot_control_executed: true,
+            sends_motion_commands: true,
           },
           safe_to_control: false,
           delivery_success: false,
@@ -5346,6 +5377,25 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
         },
       },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest_result",
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-fixture",
+          nav2_goal_execution_proven: true,
+          goal_accepted: true,
+          result_received: true,
+          result_status: "succeeded",
+          feedback_sample_count: 8,
+          goal_frame_id: "map",
+          goal_x: 0.8,
+          goal_y: 0,
+          robot_control_executed: true,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
     });
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
@@ -5365,6 +5415,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线可执行");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
+      expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_result_status).toBe("succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_evidence_ref).toBe("o11-nav2-goal-execution-fixture");
+      expect(summary.readback_summary.nav2.goal_execution_robot_control_executed).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_feedback_sample_count).toBe("8");
+      expect(summary.readback_summary.nav2.goal_execution_goal_frame_id).toBe("map");
+      expect(summary.readback_summary.nav2.goal_execution_goal_x).toBe("0.8");
+      expect(summary.readback_summary.nav2.goal_execution_goal_y).toBe("0");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);

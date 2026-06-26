@@ -63,6 +63,7 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "nav2_goal_execution_latest", endpoint: "/api/nav2/goal/execution/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "free_roam_autonomy_latest", endpoint: "/api/free-roam/autonomy/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   // camera 端点在真实板端会探测设备与健康摘要，允许更长只读窗口，避免误判成离线。
@@ -80,6 +81,7 @@ const OPTIONAL_MISSING_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = 
   "radar_scan_proof_latest",
   "radar_raw_packet_proof_latest",
   "free_roam_autonomy_latest",
+  "nav2_goal_execution_latest",
 ]);
 const OPTIONAL_MISSING_HTTP_STATUSES = new Set([404, 405, 501]);
 
@@ -373,6 +375,13 @@ const OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS = new Set([
   "latest_result.structured_hil_claims.delivery_success",
   "latest_result.operator_report.structured_hil_claims.delivery_success",
 ]);
+const NAV2_GOAL_EXECUTION_LATEST_TRUE_FIELD_EXEMPTIONS = new Set([
+  // 这是只读“最近一次 NavigateToPose 是否真的发生过”的历史证据；PC summary 顶层仍固定不执行控制。
+  "robot_control_executed",
+  "latest_result.robot_control_executed",
+  "sends_motion_commands",
+  "latest_result.sends_motion_commands",
+]);
 
 const STATUS_KEYS = [
   "safe_to_control",
@@ -515,6 +524,9 @@ function dangerousTrueFieldExemptionsForEndpoint(id: RobotApiReadEndpointId): Re
   }
   if (id === "operator_report_latest") {
     return OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS;
+  }
+  if (id === "nav2_goal_execution_latest") {
+    return NAV2_GOAL_EXECUTION_LATEST_TRUE_FIELD_EXEMPTIONS;
   }
   return NO_TRUE_FIELD_EXEMPTIONS;
 }
@@ -2985,6 +2997,9 @@ function nav2SummaryFromReadbacks(
   // Nav2 摘要只说明当前读到的路线和 planner 状态；不等价于 NavigateToPose 已执行成功。
   const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
   const nav2Status = readbackById(readbacks, "nav2_status");
+  const goalExecution = readbackById(readbacks, "nav2_goal_execution_latest");
+  const goalPayload = goalExecution?.payload ?? null;
+  const goalResultPayload = asRecord(goalPayload?.latest_result) ?? goalPayload;
   return {
     status: nav2Proof?.status ?? "not_loaded",
     nav2_status: nav2Status?.status ?? "not_loaded",
@@ -2994,6 +3009,17 @@ function nav2SummaryFromReadbacks(
     path_point_count: proof.path_point_count === null ? "not_loaded" : String(proof.path_point_count),
     path_preview_point_count: String(proof.path_preview_point_count),
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
+    goal_execution_status: summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded"),
+    goal_execution_proven: summaryValueText(goalResultPayload, ["nav2_goal_execution_proven"]),
+    goal_execution_result_status: summaryValueText(goalResultPayload, ["result_status"]),
+    goal_execution_evidence_ref: summaryValueText(goalResultPayload, ["evidence_ref"]),
+    goal_execution_robot_control_executed: summaryValueText(goalResultPayload, ["robot_control_executed"]),
+    goal_execution_feedback_sample_count: summaryValueText(goalResultPayload, ["feedback_sample_count", "nav2_feedback_sample_count"]),
+    goal_execution_goal_frame_id: summaryValueText(goalResultPayload, ["goal_frame_id", "frame_id"]),
+    goal_execution_goal_x: summaryValueText(goalResultPayload, ["goal_x", "x"]),
+    goal_execution_goal_y: summaryValueText(goalResultPayload, ["goal_y", "y"]),
+    goal_execution_generated_at_ms: summaryValueText(goalResultPayload, ["generated_at_ms", "nav2_generated_at_ms"]),
+    goal_execution_response_generated_at_ms: summaryValueText(goalPayload, ["response_generated_at_ms", "generated_at_ms"]),
   };
 }
 
@@ -3153,6 +3179,17 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         path_point_count: "not_loaded",
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
+        goal_execution_status: "not_loaded",
+        goal_execution_proven: "not_loaded",
+        goal_execution_result_status: "not_loaded",
+        goal_execution_evidence_ref: "not_loaded",
+        goal_execution_robot_control_executed: "not_loaded",
+        goal_execution_feedback_sample_count: "not_loaded",
+        goal_execution_goal_frame_id: "not_loaded",
+        goal_execution_goal_x: "not_loaded",
+        goal_execution_goal_y: "not_loaded",
+        goal_execution_generated_at_ms: "not_loaded",
+        goal_execution_response_generated_at_ms: "not_loaded",
       },
       free_roam: {
         status: "not_loaded",

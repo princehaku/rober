@@ -1553,7 +1553,7 @@ function latestNavGoalOverlay() {
   }
   if (navGoalExecutionLatestPending.value) {
     // latest 读取未返回前不能继续把旧到达结果画成当前结论，先明确标成只读刷新中。
-    const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
+    const values = directNav2ExecutionValues();
     const attemptedGoal = navGoalExecutionResult.value ? navGoalExecutionAttemptGoal.value : null;
     const routeGoal = latestNavPathOverlay()?.executionGoal;
     const goalX = finitePlainNumber(values?.goal_x) ?? attemptedGoal?.goal_x ?? routeGoal?.x ?? null;
@@ -1573,7 +1573,7 @@ function latestNavGoalOverlay() {
       aria: `正在读取最近行程结果，旧结果暂不作为当前结论，地图坐标 x=${goalX.toFixed(2)}, y=${goalY.toFixed(2)}`,
     };
   }
-  const values = navGoalExecutionResult.value?.goal_execution_key_values ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
+  const values = directNav2ExecutionValues();
   if (!values) {
     return null;
   }
@@ -3814,6 +3814,42 @@ function directNav2ExecutionFallbackValues(): Record<string, string> | undefined
   return fallbackValues;
 }
 
+function nonEmptyExecutionValues(values: Record<string, string> | undefined): Record<string, string> | undefined {
+  // 空 key_values 代表 latest 没读到有效行程，不能挡住 summary 或 delivery 的后续兜底。
+  return values && Object.keys(values).length > 0 ? values : undefined;
+}
+
+function putSummaryNav2Value(values: Record<string, string>, key: string, value: string | undefined): void {
+  // summary 字段的 not_loaded 只是读不到，不应覆盖同一套行程证据里的有效字段。
+  if (value && value !== "not_loaded") {
+    values[key] = value;
+  }
+}
+
+function summaryNav2ExecutionValues(): Record<string, string> | undefined {
+  // 页面刚打开时可能还没手动读取 latest；summary 里的只读 latest 证据要参与普通首屏判断。
+  const nav2 = robotSummary.value?.readback_summary.nav2;
+  const status = nav2?.goal_execution_status;
+  if (!nav2 || !status || status === "not_loaded") {
+    return undefined;
+  }
+  const values: Record<string, string> = {
+    status,
+    nav2_status: status,
+  };
+  putSummaryNav2Value(values, "nav2_goal_execution_proven", nav2.goal_execution_proven);
+  putSummaryNav2Value(values, "result_status", nav2.goal_execution_result_status);
+  putSummaryNav2Value(values, "evidence_ref", nav2.goal_execution_evidence_ref);
+  putSummaryNav2Value(values, "robot_control_executed", nav2.goal_execution_robot_control_executed);
+  putSummaryNav2Value(values, "feedback_sample_count", nav2.goal_execution_feedback_sample_count);
+  putSummaryNav2Value(values, "goal_frame_id", nav2.goal_execution_goal_frame_id);
+  putSummaryNav2Value(values, "goal_x", nav2.goal_execution_goal_x);
+  putSummaryNav2Value(values, "goal_y", nav2.goal_execution_goal_y);
+  putSummaryNav2Value(values, "generated_at_ms", nav2.goal_execution_generated_at_ms);
+  putSummaryNav2Value(values, "response_generated_at_ms", nav2.goal_execution_response_generated_at_ms);
+  return values;
+}
+
 function nav2FeedbackSampleCount(values: Record<string, string> | undefined): number {
   // 完整行程不仅要 success，还要读到执行过程反馈样本；缺字段按 0 处理，避免把空摘要当成完整路线。
   const parsed = Number(values?.feedback_sample_count ?? values?.nav2_feedback_sample_count ?? "0");
@@ -3870,8 +3906,9 @@ function plainTripFailureReasonText(result: { failure_reason?: string } | null |
 function directNav2ExecutionValues(): Record<string, string> | undefined {
   // 地图和行程卡只展示直接执行/最近执行结果；delivery 摘要只用于收口，不反推地图执行进度。
   return directNav2ExecutionFallbackValues()
-    ?? navGoalExecutionResult.value?.goal_execution_key_values
-    ?? navGoalExecutionLatestResult.value?.goal_execution_key_values;
+    ?? nonEmptyExecutionValues(navGoalExecutionResult.value?.goal_execution_key_values)
+    ?? nonEmptyExecutionValues(navGoalExecutionLatestResult.value?.goal_execution_key_values)
+    ?? summaryNav2ExecutionValues();
 }
 
 function nav2ExecutionComplete(values: Record<string, string> | undefined): boolean {
@@ -4557,8 +4594,9 @@ function formatEvidenceAge(values: Record<string, string> | undefined, staleMess
 
 const plainTripEvidenceSummary = computed(() => {
   // 行程成功只展示普通证据摘要；完整 evidence_ref 和 action 细节留在高级诊断。
-  const values = navGoalExecutionResult.value?.goal_execution_key_values
-    ?? navGoalExecutionLatestResult.value?.goal_execution_key_values
+  const values = nonEmptyExecutionValues(navGoalExecutionResult.value?.goal_execution_key_values)
+    ?? nonEmptyExecutionValues(navGoalExecutionLatestResult.value?.goal_execution_key_values)
+    ?? summaryNav2ExecutionValues()
     ?? deliveryLatestResult.value?.delivery_key_values
     ?? deliveryGapCheckResult.value?.delivery_key_values
     ?? deliveryCompletionResult.value?.delivery_key_values;
