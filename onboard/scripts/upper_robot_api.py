@@ -1939,12 +1939,12 @@ def run_fixed_argv_command(argv: list[str], timeout_s: float = 8.0) -> dict[str,
     }
 
 
-def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False) -> dict[str, Any]:
-    """自动扫图只在传感器预检通过后写运动双锁，停止时必须重新上锁。"""
+def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True) -> dict[str, Any]:
+    """自由移动只由安全确认解锁；mapping_active 只表达本轮是否可作为建图会话。"""
     sequences = {
         "start": [
             ("operator_confirmed", "true"),
-            ("mapping_active", "true"),
+            ("mapping_active", "true" if mapping_active else "false"),
             ("stop_available", "true"),
             ("external_stop_requested", "false"),
         ],
@@ -6423,18 +6423,30 @@ class UpperRobotApi:
         }
 
     def free_roam_motion_readiness(self) -> dict[str, Any]:
-        """自由自助移动不把雷达新鲜度当硬门禁；雷达只作为降级安全证据。"""
+        """自由自助移动不把相机/雷达当硬门禁；建图能力单独用 mapping_readiness 表达。"""
         camera = self.camera_motion_readiness()
         radar = self.radar_status()
         radar_ready = bool(radar.get("lifecycle_running")) and bool(radar.get("latest_scan_proof_fresh"))
-        missing = []
+        camera_missing = camera.get("missing") if isinstance(camera.get("missing"), list) else ["camera_not_ready"]
+        mapping_missing = []
         if not camera.get("ready"):
-            missing.extend(camera.get("missing") if isinstance(camera.get("missing"), list) else ["camera_not_ready"])
+            mapping_missing.extend(camera_missing)
+        if not radar_ready:
+            mapping_missing.append("radar_scan_proof_not_fresh")
         return {
-            "ready": not missing,
-            "missing": list(dict.fromkeys(str(item) for item in missing)),
+            "ready": True,
+            "missing": [],
+            "free_move_ready": True,
+            "free_move_without_camera_allowed": True,
             "motion_without_radar_allowed": True,
             "degraded_without_radar": not radar_ready,
+            "mapping_readiness": {
+                "ready": not mapping_missing,
+                "missing": list(dict.fromkeys(str(item) for item in mapping_missing)),
+                "requires_camera_first_frame": True,
+                "requires_fresh_radar_scan": True,
+                "free_move_allowed_when_mapping_not_ready": True,
+            },
             "camera": camera,
             "radar": {
                 "ready": radar_ready,
@@ -6455,7 +6467,7 @@ class UpperRobotApi:
             endpoint = ROUTE_PATHS["free_roam_autonomy_start"]
             missing_confirms = [
                 name
-                for name in ("confirm_operator_safety", "confirm_mapping_active")
+                for name in ("confirm_operator_safety",)
                 if request.get(name) is not True
             ]
             if missing_confirms:
@@ -6519,7 +6531,11 @@ class UpperRobotApi:
                 extra={"error": {"type": "unsupported_free_roam_action", "message": "action must be start or stop"}},
             )
 
-        command_result = run_free_roam_param_sequence(action, enable_motion=(action == "start"))
+        mapping_active_requested = bool(request.get("confirm_mapping_active") is True)
+        if action == "start":
+            command_result = run_free_roam_param_sequence(action, enable_motion=True, mapping_active=mapping_active_requested)
+        else:
+            command_result = run_free_roam_param_sequence(action, enable_motion=False)
         http_status, latest = self.free_roam_autonomy_latest()
         motion_unlock_requested = bool(command_result.get("motion_unlock_requested"))
         return software_guard_payload(
@@ -6537,6 +6553,7 @@ class UpperRobotApi:
                     for key in ("confirm_operator_safety", "confirm_mapping_active")
                     if key in request
                 },
+                "mapping_active_requested": mapping_active_requested,
                 "latest_http_status": http_status,
                 "latest_decision_state": (
                     latest.get("decision_state")

@@ -15,7 +15,7 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 停止按钮始终可见，继续走固定 PC 代理 `/api/robot-control/base/stop`。
 - 浏览器不允许传入串口、ROS 参数、任意 Robot API endpoint、`/cmd_vel` 或 Nav2 自动目标。
 - 2026-06-25 起，PC 卡片新增“自动扫图准备”只读区：它读取 `safe_command_boundary.free_roam_autonomy`、policy 和逐项 gates，展示上车端 watchdog、LiDAR 避障、停止兜底、地图刷新和真车验证记录缺口；按钮固定显示“自动扫图（未开放）”且禁用，不绑定任何发车动作。
-- 2026-06-25 21:07 起，`ros2_trashbot_nav.free_roam_autonomy` 提供上车端自动扫图策略内核：默认 fail-closed，只在现场安全确认、地图记录、停止兜底和相机 readiness 满足时允许进入低速自移动；雷达新鲜度和障碍距离作为监看/降级证据，不再阻止低速启动。遇障碍原地换向，覆盖停滞时原地扫描，超时或未知区域达标时输出停止。
+- 2026-06-25 21:07 起，`ros2_trashbot_nav.free_roam_autonomy` 提供上车端自动扫图策略内核：默认 fail-closed，只在现场安全确认、地图记录和停止兜底满足时允许进入低速自移动；相机首帧和雷达新鲜度进入 `mapping_readiness`，用于判断本轮是否可建图，不再阻止低速自由移动。遇障碍原地换向，覆盖停滞时原地扫描，超时或未知区域达标时输出停止。
 - 2026-06-25 21:18 起，`free_roam_autonomy_node` 已接 `/scan`、`/map`、runtime artifact 和 `/trashbot/stop` 兜底；默认 `enable_cmd_vel_publish=false` 且 `motion_hil_unlocked=false`，不会自动发 `/cmd_vel`，PC 自动扫图按钮仍锁定。
 - 2026-06-25 21:24 起，上位机 `GET /api/free-roam/autonomy/latest` 和 `GET /api/status.free_roam_autonomy` 会只读 runtime artifact；PC summary 会把 `decision.gates` 显示成“自动扫图准备”门禁。该读回只改变所见即所得状态，不开放按钮、不触发 `/cmd_vel`。
 - 2026-06-25 21:44 起，地图画面会叠加只读“自动扫图”runtime 标记，把上车端状态机最近判断直接放到地图上；缺机器人地图位姿时标记固定在角落且不代表坐标。
@@ -26,9 +26,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `safe_command_boundary.free_roam_autonomy` 显示为 `ready`。这只改变普通首屏“自动扫图准备”的所见即所得状态。
 - 2026-06-25 23:52 起，上位机新增固定 `POST /api/free-roam/autonomy/start|stop`，PC 新增对应固定代理
   `/api/robot-control/free-roam/autonomy/start|stop`。start 必须带 `confirm_operator_safety=true` 和
-  `confirm_mapping_active=true`；2026-06-26 22:05 起，start 会先由上车端同步确认相机 health ready，雷达 lifecycle 和最新 scan proof 只作为可选监看证据回传；
-  相机 ready 时即可设置 `free_roam_autonomy_node` 的状态机参数并写入
-  `motion_hil_unlocked=true` 与 `enable_cmd_vel_publish=true`。`cmd_vel_topic` 仍不允许由 PC 或浏览器改写。stop 不要求相机/雷达
+  `confirm_mapping_active=true`；2026-06-26 22:05 起，start 会同步读取相机 health、雷达 lifecycle 和最新 scan proof，但这些只决定
+  `mapping_readiness` 是否为 true。2026-06-26 21:35 起，即使相机首帧或雷达 proof 不 ready，只要确认项满足也可设置
+  `free_roam_autonomy_node` 的状态机参数并写入 `motion_hil_unlocked=true` 与 `enable_cmd_vel_publish=true`，回包同时标明
+  `free_move_ready=true`、`mapping_readiness.ready=false`。`cmd_vel_topic` 仍不允许由 PC 或浏览器改写。stop 不要求相机/雷达
   ready，固定写回 `enable_cmd_vel_publish=false`、`motion_hil_unlocked=false`，再请求状态机停止。
 - 2026-06-26 01:05 起，PC 在自动扫图 start/stop 请求后把结果同步到普通首屏地图和“扫图状态”行：
   start 成功显示 `自动扫图已启动` / `自动扫图状态机已启动`，stop 成功显示停止请求已发送，失败则明确显示未证明启动或停止。
@@ -84,11 +85,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   camera/radar readiness、停止兜底和覆盖状态。同期摄像头 8088 服务已改为同源共享 capture，并会清理 0 帧 stale peer，
   避免旧页面独占 `/dev/video1` 后导致新页面看不到实时预览。
 - 2026-06-26 22:05 起，“自动扫图准备”从只读状态机门禁推进到上车端受控发车门禁：PC 按钮仍只调用固定 start 代理，
-  不直接发布 `/cmd_vel`，但上车端在相机 ready 时会打开 free-roam 节点双锁，让策略节点按 `/scan`、`/map`
-  和 watchdog 决策低速移动。若摄像头不 ready，start 返回 `blocked_sensor_readiness`，不会写任何 free-roam 参数；雷达不 ready 只进入降级监看。
+  不直接发布 `/cmd_vel`，但上车端会打开 free-roam 节点双锁，让策略节点按 `/scan`、`/map`
+  和 watchdog 决策低速移动。若摄像头不 ready，start 不再返回 `blocked_sensor_readiness`，而是在 `sensor_readiness.mapping_readiness`
+  里标明 `camera_first_frame_not_observed`；雷达不 ready 同样只进入降级监看和 `mapping_readiness` 缺口。
 - 2026-06-27 16:25 起，PC summary 拆出 `free_roam_autonomy_start_ready`：它只表示上车端 stop 兜底与自动扫图基础门禁已满足，
   不要求 `cmd_vel_publish_enabled=true`。普通首屏是否真正能点 `开始自动扫图（低速）` 还要叠加本地安全确认、地图记录、
-  地图画面刷新、摄像头 ready 和停止兜底；点击后再由上车端复检 camera readiness 并打开双锁，雷达作为可选监看证据回传。这样避免“必须先解锁才能点击解锁”的循环。
+  地图画面刷新和停止兜底；点击后由上车端回传 camera/radar `mapping_readiness` 并打开双锁，雷达作为可选监看证据回传。这样避免“必须先解锁才能点击解锁”的循环，也避免把“不能建图”误当成“不能自由移动”。
 - 2026-06-27 16:55 起，当 `free_roam_autonomy_start_ready=true` 但本地地图记录或扫图画面还没就绪时，普通首屏的
   `开始自动扫图（低速）` 按钮会走自动扫图向导：先启动地图记录，再把地图预览刷新计入本轮扫图 fresh gate，满足条件后再调用固定 start 代理。
   该向导仍不会自动勾选安全确认，也不会绕过上车端 camera 复检。
@@ -106,7 +108,7 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 5. 地图记录启动后键盘会自动启用；按住方向键或 W/A/S/D 低速移动。
 6. 松开按键或点击“停止”收口。
 7. 点击“保存当前地图”，保存完成后 PC 会自动刷新地图画面，并把步骤条收口成“已保存”；再检查 free cell、地图尺寸、覆盖提示和可导航状态。
-8. 如果“自动扫图准备”显示 `检查摄像头后开始`，先补齐相机 readiness；雷达待刷新不再阻止点击“开始自动扫图（低速）”。PC 会在地图上显示 `自动扫图已启动`，并立即刷新一次雷达和地图画面，`下一步` 会带到 `停止自动扫图`，继续负责地图/雷达监看和停止兜底。
+8. 如果“自动扫图准备”显示相机或雷达缺口，仍可在安全确认后发起低速自由移动；PC 和上车回包必须同时显示 `mapping_readiness.ready=false`，提醒当前不是可验收建图。只有相机首帧和雷达 proof 都 ready 时，才把本轮自动扫图解释为可建图。PC 会在地图上显示 `自动扫图已启动`，并立即刷新一次雷达和地图画面，`下一步` 会带到 `停止自动扫图`，继续负责地图/雷达监看和停止兜底。
 
 ## 后续全自动探索要求
 
@@ -123,5 +125,6 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 真车低速验证通过后才能把 `safe_to_control` 或自动探索能力提升为真。
 
 当前 PC 合同默认 `free_roam_autonomy=locked`。只有上车端 runtime artifact 明确报告双重解锁和逐项 gate ready 时，PC 才显示
-`free_roam_autonomy=ready`；PC 自动扫图按钮只调用固定 start 代理。真正运动发布仍由上车端相机/雷达 readiness 与
-`enable_cmd_vel_publish`、`motion_hil_unlocked` 双重锁共同决定，不由浏览器或 Node 代理直接发布。
+`free_roam_autonomy=ready`；PC 自动扫图按钮只调用固定 start 代理。真正运动发布仍由上车端确认项、停止兜底与
+`enable_cmd_vel_publish`、`motion_hil_unlocked` 双重锁共同决定，不由浏览器或 Node 代理直接发布；相机/雷达 readiness 只决定
+`mapping_readiness`，不再决定“车能不能自由低速移动”。

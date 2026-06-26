@@ -2651,8 +2651,17 @@ export interface RobotControlFreeRoamAutonomyRequest {
 export interface RobotControlFreeRoamAutonomySensorReadiness {
   ready?: boolean;
   missing?: string[];
+  free_move_ready?: boolean;
+  free_move_without_camera_allowed?: boolean;
   motion_without_radar_allowed?: boolean;
   degraded_without_radar?: boolean;
+  mapping_readiness?: {
+    ready?: boolean;
+    missing?: string[];
+    requires_camera_first_frame?: boolean;
+    requires_fresh_radar_scan?: boolean;
+    free_move_allowed_when_mapping_not_ready?: boolean;
+  };
   camera?: Record<string, unknown>;
   radar?: Record<string, unknown>;
 }
@@ -2675,6 +2684,7 @@ export interface RobotControlFreeRoamAutonomyResponse extends ProofFlags {
   };
   latest_decision_state: string;
   sets_state_machine_parameters: boolean;
+  mapping_active_requested?: boolean;
   direct_cmd_vel_publish: false;
   motion_unlock_requested: boolean;
   does_not_set_motion_unlock: boolean;

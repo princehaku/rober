@@ -973,7 +973,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         run_mock.assert_not_called()
         self.assertEqual("blocked_missing_confirmation", payload["status"])
         self.assertIn("confirm_operator_safety", payload["missing_confirmations"])
-        self.assertIn("confirm_mapping_active", payload["missing_confirmations"])
+        self.assertNotIn("confirm_mapping_active", payload["missing_confirmations"])
         self.assertFalse(payload["command_result"]["executed"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["publishes_cmd_vel"])
@@ -1067,7 +1067,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         {"confirm_operator_safety": True, "confirm_mapping_active": True},
                     )
 
-        run_mock.assert_called_once_with("start", enable_motion=True)
+        run_mock.assert_called_once_with("start", enable_motion=True, mapping_active=True)
         self.assertEqual("requested", payload["status"])
         self.assertTrue(payload["sets_state_machine_parameters"])
         self.assertFalse(payload["does_not_set_motion_unlock"])
@@ -1187,8 +1187,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("first_frame_observed", readiness["source_readiness"])
         self.assertEqual("/dev/video1", readiness["last_successful_frame"]["source"])
 
-    def test_free_roam_camera_motion_readiness_allows_optional_stale_radar(self) -> None:
-        """readiness 摘要保留雷达状态，但雷达 stale 不再阻止低速自移动。"""
+    def test_free_roam_readiness_allows_optional_camera_and_stale_radar_for_motion(self) -> None:
+        """自由移动只看安全双锁；相机/雷达缺口进入 mapping_readiness，不阻止低速启动。"""
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
             base_port="/dev/ttyS5",
@@ -1196,7 +1196,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             max_speed=0.12,
         )
 
-        with mock.patch.object(api, "camera_motion_readiness", return_value={"ready": True, "missing": []}):
+        with mock.patch.object(api, "camera_motion_readiness", return_value={"ready": False, "missing": ["camera_first_frame_not_observed"]}):
             with mock.patch.object(
                 api,
                 "radar_status",
@@ -1212,11 +1212,115 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         self.assertTrue(readiness["ready"])
         self.assertEqual([], readiness["missing"])
+        self.assertTrue(readiness["free_move_ready"])
+        self.assertTrue(readiness["free_move_without_camera_allowed"])
         self.assertFalse(readiness["radar"]["ready"])
         self.assertTrue(readiness["radar"]["optional"])
         self.assertFalse(readiness["radar"]["blocking"])
         self.assertTrue(readiness["motion_without_radar_allowed"])
         self.assertTrue(readiness["degraded_without_radar"])
+        self.assertFalse(readiness["mapping_readiness"]["ready"])
+        self.assertEqual(
+            ["camera_first_frame_not_observed", "radar_scan_proof_not_fresh"],
+            readiness["mapping_readiness"]["missing"],
+        )
+
+    def test_free_roam_start_unlocks_motion_even_when_mapping_readiness_is_not_ready(self) -> None:
+        """start 要能让车自由低速移动；建图不可用性必须作为只读 mapping_readiness 返回。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        command_result = {
+            "mode": "free_roam_param_sequence",
+            "action": "start",
+            "executed": True,
+            "ok": True,
+            "results": [],
+            "motion_unlock_requested": True,
+            "blocked_parameters_not_touched": ["cmd_vel_topic"],
+        }
+        sensor_readiness = {
+            "ready": True,
+            "missing": [],
+            "free_move_ready": True,
+            "mapping_readiness": {
+                "ready": False,
+                "missing": ["camera_first_frame_not_observed"],
+                "free_move_allowed_when_mapping_not_ready": True,
+            },
+        }
+
+        with mock.patch.object(api, "free_roam_motion_readiness", return_value=sensor_readiness):
+            with mock.patch.object(upper_robot_api, "run_free_roam_param_sequence", return_value=command_result) as run_mock:
+                with mock.patch.object(api, "free_roam_autonomy_latest", return_value=(200, {"decision_state": "ready"})):
+                    payload = api.free_roam_autonomy_control(
+                        "start",
+                        {
+                            "confirm_operator_safety": True,
+                            "confirm_mapping_active": True,
+                        },
+                    )
+
+        run_mock.assert_called_once_with("start", enable_motion=True, mapping_active=True)
+        self.assertEqual("requested", payload["status"])
+        self.assertEqual([], payload["blocked_reasons"])
+        self.assertTrue(payload["sets_state_machine_parameters"])
+        self.assertTrue(payload["motion_unlock_requested"])
+        self.assertFalse(payload["does_not_set_motion_unlock"])
+        self.assertTrue(payload["publishes_cmd_vel"])
+        self.assertEqual(sensor_readiness, payload["sensor_readiness"])
+        self.assertFalse(payload["sensor_readiness"]["mapping_readiness"]["ready"])
+        self.assertTrue(payload["mapping_active_requested"])
+        self.assertFalse(payload["safe_to_control"])
+
+    def test_free_roam_start_allows_free_move_without_mapping_confirmation(self) -> None:
+        """未确认建图记录时也能启动自由移动，但状态机 mapping_active 必须写 false。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        command_result = {
+            "mode": "free_roam_param_sequence",
+            "action": "start",
+            "executed": True,
+            "ok": True,
+            "results": [],
+            "motion_unlock_requested": True,
+            "blocked_parameters_not_touched": ["cmd_vel_topic"],
+        }
+        sensor_readiness = {
+            "ready": True,
+            "missing": [],
+            "free_move_ready": True,
+            "mapping_readiness": {
+                "ready": False,
+                "missing": ["mapping_active_not_confirmed"],
+                "free_move_allowed_when_mapping_not_ready": True,
+            },
+        }
+
+        with mock.patch.object(api, "free_roam_motion_readiness", return_value=sensor_readiness):
+            with mock.patch.object(upper_robot_api, "run_free_roam_param_sequence", return_value=command_result) as run_mock:
+                with mock.patch.object(api, "free_roam_autonomy_latest", return_value=(200, {"decision_state": "ready"})):
+                    payload = api.free_roam_autonomy_control(
+                        "start",
+                        {
+                            "confirm_operator_safety": True,
+                            "confirm_mapping_active": False,
+                        },
+                    )
+
+        run_mock.assert_called_once_with("start", enable_motion=True, mapping_active=False)
+        self.assertEqual("requested", payload["status"])
+        self.assertTrue(payload["motion_unlock_requested"])
+        self.assertFalse(payload["mapping_active_requested"])
+        self.assertFalse(payload["sensor_readiness"]["mapping_readiness"]["ready"])
+        self.assertFalse(payload["safe_to_control"])
 
     def test_free_roam_stop_relocks_motion_without_confirmation(self) -> None:
         """stop 必须随时可用，并通过参数序列关闭运动发布双锁。"""

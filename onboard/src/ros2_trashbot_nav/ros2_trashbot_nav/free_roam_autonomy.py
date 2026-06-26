@@ -148,11 +148,16 @@ class FreeRoamAutonomyController:
                 stop_required=False,
             )
 
+        reason = "所有门禁通过，低速直行扩展地图"
+        if not snapshot.mapping_active:
+            reason = "地图记录未启动，仅低速自由移动"
+        elif snapshot.lidar_min_distance_m is None or snapshot.lidar_age_s is None or snapshot.lidar_age_s > self.config.lidar_fresh_timeout_s:
+            reason = "雷达未就绪，现场监看下低速自由移动"
         return FreeRoamDecision(
             state=STATE_RUNNING,
             linear_x_mps=self.config.max_speed_mps,
             angular_z_radps=0.0,
-            reason="所有门禁通过，低速直行扩展地图",
+            reason=reason,
             gates=gates,
             stop_required=False,
         )
@@ -175,6 +180,7 @@ class FreeRoamAutonomyController:
                 "地图记录已启动",
                 "地图记录未启动",
                 "先启动扫地式建图记录",
+                blocking=False,
             ),
             self._gate(
                 "stop_available",
@@ -196,33 +202,35 @@ class FreeRoamAutonomyController:
         ready_evidence: str,
         blocked_evidence: str,
         next_action: str,
+        blocking: bool = True,
     ) -> FreeRoamGate:
         """统一门禁格式，避免不同 gate 的 state/evidence 口径漂移。"""
+        state = "ready" if passed else ("blocked" if blocking else "not_proven")
         return FreeRoamGate(
             gate_id=gate_id,
             label=label,
-            state="ready" if passed else "blocked",
+            state=state,
             evidence=ready_evidence if passed else blocked_evidence,
             next_action="继续保持现场可接管" if passed else next_action,
         )
 
     def _lidar_gate(self, snapshot: FreeRoamSnapshot) -> FreeRoamGate:
-        """雷达既要有距离，也要足够新鲜；任一缺失都不能自动移动。"""
+        """雷达缺失只降级为现场监看证据；低速自由移动不能硬依赖雷达。"""
         if snapshot.lidar_min_distance_m is None:
             return FreeRoamGate(
                 "lidar_fresh",
                 "雷达新鲜",
-                "blocked",
-                "未读到雷达距离",
-                "先启动雷达并刷新实时距离",
+                "not_proven",
+                "未读到雷达距离，按无雷达低速自由移动",
+                "继续现场监看；雷达 ready 后才能把本轮视为可建图",
             )
         if snapshot.lidar_age_s is None or snapshot.lidar_age_s > self.config.lidar_fresh_timeout_s:
             return FreeRoamGate(
                 "lidar_fresh",
                 "雷达新鲜",
-                "blocked",
-                "雷达距离已过期",
-                "先刷新雷达状态，确认是实时数据",
+                "not_proven",
+                "雷达距离已过期，按无雷达低速自由移动",
+                "刷新雷达状态；刷新前仅允许现场监看的低速自由移动",
             )
         return FreeRoamGate(
             "lidar_fresh",
@@ -238,9 +246,9 @@ class FreeRoamAutonomyController:
             return FreeRoamGate(
                 "obstacle_clear",
                 "前方障碍",
-                "blocked",
-                "缺少雷达距离，无法判断前方是否安全",
-                "先读到实时雷达距离",
+                "not_proven",
+                "缺少雷达距离，依赖现场接管和停止兜底",
+                "继续低速监看；雷达 ready 后再启用障碍距离判断",
             )
         clear = snapshot.lidar_min_distance_m >= self.config.obstacle_stop_distance_m
         return FreeRoamGate(

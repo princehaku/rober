@@ -2536,9 +2536,7 @@ const canStartFreeRoamAutonomy = computed(() => (
     || robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready"
   )
   && plainManualSafetyConfirmed.value
-  && mapRuntimeStarted.value
-  && !freeRoamMapWysiwygPending.value
-  && plainCameraReadyForFreeRoamAutonomy.value
+  && (!mapRuntimeStarted.value || !freeRoamMapWysiwygPending.value)
   && canSendStop.value
   && !freeRoamAutonomyPending.value
   && robotApiBaseUrl.value.trim().length > 0
@@ -2780,9 +2778,6 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
   if (!plainFreeRoamMapPreviewFreshForSession.value) {
     return "刷新扫图画面";
   }
-  if (!plainCameraReadyForFreeRoamAutonomy.value) {
-    return cameraSummary.value.state === "失败" ? "检查摄像头后开始" : "打开画面后开始";
-  }
   if (!canSendStop.value) {
     return "补停止兜底";
   }
@@ -3014,10 +3009,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   if (!plainManualSafetyConfirmed.value) {
     blockers.push("现场安全确认未勾选");
   }
-  if (!mapRuntimeStarted.value) {
-    blockers.push("地图记录未启动");
-  }
-  if (freeRoamMapWysiwygPending.value) {
+  if (mapRuntimeStarted.value && freeRoamMapWysiwygPending.value) {
     blockers.push(mapPreviewPending.value ? "地图画面正在刷新" : "地图状态正在刷新");
   }
   const mapPreviewWarning = !previewLoaded
@@ -3095,9 +3087,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       return "自动扫图状态：未读取上车端 runtime，当前只能人工按住扫图。";
     }
     const motionBoundary = autonomyStartReady && !runtime.cmd_vel_publish_enabled
-      ? "启动条件已满足；当前尚未启动，所以仍是记录模式；点击开始后由上车端复检相机，再打开运动双锁。"
+      ? "启动条件已满足；当前尚未启动，所以仍是记录模式；点击开始后由上车端打开运动双锁，建图 readiness 单独显示。"
       : runtime.artifact_only
-      ? "当前只是记录模式，不会自己跑；真车自动扫图还要完成安全确认、地图记录、相机和停止兜底。"
+      ? "当前只是记录模式，不会自己跑；真车自由移动还要完成安全确认和停止兜底，建图另看相机/雷达 readiness。"
       : runtime.cmd_vel_publish_enabled
       ? "运动发布已解锁，PC 仍等待真车 HIL 记录。"
       : "运动发布未解锁，不会自己跑。";
@@ -3123,7 +3115,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       return "自动扫图下一步：勾选现场安全确认。";
     }
     if (!mapRuntimeStarted.value) {
-      return "自动扫图下一步：开始地图记录。";
+      return "自动扫图下一步：点击开始自动扫图（低速）；当前只做自由移动，不作为可验收建图。";
     }
     if (freeRoamMapWysiwygPending.value) {
       return "自动扫图下一步：等待扫图画面刷新。";
@@ -8169,7 +8161,7 @@ function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string):
     remote_method: "POST",
     remote_http_status: null,
     status: "blocked",
-    request_body: action === "start" ? { confirm_operator_safety: true, confirm_mapping_active: true } : {},
+    request_body: action === "start" ? { confirm_operator_safety: true, confirm_mapping_active: mapRuntimeStarted.value } : {},
     command_result: { mode: "not_sent", executed: false, ok: false },
     latest_decision_state: "not_loaded",
     sets_state_machine_parameters: false,
@@ -8240,7 +8232,7 @@ async function startFreeRoamAutonomy(): Promise<void> {
   try {
     freeRoamAutonomyResult.value = await postRobotControlFreeRoamAutonomyStart(robotApiBaseUrl.value, {
       confirm_operator_safety: true,
-      confirm_mapping_active: true,
+      confirm_mapping_active: mapRuntimeStarted.value,
     });
   } catch (err) {
     freeRoamAutonomyResult.value = makeFreeRoamAutonomyFallback("start", err instanceof Error ? err.message : "free_roam_autonomy_start_failed");

@@ -154,8 +154,8 @@ class FreeRoamAutonomyTest(unittest.TestCase):
         self.assertEqual(decision["reason"], "还未勾选现场安全确认")
         self.assertTrue(decision["stop_required"])
 
-    def test_stale_lidar_locks_before_motion(self) -> None:
-        """雷达旧数据不能被当成所见即所得的实时障碍信息。"""
+    def test_stale_lidar_degrades_without_blocking_low_speed_motion(self) -> None:
+        """雷达旧数据不能冒充实时障碍信息，但也不能阻止低速自由移动。"""
         decision = build_free_roam_decision(
             {
                 "operator_confirmed": True,
@@ -166,9 +166,48 @@ class FreeRoamAutonomyTest(unittest.TestCase):
             }
         )
 
-        self.assertEqual(decision["state"], STATE_LOCKED)
-        self.assertEqual(decision["linear_x_mps"], 0.0)
-        self.assertIn("雷达距离已过期", {gate["evidence"] for gate in decision["gates"]})
+        self.assertEqual(decision["state"], STATE_RUNNING)
+        self.assertGreater(decision["linear_x_mps"], 0.0)
+        self.assertFalse(decision["stop_required"])
+        lidar_gate = next(gate for gate in decision["gates"] if gate["id"] == "lidar_fresh")
+        self.assertEqual("not_proven", lidar_gate["state"])
+        self.assertIn("雷达距离已过期", lidar_gate["evidence"])
+
+    def test_missing_lidar_degrades_without_blocking_low_speed_motion(self) -> None:
+        """完全没有雷达读数时仍允许低速自由移动，并把障碍判断标成 not_proven。"""
+        decision = build_free_roam_decision(
+            {
+                "operator_confirmed": True,
+                "mapping_active": True,
+                "stop_available": True,
+            }
+        )
+
+        self.assertEqual(decision["state"], STATE_RUNNING)
+        self.assertGreater(decision["linear_x_mps"], 0.0)
+        self.assertFalse(decision["stop_required"])
+        gate_states = {gate["id"]: gate["state"] for gate in decision["gates"]}
+        self.assertEqual("not_proven", gate_states["lidar_fresh"])
+        self.assertEqual("not_proven", gate_states["obstacle_clear"])
+
+    def test_mapping_inactive_degrades_without_blocking_low_speed_motion(self) -> None:
+        """未启动地图记录时也能自由低速移动，但不能把本轮解释成可建图。"""
+        decision = build_free_roam_decision(
+            {
+                "operator_confirmed": True,
+                "mapping_active": False,
+                "stop_available": True,
+                "lidar_min_distance_m": 1.0,
+                "lidar_age_s": 0.1,
+            }
+        )
+
+        self.assertEqual(decision["state"], STATE_RUNNING)
+        self.assertGreater(decision["linear_x_mps"], 0.0)
+        self.assertEqual("地图记录未启动，仅低速自由移动", decision["reason"])
+        mapping_gate = next(gate for gate in decision["gates"] if gate["id"] == "mapping_active")
+        self.assertEqual("not_proven", mapping_gate["state"])
+        self.assertEqual("地图记录未启动", mapping_gate["evidence"])
 
     def test_cli_defaults_to_locked_json(self) -> None:
         """console script 的模块入口默认也 fail closed，便于上车前 dry run。"""

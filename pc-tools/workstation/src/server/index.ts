@@ -879,6 +879,7 @@ function freeRoamAutonomyProxyResponse(
   const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
   const commandResult = asRecord(remote.payload.command_result);
   const sensorReadiness = asRecord(remote.payload.sensor_readiness);
+  const mappingReadiness = asRecord(sensorReadiness?.mapping_readiness);
   const motionUnlockRequested = remote.payload.motion_unlock_requested === true;
   const forwarded = remote.remote_http_status !== null && remote.remote_http_status >= 200 && remote.remote_http_status < 300 && remote.payload.status === "requested";
   return {
@@ -905,6 +906,7 @@ function freeRoamAutonomyProxyResponse(
     },
     latest_decision_state: shortValue(remote.payload.latest_decision_state, "not_loaded"),
     sets_state_machine_parameters: remote.payload.sets_state_machine_parameters === true,
+    mapping_active_requested: remote.payload.mapping_active_requested === true,
     direct_cmd_vel_publish: false,
     motion_unlock_requested: motionUnlockRequested,
     does_not_set_motion_unlock: remote.payload.does_not_set_motion_unlock === false ? false : true,
@@ -913,8 +915,19 @@ function freeRoamAutonomyProxyResponse(
       missing: Array.isArray(sensorReadiness?.missing)
         ? sensorReadiness.missing.map((item) => shortValue(item, "unknown"))
         : [],
+      free_move_ready: sensorReadiness?.free_move_ready === true,
+      free_move_without_camera_allowed: sensorReadiness?.free_move_without_camera_allowed === true,
       motion_without_radar_allowed: sensorReadiness?.motion_without_radar_allowed === true,
       degraded_without_radar: sensorReadiness?.degraded_without_radar === true,
+      mapping_readiness: {
+        ready: mappingReadiness?.ready === true,
+        missing: Array.isArray(mappingReadiness?.missing)
+          ? mappingReadiness.missing.map((item) => shortValue(item, "unknown"))
+          : [],
+        requires_camera_first_frame: mappingReadiness?.requires_camera_first_frame === true,
+        requires_fresh_radar_scan: mappingReadiness?.requires_fresh_radar_scan === true,
+        free_move_allowed_when_mapping_not_ready: mappingReadiness?.free_move_allowed_when_mapping_not_ready === true,
+      },
       camera: asRecord(sensorReadiness?.camera) ?? {},
       radar: asRecord(sensorReadiness?.radar) ?? {},
     },
@@ -2372,13 +2385,13 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.post("/api/robot-control/free-roam/autonomy/start", async (req, res) => {
-    // 自动扫图 start 只能转固定上位机 endpoint，body 只保留两个安全确认布尔值。
+    // 自由移动 start 只能转固定上位机 endpoint；建图确认只是可选事实，不再阻止低速移动。
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const requestBody = {
       confirm_operator_safety: req.body?.confirm_operator_safety === true,
       confirm_mapping_active: req.body?.confirm_mapping_active === true,
     };
-    if (!requestBody.confirm_operator_safety || !requestBody.confirm_mapping_active) {
+    if (!requestBody.confirm_operator_safety) {
       const response = freeRoamAutonomyProxyFailure(
         sourceBaseUrl,
         "start",

@@ -1326,7 +1326,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("defaults Robot Control fixed POST proxies to the fixed robot API address", async () => {
-    // 普通用户点击自动扫图不应因为 URL 栏缺 baseUrl 而卡住；安全仍由确认项和上车端传感器门禁控制。
+    // 普通用户点击自动扫图不应因为 URL 栏缺 baseUrl 而卡住；自由移动和建图 readiness 分开返回。
     expect(robotControlFixedProxyQueryBaseUrl(undefined)).toBe("http://192.168.1.11:8787");
     expect(robotControlFixedProxyQueryBaseUrl("")).toBe("http://192.168.1.11:8787");
     expect(robotControlFixedProxyQueryBaseUrl("http://127.0.0.1:8787")).toBe("http://127.0.0.1:8787");
@@ -1337,43 +1337,66 @@ describe("workstation fail-closed API contracts", () => {
       expect(init?.method).toBe("POST");
       expect(JSON.parse(String(init?.body ?? "{}"))).toEqual({
         confirm_operator_safety: true,
-        confirm_mapping_active: true,
+        confirm_mapping_active: false,
       });
       return new Response(
         JSON.stringify({
           schema: "trashbot.upper_robot_api.v1.free_roam_autonomy_start",
-          status: "blocked",
-          command_result: { mode: "free_roam_param_sequence", executed: false, ok: false },
-          sets_state_machine_parameters: false,
+          status: "requested",
+          command_result: { mode: "free_roam_param_sequence", executed: true, ok: true },
+          latest_decision_state: "ready",
+          sets_state_machine_parameters: true,
+          mapping_active_requested: false,
           direct_cmd_vel_publish: false,
-          motion_unlock_requested: false,
-          does_not_set_motion_unlock: true,
-          sensor_readiness: { ready: false, missing: ["camera_first_frame_not_observed"] },
-          failure_reason: "free_roam_motion_sensors_not_ready",
-          blocked_reasons: ["camera_first_frame_not_observed"],
+          motion_unlock_requested: true,
+          does_not_set_motion_unlock: false,
+          sensor_readiness: {
+            ready: true,
+            missing: [],
+            free_move_ready: true,
+            free_move_without_camera_allowed: true,
+            motion_without_radar_allowed: true,
+            degraded_without_radar: true,
+            mapping_readiness: {
+              ready: false,
+              missing: ["camera_first_frame_not_observed", "radar_scan_proof_not_fresh"],
+              requires_camera_first_frame: true,
+              requires_fresh_radar_scan: true,
+              free_move_allowed_when_mapping_not_ready: true,
+            },
+          },
+          failure_reason: null,
+          blocked_reasons: [],
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
           robot_control_executed: false,
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        { status: 200, headers: { "Content-Type": "application/json" } },
       );
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     try {
       const response = await postJson(`${workstation.baseUrl}/api/robot-control/free-roam/autonomy/start`, {
         confirm_operator_safety: true,
-        confirm_mapping_active: true,
+        confirm_mapping_active: false,
       });
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(200);
       const body = response.body as Record<string, any>;
-      expect(body.proxy_status).toBe("autonomy_rejected");
+      expect(body.proxy_status).toBe("autonomy_forwarded");
       expect(body.source_base_url).toBe("http://192.168.1.11:8787");
       expect(body.normalized_base_url).toBe("http://192.168.1.11:8787");
-      expect(body.blocked_reasons).toEqual(["camera_first_frame_not_observed"]);
-      expect(body.sets_state_machine_parameters).toBe(false);
-      expect(body.motion_unlock_requested).toBe(false);
+      expect(body.blocked_reasons).toEqual([]);
+      expect(body.sets_state_machine_parameters).toBe(true);
+      expect(body.mapping_active_requested).toBe(false);
+      expect(body.motion_unlock_requested).toBe(true);
+      expect(body.sensor_readiness.ready).toBe(true);
+      expect(body.sensor_readiness.mapping_readiness.ready).toBe(false);
+      expect(body.sensor_readiness.mapping_readiness.missing).toEqual([
+        "camera_first_frame_not_observed",
+        "radar_scan_proof_not_fresh",
+      ]);
     } finally {
       globalThis.fetch = originalFetch;
       await workstation.close();
