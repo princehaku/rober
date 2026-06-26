@@ -11122,6 +11122,72 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("keeps radar start fail-closed when the automatic proof refresh fails", async () => {
+    // 启动命令转发成功不等于雷达点已经可见；自动刷新失败时地图必须明确失败，不能升级为已运行。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.radar_start_configured = "true";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/radar/start": {
+        schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+        action: "start",
+        proxy_status: "lifecycle_forwarded",
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/radar/start",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        command_result: { mode: "configured_command", executed: true, ok: true },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+      "/api/robot-control/radar/scan-proof/refresh": {
+        ...(fixtures["/api/robot-control/radar/scan-proof/refresh"] as Record<string, unknown>),
+        proxy_status: "refresh_failed",
+        status: "blocked",
+        last_result_status: "fetch_failed",
+        latest_readback_key_values: {},
+        failure_reason: "fetch_timeout",
+        blocked_reasons: ["fetch_timeout"],
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(visiblePlainHomeText(wrapper)).toContain("fetch_timeout");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("刷新失败");
+    const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
+    expect(marker.text()).toBe("雷达刷新失败：fetch_timeout");
+    expect(marker.attributes("data-state")).toBe("雷达刷新失败");
+    expect(marker.attributes("aria-label")).toBe("雷达刷新失败：fetch_timeout，地图位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达刷新失败，未显示新点位。");
+    expect(wrapper.find('[data-testid="plain-radar-refresh"]').text()).toBe("刷新雷达");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-radar-panel[data-state="刷新失败"]');
+    expect(workstationStyles).toContain('.plain-map-radar-marker[data-state="雷达刷新失败"]');
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows a map radar-starting marker while the plain radar start request is in flight", async () => {
     // 点击启动到上位机返回之间也要所见即所得，不能继续把地图标成“雷达未运行”。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
