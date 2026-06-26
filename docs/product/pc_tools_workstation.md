@@ -2179,6 +2179,9 @@ delivery、stop 或 `/cmd_vel`，不修改 Clash 或系统代理配置，PC 工�
 2026-06-26 17:15 起，地图只显示 `最近路线` 时，行程向导按钮从 `重新准备路线` 改成
 `重新准备路线（不发车）`。点击仍只走 no-motion Nav2 proof refresh 并刷新地图画面，不调用
 `nav2/goal/execute`、manual/keyboard、delivery、stop 或 `/cmd_vel`；旧路线继续可以看，但不能被当成本轮可执行路线。
+2026-06-26 17:30 起，单独的 `准备行程（不发车）` 按钮在 no-motion refresh pending 期间也显示
+`准备中（不发车）`，和行程向导的 `准备路线中（不发车）` 保持一致。该 pending 只表示路线刷新未返回，
+不自动发车、不调用 `nav2/goal/execute`、manual/keyboard、delivery、stop 或 `/cmd_vel`。
 
 2026-06-25 23:25 起，普通首屏 `扫地式建图` 在 `开始扫地式建图` 成功返回地图记录已启动后，会自动进入
 `键盘已启用` 状态。该自动启用只设置 PC 全局键盘窗口和焦点，不发送方向脉冲、不调用 `base/manual`、Nav2、

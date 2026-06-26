@@ -4433,7 +4433,7 @@ const plainTripPreparationButtonLabel = computed(() => {
     return "连接后准备行程";
   }
   if (nav2RefreshPending.value) {
-    return "准备中";
+    return "准备中（不发车）";
   }
   if (mapWysiwygRefreshPending.value) {
     return "等待地图刷新";

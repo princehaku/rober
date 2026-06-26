@@ -6845,6 +6845,7 @@ describe("App", () => {
     const mapPreviewCallsBeforePrepare = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     const prepareClick = wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("准备中（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备路线中（不发车）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     const finishNav2Refresh = nav2RefreshControl.finish;
