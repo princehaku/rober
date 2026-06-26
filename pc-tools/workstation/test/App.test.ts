@@ -15779,6 +15779,49 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });
 
+  it("retries the shared MJPEG preview after a browser image error without sending motion commands", async () => {
+    // 摄像头服务恢复首帧后，停在页面上的普通用户也应重新接入同一条只读共享流。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.devices_status = "loaded";
+    summaryFixture.readback_summary.camera.video_source = "/dev/video1";
+    summaryFixture.readback_summary.camera.selected_path = "/dev/video1";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const mjpegPreview = wrapper.find('[data-testid="robot-camera-mjpeg-preview"]');
+    expect(mjpegPreview.exists()).toBe(true);
+    const firstSrc = mjpegPreview.attributes("src");
+    expect(firstSrc).toContain("/api/robot-control/camera/mjpeg?");
+    expect(firstSrc).not.toContain("retry=");
+
+    await mjpegPreview.trigger("error");
+    await vi.advanceTimersByTimeAsync(4900);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').attributes("src")).toBe(firstSrc);
+
+    await vi.advanceTimersByTimeAsync(200);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const retrySrc = wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').attributes("src");
+    expect(retrySrc).toContain("/api/robot-control/camera/mjpeg?");
+    expect(retrySrc).toContain("retry=1");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+  });
+
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
     // WebRTC UI 测试只验证本机代理和前端状态机，不连接真实浏览器媒体栈或机器人。
     vi.useFakeTimers();

@@ -221,6 +221,7 @@ const previewAutoConnectSuppressed = ref(false);
 const sessionEpoch = ref(0);
 const mjpegPreviewLoaded = ref(false);
 const mjpegPreviewFailed = ref(false);
+const mjpegPreviewRetryToken = ref(0);
 const cameraMjpegStatusResult = ref<RobotControlCameraMjpegStatusResponse | null>(null);
 const cameraMjpegStatusPending = ref(false);
 const cameraMjpegStatusFailure = ref("");
@@ -289,6 +290,7 @@ const keyboardHoldPulseCount = ref(0);
 const keyboardLastWheelFeedbackValues = ref<Record<string, string> | null>(null);
 const keyboardLastStopReason = ref("not_loaded");
 let previewFrameSampleTimers: number[] = [];
+let mjpegPreviewRetryTimer: number | null = null;
 let keyboardJogTimer: number | null = null;
 let keyboardJogInFlight = false;
 let keyboardStopAfterPulseReason: string | null = null;
@@ -968,9 +970,13 @@ const cameraCanAttemptSharedMjpegPreview = computed(() => {
     && (camera?.status === "ready" || deviceKnown || sourceOpenedButNoFrame),
   );
 });
-const cameraMjpegPreviewUrl = computed(() => (
-  cameraCanAttemptSharedMjpegPreview.value ? robotControlCameraMjpegUrl(robotApiBaseUrl.value) : ""
-));
+const cameraMjpegPreviewUrl = computed(() => {
+  if (!cameraCanAttemptSharedMjpegPreview.value) {
+    return "";
+  }
+  const url = robotControlCameraMjpegUrl(robotApiBaseUrl.value);
+  return mjpegPreviewRetryToken.value > 0 ? `${url}&retry=${mjpegPreviewRetryToken.value}` : url;
+});
 const cameraMjpegFallbackVisible = computed(() => (
   cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
 ));
@@ -7606,14 +7612,42 @@ async function refreshCameraMjpegStatus(): Promise<void> {
 
 function handleMjpegPreviewLoaded(): void {
   // MJPEG 的 load 事件说明浏览器已拿到真实 JPEG 帧；它只作为画面 fallback，不改变任何控制 gate。
+  clearMjpegPreviewRetryTimer();
   mjpegPreviewLoaded.value = true;
   mjpegPreviewFailed.value = false;
   void refreshCameraMjpegStatus();
 }
 
+function clearMjpegPreviewRetryTimer(): void {
+  // retry timer 只服务浏览器重新请求只读 MJPEG，不允许在用户关闭画面后继续偷偷重连。
+  if (mjpegPreviewRetryTimer !== null) {
+    window.clearTimeout(mjpegPreviewRetryTimer);
+    mjpegPreviewRetryTimer = null;
+  }
+}
+
+function scheduleMjpegPreviewRetry(): void {
+  // 相机服务可能在页面停留期间恢复首帧；失败后低频换 URL，保证后来恢复时页面能重新接上共享流。
+  clearMjpegPreviewRetryTimer();
+  if (!cameraMjpegFallbackVisible.value || !cameraMjpegPreviewUrl.value) {
+    return;
+  }
+  mjpegPreviewRetryTimer = window.setTimeout(() => {
+    mjpegPreviewRetryTimer = null;
+    if (!cameraMjpegFallbackVisible.value || !mjpegPreviewFailed.value || mjpegPreviewLoaded.value) {
+      return;
+    }
+    mjpegPreviewLoaded.value = false;
+    mjpegPreviewFailed.value = false;
+    mjpegPreviewRetryToken.value += 1;
+    void refreshCameraMjpegStatus();
+  }, 5000);
+}
+
 function handleMjpegPreviewError(): void {
   // MJPEG 失败只影响画面 fallback；WebRTC 链路和相机探针仍保留原有诊断。
   mjpegPreviewFailed.value = true;
+  scheduleMjpegPreviewRetry();
   void refreshCameraMjpegStatus();
 }
 
@@ -9673,6 +9707,7 @@ async function stopPreview(): Promise<void> {
   previewStopPending.value = true;
   failureReason.value = "";
   rawFailureReason.value = "";
+  clearMjpegPreviewRetryTimer();
   await cleanupPreview("stopped_by_user", "stopped_by_user");
   previewStopPending.value = false;
   await refreshCameraMjpegStatus();
@@ -9689,6 +9724,7 @@ watch(previewVideo, (videoElement) => {
 
 watch(cameraMjpegPreviewUrl, () => {
   // baseUrl 或相机 ready 状态变化时清掉上一条 MJPEG 证据，防止旧流误标新目标。
+  clearMjpegPreviewRetryTimer();
   mjpegPreviewLoaded.value = false;
   mjpegPreviewFailed.value = false;
   cameraMjpegStatusResult.value = null;
@@ -9702,6 +9738,8 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
     return;
   }
   previewAutoConnectSuppressed.value = false;
+  clearMjpegPreviewRetryTimer();
+  mjpegPreviewRetryToken.value = 0;
   mapPreviewResult.value = null;
   plainTripPostExecutionMapPreviewRefreshFailed.value = false;
   if (keyboardHeldDirection.value) {
@@ -9738,6 +9776,7 @@ onBeforeUnmount(() => {
   // 卸载时先退出键盘循环，再释放视频资源；远端 cleanup 尽量执行但不能阻塞组件销毁。
   clearKeyboardControlOwner();
   clearKeyboardJogTimer();
+  clearMjpegPreviewRetryTimer();
   window.removeEventListener("keydown", handleGlobalKeyDown);
   window.removeEventListener("keyup", handleGlobalKeyUp);
   window.removeEventListener("blur", handleWindowBlur);
