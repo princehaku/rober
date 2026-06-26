@@ -2230,7 +2230,7 @@ export interface RobotControlNavGoalExecutionLatestResponse extends ProofFlags {
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
-  robot_control_executed: false;
+  robot_control_executed: boolean;
 }
 
 export interface RobotControlDeliveryCompleteRequest {

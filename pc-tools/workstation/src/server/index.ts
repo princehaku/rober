@@ -288,7 +288,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     cancel_requested: shortValue(payload?.cancel_requested ?? latestResult?.cancel_requested),
     cancel_accepted: shortValue(cancelResponse?.accepted, "false"),
     feedback_sample_count: shortValue(payload?.feedback_sample_count ?? latestResult?.feedback_sample_count, "0"),
-    robot_control_executed: shortValue(payload?.robot_control_executed ?? latestResult?.robot_control_executed, "false"),
+    robot_control_executed: shortValue(latestResult?.robot_control_executed ?? payload?.robot_control_executed, "false"),
     delivery_success: shortValue(payload?.delivery_success ?? latestResult?.delivery_success, "false"),
   };
 }
@@ -1711,6 +1711,7 @@ export function createWorkstationApp(): express.Express {
         signal: AbortSignal.timeout(10000),
       });
       const remotePayload = asRecord(await remote.json().catch(() => null));
+      const latestResult = asRecord(remotePayload?.latest_result);
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
         (field) =>
           field !== "sends_commands" &&
@@ -1732,6 +1733,8 @@ export function createWorkstationApp(): express.Express {
           ...dangerous.map((field) => `dangerous_true_field:${field}`),
         ],
         hard_dangerous_true_fields: dangerous,
+        // latest 是只读回放，不会发起 NavigateToPose；这里仅如实展示历史 artifact 的执行证据。
+        robot_control_executed: remotePayload?.robot_control_executed === true || latestResult?.robot_control_executed === true,
       };
       res.status(responseBody.proxy_status === "latest_loaded" ? 200 : 502).json(responseBody);
     } catch (error) {

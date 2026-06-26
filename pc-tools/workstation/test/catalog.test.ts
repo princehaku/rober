@@ -6271,6 +6271,7 @@ describe("workstation fail-closed API contracts", () => {
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
+          robot_control_executed: false,
           latest_result: {
             status: "goal_succeeded",
             evidence_ref: "o11-nav2-goal-execution-test",
@@ -6315,7 +6316,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
       expect(body.goal_execution_key_values.delivery_success).toBe("false");
       expect(body.hard_dangerous_true_fields).toEqual([]);
-      expect(body.robot_control_executed).toBe(false);
+      expect(body.robot_control_executed).toBe(true);
       expect(body.delivery_success).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/nav2/goal/execution/latest"]);
       expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
