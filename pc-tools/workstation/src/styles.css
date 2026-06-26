@@ -459,6 +459,7 @@ h3 {
 
 .plain-radar-panel[data-state="雷达启动中"],
 .plain-radar-panel[data-state="雷达待刷新"],
+.plain-radar-panel[data-state="雷达无新点"],
 .plain-radar-panel[data-state="刷新中"] {
   border-left-color: #9a6700;
 }
@@ -939,6 +940,7 @@ h3 {
 
 .plain-map-radar-sweep[data-state="雷达启动中"],
 .plain-map-radar-sweep[data-state="雷达待刷新"],
+.plain-map-radar-sweep[data-state="雷达无新点"],
 .plain-map-radar-sweep[data-state="刷新中"] {
   border-color: rgba(106, 87, 16, 0.32);
   background:
@@ -1084,6 +1086,7 @@ h3 {
 
 .plain-map-radar-marker[data-state="雷达启动中"],
 .plain-map-radar-marker[data-state="雷达待刷新"],
+.plain-map-radar-marker[data-state="雷达无新点"],
 .plain-map-radar-marker[data-state="刷新中"] {
   border-color: #d5d2a9;
   background: #fbf8e8;

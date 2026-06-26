@@ -2956,3 +2956,13 @@ Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达
 如果上车端 `free_roam_autonomy_start_ready=true` 但 camera 首帧未出或雷达仍待刷新/状态源不一致，页面会显示
 “当前只按自由移动记录，不能按可验收建图收口；仍可在安全确认后低速自由移动”。只有画面可见证据和雷达已运行同时满足，
 才显示“画面和雷达都 ready；启动后本轮可按建图记录监看”。该行只改变首屏解释，不新增 manual、Nav2、delivery 或 `/cmd_vel` 调用。
+
+2026-06-27 04:54 起，普通首屏 `雷达` 和地图雷达 marker 拆出 `雷达无新点` 状态：
+当上车端 `lidar_driver` lifecycle 仍在运行，但 `latest_scan_proof_fresh=false`、`continuous_window_observed=false`，
+且当前 summary 没有 scan 点数组、点数或最近障碍距离时，PC 不再泛化成“雷达待刷新”，而是显示“雷达驱动正在运行，但当前没有读到新的雷达点”。
+地图 marker 同步显示 `雷达无新点，位置未读到`，雷达点口径说明“这不是地图没刷新”。本轮 live 证据是固定
+`POST /api/robot-control/radar/scan-proof/refresh` 返回 `raw_packets_parsed` 但
+`scan_once_observed=false`、`raw_packet_once_observed=false`、`latest_scan_proof_fresh=false`；
+随后 SSH 到 `192.168.1.11:37878` 复核 `/scan`、`/lidar/raw_packet` topic 存在但 `ros2 topic echo --once`
+在 8 秒内没有输出，主 `lidar_driver` 进程仍在。这说明当前雷达问题应查 LiDAR 供电、串口数据或驱动发布链，
+不是 PC 地图刷新、不是底盘运动门禁，也不触发 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
