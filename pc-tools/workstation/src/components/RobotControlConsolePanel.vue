@@ -2089,6 +2089,9 @@ function freeRoamRuntimeMapMarker(robotPose: ReturnType<typeof latestRobotPoseOv
   if (!runtime || runtime.status !== "loaded") {
     return null;
   }
+  const recordOnlyStopping = runtime.artifact_only === true
+    && runtime.cmd_vel_publish_enabled === false
+    && runtime.state === "stopping";
   const stateLabels: Record<string, string> = {
     locked: "门禁锁定",
     ready: "等待启动",
@@ -2098,17 +2101,19 @@ function freeRoamRuntimeMapMarker(robotPose: ReturnType<typeof latestRobotPoseOv
     stopping: "停止中",
     completed: "已完成",
   };
-  const label = stateLabels[runtime.state] ?? runtime.state;
-  const stopSuffix = runtime.stop_required ? "，要求停止" : "";
+  const label = recordOnlyStopping ? "上次停止请求" : stateLabels[runtime.state] ?? runtime.state;
+  const prefix = recordOnlyStopping ? "自由移动记录" : "自动扫图";
+  const ariaPrefix = recordOnlyStopping ? prefix : `${prefix}状态`;
+  const stopSuffix = recordOnlyStopping ? "，当前未发布运动" : runtime.stop_required ? "，要求停止" : "";
   return {
-    label: `自动扫图：${label}`,
+    label: `${prefix}：${label}`,
     state: runtime.state,
     style: robotPose
       ? robotPose.style
       : { left: "12px", top: "12px" },
     aria: robotPose
-      ? `自动扫图状态 ${label}${stopSuffix}，贴近机器人当前位置`
-      : `自动扫图状态 ${label}${stopSuffix}，机器人地图位置未读到，标记不代表坐标`,
+      ? `${ariaPrefix} ${label}${stopSuffix}，贴近机器人当前位置`
+      : `${ariaPrefix} ${label}${stopSuffix}，机器人地图位置未读到，标记不代表坐标`,
   };
 }
 
@@ -3271,6 +3276,12 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     // runtime state 来自上车端 artifact；这里只做翻译，不把任何状态外推成 PC 自动发车。
     if (!runtime || runtime.status !== "loaded") {
       return `${motionModeName}状态：未读取上车端 runtime，当前只能人工按住扫图。`;
+    }
+    const recordOnlyStopping = runtime.artifact_only === true
+      && runtime.cmd_vel_publish_enabled === false
+      && runtime.state === "stopping";
+    if (recordOnlyStopping) {
+      return `${motionModeName}状态：上次记录停在停止请求${runtimeReason}；当前没有运动发布，点击${motionStartButtonText}后才会重新启动。`;
     }
     const motionBoundary = autonomyStartReady && !runtime.cmd_vel_publish_enabled
       ? "启动条件已满足；当前尚未启动，所以仍是记录模式；点击开始后由上车端打开运动双锁，建图 readiness 单独显示。"
