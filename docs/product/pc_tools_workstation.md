@@ -2634,6 +2634,13 @@ pulse、delivery、stop 或 `/cmd_vel`。
 `/cmd_vel`。普通首屏“实时画面”卡片同步显示 `共享画面：N 个页面观看，上游已连接/未连接...`，方便现场多人打开页面时判断
 “谁进来都能看”是否成立；真实可见画面仍以 video/MJPEG 像素绘制状态为准。
 
+2026-06-26 23:53 起，Robot Control summary 会把 8088 camera health 最近一次
+`first_frame_format_attempts` 压成普通首屏可读的 `last_offer_format_attempts_summary`，例如
+`MJPG 无首帧；YUYV 无首帧；default 无首帧`。当 `/dev/video1` 没有其它 owner 但首帧失败时，
+实时画面卡片会在“不是页面独占”后追加这条采集尝试摘要；`capture_read_returned_false` 等 raw 原因仍只留在高级诊断和
+上车 health 里。该字段只来自只读 `/api/camera/health`，不会打开 camera offer/MJPEG、不会调用 probe、manual、Nav2、
+delivery、free-roam start/stop 或 `/cmd_vel`。
+
 2026-06-26 19:42 起，Robot Control summary 消费上车端 `/api/camera/health.source_usage`，新增
 `readback_summary.camera.source_usage_status/source_usage_owner_count/source_usage_summary`。当相机源首帧失败时，普通首屏会优先提示
 “相机当前被 N 个进程占用”或“相机当前没人占用，但底层没有读到画面”，高级诊断保留 owner 摘要。该口径只读取上车端只读诊断，不在

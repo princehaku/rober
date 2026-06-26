@@ -5175,6 +5175,10 @@ describe("workstation fail-closed API contracts", () => {
             last_offer_error: {
               error: "first_frame_unreadable",
               failure_reason: "first_frame_timeout",
+              first_frame_format_attempts: [
+                { fourcc: "MJPG", status: "first_frame_unreadable", failure_reason: "capture_read_returned_false" },
+                { fourcc: "YUYV", status: "first_frame_unreadable", failure_reason: "capture_read_returned_false" },
+              ],
             },
           },
           safe_to_control: false,
@@ -5345,6 +5349,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.active_peer_count).toBe("0");
       expect(summary.readback_summary.camera.last_offer_error).toBe("first_frame_unreadable");
       expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("first_frame_timeout");
+      expect(summary.readback_summary.camera.last_offer_format_attempts_summary).toBe("MJPG 无首帧；YUYV 无首帧");
       expect(summary.readback_summary.lidar.status).toBe("latest_proof_fresh_while_lifecycle_running");
       expect(summary.readback_summary.lidar.continuous_scan_status).toBe("latest_proof_fresh_while_lifecycle_running");
       expect(summary.readback_summary.lidar.lifecycle_running).toBe("true");

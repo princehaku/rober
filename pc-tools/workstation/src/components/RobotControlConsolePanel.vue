@@ -398,6 +398,9 @@ function cameraSourcePlainFailureHint(): string {
   // summary 已经完成工程归因；普通首屏只翻译成可处理的现场动作。
   const camera = robotSummary.value?.readback_summary.camera;
   const probeFailureHint = cameraProbePlainFailureHint();
+  const formatAttempts = camera?.last_offer_format_attempts_summary && camera.last_offer_format_attempts_summary !== "none"
+    ? ` 采集尝试：${camera.last_offer_format_attempts_summary}。`
+    : "";
   const sourceFailed = cameraSourceFirstFrameFailed(camera);
   if (sourceFailed || probeFailureHint) {
     if (probeFailureHint) {
@@ -414,9 +417,9 @@ function cameraSourcePlainFailureHint(): string {
     }
     if (camera?.source_usage_status === "not_in_use") {
       if (camera?.source_failure_reason === "capture_read_call_timeout" || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout") {
-        return "不是页面独占：相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";
+        return `不是页面独占：相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。${formatAttempts}`;
       }
-      return "不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。";
+      return `不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。${formatAttempts}`;
     }
     return "相机没有出画面，检查摄像头/视频线。";
   }

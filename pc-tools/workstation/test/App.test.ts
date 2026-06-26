@@ -429,6 +429,7 @@ const fixtures: Record<string, unknown> = {
         active_peer_count: "0",
         last_offer_error: "none",
         last_offer_failure_reason: "none",
+        last_offer_format_attempts_summary: "none",
       },
       lidar: {
         status: "radar_status_not_proven",
@@ -3307,6 +3308,7 @@ function markCameraFrameObserved(summary: RobotControlSummaryResponse | Record<s
   camera.source_usage_summary = "none";
   camera.last_offer_error = "none";
   camera.last_offer_failure_reason = "none";
+  camera.last_offer_format_attempts_summary = "none";
 }
 
 function markRobotPoseVisible(summary: RobotControlSummaryResponse | Record<string, any>): void {
@@ -15687,6 +15689,7 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
     summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
     summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
+    summaryFixture.readback_summary.camera.last_offer_format_attempts_summary = "MJPG 无首帧；YUYV 无首帧；default 无首帧";
     const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
 
     const wrapper = mount(App);
@@ -15695,7 +15698,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：相机当前没人占用，但摄像头没有输出视频帧");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。 采集尝试：MJPG 无首帧；YUYV 无首帧；default 无首帧。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("PC 只复用同一条上游流");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

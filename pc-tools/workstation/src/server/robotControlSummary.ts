@@ -956,6 +956,33 @@ function summaryValueText(payload: JsonRecord | null, keys: string[], fallback =
   return found === undefined ? fallback : compactValueText(found);
 }
 
+function cameraFormatAttemptsSummary(lastOfferError: JsonRecord | null): string {
+  // 相机首帧失败时，把上车端逐格式尝试压成短文本，普通首屏不用展开 raw JSON 也能看到真实失败范围。
+  const attempts = Array.isArray(lastOfferError?.first_frame_format_attempts)
+    ? lastOfferError.first_frame_format_attempts
+    : [];
+  const parts = attempts
+    .map((item) => asRecord(item))
+    .filter((item): item is JsonRecord => item !== null)
+    .map((attempt) => {
+      const fourcc = asString(attempt.fourcc, "unknown");
+      const status = asString(attempt.status, "unknown");
+      if (status === "frame_read") {
+        return `${fourcc} 已出帧`;
+      }
+      if (status === "open_failed") {
+        return `${fourcc} 打不开`;
+      }
+      if (status === "first_frame_unreadable") {
+        return `${fourcc} 无首帧`;
+      }
+      return `${fourcc} ${status}`;
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+  return parts.length > 0 ? parts.join("；") : "none";
+}
+
 function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord | null {
   // 上位机 refresh 回包可能同时包含本轮 collector 直接结果和随后读取的 radar status；
   // PC 控制台必须只用最终 scan proof readback 做摘要，避免递归搜索再次捡到旧 collector 字段。
@@ -1118,6 +1145,7 @@ function cameraSummaryFromReadbacks(
     active_peer_count: summaryValueText(healthPayload, ["active_peer_count", "active_peer_connections"]),
     last_offer_error: asString(lastOfferError?.error, "none"),
     last_offer_failure_reason: asString(lastOfferError?.failure_reason, "none"),
+    last_offer_format_attempts_summary: cameraFormatAttemptsSummary(lastOfferError),
     first_frame_probe_status: firstFrameProbeOverlay?.status ?? "not_loaded",
     first_frame_probe_failure_reason: firstFrameProbeOverlay?.failure_reason || "none",
     first_frame_probe_open_ok: firstFrameProbeOverlay?.open_ok ?? "not_loaded",
@@ -3159,6 +3187,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         active_peer_count: "not_loaded",
         last_offer_error: "none",
         last_offer_failure_reason: "none",
+        last_offer_format_attempts_summary: "none",
         first_frame_probe_status: "not_loaded",
         first_frame_probe_failure_reason: "none",
         first_frame_probe_open_ok: "not_loaded",
