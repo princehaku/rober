@@ -1488,8 +1488,14 @@ const plainCurrentFactRows = computed(() => {
     rows.push(nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
       ? `行程：路线返回成功，${wheelText}。`
       : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);
-  } else if (nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
-    rows.push("行程：图上可准备执行。");
+  } else if (plainTripPreparedBySummary.value || nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
+    if (plainTripCurrentRouteVisible.value && plainTripRobotPoseVisibleForExecution.value) {
+      rows.push("行程：图上路线可执行。");
+    } else if (plainTripCurrentRouteVisible.value) {
+      rows.push("行程：图上路线已显示，先重新定位。");
+    } else {
+      rows.push("行程：路线读数已准备，先刷新地图画面。");
+    }
   } else {
     rows.push("行程：还没执行。");
   }
