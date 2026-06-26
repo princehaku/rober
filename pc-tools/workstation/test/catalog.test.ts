@@ -3998,6 +3998,50 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary derives Nav2 execution proof from live execution facts", async () => {
+    // 现场上位机 latest 可能不带旧 nav2_goal_execution_proven key；PC 摘要要从执行事实推导，不能误报未证明。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "not_proven",
+          latest_result: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            evidence_ref: "o11-nav2-goal-execution-live-shape",
+            feedback_sample_count: 8,
+            robot_control_executed: true,
+            sends_motion_commands: true,
+            goal_request: { frame_id: "map", x: 0.8, y: 0 },
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_result_status).toBe("succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_robot_control_executed).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_feedback_sample_count).toBe("8");
+      expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary accepts lidar extrinsic from Nav2 proof latest when localize proof has no transform", async () => {
     // 真实 timeout fallback 里 Nav2 latest 可能先拿到 /tf_static 外参；PC 不能只看 localize latest。
     const robotApi = await listenRobotApiReadbackByPath({
@@ -5308,6 +5352,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.continuous_window_observed).toBe("true");
       expect(summary.readback_summary.lidar.continuity_window_status).toBe("fresh_window_observed");
       expect(summary.readback_summary.lidar.latest_scan_proof_fresh).toBe("true");
+      expect(summary.readback_summary.lidar.scan_preview_point_count).toBe("3");
+      expect(summary.readback_summary.lidar.scan_preview_source_point_count).toBe("5");
+      expect(summary.readback_summary.lidar.scan_preview_frame_id).toBe("laser");
       expect(summary.o3_proof_summary.path_preview_points).toEqual([
         { x: 0, y: 0, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.1, frame_id: "map", source_index: 12 },

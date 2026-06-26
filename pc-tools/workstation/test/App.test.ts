@@ -440,6 +440,9 @@ const fixtures: Record<string, unknown> = {
         continuous_window_observed: "true",
         continuity_window_status: "fresh_window_observed",
         latest_scan_proof_fresh: "true",
+        scan_preview_point_count: "0",
+        scan_preview_source_point_count: "not_loaded",
+        scan_preview_frame_id: "not_loaded",
         radar_start_configured: "true",
       },
       base: {

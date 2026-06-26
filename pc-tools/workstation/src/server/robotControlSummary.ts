@@ -1025,6 +1025,7 @@ function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord |
 
 function lidarSummaryFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
+  proof: RobotApiProofSummary,
 ): RobotControlSummaryResponse["readback_summary"]["lidar"] {
   // 普通首屏只消费 summary 压缩字段，因此把 radar status 的 continuity/lifecycle 结论集中收口在这里。
   const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
@@ -1041,6 +1042,9 @@ function lidarSummaryFromReadbacks(
     continuous_window_observed: summaryValueText(radarStatusPayload, ["continuous_window_observed"]),
     continuity_window_status: summaryValueText(radarStatusPayload, ["continuity_window_status"]),
     latest_scan_proof_fresh: summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"]),
+    scan_preview_point_count: String(proof.scan_preview_point_count),
+    scan_preview_source_point_count: proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count),
+    scan_preview_frame_id: proof.scan_preview_frame_id || "not_loaded",
     radar_start_configured: summaryValueText(radarStartCommand, ["configured"]),
   };
 }
@@ -3010,7 +3014,7 @@ function nav2SummaryFromReadbacks(
     path_preview_point_count: String(proof.path_preview_point_count),
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
     goal_execution_status: summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded"),
-    goal_execution_proven: summaryValueText(goalResultPayload, ["nav2_goal_execution_proven"]),
+    goal_execution_proven: nav2GoalExecutionProvenText(goalResultPayload),
     goal_execution_result_status: summaryValueText(goalResultPayload, ["result_status"]),
     goal_execution_evidence_ref: summaryValueText(goalResultPayload, ["evidence_ref"]),
     goal_execution_robot_control_executed: summaryValueText(goalResultPayload, ["robot_control_executed"]),
@@ -3021,6 +3025,35 @@ function nav2SummaryFromReadbacks(
     goal_execution_generated_at_ms: summaryValueText(goalResultPayload, ["generated_at_ms", "nav2_generated_at_ms"]),
     goal_execution_response_generated_at_ms: summaryValueText(goalPayload, ["response_generated_at_ms", "generated_at_ms"]),
   };
+}
+
+function nav2GoalExecutionProvenText(goalResultPayload: JsonRecord | null): string {
+  // 兼容新旧上位机 artifact：旧版直接给 nav2_goal_execution_proven，新版给执行事实字段。
+  const explicit = summaryValueText(goalResultPayload, ["nav2_goal_execution_proven"]);
+  if (explicit !== "not_loaded") {
+    return explicit;
+  }
+
+  const robotControlExecuted = summaryValueText(goalResultPayload, ["robot_control_executed"]);
+  const sendsMotionCommands = summaryValueText(goalResultPayload, ["sends_motion_commands"]);
+  const status = summaryValueText(goalResultPayload, ["status"]);
+  const resultStatus = summaryValueText(goalResultPayload, ["result_status"]);
+  const feedbackCountText = summaryValueText(goalResultPayload, ["feedback_sample_count", "nav2_feedback_sample_count"]);
+  const feedbackCount = Number(feedbackCountText);
+  const succeeded = status === "goal_succeeded" || resultStatus === "succeeded";
+  if (
+    robotControlExecuted === "true"
+    && sendsMotionCommands === "true"
+    && succeeded
+    && Number.isFinite(feedbackCount)
+    && feedbackCount > 0
+  ) {
+    return "true";
+  }
+  if (robotControlExecuted === "false" || sendsMotionCommands === "false") {
+    return "false";
+  }
+  return "not_loaded";
 }
 
 function freeRoamSummaryFromReadbacks(
@@ -3143,6 +3176,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         continuous_window_observed: "not_loaded",
         continuity_window_status: "not_loaded",
         latest_scan_proof_fresh: "not_loaded",
+        scan_preview_point_count: "0",
+        scan_preview_source_point_count: "not_loaded",
+        scan_preview_frame_id: "not_loaded",
         radar_start_configured: "not_loaded",
       },
       base: {
@@ -3598,7 +3634,7 @@ export async function buildRobotControlSummary(
     },
     readback_summary: {
       camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay, mjpegRelayOverlay),
-      lidar: lidarSummaryFromReadbacks(readbacks),
+      lidar: lidarSummaryFromReadbacks(readbacks, proofSummary),
       base: baseSummaryFromReadbacks(readbacks),
       map: mapSummaryFromReadbacks(readbacks, proofSummary),
       localization: localizationSummaryFromReadbacks(readbacks, proofSummary),

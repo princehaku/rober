@@ -2756,3 +2756,14 @@ health/devices 都返回 HTTP 200；MJPEG 首帧仍失败，但最终 health 会
 `capture_read_returned_false`。因此当前画面不可见仍归因于 `/dev/video1` 无帧输出，
 不是 PC 独占或共享预览 fanout 造成；该修复不调用 camera probe、manual、Nav2、
 delivery、free-roam start/stop、stop 或 `/cmd_vel`。
+
+2026-06-26 22:55 起，Robot Control summary 把雷达预览点数从高级 `o3_proof_summary` 下沉到普通
+`readback_summary.lidar.scan_preview_point_count/scan_preview_source_point_count/scan_preview_frame_id`。现场 PC 7001 复测中，
+普通 summary 已直接显示 `scan_preview_point_count=72`、`scan_preview_source_point_count=72`、`scan_preview_frame_id=laser_frame`，
+即使雷达 lifecycle 当前为 `stopped`，普通用户也能在首屏状态里判断“地图/雷达到底有没有材料”。同轮还修正 Nav2 latest
+执行证明兼容：当上位机只返回 `robot_control_executed=true`、`sends_motion_commands=true`、`status=goal_succeeded`、
+`result_status=succeeded` 和正数 `feedback_sample_count`，但没有旧字段 `nav2_goal_execution_proven` 时，PC summary 会把
+`readback_summary.nav2.goal_execution_proven` 推导为 `true`。现场复测中 7001 返回
+`goal_execution_status=goal_succeeded`、`goal_execution_proven=true`、`goal_execution_robot_control_executed=true`、
+`goal_execution_feedback_sample_count=8`。这只修正“看得到/解释得准”的状态合同，不调用 manual、keyboard pulse、Nav2 execute、
+delivery、free-roam start/stop、stop 或 `/cmd_vel`；真实底盘是否产生非零 `T=1001 L/R` 仍需下一轮低速运动 HIL 验证。

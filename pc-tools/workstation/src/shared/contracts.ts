@@ -2395,6 +2395,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       continuous_window_observed: string;
       continuity_window_status: string;
       latest_scan_proof_fresh: string;
+      scan_preview_point_count: string;
+      scan_preview_source_point_count: string;
+      scan_preview_frame_id: string;
       radar_start_configured: string;
     };
     base: {
