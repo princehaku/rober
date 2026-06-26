@@ -8995,6 +8995,147 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
+  it("keeps plain wheel evidence incomplete when saving the wheel record fails", async () => {
+    // 保存失败不能让普通首屏看起来已经完成；现场要留在轮速卡点并允许直接重试保存。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.route_map = "true; ref=o11-nav2-goal-execution-before-wheel-save";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/first-jog": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: false,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/manual",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        requested_direction: "forward",
+        applied_direction: "forward",
+        requested_speed_mps: 0.08,
+        clamped_speed_mps: 0.08,
+        requested_duration_ms: 500,
+        clamped_duration_ms: 500,
+        confirm_hil_checklist: true,
+        non_stop_requires_confirm_hil_checklist: true,
+        hil_checklist_gate_status: "manual_allowed",
+        checklist_missing: [],
+        operator_report_preflight: {
+          status: "loaded",
+          source_endpoint: "/api/operator/report",
+          request_status: "loaded",
+          http_status: 200,
+          report_status: "ready_for_execution",
+          evidence_ref: "plain-first-jog-video-fixture",
+          required_fields: [],
+          missing_fields: [],
+          material_summary: (fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse).operator_hil_material_summary,
+          failure_reason: "",
+          hard_dangerous_true_fields: [],
+        },
+        request_contract: {
+          max_speed_mps: 0.12,
+          max_duration_ms: 800,
+          allowed_directions: ["forward", "back", "left", "right", "stop"],
+        },
+        evidence_capture_status: "captured",
+        evidence_capture_endpoints: [],
+        evidence_capture_blocked_reasons: [],
+        before_readback: {},
+        after_readback: {
+          radar_status: {
+            request_status: "loaded",
+            http_status: 200,
+            status: "scan_delta_observed",
+            schema: "trashbot.upper_robot_api.v1.radar_status",
+            key_values: {
+              physical_motion_lidar_delta_proven: "true",
+              scan_delta_ref: "first-jog-scan-delta-fixture",
+            },
+            failure_reason: "",
+          },
+        },
+        motion_evidence_summary: "first-jog fixture captured during-motion T1001 wheel feedback",
+        motion_evidence_gaps: [],
+        remote_motion_key_values: {
+          wheel_feedback_lr_nonzero_proven: "true",
+          wheel_feedback_nonzero_observed: "true",
+          wheel_feedback_nonzero_frame_count: "2",
+          wheel_feedback_latest_left_speed: "0.08",
+          wheel_feedback_latest_right_speed: "0.08",
+          wheel_feedback_latest_raw_left: "0.08",
+          wheel_feedback_latest_raw_right: "0.08",
+          feedback_during_motion_t1001_frame_count: "3",
+          feedback_after_stop_t1001_frame_count: "1",
+          physical_motion_lidar_delta_proven: "true",
+          scan_delta_ref: "first-jog-scan-delta-fixture",
+          manual_command_executed: "true",
+          auto_stop_executed: "true",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+      },
+      "/api/robot-control/operator/report": {
+        schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+        proxy_status: "report_failed",
+        status: "blocked",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+        remote_http_status: 500,
+        failure_reason: "operator_report_write_failed",
+        blocked_reasons: ["operator_report_write_failed"],
+        rejected_fields: [],
+        dangerous_true_fields: [],
+      },
+      "/api/robot-control/base/manual": {
+        proxy_status: "should_not_be_called",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstJogButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
+    expect(firstJogButton?.attributes("disabled")).toBeUndefined();
+    await firstJogButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录");
+    await wrapper.find('[data-testid="plain-wheel-save"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("保存失败");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("轮速已读到，但保存没有成功；请重试保存，不要直接进入行程。");
+    expect(visiblePlainHomeText(wrapper)).toContain("轮速证据保存失败；请查看高级诊断。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("轮速记录待完成");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("轮速保存失败：请重试保存，未保存前不要进入行程。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("轮速已读到，但保存失败；先重试保存轮速记录。");
+    const retrySaveButton = wrapper.find('[data-testid="plain-wheel-save"]');
+    expect(retrySaveButton.text()).toBe("重试保存轮速记录");
+    expect(retrySaveButton.attributes("disabled")).toBeUndefined();
+    const reportCallCount = () => mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/operator/report?")).length;
+    expect(reportCallCount()).toBe(1);
+    await retrySaveButton.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(reportCallCount()).toBe(2);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+  });
+
   it("explains plain first-jog wheel retry when motion frames keep L/R at zero", async () => {
     // 真实现场曾读到 during-motion T1001 但 L/R=0/0；普通首屏要给出下一步排查，而不是只说失败。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

@@ -3545,6 +3545,12 @@ const currentWheelReadback = computed(() => {
 
 const wheelClosureEvidence = computed(() => {
   // 轮速收口必须写清证据来源，避免把历史材料、静态 T1001 读回和本轮 during-motion proof 混成一句“已完成”。
+  if (plainWheelEvidenceSaveFailed.value) {
+    return {
+      ready: false,
+      hint: "本轮已读到非零 L/R，但保存失败，需重试保存轮速记录",
+    };
+  }
   const motionValues = plainFirstJogResult.value?.remote_motion_key_values;
   if (motionValues?.wheel_feedback_lr_nonzero_proven === "true") {
     return {
@@ -3631,6 +3637,9 @@ const goalClosureChecklist = computed(() => {
 });
 
 const plainWheelGoalProgressHint = computed(() => {
+  if (plainWheelEvidenceSaveFailed.value) {
+    return "轮速保存失败：请重试保存，未保存前不要进入行程。";
+  }
   // 轮速进度要显示当前 L/R 和帧数，帮助现场判断是“没读到”还是“读到了但仍为 0/0”。
   const sample = baseFeedbackSamplesResult.value?.sample_key_values;
   const base = robotSummary.value?.readback_summary.base;
@@ -3656,6 +3665,9 @@ const plainWheelGoalNextAction = computed(() => {
   // 每个目标行都给一条短下一步，避免第一卡点挡住其它目标的操作线索。
   if (wheelClosureEvidence.value.ready) {
     return "已完成。";
+  }
+  if (plainWheelEvidenceSaveFailed.value) {
+    return "下一步：重试保存轮速记录。";
   }
   if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
     return "下一步：检查轮速卡点。";
@@ -4020,6 +4032,9 @@ const plainGoalProgressBlockerSummary = computed(() => {
   const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
   if (!wheelReady) {
+    if (plainWheelEvidenceSaveFailed.value) {
+      return "验收卡点：轮速已读到，但保存失败；先重试保存轮速记录。";
+    }
     if (firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value) {
       return "验收卡点：送达草稿覆盖了试动确认，先恢复试动确认，再低速试动读非零 L/R。";
     }
@@ -4503,6 +4518,9 @@ const plainWheelRecordSummary = computed(() => {
   if (plainWheelEvidenceSavePending.value) {
     return { state: "保存中", hint: "正在保存轮速记录。" };
   }
+  if (plainWheelEvidenceSaveFailed.value) {
+    return { state: "保存失败", hint: "轮速已读到，但保存没有成功；请重试保存，不要直接进入行程。" };
+  }
   if (plainWheelEvidenceSaveResult.value?.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked") {
     return {
       state: "已保存",
@@ -4582,6 +4600,9 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
   if (mapWysiwygRefreshPending.value) {
     return "等待地图刷新";
   }
+  if (plainWheelEvidenceSaveFailed.value && plainFirstJogWheelEvidenceReady.value) {
+    return "重试保存轮速记录";
+  }
   if (plainFirstJogWheelEvidenceReady.value) {
     return "保存轮速记录";
   }
@@ -4604,6 +4625,11 @@ const canSavePlainWheelEvidence = computed(() => (
   && !operatorReportPending.value
   && robotApiBaseUrl.value.trim().length > 0
   && plainFirstJogWheelEvidenceReady.value
+));
+
+const plainWheelEvidenceSaveFailed = computed(() => (
+  Boolean(plainWheelEvidenceSaveResult.value)
+  && !(plainWheelEvidenceSaveResult.value?.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked")
 ));
 
 const plainWheelReadbackButtonLabel = computed(() => (
