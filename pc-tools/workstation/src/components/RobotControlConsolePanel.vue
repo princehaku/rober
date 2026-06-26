@@ -949,9 +949,10 @@ const wheelRawLrProgressSummary = computed(() => {
     if (motionValues.wheel_feedback_lr_nonzero_proven === "true") {
       return `motion window nonzero proven; frames=${motionValues.feedback_during_motion_t1001_frame_count ?? "not_loaded"}; L/R=${motionValues.wheel_feedback_latest_raw_left ?? "not_loaded"}/${motionValues.wheel_feedback_latest_raw_right ?? "not_loaded"}`;
     }
-    if (manualCommandResult.value?.operator_report_preflight.status === "blocked") {
-      const missing = manualCommandResult.value.operator_report_preflight.missing_fields.join(",");
-      return `motion gate blocked by operator report; missing=${missing || "unknown"}; report=${manualCommandResult.value.operator_report_preflight.report_status}`;
+    const operatorPreflight = manualCommandResult.value?.operator_report_preflight;
+    if (operatorPreflight?.status === "blocked") {
+      const missing = operatorPreflight.missing_fields.join(",");
+      return `motion gate blocked by operator report; missing=${missing || "unknown"}; report=${operatorPreflight.report_status}`;
     }
     return `motion attempted but nonzero not proven; frames=${motionValues.feedback_during_motion_t1001_frame_count ?? "0"}; L/R=${motionValues.wheel_feedback_latest_raw_left ?? "not_loaded"}/${motionValues.wheel_feedback_latest_raw_right ?? "not_loaded"}; next=check motor enable, power, mode, floor clearance`;
   }
@@ -3104,9 +3105,12 @@ function keyboardWheelFeedbackPlainText(): string {
     return "";
   }
   const nonzero = values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true";
+  const attempted = values.feedback_during_motion_attempted === "true" || values.manual_command_executed === "true";
   return nonzero
     ? `；轮速 L/R=${left}/${right}，非零已读到`
-    : `；轮速 L/R=${left}/${right}，等待非零`;
+    : attempted
+      ? `；轮速 L/R=${left}/${right}，点动已发但仍未非零`
+      : `；轮速 L/R=${left}/${right}，等待非零`;
 }
 
 function keyboardWheelFeedbackState(): "未读取" | "等待非零" | "非零已读到" {
@@ -3172,9 +3176,17 @@ const plainKeyboardWheelFeedbackSummary = computed(() => {
   }
   const frameCount = values.wheel_feedback_nonzero_frame_count ?? values.feedback_during_motion_t1001_frame_count ?? "0";
   const nonzero = values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true";
-  return nonzero
-    ? `键盘轮速：L/R=${left}/${right}，非零已读到 ${frameCount} 帧。`
-    : `键盘轮速：L/R=${left}/${right}，还没读到非零。`;
+  if (nonzero) {
+    return `键盘轮速：L/R=${left}/${right}，非零已读到 ${frameCount} 帧。`;
+  }
+  const motionFrameCount = values.feedback_during_motion_t1001_frame_count ?? "0";
+  const attempted = values.feedback_during_motion_attempted === "true" || values.manual_command_executed === "true";
+  const stopped = values.auto_stop_executed === "true";
+  if (attempted) {
+    // 真机上请求成功和轮子实际转动是两件事；这里把底盘反馈仍为 0/0 的下一手排查直接给普通用户。
+    return `键盘轮速：已发送点动${stopped ? "并自动停止" : ""}，但 L/R=${left}/${right} 仍未读到非零；运动帧=${motionFrameCount}。下一步：检查电机使能、供电、模式和现场空间后重试。`;
+  }
+  return `键盘轮速：L/R=${left}/${right}，还没读到非零。`;
 });
 
 const plainKeyboardLiveStatus = computed(() => {
