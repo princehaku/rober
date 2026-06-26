@@ -2988,6 +2988,12 @@ live 部署到 `ssh root@192.168.1.11 -p 37878` 后，固定 PC 代理
 同轮摄像头固定首帧探针仍为 `first_frame_timeout/capture_read_call_timeout`，
 `open_ok=true`、`read_ok=false`、`source_usage_status=not_in_use`，再次确认不是浏览器或 PC 多人预览独占；
 PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是当前上游没有真实帧。
+
+2026-06-27 05:40 起，Robot Control summary 的 `readback_summary.lidar` 新增
+`latest_scan_proof_result_status` 与 `raw_packet_once_observed` 两个只读压缩字段。普通首屏在
+`latest_proof_status=raw_packets_parsed`、raw packet 已观察到但 `scan_preview_point_count=0` 时，不再只显示泛化
+“雷达无新点/刷新雷达”，而是把当前事实写成“雷达原始包已收到，但暂无地图雷达点”。该状态只用于解释现场分叉：
+小车低速手控仍不依赖雷达 ready，自动导航仍不能把 raw packet 当成可用避障点或 Nav2 成功证据。
 底盘/自动驾驶口径同步保持：自由移动和底盘试动不依赖雷达 ready；Nav2 latest 已有
 `goal_succeeded`、`base_command_mode=pwm`、`nonzero_command_count=49` 和 IMU 姿态变化材料，
 但当前 `wheel_feedback_lr_nonzero_proven=false`、`hil_pass=false`，所以完整自动驾驶验收仍卡在现场轮速/运动闭环，

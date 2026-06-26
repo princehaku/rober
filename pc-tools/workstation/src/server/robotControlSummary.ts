@@ -1096,14 +1096,35 @@ function lidarSummaryFromReadbacks(
   proof: RobotApiProofSummary,
 ): RobotControlSummaryResponse["readback_summary"]["lidar"] {
   // 普通首屏只消费 summary 压缩字段，因此把 radar status 的 continuity/lifecycle 结论集中收口在这里。
-  const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
+  const radarStatusReadback = readbackById(readbacks, "radar_status");
+  const radarScanProofReadback = readbackById(readbacks, "radar_scan_proof_latest");
+  const radarRawPacketProofReadback = readbackById(readbacks, "radar_raw_packet_proof_latest");
+  const radarStatusPayload = radarStatusReadback?.payload ?? null;
+  const radarScanProofPayload = radarScanProofReadback?.payload ?? null;
+  const radarRawPacketProofPayload = radarRawPacketProofReadback?.payload ?? null;
+  const latestScanProofResultStatus = summaryValueText(radarScanProofPayload, ["latest_proof_status", "latest_result_status", "status", "state"]);
+  const rawPacketObservedFromScan = summaryValueText(
+    radarScanProofPayload,
+    ["raw_packet_once_observed", "latest_raw_packet_once_observed"],
+    "",
+  );
+  const rawPacketObservedFromRawProof = summaryValueText(
+    radarRawPacketProofPayload,
+    ["raw_packet_once_observed", "latest_raw_packet_once_observed", "packet_once_observed"],
+    "",
+  );
+  const rawPacketOnceObserved = rawPacketObservedFromScan
+    || rawPacketObservedFromRawProof
+    || (latestScanProofResultStatus === "raw_packets_parsed" ? "true" : "not_loaded");
   const radarControls = asRecord(findFirstKey(radarStatusPayload, ["controls"]));
   const radarStartControl = asRecord(radarControls?.start);
   const radarStartCommand = asRecord(radarStartControl?.command);
   return {
-    status: readbackById(readbacks, "radar_status")?.status ?? "not_loaded",
-    latest_scan_proof_status: readbackById(readbacks, "radar_scan_proof_latest")?.status ?? "not_loaded",
-    latest_raw_packet_proof_status: readbackById(readbacks, "radar_raw_packet_proof_latest")?.status ?? "not_loaded",
+    status: radarStatusReadback?.status ?? "not_loaded",
+    latest_scan_proof_status: radarScanProofReadback?.status ?? "not_loaded",
+    latest_raw_packet_proof_status: radarRawPacketProofReadback?.status ?? "not_loaded",
+    latest_scan_proof_result_status: latestScanProofResultStatus,
+    raw_packet_once_observed: rawPacketOnceObserved,
     continuous_scan_status: summaryValueText(radarStatusPayload, ["continuous_scan_status"]),
     lifecycle_running: summaryValueText(radarStatusPayload, ["lifecycle_running"]),
     lifecycle_state: summaryValueText(radarStatusPayload, ["lifecycle_state"]),
@@ -3288,6 +3309,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         status: "not_loaded",
         latest_scan_proof_status: "not_loaded",
         latest_raw_packet_proof_status: "not_loaded",
+        latest_scan_proof_result_status: "not_loaded",
+        raw_packet_once_observed: "not_loaded",
         continuous_scan_status: "not_loaded",
         lifecycle_running: "not_loaded",
         lifecycle_state: "not_loaded",

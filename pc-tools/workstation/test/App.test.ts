@@ -438,6 +438,8 @@ const fixtures: Record<string, unknown> = {
         status: "radar_status_not_proven",
         latest_scan_proof_status: "scan_once_observed",
         latest_raw_packet_proof_status: "raw_packet_not_proven",
+        latest_scan_proof_result_status: "scan_once_observed",
+        raw_packet_once_observed: "true",
         continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
         lifecycle_running: "true",
         lifecycle_state: "running",
@@ -13808,6 +13810,8 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.scan_preview_source_point_count = null;
     summaryFixture.o3_proof_summary.scan_preview_frame_id = "";
     summaryFixture.readback_summary.lidar.status = "partially_observed";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_result_status = "raw_packets_parsed";
+    summaryFixture.readback_summary.lidar.raw_packet_once_observed = "true";
     summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_incomplete_while_lifecycle_running";
     summaryFixture.readback_summary.lidar.lifecycle_running = "true";
     summaryFixture.readback_summary.lidar.lifecycle_state = "running";
@@ -13828,13 +13832,13 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达无新点");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已启动，但地图上没有新点。");
-    expect(firstScreenText).toContain("雷达驱动正在运行，但最新记录不完整，当前没有读到新的雷达点；检查雷达供电、串口数据和驱动日志。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已收到原始包，但地图上没有雷达点。");
+    expect(firstScreenText).toContain("雷达驱动正在运行，已收到原始包，但还没解析出地图雷达点；检查雷达扫描解析、串口数据质量和驱动日志。");
     expect(firstScreenText).not.toContain("雷达正在运行，但最新记录不完整；先刷新雷达确认。");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达无新点，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达无新点，原始包已收到，暂无地图点");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达无新点");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达无新点，地图位置未读到");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达驱动在运行，但当前没有读到新的雷达点；这不是地图没刷新。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达无新点，地图位置未读到，原始包已收到但暂无地图雷达点");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达原始包已收到，但当前没有解析出地图雷达点；这不是地图没刷新。");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("data-state")).toBe("雷达无新点");
     expect(wrapper.find('[data-testid="plain-radar-restart"]').text()).toBe("重启雷达");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);

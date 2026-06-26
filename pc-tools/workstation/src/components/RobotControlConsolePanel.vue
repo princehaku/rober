@@ -700,6 +700,8 @@ const effectiveLidarReadback = computed<LidarReadback | null>(() => {
     status: radarStatusValue("status") ?? summary?.status ?? "not_loaded",
     latest_scan_proof_status: radarStatusValue("latest_scan_proof_status") ?? summary?.latest_scan_proof_status ?? "not_loaded",
     latest_raw_packet_proof_status: radarStatusValue("latest_raw_packet_proof_status") ?? summary?.latest_raw_packet_proof_status ?? "not_loaded",
+    latest_scan_proof_result_status: radarStatusValue("latest_scan_proof_result_status") ?? radarStatusValue("latest_proof_status") ?? summary?.latest_scan_proof_result_status ?? "not_loaded",
+    raw_packet_once_observed: radarStatusValue("raw_packet_once_observed") ?? radarStatusValue("latest_raw_packet_once_observed") ?? summary?.raw_packet_once_observed ?? "not_loaded",
     continuous_scan_status: radarStatusValue("continuous_scan_status") ?? summary?.continuous_scan_status ?? "not_loaded",
     lifecycle_running: radarStatusValue("lifecycle_running") ?? summary?.lifecycle_running ?? "false",
     lifecycle_state: radarStatusValue("lifecycle_state") ?? summary?.lifecycle_state ?? "not_loaded",
@@ -801,6 +803,25 @@ function radarRunningWithoutVisiblePoints(lidar: RobotControlSummaryResponse["re
     && !latestRadarObstacleDistanceLabel();
 }
 
+function radarRawPacketObservedWithoutVisiblePoints(lidar: RobotControlSummaryResponse["readback_summary"]["lidar"] | null | undefined): boolean {
+  // raw packet 已到但 scan 点为空，是现场最常见的分叉；这里单独标出来，避免误判为摄像头/地图刷新问题。
+  if (!lidar || !radarRunningWithoutVisiblePoints(lidar)) {
+    return false;
+  }
+  const scanProofEndpoint = robotReadEndpoint("radar_scan_proof_latest");
+  const statusText = [
+    lidar.latest_scan_proof_result_status,
+    lidar.latest_scan_proof_status,
+    scanProofEndpoint?.key_values.latest_proof_status,
+  ].filter(Boolean).join(" ").toLowerCase();
+  const rawPacketObserved = [
+    lidar.raw_packet_once_observed,
+    scanProofEndpoint?.key_values.raw_packet_once_observed,
+    scanProofEndpoint?.key_values.latest_raw_packet_once_observed,
+  ].some((value) => value === "true");
+  return rawPacketObserved || statusText.includes("raw_packets_parsed");
+}
+
 function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
   if (radarLifecyclePendingAction.value === "start") {
@@ -838,6 +859,9 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
     const pointHint = plainRadarPointHint(false);
     const reason = plainRadarRefreshReason(lidar);
     if (radarRunningWithoutVisiblePoints(lidar)) {
+      if (radarRawPacketObservedWithoutVisiblePoints(lidar)) {
+        return { state: "雷达无新点", hint: `雷达驱动正在运行，已收到原始包，但还没解析出地图雷达点；检查雷达扫描解析、串口数据质量和驱动日志。` };
+      }
       return { state: "雷达无新点", hint: `雷达驱动正在运行，但${reason}，当前没有读到新的雷达点；检查雷达供电、串口数据和驱动日志。` };
     }
     return { state: "雷达待刷新", hint: pointHint ? `雷达正在运行，但${reason}；先刷新雷达确认。${pointHint}` : `雷达正在运行，但${reason}；先刷新雷达确认。` };
@@ -1429,7 +1453,9 @@ const plainCurrentFactRows = computed(() => {
     rows.push("画面：还没确认真实帧。");
   }
 
-  if (radarSummary.value.state === "雷达无新点") {
+  if (radarSummary.value.state === "雷达无新点" && radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
+    rows.push("雷达：已收到原始包，但地图上没有雷达点。");
+  } else if (radarSummary.value.state === "雷达无新点") {
     rows.push("雷达：已启动，但地图上没有新点。");
   } else if (radarSummary.value.state === "雷达已运行") {
     rows.push("雷达：已运行。");
@@ -2107,6 +2133,9 @@ function plainRadarFreshnessLabel(
     return "雷达点口径：雷达刷新失败，未显示新点位。";
   }
   if (radarState === "雷达无新点") {
+    if (radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
+      return "雷达点口径：雷达原始包已收到，但当前没有解析出地图雷达点；这不是地图没刷新。";
+    }
     return "雷达点口径：雷达驱动在运行，但当前没有读到新的雷达点；这不是地图没刷新。";
   }
   if (radarState === "雷达待刷新" || radarState === "刷新中") {
@@ -2547,6 +2576,7 @@ const plainMapVisualSummary = computed(() => {
   const radarLocalPointCount = radarLocalScanOverlay.dots.length;
   const radarCountOnlyMarkerLabel = radarPreviewCountOnlyMarkerLabel(radarState);
   const radarObstacleDistanceLabel = latestRadarObstacleDistanceLabel();
+  const radarRawPacketNoPoints = radarState === "雷达无新点" && radarRawPacketObservedWithoutVisiblePoints(lidar);
   const radarCanShowObstacleDistance = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "刷新中";
   const showRadarObstacleDistance = !poseObserved && radarCanShowObstacleDistance && radarLocalPointCount === 0 && !radarCountOnlyMarkerLabel && Boolean(radarObstacleDistanceLabel);
   const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;
@@ -2569,7 +2599,7 @@ const plainMapVisualSummary = computed(() => {
       : radarState === "雷达启动中"
       ? "雷达启动中，位置未读到"
       : radarNeedsMapPose
-      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerLabel ? `${radarState}，${radarCountOnlyMarkerLabel}` : showRadarObstacleDistance ? `${radarState}，${radarObstacleDistanceLabel}` : `${radarState}，位置未读到`
+      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerLabel ? `${radarState}，${radarCountOnlyMarkerLabel}` : showRadarObstacleDistance ? `${radarState}，${radarObstacleDistanceLabel}` : radarRawPacketNoPoints ? `${radarState}，原始包已收到，暂无地图点` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarState;
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
@@ -2597,6 +2627,8 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达启动中，地图位置未读到，等待刷新确认"
       : showRadarObstacleDistance
         ? `${radarState}，地图位置未读到，${radarObstacleDistanceLabel}，按雷达局部距离显示，未贴到地图`
+      : radarRawPacketNoPoints
+        ? `${radarState}，地图位置未读到，原始包已收到但暂无地图雷达点`
       : radarNeedsMapPose && radarCountOnlyMarkerLabel
         ? `${radarState}，地图位置未读到，${radarCountOnlyMarkerLabel}，仅点数没有点数组，未贴到地图`
       : radarNeedsMapPose && radarLocalPointCount > 0
