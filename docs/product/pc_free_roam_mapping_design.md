@@ -28,8 +28,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-25 23:52 起，上位机新增固定 `POST /api/free-roam/autonomy/start|stop`，PC 新增对应固定代理
   `/api/robot-control/free-roam/autonomy/start|stop`。start 必须带 `confirm_operator_safety=true`，`confirm_mapping_active` 只表示本轮是否尝试建图；
   2026-06-26 21:35 起，即使相机首帧或雷达 proof 不 ready，只要确认项满足也可设置 `free_roam_autonomy_node` 的
-  `operator_confirmed/mapping_active/external_stop_requested` 状态机参数，并在回包中标明
-  `free_move_ready=true`、`motion_without_radar_allowed=true`、`mapping_readiness.ready=false`。2026-06-26 23:59 起，HTTP start/stop
+  `operator_confirmed/external_stop_requested` 状态机参数，并在回包中标明
+  `free_move_ready=true`、`motion_without_radar_allowed=true`、`mapping_readiness.ready=false`。2026-06-26 23:22 起，上位机 API
+  对直接调用也二次收紧：`confirm_mapping_active=true` 只是请求，只有 `mapping_readiness.ready=true` 时才真正写
+  `mapping_active=true`；否则仍允许低速自由移动，但回包必须显示 `mapping_active_requested=true`、`mapping_active_applied=false`。
+  2026-06-26 23:59 起，HTTP start/stop
   不再写 `motion_hil_unlocked` 或 `enable_cmd_vel_publish`；这两个运动发布解锁只允许通过 `learn.launch.py` / `bringup.launch.py`
   的显式 launch 参数配置，`cmd_vel_topic` 仍不允许由 PC 或浏览器改写。stop 不要求相机/雷达 ready，只把状态机设置为
   `external_stop_requested=true`。

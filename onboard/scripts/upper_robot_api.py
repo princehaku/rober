@@ -6544,8 +6544,20 @@ class UpperRobotApi:
             )
 
         mapping_active_requested = bool(request.get("confirm_mapping_active") is True)
+        mapping_readiness = (
+            sensor_readiness.get("mapping_readiness")
+            if isinstance(sensor_readiness, dict)
+            else None
+        )
+        mapping_ready = (
+            bool(mapping_readiness.get("ready"))
+            if isinstance(mapping_readiness, dict)
+            else False
+        )
+        # 自由移动只需要现场安全确认；建图会话必须由上位机再次确认相机和雷达质量，避免直接打 API 绕过 PC 门禁。
+        mapping_active_applied = bool(mapping_active_requested and mapping_ready)
         if action == "start":
-            command_result = run_free_roam_param_sequence(action, enable_motion=True, mapping_active=mapping_active_requested)
+            command_result = run_free_roam_param_sequence(action, enable_motion=True, mapping_active=mapping_active_applied)
         else:
             command_result = run_free_roam_param_sequence(action, enable_motion=False)
         http_status, latest = self.free_roam_autonomy_latest()
@@ -6566,6 +6578,7 @@ class UpperRobotApi:
                     if key in request
                 },
                 "mapping_active_requested": mapping_active_requested,
+                "mapping_active_applied": mapping_active_applied,
                 "latest_http_status": http_status,
                 "latest_decision_state": (
                     latest.get("decision_state")
