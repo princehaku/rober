@@ -13934,6 +13934,134 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
+  it("auto connects shared Camera Preview when the page opens and camera source is ready", async () => {
+    // 多个 PC 页面进入时都应自动接入自己的 recvonly peer；共享底层摄像头由上车端服务保证。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "ready";
+    summaryFixture.readback_summary.camera.devices_status = "loaded";
+    summaryFixture.readback_summary.camera.preview_status = "idle_not_started";
+    summaryFixture.readback_summary.camera.video_source = "/dev/video1";
+    summaryFixture.readback_summary.camera.selected_path = "/dev/video1";
+    summaryFixture.readback_summary.camera.source_readiness = "source_selected_not_probed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    const visibleFrameData = new Uint8ClampedArray(32 * 24 * 4);
+    for (let index = 0; index < visibleFrameData.length; index += 4) {
+      visibleFrameData[index] = 220;
+      visibleFrameData[index + 1] = 200;
+      visibleFrameData[index + 2] = 180;
+      visibleFrameData[index + 3] = 255;
+    }
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((contextId: string) => {
+      if (contextId !== "2d") {
+        return null;
+      }
+      return {
+        drawImage: () => undefined,
+        getImageData: () => ({ data: visibleFrameData }),
+      } as unknown as CanvasRenderingContext2D;
+    });
+    class FakeMediaStream {
+      tracks: Array<{ kind: string; readyState: string; stop: () => void }>;
+
+      constructor(tracks: Array<{ kind: string; readyState: string; stop: () => void }>) {
+        this.tracks = tracks;
+      }
+
+      getTracks() {
+        return this.tracks;
+      }
+    }
+
+    class FakePeerConnection {
+      iceConnectionState = "new";
+      iceGatheringState = "complete";
+      localDescription: { type: "offer"; sdp: string } | null = null;
+      remoteDescription: { type: "answer"; sdp: string } | null = null;
+      oniceconnectionstatechange: (() => void) | null = null;
+      ontrack: ((
+        event: {
+          track: { kind: string; readyState: string; stop: () => void; onended: (() => void) | null };
+          streams: FakeMediaStream[];
+        },
+      ) => void) | null = null;
+
+      addTransceiver() {
+        return undefined;
+      }
+
+      async createOffer() {
+        return { type: "offer" as const, sdp: "v=0\r\ns=local-offer\r\n" };
+      }
+
+      async setLocalDescription(description: { type: "offer"; sdp: string }) {
+        this.localDescription = description;
+      }
+
+      async setRemoteDescription(description: { type: "answer"; sdp: string }) {
+        const videoTrack = {
+          kind: "video",
+          readyState: "live",
+          stop: () => undefined,
+          onended: null,
+        };
+        this.remoteDescription = description;
+        this.iceConnectionState = "connected";
+        this.oniceconnectionstatechange?.();
+        this.ontrack?.({
+          track: videoTrack,
+          streams: [new FakeMediaStream([videoTrack])],
+        });
+      }
+
+      getReceivers() {
+        return [];
+      }
+
+      close() {
+        this.iceConnectionState = "closed";
+        this.oniceconnectionstatechange?.();
+      }
+    }
+
+    vi.stubGlobal("MediaStream", FakeMediaStream as unknown as typeof MediaStream);
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection as unknown as typeof RTCPeerConnection);
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
+    const mjpegPreview = wrapper.find('[data-testid="robot-camera-mjpeg-preview"]');
+    expect(mjpegPreview.exists()).toBe(true);
+    expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
+    await mjpegPreview.trigger("load");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面可见");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示 MJPEG 实时画面。MJPEG 实时流已显示。");
+
+    const previewVideoElement = wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement;
+    Object.defineProperty(previewVideoElement, "videoWidth", { configurable: true, value: 640 });
+    Object.defineProperty(previewVideoElement, "videoHeight", { configurable: true, value: 480 });
+    Object.defineProperty(previewVideoElement, "readyState", { configurable: true, value: 4 });
+    previewVideoElement.dispatchEvent(new Event("loadeddata"));
+    previewVideoElement.dispatchEvent(new Event("playing"));
+    await vi.advanceTimersByTimeAsync(1100);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面可见");
+    expect(wrapper.find('[data-testid="robot-camera-preview-video"]').attributes("data-frame-state")).toBe("已绘制帧");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示真实视频帧。浏览器已绘制视频帧 640x480。");
+    expect(wrapper.find("details").text()).toContain("peer-preview-001");
+    expect(wrapper.find("details").text()).toContain("streaming");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
     // WebRTC UI 测试只验证本机代理和前端状态机，不连接真实浏览器媒体栈或机器人。
     vi.useFakeTimers();

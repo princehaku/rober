@@ -6682,6 +6682,47 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation camera MJPEG proxy forwards only fixed readonly multipart stream", async () => {
+    // MJPEG fallback 是固定 GET 只读流；不能退化成任意 camera/control 代理。
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method !== "GET" || req.url !== "/api/camera/mjpeg") {
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ error: "not_found" }));
+        return;
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "multipart/x-mixed-replace; boundary=roberframe");
+      res.end("--roberframe\r\nContent-Type: image/jpeg\r\nContent-Length: 4\r\n\r\njpeg\r\n");
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = await response.text();
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("multipart/x-mixed-replace");
+      expect(response.headers.get("x-robber-proxy")).toBe("camera-mjpeg-readonly");
+      expect(body).toContain("Content-Type: image/jpeg");
+      expect(body).toContain("jpeg");
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation base manual proxy clamps request and requires confirm_hil_checklist", async () => {
     // 受控点动代理只允许固定 manual endpoint，并且必须经过安全确认 gate 与速度/时长 clamp。
     const upstream = await listenRobotBaseCommandApi({

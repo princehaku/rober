@@ -190,6 +190,47 @@ Cedrus decoder。由于本轮没有成功采集可见 frame，且 `/api/operator
 当前只能证明 camera service/device readback 可用，不能把视觉内容用于路线关键帧、
 视觉定位、障碍识别或远程可视验收。
 
+## 2026-06-26 共享实时预览与 MJPEG fallback
+
+PC 首屏实时画面现在采用两条只读画面链路：
+
+- 优先自动接入 WebRTC `recvonly` peer；每个进入页面的浏览器都创建自己的 peer。
+- 当 WebRTC ICE 已发 offer 但 video 元素仍未绘帧时，PC 页面显示 MJPEG fallback：
+  `GET /api/robot-control/camera/mjpeg?baseUrl=http://192.168.1.11:8787`。
+
+链路为：
+
+```text
+PC browser <img>
+  -> PC Node /api/robot-control/camera/mjpeg
+  -> upper API /api/camera/mjpeg
+  -> camera service 8088 /mjpeg
+  -> SharedCameraCapture(/dev/video1)
+```
+
+`local_webrtc_camera_smoke.py` 的 MJPEG 与 WebRTC 共用 `SharedCameraCapture`：
+同一视频源只打开一个 OpenCV `VideoCapture`，每个 WebRTC peer 或 MJPEG HTTP
+client 只增加引用计数，最后一个 client 断开后才释放设备。该链路不发布
+`/cmd_vel`，不调用底盘串口，不改变 `safe_to_control=false`、
+`robot_control_executed=false`。
+
+本轮真机 smoke：
+
+- `GET http://127.0.0.1:8088/mjpeg` 返回 multipart MJPEG，2 秒截取约 526 KB，
+  数据包含 `Content-Type: image/jpeg` 与 JPEG SOI `0xffd8`。
+- `GET http://127.0.0.1:8787/api/camera/mjpeg` 返回 multipart MJPEG，2 秒截取约
+  525 KB。
+- `GET http://127.0.0.1:7001/api/robot-control/camera/mjpeg?baseUrl=...8787`
+  返回 multipart MJPEG，带 `X-Robber-Proxy: camera-mjpeg-readonly`。
+- PC 浏览器首屏在未点击“打开画面”的情况下显示 `画面可见`，
+  `robot-camera-mjpeg-preview` 为 `640x480`，状态文案为“当前显示 MJPEG 实时画面”。
+- 客户端断开 3 秒后，8088 health 显示 `active_peer_count=0`、
+  `shared_captures={}`，证明 PC proxy 会随响应关闭 abort 上游流。
+
+当前仍保留 WebRTC 诊断：本轮 in-app browser 中 WebRTC offer 能创建 peer，但 ICE
+停在 `new` 且 `frames_read=0`；MJPEG fallback 是为现场实时可视优先提供的稳定通道，
+不是运动或视觉算法完成证明。
+
 ## 2026-06-11 20:05 camera visible content gate refresh
 
 `sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/` 继续只做

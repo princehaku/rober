@@ -31,6 +31,7 @@ import {
   postRobotControlCameraOffer,
   postRobotControlCameraPeerClose,
   postRobotControlCameraFirstFrameProbe,
+  robotControlCameraMjpegUrl,
 } from "../client/workstationApi";
 import { DEFAULT_ROBOT_API_BASE_URL } from "../shared/robotDefaults";
 import type {
@@ -218,7 +219,10 @@ const previewStream = ref<MediaStream | null>(null);
 const previewPeerConnection = ref<RTCPeerConnection | null>(null);
 const previewStartPending = ref(false);
 const previewStopPending = ref(false);
+const previewAutoConnectSuppressed = ref(false);
 const sessionEpoch = ref(0);
+const mjpegPreviewLoaded = ref(false);
+const mjpegPreviewFailed = ref(false);
 const videoElementHasSrcObject = ref(false);
 const videoElementReadyState = ref(0);
 const videoElementWidth = ref(0);
@@ -468,6 +472,9 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
   if (previewStopPending.value) {
     return { state: "关闭中", hint: "正在关闭实时画面，等待上位机释放视频会话。" };
   }
+  if (cameraMjpegFrameObserved.value) {
+    return { state: "画面可见", hint: "实时画面已显示；当前使用 MJPEG 备用通道。" };
+  }
   switch (previewStatus.value) {
     case "starting_local_peer":
     case "connecting_offer_posted":
@@ -503,7 +510,13 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
         return { state: "失败", hint: sourceFailureHint };
       }
       if (cameraOnline) {
-        return { state: "未打开", hint: "相机在线，点打开画面。" };
+        if (previewAutoConnectSuppressed.value) {
+          return { state: "未打开", hint: "相机在线，画面已手动关闭。" };
+        }
+        return {
+          state: "未打开",
+          hint: typeof globalThis.RTCPeerConnection === "function" ? "相机在线，正在自动打开画面。" : "相机在线，点打开画面。",
+        };
       }
       return { state: "未打开", hint: "还没有打开实时画面。" };
   }
@@ -756,11 +769,8 @@ function syncJogInputsToBoundary(): void {
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
 const cameraFrameTooDark = computed(() => cameraSummary.value.state === "画面偏暗");
-const plainCameraReadyForFreeRoamAutonomy = computed(() => {
-  // 自动扫图发车只要求上位机相机采集源 ready，不强制浏览器已经打开 WebRTC 画面。
-  if (robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready") {
-    return true;
-  }
+const cameraReadyForSharedPreview = computed(() => {
+  // 上车端 WebRTC 服务已共享底层 capture；每个 PC 页面只需在相机源 ready 时接入自己的 recvonly peer。
   const camera = robotSummary.value?.readback_summary.camera;
   const sourceFailure =
     camera?.source_readiness === "first_frame_failed"
@@ -768,8 +778,25 @@ const plainCameraReadyForFreeRoamAutonomy = computed(() => {
     || camera?.last_offer_failure_reason === "first_frame_timeout";
   return Boolean(camera?.status === "ready" && camera?.video_source && !sourceFailure);
 });
+const cameraMjpegPreviewUrl = computed(() => (
+  cameraReadyForSharedPreview.value ? robotControlCameraMjpegUrl(robotApiBaseUrl.value) : ""
+));
+const cameraMjpegFallbackVisible = computed(() => (
+  cameraReadyForSharedPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
+));
+const cameraMjpegFrameObserved = computed(() => cameraMjpegFallbackVisible.value && mjpegPreviewLoaded.value && !mjpegPreviewFailed.value);
+const plainCameraReadyForFreeRoamAutonomy = computed(() => {
+  // 自动扫图发车只要求上位机相机采集源 ready，不强制浏览器已经打开 WebRTC 画面。
+  if (robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready") {
+    return true;
+  }
+  return cameraReadyForSharedPreview.value;
+});
 function plainCameraVideoFrameTruth(): string {
   // 普通首屏只说浏览器是否真的绘制出帧，不暴露 readyState/srcObject 等工程字段。
+  if (cameraMjpegFrameObserved.value) {
+    return "MJPEG 实时流已显示。";
+  }
   const hasSize = videoElementWidth.value > 0 && videoElementHeight.value > 0;
   const sizeText = hasSize ? ` ${videoElementWidth.value}x${videoElementHeight.value}` : "";
   switch (videoElementFrameStatus.value) {
@@ -788,6 +815,9 @@ function plainCameraVideoFrameTruth(): string {
 
 const plainCameraFrameEvidenceState = computed(() => {
   // data-state 表达业务结论；这里单独表达浏览器帧证据，避免“已连接”和“已出图”被混在一起。
+  if (cameraMjpegFrameObserved.value) {
+    return "已绘制帧";
+  }
   switch (videoElementFrameStatus.value) {
     case "frame_callback_observed":
     case "visible_frame_ready":
@@ -810,7 +840,7 @@ const plainCameraWysiwygStatus = computed(() => {
   const frameTruth = plainCameraVideoFrameTruth();
   switch (cameraSummary.value.state) {
     case "画面可见":
-      return `画面状态：当前显示真实视频帧。${frameTruth}`;
+      return cameraMjpegFrameObserved.value ? `画面状态：当前显示 MJPEG 实时画面。${frameTruth}` : `画面状态：当前显示真实视频帧。${frameTruth}`;
     case "画面偏暗":
       return `画面状态：当前画面偏暗，先检查镜头或光线。${frameTruth}`;
     case "已打开":
@@ -826,8 +856,14 @@ const plainCameraWysiwygStatus = computed(() => {
     case "失败":
       return `画面状态：${cameraSummary.value.hint}`;
     default:
+      if (cameraSummary.value.hint === "相机在线，正在自动打开画面。") {
+        return "画面状态：相机在线，页面正在自动接入实时画面。";
+      }
       if (cameraSummary.value.hint === "相机在线，点打开画面。") {
         return "画面状态：相机在线但画面未打开，点打开画面。";
+      }
+      if (cameraSummary.value.hint === "相机在线，画面已手动关闭。") {
+        return "画面状态：相机在线，画面已手动关闭；需要时点打开画面。";
       }
       return "画面状态：还没打开，本页没有显示实时画面。";
   }
@@ -6628,6 +6664,17 @@ function handlePreviewVideoReady(): void {
   }
 }
 
+function handleMjpegPreviewLoaded(): void {
+  // MJPEG 的 load 事件说明浏览器已拿到真实 JPEG 帧；它只作为画面 fallback，不改变任何控制 gate。
+  mjpegPreviewLoaded.value = true;
+  mjpegPreviewFailed.value = false;
+}
+
+function handleMjpegPreviewError(): void {
+  // MJPEG 失败只影响画面 fallback；WebRTC 链路和相机探针仍保留原有诊断。
+  mjpegPreviewFailed.value = true;
+}
+
 function bindPreviewStreamToElement(stream: MediaStream, epoch: number): void {
   // 绑定后主动 play，避免部分浏览器只完成 WebRTC track 但 video 元素仍停在 HAVE_NOTHING。
   const videoElement = previewVideo.value;
@@ -6753,6 +6800,7 @@ async function refreshConsole(): Promise<void> {
   } finally {
     loading.value = false;
   }
+  void maybeAutoStartSharedCameraPreview();
 }
 
 async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean; radarStatusRefresh?: boolean } = {}): Promise<void> {
@@ -8561,10 +8609,37 @@ async function sendStop(): Promise<RobotControlBaseCommandProxyResponse | null> 
   return stopResult;
 }
 
-async function startPreview(): Promise<void> {
-  // Start Preview 只在显式用户点击后创建会话，页面初始不自动占用 camera peer。
+function shouldAutoStartSharedCameraPreview(): boolean {
+  // 只有相机源 ready 且浏览器支持 WebRTC 时才自动接入；失败态和手动关闭不反复打扰 operator。
+  return cameraReadyForSharedPreview.value
+    && !previewAutoConnectSuppressed.value
+    && typeof globalThis.RTCPeerConnection === "function"
+    && robotApiBaseUrl.value.trim().length > 0
+    && !previewBusy.value
+    && !previewPeerConnection.value
+    && !previewPeerId.value
+    && previewStatus.value === "idle_not_started";
+}
+
+async function maybeAutoStartSharedCameraPreview(): Promise<void> {
+  // 新进入的 PC 页面自动拿一个共享预览 peer；上车端仍只打开一次底层摄像头，避免 UVC 独占。
+  if (!shouldAutoStartSharedCameraPreview()) {
+    return;
+  }
+  await nextTick();
+  if (!shouldAutoStartSharedCameraPreview()) {
+    return;
+  }
+  await startPreviewInternal(true);
+}
+
+async function startPreviewInternal(autoConnect: boolean): Promise<void> {
+  // Start Preview 创建 recvonly WebRTC 会话；autoConnect 只改变抑制策略，不改变媒体/安全边界。
   if (!robotApiBaseUrl.value.trim() || previewStartPending.value) {
     return;
+  }
+  if (!autoConnect) {
+    previewAutoConnectSuppressed.value = false;
   }
   previewStartPending.value = true;
   failureReason.value = "";
@@ -8637,11 +8712,17 @@ async function startPreview(): Promise<void> {
   }
 }
 
+async function startPreview(): Promise<void> {
+  // 用户点击打开画面时清除自动连接抑制，复用与自动接入相同的共享 WebRTC 链路。
+  await startPreviewInternal(false);
+}
+
 async function stopPreview(): Promise<void> {
   // Stop Preview 必须显式回收本地 peer 和远端 peer_id，防止 8088 active peers 残留。
   if (!canStopPreview.value) {
     return;
   }
+  previewAutoConnectSuppressed.value = true;
   previewStopPending.value = true;
   failureReason.value = "";
   rawFailureReason.value = "";
@@ -8658,11 +8739,18 @@ watch(previewVideo, (videoElement) => {
   syncPreviewVideoElementDiagnostics();
 });
 
+watch(cameraMjpegPreviewUrl, () => {
+  // baseUrl 或相机 ready 状态变化时清掉上一条 MJPEG 证据，防止旧流误标新目标。
+  mjpegPreviewLoaded.value = false;
+  mjpegPreviewFailed.value = false;
+});
+
 watch(robotApiBaseUrl, async (nextValue, previousValue) => {
   // baseUrl 切换必须先清旧 peer，避免把旧板端会话遗留在新的 operator 目标上。
   if (nextValue.trim() === previousValue.trim()) {
     return;
   }
+  previewAutoConnectSuppressed.value = false;
   mapPreviewResult.value = null;
   plainTripPostExecutionMapPreviewRefreshFailed.value = false;
   if (keyboardHeldDirection.value) {
@@ -8679,7 +8767,7 @@ watch(manualBoundary, () => {
 }, { immediate: true });
 
 onMounted(() => {
-  // 初次加载直接读取固定上位机地址的摘要；控制动作仍需要显式点击或按键。
+  // 初次加载直接读取固定上位机地址；实时画面可自动接入，运动控制仍需要显式点击或按键。
   resetKeyboardControlOwnerOnMount();
   window.addEventListener("keydown", handleGlobalKeyDown);
   window.addEventListener("keyup", handleGlobalKeyUp);
@@ -8746,6 +8834,15 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
           </div>
           <div class="camera-preview-frame" data-testid="robot-camera-preview-frame" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
+            <img
+              v-if="cameraMjpegFallbackVisible && cameraMjpegPreviewUrl"
+              class="camera-mjpeg-preview"
+              data-testid="robot-camera-mjpeg-preview"
+              :src="cameraMjpegPreviewUrl"
+              alt=""
+              @load="handleMjpegPreviewLoaded"
+              @error="handleMjpegPreviewError"
+            >
             <video
               ref="previewVideo"
               data-testid="robot-camera-preview-video"

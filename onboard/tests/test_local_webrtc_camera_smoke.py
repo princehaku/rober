@@ -95,6 +95,32 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertEqual("type_must_be_offer", reason)
 
+    def test_mjpeg_part_encoder_wraps_only_real_jpeg_bytes(self) -> None:
+        """MJPEG fallback 只能包装 OpenCV 编码出的真实 JPEG bytes，不能编造占位图。"""
+
+        class FakeEncoded:
+            def tobytes(self) -> bytes:
+                return b"\xff\xd8real-jpeg\xff\xd9"
+
+        class FakeCv2:
+            def imencode(self, suffix: str, frame: object) -> tuple[bool, FakeEncoded]:
+                self.suffix = suffix
+                self.frame = frame
+                return True, FakeEncoded()
+
+        fake_cv2 = FakeCv2()
+        frame = object()
+
+        part = camera.encode_mjpeg_part(fake_cv2, frame)
+
+        self.assertIsNotNone(part)
+        assert part is not None
+        self.assertIn(b"--roberframe", part)
+        self.assertIn(b"Content-Type: image/jpeg", part)
+        self.assertIn(b"\xff\xd8real-jpeg\xff\xd9", part)
+        self.assertEqual(".jpg", fake_cv2.suffix)
+        self.assertIs(frame, fake_cv2.frame)
+
     def test_missing_webrtc_dependencies_return_structured_fail_closed(self) -> None:
         """缺 aiortc/cv2/av 时 /offer 必须结构化失败，不能伪造图像。"""
         state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)

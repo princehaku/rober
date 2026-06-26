@@ -1,5 +1,6 @@
 import express from "express";
 import { createServer } from "node:net";
+import { Readable } from "node:stream";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -51,6 +52,9 @@ import {
   scanDangerousTrueFields,
 } from "./robotControlSummary";
 import { WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../shared/workstationDefaults";
+import type {
+  ReadableStream as NodeReadableStream,
+} from "node:stream/web";
 import type {
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
@@ -2299,6 +2303,62 @@ export function createWorkstationApp(): express.Express {
       ],
     };
     res.status(responseBody.proxy_status === "peer_closed" ? 200 : 502).json(responseBody);
+  });
+
+  workstationApp.get("/api/robot-control/camera/mjpeg", async (req, res) => {
+    // MJPEG fallback 只代理固定 camera stream；用于 WebRTC ICE 未出帧时仍显示真实连续画面。
+    const sourceBaseUrl = robotControlReadOnlyQueryBaseUrl(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      res.status(400).json({ error: normalized.reason, safe_to_control: false, robot_control_executed: false });
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    try {
+      const remote = await fetch(endpointUrl(normalized.normalized, "/api/camera/mjpeg"), {
+        method: "GET",
+        signal: controller.signal,
+      });
+      const contentType = remote.headers.get("content-type") ?? "";
+      if (!remote.ok || !contentType.includes("multipart/x-mixed-replace") || !remote.body) {
+        clearTimeout(timeout);
+        res.status(502).json({
+          error: "camera_mjpeg_proxy_failed",
+          remote_http_status: remote.status,
+          safe_to_control: false,
+          robot_control_executed: false,
+        });
+        return;
+      }
+      res.status(200);
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+      res.setHeader("X-Robber-Proxy", "camera-mjpeg-readonly");
+      const stream = Readable.fromWeb(remote.body as unknown as NodeReadableStream<Uint8Array>);
+      const cleanup = () => {
+        clearTimeout(timeout);
+        controller.abort();
+      };
+      res.on("close", () => {
+        cleanup();
+        stream.destroy();
+      });
+      stream.on("end", cleanup);
+      stream.on("error", cleanup);
+      stream.pipe(res);
+    } catch (error) {
+      clearTimeout(timeout);
+      if (res.headersSent) {
+        res.end();
+        return;
+      }
+      res.status(502).json({
+        error: error instanceof Error ? shortText(error.message, "camera_mjpeg_proxy_failed") : "camera_mjpeg_proxy_failed",
+        safe_to_control: false,
+        robot_control_executed: false,
+      });
+    }
   });
 
   workstationApp.post("/api/robot-control/camera/first-frame/probe", async (req, res) => {

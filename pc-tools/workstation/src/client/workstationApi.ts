@@ -134,6 +134,7 @@ const API_ENDPOINTS = {
   robotControlFreeRoamAutonomyLatest: "/api/robot-control/free-roam/autonomy/latest",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
   robotControlCameraFirstFrameProbe: "/api/robot-control/camera/first-frame/probe",
+  robotControlCameraMjpeg: "/api/robot-control/camera/mjpeg",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
   robotControlOperatorReport: "/api/robot-control/operator/report",
   proofBoundary: "/api/proof-boundary",
@@ -239,6 +240,16 @@ function robotControlCameraFirstFrameProbeUrl(baseUrl: string): string {
     params.set("baseUrl", trimmed);
   }
   return `${API_ENDPOINTS.robotControlCameraFirstFrameProbe}?${params.toString()}`;
+}
+
+export function robotControlCameraMjpegUrl(baseUrl: string): string {
+  // MJPEG fallback 仍走本机 Node 代理，浏览器不直连上位机或 8088 camera service。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.robotControlCameraMjpeg}?${params.toString()}`;
 }
 
 function robotControlBaseProxyUrl(endpoint: string, baseUrl: string): string {

@@ -24,12 +24,14 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlparse
 
 
 SCHEMA = "trashbot.local_webrtc_camera_smoke.v1"
 DEVICES_SCHEMA = "trashbot.local_webrtc_camera_devices.v1"
 OFFER_SCHEMA = "trashbot.local_webrtc_camera_offer.v1"
 CLOSE_SCHEMA = "trashbot.local_webrtc_camera_close.v1"
+MJPEG_BOUNDARY = "roberframe"
 APP_NAME = "rober-local-webrtc-camera-smoke"
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8088
@@ -498,6 +500,20 @@ def validate_offer_payload(payload: Any) -> tuple[bool, str | None]:
     if not isinstance(payload.get("sdp"), str) or not payload.get("sdp", "").strip():
         return False, "sdp_must_be_non_empty_string"
     return True, None
+
+
+def encode_mjpeg_part(cv2: Any, frame: Any) -> bytes | None:
+    """MJPEG fallback 只包装真实 OpenCV 帧；编码失败时不返回伪图片。"""
+    ok, encoded = cv2.imencode(".jpg", frame)
+    if not ok or encoded is None:
+        return None
+    jpeg = encoded.tobytes() if hasattr(encoded, "tobytes") else bytes(encoded)
+    return (
+        f"--{MJPEG_BOUNDARY}\r\n"
+        "Content-Type: image/jpeg\r\n"
+        "Cache-Control: no-store\r\n"
+        f"Content-Length: {len(jpeg)}\r\n\r\n"
+    ).encode("ascii") + jpeg + b"\r\n"
 
 
 @dataclass
@@ -1024,13 +1040,57 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler 固定命名。
         """GET endpoint 全部只读，不打开底盘、不发送命令。"""
-        if self.path == "/" or self.path == "/health":
+        parsed_path = urlparse(self.path).path
+        if parsed_path == "/" or parsed_path == "/health":
             self._send_json(self.state.health())
             return
-        if self.path == "/devices":
+        if parsed_path == "/devices":
             self._send_json(self.state.current_devices())
             return
+        if parsed_path in {"/mjpeg", "/stream.mjpg"}:
+            self._send_mjpeg_stream()
+            return
         self._send_json(error_payload("not_found", "unknown_get_endpoint"), status=HTTPStatus.NOT_FOUND)
+
+    def _send_mjpeg_stream(self) -> None:
+        """MJPEG 兜底预览复用共享 capture，避免 WebRTC ICE 卡住时用户看不到实时画面。"""
+        deps = import_state()
+        if not deps.get("cv2"):
+            self._send_json(error_payload("dependency_missing", "cv2_required_for_mjpeg"), status=HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+        import cv2  # type: ignore[import-not-found]
+
+        snapshot = collect_video_candidates()
+        selection = resolve_video_source(self.state.video_source, snapshot)
+        selected_path = selection.get("selected_path")
+        if not selected_path:
+            self._send_json(error_payload("video_source_unavailable", "auto_selection_found_no_capture_device"), status=HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+        shared_capture, open_error = self.state.acquire_shared_capture(str(selected_path), cv2)
+        if shared_capture is None:
+            self._send_json(open_error or error_payload("camera_open_failed", "opencv_capture_not_opened"), status=HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={MJPEG_BOUNDARY}")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.end_headers()
+        try:
+            while True:
+                ok, frame = shared_capture.read_frame()
+                if not ok or frame is None:
+                    break
+                part = encode_mjpeg_part(cv2, frame)
+                if part is None:
+                    break
+                self.wfile.write(part)
+                self.wfile.flush()
+                time.sleep(max(0.03, 1.0 / max(1, self.state.fps)))
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            if shared_capture.release_ref():
+                self.state.shared_captures.pop(str(selected_path), None)
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler 固定命名。
         """POST 仅处理 WebRTC offer 和 peer close，绝不代理运动指令。"""

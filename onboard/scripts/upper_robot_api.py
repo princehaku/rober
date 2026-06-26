@@ -156,6 +156,7 @@ ROUTE_PATHS = {
     "camera_offer": "/api/camera/offer",
     "camera_peer_close": "/api/camera/peers/{peer_id}/close",
     "camera_first_frame_probe": "/api/camera/first-frame/probe",
+    "camera_mjpeg": "/api/camera/mjpeg",
     "radar_status": "/api/radar/status",
     "radar_start": "/api/radar/start",
     "radar_stop": "/api/radar/stop",
@@ -6999,6 +7000,41 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = await api.camera_first_frame_probe(body if isinstance(body, dict) else {})
         return json_response(payload, status=http_status)
 
+    async def camera_mjpeg(_: web.Request) -> Any:
+        """只读 MJPEG 预览代理；用于 WebRTC ICE 未连通时仍能显示真实连续画面。"""
+        from aiohttp import ClientSession, ClientTimeout
+
+        target = urljoin(api.camera_base_url + "/", "mjpeg")
+        try:
+            async with ClientSession(timeout=ClientTimeout(total=None, sock_connect=6)) as session:
+                async with session.get(target) as upstream:
+                    content_type = upstream.headers.get("Content-Type", "")
+                    if upstream.status != 200 or "multipart/x-mixed-replace" not in content_type:
+                        text = await upstream.text()
+                        return json_response(
+                            {
+                                "error": "camera_mjpeg_proxy_failed",
+                                "remote_http_status": upstream.status,
+                                "body_preview": text[:200],
+                                **proof_flags(),
+                            },
+                            status=502,
+                        )
+                    response = web.StreamResponse(
+                        status=200,
+                        headers={
+                            "Content-Type": content_type,
+                            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                            "Access-Control-Allow-Origin": "*",
+                        },
+                    )
+                    await response.prepare(_)
+                    async for chunk in upstream.content.iter_chunked(65536):
+                        await response.write(chunk)
+                    return response
+        except Exception as exc:  # noqa: BLE001 - 摄像头流失败不能影响其他上位 API。
+            return json_response({"error": "camera_mjpeg_proxy_failed", "detail": compact_error(exc), **proof_flags()}, status=502)
+
     async def radar_status(_: web.Request) -> Any:
         return json_response(api.radar_status())
 
@@ -7165,6 +7201,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["camera_offer"], camera_offer)
     app.router.add_post(ROUTE_PATHS["camera_peer_close"], camera_peer_close)
     app.router.add_post(ROUTE_PATHS["camera_first_frame_probe"], camera_first_frame_probe)
+    app.router.add_get(ROUTE_PATHS["camera_mjpeg"], camera_mjpeg)
     app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
     app.router.add_post(ROUTE_PATHS["radar_start"], radar_start)
     app.router.add_post(ROUTE_PATHS["radar_stop"], radar_stop)
