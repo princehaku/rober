@@ -7255,6 +7255,28 @@ describe("workstation fail-closed API contracts", () => {
           read_call_timeout_s: 4,
         },
       ]);
+      const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryBody = (await summaryResponse.json()) as {
+        readback_summary: {
+          camera: {
+            source_readiness: string;
+            source_failure_reason: string;
+            first_frame_probe_status: string;
+            first_frame_probe_open_ok: string;
+            first_frame_probe_read_ok: string;
+            first_frame_probe_visible_content_proven: string;
+          };
+        };
+        safe_to_control: boolean;
+      };
+
+      expect(summaryBody.readback_summary.camera.source_readiness).toBe("first_frame_failed");
+      expect(summaryBody.readback_summary.camera.source_failure_reason).toBe("probe_http_status_503");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_status).toBe("open_failed");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_open_ok).toBe("false");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_read_ok).toBe("false");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_visible_content_proven).toBe("false");
+      expect(summaryBody.safe_to_control).toBe(false);
     } finally {
       await workstation.close();
       await upstream.close();

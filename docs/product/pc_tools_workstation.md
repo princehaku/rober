@@ -2695,3 +2695,10 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 `decision_reason=现场请求停止`、`stop_required=true`、`artifact_only=true`、`cmd_vel_publish_enabled=false`、`gate_count=5`。
 这让普通界面和诊断不用再只从 `safe_command_boundary.free_roam_autonomy_gates` 里反推“为什么自动扫图还没动”；但该摘要仍是只读状态，
 不解锁运动发布，不调用 free-roam start/stop、manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-26 21:05 起，PC Node 会按小车 baseUrl 记住最近一次 `camera/first-frame/probe` 的短结果，并把它叠加到
+`readback_summary.camera`。如果上车 `/api/camera/health` 仍停在 `source_selected_not_probed`，但刚刚的 probe 已经返回
+`capture_read_call_timeout`、`open_ok=true/read_ok=false`，summary 会显示 `source_readiness=first_frame_failed`、
+`source_failure_reason=capture_read_call_timeout`，并带上 `first_frame_probe_status/open_ok/read_ok/visible_content_proven/checked_at_ms`。
+这样刷新页面或另一个普通用户进入 7001 时，也能看到最近画面检查的真实失败，而不是误以为还没检查过。该缓存只保留 PC 只读诊断摘要，
+不会打开 MJPEG/WebRTC，不调用 backend smoke、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`。

@@ -82,6 +82,7 @@ import type {
   RobotControlDeliveryLatestResponse,
   RobotControlDeliveryGapCheckResponse,
 } from "../shared/contracts";
+import type { RobotControlCameraFirstFrameProbeOverlay } from "./robotControlSummary";
 
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
@@ -156,6 +157,7 @@ type CameraMjpegRelay = {
 
 let nextCameraMjpegRelayClientId = 1;
 const cameraMjpegRelays = new Map<string, CameraMjpegRelay>();
+const cameraFirstFrameProbeOverlays = new Map<string, RobotControlCameraFirstFrameProbeOverlay>();
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   // camera proxy 只接受/返回 JSON object；数组或字符串一律 fail-closed。
@@ -1049,6 +1051,21 @@ function cameraMjpegRelayKey(normalizedBaseUrl: URL): string {
   return normalizedBaseUrl.toString().replace(/\/$/, "");
 }
 
+function cameraProbeOverlayFromResponse(
+  response: RobotControlCameraFirstFrameProbeProxyResponse,
+): RobotControlCameraFirstFrameProbeOverlay {
+  // summary 只需要首帧结论短字段；完整 probe 结果仍留在按钮响应和高级诊断。
+  return {
+    checked_at_ms: Date.now(),
+    proxy_status: response.proxy_status,
+    status: response.status,
+    failure_reason: response.failure_reason || response.probe_key_values.failure_reason || "none",
+    open_ok: response.probe_key_values.open_ok,
+    read_ok: response.probe_key_values.read_ok,
+    visible_content_proven: response.probe_key_values.visible_content_proven,
+  };
+}
+
 function getCameraMjpegRelay(normalizedBaseUrl: URL): CameraMjpegRelay {
   const key = cameraMjpegRelayKey(normalizedBaseUrl);
   const existing = cameraMjpegRelays.get(key);
@@ -1373,7 +1390,12 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.get("/api/robot-control/summary", async (req, res) => {
     // Robot Control V1 只读代理默认连固定上位机；危险 URL 仍由 summary builder fail-closed。
-    res.json(await buildRobotControlSummary(robotControlSummaryQueryBaseUrl(req.query.baseUrl)));
+    const sourceBaseUrl = robotControlSummaryQueryBaseUrl(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const overlay = normalized.ok
+      ? cameraFirstFrameProbeOverlays.get(cameraMjpegRelayKey(normalized.normalized)) ?? null
+      : null;
+    res.json(await buildRobotControlSummary(sourceBaseUrl, overlay));
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {
@@ -2534,7 +2556,9 @@ export function createWorkstationApp(): express.Express {
       12000,
     );
     if (remote.error) {
-      res.status(502).json({ ...cameraProbeFailure(sourceBaseUrl, remote.error), proxy_status: "probe_failed" });
+      const failureBody = { ...cameraProbeFailure(sourceBaseUrl, remote.error), proxy_status: "probe_failed" as const };
+      cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(failureBody));
+      res.status(502).json(failureBody);
       return;
     }
     const dangerous = scanDangerousTrueFields(remote.payload);
@@ -2573,6 +2597,7 @@ export function createWorkstationApp(): express.Express {
       hard_dangerous_true_fields: dangerous,
       robot_control_executed: false,
     };
+    cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(responseBody));
     res.status(responseBody.proxy_status === "probe_forwarded" ? 200 : 502).json(responseBody);
   });
 

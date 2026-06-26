@@ -387,6 +387,10 @@ function cameraSourceFirstFrameFailed(camera: RobotControlSummaryResponse["readb
     || camera?.last_offer_failure_reason === "first_frame_timeout"
     || camera?.last_offer_failure_reason === "capture_read_call_timeout"
     || camera?.last_offer_failure_reason === "capture_read_returned_false"
+    || camera?.first_frame_probe_status === "first_frame_timeout"
+    || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout"
+    || camera?.first_frame_probe_open_ok === "false"
+    || camera?.first_frame_probe_read_ok === "false"
   );
 }
 
@@ -409,6 +413,9 @@ function cameraSourcePlainFailureHint(): string {
       return "相机服务已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。";
     }
     if (camera?.source_usage_status === "not_in_use") {
+      if (camera?.source_failure_reason === "capture_read_call_timeout" || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout") {
+        return "相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";
+      }
       return "相机当前没人占用，但底层没有读到画面；检查 USB、摄像头输入或供电。";
     }
     return "相机没有出画面，检查摄像头/视频线。";
@@ -417,6 +424,11 @@ function cameraSourcePlainFailureHint(): string {
   const lastOfferReason = ["", "none", "not_loaded"].includes(rawLastOfferReason) ? "" : rawLastOfferReason;
   if (lastOfferReason) {
     return cameraOfferPlainFailureHint(lastOfferReason);
+  }
+  if (camera?.first_frame_probe_status && camera.first_frame_probe_status !== "not_loaded") {
+    return camera?.first_frame_probe_failure_reason === "capture_read_call_timeout"
+      ? "最近检查显示摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。"
+      : `最近检查没有读到画面：${camera.first_frame_probe_failure_reason || camera.first_frame_probe_status}`;
   }
   return "";
 }
@@ -436,6 +448,12 @@ function cameraProbePlainFailureHint(): string {
     || values.read_ok === "false";
   if (!failed) {
     return "";
+  }
+  if (values.failure_reason === "capture_read_call_timeout" || result.failure_reason === "capture_read_call_timeout") {
+    return "相机能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";
+  }
+  if (values.open_ok === "false") {
+    return "相机没有打开；检查摄像头/视频线或占用后重试。";
   }
   return "相机没有出画面，检查摄像头/视频线。";
 }

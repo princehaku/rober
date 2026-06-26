@@ -1035,6 +1035,7 @@ function lidarSummaryFromReadbacks(
 
 function cameraSummaryFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
+  firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
 ): RobotControlSummaryResponse["readback_summary"]["camera"] {
   // Camera 诊断只取 health/devices 的短字段；普通首屏仍只显示简化状态，工程细节留在高级诊断。
   const healthReadback = readbackById(readbacks, "camera_health");
@@ -1057,6 +1058,16 @@ function cameraSummaryFromReadbacks(
     .filter(Boolean)
     .slice(0, 3)
     .join("; ");
+  const rawSourceReadiness = summaryValueText(healthPayload, ["source_readiness"]);
+  const rawSourceFailureReason = summaryValueText(healthPayload, ["source_failure_reason"]);
+  const probeFailureReason = firstFrameProbeOverlay?.failure_reason ?? "";
+  const probeFailed = Boolean(firstFrameProbeOverlay && firstFrameProbeOverlay.proxy_status !== "probe_forwarded");
+  const sourceReadiness = probeFailed && ["", "not_loaded", "source_selected_not_probed"].includes(rawSourceReadiness)
+    ? "first_frame_failed"
+    : rawSourceReadiness;
+  const sourceFailureReason = probeFailed && ["", "none", "not_loaded"].includes(rawSourceFailureReason)
+    ? probeFailureReason || "first_frame_probe_failed"
+    : rawSourceFailureReason;
   return {
     status: healthReadback?.status ?? "not_loaded",
     devices_status: devicesReadback?.status ?? "not_loaded",
@@ -1064,16 +1075,32 @@ function cameraSummaryFromReadbacks(
     video_source: summaryValueText(healthPayload, ["video_source"]),
     video_source_mode: summaryValueText(healthPayload, ["video_source_mode"]),
     selected_path: asString(currentSelection?.selected_path ?? sourceSummarySelection?.selected_path),
-    source_readiness: summaryValueText(healthPayload, ["source_readiness"]),
-    source_failure_reason: summaryValueText(healthPayload, ["source_failure_reason"]),
+    source_readiness: sourceReadiness,
+    source_failure_reason: sourceFailureReason,
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
     source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
     source_usage_summary: sourceUsageSummary || "none",
     active_peer_count: summaryValueText(healthPayload, ["active_peer_count", "active_peer_connections"]),
     last_offer_error: asString(lastOfferError?.error, "none"),
     last_offer_failure_reason: asString(lastOfferError?.failure_reason, "none"),
+    first_frame_probe_status: firstFrameProbeOverlay?.status ?? "not_loaded",
+    first_frame_probe_failure_reason: firstFrameProbeOverlay?.failure_reason || "none",
+    first_frame_probe_open_ok: firstFrameProbeOverlay?.open_ok ?? "not_loaded",
+    first_frame_probe_read_ok: firstFrameProbeOverlay?.read_ok ?? "not_loaded",
+    first_frame_probe_visible_content_proven: firstFrameProbeOverlay?.visible_content_proven ?? "not_loaded",
+    first_frame_probe_checked_at_ms: firstFrameProbeOverlay ? String(firstFrameProbeOverlay.checked_at_ms) : "not_loaded",
   };
 }
+
+export type RobotControlCameraFirstFrameProbeOverlay = {
+  checked_at_ms: number;
+  proxy_status: "probe_forwarded" | "probe_rejected" | "probe_failed";
+  status: string;
+  failure_reason: string;
+  open_ok: string;
+  read_ok: string;
+  visible_content_proven: string;
+};
 
 function compactTrueFields(fields: string[]): string[] {
   // 响应只保留短字段名，避免把完整对象路径直接塞进卡片和日志摘要。
@@ -3032,6 +3059,12 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         active_peer_count: "not_loaded",
         last_offer_error: "none",
         last_offer_failure_reason: "none",
+        first_frame_probe_status: "not_loaded",
+        first_frame_probe_failure_reason: "none",
+        first_frame_probe_open_ok: "not_loaded",
+        first_frame_probe_read_ok: "not_loaded",
+        first_frame_probe_visible_content_proven: "not_loaded",
+        first_frame_probe_checked_at_ms: "not_loaded",
       },
       lidar: {
         status: "not_loaded",
@@ -3387,7 +3420,10 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   };
 }
 
-export async function buildRobotControlSummary(baseUrl: string): Promise<RobotControlSummaryResponse> {
+export async function buildRobotControlSummary(
+  baseUrl: string,
+  firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
+): Promise<RobotControlSummaryResponse> {
   // 这是 PC Robot Control Console V1 的唯一 Robot API 入口；浏览器永远不直连上位机。
   const normalized = normalizeRobotApiBaseUrl(baseUrl);
   if (!normalized.ok) {
@@ -3453,7 +3489,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
       last_refresh_ms: observedAt,
     },
     readback_summary: {
-      camera: cameraSummaryFromReadbacks(readbacks),
+      camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay),
       lidar: lidarSummaryFromReadbacks(readbacks),
       base: baseSummaryFromReadbacks(readbacks),
       map: mapSummaryFromReadbacks(readbacks, proofSummary),
