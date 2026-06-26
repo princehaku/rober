@@ -13564,6 +13564,9 @@ describe("App", () => {
       continuous_window_observed: "false",
       continuity_window_status: "latest_proof_stale_while_lifecycle_running",
       latest_scan_proof_fresh: "false",
+      scan_preview_point_count: "42",
+      scan_preview_source_point_count: "42",
+      scan_preview_frame_id: "laser_frame",
     };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -13583,9 +13586,11 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达待刷新");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，最近障碍 0.30m");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，待刷新雷达点 42 个");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的最近障碍 0.30m，不是已贴到地图的实时雷达点；刷新后再确认点位。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达待刷新，地图位置未读到，待刷新雷达点 42 个，仅点数没有点数组，未贴到地图");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：正在确认实时性，当前只有待刷新雷达点 42 个（仅点数，没有点数组，未显示局部轮廓）；刷新后再确认点位。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toContain("待刷新雷达点 42 个（仅点数，没有点数组，未显示局部轮廓）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

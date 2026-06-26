@@ -719,7 +719,7 @@ function radarRefreshFailureLabel(result: RobotControlProofRefreshProxyResponse 
 function plainRadarPointHint(live: boolean): string {
   // 雷达卡片要和地图口径一致：普通用户需要知道点数，以及这些点现在能不能贴到地图。
   const proof = robotSummary.value?.o3_proof_summary;
-  const lidar = robotSummary.value?.readback_summary.lidar;
+  const lidar = effectiveLidarReadback.value ?? robotSummary.value?.readback_summary.lidar;
   const points = proof?.scan_preview_points ?? [];
   const proofCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
   const lidarCount = finitePlainNumber(lidar?.scan_preview_point_count) ?? 0;
@@ -1535,6 +1535,19 @@ function radarPreviewCountOnlyLabel(radarState: string, poseObserved: boolean): 
     : `${prefix} ${pointCount} 个（仅点数，没有点数组，未显示局部轮廓）`;
 }
 
+function radarPreviewCountOnlyMarkerLabel(radarState: string): string {
+  // 地图 marker 空间有限，只显示点数；完整“不贴图”解释放在 freshness/坐标口径。
+  const pointCount = radarPreviewReadbackPointCount();
+  const pointArrayCount = robotSummary.value?.o3_proof_summary.scan_preview_points?.length ?? 0;
+  if (pointCount <= 0 || pointArrayCount > 0) {
+    return "";
+  }
+  const prefix = radarStateUsesPendingPoints(radarState)
+    ? "待刷新雷达点"
+    : radarState === "雷达已运行" ? "雷达点" : "最近雷达记录";
+  return `${prefix} ${pointCount} 个`;
+}
+
 function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>, radarState = "") {
   // 没有 map-frame 位姿时不把雷达点强行落到地图坐标，只返回待定位提示。
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
@@ -1913,14 +1926,14 @@ function plainMapCoordinateTruthLabel(
       : `最近雷达记录只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点，当前${radarState}`;
     return `坐标口径：${poseText}，${scanText}，不贴到地图；${routeText}。`;
   }
-  if (obstacleDistanceLabel && (radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中")) {
-    const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
-    return `坐标口径：${poseText}，雷达只显示${obstacleDistanceLabel}，不贴到地图；${routeText}。`;
-  }
   const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, false);
   if (countOnlyLabel) {
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
     return `坐标口径：${poseText}，${countOnlyLabel}，不贴到地图；${routeText}。`;
+  }
+  if (obstacleDistanceLabel && (radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中")) {
+    const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
+    return `坐标口径：${poseText}，雷达只显示${obstacleDistanceLabel}，不贴到地图；${routeText}。`;
   }
   if (routePath) {
     return `坐标口径：${poseText}，${routePath.coordinateLabel}按地图坐标显示，雷达不贴图。`;
@@ -1946,11 +1959,11 @@ function plainRadarFreshnessLabel(
     if (localPointCount > 0) {
       return `雷达点口径：实时雷达 ${localPointCount} 个只显示局部轮廓，等定位后再贴地图。`;
     }
-    if (obstacleDistanceLabel) {
-      return `雷达点口径：实时雷达未返回点数组，只显示${obstacleDistanceLabel}，等点位或定位后再贴地图。`;
-    }
     if (countOnlyLabel) {
       return `雷达点口径：${countOnlyLabel}，暂不能作为已贴图实时雷达。`;
+    }
+    if (obstacleDistanceLabel) {
+      return `雷达点口径：实时雷达未返回点数组，只显示${obstacleDistanceLabel}，等点位或定位后再贴地图。`;
     }
     return "雷达点口径：雷达已运行，但当前还没读到点位。";
   }
@@ -1970,11 +1983,11 @@ function plainRadarFreshnessLabel(
     if (poseObserved && mapPointCount > 0) {
       return `雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 ${mapPointCount} 个。`;
     }
-    if (obstacleDistanceLabel) {
-      return `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
-    }
     if (countOnlyLabel) {
       return `雷达点口径：正在确认实时性，当前只有${countOnlyLabel}；刷新后再确认点位。`;
+    }
+    if (obstacleDistanceLabel) {
+      return `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
     }
     return localPointCount > 0
       ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
@@ -2394,8 +2407,9 @@ const plainMapVisualSummary = computed(() => {
   const radarScanOverlay = latestRadarScanOverlay(robotPose, radarState);
   const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose, radarState);
   const radarLocalPointCount = radarLocalScanOverlay.dots.length;
+  const radarCountOnlyMarkerLabel = radarPreviewCountOnlyMarkerLabel(radarState);
   const radarObstacleDistanceLabel = latestRadarObstacleDistanceLabel();
-  const showRadarObstacleDistance = !poseObserved && radarNeedsMapPose && radarLocalPointCount === 0 && Boolean(radarObstacleDistanceLabel);
+  const showRadarObstacleDistance = !poseObserved && radarNeedsMapPose && radarLocalPointCount === 0 && !radarCountOnlyMarkerLabel && Boolean(radarObstacleDistanceLabel);
   const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;
   const radarOverlayLabel = poseObserved
     ? radarStartFailureText
@@ -2414,7 +2428,7 @@ const plainMapVisualSummary = computed(() => {
       : radarStartAwaitingRefresh
       ? "雷达已启动，位置未读到"
       : radarNeedsMapPose
-      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : showRadarObstacleDistance ? `${radarState}，${radarObstacleDistanceLabel}` : `${radarState}，位置未读到`
+      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerLabel ? `${radarState}，${radarCountOnlyMarkerLabel}` : showRadarObstacleDistance ? `${radarState}，${radarObstacleDistanceLabel}` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarState;
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
@@ -2440,6 +2454,8 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达已启动，地图位置未读到，等待刷新确认"
       : showRadarObstacleDistance
         ? `${radarState}，地图位置未读到，${radarObstacleDistanceLabel}，按雷达局部距离显示，未贴到地图`
+      : radarNeedsMapPose && radarCountOnlyMarkerLabel
+        ? `${radarState}，地图位置未读到，${radarCountOnlyMarkerLabel}，仅点数没有点数组，未贴到地图`
       : radarNeedsMapPose && radarLocalPointCount > 0
         ? `${radarState}，地图位置未读到，局部轮廓 ${radarLocalPointCount} 个点等待定位`
         : `${radarState}，地图位置未读到`;
