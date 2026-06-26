@@ -466,6 +466,11 @@ function cameraProbeFrameTooDark(): boolean {
   return cameraProbeFrameQuality() === "near_black";
 }
 
+function cameraProbeVisibleContentObserved(): boolean {
+  // 首帧探针只有读到真实帧且亮度过线，才可作为建图前“画面 ready”的材料。
+  return cameraProbeFrameQuality() === "visible_content_observed";
+}
+
 function plainVisualMaterialSaveFailureReason(): string {
   // 记录画面失败要保留上位机短原因，但不把 operator report 字段名塞回首屏。
   const result = plainVisualMaterialResult.value;
@@ -843,12 +848,26 @@ const cameraMjpegFallbackVisible = computed(() => (
   cameraReadyForSharedPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
 ));
 const cameraMjpegFrameObserved = computed(() => cameraMjpegFallbackVisible.value && mjpegPreviewLoaded.value && !mjpegPreviewFailed.value);
+const cameraReadbackFirstFrameObserved = computed(() => {
+  // 上车 camera service 只有在自身 WebRTC/MJPEG 读到过真实帧后才会上报 first_frame_observed。
+  const camera = robotSummary.value?.readback_summary.camera;
+  return Boolean(
+    camera?.status === "ready"
+    && camera.source_readiness === "first_frame_observed"
+    && camera.video_source
+    && !cameraSourceFirstFrameFailed(camera),
+  );
+});
+const cameraVisibleForFreeRoamMapping = computed(() => (
+  // 建图必须使用所见即所得的画面证据；仅选中 /dev/video1 但未读首帧不能放行。
+  previewFrameSampleStatus.value === "visible_content_observed"
+  || cameraMjpegFrameObserved.value
+  || cameraProbeVisibleContentObserved()
+  || cameraReadbackFirstFrameObserved.value
+));
 const plainCameraReadyForFreeRoamAutonomy = computed(() => {
-  // 自动扫图发车只要求上位机相机采集源 ready，不强制浏览器已经打开 WebRTC 画面。
-  if (robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready") {
-    return true;
-  }
-  return cameraReadyForSharedPreview.value;
+  // 自动扫图和建图必须证明画面已经读到；health ready/source_selected_not_probed 只允许尝试打开画面。
+  return cameraVisibleForFreeRoamMapping.value;
 });
 function plainCameraVideoFrameTruth(): string {
   // 普通首屏只说浏览器是否真的绘制出帧，不暴露 readyState/srcObject 等工程字段。

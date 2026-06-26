@@ -498,6 +498,37 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(usage, payload["media_diagnostics"]["source_usage"])
         self.assertFalse(payload["source_usage"]["opens_camera"])
 
+    def test_health_marks_source_observed_only_after_real_frame(self) -> None:
+        """只有真实读到帧后，health 才能把选中源升级为可用于建图的 ready。"""
+        state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
+        frame = mock.Mock()
+        frame.shape = (480, 640, 3)
+        state.mark_successful_frame("/dev/video1", frame, "webrtc_offer")
+        snapshot = {
+            "candidates": [
+                {
+                    "path": "/dev/video1",
+                    "exists": True,
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                    "v4l2_name": "USB camera",
+                    "sysfs_name": "USB camera",
+                }
+            ]
+        }
+
+        with mock.patch.object(camera, "collect_video_candidates", return_value=snapshot):
+            with mock.patch.object(camera, "collect_device_usage", return_value={"checked": True, "status": "not_in_use", "opens_camera": False}):
+                payload = state.health()
+
+        self.assertEqual("ready", payload["status"])
+        self.assertEqual("first_frame_observed", payload["source_readiness"])
+        self.assertEqual("/dev/video1", payload["last_successful_frame"]["source"])
+        self.assertEqual("webrtc_offer", payload["last_successful_frame"]["channel"])
+        self.assertEqual(640, payload["last_successful_frame"]["width"])
+
 
 if __name__ == "__main__":
     unittest.main()

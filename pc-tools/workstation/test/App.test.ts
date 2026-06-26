@@ -3201,19 +3201,7 @@ function cloneFixture<T>(value: T): T {
 
 function markMappingSensorsReady(summary: RobotControlSummaryResponse | Record<string, any>): void {
   // 建图成功路径必须显式证明相机和雷达 ready；默认 fixture 继续保留未证明状态用于 fail-closed 用例。
-  const camera = summary.readback_summary.camera;
-  camera.status = "ready";
-  camera.devices_status = "loaded";
-  camera.preview_status = "idle_not_started";
-  camera.video_source = "/dev/video1";
-  camera.selected_path = "/dev/video1";
-  camera.source_readiness = "ready";
-  camera.source_failure_reason = "none";
-  camera.source_usage_status = "not_in_use";
-  camera.source_usage_owner_count = "0";
-  camera.source_usage_summary = "none";
-  camera.last_offer_error = "none";
-  camera.last_offer_failure_reason = "none";
+  markCameraFrameObserved(summary);
 
   const lidar = summary.readback_summary.lidar;
   lidar.continuous_scan_status = "latest_proof_fresh_while_lifecycle_running";
@@ -3223,6 +3211,23 @@ function markMappingSensorsReady(summary: RobotControlSummaryResponse | Record<s
   lidar.continuity_window_status = "fresh_window_observed";
   lidar.latest_scan_proof_fresh = "true";
   lidar.radar_start_configured = "true";
+}
+
+function markCameraFrameObserved(summary: RobotControlSummaryResponse | Record<string, any>): void {
+  // camera health 的 ready 只说明服务在线；建图/自动扫图成功路径要显式证明真实首帧。
+  const camera = summary.readback_summary.camera;
+  camera.status = "ready";
+  camera.devices_status = "loaded";
+  camera.preview_status = "idle_not_started";
+  camera.video_source = "/dev/video1";
+  camera.selected_path = "/dev/video1";
+  camera.source_readiness = "first_frame_observed";
+  camera.source_failure_reason = "none";
+  camera.source_usage_status = "not_in_use";
+  camera.source_usage_owner_count = "0";
+  camera.source_usage_summary = "none";
+  camera.last_offer_error = "none";
+  camera.last_offer_failure_reason = "none";
 }
 
 function markRobotPoseVisible(summary: RobotControlSummaryResponse | Record<string, any>): void {
@@ -3887,6 +3892,7 @@ describe("App", () => {
     // PC 首屏只触发固定状态机代理；不会调用 base/manual、Nav2、delivery 或浏览器侧 /cmd_vel。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markCameraFrameObserved(summaryFixture);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
     mapStartFixture.failure_reason = "";
     mapStartFixture.blocked_reasons = [];
@@ -4162,6 +4168,7 @@ describe("App", () => {
     // live 形状：start_ready=true 但 runtime 还没启动，cmd_vel_publish_enabled=false；普通 UI 应显示可发起 start。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markCameraFrameObserved(summaryFixture);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
     mapStartFixture.failure_reason = "";
     mapStartFixture.blocked_reasons = [];
@@ -4185,8 +4192,6 @@ describe("App", () => {
       artifact_only: true,
       cmd_vel_publish_enabled: false,
     };
-    summaryFixture.readback_summary.camera.status = "ready";
-    summaryFixture.readback_summary.camera.video_source = "/dev/video1";
     summaryFixture.readback_summary.lidar.lifecycle_running = "true";
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
     const mockedFetch = stubWorkstationFetch({
@@ -4230,6 +4235,7 @@ describe("App", () => {
     // 首次建图不能要求已经有本轮地图画面或 free cell；start 后会再刷新地图画面作为所见即所得监看证据。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markCameraFrameObserved(summaryFixture);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
     mapStartFixture.failure_reason = "";
     mapStartFixture.blocked_reasons = [];
@@ -4253,8 +4259,6 @@ describe("App", () => {
       artifact_only: true,
       cmd_vel_publish_enabled: false,
     };
-    summaryFixture.readback_summary.camera.status = "ready";
-    summaryFixture.readback_summary.camera.video_source = "/dev/video1";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
@@ -4340,6 +4344,7 @@ describe("App", () => {
     // 自动扫图 start 已转发后，如果自动雷达 proof refresh 失败，扫图状态不能继续说“雷达监看中”。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markCameraFrameObserved(summaryFixture);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
     mapStartFixture.failure_reason = "";
     mapStartFixture.blocked_reasons = [];
@@ -4414,6 +4419,7 @@ describe("App", () => {
     // 自动扫图 start 后地图 preview 刷新失败时，扫图状态不能继续说“地图监看中”。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markCameraFrameObserved(summaryFixture);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
     mapStartFixture.failure_reason = "";
     mapStartFixture.blocked_reasons = [];
@@ -4502,6 +4508,7 @@ describe("App", () => {
     // 自动扫图 start pending 时，红色停止不能灰掉；停止请求排队到 start 返回后立即发送。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markCameraFrameObserved(summaryFixture);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
     mapStartFixture.failure_reason = "";
     mapStartFixture.blocked_reasons = [];
@@ -4596,6 +4603,7 @@ describe("App", () => {
     // 自动扫图 stop 失败时，步骤条和保存按钮必须同口径 fail-closed，不能把地图误收口。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markCameraFrameObserved(summaryFixture);
     mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
     mapStartFixture.failure_reason = "";
     mapStartFixture.blocked_reasons = [];
@@ -4665,6 +4673,7 @@ describe("App", () => {
   it("shows plain free-roam autonomy failure reason on the map", async () => {
     // 自动扫图失败不能只藏在高级诊断；地图 marker 和扫图状态都要说明卡在哪。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    markCameraFrameObserved(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     summaryFixture.safe_command_boundary.free_roam_autonomy = "ready";
@@ -8531,6 +8540,38 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("blocks free-roam mapping when camera source is selected but not yet frame-proven", async () => {
+    // `/dev/video1` 被选中不等于画面 ready；建图必须等本页或上车端读到真实帧。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
+    summaryFixture.readback_summary.camera.status = "ready";
+    summaryFixture.readback_summary.camera.source_readiness = "source_selected_not_probed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("待画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("摄像头还没出画面；先检查摄像头，等实时画面可见后再建图。");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("检查摄像头后建图");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+
+    const callsBeforeStart = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStart);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 

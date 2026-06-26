@@ -1053,6 +1053,82 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["does_not_set_motion_unlock"])
         self.assertFalse(payload["publishes_cmd_vel"])
 
+    def test_camera_motion_readiness_requires_observed_first_frame(self) -> None:
+        """相机服务只选中设备但未读到首帧时，不能解锁自动扫图 start。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        class FakeResponse:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self, _limit):
+                return json.dumps(
+                    {
+                        "status": "ready",
+                        "video_source": "/dev/video1",
+                        "source_readiness": "source_selected_not_probed",
+                        "source_failure_reason": "",
+                    }
+                ).encode("utf-8")
+
+        with mock.patch("urllib.request.urlopen", return_value=FakeResponse()):
+            readiness = api.camera_motion_readiness()
+
+        self.assertFalse(readiness["ready"])
+        self.assertEqual(["camera_first_frame_not_observed"], readiness["missing"])
+        self.assertEqual("source_selected_not_probed", readiness["source_readiness"])
+
+    def test_camera_motion_readiness_accepts_observed_first_frame(self) -> None:
+        """相机服务读到真实首帧后，自动扫图 readiness 才能通过 camera gate。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        class FakeResponse:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self, _limit):
+                return json.dumps(
+                    {
+                        "status": "ready",
+                        "video_source": "/dev/video1",
+                        "source_readiness": "first_frame_observed",
+                        "source_failure_reason": "",
+                        "last_successful_frame": {
+                            "source": "/dev/video1",
+                            "channel": "mjpeg",
+                            "observed_at_ms": 1782475000000,
+                        },
+                    }
+                ).encode("utf-8")
+
+        with mock.patch("urllib.request.urlopen", return_value=FakeResponse()):
+            readiness = api.camera_motion_readiness()
+
+        self.assertTrue(readiness["ready"])
+        self.assertEqual([], readiness["missing"])
+        self.assertEqual("first_frame_observed", readiness["source_readiness"])
+        self.assertEqual("/dev/video1", readiness["last_successful_frame"]["source"])
+
     def test_free_roam_camera_motion_readiness_allows_optional_stale_radar(self) -> None:
         """readiness 摘要保留雷达状态，但雷达 stale 不再阻止低速自移动。"""
         api = upper_robot_api.UpperRobotApi(

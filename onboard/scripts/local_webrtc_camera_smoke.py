@@ -753,6 +753,20 @@ class CameraServiceState:
         self.shared_captures: dict[str, SharedCameraCapture] = {}
         self.last_closed_peer: dict[str, Any] | None = None
         self.last_offer_error: dict[str, Any] | None = None
+        self.last_successful_frame: dict[str, Any] | None = None
+
+    def mark_successful_frame(self, source: str, frame: Any, channel: str) -> None:
+        """只有真实读取到帧才更新 readiness，避免设备路径存在被误当成画面 ready。"""
+        shape = getattr(frame, "shape", None)
+        height = int(shape[0]) if isinstance(shape, tuple) and len(shape) >= 2 else None
+        width = int(shape[1]) if isinstance(shape, tuple) and len(shape) >= 2 else None
+        self.last_successful_frame = {
+            "source": source,
+            "channel": channel,
+            "observed_at_ms": now_ms(),
+            "width": width,
+            "height": height,
+        }
 
     def _stale_peer_ids(self) -> list[str]:
         """找出卡在协商初期且从未读到帧的旧 peer，避免它长期占用 UVC。"""
@@ -851,7 +865,13 @@ class CameraServiceState:
             and last_offer_source == selected_path
             and last_offer_reason in {"first_frame_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
         )
-        source_readiness = "first_frame_failed" if source_failed else ("source_selected_not_probed" if selected_path else "no_video_source")
+        last_success = self.last_successful_frame if isinstance(self.last_successful_frame, dict) else {}
+        source_observed = bool(selected_path and last_success.get("source") == selected_path)
+        source_readiness = (
+            "first_frame_failed"
+            if source_failed
+            else "first_frame_observed" if source_observed else ("source_selected_not_probed" if selected_path else "no_video_source")
+        )
         source_usage = collect_device_usage(str(selected_path) if selected_path else None)
         return {
             "schema": SCHEMA,
@@ -863,6 +883,7 @@ class CameraServiceState:
             "requested_video_source": self.video_source,
             "source_readiness": source_readiness,
             "source_failure_reason": last_offer_reason if source_failed else "",
+            "last_successful_frame": self.last_successful_frame,
             "source_usage": source_usage,
             "width": self.width,
             "height": self.height,
@@ -878,6 +899,7 @@ class CameraServiceState:
                 "shared_captures": {source: shared.summary() for source, shared in self.shared_captures.items()},
                 "last_closed_peer": self.last_closed_peer,
                 "last_offer_error": self.last_offer_error,
+                "last_successful_frame": self.last_successful_frame,
                 "source_usage": source_usage,
             },
             "source_summary": source_candidates_summary(snapshot, selection),
@@ -999,6 +1021,7 @@ class CameraServiceState:
             )
             self.last_offer_error = payload
             return HTTPStatus.SERVICE_UNAVAILABLE, payload
+        self.mark_successful_frame(source, first_frame, "webrtc_offer")
 
         peer_id = uuid.uuid4().hex[:12]
         record_ref: dict[str, PeerRecord] = {}
@@ -1187,6 +1210,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self.state.last_offer_error = payload
             self._send_json(payload, status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
+        self.state.mark_successful_frame(str(selected_path), first_frame, "mjpeg")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={MJPEG_BOUNDARY}")
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")

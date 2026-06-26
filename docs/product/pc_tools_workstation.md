@@ -2636,3 +2636,12 @@ PC 端打开摄像头，不调用 camera offer/MJPEG、manual、Nav2、delivery�
 
 同一轮现场口径确认：普通键盘手控和自由低速自移动不把雷达作为硬门禁；雷达状态在自动扫图里显示为 `雷达监看 / 可降级`。建图记录本身仍要求
 相机和地图/雷达画面所见即所得，Nav2 完整路线执行仍要求定位 TF 链可用，不能因为雷达降级就绕过 `map -> odom -> base_link` 的定位闭环。
+
+2026-06-26 20:00 起，普通首屏把“相机服务 ready”和“相机真实出画面”分开处理：`camera.status=ready`、
+`video_source=/dev/video1` 或 `source_readiness=source_selected_not_probed` 只允许页面继续尝试共享预览，不再作为自动扫图/建图运动门禁。
+自动扫图 start 和 PC 侧按钮门禁现在要求至少有一种首帧证明：浏览器 video 像素采样为 `visible_content_observed`、MJPEG 已绘制、
+固定 first-frame probe 证明可见内容，或上车 `/api/camera/health.source_readiness=first_frame_observed` 且
+`last_successful_frame` 存在。真实复测中，上车 8088 返回 `source_usage.status=not_in_use`、`source_readiness=source_selected_not_probed`、
+`last_successful_frame=null`；PC 7001 转发 `/api/robot-control/free-roam/autonomy/start?baseUrl=http://192.168.1.11:8787`
+被上车端以 `camera_first_frame_not_observed` 拒绝，`sets_state_machine_parameters=false`、`motion_unlock_requested=false`。
+该门禁不改变“雷达可降级监看”的策略：自由低速自移动不硬依赖雷达，但必须先证明相机确实有画面，避免假 ready 下发车。

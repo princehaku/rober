@@ -6323,12 +6323,14 @@ class UpperRobotApi:
         video_source = str(payload.get("video_source") or "")
         source_failure_reason = str(payload.get("source_failure_reason") or "")
         source_readiness = str(payload.get("source_readiness") or "")
+        last_successful_frame = payload.get("last_successful_frame") if isinstance(payload.get("last_successful_frame"), dict) else None
         ready = (
             http_status == 200
             and status == "ready"
             and bool(video_source)
             and not source_failure_reason
-            and source_readiness not in {"first_frame_failed", "source_failed"}
+            and source_readiness == "first_frame_observed"
+            and bool(last_successful_frame)
         )
         return {
             "ready": ready,
@@ -6338,7 +6340,8 @@ class UpperRobotApi:
             "video_source": video_source or "not_loaded",
             "source_readiness": source_readiness or "not_loaded",
             "source_failure_reason": source_failure_reason,
-            "missing": [] if ready else ["camera_not_ready"],
+            "last_successful_frame": last_successful_frame,
+            "missing": [] if ready else ["camera_first_frame_not_observed"],
         }
 
     def free_roam_motion_readiness(self) -> dict[str, Any]:

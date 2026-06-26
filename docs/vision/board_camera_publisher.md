@@ -218,6 +218,28 @@ service 已部署仓库版 `onboard/scripts/local_webrtc_camera_smoke.py` 并以
 下一步仍是硬件/驱动层排查：复位或更换 DV20、检查 USB 供电和视频输入源，或接入
 known-good UVC 摄像头验证 `/dev/video1` 出帧链路。
 
+## 2026-06-26 20:00 首帧证明门禁
+
+本轮按 `docs/vendor/VENDOR_INDEX.md` 入口复核 vendor 资料边界：WAVE ROVER 参考
+上位机 camera 代码在本地 `docs/vendor/waveshare_wave_rover/ugv_rpi/` 下，USB camera
+仍按 OpenCV/V4L2 输入源处理；本项目当前实板继续以只读枚举和 `/health` 读回确认
+`/dev/video1` 是 DV20 UVC capture。
+
+`onboard/scripts/local_webrtc_camera_smoke.py` 现在把“选到了 video source”和“真的读到首帧”
+拆成两个状态：
+
+- `source_readiness=source_selected_not_probed`：只表示已选中 `/dev/video1`，还没有任何
+  WebRTC offer 或 MJPEG client 读到真实 frame。
+- `source_readiness=first_frame_observed`：只有 WebRTC offer 或 MJPEG stream 成功读到
+  frame 后才写入，同时 `/health.last_successful_frame` 会记录 source、channel、宽高和时间。
+- `source_readiness=first_frame_failed`：首帧读取失败或超时，仍然 fail closed。
+
+真实上车复测：`GET http://192.168.1.11:8088/health` 返回
+`status=ready`、`video_source=/dev/video1`、`source_usage.status=not_in_use`、
+`source_readiness=source_selected_not_probed`、`last_successful_frame=null`。这说明当前没有
+其它进程独占相机，但也没有证明 DV20 已经出画面；因此不能把该状态用于建图、视觉路线
+关键帧或自动扫图运动放行。
+
 ## 2026-06-26 共享实时预览与 MJPEG fallback
 
 PC 首屏实时画面现在采用两条只读画面链路：
