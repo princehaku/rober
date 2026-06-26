@@ -3917,6 +3917,80 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
+  it("shows free-roam autonomy radar refresh failures on the map", async () => {
+    // 自动扫图 start 已转发后，如果自动雷达 proof refresh 失败，扫图状态不能继续说“雷达监看中”。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "ready";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自动扫图";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = [
+      { id: "operator_confirmed", label: "现场安全确认", state: "ready", evidence: "已勾选现场安全确认", next_action: "继续保持现场可接管" },
+      { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
+      { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
+      { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+    ];
+    summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
+      status: "loaded",
+      state: "running",
+      reason: "门禁满足，低速直行",
+      stop_required: false,
+      artifact_only: false,
+      cmd_vel_publish_enabled: true,
+    };
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/radar/scan-proof/refresh": {
+        ...(fixtures["/api/robot-control/radar/scan-proof/refresh"] as Record<string, unknown>),
+        proxy_status: "refresh_failed",
+        remote_http_status: 504,
+        status: "blocked",
+        failure_reason: "fetch_timeout",
+        blocked_reasons: ["fetch_timeout"],
+      },
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => baseFetch(url, options));
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-free-roam-action-marker"]');
+    expect(marker.text()).toBe("自动扫图已启动，雷达刷新失败：fetch_timeout");
+    expect(marker.attributes("data-state")).toBe("auto_radar_failed");
+    expect(marker.attributes("aria-label")).toBe("自动扫图状态机已启动，但雷达刷新失败：fetch_timeout，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：自动扫图状态机已启动，但雷达刷新失败：fetch_timeout；继续现场接管，必要时停止自动扫图。");
+    const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
+    expect(readiness.text()).toContain("自动扫图状态机已启动");
+    expect(readiness.text()).toContain("雷达刷新失败：fetch_timeout");
+    expect(readiness.text()).not.toContain("PC 继续监看地图、雷达和停止兜底。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达刷新失败");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-free-roam-action-marker[data-state="auto_radar_failed"]');
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+  });
+
   it("queues free-roam autonomy stop while the start request is still pending", async () => {
     // 自动扫图 start pending 时，红色停止不能灰掉；停止请求排队到 start 返回后立即发送。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
