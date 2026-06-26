@@ -3073,3 +3073,8 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 `camera_mjpeg_upstream_timeout` 并写入 `/api/robot-control/camera/mjpeg/status` 与 summary 的
 `shared_preview_last_failure_reason`。普通首屏会翻译成“共享预览等不到上游画面；不是浏览器独占”，
 避免新进入的页面一直空等 60 秒。该改动只影响只读共享画面代理，不打开运动、Nav2、free-roam 或 `/cmd_vel`。
+
+2026-06-27 07:05 起，PC summary 的 `free_roam_autonomy_gates` 对 `mapping_active` 以当前
+`/api/free-roam/autonomy/latest` runtime gate 为准；如果 runtime 明确说地图记录未启动或不满足，旧的
+`map/proof` 中 `managed_runtime_started=true` 不再把它覆盖成 ready。只有旧 runtime 完全缺少
+`mapping_active` gate 时，PC 才用 map proof 兼容补一行地图记录状态。这样“自动扫图准备”不会把上轮或旧证明误报成本轮正在建图记录中。

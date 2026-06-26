@@ -4954,8 +4954,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("overrides stale free-roam mapping gate when current readback proves map runtime started", async () => {
-    // free-roam artifact 可能停在上一轮 stopping；summary 必须用当前 status/proof 修正地图记录 gate。
+  it("keeps explicit free-roam mapping gate when map proof looks started", async () => {
+    // free-roam runtime 是自助移动状态机的当前事实；它明确说地图记录未启动时，旧 map proof 不能把 gate 改成 ready。
     const safePayload = (schema: string, status = "loaded") => ({
       schema,
       status,
@@ -5019,6 +5019,82 @@ describe("workstation fail-closed API contracts", () => {
       const mappingGate = summary.safe_command_boundary.free_roam_autonomy_gates.find((gate) => gate.id === "mapping_active");
 
       expect(summary.o3_proof_summary.managed_runtime_started).toBe(true);
+      expect(mappingGate).toEqual(expect.objectContaining({
+        id: "mapping_active",
+        state: "blocked",
+        evidence: "地图记录未启动",
+        next_action: "先启动扫地式建图记录",
+      }));
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("adds a compatibility free-roam mapping gate when old runtime omits it", async () => {
+    // 旧上位机可能没有 mapping_active gate；只有这种情况下才允许 PC 用 map runtime proof 补一行兼容提示。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.status", "ready"),
+          managed_runtime_started: true,
+        },
+      },
+      "/api/map/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed"),
+          map_once_observed: true,
+        },
+      },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "stopping",
+              reason: "现场请求停止",
+              stop_required: true,
+              gates: [
+                {
+                  id: "operator_confirmed",
+                  label: "现场安全确认",
+                  state: "blocked",
+                  evidence: "还未勾选现场安全确认",
+                  next_action: "勾选现场安全确认",
+                },
+              ],
+            },
+          },
+        },
+      },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "lifecycle_running") },
+      "/api/radar/scan-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const mappingGate = summary.safe_command_boundary.free_roam_autonomy_gates.find((gate) => gate.id === "mapping_active");
+
       expect(mappingGate).toEqual(expect.objectContaining({
         id: "mapping_active",
         state: "ready",

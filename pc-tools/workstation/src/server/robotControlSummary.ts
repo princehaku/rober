@@ -3446,7 +3446,13 @@ function freeRoamRuntimeGatesFromReadbacks(
     return null;
   }
   const decision = asRecord(latest.decision);
+  const snapshot = asRecord(latest.snapshot);
   const rawGates = Array.isArray(decision?.gates) ? decision.gates : [];
+  const hasRuntimeMappingGate = rawGates
+    .map((item) => asRecord(item))
+    .some((gate) => asString(gate?.id, "") === "mapping_active");
+  const runtimeMappingActive = typeof snapshot?.mapping_active === "boolean" ? snapshot.mapping_active : null;
+  const mapRuntimeStarted = proofBoolean(readbacks, ["managed_runtime_started"]) === true;
   const gateScope = (id: string): "free_move_start" | "mapping_acceptance" | "runtime_diagnostic" => {
     // 上车端 gate 是运行时事实；PC 首屏必须把“启动移动”和“建图验收”拆开，避免雷达阻塞低速自由移动。
     if (id === "operator_confirmed" || id === "stop_available") {
@@ -3464,17 +3470,6 @@ function freeRoamRuntimeGatesFromReadbacks(
       const rawState = asString(gate.state, "blocked");
       const state: "ready" | "blocked" | "not_proven" = rawState === "ready" || rawState === "not_proven" ? rawState : "blocked";
       const id = asString(gate.id, "free_roam_runtime_gate");
-      const mapRuntimeStarted = proofBoolean(readbacks, ["managed_runtime_started"]) === true;
-      if (id === "mapping_active" && mapRuntimeStarted) {
-        return {
-          id,
-          label: asString(gate.label, "地图记录"),
-          scope: gateScope(id),
-          state: "ready" as const,
-          evidence: "当前读回已证明地图记录 runtime 已启动",
-          next_action: "继续保持地图记录并监看画面",
-        };
-      }
       return {
         id,
         label: asString(gate.label, "自动扫图门禁"),
@@ -3484,6 +3479,18 @@ function freeRoamRuntimeGatesFromReadbacks(
         next_action: asString(gate.next_action, "等待上车端自动扫图节点更新"),
       };
     });
+  if (!hasRuntimeMappingGate && (runtimeMappingActive !== null || mapRuntimeStarted)) {
+    // 新 runtime 的 mapping_active gate 优先；只有旧 runtime 没有该 gate 时才从 snapshot/map proof 兼容补齐。
+    const active = runtimeMappingActive === true || (runtimeMappingActive === null && mapRuntimeStarted);
+    gateRows.push({
+      id: "mapping_active",
+      label: "地图记录",
+      scope: "mapping_acceptance",
+      state: active ? "ready" : "not_proven",
+      evidence: active ? "当前读回已证明地图记录 runtime 已启动" : "free-roam runtime 显示地图记录未启动",
+      next_action: active ? "继续保持地图记录并监看画面" : "先启动扫地式建图记录；仍可按自由移动记录低速移动",
+    });
+  }
   const cmdVelPublishEnabled = latest.cmd_vel_publish_enabled === true;
   const startFallbackReady = gateRows.some((gate) => gate.id === "stop_available" && gate.state === "ready");
   const motionGateState: "ready" | "blocked" | "not_proven" = cmdVelPublishEnabled
