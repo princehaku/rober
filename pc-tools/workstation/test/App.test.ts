@@ -13868,6 +13868,49 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("keeps the mapped radar marker explicit when running lidar has pose but zero visible points", async () => {
+    // 有地图坐标时 marker 仍必须说明地图 0 点，不能只显示泛化的“雷达无新点”。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    markRobotPoseVisible(summaryFixture);
+    summaryFixture.o3_proof_summary.scan_preview_points = [];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 0;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = null;
+    summaryFixture.o3_proof_summary.scan_preview_frame_id = "";
+    summaryFixture.readback_summary.lidar.status = "partially_observed";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_result_status = "raw_packets_parsed";
+    summaryFixture.readback_summary.lidar.raw_packet_once_observed = "true";
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "0";
+    summaryFixture.readback_summary.lidar.scan_preview_source_point_count = "not_loaded";
+    summaryFixture.readback_summary.lidar.scan_preview_frame_id = "not_loaded";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = summaryFixture.safe_command_boundary.free_roam_autonomy_gates.filter(
+      (gate: { id?: string }) => gate.id !== "obstacle_clear",
+    );
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达无新点");
+    expect(marker.text()).toBe("雷达无新点，原始包已收到，暂无地图点");
+    expect(marker.attributes("data-state")).toBe("雷达无新点");
+    expect(marker.attributes("aria-label")).toBe("雷达无新点，已叠在机器人位置，原始包已收到但暂无地图雷达点");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-local-scan"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达原始包已收到，但当前没有解析出地图雷达点；这不是地图没刷新。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，雷达点未贴图，路线未显示。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows conflicting radar status sources as refresh-needed on the map", async () => {
     // 真实现场可能 /api/radar/status 显示 stopped，但 scan-proof latest 仍显示 running；首屏必须暴露冲突。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

@@ -3063,3 +3063,8 @@ Nav2 execution artifact 内 `base_feedback_summary.latest_nonzero_pair` 非零�
 Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机下一次执行已经配置为
 `ros` 时，会显示“下次将用 ros 复验”。这让旧失败结果和新执行配置同时所见即所得，
 不会把旧 PWM 结果误当作新 ROS 模式已经失败，也不会把模式切换本身当成路线完成证明。
+
+2026-06-27 06:55 起，PC 普通地图的雷达 marker 在 `雷达无新点` 且 `scan_preview_point_count=0`
+时会直接显示 `原始包已收到，暂无地图点`；即使机器人 map pose 已读到、marker 已叠在机器人位置，
+也不会只显示泛化的 `雷达无新点`。`雷达未运行` 且没有任何可显示点时同步显示 `地图0点`。
+这只修正地图所见即所得文案和 aria，不画假雷达点，不改变雷达启动、自由移动、Nav2 或 `/cmd_vel` 行为。
