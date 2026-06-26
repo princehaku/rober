@@ -408,6 +408,35 @@ function cameraProbePlainFailureHint(): string {
   return "相机没有出画面，检查摄像头/视频线。";
 }
 
+function numericProbeMetric(value: string | undefined): number | null {
+  // 上位机探针把亮度指标序列化成字符串；普通 UI 只接受有限数字，避免把 not_available 当 0。
+  const parsed = Number(value ?? "");
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function cameraProbeFrameQuality(): CameraFrameSampleStatus | null {
+  // 首帧探针和浏览器帧采样使用同一阈值，否则会出现“探针说可见、页面说偏暗”的割裂体验。
+  const result = cameraFirstFrameProbeResult.value;
+  if (!result || result.proxy_status !== "probe_forwarded") {
+    return null;
+  }
+  const values = result.probe_key_values;
+  if (values.open_ok !== "true" || values.read_ok !== "true") {
+    return null;
+  }
+  const meanLuma = numericProbeMetric(values.mean_luma);
+  const maxLuma = numericProbeMetric(values.max_luma);
+  const nonBlackRatio = numericProbeMetric(values.non_black_ratio);
+  if (meanLuma === null || maxLuma === null || nonBlackRatio === null) {
+    return null;
+  }
+  return classifyPreviewFrameQuality(meanLuma, maxLuma, nonBlackRatio);
+}
+
+function cameraProbeFrameTooDark(): boolean {
+  return cameraProbeFrameQuality() === "near_black";
+}
+
 function plainVisualMaterialSaveFailureReason(): string {
   // 记录画面失败要保留上位机短原因，但不把 operator report 字段名塞回首屏。
   const result = plainVisualMaterialResult.value;
@@ -471,6 +500,9 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
   }
   if (previewStopPending.value) {
     return { state: "关闭中", hint: "正在关闭实时画面，等待上位机释放视频会话。" };
+  }
+  if (cameraProbeFrameTooDark()) {
+    return { state: "画面偏暗", hint: "上位机样张已读到，但画面太暗，先检查镜头/光线。" };
   }
   if (cameraMjpegFrameObserved.value) {
     return { state: "画面可见", hint: "实时画面已显示；当前使用 MJPEG 备用通道。" };
@@ -794,6 +826,9 @@ const plainCameraReadyForFreeRoamAutonomy = computed(() => {
 });
 function plainCameraVideoFrameTruth(): string {
   // 普通首屏只说浏览器是否真的绘制出帧，不暴露 readyState/srcObject 等工程字段。
+  if (cameraProbeFrameTooDark()) {
+    return "";
+  }
   if (cameraMjpegFrameObserved.value) {
     return "MJPEG 实时流已显示。";
   }
@@ -899,6 +934,9 @@ const plainCameraProbeSummary = computed(() => {
   const values = result.probe_key_values;
   const sampleWritten = values.sample_write_ok === "true" && Boolean(latestCameraProbeSampleRef());
   const visible = values.visible_content_proven === "true" || values.visible_content_candidate === "true";
+  if (cameraProbeFrameTooDark()) {
+    return "只读检查：上位机样张已读到，但画面偏暗；检查镜头/光线后重试。";
+  }
   if (result.proxy_status === "probe_forwarded" && values.open_ok === "true" && values.read_ok === "true" && visible) {
     return sampleWritten
       ? "只读检查：上位机样张已读到，实时窗口仍未打开。"
@@ -915,6 +953,7 @@ const canSubmitPlainVisualFromCamera = computed(() => (
   && !cameraFirstFrameProbePending.value
   && !plainVisualMaterialPending.value
   && !operatorReportPending.value
+  && !cameraProbeFrameTooDark()
   && robotApiBaseUrl.value.trim().length > 0
 ));
 const plainRecordCurrentCameraLabel = computed(() => (
@@ -924,8 +963,10 @@ const plainRecordCurrentCameraLabel = computed(() => (
       ? "正在检查画面"
       : plainVisualMaterialSaveFailureHint()
         ? "重试记录当前画面"
+        : cameraProbeFrameTooDark()
+          ? "先检查画面光线"
         // 只有浏览器真的绘制过当前视频帧，按钮才说“用当前画面”；否则先说明会重新检查相机样张。
-        : browserVideoFrameDrawn() ? "用当前画面记录" : "检查并记录画面"
+          : browserVideoFrameDrawn() ? "用当前画面记录" : "检查并记录画面"
 ));
 const baseFeedbackSamplesSummary = computed(() => {
   // 底盘反馈样本只说明 T=130/T=1001 只读链路，不能解释成手动运动已经可用。
@@ -7617,6 +7658,9 @@ function fillDeliveryRouteRefFromLatestNav2(): void {
 
 function latestCameraProbeSampleRef(): string {
   // 样张 ref 只能来自固定 camera first-frame probe，不能用任意本地路径或手写危险字段代替。
+  if (cameraProbeFrameTooDark()) {
+    return "";
+  }
   const samplePath = cameraFirstFrameProbeResult.value?.probe_key_values.sample_path ?? "";
   if (samplePath && samplePath !== "not_loaded" && samplePath !== "not_available") {
     return samplePath;

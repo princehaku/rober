@@ -154,6 +154,7 @@ pc-tools/workstation/
   或 `camera_open_failed`，普通首屏不再继续显示 `相机在线，点打开画面`，而是显示
   `相机没有打开；检查摄像头/视频线或占用后重试`。该提示只消费只读 camera readback，不自动打开相机、
   不调用 first-frame probe、Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
+- 2026-06-26 18:05 起，普通首屏 `检查画面（只读）` 会把上位机首帧探针的亮度指标纳入 WYSIWYG 判断：即使 `visible_content_proven=true`，只要 `mean_luma/max_luma/non_black_ratio` 未达到本地视频帧同一可见阈值，画面卡仍显示 `画面偏暗`，并禁用 `用当前画面记录`，防止把近黑样张保存成 `visible_content_proven=true` 的现场材料。该判断只消费固定 camera probe 回包，不自动打开相机、不提交 operator report、不调用 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-26 08:20 起，普通首屏实时画面框和真实 `<video>` 也会带 `data-frame-state=已绘制帧/等待绘帧/未绑定/未观测`，把浏览器是否真的绘出视频帧从“画面已打开”等业务状态里拆出来。`画面可见` 必须对应 `已绘制帧`，等待/未绑定态有独立样式和测试锁定。该改动只影响 PC 前端呈现，不自动打开相机、不重试 WebRTC、不修改 Clash/端口、不调用 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-25 起，普通首屏区分 `雷达未运行` 和 `雷达待刷新`：当上位机只读状态显示 `lifecycle_running=true` 但最新 scan proof stale/incomplete 时，首屏显示“雷达待刷新”，行程/送达/键盘下一步都指向 `刷新雷达`，不再提示重复 `启动雷达`。该刷新仍只走固定 radar proof refresh，不触发底盘、Nav2 execute、delivery complete、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-26 20:30 起，`雷达待刷新` 的原因按 summary 真实状态区分：`latest_proof_stale_while_lifecycle_running`
