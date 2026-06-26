@@ -13201,7 +13201,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-frame-state")).toBe("未绑定");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
-    expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("用当前画面记录");
+    expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("检查并记录画面");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("准备送达材料");
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').attributes("disabled")).toBeUndefined();
@@ -13303,6 +13303,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面偏暗");
+    expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("用当前画面记录");
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面太暗，先检查镜头/光线。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面偏暗");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面偏暗");

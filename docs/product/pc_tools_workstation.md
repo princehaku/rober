@@ -2185,6 +2185,11 @@ radar proof refresh 仍保留；该动作只刷新 no-motion scan proof，不调
 `等待画面稳定` 并禁用，函数入口同步早退，不再允许 camera probe 样张在屏幕仍显示连接中/关闭中时提交成当前画面记录。
 该 gate 只拦截当前画面记录，不影响手填外部视频编号的 `记录画面`，也不调用 manual、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-26 14:15 起，普通首屏画面记录按钮按真实绘帧口径改文案：浏览器已经绘制当前视频帧时才显示
+`用当前画面记录`；未打开、已关闭、等待绘帧或还没有可见帧时显示 `检查并记录画面`，说明点击后会先跑固定
+camera first-frame probe 再记录样张。该调整只修正文案和所见即所得预期，不自动打开摄像头、不发送 manual、Nav2、
+delivery、stop 或 `/cmd_vel`。
+
 2026-06-25 23:34 起，普通首屏执行图上路线时会保留“本次点击的图上终点”。如果上位机 Nav2 execute 失败或拒绝，
 且响应没有回传 `goal_x/goal_y`，地图仍会在这次图上终点显示 `行程未通过`，避免失败后目标 marker 消失。该兜底只用于
 PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboard、delivery、stop 或 `/cmd_vel`。

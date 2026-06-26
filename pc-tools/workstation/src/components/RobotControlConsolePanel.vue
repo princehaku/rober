@@ -748,7 +748,8 @@ const plainRecordCurrentCameraLabel = computed(() => (
       ? "正在检查画面"
       : plainVisualMaterialSaveFailureHint()
         ? "重试记录当前画面"
-        : "用当前画面记录"
+        // 只有浏览器真的绘制过当前视频帧，按钮才说“用当前画面”；否则先说明会重新检查相机样张。
+        : browserVideoFrameDrawn() ? "用当前画面记录" : "检查并记录画面"
 ));
 const baseFeedbackSamplesSummary = computed(() => {
   // 底盘反馈样本只说明 T=130/T=1001 只读链路，不能解释成手动运动已经可用。
