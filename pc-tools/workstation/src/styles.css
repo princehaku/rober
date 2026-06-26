@@ -1170,6 +1170,7 @@ h3 {
 .plain-map-free-roam-action-marker[data-state="saved_refresh_failed"],
 .plain-map-free-roam-action-marker[data-state="map_failed"],
 .plain-map-free-roam-action-marker[data-state="stop_failed"],
+.plain-map-free-roam-action-marker[data-state="auto_map_failed"],
 .plain-map-free-roam-action-marker[data-state="auto_radar_failed"],
 .plain-map-free-roam-action-marker[data-state="auto_failed"] {
   border-color: #d8adb0;

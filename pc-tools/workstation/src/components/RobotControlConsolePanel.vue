@@ -113,6 +113,7 @@ const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
 const plainFreeRoamMappingConfirmed = ref(false);
 const plainFreeRoamMapPreviewFreshForSession = ref(false);
+const plainFreeRoamMapPreviewRefreshFailedForSession = ref(false);
 const plainFreeRoamLiveMapPreviewRefreshedForHold = ref(false);
 const plainFreeRoamSavedMapPreviewFreshForSession = ref(false);
 const plainFreeRoamSavedMapPreviewRefreshFailed = ref(false);
@@ -1696,6 +1697,11 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     if (radarFailureText) {
       return { label: `自动扫图已启动，${radarFailureText}`, state: "auto_radar_failed", style, aria: `自动扫图状态机已启动，但${radarFailureText}${locatedSuffix}` };
     }
+    if (plainFreeRoamMapPreviewRefreshFailedForSession.value) {
+      const failureText = mapPreviewFailureText(mapPreviewResult.value);
+      const label = failureText ? `自动扫图已启动，地图刷新失败：${failureText}` : "自动扫图已启动，地图刷新失败";
+      return { label, state: "auto_map_failed", style, aria: `自动扫图状态机已启动，但地图画面刷新失败${failureText ? `：${failureText}` : ""}${locatedSuffix}` };
+    }
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
       return { label: "自动扫图已启动，刷新中", state: "auto_refreshing", style, aria: `自动扫图状态机已启动，地图画面正在刷新${locatedSuffix}` };
     }
@@ -2246,6 +2252,11 @@ const plainFreeRoamDriveStatus = computed(() => {
     if (radarFailureText) {
       return `扫图状态：自动扫图状态机已启动，但${radarFailureText}；继续现场接管，必要时停止自动扫图。`;
     }
+    if (plainFreeRoamMapPreviewRefreshFailedForSession.value) {
+      const failureText = mapPreviewFailureText(mapPreviewResult.value);
+      const reasonSuffix = failureText ? `：${failureText}` : "";
+      return `扫图状态：自动扫图状态机已启动，但地图画面刷新失败${reasonSuffix}；当前地图不是自动扫图启动后的新画面。`;
+    }
     return "扫图状态：自动扫图状态机已启动，地图和雷达监看中；需要收口时点击停止自动扫图或红色停止。";
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
@@ -2502,6 +2513,8 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       : freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
         ? radarRefreshFailureLabel(radarRefreshResult.value)
           ? `自动扫图状态机已启动；${radarRefreshFailureLabel(radarRefreshResult.value)}，PC 继续保留停止兜底。`
+          : plainFreeRoamMapPreviewRefreshFailedForSession.value
+            ? `自动扫图状态机已启动；地图画面刷新失败${mapPreviewFailureText(mapPreviewResult.value) ? `：${mapPreviewFailureText(mapPreviewResult.value)}` : ""}，PC 继续保留停止兜底。`
           : "自动扫图状态机已启动；PC 继续监看地图、雷达和停止兜底。"
       : blockers.length
         ? `还差：${blockers.slice(0, 3).join("、")}。`
@@ -6133,6 +6146,9 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
   const refreshStartedDuringFreeRoamRuntime = options.countForFreeRoamSession === true && mapRuntimeStarted.value;
   const liveRefreshDuringFreeRoam = options.freeRoamLiveRefresh === true && mapRuntimeStarted.value;
   const refreshAfterSavedMap = (options.savedMapRefresh === true || mapSavedThisSession.value) && mapSavedThisSession.value;
+  if (refreshStartedDuringFreeRoamRuntime) {
+    plainFreeRoamMapPreviewRefreshFailedForSession.value = false;
+  }
   if (refreshAfterSavedMap) {
     plainFreeRoamSavedMapPreviewRefreshFailed.value = false;
   }
@@ -6141,6 +6157,9 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
     mapPreviewResult.value = await getRobotControlMapPreview(robotApiBaseUrl.value);
     if (refreshStartedDuringFreeRoamRuntime && mapRuntimeStarted.value && mapPreviewResult.value?.proxy_status === "preview_forwarded") {
       plainFreeRoamMapPreviewFreshForSession.value = true;
+      plainFreeRoamMapPreviewRefreshFailedForSession.value = false;
+    } else if (refreshStartedDuringFreeRoamRuntime && mapRuntimeStarted.value) {
+      plainFreeRoamMapPreviewRefreshFailedForSession.value = true;
     }
     if (liveRefreshDuringFreeRoam && mapRuntimeStarted.value && mapPreviewResult.value?.proxy_status === "preview_forwarded") {
       plainFreeRoamLiveMapPreviewRefreshedForHold.value = true;
@@ -6153,6 +6172,9 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
     }
   } catch (err) {
     mapPreviewResult.value = makeMapPreviewFallback(err instanceof Error ? err.message : "map_preview_request_failed");
+    if (refreshStartedDuringFreeRoamRuntime && mapRuntimeStarted.value) {
+      plainFreeRoamMapPreviewRefreshFailedForSession.value = true;
+    }
     if (refreshAfterSavedMap && mapSavedThisSession.value) {
       plainFreeRoamSavedMapPreviewRefreshFailed.value = true;
     }
@@ -6988,6 +7010,7 @@ async function startMapRuntime(): Promise<void> {
     return;
   }
   plainFreeRoamMapPreviewFreshForSession.value = false;
+  plainFreeRoamMapPreviewRefreshFailedForSession.value = false;
   plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
   plainFreeRoamSavedMapPreviewFreshForSession.value = false;
   plainFreeRoamSavedMapPreviewRefreshFailed.value = false;
