@@ -1200,7 +1200,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("defaults Robot Control read-only reads to the fixed robot API address", async () => {
-    // Nav2/latest、delivery/latest 和地图只读画面都应默认走固定小车，不要求普通用户手填。
+    // Nav2/latest、delivery/latest、地图只读画面和自动扫图 latest 都应默认走固定小车，不要求普通用户手填。
     expect(robotControlReadOnlyQueryBaseUrl(undefined)).toBe("http://192.168.1.11:8787");
     expect(robotControlReadOnlyQueryBaseUrl("")).toBe("http://192.168.1.11:8787");
     const requestedUrls: string[] = [];
@@ -1215,6 +1215,15 @@ describe("workstation fail-closed API contracts", () => {
         payload = { delivery_success: false, latest_result: { missing_required_material: ["operator_observed_motion"] } };
       } else if (pathname.endsWith("/api/map/list")) {
         payload = { status: "loaded", maps: [], command_result: { executed: false, ok: true } };
+      } else if (pathname.endsWith("/api/free-roam/autonomy/latest")) {
+        payload = {
+          status: "loaded",
+          latest_result: {
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            decision: { state: "locked", reason: "现场安全确认未满足", stop_required: true, gates: [] },
+          },
+        };
       } else {
         payload = {
           status: "loaded",
@@ -1243,15 +1252,18 @@ describe("workstation fail-closed API contracts", () => {
       const delivery = await requestJson(new URL("/api/robot-control/delivery/latest", server.baseUrl));
       const mapList = await requestJson(new URL("/api/robot-control/map/list", server.baseUrl));
       const mapPreview = await requestJson(new URL("/api/robot-control/map/preview", server.baseUrl));
+      const freeRoamLatest = await requestJson(new URL("/api/robot-control/free-roam/autonomy/latest", server.baseUrl));
 
       expect(nav2.status).toBe(200);
       expect(delivery.status).toBe(200);
       expect(mapList.status).toBe(200);
       expect(mapPreview.status).toBe(200);
+      expect(freeRoamLatest.status).toBe(200);
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/nav2/goal/execution/latest");
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/delivery/latest");
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/map/list");
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/map/preview");
+      expect(requestedUrls).toContain("http://192.168.1.11:8787/api/free-roam/autonomy/latest");
     } finally {
       fetchSpy.mockRestore();
       await server.close();
@@ -6379,6 +6391,71 @@ describe("workstation fail-closed API contracts", () => {
       expect(upstream.receivedGets).toEqual(["/api/delivery/latest"]);
       expect(upstream.receivedBodies["/api/delivery/complete"]).toBeUndefined();
       expect(upstream.receivedBodies["/api/operator/report"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("free-roam autonomy latest proxy reads fixed runtime artifact without starting autonomy", async () => {
+    // 自动扫图 latest 是只读 runtime artifact：不调用 start/stop，不发送 manual，也不把 PC 顶层安全字段置真。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: false,
+            cmd_vel_publish_enabled: true,
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "running",
+              reason: "门禁满足，低速直行",
+              stop_required: false,
+              gates: [
+                { id: "operator_confirmed", state: "ready" },
+                { id: "lidar_fresh", state: "ready" },
+              ],
+            },
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/free-roam/autonomy/latest?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        remote_endpoint: string;
+        remote_method: string;
+        latest_key_values: Record<string, string>;
+        hard_dangerous_true_fields: string[];
+        safe_to_control: boolean;
+        delivery_success: boolean;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("latest_loaded");
+      expect(body.remote_endpoint).toBe("/api/free-roam/autonomy/latest");
+      expect(body.remote_method).toBe("GET");
+      expect(body.latest_key_values.decision_state).toBe("running");
+      expect(body.latest_key_values.decision_reason).toBe("门禁满足，低速直行");
+      expect(body.latest_key_values.artifact_only).toBe("false");
+      expect(body.latest_key_values.cmd_vel_publish_enabled).toBe("true");
+      expect(body.latest_key_values.gate_count).toBe("2");
+      expect(body.hard_dangerous_true_fields).toEqual([]);
+      expect(body.safe_to_control).toBe(false);
+      expect(body.delivery_success).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/free-roam/autonomy/latest"]);
+      expect(upstream.receivedBodies["/api/free-roam/autonomy/start"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/free-roam/autonomy/stop"]).toBeUndefined();
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
     } finally {
       await workstation.close();

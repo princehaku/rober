@@ -66,6 +66,7 @@ import type {
   RobotControlEvidenceReadbackSummary,
   RobotControlFreeRoamAutonomyAction,
   RobotControlFreeRoamAutonomyEndpoint,
+  RobotControlFreeRoamAutonomyLatestResponse,
   RobotControlFreeRoamAutonomyResponse,
   RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
@@ -828,6 +829,23 @@ function freeRoamAutonomyProxyResponse(
       : forwarded ? [] : ["free_roam_autonomy_rejected"],
     hard_dangerous_true_fields: [],
     robot_control_executed: false,
+  };
+}
+
+function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
+  // latest 只读 runtime 摘要；不把完整 decision/gates 原样透出，避免普通接口变成 raw artifact dump。
+  const latest = asRecord(payload?.latest_result) ?? payload;
+  const decision = asRecord(latest?.decision);
+  const gates = Array.isArray(decision?.gates) ? decision.gates : [];
+  return {
+    status: shortValue(payload?.status),
+    runtime_status: shortValue(latest?.status, "loaded"),
+    decision_state: shortValue(decision?.state ?? latest?.decision_state),
+    decision_reason: shortValue(decision?.reason ?? latest?.decision_reason),
+    stop_required: shortValue(decision?.stop_required ?? latest?.stop_required),
+    artifact_only: shortValue(latest?.artifact_only),
+    cmd_vel_publish_enabled: shortValue(latest?.cmd_vel_publish_enabled),
+    gate_count: String(gates.length),
   };
 }
 
@@ -1965,6 +1983,65 @@ export function createWorkstationApp(): express.Express {
       const response = await buildMapLifecycleProxy(queryString(req.query.baseUrl), action, req.body);
       res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
     });
+  });
+
+  workstationApp.get("/api/robot-control/free-roam/autonomy/latest", async (req, res) => {
+    // 自动扫图 latest 是只读 runtime artifact 代理；不启动/停止状态机，也不发布任何速度。
+    const sourceBaseUrl = robotControlReadOnlyQueryBaseUrl(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const fallbackBase: RobotControlFreeRoamAutonomyLatestResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_latest_proxy.v1",
+      proxy_status: "latest_rejected",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+      workstation_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+      remote_endpoint: "/api/free-roam/autonomy/latest",
+      remote_method: "GET",
+      remote_http_status: null,
+      status: "blocked",
+      latest_key_values: {},
+      failure_reason: normalized.ok ? "" : normalized.reason,
+      blocked_reasons: normalized.ok ? [] : [normalized.reason],
+      hard_dangerous_true_fields: [],
+    };
+    if (!normalized.ok) {
+      res.status(400).json(fallbackBase);
+      return;
+    }
+    try {
+      const remote = await fetch(endpointUrl(normalized.normalized, "/api/free-roam/autonomy/latest"), {
+        method: "GET",
+        signal: AbortSignal.timeout(10000),
+      });
+      const remotePayload = asRecord(await remote.json().catch(() => null));
+      const dangerous = scanDangerousTrueFields(remotePayload).filter(
+        (field) => field !== "cmd_vel_publish_enabled" && !field.endsWith(".cmd_vel_publish_enabled"),
+      );
+      const responseBody: RobotControlFreeRoamAutonomyLatestResponse = {
+        ...fallbackBase,
+        proxy_status: remote.ok && dangerous.length === 0 ? "latest_loaded" : "latest_failed",
+        remote_http_status: remote.status,
+        status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
+        latest_key_values: freeRoamAutonomyLatestKeyValues(remotePayload),
+        failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `free_roam_autonomy_latest_http_status_${remote.status}`,
+        blocked_reasons: [
+          ...(remote.ok ? [] : [`free_roam_autonomy_latest_http_status_${remote.status}`]),
+          ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ],
+        hard_dangerous_true_fields: dangerous,
+      };
+      res.status(responseBody.proxy_status === "latest_loaded" ? 200 : 502).json(responseBody);
+    } catch (error) {
+      const reason = error instanceof Error ? shortText(error.message, "free_roam_autonomy_latest_failed") : "free_roam_autonomy_latest_failed";
+      res.status(502).json({ ...fallbackBase, proxy_status: "latest_failed", failure_reason: reason, blocked_reasons: [reason] });
+    }
   });
 
   workstationApp.post("/api/robot-control/free-roam/autonomy/start", async (req, res) => {

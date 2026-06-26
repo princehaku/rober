@@ -2034,6 +2034,13 @@ delivery complete/stop 或 `/cmd_vel`。
 例如现场安全确认、地图记录、雷达新鲜、前方障碍和真车低速放行；旧上位机没有该 endpoint 时按 optional missing 处理，
 继续显示默认锁定门禁。该读回不开放自动扫图按钮，不发送 `/cmd_vel`。
 
+2026-06-26 23:59 起，PC Node 公开固定只读代理 `GET /api/robot-control/free-roam/autonomy/latest`，
+缺省 `baseUrl` 时默认读取 `http://192.168.1.11:8787/api/free-roam/autonomy/latest`，返回 runtime 的短摘要
+`decision_state/reason/stop_required/artifact_only/cmd_vel_publish_enabled/gate_count`。该代理只读 latest artifact，
+不调用 `/api/free-roam/autonomy/start`、`/api/free-roam/autonomy/stop`、manual、Nav2、delivery 或 `/cmd_vel`；
+即使 runtime 摘要里 `cmd_vel_publish_enabled=true`，PC 顶层仍固定 `safe_to_control=false` 和
+`robot_control_executed=false`。
+
 2026-06-25 21:34 起，普通首屏 `执行图上路线` 成功返回后，会自动追加一次只读
 `/api/robot-control/nav2/goal/execution/latest` 和 `/api/robot-control/delivery/latest` 同步，并用本轮
 Nav2 execution `evidence_ref` 预填送达 `route/map` 材料。这样执行按钮、行程进度、送达材料入口和页面刷新后的 latest

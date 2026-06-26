@@ -2578,6 +2578,7 @@ export type RobotControlFreeRoamAutonomyProxyStatus = "autonomy_forwarded" | "au
 export type RobotControlFreeRoamAutonomyEndpoint =
   | "/api/free-roam/autonomy/start"
   | "/api/free-roam/autonomy/stop";
+export type RobotControlFreeRoamAutonomyLatestProxyStatus = "latest_loaded" | "latest_rejected" | "latest_failed";
 
 export interface RobotControlFreeRoamAutonomyRequest {
   confirm_operator_safety?: boolean;
@@ -2605,6 +2606,23 @@ export interface RobotControlFreeRoamAutonomyResponse extends ProofFlags {
   direct_cmd_vel_publish: false;
   does_not_set_motion_unlock: true;
   blocked_parameters_not_touched: string[];
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
+export interface RobotControlFreeRoamAutonomyLatestResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_latest_proxy.v1";
+  proxy_status: RobotControlFreeRoamAutonomyLatestProxyStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/free-roam/autonomy/latest";
+  remote_endpoint: "/api/free-roam/autonomy/latest";
+  remote_method: "GET";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  latest_key_values: Record<string, string>;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
