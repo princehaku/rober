@@ -16,6 +16,7 @@ import signal
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 import zlib
 from pathlib import Path
@@ -56,7 +57,7 @@ DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecyc
 DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_goal_execution_latest.json"
 DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH = "/root/rober/onboard/runtime/delivery_completion_latest.json"
 DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH = "/root/rober/onboard/runtime/free_roam_autonomy_latest.json"
-FREE_ROAM_PARAM_SET_TIMEOUT_S = 2.0
+FREE_ROAM_PARAM_LOAD_TIMEOUT_S = 10.0
 DEFAULT_ROS_SETUP_PATH = "/opt/ros/humble/setup.bash"
 DEFAULT_ONBOARD_SETUP_PATH = "/root/rober/onboard/install/setup.bash"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
@@ -1970,17 +1971,39 @@ def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False, ma
             ("motion_hil_unlocked", "true"),
             ("enable_cmd_vel_publish", "true"),
         ])
-    results = []
+    param_names = [name for name, _value in sequences[action]]
+    yaml_lines = ["/free_roam_autonomy:", "  ros__parameters:"]
     for name, value in sequences[action]:
-        # 这里只允许固定节点名、固定参数名和 bool 字符串；不会接受浏览器传入的任意参数名。
+        yaml_lines.append(f"    {name}: {value}")
+    temp_path: str | None = None
+    result: dict[str, Any] = {
+        "mode": "fixed_argv",
+        "executed": False,
+        "ok": False,
+        "reason": "free_roam_param_yaml_not_created",
+    }
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".yaml", delete=False) as temp_file:
+            # 一次 param load 比逐个 param set 更适合真实 ROS graph；避免 PC start/stop 被 5-6 个 CLI 启动拖慢。
+            temp_file.write("\n".join(yaml_lines) + "\n")
+            temp_path = temp_file.name
         result = run_fixed_argv_command(
-            ["ros2", "param", "set", "/free_roam_autonomy", name, value],
-            timeout_s=FREE_ROAM_PARAM_SET_TIMEOUT_S,
+            ["ros2", "param", "load", "/free_roam_autonomy", temp_path],
+            timeout_s=FREE_ROAM_PARAM_LOAD_TIMEOUT_S,
         )
-        results.append({"parameter": name, "value": value, **result})
-        if not result.get("ok"):
-            break
-    touched = [item["parameter"] for item in results]
+    finally:
+        if temp_path:
+            try:
+                Path(temp_path).unlink(missing_ok=True)
+            except Exception:
+                pass
+    results = [{
+        "parameters": param_names,
+        "values": {name: value for name, value in sequences[action]},
+        "write_strategy": "ros2_param_load",
+        **result,
+    }]
+    touched = param_names if result.get("ok") else []
     blocked_not_touched = [
         name
         for name in ("motion_hil_unlocked", "enable_cmd_vel_publish", "cmd_vel_topic")
@@ -1991,7 +2014,7 @@ def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False, ma
         "action": action,
         "motion_unlock_requested": bool(action == "start" and enable_motion),
         "executed": any(bool(item.get("executed")) for item in results),
-        "ok": len(results) == len(sequences[action]) and all(bool(item.get("ok")) for item in results),
+        "ok": all(bool(item.get("ok")) for item in results),
         "results": results,
         "touched_parameters": touched,
         "blocked_parameters_not_touched": blocked_not_touched,

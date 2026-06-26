@@ -35,9 +35,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   HTTP start 只允许通过固定状态机参数序列写 `motion_hil_unlocked=true` 与 `enable_cmd_vel_publish=true`，
   不直接发布 `/cmd_vel`，也不允许 PC 或浏览器改写 `cmd_vel_topic`。stop 不要求相机/雷达 ready，只把
   `enable_cmd_vel_publish/motion_hil_unlocked` 收回为 false，并设置 `external_stop_requested=true`。
-- 2026-06-26 23:40 起，上位机 free-roam start/stop 写 ROS 参数使用专用短超时；如果 `/free_roam_autonomy`
-  参数服务因重复 launch、ROS graph 抖动或 node 无响应而卡住，API 必须快速返回结构化失败并停止后续参数写入，
-  不能让 PC 普通首屏一直等待。该行为不放宽安全确认，不新增任意 ROS 参数入口。
+- 2026-06-26 23:40 起，上位机 free-roam start/stop 写 ROS 参数改为一次固定 `ros2 param load`
+  临时 YAML；如果 `/free_roam_autonomy` 参数服务因重复 launch、ROS graph 抖动或 node 无响应而卡住，
+  API 必须按专用超时返回结构化失败，不能让 PC 普通首屏一直等待。该行为不放宽安全确认，
+  不新增任意 ROS 参数入口。
 - 2026-06-26 01:05 起，PC 在自动扫图 start/stop 请求后把结果同步到普通首屏地图和“扫图状态”行：
   start 成功显示 `自动扫图已启动` / `自动扫图状态机已启动`，stop 成功显示停止请求已发送，失败则明确显示未证明启动或停止。
   这些反馈只来自固定 PC 代理返回值，不外推成真实自主运动成功，也不新增 `/cmd_vel`、manual 或 Nav2 调用。

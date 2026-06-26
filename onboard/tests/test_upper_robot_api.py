@@ -1027,10 +1027,12 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         """参数序列默认不解锁；只有 readiness 通过后的 start 才写运动发布双锁。"""
         calls: list[list[str]] = []
         timeouts: list[float] = []
+        yaml_payloads: list[str] = []
 
         def fake_run(argv, timeout_s=8.0):  # noqa: ANN001 - 测试 stub 保持签名宽松。
             calls.append(argv)
             timeouts.append(timeout_s)
+            yaml_payloads.append(Path(argv[-1]).read_text(encoding="utf-8"))
             return {"mode": "fixed_argv", "executed": True, "ok": True, "argv": argv, "returncode": 0}
 
         with mock.patch.object(upper_robot_api, "run_fixed_argv_command", side_effect=fake_run):
@@ -1038,7 +1040,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             unlocked_result = upper_robot_api.run_free_roam_param_sequence("start", enable_motion=True)
             stop_result = upper_robot_api.run_free_roam_param_sequence("stop")
 
-        flattened = " ".join(" ".join(argv) for argv in calls)
+        flattened = "\n".join(yaml_payloads)
+        self.assertEqual(3, len(calls))
+        self.assertTrue(all(argv[:4] == ["ros2", "param", "load", "/free_roam_autonomy"] for argv in calls))
         self.assertTrue(locked_result["ok"])
         self.assertTrue(unlocked_result["ok"])
         self.assertTrue(stop_result["ok"])
@@ -1048,12 +1052,16 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(locked_result["motion_unlock_requested"])
         self.assertTrue(unlocked_result["motion_unlock_requested"])
         self.assertEqual(unlocked_result["blocked_parameters_not_touched"], ["cmd_vel_topic"])
-        self.assertIn("motion_hil_unlocked true", flattened)
-        self.assertIn("enable_cmd_vel_publish true", flattened)
-        self.assertIn("motion_hil_unlocked false", flattened)
-        self.assertIn("enable_cmd_vel_publish false", flattened)
+        self.assertIn("motion_hil_unlocked: true", flattened)
+        self.assertIn("enable_cmd_vel_publish: true", flattened)
+        self.assertIn("motion_hil_unlocked: false", flattened)
+        self.assertIn("enable_cmd_vel_publish: false", flattened)
         self.assertTrue(timeouts)
-        self.assertTrue(all(timeout == upper_robot_api.FREE_ROAM_PARAM_SET_TIMEOUT_S for timeout in timeouts))
+        self.assertTrue(all(timeout == upper_robot_api.FREE_ROAM_PARAM_LOAD_TIMEOUT_S for timeout in timeouts))
+        self.assertEqual(
+            ["operator_confirmed", "mapping_active", "stop_available", "external_stop_requested"],
+            locked_result["touched_parameters"],
+        )
 
     def test_free_roam_param_sequence_stops_after_first_param_timeout(self) -> None:
         """ROS 参数服务不响应时必须快速返回结构化失败，不能让 PC start 长时间卡住。"""
@@ -1075,9 +1083,10 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             result = upper_robot_api.run_free_roam_param_sequence("start", enable_motion=True)
 
         self.assertFalse(result["ok"])
-        self.assertEqual(["operator_confirmed"], result["touched_parameters"])
+        self.assertEqual([], result["touched_parameters"])
         self.assertEqual(1, len(calls))
-        self.assertEqual(upper_robot_api.FREE_ROAM_PARAM_SET_TIMEOUT_S, result["results"][0]["timeout_s"])
+        self.assertEqual(["ros2", "param", "load", "/free_roam_autonomy"], calls[0][:4])
+        self.assertEqual(upper_robot_api.FREE_ROAM_PARAM_LOAD_TIMEOUT_S, result["results"][0]["timeout_s"])
         self.assertEqual(
             ["motion_hil_unlocked", "enable_cmd_vel_publish", "cmd_vel_topic"],
             result["blocked_parameters_not_touched"],
