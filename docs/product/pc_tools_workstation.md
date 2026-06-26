@@ -3086,3 +3086,9 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 `检查自由移动条件`；只有三者满足建图验收口径时才显示 `自动扫图准备`、`刷新自动扫图状态（只读）`。
 这让“小车可以低速自己动”与“可按完整自动扫图/建图验收”分开表达，避免缺雷达或缺画面时把自由移动入口误说成自动扫图失败。
 该改动只影响 PC WYSIWYG 文案，不新增 motion API，不发送 manual pulse、Nav2 goal、delivery complete 或 `/cmd_vel`。
+
+2026-06-27 07:30 起，普通首屏实时画面卡在相机源首帧失败、但用户还没跑过只读首帧检查时，会直接显示：
+`只读检查：还没做首帧检查；点检查画面确认上位机能否读到样张，不会发车。`
+这补齐 live 场景里 `source_usage_owner_count=0`、`capture_read_returned_false` 已经说明“不是页面独占”，但
+`first_frame_probe_status=not_loaded` 时缺少下一步动作的问题。按钮仍只调用
+`POST /api/robot-control/camera/first-frame/probe`，不会打开 manual、free-roam、Nav2、delivery 或 `/cmd_vel`。
