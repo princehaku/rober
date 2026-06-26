@@ -3423,13 +3423,14 @@ const plainDeliveryPrefillButtonLabel = computed(() => {
   }
   const hasVideoRef = deliveryOperatorVideoRef.value.trim().length > 0;
   const hasRouteRef = deliveryOperatorRouteMapRef.value.trim().length > 0;
+  const visualPrefix = browserVideoFrameDrawn() ? "" : "检查画面并";
   if (hasRouteRef && !hasVideoRef) {
-    return "补送达画面";
+    return `${visualPrefix}补送达画面`;
   }
   if (hasVideoRef && hasRouteRef) {
     return "重新准备材料";
   }
-  return "准备送达材料";
+  return `${visualPrefix}准备送达材料`;
 });
 
 const plainDeliveryMaterialSummary = computed(() => {

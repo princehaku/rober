@@ -2190,6 +2190,11 @@ radar proof refresh 仍保留；该动作只刷新 no-motion scan proof，不调
 camera first-frame probe 再记录样张。该调整只修正文案和所见即所得预期，不自动打开摄像头、不发送 manual、Nav2、
 delivery、stop 或 `/cmd_vel`。
 
+2026-06-26 14:35 起，普通首屏送达材料按钮也按同一绘帧口径改文案：缺送达画面且浏览器尚未绘制当前帧时显示
+`检查画面并准备送达材料` 或 `检查画面并补送达画面`；已有当前视频帧时才保留 `准备送达材料` / `补送达画面`。
+该按钮仍只读取最近行程、固定 camera first-frame probe 和 delivery latest，不提交送达、不执行 Nav2、不发送 manual、
+keyboard pulse、stop 或 `/cmd_vel`。
+
 2026-06-25 23:34 起，普通首屏执行图上路线时会保留“本次点击的图上终点”。如果上位机 Nav2 execute 失败或拒绝，
 且响应没有回传 `goal_x/goal_y`，地图仍会在这次图上终点显示 `行程未通过`，避免失败后目标 marker 消失。该兜底只用于
 PC 读图反馈，不补造到达、不提交送达、不调用 manual、keyboard、delivery、stop 或 `/cmd_vel`。

@@ -6241,7 +6241,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，可以准备送达材料。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-visible-route-fixture");
-    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("补送达画面");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("检查画面并补送达画面");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：准备送达材料。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -12128,7 +12128,7 @@ describe("App", () => {
 
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     const focusCallsBeforePrefill = focusSpy.mock.calls.length;
-    await wrapper.findAll(".simple-user-console button").find((button) => button.text() === "准备送达材料")?.trigger("click");
+    await wrapper.find('[data-testid="plain-delivery-prefill-material"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(deliveryStatus.text()).toContain("已预填");
@@ -13203,7 +13203,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("检查并记录画面");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("准备送达材料");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("检查画面并准备送达材料");
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find("details").text()).toContain("peer_closed:closed");
   });
@@ -13304,6 +13304,7 @@ describe("App", () => {
 
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面偏暗");
     expect(wrapper.find('[data-testid="plain-record-current-camera"]').text()).toBe("用当前画面记录");
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("准备送达材料");
     expect(wrapper.find(".robot-console-grid").text()).toContain("画面太暗，先检查镜头/光线。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("画面偏暗");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面偏暗");
