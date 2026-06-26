@@ -2787,3 +2787,9 @@ free-roam autonomy start 或 `/cmd_vel`，也不修改 Clash 或系统代理配�
 并刷新地图画面；只有地图上看得到当前路线且小车位置可见时，主按钮才调用固定
 `/api/robot-control/nav2/goal/execute`，后端仍会复查定位、路线和确认字段。该改动不新增自动发车、不绕过 WYSIWYG 地图 gate、
 不发送 manual/keyboard pulse/delivery/stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
+
+2026-06-26 23:20 起，普通首屏 `扫地式建图` 的 `可移动` 与 `可建图` 不再只是文字状态：外层卡片和状态 chip
+同步带对应视觉态。`可移动` 使用提示色，表达“可以低速移动但本轮建图质量降级”；`可建图` 使用完成色，表达摄像头和雷达
+readiness 均满足。测试锁定 `.plain-free-roam-map[data-state="可移动/可建图"]` 和 `.status-chip[data-state="可移动/可建图"]`
+选择器，避免后续只改文案不改视觉。该改动只影响 PC 前端呈现，不调用 map lifecycle、manual、keyboard、Nav2、delivery、
+free-roam autonomy、stop 或 `/cmd_vel`。

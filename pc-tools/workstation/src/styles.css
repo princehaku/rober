@@ -265,6 +265,7 @@ h3 {
 .status-chip[data-state="已启用"],
 .status-chip[data-state="已完成"],
 .status-chip[data-state="已保存"],
+.status-chip[data-state="可建图"],
 .status-chip[data-state="路径可生成"] {
   border-color: #bfd4c6;
   background: #eff8f1;
@@ -311,6 +312,7 @@ h3 {
 .status-chip[data-state="可保存"],
 .status-chip[data-state="可检查"],
 .status-chip[data-state="可执行"],
+.status-chip[data-state="可移动"],
 .status-chip[data-state="手控中"] {
   border-color: #d5d2a9;
   background: #fbf8e8;
@@ -1579,6 +1581,7 @@ h3 {
   border-left: 3px solid transparent;
 }
 
+.plain-free-roam-map[data-state="可建图"],
 .plain-free-roam-map[data-state="可开始"],
 .plain-free-roam-map[data-state="扫图中"],
 .plain-free-roam-map[data-state="已保存"] {
@@ -1586,6 +1589,7 @@ h3 {
   background: linear-gradient(90deg, rgba(35, 134, 54, 0.08), #ffffff 42%);
 }
 
+.plain-free-roam-map[data-state="可移动"],
 .plain-free-roam-map[data-state="启动中"],
 .plain-free-roam-map[data-state="保存中"],
 .plain-free-roam-map[data-state="读取中"],
