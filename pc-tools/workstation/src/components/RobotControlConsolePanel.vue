@@ -4468,7 +4468,7 @@ const plainTripExecutionButtonLabel = computed(() => {
     return "等待地图刷新";
   }
   if (plainTripRecentRouteVisible.value) {
-    return "重新准备路线";
+    return "重新准备路线（不发车）";
   }
   if (!plainTripCurrentRouteVisible.value) {
     return plainTripPreparedBySummary.value ? "刷新图上路线" : "准备图上路线";

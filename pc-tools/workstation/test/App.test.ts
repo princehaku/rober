@@ -5824,7 +5824,7 @@ describe("App", () => {
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图上显示的是最近路线（最近路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）；先准备行程，再执行新的图上路线。");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("重新准备路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("重新准备路线（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await wrapper.vm.$nextTick();
