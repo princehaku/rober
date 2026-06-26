@@ -51,6 +51,7 @@ import {
   scanDangerousTrueFields,
 } from "./robotControlSummary";
 import { WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../shared/workstationDefaults";
+import { PROOF_FLAGS } from "../shared/contracts";
 import type { Response } from "express";
 import type {
   RobotControlBaseCommandProxyResponse,
@@ -59,6 +60,7 @@ import type {
   RobotControlCameraAnswerSummary,
   RobotControlCameraCloseProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
+  RobotControlCameraMjpegStatusResponse,
   RobotControlCameraOfferProxyResponse,
   RobotControlEvidenceCaptureEndpointId,
   RobotControlEvidenceCapturePhase,
@@ -1058,6 +1060,35 @@ function getCameraMjpegRelay(normalizedBaseUrl: URL): CameraMjpegRelay {
   };
   cameraMjpegRelays.set(key, relay);
   return relay;
+}
+
+function cameraMjpegStatusResponse(
+  sourceBaseUrl: string,
+  normalizedBaseUrl: URL | null,
+  relay: CameraMjpegRelay | null,
+  failureReason = "",
+): RobotControlCameraMjpegStatusResponse {
+  // 这个端点只读本机 relay 状态，帮助现场判断多个 PC 页面是否共享同一个上游视频流。
+  const relayKey = normalizedBaseUrl ? cameraMjpegRelayKey(normalizedBaseUrl) : "not_loaded";
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
+    proxy_status: failureReason ? "status_rejected" : "status_loaded",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: normalizedBaseUrl ? normalizedBaseUrl.toString().replace(/\/$/, "") : "not_loaded",
+    workstation_endpoint: "/api/robot-control/camera/mjpeg/status",
+    remote_endpoint: "/api/camera/mjpeg",
+    relay_key: relayKey,
+    client_count: relay?.clients.size ?? 0,
+    upstream_active: relay?.upstreamActive ?? false,
+    content_type_loaded: Boolean(relay?.contentType),
+    content_type: relay?.contentType ?? "",
+    shared_capture: true,
+    exclusive_camera_claim: false,
+    failure_reason: failureReason,
+    blocked_reasons: failureReason ? [failureReason] : [],
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
 }
 
 function startCameraMjpegClient(client: CameraMjpegRelayClient, contentType: string): void {
@@ -2441,6 +2472,18 @@ export function createWorkstationApp(): express.Express {
       ],
     };
     res.status(responseBody.proxy_status === "peer_closed" ? 200 : 502).json(responseBody);
+  });
+
+  workstationApp.get("/api/robot-control/camera/mjpeg/status", async (req, res) => {
+    // 只读共享预览状态；不会创建 MJPEG client，也不会触发上位机 camera reader。
+    const sourceBaseUrl = robotControlReadOnlyQueryBaseUrl(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      res.status(400).json(cameraMjpegStatusResponse(sourceBaseUrl, null, null, normalized.reason));
+      return;
+    }
+    const relayKey = cameraMjpegRelayKey(normalized.normalized);
+    res.json(cameraMjpegStatusResponse(sourceBaseUrl, normalized.normalized, cameraMjpegRelays.get(relayKey) ?? null));
   });
 
   workstationApp.get("/api/robot-control/camera/mjpeg", async (req, res) => {

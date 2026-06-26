@@ -2721,6 +2721,25 @@ export interface RobotControlCameraCloseProxyResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1";
+  proxy_status: "status_loaded" | "status_rejected";
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/camera/mjpeg/status";
+  remote_endpoint: "/api/camera/mjpeg";
+  relay_key: string;
+  client_count: number;
+  upstream_active: boolean;
+  content_type_loaded: boolean;
+  content_type: string;
+  shared_capture: true;
+  exclusive_camera_claim: false;
+  failure_reason: string;
+  blocked_reasons: string[];
+  robot_control_executed: false;
+}
+
 export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1";
   proxy_status: "probe_forwarded" | "probe_rejected" | "probe_failed";

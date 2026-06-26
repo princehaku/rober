@@ -1072,6 +1072,24 @@ const fixtures: Record<string, unknown> = {
     blocked_reasons: [],
     ...PROOF_FLAGS,
   },
+  "/api/robot-control/camera/mjpeg/status": {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
+    proxy_status: "status_loaded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    workstation_endpoint: "/api/robot-control/camera/mjpeg/status",
+    remote_endpoint: "/api/camera/mjpeg",
+    relay_key: "http://192.168.1.11:8787",
+    client_count: 2,
+    upstream_active: true,
+    content_type_loaded: true,
+    content_type: "multipart/x-mixed-replace; boundary=roberframe",
+    shared_capture: true,
+    exclusive_camera_claim: false,
+    failure_reason: "",
+    blocked_reasons: [],
+    ...PROOF_FLAGS,
+  },
   "/api/robot-control/camera/peers/peer-preview-001/close": {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_close_proxy.v1",
     proxy_status: "peer_closed",
@@ -3274,6 +3292,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/operator/report";
     } else if (url.startsWith("/api/robot-control/camera/first-frame/probe")) {
       fixtureKey = "/api/robot-control/camera/first-frame/probe";
+    } else if (url.startsWith("/api/robot-control/camera/mjpeg/status")) {
+      fixtureKey = "/api/robot-control/camera/mjpeg/status";
     } else if (url.startsWith("/api/robot-control/camera/offer")) {
       fixtureKey = "/api/robot-control/camera/offer";
     } else if (url.startsWith("/api/robot-control/camera/peers/peer-preview-001/close")) {
@@ -3674,10 +3694,11 @@ describe("App", () => {
     expect((robotBaseUrlInput.element as HTMLInputElement).value).toBe("http://192.168.1.11:8787");
     expect(wrapper.find('[data-testid="robot-api-default-address"]').text()).toBe("192.168.1.11:8787");
     expect(wrapper.find('[data-testid="robot-api-default-summary"]').text()).toBe("已使用默认地址");
-    expect(mockedFetch.mock.calls).toHaveLength(fetchCallsBeforeDefaultRestore);
+    expect(mockedFetch.mock.calls).toHaveLength(fetchCallsBeforeDefaultRestore + 1);
     expect(
       mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787")),
     ).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -14614,9 +14635,11 @@ describe("App", () => {
     expect(mjpegPreview.exists()).toBe(true);
     expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
     await mjpegPreview.trigger("load");
+    await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面可见");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示 MJPEG 实时画面。MJPEG 实时流已显示。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：2 个页面观看，上游已连接，已拿到视频边界；PC 只复用同一条上游流。");
 
     const previewVideoElement = wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement;
     Object.defineProperty(previewVideoElement, "videoWidth", { configurable: true, value: 640 });

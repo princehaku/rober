@@ -21,6 +21,7 @@ import type {
   RobotControlProofRefreshProxyResponse,
   RobotControlCameraCloseProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
+  RobotControlCameraMjpegStatusResponse,
   RobotControlCameraOfferProxyResponse,
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
@@ -135,6 +136,7 @@ const API_ENDPOINTS = {
   robotControlCameraOffer: "/api/robot-control/camera/offer",
   robotControlCameraFirstFrameProbe: "/api/robot-control/camera/first-frame/probe",
   robotControlCameraMjpeg: "/api/robot-control/camera/mjpeg",
+  robotControlCameraMjpegStatus: "/api/robot-control/camera/mjpeg/status",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
   robotControlOperatorReport: "/api/robot-control/operator/report",
   proofBoundary: "/api/proof-boundary",
@@ -250,6 +252,16 @@ export function robotControlCameraMjpegUrl(baseUrl: string): string {
     params.set("baseUrl", trimmed);
   }
   return `${API_ENDPOINTS.robotControlCameraMjpeg}?${params.toString()}`;
+}
+
+function robotControlCameraMjpegStatusUrl(baseUrl: string): string {
+  // status 只读本机共享 relay 表，不会创建 MJPEG client 或打开上位机相机。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.robotControlCameraMjpegStatus}?${params.toString()}`;
 }
 
 function robotControlBaseProxyUrl(endpoint: string, baseUrl: string): string {
@@ -703,6 +715,11 @@ export async function postRobotControlCameraFirstFrameProbe(
 ): Promise<RobotControlCameraFirstFrameProbeProxyResponse> {
   // 相机首帧探针是高级诊断固定入口；前端 body 为空，不能传任意设备或 shell 参数。
   return postJson<RobotControlCameraFirstFrameProbeProxyResponse>(robotControlCameraFirstFrameProbeUrl(baseUrl), {});
+}
+
+export async function getRobotControlCameraMjpegStatus(baseUrl: string): Promise<RobotControlCameraMjpegStatusResponse> {
+  // 共享预览状态只说明 PC relay 是否复用同一上游流，不代表画面内容已经可见。
+  return loadJson<RobotControlCameraMjpegStatusResponse>(robotControlCameraMjpegStatusUrl(baseUrl));
 }
 
 export async function getO7ConsumerTaskList(baseUrl: string): Promise<O7ConsumerTaskListResponse> {

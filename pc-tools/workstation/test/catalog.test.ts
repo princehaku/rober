@@ -6851,24 +6851,134 @@ describe("workstation fail-closed API contracts", () => {
       });
     });
     const workstation = await listen(createWorkstationApp());
+    const openedClients: Array<{ destroy: () => void }> = [];
     try {
       const endpoint = `${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`;
-      const response = await fetch(endpoint);
-      const secondResponse = await fetch(endpoint);
+      const openMjpegClient = (url: string) => new Promise<{
+        statusCode: number | undefined;
+        headers: http.IncomingHttpHeaders;
+        chunks: string[];
+        waitForText: (text: string) => Promise<string>;
+        destroy: () => void;
+      }>((resolve, reject) => {
+        const chunks: string[] = [];
+        const request = http.get(url, (response) => {
+          response.setEncoding("utf8");
+          response.on("data", (chunk) => chunks.push(String(chunk)));
+          const waitForText = (text: string) => new Promise<string>((waitResolve, waitReject) => {
+            const current = chunks.join("");
+            if (current.includes(text)) {
+              waitResolve(current);
+              return;
+            }
+            const timeout = setTimeout(() => {
+              cleanup();
+              waitReject(new Error(`mjpeg_chunk_timeout:${text}`));
+            }, 1000);
+            const onData = () => {
+              const next = chunks.join("");
+              if (!next.includes(text)) {
+                return;
+              }
+              cleanup();
+              waitResolve(next);
+            };
+            const onError = (error: Error) => {
+              cleanup();
+              waitReject(error);
+            };
+            const cleanup = () => {
+              clearTimeout(timeout);
+              response.off("data", onData);
+              response.off("error", onError);
+            };
+            response.on("data", onData);
+            response.on("error", onError);
+          });
+          resolve({
+            statusCode: response.statusCode,
+            headers: response.headers,
+            chunks,
+            waitForText,
+            destroy: () => {
+              response.destroy();
+              request.destroy();
+            },
+          });
+        });
+        request.on("error", reject);
+      });
+      const response = await openMjpegClient(endpoint);
+      openedClients.push(response);
+      const secondResponsePromise = openMjpegClient(endpoint);
+      await new Promise((resolve) => setTimeout(resolve, 20));
 
-      expect(response.status).toBe(200);
-      expect(secondResponse.status).toBe(200);
-      expect(response.headers.get("content-type")).toContain("multipart/x-mixed-replace");
-      expect(secondResponse.headers.get("content-type")).toContain("multipart/x-mixed-replace");
-      expect(response.headers.get("x-robber-proxy")).toBe("camera-mjpeg-shared-readonly");
-      expect(secondResponse.headers.get("x-robber-proxy")).toBe("camera-mjpeg-shared-readonly");
+      expect(response.statusCode).toBe(200);
+      expect(String(response.headers["content-type"])).toContain("multipart/x-mixed-replace");
+      expect(response.headers["x-robber-proxy"]).toBe("camera-mjpeg-shared-readonly");
       expect(upstreamRequestCount).toBe(1);
+      const firstText = await response.waitForText("jpeg");
+      expect(firstText).toContain("Content-Type: image/jpeg");
+      expect(firstText).toContain("jpeg");
+
       upstreamControl.release?.();
-      const body = await response.text();
-      const secondBody = await secondResponse.text();
-      expect(body).toContain("Content-Type: image/jpeg");
-      expect(body).toContain("jpeg");
-      expect(secondBody).toContain("jpeg2");
+      const secondResponse = await secondResponsePromise;
+      openedClients.push(secondResponse);
+      expect(secondResponse.statusCode).toBe(200);
+      expect(String(secondResponse.headers["content-type"])).toContain("multipart/x-mixed-replace");
+      expect(secondResponse.headers["x-robber-proxy"]).toBe("camera-mjpeg-shared-readonly");
+      const secondText = await secondResponse.waitForText("jpeg2");
+      expect(secondText).toContain("jpeg2");
+    } finally {
+      for (const client of openedClients) {
+        client.destroy();
+      }
+      await workstation.close();
+      await upstream.close();
+    }
+  }, 10_000);
+
+  it("workstation camera MJPEG status is readonly and does not open upstream capture", async () => {
+    // status 只读 PC Node relay 表；没有页面观看时不能为了查状态去打开相机。
+    let upstreamRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      upstreamRequestCount += 1;
+      res.statusCode = 404;
+      res.end(JSON.stringify({ method: req.method, url: req.url }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = (await statusResponse.json()) as {
+        proxy_status: string;
+        client_count: number;
+        upstream_active: boolean;
+        content_type_loaded: boolean;
+        shared_capture: boolean;
+        exclusive_camera_claim: boolean;
+        robot_control_executed: boolean;
+      };
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.proxy_status).toBe("status_loaded");
+      expect(statusBody.client_count).toBe(0);
+      expect(statusBody.upstream_active).toBe(false);
+      expect(statusBody.content_type_loaded).toBe(false);
+      expect(statusBody.shared_capture).toBe(true);
+      expect(statusBody.exclusive_camera_claim).toBe(false);
+      expect(statusBody.robot_control_executed).toBe(false);
+      expect(upstreamRequestCount).toBe(0);
     } finally {
       await workstation.close();
       await upstream.close();

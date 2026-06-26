@@ -2622,3 +2622,9 @@ camera health 返回 `source_first_frame_failed`、`source_readiness=first_frame
 `先重新定位` 并禁用，进度卡提示 `小车位置未读到；先重新定位`，点击主进度按钮只聚焦 `重新定位`，不会调用
 `/api/robot-control/nav2/goal/execute`。该门禁防止“只看到路线、看不到车”的情况下启动完整 Nav2 行程，不发送 manual/keyboard
 pulse、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 18:10 起，PC Node 新增只读 `GET /api/robot-control/camera/mjpeg/status?baseUrl=...`，用于展示实时画面 MJPEG fallback
+是否复用同一条上游流。该端点只读取本机 relay 表，返回观看页面数、上游是否连接、content-type 是否已拿到、`shared_capture=true`
+和 `exclusive_camera_claim=false`；它不会创建 MJPEG client、不会打开新的相机 reader，也不会调用 manual、Nav2、delivery、stop 或
+`/cmd_vel`。普通首屏“实时画面”卡片同步显示 `共享画面：N 个页面观看，上游已连接/未连接...`，方便现场多人打开页面时判断
+“谁进来都能看”是否成立；真实可见画面仍以 video/MJPEG 像素绘制状态为准。

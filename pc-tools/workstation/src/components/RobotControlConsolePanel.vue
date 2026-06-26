@@ -31,6 +31,7 @@ import {
   postRobotControlCameraOffer,
   postRobotControlCameraPeerClose,
   postRobotControlCameraFirstFrameProbe,
+  getRobotControlCameraMjpegStatus,
   robotControlCameraMjpegUrl,
 } from "../client/workstationApi";
 import { DEFAULT_ROBOT_API_BASE_URL } from "../shared/robotDefaults";
@@ -40,6 +41,7 @@ import type {
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
+  RobotControlCameraMjpegStatusResponse,
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
   RobotControlDeliveryGapCheckResponse,
@@ -223,6 +225,9 @@ const previewAutoConnectSuppressed = ref(false);
 const sessionEpoch = ref(0);
 const mjpegPreviewLoaded = ref(false);
 const mjpegPreviewFailed = ref(false);
+const cameraMjpegStatusResult = ref<RobotControlCameraMjpegStatusResponse | null>(null);
+const cameraMjpegStatusPending = ref(false);
+const cameraMjpegStatusFailure = ref("");
 const videoElementHasSrcObject = ref(false);
 const videoElementReadyState = ref(0);
 const videoElementWidth = ref(0);
@@ -912,6 +917,24 @@ const plainCameraWysiwygStatus = computed(() => {
       return "画面状态：还没打开，本页没有显示实时画面。";
   }
 });
+
+const plainCameraSharedPreviewStatus = computed(() => {
+  // 共享预览状态只说明 PC Node 是否在复用同一条 MJPEG 上游流，不代替真实画面像素证据。
+  if (cameraMjpegStatusPending.value) {
+    return "共享画面：正在读取 PC 共享流状态。";
+  }
+  if (cameraMjpegStatusFailure.value) {
+    return `共享画面：状态读取失败：${cameraMjpegStatusFailure.value}`;
+  }
+  const status = cameraMjpegStatusResult.value;
+  if (!status || status.proxy_status !== "status_loaded") {
+    return "共享画面：未读取到共享流状态。";
+  }
+  const upstream = status.upstream_active ? "上游已连接" : "上游未连接";
+  const content = status.content_type_loaded ? "已拿到视频边界" : "等待视频边界";
+  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；PC 只复用同一条上游流。`;
+});
+
 const cameraFirstFrameProbeSummary = computed(() => {
   // 首帧探针是高级诊断结果：只说明底层 camera readback，不升级为实时图传成功。
   if (cameraFirstFrameProbePending.value) {
@@ -6852,15 +6875,33 @@ function handlePreviewVideoReady(): void {
   }
 }
 
+async function refreshCameraMjpegStatus(): Promise<void> {
+  // 读取本机共享 relay 状态，不创建新预览客户端，也不会触发上位机额外打开摄像头。
+  if (!robotApiBaseUrl.value.trim() || cameraMjpegStatusPending.value) {
+    return;
+  }
+  cameraMjpegStatusPending.value = true;
+  cameraMjpegStatusFailure.value = "";
+  try {
+    cameraMjpegStatusResult.value = await getRobotControlCameraMjpegStatus(robotApiBaseUrl.value);
+  } catch (err) {
+    cameraMjpegStatusFailure.value = err instanceof Error ? err.message : "camera_mjpeg_status_failed";
+  } finally {
+    cameraMjpegStatusPending.value = false;
+  }
+}
+
 function handleMjpegPreviewLoaded(): void {
   // MJPEG 的 load 事件说明浏览器已拿到真实 JPEG 帧；它只作为画面 fallback，不改变任何控制 gate。
   mjpegPreviewLoaded.value = true;
   mjpegPreviewFailed.value = false;
+  void refreshCameraMjpegStatus();
 }
 
 function handleMjpegPreviewError(): void {
   // MJPEG 失败只影响画面 fallback；WebRTC 链路和相机探针仍保留原有诊断。
   mjpegPreviewFailed.value = true;
+  void refreshCameraMjpegStatus();
 }
 
 function bindPreviewStreamToElement(stream: MediaStream, epoch: number): void {
@@ -8898,6 +8939,7 @@ async function startPreviewInternal(autoConnect: boolean): Promise<void> {
 
     // setRemoteDescription 成功只是信令已闭环；真正 streaming 仍以 video track 到达为准。
     await peer.setRemoteDescription(offerResponse.answer);
+    await refreshCameraMjpegStatus();
   } catch (err) {
     const nextFailureReason = err instanceof Error ? err.message : "offer_request_failed";
     await cleanupPreview("stopped_by_user", "start_failed_cleanup");
@@ -8925,6 +8967,7 @@ async function stopPreview(): Promise<void> {
   rawFailureReason.value = "";
   await cleanupPreview("stopped_by_user", "stopped_by_user");
   previewStopPending.value = false;
+  await refreshCameraMjpegStatus();
 }
 
 watch(previewVideo, (videoElement) => {
@@ -8940,6 +8983,9 @@ watch(cameraMjpegPreviewUrl, () => {
   // baseUrl 或相机 ready 状态变化时清掉上一条 MJPEG 证据，防止旧流误标新目标。
   mjpegPreviewLoaded.value = false;
   mjpegPreviewFailed.value = false;
+  cameraMjpegStatusResult.value = null;
+  cameraMjpegStatusFailure.value = "";
+  void refreshCameraMjpegStatus();
 });
 
 watch(robotApiBaseUrl, async (nextValue, previousValue) => {
@@ -8956,6 +9002,9 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
   if (previewPeerConnection.value || previewPeerId.value) {
     await cleanupPreview("stopped_by_user", "base_url_changed_cleanup");
   }
+  cameraMjpegStatusResult.value = null;
+  cameraMjpegStatusFailure.value = "";
+  void refreshCameraMjpegStatus();
 });
 
 watch(manualBoundary, () => {
@@ -8973,6 +9022,7 @@ onMounted(() => {
   void refreshConsole().then(() => {
     void refreshMapPreview();
     void preloadGoalClosureReadbacks();
+    void refreshCameraMjpegStatus();
   });
 });
 
@@ -9059,6 +9109,7 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note">{{ cameraSummary.hint }}</p>
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
+          <p class="panel-note" data-testid="robot-camera-shared-preview-status">{{ plainCameraSharedPreviewStatus }}</p>
           <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>
         </article>
 
