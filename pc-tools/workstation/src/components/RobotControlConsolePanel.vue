@@ -6276,8 +6276,11 @@ async function stopPlainTripExecution(): Promise<void> {
   }
   const stopResult = await sendStop();
   if (navGoalExecutionPending.value && plainTripStopRequestedDuringExecution.value && !manualCommandPending.value) {
-    plainTripStopResultDuringExecution.value = stopResult;
-    plainTripStopSettledDuringExecution.value = Boolean(stopResult && !baseStopResultFailed(stopResult));
+    // null 只说明本次没有拿到新 stop 回包，不能覆盖 sendStop 内已经记录的成功/失败结果。
+    if (stopResult) {
+      plainTripStopResultDuringExecution.value = stopResult;
+      plainTripStopSettledDuringExecution.value = !baseStopResultFailed(stopResult);
+    }
   }
 }
 
