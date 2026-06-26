@@ -2465,7 +2465,8 @@ const plainMapVisualSummary = computed(() => {
   const radarLocalPointCount = radarLocalScanOverlay.dots.length;
   const radarCountOnlyMarkerLabel = radarPreviewCountOnlyMarkerLabel(radarState);
   const radarObstacleDistanceLabel = latestRadarObstacleDistanceLabel();
-  const showRadarObstacleDistance = !poseObserved && radarNeedsMapPose && radarLocalPointCount === 0 && !radarCountOnlyMarkerLabel && Boolean(radarObstacleDistanceLabel);
+  const radarCanShowObstacleDistance = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "刷新中";
+  const showRadarObstacleDistance = !poseObserved && radarCanShowObstacleDistance && radarLocalPointCount === 0 && !radarCountOnlyMarkerLabel && Boolean(radarObstacleDistanceLabel);
   const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;
   const radarOverlayLabel = poseObserved
     ? radarStartFailureText
@@ -2483,6 +2484,8 @@ const plainMapVisualSummary = computed(() => {
       ? radarRefreshFailureText
       : radarStartAwaitingRefresh
       ? "雷达已启动，位置未读到"
+      : radarState === "雷达启动中"
+      ? "雷达启动中，位置未读到"
       : radarNeedsMapPose
       ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerLabel ? `${radarState}，${radarCountOnlyMarkerLabel}` : showRadarObstacleDistance ? `${radarState}，${radarObstacleDistanceLabel}` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarState;
@@ -2508,6 +2511,8 @@ const plainMapVisualSummary = computed(() => {
       ? `${radarRefreshFailureText}，地图位置未读到`
       : radarStartAwaitingRefresh
       ? "雷达已启动，地图位置未读到，等待刷新确认"
+      : radarState === "雷达启动中"
+      ? "雷达启动中，地图位置未读到，等待刷新确认"
       : showRadarObstacleDistance
         ? `${radarState}，地图位置未读到，${radarObstacleDistanceLabel}，按雷达局部距离显示，未贴到地图`
       : radarNeedsMapPose && radarCountOnlyMarkerLabel
