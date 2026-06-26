@@ -93,6 +93,7 @@ const navGoalExecutionPendingGoal = ref<MapNavGoal | null>(null);
 const navGoalExecutionAttemptGoal = ref<MapNavGoal | null>(null);
 const plainTripStopRequestedDuringExecution = ref(false);
 const plainTripStopSettledDuringExecution = ref(false);
+const plainTripStopResultDuringExecution = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const deliveryLatestResult = ref<RobotControlDeliveryLatestResponse | null>(null);
 const deliveryGapCheckResult = ref<RobotControlDeliveryGapCheckResponse | null>(null);
 const deliveryCompletionResult = ref<RobotControlDeliveryCompleteResponse | null>(null);
@@ -3686,8 +3687,9 @@ function plainTripStopOverlayState(): { label: string; state: string; ariaPrefix
   if (manualCommandPending.value) {
     return { label: "行程停止中", state: "停止中", ariaPrefix: "正在发送行程停止请求", actionText: "正在发送行程停止请求" };
   }
-  const stopResult = manualCommandResult.value?.command_kind === "stop" ? manualCommandResult.value : null;
-  const stopFailed = stopResult && (stopResult.proxy_status === "command_failed" || stopResult.proxy_status === "command_rejected" || stopResult.status === "blocked");
+  const stopResult = plainTripStopResultDuringExecution.value
+    ?? (manualCommandResult.value?.command_kind === "stop" ? manualCommandResult.value : null);
+  const stopFailed = stopResult && baseStopResultFailed(stopResult);
   if (stopResult && !stopFailed) {
     return { label: "停止已发送", state: "停止已发送", ariaPrefix: "行程停止请求已发送", actionText: "行程停止请求已发送" };
   }
@@ -3698,6 +3700,20 @@ function plainTripStopOverlayState(): { label: string; state: string; ariaPrefix
     return { label: "停止已发送", state: "停止已发送", ariaPrefix: "行程停止请求已发送", actionText: "行程停止请求已发送" };
   }
   return { label: "停止已请求", state: "停止已请求", ariaPrefix: "行程停止已请求", actionText: "行程停止已请求" };
+}
+
+function baseStopResultFailed(result: RobotControlBaseCommandProxyResponse): boolean {
+  // stop proxy 失败必须压过“已请求/已发送”兜底，避免地图把失败回包显示成成功停止。
+  return result.proxy_status === "command_failed" || result.proxy_status === "command_rejected" || result.status === "blocked";
+}
+
+function recordPlainTripStopResult(result: RobotControlBaseCommandProxyResponse | null): void {
+  // 行程执行中的 stop 结果要独立留给地图 overlay；通用 manual 结果可能被其他链路消费。
+  if (!navGoalExecutionPending.value || !plainTripStopRequestedDuringExecution.value || !result) {
+    return;
+  }
+  plainTripStopResultDuringExecution.value = result;
+  plainTripStopSettledDuringExecution.value = !baseStopResultFailed(result);
 }
 
 function plainMapTripExecutionLabel(): string {
@@ -6206,6 +6222,7 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
   navGoalExecutionPendingGoal.value = goalRequest;
   plainTripStopRequestedDuringExecution.value = false;
   plainTripStopSettledDuringExecution.value = false;
+  plainTripStopResultDuringExecution.value = null;
   navGoalExecutionPending.value = true;
   try {
     navGoalExecutionResult.value = await postRobotControlNav2GoalExecute(robotApiBaseUrl.value, {
@@ -6223,6 +6240,7 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
     navGoalExecutionPendingGoal.value = null;
     plainTripStopRequestedDuringExecution.value = false;
     plainTripStopSettledDuringExecution.value = false;
+    plainTripStopResultDuringExecution.value = null;
     await refreshConsole();
   }
 }
@@ -6254,10 +6272,12 @@ async function stopPlainTripExecution(): Promise<void> {
   if (navGoalExecutionPending.value) {
     plainTripStopRequestedDuringExecution.value = true;
     plainTripStopSettledDuringExecution.value = false;
+    plainTripStopResultDuringExecution.value = null;
   }
-  await sendStop();
+  const stopResult = await sendStop();
   if (navGoalExecutionPending.value && plainTripStopRequestedDuringExecution.value && !manualCommandPending.value) {
-    plainTripStopSettledDuringExecution.value = true;
+    plainTripStopResultDuringExecution.value = stopResult;
+    plainTripStopSettledDuringExecution.value = Boolean(stopResult && !baseStopResultFailed(stopResult));
   }
 }
 
@@ -7544,16 +7564,19 @@ function handleWindowBlur(): void {
   }
 }
 
-async function sendStop(): Promise<void> {
+async function sendStop(): Promise<RobotControlBaseCommandProxyResponse | null> {
   // stop 始终保留，是为了在 checklist 未完成时也有 fail-safe 退路。
   if (!robotApiBaseUrl.value.trim() || manualCommandPending.value) {
-    return;
+    return null;
   }
   manualCommandPending.value = true;
+  let stopResult: RobotControlBaseCommandProxyResponse | null = null;
   try {
-    manualCommandResult.value = await postRobotControlBaseStop(robotApiBaseUrl.value);
+    stopResult = await postRobotControlBaseStop(robotApiBaseUrl.value);
+    manualCommandResult.value = stopResult;
+    recordPlainTripStopResult(stopResult);
   } catch (err) {
-    manualCommandResult.value = {
+    stopResult = {
       schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
       command_kind: "stop",
       proxy_status: "command_failed",
@@ -7589,10 +7612,13 @@ async function sendStop(): Promise<void> {
       failure_reason: err instanceof Error ? err.message : "stop_request_failed",
       blocked_reasons: [err instanceof Error ? err.message : "stop_request_failed"],
     };
+    manualCommandResult.value = stopResult;
+    recordPlainTripStopResult(stopResult);
   } finally {
     manualCommandPending.value = false;
     await refreshConsole();
   }
+  return stopResult;
 }
 
 async function startPreview(): Promise<void> {

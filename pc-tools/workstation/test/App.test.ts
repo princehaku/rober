@@ -6419,17 +6419,21 @@ describe("App", () => {
       ok: true,
       json: async () => fixtures["/api/robot-control/base/stop"],
     });
+    await stopResponse;
     await tripStopClick;
+    await flushPromises();
+    await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-stop"]').text()).toBe("行程停止（随时可点）");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("停止已发送");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("停止已发送");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toBe("行程停止请求已发送，目标地图坐标 x=0.80, y=0.00");
-    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("data-state")).toBe("停止已发送");
-    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("aria-label")).toBe("行程停止请求已发送 3/15 个点");
-    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程停止请求已发送 3/15 个点");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程停止请求已发送，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("停止已请求");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("停止已请求");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toBe("行程停止已请求，目标地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("data-state")).toBe("停止已请求");
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("aria-label")).toBe("行程停止已请求 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程停止已请求 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程停止已请求，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边接管，等待行程结果返回。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
@@ -6460,6 +6464,67 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("下一步准备送达材料");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("已完成。");
+  });
+
+  it("shows visible route stop failure on the whole route path", async () => {
+    // base stop 兜底失败时，地图不能只停留在“停止已请求”；整条路线和终点都要明确失败并提示现场接管。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const executeResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>(() => {});
+    const baseFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/nav2/goal/execute")) {
+        return executeResponse;
+      }
+      if (url.startsWith("/api/robot-control/base/stop")) {
+        return {
+          ok: true,
+          json: async () => ({
+            ...(fixtures["/api/robot-control/base/stop"] as Record<string, unknown>),
+            proxy_status: "command_failed",
+            status: "blocked",
+            failure_reason: "stop_timeout",
+            blocked_reasons: ["stop_timeout"],
+          }),
+        };
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-trip-stop"]').trigger("click");
+    await flushPromises();
+    await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("停止失败");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("停止失败");
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("data-state")).toBe("停止失败");
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("aria-label")).toBe("行程停止请求失败，人在旁边接管 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程停止请求失败，人在旁边接管 3/15 个点");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-route-path[data-state="停止失败"] polyline');
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("keeps the attempted visible route goal on the map when trip execution fails without goal coordinates", async () => {
