@@ -4227,6 +4227,13 @@ function plainTripPostExecutionMapPreviewFailureText(): string {
   }
   return mapPreviewFailureText(mapPreviewResult.value) || "地图画面读取失败";
 }
+function plainTripPreparedRouteMapPreviewFailureText(routeVisible: boolean): string {
+  // 路线已准备但图上路线不可见时，地图画面失败必须贴回行程卡片，避免用户反复点错入口。
+  if (routeVisible) {
+    return "";
+  }
+  return mapPreviewFailureText(mapPreviewResult.value);
+}
 const plainTripRadarBlocked = computed(() => {
   // 雷达状态只作为普通提示；执行按钮按“安全确认 + 后端定位/路线预检”收敛，不在前端重复硬挡。
   return false;
@@ -4311,8 +4318,12 @@ const plainTripSummary = computed(() => {
   }
   if (plainTripPreparedByRefresh.value) {
     const routeVisible = latestNavPathOverlay() !== null;
+    const mapFailure = plainTripPreparedRouteMapPreviewFailureText(routeVisible);
     if (plainTripMapWysiwygPending.value) {
       return { state: "刷新中", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备；${plainTripMapWysiwygPendingText()}，刷新完成后再执行图上路线。` };
+    }
+    if (mapFailure) {
+      return { state: "待刷新", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备，但地图画面刷新失败：${mapFailure}；重试刷新图上路线。` };
     }
     return plainManualSafetyConfirmed.value
       ? { state: "已准备", hint: routeVisible ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可执行图上路线，后端仍会复查定位和路线。` : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
@@ -4323,8 +4334,12 @@ const plainTripSummary = computed(() => {
   }
   if (plainTripPreparedBySummary.value) {
     const routeVisible = latestNavPathOverlay() !== null;
+    const mapFailure = plainTripPreparedRouteMapPreviewFailureText(routeVisible);
     if (plainTripMapWysiwygPending.value) {
       return { state: "刷新中", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备；${plainTripMapWysiwygPendingText()}，刷新完成后再执行图上路线。` };
+    }
+    if (mapFailure) {
+      return { state: "待刷新", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备，但地图画面刷新失败：${mapFailure}；重试刷新图上路线。` };
     }
     return plainManualSafetyConfirmed.value
       ? { state: "已准备", hint: routeVisible ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可直接执行图上路线，后端仍会复查定位和路线。` : `路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
@@ -4355,6 +4370,10 @@ const plainTripRouteWysiwygSummary = computed(() => {
       : `执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（${routeIdentity}）。`;
   }
   if (plainTripPreparedBySummary.value) {
+    const mapFailure = mapPreviewFailureText(mapPreviewResult.value);
+    if (mapFailure) {
+      return `路线已准备 ${plainTripPreparedPointCount.value} 个点；地图画面刷新失败：${mapFailure}，重试刷新图上路线。`;
+    }
     return `路线已准备 ${plainTripPreparedPointCount.value} 个点；先刷新地图画面确认图上路线。`;
   }
   return "";
@@ -4399,6 +4418,10 @@ const plainTripRunStatus = computed(() => {
     return `行程状态：路线已准备 ${plainTripPreparedPointCount.value} 个点，${plainTripMapWysiwygPendingText()}；刷新完成后再执行图上路线。`;
   }
   if (plainTripPreparedBySummary.value && !plainTripCurrentRouteVisible.value) {
+    const mapFailure = mapPreviewFailureText(mapPreviewResult.value);
+    if (mapFailure) {
+      return `行程状态：路线已准备 ${plainTripPreparedPointCount.value} 个点，但地图画面刷新失败：${mapFailure}；重试刷新图上路线。`;
+    }
     return `行程状态：路线已准备 ${plainTripPreparedPointCount.value} 个点，但地图上还没显示；先刷新地图画面。`;
   }
   if (plainTripCurrentRouteVisible.value) {

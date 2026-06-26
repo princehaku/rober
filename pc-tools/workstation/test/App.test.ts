@@ -6790,6 +6790,51 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("shows route map preview failure on the trip card when prepared route is not visible", async () => {
+    // 路线点已准备但地图画面读取失败时，行程区也要显示失败原因，不能只让用户猜地图 caption。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [];
+    summaryFixture.o3_proof_summary.path_point_count = 36;
+    summaryFixture.o3_proof_summary.path_preview_point_count = 36;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/preview": {
+        ...(fixtures["/api/robot-control/map/preview"] as Record<string, unknown>),
+        proxy_status: "preview_failed",
+        remote_http_status: 502,
+        status: "blocked",
+        image_data_url: "",
+        width: 0,
+        height: 0,
+        failure_reason: "map_preview_timeout",
+        blocked_reasons: ["map_preview_timeout"],
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：刷新失败：map_preview_timeout。");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("路线 36 个点已准备，但地图画面刷新失败：map_preview_timeout；重试刷新图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 36 个点；地图画面刷新失败：map_preview_timeout，重试刷新图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
+
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("待刷新");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 36 个点，但地图画面刷新失败：map_preview_timeout；重试刷新图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("刷新图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("refreshes the map automatically after plain trip preparation so the route becomes visible", async () => {
     // 准备行程是 no-motion proof；刷新完成后要把路线贴到地图上，不再要求普通用户额外点刷新地图。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
