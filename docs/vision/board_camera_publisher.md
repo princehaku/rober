@@ -917,3 +917,22 @@ BrokenPipe 栈。
 剩余事实没有改变：`/dev/video1` 能枚举并被选中，但仍没有输出可见视频帧；
 这不是 PC 页面独占导致，下一步仍应查摄像头输入、USB 线/供电、采集卡或替换
 known-good UVC。
+
+## 2026-06-27 USB reset 后端复测
+
+在 `root@192.168.1.11 -p 37878` 上继续排查 DV20：
+
+- `v4l2-ctl -d /dev/video1 --set-fmt-video=width=640,height=480,pixelformat=MJPG --stream-mmap=3 --stream-count=1`
+  和 YUYV 组合均只写出 0 字节 raw。
+- 修正参数顺序后的 `ffmpeg -f v4l2 -input_format mjpeg/yuyv422 -video_size 640x480 -i /dev/video1 -frames:v 1`
+  均未写出 JPEG；MJPG 在 EOF 前不能确定像素格式，YUYV 输出 0 帧。
+- 停止 `trashbot-local-webrtc-camera.service` 后，对 USB 设备 `3-1` 执行 unbind/bind，DV20 重新枚举，
+  `/dev/video1` 时间戳刷新，camera service 可重新 active。
+- reset 后 `GET /mjpeg` 仍返回 503，body 中六种 OpenCV 尝试均为 `capture_read_returned_false`。
+- reset 后固定 `POST /api/camera/first-frame/probe` 且 `include_backend_smoke=true` 返回
+  `first_frame_timeout/capture_read_call_timeout`，backend smoke 的 `v4l2_mjpg_mmap`、`v4l2_yuyv_mmap`、
+  `ffmpeg_mjpg`、`ffmpeg_yuyv` 全部 timeout，`output_bytes=0`。
+
+结论：本轮已排除 PC 多浏览器独占、8088 OpenCV 单一路径和一次 USB 重新枚举可恢复这三个方向。当前剩余问题在
+DV20 输入源、采集卡工作模式、USB 线/供电或设备本体；软件只能继续 fail-closed 展示“无真实首帧”，不能提供假预览或把
+`/dev/video1` 存在当成建图 ready。

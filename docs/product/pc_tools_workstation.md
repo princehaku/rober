@@ -2886,3 +2886,14 @@ UVC 首帧没有出来。底盘侧 `/api/base/status` 和 `/api/base/feedback-sa
 PWM 命令”，真实未动的剩余根因应继续查 WAVE ROVER 电机使能、底盘模式、PWM 执行链或现场安全状态，而不是回退到雷达 gate。
 同轮还修正 `esp32_bridge` 托管退出：SIGINT 收尾时若 rclpy 已经 shutdown，只记录中文 warning，不再把
 `rcl_shutdown already called` traceback 混进 Nav2 运行证据，避免普通诊断误读成自动驾驶失败原因。
+
+2026-06-27 01:54-01:56 继续排查实时画面：独立 `v4l2-ctl` 对 `/dev/video1` 采 `MJPG@640x480` 和
+`YUYV@640x480` 均只生成 0 字节 raw；修正参数顺序后的 `ffmpeg -f v4l2 -input_format mjpeg/yuyv422`
+也没有写出 JPEG。随后仅对 DV20 所在 USB 设备 `3-1` 执行 unbind/bind 重新枚举，并重启
+`trashbot-local-webrtc-camera.service`；`/dev/video1` 重新出现，服务 active，但 `/mjpeg` 仍返回 HTTP 503，
+六种 OpenCV 格式尝试全部 `capture_read_returned_false`。再通过上车固定
+`POST /api/camera/first-frame/probe` 请求 `include_backend_smoke=true`，结果为
+`first_frame_timeout/capture_read_call_timeout`，backend smoke 的 `v4l2_mjpg_mmap`、`v4l2_yuyv_mmap`、
+`ffmpeg_mjpg`、`ffmpeg_yuyv` 全部 timeout 且 `output_bytes=0`，`backend_smoke.status=backend_no_frame_observed`。
+因此当前 PC 侧不应再寻找浏览器独占或 OpenCV 格式 fallback；真实恢复画面需要处理 DV20 输入源、采集卡模式、USB 线/供电或更换
+known-good UVC。PC 仍保持共享 relay/fanout 和 fail-closed WYSIWYG 文案，不造假帧、不解锁建图验收。
