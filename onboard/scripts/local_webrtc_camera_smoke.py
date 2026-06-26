@@ -15,6 +15,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -38,6 +39,7 @@ DEFAULT_HEIGHT = 480
 DEFAULT_FPS = 15
 FIRST_FRAME_TIMEOUT_S = 3.0
 COMMAND_TIMEOUT_S = 2.5
+STALE_PEER_NO_FRAME_MAX_AGE_MS = 30_000
 PEER_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,32}$")
 IMPORTS = ("aiortc", "cv2", "av")
 TEMPERATURE_GLOBS = (
@@ -170,6 +172,9 @@ TEMPERATURE_GLOBS = (
 # 实现边界说明 123：visible_content_proven 必须继续依赖 PC canvas 或现场样张。
 # 实现边界说明 124：运动 HIL gate 仍需要外部视频、轮速反馈和 LiDAR delta。
 # 实现边界说明 125：这些注释保留在代码中，是为了让后续上车修改不破坏安全边界。
+# 实现边界说明 126：同一视频源只能由进程打开一次，多个 WebRTC peer 共享该 capture，避免 UVC 独占。
+# 实现边界说明 127：卡在 new/0 帧的旧 peer 会在新 offer 前释放，避免浏览器断开后长期占用 `/dev/video1`。
+# 实现边界说明 128：共享 capture 的最后一个 peer 关闭时才 release，确保多人预览不会互相踢掉画面。
 
 
 def now_ms() -> int:
@@ -496,6 +501,81 @@ def validate_offer_payload(payload: Any) -> tuple[bool, str | None]:
 
 
 @dataclass
+class SharedCameraCapture:
+    """同一摄像头源的共享 OpenCV capture，避免多客户端重复独占打开设备。"""
+
+    source: str
+    capture: Any
+    width: int
+    height: int
+    fps: int
+    created_ts_ms: int = field(default_factory=now_ms)
+    ref_count: int = 0
+    frames_read: int = 0
+    read_failures: int = 0
+    last_frame_ts_ms: int | None = None
+    last_error: str | None = None
+    released: bool = False
+    lock: threading.Lock = field(default_factory=threading.Lock)
+
+    def add_ref(self) -> None:
+        """peer 创建成功前先占用引用，失败路径必须对应 release_ref。"""
+        self.ref_count += 1
+
+    def read_frame(self) -> tuple[bool, Any]:
+        """串行化读取同一个 capture；每个 peer 收到真实连续帧，不复制假帧。"""
+        with self.lock:
+            if self.released:
+                self.read_failures += 1
+                self.last_error = "shared_capture_released"
+                return False, None
+            ok, frame = self.capture.read()
+            if ok and frame is not None:
+                self.frames_read += 1
+                self.last_frame_ts_ms = now_ms()
+                self.last_error = None
+                return True, frame
+            self.read_failures += 1
+            self.last_error = "capture_read_returned_false"
+            return False, None
+
+    def release_ref(self) -> bool:
+        """最后一个 peer 退出时释放底层设备句柄。"""
+        self.ref_count = max(self.ref_count - 1, 0)
+        if self.ref_count > 0 or self.released:
+            return False
+        try:
+            self.capture.release()
+        finally:
+            self.released = True
+        return True
+
+    def force_release(self) -> bool:
+        """服务关闭或异常清理时强制释放底层 capture。"""
+        if self.released:
+            return False
+        try:
+            self.capture.release()
+        finally:
+            self.ref_count = 0
+            self.released = True
+        return True
+
+    def summary(self) -> dict[str, Any]:
+        """共享 capture 摘要只用于媒体诊断，不参与控制 gate。"""
+        return {
+            "source": self.source,
+            "created_ts_ms": self.created_ts_ms,
+            "ref_count": self.ref_count,
+            "frames_read": self.frames_read,
+            "read_failures": self.read_failures,
+            "last_frame_age_ms": now_ms() - self.last_frame_ts_ms if self.last_frame_ts_ms else None,
+            "last_error": self.last_error,
+            "released": self.released,
+        }
+
+
+@dataclass
 class PeerRecord:
     """记录 peer 资源，close endpoint 必须能释放 capture/track/connection。"""
 
@@ -550,8 +630,69 @@ class CameraServiceState:
         self.height = height
         self.fps = fps
         self.peers: dict[str, PeerRecord] = {}
+        self.shared_captures: dict[str, SharedCameraCapture] = {}
         self.last_closed_peer: dict[str, Any] | None = None
         self.last_offer_error: dict[str, Any] | None = None
+
+    def _stale_peer_ids(self) -> list[str]:
+        """找出卡在协商初期且从未读到帧的旧 peer，避免它长期占用 UVC。"""
+        stale_ids: list[str] = []
+        current_ms = now_ms()
+        for peer_id, peer in self.peers.items():
+            age_ms = current_ms - peer.created_ts_ms
+            connection_state = str(peer.connection_state or "new")
+            ice_state = str(peer.ice_connection_state or "new")
+            no_frame = peer.frames_read <= 0 and peer.last_frame_ts_ms is None
+            still_new = connection_state in {"new", "connecting"} or ice_state in {"new", "checking"}
+            if no_frame and still_new and age_ms >= STALE_PEER_NO_FRAME_MAX_AGE_MS:
+                stale_ids.append(peer_id)
+        return stale_ids
+
+    async def close_stale_peers(self) -> list[dict[str, Any]]:
+        """新 offer 前回收陈旧 peer；失败也要继续尝试新建链路。"""
+        closed: list[dict[str, Any]] = []
+        for peer_id in self._stale_peer_ids():
+            status, payload = await self.close_peer(peer_id, reason="stale_no_frame_peer_replaced")
+            closed.append({"peer_id": peer_id, "http_status": int(status), "status": payload.get("status")})
+        return closed
+
+    def acquire_shared_capture(self, source: str, cv2: Any) -> tuple[SharedCameraCapture | None, dict[str, Any] | None]:
+        """获取共享摄像头句柄；已有句柄可复用，避免第二个客户端再次打开 `/dev/video1`。"""
+        shared = self.shared_captures.get(source)
+        if shared and not shared.released:
+            shared.add_ref()
+            return shared, None
+        capture = cv2.VideoCapture(source)
+        if not capture or not capture.isOpened():
+            try:
+                capture.release()
+            except Exception:  # noqa: BLE001 - release 失败不改变打开失败根因。
+                pass
+            return None, error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        capture.set(cv2.CAP_PROP_FPS, self.fps)
+        shared = SharedCameraCapture(source=source, capture=capture, width=self.width, height=self.height, fps=self.fps)
+        shared.add_ref()
+        self.shared_captures[source] = shared
+        return shared, None
+
+    def release_peer_capture(self, peer: PeerRecord) -> dict[str, Any]:
+        """释放 peer 持有的 capture 引用；兼容测试里的 FakeCapture。"""
+        shared = peer.capture
+        cleanup: dict[str, Any] = {"capture_released": False, "shared_capture_ref_released": False}
+        try:
+            if hasattr(shared, "release_ref"):
+                cleanup["shared_capture_ref_released"] = True
+                cleanup["capture_released"] = bool(shared.release_ref())
+                if getattr(shared, "released", False):
+                    self.shared_captures.pop(peer.source, None)
+            else:
+                shared.release()
+                cleanup["capture_released"] = True
+        except Exception as exc:  # noqa: BLE001 - capture release 失败不能阻断 close 响应。
+            cleanup["capture_release_error"] = compact_error(exc)
+        return cleanup
 
     def current_devices(self) -> dict[str, Any]:
         """设备接口每次只读刷新，避免缓存掩盖现场 USB 重插。"""
@@ -612,6 +753,7 @@ class CameraServiceState:
             "system_diagnostics": collect_system_diagnostics(),
             "media_diagnostics": {
                 "active_peers": active_summaries,
+                "shared_captures": {source: shared.summary() for source, shared in self.shared_captures.items()},
                 "last_closed_peer": self.last_closed_peer,
                 "last_offer_error": self.last_offer_error,
             },
@@ -643,11 +785,7 @@ class CameraServiceState:
             cleanup["track_stopped"] = True
         except Exception as exc:  # noqa: BLE001 - track stop 不应阻断 capture release。
             cleanup["track_stop_error"] = compact_error(exc)
-        try:
-            peer.capture.release()
-            cleanup["capture_released"] = True
-        except Exception as exc:  # noqa: BLE001 - OpenCV release 在异常路径也要容错。
-            cleanup["capture_release_error"] = compact_error(exc)
+        cleanup.update(self.release_peer_capture(peer))
         peer.track_stopped = True
         self.last_closed_peer = {
             "peer_id": peer_id,
@@ -668,9 +806,12 @@ class CameraServiceState:
 
     async def create_answer(self, offer: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         """WebRTC offer 必须读取真实首帧后才建 answer，不能伪造画面。"""
+        stale_closed = await self.close_stale_peers()
         valid, reason = validate_offer_payload(offer)
         if not valid:
             payload = error_payload("invalid_offer", reason or "invalid_offer")
+            if stale_closed:
+                payload["stale_peers_closed"] = stale_closed
             self.last_offer_error = payload
             return HTTPStatus.BAD_REQUEST, payload
 
@@ -678,6 +819,8 @@ class CameraServiceState:
         missing = [name for name, available in deps.items() if not available]
         if missing:
             payload = error_payload("dependency_missing", "aiortc_cv2_av_required", missing_dependencies=missing)
+            if stale_closed:
+                payload["stale_peers_closed"] = stale_closed
             self.last_offer_error = payload
             return HTTPStatus.SERVICE_UNAVAILABLE, payload
 
@@ -686,13 +829,20 @@ class CameraServiceState:
         selected_path = selection.get("selected_path")
         if not selected_path:
             payload = error_payload("video_source_unavailable", "auto_selection_found_no_capture_device", source_selection=selection)
+            if stale_closed:
+                payload["stale_peers_closed"] = stale_closed
             self.last_offer_error = payload
             return HTTPStatus.SERVICE_UNAVAILABLE, payload
 
         try:
-            return await self._create_answer_with_dependencies(offer, str(selected_path))
+            status, payload = await self._create_answer_with_dependencies(offer, str(selected_path))
+            if stale_closed:
+                payload["stale_peers_closed"] = stale_closed
+            return status, payload
         except Exception as exc:  # noqa: BLE001 - 建链失败必须结构化返回并释放中间资源。
             payload = error_payload("offer_failed", "webrtc_answer_creation_failed", detail=compact_error(exc))
+            if stale_closed:
+                payload["stale_peers_closed"] = stale_closed
             self.last_offer_error = payload
             return HTTPStatus.INTERNAL_SERVER_ERROR, payload
 
@@ -702,33 +852,25 @@ class CameraServiceState:
         from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack  # type: ignore[import-not-found]
         from av import VideoFrame  # type: ignore[import-not-found]
 
-        capture = cv2.VideoCapture(source)
-        if not capture or not capture.isOpened():
-            try:
-                capture.release()
-            except Exception:  # noqa: BLE001 - release 失败不改变根因。
-                pass
-            payload = error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
+        shared_capture, open_error = self.acquire_shared_capture(source, cv2)
+        if shared_capture is None:
+            payload = open_error or error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
             self.last_offer_error = payload
             return HTTPStatus.SERVICE_UNAVAILABLE, payload
-
-        # 这里仅设置 OpenCV 请求参数；失败时仍以真实首帧读回为准。
-        capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        capture.set(cv2.CAP_PROP_FPS, self.fps)
 
         first_frame = None
         first_error = None
         deadline = time.monotonic() + FIRST_FRAME_TIMEOUT_S
         while time.monotonic() < deadline:
-            ok, frame = capture.read()
+            ok, frame = shared_capture.read_frame()
             if ok and frame is not None:
                 first_frame = frame
                 break
-            first_error = "capture_read_returned_false"
+            first_error = shared_capture.last_error or "capture_read_returned_false"
             await asyncio.sleep(0.05)
         if first_frame is None:
-            capture.release()
+            if shared_capture.release_ref():
+                self.shared_captures.pop(source, None)
             payload = error_payload(
                 "first_frame_unreadable",
                 "first_frame_timeout",
@@ -755,7 +897,7 @@ class CameraServiceState:
                     frame = self._next_initial_frame
                     self._next_initial_frame = None
                 else:
-                    ok, frame = await asyncio.to_thread(capture.read)
+                    ok, frame = await asyncio.to_thread(shared_capture.read_frame)
                     if not ok or frame is None:
                         record = record_ref.get("record")
                         if record:
@@ -775,7 +917,7 @@ class CameraServiceState:
 
         pc = RTCPeerConnection()
         track = CameraTrack(first_frame)
-        record = PeerRecord(peer_id=peer_id, pc=pc, track=track, capture=capture, source=source)
+        record = PeerRecord(peer_id=peer_id, pc=pc, track=track, capture=shared_capture, source=source)
         record.remote_sdp_candidate_count = str(offer.get("sdp") or "").count("a=candidate")
         record_ref["record"] = record
         try:
@@ -809,7 +951,8 @@ class CameraServiceState:
                 try:
                     track.stop()
                 finally:
-                    capture.release()
+                    if shared_capture.release_ref():
+                        self.shared_captures.pop(source, None)
             raise
 
         record.local_sdp_candidate_count = local_sdp.count("a=candidate")
@@ -832,6 +975,7 @@ class CameraServiceState:
             "remote_sdp_candidate_count": record.remote_sdp_candidate_count,
             "local_sdp_candidate_count": record.local_sdp_candidate_count,
             "active_peer_count": len(self.peers),
+            "shared_capture_count": len(self.shared_captures),
             "first_frame_read": True,
             **proof_flags(),
         }

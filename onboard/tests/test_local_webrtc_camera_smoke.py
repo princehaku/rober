@@ -246,6 +246,93 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(0, payload["active_peer_count"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_shared_capture_reuses_single_videocapture_for_same_source(self) -> None:
+        """多客户端预览同一个 UVC 源时不能重复打开设备。"""
+
+        class FakeRawCapture:
+            def __init__(self) -> None:
+                self.released = False
+                self.set_calls: list[tuple[int, int]] = []
+
+            def isOpened(self) -> bool:  # noqa: N802 - 模拟 OpenCV API。
+                return True
+
+            def set(self, key: int, value: int) -> None:
+                self.set_calls.append((key, value))
+
+            def read(self) -> tuple[bool, list[list[list[int]]]]:
+                return True, [[[12, 34, 56]]]
+
+            def release(self) -> None:
+                self.released = True
+
+        class FakeCv2:
+            CAP_PROP_FRAME_WIDTH = 3
+            CAP_PROP_FRAME_HEIGHT = 4
+            CAP_PROP_FPS = 5
+
+            def __init__(self) -> None:
+                self.captures: list[FakeRawCapture] = []
+
+            def VideoCapture(self, source: str) -> FakeRawCapture:  # noqa: N802 - 模拟 OpenCV API。
+                self.captures.append(FakeRawCapture())
+                return self.captures[-1]
+
+        state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
+        fake_cv2 = FakeCv2()
+
+        first, first_error = state.acquire_shared_capture("/dev/video1", fake_cv2)
+        second, second_error = state.acquire_shared_capture("/dev/video1", fake_cv2)
+
+        self.assertIsNone(first_error)
+        self.assertIsNone(second_error)
+        self.assertIs(first, second)
+        self.assertEqual(1, len(fake_cv2.captures))
+        self.assertEqual(2, first.ref_count)
+        self.assertFalse(first.release_ref())
+        self.assertFalse(fake_cv2.captures[0].released)
+        self.assertTrue(second.release_ref())
+        self.assertTrue(fake_cv2.captures[0].released)
+
+    def test_stale_no_frame_peer_is_closed_before_new_offer(self) -> None:
+        """卡在 new/0 帧的旧 peer 必须自动释放，避免长期占用 `/dev/video1`。"""
+
+        class FakePc:
+            async def close(self) -> None:
+                self.closed = True
+
+        class FakeTrack:
+            def stop(self) -> None:
+                self.stopped = True
+
+        class FakeCapture:
+            def __init__(self) -> None:
+                self.released = False
+
+            def release(self) -> None:
+                self.released = True
+
+        state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
+        capture = FakeCapture()
+        peer = camera.PeerRecord(
+            peer_id="stale123",
+            pc=FakePc(),
+            track=FakeTrack(),
+            capture=capture,
+            source="/dev/video1",
+            created_ts_ms=camera.now_ms() - camera.STALE_PEER_NO_FRAME_MAX_AGE_MS - 1,
+        )
+        peer.connection_state = "new"
+        peer.ice_connection_state = "new"
+        state.peers[peer.peer_id] = peer
+
+        closed = camera.asyncio.run(state.close_stale_peers())
+
+        self.assertEqual([{"peer_id": "stale123", "http_status": 200, "status": "closed"}], closed)
+        self.assertEqual({}, state.peers)
+        self.assertTrue(capture.released)
+        self.assertEqual("stale_no_frame_peer_replaced", state.last_closed_peer["cleanup"]["reason"])
+
     def test_health_exposes_required_safety_and_selection_fields(self) -> None:
         """health 必须能被 PC 诊断消费，同时保持控制字段关闭。"""
         state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
