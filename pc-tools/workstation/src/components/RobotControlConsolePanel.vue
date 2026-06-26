@@ -2502,8 +2502,6 @@ const mapSavedThisSession = computed(() => (
 ));
 const canStartPlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
-  && plainCameraReadyForFreeRoamAutonomy.value
-  && plainRadarReadyForFreeRoamMapping.value
   && !loading.value
   && !mapLifecyclePending.value
   && !mapWysiwygRefreshPending.value
@@ -2629,13 +2627,14 @@ const plainFreeRoamMappingSummary = computed(() => {
       ? { state: "扫图中", hint: "建图已启动。按住方向键/WASD 低速扫一圈，松开即停，随时点停止。" }
       : { state: "待手控", hint: `建图已启动，但键盘移动条件还没满足。${plainKeyboardNextActionSummary.value}` };
   }
-  if (!plainCameraReadyForFreeRoamAutonomy.value) {
-    return { state: "待画面", hint: "摄像头还没出画面；先检查摄像头，等实时画面可见后再建图。" };
+  if (!plainCameraReadyForFreeRoamAutonomy.value || !plainRadarReadyForFreeRoamMapping.value) {
+    const missing = [
+      !plainCameraReadyForFreeRoamAutonomy.value ? "画面未 ready" : "",
+      !plainRadarReadyForFreeRoamMapping.value ? "雷达未 ready" : "",
+    ].filter(Boolean).join("、");
+    return { state: "可移动", hint: `勾选安全确认后可先启动记录并低速移动；${missing}，本轮先按移动练习处理，ready 后再算可建图。` };
   }
-  if (!plainRadarReadyForFreeRoamMapping.value) {
-    return { state: "待雷达", hint: plainRadarMappingBlockedHint() };
-  }
-  return { state: "可开始", hint: "先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图。" };
+  return { state: "可建图", hint: "摄像头和雷达已 ready；先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图。" };
 });
 const plainFreeRoamMappingStartLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "start"
@@ -2644,11 +2643,7 @@ const plainFreeRoamMappingStartLabel = computed(() => (
       ? "等待地图刷新"
       : !plainManualSafetyConfirmed.value
         ? "先勾安全确认"
-        : !plainCameraReadyForFreeRoamAutonomy.value
-          ? "检查摄像头后建图"
-          : !plainRadarReadyForFreeRoamMapping.value
-            ? plainRadarMappingNextAction()
-            : mapRuntimeStarted.value ? "重新启动记录" : "开始扫地式建图"
+        : mapRuntimeStarted.value ? "重新启动记录" : "开始记录并低速移动"
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
@@ -2707,12 +2702,6 @@ const plainFreeRoamNextActionLabel = computed(() => {
     }
     if (!robotApiBaseUrl.value.trim()) {
       return "下一步：连接小车";
-    }
-    if (!plainCameraReadyForFreeRoamAutonomy.value) {
-      return "下一步：检查摄像头";
-    }
-    if (!plainRadarReadyForFreeRoamMapping.value) {
-      return `下一步：${plainRadarMappingNextAction()}`;
     }
     return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
   }

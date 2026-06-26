@@ -4037,7 +4037,6 @@ describe("App", () => {
     });
     vi.stubGlobal("fetch", mockedFetch);
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4226,7 +4225,6 @@ describe("App", () => {
       "/api/robot-control/radar/status": staleRadarStatus,
     });
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4415,7 +4413,6 @@ describe("App", () => {
       "/api/robot-control/map/start": mapStartFixture,
     });
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4894,8 +4891,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
   });
 
-  it("blocks free-roam mapping but still allows low-speed autonomy when the camera has no first frame", async () => {
-    // 建图必须先能看到画面；自由低速移动只要求安全确认和停止兜底。
+  it("allows low-speed free-roam recording while marking mapping degraded when camera has no first frame", async () => {
+    // 自由低速移动只要求安全确认和停止兜底；摄像头缺首帧只影响本轮是否能算可建图。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     markMappingSensorsReady(summaryFixture);
     summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
@@ -4908,19 +4905,18 @@ describe("App", () => {
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
     });
-    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("待画面");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("摄像头还没出画面；先检查摄像头，等实时画面可见后再建图。");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("检查摄像头后建图");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：检查摄像头");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未 ready");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toContain("当前只做自由移动");
@@ -4928,11 +4924,11 @@ describe("App", () => {
     const callsBeforeStart = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStart);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-camera-probe"]').element);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeStart);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
@@ -4950,8 +4946,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
-  it("blocks mapping on stale radar proof while keeping plain keyboard control independent", async () => {
-    // 雷达 ready 是建图所见即所得门禁；普通键盘手控仍只依赖安全确认和自己的手控门禁。
+  it("allows recording on stale radar proof while keeping plain keyboard control independent", async () => {
+    // 雷达 ready 是建图质量门禁；普通键盘手控仍只依赖安全确认和自己的手控门禁。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     markMappingSensorsReady(summaryFixture);
     summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_stale_while_lifecycle_running";
@@ -4965,30 +4961,29 @@ describe("App", () => {
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
     });
-    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("待雷达");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("雷达正在运行但还没确认实时点位；先刷新雷达，等雷达已运行后再建图。");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("刷新雷达");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：刷新雷达");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未 ready");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStart);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeStart);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
@@ -5296,7 +5291,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
-    expect(freeRoamPanel.attributes("data-state")).toBe("可开始");
+    expect(freeRoamPanel.attributes("data-state")).toBe("可建图");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：还没开始记录，键盘扫图锁定。");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
@@ -8759,8 +8754,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
-  it("blocks free-roam mapping when camera source is selected but not yet frame-proven", async () => {
-    // `/dev/video1` 被选中不等于画面 ready；建图必须等本页或上车端读到真实帧。
+  it("allows free-roam recording when camera source is selected but not yet frame-proven", async () => {
+    // `/dev/video1` 被选中不等于画面 ready；可以低速移动，但本轮不能算可建图。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     markMappingSensorsReady(summaryFixture);
     summaryFixture.readback_summary.camera.status = "ready";
@@ -8776,17 +8771,18 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("待画面");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("摄像头还没出画面；先检查摄像头，等实时画面可见后再建图。");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("检查摄像头后建图");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未 ready");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStart);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeStart);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });

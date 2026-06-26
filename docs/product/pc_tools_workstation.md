@@ -2773,3 +2773,10 @@ delivery、free-roam start/stop、stop 或 `/cmd_vel`；真实底盘是否产生
 `已有雷达点 N 个`，但地图不会凭点数伪造坐标，仍显示 `雷达点位未读取` 或局部/定位缺失状态。该修正让“雷达开始后有没有读到材料”
 和“这些点是否已经能贴到地图坐标”分开表达，避免普通用户把点数组缺失误解成雷达完全没材料；它不调用 radar start/refresh、
 manual、keyboard pulse、Nav2、delivery、free-roam start/stop、stop 或 `/cmd_vel`。
+
+2026-06-26 23:05 起，普通首屏 `扫地式建图` 的主按钮不再把摄像头首帧或雷达 fresh 当作低速移动硬门禁；
+勾选安全确认后即可点击 `开始记录并低速移动`，再通过键盘按住移动或显式自动扫图入口让小车低速走。摄像头和雷达
+readiness 只决定本轮是否能按“可建图”验收：二者都 ready 时显示 `可建图`；缺任一项时显示 `可移动`，并明确提示
+`画面未 ready` 或 `雷达未 ready`，本轮只能按移动练习处理，ready 后再算可建图。该主按钮仍只调用固定 map lifecycle
+代理 `/api/robot-control/map/start`，不会直接调用 base manual、keyboard pulse、Nav2 execute、delivery、stop、
+free-roam autonomy start 或 `/cmd_vel`，也不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
