@@ -5376,6 +5376,24 @@ const plainKeyboardNextActionSummary = computed(() => {
   }
   return "下一步：点启用键盘，按住方向键才会动。";
 });
+const plainKeyboardSafetySummary = computed(() => {
+  // 把“勾安全确认即可启用键盘”的普通路径直接写出来；这里不自动启用，也不发送方向脉冲。
+  if (!robotApiBaseUrl.value.trim()) {
+    return "键盘手控：先连接默认小车。";
+  }
+  if (!keyboardContractReady.value) {
+    return "键盘手控：入口还没读到，先复查手控条件。";
+  }
+  if (navGoalExecutionPending.value) {
+    return "键盘手控：行程正在执行，暂不启用新的手控。";
+  }
+  if (!plainManualSafetyConfirmed.value) {
+    return "键盘手控：勾选安全确认后即可启用；按住方向键才会动。";
+  }
+  return canUseKeyboardControl.value
+    ? "键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。"
+    : "键盘手控：安全确认已完成，等待手控入口复查。";
+});
 
 const plainKeyboardControlSummary = computed(() => {
   // 普通首屏只说“能不能用”和“怎么停”，不展示 operator report 字段名或 HIL 术语。
@@ -8903,6 +8921,7 @@ onBeforeUnmount(() => {
               <button class="danger-button compact-stop" type="button" :disabled="!canRequestKeyboardStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
+            <p class="panel-note" data-testid="plain-keyboard-safety-summary">{{ plainKeyboardSafetySummary }}</p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
             <p v-if="plainKeyboardWheelFeedbackSummary" class="panel-note" data-testid="keyboard-wheel-feedback-summary">{{ plainKeyboardWheelFeedbackSummary }}</p>
             <p class="panel-note" data-testid="keyboard-last-stop-summary">{{ plainKeyboardLastStopSummary }}</p>
