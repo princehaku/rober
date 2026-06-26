@@ -4140,12 +4140,36 @@ function nav2WheelReadbackCautionText(values: Record<string, string> | undefined
   return "轮速非零待复验";
 }
 
+function baseWheelNonzeroReadbackContextText(): string {
+  // 底盘全局只读样本能证明轮速链路可读，但不能替代 Nav2 执行窗口内的同帧 L/R 证明。
+  const sample = baseFeedbackSamplesResult.value?.sample_key_values;
+  const base = robotSummary.value?.readback_summary.base;
+  const values = sample?.wheel_feedback_lr_nonzero_proven === "true" || sample?.wheel_feedback_nonzero_observed === "true"
+    ? sample
+    : base?.wheel_feedback_lr_nonzero_proven === "true" || base?.wheel_feedback_nonzero_observed === "true"
+      ? base
+      : null;
+  if (!values) {
+    return "";
+  }
+  const left = values.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = values.wheel_feedback_latest_right_speed ?? "not_loaded";
+  if (left !== "not_loaded" && right !== "not_loaded" && !isZeroWheelPair(left, right)) {
+    return `底盘只读轮速已出现非零 L/R=${left}/${right}，Nav2 仍需同窗口复验`;
+  }
+  return "底盘只读样本已出现非零轮速，Nav2 仍需同窗口复验";
+}
+
 function nav2MotionSignalSummaryText(values: Record<string, string> | undefined): string {
   // 完整路线文案同时保留运动迹象和轮速缺口，避免把 IMU-only 误读成 wheel raw L/R 已闭合。
   const motionSignalText = nav2BaseMotionSignalText(values);
   const wheelCautionText = nav2WheelReadbackCautionText(values);
+  const baseReadbackContext = wheelCautionText ? baseWheelNonzeroReadbackContextText() : "";
   if (motionSignalText && wheelCautionText) {
-    return `${motionSignalText}；${wheelCautionText}`;
+    return `${motionSignalText}；${wheelCautionText}${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
+  }
+  if (wheelCautionText && baseReadbackContext) {
+    return `${wheelCautionText}；${baseReadbackContext}`;
   }
   return motionSignalText || wheelCautionText;
 }
