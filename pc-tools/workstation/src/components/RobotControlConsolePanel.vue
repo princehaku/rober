@@ -2327,7 +2327,7 @@ const freeRoamAutonomySaveBlocked = computed(() => (
   )
 ));
 const freeRoamMapWysiwygPending = computed(() => (
-  // 自动扫图 start 必须等地图画面/状态刷新结束，不能拿旧图当本轮所见即所得证据。
+  // 自动扫图 start 只等待正在进行的地图刷新结束；首次建图不能反过来要求已经有新地图画面。
   mapWysiwygRefreshPending.value
 ));
 const canSaveMapLifecycle = computed(() => (
@@ -2354,7 +2354,6 @@ const canStartFreeRoamAutonomy = computed(() => (
   )
   && plainManualSafetyConfirmed.value
   && mapRuntimeStarted.value
-  && plainFreeRoamMapPreviewFreshForSession.value
   && !freeRoamMapWysiwygPending.value
   && plainCameraReadyForFreeRoamAutonomy.value
   && canSendStop.value
@@ -2817,11 +2816,11 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   if (freeRoamMapWysiwygPending.value) {
     blockers.push(mapPreviewPending.value ? "地图画面正在刷新" : "地图状态正在刷新");
   }
-  if (!previewLoaded) {
-    blockers.push("地图画面未刷新");
-  } else if (plainCellCount(preview, "free") <= 0) {
-    blockers.push("地图还没有可通行区域");
-  }
+  const mapPreviewWarning = !previewLoaded
+    ? "地图画面还没刷新；启动后会再刷新一次用于监看。"
+    : plainCellCount(preview, "free") <= 0
+      ? "地图还没读到可通行区域；首次建图允许低速启动，启动后继续刷新检查。"
+      : "";
   if (!autonomyStartReady && !canUseKeyboardControl.value) {
     blockers.push("键盘低速手控条件未满足");
   }
@@ -2922,8 +2921,8 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (!mapRuntimeStarted.value) {
       return "自动扫图下一步：开始地图记录。";
     }
-    if (freeRoamMapWysiwygPending.value || !plainFreeRoamMapPreviewFreshForSession.value) {
-      return "自动扫图下一步：刷新扫图画面。";
+    if (freeRoamMapWysiwygPending.value) {
+      return "自动扫图下一步：等待扫图画面刷新。";
     }
     if (!canSendStop.value) {
       return "自动扫图下一步：补齐停止兜底。";
@@ -2970,7 +2969,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
         ? `还差：${blockers.slice(0, 3).join("、")}。`
       : autonomyRunningUnlocked
         ? "上车端自动扫图已就绪并已解锁；PC 继续监看地图、雷达和停止兜底。"
-        : "上车端自动扫图已就绪；点击后只启动上车状态机，PC 继续负责地图、画面、雷达所见即所得监看和停止兜底。",
+        : `上车端自动扫图已就绪；点击后只启动上车状态机，PC 继续负责地图、画面、雷达所见即所得监看和停止兜底。${mapPreviewWarning}`,
     nextActionText,
     blockers: blockers.slice(0, 4),
     gateRows: contractGateRows,

@@ -4170,6 +4170,70 @@ describe("App", () => {
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
+  it("starts free-roam autonomy after map recording starts even before the first map preview refresh", async () => {
+    // 首次建图不能要求已经有本轮地图画面或 free cell；start 后会再刷新地图画面作为所见即所得监看证据。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "locked";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_start_ready = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自动扫图（未开放）";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = [
+      { id: "operator_confirmed", label: "现场安全确认", state: "ready", evidence: "等待 PC 勾选", next_action: "勾选现场安全确认" },
+      { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录可启动", next_action: "启动地图记录" },
+      { id: "camera_ready", label: "摄像头", state: "ready", evidence: "camera ready", next_action: "继续监看画面" },
+      { id: "stop_fallback", label: "停止兜底", state: "ready", evidence: "stop endpoint ready", next_action: "保持停止可用" },
+      { id: "lidar_fresh", label: "雷达新鲜", state: "blocked", evidence: "雷达 stale", next_action: "雷达只做监看，不阻塞低速自移动" },
+    ];
+    summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
+      status: "loaded",
+      state: "ready",
+      reason: "等待启动",
+      stop_required: false,
+      artifact_only: true,
+      cmd_vel_publish_enabled: false,
+    };
+    summaryFixture.readback_summary.camera.status = "ready";
+    summaryFixture.readback_summary.camera.video_source = "/dev/video1";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
+    expect(readiness.attributes("data-state")).toBe("已就绪");
+    expect(readiness.text()).not.toContain("还差：地图画面未刷新");
+    expect(readiness.text()).not.toContain("还差：地图还没有可通行区域");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：点击开始自动扫图（低速）。");
+
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
+    expect(newCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?") && options?.method === "POST")).toBe(true);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+  });
+
   it("uses the locked auto-sweep button as a manual mapping guide without sending motion", async () => {
     // 自动扫图未 ready 时，普通按钮可以推进“开始记录/启用键盘”等非运动步骤；方向脉冲仍必须按住方向键才会发出。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
