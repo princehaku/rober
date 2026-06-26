@@ -8936,6 +8936,72 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("treats Nav2 success with base command and IMU motion signal as completed route evidence", async () => {
+    // 当前真机形态：Nav2 action 成功，bridge 发出 PWM164，L/R 长日志仍可能为 0，但 IMU 姿态变化证明底盘已响应。
+    stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-pwm164-imu-fixture",
+          generated_at_ms: "1782500121051",
+          response_generated_at_ms: "1782500153088",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          hil_pass: "false",
+          nav2_goal_execution_proven: "false",
+          robot_control_executed: "true",
+          sends_base_motion_commands: "true",
+          uses_base_uart: "true",
+          base_command_mode: "pwm",
+          base_command_nonzero_observed: "true",
+          base_command_nonzero_count: "49",
+          base_feedback_sample_count: "239",
+          base_feedback_nonzero_sample_count: "0",
+          base_feedback_lr_nonzero_proven: "false",
+          base_feedback_imu_attitude_delta_observed: "true",
+          base_feedback_imu_pitch_delta: "24.210531",
+          base_feedback_imu_roll_delta: "4.387221",
+          base_feedback_latest_left_speed: "0",
+          base_feedback_latest_right_speed: "0",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("底盘已响应（车身姿态有变化");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行已完成");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).not.toContain("重新执行完整行程");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
+  });
+
   it("allows free-roam recording when camera source is selected but not yet frame-proven", async () => {
     // `/dev/video1` 被选中不等于画面 ready；可以低速移动，但本轮不能算可建图。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

@@ -134,6 +134,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `wheel_feedback_lr_nonzero_proven` 与 `motion_signal_observed` 分开展示：前者只代表同帧
   `T1001 L/R` 非零，后者还可以来自 `T1001 r/p` 姿态变化。底盘低速试动和 Nav2 执行不再以雷达或摄像头
   ready 为前置；雷达和摄像头只决定本轮是否可按“可建图/可验收画面”收口。
+- 2026-06-27 03:06 起，PC 普通首屏的完整行程判定同步采用同一证据口径：Nav2 action
+  `goal_succeeded` 只能说明规划 action 返回成功；只有同时有执行反馈样本、`robot_control_executed`
+  未被否定、`sends_base_motion_commands/uses_base_uart` 未被明确否定，并读到 `wheel_feedback_lr_nonzero_proven=true`
+  或 `base_feedback_imu_attitude_delta_observed=true` 时，才把“行程执行”展示为已完成。若只发出非零底盘命令但
+  轮速和 IMU 都未证明，UI 仍提示排查电机使能、供电、底盘模式和控制模式，并明确“不是雷达阻塞”；
+  若 IMU 已证明运动但 `delivery_success=false`，UI 只进入“准备送达材料”，不会自动宣称送达成功。
 
 ## 用户流程
 

@@ -2455,8 +2455,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       goal_execution_base_feedback_sample_count: string;
       goal_execution_base_feedback_nonzero_sample_count: string;
       goal_execution_base_feedback_lr_nonzero_proven: string;
+      goal_execution_base_feedback_imu_attitude_delta_observed: string;
+      goal_execution_base_feedback_imu_roll_delta: string;
+      goal_execution_base_feedback_imu_pitch_delta: string;
       goal_execution_base_feedback_latest_left_speed: string;
       goal_execution_base_feedback_latest_right_speed: string;
+      goal_execution_sends_base_motion_commands: string;
+      goal_execution_uses_base_uart: string;
       goal_execution_goal_frame_id: string;
       goal_execution_goal_x: string;
       goal_execution_goal_y: string;

@@ -3923,8 +3923,13 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
   putSummaryNav2Value(values, "base_feedback_sample_count", nav2.goal_execution_base_feedback_sample_count);
   putSummaryNav2Value(values, "base_feedback_nonzero_sample_count", nav2.goal_execution_base_feedback_nonzero_sample_count);
   putSummaryNav2Value(values, "base_feedback_lr_nonzero_proven", nav2.goal_execution_base_feedback_lr_nonzero_proven);
+  putSummaryNav2Value(values, "base_feedback_imu_attitude_delta_observed", nav2.goal_execution_base_feedback_imu_attitude_delta_observed);
+  putSummaryNav2Value(values, "base_feedback_imu_roll_delta", nav2.goal_execution_base_feedback_imu_roll_delta);
+  putSummaryNav2Value(values, "base_feedback_imu_pitch_delta", nav2.goal_execution_base_feedback_imu_pitch_delta);
   putSummaryNav2Value(values, "base_feedback_latest_left_speed", nav2.goal_execution_base_feedback_latest_left_speed);
   putSummaryNav2Value(values, "base_feedback_latest_right_speed", nav2.goal_execution_base_feedback_latest_right_speed);
+  putSummaryNav2Value(values, "sends_base_motion_commands", nav2.goal_execution_sends_base_motion_commands);
+  putSummaryNav2Value(values, "uses_base_uart", nav2.goal_execution_uses_base_uart);
   putSummaryNav2Value(values, "goal_frame_id", nav2.goal_execution_goal_frame_id);
   putSummaryNav2Value(values, "goal_x", nav2.goal_execution_goal_x);
   putSummaryNav2Value(values, "goal_y", nav2.goal_execution_goal_y);
@@ -3944,11 +3949,31 @@ function explicitFalseKeyValue(value: string | undefined): boolean {
   return value?.trim().toLowerCase() === "false";
 }
 
+function explicitTrueKeyValue(value: string | undefined): boolean {
+  // 上位机/PC proxy 的 key_values 均为字符串；集中解析，避免各处重复写大小写判断。
+  return value?.trim().toLowerCase() === "true";
+}
+
+function nav2BaseMotionSignalObserved(values: Record<string, string> | undefined): boolean {
+  // 轮速 L/R 非零是强证据；IMU 姿态变化是底盘运动迹象。两者都不能替代 delivery success。
+  return explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)
+    || explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)
+    || explicitTrueKeyValue(values?.motion_signal_observed);
+}
+
 function nav2ExecutionControlProven(values: Record<string, string> | undefined): boolean {
-  // goal_succeeded 只说明 action 返回成功；完整路线还必须没有“执行/真车控制未证明”的显式 false。
+  // goal_succeeded 只说明 action 返回成功；完整路线还必须看到真车控制和底盘运动信号。
+  if (explicitFalseKeyValue(values?.robot_control_executed)) {
+    return false;
+  }
+  if (explicitFalseKeyValue(values?.sends_base_motion_commands) || explicitFalseKeyValue(values?.uses_base_uart)) {
+    return false;
+  }
+  if (nav2BaseMotionSignalObserved(values)) {
+    return true;
+  }
   return !explicitFalseKeyValue(values?.nav2_goal_execution_proven)
-    && !explicitFalseKeyValue(values?.hil_pass)
-    && !explicitFalseKeyValue(values?.robot_control_executed);
+    && !explicitFalseKeyValue(values?.hil_pass);
 }
 
 function nav2BaseCommandCount(values: Record<string, string> | undefined): number {
@@ -3972,12 +3997,29 @@ function nav2BaseCommandWithoutWheelFeedback(values: Record<string, string> | un
     && explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven);
 }
 
+function nav2BaseMotionSignalText(values: Record<string, string> | undefined): string {
+  if (explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)) {
+    const pair = nav2BaseFeedbackPair(values);
+    return pair ? `轮速 L/R=${pair.left}/${pair.right}` : "轮速非零";
+  }
+  if (explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)) {
+    const pitch = values?.base_feedback_imu_pitch_delta;
+    const roll = values?.base_feedback_imu_roll_delta;
+    const deltaText = pitch && pitch !== "not_loaded" ? `，pitch 变化 ${pitch}` : roll && roll !== "not_loaded" ? `，roll 变化 ${roll}` : "";
+    return `车身姿态有变化${deltaText}`;
+  }
+  return "";
+}
+
 function nav2UnprovenControlDetail(values: Record<string, string> | undefined): string {
   if (nav2BaseCommandWithoutWheelFeedback(values)) {
     const count = nav2BaseCommandCount(values);
     const pair = nav2BaseFeedbackPair(values);
     const countText = count > 0 ? ` ${count} 条` : "";
     const pairText = pair ? `，底盘反馈 L/R=${pair.left}/${pair.right}` : "";
+    if (explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)) {
+      return `Nav2 已发非零底盘命令${countText}${pairText}，轮速非零未证明，但${nav2BaseMotionSignalText(values)}；这不是雷达阻塞`;
+    }
     return `Nav2 已发非零底盘命令${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达阻塞`;
   }
   return "真车执行未证明";
@@ -4723,8 +4765,11 @@ const plainTripEvidenceSummary = computed(() => {
   const feedbackCount = values?.feedback_sample_count ?? values?.nav2_feedback_sample_count;
   const hasFeedbackSamples = nav2FeedbackSampleCount(values) > 0;
   const feedbackText = hasFeedbackSamples ? `，反馈 ${feedbackCount} 次` : "，未读到反馈样本";
+  const motionSignalText = nav2BaseMotionSignalText(values);
   const nextText = hasFeedbackSamples
-    ? nav2ExecutionControlProven(values) ? "送达仍需现场确认。" : `${nav2UnprovenControlDetail(values)}，需修复后重新执行完整行程。`
+    ? nav2ExecutionControlProven(values)
+      ? motionSignalText ? `底盘已响应（${motionSignalText}）；送达仍需现场确认。` : "送达仍需现场确认。"
+      : `${nav2UnprovenControlDetail(values)}，需修复后重新执行完整行程。`
     : "需重新读取或执行完整行程。";
   return `最近行程成功${feedbackText}${formatEvidenceAge(values)}；${nextText}`;
 });

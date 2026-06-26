@@ -6896,7 +6896,15 @@ describe("workstation fail-closed API contracts", () => {
             feedback_sample_count: 8,
             robot_control_executed: true,
             sends_motion_commands: true,
+            sends_base_motion_commands: true,
+            uses_base_uart: true,
             delivery_success: false,
+            base_feedback_summary: {
+              sample_count: 12,
+              nonzero_sample_count: 1,
+              wheel_feedback_lr_nonzero_proven: true,
+              latest_nonzero_pair: { left_speed: 164, right_speed: 164 },
+            },
           },
         },
       },
@@ -6922,6 +6930,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.goal_yaw).toBe("0.1");
       expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("true");
       expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
+      expect(body.goal_execution_key_values.sends_base_motion_commands).toBe("true");
+      expect(body.goal_execution_key_values.uses_base_uart).toBe("true");
+      expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("true");
       expect(body.goal_execution_key_values.delivery_success).toBe("false");
       expect(body.hard_dangerous_true_fields).toEqual([]);
       expect(body.robot_control_executed).toBe(true);
@@ -6935,8 +6946,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Nav2 latest execution proxy derives proven execution from top-level action success", async () => {
-    // 真机 latest artifact 有时没有 latest_result 包装；顶层成功和控制证据也必须能点亮行程证明。
+  it("Nav2 latest execution proxy derives proven execution from top-level action success with base motion evidence", async () => {
+    // 真机 latest artifact 有时没有 latest_result 包装；顶层成功也必须带底盘运动信号才点亮行程证明。
     const upstream = await listenRobotBaseCommandApi({}, {
       "/api/nav2/goal/execution/latest": {
         payload: {
@@ -6956,7 +6967,19 @@ describe("workstation fail-closed API contracts", () => {
           },
           feedback_sample_count: 8,
           robot_control_executed: true,
+          sends_base_motion_commands: true,
+          uses_base_uart: true,
           delivery_success: false,
+          base_feedback_summary: {
+            sample_count: 239,
+            nonzero_sample_count: 0,
+            wheel_feedback_lr_nonzero_proven: false,
+            imu_attitude_delta_observed: true,
+            imu_attitude_delta_summary: {
+              max_abs_pitch_delta: 24.210531,
+              max_abs_roll_delta: 4.387221,
+            },
+          },
         },
       },
     });
@@ -6975,6 +6998,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.status).toBe("goal_succeeded");
       expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("true");
       expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
+      expect(body.goal_execution_key_values.sends_base_motion_commands).toBe("true");
+      expect(body.goal_execution_key_values.uses_base_uart).toBe("true");
+      expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("false");
+      expect(body.goal_execution_key_values.base_feedback_imu_attitude_delta_observed).toBe("true");
       expect(body.goal_execution_key_values.feedback_sample_count).toBe("8");
       expect(body.robot_control_executed).toBe(true);
       expect(body.delivery_success).toBe(false);

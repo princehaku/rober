@@ -255,10 +255,12 @@ function firstLoadedValue(...values: unknown[]): unknown {
 }
 
 function navGoalExecutionProvenValue(payload: Record<string, unknown> | null, latestResult: Record<string, unknown> | null): boolean {
-  // 显式 proven=true 直接采信；否则用 Nav2 action 成功 + 真车控制证据推导，避免外层 fail-closed false 盖掉真实结果。
-  if (booleanFalseValue(firstLoadedValue(latestResult?.hil_pass, payload?.hil_pass))) {
-    return false;
-  }
+  // 显式 proven=true 直接采信；否则用 Nav2 action 成功 + 底盘运动信号推导，避免外层 fail-closed false 盖掉真实结果。
+  const baseFeedbackSummary = asRecord(latestResult?.base_feedback_summary) ?? asRecord(payload?.base_feedback_summary);
+  const wheelFeedback = booleanTrueValue(baseFeedbackSummary?.wheel_feedback_lr_nonzero_proven);
+  const imuDelta = booleanTrueValue(baseFeedbackSummary?.imu_attitude_delta_observed);
+  const sendsBaseMotionCommands = firstLoadedValue(latestResult?.sends_base_motion_commands, payload?.sends_base_motion_commands);
+  const usesBaseUart = firstLoadedValue(latestResult?.uses_base_uart, payload?.uses_base_uart);
   if (booleanTrueValue(latestResult?.nav2_goal_execution_proven) || booleanTrueValue(payload?.nav2_goal_execution_proven)) {
     return true;
   }
@@ -268,7 +270,10 @@ function navGoalExecutionProvenValue(payload: Record<string, unknown> | null, la
     && booleanTrueValue(firstLoadedValue(latestResult?.goal_accepted, payload?.goal_accepted))
     && booleanTrueValue(firstLoadedValue(latestResult?.result_received, payload?.result_received))
     && resultStatus === "succeeded"
-    && booleanTrueValue(firstLoadedValue(latestResult?.robot_control_executed, payload?.robot_control_executed));
+    && booleanTrueValue(firstLoadedValue(latestResult?.robot_control_executed, payload?.robot_control_executed))
+    && !booleanFalseValue(sendsBaseMotionCommands)
+    && !booleanFalseValue(usesBaseUart)
+    && (wheelFeedback || imuDelta);
 }
 
 function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotControlCameraFirstFrameProbeProxyResponse["probe_key_values"] {
@@ -400,12 +405,17 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     base_feedback_sample_count: shortValue(baseFeedbackSummary?.sample_count, "0"),
     base_feedback_nonzero_sample_count: shortValue(baseFeedbackSummary?.nonzero_sample_count, "0"),
     base_feedback_lr_nonzero_proven: shortValue(baseFeedbackSummary?.wheel_feedback_lr_nonzero_proven, "false"),
+    base_feedback_imu_attitude_delta_observed: shortValue(baseFeedbackSummary?.imu_attitude_delta_observed, "false"),
+    base_feedback_imu_roll_delta: shortValue(asRecord(baseFeedbackSummary?.imu_attitude_delta_summary)?.max_abs_roll_delta, "0"),
+    base_feedback_imu_pitch_delta: shortValue(asRecord(baseFeedbackSummary?.imu_attitude_delta_summary)?.max_abs_pitch_delta, "0"),
     base_feedback_latest_left_speed: shortValue(latestNonzeroPair?.left_speed ?? latestPair?.left_speed, "not_observed"),
     base_feedback_latest_right_speed: shortValue(latestNonzeroPair?.right_speed ?? latestPair?.right_speed, "not_observed"),
     base_command_sample_count: shortValue(baseCommandSummary?.sample_count, "0"),
     base_command_nonzero_count: shortValue(baseCommandSummary?.nonzero_command_count, "0"),
     base_command_nonzero_observed: shortValue(baseCommandSummary?.nonzero_command_observed, "false"),
     robot_control_executed: shortValue(latestResult?.robot_control_executed ?? payload?.robot_control_executed, "false"),
+    sends_base_motion_commands: shortValue(latestResult?.sends_base_motion_commands ?? payload?.sends_base_motion_commands, "not_loaded"),
+    uses_base_uart: shortValue(latestResult?.uses_base_uart ?? payload?.uses_base_uart, "not_loaded"),
     delivery_success: shortValue(payload?.delivery_success ?? latestResult?.delivery_success, "false"),
   };
 }
