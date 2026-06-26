@@ -2361,6 +2361,12 @@ stop 或 `/cmd_vel`。
 `雷达已运行，局部点 3 个`；点云仍画成车身局部轮廓，不贴到地图坐标。该状态只消费只读 scan proof 和定位读回，
 不启动雷达、不刷新 proof、不发送 manual、keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-26 14:55 起，普通首屏雷达卡片也同步显示雷达点数和贴图口径：map-frame 位姿已读到时提示
+`已读取雷达点 N 个，已贴到地图`；位姿缺失时提示 `已读取雷达点 N 个，当前先显示局部轮廓`；雷达未运行但仍有最近记录时
+明确写成 `已有雷达点 N 个，当前先显示局部轮廓，刷新后确认实时性`。该文案只消费 summary 里的 scan proof、位姿和
+lidar readback，不自动启动/停止雷达、不刷新 proof、不发送 manual、keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`，
+也不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
+
 2026-06-26 03:06 起，普通首屏点击 `重新定位` 后，如果固定 localization reset 代理返回失败，地图上的位置缺位 marker
 会从泛化 `位置未读到` 改为 `定位失败：<failure_reason>`，并在可访问说明里写明“小车位置未读到”。移动卡片仍显示同一失败
 短原因，完整 blocked reasons 留在高级诊断。该反馈只消费固定 `/api/robot-control/localize/reset` 响应，不自动重试、

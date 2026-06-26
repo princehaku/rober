@@ -550,6 +550,23 @@ function radarRefreshFailureLabel(result: RobotControlProofRefreshProxyResponse 
   return result?.failure_reason ? `雷达刷新失败：${result.failure_reason}` : "雷达刷新失败";
 }
 
+function plainRadarPointHint(live: boolean): string {
+  // 雷达卡片要和地图口径一致：普通用户需要知道点数，以及这些点现在能不能贴到地图。
+  const proof = robotSummary.value?.o3_proof_summary;
+  const points = proof?.scan_preview_points ?? [];
+  const fallbackCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
+  const count = points.length > 0 ? points.length : fallbackCount;
+  if (count <= 0) {
+    return "";
+  }
+  if (proof?.robot_pose?.frame_id === "map") {
+    return live ? `已读取雷达点 ${count} 个，已贴到地图。` : `已有雷达点 ${count} 个，刷新后确认实时性。`;
+  }
+  return live
+    ? `已读取雷达点 ${count} 个，当前先显示局部轮廓。`
+    : `已有雷达点 ${count} 个，当前先显示局部轮廓，刷新后确认实时性。`;
+}
+
 function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
   if (radarLifecyclePendingAction.value === "start") {
@@ -575,10 +592,12 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   const windowObserved = radarFieldIsTrue(lidar.continuous_window_observed);
   const latestFresh = radarFieldIsTrue(lidar.latest_scan_proof_fresh);
   if (lifecycleRunning && windowObserved && latestFresh) {
-    return { state: "雷达已运行", hint: "当前窗口已看到新的雷达状态。" };
+    const pointHint = plainRadarPointHint(true);
+    return { state: "雷达已运行", hint: pointHint ? `当前窗口已看到新的雷达状态；${pointHint}` : "当前窗口已看到新的雷达状态。" };
   }
   if (lifecycleRunning) {
-    return { state: "雷达待刷新", hint: "雷达正在运行，但最新记录不完整；先刷新雷达确认。" };
+    const pointHint = plainRadarPointHint(false);
+    return { state: "雷达待刷新", hint: pointHint ? `雷达正在运行，但最新记录不完整；先刷新雷达确认。${pointHint}` : "雷达正在运行，但最新记录不完整；先刷新雷达确认。" };
   }
   if (!radarStartCommandConfigured()) {
     return { state: "雷达未运行", hint: "上位机雷达启动命令未配置，先配置后再启动雷达。" };
@@ -589,7 +608,8 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   if (radarLifecycleResult.value?.action === "start" && radarLifecycleResult.value) {
     return { state: "雷达启动失败", hint: radarLifecycleResult.value.failure_reason ? `雷达启动没有成功：${radarLifecycleResult.value.failure_reason}。` : "雷达启动没有成功，请检查上位机配置。" };
   }
-  return { state: "雷达未运行", hint: "还没有看到雷达正在运行。" };
+  const pointHint = plainRadarPointHint(false);
+  return { state: "雷达未运行", hint: pointHint ? `还没有看到雷达正在运行。${pointHint}` : "还没有看到雷达正在运行。" };
 }
 
 function summarizeNav2Planning(): { state: "未检查" | "检查中" | "路径可生成" | "检查失败"; hint: string } {

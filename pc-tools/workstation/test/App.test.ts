@@ -5237,6 +5237,7 @@ describe("App", () => {
     expect(firstCircle?.attributes("cy")).toBe("50");
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点 3 个，已套用雷达外参");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达 3 个已贴到地图。");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("已读取雷达点 3 个，已贴到地图。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，雷达点 3 个已贴到地图，路线未显示。");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(true);
     const robotMarker = wrapper.find('[data-testid="plain-map-robot-marker"]');
@@ -5292,6 +5293,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-radar-local-scan[data-state="实时局部点"]');
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达局部点 3 个，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达 3 个只显示局部轮廓，等定位后再贴地图。");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("已读取雷达点 3 个，当前先显示局部轮廓。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示车身局部轮廓 3 个点，不贴到地图；路线未显示。");
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -5432,6 +5434,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-radar-local-scan[data-state="最近局部点"]');
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("最近雷达局部点 3 个，雷达未运行，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：这是最近记录 3 个点，不是实时雷达。");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("已有雷达点 3 个，当前先显示局部轮廓，刷新后确认实时性。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，最近雷达记录只显示车身局部轮廓 3 个点，当前雷达未运行，不贴到地图；路线未显示。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
