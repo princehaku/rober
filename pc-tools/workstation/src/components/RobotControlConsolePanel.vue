@@ -1698,7 +1698,9 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label: "自动扫图已启动", state: "auto_running", style, aria: `自动扫图状态机已启动，PC 正在监看地图和雷达${locatedSuffix}` };
   }
   if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "stop") {
-    return { label: "自动扫图已停止", state: "auto_stopped", style, aria: `自动扫图停止请求已发送${locatedSuffix}` };
+    return plainFreeRoamMapPreviewFreshForSession.value
+      ? { label: "自动扫图已停止，可保存", state: "auto_stopped_fresh", style, aria: `自动扫图停止请求已发送，地图画面已刷新，可以保存${locatedSuffix}` }
+      : { label: "自动扫图已停止，待刷新", state: "auto_stopped_needs_refresh", style, aria: `自动扫图停止请求已发送，需要刷新停止后的地图画面${locatedSuffix}` };
   }
   if (mapPreviewPending.value && mapSavedThisSession.value) {
     return { label: "保存后刷新中", state: "saved_refreshing", style, aria: `扫图地图已保存，正在自动刷新最新画面${locatedSuffix}` };
@@ -7079,6 +7081,11 @@ async function stopFreeRoamAutonomy(): Promise<void> {
   } finally {
     freeRoamAutonomyPending.value = false;
     freeRoamAutonomyPendingAction.value = null;
+    if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
+      // 自动扫图期间地图可能已经变化；stop 后必须重新读画面，不能沿用启动前的 fresh 标记去保存。
+      plainFreeRoamMapPreviewFreshForSession.value = false;
+      plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
+    }
     await refreshConsole();
   }
 }

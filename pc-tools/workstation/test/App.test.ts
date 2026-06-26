@@ -3886,15 +3886,32 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) =>
       String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?") && options?.method === "POST",
     )).toBe(true);
-    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止");
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：保存地图");
-    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("保存当前地图");
-    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止，待刷新");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopped_needs_refresh");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("自动扫图停止请求已发送，需要刷新停止后的地图画面，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：刷新扫图画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先刷新画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
+    expect(workstationStyles).toContain('.plain-map-free-roam-action-marker[data-state="auto_stopped_needs_refresh"]');
     const callsBeforeStopNext = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-save"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStopNext);
+    const previewCallsBeforeStopRefresh = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length).toBe(previewCallsBeforeStopRefresh + 1);
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止，可保存");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopped_fresh");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：保存地图");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("保存当前地图");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -3985,8 +4002,10 @@ describe("App", () => {
       String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?") && options?.method === "POST",
     )).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自动扫图");
-    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止");
-    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("保存当前地图");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止，待刷新");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopped_needs_refresh");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先刷新画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

@@ -1151,6 +1151,7 @@ h3 {
 .plain-map-free-roam-action-marker[data-state="auto_starting"],
 .plain-map-free-roam-action-marker[data-state="auto_stop_queued"],
 .plain-map-free-roam-action-marker[data-state="auto_stopping"],
+.plain-map-free-roam-action-marker[data-state="auto_stopped_needs_refresh"],
 .plain-map-free-roam-action-marker[data-state="auto_refreshing"] {
   border-color: #d5d2a9;
   background: #fbf8e8;
@@ -1159,7 +1160,7 @@ h3 {
 
 .plain-map-free-roam-action-marker[data-state="stopped_fresh"],
 .plain-map-free-roam-action-marker[data-state="saved"],
-.plain-map-free-roam-action-marker[data-state="auto_stopped"] {
+.plain-map-free-roam-action-marker[data-state="auto_stopped_fresh"] {
   border-color: #9ebee8;
   background: #edf5ff;
   color: #174ea6;
