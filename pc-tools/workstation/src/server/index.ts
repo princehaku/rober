@@ -185,6 +185,30 @@ function shortValue(value: unknown, fallback = "not_loaded"): string {
   return JSON.stringify(value).slice(0, 180);
 }
 
+function booleanTrueValue(value: unknown): boolean {
+  // 上位机 artifact 可能把布尔值序列化成字符串；PC gate 需要统一两种形状。
+  return value === true || (typeof value === "string" && value.trim().toLowerCase() === "true");
+}
+
+function firstLoadedValue(...values: unknown[]): unknown {
+  // 外层 latest 响应常带 fail-closed 摘要，真实 action 证据优先取 latest_result。
+  return values.find((value) => value !== undefined && value !== null);
+}
+
+function navGoalExecutionProvenValue(payload: Record<string, unknown> | null, latestResult: Record<string, unknown> | null): boolean {
+  // 显式 proven=true 直接采信；否则用 Nav2 action 成功 + 真车控制证据推导，避免外层 fail-closed false 盖掉真实结果。
+  if (booleanTrueValue(latestResult?.nav2_goal_execution_proven) || booleanTrueValue(payload?.nav2_goal_execution_proven)) {
+    return true;
+  }
+  const status = shortValue(firstLoadedValue(latestResult?.status, payload?.status), "").toLowerCase();
+  const resultStatus = shortValue(firstLoadedValue(latestResult?.result_status, payload?.result_status), "").toLowerCase();
+  return status === "goal_succeeded"
+    && booleanTrueValue(firstLoadedValue(latestResult?.goal_accepted, payload?.goal_accepted))
+    && booleanTrueValue(firstLoadedValue(latestResult?.result_received, payload?.result_received))
+    && resultStatus === "succeeded"
+    && booleanTrueValue(firstLoadedValue(latestResult?.robot_control_executed, payload?.robot_control_executed));
+}
+
 function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotControlCameraFirstFrameProbeProxyResponse["probe_key_values"] {
   // 上位机把真实脚本输出放在 probe_payload；没有时按顶层兼容，便于旧 artifact 测试。
   const probePayload = asRecord(payload?.probe_payload) ?? payload;
@@ -277,7 +301,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     generated_at_ms: shortValue(latestResult?.generated_at_ms ?? payload?.generated_at_ms),
     response_generated_at_ms: shortValue(payload?.generated_at_ms),
     completed_at_ms: shortValue(latestResult?.completed_at_ms ?? payload?.completed_at_ms),
-    nav2_goal_execution_proven: shortValue(payload?.nav2_goal_execution_proven ?? latestResult?.nav2_goal_execution_proven, "false"),
+    nav2_goal_execution_proven: String(navGoalExecutionProvenValue(payload, latestResult)),
     goal_accepted: shortValue(payload?.goal_accepted ?? latestResult?.goal_accepted),
     result_received: shortValue(payload?.result_received ?? latestResult?.result_received),
     result_status: shortValue(payload?.result_status ?? latestResult?.result_status),

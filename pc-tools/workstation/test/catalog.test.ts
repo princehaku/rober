@@ -6280,6 +6280,7 @@ describe("workstation fail-closed API contracts", () => {
         payload: {
           schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest_result",
           status: "not_proven",
+          nav2_goal_execution_proven: false,
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
@@ -6287,7 +6288,6 @@ describe("workstation fail-closed API contracts", () => {
           latest_result: {
             status: "goal_succeeded",
             evidence_ref: "o11-nav2-goal-execution-test",
-            nav2_goal_execution_proven: true,
             goal_accepted: true,
             result_received: true,
             result_status: "succeeded",
@@ -6325,9 +6325,62 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.goal_x).toBe("0.8");
       expect(body.goal_execution_key_values.goal_y).toBe("-0.2");
       expect(body.goal_execution_key_values.goal_yaw).toBe("0.1");
+      expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("true");
       expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
       expect(body.goal_execution_key_values.delivery_success).toBe("false");
       expect(body.hard_dangerous_true_fields).toEqual([]);
+      expect(body.robot_control_executed).toBe(true);
+      expect(body.delivery_success).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/nav2/goal/execution/latest"]);
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("Nav2 latest execution proxy derives proven execution from top-level action success", async () => {
+    // 真机 latest artifact 有时没有 latest_result 包装；顶层成功和控制证据也必须能点亮行程证明。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result",
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-top-level",
+          nav2_goal_execution_proven: false,
+          goal_accepted: true,
+          result_received: true,
+          result_status: "succeeded",
+          goal_request: {
+            frame_id: "map",
+            x: 0.8,
+            y: 0,
+            yaw: 0,
+            result_timeout_s: 4,
+          },
+          feedback_sample_count: 8,
+          robot_control_executed: true,
+          delivery_success: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/goal/execution/latest?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        goal_execution_key_values: Record<string, string>;
+        robot_control_executed: boolean;
+        delivery_success: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("latest_loaded");
+      expect(body.goal_execution_key_values.status).toBe("goal_succeeded");
+      expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("true");
+      expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
+      expect(body.goal_execution_key_values.feedback_sample_count).toBe("8");
       expect(body.robot_control_executed).toBe(true);
       expect(body.delivery_success).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/nav2/goal/execution/latest"]);
