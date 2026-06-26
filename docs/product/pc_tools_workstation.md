@@ -2767,3 +2767,9 @@ delivery、free-roam start/stop、stop 或 `/cmd_vel`。
 `goal_execution_status=goal_succeeded`、`goal_execution_proven=true`、`goal_execution_robot_control_executed=true`、
 `goal_execution_feedback_sample_count=8`。这只修正“看得到/解释得准”的状态合同，不调用 manual、keyboard pulse、Nav2 execute、
 delivery、free-roam start/stop、stop 或 `/cmd_vel`；真实底盘是否产生非零 `T=1001 L/R` 仍需下一轮低速运动 HIL 验证。
+
+2026-06-26 23:00 起，普通首屏雷达卡和地图雷达标记会把 `readback_summary.lidar.scan_preview_point_count`
+作为 `o3_proof_summary.scan_preview_points` 缺失时的点数兜底。这样 live summary 只有压缩点数、还没有点数组时，雷达卡仍会显示
+`已有雷达点 N 个`，但地图不会凭点数伪造坐标，仍显示 `雷达点位未读取` 或局部/定位缺失状态。该修正让“雷达开始后有没有读到材料”
+和“这些点是否已经能贴到地图坐标”分开表达，避免普通用户把点数组缺失误解成雷达完全没材料；它不调用 radar start/refresh、
+manual、keyboard pulse、Nav2、delivery、free-roam start/stop、stop 或 `/cmd_vel`。

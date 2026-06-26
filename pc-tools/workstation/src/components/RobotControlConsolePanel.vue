@@ -667,6 +667,9 @@ const effectiveLidarReadback = computed<LidarReadback | null>(() => {
     continuous_window_observed: radarStatusValue("continuous_window_observed") ?? summary?.continuous_window_observed ?? "false",
     continuity_window_status: radarStatusValue("continuity_window_status") ?? summary?.continuity_window_status ?? "not_loaded",
     latest_scan_proof_fresh: radarStatusValue("latest_scan_proof_fresh") ?? summary?.latest_scan_proof_fresh ?? "false",
+    scan_preview_point_count: radarStatusValue("scan_preview_point_count") ?? summary?.scan_preview_point_count ?? "0",
+    scan_preview_source_point_count: radarStatusValue("scan_preview_source_point_count") ?? summary?.scan_preview_source_point_count ?? "not_loaded",
+    scan_preview_frame_id: radarStatusValue("scan_preview_frame_id") ?? summary?.scan_preview_frame_id ?? "not_loaded",
     radar_start_configured: summary?.radar_start_configured ?? "true",
   };
 });
@@ -706,8 +709,11 @@ function radarRefreshFailureLabel(result: RobotControlProofRefreshProxyResponse 
 function plainRadarPointHint(live: boolean): string {
   // 雷达卡片要和地图口径一致：普通用户需要知道点数，以及这些点现在能不能贴到地图。
   const proof = robotSummary.value?.o3_proof_summary;
+  const lidar = robotSummary.value?.readback_summary.lidar;
   const points = proof?.scan_preview_points ?? [];
-  const fallbackCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
+  const proofCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
+  const lidarCount = finitePlainNumber(lidar?.scan_preview_point_count) ?? 0;
+  const fallbackCount = proofCount > 0 ? proofCount : lidarCount;
   const count = points.length > 0 ? points.length : fallbackCount;
   if (count <= 0) {
     return "";

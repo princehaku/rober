@@ -6264,6 +6264,36 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("keeps radar point count visible from lidar summary when scan points are not loaded", async () => {
+    // live summary 可能只有压缩点数还没带点数组；雷达卡仍要把点数说清楚，但地图不能凭点数伪造坐标。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.o3_proof_summary.scan_preview_points = [];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 0;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = null;
+    summaryFixture.o3_proof_summary.scan_preview_frame_id = "";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "72";
+    summaryFixture.readback_summary.lidar.scan_preview_source_point_count = "72";
+    summaryFixture.readback_summary.lidar.scan_preview_frame_id = "laser_frame";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("已有雷达点 72 个，当前先显示局部轮廓，刷新后确认实时性。");
+    expect(wrapper.find('[data-testid="plain-map-radar-local-scan"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点位未读取");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("draws the latest Nav2 goal on the real map when goal coordinates are available", async () => {
     // 最近行程目标点只读自 latest artifact；它是地图 overlay，不会重新执行 Nav2 或确认送达。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
