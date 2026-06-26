@@ -384,6 +384,24 @@ function cameraProbePlainFailureHint(): string {
   return "相机没有出画面，检查摄像头/视频线。";
 }
 
+function plainVisualMaterialSaveFailureReason(): string {
+  // 记录画面失败要保留上位机短原因，但不把 operator report 字段名塞回首屏。
+  const result = plainVisualMaterialResult.value;
+  if (!result || (result.proxy_status === "report_forwarded" && result.status !== "blocked")) {
+    return "";
+  }
+  return result.failure_reason || result.blocked_reasons[0] || "保存失败";
+}
+
+function plainVisualMaterialSaveFailureHint(): string {
+  // 只有固定 camera probe 读到样张后保存失败，才贴回实时画面卡；手填 ref 失败仍留在移动/导航卡。
+  const reason = plainVisualMaterialSaveFailureReason();
+  if (!reason || !latestCameraProbeSampleRef()) {
+    return "";
+  }
+  return `画面已读到，但记录保存失败：${reason}；请重试记录当前画面。`;
+}
+
 function cameraOfferPlainFailureHint(reason: string): string {
   // offer 失败原因来自上位机/信令层；首屏要翻成现场可执行动作，原始字段留在高级诊断。
   if (!reason) {
@@ -417,8 +435,12 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
   const sourceFailureHint = cameraSourcePlainFailureHint();
   const camera = robotSummary.value?.readback_summary.camera;
   const cameraOnline = camera?.status === "ready" || camera?.devices_status === "loaded";
+  const visualSaveFailureHint = plainVisualMaterialSaveFailureHint();
   if (cameraFirstFrameProbePending.value && !browserVideoFrameDrawn()) {
     return { state: "检查中", hint: "正在检查当前画面，等待上位机返回样张。" };
+  }
+  if (visualSaveFailureHint) {
+    return { state: "失败", hint: visualSaveFailureHint };
   }
   if (previewStopPending.value) {
     return { state: "关闭中", hint: "正在关闭实时画面，等待上位机释放视频会话。" };
@@ -724,7 +746,9 @@ const plainRecordCurrentCameraLabel = computed(() => (
     ? "等待画面稳定"
     : cameraFirstFrameProbePending.value
       ? "正在检查画面"
-      : "用当前画面记录"
+      : plainVisualMaterialSaveFailureHint()
+        ? "重试记录当前画面"
+        : "用当前画面记录"
 ));
 const baseFeedbackSamplesSummary = computed(() => {
   // 底盘反馈样本只说明 T=130/T=1001 只读链路，不能解释成手动运动已经可用。
