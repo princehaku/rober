@@ -676,9 +676,14 @@ def camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[Came
     """优先试配置值，再试 DV20/UVC 常见离散模式，最后保留内核当前模式兜底。"""
     raw_specs = [
         CameraCaptureAttemptSpec("MJPG", width, height, fps),
+        # DV20/UVC 实板枚举显示 MJPG 是 30fps；先贴合真实离散模式，再让 OpenCV 自行协商。
         CameraCaptureAttemptSpec("MJPG", width, height, 30),
+        CameraCaptureAttemptSpec("MJPG", 1280, 720, 30),
+        CameraCaptureAttemptSpec("MJPG", 480, 320, 30),
         CameraCaptureAttemptSpec("YUYV", width, height, fps),
+        # YUYV 640x480 是 22fps，320x240 同时有 25/20fps，不能只拿默认 15fps 试。
         CameraCaptureAttemptSpec("YUYV", width, height, 22),
+        CameraCaptureAttemptSpec("YUYV", 320, 240, 25),
         CameraCaptureAttemptSpec("YUYV", 320, 240, 20),
         CameraCaptureAttemptSpec(None, None, None, None, apply_settings=False),
     ]

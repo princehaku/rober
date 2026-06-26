@@ -153,6 +153,19 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(".jpg", fake_cv2.suffix)
         self.assertIs(frame, fake_cv2.frame)
 
+    def test_camera_attempt_specs_include_real_dv20_discrete_modes(self) -> None:
+        """首帧尝试矩阵必须贴合实板 DV20 枚举，避免一直用不支持的 15fps。"""
+        specs = camera.camera_capture_attempt_specs(640, 480, 15)
+        labels = [spec.label() for spec in specs]
+
+        self.assertIn("MJPG@640x480@30", labels)
+        self.assertIn("MJPG@1280x720@30", labels)
+        self.assertIn("MJPG@480x320@30", labels)
+        self.assertIn("YUYV@640x480@22", labels)
+        self.assertIn("YUYV@320x240@25", labels)
+        self.assertIn("YUYV@320x240@20", labels)
+        self.assertEqual(len(labels), len(set(labels)))
+
     def test_missing_webrtc_dependencies_return_structured_fail_closed(self) -> None:
         """缺 aiortc/cv2/av 时 /offer 必须结构化失败，不能伪造图像。"""
         state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
@@ -452,6 +465,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
                 self.name = name
                 self.released = False
                 self.fourcc_value: int | None = None
+                self.fps_value: int | None = None
 
             def isOpened(self) -> bool:  # noqa: N802 - 模拟 OpenCV API。
                 return True
@@ -459,9 +473,11 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
             def set(self, prop: int, value: object) -> None:
                 if prop == 6:
                     self.fourcc_value = int(value)
+                if prop == 5:
+                    self.fps_value = int(value)
 
             def read(self) -> tuple[bool, object | None]:
-                if self.name == "mjpg":
+                if self.name == "mjpg" or self.fps_value != 22:
                     return False, None
                 return True, frame
 
@@ -481,7 +497,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
                 return 100 if "".join(letters) == "MJPG" else 200
 
             def VideoCapture(self, _source: str) -> FormatCapture:  # noqa: N802 - 模拟 OpenCV API。
-                capture = FormatCapture("mjpg" if len(self.captures) < 2 else "yuyv")
+                capture = FormatCapture("mjpg" if len(self.captures) < 4 else "yuyv")
                 self.captures.append(capture)
                 return capture
 
@@ -495,12 +511,14 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIsNotNone(shared)
         assert shared is not None
         self.assertEqual("YUYV", shared.fourcc)
-        self.assertTrue(fake_cv2.captures[0].released)
-        self.assertTrue(fake_cv2.captures[1].released)
-        self.assertFalse(fake_cv2.captures[2].released)
-        self.assertEqual(["MJPG@640x480@15", "MJPG@640x480@30", "YUYV@640x480@15"], [item["label"] for item in attempts])
+        self.assertTrue(all(capture.released for capture in fake_cv2.captures[:5]))
+        self.assertFalse(fake_cv2.captures[5].released)
+        self.assertEqual(
+            ["MJPG@640x480@15", "MJPG@640x480@30", "MJPG@1280x720@30", "MJPG@480x320@30", "YUYV@640x480@15", "YUYV@640x480@22"],
+            [item["label"] for item in attempts],
+        )
         self.assertEqual("first_frame_unreadable", attempts[0]["status"])
-        self.assertEqual("frame_read", attempts[2]["status"])
+        self.assertEqual("frame_read", attempts[5]["status"])
 
     def test_stale_no_frame_peer_is_closed_before_new_offer(self) -> None:
         """卡在 new/0 帧的旧 peer 必须自动释放，避免长期占用 `/dev/video1`。"""

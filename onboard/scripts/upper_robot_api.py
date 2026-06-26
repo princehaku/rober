@@ -5273,16 +5273,21 @@ def camera_probe_fallback_requests(request: dict[str, Any]) -> list[dict[str, An
     quick_timeout = min(float(request["timeout_s"]), 1.5)
     quick_read_timeout = min(float(request["read_call_timeout_s"]), 1.5)
     candidates = [
-        {"fourcc": request.get("fourcc"), "width": request["width"], "height": request["height"]},
-        {"fourcc": "MJPG", "width": 640, "height": 480},
-        {"fourcc": "YUYV", "width": 640, "height": 480},
-        {"fourcc": "YUYV", "width": 320, "height": 240},
-        {"fourcc": None, "width": 640, "height": 480},
+        {"fourcc": request.get("fourcc"), "width": request["width"], "height": request["height"], "fps": request["fps"]},
+        # DV20/UVC 在实板枚举里 MJPG 只暴露 30fps；probe 不能一直拿默认 15fps 去试。
+        {"fourcc": "MJPG", "width": 640, "height": 480, "fps": 30.0},
+        {"fourcc": "MJPG", "width": 1280, "height": 720, "fps": 30.0},
+        {"fourcc": "MJPG", "width": 480, "height": 320, "fps": 30.0},
+        # YUYV 的离散 fps 与 MJPG 不同；按枚举值尝试，避免格式正确但帧率不兼容。
+        {"fourcc": "YUYV", "width": 640, "height": 480, "fps": 22.0},
+        {"fourcc": "YUYV", "width": 320, "height": 240, "fps": 25.0},
+        {"fourcc": "YUYV", "width": 320, "height": 240, "fps": 20.0},
+        {"fourcc": None, "width": 640, "height": 480, "fps": request["fps"]},
     ]
-    seen: set[tuple[Any, Any, Any]] = set()
+    seen: set[tuple[Any, Any, Any, Any]] = set()
     requests: list[dict[str, Any]] = []
     for candidate in candidates:
-        key = (candidate["fourcc"], candidate["width"], candidate["height"])
+        key = (candidate["fourcc"], candidate["width"], candidate["height"], candidate["fps"])
         if key in seen:
             continue
         seen.add(key)
@@ -5378,6 +5383,7 @@ def camera_probe_attempt_summary(attempt: dict[str, Any]) -> dict[str, Any]:
         "fourcc": payload.get("requested_fourcc", request.get("fourcc")),
         "width": payload.get("requested_width", request.get("width")),
         "height": payload.get("requested_height", request.get("height")),
+        "fps": payload.get("requested_fps", request.get("fps")),
         "open_ok": bool(payload.get("open_ok")),
         "read_ok": bool(payload.get("read_ok")),
         "failure_reason": payload.get("failure_reason") or "none",

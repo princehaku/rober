@@ -601,9 +601,46 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "requested_fourcc": "MJPG",
                 "requested_width": 640,
                 "requested_height": 480,
+                "requested_fps": 15.0,
                 "open_ok": True,
                 "read_ok": False,
                 "failure_reason": "capture_read_call_timeout",
+                "visible_content_proven": False,
+            },
+            {
+                "schema": "trashbot.camera_first_frame_probe.v1",
+                "status": "first_frame_timeout",
+                "requested_fourcc": "MJPG",
+                "requested_width": 640,
+                "requested_height": 480,
+                "requested_fps": 30.0,
+                "open_ok": True,
+                "read_ok": False,
+                "failure_reason": "capture_read_returned_false",
+                "visible_content_proven": False,
+            },
+            {
+                "schema": "trashbot.camera_first_frame_probe.v1",
+                "status": "first_frame_timeout",
+                "requested_fourcc": "MJPG",
+                "requested_width": 1280,
+                "requested_height": 720,
+                "requested_fps": 30.0,
+                "open_ok": True,
+                "read_ok": False,
+                "failure_reason": "capture_read_returned_false",
+                "visible_content_proven": False,
+            },
+            {
+                "schema": "trashbot.camera_first_frame_probe.v1",
+                "status": "first_frame_timeout",
+                "requested_fourcc": "MJPG",
+                "requested_width": 480,
+                "requested_height": 320,
+                "requested_fps": 30.0,
+                "open_ok": True,
+                "read_ok": False,
+                "failure_reason": "capture_read_returned_false",
                 "visible_content_proven": False,
             },
             {
@@ -612,6 +649,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "requested_fourcc": "YUYV",
                 "requested_width": 640,
                 "requested_height": 480,
+                "requested_fps": 22.0,
                 "open_ok": True,
                 "read_ok": True,
                 "visible_content_proven": True,
@@ -630,10 +668,20 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(200, http_status)
         self.assertEqual("frame_read", payload["status"])
         self.assertTrue(payload["auto_format_fallback"])
-        self.assertEqual(2, len(payload["fallback_attempts"]))
+        self.assertEqual(5, len(payload["fallback_attempts"]))
         self.assertEqual("MJPG", payload["fallback_attempts"][0]["fourcc"])
-        self.assertEqual("YUYV", payload["fallback_attempts"][1]["fourcc"])
-        self.assertEqual(2, process_mock.call_count)
+        self.assertEqual(15.0, payload["fallback_attempts"][0]["fps"])
+        self.assertEqual("MJPG", payload["fallback_attempts"][1]["fourcc"])
+        self.assertEqual(30.0, payload["fallback_attempts"][1]["fps"])
+        self.assertEqual("MJPG", payload["fallback_attempts"][2]["fourcc"])
+        self.assertEqual(1280, payload["fallback_attempts"][2]["width"])
+        self.assertEqual("MJPG", payload["fallback_attempts"][3]["fourcc"])
+        self.assertEqual(480, payload["fallback_attempts"][3]["width"])
+        self.assertEqual("YUYV", payload["fallback_attempts"][4]["fourcc"])
+        self.assertEqual(22.0, payload["fallback_attempts"][4]["fps"])
+        self.assertEqual(5, process_mock.call_count)
+        self.assertIn("30.0", process_mock.call_args_list[1].args)
+        self.assertIn("22.0", process_mock.call_args_list[4].args)
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 
