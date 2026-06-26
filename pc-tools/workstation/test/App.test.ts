@@ -4547,17 +4547,29 @@ describe("App", () => {
         delayNextMapPreview = false;
         return delayedMapPreviewRefresh;
       }
-      if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextMapProofRefresh) {
-        delayNextMapProofRefresh = false;
-        return new Promise((resolve) => {
-          mapProofRefreshControl.finish = () => resolve({
-            ok: true,
-            json: async () => fixtures["/api/robot-control/map/proof/refresh"],
-          });
-        });
-      }
-      return baseFetch(url, options);
-    });
+	      if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextMapProofRefresh) {
+	        delayNextMapProofRefresh = false;
+	        return new Promise((resolve) => {
+	          mapProofRefreshControl.finish = () => resolve({
+	            ok: true,
+	            json: async () => fixtures["/api/robot-control/map/proof/refresh"],
+	          });
+	        });
+	      }
+	      if (String(url).startsWith("/api/robot-control/nav2/proof/refresh?")) {
+	        summaryFixture.o3_proof_summary.path_generated = true;
+	        summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+	        summaryFixture.o3_proof_summary.path_preview_points = [
+	          { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+	          { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+	          { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+	        ];
+	        summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+	        summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+	        summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+	      }
+	      return baseFetch(url, options);
+	    });
     vi.stubGlobal("fetch", mockedFetch);
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     const wrapper = mount(App);
@@ -4817,9 +4829,10 @@ describe("App", () => {
       return originalFetch(url, options);
     });
     const manualCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
-    const nav2ExecuteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length;
-    const deliveryCompleteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length;
-    const previewCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
+	    const nav2ExecuteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length;
+	    const nav2ProofRefreshCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?")).length;
+	    const deliveryCompleteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length;
+	    const previewCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     const saveClick = wrapper.find('[data-testid="plain-free-roam-save"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(freeRoamPanel.attributes("data-state")).toBe("保存中");
@@ -4829,9 +4842,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待地图动作完成");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("地图保存中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("saving");
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toHaveLength(nav2ProofRefreshCallsBeforeSave);
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
     const finishSave = saveControl.finish;
     if (!finishSave) {
       throw new Error("map save request was not captured");
@@ -4863,11 +4877,14 @@ describe("App", () => {
     await saveClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeSave + 1);
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
-    expect(freeRoamPanel.attributes("data-state")).toBe("已保存");
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeSave + 2);
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toHaveLength(nav2ProofRefreshCallsBeforeSave + 1);
+	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
+	    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+	    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
+	    expect(freeRoamPanel.attributes("data-state")).toBe("已保存");
     expect(coveragePanel.attributes("data-state")).toBe("已扫出");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("地图已保存，地图画面已自动刷新；现在可以检查 free cell 和路线可用性。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图已保存，地图画面已自动刷新，可以检查效果。");

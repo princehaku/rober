@@ -2300,6 +2300,11 @@ stop、Nav2、delivery 或 `/cmd_vel`。
 2026-06-26 03:05 起，保存后自动刷新成功时，`扫图覆盖` 的 guidance 也会同步显示“地图已保存，地图画面已自动刷新；
 现在检查覆盖效果”。如果保存成功但 preview 没有成功转发，仍保留“刷新后检查覆盖效果”的保守提示。
 
+2026-06-26 10:24 起，普通首屏 `保存当前地图` 在保存成功且保存后的地图画面自动刷新成功后，会追加一次 no-motion
+Nav2 proof refresh，并再次刷新地图画面，把新地图上的路线折线/端点直接贴回同一张图。保存失败或保存后 preview 失败时不触发
+路线检查。该自动检查只调用固定 `/api/robot-control/nav2/proof/refresh`，不会调用 `nav2/goal/execute`、manual、keyboard、
+delivery、stop 或 `/cmd_vel`，不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
+
 2026-06-26 03:20 起，普通首屏“扫地式建图”步骤条在地图保存后会显式收口：`低速扫图` 显示“扫图已收口，检查地图效果”，
 `停止收口` 显示“扫图已停止并保存”，`保存地图` 在保存后 preview 已转发时显示“已保存，地图画面已自动刷新，可以检查效果”。
 该变化只调整本地 WYSIWYG 文案，不发送 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。

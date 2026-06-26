@@ -7173,12 +7173,15 @@ async function startMapRuntime(): Promise<void> {
   }
 }
 
-async function saveMap(): Promise<void> {
+async function saveMap(options: { refreshRouteAfterSave?: boolean } = {}): Promise<void> {
   // 保存只调用固定 /api/map/save；普通入口不暴露 map_name/artifact_path 输入。
   if (mapWysiwygRefreshPending.value) {
     return;
   }
   await runMapLifecycleAction("save", () => postRobotControlMapSave(robotApiBaseUrl.value, mapLifecycleRequestBody()));
+  if (options.refreshRouteAfterSave === true && mapSavedThisSession.value && plainFreeRoamSavedMapPreviewFreshForSession.value && canRefreshNav2Proof.value) {
+    await refreshNav2Proof();
+  }
 }
 
 function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string): RobotControlFreeRoamAutonomyResponse {
@@ -8261,7 +8264,7 @@ onBeforeUnmount(() => {
             <button ref="plainFreeRoamStopButton" type="button" class="danger-button compact-stop" :disabled="!canRequestKeyboardStop" data-testid="plain-free-roam-stop" @click="stopKeyboardControl('free_roam_mapping_stop')">
               停止
             </button>
-            <button ref="plainFreeRoamSaveButton" type="button" class="secondary compact-stop" :disabled="!canSavePlainFreeRoamMapping" data-testid="plain-free-roam-save" @click="saveMap">
+            <button ref="plainFreeRoamSaveButton" type="button" class="secondary compact-stop" :disabled="!canSavePlainFreeRoamMapping" data-testid="plain-free-roam-save" @click="saveMap({ refreshRouteAfterSave: true })">
               {{ plainFreeRoamMappingSaveLabel }}
             </button>
           </div>
