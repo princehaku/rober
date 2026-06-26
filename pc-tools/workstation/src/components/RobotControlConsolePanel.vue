@@ -135,6 +135,7 @@ const plainVisualMaterialResult = ref<RobotControlOperatorReportProxyResponse | 
 const plainFirstJogMaterialRestorePending = ref(false);
 const plainFirstJogMaterialRestoreResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainFirstJogResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
+const plainChassisTrialResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const plainWheelEvidenceSavePending = ref(false);
 const plainWheelEvidenceSaveResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainWheelZeroBlockerChecked = ref(false);
@@ -6113,6 +6114,44 @@ const manualMotionSummary = computed(() => {
   return { state: "失败", hint: manualCommandResult.value.failure_reason || "请求被拒绝或上位机不可达。" };
 });
 
+const plainChassisTrialButtonLabel = computed(() => {
+  // 普通首屏给一个不依赖相机/雷达的底盘试动入口；真正安全边界仍复用 manual gate。
+  if (manualCommandPending.value) {
+    return "试动中";
+  }
+  return plainManualSafetyConfirmed.value ? "底盘试动" : "先勾安全确认";
+});
+
+const plainChassisTrialSummary = computed(() => {
+  // 这里专门解释底盘执行链，避免用户把相机/雷达 no-ready 误解成小车不能自己动。
+  if (manualCommandPending.value) {
+    return "底盘试动：正在发送低速短时指令；需要时点停止。";
+  }
+  const result = plainChassisTrialResult.value;
+  if (!result) {
+    return plainManualSafetyConfirmed.value
+      ? "底盘试动：可直接低速前进一下；不依赖相机或雷达，结果看 wheel raw L/R。"
+      : "底盘试动：勾选安全确认后可低速前进一下；不依赖相机或雷达。";
+  }
+  if (result.command_kind === "stop") {
+    return result.proxy_status === "command_forwarded"
+      ? "底盘试动：停止已发送。"
+      : "底盘试动：停止请求失败，请现场确认小车已停。";
+  }
+  if (result.proxy_status !== "command_forwarded") {
+    return "底盘试动：请求未成功；上位机未接受本次低速试动。";
+  }
+  const values = result.remote_motion_key_values;
+  const left = values?.wheel_feedback_latest_raw_left ?? values?.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = values?.wheel_feedback_latest_raw_right ?? values?.wheel_feedback_latest_right_speed ?? "not_loaded";
+  const frames = values?.feedback_during_motion_t1001_frame_count ?? values?.wheel_feedback_nonzero_frame_count ?? "0";
+  const nonzero = values?.wheel_feedback_lr_nonzero_proven === "true" || values?.wheel_feedback_nonzero_observed === "true";
+  if (nonzero) {
+    return `底盘试动：已读到 wheel raw L/R 非零，L/R=${left}/${right}，运动帧=${frames}。`;
+  }
+  return `底盘试动：指令已发并收口，但 L/R=${left}/${right} 仍未非零；检查电机使能、供电、底盘模式和现场空间。`;
+});
+
 const plainMotionSummary = computed(() => {
   // 首屏只呈现定位/停靠状态和最小安全确认，不再要求普通用户额外点“移动前检查”。
   if (localizationResetPending.value) {
@@ -8785,9 +8824,11 @@ async function sendManualMotion(direction: ManualDirection): Promise<void> {
   }
   manualCommandPending.value = true;
   try {
-    manualCommandResult.value = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForDirection(direction));
+    const result = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForDirection(direction));
+    manualCommandResult.value = result;
+    plainChassisTrialResult.value = result;
   } catch (err) {
-    manualCommandResult.value = {
+    const fallbackResult: RobotControlBaseCommandProxyResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
       command_kind: "manual",
       proxy_status: "command_failed",
@@ -8823,6 +8864,8 @@ async function sendManualMotion(direction: ManualDirection): Promise<void> {
       failure_reason: err instanceof Error ? err.message : "manual_request_failed",
       blocked_reasons: [err instanceof Error ? err.message : "manual_request_failed"],
     };
+    manualCommandResult.value = fallbackResult;
+    plainChassisTrialResult.value = fallbackResult;
   } finally {
     manualCommandPending.value = false;
     await refreshConsole();
@@ -9715,6 +9758,9 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canSendPlainFirstJog" @click="sendPlainFirstJog">
               试动一下
             </button>
+            <button type="button" class="secondary compact-stop" :disabled="!canSendManualMotion" data-testid="plain-chassis-trial" @click="sendManualMotion('forward')">
+              {{ plainChassisTrialButtonLabel }}
+            </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
           </div>
           <div
@@ -9796,6 +9842,7 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="keyboard-control-guide">{{ plainKeyboardControlGuide }}</p>
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>
+          <p class="panel-note" data-testid="plain-chassis-trial-summary">{{ plainChassisTrialSummary }}</p>
           <div class="plain-goal-progress" :data-state="plainGoalProgressPanelState" data-testid="plain-goal-progress">
             <div class="simple-status-row">
               <strong>本轮进度</strong>

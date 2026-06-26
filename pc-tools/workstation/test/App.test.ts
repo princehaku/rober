@@ -12602,6 +12602,17 @@ describe("App", () => {
         evidence_capture_blocked_reasons: [],
         before_readback: {},
         after_readback: {},
+        remote_motion_key_values: {
+          manual_command_executed: "true",
+          auto_stop_executed: "true",
+          feedback_during_motion_attempted: "true",
+          feedback_during_motion_t1001_frame_count: "3",
+          wheel_feedback_latest_raw_left: "0.08",
+          wheel_feedback_latest_raw_right: "0.07",
+          wheel_feedback_lr_nonzero_proven: "true",
+          wheel_feedback_nonzero_observed: "true",
+          wheel_feedback_nonzero_frame_count: "2",
+        },
         motion_evidence_summary: "manual command evidence captured in fixture",
         motion_evidence_gaps: [],
         failure_reason: "",
@@ -12678,9 +12689,14 @@ describe("App", () => {
 
     const forwardButton = wrapper.findAll(".advanced-details .motion-pad button").find((button) => button.text() === "前进");
     expect(forwardButton?.attributes("disabled")).toBeUndefined();
+    const plainChassisTrial = wrapper.find('[data-testid="plain-chassis-trial"]');
+    expect(plainChassisTrial.exists()).toBe(true);
+    expect(plainChassisTrial.text()).toBe("底盘试动");
+    expect(plainChassisTrial.attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-chassis-trial-summary"]').text()).toBe("底盘试动：可直接低速前进一下；不依赖相机或雷达，结果看 wheel raw L/R。");
     expect(wrapper.find(".robot-console .advanced-details").text().replace(/\s+/g, "")).toContain("materialmissingfieldsnone");
 
-    await forwardButton?.trigger("click");
+    await plainChassisTrial.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -12697,6 +12713,7 @@ describe("App", () => {
     }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("NavigateToPose"))).toBe(false);
+    expect(wrapper.find('[data-testid="plain-chassis-trial-summary"]').text()).toBe("底盘试动：已读到 wheel raw L/R 非零，L/R=0.08/0.07，运动帧=3。");
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("待命");
@@ -12768,7 +12785,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).toContain("手控中");
     expect(keyboardPanel.attributes("data-state")).toBe("手控中");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0.08/0.07，非零已读到。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("正在按住：前进");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
@@ -12791,7 +12808,7 @@ describe("App", () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0.08/0.07，非零已读到。");
     const keyboardClosureItemAfterSecondSessionFirstPulse = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItemAfterSecondSessionFirstPulse?.attributes("data-ready")).toBe("false");
@@ -12800,7 +12817,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(keyboardPanel.attributes("data-state")).toBe("手控中");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，已连续 2/2 次；松开后完成停止收口。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，已连续 2/2 次；轮速 L/R=0.08/0.07，非零已读到；松开后完成停止收口。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-keyboard"]').text()).toBe("下一步：松开按键完成停止收口。");

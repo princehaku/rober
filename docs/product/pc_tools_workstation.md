@@ -2914,6 +2914,14 @@ PWM 命令”，真实未动的剩余根因应继续查 WAVE ROVER 电机使能�
 因此当前 PC 侧不应再寻找浏览器独占或 OpenCV 格式 fallback；真实恢复画面需要处理 DV20 输入源、采集卡模式、USB 线/供电或更换
 known-good UVC。PC 仍保持共享 relay/fanout 和 fail-closed WYSIWYG 文案，不造假帧、不解锁建图验收。
 
+2026-06-27 03:30 起，普通首屏 `移动/导航` 新增 `底盘试动`。它和历史 `试动一下` 分工不同：
+`试动一下` 仍服务 first-jog/现场材料闭环；`底盘试动` 直接复用固定
+`POST /api/robot-control/base/manual` 代理，勾选同一个安全确认后发送一次低速短时前进，不依赖相机或雷达 ready。
+首屏会把回包中的 wheel raw L/R 压成普通话术，例如 `已读到 wheel raw L/R 非零` 或
+`指令已发并收口，但 L/R=0/0 仍未非零；检查电机使能、供电、底盘模式和现场空间`。该入口不新增任意
+Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达/相机、不声明 `safe_to_control=true` 或
+`delivery_success=true`；它只是让“底盘自己能不能动”这个最短现场验证不再被摄像头/雷达/建图材料卡住。
+
 2026-06-27 02:14 起，普通首屏 `共享画面` 状态会直接翻译共享 MJPEG relay 结果：当
 `exclusive_camera_claim=false` 时显示“不是独占，每个页面共享同一条上游流”；当最近失败是
 `camera_mjpeg_proxy_failed` 或 HTTP 502/503 时，普通文案显示为“共享预览上游没有返回可用画面，通常是相机无帧或
