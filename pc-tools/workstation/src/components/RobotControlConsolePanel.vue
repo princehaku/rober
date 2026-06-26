@@ -2313,6 +2313,25 @@ const plainFreeRoamManualGuideButtonLabel = computed(() => {
   }
   return `按步骤：${nextAction}`;
 });
+const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
+  // 自动扫图已由上车端开放但仍差现场证据时，按钮只做补证引导，不能伪装成真正 start。
+  if (!plainManualSafetyConfirmed.value) {
+    return "先勾安全确认";
+  }
+  if (!mapRuntimeStarted.value) {
+    return "开始记录并继续";
+  }
+  if (!plainFreeRoamMapPreviewFreshForSession.value) {
+    return "刷新扫图画面";
+  }
+  if (radarSummary.value.state !== "雷达已运行") {
+    return plainRadarRequiresRefresh.value ? "刷新雷达后开始" : "启动雷达后开始";
+  }
+  if (!canSendStop.value) {
+    return "补停止兜底";
+  }
+  return "检查自动扫图条件";
+});
 const plainFreeRoamDriveStatus = computed(() => {
   // 扫图状态只解释当前本地流程，不自动启用键盘、不发送 manual，也不把自动扫图说成已开放。
   if (!plainManualSafetyConfirmed.value) {
@@ -2633,9 +2652,10 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     buttonLabel: freeRoamAutonomyPending.value && freeRoamAutonomyPendingAction.value === "start"
       ? "启动中"
       : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
+      : autonomyReady && blockers.length ? plainFreeRoamAutonomyGuideButtonLabel.value
       : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : "开始自动扫图（低速）",
     // ready 后才走固定上车状态机 start；未 ready 时按钮仍只做流程定位。
-    disabled: autonomyReady ? !canStartFreeRoamAutonomy.value : false,
+    disabled: autonomyReady ? (freeRoamAutonomyPending.value || freeRoamMapWysiwygPending.value) : false,
     hint: autonomyLocked
       ? manualFallbackHint
       : freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
@@ -6972,10 +6992,41 @@ function plainFreeRoamNextTarget(): HTMLElement | null {
     ?? plainFreeRoamConfirmCheckbox.value;
 }
 
+function plainFreeRoamAutonomyNextTarget(): HTMLElement | null {
+  // 自动扫图补证优先处理真车门禁证据；缺雷达新鲜证明时不能继续引导 operator 去手控。
+  if (!plainManualSafetyConfirmed.value) {
+    return plainFreeRoamConfirmCheckbox.value;
+  }
+  if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    return enabledButton(plainFreeRoamStartButton.value) ?? plainFreeRoamStartButton.value;
+  }
+  if (freeRoamMapWysiwygPending.value || !plainFreeRoamMapPreviewFreshForSession.value) {
+    return enabledButton(plainFreeRoamMapRefreshButton.value) ?? plainFreeRoamMapRefreshButton.value;
+  }
+  if (radarSummary.value.state !== "雷达已运行") {
+    return plainRadarNextTarget() ?? plainFreeRoamStartButton.value;
+  }
+  if (!canSendStop.value) {
+    return enabledButton(keyboardControlRecheckButton.value) ?? keyboardControlPanel.value;
+  }
+  return plainFreeRoamNextTarget();
+}
+
 async function focusPlainFreeRoamNextTarget(): Promise<void> {
   // 这里刻意只做 scroll/focus，所有真实动作仍由用户按对应按钮触发。
   await nextTick();
   const target = plainFreeRoamNextTarget();
+  if (!target) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
+}
+
+async function focusPlainFreeRoamAutonomyNextTarget(): Promise<void> {
+  // 自动扫图按钮在未满足时也只移动焦点，避免一次点击混入运动、Nav2 或送达动作。
+  await nextTick();
+  const target = plainFreeRoamAutonomyNextTarget();
   if (!target) {
     return;
   }
@@ -7000,6 +7051,20 @@ async function advancePlainFreeRoamManualGuide(): Promise<void> {
     return;
   }
   await focusPlainFreeRoamNextTarget();
+}
+
+async function advancePlainFreeRoamAutonomyGuide(): Promise<void> {
+  // 上车端自动扫图已开放时，先补 start 所需证据；只有最终 ready 才会走状态机代理。
+  if (!plainManualSafetyConfirmed.value) {
+    await focusPlainFreeRoamAutonomyNextTarget();
+    return;
+  }
+  if (!mapRuntimeStarted.value && !mapSavedThisSession.value && canStartPlainFreeRoamMapping.value) {
+    await startMapRuntime();
+    await focusPlainFreeRoamAutonomyNextTarget();
+    return;
+  }
+  await focusPlainFreeRoamAutonomyNextTarget();
 }
 
 function markDeliveryBasicSafetyConfirmed(): void {
@@ -7349,6 +7414,10 @@ function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string):
 async function startFreeRoamAutonomy(): Promise<void> {
   // 真正自动扫图 start 只走固定上车状态机代理；未 ready 时推进人工扫图的非运动向导。
   if (!canStartFreeRoamAutonomy.value) {
+    if (robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready") {
+      await advancePlainFreeRoamAutonomyGuide();
+      return;
+    }
     await advancePlainFreeRoamManualGuide();
     return;
   }

@@ -3925,6 +3925,84 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
+  it("guides ready free-roam autonomy to refresh stale radar proof before starting", async () => {
+    // 自动扫图门禁已开放但 LiDAR proof stale 时，按钮只能引导刷新雷达，不能偷偷 start 或发运动。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "ready";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自动扫图";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = [
+      { id: "operator_confirmed", label: "现场安全确认", state: "ready", evidence: "已勾选现场安全确认", next_action: "继续保持现场可接管" },
+      { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
+      { id: "lidar_fresh", label: "雷达新鲜", state: "blocked", evidence: "雷达最新证明不完整", next_action: "刷新雷达确认最新距离" },
+      { id: "obstacle_clear", label: "前方障碍", state: "not_proven", evidence: "等待雷达最新证明", next_action: "先刷新雷达" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+    ];
+    summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
+      status: "loaded",
+      state: "ready",
+      reason: "等待 PC start",
+      stop_required: false,
+      artifact_only: false,
+      cmd_vel_publish_enabled: true,
+    };
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.radar_start_configured = "true";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
+    expect(readiness.attributes("data-state")).toBe("待处理");
+    expect(readiness.text()).toContain("还差：雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("刷新雷达后开始");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    const radarRefreshCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
+    ).length;
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?"),
+    ).length).toBe(radarRefreshCallsBeforeClick);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+  });
+
   it("uses the locked auto-sweep button as a manual mapping guide without sending motion", async () => {
     // 自动扫图未 ready 时，普通按钮可以推进“开始记录/启用键盘”等非运动步骤；方向脉冲仍必须按住方向键才会发出。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
