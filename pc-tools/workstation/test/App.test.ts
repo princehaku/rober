@@ -6317,7 +6317,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("已有雷达点 72 个，当前先显示局部轮廓，刷新后确认实时性。");
     expect(wrapper.find('[data-testid="plain-map-radar-local-scan"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("雷达点位未读取");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("最近雷达记录 72 个（仅点数，没有点数组，未显示局部轮廓）");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：最近雷达记录 72 个（仅点数，没有点数组，未显示局部轮廓），不是实时雷达。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toContain("最近雷达记录 72 个（仅点数，没有点数组，未显示局部轮廓），不贴到地图");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });

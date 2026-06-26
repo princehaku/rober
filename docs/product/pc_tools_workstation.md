@@ -2808,3 +2808,11 @@ free-roam autonomy、stop 或 `/cmd_vel`。
 `confirm_mapping_active=false`，让上车端把本轮标成自由移动/练习，不误记为可验收建图。测试覆盖“地图记录已启动但摄像头缺首帧”
 时自动扫图请求仍为 `confirm_mapping_active=false`。该 gate 不阻止自由移动，不调用 manual、keyboard、Nav2、delivery、stop
 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
+
+2026-06-26 23:59 起，普通首屏地图在 `scan_preview_point_count=N` 但 `scan_preview_points=[]` 时不再写成
+`雷达点位未读取`。地图 scan label、雷达点口径和坐标口径都会显示
+`最近雷达记录 N 个（仅点数，没有点数组，未显示局部轮廓）` 或
+`未贴到地图`，明确这是历史/只读点数证据，不是实时雷达点，也不能凭它画地图坐标。该修正覆盖现场形态：
+雷达 lifecycle 为 `stopped`、`latest_scan_proof_fresh=false`，但 summary 仍有 `scan_preview_point_count=72`；
+它只改普通用户 WYSIWYG 表达，不调用 radar start/refresh、manual、keyboard pulse、Nav2、delivery、
+free-roam start/stop、stop 或 `/cmd_vel`。

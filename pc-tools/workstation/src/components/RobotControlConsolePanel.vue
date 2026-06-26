@@ -1496,15 +1496,40 @@ function radarStateUsesPendingPoints(radarState: string): boolean {
   return radarState === "雷达待刷新" || radarState === "刷新中" || radarState === "雷达启动中";
 }
 
+function radarPreviewReadbackPointCount(): number {
+  // 点数组缺失时仍保留 summary 点数证据；但这个点数不能被用来伪造地图坐标。
+  const proof = robotSummary.value?.o3_proof_summary;
+  const lidar = effectiveLidarReadback.value ?? robotSummary.value?.readback_summary.lidar;
+  const proofCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
+  const lidarCount = finitePlainNumber(lidar?.scan_preview_point_count) ?? 0;
+  return Math.max(proofCount, lidarCount);
+}
+
+function radarPreviewCountOnlyLabel(radarState: string, poseObserved: boolean): string {
+  // 只有点数没有点数组时，普通地图要承认证据存在，同时明确不能贴图或当实时点使用。
+  const pointCount = radarPreviewReadbackPointCount();
+  const pointArrayCount = robotSummary.value?.o3_proof_summary.scan_preview_points?.length ?? 0;
+  if (pointCount <= 0 || pointArrayCount > 0) {
+    return "";
+  }
+  const prefix = radarStateUsesPendingPoints(radarState)
+    ? "待刷新雷达点"
+    : radarState === "雷达已运行" ? "雷达点" : "最近雷达记录";
+  return poseObserved
+    ? `${prefix} ${pointCount} 个（仅点数，没有点数组，未贴到地图）`
+    : `${prefix} ${pointCount} 个（仅点数，没有点数组，未显示局部轮廓）`;
+}
+
 function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>, radarState = "") {
   // 没有 map-frame 位姿时不把雷达点强行落到地图坐标，只返回待定位提示。
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
   const preview = mapPreviewResult.value;
   if (!robotPose || !preview || preview.proxy_status !== "preview_forwarded" || points.length === 0) {
+    const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
     return {
       dots: [],
-      label: points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取",
+      label: countOnlyLabel || (points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取"),
     };
   }
   const dots = points
@@ -1536,7 +1561,8 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
   if (robotPose || points.length === 0) {
-    return { dots: [], label: points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取", state: "" };
+    const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
+    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取"), state: "" };
   }
   const localPoints = points
     .map((point) => scanPointInBaseFrame(point, transform))
@@ -1851,7 +1877,10 @@ function plainMapCoordinateTruthLabel(
     const scanPrefix = radarStateUsesPendingPoints(radarState)
       ? "待刷新雷达点"
       : radarState === "雷达已运行" ? "雷达点" : "最近雷达点";
-    const scanText = radarScanOverlay.dots.length > 0 ? `${scanPrefix} ${radarScanOverlay.dots.length} 个已贴到地图` : "雷达点未贴图";
+    const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, true);
+    const scanText = radarScanOverlay.dots.length > 0
+      ? `${scanPrefix} ${radarScanOverlay.dots.length} 个已贴到地图`
+      : countOnlyLabel || "雷达点未贴图";
     const routeText = routePath ? `${routePath.coordinateLabel}已贴到地图` : "路线未显示";
     return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
   }
@@ -1873,6 +1902,11 @@ function plainMapCoordinateTruthLabel(
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
     return `坐标口径：${poseText}，雷达只显示${obstacleDistanceLabel}，不贴到地图；${routeText}。`;
   }
+  const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, false);
+  if (countOnlyLabel) {
+    const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
+    return `坐标口径：${poseText}，${countOnlyLabel}，不贴到地图；${routeText}。`;
+  }
   if (routePath) {
     return `坐标口径：${poseText}，${routePath.coordinateLabel}按地图坐标显示，雷达不贴图。`;
   }
@@ -1889,6 +1923,7 @@ function plainRadarFreshnessLabel(
   // 雷达点可能来自最近一次 artifact；首屏必须说清它是不是当前运行中的实时点。
   const mapPointCount = radarScanOverlay.dots.length;
   const localPointCount = radarLocalScanOverlay.dots.length;
+  const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, poseObserved);
   if (radarState === "雷达已运行") {
     if (poseObserved && mapPointCount > 0) {
       return `雷达点口径：实时雷达 ${mapPointCount} 个已贴到地图。`;
@@ -1898,6 +1933,9 @@ function plainRadarFreshnessLabel(
     }
     if (obstacleDistanceLabel) {
       return `雷达点口径：实时雷达未返回点数组，只显示${obstacleDistanceLabel}，等点位或定位后再贴地图。`;
+    }
+    if (countOnlyLabel) {
+      return `雷达点口径：${countOnlyLabel}，暂不能作为已贴图实时雷达。`;
     }
     return "雷达点口径：雷达已运行，但当前还没读到点位。";
   }
@@ -1920,12 +1958,18 @@ function plainRadarFreshnessLabel(
     if (obstacleDistanceLabel) {
       return `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
     }
+    if (countOnlyLabel) {
+      return `雷达点口径：正在确认实时性，当前只有${countOnlyLabel}；刷新后再确认点位。`;
+    }
     return localPointCount > 0
       ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
       : "雷达点口径：正在确认实时性，刷新后才显示新点位。";
   }
   if (localPointCount > 0) {
     return `雷达点口径：这是最近记录 ${localPointCount} 个点，不是实时雷达。`;
+  }
+  if (countOnlyLabel) {
+    return `雷达点口径：${countOnlyLabel}，不是实时雷达。`;
   }
   return "雷达点口径：未读到可显示的实时雷达点。";
 }
