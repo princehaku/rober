@@ -1231,13 +1231,16 @@ function latestNavPathOverlay() {
   const totalCount = Number.isFinite(sourceCount) && sourceCount > 0 ? sourceCount : svgPoints.length;
   const currentRoute = proof?.path_generated === true || proof?.path_generation_succeeded === true;
   const routeExecuting = currentRoute && navGoalExecutionPending.value && Boolean(navGoalExecutionPendingGoal.value);
+  const routeStopState = routeExecuting ? plainTripStopOverlayState() : null;
   const routePrefix = currentRoute ? "路线" : "最近路线";
-  const routeState = routeExecuting ? "执行中" : currentRoute ? "当前路线" : "最近路线";
+  const routeState = routeStopState?.state ?? (currentRoute ? "当前路线" : "最近路线");
   const routeLabel = routeExecuting
-    ? `正在执行图上路线 ${svgPoints.length}/${totalCount} 个点`
+    ? `${routeStopState?.actionText ?? "正在执行图上路线"} ${svgPoints.length}/${totalCount} 个点`
     : currentRoute ? `已读取 ${svgPoints.length} 个路线点` : `已读取最近路线 ${svgPoints.length} 个点`;
   const routeCaption = routeExecuting
-    ? `图上路线执行中 ${svgPoints.length}/${totalCount} 个点`
+    ? routeState === "执行中"
+      ? `图上路线执行中 ${svgPoints.length}/${totalCount} 个点`
+      : `${routeStopState?.actionText ?? "正在执行图上路线"} ${svgPoints.length}/${totalCount} 个点`
     : currentRoute
       ? `路线已显示 ${svgPoints.length}/${totalCount} 个点`
       : `最近路线已显示 ${svgPoints.length}/${totalCount} 个点，待重新规划`;

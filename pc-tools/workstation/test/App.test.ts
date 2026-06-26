@@ -6402,8 +6402,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("行程停止中");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("停止中");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toBe("正在发送行程停止请求，目标地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("data-state")).toBe("停止中");
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("aria-label")).toBe("正在发送行程停止请求 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("正在发送行程停止请求 3/15 个点");
     expect(workstationStyles).toContain('.plain-map-route-goal-marker[data-state="停止中"]');
     expect(workstationStyles).toContain('.plain-map-route-goal-marker[data-state="停止已发送"]');
+    expect(workstationStyles).toContain('.plain-map-route-path[data-state="停止中"] polyline');
+    expect(workstationStyles).toContain('.plain-map-route-path[data-state="停止已发送"] polyline');
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在发送行程停止请求（目标 x=0.80, y=0.00；路线 3/15 个点）");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边接管，等待行程结果返回。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边接管，等待行程结果返回。");
@@ -6421,6 +6426,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("停止已发送");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("停止已发送");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toBe("行程停止请求已发送，目标地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("data-state")).toBe("停止已发送");
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("aria-label")).toBe("行程停止请求已发送 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程停止请求已发送 3/15 个点");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程停止请求已发送，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边接管，等待行程结果返回。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
