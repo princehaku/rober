@@ -1026,9 +1026,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
     def test_free_roam_param_sequence_unlocks_motion_only_when_requested(self) -> None:
         """参数序列默认不解锁；只有 readiness 通过后的 start 才写运动发布双锁。"""
         calls: list[list[str]] = []
+        timeouts: list[float] = []
 
         def fake_run(argv, timeout_s=8.0):  # noqa: ANN001 - 测试 stub 保持签名宽松。
             calls.append(argv)
+            timeouts.append(timeout_s)
             return {"mode": "fixed_argv", "executed": True, "ok": True, "argv": argv, "returncode": 0}
 
         with mock.patch.object(upper_robot_api, "run_fixed_argv_command", side_effect=fake_run):
@@ -1050,6 +1052,36 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertIn("enable_cmd_vel_publish true", flattened)
         self.assertIn("motion_hil_unlocked false", flattened)
         self.assertIn("enable_cmd_vel_publish false", flattened)
+        self.assertTrue(timeouts)
+        self.assertTrue(all(timeout == upper_robot_api.FREE_ROAM_PARAM_SET_TIMEOUT_S for timeout in timeouts))
+
+    def test_free_roam_param_sequence_stops_after_first_param_timeout(self) -> None:
+        """ROS 参数服务不响应时必须快速返回结构化失败，不能让 PC start 长时间卡住。"""
+        calls: list[list[str]] = []
+
+        def fake_run(argv, timeout_s=8.0):  # noqa: ANN001 - 测试 stub 保持签名宽松。
+            calls.append(argv)
+            return {
+                "mode": "fixed_argv",
+                "executed": True,
+                "ok": False,
+                "argv": argv,
+                "returncode": None,
+                "error": "TimeoutExpired",
+                "timeout_s": timeout_s,
+            }
+
+        with mock.patch.object(upper_robot_api, "run_fixed_argv_command", side_effect=fake_run):
+            result = upper_robot_api.run_free_roam_param_sequence("start", enable_motion=True)
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(["operator_confirmed"], result["touched_parameters"])
+        self.assertEqual(1, len(calls))
+        self.assertEqual(upper_robot_api.FREE_ROAM_PARAM_SET_TIMEOUT_S, result["results"][0]["timeout_s"])
+        self.assertEqual(
+            ["motion_hil_unlocked", "enable_cmd_vel_publish", "cmd_vel_topic"],
+            result["blocked_parameters_not_touched"],
+        )
 
     def test_fixed_ros2_argv_sources_ros_environment(self) -> None:
         """裸 python 启动上位机 API 时，固定 ros2 argv 也必须先 source ROS 环境。"""

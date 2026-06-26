@@ -56,6 +56,7 @@ DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecyc
 DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_goal_execution_latest.json"
 DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH = "/root/rober/onboard/runtime/delivery_completion_latest.json"
 DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH = "/root/rober/onboard/runtime/free_roam_autonomy_latest.json"
+FREE_ROAM_PARAM_SET_TIMEOUT_S = 2.0
 DEFAULT_ROS_SETUP_PATH = "/opt/ros/humble/setup.bash"
 DEFAULT_ONBOARD_SETUP_PATH = "/root/rober/onboard/install/setup.bash"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
@@ -1972,7 +1973,10 @@ def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False, ma
     results = []
     for name, value in sequences[action]:
         # 这里只允许固定节点名、固定参数名和 bool 字符串；不会接受浏览器传入的任意参数名。
-        result = run_fixed_argv_command(["ros2", "param", "set", "/free_roam_autonomy", name, value])
+        result = run_fixed_argv_command(
+            ["ros2", "param", "set", "/free_roam_autonomy", name, value],
+            timeout_s=FREE_ROAM_PARAM_SET_TIMEOUT_S,
+        )
         results.append({"parameter": name, "value": value, **result})
         if not result.get("ok"):
             break
