@@ -872,6 +872,9 @@ const plainRadarStartButtonLabel = computed(() => {
   if (plainRadarStartUnavailable.value) {
     return "雷达未配置";
   }
+  if (radarLifecyclePendingAction.value === "start") {
+    return "雷达启动中";
+  }
   if (mapWysiwygRefreshPending.value) {
     return "等待地图刷新";
   }
@@ -943,7 +946,9 @@ const plainFreeRoamAutoStopButtonLabel = computed(() => {
 });
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
-  return radarSummary.value.state === "雷达未运行" || radarSummary.value.state === "雷达启动失败";
+  return radarLifecyclePendingAction.value === "start"
+    || radarSummary.value.state === "雷达未运行"
+    || radarSummary.value.state === "雷达启动失败";
 });
 
 function plainRadarTripBlockedHint(rerun: boolean): string {

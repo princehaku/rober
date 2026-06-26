@@ -11948,6 +11948,8 @@ describe("App", () => {
 
     expect(visiblePlainHomeText(wrapper)).toContain("正在启动雷达，等待上位机返回。");
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达启动中");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("雷达启动中");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达启动中，位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达启动中");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动中，地图位置未读到");
