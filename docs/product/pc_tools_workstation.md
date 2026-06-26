@@ -2730,6 +2730,12 @@ MJPEG/WebRTC、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`，
 `first_frame_unreadable/capture_read_returned_false`，固定 `v4l2-ctl` MJPG/YUYV 采样文件也都是 0 字节。普通首屏应把这解释为
 `摄像头设备可打开但没有输出视频帧`，下一步查摄像头输入、USB 线/供电或更换 known-good UVC，而不是提示 PC 页面独占。
 
+2026-06-26 22:15 起，普通首屏相机失败文案直接回答“是否独占”：当 summary 读到
+`source_usage_status=not_in_use` 且 `source_failure_reason=capture_read_returned_false` 或其它首帧失败时，实时画面卡片显示
+`不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电`。原始
+`capture_read_returned_false`、`/dev/video1`、pid/source usage 细节仍只留在高级诊断；该文案不打开 camera offer/MJPEG，
+不调用 camera probe、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`。
+
 2026-06-26 22:00 起，Robot Control summary 会额外读取上车端 `/api/nav2/goal/execution/latest`，并在
 `readback_summary.nav2` 中汇总最近一次图上路线执行的状态、结果、反馈次数、目标坐标、evidence ref 和是否真的执行过控制。
 该 latest 中的 `robot_control_executed=true` 只作为历史只读证据进入 nav2 摘要，PC summary 顶层仍固定

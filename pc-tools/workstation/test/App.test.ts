@@ -8828,7 +8828,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const firstScreenText = visiblePlainHomeText(wrapper);
-    expect(firstScreenText).toContain("相机当前没人占用，但底层没有读到画面；检查 USB、摄像头输入或供电。");
+    expect(firstScreenText).toContain("不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。");
     expect(firstScreenText).not.toContain("capture_read_returned_false");
     expect(firstScreenText).not.toContain("/dev/video1");
     expect(wrapper.find("details").text()).toContain("camera_source_usage_status");
@@ -15613,6 +15613,33 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("explains a live not-in-use camera first-frame failure as not exclusive access", async () => {
+    // live 7001 读到 not_in_use + capture_read_returned_false 时，普通用户要看到“不是独占，是没出帧”。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.devices_status = "loaded";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：相机当前没人占用，但摄像头没有输出视频帧");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("PC 只复用同一条上游流");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });
 
   it("keeps failure status after Start Preview fails instead of collapsing to stopped_by_user", async () => {

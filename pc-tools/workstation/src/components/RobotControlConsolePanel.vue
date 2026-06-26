@@ -414,9 +414,9 @@ function cameraSourcePlainFailureHint(): string {
     }
     if (camera?.source_usage_status === "not_in_use") {
       if (camera?.source_failure_reason === "capture_read_call_timeout" || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout") {
-        return "相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";
+        return "不是页面独占：相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";
       }
-      return "相机当前没人占用，但底层没有读到画面；检查 USB、摄像头输入或供电。";
+      return "不是页面独占：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。";
     }
     return "相机没有出画面，检查摄像头/视频线。";
   }
