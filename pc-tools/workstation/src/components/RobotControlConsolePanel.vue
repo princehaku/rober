@@ -3388,6 +3388,14 @@ const deliveryDraftVisualMaterialReady = computed(() => {
   return deliveryDraftMaterialPresent() && Boolean(refs.externalVideoRef && refs.cameraArtifactRef);
 });
 
+const currentRunDeliveryMaterialReady = computed(() => {
+  // 本轮 Nav2 已完成且 ref 对齐时，普通用户只差现场勾选；不能再引导他重复跑行程或重复找材料。
+  return deliveryNav2GoalReady.value
+    && deliveryRouteMapMatchesFreshNav2.value
+    && deliveryOperatorVideoRef.value.trim().length > 0
+    && deliveryOperatorRouteMapRef.value.trim().length > 0;
+});
+
 function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
   // 已有草稿后，按钮直接指向下一组人工确认，避免现场只看到抽象数量。
   if (missingLabels.includes("本轮行程")) {
@@ -3831,6 +3839,12 @@ const plainDeliverySummary = computed(() => {
   }
   if (deliveryNav2GoalReady.value) {
     const gapCount = deliveryGateBlockedReasons.value.length;
+    if (currentRunDeliveryMaterialReady.value) {
+      return {
+        state: "待确认",
+        hint: "本轮行程和送达材料已在，只差现场逐项确认；最终确认不会发车。",
+      };
+    }
     return {
       state: "待确认",
       hint: gapCount > 0 ? `行程已完成，还需补齐 ${gapCount} 项送达确认。` : "行程已完成，还需要现场确认送达。",
@@ -3910,6 +3924,9 @@ const plainDeliveryMaterialSummary = computed(() => {
       "这份草稿较旧，如本轮已重新到达，请重新准备材料或重新确认",
     );
     const mismatchText = deliveryRouteMapMatchesFreshNav2.value ? "" : "行程材料不是本轮记录，请点准备送达材料更新。";
+    if (currentRunDeliveryMaterialReady.value) {
+      return { state: "已保存", hint: `送达材料草稿已保存${ageText}；已和本轮行程对齐，只差下方现场确认。` };
+    }
     return { state: "已保存", hint: `送达材料草稿已保存${ageText}；${mismatchText}请完成下方最终确认。` };
   }
   if (deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim()) {
@@ -3986,11 +4003,14 @@ const plainDeliveryConfirmSummary = computed(() => {
   if (!deliveryOperatorVideoRef.value.trim() || !deliveryOperatorRouteMapRef.value.trim()) {
     return { state: "待材料", hint: "先准备送达材料，再做最终确认。" };
   }
-  if (deliveryDraftMaterialPresent()) {
-    return { state: "待确认", hint: "送达材料已保存；现场逐项确认后再提交。" };
-  }
   if (!deliveryOperatorConfirmationReady.value) {
+    if (currentRunDeliveryMaterialReady.value) {
+      return { state: "待勾选", hint: "本轮行程和材料已在；按顺序勾现场确认，最后确认送达不会发车。" };
+    }
     return { state: "待勾选", hint: "逐项确认后才能提交送达结果。" };
+  }
+  if (deliveryDraftMaterialPresent()) {
+    return { state: "可提交", hint: "送达材料已保存，现场确认已完成；提交后只做送达收口，不发车。" };
   }
   return { state: "可提交", hint: "已满足最终确认条件；提交后只做送达收口，不发车。" };
 });
