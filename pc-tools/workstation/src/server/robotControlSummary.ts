@@ -3042,6 +3042,9 @@ function freeRoamSummaryFromReadbacks(
     stop_required: decision ? booleanSummaryValue(decision.stop_required === true) : summaryValueText(payload, ["stop_required"]) ?? "not_loaded",
     artifact_only: latest ? booleanSummaryValue(latest.artifact_only !== false) : summaryValueText(payload, ["artifact_only"]) ?? "not_loaded",
     cmd_vel_publish_enabled: latest ? booleanSummaryValue(latest.cmd_vel_publish_enabled === true) : summaryValueText(payload, ["cmd_vel_publish_enabled"]) ?? "not_loaded",
+    runtime_artifact_proven: summaryValueText(payload, ["free_roam_runtime_artifact_proven"]) ?? "not_loaded",
+    state_machine_observed: summaryValueText(payload, ["free_roam_state_machine_observed"]) ?? "not_loaded",
+    ros2_runtime_proven: summaryValueText(payload, ["ros2_runtime_proven"]) ?? "not_loaded",
     gate_count: gateCount,
   };
 }
@@ -3199,6 +3202,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         stop_required: "not_loaded",
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
+        runtime_artifact_proven: "not_loaded",
+        state_machine_observed: "not_loaded",
+        ros2_runtime_proven: "not_loaded",
         gate_count: "0",
       },
     },

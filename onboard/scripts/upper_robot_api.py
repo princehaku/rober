@@ -6322,9 +6322,17 @@ class UpperRobotApi:
         )
         latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else {}
         decision = latest.get("decision") if isinstance(latest.get("decision"), dict) else {}
+        runtime_artifact_proven = (
+            http_status == 200
+            and isinstance(latest, dict)
+            and latest.get("schema") == "trashbot.free_roam_autonomy.runtime.v1"
+        )
         payload.update(
             {
                 "runtime_status": "loaded" if http_status == 200 else "not_loaded",
+                "free_roam_runtime_artifact_proven": runtime_artifact_proven,
+                "free_roam_state_machine_observed": runtime_artifact_proven,
+                "ros2_runtime_proven": runtime_artifact_proven,
                 "decision_state": decision.get("state") or "not_loaded",
                 "decision_reason": decision.get("reason") or "not_loaded",
                 "stop_required": bool(decision.get("stop_required")) if isinstance(decision, dict) else True,
@@ -6346,6 +6354,7 @@ class UpperRobotApi:
         decision = latest.get("decision") if isinstance(latest.get("decision"), dict) else {}
         snapshot = latest.get("snapshot") if isinstance(latest.get("snapshot"), dict) else {}
         map_metrics = latest.get("map_metrics") if isinstance(latest.get("map_metrics"), dict) else {}
+        runtime_artifact_proven = bool(payload.get("free_roam_runtime_artifact_proven"))
         return {
             "schema": f"{SCHEMA}.free_roam_autonomy_status",
             "generated_at_ms": now_ms(),
@@ -6353,6 +6362,9 @@ class UpperRobotApi:
             "http_status": http_status,
             "latest": payload,
             "artifact": free_roam_autonomy_artifact_info(self.free_roam_autonomy_artifact_path),
+            "free_roam_runtime_artifact_proven": runtime_artifact_proven,
+            "free_roam_state_machine_observed": runtime_artifact_proven,
+            "ros2_runtime_proven": runtime_artifact_proven,
             "decision_state": decision.get("state") or "not_loaded",
             "decision_reason": decision.get("reason") or "not_loaded",
             "decision_gates": decision.get("gates") if isinstance(decision.get("gates"), list) else [],

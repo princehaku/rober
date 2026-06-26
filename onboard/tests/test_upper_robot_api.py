@@ -978,6 +978,51 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["publishes_cmd_vel"])
 
+    def test_free_roam_latest_marks_runtime_artifact_as_state_machine_observed(self) -> None:
+        """runtime artifact 来自 free_roam_autonomy_node，应证明状态机存在但不提升控制权限。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "free_roam_autonomy_latest.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.free_roam_autonomy.runtime.v1",
+                        "artifact_only": True,
+                        "cmd_vel_publish_enabled": False,
+                        "decision": {
+                            "schema": "trashbot.free_roam_autonomy.decision.v1",
+                            "state": "stopping",
+                            "reason": "现场请求停止",
+                            "stop_required": True,
+                            "gates": [],
+                        },
+                        "snapshot": {"operator_confirmed": False},
+                        "map_metrics": {"free_cells": 1},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                free_roam_autonomy_artifact_path=str(artifact_path),
+            )
+
+            latest_status, latest = api.free_roam_autonomy_latest()
+            status = api.free_roam_autonomy_status()
+
+        self.assertEqual(200, latest_status)
+        self.assertTrue(latest["free_roam_runtime_artifact_proven"])
+        self.assertTrue(latest["free_roam_state_machine_observed"])
+        self.assertTrue(latest["ros2_runtime_proven"])
+        self.assertEqual("stopping", latest["decision_state"])
+        self.assertFalse(latest["safe_to_control"])
+        self.assertFalse(latest["publishes_cmd_vel"])
+        self.assertTrue(status["free_roam_state_machine_observed"])
+        self.assertTrue(status["ros2_runtime_proven"])
+        self.assertFalse(status["safe_to_control"])
+
     def test_free_roam_param_sequence_unlocks_motion_only_when_requested(self) -> None:
         """参数序列默认不解锁；只有 readiness 通过后的 start 才写运动发布双锁。"""
         calls: list[list[str]] = []

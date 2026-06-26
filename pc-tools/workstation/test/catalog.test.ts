@@ -4636,6 +4636,9 @@ describe("workstation fail-closed API contracts", () => {
         stop_required: "not_loaded",
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
+        runtime_artifact_proven: "not_loaded",
+        state_machine_observed: "not_loaded",
+        ros2_runtime_proven: "not_loaded",
         gate_count: "0",
       });
     } finally {
@@ -4663,6 +4666,9 @@ describe("workstation fail-closed API contracts", () => {
       "/api/free-roam/autonomy/latest": {
         payload: {
           ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          free_roam_runtime_artifact_proven: true,
+          free_roam_state_machine_observed: true,
+          ros2_runtime_proven: true,
           latest_result: {
             schema: "trashbot.free_roam_autonomy.runtime.v1",
             artifact_only: true,
@@ -4724,6 +4730,9 @@ describe("workstation fail-closed API contracts", () => {
         stop_required: "false",
         artifact_only: "true",
         cmd_vel_publish_enabled: "false",
+        runtime_artifact_proven: "true",
+        state_machine_observed: "true",
+        ros2_runtime_proven: "true",
         gate_count: "1",
       });
       expect(summary.safe_to_control).toBe(false);
