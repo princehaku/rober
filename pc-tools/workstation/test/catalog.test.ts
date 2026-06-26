@@ -1199,8 +1199,8 @@ describe("workstation fail-closed API contracts", () => {
     expect(robotControlSummaryQueryBaseUrl("http://127.0.0.1:8787")).toBe("http://127.0.0.1:8787");
   });
 
-  it("defaults Robot Control read-only latest reads to the fixed robot API address", async () => {
-    // Nav2/latest 与 delivery/latest 都是只读读数；缺省 query 时也应走固定小车，不要求普通用户手填。
+  it("defaults Robot Control read-only reads to the fixed robot API address", async () => {
+    // Nav2/latest、delivery/latest 和地图只读画面都应默认走固定小车，不要求普通用户手填。
     expect(robotControlReadOnlyQueryBaseUrl(undefined)).toBe("http://192.168.1.11:8787");
     expect(robotControlReadOnlyQueryBaseUrl("")).toBe("http://192.168.1.11:8787");
     const requestedUrls: string[] = [];
@@ -1208,9 +1208,29 @@ describe("workstation fail-closed API contracts", () => {
       const url = String(input);
       requestedUrls.push(url);
       const pathname = new URL(url).pathname;
-      const payload = pathname.endsWith("/api/nav2/goal/execution/latest")
-        ? { status: "goal_succeeded", feedback_sample_count: 8, robot_control_executed: false }
-        : { delivery_success: false, latest_result: { missing_required_material: ["operator_observed_motion"] } };
+      let payload: Record<string, unknown>;
+      if (pathname.endsWith("/api/nav2/goal/execution/latest")) {
+        payload = { status: "goal_succeeded", feedback_sample_count: 8, robot_control_executed: false };
+      } else if (pathname.endsWith("/api/delivery/latest")) {
+        payload = { delivery_success: false, latest_result: { missing_required_material: ["operator_observed_motion"] } };
+      } else if (pathname.endsWith("/api/map/list")) {
+        payload = { status: "loaded", maps: [], command_result: { executed: false, ok: true } };
+      } else {
+        payload = {
+          status: "loaded",
+          map_name: "default-map-preview",
+          map_yaml_name: "default-map-preview.yaml",
+          map_image_name: "default-map-preview.pgm",
+          width: 1,
+          height: 1,
+          resolution: 0.05,
+          origin: [0, 0, 0],
+          cell_counts: { free: 1, unknown: 0, occupied: 0, other: 0 },
+          image_mime_type: "image/png",
+          image_data_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lJK3GQAAAABJRU5ErkJggg==",
+          command_result: { executed: false, ok: true },
+        };
+      }
       return new Response(JSON.stringify(payload), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -1221,11 +1241,17 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const nav2 = await requestJson(new URL("/api/robot-control/nav2/goal/execution/latest", server.baseUrl));
       const delivery = await requestJson(new URL("/api/robot-control/delivery/latest", server.baseUrl));
+      const mapList = await requestJson(new URL("/api/robot-control/map/list", server.baseUrl));
+      const mapPreview = await requestJson(new URL("/api/robot-control/map/preview", server.baseUrl));
 
       expect(nav2.status).toBe(200);
       expect(delivery.status).toBe(200);
+      expect(mapList.status).toBe(200);
+      expect(mapPreview.status).toBe(200);
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/nav2/goal/execution/latest");
       expect(requestedUrls).toContain("http://192.168.1.11:8787/api/delivery/latest");
+      expect(requestedUrls).toContain("http://192.168.1.11:8787/api/map/list");
+      expect(requestedUrls).toContain("http://192.168.1.11:8787/api/map/preview");
     } finally {
       fetchSpy.mockRestore();
       await server.close();
