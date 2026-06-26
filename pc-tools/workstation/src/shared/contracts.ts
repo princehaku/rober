@@ -2528,6 +2528,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     free_roam_autonomy_gates: Array<{
       id: string;
       label: string;
+      scope?: "free_move_start" | "mapping_acceptance" | "runtime_diagnostic";
       state: "ready" | "blocked" | "not_proven";
       evidence: string;
       next_action: string;

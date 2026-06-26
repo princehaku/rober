@@ -195,6 +195,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 才描述可验收建图门禁。这样普通 UI、Node API contract 和上车端 `sensor_readiness.mapping_readiness`
 使用同一口径：车可以先低速自由移动，只有相机和雷达 ready 时才把本轮按建图收口。
 
+2026-06-27 06:19 起，PC summary 的 `free_roam_autonomy_gates[]` 增加 `scope` 分层：
+`free_move_start` 只包含现场安全确认和停止兜底，决定“能否请求低速自由移动”；
+`mapping_acceptance` 包含相机、雷达、地图记录和地图画面，决定“能否按可验收建图收口”；
+`runtime_diagnostic` 只解释上车端运动发布状态。普通首屏 gate 行按 scope 显示为“启动条件 / 建图验收 / 只读状态”，
+不再让 `lidar_fresh=blocked`、`obstacle_clear=not_proven` 或 `motion_hil_unlock=not_proven`
+在视觉上变成自由移动启动阻塞。
+
 2026-06-27 03:50 起，PC `自动扫图准备` 明确新增一行 `建图验收`：`free_roam_autonomy_start_ready=true`
 只表示可在安全确认后发起低速自由移动；如果 camera 没有首帧或雷达未达到 `雷达已运行`，本轮只能按自由移动记录，
 不能按可验收建图收口。只有画面可见证据和雷达运行证据同时满足，才把本轮标成“可按建图记录监看”。

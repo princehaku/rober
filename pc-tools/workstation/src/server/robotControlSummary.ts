@@ -3432,6 +3432,16 @@ function freeRoamRuntimeGatesFromReadbacks(
   }
   const decision = asRecord(latest.decision);
   const rawGates = Array.isArray(decision?.gates) ? decision.gates : [];
+  const gateScope = (id: string): "free_move_start" | "mapping_acceptance" | "runtime_diagnostic" => {
+    // 上车端 gate 是运行时事实；PC 首屏必须把“启动移动”和“建图验收”拆开，避免雷达阻塞低速自由移动。
+    if (id === "operator_confirmed" || id === "stop_available") {
+      return "free_move_start";
+    }
+    if (id === "mapping_active" || id === "lidar_fresh" || id === "obstacle_clear" || id === "camera_first_frame" || id === "fresh_map_preview") {
+      return "mapping_acceptance";
+    }
+    return "runtime_diagnostic";
+  };
   const gateRows = rawGates
     .map((item) => asRecord(item))
     .filter((item): item is JsonRecord => item !== null)
@@ -3444,6 +3454,7 @@ function freeRoamRuntimeGatesFromReadbacks(
         return {
           id,
           label: asString(gate.label, "地图记录"),
+          scope: gateScope(id),
           state: "ready" as const,
           evidence: "当前读回已证明地图记录 runtime 已启动",
           next_action: "继续保持地图记录并监看画面",
@@ -3452,6 +3463,7 @@ function freeRoamRuntimeGatesFromReadbacks(
       return {
         id,
         label: asString(gate.label, "自动扫图门禁"),
+        scope: gateScope(id),
         state,
         evidence: asString(gate.evidence, "未读到自动扫图门禁证据"),
         next_action: asString(gate.next_action, "等待上车端自动扫图节点更新"),
@@ -3466,7 +3478,8 @@ function freeRoamRuntimeGatesFromReadbacks(
       : "blocked";
   gateRows.push({
     id: "motion_hil_unlock",
-    label: "真车低速放行",
+    label: "运动发布状态",
+    scope: "runtime_diagnostic",
     state: motionGateState,
     evidence: cmdVelPublishEnabled
       ? "自动扫图节点已双重解锁运动发布"
@@ -3536,18 +3549,16 @@ function lockedBoundary(
   proof: RobotApiProofSummary | null = null,
 ): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
-  const startGateIds = new Set(["stop_available"]);
-  const startGates = (freeRoamRuntimeGates ?? []).filter((gate) => startGateIds.has(gate.id));
+  const startGates = (freeRoamRuntimeGates ?? []).filter((gate) => gate.id === "stop_available");
+  const stopFallbackReady = startGates.length === 0 || startGates.every((gate) => gate.state === "ready");
   const freeRoamStartReady = Boolean(
     freeRoamRuntime?.status === "loaded"
-    && startGates.length === startGateIds.size
-    && startGates.every((gate) => gate.state === "ready"),
+    && stopFallbackReady,
   );
   const freeRoamReady = Boolean(
     freeRoamRuntime?.status === "loaded"
     && freeRoamRuntime.cmd_vel_publish_enabled
-    && freeRoamRuntimeGates?.length
-    && freeRoamRuntimeGates.every((gate) => gate.state === "ready"),
+    && stopFallbackReady,
   );
   return {
     manual_endpoint: "/api/base/manual",
@@ -3593,39 +3604,44 @@ function lockedBoundary(
     },
     free_roam_autonomy_gates: freeRoamRuntimeGates ?? [
       {
-        id: "onboard_watchdog",
-        label: "上车端自动停止",
+        id: "operator_confirmed",
+        label: "现场安全确认",
+        scope: "free_move_start",
         state: "blocked",
-        evidence: "未读到上车端自动扫图停止保护",
-        next_action: "先实现并验证上车端自动停止",
+        evidence: "还未勾选现场安全确认",
+        next_action: "勾选人在旁边、周围安全、停止手段就绪",
       },
       {
-        id: "lidar_obstacle_gate",
-        label: "雷达避障",
-        state: "blocked",
-        evidence: "未读到自动扫图专用雷达避障检查",
-        next_action: "接入实时障碍距离检查并验证会停",
-      },
-      {
-        id: "fresh_map_preview",
-        label: "地图刷新",
-        state: "not_proven",
-        evidence: "PC 可只读刷新地图画面，但不是上车端自动探索证据",
-        next_action: "把地图覆盖变化写入自动扫图验证记录",
-      },
-      {
-        id: "operator_stop_fallback",
-        label: "停止按钮兜底",
+        id: "stop_available",
+        label: "停止兜底",
+        scope: "free_move_start",
         state: "ready",
         evidence: "PC 固定停止按钮已存在，仍需现场保持可点击",
-        next_action: "现场验证自动扫图停止响应时间",
+        next_action: "继续保持现场可接管",
       },
       {
-        id: "free_roam_hil_artifact",
-        label: "自动扫图真车验证",
-        state: "blocked",
-        evidence: "未提交自动扫图真车验证记录",
-        next_action: "完成真车低速自动扫图验证后再开放按钮",
+        id: "camera_first_frame",
+        label: "画面首帧",
+        scope: "mapping_acceptance",
+        state: "not_proven",
+        evidence: "未读到摄像头首帧",
+        next_action: "画面未 ready 时仍可自由移动，但不能按建图验收",
+      },
+      {
+        id: "lidar_fresh",
+        label: "雷达监看",
+        scope: "mapping_acceptance",
+        state: "not_proven",
+        evidence: "未读到 fresh 雷达扫描",
+        next_action: "雷达未 ready 时仍可自由移动，但不能按建图验收",
+      },
+      {
+        id: "motion_hil_unlock",
+        label: "运动发布状态",
+        scope: "runtime_diagnostic",
+        state: "not_proven",
+        evidence: "当前尚未启动自由移动",
+        next_action: "勾选现场安全确认后点击开始自由移动（低速）",
       },
     ],
     free_roam_autonomy_runtime: freeRoamRuntime ?? {

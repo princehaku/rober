@@ -3648,12 +3648,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("启动条件已满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("点击开始后由上车端打开运动双锁");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("现场安全确认");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("未满足");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达监看");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达障碍监看");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("启动条件：现场安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("建图验收：雷达监看");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("建图验收：雷达障碍监看");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("这只影响建图验收，不阻塞低速自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("已满足");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("真车低速放行");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("只读状态：运动发布状态");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("先勾安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     const callsBeforeAutoGuide = mockedFetch.mock.calls.length;
@@ -4116,7 +4116,7 @@ describe("App", () => {
     expect(readiness.text()).toContain("已就绪");
     expect(readiness.text()).toContain("自动扫图");
     expect(readiness.text()).toContain("上车端自动扫图已就绪");
-    expect(readiness.text()).toContain("真车低速放行");
+    expect(readiness.text()).toContain("只读状态：运动发布状态");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：点击开始自动扫图（低速）。");

@@ -3350,31 +3350,61 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     }
     return "待验证";
   };
+  const freeRoamGateScope = (gate: { id: string; scope?: string }): "free_move_start" | "mapping_acceptance" | "runtime_diagnostic" => {
+    // 旧上车端还没有 scope 字段时按 id 兼容；这能避免把雷达/建图诊断误算成低速移动门禁。
+    if (gate.scope === "free_move_start" || gate.scope === "mapping_acceptance" || gate.scope === "runtime_diagnostic") {
+      return gate.scope;
+    }
+    if (gate.id === "operator_confirmed" || gate.id === "stop_available") {
+      return "free_move_start";
+    }
+    if (gate.id === "mapping_active" || gate.id === "lidar_fresh" || gate.id === "obstacle_clear" || gate.id === "camera_first_frame" || gate.id === "fresh_map_preview") {
+      return "mapping_acceptance";
+    }
+    return "runtime_diagnostic";
+  };
   const gateHintText = (value: string | undefined): string => {
     // 多行 gate 在测试和读屏时会拼成连续文本；补句号避免“停止”“雷达”等跨行误连。
     const text = value?.trim() || "等待上车端报告";
     return /[。！？.!?]$/.test(text) ? text : `${text}。`;
   };
-  const freeRoamGateLabel = (gate: { id: string; label?: string }): string => {
+  const freeRoamGateLabel = (gate: { id: string; label?: string; scope?: string }): string => {
     // 雷达状态在本轮降级为监看证据，不能再让 gate 名称暗示“必须先有雷达才会动”。
+    const scope = freeRoamGateScope(gate);
+    const prefix = scope === "free_move_start"
+      ? "启动条件"
+      : scope === "mapping_acceptance"
+        ? "建图验收"
+        : "只读状态";
     if (gate.id === "lidar_fresh") {
-      return "雷达监看";
+      return `${prefix}：雷达监看`;
     }
     if (gate.id === "obstacle_clear") {
-      return "雷达障碍监看";
+      return `${prefix}：雷达障碍监看`;
     }
-    return gate.label || gateLabel(gate.id);
+    if (gate.id === "motion_hil_unlock") {
+      return `${prefix}：运动发布状态`;
+    }
+    return `${prefix}：${gate.label || gateLabel(gate.id)}`;
   };
-  const freeRoamGateState = (gate: { id: string; state: string }): string => {
-    if ((gate.id === "lidar_fresh" || gate.id === "obstacle_clear") && gate.state !== "ready") {
+  const freeRoamGateState = (gate: { id: string; state: string; scope?: string }): string => {
+    const scope = freeRoamGateScope(gate);
+    if (scope === "mapping_acceptance" && gate.state !== "ready") {
       return "可降级";
+    }
+    if (scope === "runtime_diagnostic" && gate.state !== "ready") {
+      return "只读";
     }
     return gateStateLabel(gate.state);
   };
-  const freeRoamGateHint = (gate: { id: string; next_action?: string; evidence?: string }): string => {
+  const freeRoamGateHint = (gate: { id: string; next_action?: string; evidence?: string; scope?: string }): string => {
     const base = gateHintText(gate.next_action || gate.evidence);
-    if (gate.id === "lidar_fresh" || gate.id === "obstacle_clear") {
-      return `${base}雷达未确认时仍允许低速自移动，现场继续监看。`;
+    const scope = freeRoamGateScope(gate);
+    if (scope === "mapping_acceptance") {
+      return `${base}这只影响建图验收，不阻塞低速自由移动。`;
+    }
+    if (scope === "runtime_diagnostic" && gate.id === "motion_hil_unlock") {
+      return `${base}这是启动后的上车端运动发布状态，不是雷达/相机前置门禁。`;
     }
     return base;
   };
@@ -3452,12 +3482,14 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       label: freeRoamGateLabel(gate),
       state: freeRoamGateState(gate),
       hint: freeRoamGateHint(gate),
+      scope: freeRoamGateScope(gate),
     }))
     : policyGates.map((gate) => ({
       id: gate,
-      label: gateLabel(gate),
+      label: `启动条件：${gateLabel(gate)}`,
       state: "待验证",
       hint: gateHintText(undefined),
+      scope: "free_move_start",
     }));
   const speedLimit = policy?.max_speed_mps ?? manualSpeedLimit.value;
   const runtimeLimit = policy?.max_runtime_s ?? 60;
