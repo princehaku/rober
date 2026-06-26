@@ -3631,14 +3631,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').attributes("aria-label")).toBe("自动扫图状态 避障换向，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toBe("扫地图草图：已在地图上画出蛇形覆盖草图；等待定位后接入当前位置，不会自动移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').attributes("data-state")).toBe("未满足");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').attributes("data-state")).toBe("待处理");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图准备");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达监看");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图未开放；当前用人工按住扫图");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自动扫图真车验证未完成");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("仍可在安全确认后低速自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("建图验收：当前只按自由移动记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("自动扫图真车验证未完成");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：勾选现场安全确认。");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：避障换向：雷达检测到近距离障碍，原地换向；当前只是记录模式，不会自己跑；真车自由移动还要完成安全确认和停止兜底，建图另看相机/雷达 readiness。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("启动条件已满足");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("点击开始后由上车端打开运动双锁");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("现场安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("未满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("雷达监看");
@@ -4540,45 +4541,45 @@ describe("App", () => {
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
-  it("uses the locked auto-sweep button as a manual mapping guide without sending motion", async () => {
-    // 自动扫图未 ready 时，普通按钮可以推进“开始记录/启用键盘”等非运动步骤；方向脉冲仍必须按住方向键才会发出。
+  it("starts low-speed free roam through the fixed proxy even when summary marks auto-sweep locked", async () => {
+    // 自由移动不再依赖自动扫图 ready；相机/雷达 ready 只决定是否按建图记录。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
-    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
     markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     summaryFixture.safe_command_boundary.free_roam_autonomy = "locked";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_start_ready = false;
     summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自动扫图（未开放）";
-    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
-    mapStartFixture.failure_reason = "";
-    mapStartFixture.blocked_reasons = [];
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
-      "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/free-roam/autonomy/start": {
+        ...(fixtures["/api/robot-control/free-roam/autonomy/start"] as Record<string, unknown>),
+        request_body: { confirm_operator_safety: true, confirm_mapping_active: false },
+        mapping_active_requested: false,
+        mapping_active_applied: false,
+      },
     });
-    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始记录并继续");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：点击开始自由移动（低速）。");
 
     await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(mockedFetch.mock.calls.some(([url, options]) =>
-      String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST",
-    )).toBe(true);
-    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("键盘已启用（按住才动）");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("按步骤：按住方向键扫图");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-panel"]').element);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    const startCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"));
+    expect(startCall).toBeDefined();
+    expect(JSON.parse(String((startCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual({
+      confirm_operator_safety: true,
+      confirm_mapping_active: false,
+    });
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -5083,7 +5084,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自由移动（随时可点）");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：先启动地图记录；当前不会发车。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：点击开始自由移动（低速）。");
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");

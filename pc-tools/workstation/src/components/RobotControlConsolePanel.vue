@@ -2812,11 +2812,7 @@ const canSavePlainFreeRoamMapping = computed(() => (
   && robotApiBaseUrl.value.trim().length > 0
 ));
 const canStartFreeRoamAutonomy = computed(() => (
-  (
-    robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
-    || robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready"
-  )
-  && plainManualSafetyConfirmed.value
+  plainManualSafetyConfirmed.value
   && (!mapRuntimeStarted.value || !freeRoamMapWysiwygPending.value)
   && canSendStop.value
   && !freeRoamAutonomyPending.value
@@ -3017,7 +3013,7 @@ const plainFreeRoamNextActionLabel = computed(() => {
   return "下一步：检查地图画面";
 });
 const plainFreeRoamManualGuideButtonLabel = computed(() => {
-  // 自动扫图未开放时，这个按钮就是人工扫图向导；文案必须显示下一次点击的真实动作。
+  // 人工扫图向导仍服务地图记录/键盘流程；自由移动 start 另走固定上车状态机代理。
   const nextAction = plainFreeRoamNextActionLabel.value.replace(/^下一步：/, "");
   if (nextAction === "勾安全确认") {
     return "先勾安全确认";
@@ -3040,7 +3036,7 @@ const plainFreeRoamManualGuideButtonLabel = computed(() => {
   return `按步骤：${nextAction}`;
 });
 const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
-  // 自动扫图已由上车端开放但仍差现场证据时，按钮只做补证引导，不能伪装成真正 start。
+  // 自由移动最小条件缺失时，按钮只做补证引导，不能伪装成真正 start。
   if (!plainManualSafetyConfirmed.value) {
     return "先勾安全确认";
   }
@@ -3263,19 +3259,19 @@ const plainFreeRoamCoverageSummary = computed(() => {
   };
 });
 const plainFreeRoamAutonomyReadiness = computed(() => {
-  // 自动扫图需要上车端闭环保护；PC 端这里只展示 readiness，不生成任何运动命令。
+  // 自由移动只要求现场确认和停止兜底；相机/雷达只决定本轮能否按建图验收。
   const boundary = robotSummary.value?.safe_command_boundary;
   const policy = boundary?.free_roam_autonomy_policy;
   const preview = mapPreviewResult.value;
   const previewLoaded = preview?.proxy_status === "preview_forwarded";
   const autonomyRunningUnlocked = boundary?.free_roam_autonomy === "ready";
-  const autonomyStartReady = boundary?.free_roam_autonomy_start_ready === true || autonomyRunningUnlocked;
+  const autonomyStartReady = robotApiBaseUrl.value.trim().length > 0;
   const autonomyLocked = !autonomyStartReady;
   const autonomyReady = autonomyStartReady;
   const motionModeName = plainFreeRoamMotionModeName.value;
   const motionStartButtonText = plainFreeRoamMotionStartButtonText.value;
   const hasRuntimeGateRows = Boolean(boundary?.free_roam_autonomy_gates?.length);
-  const manualFallbackHint = "自动扫图未开放；当前用人工按住扫图：开始记录 -> 启用键盘 -> 按住方向键/WASD -> 停止 -> 保存地图。";
+  const manualFallbackHint = "连接默认小车后可低速自由移动；相机和雷达都 ready 且地图记录已启动时，本轮才按建图记录。";
   const blockers: string[] = [];
   if (!robotApiBaseUrl.value.trim()) {
     blockers.push("默认小车未连接");
@@ -3291,14 +3287,8 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     : plainCellCount(preview, "free") <= 0
       ? "地图还没读到可通行区域；首次建图允许低速启动，启动后继续刷新检查。"
       : "";
-  if (!autonomyStartReady && !canUseKeyboardControl.value) {
-    blockers.push("键盘低速手控条件未满足");
-  }
   if (!canSendStop.value) {
     blockers.push("停止兜底暂不可用");
-  }
-  if (!autonomyStartReady) {
-    blockers.push(hasRuntimeGateRows ? "自动扫图真车验证未完成" : "上车端避障和自动停止未验证");
   }
   const policyGates = policy?.required_gates ?? [
     "onboard_watchdog",
@@ -3369,13 +3359,13 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (gaps.length === 0) {
       return "建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。";
     }
-    const freeMoveText = autonomyStartReady ? "仍可在安全确认后低速自由移动" : "当前先用人工按住低速扫图";
+    const freeMoveText = "仍可在安全确认后低速自由移动";
     return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${gaps.join("、")}；${freeMoveText}。`;
   })();
   const runtimeModeText = (() => {
     // runtime state 来自上车端 artifact；这里只做翻译，不把任何状态外推成 PC 自动发车。
     if (!runtime || runtime.status !== "loaded") {
-      return `${motionModeName}状态：未读取上车端 runtime，当前只能人工按住扫图。`;
+      return `${motionModeName}状态：未读取上车端 runtime；勾安全确认后仍可请求低速自由移动，启动结果以上车端返回为准。`;
     }
     const recordOnlyStopping = runtime.artifact_only === true
       && runtime.cmd_vel_publish_enabled === false
@@ -3386,7 +3376,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     const motionBoundary = autonomyStartReady && !runtime.cmd_vel_publish_enabled
       ? "启动条件已满足；当前尚未启动，所以仍是记录模式；点击开始后由上车端打开运动双锁，建图 readiness 单独显示。"
       : runtime.artifact_only
-      ? "当前只是记录模式，不会自己跑；真车自由移动还要完成安全确认和停止兜底，建图另看相机/雷达 readiness。"
+      ? "当前只是记录模式；勾安全确认后可请求低速自由移动，建图另看相机/雷达 readiness。"
       : runtime.cmd_vel_publish_enabled
       ? "运动发布已解锁，PC 仍等待真车 HIL 记录。"
       : "运动发布未解锁，不会自己跑。";
@@ -3411,9 +3401,6 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (!plainManualSafetyConfirmed.value) {
       return `${motionModeName}下一步：勾选现场安全确认。`;
     }
-    if (!mapRuntimeStarted.value) {
-      return `${motionModeName}下一步：先启动地图记录；当前不会发车。`;
-    }
     if (freeRoamMapWysiwygPending.value) {
       return `${motionModeName}下一步：等待扫图画面刷新。`;
     }
@@ -3422,7 +3409,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     }
     return autonomyReady && blockers.length === 0
       ? `${motionModeName}下一步：点击${motionStartButtonText}。`
-      : `${motionModeName}下一步：先用人工按住扫图完成本轮地图。`;
+      : `${motionModeName}下一步：补齐安全确认和停止兜底。`;
   })();
   const contractGateRows = boundary?.free_roam_autonomy_gates?.length
     ? boundary.free_roam_autonomy_gates.map((gate) => ({
@@ -3446,7 +3433,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
       : autonomyReady && blockers.length ? plainFreeRoamAutonomyGuideButtonLabel.value
       : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : motionStartButtonText,
-    // ready 后才走固定上车状态机 start；未 ready 时按钮仍只做流程定位。
+    // 连接后即可走固定上车状态机 start；建图 readiness 只决定请求里的 mapping_active。
     disabled: autonomyReady ? (freeRoamAutonomyPending.value || freeRoamMapWysiwygPending.value) : false,
     hint: autonomyLocked
       ? manualFallbackHint
@@ -8317,27 +8304,8 @@ async function focusPlainFreeRoamAutonomyNextTarget(): Promise<void> {
   target.focus({ preventScroll: true });
 }
 
-async function advancePlainFreeRoamManualGuide(): Promise<void> {
-  // 自动扫图未 ready 时，这个按钮只推进人工扫图的非运动步骤；真正移动仍必须按住方向键。
-  if (!plainManualSafetyConfirmed.value) {
-    await focusPlainFreeRoamNextTarget();
-    return;
-  }
-  if (!mapRuntimeStarted.value && !mapSavedThisSession.value && canStartPlainFreeRoamMapping.value) {
-    await startMapRuntime();
-    await focusPlainFreeRoamNextTarget();
-    return;
-  }
-  if (mapRuntimeStarted.value && !keyboardControlArmed.value && canArmPlainFreeRoamKeyboard.value) {
-    activateKeyboardControl();
-    await focusPlainFreeRoamNextTarget();
-    return;
-  }
-  await focusPlainFreeRoamNextTarget();
-}
-
 async function advancePlainFreeRoamAutonomyGuide(): Promise<void> {
-  // 上车端自动扫图 start-ready 后，先补非运动证据；最终发车仍只走固定 start 代理。
+  // 最小条件缺失时只补非运动步骤；最终自由移动仍只走固定 start 代理。
   if (!plainManualSafetyConfirmed.value) {
     await focusPlainFreeRoamAutonomyNextTarget();
     return;
@@ -8748,16 +8716,9 @@ async function refreshFreeRoamAutonomyLatest(): Promise<void> {
 }
 
 async function startFreeRoamAutonomy(): Promise<void> {
-  // 真正自动扫图 start 只走固定上车状态机代理；未 ready 时推进人工扫图的非运动向导。
+  // 自由移动 start 只走固定上车状态机代理；不满足最小条件时只推进非运动向导。
   if (!canStartFreeRoamAutonomy.value) {
-    if (
-      robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
-      || robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready"
-    ) {
-      await advancePlainFreeRoamAutonomyGuide();
-      return;
-    }
-    await advancePlainFreeRoamManualGuide();
+    await advancePlainFreeRoamAutonomyGuide();
     return;
   }
   let stopQueuedAfterStart = false;

@@ -3009,3 +3009,13 @@ PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是�
 并复用该最小门禁，所以直接打 PC 代理也不会因为路线 proof 不完整而被本机挡住；
 是否能实际到达由上位机 `/api/nav2/goal/execute` 和真实 Nav2 结果返回。普通首屏仍保留
 “图上路线 / 小车位置可见”作为所见即所得提示和按钮引导，但它不再是隐藏的后端预检门槛。
+
+2026-06-27 05:30 起，普通首屏的 `开始自由移动（低速）` 不再依赖
+`safe_command_boundary.free_roam_autonomy_start_ready` 或 `free_roam_autonomy=ready`。用户勾选
+“人在旁边、周围安全、停止手段就绪”后，只要 PC 能连接默认小车、停止兜底可用且没有正在刷新地图，
+按钮就会直接调用固定代理 `POST /api/robot-control/free-roam/autonomy/start`，请求体只带
+`confirm_operator_safety=true` 和按当前事实计算的 `confirm_mapping_active`。相机首帧和雷达 running
+不再阻塞低速自由移动；它们只决定本轮是否能按“可验收建图”记录：只有地图记录已启动、
+画面 ready 且雷达 ready 时，`confirm_mapping_active=true`，按钮文案显示 `开始自动扫图（低速）`；
+否则仍可 `开始自由移动（低速）`，并明确提示“当前只按自由移动记录”。该改动不开放浏览器侧
+`/cmd_vel`、不调用 base/manual、Nav2 或 delivery。
