@@ -3201,6 +3201,18 @@ function markMappingSensorsReady(summary: RobotControlSummaryResponse | Record<s
   lidar.radar_start_configured = "true";
 }
 
+function markRobotPoseVisible(summary: RobotControlSummaryResponse | Record<string, any>): void {
+  // 图上路线执行需要同时看得到路线和小车当前位置；测试成功路径必须显式给 map-frame 位姿。
+  summary.o3_proof_summary.amcl_pose_observed = true;
+  summary.o3_proof_summary.localization_tf_observed = true;
+  summary.o3_proof_summary.robot_pose = {
+    x: 0.1,
+    y: 0.1,
+    yaw: 0,
+    frame_id: "map",
+  };
+}
+
 function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
   // 测试桩允许 route debug 带 query，确保表单路径仍走同一个只读 API。
   const localFixtures = { ...fixtures, ...fixtureOverrides };
@@ -6195,6 +6207,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
     summaryFixture.o3_proof_summary.path_generated = true;
     summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    markRobotPoseVisible(summaryFixture);
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execution/latest": {
@@ -6499,8 +6512,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
-  it("draws no-motion route start and end markers when no executed goal is available", async () => {
-    // 没有真实执行目标时，planner path 的首尾点可以帮助现场看懂路线，但仍不是机器人当前位置。
+  it("draws no-motion route markers but blocks execution until the robot pose is visible", async () => {
+    // 没有 map-frame 小车位置时，planner path 的首尾点可以看，但还不能执行“图上路线”。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     summaryFixture.o3_proof_summary.path_generated = true;
     summaryFixture.o3_proof_summary.path_generation_succeeded = true;
@@ -6538,6 +6551,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').exists()).toBe(false);
     const route = wrapper.find('[data-testid="plain-map-route-path"]');
@@ -6560,13 +6574,21 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；路线 3/15 个点仍按地图坐标显示。");
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图上已显示路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00），但小车位置未读到；先重新定位，看到小车位置后再执行。");
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.attributes("data-state")).toBe("已准备");
     expect(workstationStyles).toContain('.plain-trip-run[data-state="已准备"]');
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已可执行；点击执行前确认起点、终点和路径。");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已显示，但小车位置未读到；先重新定位后再执行。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；先重新定位，看到小车位置后再执行图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先重新定位");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：重新定位小车。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("小车位置未读到；先重新定位");
+    await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-localization-reset"]').element);
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -6584,6 +6606,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execution/latest": {
@@ -6831,6 +6854,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execute": {
@@ -7524,6 +7548,7 @@ describe("App", () => {
             summaryFixture.o3_proof_summary.path_preview_point_count = 3;
             summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
             summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+            markRobotPoseVisible(summaryFixture);
             resolve({
               ok: true,
               json: async () => cloneFixture(fixtures["/api/robot-control/nav2/proof/refresh"]),
@@ -7586,6 +7611,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     let resolveExecute!: (value: {
       ok: boolean;
       json: () => Promise<unknown>;
@@ -7765,6 +7791,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     let mapPreviewCallCount = 0;
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -7852,6 +7879,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     const executeResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>(() => {});
     const baseFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
     const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
@@ -7913,6 +7941,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execute": {
@@ -7963,6 +7992,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execute": {
@@ -8008,6 +8038,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execute": {
@@ -13785,6 +13816,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     let resolveDeliveryComplete!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
     const deliveryCompleteResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
       resolveDeliveryComplete = resolve;
@@ -14031,6 +14063,7 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_preview_point_count = 3;
     summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
     summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
     const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/nav2/goal/execute": {

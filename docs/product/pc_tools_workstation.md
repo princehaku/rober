@@ -2616,3 +2616,9 @@ camera health 返回 `source_first_frame_failed`、`source_readiness=first_frame
 只聚焦 `刷新雷达`，也不会调用 map start。该门禁只作用于“建图记录必须所见即所得”，不改变普通键盘手控：键盘手控仍只依赖默认
 小车连接、现场安全确认、按住才动和停止兜底，不把雷达作为移动前置，也不修改 Clash 或系统代理配置；PC Node 公开入口仍是
 `0.0.0.0:7001`。
+
+2026-06-26 19:35 起，普通首屏 `执行图上路线` 进一步要求地图上同时看得到当前路线和小车 map-frame 位置。只有路线点可见但
+`robot_pose=null` 或无法投到当前地图画面时，路线仍照实显示，坐标口径继续说明路线按地图坐标显示；但执行按钮显示
+`先重新定位` 并禁用，进度卡提示 `小车位置未读到；先重新定位`，点击主进度按钮只聚焦 `重新定位`，不会调用
+`/api/robot-control/nav2/goal/execute`。该门禁防止“只看到路线、看不到车”的情况下启动完整 Nav2 行程，不发送 manual/keyboard
+pulse、delivery、stop 或 `/cmd_vel`。
