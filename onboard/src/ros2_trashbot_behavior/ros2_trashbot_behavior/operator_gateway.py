@@ -389,6 +389,8 @@ class OperatorGateway(Node):
                 "operator_confirmed": True,
                 "mapping_active": confirm_mapping_active,
                 "external_stop_requested": False,
+                "enable_cmd_vel_publish": True,
+                "motion_hil_unlocked": True,
             }
         )
         return status_code, self._free_roam_autonomy_response(
@@ -406,6 +408,8 @@ class OperatorGateway(Node):
                 "operator_confirmed": False,
                 "mapping_active": False,
                 "external_stop_requested": True,
+                "enable_cmd_vel_publish": False,
+                "motion_hil_unlocked": False,
             }
         )
         return status_code, self._free_roam_autonomy_response(
@@ -431,6 +435,12 @@ class OperatorGateway(Node):
         latest_result = latest_payload.get("latest_result") if isinstance(latest_payload, dict) else {}
         decision = latest_result.get("decision") if isinstance(latest_result, dict) else {}
         latest_state = decision.get("state") if isinstance(decision, dict) else "not_loaded"
+        # 成功 start/stop 会触碰运动双锁；失败路径没有改参数，必须如实告诉 PC。
+        untouched_parameters = ["cmd_vel_topic"] if command_ok else [
+            "enable_cmd_vel_publish",
+            "motion_hil_unlocked",
+            "cmd_vel_topic",
+        ]
         return {
             "schema": f"trashbot.upper_robot_api.v1.free_roam_autonomy_{action}",
             "status": status,
@@ -443,13 +453,9 @@ class OperatorGateway(Node):
             "sets_state_machine_parameters": command_ok,
             "mapping_active_requested": bool(mapping_active_requested),
             "direct_cmd_vel_publish": False,
-            "motion_unlock_requested": False,
-            "does_not_set_motion_unlock": True,
-            "blocked_parameters_not_touched": [
-                "enable_cmd_vel_publish",
-                "motion_hil_unlocked",
-                "cmd_vel_topic",
-            ],
+            "motion_unlock_requested": bool(command_ok and action == "start"),
+            "does_not_set_motion_unlock": not bool(command_ok and action == "start"),
+            "blocked_parameters_not_touched": untouched_parameters,
             "sensor_readiness": {
                 "ready": command_ok,
                 "missing": [] if command_ok else list(blocked_reasons),

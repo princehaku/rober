@@ -10,7 +10,7 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 
 - 建图启动只走固定 PC 代理 `/api/robot-control/map/start`。
 - 保存地图只走固定 PC 代理 `/api/robot-control/map/save`。
-- 小车移动继续复用既有键盘连续手控 gate：低速、短时、按住才走、松开即停。
+- 小车移动有两条入口：键盘连续手控仍是低速、短时、按住才走、松开即停；自动扫图 start 在现场安全确认后只通过上车状态机参数服务打开受限 free-roam 双锁。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 停止按钮始终可见，继续走固定 PC 代理 `/api/robot-control/base/stop`。
 - 浏览器不允许传入串口、ROS 参数、任意 Robot API endpoint、`/cmd_vel` 或 Nav2 自动目标。
@@ -110,6 +110,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   仍是 `artifact_only=true/cmd_vel_publish_enabled=false` 时，普通首屏不再把它解释成“自动扫图未开放”。这表示尚未点击 start，
   但已经可以发起固定 start 请求；UI 会显示 `开始自动扫图（低速）`，runtime 文案写明“当前尚未启动，所以仍是记录模式；
   点击开始后由上车端复检相机，再打开运动双锁”。这只修正所见即所得文案和按钮状态，不由浏览器或 Node 直接发布 `/cmd_vel`。
+- 2026-06-27 17:30 起，上车端 `POST /api/free-roam/autonomy/start` 在 `confirm_operator_safety=true` 后会一次写入
+  `operator_confirmed=true`、`external_stop_requested=false`、`enable_cmd_vel_publish=true` 与
+  `motion_hil_unlocked=true`，并按 `confirm_mapping_active` 写入地图记录意图。`stop` 会收回
+  `enable_cmd_vel_publish=false`、`motion_hil_unlocked=false` 并设置 `external_stop_requested=true`。
+  HTTP 仍不直接发布 `/cmd_vel`，也不允许修改 `cmd_vel_topic`；真正运动只由上车 `free_roam_autonomy_node`
+  在双锁打开后按策略输出 0.12m/s 以内的受限 Twist。
 
 ## 用户流程
 
@@ -117,10 +123,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 2. 查看地图、画面、雷达状态。
 3. 在“扫地式建图”卡片勾选“人在旁边、周围安全、可以随时按停止”。
 4. 点击“开始扫地式建图”，启动上位机建图 runtime。
-5. 地图记录启动后键盘会自动启用；按住方向键或 W/A/S/D 低速移动。
-6. 松开按键或点击“停止”收口。
-7. 点击“保存当前地图”，保存完成后 PC 会自动刷新地图画面，并把步骤条收口成“已保存”；再检查 free cell、地图尺寸、覆盖提示和可导航状态。
-8. 如果“自动扫图准备”显示相机或雷达缺口，仍可在安全确认后发起低速自由移动；PC 和上车回包必须同时显示 `mapping_readiness.ready=false`，提醒当前不是可验收建图。只有相机首帧和雷达 proof 都 ready 时，才把本轮自动扫图解释为可建图。PC 会在地图上显示 `自动扫图已启动`，并立即刷新一次雷达和地图画面，`下一步` 会带到 `停止自动扫图`，继续负责地图/雷达监看和停止兜底。
+5. 地图记录启动后键盘会自动启用；按住方向键或 W/A/S/D 可低速移动。
+6. 也可以点击 `开始自动扫图（低速）`，由上车状态机在双锁打开后低速自助移动；相机或雷达不 ready 时仍可自由移动，但本轮不能按可验收建图收口。
+7. 松开按键、点击停止或点击 `停止自动扫图` 收口；stop 必须收回上车运动双锁。
+8. 点击“保存当前地图”，保存完成后 PC 会自动刷新地图画面，并把步骤条收口成“已保存”；再检查 free cell、地图尺寸、覆盖提示和可导航状态。
+9. 如果“自动扫图准备”显示相机或雷达缺口，仍可在安全确认后发起低速自由移动；PC 和上车回包必须同时显示 `mapping_readiness.ready=false`，提醒当前不是可验收建图。只有相机首帧和雷达 proof 都 ready 时，才把本轮自动扫图解释为可建图。PC 会在地图上显示 `自动扫图已启动`，并立即刷新一次雷达和地图画面，`下一步` 会带到 `停止自动扫图`，继续负责地图/雷达监看和停止兜底。
 
 ## 后续全自动探索要求
 
@@ -128,8 +135,8 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 
 - 实时 LiDAR/障碍物距离 gate：策略节点已接 `/scan` 并写 artifact，仍需真车低速 HIL。
 - launch 接入：`learn.launch.py` 和 `bringup.launch.py` 已默认拉起 artifact-only runtime，并暴露
-  `free_roam_autonomy_enable_cmd_vel_publish=false` 与 `free_roam_autonomy_motion_hil_unlocked=false` 两个显式参数。PC start/stop
-  代理只对同名 `/free_roam_autonomy` 节点设置固定门禁参数；运动发布仍需现场 launch 时同时打开两个参数。
+  `free_roam_autonomy_enable_cmd_vel_publish=false` 与 `free_roam_autonomy_motion_hil_unlocked=false` 两个显式初始参数。PC start/stop
+  代理只对同名 `/free_roam_autonomy` 节点设置固定门禁参数和运动双锁；未点击 start 前保持 artifact-only，点击 stop 后必须回到双锁关闭。
 - 最大运行时间、最大线速度、最大角速度限制：策略内核已有；最小电量限制仍待接底盘反馈。
 - 自动 stop fallback 和 watchdog：策略节点已在 `stop_required=true` 时调用 `/trashbot/stop`，仍需真车响应时间 HIL。
 - 探索覆盖策略：策略内核已有低速直行、遇障碍换向、覆盖停滞原地扫描；后续可升级边界沿墙或 frontier exploration。

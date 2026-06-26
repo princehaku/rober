@@ -130,6 +130,32 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertNotIn("serial_port", remote_command_source)
         self.assertNotIn("baudrate", remote_command_source)
 
+    def test_free_roam_start_unlocks_motion_only_through_state_machine_parameters(self):
+        source = GATEWAY.read_text(encoding="utf-8")
+        ast.parse(source)
+        start_block = source[
+            source.index("def free_roam_autonomy_start"):
+            source.index("def free_roam_autonomy_stop")
+        ]
+        stop_block = source[
+            source.index("def free_roam_autonomy_stop"):
+            source.index("def _free_roam_autonomy_response")
+        ]
+        response_block = source[
+            source.index("def _free_roam_autonomy_response"):
+            source.index("def _set_free_roam_parameters")
+        ]
+
+        self.assertIn('"enable_cmd_vel_publish": True', start_block)
+        self.assertIn('"motion_hil_unlocked": True', start_block)
+        self.assertIn('"external_stop_requested": False', start_block)
+        self.assertIn('"enable_cmd_vel_publish": False', stop_block)
+        self.assertIn('"motion_hil_unlocked": False', stop_block)
+        self.assertIn('"external_stop_requested": True', stop_block)
+        self.assertIn('"direct_cmd_vel_publish": False', response_block)
+        self.assertIn('"motion_unlock_requested": bool(command_ok and action == "start")', response_block)
+        self.assertIn('"cmd_vel_topic"', response_block)
+
     def test_gateway_diagnostics_exposes_minimum_remote_support_package(self):
         source = GATEWAY.read_text(encoding="utf-8")
         ast.parse(source)

@@ -441,9 +441,9 @@ class FakeGateway:
             "sets_state_machine_parameters": True,
             "mapping_active_requested": bool(payload.get("confirm_mapping_active")),
             "direct_cmd_vel_publish": False,
-            "motion_unlock_requested": False,
-            "does_not_set_motion_unlock": True,
-            "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+            "motion_unlock_requested": True,
+            "does_not_set_motion_unlock": False,
+            "blocked_parameters_not_touched": ["cmd_vel_topic"],
             "sensor_readiness": {
                 "free_move_ready": True,
                 "motion_without_radar_allowed": True,
@@ -474,7 +474,7 @@ class FakeGateway:
             "direct_cmd_vel_publish": False,
             "motion_unlock_requested": False,
             "does_not_set_motion_unlock": True,
-            "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+            "blocked_parameters_not_touched": ["cmd_vel_topic"],
             "failure_reason": None,
             "blocked_reasons": [],
             "safe_to_control": False,
@@ -833,9 +833,9 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(started["status"], "requested")
         self.assertTrue(started["sets_state_machine_parameters"])
         self.assertFalse(started["direct_cmd_vel_publish"])
-        self.assertFalse(started["motion_unlock_requested"])
-        self.assertTrue(started["does_not_set_motion_unlock"])
-        self.assertIn("motion_hil_unlocked", started["blocked_parameters_not_touched"])
+        self.assertTrue(started["motion_unlock_requested"])
+        self.assertFalse(started["does_not_set_motion_unlock"])
+        self.assertEqual(started["blocked_parameters_not_touched"], ["cmd_vel_topic"])
         self.assertTrue(started["sensor_readiness"]["motion_without_radar_allowed"])
 
         status, stopped = self.request("POST", "/api/free-roam/autonomy/stop", {})
