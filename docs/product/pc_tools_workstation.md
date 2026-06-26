@@ -2222,6 +2222,11 @@ stop pending 时显示 `停止中`，排队后显示 `停止已排队`。该文�
 2026-06-26 18:45 起，自动扫图 stop 成功后若停止后的地图画面尚未刷新，地图流程 marker 显示
 `自动扫图已停止，待刷新画面`，和 `下一步：刷新扫图画面`、保存按钮 `先刷新画面` 保持一致。该状态不自动保存地图，
 不发送 manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
+2026-06-26 23:55 起，普通首屏 `自动扫图准备` 增加明确的 `自动扫图下一步` 文案，并把上车端
+`free_roam_autonomy_runtime.artifact_only=true` 翻译成 `当前只是记录模式，不会自己跑`。这样 live 状态为 locked/
+artifact-only 时，operator 会直接看到下一步是勾选安全确认、开始地图记录、刷新扫图画面或处理雷达/停止兜底，而不是误以为
+“自动扫图”已经会自己运动。该呈现只消费 summary runtime 和现有 gate，不自动勾选、不启动地图记录、不发送 manual/keyboard pulse、
+不调用自动扫图 start、Nav2、delivery、stop 或 `/cmd_vel`；PC 工作站公开入口继续是 `0.0.0.0:7001`，不修改 Clash 或系统代理配置。
 
 2026-06-25 23:29 起，普通首屏点击 `准备行程（不发车）` 后，PC 会在 Nav2 no-motion proof 刷新完成后自动刷新
 地图画面。只要 summary 读到当前 `path_preview_points`，地图会直接显示路线 polyline、起点/终点和 `路线已显示 N/M 个点`，

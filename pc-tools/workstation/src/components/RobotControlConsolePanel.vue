@@ -2681,9 +2681,11 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (!runtime || runtime.status !== "loaded") {
       return "自动扫图状态：未读取上车端 runtime，当前只能人工按住扫图。";
     }
-    const motionBoundary = runtime.cmd_vel_publish_enabled
+    const motionBoundary = runtime.artifact_only
+      ? "当前只是记录模式，不会自己跑；真车自动扫图还要完成安全确认、地图记录、雷达和停止兜底。"
+      : runtime.cmd_vel_publish_enabled
       ? "运动发布已解锁，PC 仍等待真车 HIL 记录。"
-      : "节点只写记录，不发布运动。";
+      : "运动发布未解锁，不会自己跑。";
     const stateLabels: Record<string, string> = {
       locked: "门禁锁定",
       ready: "等待启动",
@@ -2696,6 +2698,30 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     const stateText = stateLabels[runtime.state] ?? runtime.state;
     const stopText = runtime.stop_required ? "，要求停止兜底" : "";
     return `自动扫图状态：${stateText}${runtimeReason}${stopText}；${motionBoundary}`;
+  })();
+  const nextActionText = (() => {
+    // 自动扫图按钮有时只是流程向导；单独写出下一手动作，避免把“未开放”误读成会自己跑。
+    if (!robotApiBaseUrl.value.trim()) {
+      return "自动扫图下一步：连接默认小车。";
+    }
+    if (!plainManualSafetyConfirmed.value) {
+      return "自动扫图下一步：勾选现场安全确认。";
+    }
+    if (!mapRuntimeStarted.value) {
+      return "自动扫图下一步：开始地图记录。";
+    }
+    if (freeRoamMapWysiwygPending.value || !plainFreeRoamMapPreviewFreshForSession.value) {
+      return "自动扫图下一步：刷新扫图画面。";
+    }
+    if (radarSummary.value.state !== "雷达已运行") {
+      return plainRadarRequiresRefresh.value ? "自动扫图下一步：刷新雷达。" : "自动扫图下一步：启动雷达。";
+    }
+    if (!canSendStop.value) {
+      return "自动扫图下一步：补齐停止兜底。";
+    }
+    return autonomyReady && blockers.length === 0
+      ? "自动扫图下一步：点击开始自动扫图（低速）。"
+      : "自动扫图下一步：先用人工按住扫图完成本轮地图。";
   })();
   const contractGateRows = boundary?.free_roam_autonomy_gates?.length
     ? boundary.free_roam_autonomy_gates.map((gate) => ({
@@ -2732,6 +2758,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       : blockers.length
         ? `还差：${blockers.slice(0, 3).join("、")}。`
         : "上车端自动扫图已就绪；点击后只启动上车状态机，PC 继续负责地图/雷达所见即所得监看和停止兜底。",
+    nextActionText,
     blockers: blockers.slice(0, 4),
     gateRows: contractGateRows,
     runtimeText: runtimeModeText,
@@ -8660,6 +8687,7 @@ onBeforeUnmount(() => {
               <span class="muted">{{ plainFreeRoamAutonomyReadiness.policyText }}</span>
             </div>
             <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
+            <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-runtime">{{ plainFreeRoamAutonomyReadiness.runtimeText }}</p>
             <div v-if="plainFreeRoamAutonomyReadiness.blockers.length" class="plain-readiness-blockers">
               <span v-for="blocker in plainFreeRoamAutonomyReadiness.blockers" :key="blocker" class="muted">{{ blocker }}。</span>
