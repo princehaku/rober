@@ -19,6 +19,16 @@ sprint_type: micro
 ## 验证结果
 
 - 已通过：`python3 -m unittest onboard.tests.test_camera_first_frame_probe`
+- 已通过：`python3 -m unittest onboard.tests.test_camera_first_frame_probe onboard.tests.test_upper_robot_api.UpperRobotApiFeedbackAckTests.test_camera_probe_parses_subprocess_json_without_control_enable`
+- 已通过：`python3 onboard/scripts/camera_first_frame_probe.py --device /dev/rober-missing-video --timeout-s 0.01 --read-call-timeout-s 0.01 --include-backend-smoke`
+  本地缺 `cv2` 时返回 `status=dependency_missing`，并保持 `safe_to_control=false`、`sends_motion_commands=false`。
+- 已同步上位机：`scp onboard/scripts/camera_first_frame_probe.py root@192.168.1.11:/root/rober/onboard/scripts/camera_first_frame_probe.py`
+  后确认脚本包含 `BACKEND_INFO_TIMEOUT_S`、`jpeg_soi_observed`、`no_kernel_frame_observed`。
+- 已通过实板探针：
+  `ssh root@192.168.1.11 -p 37878 'timeout 60 python3 /root/rober/onboard/scripts/camera_first_frame_probe.py --device /dev/video1 --timeout-s 0.5 --read-call-timeout-s 0.5 --include-backend-smoke'`
+  返回 `open_ok=true`、`status=first_frame_timeout`、`failure_reason=capture_read_call_timeout`；
+  backend smoke 返回 `overall_status=no_kernel_frame_observed`、`failure_reason=v4l2_stream_timeout_no_bytes`、
+  `no_frame_timeout_count=4`，四个后端 attempt 输出均为 `output_bytes=0`。
 - 已通过：本地代码路径检查确认本轮没有改 Clash/proxy 配置，没有改 PC Node 端口，没有发送 `/cmd_vel`。
 
 ## 剩余风险
