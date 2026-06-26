@@ -2702,3 +2702,12 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 `source_failure_reason=capture_read_call_timeout`，并带上 `first_frame_probe_status/open_ok/read_ok/visible_content_proven/checked_at_ms`。
 这样刷新页面或另一个普通用户进入 7001 时，也能看到最近画面检查的真实失败，而不是误以为还没检查过。该缓存只保留 PC 只读诊断摘要，
 不会打开 MJPEG/WebRTC，不调用 backend smoke、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`。
+
+2026-06-26 21:15 起，普通首屏 quick camera probe 请求固定开启 `auto_format_fallback=true`。上车端仍只执行白名单
+`camera_first_frame_probe.py`，但会用短超时依次尝试 `MJPG@640x480`、`YUYV@640x480`、`YUYV@320x240` 和默认协商
+`default@640x480`，读到首帧即停止；失败时 PC 响应的 `probe_key_values.fallback_attempt_count/fallback_attempts_summary`
+会直接显示每个格式组合的状态。现场基于 `docs/vendor/VENDOR_INDEX.md` 的硬件纪律核对后，使用上车
+`/api/camera/health` 与 `v4l2-ctl -d /dev/video1 --list-formats-ext` 确认 `/dev/video1` 是 USB DV20 摄像头，
+支持 MJPG 和 YUYV；live smoke 显示四个组合全部 `first_frame_timeout/capture_read_call_timeout`。因此当前画面不可见不是
+PC 只试 MJPG 或 PC 独占导致，而是摄像头设备可打开但所有白名单格式都没有返回首帧。该 fallback 不调用 backend smoke、
+MJPEG/WebRTC、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`，也不改变 Clash 或系统代理。

@@ -243,6 +243,20 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
   const metrics = asRecord(probePayload?.frame_metrics);
   const backendSmoke = asRecord(probePayload?.backend_smoke);
   const backendAttempts = Array.isArray(backendSmoke?.attempts) ? backendSmoke.attempts : [];
+  const fallbackAttempts = Array.isArray(payload?.fallback_attempts) ? payload.fallback_attempts : [];
+  const fallbackAttemptSummary = fallbackAttempts
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => item !== null)
+    .slice(0, 6)
+    .map((item) => {
+      const fourcc = shortValue(item.fourcc, "default");
+      const width = shortValue(item.width, "w");
+      const height = shortValue(item.height, "h");
+      const status = shortValue(item.status, "unknown");
+      const reason = shortValue(item.failure_reason, "none");
+      return `${fourcc}@${width}x${height}:${status}/${reason}`;
+    })
+    .join("; ");
   return {
     schema: shortValue(probePayload?.schema),
     device: shortValue(probePayload?.device),
@@ -263,6 +277,8 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
     backend_smoke_status: shortValue(backendSmoke?.status, "not_requested"),
     backend_frame_observed: shortValue(backendSmoke?.frame_observed, "false"),
     backend_attempts: shortValue(backendAttempts.length),
+    fallback_attempt_count: shortValue(fallbackAttempts.length),
+    fallback_attempts_summary: fallbackAttemptSummary || "none",
   };
 }
 
@@ -2537,7 +2553,7 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.post("/api/robot-control/camera/first-frame/probe", async (req, res) => {
-    // 首帧探针只转发到固定上位机 endpoint；body 为空，不能让浏览器指定任意设备或命令。
+    // 首帧探针只转发固定白名单 body；不能让浏览器指定任意设备或命令。
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     if (!normalized.ok) {
@@ -2550,6 +2566,7 @@ export function createWorkstationApp(): express.Express {
       "/api/camera/first-frame/probe",
       {
         include_backend_smoke: false,
+        auto_format_fallback: true,
         timeout_s: 3,
         read_call_timeout_s: 4,
       },

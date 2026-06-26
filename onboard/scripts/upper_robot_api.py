@@ -5063,26 +5063,42 @@ def safe_camera_probe_request(body: dict[str, Any] | None = None) -> dict[str, A
         "timeout_s": min(max(timeout_s, 0.5), 8.0),
         "read_call_timeout_s": min(max(read_call_timeout_s, 0.5), 8.0),
         "include_backend_smoke": bool(payload.get("include_backend_smoke") is True),
+        "auto_format_fallback": bool(payload.get("auto_format_fallback") is True),
     }
 
 
-async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
-    """执行入仓首帧探针；该路径只读 camera，不导入 ROS2、不打开底盘串口。"""
-    request = safe_camera_probe_request(body)
-    script_path = Path(__file__).with_name("camera_first_frame_probe.py")
-    started_ms = now_ms()
-    sample_path = Path(__file__).resolve().parents[1] / "runtime" / "camera" / f"first_frame_probe_{started_ms}.jpg"
-    if not script_path.exists():
-        return 503, {
-            "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
-            "status": "probe_script_missing",
-            "probe_request": request,
-            "script_path": str(script_path),
-            **proof_flags(),
-            "opens_serial": False,
-            "sends_motion_commands": False,
-        }
+def camera_probe_fallback_requests(request: dict[str, Any]) -> list[dict[str, Any]]:
+    """生成快速格式 fallback；同一组参数去重，避免重复打开同一个失败组合。"""
+    base = dict(request)
+    if not request.get("auto_format_fallback") or request.get("include_backend_smoke"):
+        return [base]
+    quick_timeout = min(float(request["timeout_s"]), 1.5)
+    quick_read_timeout = min(float(request["read_call_timeout_s"]), 1.5)
+    candidates = [
+        {"fourcc": request.get("fourcc"), "width": request["width"], "height": request["height"]},
+        {"fourcc": "MJPG", "width": 640, "height": 480},
+        {"fourcc": "YUYV", "width": 640, "height": 480},
+        {"fourcc": "YUYV", "width": 320, "height": 240},
+        {"fourcc": None, "width": 640, "height": 480},
+    ]
+    seen: set[tuple[Any, Any, Any]] = set()
+    requests: list[dict[str, Any]] = []
+    for candidate in candidates:
+        key = (candidate["fourcc"], candidate["width"], candidate["height"])
+        if key in seen:
+            continue
+        seen.add(key)
+        next_request = dict(base)
+        next_request.update(candidate)
+        next_request["timeout_s"] = quick_timeout
+        next_request["read_call_timeout_s"] = quick_read_timeout
+        next_request["include_backend_smoke"] = False
+        requests.append(next_request)
+    return requests
 
+
+def camera_probe_command(script_path: Path, request: dict[str, Any], sample_path: Path) -> list[str]:
+    """把白名单 probe request 转成固定脚本 argv，禁止 HTTP body 影响任意命令。"""
     command = [
         sys.executable,
         str(script_path),
@@ -5105,6 +5121,16 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
         command.extend(["--fourcc", request["fourcc"]])
     if request["include_backend_smoke"]:
         command.append("--include-backend-smoke")
+    return command
+
+
+async def run_camera_probe_attempt(
+    script_path: Path,
+    request: dict[str, Any],
+    sample_path: Path,
+) -> dict[str, Any]:
+    """执行一次固定首帧探针；失败也返回结构化 payload，供 fallback 汇总。"""
+    command = camera_probe_command(script_path, request, sample_path)
 
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -5118,15 +5144,12 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     except asyncio.TimeoutError:
         process.kill()
         await process.communicate()
-        return 504, {
-            "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
+        return {
             "status": "probe_process_timeout",
             "probe_request": request,
-            "elapsed_ms": now_ms() - started_ms,
+            "probe_payload": {"status": "probe_process_timeout"},
+            "probe_returncode": None,
             "stderr_preview": "process_timeout",
-            **proof_flags(),
-            "opens_serial": False,
-            "sends_motion_commands": False,
         }
 
     stdout_text = stdout.decode("utf-8", errors="replace").strip()
@@ -5139,15 +5162,70 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
         probe_payload = {"status": "probe_json_not_object"}
 
     status = str(probe_payload.get("status", "unknown"))
-    http_status = 200 if process.returncode == 0 and status == "frame_read" else 503
-    return http_status, {
-        "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
+    return {
         "status": status,
-        "generated_at_ms": now_ms(),
         "probe_request": request,
         "probe_payload": probe_payload,
         "probe_returncode": process.returncode,
         "stderr_preview": stderr_text[:400],
+    }
+
+
+def camera_probe_attempt_summary(attempt: dict[str, Any]) -> dict[str, Any]:
+    """fallback 尝试只暴露短事实，避免把完整 stdout/stderr 塞进普通 API。"""
+    payload = attempt.get("probe_payload") if isinstance(attempt.get("probe_payload"), dict) else {}
+    request = attempt.get("probe_request") if isinstance(attempt.get("probe_request"), dict) else {}
+    return {
+        "status": attempt.get("status") or payload.get("status") or "unknown",
+        "fourcc": payload.get("requested_fourcc", request.get("fourcc")),
+        "width": payload.get("requested_width", request.get("width")),
+        "height": payload.get("requested_height", request.get("height")),
+        "open_ok": bool(payload.get("open_ok")),
+        "read_ok": bool(payload.get("read_ok")),
+        "failure_reason": payload.get("failure_reason") or "none",
+        "elapsed_ms": payload.get("elapsed_ms"),
+    }
+
+
+async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+    """执行入仓首帧探针；该路径只读 camera，不导入 ROS2、不打开底盘串口。"""
+    request = safe_camera_probe_request(body)
+    script_path = Path(__file__).with_name("camera_first_frame_probe.py")
+    started_ms = now_ms()
+    sample_root = Path(__file__).resolve().parents[1] / "runtime" / "camera"
+    if not script_path.exists():
+        return 503, {
+            "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
+            "status": "probe_script_missing",
+            "probe_request": request,
+            "script_path": str(script_path),
+            **proof_flags(),
+            "opens_serial": False,
+            "sends_motion_commands": False,
+        }
+
+    attempts: list[dict[str, Any]] = []
+    for index, attempt_request in enumerate(camera_probe_fallback_requests(request)):
+        sample_path = sample_root / f"first_frame_probe_{started_ms}_{index}.jpg"
+        attempt = await run_camera_probe_attempt(script_path, attempt_request, sample_path)
+        attempts.append(attempt)
+        if attempt.get("status") == "frame_read":
+            break
+
+    selected = next((attempt for attempt in attempts if attempt.get("status") == "frame_read"), attempts[-1])
+    probe_payload = selected.get("probe_payload") if isinstance(selected.get("probe_payload"), dict) else {}
+    status = str(selected.get("status") or probe_payload.get("status") or "unknown")
+    http_status = 200 if selected.get("probe_returncode") == 0 and status == "frame_read" else 503
+    return http_status, {
+        "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
+        "status": status,
+        "generated_at_ms": now_ms(),
+        "probe_request": selected.get("probe_request", request),
+        "probe_payload": probe_payload,
+        "probe_returncode": selected.get("probe_returncode"),
+        "stderr_preview": str(selected.get("stderr_preview") or "")[:400],
+        "auto_format_fallback": bool(request.get("auto_format_fallback")),
+        "fallback_attempts": [camera_probe_attempt_summary(attempt) for attempt in attempts],
         "elapsed_ms": now_ms() - started_ms,
         "upper_api_proxy": True,
         **proof_flags(),

@@ -6728,6 +6728,8 @@ function makeCameraFirstFrameProbeFallback(reason: string): RobotControlCameraFi
       backend_smoke_status: "not_requested",
       backend_frame_observed: "false",
       backend_attempts: "0",
+      fallback_attempt_count: "0",
+      fallback_attempts_summary: "none",
     },
     failure_reason: reason,
     blocked_reasons: [reason],
@@ -9891,6 +9893,11 @@ onBeforeUnmount(() => {
               status={{ cameraFirstFrameProbeResult?.probe_key_values.backend_smoke_status ?? "not_requested" }},
               frame={{ cameraFirstFrameProbeResult?.probe_key_values.backend_frame_observed ?? "false" }},
               attempts={{ cameraFirstFrameProbeResult?.probe_key_values.backend_attempts ?? "0" }}
+            </dd>
+            <dt>probe_format_fallback</dt>
+            <dd>
+              attempts={{ cameraFirstFrameProbeResult?.probe_key_values.fallback_attempt_count ?? "0" }},
+              {{ cameraFirstFrameProbeResult?.probe_key_values.fallback_attempts_summary ?? "none" }}
             </dd>
             <dt>probe_dangerous_fields</dt>
             <dd>{{ listText(cameraFirstFrameProbeResult?.hard_dangerous_true_fields, "none") }}</dd>

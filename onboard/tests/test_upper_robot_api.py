@@ -449,6 +449,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(8.0, request["timeout_s"])
         self.assertEqual(8.0, request["read_call_timeout_s"])
         self.assertFalse(request["include_backend_smoke"])
+        self.assertFalse(request["auto_format_fallback"])
 
     def test_camera_probe_missing_script_fails_closed_without_serial_or_motion(self) -> None:
         """首帧探针脚本不存在时也必须结构化失败，且不触碰底盘。"""
@@ -502,6 +503,63 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         sample_path = command[command.index("--sample-path") + 1]
         self.assertIn("/runtime/camera/first_frame_probe_", sample_path)
         self.assertIn("--include-backend-smoke", process_mock.call_args.args)
+
+    def test_camera_probe_auto_format_fallback_stops_after_first_frame(self) -> None:
+        """自动格式 fallback 只读相机；前一个格式失败后尝试下一组，读到帧就停止。"""
+
+        class FakeProcess:
+            def __init__(self, payload: dict[str, object]) -> None:
+                self.returncode = 0
+                self.payload = payload
+
+            async def communicate(self):
+                return json.dumps(self.payload).encode("utf-8"), b""
+
+            def kill(self) -> None:
+                self.killed = True
+
+        payloads = [
+            {
+                "schema": "trashbot.camera_first_frame_probe.v1",
+                "status": "first_frame_timeout",
+                "requested_fourcc": "MJPG",
+                "requested_width": 640,
+                "requested_height": 480,
+                "open_ok": True,
+                "read_ok": False,
+                "failure_reason": "capture_read_call_timeout",
+                "visible_content_proven": False,
+            },
+            {
+                "schema": "trashbot.camera_first_frame_probe.v1",
+                "status": "frame_read",
+                "requested_fourcc": "YUYV",
+                "requested_width": 640,
+                "requested_height": 480,
+                "open_ok": True,
+                "read_ok": True,
+                "visible_content_proven": True,
+            },
+        ]
+        processes = [FakeProcess(payload) for payload in payloads]
+
+        with mock.patch.object(upper_robot_api.Path, "exists", return_value=True):
+            with mock.patch.object(upper_robot_api.asyncio, "create_subprocess_exec", side_effect=processes) as process_mock:
+                http_status, payload = asyncio.run(
+                    upper_robot_api.run_camera_first_frame_probe(
+                        {"fourcc": "MJPG", "auto_format_fallback": True, "include_backend_smoke": False}
+                    )
+                )
+
+        self.assertEqual(200, http_status)
+        self.assertEqual("frame_read", payload["status"])
+        self.assertTrue(payload["auto_format_fallback"])
+        self.assertEqual(2, len(payload["fallback_attempts"]))
+        self.assertEqual("MJPG", payload["fallback_attempts"][0]["fourcc"])
+        self.assertEqual("YUYV", payload["fallback_attempts"][1]["fourcc"])
+        self.assertEqual(2, process_mock.call_count)
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
 
     def test_map_proof_latest_promotes_clean_runtime_material(self) -> None:
         """map proof 观测齐全时，readback 顶层应直接暴露可消费状态。"""

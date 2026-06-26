@@ -2813,6 +2813,8 @@ export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFla
     backend_smoke_status: string;
     backend_frame_observed: string;
     backend_attempts: string;
+    fallback_attempt_count: string;
+    fallback_attempts_summary: string;
   };
   failure_reason: string;
   blocked_reasons: string[];

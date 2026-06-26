@@ -7219,6 +7219,17 @@ describe("workstation fail-closed API contracts", () => {
             delivery_success: false,
             primary_actions_enabled: false,
           },
+          fallback_attempts: [
+            {
+              status: "open_failed",
+              fourcc: "MJPG",
+              width: 640,
+              height: 480,
+              open_ok: false,
+              read_ok: false,
+              failure_reason: "opencv_capture_not_opened",
+            },
+          ],
           safe_to_control: false,
           robot_control_executed: false,
           delivery_success: false,
@@ -7236,7 +7247,12 @@ describe("workstation fail-closed API contracts", () => {
         remote_http_status: number;
         status: string;
         failure_reason: string;
-        probe_key_values: { open_ok: string; visible_content_proven: string };
+        probe_key_values: {
+          open_ok: string;
+          visible_content_proven: string;
+          fallback_attempt_count: string;
+          fallback_attempts_summary: string;
+        };
         safe_to_control: boolean;
       };
 
@@ -7247,10 +7263,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.status).toBe("open_failed");
       expect(body.probe_key_values.open_ok).toBe("false");
       expect(body.probe_key_values.visible_content_proven).toBe("false");
+      expect(body.probe_key_values.fallback_attempt_count).toBe("1");
+      expect(body.probe_key_values.fallback_attempts_summary).toContain("MJPG@640x480:open_failed/opencv_capture_not_opened");
       expect(body.safe_to_control).toBe(false);
       expect(upstream.receivedBodies["/api/camera/first-frame/probe"]).toEqual([
         {
           include_backend_smoke: false,
+          auto_format_fallback: true,
           timeout_s: 3,
           read_call_timeout_s: 4,
         },
