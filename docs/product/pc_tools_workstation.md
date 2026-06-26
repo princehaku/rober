@@ -3105,3 +3105,9 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 summary 会把首屏相机状态提升为 `ready + first_frame_observed`，并保留
 `first_frame_probe_*` 证据字段；失败或不可见 probe 仍按失败显示。这样刷新页面后不会把成功样张又退回旧无帧结论。
 该 overlay 只来自 PC Node 内存中的只读 probe 结果，不打开 motion、manual、free-roam、Nav2、delivery 或 `/cmd_vel`。
+
+2026-06-27 07:45 起，普通首屏 `当前事实` 的行程行在 Nav2 返回成功但 wheel raw L/R 未证明时，会直接写出
+`已发非零底盘命令 N 条`、`读到底盘反馈 N 次` 和 `L/R=0/0`，并明确 `不是雷达阻塞`。
+如果下次执行模式已从旧模式切到 `ros`，同一行继续显示 `下次将用 ros 复验`。这让“自动驾驶没法动”的第一解释
+落到电机使能、供电、底盘模式或控制模式，而不是继续怀疑雷达；不改变 Nav2、manual、keyboard、delivery、
+free-roam 或 `/cmd_vel` 行为。

@@ -1485,6 +1485,7 @@ const plainCurrentFactRows = computed(() => {
 
   const nav2 = summary.readback_summary.nav2;
   if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
+    const nav2Values = summaryNav2ExecutionValues();
     const baseReadbackText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true" ? "" : baseWheelNonzeroReadbackContextText();
     const modeText = nav2.next_execution_base_command_mode
       && nav2.next_execution_base_command_mode !== "not_loaded"
@@ -1497,7 +1498,9 @@ const plainCurrentFactRows = computed(() => {
       : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}${modeText}`;
     rows.push(nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
       ? `行程：路线返回成功，${wheelText}。`
-      : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);
+      : nav2BaseCommandWithoutWheelFeedback(nav2Values)
+        ? `行程：路线返回成功，但${nav2CommandFeedbackFactText(nav2Values)}${modeText}。`
+        : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);
   } else if (plainTripPreparedBySummary.value || nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
     if (plainTripCurrentRouteVisible.value && plainTripRobotPoseVisibleForExecution.value) {
       rows.push("行程：图上路线可执行。");
@@ -4317,6 +4320,18 @@ function nav2BaseCommandWithoutWheelFeedback(values: Record<string, string> | un
   // 当前现场关键形态：Nav2/bridge 已发非零底盘命令，但 WAVE ROVER T1001 L/R 仍为 0/0。
   return (values?.base_command_nonzero_observed === "true" || nav2BaseCommandCount(values) > 0)
     && explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven);
+}
+
+function nav2CommandFeedbackFactText(values: Record<string, string> | undefined): string {
+  // 当前事实条优先回答“命令有没有发、反馈有没有读、为什么还不算动”，不要重复长段排障文案。
+  const count = nav2BaseCommandCount(values);
+  const feedbackSamples = Number(values?.base_feedback_sample_count ?? values?.feedback_sample_count ?? "0");
+  const countText = count > 0 ? ` ${count} 条` : "";
+  const sampleText = Number.isFinite(feedbackSamples) && feedbackSamples > 0 ? `，读到底盘反馈 ${feedbackSamples} 次` : "";
+  const pair = nav2BaseFeedbackPair(values);
+  const pairText = pair ? `，L/R=${pair.left}/${pair.right}` : "，轮速非零未证明";
+  const baseReadbackContext = baseWheelNonzeroReadbackContextText();
+  return `已发非零底盘命令${countText}${sampleText}${pairText}；不是雷达阻塞${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
 }
 
 function nav2BaseMotionSignalText(values: Record<string, string> | undefined): string {
