@@ -2615,6 +2615,20 @@ function proofNumber(readbacks: RobotApiEndpointReadback[], keys: string[]): num
   return best;
 }
 
+function proofText(readbacks: RobotApiEndpointReadback[], keys: string[]): string | null {
+  // readback key_values 已经是压缩短文本；这里取最后一个非空值，避免旧失败摘要盖住新状态。
+  let latest: string | null = null;
+  for (const readback of readbacks) {
+    for (const key of keys) {
+      const value = readback.key_values[key];
+      if (typeof value === "string" && value.trim()) {
+        latest = value.trim();
+      }
+    }
+  }
+  return latest;
+}
+
 function finitePathCoordinate(value: unknown): number | null {
   // 路线点来自上位机 artifact；只接受有限数字，防止异常字符串进入 SVG 坐标。
   const numberValue = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
@@ -2854,6 +2868,68 @@ function buildProofSummary(readbacks: InternalRobotApiEndpointReadback[]): Robot
   };
 }
 
+function booleanSummaryValue(value: boolean | null): string {
+  // readback_summary 面向首屏和调试面板，只暴露短字符串，避免前端重复实现 null/boolean 口径。
+  return value === null ? "not_loaded" : String(value);
+}
+
+function mapSummaryFromReadbacks(
+  readbacks: InternalRobotApiEndpointReadback[],
+  proof: RobotApiProofSummary,
+): RobotControlSummaryResponse["readback_summary"]["map"] {
+  // 地图摘要把 proof/latest 的关键事实提升到 readback_summary，方便普通 UI 直接解释地图是否真的读到。
+  const mapProof = readbackById(readbacks, "map_proof_latest");
+  return {
+    status: mapProof?.status ?? "not_loaded",
+    map_once_observed: booleanSummaryValue(proof.map_once_observed),
+    map_quality_status: proofText(readbacks, ["latest_map_quality_status", "map_quality_status"]) ?? "not_loaded",
+    map_free_cell_count: proofText(readbacks, ["latest_map_free_cell_count", "map_free_cell_count"]) ?? "not_loaded",
+    map_usable_for_navigation: proofText(readbacks, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ?? "not_loaded",
+  };
+}
+
+function localizationSummaryFromReadbacks(
+  readbacks: InternalRobotApiEndpointReadback[],
+  proof: RobotApiProofSummary,
+): RobotControlSummaryResponse["readback_summary"]["localization"] {
+  // 只有结构化 map pose 才能说“地图上看得到小车”；单纯 TF/AMCL observed 不能伪造坐标。
+  const localizeProof = readbackById(readbacks, "localize_proof_latest");
+  const pose = proof.robot_pose;
+  const poseStatus = pose
+    ? "map_pose_observed"
+    : proof.amcl_pose_observed === true || proof.localization_tf_observed === true
+      ? "pose_signal_observed_without_map_coordinates"
+      : "not_observed";
+  return {
+    status: localizeProof?.status ?? "not_loaded",
+    amcl_pose_observed: booleanSummaryValue(proof.amcl_pose_observed),
+    localization_tf_observed: booleanSummaryValue(proof.localization_tf_observed),
+    robot_pose_status: poseStatus,
+    robot_pose_frame_id: pose?.frame_id ?? "not_loaded",
+    robot_pose_x: pose ? String(pose.x) : "not_loaded",
+    robot_pose_y: pose ? String(pose.y) : "not_loaded",
+  };
+}
+
+function nav2SummaryFromReadbacks(
+  readbacks: InternalRobotApiEndpointReadback[],
+  proof: RobotApiProofSummary,
+): RobotControlSummaryResponse["readback_summary"]["nav2"] {
+  // Nav2 摘要只说明当前读到的路线和 planner 状态；不等价于 NavigateToPose 已执行成功。
+  const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
+  const nav2Status = readbackById(readbacks, "nav2_status");
+  return {
+    status: nav2Proof?.status ?? "not_loaded",
+    nav2_status: nav2Status?.status ?? "not_loaded",
+    planner_server_active: booleanSummaryValue(proof.planner_server_active),
+    path_generated: booleanSummaryValue(proof.path_generated),
+    path_generation_succeeded: booleanSummaryValue(proof.path_generation_succeeded),
+    path_point_count: proof.path_point_count === null ? "not_loaded" : String(proof.path_point_count),
+    path_preview_point_count: String(proof.path_preview_point_count),
+    path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
+  };
+}
+
 function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryResponse {
   // URL 被拒或未配置时也返回完整合同，前端可以稳定展示七区块和恢复路径。
   const observedAt = Date.now();
@@ -2936,18 +3012,44 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         latest_scan_proof_fresh: "not_loaded",
         radar_start_configured: "not_loaded",
       },
-    base: {
-      status: "not_loaded",
-      latest_feedback_status: "not_loaded",
-      feedback_ack_status: "not_loaded",
-      latest_t1001_observed_count: "not_loaded",
-      wheel_feedback_lr_nonzero_proven: "not_loaded",
-      wheel_feedback_nonzero_observed: "not_loaded",
-      wheel_feedback_latest_left_speed: "not_loaded",
-      wheel_feedback_latest_right_speed: "not_loaded",
-      feedback_voltage_v: "not_loaded",
-      feedback_link_status: "not_observed",
-    },
+      base: {
+        status: "not_loaded",
+        latest_feedback_status: "not_loaded",
+        feedback_ack_status: "not_loaded",
+        latest_t1001_observed_count: "not_loaded",
+        wheel_feedback_lr_nonzero_proven: "not_loaded",
+        wheel_feedback_nonzero_observed: "not_loaded",
+        wheel_feedback_latest_left_speed: "not_loaded",
+        wheel_feedback_latest_right_speed: "not_loaded",
+        feedback_voltage_v: "not_loaded",
+        feedback_link_status: "not_observed",
+      },
+      map: {
+        status: "not_loaded",
+        map_once_observed: "not_loaded",
+        map_quality_status: "not_loaded",
+        map_free_cell_count: "not_loaded",
+        map_usable_for_navigation: "not_loaded",
+      },
+      localization: {
+        status: "not_loaded",
+        amcl_pose_observed: "not_loaded",
+        localization_tf_observed: "not_loaded",
+        robot_pose_status: "not_observed",
+        robot_pose_frame_id: "not_loaded",
+        robot_pose_x: "not_loaded",
+        robot_pose_y: "not_loaded",
+      },
+      nav2: {
+        status: "not_loaded",
+        nav2_status: "not_loaded",
+        planner_server_active: "not_loaded",
+        path_generated: "not_loaded",
+        path_generation_succeeded: "not_loaded",
+        path_point_count: "not_loaded",
+        path_preview_point_count: "0",
+        path_preview_frame_id: "not_loaded",
+      },
     },
     operator_hil_material_summary: notLoadedHilMaterialSummary("not_loaded"),
     first_jog_readiness_summary: buildFirstJogReadinessSummary(notLoadedHilMaterialSummary("not_loaded")),
@@ -3277,6 +3379,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
     ...readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`)),
     ...dangerous.map((field) => `dangerous_true_field:${field}`),
   ];
+  const proofSummary = buildProofSummary(readbacks);
   const operatorHilMaterialSummary = buildOperatorHilMaterialSummary(readbacks);
   const freeRoamRuntimeGates = freeRoamRuntimeGatesFromReadbacks(readbacks);
   const freeRoamRuntime = freeRoamRuntimeSummaryFromReadbacks(readbacks);
@@ -3295,7 +3398,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
     },
     observed_at_ms: observedAt,
     read_endpoints: readEndpoints,
-    o3_proof_summary: buildProofSummary(readbacks),
+    o3_proof_summary: proofSummary,
     robot_api_connection: {
       status: dangerous.length || blockedCount > 0 ? "blocked" : failedCount > 0 ? "degraded" : "readable",
       loaded_count: loadedCount,
@@ -3310,6 +3413,9 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
       camera: cameraSummaryFromReadbacks(readbacks),
       lidar: lidarSummaryFromReadbacks(readbacks),
       base: baseSummaryFromReadbacks(readbacks),
+      map: mapSummaryFromReadbacks(readbacks, proofSummary),
+      localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
+      nav2: nav2SummaryFromReadbacks(readbacks, proofSummary),
     },
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),

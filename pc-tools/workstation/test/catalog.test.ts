@@ -3886,6 +3886,24 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.read_endpoints.some((endpoint) => endpoint.endpoint === "/api/base/status")).toBe(true);
       expect(summary.o3_proof_summary.path_generated).toBe(false);
       expect(summary.o3_proof_summary.path_generation_succeeded).toBe(false);
+      expect(summary.readback_summary.map).toMatchObject({
+        status: expect.any(String),
+        map_once_observed: "true",
+      });
+      expect(summary.readback_summary.localization).toMatchObject({
+        status: expect.any(String),
+        amcl_pose_observed: "false",
+        localization_tf_observed: "false",
+        robot_pose_status: "not_observed",
+      });
+      expect(summary.readback_summary.nav2).toMatchObject({
+        status: expect.any(String),
+        planner_server_active: "false",
+        path_generated: "false",
+        path_generation_succeeded: "false",
+        path_point_count: "0",
+        path_preview_point_count: "0",
+      });
       expect(summary.safe_command_boundary.manual_endpoint).toBe("/api/base/manual");
       expect(summary.safe_command_boundary.stop_endpoint).toBe("/api/base/stop");
       expect(summary.safe_command_boundary.cmd_vel_topic).toBe("/cmd_vel");

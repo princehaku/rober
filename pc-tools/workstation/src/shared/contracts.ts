@@ -2394,6 +2394,32 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       feedback_voltage_v: string;
       feedback_link_status: string;
     };
+    map: {
+      status: string;
+      map_once_observed: string;
+      map_quality_status: string;
+      map_free_cell_count: string;
+      map_usable_for_navigation: string;
+    };
+    localization: {
+      status: string;
+      amcl_pose_observed: string;
+      localization_tf_observed: string;
+      robot_pose_status: string;
+      robot_pose_frame_id: string;
+      robot_pose_x: string;
+      robot_pose_y: string;
+    };
+    nav2: {
+      status: string;
+      nav2_status: string;
+      planner_server_active: string;
+      path_generated: string;
+      path_generation_succeeded: string;
+      path_point_count: string;
+      path_preview_point_count: string;
+      path_preview_frame_id: string;
+    };
   };
   operator_hil_material_summary: RobotControlOperatorHilMaterialSummary;
   first_jog_readiness_summary: {

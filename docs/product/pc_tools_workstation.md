@@ -2652,3 +2652,10 @@ PC 端打开摄像头，不调用 camera offer/MJPEG、manual、Nav2、delivery�
 该默认值只替代地址输入，不替代按钮确认、请求体白名单、固定 endpoint 白名单或上车端 fail-closed 门禁；例如无 query 的
 `POST /api/robot-control/free-roam/autonomy/start` 仍只会转发两个确认布尔值到固定上车 endpoint，且相机未出首帧时仍被
 `camera_first_frame_not_observed` 拒绝，不写运动解锁参数。
+
+2026-06-26 20:10 起，Robot Control summary 的 `readback_summary` 不再只给 camera/lidar/base，
+新增 `map`、`localization`、`nav2` 三个短摘要，让普通 UI 和现场接口能直接读到地图是否已观察、定位是否有可画到地图的坐标、
+Nav2 是否生成了图上路线。真实复测中，PC 7001 summary 返回 `map.map_once_observed=true`、
+`nav2.path_generated=true`、`nav2.path_preview_point_count=36`、`nav2.path_preview_frame_id=map`，
+同时 `localization.robot_pose_status=pose_signal_observed_without_map_coordinates`。这表示当前能画出路线，但还不能把小车位置贴到地图；
+因此“执行图上路线”仍应保持等定位坐标的 WYSIWYG 门禁。
