@@ -2147,6 +2147,9 @@ operator 可以一边看地图/雷达/画面，一边用全局 W/A/S/D 或方向
 仍不会截获这些按键，窗口失焦、页面隐藏或进入可编辑控件仍会退出连续手控窗口；所有运动仍只走固定
 `base/manual` 短脉冲代理和松开 stop 收口，不新增浏览器直连 `/cmd_vel`。
 2026-06-26 08:45 起，普通首屏 `键盘手控` 面板也会带 `data-state`，外框跟随 `未满足/可手控/已启用/手控中/已验证` 等状态变化。测试锁定键盘 gate 可用、启用、按住连续脉冲和松开 stop 收口后的面板状态与 CSS 选择器，避免键盘连续手控的真实状态只藏在长文案里。该呈现只影响 PC 前端 WYSIWYG，不自动启用键盘、不额外发送 manual pulse、不调用 Nav2、delivery complete、stop 或 `/cmd_vel`。
+2026-06-26 15:40 起，普通首屏键盘指南明确写出 `松开、窗口失焦或切页面都会停`，和实际 `keyup/window blur/page hidden`
+stop 触发保持一致。该文案只解释现有连续手控安全收口，不改变 manual pulse 周期、不自动启用键盘、不额外发送 manual/stop、
+不调用 Nav2、delivery complete 或 `/cmd_vel`，也不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
 2026-06-26 06:40 起，键盘/扫图停止按钮在方向 manual pulse 尚未返回时也保持可点。点击后不会并发发 stop，
 而是复用已有 release-stop 队列：当前 pulse 返回后立即补发固定 `/api/robot-control/base/stop`。这样 `键盘停止（随时可点）`
 和扫图方向盘中间的 `停止` 不再被 in-flight pulse 禁用，仍不绕过 stop 代理、不新增 `/cmd_vel`。

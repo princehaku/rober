@@ -2864,9 +2864,9 @@ const plainKeyboardLiveStatus = computed(() => {
 });
 
 const plainKeyboardControlGuide = computed(() => {
-  // 普通首屏需要说明“按住连续、松开停止”；具体接口和 raw pulse 细节仍留在高级诊断。
+  // 普通首屏需要说明所有自动停止触发，避免现场误以为只有松开按键才会停。
   const intervalSeconds = (keyboardJogIntervalMs.value / 1000).toFixed(2).replace(/0$/, "");
-  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会持续低速移动，约每 ${intervalSeconds} 秒续一次；松开即停。`;
+  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会持续低速移动，约每 ${intervalSeconds} 秒续一次；松开、窗口失焦或切页面都会停。`;
 });
 
 function claimWithRefReady(value: string | undefined): boolean {
