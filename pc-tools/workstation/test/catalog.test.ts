@@ -38,6 +38,7 @@ import {
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
 import { createWorkstationApp, listenFailureHint, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
+import { WORKSTATION_DEV_API_PROXY_TARGET, WORKSTATION_DEV_PORT, WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../src/shared/workstationDefaults";
 
 function sampleStatus(evidenceRef: string) {
   // 样例只提供 Node loader 生成 safe summary 所需字段，不模拟真实 Nav2 或现场成功。
@@ -1159,7 +1160,16 @@ function expectNoLegacyPythonGateSemantics(value: unknown, allowVendorSerialRefe
 describe("workstation fail-closed API contracts", () => {
   it("defaults workstation Node API to the public operator port", () => {
     // 现场默认要能从局域网访问；仍允许 HOST/PORT 环境变量在启动前覆盖。
+    expect(WORKSTATION_PUBLIC_HOST).toBe("0.0.0.0");
+    expect(WORKSTATION_NODE_PORT).toBe(7001);
     expect(workstationListenAddress()).toBe("http://0.0.0.0:7001");
+  });
+
+  it("keeps Vite dev defaults off the Node operator port while proxying API to it", () => {
+    // 开发热更新页单独占 7002，正式 Node 工作站继续固定在 7001 供局域网访问。
+    expect(WORKSTATION_DEV_PORT).toBe(7002);
+    expect(WORKSTATION_DEV_PORT).not.toBe(WORKSTATION_NODE_PORT);
+    expect(WORKSTATION_DEV_API_PROXY_TARGET).toBe("http://127.0.0.1:7001");
   });
 
   it("defaults Robot Control summary reads to the fixed robot API address", () => {

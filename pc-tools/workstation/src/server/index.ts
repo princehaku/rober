@@ -50,6 +50,7 @@ import {
   notRequiredOperatorReportPreflight,
   scanDangerousTrueFields,
 } from "./robotControlSummary";
+import { WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../shared/workstationDefaults";
 import type {
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
@@ -77,10 +78,8 @@ import type {
   RobotControlDeliveryGapCheckResponse,
 } from "../shared/contracts";
 
-const DEFAULT_PUBLIC_HOST = "0.0.0.0";
-const DEFAULT_PUBLIC_PORT = 7001;
-const PORT = Number(process.env.PORT ?? DEFAULT_PUBLIC_PORT);
-const HOST = process.env.HOST ?? DEFAULT_PUBLIC_HOST;
+const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
+const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_ROOT = path.resolve(__dirname, "../../dist");
 
