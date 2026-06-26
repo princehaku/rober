@@ -31,10 +31,12 @@ AMCL。随后再等待 planner/controller/BT/behavior lifecycle active 后才发
 日志中的 `lifecycle_manager_navigation: Managed nodes are active` 作为执行层 active 证据；不能只因为
 `/navigate_to_pose` action server 出现就发送 goal，因为 BT node 未 active 时目标可能被拒绝。
 
-2026-06-27 后，O11 托管 runtime 的 `esp32_bridge` 使用 `command_mode=pwm`、`pwm_min_abs=90`、
-`pwm_max_abs=90`。该口径来自 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：
-`CMD_PWM_INPUT/T=11` 为左右轮 PWM 输入，范围 `-255..255`；同轮真机 smoke 已证明当前车上
-`T=11 L=90/R=90` 能回 `T=1001 L/R=90/90`，而低速 `T=1/T=13` 只回 `0/0`。O11 会通过
+2026-06-27 后，常规 bringup/autonomous 的 `esp32_bridge` 默认使用 `command_mode=speed`，
+即按 vendor `CMD_SPEED_CTRL/T=1` 接收 `/cmd_vel` 后输出左右轮速。O11 托管 runtime 仍可显式选择
+`command_mode=pwm`、`pwm_min_abs=90`、`pwm_max_abs=90` 做诊断；该口径来自
+`docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`CMD_PWM_INPUT/T=11` 为左右轮
+PWM 输入，范围 `-255..255`。由于同轮 Nav2 托管执行已出现“非零 `T=11` 命令发出但
+`T=1001 L/R` 仍为 `0/0`”的情况，PWM 不再写成默认成功路径。O11 会通过
 `feedback_debug_log_path` 记录 bridge 解析出的 `T=1001`，并把 `base_feedback_summary` 写入 artifact。
 `nav2_goal_execution_proven=true` 必须同时满足 action 成功和
 `base_feedback_summary.wheel_feedback_lr_nonzero_proven=true`；这只证明路线执行触到底盘，不等于投放或

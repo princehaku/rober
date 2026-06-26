@@ -2839,9 +2839,15 @@ L/R”的误判概率。
 同轮真机 smoke 证明当前底盘可动路径是 vendor `T=11` direct PWM：`T=1` 和 `T=13` 短时低速命令均只回
 `T=1001 L/R=0/0`，而 `T=11 L=90/R=90` 回 `T=1001 L/R=90/90`。上位机 `/api/base/manual`
 默认改为 `base_command_mode=pwm`，PC first-jog 和键盘连续手控仍走同一个固定代理、同一个安全确认和 stop 兜底；
-普通界面风格不变。ROS bridge 新增 `command_mode=pwm`，bringup/autonomous 默认走该模式，后续 Nav2 路线执行的底盘输出不再卡在
-当前真机无效的 `T=1/T=13`。manual 运动中读到的非零 `T=1001 L/R` 会写入既有 latest artifact；PC 刷新 summary 后仍能看到
+普通界面风格不变。当轮 ROS bridge 新增 `command_mode=pwm` 并短暂作为 bringup/autonomous 试验默认，目的是让 Nav2
+路线执行先避开当时低速短测无效的 `T=1/T=13`。manual 运动中读到的非零 `T=1001 L/R` 会写入既有 latest artifact；PC 刷新 summary 后仍能看到
 `wheel_feedback_lr_nonzero_proven=true`，不会被停车后的只读 `0/0` 覆盖。
+
+2026-06-27 后续复核把默认口径收紧：上面这段保留为当轮 manual PWM 诊断证据，但常规
+bringup/autonomous 默认回到 vendor `command_mode=speed/T=1`，与硬件 bridge 纯默认一致。
+原因是 O11 Nav2 托管执行已证明非零 `T=11` JSON 会发到底盘，却仍没有形成
+`T=1001 L/R` 非零闭环；因此 `command_mode=pwm` 只能作为显式 HIL/诊断 override，不能被普通
+自动驾驶入口默认为“已修好可动”。PC 仍应把 wheel raw L/R、LiDAR delta 或外部视频作为真实运动材料。
 
 2026-06-27 同步修正 O11 Nav2 执行 helper：托管 `esp32_bridge` 不再硬编码
 `command_mode=speed`，改为 `command_mode=pwm`、`pwm_min_abs/max_abs=90`，并通过

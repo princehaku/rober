@@ -19,7 +19,7 @@ Vendor sources:
 | `serial_baudrate` | int | `115200` | Canonical UART baudrate parameter. Vendor examples use `115200`. |
 | `port` | string | empty | Deprecated alias for `serial_port`. |
 | `baudrate` | int | `0` | Deprecated alias for `serial_baudrate`; ignored when `0`. |
-| `command_mode` | string | `pwm` in bringup/autonomous | `pwm` maps `/cmd_vel` to vendor `T=11` direct PWM and is the current HIL-observed motion path; `speed` maps to vendor `T=1`; `ros` maps to vendor `T=13`. |
+| `command_mode` | string | `speed` in driver/bringup/autonomous | `speed` maps `/cmd_vel` to vendor `T=1` and is the project default. `pwm` maps to vendor `T=11` direct PWM and must be selected explicitly for HIL/diagnostic runs. `ros` maps to vendor `T=13` and remains HIL-pending. |
 | `track_width_m` | double | `0.172` | Differential-drive width used by `speed` mode. Must be positive. Current default is project tuning and requires HIL confirmation before production use. |
 | `max_wheel_speed_mps` | double | `1.3` | Normalization limit for project-side `T=1` left/right values. Must be positive. Vendor WAVE ROVER materials describe `-0.5` to `0.5` as the user-facing speed range, so the current scaling/clamp remains HIL-pending. |
 | `feedback_interval_ms` | int | `100` | Sent to vendor `T=142`. Must be non-negative. |
@@ -29,7 +29,7 @@ Vendor sources:
 
 | Topic | Type | Contract |
 | --- | --- | --- |
-| `/cmd_vel` | `geometry_msgs/msg/Twist` | In `speed` mode, `linear.x` and `angular.z` are converted to normalized `T=1` `L`/`R`; positive `angular.z` makes left lower and right higher. In `ros` mode, the bridge sends `T=13` `X`/`Z`. |
+| `/cmd_vel` | `geometry_msgs/msg/Twist` | In default `speed` mode, `linear.x` and `angular.z` are converted to normalized `T=1` `L`/`R`; positive `angular.z` makes left lower and right higher. In explicit `pwm` mode, the same wheel intent is bounded to `T=11` PWM. In `ros` mode, the bridge sends `T=13` `X`/`Z`. |
 
 ### Produced Topics
 

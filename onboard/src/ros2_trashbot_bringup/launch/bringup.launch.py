@@ -26,8 +26,8 @@ def generate_launch_description():
         description='UART baud rate for the WAVE ROVER ESP32 controller')
 
     command_mode_arg = DeclareLaunchArgument(
-        'command_mode', default_value='pwm',
-        description='WAVE ROVER command mode: pwm uses HIL-observed T=11, speed uses T=1, ros uses T=13')
+        'command_mode', default_value='speed',
+        description='WAVE ROVER command mode: speed uses vendor T=1 default; pwm uses explicit T=11 diagnostic override; ros uses T=13')
 
     track_width_arg = DeclareLaunchArgument(
         'track_width_m', default_value='0.172',

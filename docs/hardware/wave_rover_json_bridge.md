@@ -109,9 +109,11 @@ right_mps = linear.x + angular.z * track_width_m / 2
 `esp32_bridge` + `/cmd_vel` 路径发送 `linear.x=0.03/0.05/0.07/0.09m/s`，
 每步 publish window 均小于 `0.18s`，且每步 `/trashbot/stop` 成功。
 
-2026-06-27 真机 smoke 后，bringup/autonomous 默认 `command_mode=pwm`，因为当前车上
-`T=11 L=90/R=90` 已观测到非零 `T=1001 L/R=90/90`，而 `T=1`、`T=13` 低速短测仍为
-`L/R=0/0`。在保留 `command_mode=speed` 的离线示例下，`max_wheel_speed_mps=1.3`
+2026-06-27 真机 smoke 曾单独观测到 `T=11 L=90/R=90` 回 `T=1001 L/R=90/90`，
+但同轮 Nav2 托管执行里 `T=11 L=90/R=-90` 仍未形成非零轮速闭环。因此
+bringup/autonomous 默认保持 vendor 主路径 `command_mode=speed`，即 `/cmd_vel` 转
+`T=1 L/R`；`command_mode=pwm` 只作为显式 HIL/诊断 override，不能在没有本轮证明时当作
+默认成功路径。在 `command_mode=speed` 下，`max_wheel_speed_mps=1.3`
 对应 expected command：
 
 - `0.03m/s -> {"T":1,"L":0.023077,"R":0.023077}`
