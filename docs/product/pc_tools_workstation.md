@@ -2171,6 +2171,11 @@ stop 触发保持一致。该文案只解释现有连续手控安全收口，不
 调用 `nav2/goal/execute`。只有 operator 看到地图上真实画出当前路线后，按钮才显示 `执行图上路线`，第二次点击才走固定
 execute 代理。这样发车前预检仍是最小安全确认，同时保持路线所见即所得；该改动不自动发车、不调用 manual、keyboard、
 delivery、stop 或 `/cmd_vel`，不修改 Clash 或系统代理配置，PC 工作站公开入口继续是 `0.0.0.0:7001`。
+2026-06-26 17:00 起，上述行程向导在 no-motion Nav2 proof refresh pending 期间，按钮明确显示
+`准备路线中（不发车）`；读取最近行程结果 pending 时显示 `读取行程结果中`；只有真正提交
+`/api/robot-control/nav2/goal/execute` 的 pending 才显示 `执行中`。这样普通用户不会把路线准备等待误解为小车已经发车；
+该文案只跟随 PC 前端已有 pending 状态，不新增自动 execute、不调用 manual/keyboard、delivery、stop 或 `/cmd_vel`，
+不修改 Clash 或系统代理配置，PC 工作站公开入口继续是 `0.0.0.0:7001`。
 
 2026-06-25 23:25 起，普通首屏 `扫地式建图` 在 `开始扫地式建图` 成功返回地图记录已启动后，会自动进入
 `键盘已启用` 状态。该自动启用只设置 PC 全局键盘窗口和焦点，不发送方向脉冲、不调用 `base/manual`、Nav2、

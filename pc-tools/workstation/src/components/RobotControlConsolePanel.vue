@@ -4449,7 +4449,13 @@ const plainTripExecutionButtonLabel = computed(() => {
   if (!robotApiBaseUrl.value.trim()) {
     return "连接后执行行程";
   }
-  if (loading.value || plainTripActionPending.value) {
+  if (nav2RefreshPending.value) {
+    return "准备路线中（不发车）";
+  }
+  if (navGoalExecutionLatestPending.value) {
+    return "读取行程结果中";
+  }
+  if (loading.value || navGoalPreflightPending.value || navGoalExecutionPending.value) {
     return "执行中";
   }
   if (manualMotionActiveForTrip.value) {

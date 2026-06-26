@@ -6801,6 +6801,7 @@ describe("App", () => {
       "/api/robot-control/summary": summaryFixture,
     });
     const defaultFetch = mockedFetch.getMockImplementation();
+    const nav2RefreshControl: { finish?: () => void } = {};
     mockedFetch.mockImplementation(async (url: string, options?: RequestInit) => {
       if (String(url).startsWith("/api/robot-control/summary?")) {
         return {
@@ -6809,16 +6810,24 @@ describe("App", () => {
         };
       }
       if (String(url).startsWith("/api/robot-control/nav2/proof/refresh?")) {
-        summaryFixture.o3_proof_summary.path_generated = true;
-        summaryFixture.o3_proof_summary.path_generation_succeeded = true;
-        summaryFixture.o3_proof_summary.path_preview_points = [
-          { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
-          { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
-          { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
-        ];
-        summaryFixture.o3_proof_summary.path_preview_point_count = 3;
-        summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
-        summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+        return new Promise<Response>((resolve) => {
+          nav2RefreshControl.finish = () => {
+            summaryFixture.o3_proof_summary.path_generated = true;
+            summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+            summaryFixture.o3_proof_summary.path_preview_points = [
+              { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+              { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+              { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+            ];
+            summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+            summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+            summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+            resolve({
+              ok: true,
+              json: async () => cloneFixture(fixtures["/api/robot-control/nav2/proof/refresh"]),
+            } as Response);
+          };
+        });
       }
       if (!defaultFetch) {
         throw new Error("missing default fetch mock");
@@ -6834,7 +6843,16 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(false);
     const mapPreviewCallsBeforePrepare = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
-    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    const prepareClick = wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备路线中（不发车）");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    const finishNav2Refresh = nav2RefreshControl.finish;
+    if (!finishNav2Refresh) {
+      throw new Error("nav2 proof refresh request was not captured");
+    }
+    finishNav2Refresh();
+    await prepareClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
     await flushPromises();
