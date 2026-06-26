@@ -839,8 +839,9 @@ function listenRobotApiReadbackByPath(
 
 function listenRobotCameraProxyApi(
   handlers: Record<string, { payload: unknown; statusCode?: number }>,
-): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+): Promise<{ baseUrl: string; close: () => Promise<void>; receivedBodies: Record<string, unknown[]> }> {
   // camera proxy 测试需要按固定 POST 路径返回 JSON，验证 workstation 不会退化成任意代理。
+  const receivedBodies: Record<string, unknown[]> = {};
   const server = http.createServer((req, res) => {
     const url = req.url ?? "/";
     const handler = handlers[url];
@@ -855,6 +856,10 @@ function listenRobotCameraProxyApi(
       body += chunk.toString();
     });
     req.on("end", () => {
+      if (!receivedBodies[url]) {
+        receivedBodies[url] = [];
+      }
+      receivedBodies[url].push(body ? JSON.parse(body) : {});
       res.statusCode = handler.statusCode ?? 200;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ ...(handler.payload as Record<string, unknown>), echoed_body: body ? JSON.parse(body) : {} }));
@@ -866,6 +871,7 @@ function listenRobotCameraProxyApi(
       const port = typeof address === "object" && address ? address.port : 0;
       resolve({
         baseUrl: `http://127.0.0.1:${port}`,
+        receivedBodies,
         close: () => new Promise((closeResolve, closeReject) => {
           server.close((error) => (error ? closeReject(error) : closeResolve()));
         }),
@@ -7168,6 +7174,67 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.exclusive_camera_claim).toBe(false);
       expect(statusBody.robot_control_executed).toBe(false);
       expect(upstreamRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation camera first-frame probe uses quick source check without backend smoke", async () => {
+    // 普通首屏检查画面不能默认启动 ffmpeg/v4l2 后端矩阵，否则失败时会长时间占住摄像头。
+    const upstream = await listenRobotCameraProxyApi({
+      "/api/camera/first-frame/probe": {
+        statusCode: 503,
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe_proxy",
+          status: "open_failed",
+          probe_payload: {
+            schema: "trashbot.camera_first_frame_probe.v1",
+            status: "open_failed",
+            open_ok: false,
+            read_ok: false,
+            visible_content_proven: false,
+            safe_to_control: false,
+            robot_control_executed: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          },
+          safe_to_control: false,
+          robot_control_executed: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/camera/first-frame/probe?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        remote_http_status: number;
+        status: string;
+        failure_reason: string;
+        probe_key_values: { open_ok: string; visible_content_proven: string };
+        safe_to_control: boolean;
+      };
+
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("probe_failed");
+      expect(body.remote_http_status).toBe(503);
+      expect(body.failure_reason).toBe("probe_http_status_503");
+      expect(body.status).toBe("open_failed");
+      expect(body.probe_key_values.open_ok).toBe("false");
+      expect(body.probe_key_values.visible_content_proven).toBe("false");
+      expect(body.safe_to_control).toBe(false);
+      expect(upstream.receivedBodies["/api/camera/first-frame/probe"]).toEqual([
+        {
+          include_backend_smoke: false,
+          timeout_s: 3,
+          read_call_timeout_s: 4,
+        },
+      ]);
     } finally {
       await workstation.close();
       await upstream.close();

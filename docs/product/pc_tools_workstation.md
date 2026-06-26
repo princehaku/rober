@@ -2680,3 +2680,11 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 `localization.robot_pose_status=map_pose_observed`，并继续显示 `nav2.path_preview_point_count=36`、
 `nav2.path_preview_frame_id=map`。这让普通地图可以把小车位置和图上路线一起贴出来，修复“上车端已有 Nav2 坐标但 PC 仍提示没定位”的缺口；
 但本轮仍没有证明完整 NavigateToPose 执行成功，`safe_to_control=false` 时执行门禁继续保持关闭。
+
+2026-06-26 20:45 起，普通首屏 `检查画面（只读）` 的 PC 代理不再默认请求上车端 `include_backend_smoke=true`，改为固定快速首帧 probe：
+`{include_backend_smoke:false, timeout_s:3, read_call_timeout_s:4}`，PC fetch 超时同步收敛为 12 秒。backend smoke 会调用 ffmpeg/v4l2
+后端矩阵，现场摄像头异常时可能长时间占住 `/dev/video1`；普通用户只需要知道“实时画面是否读到首帧”，因此该深度矩阵不得作为首屏默认动作。
+现场复测中，quick probe 约 5.3 秒返回 `probe_failed/http 503/status=first_frame_timeout/failure_reason=capture_read_call_timeout`，
+`/api/robot-control/camera/mjpeg/status` 仍返回 `shared_capture=true/exclusive_camera_claim=false/client_count=0/upstream_active=false`，
+上车 `/api/camera/health` 返回 `source_usage.status=not_in_use/owner_count=0`。这说明 PC 共享预览不是独占根因；当前真实根因是
+`/dev/video1` 能打开但底层 `capture.read()` 超时。该检查仍只读相机，不调用 manual、Nav2、delivery、stop、free-roam start 或 `/cmd_vel`。
