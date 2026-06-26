@@ -2393,6 +2393,12 @@ Nav2、不发送 manual/keyboard pulse、delivery complete、stop 或 `/cmd_vel`
 execute/latest readback 到地图 WYSIWYG 状态，不自动准备材料、不提交送达、不再次执行 Nav2、不发送 manual/keyboard pulse、
 stop 或 `/cmd_vel`。
 
+2026-06-26 21:55 起，普通首屏“完整 Nav2 路线执行”不再只看 `goal_succeeded + feedback_sample_count>0`：
+如果 latest/execute key values 明确包含 `nav2_goal_execution_proven=false` 或 `robot_control_executed=false`，地图终点 marker
+显示 `到达未证明`，行程 caption 显示 `行程执行：已到达，执行未证明`，本轮进度和送达确认继续要求重新执行完整行程。
+该收紧来自真实上位机 latest 形状，避免把软件/action artifact 误当成真车完整路线执行；它只影响 PC WYSIWYG 与送达 gate，
+不自动执行 Nav2、不提交 delivery、不发送 manual/keyboard pulse、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
+
 2026-06-26 04:12 起，普通首屏点击 `读取行程结果（只读）/重新读取行程（只读）` 后，在 latest 请求未返回期间，
 地图终点 marker 会临时显示 `读取中`，地图 caption 显示 `行程执行：正在读取最近行程结果`，行程进度提示旧结果暂不作为
 当前结论。该状态只等待固定只读 `/api/robot-control/nav2/goal/execution/latest` 返回，不执行 Nav2、不提交 delivery、

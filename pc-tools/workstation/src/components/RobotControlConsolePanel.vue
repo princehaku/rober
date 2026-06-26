@@ -1268,13 +1268,14 @@ function latestNavGoalOverlay() {
   const stale = evidenceIsStale(values);
   const deliveryFailureText = deliveryCompletionFailureText(deliveryCompletionResult.value);
   // 终点 marker 直接表达执行证据，避免把“本轮目标”误读成已经完整到达。
+  const controlUnproven = succeeded && !stale && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values);
   const state = complete && !stale && deliveryCompletionPending.value
     ? "送达确认中"
     : complete && !stale && deliveryFailureText
     ? "送达确认失败"
     : complete && !stale && deliverySuccessReady.value
     ? "已送达"
-    : complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : succeeded ? "到达缺反馈" : "行程未通过";
+    : complete && !stale ? "已到达" : succeeded && stale ? "旧到达" : controlUnproven ? "到达未证明" : succeeded ? "到达缺反馈" : "行程未通过";
   const deliveryText = state === "送达确认中"
     ? "，正在提交送达确认"
     : state === "送达确认失败" ? `，送达确认失败：${deliveryFailureText}`
@@ -3237,6 +3238,9 @@ const plainDeliveryNextActionSummary = computed(() => {
     if (plainTripRadarBlocked.value) {
       return plainRadarDeliveryNextAction(plainTripNeedsFreshRunAfterRadar.value);
     }
+    if (plainTripHasFreshUnprovenControlEvidence.value) {
+      return "下一步：重新执行完整行程。";
+    }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return "下一步：重新读取或执行完整行程。";
     }
@@ -3308,6 +3312,17 @@ function nav2FeedbackSampleCount(values: Record<string, string> | undefined): nu
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+function explicitFalseKeyValue(value: string | undefined): boolean {
+  // 上位机 live latest 会把未证明真车执行写成字符串 false；这类明确信号不能被 success 文案盖过去。
+  return value?.trim().toLowerCase() === "false";
+}
+
+function nav2ExecutionControlProven(values: Record<string, string> | undefined): boolean {
+  // goal_succeeded 只说明 action 返回成功；完整路线还必须没有“执行/真车控制未证明”的显式 false。
+  return !explicitFalseKeyValue(values?.nav2_goal_execution_proven)
+    && !explicitFalseKeyValue(values?.robot_control_executed);
+}
+
 function plainTripFailureReasonText(result: { failure_reason?: string } | null | undefined, values: Record<string, string> | undefined): string {
   // 地图 marker 空间有限；把常见后端英文原因翻译成普通用户能判断的短原因。
   const raw = [
@@ -3352,7 +3367,7 @@ function directNav2ExecutionValues(): Record<string, string> | undefined {
 }
 
 function nav2ExecutionComplete(values: Record<string, string> | undefined): boolean {
-  return nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0;
+  return nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && nav2ExecutionControlProven(values);
 }
 
 function nav2EvidenceValues(): Array<Record<string, string> | undefined> {
@@ -3436,8 +3451,11 @@ function deliveryCompletionFailureText(result: RobotControlDeliveryCompleteRespo
 }
 
 const plainTripHasSucceededEvidence = computed(() => nav2EvidenceValues().some((values) => nav2GoalSucceeded(values)));
+const plainTripHasFreshUnprovenControlEvidence = computed(() => nav2EvidenceValues().some((values) => (
+  nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values) && !evidenceIsStale(values)
+)));
 const plainTripHasFreshIncompleteEvidence = computed(() => nav2EvidenceValues().some((values) => (
-  nav2GoalSucceeded(values) && !nav2ExecutionComplete(values) && !evidenceIsStale(values)
+  nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) === 0 && !evidenceIsStale(values)
 )));
 const plainTripLatestNotProvenEvidence = computed(() => {
   // 直接执行或 latest 已经读到失败时，要告诉普通用户“未通过”，不能继续显示成“没读到”。
@@ -3464,6 +3482,7 @@ function plainTripFailureShortText(): string {
 const plainTripNeedsFreshRunAfterRadar = computed(() => {
   // 雷达未运行时如果已经读到旧/失败/不完整行程，现场需要先恢复传感器，再重新跑本轮路线。
   return plainTripHasFreshIncompleteEvidence.value
+    || plainTripHasFreshUnprovenControlEvidence.value
     || plainTripHasSucceededEvidence.value
     || plainTripLatestNotProvenEvidence.value;
 });
@@ -3525,6 +3544,9 @@ const plainDeliverySummary = computed(() => {
     };
   }
   if (deliveryLatestResult.value || deliveryGapCheckResult.value || deliveryCompletionResult.value || navGoalExecutionLatestResult.value) {
+    if (plainTripHasFreshUnprovenControlEvidence.value) {
+      return { state: "待行程结果", hint: "最近行程有成功结果和反馈，但真车执行未证明，需要重新执行完整行程。" };
+    }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return { state: "待行程结果", hint: "最近行程缺少反馈样本，需要重新读取或执行完整行程。" };
     }
@@ -3652,6 +3674,9 @@ const plainDeliveryConfirmSummary = computed(() => {
     if (plainTripRadarBlocked.value) {
       return { state: "待行程", hint: plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) };
     }
+    if (plainTripHasFreshUnprovenControlEvidence.value) {
+      return { state: "待行程", hint: "最近行程未证明真车执行，先重新执行完整行程。" };
+    }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return { state: "待行程", hint: "最近行程缺少反馈样本，先重新读取或执行完整行程。" };
     }
@@ -3703,7 +3728,7 @@ const deliveryClosureChecklist = computed(() => {
       ready: deliveryNav2GoalReady.value && !deliveryGateMissing("nav2_goal_succeeded"),
       hint: deliveryNav2GoalReady.value
         ? "已有本轮 goal_succeeded 和反馈样本"
-        : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText().replace("需要", "需").replace(/。$/, "") : "先读取或执行最近 Nav2 目标",
+        : plainTripHasFreshUnprovenControlEvidence.value ? "已有 goal_succeeded 和反馈，但真车执行未证明" : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText().replace("需要", "需").replace(/。$/, "") : "先读取或执行最近 Nav2 目标",
     },
     {
       id: "operator_report_ready",
@@ -3815,7 +3840,7 @@ const goalClosureChecklist = computed(() => {
       hint: nav2Ready
         ? "已有本轮 goal_succeeded 和反馈样本"
         : plainTripRadarBlocked.value ? plainRadarTripClosureHint(plainTripNeedsFreshRunAfterRadar.value)
-        : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本，需重新读取或执行完整行程" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText().replace("需要", "需").replace(/。$/, "") : "读取最近 Nav2 结果或执行受限目标后确认",
+        : plainTripHasFreshUnprovenControlEvidence.value ? "已有 goal_succeeded 和反馈，但真车执行未证明，需重新执行完整行程" : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本，需重新读取或执行完整行程" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText().replace("需要", "需").replace(/。$/, "") : "读取最近 Nav2 结果或执行受限目标后确认",
     },
     {
       id: "delivery_success",
@@ -4000,7 +4025,9 @@ const plainTripEvidenceSummary = computed(() => {
   const feedbackCount = values?.feedback_sample_count ?? values?.nav2_feedback_sample_count;
   const hasFeedbackSamples = nav2FeedbackSampleCount(values) > 0;
   const feedbackText = hasFeedbackSamples ? `，反馈 ${feedbackCount} 次` : "，未读到反馈样本";
-  const nextText = hasFeedbackSamples ? "送达仍需现场确认。" : "需重新读取或执行完整行程。";
+  const nextText = hasFeedbackSamples
+    ? nav2ExecutionControlProven(values) ? "送达仍需现场确认。" : "真车执行未证明，需重新执行完整行程。"
+    : "需重新读取或执行完整行程。";
   return `最近行程成功${feedbackText}${formatEvidenceAge(values)}；${nextText}`;
 });
 
@@ -4087,6 +4114,9 @@ function plainMapTripExecutionLabel(): string {
   if (nav2GoalSucceeded(values) && evidenceIsStale(values)) {
     return "行程执行：旧到达记录";
   }
+  if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
+    return "行程执行：已到达，执行未证明";
+  }
   if (nav2GoalSucceeded(values)) {
     return "行程执行：已到达，缺反馈";
   }
@@ -4122,6 +4152,9 @@ const plainTripExecutionProgress = computed(() => {
     const feedbackText = nav2FeedbackSampleCount(values) > 0 ? `，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈` : "，未读到反馈样本";
     return `行程进度：读到旧的到达记录${feedbackText}${ageText}。`;
   }
+  if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
+    return `行程进度：已到达并读到 ${nav2FeedbackSampleCount(values)} 次反馈，但真车执行未证明${ageText}；重新执行完整行程。`;
+  }
   if (nav2GoalSucceeded(values)) {
     return `行程进度：已到达，但没有执行反馈样本${ageText}；重新读取或执行完整行程。`;
   }
@@ -4150,7 +4183,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText() : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
+        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshUnprovenControlEvidence.value ? "最近行程未证明真车执行，需要重新执行完整行程。" : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText() : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选行程前确认。`) : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -4267,6 +4300,9 @@ const plainGoalProgressBlockerSummary = computed(() => {
   if (!deliveryNav2GoalReady.value) {
     if (plainTripRadarBlocked.value) {
       return `验收卡点：${plainRadarTripClosureHint(plainTripNeedsFreshRunAfterRadar.value).replace("完整行程", "本轮行程")}。`;
+    }
+    if (plainTripHasFreshUnprovenControlEvidence.value) {
+      return "验收卡点：行程有成功结果和反馈，但真车执行未证明，需要重新执行完整行程。";
     }
     if (plainTripHasFreshIncompleteEvidence.value) {
       return "验收卡点：行程成功但缺少反馈样本，需要重新读取或执行完整行程。";
@@ -4395,6 +4431,9 @@ const plainTripSummary = computed(() => {
   if (deliveryNav2GoalReady.value) {
     return { state: "已完成", hint: plainTripEvidenceSummary.value || "已读到最近行程完成，可以准备送达材料。" };
   }
+  if (plainTripHasFreshUnprovenControlEvidence.value) {
+    return { state: "需复验", hint: plainTripEvidenceSummary.value || "最近行程未证明真车执行，需要重新执行完整行程。" };
+  }
   if (plainTripHasFreshIncompleteEvidence.value) {
     return { state: "需复验", hint: plainTripEvidenceSummary.value || "最近行程缺少反馈样本，需要重新读取或执行完整行程。" };
   }
@@ -4495,6 +4534,9 @@ const plainTripRunStatus = computed(() => {
   }
   if (plainTripHasFreshIncompleteEvidence.value) {
     return "行程状态：最近行程缺少反馈样本，重新读取或重新执行后再送达。";
+  }
+  if (plainTripHasFreshUnprovenControlEvidence.value) {
+    return "行程状态：最近行程未证明真车执行，重新执行完整行程后再送达。";
   }
   if (plainTripLatestNotProvenEvidence.value) {
     return `行程状态：${plainTripFailureSummaryText().replace("需要", "先")}`;
