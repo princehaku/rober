@@ -410,6 +410,14 @@ const fixtures: Record<string, unknown> = {
         status: "camera_health_not_proven",
         devices_status: "camera_devices_not_proven",
         preview_status: "idle_not_started",
+        shared_preview_client_count: "0",
+        shared_preview_upstream_active: "false",
+        shared_preview_content_type_loaded: "false",
+        shared_preview_shared_capture: "true",
+        shared_preview_exclusive_camera_claim: "false",
+        shared_preview_last_failure_reason: "none",
+        shared_preview_last_remote_http_status: "none",
+        shared_preview_last_failure_at_ms: "none",
         video_source: "/dev/video1",
         video_source_mode: "auto",
         selected_path: "/dev/video1",
@@ -1125,6 +1133,9 @@ const fixtures: Record<string, unknown> = {
     content_type: "multipart/x-mixed-replace; boundary=roberframe",
     shared_capture: true,
     exclusive_camera_claim: false,
+    last_failure_reason: "",
+    last_remote_http_status: null,
+    last_failure_at_ms: null,
     failure_reason: "",
     blocked_reasons: [],
     ...PROOF_FLAGS,
@@ -14877,6 +14888,33 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示真实视频帧。浏览器已绘制视频帧 640x480。");
     expect(wrapper.find("details").text()).toContain("peer-preview-001");
     expect(wrapper.find("details").text()).toContain("streaming");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("shows shared camera preview state from Robot Control summary before status polling returns", async () => {
+    // 首屏 summary 已经带共享 MJPEG relay 摘要；单独 status 接口失败时也要把谁在看、是否上游连接说清楚。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "ready";
+    summaryFixture.readback_summary.camera.preview_status = "streaming";
+    summaryFixture.readback_summary.camera.shared_preview_client_count = "3";
+    summaryFixture.readback_summary.camera.shared_preview_upstream_active = "true";
+    summaryFixture.readback_summary.camera.shared_preview_content_type_loaded = "true";
+    summaryFixture.readback_summary.camera.shared_preview_shared_capture = "true";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": {
+        ...(fixtures["/api/robot-control/camera/mjpeg/status"] as Record<string, unknown>),
+        proxy_status: "status_rejected",
+        failure_reason: "status_fixture_rejected",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：3 个页面观看，上游已连接，已拿到视频边界；PC 只复用同一条上游流。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

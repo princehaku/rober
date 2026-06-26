@@ -1036,6 +1036,7 @@ function lidarSummaryFromReadbacks(
 function cameraSummaryFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
+  mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = null,
 ): RobotControlSummaryResponse["readback_summary"]["camera"] {
   // Camera 诊断只取 health/devices 的短字段；普通首屏仍只显示简化状态，工程细节留在高级诊断。
   const healthReadback = readbackById(readbacks, "camera_health");
@@ -1068,10 +1069,28 @@ function cameraSummaryFromReadbacks(
   const sourceFailureReason = probeFailed && ["", "none", "not_loaded"].includes(rawSourceFailureReason)
     ? probeFailureReason || "first_frame_probe_failed"
     : rawSourceFailureReason;
+  const sharedPreviewStatus = mjpegRelayOverlay?.upstream_active === true
+    ? mjpegRelayOverlay.content_type_loaded
+      ? "streaming"
+      : "starting_local_peer"
+    : "idle_not_started";
   return {
     status: healthReadback?.status ?? "not_loaded",
     devices_status: devicesReadback?.status ?? "not_loaded",
-    preview_status: "idle_not_started",
+    // MJPEG relay 状态来自 PC Node 内存表；它只说明共享上游是否存在，不证明画面像素已经可见。
+    preview_status: sharedPreviewStatus,
+    shared_preview_client_count: compactValueText(mjpegRelayOverlay?.client_count ?? 0),
+    shared_preview_upstream_active: compactValueText(mjpegRelayOverlay?.upstream_active === true),
+    shared_preview_content_type_loaded: compactValueText(mjpegRelayOverlay?.content_type_loaded === true),
+    shared_preview_shared_capture: compactValueText(true),
+    shared_preview_exclusive_camera_claim: compactValueText(false),
+    shared_preview_last_failure_reason: mjpegRelayOverlay?.last_failure_reason || "none",
+    shared_preview_last_remote_http_status: mjpegRelayOverlay?.last_remote_http_status === null || mjpegRelayOverlay?.last_remote_http_status === undefined
+      ? "none"
+      : compactValueText(mjpegRelayOverlay.last_remote_http_status),
+    shared_preview_last_failure_at_ms: mjpegRelayOverlay?.last_failure_at_ms === null || mjpegRelayOverlay?.last_failure_at_ms === undefined
+      ? "none"
+      : compactValueText(mjpegRelayOverlay.last_failure_at_ms),
     video_source: summaryValueText(healthPayload, ["video_source"]),
     video_source_mode: summaryValueText(healthPayload, ["video_source_mode"]),
     selected_path: asString(currentSelection?.selected_path ?? sourceSummarySelection?.selected_path),
@@ -1100,6 +1119,17 @@ export type RobotControlCameraFirstFrameProbeOverlay = {
   open_ok: string;
   read_ok: string;
   visible_content_proven: string;
+};
+
+export type RobotControlCameraMjpegRelayOverlay = {
+  client_count: number;
+  upstream_active: boolean;
+  content_type_loaded: boolean;
+  shared_capture: true;
+  exclusive_camera_claim: false;
+  last_failure_reason: string;
+  last_remote_http_status: number | null;
+  last_failure_at_ms: number | null;
 };
 
 function compactTrueFields(fields: string[]): string[] {
@@ -3048,6 +3078,14 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         status: "not_loaded",
         devices_status: "not_loaded",
         preview_status: "idle_not_started",
+        shared_preview_client_count: "0",
+        shared_preview_upstream_active: "false",
+        shared_preview_content_type_loaded: "false",
+        shared_preview_shared_capture: "true",
+        shared_preview_exclusive_camera_claim: "false",
+        shared_preview_last_failure_reason: "none",
+        shared_preview_last_remote_http_status: "none",
+        shared_preview_last_failure_at_ms: "none",
         video_source: "not_loaded",
         video_source_mode: "not_loaded",
         selected_path: "not_loaded",
@@ -3443,6 +3481,7 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
 export async function buildRobotControlSummary(
   baseUrl: string,
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
+  mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = null,
 ): Promise<RobotControlSummaryResponse> {
   // 这是 PC Robot Control Console V1 的唯一 Robot API 入口；浏览器永远不直连上位机。
   const normalized = normalizeRobotApiBaseUrl(baseUrl);
@@ -3509,7 +3548,7 @@ export async function buildRobotControlSummary(
       last_refresh_ms: observedAt,
     },
     readback_summary: {
-      camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay),
+      camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay, mjpegRelayOverlay),
       lidar: lidarSummaryFromReadbacks(readbacks),
       base: baseSummaryFromReadbacks(readbacks),
       map: mapSummaryFromReadbacks(readbacks, proofSummary),

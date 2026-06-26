@@ -2358,6 +2358,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       status: string;
       devices_status: string;
       preview_status: RobotControlPreviewStatus;
+      shared_preview_client_count: string;
+      shared_preview_upstream_active: string;
+      shared_preview_content_type_loaded: string;
+      shared_preview_shared_capture: string;
+      shared_preview_exclusive_camera_claim: string;
+      shared_preview_last_failure_reason: string;
+      shared_preview_last_remote_http_status: string;
+      shared_preview_last_failure_at_ms: string;
       video_source: string;
       video_source_mode: string;
       selected_path: string;
@@ -2793,6 +2801,9 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   content_type: string;
   shared_capture: true;
   exclusive_camera_claim: false;
+  last_failure_reason: string;
+  last_remote_http_status: number | null;
+  last_failure_at_ms: number | null;
   failure_reason: string;
   blocked_reasons: string[];
   robot_control_executed: false;

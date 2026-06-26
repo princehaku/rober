@@ -82,7 +82,10 @@ import type {
   RobotControlDeliveryLatestResponse,
   RobotControlDeliveryGapCheckResponse,
 } from "../shared/contracts";
-import type { RobotControlCameraFirstFrameProbeOverlay } from "./robotControlSummary";
+import type {
+  RobotControlCameraFirstFrameProbeOverlay,
+  RobotControlCameraMjpegRelayOverlay,
+} from "./robotControlSummary";
 
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
@@ -155,8 +158,15 @@ type CameraMjpegRelay = {
   upstreamActive: boolean;
 };
 
+type CameraMjpegRelayLastFailure = {
+  failure_reason: string;
+  remote_http_status: number | null;
+  failed_at_ms: number;
+};
+
 let nextCameraMjpegRelayClientId = 1;
 const cameraMjpegRelays = new Map<string, CameraMjpegRelay>();
+const cameraMjpegRelayLastFailures = new Map<string, CameraMjpegRelayLastFailure>();
 const cameraFirstFrameProbeOverlays = new Map<string, RobotControlCameraFirstFrameProbeOverlay>();
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -1121,6 +1131,7 @@ function cameraMjpegStatusResponse(
 ): RobotControlCameraMjpegStatusResponse {
   // 这个端点只读本机 relay 状态，帮助现场判断多个 PC 页面是否共享同一个上游视频流。
   const relayKey = normalizedBaseUrl ? cameraMjpegRelayKey(normalizedBaseUrl) : "not_loaded";
+  const lastFailure = normalizedBaseUrl ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -1135,6 +1146,9 @@ function cameraMjpegStatusResponse(
     content_type: relay?.contentType ?? "",
     shared_capture: true,
     exclusive_camera_claim: false,
+    last_failure_reason: lastFailure?.failure_reason ?? "",
+    last_remote_http_status: lastFailure?.remote_http_status ?? null,
+    last_failure_at_ms: lastFailure?.failed_at_ms ?? null,
     failure_reason: failureReason,
     blocked_reasons: failureReason ? [failureReason] : [],
     robot_control_executed: false,
@@ -1169,6 +1183,11 @@ function removeCameraMjpegClient(relay: CameraMjpegRelay, client: CameraMjpegRel
 
 function endCameraMjpegRelayClients(relay: CameraMjpegRelay, status: number, error: string, remoteStatus: number | null): void {
   // 上游失败时只收口所有预览响应；不能影响 summary、键盘或 Nav2 代理。
+  cameraMjpegRelayLastFailures.set(relay.key, {
+    failure_reason: error,
+    remote_http_status: remoteStatus,
+    failed_at_ms: Date.now(),
+  });
   const clients = Array.from(relay.clients);
   relay.clients.clear();
   cameraMjpegRelays.delete(relay.key);
@@ -1208,6 +1227,7 @@ async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<v
       return;
     }
     relay.contentType = contentType;
+    cameraMjpegRelayLastFailures.delete(relay.key);
     for (const client of relay.clients) {
       startCameraMjpegClient(client, contentType);
     }
@@ -1421,10 +1441,36 @@ export function createWorkstationApp(): express.Express {
     // Robot Control V1 只读代理默认连固定上位机；危险 URL 仍由 summary builder fail-closed。
     const sourceBaseUrl = robotControlSummaryQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
-    const overlay = normalized.ok
-      ? cameraFirstFrameProbeOverlays.get(cameraMjpegRelayKey(normalized.normalized)) ?? null
+    const relayKey = normalized.ok ? cameraMjpegRelayKey(normalized.normalized) : "";
+    const firstFrameOverlay = normalized.ok
+      ? cameraFirstFrameProbeOverlays.get(relayKey) ?? null
       : null;
-    res.json(await buildRobotControlSummary(sourceBaseUrl, overlay));
+    const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
+    const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
+    const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
+      ? {
+        client_count: relay.clients.size,
+        upstream_active: relay.upstreamActive,
+        content_type_loaded: Boolean(relay.contentType),
+        shared_capture: true,
+        exclusive_camera_claim: false,
+        last_failure_reason: lastFailure?.failure_reason ?? "",
+        last_remote_http_status: lastFailure?.remote_http_status ?? null,
+        last_failure_at_ms: lastFailure?.failed_at_ms ?? null,
+      }
+      : lastFailure
+        ? {
+          client_count: 0,
+          upstream_active: false,
+          content_type_loaded: false,
+          shared_capture: true,
+          exclusive_camera_claim: false,
+          last_failure_reason: lastFailure.failure_reason,
+          last_remote_http_status: lastFailure.remote_http_status,
+          last_failure_at_ms: lastFailure.failed_at_ms,
+        }
+        : null;
+    res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay));
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {

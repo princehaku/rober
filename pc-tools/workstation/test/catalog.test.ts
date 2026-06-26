@@ -38,6 +38,7 @@ import {
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
 import { createWorkstationApp, listenFailureHint, robotControlFixedProxyQueryBaseUrl, robotControlReadOnlyQueryBaseUrl, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
+import type { RobotControlCameraMjpegStatusResponse, RobotControlSummaryResponse } from "../src/shared/contracts";
 import { WORKSTATION_DEV_API_PROXY_TARGET, WORKSTATION_DEV_PORT, WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../src/shared/workstationDefaults";
 
 function sampleStatus(evidenceRef: string) {
@@ -3933,6 +3934,15 @@ describe("workstation fail-closed API contracts", () => {
         path_point_count: "0",
         path_preview_point_count: "0",
       });
+      expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
+      expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
+      expect(summary.readback_summary.camera.shared_preview_upstream_active).toBe("false");
+      expect(summary.readback_summary.camera.shared_preview_content_type_loaded).toBe("false");
+      expect(summary.readback_summary.camera.shared_preview_shared_capture).toBe("true");
+      expect(summary.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
+      expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("none");
+      expect(summary.readback_summary.camera.shared_preview_last_remote_http_status).toBe("none");
+      expect(summary.readback_summary.camera.shared_preview_last_failure_at_ms).toBe("none");
       expect(summary.safe_command_boundary.manual_endpoint).toBe("/api/base/manual");
       expect(summary.safe_command_boundary.stop_endpoint).toBe("/api/base/stop");
       expect(summary.safe_command_boundary.cmd_vel_topic).toBe("/cmd_vel");
@@ -7171,6 +7181,22 @@ describe("workstation fail-closed API contracts", () => {
       const firstText = await response.waitForText("jpeg");
       expect(firstText).toContain("Content-Type: image/jpeg");
       expect(firstText).toContain("jpeg");
+      const summaryResponse = await fetch(
+        `${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`,
+      );
+      const summaryBody = (await summaryResponse.json()) as RobotControlSummaryResponse;
+      expect(summaryResponse.status).toBe(200);
+      expect(summaryBody.readback_summary.camera.preview_status).toBe("streaming");
+      expect(Number(summaryBody.readback_summary.camera.shared_preview_client_count)).toBeGreaterThan(0);
+      expect(summaryBody.readback_summary.camera.shared_preview_upstream_active).toBe("true");
+      expect(summaryBody.readback_summary.camera.shared_preview_content_type_loaded).toBe("true");
+      expect(summaryBody.readback_summary.camera.shared_preview_shared_capture).toBe("true");
+      expect(summaryBody.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
+      expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("none");
+      expect(summaryBody.readback_summary.camera.shared_preview_last_remote_http_status).toBe("none");
+      expect(summaryBody.readback_summary.camera.shared_preview_last_failure_at_ms).toBe("none");
+      expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
+      expect(upstreamRequestCount).toBe(1);
 
       upstreamControl.release?.();
       const secondResponse = await secondResponsePromise;
@@ -7219,6 +7245,9 @@ describe("workstation fail-closed API contracts", () => {
         content_type_loaded: boolean;
         shared_capture: boolean;
         exclusive_camera_claim: boolean;
+        last_failure_reason: string;
+        last_remote_http_status: number | null;
+        last_failure_at_ms: number | null;
         robot_control_executed: boolean;
       };
       expect(statusResponse.status).toBe(200);
@@ -7228,8 +7257,69 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.content_type_loaded).toBe(false);
       expect(statusBody.shared_capture).toBe(true);
       expect(statusBody.exclusive_camera_claim).toBe(false);
+      expect(statusBody.last_failure_reason).toBe("");
+      expect(statusBody.last_remote_http_status).toBe(null);
+      expect(statusBody.last_failure_at_ms).toBe(null);
       expect(statusBody.robot_control_executed).toBe(false);
       expect(upstreamRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation camera MJPEG status and summary remember the latest upstream failure", async () => {
+    // 真实现场若上位机 MJPEG 返回 502，首屏不能退化成“没人观看”；要留下最近失败原因。
+    let upstreamRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        upstreamRequestCount += 1;
+        res.statusCode = 502;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ error: "camera_backend_unavailable" }));
+        return;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const mjpegResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const mjpegBody = await mjpegResponse.json() as { error: string; remote_http_status: number };
+      expect(mjpegResponse.status).toBe(502);
+      expect(mjpegBody.error).toBe("camera_mjpeg_proxy_failed");
+      expect(mjpegBody.remote_http_status).toBe(502);
+
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+      expect(statusBody.proxy_status).toBe("status_loaded");
+      expect(statusBody.client_count).toBe(0);
+      expect(statusBody.upstream_active).toBe(false);
+      expect(statusBody.last_failure_reason).toBe("camera_mjpeg_proxy_failed");
+      expect(statusBody.last_remote_http_status).toBe(502);
+      expect(typeof statusBody.last_failure_at_ms).toBe("number");
+
+      const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
+      expect(summaryBody.readback_summary.camera.preview_status).toBe("idle_not_started");
+      expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_mjpeg_proxy_failed");
+      expect(summaryBody.readback_summary.camera.shared_preview_last_remote_http_status).toBe("502");
+      expect(Number(summaryBody.readback_summary.camera.shared_preview_last_failure_at_ms)).toBeGreaterThan(0);
+      expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
+      expect(upstreamRequestCount).toBe(1);
     } finally {
       await workstation.close();
       await upstream.close();
