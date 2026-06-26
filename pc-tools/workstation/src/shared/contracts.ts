@@ -2363,6 +2363,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       selected_path: string;
       source_readiness: string;
       source_failure_reason: string;
+      source_usage_status: string;
+      source_usage_owner_count: string;
+      source_usage_summary: string;
       active_peer_count: string;
       last_offer_error: string;
       last_offer_failure_reason: string;

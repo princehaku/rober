@@ -307,6 +307,88 @@ def run_readonly_command(args: list[str], timeout_s: float = COMMAND_TIMEOUT_S) 
     }
 
 
+def _read_proc_text(path: Path, limit: int = 240) -> str:
+    """procfs 文本只用于诊断展示；读不到时返回空串而不是影响 health。"""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    return text.replace("\x00", " ").strip()[:limit]
+
+
+def collect_device_usage(path: str | None) -> dict[str, Any]:
+    """扫描 /proc/fd 判断视频源是否被占用；该诊断不会打开摄像头。"""
+    if not path:
+        return {"checked": False, "reason": "no_selected_source", "opens_camera": False}
+    if not os.path.exists(path):
+        return {"checked": True, "device": path, "status": "source_missing", "owner_count": 0, "owners": [], "opens_camera": False}
+    try:
+        target_realpath = os.path.realpath(path)
+    except OSError:
+        target_realpath = path
+
+    owners: list[dict[str, Any]] = []
+    scan_errors = 0
+    current_pid = os.getpid()
+    for proc_dir in sorted(Path("/proc").glob("[0-9]*"), key=lambda item: item.name):
+        pid_text = proc_dir.name
+        fd_dir = proc_dir / "fd"
+        try:
+            fd_paths = list(fd_dir.iterdir())
+        except OSError:
+            scan_errors += 1
+            continue
+        matched_fds: list[str] = []
+        for fd_path in fd_paths:
+            try:
+                link_target = os.readlink(fd_path)
+            except OSError:
+                continue
+            try:
+                same_device = os.path.realpath(link_target) == target_realpath
+            except OSError:
+                same_device = link_target == path
+            if same_device or link_target == path:
+                matched_fds.append(fd_path.name)
+        if not matched_fds:
+            continue
+        command = _read_proc_text(proc_dir / "cmdline") or _read_proc_text(proc_dir / "comm")
+        owners.append(
+            {
+                "pid": int(pid_text),
+                "self": int(pid_text) == current_pid,
+                "fds": matched_fds[:8],
+                "command": command[:180],
+            }
+        )
+
+    other_owners = [owner for owner in owners if not owner.get("self")]
+    probe_owners = [
+        owner
+        for owner in other_owners
+        if any(token in str(owner.get("command") or "") for token in ("camera_first_frame_probe", "v4l2-ctl", "ffmpeg"))
+    ]
+    if probe_owners:
+        status = "in_use_by_probe"
+    elif other_owners:
+        status = "in_use_by_other_process"
+    elif owners:
+        status = "in_use_by_camera_service"
+    else:
+        status = "not_in_use"
+    return {
+        "checked": True,
+        "device": path,
+        "realpath": target_realpath,
+        "status": status,
+        "owner_count": len(owners),
+        "other_owner_count": len(other_owners),
+        "owners": owners[:8],
+        "scan_error_count": scan_errors,
+        "opens_camera": False,
+    }
+
+
 def parse_v4l2_device_names(list_devices_text: str) -> dict[str, str]:
     """把 v4l2-ctl block 输出压成 path->设备名，供 auto 选源排序。"""
     mapping: dict[str, str] = {}
@@ -770,6 +852,7 @@ class CameraServiceState:
             and last_offer_reason in {"first_frame_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
         )
         source_readiness = "first_frame_failed" if source_failed else ("source_selected_not_probed" if selected_path else "no_video_source")
+        source_usage = collect_device_usage(str(selected_path) if selected_path else None)
         return {
             "schema": SCHEMA,
             "app": APP_NAME,
@@ -780,6 +863,7 @@ class CameraServiceState:
             "requested_video_source": self.video_source,
             "source_readiness": source_readiness,
             "source_failure_reason": last_offer_reason if source_failed else "",
+            "source_usage": source_usage,
             "width": self.width,
             "height": self.height,
             "fps": self.fps,
@@ -794,6 +878,7 @@ class CameraServiceState:
                 "shared_captures": {source: shared.summary() for source, shared in self.shared_captures.items()},
                 "last_closed_peer": self.last_closed_peer,
                 "last_offer_error": self.last_offer_error,
+                "source_usage": source_usage,
             },
             "source_summary": source_candidates_summary(snapshot, selection),
             "source_candidates_summary": source_candidates_summary(snapshot, selection),
@@ -1149,6 +1234,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 
 class CameraHTTPServer(ThreadingHTTPServer):
     """HTTPServer 扩展一个 state 字段，避免全局变量污染测试。"""
+
+    allow_reuse_address = True
 
     def __init__(self, server_address: tuple[str, int], state: CameraServiceState) -> None:
         super().__init__(server_address, CameraRequestHandler)

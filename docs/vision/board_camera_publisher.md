@@ -813,3 +813,14 @@ manual/keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`。
 
 当前真实上位机仍可能返回 `/dev/video1` 已选择但 `capture_read_returned_false`。该状态表示底层 V4L2/OpenCV
 没有拿到实际帧，仍需现场检查摄像头、线缆、供电、采集卡或替换 known-good UVC 后复测；不能把设备路径存在解释成画面可用。
+
+## 2026-06-26 19:42 camera source usage 诊断
+
+上车端 `local_webrtc_camera_smoke.py` 的 `/health` 新增只读 `source_usage`：
+
+- 扫描 `/proc/*/fd` 判断当前选中的 `/dev/video*` 是否被本服务、probe、`v4l2-ctl`、`ffmpeg` 或其它进程持有。
+- 该诊断固定 `opens_camera=false`，不会通过 OpenCV 或 V4L2 打开摄像头，也不会写 V4L2 control。
+- PC summary 会透出 `camera_source_usage_status`、`camera_source_usage_owner_count` 和短摘要。
+- 普通首屏在首帧失败时会区分“相机被进程占用”和“没人占用但底层无帧”。后者说明问题更接近 USB/输入/供电/采集卡，而不是页面独占。
+
+本轮仍不把 `source_usage=not_in_use` 当作图传可用；真实可见画面仍必须由 WebRTC/MJPEG 像素绘制或 first-frame 样张证明。

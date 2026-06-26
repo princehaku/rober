@@ -415,6 +415,9 @@ const fixtures: Record<string, unknown> = {
         selected_path: "/dev/video1",
         source_readiness: "source_selected_not_probed",
         source_failure_reason: "none",
+        source_usage_status: "not_loaded",
+        source_usage_owner_count: "not_loaded",
+        source_usage_summary: "not_loaded",
         active_peer_count: "0",
         last_offer_error: "none",
         last_offer_failure_reason: "none",
@@ -3206,6 +3209,9 @@ function markMappingSensorsReady(summary: RobotControlSummaryResponse | Record<s
   camera.selected_path = "/dev/video1";
   camera.source_readiness = "ready";
   camera.source_failure_reason = "none";
+  camera.source_usage_status = "not_in_use";
+  camera.source_usage_owner_count = "0";
+  camera.source_usage_summary = "none";
   camera.last_offer_error = "none";
   camera.last_offer_failure_reason = "none";
 
@@ -8552,6 +8558,57 @@ describe("App", () => {
     for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
       expect(wrapper.find(".simple-user-console").text()).not.toContain(token);
     }
+  });
+
+  it("shows camera source owner hint when first-frame failure is caused by another holder", async () => {
+    // live health 会返回只读 /proc 占用摘要；首屏只说占用结论，pid 等细节留在高级诊断。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_call_timeout";
+    summaryFixture.readback_summary.camera.source_usage_status = "in_use_by_probe";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "1";
+    summaryFixture.readback_summary.camera.source_usage_summary = "pid=1234 camera_first_frame_probe.py";
+    summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_call_timeout";
+    stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("相机当前被 1 个进程占用，等检查释放或重启相机服务后再打开。");
+    expect(firstScreenText).not.toContain("camera_first_frame_probe");
+    expect(firstScreenText).not.toContain("pid=1234");
+    expect(wrapper.find("details").text()).toContain("camera_source_usage_status");
+    expect(wrapper.find("details").text()).toContain("in_use_by_probe");
+    expect(wrapper.find("details").text()).toContain("pid=1234 camera_first_frame_probe.py");
+  });
+
+  it("shows low-level no-frame hint when camera source is not held by another process", async () => {
+    // 无占用但读不到帧时，问题更可能在 USB/输入/供电，不能继续让用户只查独占。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
+    summaryFixture.readback_summary.camera.source_usage_summary = "none";
+    summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
+    stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("相机当前没人占用，但底层没有读到画面；检查 USB、摄像头输入或供电。");
+    expect(firstScreenText).not.toContain("capture_read_returned_false");
+    expect(firstScreenText).not.toContain("/dev/video1");
+    expect(wrapper.find("details").text()).toContain("camera_source_usage_status");
+    expect(wrapper.find("details").text()).toContain("not_in_use");
   });
 
   it("tells the operator to open the picture when camera readback is online", async () => {

@@ -4890,6 +4890,20 @@ describe("workstation fail-closed API contracts", () => {
           active_peer_count: 0,
           source_readiness: "first_frame_failed",
           source_failure_reason: "first_frame_timeout",
+          source_usage: {
+            checked: true,
+            device: "/dev/video1",
+            status: "in_use_by_probe",
+            owner_count: 1,
+            owners: [
+              {
+                pid: 1234,
+                self: false,
+                command: "camera_first_frame_probe.py --device /dev/video1",
+              },
+            ],
+            opens_camera: false,
+          },
           current_selection: {
             selected_path: "/dev/video1",
           },
@@ -5061,6 +5075,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.selected_path).toBe("/dev/video1");
       expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
       expect(summary.readback_summary.camera.source_failure_reason).toBe("first_frame_timeout");
+      expect(summary.readback_summary.camera.source_usage_status).toBe("in_use_by_probe");
+      expect(summary.readback_summary.camera.source_usage_owner_count).toBe("1");
+      expect(summary.readback_summary.camera.source_usage_summary).toContain("pid=1234");
       expect(summary.readback_summary.camera.active_peer_count).toBe("0");
       expect(summary.readback_summary.camera.last_offer_error).toBe("first_frame_unreadable");
       expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("first_frame_timeout");

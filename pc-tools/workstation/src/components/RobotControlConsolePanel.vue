@@ -396,7 +396,19 @@ function cameraSourcePlainFailureHint(): string {
   const probeFailureHint = cameraProbePlainFailureHint();
   const sourceFailed = cameraSourceFirstFrameFailed(camera);
   if (sourceFailed || probeFailureHint) {
-    return probeFailureHint || "相机没有出画面，检查摄像头/视频线。";
+    if (probeFailureHint) {
+      return probeFailureHint;
+    }
+    if (camera?.source_usage_status === "in_use_by_probe" || camera?.source_usage_status === "in_use_by_other_process") {
+      const ownerCount = camera.source_usage_owner_count && camera.source_usage_owner_count !== "not_loaded"
+        ? camera.source_usage_owner_count
+        : "其他";
+      return `相机当前被 ${ownerCount} 个进程占用，等检查释放或重启相机服务后再打开。`;
+    }
+    if (camera?.source_usage_status === "not_in_use") {
+      return "相机当前没人占用，但底层没有读到画面；检查 USB、摄像头输入或供电。";
+    }
+    return "相机没有出画面，检查摄像头/视频线。";
   }
   const rawLastOfferReason = camera?.last_offer_failure_reason || camera?.last_offer_error || "";
   const lastOfferReason = ["", "none", "not_loaded"].includes(rawLastOfferReason) ? "" : rawLastOfferReason;
@@ -9855,6 +9867,12 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.source_readiness ?? "not_loaded" }}</dd>
             <dt>camera_source_failure_reason</dt>
             <dd>{{ robotSummary?.readback_summary.camera.source_failure_reason ?? "none" }}</dd>
+            <dt>camera_source_usage_status</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_usage_status ?? "not_loaded" }}</dd>
+            <dt>camera_source_usage_owner_count</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_usage_owner_count ?? "not_loaded" }}</dd>
+            <dt>camera_source_usage_summary</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_usage_summary ?? "none" }}</dd>
             <dt>camera_active_peer_count</dt>
             <dd>{{ robotSummary?.readback_summary.camera.active_peer_count ?? "not_loaded" }}</dd>
             <dt>camera_last_offer_error</dt>

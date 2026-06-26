@@ -462,6 +462,42 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 
+    def test_health_reports_selected_source_usage_without_opening_camera(self) -> None:
+        """health 要能解释占用状态，但不能通过 OpenCV 或 V4L2 打开摄像头。"""
+        state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
+        snapshot = {
+            "candidates": [
+                {
+                    "path": "/dev/video1",
+                    "exists": True,
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                    "v4l2_name": "USB camera",
+                    "sysfs_name": "USB camera",
+                }
+            ]
+        }
+        usage = {
+            "checked": True,
+            "device": "/dev/video1",
+            "status": "in_use_by_probe",
+            "owner_count": 1,
+            "other_owner_count": 1,
+            "owners": [{"pid": 1234, "self": False, "command": "camera_first_frame_probe.py"}],
+            "opens_camera": False,
+        }
+
+        with mock.patch.object(camera, "collect_video_candidates", return_value=snapshot):
+            with mock.patch.object(camera, "collect_device_usage", return_value=usage) as usage_mock:
+                payload = state.health()
+
+        usage_mock.assert_called_once_with("/dev/video1")
+        self.assertEqual(usage, payload["source_usage"])
+        self.assertEqual(usage, payload["media_diagnostics"]["source_usage"])
+        self.assertFalse(payload["source_usage"]["opens_camera"])
+
 
 if __name__ == "__main__":
     unittest.main()

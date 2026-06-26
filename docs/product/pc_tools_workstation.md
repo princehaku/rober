@@ -2628,3 +2628,11 @@ pulse、delivery、stop 或 `/cmd_vel`。
 和 `exclusive_camera_claim=false`；它不会创建 MJPEG client、不会打开新的相机 reader，也不会调用 manual、Nav2、delivery、stop 或
 `/cmd_vel`。普通首屏“实时画面”卡片同步显示 `共享画面：N 个页面观看，上游已连接/未连接...`，方便现场多人打开页面时判断
 “谁进来都能看”是否成立；真实可见画面仍以 video/MJPEG 像素绘制状态为准。
+
+2026-06-26 19:42 起，Robot Control summary 消费上车端 `/api/camera/health.source_usage`，新增
+`readback_summary.camera.source_usage_status/source_usage_owner_count/source_usage_summary`。当相机源首帧失败时，普通首屏会优先提示
+“相机当前被 N 个进程占用”或“相机当前没人占用，但底层没有读到画面”，高级诊断保留 owner 摘要。该口径只读取上车端只读诊断，不在
+PC 端打开摄像头，不调用 camera offer/MJPEG、manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
+同一轮现场口径确认：普通键盘手控和自由低速自移动不把雷达作为硬门禁；雷达状态在自动扫图里显示为 `雷达监看 / 可降级`。建图记录本身仍要求
+相机和地图/雷达画面所见即所得，Nav2 完整路线执行仍要求定位 TF 链可用，不能因为雷达降级就绕过 `map -> odom -> base_link` 的定位闭环。

@@ -1045,6 +1045,18 @@ function cameraSummaryFromReadbacks(
   const sourceSummarySelection = asRecord(sourceSummary?.current_selection);
   const mediaDiagnostics = asRecord(findFirstKey(healthPayload, ["media_diagnostics"]));
   const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error);
+  const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage);
+  const sourceUsageOwners = Array.isArray(sourceUsage?.owners) ? sourceUsage.owners : [];
+  const sourceUsageSummary = sourceUsageOwners
+    .map((owner) => {
+      const record = asRecord(owner);
+      const pid = record?.pid === undefined ? "" : compactValueText(record.pid);
+      const command = asString(record?.command, "");
+      return [pid ? `pid=${pid}` : "", command].filter(Boolean).join(" ");
+    })
+    .filter(Boolean)
+    .slice(0, 3)
+    .join("; ");
   return {
     status: healthReadback?.status ?? "not_loaded",
     devices_status: devicesReadback?.status ?? "not_loaded",
@@ -1054,6 +1066,9 @@ function cameraSummaryFromReadbacks(
     selected_path: asString(currentSelection?.selected_path ?? sourceSummarySelection?.selected_path),
     source_readiness: summaryValueText(healthPayload, ["source_readiness"]),
     source_failure_reason: summaryValueText(healthPayload, ["source_failure_reason"]),
+    source_usage_status: asString(sourceUsage?.status, "not_loaded"),
+    source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
+    source_usage_summary: sourceUsageSummary || "none",
     active_peer_count: summaryValueText(healthPayload, ["active_peer_count", "active_peer_connections"]),
     last_offer_error: asString(lastOfferError?.error, "none"),
     last_offer_failure_reason: asString(lastOfferError?.failure_reason, "none"),
@@ -2902,6 +2917,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         selected_path: "not_loaded",
         source_readiness: "not_loaded",
         source_failure_reason: "not_loaded",
+        source_usage_status: "not_loaded",
+        source_usage_owner_count: "not_loaded",
+        source_usage_summary: "not_loaded",
         active_peer_count: "not_loaded",
         last_offer_error: "none",
         last_offer_failure_reason: "none",
