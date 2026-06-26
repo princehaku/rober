@@ -92,6 +92,7 @@ const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(nul
 const radarLifecycleResult = ref<RobotControlRadarLifecycleResponse | null>(null);
 const radarStatusResult = ref<RobotControlRadarStatusResponse | null>(null);
 const radarLifecyclePendingAction = ref<"start" | "stop" | null>(null);
+const radarRestartPending = ref(false);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(null);
@@ -249,6 +250,7 @@ const evidenceSweepLines = ref<string[]>([]);
 const plainCameraProbeButton = ref<HTMLButtonElement | null>(null);
 const plainRadarRefreshButton = ref<HTMLButtonElement | null>(null);
 const plainRadarStartButton = ref<HTMLButtonElement | null>(null);
+const plainRadarRestartButton = ref<HTMLButtonElement | null>(null);
 const plainLocalizationResetButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
@@ -1242,6 +1244,15 @@ const plainRadarStartUnavailable = computed(() => {
 const canStartRadarLifecycle = computed(() => (
   !loading.value
   && !radarLifecyclePending.value
+  && !radarRestartPending.value
+  && !mapWysiwygRefreshPending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
+const canRestartRadarLifecycle = computed(() => (
+  !loading.value
+  && !radarLifecyclePending.value
+  && !radarRestartPending.value
+  && !radarRefreshPending.value
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
@@ -1285,6 +1296,10 @@ const plainRadarStartButtonLabel = computed(() => {
   }
   return "启动雷达";
 });
+const showPlainRadarRestart = computed(() => radarSummary.value.state === "雷达无新点");
+const plainRadarRestartButtonLabel = computed(() => (
+  radarRestartPending.value ? "重启中" : "重启雷达"
+));
 const plainLocalizationResetButtonLabel = computed(() => (
   mapWysiwygRefreshPending.value ? "等待地图刷新" : "重新定位"
 ));
@@ -7753,6 +7768,23 @@ async function stopRadarLifecycle(): Promise<void> {
   await runRadarLifecycleAction("stop", () => postRobotControlRadarStop(robotApiBaseUrl.value));
 }
 
+async function restartPlainRadarLifecycle(): Promise<void> {
+  // 雷达无新点时给普通用户一个传感器级恢复动作；只串联 stop/start/refresh，不碰底盘或 /cmd_vel。
+  if (!canRestartRadarLifecycle.value) {
+    return;
+  }
+  radarRestartPending.value = true;
+  try {
+    await stopRadarLifecycle();
+    await startRadarLifecycle();
+    await refreshRadarProof({ focusAfterReady: false });
+  } finally {
+    radarRestartPending.value = false;
+    await nextTick();
+    (plainRadarRefreshButton.value ?? plainRadarRestartButton.value)?.focus({ preventScroll: true });
+  }
+}
+
 async function refreshMapProof(): Promise<void> {
   // Map refresh 只刷新 no-motion map proof snapshot，不开启建图、导航或路径执行。
   if (mapWysiwygRefreshPending.value) {
@@ -9668,6 +9700,9 @@ onBeforeUnmount(() => {
           <div class="panel-action-row">
             <button ref="plainRadarRefreshButton" type="button" :disabled="!canRefreshRadarProof" data-testid="plain-radar-refresh" @click="refreshRadarProof">
               {{ radarProofRefreshButtonLabel }}
+            </button>
+            <button v-if="showPlainRadarRestart" ref="plainRadarRestartButton" type="button" class="secondary compact-stop" :disabled="!canRestartRadarLifecycle" data-testid="plain-radar-restart" @click="restartPlainRadarLifecycle">
+              {{ plainRadarRestartButtonLabel }}
             </button>
             <button v-if="showPlainRadarStart" ref="plainRadarStartButton" type="button" class="secondary compact-stop" :disabled="!canStartRadarLifecycle || plainRadarStartUnavailable" data-testid="plain-radar-start" @click="startPlainRadarLifecycle">
               {{ plainRadarStartButtonLabel }}

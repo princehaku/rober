@@ -2966,3 +2966,10 @@ Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达
 随后 SSH 到 `192.168.1.11:37878` 复核 `/scan`、`/lidar/raw_packet` topic 存在但 `ros2 topic echo --once`
 在 8 秒内没有输出，主 `lidar_driver` 进程仍在。这说明当前雷达问题应查 LiDAR 供电、串口数据或驱动发布链，
 不是 PC 地图刷新、不是底盘运动门禁，也不触发 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
+
+2026-06-27 05:02 起，普通首屏在 `雷达无新点` 状态下新增 `重启雷达` 按钮。
+它只串联已有固定代理 `POST /api/robot-control/radar/stop`、`POST /api/robot-control/radar/start` 和
+`POST /api/robot-control/radar/scan-proof/refresh`，不会调用 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
+live 复测中，stop/start 均返回 `command_result.ok=true` 且 `robot_control_executed=false`，但随后 refresh 仍没有拿到
+`/scan` 或 `/lidar/raw_packet` 新输出，并且上车端 lifecycle 又回到 stopped；这说明 PC 已经具备传感器级恢复入口，
+真实剩余问题仍在雷达 runtime 维持、LiDAR 数据输入或驱动发布链。

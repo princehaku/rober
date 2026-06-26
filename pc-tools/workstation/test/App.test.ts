@@ -4443,7 +4443,19 @@ describe("App", () => {
         dangerous_true_fields: [],
       },
     ];
-    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    const radarStopFixture = cloneFixture(fixtures["/api/robot-control/radar/stop"]) as Record<string, any>;
+    radarStopFixture.command_result = { mode: "systemd_lifecycle", executed: true, ok: true };
+    radarStopFixture.failure_reason = "";
+    radarStopFixture.blocked_reasons = [];
+    const radarStartFixture = cloneFixture(fixtures["/api/robot-control/radar/start"]) as Record<string, any>;
+    radarStartFixture.command_result = { mode: "systemd_lifecycle", executed: true, ok: true };
+    radarStartFixture.failure_reason = "";
+    radarStartFixture.blocked_reasons = [];
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/radar/stop": radarStopFixture,
+      "/api/robot-control/radar/start": radarStartFixture,
+    });
 
     const wrapper = mount(App);
     await flushPromises();
@@ -13810,7 +13822,20 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达无新点，地图位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达驱动在运行，但当前没有读到新的雷达点；这不是地图没刷新。");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("data-state")).toBe("雷达无新点");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').text()).toBe("重启雷达");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/stop?"))).toBe(false);
+
+    await wrapper.find('[data-testid="plain-radar-restart"]').trigger("click");
+    await flushPromises();
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/stop?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
