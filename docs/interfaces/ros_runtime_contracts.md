@@ -57,6 +57,12 @@ O11 还会打开 `command_debug_log_path`，记录 `/cmd_vel` 转换后的 vendo
 Nav2 -> `/cmd_vel` -> PWM bridge 命令链路活了，不等于避障完成、真实轮速闭环、现场安全或
 `delivery_success`。
 
+PC summary/readback contract 从 2026-06-27 起把 O11 latest 的 `base_command_summary` 与
+`base_feedback_summary` 提升到 `readback_summary.nav2.goal_execution_base_*` 字段。普通首屏可据此区分：
+`base_command_nonzero_observed=true` 且 `base_feedback_lr_nonzero_proven=false` 表示 Nav2/bridge
+已发非零底盘命令，但 WAVE ROVER 反馈没有出现非零 `L/R`；排障优先级应转向电机使能、供电、
+底盘模式、控制模式或底盘执行链，而不是继续把问题归因到雷达 freshness 或 Nav2 action server。
+
 PC guard 对该固定 endpoint 只允许预期执行字段为 true，仍必须 fail-closed 拦截
 `safe_to_control=true`、`primary_actions_enabled=true`、`delivery_success=true`、`calls_base_manual=true`
 等越界声明。对于 `POST /api/robot-control/nav2/goal/execute` 和只读

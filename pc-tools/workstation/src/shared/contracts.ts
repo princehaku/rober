@@ -2210,6 +2210,7 @@ export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
     goal_y: number;
     goal_yaw: number;
     result_timeout_s: number;
+    server_timeout_s: number;
   };
   goal_execution_key_values: Record<string, string>;
   failure_reason: string;
@@ -2448,6 +2449,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       goal_execution_evidence_ref: string;
       goal_execution_robot_control_executed: string;
       goal_execution_feedback_sample_count: string;
+      goal_execution_base_command_mode: string;
+      goal_execution_base_command_nonzero_observed: string;
+      goal_execution_base_command_nonzero_count: string;
+      goal_execution_base_feedback_sample_count: string;
+      goal_execution_base_feedback_nonzero_sample_count: string;
+      goal_execution_base_feedback_lr_nonzero_proven: string;
+      goal_execution_base_feedback_latest_left_speed: string;
+      goal_execution_base_feedback_latest_right_speed: string;
       goal_execution_goal_frame_id: string;
       goal_execution_goal_x: string;
       goal_execution_goal_y: string;

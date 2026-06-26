@@ -2849,6 +2849,16 @@ bringup/autonomous 默认回到 vendor `command_mode=speed/T=1`，与硬件 brid
 `T=1001 L/R` 非零闭环；因此 `command_mode=pwm` 只能作为显式 HIL/诊断 override，不能被普通
 自动驾驶入口默认为“已修好可动”。PC 仍应把 wheel raw L/R、LiDAR delta 或外部视频作为真实运动材料。
 
+2026-06-27 02:15 只读复核 `root@192.168.1.11:37878`：`trashbot-upper-robot-api` 与
+`trashbot-local-webrtc-camera` 均 active；相机 `/dev/video1` 仍为 `source_first_frame_failed`、
+`source_usage.status=not_in_use`，说明问题不是 PC 页面独占，而是 UVC 首帧读不到。底盘
+`/api/base/status` 可打开 `/dev/ttyS5 @ 115200` 并读到 13 帧 `T=1001`，电压约
+12.41V，但 `L/R=0/0`。同轮 Nav2 latest 为 `goal_succeeded`，`base_command_nonzero_count=49`，
+`latest_nonzero_command={"T":11,"L":90,"R":-90}`，`base_feedback_sample_count=216`，
+`base_feedback_lr_nonzero_proven=false`。PC 普通首屏现在会把这类结果解释为“Nav2 已发非零底盘命令，
+但底盘反馈 L/R 仍为 0/0；优先查电机使能、供电、底盘模式和控制模式，不是雷达阻塞”，而不是只说
+“真车执行未证明”。
+
 2026-06-27 同步修正 O11 Nav2 执行 helper：托管 `esp32_bridge` 不再硬编码
 `command_mode=speed`，改为 `command_mode=pwm`、`pwm_min_abs/max_abs=90`，并通过
 `feedback_debug_log_path` 记录同轮 WAVE ROVER `T=1001` 左右轮反馈。PC 固定 Nav2 execute/latest 代理允许该

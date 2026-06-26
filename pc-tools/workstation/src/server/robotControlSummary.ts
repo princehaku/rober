@@ -3079,6 +3079,10 @@ function nav2SummaryFromReadbacks(
   const goalExecution = readbackById(readbacks, "nav2_goal_execution_latest");
   const goalPayload = goalExecution?.payload ?? null;
   const goalResultPayload = asRecord(goalPayload?.latest_result) ?? goalPayload;
+  const baseCommandSummary = asRecord(goalResultPayload?.base_command_summary);
+  const baseFeedbackSummary = asRecord(goalResultPayload?.base_feedback_summary);
+  const latestNonzeroPair = asRecord(baseFeedbackSummary?.latest_nonzero_pair);
+  const latestPair = asRecord(baseFeedbackSummary?.latest_pair);
   const goalExecutionStatus = summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded");
   const goalExecutionProven = nav2GoalExecutionProvenText(goalResultPayload);
   const summaryStatus = goalExecutionProven === "true" && goalExecutionStatus !== "not_loaded"
@@ -3100,6 +3104,14 @@ function nav2SummaryFromReadbacks(
     goal_execution_evidence_ref: summaryValueText(goalResultPayload, ["evidence_ref"]),
     goal_execution_robot_control_executed: summaryValueText(goalResultPayload, ["robot_control_executed"]),
     goal_execution_feedback_sample_count: summaryValueText(goalResultPayload, ["feedback_sample_count", "nav2_feedback_sample_count"]),
+    goal_execution_base_command_mode: summaryValueText(goalResultPayload, ["base_command_mode"]),
+    goal_execution_base_command_nonzero_observed: summaryValueText(baseCommandSummary, ["nonzero_command_observed"]),
+    goal_execution_base_command_nonzero_count: summaryValueText(baseCommandSummary, ["nonzero_command_count"]),
+    goal_execution_base_feedback_sample_count: summaryValueText(baseFeedbackSummary, ["sample_count"]),
+    goal_execution_base_feedback_nonzero_sample_count: summaryValueText(baseFeedbackSummary, ["nonzero_sample_count"]),
+    goal_execution_base_feedback_lr_nonzero_proven: summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]),
+    goal_execution_base_feedback_latest_left_speed: summaryValueText(latestNonzeroPair ?? latestPair, ["left_speed"]),
+    goal_execution_base_feedback_latest_right_speed: summaryValueText(latestNonzeroPair ?? latestPair, ["right_speed"]),
     goal_execution_goal_frame_id: summaryValueText(goalResultPayload, ["goal_frame_id", "frame_id"]),
     goal_execution_goal_x: summaryValueText(goalResultPayload, ["goal_x", "x"]),
     goal_execution_goal_y: summaryValueText(goalResultPayload, ["goal_y", "y"]),
@@ -3314,6 +3326,14 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         goal_execution_evidence_ref: "not_loaded",
         goal_execution_robot_control_executed: "not_loaded",
         goal_execution_feedback_sample_count: "not_loaded",
+        goal_execution_base_command_mode: "not_loaded",
+        goal_execution_base_command_nonzero_observed: "not_loaded",
+        goal_execution_base_command_nonzero_count: "not_loaded",
+        goal_execution_base_feedback_sample_count: "not_loaded",
+        goal_execution_base_feedback_nonzero_sample_count: "not_loaded",
+        goal_execution_base_feedback_lr_nonzero_proven: "not_loaded",
+        goal_execution_base_feedback_latest_left_speed: "not_loaded",
+        goal_execution_base_feedback_latest_right_speed: "not_loaded",
         goal_execution_goal_frame_id: "not_loaded",
         goal_execution_goal_x: "not_loaded",
         goal_execution_goal_y: "not_loaded",

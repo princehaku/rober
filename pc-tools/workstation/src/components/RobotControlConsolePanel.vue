@@ -1345,31 +1345,6 @@ function plainRadarTripBlockedNextAction(rerun: boolean): string {
   return rerun ? "下一步：先启动雷达，再重新执行本轮行程。" : "下一步：先启动雷达，再检查或执行行程。";
 }
 
-function plainRadarMappingBlockedHint(): string {
-  // 建图入口要求雷达点位所见即所得；基础键盘手控仍在自己的安全门禁内独立工作。
-  if (plainRadarStartUnavailable.value) {
-    return "雷达还没 ready；上位机雷达启动命令未配置，先配置后再建图。";
-  }
-  if (radarSummary.value.state === "雷达未运行") {
-    return "雷达还没运行；先启动雷达，等雷达已运行后再建图。";
-  }
-  if (plainRadarRequiresRefresh.value) {
-    return "雷达正在运行但还没确认实时点位；先刷新雷达，等雷达已运行后再建图。";
-  }
-  return "雷达还没 ready；先确认雷达已运行后再建图。";
-}
-
-function plainRadarMappingNextAction(): string {
-  // 下一步只引导到传感器按钮，不自动启动雷达或刷新 proof。
-  if (plainRadarStartUnavailable.value) {
-    return "配置雷达";
-  }
-  if (radarSummary.value.state === "雷达未运行") {
-    return "启动雷达";
-  }
-  return "刷新雷达";
-}
-
 function plainRadarDeliveryNextAction(rerun: boolean): string {
   if (plainRadarStartUnavailable.value) {
     return "下一步：先配置雷达启动命令。";
@@ -3939,6 +3914,14 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
   putSummaryNav2Value(values, "evidence_ref", nav2.goal_execution_evidence_ref);
   putSummaryNav2Value(values, "robot_control_executed", nav2.goal_execution_robot_control_executed);
   putSummaryNav2Value(values, "feedback_sample_count", nav2.goal_execution_feedback_sample_count);
+  putSummaryNav2Value(values, "base_command_mode", nav2.goal_execution_base_command_mode);
+  putSummaryNav2Value(values, "base_command_nonzero_observed", nav2.goal_execution_base_command_nonzero_observed);
+  putSummaryNav2Value(values, "base_command_nonzero_count", nav2.goal_execution_base_command_nonzero_count);
+  putSummaryNav2Value(values, "base_feedback_sample_count", nav2.goal_execution_base_feedback_sample_count);
+  putSummaryNav2Value(values, "base_feedback_nonzero_sample_count", nav2.goal_execution_base_feedback_nonzero_sample_count);
+  putSummaryNav2Value(values, "base_feedback_lr_nonzero_proven", nav2.goal_execution_base_feedback_lr_nonzero_proven);
+  putSummaryNav2Value(values, "base_feedback_latest_left_speed", nav2.goal_execution_base_feedback_latest_left_speed);
+  putSummaryNav2Value(values, "base_feedback_latest_right_speed", nav2.goal_execution_base_feedback_latest_right_speed);
   putSummaryNav2Value(values, "goal_frame_id", nav2.goal_execution_goal_frame_id);
   putSummaryNav2Value(values, "goal_x", nav2.goal_execution_goal_x);
   putSummaryNav2Value(values, "goal_y", nav2.goal_execution_goal_y);
@@ -3963,6 +3946,38 @@ function nav2ExecutionControlProven(values: Record<string, string> | undefined):
   return !explicitFalseKeyValue(values?.nav2_goal_execution_proven)
     && !explicitFalseKeyValue(values?.hil_pass)
     && !explicitFalseKeyValue(values?.robot_control_executed);
+}
+
+function nav2BaseCommandCount(values: Record<string, string> | undefined): number {
+  // O11 latest 会记录 /cmd_vel 转成 vendor JSON 的数量；这能区分“没发命令”和“底盘反馈没跟上”。
+  const parsed = Number(values?.base_command_nonzero_count ?? "0");
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function nav2BaseFeedbackPair(values: Record<string, string> | undefined): { left: string; right: string } | null {
+  const left = values?.base_feedback_latest_left_speed;
+  const right = values?.base_feedback_latest_right_speed;
+  if (!left || !right || left === "not_loaded" || right === "not_loaded" || left === "not_observed" || right === "not_observed") {
+    return null;
+  }
+  return { left, right };
+}
+
+function nav2BaseCommandWithoutWheelFeedback(values: Record<string, string> | undefined): boolean {
+  // 当前现场关键形态：Nav2/bridge 已发非零底盘命令，但 WAVE ROVER T1001 L/R 仍为 0/0。
+  return (values?.base_command_nonzero_observed === "true" || nav2BaseCommandCount(values) > 0)
+    && explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven);
+}
+
+function nav2UnprovenControlDetail(values: Record<string, string> | undefined): string {
+  if (nav2BaseCommandWithoutWheelFeedback(values)) {
+    const count = nav2BaseCommandCount(values);
+    const pair = nav2BaseFeedbackPair(values);
+    const countText = count > 0 ? ` ${count} 条` : "";
+    const pairText = pair ? `，底盘反馈 L/R=${pair.left}/${pair.right}` : "";
+    return `Nav2 已发非零底盘命令${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达阻塞`;
+  }
+  return "真车执行未证明";
 }
 
 function plainTripFailureReasonText(result: { failure_reason?: string } | null | undefined, values: Record<string, string> | undefined): string {
@@ -4706,7 +4721,7 @@ const plainTripEvidenceSummary = computed(() => {
   const hasFeedbackSamples = nav2FeedbackSampleCount(values) > 0;
   const feedbackText = hasFeedbackSamples ? `，反馈 ${feedbackCount} 次` : "，未读到反馈样本";
   const nextText = hasFeedbackSamples
-    ? nav2ExecutionControlProven(values) ? "送达仍需现场确认。" : "真车执行未证明，需重新执行完整行程。"
+    ? nav2ExecutionControlProven(values) ? "送达仍需现场确认。" : `${nav2UnprovenControlDetail(values)}，需修复后重新执行完整行程。`
     : "需重新读取或执行完整行程。";
   return `最近行程成功${feedbackText}${formatEvidenceAge(values)}；${nextText}`;
 });
@@ -4795,7 +4810,7 @@ function plainMapTripExecutionLabel(): string {
     return "行程执行：旧到达记录";
   }
   if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
-    return "行程执行：已到达，真车未证明";
+    return nav2BaseCommandWithoutWheelFeedback(values) ? "行程执行：已到达，底盘反馈 0/0" : "行程执行：已到达，真车未证明";
   }
   if (nav2GoalSucceeded(values)) {
     return "行程执行：已到达，缺反馈";
@@ -4833,7 +4848,7 @@ const plainTripExecutionProgress = computed(() => {
     return `行程进度：读到旧的到达记录${feedbackText}${ageText}。`;
   }
   if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
-    return `行程进度：已到达并读到 ${nav2FeedbackSampleCount(values)} 次反馈，但真车执行未证明${ageText}；重新执行完整行程。`;
+    return `行程进度：已到达并读到 ${nav2FeedbackSampleCount(values)} 次反馈，但${nav2UnprovenControlDetail(values)}${ageText}；修复后重新执行完整行程。`;
   }
   if (nav2GoalSucceeded(values)) {
     return `行程进度：已到达，但没有执行反馈样本${ageText}；重新读取或执行完整行程。`;

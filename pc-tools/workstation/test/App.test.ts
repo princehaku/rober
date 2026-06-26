@@ -493,6 +493,14 @@ const fixtures: Record<string, unknown> = {
         goal_execution_evidence_ref: "not_loaded",
         goal_execution_robot_control_executed: "not_loaded",
         goal_execution_feedback_sample_count: "not_loaded",
+        goal_execution_base_command_mode: "not_loaded",
+        goal_execution_base_command_nonzero_observed: "not_loaded",
+        goal_execution_base_command_nonzero_count: "not_loaded",
+        goal_execution_base_feedback_sample_count: "not_loaded",
+        goal_execution_base_feedback_nonzero_sample_count: "not_loaded",
+        goal_execution_base_feedback_lr_nonzero_proven: "not_loaded",
+        goal_execution_base_feedback_latest_left_speed: "not_loaded",
+        goal_execution_base_feedback_latest_right_speed: "not_loaded",
         goal_execution_goal_frame_id: "not_loaded",
         goal_execution_goal_x: "not_loaded",
         goal_execution_goal_y: "not_loaded",
@@ -6538,7 +6546,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，真车未证明");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达并读到 8 次反馈，但真车执行未证明，刚刚；重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达并读到 8 次反馈，但真车执行未证明，刚刚；修复后重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("到达未证明");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程未证明真车执行，需要重新执行完整行程。");
@@ -8855,6 +8863,73 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("explains Nav2 success with nonzero base commands but zero wheel feedback as a chassis feedback issue", async () => {
+    // 真实现场形态：NavigateToPose succeeded，bridge 发出非零底盘 JSON，但 T1001 L/R 仍为 0/0。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-base-command-zero-wheel-fixture",
+          generated_at_ms: "1782495677637",
+          response_generated_at_ms: "1782495706743",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          hil_pass: "false",
+          nav2_goal_execution_proven: "false",
+          robot_control_executed: "true",
+          base_command_mode: "pwm",
+          base_command_nonzero_observed: "true",
+          base_command_nonzero_count: "49",
+          base_feedback_sample_count: "216",
+          base_feedback_nonzero_sample_count: "0",
+          base_feedback_lr_nonzero_proven: "false",
+          base_feedback_latest_left_speed: "0",
+          base_feedback_latest_right_speed: "0",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
+          delivery_success: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("不是雷达阻塞");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("优先查电机使能、供电、底盘模式和控制模式");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，底盘反馈 0/0");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("Nav2 已发非零底盘命令 49 条");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新执行完整行程。");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
