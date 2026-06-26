@@ -1409,6 +1409,11 @@ h3 {
   background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), #ffffff 42%);
 }
 
+.plain-keyboard-control[data-state="停止失败"] {
+  border-left-color: #cf222e;
+  background: linear-gradient(90deg, rgba(207, 34, 46, 0.1), #ffffff 42%);
+}
+
 .plain-keyboard-direction {
   min-height: 30px;
   color: #334455;

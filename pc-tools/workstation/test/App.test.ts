@@ -10926,14 +10926,31 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘停止请求未成功，未记为已验证。");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-state")).toBe("停止失败");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').text()).toContain("上次停止没有成功发送；请先现场确认小车已停，再重新启用键盘。");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="keyboard-screen-right"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
     const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
-    expect(keyboardClosureItem?.text()).toContain("已连续转发键盘方向输入，已连续 2/2 次，仍需松开按键完成停止收口");
+    expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，仍需按住方向键连续验证，最佳连续 0/2 次");
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(2);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
+    const manualCallsAfterRejectedStop = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterRejectedStop);
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-keyboard-control[data-state="停止失败"]');
   });
 
   it("queues release stop when the stop button is clicked during an in-flight keyboard pulse", async () => {

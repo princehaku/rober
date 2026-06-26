@@ -2004,7 +2004,12 @@ const keyboardMapWysiwygBlocked = computed(() => (
   // 地图画面或 proof 刷新中不能开始新的扫图移动；已经按住移动时仍允许松开并发送 stop。
   mapRuntimeStarted.value && mapWysiwygRefreshPending.value && !keyboardHeldDirection.value
 ));
-const canPressKeyboardDirection = computed(() => keyboardControlArmed.value && canUseKeyboardControl.value && !keyboardMapWysiwygBlocked.value);
+const canPressKeyboardDirection = computed(() => (
+  keyboardControlArmed.value
+  && canUseKeyboardControl.value
+  && !keyboardMapWysiwygBlocked.value
+  && !keyboardStopFailedAfterPulse.value
+));
 const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
@@ -2209,6 +2214,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (freeRoamAutonomyStoppedThisSession.value) {
     return plainFreeRoamMapPreviewFreshForSession.value ? "下一步：保存地图" : "下一步：刷新扫图画面";
   }
+  if (mapRuntimeStarted.value && keyboardStopFailedAfterPulse.value) {
+    return "下一步：点红色停止";
+  }
   if (mapRuntimeStarted.value && !keyboardControlArmed.value) {
     return canArmPlainFreeRoamKeyboard.value ? "下一步：启用键盘" : "下一步：补齐键盘条件";
   }
@@ -2220,9 +2228,6 @@ const plainFreeRoamNextActionLabel = computed(() => {
   }
   if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("released")) {
     return "下一步：等待停止完成";
-  }
-  if (mapRuntimeStarted.value && keyboardStopFailedAfterPulse.value) {
-    return "下一步：点红色停止";
   }
   if (mapRuntimeStarted.value && !mapSavedThisSession.value) {
     if (keyboardStopSettledAfterPulse.value) {
@@ -4944,6 +4949,9 @@ const plainKeyboardControlSummary = computed(() => {
   if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
     return { state: "待验证", hint: "上次按键没有成功发送；检查后再按住方向键。" };
   }
+  if (keyboardControlStatus.value.startsWith("blocked_keyboard_stop_failed")) {
+    return { state: "停止失败", hint: "上次停止没有成功发送；请先现场确认小车已停，再重新启用键盘。" };
+  }
   if (keyboardStopSettledAfterPulse.value) {
     return { state: "已验证", hint: "键盘连续手控已完成 2 次连续脉冲验证，且停止已发送；需要继续移动可按住方向键，松开即停。" };
   }
@@ -7662,6 +7670,12 @@ async function sendKeyboardReleaseStop(reason: string): Promise<void> {
     && result.remote_http_status >= 200
     && result.remote_http_status < 300;
   keyboardControlStatus.value = stopForwarded ? `stop_sent:${reason}` : `blocked_keyboard_stop_failed:${result?.failure_reason || result?.proxy_status || "stop_not_forwarded"}`;
+  if (!stopForwarded) {
+    clearKeyboardControlOwner();
+    keyboardControlArmed.value = false;
+    keyboardVerifiedPulseCount.value = 0;
+    keyboardHoldPulseCount.value = 0;
+  }
   if (stopForwarded && mapRuntimeStarted.value && robotApiBaseUrl.value.trim()) {
     void refreshMapPreview({ countForFreeRoamSession: true });
   }
@@ -7675,6 +7689,10 @@ function startKeyboardControl(direction: ManualDirection): void {
   }
   if (!canSendManualMotion.value) {
     keyboardControlStatus.value = `blocked_keyboard_manual_gate:${manualBlockedReason.value}`;
+    return;
+  }
+  if (keyboardStopFailedAfterPulse.value) {
+    keyboardControlStatus.value = "blocked_keyboard_stop_failed:recheck_before_next_move";
     return;
   }
   if (keyboardMapWysiwygBlocked.value) {
