@@ -26,6 +26,20 @@ SPEC.loader.exec_module(camera)
 class LocalWebrtcCameraSmokeTests(unittest.TestCase):
     """覆盖 camera service 的安全边界和设备选择。"""
 
+    def test_systemd_launcher_contract_stays_camera_only(self) -> None:
+        """systemd 启动脚本必须可入仓复现，且只能启动 camera smoke。"""
+        launcher = MODULE_PATH.with_suffix(".sh")
+        text = launcher.read_text(encoding="utf-8")
+
+        self.assertIn('HOST="${HOST:-0.0.0.0}"', text)
+        self.assertIn('PORT="${PORT:-8088}"', text)
+        self.assertIn('ROBER_CAMERA_SOURCE="${ROBER_CAMERA_SOURCE:-auto}"', text)
+        self.assertIn("local_webrtc_camera_smoke.py", text)
+        self.assertIn("--video-source", text)
+        forbidden = ("ros2 ", "/api/base/manual", "cmd_vel", "nav2", "ttyS5", "motion_hil_unlocked")
+        for token in forbidden:
+            self.assertNotIn(token, text)
+
     def test_success_endpoint_schemas_match_historical_contracts(self) -> None:
         """成功响应 schema 要兼容历史真实服务 artifacts 和 PC catalog。"""
         self.assertEqual("trashbot.local_webrtc_camera_smoke.v1", camera.SCHEMA)

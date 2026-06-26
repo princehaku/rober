@@ -281,6 +281,25 @@ client 只增加引用计数，最后一个 client 断开后才释放设备。�
 停在 `new` 且 `frames_read=0`；MJPEG fallback 是为现场实时可视优先提供的稳定通道，
 不是运动或视觉算法完成证明。
 
+## 2026-06-26 23:30 camera service 运行形态复查
+
+本轮按真实上位机 `root@192.168.1.11:37878` 复查，当前“摄像头看不到效果”不是多浏览器独占导致：
+
+- `GET http://192.168.1.11:8787/api/camera/health` 显示 `source_usage.other_owner_count=0`，
+  `/dev/video1` 没有其它进程占用；发起失败 MJPEG 后也能回到 `shared_captures={}`。
+- 当前阻塞是 `/dev/video1` 首帧失败：`source_readiness=first_frame_failed`、
+  `source_failure_reason=capture_read_returned_false`、`last_successful_frame=null`。
+- `GET http://192.168.1.11:8787/api/camera/mjpeg` 在 5 秒内没有输出真实 JPEG，说明不能把
+  2026-06-26 共享 MJPEG 历史 smoke 外推为当前画面可见。
+- 8088 端口当前由手工 `python3 scripts/local_webrtc_camera_smoke.py ...` 进程监听，而
+  `trashbot-local-webrtc-camera.service=inactive`；这会让共享预览依赖不可复现的现场进程。
+- 为避免 systemd `ExecStart=/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh` 指向仓库外遗留脚本，
+  `onboard/scripts/local_webrtc_camera_smoke.sh` 已入仓。脚本默认绑定 `0.0.0.0:8088`、`ROBER_CAMERA_SOURCE=auto`，
+  只启动 camera smoke，不启动 ROS2、串口、Nav2 或底盘控制。
+
+结论：共享预览链路已经按单上游多客户端设计；当前要让“谁进来都能看到实时预览”真正成立，
+必须先恢复由 systemd 管理的 8088 camera service，并解决 DV20 `/dev/video1` 首帧输出问题。
+
 ## 2026-06-11 20:05 camera visible content gate refresh
 
 `sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/` 继续只做
