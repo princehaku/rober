@@ -3575,16 +3575,20 @@ function lockedBoundary(
         ? "自由移动（勾确认后可启动）"
         : "自动扫图（未开放）",
     free_roam_autonomy_policy: {
-      // 自动扫图不是 PC 端无限发点动；必须先有上车端避障、watchdog 和真车验证证据。
-      mode: "requires_onboard_watchdog_lidar_obstacle_gate_and_hil",
+      // 自由移动与建图验收分层：低速移动只看安全确认和停止兜底，建图才要求画面/雷达材料。
+      mode: "free_move_requires_safety_confirm_stop_fallback",
+      mapping_mode: "mapping_acceptance_requires_camera_and_fresh_radar",
       max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
       max_runtime_s: 60,
       required_gates: [
-        "onboard_watchdog",
-        "lidar_obstacle_gate",
-        "fresh_map_preview",
+        "operator_safety_confirmed",
         "operator_stop_fallback",
-        "free_roam_hil_artifact",
+      ],
+      mapping_required_gates: [
+        "camera_first_frame",
+        "fresh_radar_scan",
+        "map_recording_active",
+        "fresh_map_preview",
       ],
     },
     free_roam_autonomy_gates: freeRoamRuntimeGates ?? [

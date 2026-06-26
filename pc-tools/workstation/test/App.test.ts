@@ -550,15 +550,19 @@ const fixtures: Record<string, unknown> = {
       free_roam_autonomy: "locked",
       free_roam_autonomy_label: "自动扫图（未开放）",
       free_roam_autonomy_policy: {
-        mode: "requires_onboard_watchdog_lidar_obstacle_gate_and_hil",
+        mode: "free_move_requires_safety_confirm_stop_fallback",
+        mapping_mode: "mapping_acceptance_requires_camera_and_fresh_radar",
         max_speed_mps: 0.12,
         max_runtime_s: 60,
         required_gates: [
-          "onboard_watchdog",
-          "lidar_obstacle_gate",
-          "fresh_map_preview",
           "operator_stop_fallback",
-          "free_roam_hil_artifact",
+          "operator_safety_confirmed",
+        ],
+        mapping_required_gates: [
+          "camera_first_frame",
+          "fresh_radar_scan",
+          "map_recording_active",
+          "fresh_map_preview",
         ],
       },
       free_roam_autonomy_gates: [

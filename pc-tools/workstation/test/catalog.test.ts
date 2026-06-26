@@ -3988,9 +3988,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_control_enabled).toBe(false);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（未开放）");
-      expect(summary.safe_command_boundary.free_roam_autonomy_policy.mode).toBe("requires_onboard_watchdog_lidar_obstacle_gate_and_hil");
-      expect(summary.safe_command_boundary.free_roam_autonomy_policy.required_gates).toContain("onboard_watchdog");
-      expect(summary.safe_command_boundary.free_roam_autonomy_policy.required_gates).toContain("lidar_obstacle_gate");
+      expect(summary.safe_command_boundary.free_roam_autonomy_policy.mode).toBe("free_move_requires_safety_confirm_stop_fallback");
+      expect(summary.safe_command_boundary.free_roam_autonomy_policy.mapping_mode).toBe("mapping_acceptance_requires_camera_and_fresh_radar");
+      expect(summary.safe_command_boundary.free_roam_autonomy_policy.required_gates).toEqual([
+        "operator_safety_confirmed",
+        "operator_stop_fallback",
+      ]);
+      expect(summary.safe_command_boundary.free_roam_autonomy_policy.mapping_required_gates).toEqual([
+        "camera_first_frame",
+        "fresh_radar_scan",
+        "map_recording_active",
+        "fresh_map_preview",
+      ]);
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
       expect(summary.primary_actions_enabled).toBe(false);

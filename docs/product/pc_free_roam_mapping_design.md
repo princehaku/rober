@@ -145,12 +145,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `wheel_feedback_lr_nonzero_proven` 与 `motion_signal_observed` 分开展示：前者只代表同帧
   `T1001 L/R` 非零，后者还可以来自 `T1001 r/p` 姿态变化。底盘低速试动和 Nav2 执行不再以雷达或摄像头
   ready 为前置；雷达和摄像头只决定本轮是否可按“可建图/可验收画面”收口。
-- 2026-06-27 03:06 起，PC 普通首屏的完整行程判定同步采用同一证据口径：Nav2 action
-  `goal_succeeded` 只能说明规划 action 返回成功；只有同时有执行反馈样本、`robot_control_executed`
-  未被否定、`sends_base_motion_commands/uses_base_uart` 未被明确否定，并读到 `wheel_feedback_lr_nonzero_proven=true`
-  或 `base_feedback_imu_attitude_delta_observed=true` 时，才把“行程执行”展示为已完成。若只发出非零底盘命令但
-  轮速和 IMU 都未证明，UI 仍提示排查电机使能、供电、底盘模式和控制模式，并明确“不是雷达阻塞”；
-  若 IMU 已证明运动但 `delivery_success=false`，UI 只进入“准备送达材料”，不会自动宣称送达成功。
+- 2026-06-27 03:06 的行程证据口径已在 2026-06-27 06:06 收紧：Nav2 action
+  `goal_succeeded` 只能说明 action 返回成功；只有同时有执行反馈样本、`robot_control_executed`
+  未被否定、`sends_base_motion_commands/uses_base_uart` 未被明确否定，并读到同窗口
+  `wheel_feedback_lr_nonzero_proven=true` 时，才把“完整行程执行”展示为已完成。`base_feedback_imu_attitude_delta_observed=true`
+  只能说明车身运动迹象可见，不能替代 wheel raw L/R 非零。若只发出非零底盘命令但
+  L/R 仍为 `0/0`，UI 仍提示排查电机使能、供电、底盘模式和控制模式，并明确“不是雷达阻塞”；
+  若 IMU 已证明运动但 wheel L/R 未非零，UI 保持“到达/完整路线未证明”，不会自动进入送达成功。
 - 2026-06-27 04:19 起，若 Nav2 执行窗口内 `T1001 L/R` 仍是 `0/0`，但底盘全局只读样本已经出现过非零轮速，
   普通首屏行程证据会额外提示“底盘只读样本已出现非零轮速，Nav2 仍需同窗口复验”。这只用于区分“底盘轮速链路可读”
   和“Nav2 本次执行窗口没有采到同帧非零 L/R”，不把历史/全局底盘样本折算成完整 Nav2 route proof，也不提交
@@ -187,6 +188,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `free_roam_autonomy=ready`；PC 自动扫图按钮只调用固定 start 代理。真正运动发布仍由上车端确认项、停止兜底与
 `enable_cmd_vel_publish`、`motion_hil_unlocked` 双重锁共同决定，不由浏览器或 Node 代理直接发布；相机/雷达 readiness 只决定
 `mapping_readiness`，不再决定“车能不能自由低速移动”。
+
+2026-06-27 06:11 起，PC summary policy 名称也同步分层：`free_roam_autonomy_policy.mode=free_move_requires_safety_confirm_stop_fallback`
+只描述自由移动启动门禁；`mapping_mode=mapping_acceptance_requires_camera_and_fresh_radar` 和
+`mapping_required_gates=[camera_first_frame,fresh_radar_scan,map_recording_active,fresh_map_preview]`
+才描述可验收建图门禁。这样普通 UI、Node API contract 和上车端 `sensor_readiness.mapping_readiness`
+使用同一口径：车可以先低速自由移动，只有相机和雷达 ready 时才把本轮按建图收口。
 
 2026-06-27 03:50 起，PC `自动扫图准备` 明确新增一行 `建图验收`：`free_roam_autonomy_start_ready=true`
 只表示可在安全确认后发起低速自由移动；如果 camera 没有首帧或雷达未达到 `雷达已运行`，本轮只能按自由移动记录，
