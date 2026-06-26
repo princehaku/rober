@@ -2248,6 +2248,11 @@ WYSIWYG 文案，不自动重试、不执行 Nav2、delivery complete、manual�
 `enable_cmd_vel_publish`、`motion_hil_unlocked` 或 `cmd_vel_topic`。`停止自动扫图` 调用固定 stop 代理请求状态机停止；
 红色底盘停止仍保留为独立兜底。
 
+2026-06-26 10:17 起，如果上车端自动扫图 readiness 仍未 ready，普通首屏同一个按钮显示 `按步骤人工扫图` 时会作为人工扫图向导：
+已勾安全确认但还没开始记录时，点击只调用固定 `/api/robot-control/map/start` 启动地图记录，并在成功后启用键盘窗口等待按住；
+记录已启动但键盘未启用时，点击只启用键盘窗口。它不会调用 `/api/robot-control/free-roam/autonomy/start`，不会发送方向
+manual pulse，不执行 Nav2、delivery、stop 或 `/cmd_vel`，不修改 Clash 或系统代理配置；PC 工作站公开入口继续是 `0.0.0.0:7001`。
+
 2026-06-26 01:05 起，普通首屏会把自动扫图 start/stop 的固定代理结果贴回地图和 `扫图状态`：start 成功后地图显示
 `自动扫图已启动`，状态行显示 `自动扫图状态机已启动，地图和雷达监看中`；stop 成功后显示停止请求已发送，失败时显示
 未证明启动或停止。该反馈只消费 PC 固定代理响应，不新增任意 endpoint、manual、keyboard pulse、Nav2、delivery complete

@@ -6853,6 +6853,25 @@ async function focusPlainFreeRoamNextTarget(): Promise<void> {
   target.focus({ preventScroll: true });
 }
 
+async function advancePlainFreeRoamManualGuide(): Promise<void> {
+  // 自动扫图未 ready 时，这个按钮只推进人工扫图的非运动步骤；真正移动仍必须按住方向键。
+  if (!plainManualSafetyConfirmed.value) {
+    await focusPlainFreeRoamNextTarget();
+    return;
+  }
+  if (!mapRuntimeStarted.value && !mapSavedThisSession.value && canStartPlainFreeRoamMapping.value) {
+    await startMapRuntime();
+    await focusPlainFreeRoamNextTarget();
+    return;
+  }
+  if (mapRuntimeStarted.value && !keyboardControlArmed.value && canArmPlainFreeRoamKeyboard.value) {
+    activateKeyboardControl();
+    await focusPlainFreeRoamNextTarget();
+    return;
+  }
+  await focusPlainFreeRoamNextTarget();
+}
+
 function markDeliveryBasicSafetyConfirmed(): void {
   // 只减少现场重复勾选；到达、停稳和送达成功仍必须由 operator 分开确认。
   deliveryOperatorConfirmations.value.operator_present = true;
@@ -7195,9 +7214,9 @@ function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string):
 }
 
 async function startFreeRoamAutonomy(): Promise<void> {
-  // 真正自动扫图 start 只走固定上车状态机代理；未 ready 时仍跳到人工流程下一步。
+  // 真正自动扫图 start 只走固定上车状态机代理；未 ready 时推进人工扫图的非运动向导。
   if (!canStartFreeRoamAutonomy.value) {
-    focusPlainFreeRoamNextTarget();
+    await advancePlainFreeRoamManualGuide();
     return;
   }
   let stopQueuedAfterStart = false;

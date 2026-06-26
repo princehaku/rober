@@ -3923,6 +3923,50 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
+  it("uses the locked auto-sweep button as a manual mapping guide without sending motion", async () => {
+    // 自动扫图未 ready 时，普通按钮可以推进“开始记录/启用键盘”等非运动步骤；方向脉冲仍必须按住方向键才会发出。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "locked";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自动扫图（未开放）";
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("按步骤人工扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
+
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) =>
+      String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST",
+    )).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("键盘已启用");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-panel"]').element);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows free-roam autonomy radar refresh failures on the map", async () => {
     // 自动扫图 start 已转发后，如果自动雷达 proof refresh 失败，扫图状态不能继续说“雷达监看中”。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
