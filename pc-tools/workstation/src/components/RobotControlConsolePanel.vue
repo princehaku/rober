@@ -983,6 +983,25 @@ const plainCameraWysiwygStatus = computed(() => {
   }
 });
 
+function sharedPreviewExclusiveText(exclusiveClaim: boolean): string {
+  // 共享预览的关键用户价值是多页面不抢摄像头；直接写明，减少现场误判为浏览器独占。
+  return exclusiveClaim ? "检测到可能的独占摄像头请求" : "不是独占，每个页面共享同一条上游流";
+}
+
+function sharedPreviewFailureText(reason: string | null | undefined, remoteHttpStatus: number | string | null | undefined): string {
+  // 后端保留 token 便于排障；首屏把常见 MJPEG 失败翻译成“无帧/后端不可用”。
+  if (!reason || reason === "none") {
+    return "";
+  }
+  const statusText = remoteHttpStatus === null || remoteHttpStatus === undefined || remoteHttpStatus === "none"
+    ? ""
+    : ` HTTP ${remoteHttpStatus}`;
+  if (reason === "camera_mjpeg_proxy_failed" || statusText.includes(" 502") || statusText.includes(" 503")) {
+    return ` 最近失败：共享预览上游没有返回可用画面${statusText}；通常是相机无帧或相机后端不可用，不是浏览器独占。`;
+  }
+  return ` 最近失败：${reason}${statusText}。`;
+}
+
 const plainCameraSharedPreviewStatus = computed(() => {
   // 共享预览状态只说明 PC Node 是否在复用同一条 MJPEG 上游流，不代替真实画面像素证据。
   if (cameraMjpegStatusPending.value) {
@@ -997,19 +1016,20 @@ const plainCameraSharedPreviewStatus = computed(() => {
     if (summaryCamera) {
       const upstream = summaryCamera.shared_preview_upstream_active === "true" ? "上游已连接" : "上游未连接";
       const content = summaryCamera.shared_preview_content_type_loaded === "true" ? "已拿到视频边界" : "等待视频边界";
-      const failure = summaryCamera.shared_preview_last_failure_reason && summaryCamera.shared_preview_last_failure_reason !== "none"
-        ? ` 最近失败：${summaryCamera.shared_preview_last_failure_reason}${summaryCamera.shared_preview_last_remote_http_status !== "none" ? ` HTTP ${summaryCamera.shared_preview_last_remote_http_status}` : ""}。`
-        : "";
-      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；PC 只复用同一条上游流。${failure}`;
+      const exclusive = sharedPreviewExclusiveText(summaryCamera.shared_preview_exclusive_camera_claim === "true");
+      const failure = sharedPreviewFailureText(
+        summaryCamera.shared_preview_last_failure_reason,
+        summaryCamera.shared_preview_last_remote_http_status,
+      );
+      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${failure}`;
     }
     return "共享画面：未读取到共享流状态。";
   }
   const upstream = status.upstream_active ? "上游已连接" : "上游未连接";
   const content = status.content_type_loaded ? "已拿到视频边界" : "等待视频边界";
-  const failure = status.last_failure_reason
-    ? ` 最近失败：${status.last_failure_reason}${status.last_remote_http_status === null ? "" : ` HTTP ${status.last_remote_http_status}`}。`
-    : "";
-  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；PC 只复用同一条上游流。${failure}`;
+  const exclusive = sharedPreviewExclusiveText(status.exclusive_camera_claim);
+  const failure = sharedPreviewFailureText(status.last_failure_reason, status.last_remote_http_status);
+  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${failure}`;
 });
 
 const cameraFirstFrameProbeSummary = computed(() => {

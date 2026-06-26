@@ -15085,7 +15085,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面可见");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示 MJPEG 实时画面。MJPEG 实时流已显示。");
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：2 个页面观看，上游已连接，已拿到视频边界；PC 只复用同一条上游流。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：2 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。");
 
     const previewVideoElement = wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement;
     Object.defineProperty(previewVideoElement, "videoWidth", { configurable: true, value: 640 });
@@ -15128,7 +15128,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：3 个页面观看，上游已连接，已拿到视频边界；PC 只复用同一条上游流。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：3 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
@@ -15763,10 +15763,22 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
     summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
     summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    summaryFixture.readback_summary.camera.shared_preview_last_failure_reason = "camera_mjpeg_proxy_failed";
+    summaryFixture.readback_summary.camera.shared_preview_last_remote_http_status = "503";
     summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
     summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
     summaryFixture.readback_summary.camera.last_offer_format_attempts_summary = "MJPG 无首帧；YUYV 无首帧；default 无首帧";
-    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    const mjpegStatusFixture = cloneFixture(fixtures["/api/robot-control/camera/mjpeg/status"]) as Record<string, any>;
+    mjpegStatusFixture.client_count = 0;
+    mjpegStatusFixture.upstream_active = false;
+    mjpegStatusFixture.content_type_loaded = false;
+    mjpegStatusFixture.exclusive_camera_claim = false;
+    mjpegStatusFixture.last_failure_reason = "camera_mjpeg_proxy_failed";
+    mjpegStatusFixture.last_remote_http_status = 503;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": mjpegStatusFixture,
+    });
 
     const wrapper = mount(App);
     await flushPromises();
@@ -15775,8 +15787,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。 采集尝试：MJPG 无首帧；YUYV 无首帧；default 无首帧。");
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("PC 只复用同一条上游流");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_proxy_failed");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });
