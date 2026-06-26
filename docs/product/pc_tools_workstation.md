@@ -2973,3 +2973,22 @@ Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达
 live 复测中，stop/start 均返回 `command_result.ok=true` 且 `robot_control_executed=false`，但随后 refresh 仍没有拿到
 `/scan` 或 `/lidar/raw_packet` 新输出，并且上车端 lifecycle 又回到 stopped；这说明 PC 已经具备传感器级恢复入口，
 真实剩余问题仍在雷达 runtime 维持、LiDAR 数据输入或驱动发布链。
+
+2026-06-27 05:12 起，上车端 `o1_lidar_lifecycle.sh start` 不再只把后台 manager 拉起就立即返回成功；
+它会等待 manager 完成 ROS setup、打开 LiDAR 串口、启动 `lidar_driver` 并经过短确认窗口后才返回 HTTP 成功。
+如果 manager 或 driver 在确认窗口内退出，脚本会把 `failed` 状态和日志路径写入
+`/tmp/rober_lidar_lifecycle/lidar_lifecycle_status.json`，让 PC 代理把真实失败原因暴露出来，而不是显示“启动成功后又 stopped”。
+同轮还给 lifecycle manager 记录 driver/static TF pid 文件，并在 driver 退出时清理子进程，避免旧 TF 残留污染下一轮诊断。
+live 部署到 `ssh root@192.168.1.11 -p 37878` 后，固定 PC 代理
+`POST /api/robot-control/radar/start?baseUrl=http://192.168.1.11:8787` 返回
+`command_result.ok=true`，随后 SSH 状态显示 `lifecycle_running=true`、`lidar_driver` 独占
+`/dev/ttyACM0`、`/scan` 和 `/lidar/raw_packet` topic 已存在；但 `ros2 topic echo --once`
+仍没有消息，PC summary 继续显示 `continuous_scan_status=latest_proof_incomplete_while_lifecycle_running`、
+`scan_preview_point_count=0`。因此本轮修复的是雷达 lifecycle 假成功和残留清理；真实雷达点仍需继续查 LiDAR 数据流。
+同轮摄像头固定首帧探针仍为 `first_frame_timeout/capture_read_call_timeout`，
+`open_ok=true`、`read_ok=false`、`source_usage_status=not_in_use`，再次确认不是浏览器或 PC 多人预览独占；
+PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是当前上游没有真实帧。
+底盘/自动驾驶口径同步保持：自由移动和底盘试动不依赖雷达 ready；Nav2 latest 已有
+`goal_succeeded`、`base_command_mode=pwm`、`nonzero_command_count=49` 和 IMU 姿态变化材料，
+但当前 `wheel_feedback_lr_nonzero_proven=false`、`hil_pass=false`，所以完整自动驾驶验收仍卡在现场轮速/运动闭环，
+不是卡在雷达启动 gate。

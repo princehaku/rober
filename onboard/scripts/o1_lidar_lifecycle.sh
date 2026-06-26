@@ -74,6 +74,9 @@ LOG_DIR="$RUNTIME_DIR/logs"
 MANAGER_LOG="$LOG_DIR/lidar_lifecycle_manager.log"
 DRIVER_LOG="$LOG_DIR/lidar_driver.log"
 TF_LOG="$LOG_DIR/tf_static.log"
+DRIVER_PID_FILE="$RUNTIME_DIR/lidar_driver.pid"
+TF_PID_FILE="$RUNTIME_DIR/tf_static.pid"
+START_CONFIRM_TIMEOUT_S="${ROBER_LIDAR_START_CONFIRM_TIMEOUT_S:-4}"
 
 json_status() {
   # 状态 JSON 由 python 生成，避免 shell 手写转义把路径里的特殊字符写坏。
@@ -115,6 +118,31 @@ write_status_file() {
   # status 文件用于 API/SSH 复盘；HTTP start/stop 仍以命令退出码为准。
   mkdir -p "$RUNTIME_DIR" "$LOG_DIR"
   json_status "$@" >"$STATUS_FILE"
+}
+
+emit_status_file_or_fallback() {
+  # start 需要把 manager 写下的失败原因原样带回 HTTP stdout，方便 PC 显示根因。
+  if [[ -s "$STATUS_FILE" ]]; then
+    cat "$STATUS_FILE"
+  else
+    json_status "$@"
+  fi
+}
+
+status_file_state() {
+  # 用 python 读 JSON，避免 shell 对中文 message 或路径字符做脆弱切分。
+  python3 - "$STATUS_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    print("")
+else:
+    print(str(payload.get("state") or ""))
+PY
 }
 
 source_ros_setups() {
@@ -187,11 +215,22 @@ cleanup_children() {
     kill "$TF_PID" 2>/dev/null || true
     wait "$TF_PID" 2>/dev/null || true
   fi
+  rm -f "$DRIVER_PID_FILE" "$TF_PID_FILE"
 }
 
 run_manager() {
   # manager 是独立进程组根；stop 只 kill 这个进程组。
-  trap cleanup_children EXIT INT TERM
+  local final_status_written="false"
+  on_manager_exit() {
+    local rc="$?"
+    cleanup_children
+    if [[ "$final_status_written" != "true" && "$rc" -ne 0 ]]; then
+      write_status_file false "$$" "failed" "LiDAR lifecycle manager failed with rc=$rc; see logs"
+    fi
+    return "$rc"
+  }
+  trap on_manager_exit EXIT
+  trap cleanup_children INT TERM
   mkdir -p "$RUNTIME_DIR" "$LOG_DIR"
   echo "$$" >"$PID_FILE"
   write_status_file true "$$" "starting" "LiDAR lifecycle manager starting"
@@ -204,6 +243,7 @@ run_manager() {
     --frame-id base_link --child-frame-id "$FRAME_ID" \
     >"$TF_LOG" 2>&1 &
   TF_PID="$!"
+  echo "$TF_PID" >"$TF_PID_FILE"
 
   # lidar_driver 只打开 LiDAR 串口；参数不包含底盘 UART 或任何 cmd_vel 发布。
   ros2 run ros2_trashbot_hardware lidar_driver --ros-args \
@@ -213,9 +253,17 @@ run_manager() {
     -p publish_raw_packets:=true \
     >"$DRIVER_LOG" 2>&1 &
   DRIVER_PID="$!"
+  echo "$DRIVER_PID" >"$DRIVER_PID_FILE"
 
   write_status_file true "$$" "running" "LiDAR lifecycle manager running"
+  set +e
   wait "$DRIVER_PID"
+  local driver_rc="$?"
+  set -e
+  final_status_written="true"
+  write_status_file false "$$" "failed" "LiDAR driver exited with rc=$driver_rc; see $DRIVER_LOG"
+  rm -f "$PID_FILE"
+  return "$driver_rc"
 }
 
 start_runtime() {
@@ -240,7 +288,47 @@ start_runtime() {
   local manager_pid="$!"
   echo "$manager_pid" >"$PID_FILE"
   write_status_file true "$manager_pid" "starting" "LiDAR lifecycle start requested"
-  json_status true "$manager_pid" "starting" "LiDAR lifecycle start requested"
+  # 等 manager 完成 ROS setup、串口打开和 driver 首轮存活确认，避免 HTTP 假成功。
+  local deadline_ms
+  deadline_ms="$(python3 - "$START_CONFIRM_TIMEOUT_S" <<'PY'
+import sys
+import time
+print(int((time.time() + max(0.5, float(sys.argv[1]))) * 1000))
+PY
+)"
+  while true; do
+    local now_ms_value
+    now_ms_value="$(python3 - <<'PY'
+import time
+print(int(time.time() * 1000))
+PY
+)"
+    if ! kill -0 "$manager_pid" 2>/dev/null; then
+      emit_status_file_or_fallback false "" "failed" "LiDAR lifecycle manager exited during start confirmation"
+      exit 43
+    fi
+    local state
+    state="$(status_file_state)"
+    if [[ "$state" == "failed" ]]; then
+      emit_status_file_or_fallback false "" "failed" "LiDAR lifecycle manager reported failure during start confirmation"
+      exit 43
+    fi
+    if [[ "$state" == "running" ]]; then
+      # driver 可能在首个 read tick 才暴露断连/抢占；短暂确认能抓住这类瞬时失败。
+      sleep 1
+      if kill -0 "$manager_pid" 2>/dev/null && [[ "$(status_file_state)" == "running" ]]; then
+        emit_status_file_or_fallback true "$manager_pid" "running" "LiDAR lifecycle manager running"
+        exit 0
+      fi
+      emit_status_file_or_fallback false "" "failed" "LiDAR lifecycle manager stopped after initial running state"
+      exit 43
+    fi
+    if [[ "$now_ms_value" -ge "$deadline_ms" ]]; then
+      emit_status_file_or_fallback true "$manager_pid" "starting" "LiDAR lifecycle start confirmation timed out"
+      exit 44
+    fi
+    sleep 0.1
+  done
 }
 
 stop_runtime() {
