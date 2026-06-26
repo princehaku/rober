@@ -888,6 +888,13 @@ function freeRoamAutonomyProxyResponse(
   }
   const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
   const commandResult = asRecord(remote.payload.command_result);
+  const commandResultItems = Array.isArray(commandResult?.results) ? commandResult.results : [];
+  const firstCommandResult = asRecord(commandResultItems[0]);
+  const commandParameters = Array.isArray(firstCommandResult?.parameters)
+    ? firstCommandResult.parameters.map((item) => shortValue(item, "unknown")).filter((item) => item !== "unknown")
+    : Array.isArray(commandResult?.touched_parameters)
+      ? commandResult.touched_parameters.map((item) => shortValue(item, "unknown")).filter((item) => item !== "unknown")
+      : [];
   const sensorReadiness = asRecord(remote.payload.sensor_readiness);
   const mappingReadiness = asRecord(sensorReadiness?.mapping_readiness);
   const motionUnlockRequested = remote.payload.motion_unlock_requested === true;
@@ -913,10 +920,15 @@ function freeRoamAutonomyProxyResponse(
       mode: shortValue(commandResult?.mode, "not_loaded"),
       executed: commandResult?.executed === true,
       ok: typeof commandResult?.ok === "boolean" ? commandResult.ok : null,
+      write_strategy: shortValue(firstCommandResult?.write_strategy, "unknown"),
+      parameters: commandParameters,
+      parameter_count: commandParameters.length,
+      stdout_preview: shortValue(firstCommandResult?.stdout_preview, ""),
     },
     latest_decision_state: shortValue(remote.payload.latest_decision_state, "not_loaded"),
     sets_state_machine_parameters: remote.payload.sets_state_machine_parameters === true,
     mapping_active_requested: remote.payload.mapping_active_requested === true,
+    mapping_active_applied: remote.payload.mapping_active_applied === true,
     direct_cmd_vel_publish: false,
     motion_unlock_requested: motionUnlockRequested,
     does_not_set_motion_unlock: remote.payload.does_not_set_motion_unlock === false ? false : true,

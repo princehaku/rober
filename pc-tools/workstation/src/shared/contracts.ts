@@ -2712,10 +2712,15 @@ export interface RobotControlFreeRoamAutonomyResponse extends ProofFlags {
     mode: string;
     executed: boolean;
     ok: boolean | null;
+    write_strategy?: string;
+    parameters?: string[];
+    parameter_count?: number;
+    stdout_preview?: string;
   };
   latest_decision_state: string;
   sets_state_machine_parameters: boolean;
   mapping_active_requested?: boolean;
+  mapping_active_applied?: boolean;
   direct_cmd_vel_publish: false;
   motion_unlock_requested: boolean;
   does_not_set_motion_unlock: boolean;

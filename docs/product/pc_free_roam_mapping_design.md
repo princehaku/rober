@@ -39,6 +39,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   临时 YAML；如果 `/free_roam_autonomy` 参数服务因重复 launch、ROS graph 抖动或 node 无响应而卡住，
   API 必须按专用超时返回结构化失败，不能让 PC 普通首屏一直等待。该行为不放宽安全确认，
   不新增任意 ROS 参数入口。
+- 2026-06-26 23:55 起，PC Node 不再把 free-roam start/stop 的 `command_result` 压扁成
+  `mode/executed/ok`：普通首屏会显示 `ros2_param_load` 是否一次写入、写入参数数量、是否保留
+  `cmd_vel_topic` 未改，以及 `mapping_active_applied`。这样 operator 能看到“状态机参数已写入”
+  还是“只请求了但未生效”，而不需要打开高级诊断看 raw JSON。
 - 2026-06-26 01:05 起，PC 在自动扫图 start/stop 请求后把结果同步到普通首屏地图和“扫图状态”行：
   start 成功显示 `自动扫图已启动` / `自动扫图状态机已启动`，stop 成功显示停止请求已发送，失败则明确显示未证明启动或停止。
   这些反馈只来自固定 PC 代理返回值，不外推成真实自主运动成功，也不新增 `/cmd_vel`、manual 或 Nav2 调用。

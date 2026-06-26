@@ -1266,6 +1266,30 @@ const plainFreeRoamLatestSummary = computed(() => {
   const stop = kv.stop_required === "true" ? "，要求停止兜底" : "";
   return `最新读取：${state}${reason}${stop}；${mode}。`;
 });
+const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
+  const result = freeRoamAutonomyResult.value;
+  if (!result || !result.command_result.executed) {
+    return "";
+  }
+  const command = result.command_result;
+  const strategy = command.write_strategy === "ros2_param_load" ? "一次写入" : "固定写入";
+  const count = typeof command.parameter_count === "number" && command.parameter_count > 0
+    ? command.parameter_count
+    : command.parameters?.length ?? 0;
+  const countText = count > 0 ? `${count} 项` : "状态机";
+  const topicText = result.blocked_parameters_not_touched.includes("cmd_vel_topic") ? "，未改速度话题" : "";
+  if (command.ok !== true) {
+    return `状态机写入：${strategy} ${countText}失败，未证明参数已生效${topicText}。`;
+  }
+  if (result.action === "stop") {
+    return `状态机写入：停止参数已${strategy} ${countText}${topicText}。`;
+  }
+  const mappingText = result.mapping_active_requested
+    ? result.mapping_active_applied === true ? "，本轮可按建图记录" : "，本轮只按自由移动记录"
+    : "";
+  const motionText = result.motion_unlock_requested ? "，运动双锁已请求" : "";
+  return `状态机写入：启动参数已${strategy} ${countText}${motionText}${mappingText}${topicText}。`;
+});
 const showPlainRadarStart = computed(() => {
   // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
   return radarLifecyclePendingAction.value === "start"
@@ -9475,6 +9499,7 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-runtime">{{ plainFreeRoamAutonomyReadiness.runtimeText }}</p>
+            <p v-if="plainFreeRoamAutonomyParamWriteSummary" class="panel-note" data-testid="plain-free-roam-autonomy-param-write">{{ plainFreeRoamAutonomyParamWriteSummary }}</p>
             <p v-if="plainFreeRoamLatestSummary" class="panel-note" data-testid="plain-free-roam-autonomy-latest-summary">{{ plainFreeRoamLatestSummary }}</p>
             <div v-if="plainFreeRoamAutonomyReadiness.blockers.length" class="plain-readiness-blockers">
               <span v-for="blocker in plainFreeRoamAutonomyReadiness.blockers" :key="blocker" class="muted">{{ blocker }}。</span>

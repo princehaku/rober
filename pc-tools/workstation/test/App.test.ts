@@ -1054,12 +1054,22 @@ const fixtures: Record<string, unknown> = {
     remote_http_status: 200,
     status: "requested",
     request_body: { confirm_operator_safety: true, confirm_mapping_active: true },
-    command_result: { mode: "free_roam_param_sequence", executed: true, ok: true },
+    command_result: {
+      mode: "free_roam_param_sequence",
+      executed: true,
+      ok: true,
+      write_strategy: "ros2_param_load",
+      parameters: ["operator_confirmed", "mapping_active", "stop_available", "external_stop_requested", "motion_hil_unlocked", "enable_cmd_vel_publish"],
+      parameter_count: 6,
+    },
     latest_decision_state: "running",
     sets_state_machine_parameters: true,
+    mapping_active_requested: true,
+    mapping_active_applied: false,
     direct_cmd_vel_publish: false,
-    does_not_set_motion_unlock: true,
-    blocked_parameters_not_touched: ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+    motion_unlock_requested: true,
+    does_not_set_motion_unlock: false,
+    blocked_parameters_not_touched: ["cmd_vel_topic"],
     failure_reason: "none",
     blocked_reasons: [],
     hard_dangerous_true_fields: [],
@@ -1077,12 +1087,20 @@ const fixtures: Record<string, unknown> = {
     remote_http_status: 200,
     status: "requested",
     request_body: {},
-    command_result: { mode: "free_roam_param_sequence", executed: true, ok: true },
+    command_result: {
+      mode: "free_roam_param_sequence",
+      executed: true,
+      ok: true,
+      write_strategy: "ros2_param_load",
+      parameters: ["enable_cmd_vel_publish", "motion_hil_unlocked", "external_stop_requested", "mapping_active", "operator_confirmed"],
+      parameter_count: 5,
+    },
     latest_decision_state: "stopping",
     sets_state_machine_parameters: true,
     direct_cmd_vel_publish: false,
+    motion_unlock_requested: false,
     does_not_set_motion_unlock: true,
-    blocked_parameters_not_touched: ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+    blocked_parameters_not_touched: ["cmd_vel_topic"],
     failure_reason: "none",
     blocked_reasons: [],
     hard_dangerous_true_fields: [],
@@ -4111,6 +4129,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自动扫图状态机已启动");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("低速运行中");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("地图和雷达监看中");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮只按自由移动记录，未改速度话题。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图低速运行中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toContain("低速运行中");
@@ -4154,6 +4173,7 @@ describe("App", () => {
       String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?") && options?.method === "POST",
     )).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止，待刷新画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：停止参数已一次写入 5 项，未改速度话题。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopped_needs_refresh");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("自动扫图停止请求已发送，需要刷新停止后的地图画面，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：刷新扫图画面");
