@@ -8034,6 +8034,36 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(false);
   });
 
+  it("shows camera open failure from readback instead of plain online copy", async () => {
+    // live 上位机会保留 last_offer_failure_reason；普通首屏要显示“打不开”，不能继续只说相机在线。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "ready";
+    summaryFixture.readback_summary.camera.devices_status = "loaded";
+    summaryFixture.readback_summary.camera.preview_status = "idle_not_started";
+    summaryFixture.readback_summary.camera.last_offer_error = "camera_open_failed";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "opencv_capture_not_opened";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("实时画面");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("失败");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("相机没有打开；检查摄像头/视频线或占用后重试。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机没有打开；检查摄像头/视频线或占用后重试。");
+    expect(firstScreenText).not.toContain("相机在线，点打开画面。");
+    expect(firstScreenText).not.toContain("opencv_capture_not_opened");
+    expect(firstScreenText).not.toContain("camera_open_failed");
+    expect(firstScreenText).not.toContain("/dev/video1");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/offer?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("submits operator report material from advanced diagnostics without leaking it to the first screen", async () => {
     // 表单只在高级诊断里出现；提交走固定 workstation proxy，不把 delivery claim 升成顶层成功。
     const mockedFetch = stubWorkstationFetch();

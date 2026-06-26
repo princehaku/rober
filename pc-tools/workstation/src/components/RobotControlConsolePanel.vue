@@ -363,6 +363,11 @@ function cameraSourcePlainFailureHint(): string {
   if (sourceFailed || probeFailureHint) {
     return probeFailureHint || "相机没有出画面，检查摄像头/视频线。";
   }
+  const rawLastOfferReason = camera?.last_offer_failure_reason || camera?.last_offer_error || "";
+  const lastOfferReason = ["", "none", "not_loaded"].includes(rawLastOfferReason) ? "" : rawLastOfferReason;
+  if (lastOfferReason) {
+    return cameraOfferPlainFailureHint(lastOfferReason);
+  }
   return "";
 }
 
@@ -422,6 +427,9 @@ function cameraOfferPlainFailureHint(reason: string): string {
   }
   if (reason.includes("offer_rejected")) {
     return "上位机拒绝打开画面；检查相机服务状态后重试。";
+  }
+  if (reason.includes("opencv_capture_not_opened") || reason.includes("capture_not_opened") || reason.includes("camera_open_failed")) {
+    return "相机没有打开；检查摄像头/视频线或占用后重试。";
   }
   return `打开画面失败：${reason}`;
 }

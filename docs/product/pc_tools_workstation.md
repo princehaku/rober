@@ -144,6 +144,10 @@ pc-tools/workstation/
 - 2026-06-23 13:25 起，Robot Control summary 会把上位机 `/api/radar/status` 中 `controls.start.command.configured` 压缩成 `readback_summary.lidar.radar_start_configured`。当该值明确为 `false` 时，普通首屏不再提示现场继续点 `启动雷达`，而是显示 `上位机雷达启动命令未配置`、禁用普通雷达启动按钮并把行程/送达/键盘 LiDAR delta 的下一步改成 `先配置雷达启动命令`。该提示只消费只读 radar status，不自动配置上位机、不启动雷达、不执行 Nav2、manual、delivery complete、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-25 起，PC workstation 的 Node API 和 Vite dev 默认公开入口改为 `0.0.0.0:7001`，避开本机 Clash Verge 常用的 `7071`。`HOST/PORT` 仍可覆盖，`api:public` / `dev:public` 也显式使用 `7001`；该变更只影响 PC 工具监听地址，不改 Clash 配置、不调用上位机控制接口、不执行 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-26 起，实时画面 WebRTC offer 失败时，普通首屏视频框会把 `remote_answer_missing` 等信令失败翻译成“上位机没有返回视频应答；检查相机服务后重试。”这类现场可执行提示，`raw_failure_reason` 只保留在默认关闭的高级诊断。该变更只改善画面 WYSIWYG 失败展示，不修改 Clash/端口，不自动重试，不调用 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
+- 2026-06-26 20:45 起，若 summary 读到相机服务 ready 但最近打开失败为 `opencv_capture_not_opened`、`capture_not_opened`
+  或 `camera_open_failed`，普通首屏不再继续显示 `相机在线，点打开画面`，而是显示
+  `相机没有打开；检查摄像头/视频线或占用后重试`。该提示只消费只读 camera readback，不自动打开相机、
+  不调用 first-frame probe、Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-26 08:20 起，普通首屏实时画面框和真实 `<video>` 也会带 `data-frame-state=已绘制帧/等待绘帧/未绑定/未观测`，把浏览器是否真的绘出视频帧从“画面已打开”等业务状态里拆出来。`画面可见` 必须对应 `已绘制帧`，等待/未绑定态有独立样式和测试锁定。该改动只影响 PC 前端呈现，不自动打开相机、不重试 WebRTC、不修改 Clash/端口、不调用 Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-25 起，普通首屏区分 `雷达未运行` 和 `雷达待刷新`：当上位机只读状态显示 `lifecycle_running=true` 但最新 scan proof stale/incomplete 时，首屏显示“雷达待刷新”，行程/送达/键盘下一步都指向 `刷新雷达`，不再提示重复 `启动雷达`。该刷新仍只走固定 radar proof refresh，不触发底盘、Nav2 execute、delivery complete、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-26 20:30 起，`雷达待刷新` 的原因按 summary 真实状态区分：`latest_proof_stale_while_lifecycle_running`
