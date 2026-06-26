@@ -4906,8 +4906,14 @@ describe("App", () => {
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     summaryFixture.safe_command_boundary.free_roam_autonomy_start_ready = true;
+    const mapStartFixture = cloneFixture(fixtures["/api/robot-control/map/start"]) as Record<string, any>;
+    mapStartFixture.proxy_status = "lifecycle_forwarded";
+    mapStartFixture.command_result = { mode: "map_runtime_started", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
     });
     const wrapper = mount(App);
     await flushPromises();

@@ -2507,6 +2507,12 @@ const canStartPlainFreeRoamMapping = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const plainFreeRoamMappingQualityReady = computed(() => (
+  // 这不是移动门禁；只决定自动扫图 start 能否声明“本轮可按建图验收”。
+  mapRuntimeStarted.value
+  && plainCameraReadyForFreeRoamAutonomy.value
+  && plainRadarReadyForFreeRoamMapping.value
+));
 const canStartMapLifecycle = computed(() => (
   !loading.value
   && !mapLifecyclePending.value
@@ -8206,7 +8212,7 @@ function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string):
     remote_method: "POST",
     remote_http_status: null,
     status: "blocked",
-    request_body: action === "start" ? { confirm_operator_safety: true, confirm_mapping_active: mapRuntimeStarted.value } : {},
+    request_body: action === "start" ? { confirm_operator_safety: true, confirm_mapping_active: plainFreeRoamMappingQualityReady.value } : {},
     command_result: { mode: "not_sent", executed: false, ok: false },
     latest_decision_state: "not_loaded",
     sets_state_machine_parameters: false,
@@ -8277,7 +8283,7 @@ async function startFreeRoamAutonomy(): Promise<void> {
   try {
     freeRoamAutonomyResult.value = await postRobotControlFreeRoamAutonomyStart(robotApiBaseUrl.value, {
       confirm_operator_safety: true,
-      confirm_mapping_active: mapRuntimeStarted.value,
+      confirm_mapping_active: plainFreeRoamMappingQualityReady.value,
     });
   } catch (err) {
     freeRoamAutonomyResult.value = makeFreeRoamAutonomyFallback("start", err instanceof Error ? err.message : "free_roam_autonomy_start_failed");

@@ -2793,3 +2793,9 @@ free-roam autonomy start 或 `/cmd_vel`，也不修改 Clash 或系统代理配�
 readiness 均满足。测试锁定 `.plain-free-roam-map[data-state="可移动/可建图"]` 和 `.status-chip[data-state="可移动/可建图"]`
 选择器，避免后续只改文案不改视觉。该改动只影响 PC 前端呈现，不调用 map lifecycle、manual、keyboard、Nav2、delivery、
 free-roam autonomy、stop 或 `/cmd_vel`。
+
+2026-06-26 23:25 起，普通首屏自动扫图 start 的 `confirm_mapping_active` 只在“地图记录已启动 + 摄像头 ready + 雷达 ready”
+三者同时满足时才传 `true`。如果地图记录已启动但摄像头或雷达任一项未 ready，PC 仍允许低速自移动，但转发
+`confirm_mapping_active=false`，让上车端把本轮标成自由移动/练习，不误记为可验收建图。测试覆盖“地图记录已启动但摄像头缺首帧”
+时自动扫图请求仍为 `confirm_mapping_active=false`。该 gate 不阻止自由移动，不调用 manual、keyboard、Nav2、delivery、stop
+或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
