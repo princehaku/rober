@@ -2503,7 +2503,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     cmd_vel_topic: "/cmd_vel";
     nav2_goal: "Nav2 NavigateToPose locked";
     nav2_goal_ready: boolean;
-    nav2_goal_label: "图上路线可执行" | "图上路线未就绪";
+    nav2_goal_label: "路线读数已准备，先看地图画面" | "图上路线未就绪";
     nav2_goal_blockers: string[];
     map_start: "map start locked";
     radar_start: "radar start locked";

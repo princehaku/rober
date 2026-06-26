@@ -3551,7 +3551,7 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
   "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers"
 > {
-  // 完整路线执行的首屏门禁只读当前 summary 材料；真正执行前 PC 代理只复跑最小安全确认。
+  // summary 只能证明路线读数和 map-frame 位姿，地图画面是否已渲染交给前端 WYSIWYG gate 判断。
   const blockers = [
     proof?.path_generated === true || proof?.path_generation_succeeded === true ? "" : "path_generation_not_observed",
     (proof?.path_point_count ?? 0) > 0 || (proof?.path_preview_point_count ?? 0) > 0 ? "" : "path_point_count_not_positive",
@@ -3560,7 +3560,7 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   const ready = blockers.length === 0;
   return {
     nav2_goal_ready: ready,
-    nav2_goal_label: ready ? "图上路线可执行" : "图上路线未就绪",
+    nav2_goal_label: ready ? "路线读数已准备，先看地图画面" : "图上路线未就绪",
     nav2_goal_blockers: blockers,
   };
 }

@@ -5802,7 +5802,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.path_generated).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal).toBe("Nav2 NavigateToPose locked");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线可执行");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，先看地图画面");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
       expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
