@@ -656,6 +656,38 @@ function radarStatusValue(key: string): string | undefined {
   return radarStatusResult.value.radar_key_values[key];
 }
 
+function robotReadEndpoint(id: RobotControlSummaryResponse["read_endpoints"][number]["id"]) {
+  // summary 会保留各只读端点原始 key_values；普通首屏用它发现端点之间是否互相矛盾。
+  return robotSummary.value?.read_endpoints.find((endpoint) => endpoint.id === id && endpoint.request_status === "loaded") ?? null;
+}
+
+function radarEndpointConflictSummary(): string {
+  // 真实现场可能 status 和 scan-proof latest 一新一旧；冲突时必须照实显示，不能压成单一“已运行/未运行”。
+  const statusEndpoint = robotReadEndpoint("radar_status");
+  const proofEndpoint = robotReadEndpoint("radar_scan_proof_latest");
+  if (!statusEndpoint || !proofEndpoint) {
+    return "";
+  }
+  const statusRunning = statusEndpoint.key_values.lifecycle_running;
+  const proofRunning = proofEndpoint.key_values.lifecycle_running;
+  const statusFresh = statusEndpoint.key_values.latest_scan_proof_fresh;
+  const proofFresh = proofEndpoint.key_values.latest_scan_proof_fresh;
+  const conflicts: string[] = [];
+  if ((statusRunning === "true" || statusRunning === "false")
+    && (proofRunning === "true" || proofRunning === "false")
+    && statusRunning !== proofRunning) {
+    const statusState = statusEndpoint.key_values.lifecycle_state || (statusRunning === "true" ? "running" : "stopped");
+    const proofState = proofEndpoint.key_values.lifecycle_state || (proofRunning === "true" ? "running" : "stopped");
+    conflicts.push(`状态页显示 ${statusState}，最新 proof 显示 ${proofState}`);
+  }
+  if ((statusFresh === "true" || statusFresh === "false")
+    && (proofFresh === "true" || proofFresh === "false")
+    && statusFresh !== proofFresh) {
+    conflicts.push(`新鲜度读数不一致`);
+  }
+  return conflicts.length ? `雷达状态源不一致：${conflicts.join("；")}` : "";
+}
+
 const effectiveLidarReadback = computed<LidarReadback | null>(() => {
   // 地图雷达 marker 必须使用最新可用口径：radar/status 优先，summary 作为兼容兜底。
   const summary = robotSummary.value?.readback_summary.lidar;
@@ -775,6 +807,11 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   const lidar = effectiveLidarReadback.value;
   if (!lidar) {
     return { state: "雷达未运行", hint: "先连接小车，再读取雷达状态。" };
+  }
+  const endpointConflict = radarEndpointConflictSummary();
+  if (endpointConflict) {
+    const pointHint = plainRadarPointHint(false);
+    return { state: "雷达待刷新", hint: pointHint ? `${endpointConflict}；先刷新雷达确认。${pointHint}` : `${endpointConflict}；先刷新雷达确认。` };
   }
   const lifecycleRunning = radarFieldIsTrue(lidar.lifecycle_running);
   const windowObserved = radarFieldIsTrue(lidar.continuous_window_observed);
@@ -1944,6 +1981,10 @@ function plainRadarFreshnessLabel(
   obstacleDistanceLabel = "",
 ): string {
   // 雷达点可能来自最近一次 artifact；首屏必须说清它是不是当前运行中的实时点。
+  const endpointConflict = radarEndpointConflictSummary();
+  if (endpointConflict) {
+    return `雷达点口径：${endpointConflict}；当前点位只作待刷新材料，刷新后再确认是否实时。`;
+  }
   const mapPointCount = radarScanOverlay.dots.length;
   const localPointCount = radarLocalScanOverlay.dots.length;
   const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, poseObserved);

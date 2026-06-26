@@ -13593,6 +13593,68 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows conflicting radar status sources as refresh-needed on the map", async () => {
+    // 真实现场可能 /api/radar/status 显示 stopped，但 scan-proof latest 仍显示 running；首屏必须暴露冲突。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_present_but_lifecycle_not_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_present_but_lifecycle_not_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "72";
+    summaryFixture.readback_summary.lidar.scan_preview_source_point_count = "72";
+    summaryFixture.read_endpoints = [
+      ...summaryFixture.read_endpoints,
+      {
+        id: "radar_status",
+        endpoint: "/api/radar/status",
+        http_status: 200,
+        request_status: "loaded",
+        schema: "trashbot.upper_robot_api.v1.radar_status",
+        status: "scan_once_hz_raw_packet_tf_observed",
+        evidence_ref: "o1-lidar-scan-proof",
+        key_values: {
+          lifecycle_running: "false",
+          lifecycle_state: "stopped",
+          latest_scan_proof_fresh: "false",
+        },
+        blocked_reasons: [],
+        dangerous_true_fields: [],
+      },
+      {
+        id: "radar_scan_proof_latest",
+        endpoint: "/api/radar/scan-proof/latest",
+        http_status: 200,
+        request_status: "loaded",
+        schema: "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+        status: "loaded",
+        evidence_ref: "o1-lidar-scan-proof",
+        key_values: {
+          lifecycle_running: "true",
+          lifecycle_state: "running",
+          latest_scan_proof_fresh: "false",
+        },
+        blocked_reasons: [],
+        dangerous_true_fields: [],
+      },
+    ];
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(visiblePlainHomeText(wrapper)).toContain("雷达状态源不一致：状态页显示 stopped，最新 proof 显示 running；先刷新雷达确认。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达状态源不一致：状态页显示 stopped，最新 proof 显示 running；当前点位只作待刷新材料，刷新后再确认是否实时。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("updates the map radar marker from the latest read-only radar status during map preview refresh", async () => {
     // 地图刷新必须同时更新雷达状态；不能继续显示 summary 里的旧 fresh 结论。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
