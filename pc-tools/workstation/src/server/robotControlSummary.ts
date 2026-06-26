@@ -2955,8 +2955,19 @@ function freeRoamRuntimeGatesFromReadbacks(
     .map((gate) => {
       const rawState = asString(gate.state, "blocked");
       const state: "ready" | "blocked" | "not_proven" = rawState === "ready" || rawState === "not_proven" ? rawState : "blocked";
+      const id = asString(gate.id, "free_roam_runtime_gate");
+      const mapRuntimeStarted = proofBoolean(readbacks, ["managed_runtime_started"]) === true;
+      if (id === "mapping_active" && mapRuntimeStarted) {
+        return {
+          id,
+          label: asString(gate.label, "地图记录"),
+          state: "ready" as const,
+          evidence: "当前读回已证明地图记录 runtime 已启动",
+          next_action: "继续保持地图记录并监看画面",
+        };
+      }
       return {
-        id: asString(gate.id, "free_roam_runtime_gate"),
+        id,
         label: asString(gate.label, "自动扫图门禁"),
         state,
         evidence: asString(gate.evidence, "未读到自动扫图门禁证据"),
