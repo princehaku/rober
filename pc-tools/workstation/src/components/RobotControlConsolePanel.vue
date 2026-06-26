@@ -3302,6 +3302,9 @@ function plainTripFailureReasonText(result: { failure_reason?: string } | null |
   if (reason.includes("timeout")) {
     return "等待超时";
   }
+  if (reason.includes("locked") || reason.includes("not_ready") || reason.includes("not ready") || reason.includes("unavailable")) {
+    return "行程未开放";
+  }
   if (reason.includes("obstacle") || reason.includes("collision")) {
     return "被障碍挡住";
   }

@@ -7501,6 +7501,57 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows locked Nav2 execution as trip not open on the visible route", async () => {
+    // 现场 summary 常见 Nav2 locked；普通首屏要说“行程未开放”，而不是暴露 NavigateToPose 或泛化成执行失败。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execute": {
+        ...(fixtures["/api/robot-control/nav2/goal/execute"] as Record<string, unknown>),
+        proxy_status: "execution_rejected",
+        failure_reason: "Nav2 NavigateToPose locked",
+        blocked_reasons: ["Nav2 NavigateToPose locked"],
+        goal_execution_key_values: {
+          status: "goal_failed",
+          result_status: "Nav2 NavigateToPose locked",
+          evidence_ref: "plain-trip-execution-nav2-locked",
+          delivery_success: "false",
+        },
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(marker.text()).toBe("行程未通过：行程未开放");
+    expect(marker.attributes("data-state")).toBe("行程未通过");
+    expect(marker.attributes("aria-label")).toBe("行程未通过，失败原因行程未开放，地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：未通过（行程未开放）");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：最近行程未通过（行程未开放），先检查或重新执行完整行程。");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("NavigateToPose locked");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("translates plain trip preparation planner blocker without executing navigation", async () => {
     // no-motion 行程准备失败时，普通首屏要给下一步，不把 planner_server_not_active 暴露给普通用户。
     const mockedFetch = stubWorkstationFetch({

@@ -2264,6 +2264,11 @@ Nav2 execute/latest readback，不自动重试、不执行 Nav2、不发送 manu
 例如地图显示 `行程执行：未通过（规划失败）` 时，行程状态同步显示 `最近行程未通过（规划失败）`。这只统一普通首屏
 WYSIWYG 文案，不自动重试、不执行 Nav2、delivery complete、manual、keyboard pulse、stop 或 `/cmd_vel`。
 
+2026-06-26 20:15 起，普通首屏会把 `Nav2 NavigateToPose locked`、`locked`、`not_ready` 等执行拒绝原因翻译成
+`行程未开放`，并同步显示在地图终点 marker、`行程执行` caption 和 `行程状态`。这样现场能看懂是上车端行程能力未开放，
+而不是误读为路线坐标或浏览器按钮坏了。该翻译只消费已有 Nav2 execute/latest readback，不自动重试、不执行 Nav2、
+delivery complete、manual、keyboard pulse、stop 或 `/cmd_vel`。
+
 2026-06-26 01:46 起，如果普通首屏 `执行图上路线` 返回本机 fallback、网络失败或上位机拒绝，且响应连
 `goal_execution_key_values` 都为空，PC 会用本次点击的图上终点和失败原因生成仅用于 UI 的失败读数。地图 marker、
 地图 caption 和 `行程进度` 继续显示 `行程未通过` / `行程执行：未通过（原因）`，不会退回空白或旧成功记录。
