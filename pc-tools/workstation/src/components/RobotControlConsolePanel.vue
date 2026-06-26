@@ -4109,6 +4109,28 @@ function nav2BaseMotionSignalText(values: Record<string, string> | undefined): s
   return "";
 }
 
+function nav2WheelReadbackCautionText(values: Record<string, string> | undefined): string {
+  // IMU 姿态变化只能说明小车有运动迹象；轮速 L/R 仍为 0/0 时，要把 wheel raw 复验单独露出。
+  if (!explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven)) {
+    return "";
+  }
+  const pair = nav2BaseFeedbackPair(values);
+  if (pair && isZeroWheelPair(pair.left, pair.right)) {
+    return `轮速 L/R=${pair.left}/${pair.right} 待复验`;
+  }
+  return "轮速非零待复验";
+}
+
+function nav2MotionSignalSummaryText(values: Record<string, string> | undefined): string {
+  // 完整路线文案同时保留运动迹象和轮速缺口，避免把 IMU-only 误读成 wheel raw L/R 已闭合。
+  const motionSignalText = nav2BaseMotionSignalText(values);
+  const wheelCautionText = nav2WheelReadbackCautionText(values);
+  if (motionSignalText && wheelCautionText) {
+    return `${motionSignalText}；${wheelCautionText}`;
+  }
+  return motionSignalText || wheelCautionText;
+}
+
 function nav2UnprovenControlDetail(values: Record<string, string> | undefined): string {
   if (nav2BaseCommandWithoutWheelFeedback(values)) {
     const count = nav2BaseCommandCount(values);
@@ -4116,7 +4138,7 @@ function nav2UnprovenControlDetail(values: Record<string, string> | undefined): 
     const countText = count > 0 ? ` ${count} 条` : "";
     const pairText = pair ? `，底盘反馈 L/R=${pair.left}/${pair.right}` : "";
     if (explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)) {
-      return `Nav2 已发非零底盘命令${countText}${pairText}，轮速非零未证明，但${nav2BaseMotionSignalText(values)}；这不是雷达阻塞`;
+      return `Nav2 已发非零底盘命令${countText}${pairText}，轮速非零未证明，但${nav2MotionSignalSummaryText(values)}；这不是雷达阻塞`;
     }
     return `Nav2 已发非零底盘命令${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达阻塞`;
   }
@@ -4863,7 +4885,7 @@ const plainTripEvidenceSummary = computed(() => {
   const feedbackCount = values?.feedback_sample_count ?? values?.nav2_feedback_sample_count;
   const hasFeedbackSamples = nav2FeedbackSampleCount(values) > 0;
   const feedbackText = hasFeedbackSamples ? `，反馈 ${feedbackCount} 次` : "，未读到反馈样本";
-  const motionSignalText = nav2BaseMotionSignalText(values);
+  const motionSignalText = nav2MotionSignalSummaryText(values);
   const nextText = hasFeedbackSamples
     ? nav2ExecutionControlProven(values)
       ? motionSignalText ? `底盘已响应（${motionSignalText}）；送达仍需现场确认。` : "送达仍需现场确认。"
@@ -4936,21 +4958,23 @@ function plainMapTripExecutionLabel(): string {
     return "";
   }
   if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    const wheelCautionText = nav2WheelReadbackCautionText(values);
+    const wheelCautionSuffix = wheelCautionText ? `，${wheelCautionText}` : "";
     const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
     if (postExecutionMapFailure) {
-      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，地图刷新失败（${postExecutionMapFailure}）`;
+      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次${wheelCautionSuffix}，地图刷新失败（${postExecutionMapFailure}）`;
     }
     if (deliveryCompletionPending.value) {
-      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，送达确认中`;
+      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次${wheelCautionSuffix}，送达确认中`;
     }
     const deliveryFailureText = deliveryCompletionFailureText(deliveryCompletionResult.value);
     if (deliveryFailureText) {
-      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，送达确认失败（${deliveryFailureText}）`;
+      return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次${wheelCautionSuffix}，送达确认失败（${deliveryFailureText}）`;
     }
     if (deliverySuccessReady.value) {
-      return `行程执行：已送达，反馈 ${nav2FeedbackSampleCount(values)} 次，delivery gate 已确认`;
+      return `行程执行：已送达，反馈 ${nav2FeedbackSampleCount(values)} 次${wheelCautionSuffix}，delivery gate 已确认`;
     }
-    return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次，准备送达材料`;
+    return `行程执行：已到达，反馈 ${nav2FeedbackSampleCount(values)} 次${wheelCautionSuffix}，准备送达材料`;
   }
   if (nav2GoalSucceeded(values) && evidenceIsStale(values)) {
     return "行程执行：旧到达记录";
@@ -4983,11 +5007,13 @@ const plainTripExecutionProgress = computed(() => {
   }
   const ageText = formatEvidenceAge(values, "这条行程较旧，如需本轮验收，请重新执行图上路线");
   if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    const wheelCautionText = nav2WheelReadbackCautionText(values);
+    const nextText = wheelCautionText ? `下一步准备送达材料，同时处理：${wheelCautionText}。` : "下一步准备送达材料。";
     const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
     if (postExecutionMapFailure) {
       return `行程进度：已到达，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈${ageText}；执行后地图画面刷新失败：${postExecutionMapFailure}，先刷新地图画面再准备送达材料。`;
     }
-    return `行程进度：已到达，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈${ageText}；下一步准备送达材料。`;
+    return `行程进度：已到达，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈${ageText}；${nextText}`;
   }
   if (nav2GoalSucceeded(values) && evidenceIsStale(values)) {
     const feedbackText = nav2FeedbackSampleCount(values) > 0 ? `，读到 ${nav2FeedbackSampleCount(values)} 次执行反馈` : "，未读到反馈样本";

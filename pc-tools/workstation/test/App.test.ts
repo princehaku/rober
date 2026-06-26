@@ -6563,6 +6563,83 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("keeps IMU-only route arrival visible while calling out zero wheel readback", async () => {
+    // 现场可能已看到 action 成功和车身姿态变化，但 wheel raw L/R 仍是 0/0；PC 要把两件事分开说。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_proven = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_hil_pass = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_evidence_ref = "o11-nav2-goal-execution-imu-only-fixture";
+    summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "239";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_nonzero_sample_count = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_imu_attitude_delta_observed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_imu_pitch_delta = "24.210531";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_uses_base_uart = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_generated_at_ms = "1782150441201";
+    summaryFixture.readback_summary.nav2.goal_execution_response_generated_at_ms = "1782150442201";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {},
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 239 次，轮速 L/R=0/0 待复验，准备送达材料");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 239 次执行反馈，刚刚；下一步准备送达材料，同时处理：轮速 L/R=0/0 待复验。");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toBe("最近行程成功，反馈 239 次，刚刚；底盘已响应（车身姿态有变化，pitch 变化 24.210531；轮速 L/R=0/0 待复验）；送达仍需现场确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先更新行程材料）");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("keeps a Nav2 success with explicit unproven execution out of the complete route gate", async () => {
     // live 上位机可能有 goal_succeeded 和反馈样本，但仍声明没有真车执行证明；PC 不能把它当本轮完整路线。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
@@ -9097,7 +9174,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("底盘已响应（车身姿态有变化");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速 L/R=0/0 待复验");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，轮速 L/R=0/0 待复验，准备送达材料");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行已完成");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).not.toContain("重新执行完整行程");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
