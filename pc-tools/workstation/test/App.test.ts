@@ -10436,6 +10436,7 @@ describe("App", () => {
     expect((wrapper.find('input[name="plainExternalVideoRef"]').element as HTMLInputElement).value).toBe("/root/rober/onboard/runtime/camera/plain_current_frame.jpg");
     const probeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"));
     expect(probeCall).toBeTruthy();
+    expect(String(probeCall?.[0])).toContain("backendSmoke=1");
     expect((probeCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
     const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
     expect(reportCall).toBeTruthy();
@@ -10526,6 +10527,7 @@ describe("App", () => {
     const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
     const probeCall = newCalls.find(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"));
     expect(probeCall).toBeTruthy();
+    expect(String(probeCall?.[0])).toContain("backendSmoke=1");
     expect((probeCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：上位机样张已读到，实时窗口仍未打开。");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
@@ -10754,9 +10756,9 @@ describe("App", () => {
           max_luma: "not_available",
           dynamic_range_luma: "not_available",
           non_black_ratio: "not_available",
-          backend_smoke_status: "not_requested",
+          backend_smoke_status: "backend_no_frame_observed",
           backend_frame_observed: "false",
-          backend_attempts: "0",
+          backend_attempts: "4",
         },
         failure_reason: "first_frame_timeout",
         blocked_reasons: ["first_frame_timeout"],
@@ -10780,9 +10782,11 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("失败");
-    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("相机没有出画面，检查摄像头/视频线。");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机没有出画面，检查摄像头/视频线。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：摄像头能打开，但 v4l2/ffmpeg 底层也没有取到视频帧");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：摄像头能打开，但 v4l2/ffmpeg 底层也没有取到视频帧；检查 USB、摄像头输入、格式或供电。");
     expect((wrapper.find('input[name="plainExternalVideoRef"]').element as HTMLInputElement).value).toBe("");
+    const currentFrameProbeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"));
+    expect(String(currentFrameProbeCall?.[0])).toContain("backendSmoke=1");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

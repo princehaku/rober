@@ -7810,6 +7810,94 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation camera first-frame probe can request backend smoke for explicit diagnostics", async () => {
+    // 用户主动点击检查画面时允许跑 v4l2/ffmpeg 矩阵，帮助确认不是浏览器或页面独占问题。
+    const upstream = await listenRobotCameraProxyApi({
+      "/api/camera/first-frame/probe": {
+        statusCode: 503,
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe_proxy",
+          status: "first_frame_timeout",
+          probe_payload: {
+            schema: "trashbot.camera_first_frame_probe.v1",
+            status: "first_frame_timeout",
+            device: "/dev/video1",
+            open_ok: true,
+            read_ok: false,
+            first_frame_timeout: true,
+            failure_reason: "deadline_expired",
+            visible_content_proven: false,
+            backend_smoke: {
+              executed: true,
+              frame_observed: false,
+              status: "backend_no_frame_observed",
+              attempts: [
+                { name: "v4l2_mjpg_mmap", ok: false, output_bytes: 0 },
+                { name: "ffmpeg_mjpg", ok: false, output_bytes: 0 },
+              ],
+            },
+            safe_to_control: false,
+            robot_control_executed: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          },
+          fallback_attempts: [
+            {
+              status: "first_frame_timeout",
+              fourcc: "MJPG",
+              width: 640,
+              height: 480,
+              open_ok: true,
+              read_ok: false,
+              failure_reason: "deadline_expired",
+            },
+          ],
+          safe_to_control: false,
+          robot_control_executed: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/camera/first-frame/probe?baseUrl=${encodeURIComponent(upstream.baseUrl)}&backendSmoke=1`, {
+        method: "POST",
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        failure_reason: string;
+        probe_key_values: {
+          backend_smoke_status: string;
+          backend_frame_observed: string;
+          backend_attempts: string;
+          failure_reason: string;
+        };
+        safe_to_control: boolean;
+      };
+
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("probe_failed");
+      expect(body.failure_reason).toBe("deadline_expired");
+      expect(body.probe_key_values.failure_reason).toBe("deadline_expired");
+      expect(body.probe_key_values.backend_smoke_status).toBe("backend_no_frame_observed");
+      expect(body.probe_key_values.backend_frame_observed).toBe("false");
+      expect(body.probe_key_values.backend_attempts).toBe("2");
+      expect(body.safe_to_control).toBe(false);
+      expect(upstream.receivedBodies["/api/camera/first-frame/probe"]).toEqual([
+        {
+          include_backend_smoke: true,
+          auto_format_fallback: true,
+          timeout_s: 3,
+          read_call_timeout_s: 4,
+        },
+      ]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation base manual proxy clamps request and requires confirm_hil_checklist", async () => {
     // 受控点动代理只允许固定 manual endpoint，并且必须经过安全确认 gate 与速度/时长 clamp。
     const upstream = await listenRobotBaseCommandApi({

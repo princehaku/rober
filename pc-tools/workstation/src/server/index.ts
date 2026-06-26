@@ -2660,17 +2660,18 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(cameraProbeFailure(sourceBaseUrl, normalized.reason));
       return;
     }
-    // 普通首屏只需要快速证明首帧；backend smoke 会启动 ffmpeg/v4l2-ctl，现场故障时容易长时间占住摄像头。
+    const includeBackendSmoke = req.query.backendSmoke === "1" || req.query.backendSmoke === "true";
+    // 默认保持快速首帧探针；只有用户主动请求深度诊断时才启动 ffmpeg/v4l2-ctl 后端矩阵。
     const remote = await fetchCameraProxySummary(
       sourceBaseUrl,
       "/api/camera/first-frame/probe",
       {
-        include_backend_smoke: false,
+        include_backend_smoke: includeBackendSmoke,
         auto_format_fallback: true,
         timeout_s: 3,
         read_call_timeout_s: 4,
       },
-      12000,
+      includeBackendSmoke ? 32000 : 12000,
     );
     if (remote.error) {
       const failureBody = { ...cameraProbeFailure(sourceBaseUrl, remote.error), proxy_status: "probe_failed" as const };

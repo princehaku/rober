@@ -462,6 +462,9 @@ function cameraProbePlainFailureHint(): string {
   if (values.open_ok === "false") {
     return "相机没有打开；检查摄像头/视频线或占用后重试。";
   }
+  if (values.backend_smoke_status === "backend_no_frame_observed") {
+    return "不是页面独占：摄像头能打开，但 v4l2/ffmpeg 底层也没有取到视频帧；检查 USB、摄像头输入、格式或供电。";
+  }
   return "相机没有出画面，检查摄像头/视频线。";
 }
 
@@ -8617,7 +8620,7 @@ async function runCameraFirstFrameProbe(): Promise<void> {
   }
   cameraFirstFrameProbePending.value = true;
   try {
-    cameraFirstFrameProbeResult.value = await postRobotControlCameraFirstFrameProbe(robotApiBaseUrl.value);
+    cameraFirstFrameProbeResult.value = await postRobotControlCameraFirstFrameProbe(robotApiBaseUrl.value, true);
   } catch (err) {
     cameraFirstFrameProbeResult.value = makeCameraFirstFrameProbeFallback(
       err instanceof Error ? err.message : "camera_first_frame_probe_request_failed",

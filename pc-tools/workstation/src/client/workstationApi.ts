@@ -234,12 +234,15 @@ function robotControlCameraOfferUrl(baseUrl: string): string {
   return `${API_ENDPOINTS.robotControlCameraOffer}?${params.toString()}`;
 }
 
-function robotControlCameraFirstFrameProbeUrl(baseUrl: string): string {
-  // first-frame probe 只把 baseUrl 交给 Node 代理，探针参数由后端固定白名单生成。
+function robotControlCameraFirstFrameProbeUrl(baseUrl: string, includeBackendSmoke = false): string {
+  // first-frame probe 只把 baseUrl 和诊断级别交给 Node 代理，底层参数仍由后端白名单生成。
   const params = new URLSearchParams();
   const trimmed = baseUrl.trim();
   if (trimmed) {
     params.set("baseUrl", trimmed);
+  }
+  if (includeBackendSmoke) {
+    params.set("backendSmoke", "1");
   }
   return `${API_ENDPOINTS.robotControlCameraFirstFrameProbe}?${params.toString()}`;
 }
@@ -712,9 +715,10 @@ export async function postRobotControlCameraPeerClose(
 
 export async function postRobotControlCameraFirstFrameProbe(
   baseUrl: string,
+  includeBackendSmoke = false,
 ): Promise<RobotControlCameraFirstFrameProbeProxyResponse> {
   // 相机首帧探针是高级诊断固定入口；前端 body 为空，不能传任意设备或 shell 参数。
-  return postJson<RobotControlCameraFirstFrameProbeProxyResponse>(robotControlCameraFirstFrameProbeUrl(baseUrl), {});
+  return postJson<RobotControlCameraFirstFrameProbeProxyResponse>(robotControlCameraFirstFrameProbeUrl(baseUrl, includeBackendSmoke), {});
 }
 
 export async function getRobotControlCameraMjpegStatus(baseUrl: string): Promise<RobotControlCameraMjpegStatusResponse> {
