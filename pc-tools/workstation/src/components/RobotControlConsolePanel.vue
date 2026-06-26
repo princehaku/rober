@@ -4391,15 +4391,14 @@ const canRefreshPlainTripPreparation = computed(() => {
 });
 
 const canRunPlainTripExecution = computed(() => {
-  // 真正执行仍由后端 confirm_navigation_execution + 定位/路线 readback gate 再次校验。
+  // 行程按钮承担普通首屏向导：无图上路线时只准备并刷新地图，已有图上路线时才执行。
   return !deliveryNav2GoalReady.value
     && !loading.value
     && !plainTripActionPending.value
     && !manualMotionActiveForTrip.value
     && robotApiBaseUrl.value.trim().length > 0
     && plainManualSafetyConfirmed.value
-    && !plainTripMapWysiwygPending.value
-    && plainTripCurrentRouteVisible.value;
+    && !plainTripMapWysiwygPending.value;
 });
 
 const plainTripPreparationButtonLabel = computed(() => {
@@ -4440,10 +4439,10 @@ const plainTripExecutionButtonLabel = computed(() => {
     return "等待地图刷新";
   }
   if (plainTripRecentRouteVisible.value) {
-    return "先重新准备路线";
+    return "重新准备路线";
   }
   if (!plainTripCurrentRouteVisible.value) {
-    return plainTripPreparedBySummary.value ? "先刷新地图画面" : "先准备图上路线";
+    return plainTripPreparedBySummary.value ? "刷新图上路线" : "准备图上路线";
   }
   return plainTripPreparedBySummary.value ? "执行图上路线" : "执行行程";
 });
@@ -6513,12 +6512,15 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
 }
 
 async function runPlainTripExecution(): Promise<void> {
-  // 普通入口只执行当前可见路线终点，真正发车仍走固定 PC 代理和上位机 gate。
+  // 普通入口先保证路线所见即所得；没有当前图上路线时，只做 no-motion 准备和地图刷新。
   if (!canRunPlainTripExecution.value) {
     return;
   }
-  const routeGoal = plainTripVisibleRouteGoal();
+  let routeGoal = plainTripVisibleRouteGoal();
   if (!routeGoal) {
+    await refreshNav2Proof();
+    await nextTick();
+    (enabledButton(plainTripExecuteButton.value) ?? enabledButton(plainTripPrepareButton.value))?.focus({ preventScroll: true });
     return;
   }
   confirmNavigationExecution.value = true;
