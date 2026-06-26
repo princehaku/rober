@@ -2028,11 +2028,15 @@ const canStartMapLifecycle = computed(() => (
   && robotApiBaseUrl.value.trim().length > 0
 ));
 const freeRoamAutonomySaveBlocked = computed(() => (
-  // 自动扫图状态机未明确停止前不能保存地图，避免把运行中的覆盖过程误收口。
+  // 自动扫图状态机未明确停止前不能保存地图，避免把运行中或停止失败的覆盖过程误收口。
   freeRoamAutonomyPendingAction.value !== null
   || (
     freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded"
     && freeRoamAutonomyResult.value.action === "start"
+  )
+  || (
+    freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed"
+    && freeRoamAutonomyResult.value.action === "stop"
   )
 ));
 const freeRoamMapWysiwygPending = computed(() => (
@@ -2207,6 +2211,11 @@ const plainFreeRoamNextActionLabel = computed(() => {
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
     return "下一步：等待自动扫图停止";
+  }
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
+    return freeRoamAutonomyResult.value.action === "stop"
+      ? "下一步：点红色停止"
+      : "下一步：人工扫图或重试自动扫图";
   }
   if (freeRoamAutonomyStartedThisSession.value) {
     return "下一步：监看或停止自动扫图";
@@ -2564,6 +2573,12 @@ const plainFreeRoamMappingSteps = computed(() => {
   const keyboardMoving = keyboardHeldDirection.value !== null;
   const stopObserved = keyboardStopSettledAfterPulse.value || keyboardControlStatus.value.startsWith("stop_sent");
   const saved = mapSavedThisSession.value;
+  const autoStarted = freeRoamAutonomyStartedThisSession.value;
+  const autoStopped = freeRoamAutonomyStoppedThisSession.value;
+  const autoStartFailed = freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed" && freeRoamAutonomyResult.value.action === "start";
+  const autoStopFailed = freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed" && freeRoamAutonomyResult.value.action === "stop";
+  const autoFailureText = freeRoamAutonomyFailureText(freeRoamAutonomyResult.value);
+  const autoFailureSuffix = autoFailureText ? `：${autoFailureText}` : "";
   return [
     {
       id: "confirm",
@@ -2580,9 +2595,15 @@ const plainFreeRoamMappingSteps = computed(() => {
     {
       id: "drive",
       label: "低速扫图",
-      state: saved ? "已完成" : keyboardMoving ? "手控中" : keyboardReady && mappingStarted ? "可手控" : mappingStarted ? "待手控" : "待完成",
+      state: saved || autoStopped ? "已完成" : autoStartFailed ? "失败" : autoStarted ? "自动扫图中" : keyboardMoving ? "手控中" : keyboardReady && mappingStarted ? "可手控" : mappingStarted ? "待手控" : "待完成",
       hint: saved
         ? "扫图已收口，检查地图效果"
+        : autoStopped
+          ? "自动扫图已停止，检查停止后的地图画面"
+        : autoStartFailed
+          ? `自动扫图启动失败${autoFailureSuffix}，继续人工按住扫图或重试`
+        : autoStarted
+          ? "自动扫图运行中，PC 监看地图和雷达"
         : keyboardMoving
           ? `正在${keyboardDirectionPlainLabel.value}，松开即停`
           : keyboardReady && mappingStarted
@@ -2592,8 +2613,8 @@ const plainFreeRoamMappingSteps = computed(() => {
     {
       id: "stop",
       label: "停止收口",
-      state: saved || stopObserved ? "已完成" : mappingStarted ? "可执行" : "待完成",
-      hint: saved ? "扫图已停止并保存" : stopObserved ? "停止已发送" : mappingStarted ? "松开按键或点击停止" : "先启动地图记录",
+      state: saved || stopObserved || autoStopped ? "已完成" : autoStopFailed ? "失败" : autoStarted ? "可停止" : mappingStarted ? "可执行" : "待完成",
+      hint: saved ? "扫图已停止并保存" : stopObserved ? "停止已发送" : autoStopped ? "自动扫图已停止，刷新画面后保存" : autoStopFailed ? `自动扫图停止失败${autoFailureSuffix}，先点红色停止并现场接管` : autoStarted ? "点击停止自动扫图或红色停止" : mappingStarted ? "松开按键或点击停止" : "先启动地图记录",
     },
     {
       id: "save",

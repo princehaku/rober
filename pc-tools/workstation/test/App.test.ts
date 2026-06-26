@@ -3865,6 +3865,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先停止自动扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("先停止自动扫图，再保存地图");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("自动扫图中");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("自动扫图运行中，PC 监看地图和雷达");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("可停止");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("点击停止自动扫图或红色停止");
     const callsBeforeAutoNext = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();
@@ -3890,6 +3894,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopped_needs_refresh");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("自动扫图停止请求已发送，需要刷新停止后的地图画面，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：刷新扫图画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("自动扫图已停止，检查停止后的地图画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("自动扫图已停止，刷新画面后保存");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先刷新画面");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
     expect(workstationStyles).toContain('.plain-map-free-roam-action-marker[data-state="auto_stopped_needs_refresh"]');
@@ -4173,6 +4179,76 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
+  it("blocks map save when free-roam autonomy stop fails", async () => {
+    // 自动扫图 stop 失败时，步骤条和保存按钮必须同口径 fail-closed，不能把地图误收口。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "ready";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自动扫图";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = [
+      { id: "operator_confirmed", label: "现场安全确认", state: "ready", evidence: "已勾选现场安全确认", next_action: "继续保持现场可接管" },
+      { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
+      { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
+      { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+    ];
+    summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
+      status: "loaded",
+      state: "running",
+      reason: "门禁满足，低速直行",
+      stop_required: false,
+      artifact_only: false,
+      cmd_vel_publish_enabled: true,
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/free-roam/autonomy/stop": {
+        ...(fixtures["/api/robot-control/free-roam/autonomy/stop"] as Record<string, unknown>),
+        action: "stop",
+        proxy_status: "autonomy_failed",
+        status: "blocked",
+        command_result: { mode: "stop_timeout", executed: false, ok: false },
+        failure_reason: "stop_timeout",
+        blocked_reasons: ["stop_timeout"],
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-auto-stop"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图停止失败：等待上车端超时");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：自动扫图停止失败：等待上车端超时，未证明上车状态机已停止；必要时点击红色停止。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：点红色停止");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先停止自动扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("自动扫图停止失败：等待上车端超时，先点红色停止并现场接管");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/save?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows plain free-roam autonomy failure reason on the map", async () => {
     // 自动扫图失败不能只藏在高级诊断；地图 marker 和扫图状态都要说明卡在哪。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
@@ -4234,6 +4310,7 @@ describe("App", () => {
     expect(marker.attributes("data-state")).toBe("auto_failed");
     expect(marker.attributes("aria-label")).toBe("自动扫图启动失败：安全确认未通过，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：自动扫图启动失败：安全确认未通过，未证明上车状态机已启动；继续人工按住扫图或重试。");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("自动扫图启动失败：安全确认未通过，继续人工按住扫图或重试");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);

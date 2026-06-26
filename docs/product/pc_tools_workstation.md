@@ -2269,6 +2269,12 @@ stop、Nav2、delivery 或 `/cmd_vel`。
 `停止收口` 显示“扫图已停止并保存”，`保存地图` 在保存后 preview 已转发时显示“已保存，地图画面已自动刷新，可以检查效果”。
 该变化只调整本地 WYSIWYG 文案，不发送 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 
+2026-06-26 13:55 起，普通首屏“扫地式建图”步骤条也同步自动扫图状态：自动扫图 start 成功后，
+`低速扫图` 显示 `自动扫图中`，`停止收口` 显示 `可停止`；自动扫图 stop 成功后两项改为已完成并提示刷新后保存。
+如果 stop 失败，步骤条显示 `自动扫图停止失败`，`下一步` 指向红色停止，`保存当前地图` 保持禁用并显示
+`先停止自动扫图`。该状态只消费 PC 固定代理回包，不自动保存地图、不发送 manual、keyboard pulse、Nav2、
+delivery complete 或 `/cmd_vel`。
+
 2026-06-26 03:15 起，普通首屏地图上的扫图流程 marker 也会同步保存后地图画面新鲜度：保存成功且 preview 已自动刷新时显示
 `地图已保存，画面已刷新`，可访问说明写明“地图画面已自动刷新，可以检查效果”；保存成功但还没读到刷新画面时仍只显示
 `地图已保存`。该 marker 只消费本页 map save 与 map preview 结果，不再次保存、不发送 manual/keyboard pulse、Nav2、
