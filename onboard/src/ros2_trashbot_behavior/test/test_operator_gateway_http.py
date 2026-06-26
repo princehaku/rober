@@ -140,6 +140,28 @@ class FakeGateway:
         self.last_collect = None
         self.last_confirm = None
         self.last_review_decision = None
+        self.last_free_roam_start = None
+        self.free_roam_stop_called = False
+        self.free_roam_latest_payload = {
+            "schema": "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+            "status": "loaded",
+            "latest_result": {
+                "schema": "trashbot.free_roam_autonomy.runtime.v1",
+                "artifact_only": True,
+                "cmd_vel_publish_enabled": False,
+                "decision": {
+                    "schema": "trashbot.free_roam_autonomy.decision.v1",
+                    "state": "locked",
+                    "reason": "等待现场确认",
+                    "stop_required": True,
+                    "gates": [],
+                },
+            },
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
         self.snapshot_payload = {
             "api_version": "slice2.operator.v1",
             "state": "waiting_for_trash",
@@ -387,6 +409,79 @@ class FakeGateway:
     def submit_review_decision(self, payload):
         self.last_review_decision = dict(payload)
         return self.review_submit_status, dict(self.review_submit_payload)
+
+    def free_roam_autonomy_latest(self):
+        return 200, dict(self.free_roam_latest_payload)
+
+    def free_roam_autonomy_start(self, payload):
+        self.last_free_roam_start = dict(payload)
+        if not payload.get("confirm_operator_safety"):
+            return 400, {
+                "schema": "trashbot.upper_robot_api.v1.free_roam_autonomy_start",
+                "status": "blocked",
+                "command_result": {"mode": "free_roam_param_sequence", "executed": False, "ok": False},
+                "sets_state_machine_parameters": False,
+                "mapping_active_requested": bool(payload.get("confirm_mapping_active")),
+                "direct_cmd_vel_publish": False,
+                "motion_unlock_requested": False,
+                "does_not_set_motion_unlock": True,
+                "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+                "failure_reason": "missing_free_roam_operator_confirmation",
+                "blocked_reasons": ["missing_free_roam_operator_confirmation"],
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "robot_control_executed": False,
+            }
+        return 200, {
+            "schema": "trashbot.upper_robot_api.v1.free_roam_autonomy_start",
+            "status": "requested",
+            "command_result": {"mode": "free_roam_param_sequence", "executed": True, "ok": True},
+            "latest_decision_state": "locked",
+            "sets_state_machine_parameters": True,
+            "mapping_active_requested": bool(payload.get("confirm_mapping_active")),
+            "direct_cmd_vel_publish": False,
+            "motion_unlock_requested": False,
+            "does_not_set_motion_unlock": True,
+            "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+            "sensor_readiness": {
+                "free_move_ready": True,
+                "motion_without_radar_allowed": True,
+                "free_move_without_camera_allowed": True,
+                "mapping_readiness": {
+                    "ready": False,
+                    "requires_camera_first_frame": True,
+                    "requires_fresh_radar_scan": True,
+                    "free_move_allowed_when_mapping_not_ready": True,
+                },
+            },
+            "failure_reason": None,
+            "blocked_reasons": [],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def free_roam_autonomy_stop(self):
+        self.free_roam_stop_called = True
+        return 200, {
+            "schema": "trashbot.upper_robot_api.v1.free_roam_autonomy_stop",
+            "status": "requested",
+            "command_result": {"mode": "free_roam_param_sequence", "executed": True, "ok": True},
+            "sets_state_machine_parameters": True,
+            "mapping_active_requested": False,
+            "direct_cmd_vel_publish": False,
+            "motion_unlock_requested": False,
+            "does_not_set_motion_unlock": True,
+            "blocked_parameters_not_touched": ["enable_cmd_vel_publish", "motion_hil_unlocked", "cmd_vel_topic"],
+            "failure_reason": None,
+            "blocked_reasons": [],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
 
 
 class OperatorGatewayHttpTest(unittest.TestCase):
@@ -706,6 +801,51 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "artifact",
         ):
             self.assertNotIn(forbidden, encoded_voice_prompt)
+
+    def test_free_roam_autonomy_routes_are_fixed_and_fail_closed(self):
+        status, latest = self.request("GET", "/api/free-roam/autonomy/latest")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(latest["schema"], "trashbot.upper_robot_api.v1.free_roam_autonomy_latest")
+        self.assertEqual(latest["latest_result"]["schema"], "trashbot.free_roam_autonomy.runtime.v1")
+        self.assertFalse(latest["safe_to_control"])
+        self.assertFalse(latest["robot_control_executed"])
+
+        status, blocked = self.request("POST", "/api/free-roam/autonomy/start", {"confirm_operator_safety": False})
+
+        self.assertEqual(status, 400)
+        self.assertEqual(blocked["status"], "blocked")
+        self.assertEqual(blocked["failure_reason"], "missing_free_roam_operator_confirmation")
+        self.assertFalse(blocked["direct_cmd_vel_publish"])
+        self.assertTrue(blocked["does_not_set_motion_unlock"])
+
+        status, started = self.request(
+            "POST",
+            "/api/free-roam/autonomy/start",
+            {"confirm_operator_safety": True, "confirm_mapping_active": False},
+        )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(self.gateway.last_free_roam_start, {
+            "confirm_operator_safety": True,
+            "confirm_mapping_active": False,
+        })
+        self.assertEqual(started["status"], "requested")
+        self.assertTrue(started["sets_state_machine_parameters"])
+        self.assertFalse(started["direct_cmd_vel_publish"])
+        self.assertFalse(started["motion_unlock_requested"])
+        self.assertTrue(started["does_not_set_motion_unlock"])
+        self.assertIn("motion_hil_unlocked", started["blocked_parameters_not_touched"])
+        self.assertTrue(started["sensor_readiness"]["motion_without_radar_allowed"])
+
+        status, stopped = self.request("POST", "/api/free-roam/autonomy/stop", {})
+
+        self.assertEqual(status, 200)
+        self.assertTrue(self.gateway.free_roam_stop_called)
+        self.assertEqual(stopped["schema"], "trashbot.upper_robot_api.v1.free_roam_autonomy_stop")
+        self.assertEqual(stopped["status"], "requested")
+        self.assertFalse(stopped["safe_to_control"])
+        self.assertFalse(stopped["primary_actions_enabled"])
 
     def test_o7_realtime_elevator_snapshot_uses_runtime_robot_pose_fail_closed(self):
         # updated_at 采用当前时间附近，验证 endpoint 会按请求时间计算 age_ms。

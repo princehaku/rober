@@ -119,6 +119,16 @@ def generate_launch_description():
         default_value='/root/rober/onboard/runtime/free_roam_autonomy_latest.json',
         description='Runtime artifact read by the upper API /api/free-roam/autonomy/latest endpoint')
 
+    free_roam_autonomy_enable_cmd_vel_publish_arg = DeclareLaunchArgument(
+        'free_roam_autonomy_enable_cmd_vel_publish',
+        default_value='false',
+        description='Explicitly allow free-roam autonomy node to publish bounded /cmd_vel')
+
+    free_roam_autonomy_motion_hil_unlocked_arg = DeclareLaunchArgument(
+        'free_roam_autonomy_motion_hil_unlocked',
+        default_value='false',
+        description='Second explicit HIL unlock required before free-roam publishes motion')
+
     camera_enabled_arg = DeclareLaunchArgument(
         'camera_enabled', default_value='false',
         description='Start the real camera publisher for /camera/image_raw')
@@ -270,6 +280,8 @@ def generate_launch_description():
     waypoint_file = LaunchConfiguration('waypoint_file')
     free_roam_autonomy_enabled = LaunchConfiguration('free_roam_autonomy_enabled')
     free_roam_autonomy_artifact_path = LaunchConfiguration('free_roam_autonomy_artifact_path')
+    free_roam_autonomy_enable_cmd_vel_publish = LaunchConfiguration('free_roam_autonomy_enable_cmd_vel_publish')
+    free_roam_autonomy_motion_hil_unlocked = LaunchConfiguration('free_roam_autonomy_motion_hil_unlocked')
     camera_enabled = LaunchConfiguration('camera_enabled')
     camera_device = LaunchConfiguration('camera_device')
     camera_topic = LaunchConfiguration('camera_topic')
@@ -381,7 +393,7 @@ def generate_launch_description():
             }],
         ),
 
-        # 自动扫图 runtime 默认只写门禁 artifact，给 PC/start-stop 代理提供真实节点和状态读回。
+        # 自动扫图 runtime 默认只写门禁 artifact；现场显式传入双解锁参数后才发布受限 /cmd_vel。
         Node(
             package='ros2_trashbot_nav',
             executable='free_roam_autonomy_node',
@@ -393,8 +405,8 @@ def generate_launch_description():
                 'scan_topic': lidar_scan_topic,
                 'map_topic': '/map',
                 'artifact_path': free_roam_autonomy_artifact_path,
-                'enable_cmd_vel_publish': False,
-                'motion_hil_unlocked': False,
+                'enable_cmd_vel_publish': free_roam_autonomy_enable_cmd_vel_publish,
+                'motion_hil_unlocked': free_roam_autonomy_motion_hil_unlocked,
             }],
         ),
 
@@ -504,6 +516,8 @@ def generate_launch_description():
         waypoint_file_arg,
         free_roam_autonomy_enabled_arg,
         free_roam_autonomy_artifact_path_arg,
+        free_roam_autonomy_enable_cmd_vel_publish_arg,
+        free_roam_autonomy_motion_hil_unlocked_arg,
         camera_enabled_arg,
         camera_device_arg,
         camera_topic_arg,

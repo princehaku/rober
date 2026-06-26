@@ -149,8 +149,8 @@ class FreeRoamAutonomyNodeTest(unittest.TestCase):
             self.assertEqual(node.client.calls, 0)
             self.assertEqual(node.publisher.messages, [])
 
-    def test_active_session_locked_decision_calls_stop_without_cmd_vel(self) -> None:
-        """自动扫图会话已被 PC start 后，如果门禁失败，节点必须调用停止兜底但不发布 Twist。"""
+    def test_active_session_without_lidar_runs_artifact_only_without_cmd_vel(self) -> None:
+        """雷达缺失不再锁死自由移动；artifact-only 下仍不能发布 Twist。"""
         with tempfile.TemporaryDirectory() as td:
             artifact_path = Path(td) / "free_roam.json"
             node = self.module.FreeRoamAutonomyNode()
@@ -167,8 +167,9 @@ class FreeRoamAutonomyNodeTest(unittest.TestCase):
 
             payload = json.loads(artifact_path.read_text(encoding="utf-8"))
             self.assertTrue(payload["artifact_only"])
-            self.assertEqual(payload["decision"]["state"], "locked")
-            self.assertEqual(node.client.calls, 1)
+            self.assertEqual(payload["decision"]["state"], "running")
+            self.assertIn("雷达未就绪", payload["decision"]["reason"])
+            self.assertEqual(node.client.calls, 0)
             self.assertEqual(node.publisher.messages, [])
 
     def test_unlocked_motion_publishes_bounded_twist_from_scan_and_map(self) -> None:

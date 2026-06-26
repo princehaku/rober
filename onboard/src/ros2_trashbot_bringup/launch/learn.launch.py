@@ -237,6 +237,16 @@ def generate_launch_description():
         default_value='/root/rober/onboard/runtime/free_roam_autonomy_latest.json',
         description='Runtime artifact read by the upper API /api/free-roam/autonomy/latest endpoint')
 
+    free_roam_autonomy_enable_cmd_vel_publish_arg = DeclareLaunchArgument(
+        'free_roam_autonomy_enable_cmd_vel_publish',
+        default_value='false',
+        description='Explicitly allow free-roam autonomy node to publish bounded /cmd_vel')
+
+    free_roam_autonomy_motion_hil_unlocked_arg = DeclareLaunchArgument(
+        'free_roam_autonomy_motion_hil_unlocked',
+        default_value='false',
+        description='Second explicit HIL unlock required before free-roam publishes motion')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     record_interval = LaunchConfiguration('record_interval')
     pose_topic = LaunchConfiguration('pose_topic')
@@ -290,6 +300,8 @@ def generate_launch_description():
     default_map_name = LaunchConfiguration('default_map_name')
     free_roam_autonomy_enabled = LaunchConfiguration('free_roam_autonomy_enabled')
     free_roam_autonomy_artifact_path = LaunchConfiguration('free_roam_autonomy_artifact_path')
+    free_roam_autonomy_enable_cmd_vel_publish = LaunchConfiguration('free_roam_autonomy_enable_cmd_vel_publish')
+    free_roam_autonomy_motion_hil_unlocked = LaunchConfiguration('free_roam_autonomy_motion_hil_unlocked')
     no_motion_mock_odom_command = [
         'python3',
         '-c',
@@ -377,6 +389,8 @@ def generate_launch_description():
         default_map_name_arg,
         free_roam_autonomy_enabled_arg,
         free_roam_autonomy_artifact_path_arg,
+        free_roam_autonomy_enable_cmd_vel_publish_arg,
+        free_roam_autonomy_motion_hil_unlocked_arg,
 
         # SLAM Toolbox 是 learn 入口的建图 source；no-motion 现场采集会用它验证 map_recorder 是否真的收到 /map。
         Node(
@@ -408,7 +422,7 @@ def generate_launch_description():
             }],
         ),
 
-        # 自动扫图 runtime 随建图入口启动，只写 artifact 和门禁；运动发布仍被双参数锁死。
+        # 自动扫图 runtime 随建图入口启动；现场显式传入双解锁参数后才发布受限 /cmd_vel。
         Node(
             package='ros2_trashbot_nav',
             executable='free_roam_autonomy_node',
@@ -420,8 +434,8 @@ def generate_launch_description():
                 'scan_topic': lidar_scan_topic,
                 'map_topic': '/map',
                 'artifact_path': free_roam_autonomy_artifact_path,
-                'enable_cmd_vel_publish': False,
-                'motion_hil_unlocked': False,
+                'enable_cmd_vel_publish': free_roam_autonomy_enable_cmd_vel_publish,
+                'motion_hil_unlocked': free_roam_autonomy_motion_hil_unlocked,
             }],
         ),
 

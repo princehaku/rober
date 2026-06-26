@@ -376,7 +376,7 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'mock_packets': lidar_mock_packets", lidar_block)
         self.assertIn("'mock_scan': lidar_mock_scan", lidar_block)
 
-    def test_learn_and_bringup_start_free_roam_runtime_artifact_only(self):
+    def test_learn_and_bringup_start_free_roam_runtime_with_explicit_motion_unlock_args(self):
         # PC 自动扫图 start/stop 需要真实节点接参数；launch 默认仍必须锁住 /cmd_vel 发布。
         for launch_name in ("learn.launch.py", "bringup.launch.py"):
             with self.subTest(launch_name=launch_name):
@@ -387,13 +387,16 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertIn("'free_roam_autonomy_enabled'", source)
                 self.assertIn("default_value='true'", source)
                 self.assertIn("'free_roam_autonomy_artifact_path'", source)
+                self.assertIn("'free_roam_autonomy_enable_cmd_vel_publish'", source)
+                self.assertIn("'free_roam_autonomy_motion_hil_unlocked'", source)
                 self.assertIn("condition=IfCondition(free_roam_autonomy_enabled)", free_roam_block)
                 self.assertIn("name='free_roam_autonomy'", free_roam_block)
                 self.assertIn("'scan_topic': lidar_scan_topic", free_roam_block)
                 self.assertIn("'map_topic': '/map'", free_roam_block)
                 self.assertIn("'artifact_path': free_roam_autonomy_artifact_path", free_roam_block)
-                self.assertIn("'enable_cmd_vel_publish': False", free_roam_block)
-                self.assertIn("'motion_hil_unlocked': False", free_roam_block)
+                self.assertIn("'enable_cmd_vel_publish': free_roam_autonomy_enable_cmd_vel_publish", free_roam_block)
+                self.assertIn("'motion_hil_unlocked': free_roam_autonomy_motion_hil_unlocked", free_roam_block)
+                self.assertIn("default_value='false'", source)
 
     def test_bringup_can_publish_smoke_only_static_laser_tf(self):
         # 该静态 TF 只用于拓扑 smoke，不代表 base_link 到 laser_frame 已完成机械标定。

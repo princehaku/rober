@@ -5718,6 +5718,14 @@ def make_handler(gateway):
             if path == "/api/status":
                 self._send_json(200, _status_with_phone_readiness(gateway, mock_cloud))
                 return
+            if path == "/api/free-roam/autonomy/latest":
+                # 自动扫图 latest 只读 runtime artifact，不修改参数、不发布 /cmd_vel。
+                if not hasattr(gateway, "free_roam_autonomy_latest"):
+                    self._send_json(404, status_payload("not_found", "free_roam_autonomy_latest is unavailable"))
+                    return
+                status, payload = gateway.free_roam_autonomy_latest()
+                self._send_json(status, payload)
+                return
             if path == "/api/o7/realtime-elevator/snapshot":
                 # O7 runtime pose snapshot 只读 operator_gateway 状态，不连接云端或控制链路。
                 snapshot = build_o7_realtime_elevator_snapshot_from_operator_status(
@@ -5774,6 +5782,22 @@ def make_handler(gateway):
                 return
             if not isinstance(body, dict):
                 self._send_json(400, status_payload("bad_request", "JSON body must be an object"))
+                return
+            if path == "/api/free-roam/autonomy/start":
+                # start 只设置自由扫图状态机参数；运动解锁由 launch 参数决定，不从 HTTP body 打开。
+                if not hasattr(gateway, "free_roam_autonomy_start"):
+                    self._send_json(404, status_payload("not_found", "free_roam_autonomy_start is unavailable"))
+                    return
+                status, payload = gateway.free_roam_autonomy_start(body)
+                self._send_json(status, payload)
+                return
+            if path == "/api/free-roam/autonomy/stop":
+                # stop 不需要确认，固定请求状态机进入 external_stop_requested。
+                if not hasattr(gateway, "free_roam_autonomy_stop"):
+                    self._send_json(404, status_payload("not_found", "free_roam_autonomy_stop is unavailable"))
+                    return
+                status, payload = gateway.free_roam_autonomy_stop()
+                self._send_json(status, payload)
                 return
             remote_route = _remote_route(path)
             if remote_route:

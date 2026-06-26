@@ -8,6 +8,9 @@ from importlib.metadata import PackageNotFoundError, version
 from http.server import ThreadingHTTPServer
 
 import rclpy
+from rcl_interfaces.msg import Parameter as RclParameter
+from rcl_interfaces.msg import ParameterType, ParameterValue
+from rcl_interfaces.srv import SetParameters
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
@@ -99,6 +102,8 @@ class OperatorGateway(Node):
         self.declare_parameter("dropoff_service_name", "/trashbot/confirm_dropoff")
         self.declare_parameter("status_file", "/tmp/trashbot_operator_status.json")
         self.declare_parameter("pose_topic", "/amcl_pose")
+        self.declare_parameter("free_roam_node_name", "/free_roam_autonomy")
+        self.declare_parameter("free_roam_autonomy_artifact_path", "/root/rober/onboard/runtime/free_roam_autonomy_latest.json")
         self.declare_parameter("software_version", _installed_version("ros2_trashbot_behavior"))
         self.declare_parameter("map_version", "")
         self.declare_parameter("route_version", "")
@@ -135,6 +140,10 @@ class OperatorGateway(Node):
         self.dropoff_service_name = str(self.get_parameter("dropoff_service_name").value)
         self.status_file = str(self.get_parameter("status_file").value)
         self.pose_topic = str(self.get_parameter("pose_topic").value)
+        self.free_roam_node_name = str(self.get_parameter("free_roam_node_name").value)
+        self.free_roam_autonomy_artifact_path = os.path.expanduser(
+            str(self.get_parameter("free_roam_autonomy_artifact_path").value)
+        )
         self.software_version = str(self.get_parameter("software_version").value)
         self.map_version = str(self.get_parameter("map_version").value)
         self.route_version = str(self.get_parameter("route_version").value)
@@ -182,6 +191,10 @@ class OperatorGateway(Node):
 
         self.collect_client = ActionClient(self, TrashCollection, self.collect_action_name)
         self.dropoff_client = self.create_client(SetBool, self.dropoff_service_name)
+        self.free_roam_param_client = self.create_client(
+            SetParameters,
+            self._parameter_service_name(self.free_roam_node_name),
+        )
         self.pose_subscription = self.create_subscription(
             PoseWithCovarianceStamped,
             self.pose_topic,
@@ -318,6 +331,190 @@ class OperatorGateway(Node):
                 "timestamp": ts,
             },
         }
+
+    def free_roam_autonomy_latest(self):
+        artifact_path = self.free_roam_autonomy_artifact_path
+        if not artifact_path or not os.path.exists(artifact_path):
+            return 404, {
+                "schema": "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+                "status": "not_loaded",
+                "latest_result": None,
+                "failure_reason": "free_roam_autonomy_artifact_missing",
+                "artifact_path": artifact_path or "not_configured",
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "robot_control_executed": False,
+            }
+        try:
+            with open(artifact_path, "r", encoding="utf-8") as artifact_file:
+                latest_result = json.load(artifact_file)
+        except (OSError, json.JSONDecodeError) as exc:
+            return 502, {
+                "schema": "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+                "status": "read_failed",
+                "latest_result": None,
+                "failure_reason": f"free_roam_autonomy_artifact_read_failed:{exc}",
+                "artifact_path": artifact_path,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "robot_control_executed": False,
+            }
+        return 200, {
+            "schema": "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+            "status": "loaded",
+            "latest_result": latest_result if isinstance(latest_result, dict) else {},
+            "artifact_path": artifact_path,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def free_roam_autonomy_start(self, payload):
+        confirm_operator_safety = bool(payload.get("confirm_operator_safety"))
+        confirm_mapping_active = bool(payload.get("confirm_mapping_active"))
+        if not confirm_operator_safety:
+            return 400, self._free_roam_autonomy_response(
+                "start",
+                "blocked",
+                command_ok=False,
+                failure_reason="missing_free_roam_operator_confirmation",
+                blocked_reasons=["missing_free_roam_operator_confirmation"],
+                mapping_active_requested=confirm_mapping_active,
+            )
+        status_code, command_ok, failure_reason = self._set_free_roam_parameters(
+            {
+                "operator_confirmed": True,
+                "mapping_active": confirm_mapping_active,
+                "external_stop_requested": False,
+            }
+        )
+        return status_code, self._free_roam_autonomy_response(
+            "start",
+            "requested" if command_ok else "blocked",
+            command_ok=command_ok,
+            failure_reason=failure_reason,
+            blocked_reasons=[] if command_ok else [failure_reason],
+            mapping_active_requested=confirm_mapping_active,
+        )
+
+    def free_roam_autonomy_stop(self):
+        status_code, command_ok, failure_reason = self._set_free_roam_parameters(
+            {
+                "operator_confirmed": False,
+                "mapping_active": False,
+                "external_stop_requested": True,
+            }
+        )
+        return status_code, self._free_roam_autonomy_response(
+            "stop",
+            "requested" if command_ok else "blocked",
+            command_ok=command_ok,
+            failure_reason=failure_reason,
+            blocked_reasons=[] if command_ok else [failure_reason],
+            mapping_active_requested=False,
+        )
+
+    def _free_roam_autonomy_response(
+        self,
+        action,
+        status,
+        *,
+        command_ok,
+        failure_reason,
+        blocked_reasons,
+        mapping_active_requested,
+    ):
+        _, latest_payload = self.free_roam_autonomy_latest()
+        latest_result = latest_payload.get("latest_result") if isinstance(latest_payload, dict) else {}
+        decision = latest_result.get("decision") if isinstance(latest_result, dict) else {}
+        latest_state = decision.get("state") if isinstance(decision, dict) else "not_loaded"
+        return {
+            "schema": f"trashbot.upper_robot_api.v1.free_roam_autonomy_{action}",
+            "status": status,
+            "command_result": {
+                "mode": "free_roam_param_sequence",
+                "executed": command_ok,
+                "ok": command_ok,
+            },
+            "latest_decision_state": str(latest_state or "not_loaded"),
+            "sets_state_machine_parameters": command_ok,
+            "mapping_active_requested": bool(mapping_active_requested),
+            "direct_cmd_vel_publish": False,
+            "motion_unlock_requested": False,
+            "does_not_set_motion_unlock": True,
+            "blocked_parameters_not_touched": [
+                "enable_cmd_vel_publish",
+                "motion_hil_unlocked",
+                "cmd_vel_topic",
+            ],
+            "sensor_readiness": {
+                "ready": command_ok,
+                "missing": [] if command_ok else list(blocked_reasons),
+                "free_move_ready": command_ok,
+                "free_move_without_camera_allowed": True,
+                "motion_without_radar_allowed": True,
+                "degraded_without_radar": True,
+                "mapping_readiness": {
+                    "ready": False,
+                    "missing": [] if mapping_active_requested else ["mapping_not_requested"],
+                    "requires_camera_first_frame": True,
+                    "requires_fresh_radar_scan": True,
+                    "free_move_allowed_when_mapping_not_ready": True,
+                },
+            },
+            "failure_reason": failure_reason or None,
+            "blocked_reasons": list(blocked_reasons),
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _set_free_roam_parameters(self, values):
+        if not self.free_roam_param_client.wait_for_service(timeout_sec=1.0):
+            return 503, False, "free_roam_parameter_service_unavailable"
+        request = SetParameters.Request()
+        request.parameters = [
+            RclParameter(
+                name=name,
+                value=ParameterValue(type=ParameterType.PARAMETER_BOOL, bool_value=bool(value)),
+            )
+            for name, value in values.items()
+        ]
+        future = self.free_roam_param_client.call_async(request)
+        done = threading.Event()
+        holder = {}
+
+        def _done(result_future):
+            try:
+                holder["response"] = result_future.result()
+            except Exception as exc:  # noqa: BLE001 - 参数服务失败必须返回给 PC，不吞掉。
+                holder["error"] = exc
+            finally:
+                done.set()
+
+        future.add_done_callback(_done)
+        if not done.wait(2.0):
+            return 504, False, "free_roam_parameter_service_timeout"
+        if "error" in holder:
+            return 503, False, f"free_roam_parameter_service_failed:{holder['error']}"
+        results = getattr(holder["response"], "results", [])
+        failed = [result for result in results if not getattr(result, "successful", False)]
+        if failed:
+            reason = getattr(failed[0], "reason", "") or "free_roam_parameter_rejected"
+            return 409, False, reason
+        return 200, True, ""
+
+    @staticmethod
+    def _parameter_service_name(node_name):
+        # ROS2 参数服务名必须跟节点名对齐，允许 launch 传入带或不带前导斜杠的名字。
+        normalized = str(node_name or "/free_roam_autonomy").strip() or "/free_roam_autonomy"
+        if not normalized.startswith("/"):
+            normalized = f"/{normalized}"
+        return f"{normalized}/set_parameters"
 
     def start_collection(self, target, trash_type=0):
         target = (target or self.default_target).strip()

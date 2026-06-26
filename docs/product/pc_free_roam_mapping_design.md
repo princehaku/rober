@@ -25,12 +25,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   只有 `cmd_vel_publish_enabled=true` 且所有 `decision.gates` 加 PC 侧 `motion_hil_unlock` 门禁都为 `ready` 时，才把
   `safe_command_boundary.free_roam_autonomy` 显示为 `ready`。这只改变普通首屏“自动扫图准备”的所见即所得状态。
 - 2026-06-25 23:52 起，上位机新增固定 `POST /api/free-roam/autonomy/start|stop`，PC 新增对应固定代理
-  `/api/robot-control/free-roam/autonomy/start|stop`。start 必须带 `confirm_operator_safety=true` 和
-  `confirm_mapping_active=true`；2026-06-26 22:05 起，start 会同步读取相机 health、雷达 lifecycle 和最新 scan proof，但这些只决定
-  `mapping_readiness` 是否为 true。2026-06-26 21:35 起，即使相机首帧或雷达 proof 不 ready，只要确认项满足也可设置
-  `free_roam_autonomy_node` 的状态机参数并写入 `motion_hil_unlocked=true` 与 `enable_cmd_vel_publish=true`，回包同时标明
-  `free_move_ready=true`、`mapping_readiness.ready=false`。`cmd_vel_topic` 仍不允许由 PC 或浏览器改写。stop 不要求相机/雷达
-  ready，固定写回 `enable_cmd_vel_publish=false`、`motion_hil_unlocked=false`，再请求状态机停止。
+  `/api/robot-control/free-roam/autonomy/start|stop`。start 必须带 `confirm_operator_safety=true`，`confirm_mapping_active` 只表示本轮是否尝试建图；
+  2026-06-26 21:35 起，即使相机首帧或雷达 proof 不 ready，只要确认项满足也可设置 `free_roam_autonomy_node` 的
+  `operator_confirmed/mapping_active/external_stop_requested` 状态机参数，并在回包中标明
+  `free_move_ready=true`、`motion_without_radar_allowed=true`、`mapping_readiness.ready=false`。2026-06-26 23:59 起，HTTP start/stop
+  不再写 `motion_hil_unlocked` 或 `enable_cmd_vel_publish`；这两个运动发布解锁只允许通过 `learn.launch.py` / `bringup.launch.py`
+  的显式 launch 参数配置，`cmd_vel_topic` 仍不允许由 PC 或浏览器改写。stop 不要求相机/雷达 ready，只把状态机设置为
+  `external_stop_requested=true`。
 - 2026-06-26 01:05 起，PC 在自动扫图 start/stop 请求后把结果同步到普通首屏地图和“扫图状态”行：
   start 成功显示 `自动扫图已启动` / `自动扫图状态机已启动`，stop 成功显示停止请求已发送，失败则明确显示未证明启动或停止。
   这些反馈只来自固定 PC 代理返回值，不外推成真实自主运动成功，也不新增 `/cmd_vel`、manual 或 Nav2 调用。
@@ -115,8 +116,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 如果要升级成真正“像扫地机一样自己跑”的无人值守/半无人值守模式，需要新增上车端状态机，而不是把 PC 按钮直接变成无限运动：
 
 - 实时 LiDAR/障碍物距离 gate：策略节点已接 `/scan` 并写 artifact，仍需真车低速 HIL。
-- launch 接入：`learn.launch.py` 和 `bringup.launch.py` 已默认拉起 artifact-only runtime，PC start/stop 代理可对同名
-  `/free_roam_autonomy` 节点设置固定门禁参数；运动发布仍需额外双重解锁。
+- launch 接入：`learn.launch.py` 和 `bringup.launch.py` 已默认拉起 artifact-only runtime，并暴露
+  `free_roam_autonomy_enable_cmd_vel_publish=false` 与 `free_roam_autonomy_motion_hil_unlocked=false` 两个显式参数。PC start/stop
+  代理只对同名 `/free_roam_autonomy` 节点设置固定门禁参数；运动发布仍需现场 launch 时同时打开两个参数。
 - 最大运行时间、最大线速度、最大角速度限制：策略内核已有；最小电量限制仍待接底盘反馈。
 - 自动 stop fallback 和 watchdog：策略节点已在 `stop_required=true` 时调用 `/trashbot/stop`，仍需真车响应时间 HIL。
 - 探索覆盖策略：策略内核已有低速直行、遇障碍换向、覆盖停滞原地扫描；后续可升级边界沿墙或 frontier exploration。
