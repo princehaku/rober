@@ -3048,3 +3048,11 @@ PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是�
 也只显示为“路线返回成功/到达未证明”，不再写成“已到达”或进入送达材料完成 gate。IMU 姿态变化继续作为
 “底盘有运动迹象”展示，帮助区分“Nav2 没发命令”和“底盘轮速闭环没证明”；但它不能替代同窗口
 wheel raw L/R 非零。旧证据缺少 wheel 字段时保持兼容，真实 live 读到明确 false 时按新 gate 阻断。
+
+2026-06-27 06:42 起，Nav2 真实执行 helper 不再把托管底盘 bridge 硬编码为 `base_command_mode=pwm`。
+上位机新增独立 `nav2_base_command_mode`，默认 `ros`，即让 Nav2 `/cmd_vel` 通过 WAVE ROVER
+vendor `T=13` (`X/Z`) ROS 控制面进入 ESP32；普通 manual/键盘低速手控仍保持既有
+`base_command_mode=pwm` 默认。PC Node 的 `POST /api/robot-control/nav2/goal/execute`
+只允许透传白名单 `base_command_mode=ros|speed|pwm`，普通首屏不展示复杂模式选择。
+这修复了自动驾驶执行链路之前只能走 `T=11` PWM 的配置缺口；完成验收仍以同一次
+Nav2 execution artifact 内 `base_feedback_summary.latest_nonzero_pair` 非零为准。

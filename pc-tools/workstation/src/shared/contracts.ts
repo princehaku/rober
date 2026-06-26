@@ -2193,6 +2193,7 @@ export interface RobotControlNavGoalExecutionRequest {
   goal_y?: number;
   goal_yaw?: number;
   result_timeout_s?: number;
+  base_command_mode?: "ros" | "speed" | "pwm";
   confirm_navigation_execution?: boolean;
 }
 
@@ -2211,6 +2212,7 @@ export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
     goal_yaw: number;
     result_timeout_s: number;
     server_timeout_s: number;
+    base_command_mode?: "ros" | "speed" | "pwm";
   };
   goal_execution_key_values: Record<string, string>;
   failure_reason: string;

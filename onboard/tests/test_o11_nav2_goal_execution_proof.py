@@ -22,19 +22,29 @@ SPEC.loader.exec_module(HELPER)
 class O11Nav2GoalExecutionProofTests(unittest.TestCase):
     """锁定 O11 从 NavigateToPose 到真实底盘反馈的证明边界。"""
 
-    def test_managed_bridge_uses_pwm_motion_path(self) -> None:
-        """自动驾驶托管 bridge 必须走 vendor T=11 PWM 通路，不把雷达作为底盘发命令前置。"""
+    def test_managed_bridge_defaults_to_ros_motion_path(self) -> None:
+        """自动驾驶托管 bridge 默认走 vendor T=13 ROS 控制，不把雷达作为底盘发命令前置。"""
         command = HELPER.managed_esp32_bridge_command("/tmp/o11_feedback.jsonl", "/tmp/o11_command.jsonl")
 
         self.assertIn("ros2_trashbot_hardware esp32_bridge", command)
         self.assertIn("-p serial_port:=/dev/ttyS5", command)
-        self.assertIn("-p command_mode:=pwm", command)
+        self.assertIn("-p command_mode:=ros", command)
         self.assertIn("-p pwm_min_abs:=164", command)
         self.assertIn("-p pwm_max_abs:=164", command)
         self.assertIn("-p feedback_debug_log_path:=/tmp/o11_feedback.jsonl", command)
         self.assertIn("-p command_debug_log_path:=/tmp/o11_command.jsonl", command)
+        self.assertNotIn("command_mode:=pwm", command)
         self.assertNotIn("command_mode:=speed", command)
-        self.assertNotIn("command_mode:=ros", command)
+
+    def test_managed_bridge_can_override_to_pwm_motion_path(self) -> None:
+        """现场需要 A/B 复验时仍可显式切回 vendor T=11 PWM 通路。"""
+        command = HELPER.managed_esp32_bridge_command(
+            "/tmp/o11_feedback.jsonl",
+            "/tmp/o11_command.jsonl",
+            "pwm",
+        )
+
+        self.assertIn("-p command_mode:=pwm", command)
 
     def test_feedback_debug_log_summary_proves_nonzero_wheel_feedback(self) -> None:
         """只有真实 T=1001 左右轮非零样本才能把 Nav2 HIL 证明推进为 true。"""

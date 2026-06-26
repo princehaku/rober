@@ -32,12 +32,14 @@ DEFAULT_BASE_PORT = "/dev/ttyS5"
 DEFAULT_BASE_BAUDRATE = 115200
 DEFAULT_MAX_SPEED = 0.12
 DEFAULT_BASE_COMMAND_MODE = "pwm"
+DEFAULT_NAV2_BASE_COMMAND_MODE = "ros"
 DEFAULT_MANUAL_PWM_MIN_ABS = 164
 DEFAULT_MANUAL_PWM_MAX_ABS = 164
 DEFAULT_PULSE_MS = 260
 MAX_PULSE_MS = 800
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
 ALLOWED_BASE_COMMAND_MODES = frozenset({"speed", "pwm"})
+ALLOWED_NAV2_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 DEFAULT_FEEDBACK_READ_TIMEOUT_S = 0.2
 DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
 DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
@@ -4987,6 +4989,7 @@ def run_nav2_goal_execution_helper(
     managed_map_yaml: str,
     managed_startup_s: float,
     managed_ready_timeout_s: float,
+    base_command_mode: str,
 ) -> dict[str, Any]:
     """运行 bounded NavigateToPose helper；超时由 helper cancel，外层保留结构化结果。"""
     script_path = Path(__file__).resolve().with_name("o11_nav2_goal_execution_proof.py")
@@ -5007,6 +5010,8 @@ def run_nav2_goal_execution_helper(
         str(server_timeout_s),
         "--result-timeout-s",
         str(result_timeout_s),
+        "--base-command-mode",
+        base_command_mode,
     ]
     if managed_runtime_opt_in:
         helper_argv.extend(
@@ -5529,6 +5534,7 @@ class UpperRobotApi:
         base_baudrate: int,
         max_speed: float,
         base_command_mode: str = DEFAULT_BASE_COMMAND_MODE,
+        nav2_base_command_mode: str = DEFAULT_NAV2_BASE_COMMAND_MODE,
         manual_pwm_min_abs: int = DEFAULT_MANUAL_PWM_MIN_ABS,
         manual_pwm_max_abs: int = DEFAULT_MANUAL_PWM_MAX_ABS,
         feedback_samples_artifact_path: str = DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH,
@@ -5560,6 +5566,9 @@ class UpperRobotApi:
         self.base_baudrate = base_baudrate
         self.max_speed = max_speed
         self.base_command_mode = base_command_mode if base_command_mode in ALLOWED_BASE_COMMAND_MODES else DEFAULT_BASE_COMMAND_MODE
+        self.nav2_base_command_mode = (
+            nav2_base_command_mode if nav2_base_command_mode in ALLOWED_NAV2_BASE_COMMAND_MODES else DEFAULT_NAV2_BASE_COMMAND_MODE
+        )
         self.manual_pwm_min_abs = max(0, min(int(manual_pwm_min_abs), 255))
         self.manual_pwm_max_abs = max(self.manual_pwm_min_abs, min(int(manual_pwm_max_abs), 255))
         self.feedback_samples_artifact_path = feedback_samples_artifact_path
@@ -5624,6 +5633,7 @@ class UpperRobotApi:
             "control_policy": {
                 "mode": "low_speed_pulse_with_auto_stop",
                 "base_command_mode": self.base_command_mode,
+                "nav2_base_command_mode": self.nav2_base_command_mode,
                 "max_speed": self.max_speed,
                 "manual_pwm_min_abs": self.manual_pwm_min_abs,
                 "manual_pwm_max_abs": self.manual_pwm_max_abs,
@@ -6520,6 +6530,10 @@ class UpperRobotApi:
         managed_startup_s = clamp_float(body.get("managed_startup_s"), 2.0, 0.0, 5.0)
         # O11 只看 lifecycle manager 日志；现场慢启动时给 Nav2 执行层更宽的 active 窗口。
         managed_ready_timeout_s = clamp_float(body.get("managed_ready_timeout_s"), 90.0, 10.0, 90.0)
+        request_base_command_mode = str(body.get("base_command_mode") or body.get("nav2_base_command_mode") or self.nav2_base_command_mode).strip().lower()
+        nav2_base_command_mode = (
+            request_base_command_mode if request_base_command_mode in ALLOWED_NAV2_BASE_COMMAND_MODES else self.nav2_base_command_mode
+        )
         command_result = await asyncio.to_thread(
             run_nav2_goal_execution_helper,
             artifact_path=self.nav2_goal_execution_artifact_path,
@@ -6533,6 +6547,7 @@ class UpperRobotApi:
             managed_map_yaml=managed_map_yaml,
             managed_startup_s=managed_startup_s,
             managed_ready_timeout_s=managed_ready_timeout_s,
+            base_command_mode=nav2_base_command_mode,
         )
         http_status, latest = self.nav2_goal_execution_latest()
         latest_result = latest.get("latest_result") if isinstance(latest.get("latest_result"), dict) else {}
@@ -6557,6 +6572,7 @@ class UpperRobotApi:
                     "managed_map_yaml": managed_map_yaml,
                     "managed_startup_s": managed_startup_s,
                     "managed_ready_timeout_s": managed_ready_timeout_s,
+                    "base_command_mode": nav2_base_command_mode,
                     "managed_map_yaml_source": "latest_nav2_proof_managed_runtime_map_yaml" if managed_map_yaml == default_map_yaml else "request_body",
                     "latest_nav2_readback_http_status": latest_nav2_http_status,
                 },
@@ -7383,6 +7399,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-baudrate", type=int, default=int(os.getenv("ROBER_BASE_BAUDRATE", str(DEFAULT_BASE_BAUDRATE))))
     parser.add_argument("--max-speed", type=float, default=float(os.getenv("ROBER_BASE_MAX_SPEED", str(DEFAULT_MAX_SPEED))))
     parser.add_argument("--base-command-mode", choices=sorted(ALLOWED_BASE_COMMAND_MODES), default=os.getenv("ROBER_BASE_COMMAND_MODE", DEFAULT_BASE_COMMAND_MODE))
+    parser.add_argument(
+        "--nav2-base-command-mode",
+        choices=sorted(ALLOWED_NAV2_BASE_COMMAND_MODES),
+        default=os.getenv("ROBER_NAV2_BASE_COMMAND_MODE", DEFAULT_NAV2_BASE_COMMAND_MODE),
+    )
     parser.add_argument("--manual-pwm-min-abs", type=int, default=int(os.getenv("ROBER_MANUAL_PWM_MIN_ABS", str(DEFAULT_MANUAL_PWM_MIN_ABS))))
     parser.add_argument("--manual-pwm-max-abs", type=int, default=int(os.getenv("ROBER_MANUAL_PWM_MAX_ABS", str(DEFAULT_MANUAL_PWM_MAX_ABS))))
     parser.add_argument(
@@ -7458,6 +7479,7 @@ async def run_server(args: argparse.Namespace) -> None:
         base_baudrate=args.base_baudrate,
         max_speed=args.max_speed,
         base_command_mode=args.base_command_mode,
+        nav2_base_command_mode=args.nav2_base_command_mode,
         manual_pwm_min_abs=args.manual_pwm_min_abs,
         manual_pwm_max_abs=args.manual_pwm_max_abs,
         feedback_samples_artifact_path=args.feedback_samples_artifact_path,

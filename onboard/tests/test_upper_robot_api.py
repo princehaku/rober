@@ -2349,11 +2349,13 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         }
 
         with mock.patch.object(api, "nav2_proof_latest", return_value=(200, {"latest_result": {"proof": {"managed_runtime_map_yaml": "/tmp/map.yaml"}}})):
-            with mock.patch.object(upper_robot_api, "run_nav2_goal_execution_helper", return_value={"mode": "o11", "executed": True, "ok": True}):
+            with mock.patch.object(upper_robot_api, "run_nav2_goal_execution_helper", return_value={"mode": "o11", "executed": True, "ok": True}) as helper_mock:
                 with mock.patch.object(api, "nav2_goal_execution_latest", return_value=(200, {"latest_result": latest_result})):
                     payload = asyncio.run(api.nav2_goal_execute({"confirm_navigation_execution": True}))
 
         self.assertEqual("goal_succeeded", payload["status"])
+        self.assertEqual("ros", payload["goal_request"]["base_command_mode"])
+        self.assertEqual("ros", helper_mock.call_args.kwargs["base_command_mode"])
         self.assertTrue(payload["nav2_goal_execution_proven"])
         self.assertTrue(payload["sends_motion_commands"])
         self.assertTrue(payload["sends_base_motion_commands"])
@@ -2362,6 +2364,33 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual([], payload["blocked_commands_not_sent"])
         self.assertTrue(payload["robot_control_executed"])
         self.assertFalse(payload["delivery_success"])
+
+    def test_nav2_goal_execute_allows_explicit_base_command_mode_override(self) -> None:
+        """Nav2 执行可按白名单切回 PWM 复验，但不影响普通手控默认命令模式。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        latest_result = {
+            "status": "goal_succeeded",
+            "goal_accepted": True,
+            "result_received": True,
+            "result_status": "succeeded",
+            "robot_control_executed": True,
+            "sends_motion_commands": True,
+        }
+
+        with mock.patch.object(api, "nav2_proof_latest", return_value=(200, {"latest_result": {"proof": {"managed_runtime_map_yaml": "/tmp/map.yaml"}}})):
+            with mock.patch.object(upper_robot_api, "run_nav2_goal_execution_helper", return_value={"mode": "o11", "executed": True, "ok": True}) as helper_mock:
+                with mock.patch.object(api, "nav2_goal_execution_latest", return_value=(200, {"latest_result": latest_result})):
+                    payload = asyncio.run(api.nav2_goal_execute({"confirm_navigation_execution": True, "base_command_mode": "pwm"}))
+
+        self.assertEqual("pwm", helper_mock.call_args.kwargs["base_command_mode"])
+        self.assertEqual("pwm", payload["goal_request"]["base_command_mode"])
+        self.assertEqual("pwm", api.base_command_mode)
+        self.assertEqual("ros", api.nav2_base_command_mode)
 
     def test_nav2_proof_refresh_managed_path_generation_stays_no_motion(self) -> None:
         """PC 检查路径使用 managed runtime，但不能被包装成 Nav2 start 或底盘控制。"""

@@ -1998,6 +1998,10 @@ export function createWorkstationApp(): express.Express {
     const goalYaw = clamp(Number(payload?.goal_yaw ?? 0), -Math.PI, Math.PI);
     const resultTimeoutS = clamp(Number(payload?.result_timeout_s ?? 8), 2, 20);
     const serverTimeoutS = clamp(Number(payload?.server_timeout_s ?? 12), 1, 20);
+    const requestedBaseCommandMode = String(payload?.base_command_mode ?? payload?.nav2_base_command_mode ?? "").trim().toLowerCase();
+    const baseCommandMode = ["ros", "speed", "pwm"].includes(requestedBaseCommandMode)
+      ? requestedBaseCommandMode as "ros" | "speed" | "pwm"
+      : undefined;
     const fallbackBase: RobotControlNavGoalExecutionResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_proxy.v1",
       proxy_status: "execution_rejected",
@@ -2022,6 +2026,7 @@ export function createWorkstationApp(): express.Express {
         result_timeout_s: resultTimeoutS,
         server_timeout_s: serverTimeoutS,
         confirm_navigation_execution: confirmNavigationExecution,
+        ...(baseCommandMode ? { base_command_mode: baseCommandMode } : {}),
       },
       goal_execution_key_values: {},
       failure_reason: normalized.ok ? "" : normalized.reason,
@@ -2073,6 +2078,7 @@ export function createWorkstationApp(): express.Express {
           server_timeout_s: serverTimeoutS,
           result_timeout_s: resultTimeoutS,
           confirm_navigation_execution: true,
+          ...(baseCommandMode ? { base_command_mode: baseCommandMode } : {}),
         }),
         // O11 会等待 Nav2 lifecycle active 后才发 goal；PC 等待窗口必须大于上位机 helper 的结构化超时。
         signal: AbortSignal.timeout(Math.round((resultTimeoutS + 90) * 1000)),

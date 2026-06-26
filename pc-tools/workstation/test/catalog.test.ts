@@ -7007,6 +7007,7 @@ describe("workstation fail-closed API contracts", () => {
           goal_x: 0.8,
           goal_y: 0,
           goal_yaw: 0,
+          base_command_mode: "ros",
           confirm_navigation_execution: true,
         }),
       });
@@ -7032,6 +7033,7 @@ describe("workstation fail-closed API contracts", () => {
         goal_x: 0.8,
         goal_y: 0,
         goal_yaw: 0,
+        base_command_mode: "ros",
         confirm_navigation_execution: true,
       }));
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();

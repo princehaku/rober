@@ -20,7 +20,8 @@ NAVIGATE_ACTION_CANDIDATES = ("/navigate_to_pose", "navigate_to_pose")
 DEFAULT_ONBOARD_SETUP = "/root/rober/onboard/install/setup.bash"
 DEFAULT_WORKDIR = "/root/rober/onboard"
 DEFAULT_NAV2_PARAMS = "/root/rober/onboard/src/ros2_trashbot_nav/config/nav2_params.yaml"
-DEFAULT_BASE_COMMAND_MODE = "pwm"
+DEFAULT_BASE_COMMAND_MODE = "ros"
+ALLOWED_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 DEFAULT_PWM_MIN_ABS = 164
 DEFAULT_PWM_MAX_ABS = 164
 
@@ -51,15 +52,26 @@ def compact_error(exc: BaseException) -> dict[str, str]:
     return {"type": type(exc).__name__, "message": str(exc)[:500]}
 
 
-def managed_esp32_bridge_command(feedback_log_path: str, command_log_path: str = "") -> str:
-    """O11 托管 Nav2 执行走 vendor T=11 PWM 通路，不依赖雷达决定底盘能否发命令。"""
+def normalize_base_command_mode(value: str) -> str:
+    """Nav2 执行只允许厂商已定义的三种底盘控制面，避免请求体拼任意 ROS 参数。"""
+    mode = str(value or DEFAULT_BASE_COMMAND_MODE).strip().lower()
+    return mode if mode in ALLOWED_BASE_COMMAND_MODES else DEFAULT_BASE_COMMAND_MODE
+
+
+def managed_esp32_bridge_command(
+    feedback_log_path: str,
+    command_log_path: str = "",
+    base_command_mode: str = DEFAULT_BASE_COMMAND_MODE,
+) -> str:
+    """O11 托管 Nav2 默认走 vendor T=13 ROS 控制；现场可切回 speed/pwm 做 A/B 复验。"""
+    command_mode = normalize_base_command_mode(base_command_mode)
     command_debug_arg = (
         f" -p command_debug_log_path:={shlex.quote(command_log_path)}" if command_log_path else ""
     )
     return (
         "ros2 run ros2_trashbot_hardware esp32_bridge --ros-args "
         "-p serial_port:=/dev/ttyS5 -p serial_baudrate:=115200 "
-        f"-p command_mode:={DEFAULT_BASE_COMMAND_MODE} "
+        f"-p command_mode:={command_mode} "
         "-p track_width_m:=0.172 -p max_wheel_speed_mps:=1.3 "
         f"-p pwm_min_abs:={DEFAULT_PWM_MIN_ABS} -p pwm_max_abs:={DEFAULT_PWM_MAX_ABS} "
         f"-p feedback_debug_log_path:={shlex.quote(feedback_log_path)}"
@@ -77,6 +89,7 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
     log_path = f"/tmp/o11_nav2_goal_execution_{runtime_ms}.log"
     base_feedback_log_path = f"/tmp/o11_wave_rover_feedback_{runtime_ms}.jsonl"
     base_command_log_path = f"/tmp/o11_wave_rover_command_{runtime_ms}.jsonl"
+    base_command_mode = normalize_base_command_mode(args.base_command_mode)
     initialpose_payload = json.dumps(
         {
             # stamp=0 保留旧 initialpose 兼容；当前 O11 使用静态 map->odom，不依赖 AMCL 或雷达。
@@ -99,7 +112,7 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
     localization_commands = [
         (
             "esp32_bridge",
-            managed_esp32_bridge_command(base_feedback_log_path, base_command_log_path),
+            managed_esp32_bridge_command(base_feedback_log_path, base_command_log_path, base_command_mode),
         ),
         (
             "static_tf_map_odom",
@@ -162,7 +175,7 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
         "trap cleanup EXIT INT TERM",
         f"printf '%s\\n' 'log_path={log_path}' > {shlex.quote(log_path)}",
         f"printf '%s\\n' 'managed_map_yaml={args.managed_map_yaml}' >> {shlex.quote(log_path)}",
-        f"printf '%s\\n' 'base_command_mode={DEFAULT_BASE_COMMAND_MODE}' >> {shlex.quote(log_path)}",
+        f"printf '%s\\n' 'base_command_mode={base_command_mode}' >> {shlex.quote(log_path)}",
         f"printf '%s\\n' 'base_feedback_log_path={base_feedback_log_path}' >> {shlex.quote(log_path)}",
         f"printf '%s\\n' 'base_command_log_path={base_command_log_path}' >> {shlex.quote(log_path)}",
     ]
@@ -212,7 +225,7 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
             "y": float(args.initialpose_y),
             "yaw": float(args.initialpose_yaw),
         },
-        "base_command_mode": DEFAULT_BASE_COMMAND_MODE,
+        "base_command_mode": base_command_mode,
         "base_pwm_min_abs": DEFAULT_PWM_MIN_ABS,
         "base_pwm_max_abs": DEFAULT_PWM_MAX_ABS,
         "base_feedback_log_path": base_feedback_log_path,
@@ -639,7 +652,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         base_command_summary = summarize_command_debug_log(str(managed_runtime.get("base_command_log_path") or ""))
         result["base_feedback_summary"] = base_feedback_summary
         result["base_command_summary"] = base_command_summary
-        result["base_command_mode"] = managed_runtime.get("base_command_mode") or DEFAULT_BASE_COMMAND_MODE
+        result["base_command_mode"] = managed_runtime.get("base_command_mode") or normalize_base_command_mode(args.base_command_mode)
         base_feedback_nonzero = bool(base_feedback_summary.get("wheel_feedback_lr_nonzero_proven"))
         base_command_nonzero = bool(base_command_summary.get("nonzero_command_observed"))
         result["base_motion_command_nonzero_proven"] = base_command_nonzero
@@ -691,6 +704,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--managed-map-yaml", default="")
     parser.add_argument("--managed-startup-s", type=float, default=2.0)
     parser.add_argument("--managed-ready-timeout-s", type=float, default=90.0)
+    parser.add_argument("--base-command-mode", choices=sorted(ALLOWED_BASE_COMMAND_MODES), default=DEFAULT_BASE_COMMAND_MODE)
     parser.add_argument("--initialpose-frame-id", default="map")
     parser.add_argument("--initialpose-x", type=float, default=0.0)
     parser.add_argument("--initialpose-y", type=float, default=0.0)

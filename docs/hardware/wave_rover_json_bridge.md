@@ -85,6 +85,20 @@
 用于解释“底盘只读链路曾出现非零 L/R”。该字段不得替代 Nav2 goal execution 同窗口内的
 `base_feedback_summary.latest_nonzero_pair`，也不得单独推出路线到达、delivery success 或导航级 HIL pass。
 
+### 2026-06-27 Nav2 ROS command mode boundary
+
+本轮按 `docs/vendor/VENDOR_INDEX.md` 指向的本地资料复核：
+`WAVE_ROVER_V0.9/json_cmd.h` 定义 `T=13` 为 `CMD_ROS_CTRL`，字段为 `X/Z`
+并标注 `(m/s,rad/s)`；`uart_ctrl.h` 在收到 `CMD_ROS_CTRL` 后调用 `rosCtrl(X,Z)`；
+`movtion_module.h` 的 `rosCtrl` 将 `X/Z` 转为左右轮 setpoint 后进入 `setGoalSpeed`。
+因此 O11 Nav2 托管执行 helper 默认使用 `base_command_mode=ros` 更贴近 ROS
+`/cmd_vel` 语义。`T=11` PWM 和 `T=1` speed 仍保留为白名单复验模式，但不再是
+Nav2 helper 的硬编码唯一通路。
+
+该改动只改变上位机托管 `esp32_bridge` 的命令模式选择，不降低验收标准：
+Nav2 goal 只有在同一 execution artifact 内同时满足 action succeeded 和
+`T=1001.L/R` 最新非零反馈时，才能被 PC/上位机视为完整路线执行证明。
+
 ### HIL 运行参数留存模板（与 run 级证据绑定）
 
 - 每次 `source=hil_pass` 运行前需记录参数快照：
