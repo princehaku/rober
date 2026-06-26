@@ -313,6 +313,12 @@ const canStartPreview = computed(() => !previewBusy.value && robotApiBaseUrl.val
 const canStopPreview = computed(
   () => !previewBusy.value && (previewPeerConnection.value !== null || previewPeerId.value.length > 0),
 );
+const canRunPlainCameraProbe = computed(() => (
+  !loading.value
+  && !previewBusy.value
+  && !cameraFirstFrameProbePending.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 
 function resetRobotApiBaseUrlToDefault(): void {
   // 恢复地址只改本地输入值；真正读取或控制仍必须由用户再显式点击。
@@ -792,6 +798,35 @@ const cameraFirstFrameProbeSummary = computed(() => {
   }
   const values = result.probe_key_values;
   return `${result.proxy_status}; status=${result.status}; open=${values.open_ok}; read=${values.read_ok}; backend=${values.backend_smoke_status}; reason=${result.failure_reason || values.failure_reason}`;
+});
+const plainCameraProbeButtonLabel = computed(() => (
+  cameraFirstFrameProbePending.value ? "检查中" : "检查画面（只读）"
+));
+const plainCameraProbeSummary = computed(() => {
+  // 首屏只说明样张是否读到；样张成功不等于实时视频窗口已经打开。
+  if (cameraFirstFrameProbePending.value) {
+    return "只读检查：正在等待上位机返回样张。";
+  }
+  const result = cameraFirstFrameProbeResult.value;
+  if (!result) {
+    return "";
+  }
+  const failureHint = cameraProbePlainFailureHint();
+  if (failureHint) {
+    return `只读检查：${failureHint}`;
+  }
+  const values = result.probe_key_values;
+  const sampleWritten = values.sample_write_ok === "true" && Boolean(latestCameraProbeSampleRef());
+  const visible = values.visible_content_proven === "true" || values.visible_content_candidate === "true";
+  if (result.proxy_status === "probe_forwarded" && values.open_ok === "true" && values.read_ok === "true" && visible) {
+    return sampleWritten
+      ? "只读检查：上位机样张已读到，实时窗口仍未打开。"
+      : "只读检查：上位机读到首帧，但样张没有落盘，实时窗口仍未打开。";
+  }
+  if (result.proxy_status === "probe_forwarded" && values.open_ok === "true" && values.read_ok === "true") {
+    return "只读检查：上位机读到首帧，但内容还不确定；请检查镜头和光线。";
+  }
+  return `只读检查：${result.failure_reason || values.failure_reason || "没有确认可见画面。"}`;
 });
 const canSubmitPlainVisualFromCamera = computed(() => (
   !loading.value
@@ -8545,6 +8580,9 @@ onBeforeUnmount(() => {
           <h3>实时画面</h3>
           <div class="panel-action-row">
             <button type="button" :disabled="!canStartPreview" @click="startPreview">打开画面</button>
+            <button type="button" class="secondary compact-stop" :disabled="!canRunPlainCameraProbe" data-testid="plain-camera-probe" @click="runCameraFirstFrameProbe">
+              {{ plainCameraProbeButtonLabel }}
+            </button>
             <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
             <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
           </div>
@@ -8568,6 +8606,7 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note">{{ cameraSummary.hint }}</p>
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
+          <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>
         </article>
 
         <article class="snapshot-panel plain-radar-panel" data-testid="plain-radar-panel" :data-state="radarSummary.state">

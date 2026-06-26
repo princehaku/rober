@@ -9480,6 +9480,89 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("checks the plain camera frame as a read-only WYSIWYG action", async () => {
+    // 实时画面卡的检查按钮只读取上位机样张，不打开 WebRTC、不保存材料、不发送控制。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.camera.status = "ready";
+    summaryFixture.operator_hil_material_summary.external_video = "not_loaded";
+    summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/first-frame/probe": {
+        schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+        proxy_status: "probe_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/camera/first-frame/probe",
+        remote_http_status: 200,
+        status: "frame_read",
+        probe_key_values: {
+          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
+          device: "/dev/video1",
+          requested_fourcc: "MJPG",
+          open_ok: "true",
+          read_ok: "true",
+          first_frame_timeout: "false",
+          failure_reason: "",
+          visible_content_proven: "true",
+          visible_content_candidate: "true",
+          sample_path: "/root/rober/onboard/runtime/camera/plain_camera_probe.jpg",
+          sample_write_ok: "true",
+          elapsed_ms: "120",
+          mean_luma: "42.0",
+          max_luma: "220",
+          dynamic_range_luma: "180",
+          non_black_ratio: "0.8",
+          backend_smoke_status: "not_requested",
+          backend_frame_observed: "false",
+          backend_attempts: "0",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/base/manual": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/nav2/goal/execute": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const button = wrapper.find('[data-testid="plain-camera-probe"]');
+    expect(button.exists()).toBe(true);
+    expect(button.text()).toBe("检查画面（只读）");
+    expect(button.attributes("disabled")).toBeUndefined();
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+
+    await button.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
+    const probeCall = newCalls.find(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"));
+    expect(probeCall).toBeTruthy();
+    expect((probeCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
+    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：上位机样张已读到，实时窗口仍未打开。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但画面未打开，点打开画面。");
+    expect(newCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer?") && options?.method === "POST")).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps camera record save failure visible on the plain camera card", async () => {
     // 当前画面样张已经读到但保存失败时，失败必须贴回画面卡，不能让首屏回到“相机在线”。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
