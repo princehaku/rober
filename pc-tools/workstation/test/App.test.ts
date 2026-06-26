@@ -4469,6 +4469,89 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows free-roam runtime map preview failure after map recording starts", async () => {
+    // 地图记录已启动但扫图画面刷新失败时，扫图流程本身也要显示失败，不能只把原因留在地图 caption。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": {
+        schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+        action: "start",
+        proxy_status: "lifecycle_forwarded",
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/map/start",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        map_count: 0,
+        map_names: [],
+        map_quality_summary: {
+          status: "not_loaded",
+          message: "地图记录已启动，保存后再检查质量。",
+          checked_yaml_count: 0,
+          usable_map_count: 0,
+          no_free_cell_map_count: 0,
+          analysis_failed_count: 0,
+        },
+        map_usable_for_navigation: false,
+        map_needs_rebuild: false,
+        command_result: { mode: "configured_command", executed: true, ok: true },
+        request_body: {},
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+      "/api/robot-control/map/preview": {
+        ...(fixtures["/api/robot-control/map/preview"] as Record<string, unknown>),
+        proxy_status: "preview_failed",
+        remote_http_status: 502,
+        status: "blocked",
+        image_data_url: "",
+        width: 0,
+        height: 0,
+        failure_reason: "map_preview_timeout",
+        blocked_reasons: ["map_preview_timeout"],
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("待刷新");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("地图记录已启动，但扫图画面刷新失败：map_preview_timeout；重试刷新扫图画面后再继续保存。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图记录中，但扫图画面刷新失败：map_preview_timeout；重试刷新扫图画面后再继续保存。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：重新刷新扫图画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先刷新画面");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').attributes("data-state")).toBe("失败");
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("扫图画面刷新失败：map_preview_timeout");
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("地图记录仍在运行，重试刷新扫图画面后再继续移动或保存。");
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：刷新失败：map_preview_timeout。");
+    const marker = wrapper.find('[data-testid="plain-map-free-roam-action-marker"]');
+    expect(marker.text()).toBe("扫图画面刷新失败：map_preview_timeout");
+    expect(marker.attributes("data-state")).toBe("runtime_refresh_failed");
+    expect(marker.attributes("aria-label")).toBe("扫图地图画面刷新失败：map_preview_timeout，需要重试刷新扫图画面，机器人地图位置未读到，标记不代表坐标");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-free-roam-action-marker[data-state="runtime_refresh_failed"]');
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps free-roam keyboard locked until map recording starts", async () => {
     // 扫地式建图必须先打开地图记录，再允许 operator 用键盘低速扫图；启用键盘本身不发送底盘命令。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

@@ -1167,6 +1167,7 @@ h3 {
 }
 
 .plain-map-free-roam-action-marker[data-state="saving"],
+.plain-map-free-roam-action-marker[data-state="runtime_refresh_failed"],
 .plain-map-free-roam-action-marker[data-state="saved_refresh_failed"],
 .plain-map-free-roam-action-marker[data-state="map_failed"],
 .plain-map-free-roam-action-marker[data-state="stop_failed"],

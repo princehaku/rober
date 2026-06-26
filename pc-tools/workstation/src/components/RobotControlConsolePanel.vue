@@ -1799,6 +1799,12 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
       ? { label: `已停可保存${stopLabelSuffix}`, state: "stopped_fresh", style, aria: `扫图已停止${stopAriaSuffix}，地图画面已刷新，可以保存${locatedSuffix}` }
       : { label: `已停待刷新${stopLabelSuffix}`, state: "stopped_needs_refresh", style, aria: `扫图已停止${stopAriaSuffix}，需要刷新地图画面${locatedSuffix}` };
   }
+  if (mapRuntimeStarted.value) {
+    const failureText = mapPreviewFailureText(mapPreviewResult.value);
+    if (failureText) {
+      return { label: `扫图画面刷新失败：${failureText}`, state: "runtime_refresh_failed", style, aria: `扫图地图画面刷新失败：${failureText}，需要重试刷新扫图画面${locatedSuffix}` };
+    }
+  }
   if (mapRuntimeStarted.value && keyboardControlArmed.value && canUseKeyboardControl.value) {
     return { label: "键盘已启用（按住才动）", state: "armed", style, aria: `键盘扫图已启用，按住方向键才会移动${locatedSuffix}` };
   }
@@ -2164,6 +2170,10 @@ const plainFreeRoamMappingSummary = computed(() => {
     if (keyboardStopFailedAfterPulse.value) {
       return { state: "失败", hint: "扫图停止请求失败；先点红色停止并现场接管，不能保存当前地图。" };
     }
+    const failureText = mapPreviewFailureText(mapPreviewResult.value);
+    if (failureText) {
+      return { state: "待刷新", hint: `地图记录已启动，但扫图画面刷新失败：${failureText}；重试刷新扫图画面后再继续保存。` };
+    }
     return canUseKeyboardControl.value
       ? { state: "扫图中", hint: "建图已启动。按住方向键/WASD 低速扫一圈，松开即停，随时点停止。" }
       : { state: "待手控", hint: `建图已启动，但键盘移动条件还没满足。${plainKeyboardNextActionSummary.value}` };
@@ -2253,6 +2263,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
   }
   if (freeRoamAutonomyStoppedThisSession.value) {
     return plainFreeRoamMapPreviewFreshForSession.value ? "下一步：保存地图" : "下一步：刷新扫图画面";
+  }
+  if (mapRuntimeStarted.value && mapPreviewFailureText(mapPreviewResult.value) && !keyboardHeldDirection.value) {
+    return "下一步：重新刷新扫图画面";
   }
   if (mapRuntimeStarted.value && keyboardStopFailedAfterPulse.value) {
     return "下一步：点红色停止";
@@ -2364,6 +2377,12 @@ const plainFreeRoamDriveStatus = computed(() => {
       ? "扫图状态：地图已保存，地图画面已自动刷新，可以检查效果。"
       : "扫图状态：地图已保存，刷新地图画面检查效果。";
   }
+  if (mapRuntimeStarted.value) {
+    const failureText = mapPreviewFailureText(mapPreviewResult.value);
+    if (failureText) {
+      return `扫图状态：地图记录中，但扫图画面刷新失败：${failureText}；重试刷新扫图画面后再继续保存。`;
+    }
+  }
   if (keyboardMapWysiwygBlocked.value) {
     return `扫图状态：${mapWysiwygRefreshPendingText()}，等刷新完成后再继续按住移动。`;
   }
@@ -2384,6 +2403,10 @@ const plainFreeRoamDriveStatus = computed(() => {
     return "扫图状态：停止请求失败，未证明小车已停止；请点红色停止并现场接管。";
   }
   if (keyboardControlStatus.value.startsWith("stop_sent")) {
+    const failureText = mapPreviewFailureText(mapPreviewResult.value);
+    if (failureText) {
+      return `扫图状态：已停止，但扫图画面刷新失败：${failureText}；重试刷新扫图画面后再保存地图。`;
+    }
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
       return "扫图状态：已停止，正在刷新扫图画面。";
     }
@@ -2439,6 +2462,19 @@ const plainFreeRoamCoverageSummary = computed(() => {
         barStyle: { "--coverage-known": "0%" },
         quality: "preview_failed",
       };
+    }
+    if (mapRuntimeStarted.value) {
+      const failureText = mapPreviewFailureText(mapPreviewResult.value);
+      if (failureText) {
+        return {
+          state: "失败",
+          primary: `扫图画面刷新失败：${failureText}`,
+          secondary: "当前没有地图记录中的新画面可检查。",
+          guidance: "地图记录仍在运行，重试刷新扫图画面后再继续移动或保存。",
+          barStyle: { "--coverage-known": "0%" },
+          quality: "preview_failed",
+        };
+      }
     }
     const guidance = mapRuntimeStarted.value || mapSavedThisSession.value
       ? mapPreviewPending.value && mapSavedThisSession.value
