@@ -6857,6 +6857,12 @@ async function refreshRadarProof(options: { focusAfterReady?: boolean } = {}): P
     radarRefreshResult,
     radarRefreshPending,
   );
+  try {
+    // proof refresh 后立即读固定 radar/status，让地图 marker 和 readiness 使用同一轮最新状态。
+    radarStatusResult.value = await getRobotControlRadarStatus(robotApiBaseUrl.value);
+  } catch (err) {
+    radarStatusResult.value = makeRadarStatusFallback(err instanceof Error ? err.message : "radar_status_request_failed");
+  }
   if (options.focusAfterReady !== false) {
     await focusPlainGoalProgressAfterRadarReady();
   }
