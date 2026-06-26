@@ -3778,6 +3778,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.operator_report_preflight_endpoint).toBe("/api/operator/report");
       expect(summary.safe_command_boundary.operator_report_preflight_required_fields).toEqual([]);
       expect(summary.safe_command_boundary.allowed_directions).toEqual(["forward", "back", "left", "right", "stop"]);
+      expect(summary.safe_command_boundary.hil_checklist).toEqual([
+        { id: "operator_safety_confirmed", label: "现场安全确认（人在旁边、周围安全、停止手段就绪）" },
+      ]);
+      expect(summary.safe_command_boundary.hil_checklist.map((item) => item.id)).not.toContain("operator_ready");
       expect(summary.safe_command_boundary.manual_control_enabled).toBe(false);
       expect(summary.safe_command_boundary.keyboard_control).toBe("bounded repeating manual pulse gated");
       expect(summary.safe_command_boundary.keyboard_control_mode).toBe("bounded_repeating_manual_pulse");

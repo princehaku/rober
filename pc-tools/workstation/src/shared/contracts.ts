@@ -2450,7 +2450,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     speed_limit_mps: number;
     duration_limit_ms: number;
     hil_checklist: Array<{
-      id: "operator_ready" | "clearance_confirmed" | "low_speed_only" | "not_autonomy_mode";
+      id: "operator_safety_confirmed";
       label: string;
     }>;
     command_dispatch_enabled: false;

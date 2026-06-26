@@ -47,10 +47,7 @@ const ROBOT_CONTROL_SCAN_PREVIEW_MIN_RANGE_M = 0.03;
 const ROBOT_CONTROL_SCAN_PREVIEW_MAX_RANGE_M = 8;
 export const ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
 export const ROBOT_CONTROL_HIL_CHECKLIST = [
-  { id: "operator_ready", label: "现场有人扶控并准备急停" },
-  { id: "clearance_confirmed", label: "已确认小车周围无人和障碍" },
-  { id: "low_speed_only", label: "本轮仅做低速短时点动" },
-  { id: "not_autonomy_mode", label: "本轮不是自动导航任务" },
+  { id: "operator_safety_confirmed", label: "现场安全确认（人在旁边、周围安全、停止手段就绪）" },
 ] as const;
 
 type RobotReadEndpointConfig = {
