@@ -22,16 +22,45 @@ Robot API POST。
 - `safe_to_control=false`
 - `primary_actions_enabled=false`
 - `delivery_success=false`
-- `hil_pass=false`
+- `hil_pass` 只有在同轮 `NavigateToPose` succeeded 且 WAVE ROVER `T=1001` 左右轮反馈出现非零样本时才允许为
+  `true`；否则必须保持 `false`。
 
-O11 helper 的托管 runtime 必须先让 map/amcl active，发布一次 `/initialpose`，再等待
-planner/controller/BT/behavior lifecycle active 后才发送 `NavigateToPose`。readiness 可以使用同一轮 helper
+O11 helper 的托管 runtime 必须先让 `map_server` active，并用静态 `map->odom` 加
+`esp32_bridge` 发布的 `odom->base_link` 形成最小定位链路；该 bounded 执行 proof 不再依赖雷达或
+AMCL。随后再等待 planner/controller/BT/behavior lifecycle active 后才发送 `NavigateToPose`。readiness 可以使用同一轮 helper
 日志中的 `lifecycle_manager_navigation: Managed nodes are active` 作为执行层 active 证据；不能只因为
 `/navigate_to_pose` action server 出现就发送 goal，因为 BT node 未 active 时目标可能被拒绝。
 
+2026-06-27 后，O11 托管 runtime 的 `esp32_bridge` 使用 `command_mode=pwm`、`pwm_min_abs=90`、
+`pwm_max_abs=90`。该口径来自 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：
+`CMD_PWM_INPUT/T=11` 为左右轮 PWM 输入，范围 `-255..255`；同轮真机 smoke 已证明当前车上
+`T=11 L=90/R=90` 能回 `T=1001 L/R=90/90`，而低速 `T=1/T=13` 只回 `0/0`。O11 会通过
+`feedback_debug_log_path` 记录 bridge 解析出的 `T=1001`，并把 `base_feedback_summary` 写入 artifact。
+`nav2_goal_execution_proven=true` 必须同时满足 action 成功和
+`base_feedback_summary.wheel_feedback_lr_nonzero_proven=true`；这只证明路线执行触到底盘，不等于投放或
+`delivery_success`。
+
+O11 还会打开 `command_debug_log_path`，记录 `/cmd_vel` 转换后的 vendor JSON，并在 artifact 中写入
+`base_command_summary`。如果 `base_command_summary.nonzero_command_observed=true` 但
+`base_feedback_summary.wheel_feedback_lr_nonzero_proven=false`，说明 Nav2/bridge 已发非零命令但底盘反馈未跟上；
+如果两者都为 false，则说明 controller 没有产生非零底盘命令。
+
+同日实车 O11 复验确认，`nav2_params.yaml` 的 `FollowPath.use_collision_detection=false`
+后，bounded 路线执行不再被雷达/局部 costmap 误障碍卡住；PC 固定 execute 入口返回
+`execution_forwarded`，上车 artifact 记录 `status=goal_succeeded`、执行层 lifecycle active、
+`base_command_mode=pwm`、`base_command_summary.nonzero_command_observed=true`、
+`base_command_nonzero_count=49`。同轮 `T=1001` 反馈仍为
+`base_feedback_summary.wheel_feedback_lr_nonzero_proven=false`、`L/R=0/0`，因此
+`hil_pass=false`、`nav2_goal_execution_proven=false` 必须保持不变。该设置只证明
+Nav2 -> `/cmd_vel` -> PWM bridge 命令链路活了，不等于避障完成、真实轮速闭环、现场安全或
+`delivery_success`。
+
 PC guard 对该固定 endpoint 只允许预期执行字段为 true，仍必须 fail-closed 拦截
-`safe_to_control=true`、`primary_actions_enabled=true`、`delivery_success=true`、`hil_pass=true`、
-`calls_base_manual=true`、`uses_base_uart=true` 等越界声明。`NavigateToPose` succeeded 后，还需要现场
+`safe_to_control=true`、`primary_actions_enabled=true`、`delivery_success=true`、`calls_base_manual=true`
+等越界声明。对于 `POST /api/robot-control/nav2/goal/execute` 和只读
+`GET /api/robot-control/nav2/goal/execution/latest`，PC 允许 `robot_control_executed=true`、
+`sends_motion_commands=true`、`sends_base_motion_commands=true`、`uses_base_uart=true`、`hil_pass=true`
+作为该固定 Nav2 artifact 的执行证据；PC 顶层仍保持 fail-closed。`NavigateToPose` succeeded 后，还需要现场
 operator report、到达/投放确认和交付结果收口，才能单独评估 delivery success。
 
 ## delivery_completion_gate

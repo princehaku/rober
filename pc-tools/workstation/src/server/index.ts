@@ -233,6 +233,22 @@ function booleanFalseValue(value: unknown): boolean {
   return value === false || (typeof value === "string" && value.trim().toLowerCase() === "false");
 }
 
+function nav2GoalExecutionAllowedTrueField(field: string): boolean {
+  // Nav2 固定执行 endpoint 允许返回“确实发车且 UART 有反馈”的证据，但仍不允许交付/主控开关变 true。
+  return field === "sends_commands"
+    || field.endsWith(".sends_commands")
+    || field === "robot_control_executed"
+    || field.endsWith(".robot_control_executed")
+    || field === "sends_motion_commands"
+    || field.endsWith(".sends_motion_commands")
+    || field === "sends_base_motion_commands"
+    || field.endsWith(".sends_base_motion_commands")
+    || field === "uses_base_uart"
+    || field.endsWith(".uses_base_uart")
+    || field === "hil_pass"
+    || field.endsWith(".hil_pass");
+}
+
 function firstLoadedValue(...values: unknown[]): unknown {
   // 外层 latest 响应常带 fail-closed 摘要，真实 action 证据优先取 latest_result。
   return values.find((value) => value !== undefined && value !== null);
@@ -357,6 +373,10 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
   const latestResult = asRecord(payload?.latest_result);
   const goalRequest = asRecord(latestResult?.goal_request) ?? asRecord(payload?.goal_request);
   const cancelResponse = asRecord(latestResult?.cancel_response);
+  const baseFeedbackSummary = asRecord(latestResult?.base_feedback_summary) ?? asRecord(payload?.base_feedback_summary);
+  const baseCommandSummary = asRecord(latestResult?.base_command_summary) ?? asRecord(payload?.base_command_summary);
+  const latestNonzeroPair = asRecord(baseFeedbackSummary?.latest_nonzero_pair);
+  const latestPair = asRecord(baseFeedbackSummary?.latest_pair);
   return {
     status: shortValue(latestResult?.status ?? payload?.status),
     evidence_ref: shortValue(payload?.evidence_ref ?? latestResult?.evidence_ref),
@@ -376,6 +396,15 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     cancel_requested: shortValue(payload?.cancel_requested ?? latestResult?.cancel_requested),
     cancel_accepted: shortValue(cancelResponse?.accepted, "false"),
     feedback_sample_count: shortValue(payload?.feedback_sample_count ?? latestResult?.feedback_sample_count, "0"),
+    base_command_mode: shortValue(latestResult?.base_command_mode ?? payload?.base_command_mode, "not_loaded"),
+    base_feedback_sample_count: shortValue(baseFeedbackSummary?.sample_count, "0"),
+    base_feedback_nonzero_sample_count: shortValue(baseFeedbackSummary?.nonzero_sample_count, "0"),
+    base_feedback_lr_nonzero_proven: shortValue(baseFeedbackSummary?.wheel_feedback_lr_nonzero_proven, "false"),
+    base_feedback_latest_left_speed: shortValue(latestNonzeroPair?.left_speed ?? latestPair?.left_speed, "not_observed"),
+    base_feedback_latest_right_speed: shortValue(latestNonzeroPair?.right_speed ?? latestPair?.right_speed, "not_observed"),
+    base_command_sample_count: shortValue(baseCommandSummary?.sample_count, "0"),
+    base_command_nonzero_count: shortValue(baseCommandSummary?.nonzero_command_count, "0"),
+    base_command_nonzero_observed: shortValue(baseCommandSummary?.nonzero_command_observed, "false"),
     robot_control_executed: shortValue(latestResult?.robot_control_executed ?? payload?.robot_control_executed, "false"),
     delivery_success: shortValue(payload?.delivery_success ?? latestResult?.delivery_success, "false"),
   };
@@ -1956,6 +1985,7 @@ export function createWorkstationApp(): express.Express {
     const goalY = clamp(Number(payload?.goal_y ?? 0), -3, 3);
     const goalYaw = clamp(Number(payload?.goal_yaw ?? 0), -Math.PI, Math.PI);
     const resultTimeoutS = clamp(Number(payload?.result_timeout_s ?? 8), 2, 20);
+    const serverTimeoutS = clamp(Number(payload?.server_timeout_s ?? 12), 1, 20);
     const fallbackBase: RobotControlNavGoalExecutionResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_proxy.v1",
       proxy_status: "execution_rejected",
@@ -1978,6 +2008,7 @@ export function createWorkstationApp(): express.Express {
         goal_y: goalY,
         goal_yaw: goalYaw,
         result_timeout_s: resultTimeoutS,
+        server_timeout_s: serverTimeoutS,
         confirm_navigation_execution: confirmNavigationExecution,
       },
       goal_execution_key_values: {},
@@ -2027,6 +2058,7 @@ export function createWorkstationApp(): express.Express {
           goal_x: goalX,
           goal_y: goalY,
           goal_yaw: goalYaw,
+          server_timeout_s: serverTimeoutS,
           result_timeout_s: resultTimeoutS,
           confirm_navigation_execution: true,
         }),
@@ -2035,13 +2067,7 @@ export function createWorkstationApp(): express.Express {
       });
       const remotePayload = asRecord(await remote.json().catch(() => null));
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
-        (field) =>
-          field !== "sends_commands" &&
-          !field.endsWith(".sends_commands") &&
-          field !== "robot_control_executed" &&
-          !field.endsWith(".robot_control_executed") &&
-          field !== "sends_motion_commands" &&
-          !field.endsWith(".sends_motion_commands"),
+        (field) => !nav2GoalExecutionAllowedTrueField(field),
       );
       const responseBody: RobotControlNavGoalExecutionResponse = {
         ...fallbackBase,
@@ -2101,13 +2127,7 @@ export function createWorkstationApp(): express.Express {
       const remotePayload = asRecord(await remote.json().catch(() => null));
       const latestResult = asRecord(remotePayload?.latest_result);
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
-        (field) =>
-          field !== "sends_commands" &&
-          !field.endsWith(".sends_commands") &&
-          field !== "robot_control_executed" &&
-          !field.endsWith(".robot_control_executed") &&
-          field !== "sends_motion_commands" &&
-          !field.endsWith(".sends_motion_commands"),
+        (field) => !nav2GoalExecutionAllowedTrueField(field),
       );
       const responseBody: RobotControlNavGoalExecutionLatestResponse = {
         ...fallbackBase,

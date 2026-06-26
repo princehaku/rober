@@ -32,6 +32,7 @@ class BridgeConfig:
     odom_publish_hz: float
     publish_odom_tf: bool
     feedback_debug_log_path: str = ""
+    command_debug_log_path: str = ""
     alias_port_used: bool = False
     alias_baudrate_used: bool = False
 
@@ -78,6 +79,8 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("publish_odom_tf", True)
     # 默认关闭 raw feedback 证据落盘，避免常规 bringup 产生额外 IO 或误把调试文件当作导航里程计。
     node.declare_parameter("feedback_debug_log_path", "")
+    # 默认关闭命令调试落盘；O11 执行 proof 可显式打开，用于确认 /cmd_vel 是否真的转成非零 UART JSON。
+    node.declare_parameter("command_debug_log_path", "")
 
 
 def load_bridge_config(node: Any) -> BridgeConfig:
@@ -100,6 +103,7 @@ def load_bridge_config(node: Any) -> BridgeConfig:
         odom_publish_hz=float(node.get_parameter("odom_publish_hz").value),
         publish_odom_tf=bool(node.get_parameter("publish_odom_tf").value),
         feedback_debug_log_path=str(node.get_parameter("feedback_debug_log_path").value),
+        command_debug_log_path=str(node.get_parameter("command_debug_log_path").value),
         alias_port_used=bool(alias_port),
         alias_baudrate_used=bool(alias_baudrate),
     )

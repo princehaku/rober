@@ -1,0 +1,98 @@
+"""O11 Nav2 执行 helper 的静态单测。
+
+这些测试不启动 ROS2、不打开串口，只锁定托管 runtime 的底盘参数和反馈摘要逻辑。
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "o11_nav2_goal_execution_proof.py"
+SPEC = importlib.util.spec_from_file_location("o11_nav2_goal_execution_proof", SCRIPT)
+assert SPEC is not None and SPEC.loader is not None
+HELPER = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(HELPER)
+
+
+class O11Nav2GoalExecutionProofTests(unittest.TestCase):
+    """锁定 O11 从 NavigateToPose 到真实底盘反馈的证明边界。"""
+
+    def test_managed_bridge_uses_pwm_motion_path(self) -> None:
+        """自动驾驶托管 bridge 必须走当前真机已证明可动的 T=11 PWM 通路。"""
+        command = HELPER.managed_esp32_bridge_command("/tmp/o11_feedback.jsonl", "/tmp/o11_command.jsonl")
+
+        self.assertIn("ros2_trashbot_hardware esp32_bridge", command)
+        self.assertIn("-p serial_port:=/dev/ttyS5", command)
+        self.assertIn("-p command_mode:=pwm", command)
+        self.assertIn("-p pwm_min_abs:=90", command)
+        self.assertIn("-p pwm_max_abs:=90", command)
+        self.assertIn("-p feedback_debug_log_path:=/tmp/o11_feedback.jsonl", command)
+        self.assertIn("-p command_debug_log_path:=/tmp/o11_command.jsonl", command)
+        self.assertNotIn("command_mode:=speed", command)
+        self.assertNotIn("command_mode:=ros", command)
+
+    def test_feedback_debug_log_summary_proves_nonzero_wheel_feedback(self) -> None:
+        """只有真实 T=1001 左右轮非零样本才能把 Nav2 HIL 证明推进为 true。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "feedback.jsonl"
+            log_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"left_speed": 0, "right_speed": 0, "observed_at_unix_s": 1.0}),
+                        json.dumps({"left_speed": 90, "right_speed": 90, "observed_at_unix_s": 2.0}),
+                        "not-json",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            summary = HELPER.summarize_feedback_debug_log(str(log_path))
+
+        self.assertTrue(summary["exists"])
+        self.assertEqual(summary["sample_count"], 2)
+        self.assertEqual(summary["nonzero_sample_count"], 1)
+        self.assertEqual(summary["malformed_line_count"], 1)
+        self.assertTrue(summary["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(summary["latest_nonzero_pair"]["left_speed"], 90.0)
+        self.assertEqual(summary["latest_nonzero_pair"]["right_speed"], 90.0)
+
+    def test_missing_feedback_log_does_not_claim_hil(self) -> None:
+        """反馈日志缺失时保持 fail-closed，不能仅凭 action 成功推导 HIL。"""
+        summary = HELPER.summarize_feedback_debug_log("/tmp/does-not-exist-o11-feedback.jsonl")
+
+        self.assertFalse(summary["exists"])
+        self.assertFalse(summary["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(summary["reason"], "feedback_debug_log_unreadable")
+
+    def test_command_debug_log_summary_tracks_nonzero_vendor_commands(self) -> None:
+        """命令日志用于区分 Nav2 没发非零速度，还是底盘反馈没有跟上。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "command.jsonl"
+            log_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"vendor_command": {"T": 11, "L": 0, "R": 0}, "linear_x": 0, "angular_z": 0}),
+                        json.dumps({"vendor_command": {"T": 11, "L": 90, "R": 90}, "linear_x": 0.2, "angular_z": 0}),
+                        "bad-json",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            summary = HELPER.summarize_command_debug_log(str(log_path))
+
+        self.assertTrue(summary["exists"])
+        self.assertEqual(summary["sample_count"], 2)
+        self.assertEqual(summary["nonzero_command_count"], 1)
+        self.assertEqual(summary["malformed_line_count"], 1)
+        self.assertTrue(summary["nonzero_command_observed"])
+        self.assertEqual(summary["latest_nonzero_command"]["vendor_command"], {"T": 11, "L": 90, "R": 90})
+
+
+if __name__ == "__main__":
+    unittest.main()

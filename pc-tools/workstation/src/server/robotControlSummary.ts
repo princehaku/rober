@@ -376,11 +376,17 @@ const OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS = new Set([
   "latest_result.operator_report.structured_hil_claims.delivery_success",
 ]);
 const NAV2_GOAL_EXECUTION_LATEST_TRUE_FIELD_EXEMPTIONS = new Set([
-  // 这是只读“最近一次 NavigateToPose 是否真的发生过”的历史证据；PC summary 顶层仍固定不执行控制。
+  // 这是只读“最近一次 NavigateToPose 是否真的触到底盘”的历史证据；PC summary 顶层仍固定不执行控制。
   "robot_control_executed",
   "latest_result.robot_control_executed",
   "sends_motion_commands",
   "latest_result.sends_motion_commands",
+  "sends_base_motion_commands",
+  "latest_result.sends_base_motion_commands",
+  "uses_base_uart",
+  "latest_result.uses_base_uart",
+  "hil_pass",
+  "latest_result.hil_pass",
 ]);
 
 const STATUS_KEYS = [

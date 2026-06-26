@@ -7040,6 +7040,138 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Nav2 execution proxy allows real base feedback evidence but still blocks delivery success", async () => {
+    // O11 真实执行可返回底盘 UART/HIL 证据；delivery_success 仍必须由后续送达 gate 单独确认。
+    const preflightGetHandlers = {
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "localization_reset_observed",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          localization_reset_observed: true,
+          localization_tf_observed: { map_to_base_link: true },
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "nav2_no_motion_path_generation_runtime_observed",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 36,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "active",
+          robot_control_executed: false,
+        },
+      },
+    };
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/nav2/goal/execute": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result",
+          status: "goal_succeeded",
+          goal_accepted: true,
+          result_received: true,
+          result_status: "succeeded",
+          robot_control_executed: true,
+          sends_motion_commands: true,
+          sends_base_motion_commands: true,
+          uses_base_uart: true,
+          hil_pass: true,
+          nav2_goal_execution_proven: true,
+          delivery_success: false,
+          base_command_mode: "pwm",
+          base_feedback_summary: {
+            sample_count: 2,
+            nonzero_sample_count: 1,
+            wheel_feedback_lr_nonzero_proven: true,
+            latest_nonzero_pair: { left_speed: 90, right_speed: 90 },
+          },
+        },
+      },
+    }, preflightGetHandlers);
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/goal/execute?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          goal_x: 0.8,
+          goal_y: 0,
+          goal_yaw: 0,
+          confirm_navigation_execution: true,
+        }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        hard_dangerous_true_fields: string[];
+        goal_execution_key_values: Record<string, string>;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("execution_forwarded");
+      expect(body.hard_dangerous_true_fields).toEqual([]);
+      expect(body.goal_execution_key_values.hil_pass).toBe("true");
+      expect(body.goal_execution_key_values.base_command_mode).toBe("pwm");
+      expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("true");
+      expect(body.goal_execution_key_values.base_feedback_latest_left_speed).toBe("90");
+      expect(body.goal_execution_key_values.delivery_success).toBe("false");
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+
+    const unsafeUpstream = await listenRobotBaseCommandApi({
+      "/api/nav2/goal/execute": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result",
+          status: "goal_succeeded",
+          robot_control_executed: true,
+          sends_motion_commands: true,
+          hil_pass: true,
+          delivery_success: true,
+        },
+      },
+    }, preflightGetHandlers);
+    const unsafeWorkstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${unsafeWorkstation.baseUrl}/api/robot-control/nav2/goal/execute?baseUrl=${encodeURIComponent(unsafeUpstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          goal_x: 0.8,
+          goal_y: 0,
+          goal_yaw: 0,
+          confirm_navigation_execution: true,
+        }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        hard_dangerous_true_fields: string[];
+        failure_reason: string;
+      };
+
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("execution_failed");
+      expect(body.hard_dangerous_true_fields).toContain("delivery_success");
+      expect(body.failure_reason).toBe("dangerous_true_field:delivery_success");
+    } finally {
+      await unsafeWorkstation.close();
+      await unsafeUpstream.close();
+    }
+  });
+
   it("delivery latest proxy reads fixed gate gap without submitting completion", async () => {
     // delivery latest 是只读缺口面板：不提交 operator report，不触发 delivery complete。
     const upstream = await listenRobotBaseCommandApi({}, {

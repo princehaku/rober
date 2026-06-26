@@ -60,6 +60,7 @@ class ESP32Bridge(Node):
         self.feedback_interval_ms = config.feedback_interval_ms
         self.publish_odom_tf = config.publish_odom_tf
         self.feedback_debug_log_path = config.feedback_debug_log_path
+        self.command_debug_log_path = config.command_debug_log_path
 
         self._serial_lock = threading.Lock()
         self._running = True
@@ -108,6 +109,7 @@ class ESP32Bridge(Node):
             f"command_mode={self.command_mode}; "
             f"publish_odom_tf={self.publish_odom_tf}; "
             f"feedback_debug_log_enabled={bool(self.feedback_debug_log_path)}; "
+            f"command_debug_log_enabled={bool(self.command_debug_log_path)}; "
             "odom source=ROS-side command integration until measured wheel odometry is validated"
         )
 
@@ -212,11 +214,34 @@ class ESP32Bridge(Node):
             self.get_logger().error(str(exc))
             return
 
+        self._append_command_debug_line(msg, command)
         if self._send_json(command):
             self._last_cmd_linear = float(msg.linear.x)
             self._last_cmd_angular = float(msg.angular.z)
         else:
             self.get_logger().warn("Failed to forward /cmd_vel to WAVE ROVER ESP32")
+
+    def _append_command_debug_line(self, msg: Twist, command: dict[str, Any]) -> None:
+        """按需记录 /cmd_vel 到 vendor JSON 的映射，用于区分 Nav2 零速度和串口反馈问题。"""
+        log_path = getattr(self, "command_debug_log_path", "")
+        if not log_path:
+            return
+
+        record = {
+            "schema": "trashbot.wave_rover.command_debug.v1",
+            "observed_at_unix_s": time.time(),
+            "source": "esp32_bridge_cmd_vel_callback",
+            "linear_x": float(msg.linear.x),
+            "angular_z": float(msg.angular.z),
+            "command_mode": self.command_mode,
+            "vendor_command": command,
+        }
+        try:
+            # 命令日志只在 proof 显式打开时使用，失败不能阻断停车或速度转发。
+            with open(log_path, "a", encoding="utf-8") as log_file:
+                log_file.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+        except OSError as exc:
+            self.get_logger().warn(f"Failed to append WAVE ROVER command debug log: {exc}")
 
     def _publish_odom(self) -> None:
         # 这里是命令积分，不是实测轮速里程计；HIL 前不能把它写成真实 odom。

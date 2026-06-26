@@ -2842,3 +2842,34 @@ L/R”的误判概率。
 普通界面风格不变。ROS bridge 新增 `command_mode=pwm`，bringup/autonomous 默认走该模式，后续 Nav2 路线执行的底盘输出不再卡在
 当前真机无效的 `T=1/T=13`。manual 运动中读到的非零 `T=1001 L/R` 会写入既有 latest artifact；PC 刷新 summary 后仍能看到
 `wheel_feedback_lr_nonzero_proven=true`，不会被停车后的只读 `0/0` 覆盖。
+
+2026-06-27 同步修正 O11 Nav2 执行 helper：托管 `esp32_bridge` 不再硬编码
+`command_mode=speed`，改为 `command_mode=pwm`、`pwm_min_abs/max_abs=90`，并通过
+`feedback_debug_log_path` 记录同轮 WAVE ROVER `T=1001` 左右轮反馈。PC 固定 Nav2 execute/latest 代理允许该
+endpoint 返回 `sends_base_motion_commands=true`、`uses_base_uart=true`、`hil_pass=true` 作为路线执行证据，
+但仍不允许 `safe_to_control=true`、`primary_actions_enabled=true` 或 `delivery_success=true`；普通首屏风格和
+固定代理边界不变。
+
+同轮继续把 O11 bounded Nav2 执行栈从 `lidar_driver + AMCL` 改为 `map_server + static map->odom +
+esp32_bridge odom->base_link`，使“小车能不能动”不再依赖雷达或 AMCL 是否启动。bridge 新增
+`command_debug_log_path`，O11 artifact/PC key values 会显示 `base_command_sample_count`、
+`base_command_nonzero_count`、`base_command_nonzero_observed`，用来区分“Nav2 没发非零 `/cmd_vel`”和“发了非零
+vendor JSON 但 WAVE ROVER 反馈仍为 0/0”。这仍不等于避障、现场安全或送达成功。
+
+2026-06-27 继续复测 PC 7001 到上位机的真实链路：`POST /api/robot-control/nav2/goal/execute`
+返回 `execution_forwarded`，远端 artifact 为 `status=goal_succeeded`、`goal_accepted=true`、
+`result_status=succeeded`，并记录 `base_command_mode=pwm`、
+`base_command_nonzero_observed=true`、`base_command_nonzero_count=49`。PC latest 的
+`goal_execution_key_values` 同步展示这些字段，同时仍显示
+`base_feedback_lr_nonzero_proven=false`、`hil_pass=false`、`delivery_success=false`。
+这说明普通 PC 入口已经能触发“不依赖雷达”的 Nav2 命令链路，但 WAVE ROVER `T=1001`
+轮速闭环仍未证明，不能把它升级成完整 HIL 或 delivery success。
+
+同轮相机共享预览复测确认：PC Node API 只绑定 `0.0.0.0:7001`，MJPEG fallback 仍通过
+`/api/robot-control/camera/mjpeg` 单路上游 relay fanout 给多个浏览器；status 返回
+`shared_capture=true`、`exclusive_camera_claim=false`、`client_count=0`。上车 8088/8787
+health 均显示 `/dev/video1` 当前 `source_usage.status=not_in_use/owner_count=0`，因此画面不可见不是
+PC 页面独占。当前 blocker 是 `/dev/video1` 可枚举/可尝试打开，但 MJPG、YUYV 和 default
+首帧都返回 `capture_read_returned_false`；8787 `/api/camera/mjpeg` 现在会在约 7 秒内返回
+fail-closed 502，而不是让普通页面一直等待。真实画面恢复仍需要检查摄像头输入、USB 线/供电、采集卡模式或替换
+known-good UVC。

@@ -20,6 +20,9 @@ NAVIGATE_ACTION_CANDIDATES = ("/navigate_to_pose", "navigate_to_pose")
 DEFAULT_ONBOARD_SETUP = "/root/rober/onboard/install/setup.bash"
 DEFAULT_WORKDIR = "/root/rober/onboard"
 DEFAULT_NAV2_PARAMS = "/root/rober/onboard/src/ros2_trashbot_nav/config/nav2_params.yaml"
+DEFAULT_BASE_COMMAND_MODE = "pwm"
+DEFAULT_PWM_MIN_ABS = 90
+DEFAULT_PWM_MAX_ABS = 90
 
 
 def now_ms() -> int:
@@ -48,16 +51,35 @@ def compact_error(exc: BaseException) -> dict[str, str]:
     return {"type": type(exc).__name__, "message": str(exc)[:500]}
 
 
+def managed_esp32_bridge_command(feedback_log_path: str, command_log_path: str = "") -> str:
+    """O11 托管 Nav2 执行必须走当前真机已证明可动的 PWM 底盘通路。"""
+    command_debug_arg = (
+        f" -p command_debug_log_path:={shlex.quote(command_log_path)}" if command_log_path else ""
+    )
+    return (
+        "ros2 run ros2_trashbot_hardware esp32_bridge --ros-args "
+        "-p serial_port:=/dev/ttyS5 -p serial_baudrate:=115200 "
+        f"-p command_mode:={DEFAULT_BASE_COMMAND_MODE} "
+        "-p track_width_m:=0.172 -p max_wheel_speed_mps:=1.3 "
+        f"-p pwm_min_abs:={DEFAULT_PWM_MIN_ABS} -p pwm_max_abs:={DEFAULT_PWM_MAX_ABS} "
+        f"-p feedback_debug_log_path:={shlex.quote(feedback_log_path)}"
+        f"{command_debug_arg}"
+    )
+
+
 def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]:
     """短暂启动 Nav2 执行 runtime，让 NavigateToPose action server 可用。"""
     if not args.managed_runtime_opt_in:
         return {"requested": False, "started": False, "cleanup": {"ok": True, "boundary": "not_requested"}}
     if not args.managed_map_yaml:
         return {"requested": True, "started": False, "error": {"type": "ValueError", "message": "managed_map_yaml is required"}}
-    log_path = f"/tmp/o11_nav2_goal_execution_{now_ms()}.log"
+    runtime_ms = now_ms()
+    log_path = f"/tmp/o11_nav2_goal_execution_{runtime_ms}.log"
+    base_feedback_log_path = f"/tmp/o11_wave_rover_feedback_{runtime_ms}.jsonl"
+    base_command_log_path = f"/tmp/o11_wave_rover_command_{runtime_ms}.jsonl"
     initialpose_payload = json.dumps(
         {
-            # stamp=0 让 AMCL 用最新 TF，避免初始位姿刚发布时因为 odom->base_link 时间略早而外推失败。
+            # stamp=0 保留旧 initialpose 兼容；当前 O11 使用静态 map->odom，不依赖 AMCL 或雷达。
             "header": {"stamp": {"sec": 0, "nanosec": 0}, "frame_id": str(args.initialpose_frame_id)},
             "pose": {
                 "pose": {
@@ -77,15 +99,11 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
     localization_commands = [
         (
             "esp32_bridge",
-            "ros2 run ros2_trashbot_hardware esp32_bridge --ros-args "
-            "-p serial_port:=/dev/ttyS5 -p serial_baudrate:=115200 -p command_mode:=speed "
-            "-p track_width_m:=0.172 -p max_wheel_speed_mps:=1.3",
+            managed_esp32_bridge_command(base_feedback_log_path, base_command_log_path),
         ),
         (
-            "lidar_driver",
-            "ros2 run ros2_trashbot_hardware lidar_driver --ros-args "
-            "-p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame "
-            "-p scan_topic:=/scan -p publish_raw_packets:=false",
+            "static_tf_map_odom",
+            "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map odom",
         ),
         (
             "static_tf_base_laser",
@@ -95,10 +113,6 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
             "map_server",
             f"ros2 run nav2_map_server map_server --ros-args --params-file {DEFAULT_NAV2_PARAMS} "
             f"-p yaml_filename:={args.managed_map_yaml} -r __node:=map_server",
-        ),
-        (
-            "amcl",
-            f"ros2 run nav2_amcl amcl --ros-args --params-file {DEFAULT_NAV2_PARAMS} -r __node:=amcl",
         ),
     ]
     navigation_commands = [
@@ -124,13 +138,12 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
             "lifecycle_manager_localization",
             "ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args "
             "-p autostart:=true "
-            "-p node_names:=\"[map_server, amcl]\" "
+            "-p node_names:=\"[map_server]\" "
             "-r __node:=lifecycle_manager_localization",
         ),
         (
             "initialpose_seed",
-            "ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped "
-            f"{shlex.quote(initialpose_payload)}",
+            "true",
         ),
         (
             "lifecycle_manager_navigation",
@@ -149,11 +162,14 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
         "trap cleanup EXIT INT TERM",
         f"printf '%s\\n' 'log_path={log_path}' > {shlex.quote(log_path)}",
         f"printf '%s\\n' 'managed_map_yaml={args.managed_map_yaml}' >> {shlex.quote(log_path)}",
+        f"printf '%s\\n' 'base_command_mode={DEFAULT_BASE_COMMAND_MODE}' >> {shlex.quote(log_path)}",
+        f"printf '%s\\n' 'base_feedback_log_path={base_feedback_log_path}' >> {shlex.quote(log_path)}",
+        f"printf '%s\\n' 'base_command_log_path={base_command_log_path}' >> {shlex.quote(log_path)}",
     ]
     for role, role_command in localization_commands:
         launch_lines.append(f"printf '%s\\n' 'starting role={role}' >> {shlex.quote(log_path)}")
         launch_lines.append(f"({role_command}) >> {shlex.quote(log_path)} 2>&1 & pids+=($!)")
-    # map_server/AMCL 先进入 active，并在执行层启动前发布 initialpose，避免 planner costmap 等不到 map->base_link。
+    # map_server 与静态 map->odom 先就绪，避免 planner/controller 等不到 map->base_link。
     launch_lines.append("sleep 4")
     role, role_command = lifecycle_commands[0]
     launch_lines.append(f"printf '%s\\n' 'starting role={role}' >> {shlex.quote(log_path)}")
@@ -188,6 +204,7 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
         "process_group": process.pid,
         "pid": process.pid,
         "map_yaml": args.managed_map_yaml,
+        "runtime_ms": runtime_ms,
         "startup_s": float(args.managed_startup_s),
         "initialpose": {
             "frame_id": str(args.initialpose_frame_id),
@@ -195,6 +212,11 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
             "y": float(args.initialpose_y),
             "yaw": float(args.initialpose_yaw),
         },
+        "base_command_mode": DEFAULT_BASE_COMMAND_MODE,
+        "base_pwm_min_abs": DEFAULT_PWM_MIN_ABS,
+        "base_pwm_max_abs": DEFAULT_PWM_MAX_ABS,
+        "base_feedback_log_path": base_feedback_log_path,
+        "base_command_log_path": base_command_log_path,
         "log_path": log_path,
         "command": command,
         "process": process,
@@ -202,11 +224,10 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
 
 
 def wait_for_nav2_lifecycle_active(timeout_s: float, *, log_path: str = "") -> dict[str, Any]:
-    """等待执行层 lifecycle 全部 active；优先消费本 helper 的 lifecycle 日志，避免 ros2 CLI discovery 抖动。"""
+    """等待执行层 lifecycle 全部 active；只消费本 helper 日志，避免 ros2 CLI 服务轮询拖慢 lifecycle。"""
     required_nodes = ("planner_server", "controller_server", "bt_navigator", "behavior_server")
     deadline = time.monotonic() + max(float(timeout_s), 1.0)
     history: list[dict[str, Any]] = []
-    latest_states: dict[str, str] = {}
     while time.monotonic() < deadline:
         log_tail = preview_text_file(log_path, max_chars=12000)
         navigation_active_observed = any(
@@ -223,34 +244,22 @@ def wait_for_nav2_lifecycle_active(timeout_s: float, *, log_path: str = "") -> d
                 "timeout_s": float(timeout_s),
                 "source": "lifecycle_manager_log",
             }
-        latest_states = {}
-        all_active = True
-        for node_name in required_nodes:
-            command = ["ros2", "lifecycle", "get", f"/{node_name}"]
-            try:
-                completed = subprocess.run(command, check=False, text=True, capture_output=True, timeout=3.0)
-                output = f"{completed.stdout}\n{completed.stderr}".strip()
-                state = output.splitlines()[0].strip() if output else f"returncode_{completed.returncode}"
-            except Exception as exc:  # noqa: BLE001
-                state = compact_error(exc)["message"] or type(exc).__name__
-            latest_states[node_name] = state
-            if "active [3]" not in state:
-                all_active = False
-        history.append({"at_ms": now_ms(), "states": dict(latest_states), "all_active": all_active})
-        if all_active:
-            return {
-                "ok": True,
-                "states": latest_states,
-                "history": history[-12:],
-                "timeout_s": float(timeout_s),
+        history.append(
+            {
+                "at_ms": now_ms(),
+                "states": {node_name: "waiting_for_lifecycle_manager_log" for node_name in required_nodes},
+                "all_active": False,
+                "source": "lifecycle_manager_log_tail",
             }
+        )
         time.sleep(1.0)
     return {
         "ok": False,
-        "states": latest_states,
+        "states": {node_name: "not_observed_in_lifecycle_manager_log" for node_name in required_nodes},
         "history": history[-12:],
         "timeout_s": float(timeout_s),
         "reason": "nav2_lifecycle_active_timeout",
+        "source": "lifecycle_manager_log_tail",
     }
 
 
@@ -288,6 +297,121 @@ def preview_text_file(path: str, *, max_chars: int) -> str:
         return Path(path).read_text(encoding="utf-8", errors="replace")[-max_chars:]
     except OSError:
         return ""
+
+
+def summarize_feedback_debug_log(path: str) -> dict[str, Any]:
+    """汇总 bridge 写出的 T=1001 反馈，作为 Nav2 是否真正触底盘的材料。"""
+    summary: dict[str, Any] = {
+        "path": path,
+        "exists": False,
+        "sample_count": 0,
+        "nonzero_sample_count": 0,
+        "wheel_feedback_lr_nonzero_proven": False,
+        "latest_pair": None,
+        "latest_nonzero_pair": None,
+        "malformed_line_count": 0,
+        "source": "wave_rover_uart_t1001_feedback_debug_log",
+    }
+    if not path:
+        summary["reason"] = "feedback_debug_log_path_empty"
+        return summary
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        summary["reason"] = "feedback_debug_log_unreadable"
+        summary["error"] = compact_error(exc)
+        return summary
+
+    summary["exists"] = True
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            summary["malformed_line_count"] += 1
+            continue
+        left_speed = record.get("left_speed")
+        right_speed = record.get("right_speed")
+        if not isinstance(left_speed, (int, float)) or not isinstance(right_speed, (int, float)):
+            summary["malformed_line_count"] += 1
+            continue
+        pair = {
+            "left_speed": float(left_speed),
+            "right_speed": float(right_speed),
+            "observed_at_unix_s": record.get("observed_at_unix_s"),
+        }
+        summary["sample_count"] += 1
+        summary["latest_pair"] = pair
+        if abs(float(left_speed)) > 1e-6 or abs(float(right_speed)) > 1e-6:
+            summary["nonzero_sample_count"] += 1
+            summary["latest_nonzero_pair"] = pair
+
+    summary["wheel_feedback_lr_nonzero_proven"] = summary["nonzero_sample_count"] > 0
+    if summary["sample_count"] == 0 and "reason" not in summary:
+        summary["reason"] = "feedback_debug_log_has_no_valid_samples"
+    return summary
+
+
+def summarize_command_debug_log(path: str) -> dict[str, Any]:
+    """汇总 /cmd_vel 转 vendor JSON 的命令日志，定位 Nav2 是否真的发了非零底盘命令。"""
+    summary: dict[str, Any] = {
+        "path": path,
+        "exists": False,
+        "sample_count": 0,
+        "nonzero_command_count": 0,
+        "nonzero_command_observed": False,
+        "latest_command": None,
+        "latest_nonzero_command": None,
+        "malformed_line_count": 0,
+        "source": "esp32_bridge_cmd_vel_command_debug_log",
+    }
+    if not path:
+        summary["reason"] = "command_debug_log_path_empty"
+        return summary
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        summary["reason"] = "command_debug_log_unreadable"
+        summary["error"] = compact_error(exc)
+        return summary
+
+    summary["exists"] = True
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            summary["malformed_line_count"] += 1
+            continue
+        command = record.get("vendor_command")
+        if not isinstance(command, dict):
+            summary["malformed_line_count"] += 1
+            continue
+        left = command.get("L")
+        right = command.get("R")
+        ros_x = command.get("X")
+        ros_z = command.get("Z")
+        values = [value for value in (left, right, ros_x, ros_z) if isinstance(value, (int, float))]
+        is_nonzero = any(abs(float(value)) > 1e-6 for value in values)
+        short_record = {
+            "observed_at_unix_s": record.get("observed_at_unix_s"),
+            "linear_x": record.get("linear_x"),
+            "angular_z": record.get("angular_z"),
+            "command_mode": record.get("command_mode"),
+            "vendor_command": command,
+        }
+        summary["sample_count"] += 1
+        summary["latest_command"] = short_record
+        if is_nonzero:
+            summary["nonzero_command_count"] += 1
+            summary["latest_nonzero_command"] = short_record
+
+    summary["nonzero_command_observed"] = summary["nonzero_command_count"] > 0
+    if summary["sample_count"] == 0 and "reason" not in summary:
+        summary["reason"] = "command_debug_log_has_no_valid_samples"
+    return summary
 
 
 def write_json_atomic(path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -483,6 +607,23 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         result.update({"status": "goal_execution_exception", "error": compact_error(exc)})
     finally:
         cleanup = cleanup_managed_runtime(managed_runtime)
+        base_feedback_summary = summarize_feedback_debug_log(str(managed_runtime.get("base_feedback_log_path") or ""))
+        base_command_summary = summarize_command_debug_log(str(managed_runtime.get("base_command_log_path") or ""))
+        result["base_feedback_summary"] = base_feedback_summary
+        result["base_command_summary"] = base_command_summary
+        result["base_command_mode"] = managed_runtime.get("base_command_mode") or DEFAULT_BASE_COMMAND_MODE
+        base_feedback_nonzero = bool(base_feedback_summary.get("wheel_feedback_lr_nonzero_proven"))
+        if result.get("goal_accepted"):
+            # 只有 goal 被 Nav2 接受后，才把底盘 UART 和运动命令标记为本轮执行材料。
+            result["uses_base_uart"] = bool(managed_runtime.get("base_feedback_log_path"))
+            result["sends_base_motion_commands"] = True
+        if result.get("status") == "goal_succeeded" and base_feedback_nonzero:
+            result["hil_pass"] = True
+            result["nav2_goal_execution_proven"] = True
+            result["proof_status"] = "nav2_goal_succeeded_with_nonzero_base_feedback"
+            result["not_proven"] = ["delivery_success", "operator_dropoff_confirmation"]
+        else:
+            result["nav2_goal_execution_proven"] = False
         result["managed_runtime"] = {
             **{key: value for key, value in managed_runtime.items() if key != "process"},
             "cleanup": cleanup,
@@ -503,13 +644,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--goal-x", type=float, required=True)
     parser.add_argument("--goal-y", type=float, required=True)
     parser.add_argument("--goal-yaw", type=float, default=0.0)
-    parser.add_argument("--server-timeout-s", type=float, default=5.0)
+    parser.add_argument("--server-timeout-s", type=float, default=12.0)
     parser.add_argument("--result-timeout-s", type=float, default=8.0)
     parser.add_argument("--max-feedback-samples", type=int, default=8)
     parser.add_argument("--managed-runtime-opt-in", action="store_true")
     parser.add_argument("--managed-map-yaml", default="")
     parser.add_argument("--managed-startup-s", type=float, default=2.0)
-    parser.add_argument("--managed-ready-timeout-s", type=float, default=45.0)
+    parser.add_argument("--managed-ready-timeout-s", type=float, default=90.0)
     parser.add_argument("--initialpose-frame-id", default="map")
     parser.add_argument("--initialpose-x", type=float, default=0.0)
     parser.add_argument("--initialpose-y", type=float, default=0.0)

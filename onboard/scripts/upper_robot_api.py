@@ -4875,7 +4875,7 @@ def run_nav2_goal_execution_helper(
         f"if [ -f {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))} ]; then source {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))}; fi",
     ]
     helper_command = " && ".join(ros_setup_parts + [shlex.join(helper_argv)])
-    process_timeout_s = min(max(server_timeout_s + result_timeout_s + managed_startup_s + managed_ready_timeout_s + 15.0, 20.0), 100.0)
+    process_timeout_s = min(max(server_timeout_s + result_timeout_s + managed_startup_s + managed_ready_timeout_s + 15.0, 20.0), 140.0)
     started_ms = now_ms()
     try:
         completed = run_helper_bash_process_group(helper_command, process_timeout_s, DEFAULT_ONBOARD_WORKDIR)
@@ -6338,7 +6338,8 @@ class UpperRobotApi:
         goal_y = clamp_float(body.get("goal_y"), 0.0, -3.0, 3.0)
         goal_yaw = clamp_float(body.get("goal_yaw"), 0.0, -math.pi, math.pi)
         result_timeout_s = clamp_float(body.get("result_timeout_s"), 8.0, 2.0, 20.0)
-        server_timeout_s = clamp_float(body.get("server_timeout_s"), 5.0, 1.0, 8.0)
+        # 实车 Nav2 托管 runtime 在 lifecycle active 后仍可能需要数秒返回 goal response；窗口太短会误判 goal_handle_missing。
+        server_timeout_s = clamp_float(body.get("server_timeout_s"), 12.0, 1.0, 20.0)
         latest_nav2_http_status, latest_nav2 = self.nav2_proof_latest()
         latest_nav2_result = latest_nav2.get("latest_result") if isinstance(latest_nav2.get("latest_result"), dict) else {}
         latest_nav2_proof = latest_nav2_result.get("proof") if isinstance(latest_nav2_result.get("proof"), dict) else {}
@@ -6347,7 +6348,8 @@ class UpperRobotApi:
         managed_map_yaml = str(body.get("managed_map_yaml") or default_map_yaml)[:400]
         # O11 自己轮询 Nav2 lifecycle active；startup 只保留进程组启动余量。
         managed_startup_s = clamp_float(body.get("managed_startup_s"), 2.0, 0.0, 5.0)
-        managed_ready_timeout_s = clamp_float(body.get("managed_ready_timeout_s"), 45.0, 10.0, 60.0)
+        # O11 只看 lifecycle manager 日志；现场慢启动时给 Nav2 执行层更宽的 active 窗口。
+        managed_ready_timeout_s = clamp_float(body.get("managed_ready_timeout_s"), 90.0, 10.0, 90.0)
         command_result = await asyncio.to_thread(
             run_nav2_goal_execution_helper,
             artifact_path=self.nav2_goal_execution_artifact_path,
@@ -7343,7 +7345,8 @@ def create_app(api: UpperRobotApi) -> Any:
 
         target = urljoin(api.camera_base_url + "/", "mjpeg")
         try:
-            async with ClientSession(timeout=ClientTimeout(total=None, sock_connect=6)) as session:
+            # MJPEG 是长连接流，但首包必须尽快到达；源端无帧时让 PC 得到明确 502，而不是一直转圈。
+            async with ClientSession(timeout=ClientTimeout(total=None, sock_connect=6, sock_read=8)) as session:
                 async with session.get(target) as upstream:
                     content_type = upstream.headers.get("Content-Type", "")
                     if upstream.status != 200 or "multipart/x-mixed-replace" not in content_type:

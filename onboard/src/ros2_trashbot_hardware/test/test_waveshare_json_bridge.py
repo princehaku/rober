@@ -500,6 +500,37 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertEqual(node.battery_pub.messages[0].voltage, 11.7)
             self.assertIn("Failed to append WAVE ROVER feedback debug log", logger.warnings[0])
 
+    def test_cmd_vel_appends_command_debug_jsonl_when_path_enabled(self):
+        bridge = _bridge_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "command.jsonl"
+            node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+            node.command_mode = "pwm"
+            node.track_width_m = 0.172
+            node.max_wheel_speed_mps = 1.3
+            node.pwm_min_abs = 90
+            node.pwm_max_abs = 90
+            node.command_debug_log_path = str(log_path)
+            node._last_cmd_linear = 0.0
+            node._last_cmd_angular = 0.0
+            node._send_json = lambda command: True
+            node.get_logger = lambda: _FakeLogger()
+
+            message = types.SimpleNamespace(
+                linear=types.SimpleNamespace(x=0.2),
+                angular=types.SimpleNamespace(z=0.0),
+            )
+            node._cmd_vel_callback(message)
+
+            record = json.loads(log_path.read_text(encoding="utf-8").strip())
+            self.assertEqual(record["schema"], "trashbot.wave_rover.command_debug.v1")
+            self.assertEqual(record["source"], "esp32_bridge_cmd_vel_callback")
+            self.assertEqual(record["command_mode"], "pwm")
+            self.assertEqual(record["linear_x"], 0.2)
+            self.assertEqual(record["vendor_command"], {"L": 90, "R": 90, "T": 11})
+            self.assertEqual(node._last_cmd_linear, 0.2)
+
     def test_declare_and_load_bridge_config_defaults_publish_odom_tf_true(self):
         bridge_config = importlib.import_module("ros2_trashbot_hardware.bridge_config")
 
@@ -519,6 +550,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
 
         self.assertTrue(config.publish_odom_tf)
         self.assertEqual(config.feedback_debug_log_path, "")
+        self.assertEqual(config.command_debug_log_path, "")
 
     def test_publish_odom_sends_matching_tf_when_enabled(self):
         bridge = _bridge_module()

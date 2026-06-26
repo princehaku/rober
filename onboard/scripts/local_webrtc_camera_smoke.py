@@ -40,6 +40,7 @@ DEFAULT_WIDTH = 640
 DEFAULT_HEIGHT = 480
 DEFAULT_FPS = 15
 FIRST_FRAME_TIMEOUT_S = 3.0
+MJPEG_FIRST_FRAME_TIMEOUT_S = 1.0
 FIRST_FRAME_WARMUP_INTERVAL_S = 0.05
 CAMERA_CAPTURE_FOURCC_FALLBACKS: tuple[str | None, ...] = ("MJPG", "YUYV", None)
 COMMAND_TIMEOUT_S = 2.5
@@ -956,6 +957,7 @@ class CameraServiceState:
         self,
         source: str,
         cv2: Any,
+        timeout_s: float = FIRST_FRAME_TIMEOUT_S,
     ) -> tuple[SharedCameraCapture | None, Any, list[dict[str, Any]], dict[str, Any] | None]:
         """按多组 UVC 常见模式尝试首帧；每次失败都释放，不能长期占用坏格式。"""
         attempts: list[dict[str, Any]] = []
@@ -984,7 +986,7 @@ class CameraServiceState:
                 })
                 last_payload = open_error or error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
                 continue
-            ok, frame, first_frame_attempts = shared_capture.read_frame_until_success(FIRST_FRAME_TIMEOUT_S)
+            ok, frame, first_frame_attempts = shared_capture.read_frame_until_success(timeout_s)
             if ok and frame is not None:
                 attempts.append({
                     "fourcc": spec.fourcc or "default",
@@ -1015,7 +1017,7 @@ class CameraServiceState:
                 "first_frame_unreadable",
                 first_error or "first_frame_timeout",
                 video_source=source,
-                first_frame_timeout_s=FIRST_FRAME_TIMEOUT_S,
+                first_frame_timeout_s=timeout_s,
                 first_frame_attempts=first_frame_attempts,
                 first_frame_format_attempts=attempts,
                 selected_fourcc=label,
@@ -1402,13 +1404,17 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         if not selected_path:
             self._send_json(error_payload("video_source_unavailable", "auto_selection_found_no_capture_device"), status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
-        shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_first_frame_capture(str(selected_path), cv2)
+        shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_first_frame_capture(
+            str(selected_path),
+            cv2,
+            timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
+        )
         if shared_capture is None or first_frame is None:
             payload = first_frame_error or error_payload(
                 "first_frame_unreadable",
                 "first_frame_format_attempts_failed",
                 video_source=str(selected_path),
-                first_frame_timeout_s=FIRST_FRAME_TIMEOUT_S,
+                first_frame_timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
                 first_frame_format_attempts=format_attempts,
             )
             self.state.last_offer_error = payload
