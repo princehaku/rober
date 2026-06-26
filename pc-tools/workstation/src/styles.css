@@ -1042,6 +1042,12 @@ h3 {
   color: #7c2d35;
 }
 
+.plain-map-unknown-pose[data-state="定位缺坐标"] {
+  border-color: #c9b56f;
+  background: #fff8dc;
+  color: #684d00;
+}
+
 .plain-map-radar-marker {
   padding: 5px 8px;
 }

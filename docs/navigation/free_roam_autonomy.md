@@ -48,3 +48,9 @@
 1. 在真实小车低速 HIL 中验证 stop fallback 响应时间、雷达避障换向和地图覆盖增长。
 2. HIL 通过后，才允许用双参数显式解锁 `/cmd_vel` 发布。
 3. 把每个 tick 的 decision、传感器摘要和 stop 响应写入验收 artifact。
+
+## 2026-06-26 PC 启动门禁口径
+
+PC `GET /api/robot-control/summary` 中的 `free_roam_autonomy_start_ready` 只表示“基础自助移动入口可以引导 operator 开始”，不等同于完整自动扫图 ready。该字段现在只要求上车 free-roam runtime 已加载且 `stop_available` gate 为 ready；`lidar_fresh`、`obstacle_clear` 和 `motion_hil_unlock` 继续显示在门禁列表中，但不再阻塞基础启动提示。
+
+完整自动扫图仍必须满足上车端双参数 `enable_cmd_vel_publish=true` 与 `motion_hil_unlocked=true`，并且雷达避障、地图覆盖、停止兜底和真车 HIL 证据齐全后，`free_roam_autonomy` 才能从 `locked` 提升为 `ready`。当前真实上位机读回仍是 `artifact_only=true`、`cmd_vel_publish_enabled=false`，所以这次调整不会让 PC summary 直接发车或发布 `/cmd_vel`。

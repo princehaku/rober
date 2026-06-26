@@ -3024,7 +3024,7 @@ function lockedBoundary(
   freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
 ): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
-  const startGateIds = new Set(["stop_available", "lidar_fresh"]);
+  const startGateIds = new Set(["stop_available"]);
   const startGates = (freeRoamRuntimeGates ?? []).filter((gate) => startGateIds.has(gate.id));
   const freeRoamStartReady = Boolean(
     freeRoamRuntime?.status === "loaded"

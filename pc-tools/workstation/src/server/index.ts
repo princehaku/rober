@@ -1,6 +1,5 @@
 import express from "express";
 import { createServer } from "node:net";
-import { Readable } from "node:stream";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -52,9 +51,7 @@ import {
   scanDangerousTrueFields,
 } from "./robotControlSummary";
 import { WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../shared/workstationDefaults";
-import type {
-  ReadableStream as NodeReadableStream,
-} from "node:stream/web";
+import type { Response } from "express";
 import type {
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
@@ -134,6 +131,24 @@ export function robotControlReadOnlyQueryBaseUrl(value: unknown): string {
   const requested = queryString(value).trim();
   return requested || DEFAULT_ROBOT_API_BASE_URL;
 }
+
+type CameraMjpegRelayClient = {
+  id: number;
+  response: Response;
+  headersStarted: boolean;
+};
+
+type CameraMjpegRelay = {
+  key: string;
+  normalizedBaseUrl: URL;
+  clients: Set<CameraMjpegRelayClient>;
+  controller: AbortController | null;
+  contentType: string;
+  upstreamActive: boolean;
+};
+
+let nextCameraMjpegRelayClientId = 1;
+const cameraMjpegRelays = new Map<string, CameraMjpegRelay>();
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   // camera proxy 只接受/返回 JSON object；数组或字符串一律 fail-closed。
@@ -1019,6 +1034,126 @@ async function fetchCameraProxySummary(
       payload: null,
       error: error instanceof Error ? shortText(error.message, "upper_api_unreachable") : "upper_api_unreachable",
     };
+  }
+}
+
+function cameraMjpegRelayKey(normalizedBaseUrl: URL): string {
+  // 共享 key 只取规范化后的 Robot API 根地址；query 不参与，避免同一相机被重复打开。
+  return normalizedBaseUrl.toString().replace(/\/$/, "");
+}
+
+function getCameraMjpegRelay(normalizedBaseUrl: URL): CameraMjpegRelay {
+  const key = cameraMjpegRelayKey(normalizedBaseUrl);
+  const existing = cameraMjpegRelays.get(key);
+  if (existing) {
+    return existing;
+  }
+  const relay: CameraMjpegRelay = {
+    key,
+    normalizedBaseUrl,
+    clients: new Set(),
+    controller: null,
+    contentType: "",
+    upstreamActive: false,
+  };
+  cameraMjpegRelays.set(key, relay);
+  return relay;
+}
+
+function startCameraMjpegClient(client: CameraMjpegRelayClient, contentType: string): void {
+  // 浏览器端只能看到只读 multipart 流；这里不透传上位机控制字段。
+  if (client.headersStarted || client.response.headersSent) {
+    client.headersStarted = true;
+    return;
+  }
+  client.response.status(200);
+  client.response.setHeader("Content-Type", contentType);
+  client.response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  client.response.setHeader("X-Robber-Proxy", "camera-mjpeg-shared-readonly");
+  client.response.flushHeaders?.();
+  client.headersStarted = true;
+}
+
+function removeCameraMjpegClient(relay: CameraMjpegRelay, client: CameraMjpegRelayClient): void {
+  relay.clients.delete(client);
+  if (relay.clients.size === 0) {
+    // 没有人观看时释放唯一上游连接，避免长期占用摄像头 reader。
+    relay.controller?.abort();
+    relay.controller = null;
+    relay.upstreamActive = false;
+    cameraMjpegRelays.delete(relay.key);
+  }
+}
+
+function endCameraMjpegRelayClients(relay: CameraMjpegRelay, status: number, error: string, remoteStatus: number | null): void {
+  // 上游失败时只收口所有预览响应；不能影响 summary、键盘或 Nav2 代理。
+  const clients = Array.from(relay.clients);
+  relay.clients.clear();
+  cameraMjpegRelays.delete(relay.key);
+  for (const client of clients) {
+    if (client.response.destroyed) {
+      continue;
+    }
+    if (client.headersStarted || client.response.headersSent) {
+      client.response.end();
+    } else {
+      client.response.status(status).json({
+        error,
+        remote_http_status: remoteStatus,
+        safe_to_control: false,
+        robot_control_executed: false,
+      });
+    }
+  }
+}
+
+async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<void> {
+  if (relay.upstreamActive) {
+    return;
+  }
+  relay.upstreamActive = true;
+  relay.controller = new AbortController();
+  const connectTimeout = setTimeout(() => relay.controller?.abort(), 60000);
+  try {
+    const remote = await fetch(endpointUrl(relay.normalizedBaseUrl, "/api/camera/mjpeg"), {
+      method: "GET",
+      signal: relay.controller.signal,
+    });
+    clearTimeout(connectTimeout);
+    const contentType = remote.headers.get("content-type") ?? "";
+    if (!remote.ok || !contentType.includes("multipart/x-mixed-replace") || !remote.body) {
+      endCameraMjpegRelayClients(relay, 502, "camera_mjpeg_proxy_failed", remote.status);
+      return;
+    }
+    relay.contentType = contentType;
+    for (const client of relay.clients) {
+      startCameraMjpegClient(client, contentType);
+    }
+    const reader = remote.body.getReader();
+    while (relay.clients.size > 0) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      for (const client of Array.from(relay.clients)) {
+        try {
+          startCameraMjpegClient(client, contentType);
+          client.response.write(Buffer.from(value));
+        } catch {
+          removeCameraMjpegClient(relay, client);
+        }
+      }
+    }
+    reader.releaseLock();
+    endCameraMjpegRelayClients(relay, 502, "camera_mjpeg_upstream_closed", null);
+  } catch (error) {
+    clearTimeout(connectTimeout);
+    const reason = error instanceof Error ? shortText(error.message, "camera_mjpeg_proxy_failed") : "camera_mjpeg_proxy_failed";
+    endCameraMjpegRelayClients(relay, 502, reason, null);
+  } finally {
+    clearTimeout(connectTimeout);
+    relay.controller = null;
+    relay.upstreamActive = false;
   }
 }
 
@@ -2309,59 +2444,26 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.get("/api/robot-control/camera/mjpeg", async (req, res) => {
-    // MJPEG fallback 只代理固定 camera stream；用于 WebRTC ICE 未出帧时仍显示真实连续画面。
+    // MJPEG fallback 只代理固定 camera stream；PC Node 只开一条上游流，再广播给多个浏览器。
     const sourceBaseUrl = robotControlReadOnlyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     if (!normalized.ok) {
       res.status(400).json({ error: normalized.reason, safe_to_control: false, robot_control_executed: false });
       return;
     }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
-    try {
-      const remote = await fetch(endpointUrl(normalized.normalized, "/api/camera/mjpeg"), {
-        method: "GET",
-        signal: controller.signal,
-      });
-      const contentType = remote.headers.get("content-type") ?? "";
-      if (!remote.ok || !contentType.includes("multipart/x-mixed-replace") || !remote.body) {
-        clearTimeout(timeout);
-        res.status(502).json({
-          error: "camera_mjpeg_proxy_failed",
-          remote_http_status: remote.status,
-          safe_to_control: false,
-          robot_control_executed: false,
-        });
-        return;
-      }
-      res.status(200);
-      res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-      res.setHeader("X-Robber-Proxy", "camera-mjpeg-readonly");
-      const stream = Readable.fromWeb(remote.body as unknown as NodeReadableStream<Uint8Array>);
-      const cleanup = () => {
-        clearTimeout(timeout);
-        controller.abort();
-      };
-      res.on("close", () => {
-        cleanup();
-        stream.destroy();
-      });
-      stream.on("end", cleanup);
-      stream.on("error", cleanup);
-      stream.pipe(res);
-    } catch (error) {
-      clearTimeout(timeout);
-      if (res.headersSent) {
-        res.end();
-        return;
-      }
-      res.status(502).json({
-        error: error instanceof Error ? shortText(error.message, "camera_mjpeg_proxy_failed") : "camera_mjpeg_proxy_failed",
-        safe_to_control: false,
-        robot_control_executed: false,
-      });
+    const relay = getCameraMjpegRelay(normalized.normalized);
+    const client: CameraMjpegRelayClient = {
+      id: nextCameraMjpegRelayClientId,
+      response: res,
+      headersStarted: false,
+    };
+    nextCameraMjpegRelayClientId += 1;
+    relay.clients.add(client);
+    res.on("close", () => removeCameraMjpegClient(relay, client));
+    if (relay.contentType) {
+      startCameraMjpegClient(client, relay.contentType);
     }
+    void ensureCameraMjpegRelayStarted(relay);
   });
 
   workstationApp.post("/api/robot-control/camera/first-frame/probe", async (req, res) => {

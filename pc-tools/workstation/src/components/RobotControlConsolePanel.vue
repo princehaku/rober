@@ -1655,7 +1655,12 @@ function plainMapCoordinateTruthLabel(
     const routeText = routePath ? `${routePath.coordinateLabel}已贴到地图` : "路线未显示";
     return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
   }
-  const poseText = localizationFailureLabel ? `机器人定位失败：${localizationFailureLabel}` : "机器人位置未读到";
+  const poseMissingLabel = localizationPoseMissingLabel();
+  const poseText = localizationFailureLabel
+    ? `机器人定位失败：${localizationFailureLabel}`
+    : poseMissingLabel
+      ? `机器人${poseMissingLabel}`
+      : "机器人位置未读到";
   if (radarLocalScanOverlay.dots.length > 0) {
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
     const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
@@ -1954,6 +1959,23 @@ function localizationResetFailureLabel(result: RobotControlProofRefreshProxyResp
   return result?.failure_reason || result?.blocked_reasons?.[0] || "定位请求失败";
 }
 
+function localizationPoseMissingLabel(): string {
+  // AMCL/TF 有读回但没有结构化坐标时，地图不能画假点，必须把缺口说清楚。
+  const proof = robotSummary.value?.o3_proof_summary;
+  const amclObserved = proof?.amcl_pose_observed === true;
+  const tfObserved = proof?.localization_tf_observed === true;
+  if (amclObserved && tfObserved) {
+    return "AMCL/TF 已观察，缺坐标";
+  }
+  if (tfObserved) {
+    return "TF 已观察，AMCL 坐标未读到";
+  }
+  if (amclObserved) {
+    return "AMCL 已观察，坐标未读到";
+  }
+  return "";
+}
+
 function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
   // 扫图流程 marker 把“记录中/已停/可保存/保存中”贴回地图，避免状态只散落在按钮文案里。
   const style = robotPose
@@ -2167,11 +2189,14 @@ const plainMapVisualSummary = computed(() => {
     || mapRefreshResult.value?.last_result_evidence_ref
     || "";
   const localizationFailureLabel = localizationResetFailureLabel(localizationResetResult.value);
-  const poseLabel = poseObserved ? "位置已读到" : localizationFailureLabel ? `定位失败：${localizationFailureLabel}` : "位置未读到";
-  const poseMissingState = localizationFailureLabel ? "定位失败" : "位置未读到";
+  const poseMissingDetailLabel = localizationPoseMissingLabel();
+  const poseLabel = poseObserved ? "位置已读到" : localizationFailureLabel ? `定位失败：${localizationFailureLabel}` : poseMissingDetailLabel || "位置未读到";
+  const poseMissingState = localizationFailureLabel ? "定位失败" : poseMissingDetailLabel ? "定位缺坐标" : "位置未读到";
   const poseMissingAria = localizationFailureLabel
     ? `定位失败：${localizationFailureLabel}，地图上的小车位置未读到`
-    : "机器人位置未读到";
+    : poseMissingDetailLabel
+      ? `${poseMissingDetailLabel}，地图上的小车位置未读到`
+      : "机器人位置未读到";
   return {
     state,
     poseLabel,

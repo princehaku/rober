@@ -5915,6 +5915,32 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows AMCL/TF observed as missing map coordinates when robot pose is absent", async () => {
+    // 现场可能已经发布 initialpose 且 TF 可见，但 AMCL 坐标仍为空；普通地图不能把这误写成已定位。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.o3_proof_summary.amcl_pose_observed = true;
+    summaryFixture.o3_proof_summary.localization_tf_observed = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const poseMissing = wrapper.find('[data-testid="plain-map-pose-missing"]');
+    expect(poseMissing.text()).toBe("AMCL/TF 已观察，缺坐标");
+    expect(poseMissing.attributes("data-state")).toBe("定位缺坐标");
+    expect(poseMissing.attributes("aria-label")).toBe("AMCL/TF 已观察，缺坐标，地图上的小车位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toContain("机器人AMCL/TF 已观察，缺坐标");
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-unknown-pose[data-state="定位缺坐标"]');
+    expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps recent local radar scan visible when lidar is currently stopped", async () => {
     // 真实上位机可能保留最近 scan artifact，但 lifecycle 当前已停；地图必须说明这是最近局部轮廓，不贴到地图。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

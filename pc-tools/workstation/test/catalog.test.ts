@@ -4600,6 +4600,66 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("keeps free-roam start ready from stop fallback even when lidar freshness is blocked", async () => {
+    // 基础自助移动入口不能被雷达新鲜度硬挡；雷达仍作为避障/HIL 风险显示，不升级完整自动扫图 ready。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "ready",
+              reason: "停止兜底已就绪，雷达仅作监看",
+              stop_required: false,
+              gates: [
+                { id: "stop_available", label: "停止兜底", state: "ready", evidence: "停止入口可用", next_action: "可以低速自助移动" },
+                { id: "lidar_fresh", label: "雷达监看", state: "blocked", evidence: "雷达 proof 过期", next_action: "刷新雷达后提升避障证据" },
+              ],
+            },
+          },
+        },
+      },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "lifecycle_running") },
+      "/api/radar/scan-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.safe_command_boundary.free_roam_autonomy_start_ready).toBe(true);
+      expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "lidar_fresh", state: "blocked" }),
+      ]));
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("marks free-roam autonomy ready only from an unlocked runtime artifact while keeping PC control flags false", async () => {
     // ready 只说明上车端自动扫图状态机已双重解锁；PC summary 仍不能把自己标成 safe_to_control。
     const safePayload = (schema: string, status = "loaded") => ({
@@ -6760,7 +6820,9 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("workstation camera MJPEG proxy forwards only fixed readonly multipart stream", async () => {
-    // MJPEG fallback 是固定 GET 只读流；不能退化成任意 camera/control 代理。
+    // MJPEG fallback 是固定 GET 只读共享流；多个浏览器不能各自抢一个上游 camera reader。
+    let upstreamRequestCount = 0;
+    const upstreamControl: { release?: () => void } = {};
     const upstreamServer = http.createServer((req, res) => {
       if (req.method !== "GET" || req.url !== "/api/camera/mjpeg") {
         res.statusCode = 404;
@@ -6768,9 +6830,13 @@ describe("workstation fail-closed API contracts", () => {
         res.end(JSON.stringify({ error: "not_found" }));
         return;
       }
+      upstreamRequestCount += 1;
       res.statusCode = 200;
       res.setHeader("Content-Type", "multipart/x-mixed-replace; boundary=roberframe");
-      res.end("--roberframe\r\nContent-Type: image/jpeg\r\nContent-Length: 4\r\n\r\njpeg\r\n");
+      res.write("--roberframe\r\nContent-Type: image/jpeg\r\nContent-Length: 4\r\n\r\njpeg\r\n");
+      upstreamControl.release = () => {
+        res.end("--roberframe\r\nContent-Type: image/jpeg\r\nContent-Length: 5\r\n\r\njpeg2\r\n");
+      };
     });
     const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
       upstreamServer.listen(0, "127.0.0.1", () => {
@@ -6786,14 +6852,23 @@ describe("workstation fail-closed API contracts", () => {
     });
     const workstation = await listen(createWorkstationApp());
     try {
-      const response = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
-      const body = await response.text();
+      const endpoint = `${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`;
+      const response = await fetch(endpoint);
+      const secondResponse = await fetch(endpoint);
 
       expect(response.status).toBe(200);
+      expect(secondResponse.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("multipart/x-mixed-replace");
-      expect(response.headers.get("x-robber-proxy")).toBe("camera-mjpeg-readonly");
+      expect(secondResponse.headers.get("content-type")).toContain("multipart/x-mixed-replace");
+      expect(response.headers.get("x-robber-proxy")).toBe("camera-mjpeg-shared-readonly");
+      expect(secondResponse.headers.get("x-robber-proxy")).toBe("camera-mjpeg-shared-readonly");
+      expect(upstreamRequestCount).toBe(1);
+      upstreamControl.release?.();
+      const body = await response.text();
+      const secondBody = await secondResponse.text();
       expect(body).toContain("Content-Type: image/jpeg");
       expect(body).toContain("jpeg");
+      expect(secondBody).toContain("jpeg2");
     } finally {
       await workstation.close();
       await upstream.close();
