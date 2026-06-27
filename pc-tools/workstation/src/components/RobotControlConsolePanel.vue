@@ -573,6 +573,9 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
   if (cameraMjpegRetryPending.value) {
     return "画面：本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。";
   }
+  if (cameraMjpegCachedFramePending.value && cameraMjpegStatusPending.value) {
+    return "画面：共享流已有最近帧缓存，新页面会先显示最近画面；本页仍在接入实时流。";
+  }
   if (previewStatus.value === "starting_local_peer" || previewStatus.value === "connecting_offer_posted") {
     return "画面：正在打开实时画面。";
   }

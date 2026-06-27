@@ -18792,6 +18792,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：正在读取 PC 共享流状态；summary 显示 2 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。 已有最近帧缓存（约0.1秒前），后进页面会先显示最近帧。 返回前不证明本页已出图。");
     expect(wrapper.find('[data-testid="robot-camera-cached-frame-status"]').text()).toBe("最近帧：共享流已有缓存帧，新页面会先显示最近画面，并继续接入实时流。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享流已有最近帧缓存，新页面会先显示最近画面；本页仍在接入实时流。");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').text()).not.toContain("MJPEG 实时流已显示");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
