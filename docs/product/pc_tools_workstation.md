@@ -3200,6 +3200,12 @@ summary，不调用 free-roam start/stop、manual、keyboard、Nav2、delivery�
 `/api/robot-control/summary` 的页面、刷新前状态和 status fallback 都能得到一致结论，不再一边显示相机无首帧、一边显示共享预览无失败。
 该 overlay 不创建 MJPEG client，不打开上游流，不改变 `safe_to_control=false`、`robot_control_executed=false`。
 
+2026-06-27 11:09 起，普通首屏在相机服务 ready 或 devices loaded、且页面会自动挂载共享 MJPEG `<img>` 时，
+实时画面卡不再显示“未打开/先点打开画面”，而是显示 `连接中` 与“正在接入共享实时画面；新页面会共用同一条上游流”。
+`当前事实` 同步写明已选中摄像头、共享预览会自动接入、当前还没确认真实帧且不是独占。只有浏览器收到 MJPEG `load`
+或 video/canvas 真实帧后，才升级为“画面可见”；共享状态的“页面正在接入共享预览”也会在真实帧出现后消失。
+该改动只修正画面所见即所得和多人共享预览解释，不创建 WebRTC offer，不发送 manual/free-roam/Nav2/delivery/stop 或 `/cmd_vel`。
+
 2026-06-27 10:55 起，普通首屏 `当前事实` 新增地图行，专门区分三种状态：真实地图图像已经显示、只读到
 `map_once`/metadata 但没有 `image_data_url`、完全没有读到地图图像。真实图像已显示时会写出地图尺寸和
 可通行格数量；只有 artifact/metadata 时显示“已读到地图材料，但还没显示真实地图图像；先刷新地图画面”。

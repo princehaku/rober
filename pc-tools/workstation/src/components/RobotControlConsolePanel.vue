@@ -462,7 +462,17 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
   const sharedFactPrefix = ["共享预览支持多人观看", clientCount, sharedStream, exclusive].filter(Boolean).join("，");
   const prefix = sharedFactPrefix ? `${sharedFactPrefix}，` : "";
   if (!cameraSourceFirstFrameFailed(camera)) {
-    return cameraVisibleForFreeRoamMapping.value ? "画面：已看到真实帧。" : "画面：还没确认真实帧。";
+    if (cameraVisibleForFreeRoamMapping.value) {
+      return "画面：已看到真实帧。";
+    }
+    if (
+      (camera.status === "source_not_probed" || camera.source_readiness === "source_selected_not_probed")
+      && camera.shared_preview_exclusive_camera_claim === "false"
+      && (camera.devices_status === "loaded" || camera.status === "ready")
+    ) {
+      return `画面：已选中 ${selectedName}，共享预览会自动接入，当前还没确认真实帧；不是独占。`;
+    }
+    return "画面：还没确认真实帧。";
   }
   if (camera.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
     return `画面：${prefix}${selectedName} 多种方式也没有取到视频帧。`;
@@ -645,6 +655,12 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
     default:
       if (sourceFailureHint) {
         return { state: "失败", hint: sourceFailureHint };
+      }
+      if (cameraOnline && cameraMjpegFallbackVisible.value && !mjpegPreviewLoaded.value && !mjpegPreviewFailed.value) {
+        return { state: "连接中", hint: "正在接入共享实时画面；新页面会共用同一条上游流。" };
+      }
+      if (cameraOnline && cameraMjpegFallbackVisible.value && mjpegPreviewFailed.value) {
+        return { state: "失败", hint: "共享预览暂时没有出画面；页面会自动重试，不是浏览器独占。" };
       }
       if (cameraSourceNotProbed && cameraOnline) {
         return { state: "未打开", hint: "相机在线但还没确认首帧，先点检查画面或打开画面。" };
@@ -1101,6 +1117,9 @@ const plainCameraWysiwygStatus = computed(() => {
     case "等待画面":
       return `画面状态：视频已接入，等待浏览器绘出第一帧。${frameTruth}`;
     case "连接中":
+      if (cameraMjpegFallbackVisible.value && !browserVideoFrameDrawn()) {
+        return `画面状态：正在接入共享 MJPEG 实时画面；多个页面共用同一条上游流。${frameTruth}`;
+      }
       return `画面状态：正在连接真实画面。${frameTruth}`;
     case "关闭中":
       return "画面状态：正在关闭实时画面，等待上位机释放视频会话。";
@@ -1173,6 +1192,9 @@ const plainCameraSharedPreviewStatus = computed(() => {
   }
   const status = cameraMjpegStatusResult.value;
   const summaryCamera = robotSummary.value?.readback_summary.camera;
+  const autoJoinText = cameraMjpegFallbackVisible.value && !cameraMjpegFrameObserved.value && !mjpegPreviewFailed.value
+    ? " 页面正在接入共享预览；新页面会共用同一条上游流。"
+    : "";
   if (!status || status.proxy_status !== "status_loaded") {
     if (summaryCamera) {
       const upstream = summaryCamera.shared_preview_upstream_active === "true" ? "上游已连接" : "上游未连接";
@@ -1183,7 +1205,7 @@ const plainCameraSharedPreviewStatus = computed(() => {
         summaryCamera.shared_preview_last_remote_http_status,
       );
       const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
-      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${failure}${sourceNoFrame}`;
+      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${autoJoinText}${failure}${sourceNoFrame}`;
     }
     return "共享画面：未读取到共享流状态。";
   }
@@ -1192,7 +1214,7 @@ const plainCameraSharedPreviewStatus = computed(() => {
   const exclusive = sharedPreviewExclusiveText(status.exclusive_camera_claim);
   const failure = sharedPreviewFailureText(status.last_failure_reason, status.last_remote_http_status);
   const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
-  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${failure}${sourceNoFrame}`;
+  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${autoJoinText}${failure}${sourceNoFrame}`;
 });
 
 const cameraFirstFrameProbeSummary = computed(() => {
@@ -1233,9 +1255,12 @@ const plainCameraProbeSummary = computed(() => {
     return "只读检查：上位机样张已读到，但画面偏暗；检查镜头/光线后重试。";
   }
   if (result.proxy_status === "probe_forwarded" && values.open_ok === "true" && values.read_ok === "true" && visible) {
+    const liveWindowText = cameraMjpegFallbackVisible.value && !cameraMjpegFrameObserved.value
+      ? "页面仍在接入共享预览"
+      : "实时窗口仍未打开";
     return sampleWritten
-      ? "只读检查：上位机样张已读到，实时窗口仍未打开。"
-      : "只读检查：上位机读到首帧，但样张没有落盘，实时窗口仍未打开。";
+      ? `只读检查：上位机样张已读到，${liveWindowText}。`
+      : `只读检查：上位机读到首帧，但样张没有落盘，${liveWindowText}。`;
   }
   if (result.proxy_status === "probe_forwarded" && values.open_ok === "true" && values.read_ok === "true") {
     return "只读检查：上位机读到首帧，但内容还不确定；请检查镜头和光线。";

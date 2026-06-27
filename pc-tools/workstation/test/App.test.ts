@@ -3867,7 +3867,6 @@ describe("App", () => {
     const firstScreenForbiddenTokens = [
       ...DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS,
       "路线",
-      "预览",
       "证据",
       "硬件",
       "数据",
@@ -9776,8 +9775,8 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("local_webrtc_camera_smoke.py");
   });
 
-  it("tells the operator to open the picture when camera readback is online", async () => {
-    // camera ready 只说明服务在线；首屏仍必须保持未打开，不能冒充已经看到画面。
+  it("shows shared preview auto-join when camera readback is online", async () => {
+    // camera ready 只说明服务在线；首屏应自动接入共享预览，但不能冒充已经看到画面。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
     summaryFixture.readback_summary.camera.status = "ready";
     summaryFixture.readback_summary.camera.devices_status = "loaded";
@@ -9790,11 +9789,13 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("实时画面");
-    expect(firstScreenText).toContain("未打开");
-    expect(firstScreenText).toContain("相机在线但还没确认首帧，先点检查画面或打开画面。");
-    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
-    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("相机在线但还没确认首帧，先点检查画面或打开画面。");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。");
+    expect(firstScreenText).toContain("连接中");
+    expect(firstScreenText).toContain("画面：已选中 USB Composite Device: DV20 USB，共享预览会自动接入，当前还没确认真实帧；不是独占。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("连接中");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("正在接入共享实时画面；新页面会共用同一条上游流。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在接入共享 MJPEG 实时画面；多个页面共用同一条上游流。视频元素还没绑定实时流。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("页面正在接入共享预览；新页面会共用同一条上游流。");
+    expect(wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').exists()).toBe(true);
     expect(firstScreenText).not.toContain("画面可见");
     expect(firstScreenText).not.toContain("preview_status");
     expect(firstScreenText).not.toContain("/dev/video1");
@@ -11237,9 +11238,9 @@ describe("App", () => {
     expect(probeCall).toBeTruthy();
     expect(String(probeCall?.[0])).toContain("backendSmoke=1");
     expect((probeCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
-    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：上位机样张已读到，实时窗口仍未打开。");
-    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。");
+    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：上位机样张已读到，页面仍在接入共享预览。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("连接中");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在接入共享 MJPEG 实时画面；多个页面共用同一条上游流。视频元素还没绑定实时流。");
     expect(newCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer?") && options?.method === "POST")).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -11399,7 +11400,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在接入共享 MJPEG 实时画面；多个页面共用同一条上游流。视频元素还没绑定实时流。");
 
     await wrapper.find('[data-testid="plain-record-current-camera"]').trigger("click");
     await flushPromises();
@@ -11483,7 +11484,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：相机在线但还没确认首帧，先点检查画面或打开画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在接入共享 MJPEG 实时画面；多个页面共用同一条上游流。视频元素还没绑定实时流。");
 
     await wrapper.find('[data-testid="plain-record-current-camera"]').trigger("click");
     await flushPromises();
@@ -16362,7 +16363,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：3 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：3 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
@@ -16393,7 +16394,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -16425,7 +16426,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 当前相机源没有输出首帧；设备没人占用，通常是 USB、摄像头输入或供电问题，不是浏览器独占。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。 当前相机源没有输出首帧；设备没人占用，通常是 USB、摄像头输入或供电问题，不是浏览器独占。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 没人占用但没有输出视频帧。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -16459,7 +16460,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
@@ -16492,7 +16493,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览等不到上游画面；通常是相机能被选中但没有输出帧，不是浏览器独占。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。 最近失败：共享预览等不到上游画面；通常是相机能被选中但没有输出帧，不是浏览器独占。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_upstream_timeout");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
@@ -17204,7 +17205,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 多种方式也没有取到视频帧。");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：USB Composite Device: DV20 USB：摄像头能打开，OpenCV/V4L2 后端尝试 4 种方式也没有取到视频帧");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：USB Composite Device: DV20 USB：摄像头能打开，OpenCV/V4L2 后端尝试 4 种方式也没有取到视频帧；检查 USB、摄像头输入、格式或供电。");
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：还没做首帧检查；点检查画面确认上位机能否读到样张，不会发车。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_proxy_failed");
