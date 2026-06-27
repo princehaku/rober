@@ -216,6 +216,11 @@ pc-tools/workstation/
   `lidar_fresh=ready`，并把 evidence 写成 `free-roam runtime /scan 新鲜`。这样 live 雷达已经开始并被
   free-roam 节点读到时，建图缺口不再被过期 proof artifact 误加 `lidar_fresh`；没有实时 snapshot 的旧 gate
   仍按上一条规则降级。该处理只读 summary/runtime，不刷新雷达、不启动 free-roam、不发送任何运动控制。
+- 2026-06-27 15:32 起，普通首屏建图 readiness 还会叠加 PC 本地真实地图画面状态：如果
+  `/api/robot-control/map/preview` 已经返回 `preview_forwarded` 且带 `image_data_url`，界面不再把上车端旧
+  `fresh_map_preview` token 展示成“当前缺口”。相机首帧、地图记录未启动和雷达 freshness 仍按 summary/readback
+  保留；该修正只让“眼前已经有图”与缺口提示一致，不启动地图记录、不刷新雷达、不发送 free-roam/manual/Nav2/stop/delivery
+  或 `/cmd_vel`。
 - 2026-06-27 13:29 起，上述雷达 fresh 交叉校验会同步清理 `obstacle_clear` 的旧距离：当 `lidar_fresh` 已降级为未刷新/stale/not fresh 时，普通首屏不再显示旧的“最近障碍 0.04m”作为实时障碍，而是显示“雷达未刷新，障碍距离不可用”。该修正只清理只读 gate 文案，不刷新雷达、不启动 free-roam、不发送任何运动控制。
 - 2026-06-27 14:40 起，地图坐标口径同步区分“原始包已收到但暂无地图雷达点”：当 LiDAR lifecycle running、raw packet 已到、但 `scan_preview_points` 为空时，marker、雷达点口径和坐标口径都会表达同一事实，不再只泛化成“雷达点未贴图”。该展示只读 summary/status，不刷新雷达、不启动 free-roam、不发送 Nav2/manual/keyboard/delivery/stop 或 `/cmd_vel`。
 - 2026-06-28 03:45 起，普通首屏和地图 marker 对 free-roam latest 的 `state=stopping` 做 record-only 区分：如果同时读到 `artifact_only=true` 且 `cmd_vel_publish_enabled=false`，界面显示“上次记录停在停止请求 / 自由移动记录：上次停止请求”，并注明当前未发布运动；不再把这类 latest 画成“自动扫图：停止中”。该口径只消费只读 latest，不自动清除 artifact、不发送 stop/start/manual，也不把自由移动或建图状态提升为完成。

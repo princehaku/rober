@@ -168,6 +168,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `lidar_fresh` 就按 runtime scan 显示 ready，即使旧 `radar/scan-proof/latest` artifact 已过期。
   没有 runtime snapshot 时仍按 proof freshness 降级，避免旧 ready gate 误导。该规则只修正只读
   所见即所得，不启动雷达、不发布 `/cmd_vel`。
+- 2026-06-27 15:32 起，PC 普通首屏会把建图缺口和真实地图画面做本地对齐：当
+  `/api/robot-control/map/preview` 已显示真实 `image_data_url` 时，即使 summary 里还带旧
+  `fresh_map_preview`，界面也不再提示“地图画面未刷新”。这只移除已经被 PC 画面证明满足的缺口；
+  `camera_first_frame`、`mapping_active`、`lidar_fresh` 仍按各自事实保留，且不自动启动地图记录、
+  free-roam、manual、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 15:18 起，O11 Nav2 执行 artifact 的 `proof_status` 也按真实
   `base_command_mode` 标记缺口：ROS 重跑若仍只看到非零命令、但同窗口 `T1001 L/R=0/0`，
   会写成 `nav2_goal_succeeded_with_ros_commands_but_wheel_lr_zero`。这样自动驾驶排障会指向

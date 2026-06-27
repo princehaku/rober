@@ -1566,6 +1566,20 @@ function freeRoamMappingMissingPlainLabels(missing: string[] | string | undefine
     .filter((item) => item && item !== "unknown" && item !== "not_loaded");
   return [...new Set(items)];
 }
+
+function plainMapPreviewImageLoaded(): boolean {
+  // 上车端 summary 有时晚于 PC 的真实预览；普通界面以已经显示的图像为准，避免“图在眼前却说未刷新”。
+  const preview = mapPreviewResult.value;
+  return preview?.proxy_status === "preview_forwarded" && Boolean(preview.image_data_url);
+}
+
+function freeRoamMappingMissingPlainLabelsForVisibleState(missing: string[] | string | undefined): string[] {
+  const labels = freeRoamMappingMissingPlainLabels(missing);
+  if (!plainMapPreviewImageLoaded()) {
+    return labels;
+  }
+  return labels.filter((label) => label !== "地图画面未刷新");
+}
 const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const result = freeRoamAutonomyResult.value;
   if (!result || !result.command_result.executed) {
@@ -1621,7 +1635,7 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
 function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): string {
   // 建图是“可验收材料”，不是低速移动门禁；首屏要把这层差异直接讲清楚。
   const freeRoam = summary.readback_summary.free_roam;
-  const missing = freeRoamMappingMissingPlainLabels(freeRoam.mapping_missing);
+  const missing = freeRoamMappingMissingPlainLabelsForVisibleState(freeRoam.mapping_missing);
   if (
     freeRoam.mapping_ready === "true"
     || (mapRuntimeStarted.value && plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
@@ -1629,7 +1643,7 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
     return "建图：画面、雷达和地图记录已 ready，可按建图记录监看。";
   }
   if (missing.length > 0) {
-    return `建图：上车端缺口：${missing.join("、")}；自由移动不受影响。`;
+    return `建图：当前缺口：${missing.join("、")}；自由移动不受影响。`;
   }
   return "建图：等待上车端建图 readiness；自由移动可按单独条件判断。";
 }
@@ -3765,9 +3779,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
   const mappingReadinessText = (() => {
     // 自由低速移动和可验收建图是两层能力：相机/雷达只决定建图验收，不阻塞低速自由移动入口。
-    const onboardMissing = freeRoamMappingMissingPlainLabels(robotSummary.value?.readback_summary.free_roam.mapping_missing);
+    const onboardMissing = freeRoamMappingMissingPlainLabelsForVisibleState(robotSummary.value?.readback_summary.free_roam.mapping_missing);
     if (onboardMissing.length > 0) {
-      return `建图验收：上车端明确只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动。`;
+      return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动。`;
     }
     const gaps: string[] = [];
     const camera = robotSummary.value?.readback_summary.camera;
