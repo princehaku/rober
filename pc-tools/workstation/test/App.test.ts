@@ -9670,6 +9670,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("刷新路线中（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备路线中（不发车）");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：正在准备图上路线，不会发车；返回前不把旧路线当作当前可执行路线。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     const finishNav2Refresh = nav2RefreshControl.finish;
     if (!finishNav2Refresh) {

@@ -2384,6 +2384,10 @@ delivery、stop 或 `/cmd_vel`，不修改 Clash 或系统代理配置，PC 工�
 `/api/robot-control/nav2/goal/execute` 的 pending 才显示 `执行中`。这样普通用户不会把路线准备等待误解为小车已经发车；
 该文案只跟随 PC 前端已有 pending 状态，不新增自动 execute、不调用 manual/keyboard、delivery、stop 或 `/cmd_vel`，
 不修改 Clash 或系统代理配置，PC 工作站公开入口继续是 `0.0.0.0:7001`。
+2026-06-28 05:24 起，上述 no-motion 路线准备 pending 也同步到普通首屏 `当前事实` 的行程行：
+显示 `行程：正在准备图上路线，不会发车；返回前不把旧路线当作当前可执行路线`。这样最小安全确认后的第一步也能所见即所得，
+不会把旧路线、旧 summary 或旧地图路径误说成当前可执行路线；该状态不调用 Nav2 execute、manual、keyboard、delivery、
+stop 或 `/cmd_vel`。
 2026-06-26 17:15 起，地图只显示 `最近路线` 时，行程向导按钮从 `重新准备路线` 改成
 `重新准备路线（不发车）`。点击仍只走 no-motion Nav2 proof refresh 并刷新地图画面，不调用
 `nav2/goal/execute`、manual/keyboard、delivery、stop 或 `/cmd_vel`；旧路线继续可以看，但不能被当成本轮可执行路线。

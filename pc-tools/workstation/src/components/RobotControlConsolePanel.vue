@@ -2258,6 +2258,8 @@ const plainCurrentFactRows = computed(() => {
     const stopState = plainTripStopOverlayState();
     const suffix = stopState.state === "执行中" ? "人在旁边准备停止" : "人在旁边接管，等待行程结果返回";
     rows.push(targetText ? `行程：${stopState.actionText}，${targetText}；${suffix}。` : `行程：${stopState.actionText}；${suffix}。`);
+  } else if (nav2RefreshPending.value) {
+    rows.push("行程：正在准备图上路线，不会发车；返回前不把旧路线当作当前可执行路线。");
   } else if (navGoalExecutionLatestPending.value) {
     rows.push("行程：正在读取最近行程结果，返回前不把旧结果当作当前结论。");
   } else if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
