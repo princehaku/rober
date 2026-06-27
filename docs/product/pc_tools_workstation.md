@@ -365,6 +365,11 @@ pc-tools/workstation/
 - 2026-06-23 19:40 起，普通首屏读到 `GET /api/robot-control/nav2/goal/execution/latest` 已加载但最近行程状态不是成功时，不再显示成“还没读到最近行程成功结果”，而是提示 `最近行程未通过，需要检查或重新执行完整行程`，送达下一步同步指向检查/重执行行程。普通首屏仍不展示 `not_proven` 字段名，也不自动执行 Nav2、delivery complete、manual、keyboard pulse 或 `/cmd_vel`。
 - 2026-06-23 20:20 起，高级 `送达收口检查` 里的 `Nav2 路线执行成功` 子项也复用 latest 未通过口径：读到最近行程不是成功时显示 `最近行程未通过，需检查或重新执行完整行程`，避免普通首屏和高级送达 checklist 对同一份 latest 证据给出不同下一步。该提示只读已加载状态，不自动执行 Nav2、delivery complete、manual、keyboard pulse 或 `/cmd_vel`。
 - 2026-06-23 22:05 起，普通首屏若同时读到雷达未运行和旧/未通过/不完整行程证据，`行程执行`、`送达确认`、`本轮进度` 与高级目标收口统一提示 `先启动雷达，再重新执行本轮行程`。禁用态 `确认送达` 显示 `确认送达（先雷达再行程）`，避免现场误以为只启动雷达就能沿用旧路线完成 delivery success。该提示只调整文案和焦点顺序，不自动启动雷达、不执行 Nav2、不提交 delivery complete、不发送 manual、keyboard pulse 或 `/cmd_vel`。
+- 2026-06-27 18:27 起，2026-06-23 的“雷达作为行程/送达前置”口径被替换：普通首屏、送达下一步、目标收口进度和焦点跳转不再把
+  `雷达未运行/待刷新/未配置` 作为完整 Nav2 路线执行或送达确认的前置卡点，也不再把 `去行程/去送达`
+  改跳到雷达按钮。行程执行仍只由现场安全确认、固定白名单和图上路线 WYSIWYG gate 控制；雷达只用于建图验收、
+  LiDAR delta/障碍监看和地图标记。该改动只清理 PC 前端 gate 和文案，不自动执行 Nav2、manual、keyboard、
+  free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-21 23:50 起，普通首屏 `移动/导航` 卡片接入 first-jog 普通流程：`现场画面记录` 输入框 + `记录画面` 按钮提交外部视频 ref，`试动一下` 按钮调用 `POST /api/robot-control/base/first-jog?baseUrl=<robot-api-base-url>`。该入口固定 `direction=forward`、`speed=0.08`、`duration_ms=500`、`confirm_hil_checklist=true`，不开放速度/时长/方向输入，不显示工程 endpoint，不调用旧 `/api/robot-control/base/manual` 前端路径。真实 PC proxy smoke 在当前缺 external video/visible camera 材料时返回 HTTP 400 `first_jog_preflight_required`、`remote_http_status=null`、`robot_control_executed=false`，普通首屏只显示“小车没有移动”。
 - 2026-06-22 起，普通首屏 `移动/导航` 的状态提示按 first-jog 真实前置条件收窄：没有外部视频或可见相机材料时显示 `待记录` 和“先记录现场画面，再试动一下”；已有现场画面材料但完整 manual HIL 材料仍未齐时显示 `待试动` 和“现场画面已记录；可以试动一下”。轮速非零和 LiDAR motion delta 仍是试动后的证据，继续只在高级诊断完整材料清单中展示，不作为普通 first-jog 前的首屏提示。
 - 2026-06-22 00:40 起，manual/first-jog/stop 响应新增 `motion_evidence_gaps`。该字段是试动后的补证据清单，不是放行依据：本机拒绝或远端失败时包含 `motion_command_not_forwarded`，快照不完整时包含 `before_after_evidence_snapshot_incomplete`，未看到结构化轮速非零 proof 时包含 `wheel_feedback_lr_nonzero_not_proven`，未看到 LiDAR motion delta proof 时包含 `physical_motion_lidar_delta_not_proven`；stop 固定返回 `stop_command_not_motion_proof`。`T=1001` 只读反馈仍只能证明底盘反馈链路可读，不能清除轮速非零 gap。

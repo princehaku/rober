@@ -1488,7 +1488,6 @@ const evidenceSweepSummary = computed(() => {
   return evidenceSweepLines.value.join(" | ");
 });
 const radarSummary = computed(() => summarizeRadarState());
-const plainRadarRequiresRefresh = computed(() => ["雷达待刷新", "刷新失败"].includes(radarSummary.value.state));
 const plainRadarReadyForFreeRoamMapping = computed(() => radarSummary.value.state === "雷达已运行");
 const plainRadarStartUnavailable = computed(() => {
   // 配置缺失时普通首屏仍展示卡点，但不让按钮发送一个注定 dry-run 的 start 请求。
@@ -1873,62 +1872,11 @@ const plainCurrentFactRows = computed(() => {
   return rows;
 });
 const showPlainRadarStart = computed(() => {
-  // 雷达是 Nav2 和 LiDAR delta 的前置条件；启动传感器不触发底盘运动，可以放在普通首屏。
+  // 雷达是建图和 LiDAR delta 的监看入口；Nav2/自由移动是否启动不再由雷达运行态前端硬挡。
   return radarLifecyclePendingAction.value === "start"
     || radarSummary.value.state === "雷达未运行"
     || radarSummary.value.state === "雷达启动失败";
 });
-
-function plainRadarTripBlockedHint(rerun: boolean): string {
-  // lifecycle 已运行但 proof 不完整时，下一步是刷新记录，不是重复启动雷达。
-  if (plainRadarStartUnavailable.value) {
-    return rerun ? "雷达启动命令未配置，先在上位机配置后再重新执行本轮行程。" : "雷达启动命令未配置，先在上位机配置后再检查或执行行程。";
-  }
-  if (plainRadarRequiresRefresh.value) {
-    return rerun ? "雷达在运行，先刷新雷达，再重新执行本轮行程。" : "雷达在运行，先刷新雷达，再检查或执行行程。";
-  }
-  return rerun ? "雷达未运行，先启动雷达，再重新执行本轮行程。" : "雷达未运行，先启动雷达，再检查或执行行程。";
-}
-
-function plainRadarTripBlockedNextAction(rerun: boolean): string {
-  if (plainRadarStartUnavailable.value) {
-    return "下一步：先配置雷达启动命令。";
-  }
-  if (plainRadarRequiresRefresh.value) {
-    return rerun ? "下一步：先刷新雷达，再重新执行本轮行程。" : "下一步：先刷新雷达，再检查或执行行程。";
-  }
-  return rerun ? "下一步：先启动雷达，再重新执行本轮行程。" : "下一步：先启动雷达，再检查或执行行程。";
-}
-
-function plainRadarDeliveryNextAction(rerun: boolean): string {
-  if (plainRadarStartUnavailable.value) {
-    return "下一步：先配置雷达启动命令。";
-  }
-  if (plainRadarRequiresRefresh.value) {
-    return rerun ? "下一步：先刷新雷达，再重新执行本轮行程。" : "下一步：先刷新雷达，再完成本轮行程。";
-  }
-  return rerun ? "下一步：先启动雷达，再重新执行本轮行程。" : "下一步：先启动雷达，再完成本轮行程。";
-}
-
-function plainRadarDeliveryBlockedHint(rerun: boolean): string {
-  if (plainRadarStartUnavailable.value) {
-    return "送达确认前先配置雷达启动命令并完成本轮完整行程";
-  }
-  if (plainRadarRequiresRefresh.value) {
-    return rerun ? "送达确认前先刷新雷达并重新执行本轮完整行程" : "送达确认前先刷新雷达并完成本轮完整行程";
-  }
-  return rerun ? "送达确认前先启动雷达并重新执行本轮完整行程" : "送达确认前先启动雷达并完成本轮完整行程";
-}
-
-function plainRadarTripClosureHint(rerun: boolean): string {
-  if (plainRadarStartUnavailable.value) {
-    return rerun ? "雷达启动命令未配置，先在上位机配置后再重新执行完整行程" : "雷达启动命令未配置，先在上位机配置后再执行完整行程";
-  }
-  if (plainRadarRequiresRefresh.value) {
-    return rerun ? "雷达在运行，先刷新雷达，再重新执行完整行程" : "雷达在运行，先刷新雷达，再检查或执行完整行程";
-  }
-  return rerun ? "雷达未运行，先启动雷达，再重新执行完整行程" : "雷达未运行，先启动雷达，再检查或执行完整行程";
-}
 const radarLifecycleSummary = computed(() => {
   // 雷达 lifecycle 是高级诊断动作；摘要只说明代理和 guard 结果，不证明 runtime 已启动。
   if (radarLifecyclePending.value) {
@@ -4513,18 +4461,6 @@ const currentRunDeliveryMaterialReady = computed(() => {
 function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
   // 已有草稿后，按钮直接指向下一组人工确认，避免现场只看到抽象数量。
   if (missingLabels.includes("本轮行程")) {
-    if (plainTripRadarBlocked.value) {
-      if (plainRadarStartUnavailable.value) {
-        return "确认送达（先配置雷达）";
-      }
-      if (plainRadarRequiresRefresh.value) {
-        return "确认送达（先刷新雷达）";
-      }
-      if (plainTripNeedsFreshRunAfterRadar.value) {
-        return "确认送达（先雷达再行程）";
-      }
-      return "确认送达（先启动雷达）";
-    }
     return "确认送达（先重新行程）";
   }
   if (missingLabels.includes("地图画面刷新完成")) {
@@ -4650,9 +4586,6 @@ const plainDeliveryNextActionSummary = computed(() => {
   if (!deliveryNav2GoalReady.value) {
     // 旧行程或未证实行程会阻塞送达，但已保存的材料草稿仍可复用，避免现场误以为要从零准备。
     const draftReusePrefix = deliveryDraftMaterialPresent() ? "送达材料草稿已保存，可复用；" : "";
-    if (plainTripRadarBlocked.value) {
-      return `${draftReusePrefix}${plainRadarDeliveryNextAction(plainTripNeedsFreshRunAfterRadar.value)}`;
-    }
     if (plainTripHasFreshUnprovenControlEvidence.value) {
       return `${draftReusePrefix}下一步：重新执行完整行程。`;
     }
@@ -5221,13 +5154,6 @@ function plainTripFailureShortText(): string {
   const reason = plainTripFailureReasonText(navGoalExecutionResult.value ?? navGoalExecutionLatestResult.value, directNav2ExecutionValues());
   return reason ? `最近行程未通过（${reason}）` : "最近行程未通过";
 }
-const plainTripNeedsFreshRunAfterRadar = computed(() => {
-  // 雷达未运行时如果已经读到旧/失败/不完整行程，现场需要先恢复传感器，再重新跑本轮路线。
-  return plainTripHasFreshIncompleteEvidence.value
-    || plainTripHasFreshUnprovenControlEvidence.value
-    || plainTripHasSucceededEvidence.value
-    || plainTripLatestNotProvenEvidence.value;
-});
 const deliverySuccessReady = computed(() => (
   deliveryResultReadyForCurrentRun(deliveryCompletionResult.value) || deliveryResultReadyForCurrentRun(deliveryLatestResult.value)
 ));
@@ -5422,9 +5348,6 @@ const plainDeliveryConfirmSummary = computed(() => {
     return { state: "刷新中", hint: `${plainTripMapWysiwygPendingText()}；刷新完成后再提交送达确认。` };
   }
   if (!deliveryNav2GoalReady.value) {
-    if (plainTripRadarBlocked.value) {
-      return { state: "待行程", hint: plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) };
-    }
     if (plainTripHasFreshUnprovenControlEvidence.value) {
       return { state: "待行程", hint: "最近行程未证明真车执行，先重新执行完整行程。" };
     }
@@ -5605,7 +5528,6 @@ const goalClosureChecklist = computed(() => {
       ready: nav2Ready,
       hint: nav2Ready
         ? "已有本轮 goal_succeeded 和反馈样本"
-        : plainTripRadarBlocked.value ? plainRadarTripClosureHint(plainTripNeedsFreshRunAfterRadar.value)
         : plainTripHasFreshUnprovenControlEvidence.value ? plainTripFreshUnprovenHintText().replace(/。$/, "") : plainTripHasFreshIncompleteEvidence.value ? "已有 goal_succeeded，但缺反馈样本，需重新读取或执行完整行程" : plainTripHasSucceededEvidence.value ? "已有旧 goal_succeeded，需本轮复验" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText().replace("需要", "需").replace(/。$/, "") : "读取最近 Nav2 结果或执行受限目标后确认",
     },
     {
@@ -5616,7 +5538,7 @@ const goalClosureChecklist = computed(() => {
         ? "delivery gate 已确认成功"
         : deliverySuccessEvidenceIsStale.value ? "已有旧 delivery success，需本轮重新确认"
           : deliverySuccessEvidenceRouteMismatch.value ? "已有 delivery success，但行程材料不是本轮记录"
-            : !deliveryNav2GoalReady.value ? (plainTripRadarBlocked.value ? plainRadarDeliveryBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : "送达确认前先完成本轮完整行程")
+            : !deliveryNav2GoalReady.value ? "送达确认前先完成本轮完整行程"
             : "仍需现场最终确认并通过 delivery gate",
     },
     {
@@ -5702,9 +5624,6 @@ const plainTripGoalNextAction = computed(() => {
   const navReady = goalClosureChecklist.value.find((item) => item.id === "nav2_goal_execution")?.ready === true;
   if (navReady) {
     return "已完成。";
-  }
-  if (plainTripRadarBlocked.value) {
-    return plainRadarTripBlockedNextAction(plainTripNeedsFreshRunAfterRadar.value);
   }
   if (plainTripHasFreshUnprovenControlEvidence.value) {
     return `下一步：${plainTripFreshUnprovenRerunActionText()}。`;
@@ -5971,11 +5890,11 @@ const plainGoalProgressItems = computed(() => {
     {
       id: "trip",
       label: "行程执行",
-      actionLabel: plainTripRadarBlocked.value ? "去雷达" : "去行程",
+      actionLabel: "去行程",
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripRadarBlocked.value ? plainRadarTripBlockedHint(plainTripNeedsFreshRunAfterRadar.value) : plainTripHasFreshUnprovenControlEvidence.value ? plainTripFreshUnprovenHintText() : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText() : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? (plainTripRobotPoseVisibleForExecution.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，仍可执行。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选现场安全确认。`) : "还没读到最近行程成功结果。",
+        : plainTripHasFreshUnprovenControlEvidence.value ? plainTripFreshUnprovenHintText() : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText() : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? (plainTripRobotPoseVisibleForExecution.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，仍可执行。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选现场安全确认。`) : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -6018,15 +5937,6 @@ const plainGoalProgressPrimaryActionLabel = computed(() => {
   }
   if (target?.id === "wheel" && canSendPlainWheelTrial.value) {
     return "去低速试动";
-  }
-  if (target?.id === "trip" && plainTripRadarBlocked.value) {
-    if (plainRadarStartUnavailable.value) {
-      return "去配置雷达";
-    }
-    if (plainRadarRequiresRefresh.value) {
-      return "去刷新雷达";
-    }
-    return "去启动雷达";
   }
   return target ? `去${target.label.replace("执行", "").replace("确认", "")}卡点` : "全部完成";
 });
@@ -6091,9 +6001,6 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return "验收卡点：还需要试动期间同帧 L/R 都非零。";
   }
   if (!deliveryNav2GoalReady.value) {
-    if (plainTripRadarBlocked.value) {
-      return `验收卡点：${plainRadarTripClosureHint(plainTripNeedsFreshRunAfterRadar.value).replace("完整行程", "本轮行程")}。`;
-    }
     if (plainTripHasFreshUnprovenControlEvidence.value) {
       return `验收卡点：${plainTripFreshUnprovenHintText()}`;
     }
@@ -6154,10 +6061,6 @@ function plainTripPreparedRouteMapPreviewFailureText(routeVisible: boolean): str
   }
   return mapPreviewFailureText(mapPreviewResult.value);
 }
-const plainTripRadarBlocked = computed(() => {
-  // 雷达状态只作为普通提示；执行按钮按“安全确认 + 图上路线可见”收敛，不在前端重复硬挡。
-  return false;
-});
 
 const plainTripPreparedByRefresh = computed(() => {
   // 普通首屏“准备行程”复用 no-motion Nav2 proof refresh，只看路径点是否已由上位机生成。
@@ -8960,9 +8863,6 @@ function plainTripGoalTarget(): HTMLElement | null {
   if (deliveryNav2GoalReady.value) {
     return enabledButton(plainTripLatestButton.value) ?? plainTripRunPanel.value;
   }
-  if (plainTripRadarBlocked.value) {
-    return plainRadarNextTarget() ?? plainTripRunPanel.value;
-  }
   if (!plainManualSafetyConfirmed.value) {
     return plainTripSafetyCheckbox.value ?? plainTripRunPanel.value;
   }
@@ -8976,9 +8876,6 @@ function plainDeliveryGoalTarget(): HTMLElement | null {
   // 送达目标同样落到现场下一手动作；这里只移动焦点，最终提交仍必须 operator 再点一次。
   const missingLabels = plainDeliveryConfirmMissingLabels.value;
   if (missingLabels.includes("本轮行程")) {
-    if (plainTripRadarBlocked.value) {
-      return plainRadarNextTarget() ?? plainDeliveryStatusPanel.value;
-    }
     return plainTripRunPanel.value ?? plainDeliveryStatusPanel.value;
   }
   if (missingLabels.includes("本轮行程材料") || missingLabels.includes("送达材料")) {

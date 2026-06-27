@@ -15392,6 +15392,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先完成行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");
+    expect(firstScreenText).not.toContain("先启动雷达，再");
+    expect(firstScreenText).not.toContain("先配置雷达并完成本轮完整行程");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：先完成行程。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
@@ -15403,6 +15405,8 @@ describe("App", () => {
     const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("delivery success"));
     expect(deliveryClosureItem?.text()).toContain("送达确认前先完成本轮完整行程");
+    expect(navClosureItem?.text()).not.toContain("雷达");
+    expect(deliveryClosureItem?.text()).not.toContain("雷达");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
