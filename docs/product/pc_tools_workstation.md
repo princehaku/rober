@@ -65,6 +65,7 @@ pc-tools/workstation/
 - 2026-06-26 13:55 起，普通首屏键盘区直接显示同一安全确认的效果：未勾时提示“勾选安全确认后即可启用；按住方向键才会动”，勾上后提示“安全确认已完成；现在可启用键盘，按住方向键才会动”。该提示只解释当前 gate，不自动启用键盘、不发送 manual/stop、Nav2、delivery 或 `/cmd_vel`。
 - 2026-06-26 23:59 起，Robot Control summary 的 `safe_command_boundary` 明确新增 `keyboard_control_start_ready=true` 与 `keyboard_control_label=键盘手控（勾确认后可启用）`。`keyboard_control_enabled=false` 仍表示 summary 本身没有武装键盘、没有发送 manual/stop；普通首屏必须继续要求本地安全确认和用户显式点击启用键盘，按住方向键/WASD 时才发 bounded repeating manual pulse。
 - 2026-06-27 13:16 起，普通首屏键盘区在安全确认后新增 `键盘轮速目标` 行：当前 wheel raw L/R 为 `0/0` 时直接显示“启用后按住方向键读取非零 L/R / 还不是非零证据”，启用键盘后切换为“按住方向键读取非零 L/R”。该行只消费 summary/base readback 和本地 armed 状态，不自动启用键盘、不发送 manual、stop、Nav2、delivery、free-roam 或 `/cmd_vel`。
+- 2026-06-27 17:59 起，普通首屏轮速卡片会把 `latest_feedback_status=stale` 或 `latest_t1001_observed_count=0` 翻译成“当前没有新鲜底盘反馈帧”，不再显示“已读到 0 帧”或隐藏轮速摘要。下一步明确为先点 `刷新当前轮速（只读）`，再低速试动或键盘按住读取非零 L/R。该判断只消费 summary/base readback，不调用 manual、keyboard pulse、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-27 16:18 起，普通首屏行程区会优先消费 summary/safe boundary 的 Nav2 重跑事实：当上次
   `base_command_mode=pwm`、下一次 `next_execution_base_command_mode=ros`，且执行窗口
   `wheel raw L/R=0/0` 未闭环时，状态、最小预检和主按钮都显示 `用 ROS 重跑图上路线`。这只改变普通用户可见文案；

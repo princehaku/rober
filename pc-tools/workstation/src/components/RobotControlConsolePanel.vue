@@ -4371,6 +4371,23 @@ function formatPlainVoltage(value: string | undefined): string {
   return (Math.round(parsed * 100) / 100).toFixed(2).replace(/\.?0+$/, "");
 }
 
+function baseReadbackFreshFrameCount(base: RobotControlSummaryResponse["readback_summary"]["base"] | undefined): number {
+  // 只把当前新鲜 T1001 帧当成现场读回；stale 不能被说成“已读到 0 帧”。
+  if (!base || base.latest_feedback_status === "stale") {
+    return 0;
+  }
+  const parsed = Number(base.latest_t1001_observed_count);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function baseReadbackIsStaleOrEmpty(base: RobotControlSummaryResponse["readback_summary"]["base"] | undefined): boolean {
+  // live 上常见形态是 L/R 仍带 0/0，但 T1001 帧为 0 或已过期；普通用户需要先刷新，而不是把它当作当前轮速证据。
+  return Boolean(base && (
+    base.latest_feedback_status === "stale"
+    || baseReadbackFreshFrameCount(base) === 0
+  ));
+}
+
 const operatorMaterialMissingFields = computed(() => {
   // 这里直接输出后端约定字段名，方便现场人员对照材料清单补证据。
   const summary = robotSummary.value?.operator_hil_material_summary;
@@ -5593,17 +5610,21 @@ const plainWheelGoalProgressHint = computed(() => {
   const base = robotSummary.value?.readback_summary.base;
   const left = sample?.wheel_feedback_latest_left_speed ?? base?.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = sample?.wheel_feedback_latest_right_speed ?? base?.wheel_feedback_latest_right_speed ?? "not_loaded";
-  const frameCount = sample?.t1001_observed_count ?? base?.latest_t1001_observed_count ?? "not_loaded";
+  const baseFreshFrameCount = baseReadbackFreshFrameCount(base);
+  const frameCount = sample?.t1001_observed_count ?? (baseFreshFrameCount > 0 ? String(baseFreshFrameCount) : "not_loaded");
+  const staleOrEmptyReadback = !sample && baseReadbackIsStaleOrEmpty(base);
   const voltage = formatPlainVoltage(base?.feedback_voltage_v);
   const voltageText = voltage ? `，反馈电压约 ${voltage}V` : "";
   if (left !== "not_loaded" && right !== "not_loaded") {
-    const frameText = frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
-    let nextStep = "仍需试动读到非零。";
+    const frameText = staleOrEmptyReadback
+      ? "，当前未读到新反馈帧"
+      : frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
+    let nextStep = staleOrEmptyReadback ? "下一步：先刷新当前轮速（只读），再低速试动读取非零 L/R。" : "仍需试动读到非零。";
     if (firstJogMaterialRestoreReady.value) {
       nextStep = "先点恢复试动确认，再试动读非零。";
     } else if (plainWheelZeroBlockerActive.value) {
       nextStep = WHEEL_ZERO_NEXT_ACTION_SUMMARY;
-    } else if (isZeroWheelPair(left, right) && canSendPlainFirstJog.value) {
+    } else if (!staleOrEmptyReadback && isZeroWheelPair(left, right) && canSendPlainFirstJog.value) {
       nextStep = "下一步：低速试动读取非零 L/R。";
     }
     return `当前轮速 L/R=${left}/${right}${frameText}${voltageText}，${nextStep}`;
@@ -6792,6 +6813,7 @@ const plainWheelReadbackSummary = computed(() => {
   const plainVoltage = formatPlainVoltage(base?.feedback_voltage_v);
   const voltage = plainVoltage ? `；反馈电压约 ${plainVoltage}V` : "";
   const staleSamples = base?.latest_feedback_status === "stale" ? "；历史轮速样本已过期，以当前读回为准" : "";
+  const staleOrEmptyReadback = baseReadbackIsStaleOrEmpty(base);
   const zeroReadbackNextStep = "这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。";
   const sample = baseFeedbackSamplesResult.value?.sample_key_values;
   if (sample?.t1001_observed_count && sample.t1001_observed_count !== "not_loaded") {
@@ -6812,6 +6834,9 @@ const plainWheelReadbackSummary = computed(() => {
   const right = base.wheel_feedback_latest_right_speed;
   if (!left || !right || left === "not_loaded" || right === "not_loaded") {
     return "";
+  }
+  if (staleOrEmptyReadback) {
+    return `当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=${left}/${right}${voltage}；先刷新当前轮速（只读），再低速试动读非零。`;
   }
   if (base.wheel_feedback_lr_nonzero_proven === "true" || base.wheel_feedback_nonzero_observed === "true") {
     if (isZeroWheelPair(left, right)) {

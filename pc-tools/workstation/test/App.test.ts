@@ -8681,6 +8681,33 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("shows stale or empty base readback as refresh-first instead of current wheel evidence", async () => {
+    // live 形态：base/status 还能给 L/R=0/0 和电压，但没有新鲜 T1001 帧；普通首屏必须先引导只读刷新。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    summaryFixture.readback_summary.base.latest_feedback_status = "stale";
+    summaryFixture.readback_summary.base.feedback_link_status = "not_observed";
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    summaryFixture.readback_summary.base.feedback_voltage_v = "12.39151955";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toBe("当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=0/0；反馈电压约 12.39V；先刷新当前轮速（只读），再低速试动读非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("当前轮速 L/R=0/0，当前未读到新反馈帧");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("先刷新当前轮速（只读），再低速试动读取非零 L/R");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).not.toContain("已读到 0 帧");
+    expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+  });
+
   it("shows historical wheel material separately from current zero readback", async () => {
     // 已保存的 during-motion 轮速材料不能被当前停车 0/0 抹掉，但本轮收口不能把它当作当前已完成。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
