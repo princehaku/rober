@@ -5581,7 +5581,9 @@ describe("workstation fail-closed API contracts", () => {
               gates: [
                 readyGate("operator_confirmed", "现场安全确认"),
                 readyGate("mapping_active", "地图记录"),
+                readyGate("camera_first_frame", "画面首帧"),
                 readyGate("lidar_fresh", "雷达新鲜"),
+                readyGate("fresh_map_preview", "地图新画面"),
                 readyGate("obstacle_clear", "前方障碍"),
                 readyGate("coverage_target", "覆盖目标"),
               ],
@@ -5614,6 +5616,88 @@ describe("workstation fail-closed API contracts", () => {
           state: "ready",
           evidence: "自动扫图节点已双重解锁运动发布",
         }),
+      ]));
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.safe_command_boundary.command_dispatch_enabled).toBe(false);
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("labels unlocked free-roam runtime as free movement until mapping acceptance gates are complete", async () => {
+    // 车已经由上车端解锁低速运动时，缺摄像头首帧/地图新画面仍不能把本轮说成可验收自动扫图。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const readyGate = (id: string, label: string) => ({
+      id,
+      label,
+      state: "ready",
+      evidence: `${label}已满足`,
+      next_action: "继续监看并保持停止兜底",
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: false,
+            cmd_vel_publish_enabled: true,
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "running",
+              reason: "停止兜底满足，按无画面自由移动",
+              stop_required: false,
+              gates: [
+                readyGate("operator_confirmed", "现场安全确认"),
+                readyGate("stop_available", "停止兜底"),
+                readyGate("mapping_active", "地图记录"),
+                readyGate("lidar_fresh", "雷达新鲜"),
+                { id: "camera_first_frame", label: "画面首帧", state: "not_proven", evidence: "摄像头未出首帧", next_action: "先修复共享预览；自由移动可继续监看" },
+                { id: "fresh_map_preview", label: "地图新画面", state: "not_proven", evidence: "地图画面未刷新", next_action: "刷新地图画面后再按建图验收" },
+              ],
+            },
+          },
+        },
+      },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "lifecycle_running") },
+      "/api/radar/scan-proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.radar_scan_proof_latest", "scan_observed"),
+          latest_scan_proof_fresh: true,
+        },
+      },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.safe_command_boundary.free_roam_autonomy).toBe("ready");
+      expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（运行中）");
+      expect(summary.readback_summary.free_roam.motion_ready).toBe("true");
+      expect(summary.readback_summary.free_roam.mapping_ready).toBe("false");
+      expect(summary.readback_summary.free_roam.mapping_missing).toBe("camera_first_frame,fresh_map_preview");
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "motion_hil_unlock", state: "ready" }),
+        expect.objectContaining({ id: "camera_first_frame", state: "not_proven" }),
+        expect.objectContaining({ id: "fresh_map_preview", state: "not_proven" }),
       ]));
       expect(summary.safe_to_control).toBe(false);
       expect(summary.safe_command_boundary.command_dispatch_enabled).toBe(false);

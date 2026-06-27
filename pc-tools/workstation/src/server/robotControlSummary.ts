@@ -3676,6 +3676,17 @@ function freeRoamRuntimeSummaryFromReadbacks(
   };
 }
 
+function freeRoamMappingAcceptanceReady(
+  freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null,
+): boolean {
+  // 自动扫图这个词只留给“能动 + 建图验收材料齐全”；缺任一材料时仍是自由移动。
+  const mappingRequiredIds = ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"];
+  const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
+    .filter((gate) => gate.scope === "mapping_acceptance")
+    .map((gate) => [gate.id, gate]));
+  return mappingRequiredIds.every((id) => mappingGateById.get(id)?.state === "ready");
+}
+
 function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
   "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_execution_mode_label"
@@ -3771,6 +3782,7 @@ function lockedBoundary(
     && freeRoamRuntime.cmd_vel_publish_enabled
     && stopFallbackReady,
   );
+  const freeRoamMappingReady = freeRoamMappingAcceptanceReady(freeRoamRuntimeGates);
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
   return {
     manual_endpoint: "/api/base/manual",
@@ -3793,7 +3805,7 @@ function lockedBoundary(
     free_roam_autonomy: freeRoamStatus,
     free_roam_autonomy_start_ready: freeRoamStartReady,
     free_roam_autonomy_label: freeRoamReady
-      ? "自动扫图"
+      ? freeRoamMappingReady ? "自动扫图" : "自由移动（运行中）"
       : freeRoamStartReady
         ? "自由移动（勾确认后可启动）"
         : "自动扫图（未开放）",

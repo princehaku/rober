@@ -3271,3 +3271,10 @@ marker 和 caption 只保留 `待刷新雷达点 N 个（旧点数组，未贴�
 `nav2_goal_execution_proven` 和 `hil_pass` 才能为 true。若 action 已 `goal_succeeded` 但 wheel raw L/R 仍未非零，
 外层回包返回 `nav2_goal_execution_proven=false`，并在 `not_proven` 中包含 `wheel_feedback_lr_nonzero`。
 这避免 PC 执行接口短暂把“Nav2 返回成功”显示成“完整自动驾驶已完成”；真正 delivery success 仍必须另由送达确认闭环。
+
+2026-06-27 14:07 起，Robot Control summary 的 `free_roam_autonomy_label` 进一步区分运动和建图：
+当上车端 runtime 已经解锁 `cmd_vel_publish_enabled=true`，但 `camera_first_frame`、`lidar_fresh`、
+`mapping_active`、`fresh_map_preview` 任一建图验收 gate 未 ready 时，label 返回 `自由移动（运行中）`；
+只有运动已解锁且四个建图材料都 ready 时才返回 `自动扫图`。这样“小车可以自己低速动”和“本轮可按完整自动扫图/建图验收”
+不会在 API 层混成同一个状态；该改动只改 summary 合同和文案，不触发 free-roam start/stop、manual、keyboard、
+Nav2、delivery、stop 或 `/cmd_vel`。
