@@ -8836,6 +8836,25 @@ describe("workstation fail-closed API contracts", () => {
   it("workstation camera first-frame probe uses quick source check without backend smoke", async () => {
     // 普通首屏检查画面不能默认启动 ffmpeg/v4l2 后端矩阵，否则失败时会长时间占住摄像头。
     const upstream = await listenRobotCameraProxyApi({
+      "/api/camera/health": {
+        payload: {
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_not_probed",
+          source_readiness: "source_selected_not_probed",
+          video_source: "/dev/video1",
+          source_usage: { status: "not_in_use", owner_count: 0, owners: [] },
+          source_diagnosis: {
+            status: "source_selected_not_probed",
+            plain_hint: "USB camera 已选中但还没读过首帧。",
+            next_action: "open_shared_preview_or_run_first_frame_probe",
+            not_exclusive: true,
+          },
+          safe_to_control: false,
+          robot_control_executed: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
       "/api/camera/first-frame/probe": {
         statusCode: 503,
         payload: {
@@ -9024,6 +9043,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_smoke_status).toBe("backend_no_frame_observed");
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_frame_observed).toBe("false");
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_attempts).toBe("2");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("OpenCV/V4L2 后端也没有取到视频帧");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
     } finally {
       await workstation.close();
       await upstream.close();

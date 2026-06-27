@@ -1166,10 +1166,15 @@ class CameraServiceState:
             selection.get("selected") if isinstance(selection.get("selected"), dict) else None,
             last_offer_reason,
         )
+        health_status = (
+            "source_first_frame_failed"
+            if source_failed
+            else "ready" if source_observed else ("source_not_probed" if selected_path or self.video_source != "auto" else "no_video_source")
+        )
         return {
             "schema": SCHEMA,
             "app": APP_NAME,
-            "status": "source_first_frame_failed" if source_failed else ("ready" if selected_path or self.video_source != "auto" else "no_video_source"),
+            "status": health_status,
             "generated_at_ms": now_ms(),
             "video_source": selected_path or self.video_source,
             "video_source_mode": selection.get("mode"),

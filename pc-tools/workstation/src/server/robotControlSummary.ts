@@ -1235,6 +1235,27 @@ function cameraSummaryFromReadbacks(
     || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(sourceFailureReason)
     || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(asString(lastOfferError?.failure_reason, "")),
   );
+  const selectedName = cameraDisplayDeviceName(selectedCandidate.selected_name) || "摄像头";
+  const sourceUsageLooksFree = ["not_in_use", ""].includes(asString(sourceUsage?.status, ""))
+    || compactValueText(sourceUsage?.owner_count ?? "not_loaded") === "0";
+  const probeBackendNoFrameNotExclusive = Boolean(
+    firstFrameProbeOverlay?.backend_smoke_status === "backend_no_frame_observed"
+    && firstFrameProbeOverlay.backend_frame_observed === "false"
+    && sourceUsageLooksFree
+  );
+  const derivedSourceDiagnosis = probeBackendNoFrameNotExclusive
+    ? {
+      status: "uvc_no_frame_not_exclusive",
+      plain_hint: `不是页面独占：${selectedName} 当前没人占用，但 OpenCV/V4L2 后端也没有取到视频帧。`,
+      next_action: "check_usb_camera_input_power_or_known_good_uvc",
+      not_exclusive: true,
+    }
+    : {
+      status: asString(sourceDiagnosis?.status, "not_loaded"),
+      plain_hint: asString(sourceDiagnosis?.plain_hint, "not_loaded"),
+      next_action: asString(sourceDiagnosis?.next_action, "not_loaded"),
+      not_exclusive: sourceDiagnosis?.not_exclusive === undefined ? "not_loaded" : compactValueText(sourceDiagnosis.not_exclusive),
+    };
   const sharedPreviewLastFailureReason = mjpegRelayOverlay?.last_failure_reason
     || (sourceFirstFrameFailedForSharedPreview ? "camera_source_first_frame_failed" : "none");
   const sharedPreviewLastRemoteHttpStatus = mjpegRelayOverlay?.last_remote_http_status === null || mjpegRelayOverlay?.last_remote_http_status === undefined
@@ -1267,10 +1288,10 @@ function cameraSummaryFromReadbacks(
     selected_formats_summary: asString(selectedCandidate.selected_formats_summary, "not_loaded"),
     source_readiness: sourceReadiness,
     source_failure_reason: sourceFailureReason,
-    source_diagnosis_status: asString(sourceDiagnosis?.status, "not_loaded"),
-    source_diagnosis_plain_hint: asString(sourceDiagnosis?.plain_hint, "not_loaded"),
-    source_diagnosis_next_action: asString(sourceDiagnosis?.next_action, "not_loaded"),
-    source_diagnosis_not_exclusive: sourceDiagnosis?.not_exclusive === undefined ? "not_loaded" : compactValueText(sourceDiagnosis.not_exclusive),
+    source_diagnosis_status: derivedSourceDiagnosis.status,
+    source_diagnosis_plain_hint: derivedSourceDiagnosis.plain_hint,
+    source_diagnosis_next_action: derivedSourceDiagnosis.next_action,
+    source_diagnosis_not_exclusive: compactValueText(derivedSourceDiagnosis.not_exclusive),
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
     source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
     source_usage_summary: sourceUsageSummary || "none",

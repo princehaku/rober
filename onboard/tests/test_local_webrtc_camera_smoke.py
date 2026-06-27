@@ -582,7 +582,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
 
         self.assertEqual(camera.SCHEMA, payload["schema"])
         self.assertEqual(camera.APP_NAME, payload["app"])
-        self.assertEqual("ready", payload["status"])
+        self.assertEqual("source_not_probed", payload["status"])
         self.assertEqual("source_selected_not_probed", payload["source_readiness"])
         self.assertEqual("", payload["source_failure_reason"])
         self.assertEqual("/dev/video1", payload["video_source"])

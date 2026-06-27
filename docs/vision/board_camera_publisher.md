@@ -1076,3 +1076,18 @@ fail-closed，把建图缺口保留为 `camera_first_frame`，不能因为服务
 `页面正在接入共享预览`。这样 live 的“0 个页面观看、上游未连接、不是独占、UVC 无首帧”
 不会被误解成仍在加载；只有相机 ready 且无已知失败时才显示正在接入共享预览。
 该调整只影响 PC 文案，不打开额外摄像头、不运行首帧探针、不发布运动命令。
+
+## 2026-06-27 15:05 camera health ready 收紧
+
+本轮继续只读复核真实上位机 camera 链路：
+
+- `/dev/video1` 仍是 `USB Composite Device: DV20 USB` 的 UVC capture 节点，`/dev/video2` 是 metadata。
+- `lsof /dev/video*` 为空，说明当前没有其它进程长期独占摄像头。
+- `v4l2-ctl` 分别用 `MJPG@640x480` 和 `YUYV@640x480` 拉一帧，输出文件都是 0 字节。
+- OpenCV 对 default、`MJPG@640x480`、`YUYV@640x480`、`YUYV@320x240` 四种模式均 `opened=false`。
+
+因此当前“看不到画面”不能归因成 PC 页面独占或多用户共享设计失效；真实阻塞仍是 DV20 UVC 没有输出可读视频帧。
+为避免相机服务重启后仅因选中 `/dev/video1` 就把 health 顶层状态写成 `ready`，
+`local_webrtc_camera_smoke.py` 已收紧状态口径：只有 `last_successful_frame` 证明同一 source 已读到真实帧时才返回
+`status=ready`；只选中设备但还没读到首帧时返回 `status=source_not_probed`、`source_readiness=source_selected_not_probed`。
+该改动不打开底盘、不发布 `/cmd_vel`、不调用 `/api/base/manual`，只修正 camera WYSIWYG 状态。
