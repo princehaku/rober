@@ -1927,6 +1927,40 @@ function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): str
   return "键盘：先复查手控条件。";
 }
 
+function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryResponse): string {
+  // 自动驾驶当前态要和旧执行证据分开：旧路线成功不代表现在已能重新发车。
+  const nav2 = summary.readback_summary.nav2;
+  const localization = summary.readback_summary.localization;
+  const routePointCount = plainNav2CountText(nav2.path_preview_point_count) || plainNav2CountText(nav2.path_point_count);
+  const routeReady = (nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") && routePointCount > 0;
+  const blockers: string[] = [];
+  if (!routeReady) {
+    blockers.push("图上行程未准备");
+  }
+  if (nav2.planner_server_active === "false") {
+    blockers.push("规划服务未运行");
+  }
+  if (nav2.controller_server_active === "false") {
+    blockers.push("控制服务未运行");
+  }
+  if (localization.robot_pose_status !== "map_pose_observed") {
+    blockers.push(
+      localization.robot_pose_status === "pose_signal_observed_without_map_coordinates"
+        || localization.amcl_pose_observed === "true"
+        || localization.localization_tf_observed === "true"
+        ? "有定位信号但没有小车地图坐标"
+        : "小车地图坐标未读到",
+    );
+  }
+  if (blockers.length === 0) {
+    return "";
+  }
+  const nextAction = routeReady
+    ? "先重新定位或刷新地图画面"
+    : "先准备图上行程，再按地图画面确认";
+  return `自动驾驶当前：未准备好，${blockers.join("，")}；${nextAction}。相机/雷达不挡底盘试动或键盘手控。`;
+}
+
 const plainCurrentFactRows = computed(() => {
   // 首屏事实条只翻译当前 readback，不新增任何控制权限或验收结论。
   const summary = robotSummary.value;
@@ -1979,6 +2013,11 @@ const plainCurrentFactRows = computed(() => {
     }
   } else {
     rows.push("行程：还没执行。");
+  }
+
+  const autonomousReadiness = plainCurrentAutonomousReadinessFactText(summary);
+  if (autonomousReadiness) {
+    rows.push(autonomousReadiness);
   }
 
   rows.push(plainCurrentFreeRoamFactText(summary));
