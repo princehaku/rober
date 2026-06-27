@@ -8142,6 +8142,68 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("executes the visible route endpoint with nonzero Y instead of the default Nav2 form goal", async () => {
+    // live 现场路线终点可能是 y=0.05；普通按钮必须执行地图上看见的终点，不回落到默认 y=0。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: -0.02, y: 0.44, frame_id: "map", source_index: 0 },
+      { x: 0.35, y: 0.33, frame_id: "map", source_index: 15 },
+      { x: 0.8, y: 0.05, frame_id: "map", source_index: 35 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 36;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_missing",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 404,
+        status: "not_loaded",
+        goal_execution_key_values: {},
+        failure_reason: "latest_goal_execution_missing",
+        blocked_reasons: ["latest_goal_execution_missing"],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.05");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/36 个点，起点 x=-0.02, y=0.44，终点 x=0.80, y=0.05）。");
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const executeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"));
+    expect(executeCall).toBeTruthy();
+    expect(JSON.parse(String((executeCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual(expect.objectContaining({
+      goal_frame_id: "map",
+      goal_x: 0.8,
+      goal_y: 0.05,
+      base_command_mode: "ros",
+      confirm_navigation_execution: true,
+    }));
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("blocks visible-route execution while the map preview is refreshing", async () => {
     // 地图画面刷新中时，旧图上的路线只能看，不能立刻拿来执行，避免“图上路线”口径和当前画面不同步。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
