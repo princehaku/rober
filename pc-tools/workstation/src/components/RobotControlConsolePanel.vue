@@ -4940,6 +4940,12 @@ function plainTripExecutionActionText(): string {
   return nav2NextExecutionButtonText(directNav2ExecutionValues()) || "执行图上路线";
 }
 
+function plainTripRequestedBaseCommandMode(): "ros" | "speed" | "pwm" {
+  // 执行请求必须和首屏“下次用什么模式复验”的只读事实一致；缺失时仍默认 ROS，避免回落到旧 PWM 诊断路径。
+  const mode = directNav2ExecutionValues()?.next_execution_base_command_mode?.trim().toLowerCase();
+  return mode === "speed" || mode === "pwm" || mode === "ros" ? mode : "ros";
+}
+
 function nav2BaseMotionSignalText(values: Record<string, string> | undefined): string {
   if (explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)) {
     const pair = nav2BaseFeedbackPair(values);
@@ -8755,7 +8761,7 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
       goal_y: goalRequest.goal_y,
       goal_yaw: goalRequest.goal_yaw,
       result_timeout_s: navGoalExecutionTimeoutS.value,
-      base_command_mode: "ros",
+      base_command_mode: plainTripRequestedBaseCommandMode(),
       confirm_navigation_execution: confirmNavigationExecution.value,
     });
   } catch (err) {

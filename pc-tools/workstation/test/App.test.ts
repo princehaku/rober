@@ -7338,6 +7338,17 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("用 ROS 重跑图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const executeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"));
+    const executeBody = JSON.parse(String((executeCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
+    expect(executeBody).toEqual(expect.objectContaining({
+      base_command_mode: "ros",
+      confirm_navigation_execution: true,
+    }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
