@@ -6532,7 +6532,12 @@ function plainTripPendingRouteText(): string {
 function plainTripStopOverlayState(): { label: string; state: string; ariaPrefix: string; actionText: string } {
   // 行程 stop 是 base stop 兜底，不代表 Nav2 action 已取消；地图和状态只表达 stop 请求链路。
   if (!plainTripStopRequestedDuringExecution.value) {
-    return { label: "行程请求中", state: "执行中", ariaPrefix: "行程请求已发送，等待结果返回", actionText: "行程请求已发送，等待结果返回" };
+    return {
+      label: "行程请求中",
+      state: "执行中",
+      ariaPrefix: "行程请求已发送，等待结果返回，返回前未证明已执行或已到达",
+      actionText: "行程请求已发送，等待结果返回；返回前未证明已执行或已到达",
+    };
   }
   if (manualCommandPending.value) {
     return { label: "行程停止中", state: "停止中", ariaPrefix: "正在发送行程停止请求", actionText: "正在发送行程停止请求" };
