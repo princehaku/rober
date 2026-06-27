@@ -143,6 +143,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-28 04:13 起，普通首屏同样覆盖 live 的降级形状：即使 `source_usage_status/selected_name`
   暂时是 `not_loaded`，只要 summary 已返回 `source_diagnosis_status=uvc_no_frame_not_exclusive`，
   当前事实条仍显示“共享预览支持多人观看、不是独占、UVC 没有输出视频帧”，不会退回成“可能页面独占”或“等待画面”。
+- 2026-06-28 04:25 起，如果首屏 summary 只有 `camera_health:fetch_timeout_2400ms` 降级，
+  但共享预览/相机摘要已证明 `uvc_no_frame_not_exclusive` 或首帧失败，普通连接面板显示“已读到小车状态；
+  画面健康读取较慢，具体看画面行的无帧诊断”，不再泛化成“部分项目未通过”。API 仍保留原始
+  `robot_api_connection.status=degraded` 和 blocked reason 给高级诊断；该规则只修正普通首屏所见即所得文案。
+  同轮补充：若已读到多项状态且剩余失败全是 `fetch_timeout`（例如 `status/camera_health/camera_devices`
+  一拍读取较慢），普通连接面板提示“部分读取较慢，下面按画面、雷达、地图和行程分项显示已读事实”，
+  仍不隐藏高级诊断里的原始 timeout。
 - 2026-06-26 22:05 起，“自动扫图准备”从只读状态机门禁推进到上车端受控发车门禁：PC 按钮仍只调用固定 start 代理，
   不直接发布 `/cmd_vel`，但上车端会打开 free-roam 节点双锁，让策略节点按 `/scan`、`/map`
   和 watchdog 决策低速移动。若摄像头不 ready，start 不再返回 `blocked_sensor_readiness`，而是在 `sensor_readiness.mapping_readiness`

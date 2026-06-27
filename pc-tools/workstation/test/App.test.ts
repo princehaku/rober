@@ -8865,6 +8865,84 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("keeps camera health timeout as a camera issue when preview diagnosis explains it", async () => {
+    // live 首屏可能只剩 camera_health 超时，但共享预览已经证明不是独占而是 UVC 无帧；连接面板不能把整车说成泛化异常。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.robot_api_connection = {
+      status: "degraded",
+      loaded_count: 14,
+      blocked_count: 0,
+      failed_count: 1,
+      schema_mismatch_count: 0,
+      dangerous_true_fields: [],
+      blocked_reasons: ["camera_health:fetch_timeout_2400ms"],
+      last_refresh_ms: 1782591833396,
+    };
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_loaded";
+    summaryFixture.readback_summary.camera.selected_name = "not_loaded";
+    summaryFixture.readback_summary.camera.source_diagnosis_status = "uvc_no_frame_not_exclusive";
+    summaryFixture.readback_summary.camera.source_diagnosis_not_exclusive = "true";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    summaryFixture.readback_summary.camera.shared_preview_contract = "single_shared_capture_for_multiple_clients";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
+    expect(connectionPanel.attributes("data-state")).toBe("已连接");
+    expect(connectionPanel.text()).toContain("已读到小车状态；画面健康读取较慢，具体看画面行的无帧诊断。");
+    expect(connectionPanel.text()).not.toContain("部分项目未通过");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("不是独占，UVC 没有输出视频帧");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("fetch_timeout_2400ms");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("shows partial timeout readbacks as per-section facts when most robot status loaded", async () => {
+    // live 重启后一拍可能 status/camera health/camera devices 都超时，但 Nav2/雷达/地图等已读到；普通首屏应引导看分项事实。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.robot_api_connection = {
+      status: "degraded",
+      loaded_count: 12,
+      blocked_count: 0,
+      failed_count: 3,
+      schema_mismatch_count: 0,
+      dangerous_true_fields: [],
+      blocked_reasons: [
+        "status:fetch_timeout_2400ms",
+        "camera_health:fetch_timeout_2400ms",
+        "camera_devices:fetch_timeout_2400ms",
+      ],
+      last_refresh_ms: 1782591977607,
+    };
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_diagnosis_status = "uvc_no_frame_not_exclusive";
+    summaryFixture.readback_summary.nav2.nav2_stack_running = "false";
+    summaryFixture.readback_summary.nav2.nav2_stack_lifecycle_state = "stopped";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
+    expect(connectionPanel.attributes("data-state")).toBe("已连接");
+    expect(connectionPanel.text()).toContain("已读到小车状态；部分读取较慢，下面按画面、雷达、地图和行程分项显示已读事实。");
+    expect(connectionPanel.text()).not.toContain("部分项目未通过");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶服务未启动");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("fetch_timeout_2400ms");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("marks stale facts when a plain refresh fails after a prior summary", async () => {
     // 现场上位机卡住时不能继续把上一拍相机/雷达/Nav2 文案伪装成实时事实；失败只改变展示，不触发运动。
     const mockedFetch = stubWorkstationFetch();

@@ -359,6 +359,31 @@ function robotConnectionBlockedReasonText(): string {
   return connection?.blocked_reasons.join(" ") ?? "";
 }
 
+function cameraHealthTimeoutExplainedByPreview(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): boolean {
+  // live 首屏可能为了速度把 camera_health 限时，但共享预览已能给出无首帧诊断；这时别把整车写成连接异常。
+  const connection = summary?.robot_api_connection;
+  const camera = summary?.readback_summary.camera;
+  if (!connection || !camera || connection.loaded_count <= 0) {
+    return false;
+  }
+  const reasons = connection.blocked_reasons;
+  if (reasons.length === 0 || reasons.some((reason) => !reason.startsWith("camera_health:fetch_timeout"))) {
+    return false;
+  }
+  return camera.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+    || camera.source_diagnosis_not_exclusive === "true"
+    || cameraSourceFirstFrameFailed(camera);
+}
+
+function robotConnectionPartialTimeoutOnly(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): boolean {
+  // 已读到多数状态时，若剩余失败全是读取超时，普通首屏应提示“分项看事实”，而不是暗示整车离线。
+  const connection = summary?.robot_api_connection;
+  if (!connection || connection.loaded_count <= 0 || connection.blocked_reasons.length === 0) {
+    return false;
+  }
+  return connection.blocked_reasons.every((reason) => reason.includes("fetch_timeout"));
+}
+
 function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有异常"; hint: string } {
   // 连接状态只给普通用户看三档，细节放在折叠区。
   if (!robotApiBaseUrl.value.trim()) {
@@ -373,6 +398,12 @@ function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有�
   }
   if (connection.loaded_count > 0) {
     if (connection.failed_count > 0 || connection.blocked_count > 0 || connection.status === "degraded" || connection.status === "blocked") {
+      if (cameraHealthTimeoutExplainedByPreview()) {
+        return { state: "已连接", hint: "已读到小车状态；画面健康读取较慢，具体看画面行的无帧诊断。" };
+      }
+      if (robotConnectionPartialTimeoutOnly()) {
+        return { state: "已连接", hint: "已读到小车状态；部分读取较慢，下面按画面、雷达、地图和行程分项显示已读事实。" };
+      }
       return { state: "已连接", hint: "已读到小车状态；部分项目未通过，可展开高级诊断。" };
     }
     return { state: "已连接", hint: "已读到小车状态摘要。" };
