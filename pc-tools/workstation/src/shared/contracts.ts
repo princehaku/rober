@@ -2009,6 +2009,17 @@ export interface RobotApiFrameTransform {
   source: string;
 }
 
+export interface RobotControlMapPreviewRadarOverlay {
+  overlay_status: "loaded" | "partial" | "blocked" | "not_loaded";
+  scan_preview_points: RobotApiScanPreviewPoint[];
+  scan_preview_point_count: number;
+  scan_preview_source_point_count: number | null;
+  scan_preview_frame_id: string;
+  robot_pose: RobotApiMapPose | null;
+  source_endpoint_ids: RobotApiReadEndpointId[];
+  blocked_reasons: string[];
+}
+
 export interface RobotApiProofSummary {
   managed_runtime_started: boolean | null;
   scan_once_observed: boolean | null;
@@ -2829,6 +2840,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
+  radar_overlay?: RobotControlMapPreviewRadarOverlay;
   robot_control_executed: false;
 }
 

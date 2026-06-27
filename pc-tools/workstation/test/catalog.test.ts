@@ -7243,6 +7243,56 @@ describe("workstation fail-closed API contracts", () => {
           command_result: { mode: "read_only_local_files", executed: false, ok: true },
         },
       },
+      "/api/localize/proof/latest": {
+        method: "GET",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localize_proof",
+          status: "amcl_pose_observed",
+          safe_to_control: false,
+          robot_control_executed: false,
+          amcl_pose: { x: 0.4, y: -0.2, yaw: 0.1, frame_id: "map", source: "/amcl_pose" },
+        },
+      },
+      "/api/nav2/status": {
+        method: "GET",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "planner_server_active",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        method: "GET",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof",
+          status: "path_generated",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/radar/status": {
+        method: "GET",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          status: "fresh",
+          safe_to_control: false,
+          robot_control_executed: false,
+          scan_preview_points: [
+            { x_m: 1.2, y_m: 0.3, range_m: 1.24, angle_rad: 0.245, frame_id: "laser_frame", source_index: 7 },
+          ],
+          scan_preview_source_point_count: 65,
+        },
+      },
+      "/api/radar/scan-proof/latest": {
+        method: "GET",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_scan_proof",
+          status: "scan_once_observed",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
       "/api/map/save": {
         method: "POST",
         payload: {
@@ -7316,6 +7366,16 @@ describe("workstation fail-closed API contracts", () => {
         image_data_url: string;
         robot_control_executed: boolean;
         safe_to_control: boolean;
+        radar_overlay: {
+          overlay_status: string;
+          scan_preview_point_count: number;
+          scan_preview_source_point_count: number | null;
+          scan_preview_frame_id: string;
+          scan_preview_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
+          robot_pose: { x: number; y: number; yaw: number | null; frame_id: string; source: string } | null;
+          source_endpoint_ids: string[];
+          blocked_reasons: string[];
+        };
       };
       expect(previewResponse.status).toBe(200);
       expect(previewBody.proxy_status).toBe("preview_forwarded");
@@ -7324,7 +7384,29 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.image_data_url).toContain("data:image/png;base64,");
       expect(previewBody.robot_control_executed).toBe(false);
       expect(previewBody.safe_to_control).toBe(false);
-      expect(upstream.receivedGets).toEqual(["/api/map/list", "/api/map/preview"]);
+      expect(previewBody.radar_overlay.overlay_status).toBe("loaded");
+      expect(previewBody.radar_overlay.scan_preview_point_count).toBe(1);
+      expect(previewBody.radar_overlay.scan_preview_source_point_count).toBe(65);
+      expect(previewBody.radar_overlay.scan_preview_frame_id).toBe("laser_frame");
+      expect(previewBody.radar_overlay.scan_preview_points[0]).toEqual(expect.objectContaining({ x_m: 1.2, y_m: 0.3, frame_id: "laser_frame" }));
+      expect(previewBody.radar_overlay.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
+      expect(previewBody.radar_overlay.source_endpoint_ids).toEqual([
+        "localize_proof_latest",
+        "nav2_status",
+        "nav2_proof_latest",
+        "radar_status",
+        "radar_scan_proof_latest",
+      ]);
+      expect(previewBody.radar_overlay.blocked_reasons).toEqual([]);
+      expect(upstream.receivedGets).toEqual(expect.arrayContaining([
+        "/api/map/list",
+        "/api/map/preview",
+        "/api/localize/proof/latest",
+        "/api/nav2/status",
+        "/api/nav2/proof/latest",
+        "/api/radar/status",
+        "/api/radar/scan-proof/latest",
+      ]));
 
       const rejected = await fetch(`${workstation.baseUrl}/api/robot-control/map/save?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
         method: "POST",

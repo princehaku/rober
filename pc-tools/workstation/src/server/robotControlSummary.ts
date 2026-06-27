@@ -15,6 +15,7 @@ import type {
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
   RobotControlMapPreviewResponse,
+  RobotControlMapPreviewRadarOverlay,
   RobotControlNavGoalPreflightRequest,
   RobotControlNavGoalPreflightResponse,
   RobotControlOperatorReportProxyResponse,
@@ -85,6 +86,13 @@ const OPTIONAL_MISSING_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = 
   "nav2_goal_execution_latest",
 ]);
 const OPTIONAL_MISSING_HTTP_STATUSES = new Set([404, 405, 501]);
+const MAP_PREVIEW_OVERLAY_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([
+  "localize_proof_latest",
+  "nav2_status",
+  "nav2_proof_latest",
+  "radar_status",
+  "radar_scan_proof_latest",
+]);
 
 export type RobotProofRefreshConfig = {
   kind: RobotControlProofRefreshKind;
@@ -2312,7 +2320,47 @@ function blockedMapLifecycleResponse(
   };
 }
 
-function blockedMapPreviewResponse(sourceBaseUrl: string, reason: string): RobotControlMapPreviewResponse {
+function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRadarOverlay {
+  // 地图预览失败或 URL 不合法时也返回同形 overlay，前端不用猜测雷达层是否存在。
+  return {
+    overlay_status: "not_loaded",
+    scan_preview_points: [],
+    scan_preview_point_count: 0,
+    scan_preview_source_point_count: null,
+    scan_preview_frame_id: "",
+    robot_pose: null,
+    source_endpoint_ids: [],
+    blocked_reasons: reason ? [reason] : [],
+  };
+}
+
+async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPreviewRadarOverlay> {
+  // 地图图片和雷达/位姿 overlay 分开读；overlay 只补“所见即所得”材料，不反向阻塞地图图片。
+  const endpoints = READ_ENDPOINTS.filter((endpoint) => MAP_PREVIEW_OVERLAY_ENDPOINT_IDS.has(endpoint.id));
+  const readbacks = await Promise.all(endpoints.map((endpoint) => readEndpoint(base, endpoint)));
+  const proofSummary = buildProofSummary(readbacks);
+  const blockedReasons = readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`));
+  const hasVisibleOverlay = proofSummary.scan_preview_point_count > 0 || proofSummary.robot_pose !== null;
+  const overlayStatus: RobotControlMapPreviewRadarOverlay["overlay_status"] = hasVisibleOverlay
+    ? blockedReasons.length > 0 ? "partial" : "loaded"
+    : blockedReasons.length > 0 ? "blocked" : "not_loaded";
+  return {
+    overlay_status: overlayStatus,
+    scan_preview_points: proofSummary.scan_preview_points,
+    scan_preview_point_count: proofSummary.scan_preview_point_count,
+    scan_preview_source_point_count: proofSummary.scan_preview_source_point_count,
+    scan_preview_frame_id: proofSummary.scan_preview_frame_id,
+    robot_pose: proofSummary.robot_pose,
+    source_endpoint_ids: endpoints.map((endpoint) => endpoint.id),
+    blocked_reasons: blockedReasons,
+  };
+}
+
+function blockedMapPreviewResponse(
+  sourceBaseUrl: string,
+  reason: string,
+  radarOverlay: RobotControlMapPreviewRadarOverlay = defaultMapPreviewRadarOverlay(reason),
+): RobotControlMapPreviewResponse {
   // 地图预览失败也必须保持完整合同，前端才能稳定回退到状态视图。
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
@@ -2339,6 +2387,7 @@ function blockedMapPreviewResponse(sourceBaseUrl: string, reason: string): Robot
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
+    radar_overlay: radarOverlay,
     robot_control_executed: false,
   };
 }
@@ -2349,6 +2398,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   if (!normalized.ok) {
     return blockedMapPreviewResponse(baseUrl, normalized.reason);
   }
+  const radarOverlayPromise = buildMapPreviewRadarOverlay(normalized.normalized);
 
   let response: Response;
   try {
@@ -2364,7 +2414,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
           ? error.message.slice(0, 180)
           : "fetch_failed";
     return {
-      ...blockedMapPreviewResponse(baseUrl, reason),
+      ...blockedMapPreviewResponse(baseUrl, reason, await radarOverlayPromise),
       proxy_status: "preview_failed",
       normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
     };
@@ -2375,7 +2425,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     bodyJson = await response.json();
   } catch {
     return {
-      ...blockedMapPreviewResponse(baseUrl, "response_json_parse_failed"),
+      ...blockedMapPreviewResponse(baseUrl, "response_json_parse_failed", await radarOverlayPromise),
       proxy_status: "preview_failed",
       normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
       remote_http_status: response.status,
@@ -2386,7 +2436,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   const payload = asRecord(bodyJson);
   if (!payload) {
     return {
-      ...blockedMapPreviewResponse(baseUrl, "response_json_not_object"),
+      ...blockedMapPreviewResponse(baseUrl, "response_json_not_object", await radarOverlayPromise),
       proxy_status: "preview_failed",
       normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
       remote_http_status: response.status,
@@ -2412,6 +2462,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     ...(imageLooksSafe ? [] : ["map_preview_image_data_url_missing_or_invalid"]),
   ];
   const forwarded = response.ok && blockedReasons.length === 0;
+  const radarOverlay = await radarOverlayPromise;
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
     ...PROOF_FLAGS,
@@ -2440,6 +2491,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
         : asString(findFirstKey(payload, ["failure_reason", "error"]), ""),
     blocked_reasons: blockedReasons,
     hard_dangerous_true_fields: hardDangerous,
+    radar_overlay: radarOverlay,
     robot_control_executed: false,
   };
 }
@@ -3132,7 +3184,11 @@ function proofScanPreview(readbacks: InternalRobotApiEndpointReadback[]): Pick<
     if (points.length === 0) {
       sourceCount = appendRangeScanPreviewPoints(payload, points) ?? sourceCount;
     } else {
-      sourceCount = proofNumber(readbacks, ["scan_preview_source_point_count", "scan_point_count"]) ?? points.length;
+      // source count 要优先取当前雷达 payload，避免跨 endpoint 递归时退回到抽样后的点数。
+      sourceCount =
+        finitePathCoordinate(findFirstKey(payload, ["scan_preview_source_point_count", "scan_point_count"]))
+        ?? proofNumber(readbacks, ["scan_preview_source_point_count", "scan_point_count"])
+        ?? points.length;
     }
     if (points.length > 0) {
       return {

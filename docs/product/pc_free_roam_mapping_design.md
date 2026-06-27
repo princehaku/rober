@@ -324,3 +324,10 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 这样 live 形态下 `radar/status` proof stale、`scan_preview_point_count=0`，但 free-roam runtime
 已读到 `/scan` 距离时，地图仍能所见即所得地显示当前雷达距离。该变更不改变自由移动启动门禁，
 不自动刷新雷达，不发布 `/cmd_vel`，不把距离读数当成可验收建图点云。
+
+2026-06-27 20:09 起，PC `/api/robot-control/map/preview` 在转发地图图片时同步附带
+`radar_overlay` 只读层：从固定的定位/Nav2/雷达 latest/status endpoint 聚合
+`scan_preview_points`、`scan_preview_*_count`、`scan_preview_frame_id` 和 `robot_pose`。
+地图图片失败或 overlay 读不到时不互相冒充：图片状态仍由 `/api/map/preview` 决定，雷达/位姿缺口只写入
+`radar_overlay.overlay_status` 与 `radar_overlay.blocked_reasons`。这让 PC 地图预览响应本身具备
+“图片 + 雷达点 + 小车位姿”的同轮只读材料，前端无需再靠多个接口异步猜测地图上应显示什么。
