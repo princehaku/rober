@@ -17263,7 +17263,7 @@ describe("App", () => {
     await robotBaseUrlInput.setValue("http://192.168.1.11:8787");
     await flushPromises();
 
-    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
+    await wrapper.find('[data-testid="plain-camera-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     const previewVideoElement = wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement;
@@ -17420,7 +17420,7 @@ describe("App", () => {
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     await flushPromises();
 
-    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
+    await wrapper.find('[data-testid="plain-camera-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     const previewFrame = wrapper.find('[data-testid="robot-camera-preview-frame"]');
@@ -17771,7 +17771,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     await flushPromises();
-    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
+    await wrapper.find('[data-testid="plain-camera-start"]').trigger("click");
     await flushPromises();
     await vi.advanceTimersByTimeAsync(1100);
     await wrapper.vm.$nextTick();
@@ -17825,6 +17825,7 @@ describe("App", () => {
     const mjpegPreview = wrapper.find('[data-testid="robot-camera-mjpeg-preview"]');
     expect(mjpegPreview.exists()).toBe(true);
     expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
+    expect(wrapper.find('[data-testid="plain-camera-start"]').text()).toBe("重试共享画面");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 多种方式也没有取到视频帧。");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：USB Composite Device: DV20 USB 摄像头能打开，但没有取到视频帧");

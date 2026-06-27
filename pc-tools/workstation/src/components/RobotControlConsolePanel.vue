@@ -381,9 +381,11 @@ function cameraSourceFirstFrameFailed(camera: RobotControlSummaryResponse["readb
     camera?.status === "source_first_frame_failed"
     || camera?.source_readiness === "first_frame_failed"
     || camera?.source_failure_reason === "first_frame_timeout"
+    || camera?.source_failure_reason === "first_frame_total_timeout"
     || camera?.source_failure_reason === "capture_read_call_timeout"
     || camera?.source_failure_reason === "capture_read_returned_false"
     || camera?.last_offer_failure_reason === "first_frame_timeout"
+    || camera?.last_offer_failure_reason === "first_frame_total_timeout"
     || camera?.last_offer_failure_reason === "capture_read_call_timeout"
     || camera?.last_offer_failure_reason === "capture_read_returned_false"
     || camera?.first_frame_probe_status === "first_frame_timeout"
@@ -1346,6 +1348,18 @@ const cameraFirstFrameProbeSummary = computed(() => {
 const plainCameraProbeButtonLabel = computed(() => (
   cameraFirstFrameProbePending.value ? "检查中" : "检查画面（只读）"
 ));
+const plainCameraStartButtonLabel = computed(() => {
+  // 相机源已证明“非独占但无帧”时，主按钮必须表达为重试共享预览，避免用户误判成某个页面抢占摄像头。
+  const camera = robotSummary.value?.readback_summary.camera;
+  if (cameraSourceFirstFrameFailed(camera)) {
+    const notExclusiveNoFrame = camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+      || camera?.source_usage_status === "not_in_use"
+      || camera?.source_usage_owner_count === "0"
+      || camera?.shared_preview_exclusive_camera_claim === "false";
+    return notExclusiveNoFrame ? "重试共享画面" : "重试打开画面";
+  }
+  return "打开画面";
+});
 const plainCameraProbeSummary = computed(() => {
   // 首屏只说明样张是否读到；样张成功不等于实时视频窗口已经打开。
   if (cameraFirstFrameProbePending.value) {
@@ -10510,7 +10524,7 @@ onBeforeUnmount(() => {
         <article class="snapshot-panel plain-camera-panel" data-testid="plain-camera-panel" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
           <h3>实时画面</h3>
           <div class="panel-action-row">
-            <button type="button" :disabled="!canStartPreview" @click="startPreview">打开画面</button>
+            <button type="button" :disabled="!canStartPreview" data-testid="plain-camera-start" @click="startPreview">{{ plainCameraStartButtonLabel }}</button>
             <button ref="plainCameraProbeButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainCameraProbe" data-testid="plain-camera-probe" @click="runCameraFirstFrameProbe">
               {{ plainCameraProbeButtonLabel }}
             </button>
