@@ -4448,6 +4448,7 @@ describe("App", () => {
       artifact_only: true,
       cmd_vel_publish_enabled: false,
     };
+    summaryFixture.readback_summary.free_roam.mapping_missing = "camera_first_frame,mapping_active,fresh_map_preview";
     summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
     summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
     summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
@@ -4509,7 +4510,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出、雷达状态源不一致；仍可在安全确认后低速自由移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：上车端明确只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出、地图记录未启动、地图画面未刷新；仍可在安全确认后低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自由移动（低速）后才会重新启动。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动；低速自移动不依赖雷达新鲜度。");

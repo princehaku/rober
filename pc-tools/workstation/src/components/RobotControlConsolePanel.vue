@@ -1473,16 +1473,25 @@ const plainFreeRoamLatestSummary = computed(() => {
   const stop = kv.stop_required === "true" ? "，要求停止兜底" : "";
   return `最新读取：${state}${reason}${stop}；${mode}。`;
 });
-function freeRoamMappingMissingPlainLabels(missing: string[] | undefined): string[] {
+function freeRoamMappingMissingPlainLabels(missing: string[] | string | undefined): string[] {
   // 上车端二次确认会返回稳定 token；普通首屏要翻译成现场可行动的建图缺口。
   const labels: Record<string, string> = {
+    camera_first_frame: "画面首帧未出",
     camera_first_frame_not_observed: "画面首帧未出",
     camera_health_unreachable: "相机服务未连上",
     camera_not_ready: "画面未确认",
+    fresh_map_preview: "地图画面未刷新",
+    map_recording_active: "地图记录未启动",
+    mapping_active: "地图记录未启动",
     radar_scan_proof_not_fresh: "雷达未刷新",
+    fresh_radar_scan: "雷达未刷新",
     radar_not_ready: "雷达未就绪",
   };
-  const items = (missing ?? [])
+  const rawItems = typeof missing === "string"
+    ? missing.split(",")
+    : missing ?? [];
+  const items = rawItems
+    .map((item) => item.trim())
     .map((item) => labels[item] ?? item)
     .filter((item) => item && item !== "unknown" && item !== "not_loaded");
   return [...new Set(items)];
@@ -3569,6 +3578,10 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
   const mappingReadinessText = (() => {
     // 自由低速移动和可验收建图是两层能力：相机/雷达只决定建图验收，不阻塞低速自由移动入口。
+    const onboardMissing = freeRoamMappingMissingPlainLabels(robotSummary.value?.readback_summary.free_roam.mapping_missing);
+    if (onboardMissing.length > 0) {
+      return `建图验收：上车端明确只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动。`;
+    }
     const gaps: string[] = [];
     const camera = robotSummary.value?.readback_summary.camera;
     if (!plainCameraReadyForFreeRoamAutonomy.value) {
