@@ -1077,6 +1077,24 @@ fail-closed，把建图缺口保留为 `camera_first_frame`，不能因为服务
 不会被误解成仍在加载；只有相机 ready 且无已知失败时才显示正在接入共享预览。
 该调整只影响 PC 文案，不打开额外摄像头、不运行首帧探针、不发布运动命令。
 
+## 2026-06-27 15:37 MJPEG status selected-source diagnosis
+
+PC `GET /api/robot-control/camera/mjpeg/status` 继续保持只读、不会创建 MJPEG client；但现在会把
+上车 `/api/camera/health` 里的 `source_not_probed/source_selected_not_probed` 诊断同步贴到 status。
+
+live 只读复核：
+
+- `client_count=0`
+- `upstream_active=false`
+- `shared_capture=true`
+- `exclusive_camera_claim=false`
+- `source_diagnosis_status=source_selected_not_probed`
+- `source_diagnosis_not_exclusive=true`
+- `source_diagnosis_next_action=open_shared_preview_or_run_first_frame_probe`
+
+这表示新进入的页面即使还没有打开共享预览，也能看到“已选中 DV20 `/dev/video1`、不是页面独占、下一步打开共享预览或首帧检查”。
+该 status 查询不打开相机 reader、不触发首帧探针、不发送 manual、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ## 2026-06-27 15:05 camera health ready 收紧
 
 本轮继续只读复核真实上位机 camera 链路：

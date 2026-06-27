@@ -161,7 +161,7 @@ type CameraMjpegRelay = {
 type CameraMjpegRelayLastFailure = {
   failure_reason: string;
   remote_http_status: number | null;
-  failed_at_ms: number;
+  failed_at_ms: number | null;
   source_diagnosis_status?: string;
   source_diagnosis_plain_hint?: string;
   source_diagnosis_next_action?: string;
@@ -1238,7 +1238,7 @@ function cameraMjpegStatusResponse(
 }
 
 async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): Promise<CameraMjpegRelayLastFailure | null> {
-  // status 端点不创建 MJPEG client；只短读 health，把“源无首帧”贴到共享预览状态上。
+  // status 端点不创建 MJPEG client；只短读 health，把“源诊断/源无首帧”贴到共享预览状态上。
   try {
     const response = await fetch(endpointUrl(normalizedBaseUrl, "/api/camera/health"), {
       signal: AbortSignal.timeout(2500),
@@ -1254,23 +1254,42 @@ async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): P
     const lastOfferReason = shortText(lastOffer?.failure_reason, "");
     const sourceDiagnosis = asRecord(payload?.source_diagnosis)
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_diagnosis);
+    const diagnosisStatus = shortText(sourceDiagnosis?.status, "");
+    const diagnosisPlainHint = shortText(sourceDiagnosis?.plain_hint, "");
+    const diagnosisNextAction = shortText(sourceDiagnosis?.next_action, "");
+    const diagnosisNotExclusive = sourceDiagnosis?.not_exclusive === undefined
+      ? "not_loaded"
+      : String(sourceDiagnosis.not_exclusive);
     const firstFrameFailed = status === "source_first_frame_failed"
       || readiness === "first_frame_failed"
       || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(reason)
       || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(lastOfferReason);
+    const sourceSelectedNotProbed = status === "source_not_probed" || readiness === "source_selected_not_probed";
+    const hasUsefulSourceDiagnosis = Boolean(
+      diagnosisStatus && diagnosisStatus !== "not_loaded" && diagnosisStatus !== "none",
+    );
     if (!firstFrameFailed) {
-      return null;
+      if (!hasUsefulSourceDiagnosis && !sourceSelectedNotProbed) {
+        return null;
+      }
+      return {
+        failure_reason: "",
+        remote_http_status: response.status,
+        failed_at_ms: null,
+        source_diagnosis_status: diagnosisStatus || readiness || status || "not_loaded",
+        source_diagnosis_plain_hint: diagnosisPlainHint || "相机源已选中但还没读过首帧；打开共享预览或运行首帧检查。",
+        source_diagnosis_next_action: diagnosisNextAction || "open_shared_preview_or_run_first_frame_probe",
+        source_diagnosis_not_exclusive: diagnosisNotExclusive,
+      };
     }
     return {
       failure_reason: "camera_source_first_frame_failed",
       remote_http_status: response.status,
       failed_at_ms: Date.now(),
-      source_diagnosis_status: shortText(sourceDiagnosis?.status, "not_loaded"),
-      source_diagnosis_plain_hint: shortText(sourceDiagnosis?.plain_hint, "not_loaded"),
-      source_diagnosis_next_action: shortText(sourceDiagnosis?.next_action, "not_loaded"),
-      source_diagnosis_not_exclusive: sourceDiagnosis?.not_exclusive === undefined
-        ? "not_loaded"
-        : String(sourceDiagnosis.not_exclusive),
+      source_diagnosis_status: diagnosisStatus || "not_loaded",
+      source_diagnosis_plain_hint: diagnosisPlainHint || "not_loaded",
+      source_diagnosis_next_action: diagnosisNextAction || "not_loaded",
+      source_diagnosis_not_exclusive: diagnosisNotExclusive,
     };
   } catch {
     return null;
