@@ -3043,6 +3043,11 @@ aria 同步写明“不发车”，自由移动/建图卡片提示“启动返�
 `/api/robot-control/free-roam/autonomy/start` 并切换到 `自动扫图低速运行中`。这避免把地图记录 pending 窗口误看成小车已经开始自助移动；
 该 pending 呈现不新增 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel` 调用。
 
+2026-06-28 21:00 起，`free-roam/autonomy/start` 已发送但尚未返回时，普通首屏也不再写成 `自动扫图启动中`：
+按钮显示 `请求中`，当前事实和扫图状态显示“启动请求已发送，等待上车端返回；返回前不把它当作已低速运行”，地图 marker 显示
+`自动扫图请求中（等待返回）`。红色停止仍可点击并排队到 start 返回后立即发送；该 pending 呈现只反映固定代理请求窗口，不新增
+manual、keyboard、Nav2、delivery、stop 之外的新动作或 `/cmd_vel` 调用。
+
 2026-06-26 23:59 起，普通首屏地图在 `scan_preview_point_count=N` 但 `scan_preview_points=[]` 时不再写成
 `雷达点位未读取`。地图 scan label、雷达点口径和坐标口径都会显示
 `最近雷达记录 N 个（仅点数，没有点数组，未显示局部轮廓）` 或

@@ -2037,7 +2037,7 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
     return `${modeName}：停止已排队，启动请求返回后会立刻请求上车端停止。`;
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return `${modeName}：正在启动上车端${modeName}状态机，PC 保持地图、雷达和停止兜底。`;
+    return `${modeName}：启动请求已发送，等待上车端返回；返回前不把它当作已低速运行。`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
     return `${modeName}：正在请求上车端${modeName}停止，红色停止仍可随时兜底。`;
@@ -3447,7 +3447,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label: `${modeName}停止已排队`, state: "auto_stop_queued", style, aria: `上车端${modeName}启动返回后会立刻请求停止${locatedSuffix}` };
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return { label: `${modeName}启动中`, state: "auto_starting", style, aria: `上车端${modeName}状态机正在启动${locatedSuffix}` };
+    return { label: `${modeName}请求中（等待返回）`, state: "auto_starting", style, aria: `${modeName}启动请求已发送，等待上车端返回，未确认低速运行${locatedSuffix}` };
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
     return { label: `${modeName}停止中`, state: "auto_stopping", style, aria: `上车端${modeName}状态机正在停止${locatedSuffix}` };
@@ -4225,7 +4225,7 @@ const plainFreeRoamDriveStatus = computed(() => {
     return `${statusPrefix}：停止${plainFreeRoamMotionModeName.value}已排队，启动请求返回后会立刻请求上车端停止。`;
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return `${statusPrefix}：正在启动上车端${plainFreeRoamMotionModeName.value}状态机，PC 保持地图、雷达和停止兜底。`;
+    return `${statusPrefix}：启动请求已发送，等待上车端返回；返回前不把它当作已低速运行。`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
     return `${statusPrefix}：正在请求上车端${plainFreeRoamMotionModeName.value}停止，红色停止仍可随时兜底。`;
@@ -4675,7 +4675,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   return {
     state: autonomyReady && blockers.length === 0 ? "已就绪" : autonomyReady ? "待处理" : "未满足",
     buttonLabel: freeRoamAutonomyPending.value && freeRoamAutonomyPendingAction.value === "start"
-      ? "启动中"
+      ? "请求中"
       : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
       : autonomyReady && blockers.length ? plainFreeRoamAutonomyGuideButtonLabel.value
       : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : motionStartButtonText,

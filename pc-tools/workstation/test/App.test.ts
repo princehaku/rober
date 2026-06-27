@@ -5344,10 +5344,14 @@ describe("App", () => {
     delayNextAutoStart = true;
     const startClick = wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("启动中");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("请求中");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自动扫图（随时可点）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动扫图：正在启动上车端自动扫图状态机，PC 保持地图、雷达和停止兜底。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动扫图：启动请求已发送，等待上车端返回；返回前不把它当作已低速运行。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：启动请求已发送，等待上车端返回；返回前不把它当作已低速运行。");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图请求中（等待返回）");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_starting");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("自动扫图启动请求已发送，等待上车端返回，未确认低速运行，机器人地图位置未读到，标记不代表坐标");
 
     await wrapper.find('[data-testid="plain-free-roam-auto-stop"]').trigger("click");
     await wrapper.vm.$nextTick();
