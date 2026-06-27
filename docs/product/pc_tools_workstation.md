@@ -3477,6 +3477,11 @@ Nav2 lifecycle 允许上位机声明 `starts_nav2=true` 作为服务恢复事实
 路线准备只得到同一个 planner/controller inactive 失败。恢复成功后仍必须再准备/显示图上路线，并在现场安全确认后显式执行；
 该按钮不发送 NavigateToPose goal、不调用 manual/keyboard/free-roam/delivery/stop 或浏览器直连 `/cmd_vel`。
 
+2026-06-28 00:14 起，PC 固定 POST 控制代理进一步收紧 `baseUrl` 处理：没有 query 时仍保留普通 UI
+默认小车地址，满足“小车地址默认写死”；但显式传入空 `?baseUrl=` 时不再回退到默认地址，而是返回
+`baseUrl_not_provided` 并且不触达上位机。该 guard 覆盖 Nav2 lifecycle 和 free-roam start/stop 回归测试，
+避免调试或探路请求把空 baseUrl 意外变成真实 `/api/nav2/start`、`/api/free-roam/autonomy/start` 等固定 POST。
+
 2026-06-27 19:07 起，普通首屏自由移动 / 建图缺口会消费相机 source diagnosis：当缺口为
 `camera_first_frame` 且 summary 已证明 `uvc_no_frame_not_exclusive` 或 `source_diagnosis_not_exclusive=true` 时，
 建图验收和当前事实显示 `画面首帧未出（不是页面独占）`，而不是泛化的 `画面首帧未出`。这让 live 形态

@@ -142,7 +142,10 @@ export function robotControlReadOnlyQueryBaseUrl(value: unknown): string {
 }
 
 export function robotControlFixedProxyQueryBaseUrl(value: unknown): string {
-  // 用户不应为每个控制按钮反复填写小车地址；缺省地址只替代 baseUrl，不替代安全确认或上车端门禁。
+  // 没有 query 时保留默认小车地址；但显式 baseUrl= 空值必须 fail-closed，避免探路 POST 误触发真实上位机。
+  if (typeof value === "string" && value.trim().length === 0) {
+    return "";
+  }
   return robotControlReadOnlyQueryBaseUrl(value);
 }
 
@@ -2681,6 +2684,18 @@ export function createWorkstationApp(): express.Express {
       confirm_operator_safety: req.body?.confirm_operator_safety === true,
       confirm_mapping_active: req.body?.confirm_mapping_active === true,
     };
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      const response = freeRoamAutonomyProxyFailure(
+        sourceBaseUrl,
+        "start",
+        "/api/free-roam/autonomy/start",
+        normalized.reason,
+        requestBody,
+      );
+      res.status(400).json(response);
+      return;
+    }
     if (!requestBody.confirm_operator_safety) {
       const response = freeRoamAutonomyProxyFailure(
         sourceBaseUrl,
@@ -2700,6 +2715,12 @@ export function createWorkstationApp(): express.Express {
   workstationApp.post("/api/robot-control/free-roam/autonomy/stop", async (req, res) => {
     // stop 不需要确认，但仍只请求上车端状态机 stop，不发布浏览器侧速度。
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      const response = freeRoamAutonomyProxyFailure(sourceBaseUrl, "stop", "/api/free-roam/autonomy/stop", normalized.reason, {});
+      res.status(400).json(response);
+      return;
+    }
     const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/free-roam/autonomy/stop", {});
     const response = freeRoamAutonomyProxyResponse(sourceBaseUrl, "stop", "/api/free-roam/autonomy/stop", {}, remote);
     res.status(response.proxy_status === "autonomy_forwarded" ? 200 : 502).json(response);

@@ -1328,9 +1328,9 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("defaults Robot Control fixed POST proxies to the fixed robot API address", async () => {
-    // 普通用户点击自动扫图不应因为 URL 栏缺 baseUrl 而卡住；自由移动和建图 readiness 分开返回。
+    // 普通用户点击自动扫图不应因为 URL 栏缺 baseUrl 而卡住；显式空 baseUrl 仍必须 fail closed。
     expect(robotControlFixedProxyQueryBaseUrl(undefined)).toBe("http://192.168.1.11:8787");
-    expect(robotControlFixedProxyQueryBaseUrl("")).toBe("http://192.168.1.11:8787");
+    expect(robotControlFixedProxyQueryBaseUrl("")).toBe("");
     expect(robotControlFixedProxyQueryBaseUrl("http://127.0.0.1:8787")).toBe("http://127.0.0.1:8787");
     const workstation = await listen(createWorkstationApp());
     const originalFetch = globalThis.fetch;
@@ -1399,6 +1399,15 @@ describe("workstation fail-closed API contracts", () => {
         "camera_first_frame_not_observed",
         "radar_scan_proof_not_fresh",
       ]);
+      const emptyBaseUrlResponse = await postJson(`${workstation.baseUrl}/api/robot-control/free-roam/autonomy/start?baseUrl=`, {
+        confirm_operator_safety: true,
+        confirm_mapping_active: false,
+      });
+      expect(emptyBaseUrlResponse.status).toBe(400);
+      const emptyBaseUrlBody = emptyBaseUrlResponse.body as Record<string, any>;
+      expect(emptyBaseUrlBody.proxy_status).toBe("autonomy_rejected");
+      expect(emptyBaseUrlBody.failure_reason).toBe("baseUrl_not_provided");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     } finally {
       globalThis.fetch = originalFetch;
       await workstation.close();
@@ -7413,6 +7422,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(startBody.hard_dangerous_true_fields).toEqual([]);
       expect(startBody.robot_control_executed).toBe(false);
       expect(startBody.safe_to_control).toBe(false);
+
+      const emptyBaseUrlResponse = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/start?baseUrl=`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: "/api/nav2/start" }),
+      });
+      const emptyBaseUrlBody = (await emptyBaseUrlResponse.json()) as { proxy_status: string; failure_reason: string };
+      expect(emptyBaseUrlResponse.status).toBe(400);
+      expect(emptyBaseUrlBody.proxy_status).toBe("lifecycle_rejected");
+      expect(emptyBaseUrlBody.failure_reason).toBe("baseUrl_not_provided");
 
       const stopResponse = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/stop?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
         method: "POST",
