@@ -243,3 +243,9 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 `backend_no_frame_observed` 时优先显示“不是页面独占，摄像头能打开，后端多种方式也没有取到视频帧”，避免现场把
 共享预览失败误判成某个浏览器独占。同期 SSH 只读复核确认 8088/8787 正常监听、`/dev/video1` 为 DV20 UVC capture、
 无人占用，`v4l2-ctl --stream-mmap` 8 秒输出 0 字节；该证据不等于摄像头已修好，只把失败归因展示为所见即所得。
+
+2026-06-27 09:08 起，普通首屏“当前事实”也消费同一套摄像头归因：当 live summary 是
+`source_first_frame_failed + source_usage_status=not_in_use + capture_read_returned_false` 时，直接显示
+`画面：不是独占，摄像头没人占用但没有输出视频帧`；如果 backend smoke 已证明多后端无帧，则显示
+`画面：不是独占，后端多种方式也没有取到视频帧`。这样 operator 不用展开画面卡片也能知道问题不是后来进入的页面独占；
+摄像头仍然必须读到真实帧后才可按可建图验收。

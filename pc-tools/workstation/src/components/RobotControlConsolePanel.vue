@@ -445,6 +445,23 @@ function cameraSourcePlainFailureHint(): string {
   return "";
 }
 
+function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readback_summary"]["camera"]): string {
+  // 当前事实条要短而准：先回答是不是独占，再回答有没有真实帧，复杂排障留在画面卡片。
+  if (!cameraSourceFirstFrameFailed(camera)) {
+    return cameraVisibleForFreeRoamMapping.value ? "画面：已看到真实帧。" : "画面：还没确认真实帧。";
+  }
+  if (camera.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
+    return "画面：不是独占，后端多种方式也没有取到视频帧。";
+  }
+  if (camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0") {
+    return "画面：不是独占，摄像头没人占用但没有输出视频帧。";
+  }
+  if (camera.source_usage_status === "in_use_by_probe" || camera.source_usage_status === "in_use_by_other_process") {
+    return "画面：相机被占用，先释放占用后再看实时画面。";
+  }
+  return "画面：没有首帧，先看画面卡片里的失败原因。";
+}
+
 function cameraProbePlainFailureHint(): string {
   // 用户主动做过首帧探针后，普通首屏也要消费结果；不能只把失败藏在高级诊断。
   const result = cameraFirstFrameProbeResult.value;
@@ -1490,16 +1507,7 @@ const plainCurrentFactRows = computed(() => {
   }
   const rows: string[] = [];
   const camera = summary.readback_summary.camera;
-  if (cameraSourceFirstFrameFailed(camera)) {
-    const ownerText = camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0"
-      ? "不是独占"
-      : "先看占用";
-    rows.push(`画面：${ownerText}，当前没有首帧。`);
-  } else if (cameraVisibleForFreeRoamMapping.value) {
-    rows.push("画面：已看到真实帧。");
-  } else {
-    rows.push("画面：还没确认真实帧。");
-  }
+  rows.push(plainCurrentCameraFactText(camera));
 
   if (radarSummary.value.state === "雷达无新点" && radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
     rows.push("雷达：已收到原始包，但地图上没有雷达点。");
