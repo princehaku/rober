@@ -2858,7 +2858,7 @@ function latestNavPathOverlay() {
     : currentRoute ? `已读取 ${svgPoints.length} 个路线点` : `已读取最近路线 ${svgPoints.length} 个点`;
   const routeCaption = routeExecuting
     ? routeState === "执行中"
-      ? `图上路线执行中 ${svgPoints.length}/${totalCount} 个点`
+      ? `${routeStopState?.actionText ?? "行程请求已发送，等待结果返回"} ${svgPoints.length}/${totalCount} 个点`
       : `${routeStopState?.actionText ?? "正在执行图上路线"} ${svgPoints.length}/${totalCount} 个点`
     : currentRoute
       ? `路线已显示 ${svgPoints.length}/${totalCount} 个点`
@@ -6490,7 +6490,7 @@ function plainTripPendingRouteText(): string {
 function plainTripStopOverlayState(): { label: string; state: string; ariaPrefix: string; actionText: string } {
   // 行程 stop 是 base stop 兜底，不代表 Nav2 action 已取消；地图和状态只表达 stop 请求链路。
   if (!plainTripStopRequestedDuringExecution.value) {
-    return { label: "行程中", state: "执行中", ariaPrefix: "正在执行图上路线", actionText: "正在执行图上路线" };
+    return { label: "行程请求中", state: "执行中", ariaPrefix: "行程请求已发送，等待结果返回", actionText: "行程请求已发送，等待结果返回" };
   }
   if (manualCommandPending.value) {
     return { label: "行程停止中", state: "停止中", ariaPrefix: "正在发送行程停止请求", actionText: "正在发送行程停止请求" };

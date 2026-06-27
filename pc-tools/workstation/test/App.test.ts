@@ -9774,8 +9774,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
-  it("marks the visible route goal as executing while the plain trip request is pending", async () => {
-    // 点击执行后地图应立即标出“正在去的图上终点”；真正完成仍以后端 execute 返回为准。
+  it("marks the visible route goal as request-pending while the plain trip request is pending", async () => {
+    // 点击执行后地图应立即标出“请求已发、等待结果”；真正完成仍以后端 execute 返回为准。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     summaryFixture.o3_proof_summary.path_generated = true;
     summaryFixture.o3_proof_summary.path_generation_succeeded = true;
@@ -9833,23 +9833,23 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const pendingGoal = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
-    expect(pendingGoal.text()).toBe("行程中");
+    expect(pendingGoal.text()).toBe("行程请求中");
     expect(pendingGoal.attributes("data-state")).toBe("执行中");
-    expect(pendingGoal.attributes("aria-label")).toBe("正在执行图上路线，目标地图坐标 x=0.80, y=0.00");
+    expect(pendingGoal.attributes("aria-label")).toBe("行程请求已发送，等待结果返回，目标地图坐标 x=0.80, y=0.00");
     const pendingRoute = wrapper.find('[data-testid="plain-map-route-path"]');
     expect(pendingRoute.attributes("data-state")).toBe("执行中");
-    expect(pendingRoute.attributes("aria-label")).toBe("正在执行图上路线 3/15 个点");
-    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("图上路线执行中 3/15 个点");
+    expect(pendingRoute.attributes("aria-label")).toBe("行程请求已发送，等待结果返回 3/15 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程请求已发送，等待结果返回 3/15 个点");
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.attributes("data-state")).toBe("执行中");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-trip-run[data-state="执行中"]');
     expect(workstationStyles).toContain('.plain-map-route-path[data-state="执行中"] polyline');
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在执行图上路线（目标 x=0.80, y=0.00；路线 3/15 个点）");
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在执行图上路线，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：行程请求已发送，等待结果返回（目标 x=0.80, y=0.00；路线 3/15 个点）");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-stop"]').text()).toBe("行程停止（随时可点）");
     expect(wrapper.find('[data-testid="plain-trip-stop"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（行程中）");
