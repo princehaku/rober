@@ -474,6 +474,7 @@ h3 {
 }
 
 .plain-radar-panel[data-state="雷达启动中"],
+.plain-radar-panel[data-state="雷达停止中"],
 .plain-radar-panel[data-state="雷达待刷新"],
 .plain-radar-panel[data-state="雷达无新点"],
 .plain-radar-panel[data-state="刷新中"] {
@@ -955,6 +956,7 @@ h3 {
 }
 
 .plain-map-radar-sweep[data-state="雷达启动中"],
+.plain-map-radar-sweep[data-state="雷达停止中"],
 .plain-map-radar-sweep[data-state="雷达待刷新"],
 .plain-map-radar-sweep[data-state="雷达无新点"],
 .plain-map-radar-sweep[data-state="刷新中"] {
@@ -1117,6 +1119,7 @@ h3 {
 }
 
 .plain-map-radar-marker[data-state="雷达启动中"],
+.plain-map-radar-marker[data-state="雷达停止中"],
 .plain-map-radar-marker[data-state="雷达待刷新"],
 .plain-map-radar-marker[data-state="雷达无新点"],
 .plain-map-radar-marker[data-state="刷新中"] {

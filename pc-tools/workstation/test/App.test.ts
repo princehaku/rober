@@ -15887,6 +15887,54 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start") && options?.method === "POST")).toBe(true);
   });
 
+  it("shows radar stop pending on the map while the fixed stop proxy is in flight", async () => {
+    // 停止雷达是高级传感器动作；pending 窗口也要回写普通地图，不能误说成刷新中。
+    const stopFixture = cloneFixture(fixtures["/api/robot-control/radar/stop"]) as Record<string, unknown>;
+    let delayNextRadarStop = false;
+    let resolveRadarStop!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedRadarStop = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveRadarStop = resolve;
+    });
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/radar/stop": stopFixture,
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/radar/stop") && delayNextRadarStop) {
+        delayNextRadarStop = false;
+        return delayedRadarStop;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find("details").element.setAttribute("open", "");
+    await wrapper.vm.$nextTick();
+
+    delayNextRadarStop = true;
+    const stopClick = wrapper.findAll("button").find((button) => button.text() === "停止雷达（高级）")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达停止中");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("停止请求已发送，等待上位机返回；返回前未证明雷达已停止。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达停止请求中，位置未读到");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达停止中");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达停止请求已发送，地图位置未读到，返回前未证明已停止");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达停止请求已发送，返回前不把旧点位当作已停止后的地图点。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：停止请求已发送，等待上位机返回；返回前未证明雷达已停止");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+
+    resolveRadarStop({ ok: true, json: async () => stopFixture });
+    await stopClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/stop") && options?.method === "POST")).toBe(true);
+  });
+
   it("shows plain radar start only when the readback says lidar is stopped", async () => {
     // 真实现场 Nav2 前置常卡在 LiDAR lifecycle 未运行；普通首屏允许启动传感器，但仍不触发底盘或送达动作。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

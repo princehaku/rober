@@ -960,7 +960,7 @@ const effectiveLidarReadback = computed<LidarReadback | null>(() => {
   };
 });
 
-type PlainRadarState = "雷达未运行" | "雷达启动中" | "雷达待刷新" | "雷达无新点" | "刷新中" | "雷达已运行" | "刷新失败" | "雷达启动失败";
+type PlainRadarState = "雷达未运行" | "雷达启动中" | "雷达停止中" | "雷达待刷新" | "雷达无新点" | "刷新中" | "雷达已运行" | "刷新失败" | "雷达启动失败";
 
 function radarStartFailed(result: RobotControlRadarLifecycleResponse | null): boolean {
   // start 失败要贴回地图，避免按钮区说失败、地图却仍只显示泛化“未运行”。
@@ -1178,7 +1178,7 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
     return { state: "雷达启动中", hint: "正在启动雷达，等待上位机返回。" };
   }
   if (radarLifecyclePendingAction.value === "stop") {
-    return { state: "刷新中", hint: "正在停止雷达，等待上位机返回。" };
+    return { state: "雷达停止中", hint: "停止请求已发送，等待上位机返回；返回前未证明雷达已停止。" };
   }
   if (radarRefreshPending.value) {
     if (radarStartSucceeded(radarLifecycleResult.value)) {
@@ -2205,6 +2205,9 @@ function plainCurrentRadarFactText(): string {
   if (state === "刷新中") {
     return `雷达：正在刷新${pointText}${obstacleText}${staleRuntimeText}${mapAttachmentText}。`;
   }
+  if (state === "雷达停止中") {
+    return `雷达：停止请求已发送，等待上位机返回；返回前未证明雷达已停止${pointText}${obstacleText}${staleRuntimeText}${mapAttachmentText}。`;
+  }
   if (state === "雷达已运行") {
     return pointCount > 0
       ? `雷达：已运行，雷达点 ${pointCount} 个${obstacleText}${mapAttachmentText}。`
@@ -2597,7 +2600,7 @@ function radarScanPointToMapPercent(point: RobotApiScanPreviewPoint, pose: { x: 
 
 function radarStateUsesPendingPoints(radarState: string): boolean {
   // 雷达 lifecycle 正在或已启动但 proof 未 fresh 时，地图点只能当待刷新材料，不能叫实时点。
-  return radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "刷新中" || radarState === "雷达启动中";
+  return radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "刷新中" || radarState === "雷达启动中" || radarState === "雷达停止中";
 }
 
 function radarPreviewReadbackPointCount(): number {
@@ -3070,7 +3073,7 @@ function plainMapCoordinateTruthLabel(
       : "机器人位置未读到";
   if (radarLocalScanOverlay.dots.length > 0) {
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
-    const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
+    const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中";
     const scanText = liveRadar
       ? `雷达只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点`
       : `最近雷达记录只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点，当前${radarState}`;
@@ -3087,7 +3090,7 @@ function plainMapCoordinateTruthLabel(
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
     return `坐标口径：${poseText}，${notCurrentSourceText}；${routeText}。`;
   }
-  if (obstacleDistanceLabel && (radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中")) {
+  if (obstacleDistanceLabel && (radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中")) {
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
     return `坐标口径：${poseText}，雷达只显示${obstacleDistanceLabel}，不贴到地图；${routeText}。`;
   }
@@ -3137,6 +3140,9 @@ function plainRadarFreshnessLabel(
   }
   if (radarState === "雷达启动中") {
     return "雷达点口径：雷达启动命令发送中，返回并刷新后才显示新点位。";
+  }
+  if (radarState === "雷达停止中") {
+    return "雷达点口径：雷达停止请求已发送，返回前不把旧点位当作已停止后的地图点。";
   }
   if (radarState === "雷达启动失败") {
     return "雷达点口径：雷达启动失败，未显示新点位。";
@@ -3586,11 +3592,11 @@ const plainMapVisualSummary = computed(() => {
   const radarStartFailureText = radarStartFailureLabel(radarLifecycleResult.value);
   const radarRefreshFailureText = radarRefreshFailureLabel(radarRefreshResult.value);
   const displayedRadarState = radarStartFailureText ? "雷达启动失败" : radarRefreshFailureText ? "雷达刷新失败" : radarState;
-  const radarNeedsMapPose = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "刷新中";
+  const radarNeedsMapPose = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中";
   const radarOverlayMode = poseObserved
     ? radarState === "雷达已运行"
       ? "known-pose-running"
-      : radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "刷新中"
+      : radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中"
         ? "known-pose-pending"
         : "known-pose-stopped"
     : radarNeedsMapPose
@@ -3616,7 +3622,7 @@ const plainMapVisualSummary = computed(() => {
     : radarState === "雷达无新点"
       ? "当前暂无地图雷达点"
       : "";
-  const radarCanShowObstacleDistance = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "刷新中";
+  const radarCanShowObstacleDistance = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达停止中" || radarState === "刷新中";
   const radarStructuredRuntimeDistanceVisible = robotSummary.value?.readback_summary?.lidar?.runtime_scan_status === "fresh"
     && finitePlainNumber(robotSummary.value?.readback_summary?.lidar?.runtime_lidar_min_distance_m) !== null
     && radarPreviewReadbackPointCount() <= 0
@@ -3641,6 +3647,8 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达已启动，待刷新"
       : radarScalarObstacleOnly
       ? `雷达距离：${radarObstacleDistanceLabel}（非地图点）`
+      : radarState === "雷达停止中"
+      ? "雷达停止请求中"
       : radarCountOnlyMarkerLabel
       ? `${radarState}，${radarCountOnlyMarkerWithObstacleLabel}`
       : radarState === "雷达已运行"
@@ -3660,10 +3668,12 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达已启动，位置未读到"
       : radarState === "雷达启动中"
       ? "雷达启动中，位置未读到"
+      : radarState === "雷达停止中"
+      ? "雷达停止请求中，位置未读到"
       : radarNeedsMapPose
       ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerWithObstacleLabel ? `${radarState}，${radarCountOnlyMarkerWithObstacleLabel}` : showRadarObstacleDistance ? (radarStructuredRuntimeDistanceVisible ? `雷达距离：${radarObstacleDistanceLabel}（非地图点）` : `${radarState}，${radarObstacleDistanceLabel}`) : radarNoVisiblePointLabel ? `${radarState}，${radarNoVisiblePointLabel}` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarStoppedWithNotCurrentPoints ? `${radarState}，旧点未贴图` : radarStoppedWithZeroPoints ? `${radarState}，地图0点` : radarState;
-  const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "刷新中";
+  const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
     ? radarStartAwaitingRefresh
       ? "雷达已启动扫描范围，跟随机器人位置，等待刷新确认"
@@ -3678,6 +3688,8 @@ const plainMapVisualSummary = computed(() => {
       ? `${radarRefreshFailureText}，已叠在机器人位置`
       : radarStartAwaitingRefresh
       ? "雷达已启动，已叠在机器人位置，等待刷新确认"
+      : radarState === "雷达停止中"
+      ? "雷达停止请求已发送，已叠在机器人位置，返回前未证明已停止"
       : radarScalarObstacleOnly
       ? `${radarState}，已叠在机器人位置，只显示${radarObstacleDistanceLabel}，这是距离读数，不是已贴到地图的雷达点`
       : radarCountOnlyMarkerLabel
@@ -3697,6 +3709,8 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达已启动，地图位置未读到，等待刷新确认"
       : radarState === "雷达启动中"
       ? "雷达启动中，地图位置未读到，等待刷新确认"
+      : radarState === "雷达停止中"
+      ? "雷达停止请求已发送，地图位置未读到，返回前未证明已停止"
       : showRadarObstacleDistance
         ? radarStructuredRuntimeDistanceVisible
           ? `${radarState}，地图位置未读到，只显示${radarObstacleDistanceLabel}，这是距离读数，不是已贴到地图的雷达点`
