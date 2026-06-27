@@ -4223,7 +4223,7 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
-      expect(summary.readback_summary.nav2.status).toBe("blocked");
+      expect(summary.readback_summary.nav2.status).toBe("goal_succeeded_wheel_feedback_not_proven");
       expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("false");
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("false");

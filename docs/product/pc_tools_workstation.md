@@ -2816,6 +2816,12 @@ delivery、free-roam start/stop、stop 或 `/cmd_vel`。
 这只修正“看得到/解释得准”的状态合同，不调用 manual、keyboard pulse、Nav2 execute、
 delivery、free-roam start/stop、stop 或 `/cmd_vel`；真实底盘是否产生非零 `T=1001 L/R` 仍需下一轮低速运动 HIL 验证。
 
+2026-06-27 09:39 起，若最近 Nav2 action 已 `goal_succeeded/result_status=succeeded`，但同窗口
+`base_feedback_summary.wheel_feedback_lr_nonzero_proven=false`，PC summary 顶层
+`readback_summary.nav2.status` 会显示 `goal_succeeded_wheel_feedback_not_proven`，不再退回泛化的 `blocked` 或
+`not_proven`。这让普通首屏、调试面板和 live summary 都能区分“Nav2 路线动作成功”和“完整路线执行还差 wheel raw L/R 非零闭环”。
+该状态只消费最近执行 artifact，不重新执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-26 23:00 起，普通首屏雷达卡和地图雷达标记会把 `readback_summary.lidar.scan_preview_point_count`
 作为 `o3_proof_summary.scan_preview_points` 缺失时的点数兜底。这样 live summary 只有压缩点数、还没有点数组时，雷达卡仍会显示
 `已有雷达点 N 个`，但地图不会凭点数伪造坐标，仍显示 `雷达点位未读取` 或局部/定位缺失状态。该修正让“雷达开始后有没有读到材料”

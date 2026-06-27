@@ -3166,8 +3166,13 @@ function nav2SummaryFromReadbacks(
   const latestPair = asRecord(baseFeedbackSummary?.latest_pair);
   const goalExecutionStatus = summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded");
   const goalExecutionProven = nav2GoalExecutionProvenText(goalResultPayload);
+  const goalExecutionResultStatus = summaryValueText(goalResultPayload, ["result_status"]);
+  const wheelFeedbackProven = summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]);
+  const goalSucceeded = goalExecutionStatus === "goal_succeeded" || goalExecutionResultStatus === "succeeded";
   const summaryStatus = goalExecutionProven === "true" && goalExecutionStatus !== "not_loaded"
     ? goalExecutionStatus
+    : goalSucceeded && wheelFeedbackProven === "false"
+      ? "goal_succeeded_wheel_feedback_not_proven"
     : nav2Proof?.status ?? "not_loaded";
   return {
     status: summaryStatus,
@@ -3181,7 +3186,7 @@ function nav2SummaryFromReadbacks(
     goal_execution_status: goalExecutionStatus,
     goal_execution_proven: goalExecutionProven,
     goal_execution_hil_pass: summaryValueText(goalResultPayload, ["hil_pass"]),
-    goal_execution_result_status: summaryValueText(goalResultPayload, ["result_status"]),
+    goal_execution_result_status: goalExecutionResultStatus,
     goal_execution_evidence_ref: summaryValueText(goalResultPayload, ["evidence_ref"]),
     goal_execution_robot_control_executed: summaryValueText(goalResultPayload, ["robot_control_executed"]),
     goal_execution_feedback_sample_count: summaryValueText(goalResultPayload, ["feedback_sample_count", "nav2_feedback_sample_count"]),
