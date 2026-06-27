@@ -2517,7 +2517,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     cmd_vel_topic: "/cmd_vel";
     nav2_goal: "Nav2 NavigateToPose locked";
     nav2_goal_ready: boolean;
-    nav2_goal_label: "路线读数已准备，先看地图画面" | "图上路线未就绪";
+    nav2_goal_label: "路线读数已准备，等待地图画面确认" | "图上路线未就绪";
     nav2_goal_blockers: string[];
     nav2_goal_wheel_feedback_status: string;
     nav2_goal_next_action: string;

@@ -3359,3 +3359,8 @@ manual、keyboard、free-roam start、Nav2、delivery、stop 或 `/cmd_vel`，�
 `source_diagnosis_plain_hint` 读取具体归因。这样 summary 已证明 `uvc_no_frame_not_exclusive` 时，画面卡片仍显示
 “不是页面独占、UVC 设备没有输出视频帧”，而不是退回泛化的“相机源没有输出首帧”。该改动只修正失败归因展示，
 不打开新的相机独占采集、不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 16:56 起，Robot Control summary 的 `safe_command_boundary.nav2_goal_label`
+在路线读数 ready 时改为 `路线读数已准备，等待地图画面确认`。地图画面是否已显示、路线是否已贴到地图、机器人 map pose
+是否可见仍由 PC 前端 WYSIWYG gate 判断；API 短文案不再写成“先看地图画面”，避免在 PC 已自动刷新地图或正在刷新地图时给普通用户一个多余手动步骤。
+该改动只修正 Nav2 ready 的用户文案，不触发 `nav2/goal/execute`、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

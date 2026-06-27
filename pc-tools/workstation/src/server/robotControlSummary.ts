@@ -3744,7 +3744,7 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   const ready = blockers.length === 0;
   return {
     nav2_goal_ready: ready,
-    nav2_goal_label: ready ? "路线读数已准备，先看地图画面" : "图上路线未就绪",
+    nav2_goal_label: ready ? "路线读数已准备，等待地图画面确认" : "图上路线未就绪",
     nav2_goal_blockers: blockers,
     nav2_goal_wheel_feedback_status: "not_loaded",
     nav2_goal_next_action: ready ? "勾选行程前安全确认后执行图上路线" : "先生成图上路线并读到小车地图位置",
