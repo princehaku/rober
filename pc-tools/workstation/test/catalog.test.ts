@@ -6467,6 +6467,86 @@ describe("workstation fail-closed API contracts", () => {
     }
   }, 10_000);
 
+  it("Robot Control summary infers UVC sibling node roles from camera devices when health omits them", async () => {
+    // live 7001 形态：health 只知道选中了 /dev/video1，devices 只读枚举能补出同一 UVC 的 metadata 兄弟节点。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/camera/health": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.camera_health",
+          status: "source_first_frame_failed",
+          video_source: "/dev/video1",
+          video_source_mode: "auto",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          current_selection: {
+            selected_path: "/dev/video1",
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_is_uvc_or_usb: true,
+            selected_formats_summary: "MJPG@1280x720@30；YUYV@640x480@22",
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/camera/devices": {
+        payload: {
+          schema: "trashbot.local_webrtc_camera_devices.v1",
+          status: "loaded",
+          source_candidates: {
+            candidates: [
+              {
+                path: "/dev/video0",
+                sysfs_name: "cedrus",
+                v4l2_name: "cedrus (platform:cedrus)",
+                is_uvc_or_usb: false,
+                is_video_capture: true,
+                is_metadata: false,
+                is_decoder: true,
+                formats_summary: "not_loaded",
+              },
+              {
+                path: "/dev/video1",
+                sysfs_name: "USB Composite Device: DV20 USB",
+                v4l2_name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)",
+                is_uvc_or_usb: true,
+                is_video_capture: true,
+                is_metadata: false,
+                is_decoder: false,
+                formats_summary: "MJPG@1280x720@30；YUYV@640x480@22",
+              },
+              {
+                path: "/dev/video2",
+                sysfs_name: "USB Composite Device: DV20 USB",
+                v4l2_name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)",
+                is_uvc_or_usb: true,
+                is_video_capture: false,
+                is_metadata: true,
+                is_decoder: false,
+                formats_summary: "not_loaded",
+              },
+            ],
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.camera.selected_path).toBe("/dev/video1");
+      expect(summary.readback_summary.camera.selected_name).toBe("USB Composite Device: DV20 USB");
+      expect(summary.readback_summary.camera.selected_role).toBe("video_capture");
+      expect(summary.readback_summary.camera.selected_sibling_video_nodes_summary).toBe("/dev/video2=metadata");
+      expect(summary.readback_summary.camera.selected_sibling_video_node_count).toBe("1");
+      expect(summary.readback_summary.camera.source_diagnosis_status).toBe("not_loaded");
+    } finally {
+      await robotApi.close();
+    }
+  }, 10_000);
+
   it("Robot Control summary promotes successful camera first-frame probe overlay over stale source failure", async () => {
     // 用户点过只读首帧检查后，summary 必须消费 PC Node 内存 overlay；刷新页面不能继续显示旧无帧结论。
     const robotApi = await listenRobotApiReadbackByPath({

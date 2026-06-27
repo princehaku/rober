@@ -1001,40 +1001,120 @@ function cameraDisplayDeviceName(value: unknown): string {
     .trim();
 }
 
-function cameraSelectedCandidateSummary(healthPayload: JsonRecord | null): JsonRecord {
-  // 设备名和格式摘要来自上车端只读 health，PC 只做压缩展示，不重新枚举或打开摄像头。
+function cameraDeviceCandidateRole(candidate: JsonRecord | null): string {
+  // devices 端点只有布尔能力字段时，PC 也要给普通用户稳定的“这是画面节点还是元数据节点”。
+  const explicitRole = asString(candidate?.selected_role ?? candidate?.role, "");
+  if (explicitRole) {
+    return explicitRole;
+  }
+  if (candidate?.is_metadata === true) {
+    return "metadata";
+  }
+  if (candidate?.is_decoder === true) {
+    return "decoder";
+  }
+  if (candidate?.is_video_capture === true) {
+    return "video_capture";
+  }
+  return "";
+}
+
+function cameraDeviceCandidateName(candidate: JsonRecord | null): string {
+  // v4l2_name 最容易把同一 USB 复合设备的 capture/metadata 节点归到一起。
+  return cameraDisplayDeviceName(candidate?.v4l2_name ?? candidate?.sysfs_name ?? candidate?.name);
+}
+
+function cameraSelectedCandidateFromDevices(devicesPayload: JsonRecord | null, selectedPath: string): JsonRecord {
+  // live 上车端有时 health 缺少 sibling 字段，但 devices 只读枚举里能看出同一 UVC 的兄弟节点。
+  const sourceCandidates = asRecord(findFirstKey(devicesPayload, ["source_candidates", "source_candidates_summary"]));
+  const candidates = Array.isArray(sourceCandidates?.candidates) ? sourceCandidates.candidates : [];
+  const records = candidates
+    .map((candidate) => asRecord(candidate))
+    .filter((candidate): candidate is JsonRecord => candidate !== null);
+  const selected = records.find((candidate) => asString(candidate.path ?? candidate.realpath, "") === selectedPath) ?? null;
+  if (!selected) {
+    return {};
+  }
+  const selectedName = cameraDeviceCandidateName(selected);
+  const siblings = records
+    .filter((candidate) => asString(candidate.path ?? candidate.realpath, "") !== selectedPath)
+    .filter((candidate) => {
+      const candidateName = cameraDeviceCandidateName(candidate);
+      return selectedName && candidateName === selectedName;
+    })
+    .map((candidate) => {
+      const path = asString(candidate.path ?? candidate.realpath, "");
+      const role = cameraDeviceCandidateRole(candidate) || "unknown";
+      return path ? `${path}=${role}` : "";
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+  return {
+    selected_name: selectedName,
+    selected_formats_summary: asString(selected.formats_summary),
+    selected_is_uvc_or_usb: selected.is_uvc_or_usb,
+    selected_role: cameraDeviceCandidateRole(selected),
+    selected_sibling_video_nodes_summary: siblings.length ? siblings.join("；") : "none",
+    selected_sibling_video_node_count: siblings.length,
+  };
+}
+
+function mergeCameraCandidateSummary(primary: JsonRecord, fallback: JsonRecord): JsonRecord {
+  // health 是权威选择；devices 只补 health 缺失的 role/sibling/格式，不反向覆盖已给出的事实。
+  const primarySiblingSummary = asString(primary.selected_sibling_video_nodes_summary, "");
+  const primarySiblingCount = primary.selected_sibling_video_node_count;
+  const primarySiblingMissing = !primarySiblingSummary
+    || primarySiblingSummary === "none"
+    || primarySiblingCount === 0;
+  return {
+    selected_name: asString(primary.selected_name, "") || asString(fallback.selected_name, ""),
+    selected_formats_summary: asString(primary.selected_formats_summary, "") || asString(fallback.selected_formats_summary, ""),
+    selected_is_uvc_or_usb: primary.selected_is_uvc_or_usb ?? fallback.selected_is_uvc_or_usb,
+    selected_role: asString(primary.selected_role, "") || asString(fallback.selected_role, ""),
+    selected_sibling_video_nodes_summary: primarySiblingMissing
+      ? asString(fallback.selected_sibling_video_nodes_summary, "") || primarySiblingSummary
+      : primarySiblingSummary,
+    selected_sibling_video_node_count: primarySiblingMissing
+      ? fallback.selected_sibling_video_node_count ?? primarySiblingCount
+      : primarySiblingCount,
+  };
+}
+
+function cameraSelectedCandidateSummary(healthPayload: JsonRecord | null, devicesPayload: JsonRecord | null): JsonRecord {
+  // 设备名和格式摘要来自上车端只读 health/devices，PC 只做压缩展示，不重新枚举或打开摄像头。
   const sourceSummary = asRecord(findFirstKey(healthPayload, ["source_summary", "source_candidates_summary"]));
   const currentSelection = asRecord(findFirstKey(healthPayload, ["current_selection"]));
   const summarySelection = asRecord(sourceSummary?.current_selection);
-  const selectedPath = asString(currentSelection?.selected_path ?? summarySelection?.selected_path);
-  const selectedName = asString(currentSelection?.selected_name ?? summarySelection?.selected_name);
-  const selectedFormats = asString(currentSelection?.selected_formats_summary ?? summarySelection?.selected_formats_summary);
+  const selectedPath = asString(currentSelection?.selected_path ?? summarySelection?.selected_path ?? healthPayload?.video_source, "");
+  const selectedName = asString(currentSelection?.selected_name ?? summarySelection?.selected_name, "");
+  const selectedFormats = asString(currentSelection?.selected_formats_summary ?? summarySelection?.selected_formats_summary, "");
   const selectedIsUvc = currentSelection?.selected_is_uvc_or_usb ?? summarySelection?.selected_is_uvc_or_usb;
-  const selectedRole = asString(currentSelection?.selected_role ?? summarySelection?.selected_role);
-  const siblingNodesSummary = asString(currentSelection?.selected_sibling_video_nodes_summary ?? summarySelection?.selected_sibling_video_nodes_summary);
+  const selectedRole = asString(currentSelection?.selected_role ?? summarySelection?.selected_role, "");
+  const siblingNodesSummary = asString(currentSelection?.selected_sibling_video_nodes_summary ?? summarySelection?.selected_sibling_video_nodes_summary, "");
   const siblingNodesCount = currentSelection?.selected_sibling_video_node_count ?? summarySelection?.selected_sibling_video_node_count;
+  const devicesFallback = cameraSelectedCandidateFromDevices(devicesPayload, selectedPath);
   if (selectedName || selectedFormats || selectedIsUvc !== undefined || selectedRole || siblingNodesSummary || siblingNodesCount !== undefined) {
-    return {
+    return mergeCameraCandidateSummary({
       selected_name: selectedName,
       selected_formats_summary: selectedFormats,
       selected_is_uvc_or_usb: selectedIsUvc,
       selected_role: selectedRole,
       selected_sibling_video_nodes_summary: siblingNodesSummary,
       selected_sibling_video_node_count: siblingNodesCount,
-    };
+    }, devicesFallback);
   }
   const candidates = Array.isArray(sourceSummary?.candidates) ? sourceSummary.candidates : [];
   const selectedCandidate = candidates
     .map((candidate) => asRecord(candidate))
     .find((candidate) => asString(candidate?.path) === selectedPath);
-  return {
-    selected_name: asString(selectedCandidate?.name),
-    selected_formats_summary: asString(selectedCandidate?.formats_summary),
+  return mergeCameraCandidateSummary({
+    selected_name: asString(selectedCandidate?.name, ""),
+    selected_formats_summary: asString(selectedCandidate?.formats_summary, ""),
     selected_is_uvc_or_usb: selectedCandidate?.is_uvc_or_usb,
-    selected_role: asString(selectedCandidate?.selected_role),
+    selected_role: asString(selectedCandidate?.selected_role, ""),
     selected_sibling_video_nodes_summary: "none",
     selected_sibling_video_node_count: 0,
-  };
+  }, devicesFallback);
 }
 
 function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord | null {
@@ -1225,7 +1305,7 @@ function cameraSummaryFromReadbacks(
   const sourceSummarySelection = asRecord(sourceSummary?.current_selection);
   const mediaDiagnostics = asRecord(findFirstKey(healthPayload, ["media_diagnostics"]));
   const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error);
-  const selectedCandidate = cameraSelectedCandidateSummary(healthPayload);
+  const selectedCandidate = cameraSelectedCandidateSummary(healthPayload, devicesReadback?.payload ?? null);
   const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage);
   const sourceDiagnosis = asRecord(findFirstKey(healthPayload, ["source_diagnosis"]) ?? mediaDiagnostics?.source_diagnosis);
   const sharedPreviewContract = asString(findFirstKey(healthPayload, ["shared_preview_contract"]) ?? mediaDiagnostics?.shared_preview_contract, "single_shared_capture_for_multiple_clients");
