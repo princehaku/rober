@@ -3261,6 +3261,9 @@ summary，不调用 free-roam start/stop、manual、keyboard、Nav2、delivery�
 可通行格数量；只有 artifact/metadata 时显示“已读到地图材料，但还没显示真实地图图像；先刷新地图画面”。
 这让“地图所见即所得”不再依赖用户滚到地图卡片才知道当前显示的是图像还是材料读回；该行只读 summary 和
 map preview，不触发地图刷新、建图、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+2026-06-27 15:25 起，普通首屏 `连接/刷新` 不再只刷新 summary；它会在 summary 后继续只读刷新
+`/api/robot-control/map/preview`，并顺带读取 `/api/robot-control/radar/status`，让地图图像和雷达 marker
+跟最新连接状态一起更新。该入口仍只读，不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 
 2026-06-27 11:15 起，普通首屏地图的雷达 marker 进一步区分“点数组已贴图”和“只有最近障碍距离标量”：
 当已有机器人 map pose、雷达状态为运行/待确认，但 `scan_preview_points=[]` 且只从自动扫图 gate 读到

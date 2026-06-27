@@ -8236,6 +8236,12 @@ async function refreshConsole(): Promise<void> {
   void maybeAutoStartSharedCameraPreview();
 }
 
+async function refreshPlainConsole(): Promise<void> {
+  // 普通首屏的“连接/刷新”必须刷新用户正在看的真实画面；只读地图和雷达状态，不触发运动。
+  await refreshConsole();
+  await refreshMapPreview({ radarStatusRefresh: true });
+}
+
 async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean; radarStatusRefresh?: boolean } = {}): Promise<void> {
   // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
   if (!robotApiBaseUrl.value.trim() || mapWysiwygRefreshPending.value) {
@@ -10248,7 +10254,7 @@ onBeforeUnmount(() => {
           <span class="muted" data-testid="robot-api-default-summary">{{ robotApiBaseUrlUsesDefault ? "已使用默认地址" : "已改为高级地址" }}</span>
         </div>
         <button class="secondary compact-stop" type="button" :disabled="loading || robotApiBaseUrlUsesDefault" data-testid="robot-api-default" @click="resetRobotApiBaseUrlToDefault">恢复默认</button>
-        <button class="secondary" type="button" :disabled="loading" data-testid="robot-api-refresh" @click="refreshConsole">连接/刷新</button>
+        <button class="secondary" type="button" :disabled="loading" data-testid="robot-api-refresh" @click="refreshPlainConsole">连接/刷新</button>
         <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
       </div>
 
