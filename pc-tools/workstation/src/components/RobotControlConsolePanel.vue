@@ -2178,7 +2178,12 @@ const plainCurrentFactRows = computed(() => {
   rows.push(plainCurrentMappingFactText(summary));
 
   const nav2 = summary.readback_summary.nav2;
-  if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
+  if (navGoalExecutionPending.value) {
+    const targetText = plainTripPendingRouteText();
+    const stopState = plainTripStopOverlayState();
+    const suffix = stopState.state === "执行中" ? "人在旁边准备停止" : "人在旁边接管，等待行程结果返回";
+    rows.push(targetText ? `行程：${stopState.actionText}，${targetText}；${suffix}。` : `行程：${stopState.actionText}；${suffix}。`);
+  } else if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
     const nav2Values = summaryNav2ExecutionValues();
     if (evidenceIsStale(nav2Values)) {
       const feedbackText = nav2FeedbackSampleCount(nav2Values) > 0 ? `，反馈 ${nav2FeedbackSampleCount(nav2Values)} 次` : "";
