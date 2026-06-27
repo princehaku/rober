@@ -3813,7 +3813,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("最近障碍 0.30m，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达未返回点数组，只显示最近障碍 0.30m，等点位或定位后再贴地图。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；目标线未显示。");
-    expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：尚未准备图上行程；小车地图坐标未读到；行程服务未运行。");
+    expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：尚未准备图上行程；小车地图坐标未读到；行程服务未运行；控制服务未读取。");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
@@ -4065,6 +4065,7 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.status = "not_proven";
     summaryFixture.readback_summary.nav2.nav2_status = "not_proven";
     summaryFixture.readback_summary.nav2.planner_server_active = "true";
+    summaryFixture.readback_summary.nav2.controller_server_active = "true";
     summaryFixture.readback_summary.nav2.path_generated = "true";
     summaryFixture.readback_summary.nav2.path_generation_succeeded = "true";
     summaryFixture.readback_summary.nav2.path_point_count = "36";
@@ -4078,7 +4079,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/36 个点");
-    expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：图上行程已画在地图上，36 个点（map）；定位有信号，但还没有小车地图坐标；行程服务已运行。");
+    expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：图上行程已画在地图上，36 个点（map）；定位有信号，但还没有小车地图坐标；行程服务已运行；控制服务已运行。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：先勾安全确认，小车不会出发。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人AMCL/TF 已观察，缺坐标，雷达只显示最近障碍 0.30m，不贴到地图；路线 3/36 个点仍按地图坐标显示。");
   });
@@ -7515,6 +7516,7 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "0";
     summaryFixture.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
     summaryFixture.readback_summary.nav2.goal_execution_uses_base_uart = "true";
+    summaryFixture.readback_summary.nav2.controller_server_active = "false";
     summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
     summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
     summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
@@ -10552,6 +10554,12 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.goal_execution_generated_at_ms = "1782495677637";
     summaryFixture.readback_summary.nav2.goal_execution_response_generated_at_ms = "1782495706743";
     summaryFixture.safe_command_boundary.nav2_goal_wheel_feedback_status = "goal_succeeded_but_wheel_lr_zero";
+    summaryFixture.safe_command_boundary.nav2_goal_blockers = [
+      "path_generation_not_observed",
+      "path_point_count_not_positive",
+      "robot_map_pose_not_observed",
+      "controller_server_inactive",
+    ];
     summaryFixture.safe_command_boundary.nav2_goal_next_action = "上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 SPEED 重跑图上路线";
     summaryFixture.safe_command_boundary.nav2_goal_execution_mode_label = "上次 ros，下次 speed";
     const mockedFetch = stubWorkstationFetch({
@@ -10588,7 +10596,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发 ROS/T=13 非零底盘命令 19 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 ROS/T=13 非零底盘命令 19 条，读到底盘反馈 42 次，L/R=0/0");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 ROS 结果，等待 SPEED 复验；上次 ROS/T=13 执行已发到底盘，但 wheel raw L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("下一步勾选行程前安全确认后用 SPEED 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("Nav2 controller 未 active，重跑前先恢复；下一步勾选行程前安全确认后用 SPEED 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 ROS 结果，等待 SPEED 复验");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

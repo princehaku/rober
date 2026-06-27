@@ -383,6 +383,12 @@ PC 下一步文案会把“旧执行主因不是雷达或相机”和“当前 c
 `nav2_goal_ready=false` 且 label 显示 `Nav2 controller 未就绪`；当路线本身还未 ready 时，label 仍保持 `图上路线未就绪`，
 但 blocker 列表会同时列出 controller 缺口。这样 PC 和自动化脚本不再需要从中文 `next_action` 里反推 controller 状态。
 
+2026-06-27 22:05 起，前端普通地图和 `当前事实` 也消费同一个 controller blocker：
+地图 `行程读数` 不再只显示规划服务状态，而是同时显示控制服务已运行、未运行或未读取；
+旧 Nav2 action succeeded 但 wheel raw L/R 仍为 `0/0` 时，自动驾驶原因会把“不是相机或雷达阻塞”
+和“Nav2 controller 未 active，重跑前先恢复”并列展示。该规则只影响 PC WYSIWYG 文案，
+不自动恢复 controller、不重跑 Nav2、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-27 20:19 起，PC 普通首屏在 `source_first_frame_failed` 但诊断明确不是外部独占时，
 仍优先自动接入共享 MJPEG 只读预览，面板状态显示“连接中 / 正在接入共享实时画面”。
 无帧根因不会丢失：当前事实和共享画面状态继续显示“不是页面独占、UVC 无帧、必要时检查 USB/供电或换 known-good UVC”。

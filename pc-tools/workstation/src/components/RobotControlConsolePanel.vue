@@ -1955,7 +1955,9 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
   if (blockers.length === 0) {
     return "";
   }
-  const nextAction = routeReady
+  const nextAction = nav2.controller_server_active === "false"
+    ? "先恢复控制服务，再准备图上行程并按地图画面确认"
+    : routeReady
     ? "先重新定位或刷新地图画面"
     : "先准备图上行程，再按地图画面确认";
   return `自动驾驶当前：未准备好，${blockers.join("，")}；${nextAction}。相机/雷达不挡底盘试动或键盘手控。`;
@@ -2573,7 +2575,7 @@ function plainNav2CountText(value: string | undefined): number {
 }
 
 function plainMapRouteReadbackLabel(routePath: ReturnType<typeof latestNavPathOverlay>): string {
-  // 这行给普通用户解释“自动驾驶为什么还不能动”：行程、定位、规划服务三个读数缺一不可。
+  // 这行给普通用户解释“自动驾驶为什么还不能动”：行程、定位、规划和控制服务四个读数缺一不可。
   const summary = robotSummary.value?.readback_summary;
   if (!summary) {
     return "";
@@ -2590,6 +2592,11 @@ function plainMapRouteReadbackLabel(routePath: ReturnType<typeof latestNavPathOv
     : nav2.planner_server_active === "false"
       ? "行程服务未运行"
       : "行程服务未读取";
+  const controllerText = nav2.controller_server_active === "true"
+    ? "控制服务已运行"
+    : nav2.controller_server_active === "false"
+      ? "控制服务未运行"
+      : "控制服务未读取";
   const poseText = localization.robot_pose_status === "map_pose_observed"
     ? `小车坐标已读到 x=${localization.robot_pose_x}, y=${localization.robot_pose_y}`
     : localization.robot_pose_status === "pose_signal_observed_without_map_coordinates"
@@ -2599,14 +2606,14 @@ function plainMapRouteReadbackLabel(routePath: ReturnType<typeof latestNavPathOv
       : "小车地图坐标未读到";
   if (pathGenerated && routePointCount > 0) {
     const visibilityText = routePath ? "图上行程已画在地图上" : "图上行程已准备但还没画到地图上";
-    return `行程读数：${visibilityText}，${routePointCount} 个点${routeFrame}；${poseText}；${plannerText}。`;
+    return `行程读数：${visibilityText}，${routePointCount} 个点${routeFrame}；${poseText}；${plannerText}；${controllerText}。`;
   }
   if (pathGenerated) {
-    return `行程读数：图上行程已准备但点数未读到；${poseText}；${plannerText}。`;
+    return `行程读数：图上行程已准备但点数未读到；${poseText}；${plannerText}；${controllerText}。`;
   }
   const hasNav2Readback = nav2.status !== "not_loaded" || nav2.nav2_status !== "not_loaded" || nav2.planner_server_active !== "not_loaded";
   if (hasNav2Readback) {
-    return `行程读数：尚未准备图上行程；${poseText}；${plannerText}。`;
+    return `行程读数：尚未准备图上行程；${poseText}；${plannerText}；${controllerText}。`;
   }
   return "";
 }
@@ -5088,7 +5095,11 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
   const modeLabel = nav2BaseCommandModeVendorLabel(values);
   const modeText = modeLabel ? `上次 ${modeLabel} 执行` : "上次执行";
   const pendingModeText = nav2PendingModeRerunText(values);
-  return `自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
+  const controllerText = robotSummary.value?.readback_summary.nav2.controller_server_active === "false"
+    || robotSummary.value?.safe_command_boundary.nav2_goal_blockers?.includes("controller_server_inactive")
+    ? "Nav2 controller 未 active，重跑前先恢复；"
+    : "";
+  return `自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；${controllerText}下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
 }
 
 function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): string {

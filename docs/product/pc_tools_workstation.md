@@ -3478,6 +3478,12 @@ wheel raw L/R=0/0 的 live 记录也能让普通首屏显示 `PWM/T=11`，不会
 和普通首屏 summary 都能如实显示上次 Nav2 已发非零底盘命令，但 wheel raw L/R 仍未非零；该路径仍是只读 latest，
 不会重放 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-27 22:05 起，普通首屏 `当前事实` 和地图 `行程读数` 会直接显示 Nav2 控制服务状态。
+当 `controller_server_active=false` 或安全边界包含 `controller_server_inactive` 时，自动驾驶诊断显示
+`Nav2 controller 未 active，重跑前先恢复`；地图读数同时列出 `行程服务` 和 `控制服务`，避免现场只看到
+“路线未就绪 / wheel raw L/R=0/0”却不知道 controller 也未运行。该改动只翻译 summary 和 latest 只读状态，
+不触发 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 19:23 起，Robot Control summary 的 `readback_summary.lidar` 新增
 `runtime_scan_status`、`runtime_lidar_min_distance_m`、`runtime_lidar_age_s` 和 `runtime_scan_source`。
 当 radar proof latest 仍是旧窗口或没有点数组，但 free-roam runtime snapshot 已读到新鲜 `/scan` 距离时，
