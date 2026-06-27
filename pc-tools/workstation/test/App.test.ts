@@ -4510,11 +4510,24 @@ describe("App", () => {
       artifact_only: false,
       cmd_vel_publish_enabled: false,
     };
-    const mockedFetch = stubWorkstationFetch({
+    let delayNextMapStart = false;
+    let resolveMapStart!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedMapStart = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveMapStart = resolve;
+    });
+    const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
       "/api/robot-control/free-roam/autonomy/start": autoStartFixture,
     });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/map/start") && delayNextMapStart) {
+        delayNextMapStart = false;
+        return delayedMapStart;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
 
     const wrapper = mount(App);
     await flushPromises();
@@ -4527,7 +4540,20 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
-    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    delayNextMapStart = true;
+    const startClick = wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("地图记录启动中（不发车）");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("starting");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("地图记录启动中，不发车，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("正在启动地图记录；启动返回前不要移动小车。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在启动地图记录，等记录启动后再移动。");
+    expect(mockedFetch.mock.calls.slice(callsBeforeClick).some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    resolveMapStart({
+      ok: true,
+      json: async () => mapStartFixture,
+    });
+    await startClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
 

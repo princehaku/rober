@@ -3432,7 +3432,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
   const autonomyResult = freeRoamAutonomyResult.value;
   const modeName = plainFreeRoamMotionModeName.value;
   if (mapLifecyclePendingAction.value === "start") {
-    return { label: "扫图记录启动中", state: "starting", style, aria: `扫图记录启动中${locatedSuffix}` };
+    return { label: "地图记录启动中（不发车）", state: "starting", style, aria: `地图记录启动中，不发车${locatedSuffix}` };
   }
   if (mapLifecyclePendingAction.value === "save") {
     return { label: "地图保存中", state: "saving", style, aria: `当前扫图地图正在保存${locatedSuffix}` };

@@ -3038,6 +3038,11 @@ free-roam autonomy、stop 或 `/cmd_vel`。
 这样“雷达和摄像头都 ready 后可以建图”不再需要 operator 先猜要按哪个记录按钮；缺相机或雷达时仍按自由移动记录，不把建图质量误报为 ready。
 该流程仍不调用 base manual、keyboard pulse、Nav2、delivery、stop 或浏览器直连 `/cmd_vel`，也不修改 Clash 或系统代理配置。
 
+2026-06-28 20:40 起，上述 ready 自动扫图入口在 `map/start` 尚未返回时，地图 marker 显示 `地图记录启动中（不发车）`，
+aria 同步写明“不发车”，自由移动/建图卡片提示“启动返回前不要移动小车”。只有地图记录启动返回并刷新扫图画面后，才会继续调用
+`/api/robot-control/free-roam/autonomy/start` 并切换到 `自动扫图低速运行中`。这避免把地图记录 pending 窗口误看成小车已经开始自助移动；
+该 pending 呈现不新增 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel` 调用。
+
 2026-06-26 23:59 起，普通首屏地图在 `scan_preview_point_count=N` 但 `scan_preview_points=[]` 时不再写成
 `雷达点位未读取`。地图 scan label、雷达点口径和坐标口径都会显示
 `最近雷达记录 N 个（仅点数，没有点数组，未显示局部轮廓）` 或
