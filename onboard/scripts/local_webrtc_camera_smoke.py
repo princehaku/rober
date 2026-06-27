@@ -42,6 +42,8 @@ DEFAULT_FPS = 15
 FIRST_FRAME_TIMEOUT_S = 3.0
 # 共享 MJPEG 是普通 PC 首屏的默认多人预览路径，首帧预算必须和 WebRTC 一致。
 MJPEG_FIRST_FRAME_TIMEOUT_S = FIRST_FRAME_TIMEOUT_S
+# PC 首屏共享预览要及时失败可见；WebRTC offer 仍保留完整格式矩阵。
+MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S = 9.0
 FIRST_FRAME_WARMUP_INTERVAL_S = 0.05
 CAMERA_CAPTURE_FOURCC_FALLBACKS: tuple[str | None, ...] = ("MJPG", "YUYV", None)
 COMMAND_TIMEOUT_S = 2.5
@@ -49,7 +51,7 @@ STALE_PEER_NO_FRAME_MAX_AGE_MS = 30_000
 PEER_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,32}$")
 API_CAMERA_PREFIX = "/api/camera"
 IMPORTS = ("aiortc", "cv2", "av")
-FIRST_FRAME_FAILURE_REASONS = {"first_frame_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
+FIRST_FRAME_FAILURE_REASONS = {"first_frame_timeout", "first_frame_total_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
 TEMPERATURE_GLOBS = (
     "/sys/class/thermal/thermal_zone*/temp",
     "/sys/class/hwmon/hwmon*/temp*_input",
@@ -1027,11 +1029,26 @@ class CameraServiceState:
         source: str,
         cv2: Any,
         timeout_s: float = FIRST_FRAME_TIMEOUT_S,
+        total_timeout_s: float | None = None,
     ) -> tuple[SharedCameraCapture | None, Any, list[dict[str, Any]], dict[str, Any] | None]:
         """按多组 UVC 常见模式尝试首帧；每次失败都释放，不能长期占用坏格式。"""
         attempts: list[dict[str, Any]] = []
         last_payload: dict[str, Any] | None = None
+        started = time.monotonic()
         for spec in camera_capture_attempt_specs(self.width, self.height, self.fps):
+            remaining_total = None if total_timeout_s is None else total_timeout_s - (time.monotonic() - started)
+            if remaining_total is not None and remaining_total <= 0:
+                last_payload = error_payload(
+                    "first_frame_unreadable",
+                    "first_frame_total_timeout",
+                    video_source=source,
+                    first_frame_timeout_s=timeout_s,
+                    first_frame_total_timeout_s=total_timeout_s,
+                    first_frame_elapsed_s=round(time.monotonic() - started, 3),
+                    first_frame_format_attempts=attempts,
+                    last_read_error=(last_payload or {}).get("last_read_error", "first_frame_total_timeout"),
+                )
+                break
             shared_capture, open_error = self.acquire_shared_capture(
                 source,
                 cv2,
@@ -1055,7 +1072,8 @@ class CameraServiceState:
                 })
                 last_payload = open_error or error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
                 continue
-            ok, frame, first_frame_attempts = shared_capture.read_frame_until_success(timeout_s)
+            attempt_timeout = timeout_s if remaining_total is None else max(0.1, min(timeout_s, remaining_total))
+            ok, frame, first_frame_attempts = shared_capture.read_frame_until_success(attempt_timeout)
             if ok and frame is not None:
                 attempts.append({
                     "fourcc": spec.fourcc or "default",
@@ -1087,6 +1105,8 @@ class CameraServiceState:
                 first_error or "first_frame_timeout",
                 video_source=source,
                 first_frame_timeout_s=timeout_s,
+                first_frame_total_timeout_s=total_timeout_s,
+                first_frame_elapsed_s=round(time.monotonic() - started, 3),
                 first_frame_attempts=first_frame_attempts,
                 first_frame_format_attempts=attempts,
                 selected_fourcc=label,
@@ -1492,6 +1512,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             str(selected_path),
             cv2,
             timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
+            total_timeout_s=MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S,
         )
         if shared_capture is None or first_frame is None:
             payload = first_frame_error or error_payload(
@@ -1499,6 +1520,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 "first_frame_format_attempts_failed",
                 video_source=str(selected_path),
                 first_frame_timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
+                first_frame_total_timeout_s=MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S,
                 first_frame_format_attempts=format_attempts,
             )
             self.state.last_offer_error = payload

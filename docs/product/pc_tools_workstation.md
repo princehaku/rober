@@ -3388,6 +3388,10 @@ PC 首屏默认多人预览走 MJPEG fallback 时，不再比 WebRTC 更早在 1
 multipart JPEG，失败继续返回结构化 503 和 `first_frame_unreadable` / `uvc_no_frame_not_exclusive` 诊断。
 该改动只提高真实首帧 warmup 容错，不创建占位图、不独占新摄像头、不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-27 17:44 起，8088 camera service 的共享 MJPEG 路径新增 9 秒首帧总预算：WebRTC offer 仍保留完整格式矩阵，
+但 PC 首屏默认多人预览在当前 DV20 UVC 无帧形态下会尽快返回结构化 `first_frame_total_timeout` / `first_frame_unreadable`
+诊断，不再让浏览器等待完整 9 格式矩阵约 25-28 秒。该改动仍不输出黑帧或 placeholder，也不改变任何运动、Nav2 或送达 gate。
+
 2026-06-27 16:56 起，Robot Control summary 的 `safe_command_boundary.nav2_goal_label`
 在路线读数 ready 时改为 `路线读数已准备，等待地图画面确认`。地图画面是否已显示、路线是否已贴到地图、机器人 map pose
 是否可见仍由 PC 前端 WYSIWYG gate 判断；API 短文案不再写成“先看地图画面”，避免在 PC 已自动刷新地图或正在刷新地图时给普通用户一个多余手动步骤。

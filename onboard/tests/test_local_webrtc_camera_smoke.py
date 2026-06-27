@@ -170,6 +170,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         """共享 MJPEG 是多人默认预览，不能比 WebRTC 更早放弃 UVC 首帧 warmup。"""
         self.assertEqual(camera.FIRST_FRAME_TIMEOUT_S, camera.MJPEG_FIRST_FRAME_TIMEOUT_S)
         self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, 3.0)
+        self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S, camera.MJPEG_FIRST_FRAME_TIMEOUT_S)
 
     def test_missing_webrtc_dependencies_return_structured_fail_closed(self) -> None:
         """缺 aiortc/cv2/av 时 /offer 必须结构化失败，不能伪造图像。"""
@@ -524,6 +525,63 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         )
         self.assertEqual("first_frame_unreadable", attempts[0]["status"])
         self.assertEqual("frame_read", attempts[5]["status"])
+
+    def test_first_frame_total_budget_stops_mjpeg_before_full_matrix(self) -> None:
+        """共享 MJPEG 无帧时要及时返回诊断，不能让 PC 首屏等完整 9 格式矩阵。"""
+
+        class NoFrameCapture:
+            def __init__(self) -> None:
+                self.released = False
+
+            def isOpened(self) -> bool:  # noqa: N802 - 模拟 OpenCV API。
+                return True
+
+            def set(self, _prop: int, _value: object) -> None:
+                return None
+
+            def read(self) -> tuple[bool, None]:
+                return False, None
+
+            def release(self) -> None:
+                self.released = True
+
+        class FakeCv2:
+            CAP_PROP_FOURCC = 6
+            CAP_PROP_FRAME_WIDTH = 3
+            CAP_PROP_FRAME_HEIGHT = 4
+            CAP_PROP_FPS = 5
+
+            def __init__(self) -> None:
+                self.captures: list[NoFrameCapture] = []
+
+            def VideoWriter_fourcc(self, *_letters: str) -> int:  # noqa: N802 - 模拟 OpenCV API。
+                return 100
+
+            def VideoCapture(self, _source: str) -> NoFrameCapture:  # noqa: N802 - 模拟 OpenCV API。
+                capture = NoFrameCapture()
+                self.captures.append(capture)
+                return capture
+
+        state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
+        fake_cv2 = FakeCv2()
+
+        with mock.patch.object(camera, "FIRST_FRAME_WARMUP_INTERVAL_S", 0.001):
+            shared, observed, attempts, error = state.acquire_first_frame_capture(
+                "/dev/video1",
+                fake_cv2,
+                timeout_s=0.02,
+                total_timeout_s=0.055,
+            )
+
+        self.assertIsNone(shared)
+        self.assertIsNone(observed)
+        self.assertIsNotNone(error)
+        assert error is not None
+        self.assertEqual("first_frame_total_timeout", error["failure_reason"])
+        self.assertLess(len(attempts), len(camera.camera_capture_attempt_specs(640, 480, 15)))
+        self.assertGreaterEqual(len(attempts), 1)
+        self.assertTrue(all(capture.released for capture in fake_cv2.captures))
+        self.assertEqual(attempts, error["first_frame_format_attempts"])
 
     def test_stale_no_frame_peer_is_closed_before_new_offer(self) -> None:
         """卡在 new/0 帧的旧 peer 必须自动释放，避免长期占用 `/dev/video1`。"""

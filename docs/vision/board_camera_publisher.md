@@ -268,6 +268,10 @@ client 只增加引用计数，最后一个 client 断开后才释放设备。�
 PC 首屏多人共享预览不再使用更短的 1 秒预算提前判定 UVC 无帧。该路径仍必须读到真实
 OpenCV 帧才输出 JPEG；读不到帧时继续返回结构化失败，不输出黑帧或 placeholder。
 
+2026-06-27 17:44 起，MJPEG 共享预览额外使用 9 秒首帧总预算。WebRTC offer 仍可跑完整
+格式矩阵做深度排障；MJPEG 作为 PC 首屏默认多人预览，在当前 DV20 UVC 无帧形态下会快速返回
+`first_frame_total_timeout` / `first_frame_unreadable` JSON 诊断，避免页面长时间停在等待画面。
+
 本轮真机 smoke：
 
 - `GET http://127.0.0.1:8088/mjpeg` 返回 multipart MJPEG，2 秒截取约 526 KB，
