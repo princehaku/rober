@@ -1965,6 +1965,11 @@ Nav2、delivery、manual、first-jog、stop 或 `/cmd_vel`；恢复后仍需用�
 它仍只调用固定 `GET /api/robot-control/delivery/latest`，不提交 operator report、不调用 delivery complete，
 不执行 Nav2、manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。
 
+2026-06-28 05:21 起，普通首屏 `当前事实` 也同步送达 latest/check pending：读取最近行程和送达状态期间显示
+`送达：正在读取最近行程和送达状态，不会发车；返回前不把旧送达记录当作当前结论`；提交最终送达确认期间显示
+`送达：正在提交送达确认，不会发车；结果返回前先保持现场接管`。该改动只修正只读事实文案，不触发
+delivery complete、operator report、Nav2、manual、keyboard、stop 或 `/cmd_vel`。
+
 2026-06-22 18:15 起，普通首屏 `本轮进度` 的刷新按钮显示为 `刷新进度（只读）`，pending 时显示 `刷新中`。
 它仍只刷新 summary、base feedback samples、Nav2 latest 和 delivery latest/check 读回，不执行行程、不确认送达、
 不发送 manual、first-jog、stop、keyboard pulse 或 `/cmd_vel`。

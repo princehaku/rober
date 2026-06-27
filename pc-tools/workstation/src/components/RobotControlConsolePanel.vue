@@ -2300,6 +2300,11 @@ const plainCurrentFactRows = computed(() => {
     rows.push("行程：还没执行。");
   }
 
+  const deliveryFact = plainCurrentDeliveryFactText();
+  if (deliveryFact) {
+    rows.push(deliveryFact);
+  }
+
   const autonomousReadiness = plainCurrentAutonomousReadinessFactText(summary);
   if (autonomousReadiness) {
     rows.push(autonomousReadiness);
@@ -5887,6 +5892,17 @@ const plainDeliverySummary = computed(() => {
   }
   return { state: "未读取", hint: "点击刷新送达状态，只读取结果，不执行行程或确认送达。" };
 });
+
+function plainCurrentDeliveryFactText(): string {
+  // 送达事实只在异步读写窗口出现，避免旧送达记录在当前事实条里冒充本轮结论。
+  if (deliveryCompletionPending.value) {
+    return "送达：正在提交送达确认，不会发车；结果返回前先保持现场接管。";
+  }
+  if (deliveryLatestPending.value || deliveryGapCheckPending.value) {
+    return "送达：正在读取最近行程和送达状态，不会发车；返回前不把旧送达记录当作当前结论。";
+  }
+  return "";
+}
 
 const plainDeliveryLatestButtonLabel = computed(() => {
   // latest 只读最近送达 gate 结果；按钮文案直接说明不会提交确认。

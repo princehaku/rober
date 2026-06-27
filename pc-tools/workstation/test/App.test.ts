@@ -17345,6 +17345,52 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("shows a current delivery fact while rereading delivery latest", async () => {
+    // 送达 latest pending 期间，当前事实不能继续暗示旧送达记录就是本轮结论。
+    let delayNextDeliveryLatest = false;
+    let resolveDeliveryLatest!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedDeliveryLatest = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveDeliveryLatest = resolve;
+    });
+    const baseFetch = stubWorkstationFetch();
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/delivery/latest") && delayNextDeliveryLatest) {
+        delayNextDeliveryLatest = false;
+        return delayedDeliveryLatest;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const latestCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?")).length;
+    delayNextDeliveryLatest = true;
+    const latestClick = wrapper.find('[data-testid="plain-delivery-latest"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-delivery-latest"]').text()).toBe("刷新中");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain(
+      "送达：正在读取最近行程和送达状态，不会发车；返回前不把旧送达记录当作当前结论。",
+    );
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?")).length).toBe(latestCallsBefore + 1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    resolveDeliveryLatest({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/delivery/latest"],
+    });
+    await latestClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-delivery-latest"]').text()).toBe("刷新送达状态（只读）");
+  });
+
   it("shows delivery confirmation pending on the map while final completion is in flight", async () => {
     // 最终确认提交到返回之间也要所见即所得：地图不能停在“已到达”，必须显示送达确认中。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
@@ -17535,6 +17581,7 @@ describe("App", () => {
     expect(deliveryStatus.attributes("data-state")).toBe("确认中");
     expect(deliveryStatus.text()).toContain("确认中");
     expect(deliveryStatus.text()).toContain("正在提交送达确认；不会发车，结果返回前先保持现场接管。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("送达：正在提交送达确认，不会发车；结果返回前先保持现场接管。");
     const deliveryFinal = wrapper.find('[data-testid="plain-delivery-final-confirm"]');
     expect(deliveryFinal.attributes("data-state")).toBe("确认中");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').attributes("data-state")).toBe("确认中");
