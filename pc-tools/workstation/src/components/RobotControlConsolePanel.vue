@@ -388,6 +388,32 @@ function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有�
   return { state: "未连接", hint: "还没有连上可读状态。" };
 }
 
+function plainRobotConnectionFactText(summary: RobotControlSummaryResponse | null): string {
+  // 普通事实条必须先声明读数是否当前；否则旧 summary 会被现场误认为相机、雷达或 Nav2 的实时状态。
+  if (error.value) {
+    return summary
+      ? "小车：这次连接/刷新失败，下面可能是上一次读数；先恢复网络或上位机服务后再刷新。"
+      : "小车：连接/刷新失败；先检查小车电源、网络和上位机服务。";
+  }
+  const connection = summary?.robot_api_connection;
+  if (!connection) {
+    return "";
+  }
+  const reasonText = connection.blocked_reasons.join(" ");
+  // Node 返回 fail-closed summary 时不暴露 fetch_timeout 字段名，但要阻止用户把旧读数当成实时画面。
+  if (
+    connection.loaded_count === 0
+    && (connection.failed_count > 0 || connection.blocked_count > 0 || connection.status === "blocked" || connection.status === "degraded")
+    && reasonText.includes("fetch_timeout")
+  ) {
+    return "小车：上位机这次没有回应，当前事实不能当作实时读数；先检查小车电源、网络和上位机服务。";
+  }
+  if (connection.dangerous_true_fields.length > 0) {
+    return "小车：读到危险字段，控制保持锁定；先查看高级诊断。";
+  }
+  return "";
+}
+
 function cameraSourceFirstFrameFailed(camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined): boolean {
   // 相机源首帧失败必须同时影响提示和门禁，避免 UI 一边报错一边允许建图。
   return Boolean(
@@ -2057,10 +2083,14 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
 const plainCurrentFactRows = computed(() => {
   // 首屏事实条只翻译当前 readback，不新增任何控制权限或验收结论。
   const summary = robotSummary.value;
+  const connectionFact = plainRobotConnectionFactText(summary);
   if (!summary) {
-    return ["小车：等待连接/刷新。"];
+    return [connectionFact || "小车：等待连接/刷新。"];
   }
   const rows: string[] = [];
+  if (connectionFact) {
+    rows.push(connectionFact);
+  }
   const camera = summary.readback_summary.camera;
   rows.push(plainCurrentCameraFactText(camera));
   rows.push(plainCurrentRadarFactText());

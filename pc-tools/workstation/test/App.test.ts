@@ -8838,8 +8838,44 @@ describe("App", () => {
     expect(firstScreenText).toContain("有异常");
     expect(wrapper.find('[data-testid="plain-connection-panel"]').attributes("data-state")).toBe("有异常");
     expect(firstScreenText).toContain("上位机没回应；检查小车电源、网络和上位机服务后再点连接/刷新。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("小车：上位机这次没有回应，当前事实不能当作实时读数；先检查小车电源、网络和上位机服务。");
     expect(firstScreenText).not.toContain("fetch_timeout");
     expect(firstScreenText).not.toContain("/api/base");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("marks stale facts when a plain refresh fails after a prior summary", async () => {
+    // 现场上位机卡住时不能继续把上一拍相机/雷达/Nav2 文案伪装成实时事实；失败只改变展示，不触发运动。
+    const mockedFetch = stubWorkstationFetch();
+    const originalFetch = mockedFetch.getMockImplementation();
+    let rejectNextSummary = false;
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (rejectNextSummary && String(url).startsWith("/api/robot-control/summary?")) {
+        rejectNextSummary = false;
+        return Promise.reject(new Error("summary_timeout_fixture"));
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("上一次读数");
+
+    rejectNextSummary = true;
+    await wrapper.find('[data-testid="robot-api-refresh"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("小车：这次连接/刷新失败，下面可能是上一次读数；先恢复网络或上位机服务后再刷新。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("summary_timeout_fixture");
+    expect(wrapper.find('[role="alert"]').text()).toContain("summary_timeout_fixture");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
