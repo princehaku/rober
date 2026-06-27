@@ -521,6 +521,7 @@ const fixtures: Record<string, unknown> = {
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
         start_ready: "false",
+        motion_start_ready: "false",
         motion_ready: "false",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
