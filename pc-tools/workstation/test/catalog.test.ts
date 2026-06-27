@@ -6487,6 +6487,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.scan_preview_point_count).toBe("3");
       expect(summary.readback_summary.lidar.scan_preview_source_point_count).toBe("5");
       expect(summary.readback_summary.lidar.scan_preview_frame_id).toBe("laser");
+      expect(summary.readback_summary.map.radar_overlay_status).toBe("loaded");
+      expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("none");
+      expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("3");
+      expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("5");
+      expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser");
+      expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
       expect(summary.o3_proof_summary.path_preview_points).toEqual([
         { x: 0, y: 0, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.1, frame_id: "map", source_index: 12 },
@@ -6527,6 +6533,70 @@ describe("workstation fail-closed API contracts", () => {
       await robotApi.close();
     }
   }, 10_000);
+
+  it("Robot Control summary exposes partial map radar overlay when scan points exist but map pose is missing", async () => {
+    // 当前 live 形态会读到局部 scan 点，但没有机器人 map pose；summary 必须把“局部点，不贴地图”结构化暴露。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "loaded") },
+      "/api/map/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed"),
+          map_once_observed: true,
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "blocked_with_root_cause"),
+          amcl_pose_observed: false,
+          localization_tf_observed: { map_to_odom: true, map_to_base_link: true },
+        },
+      },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": { payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded") },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "scan_once_hz_raw_packet_tf_observed") },
+      "/api/radar/scan-proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "loaded"),
+          scan_preview_points: [
+            { x_m: -0.43, y_m: 0.02, range_m: 0.43, angle_rad: 3.1, frame_id: "laser_frame", source_index: 1 },
+            { x_m: -0.43, y_m: -0.02, range_m: 0.43, angle_rad: 3.18, frame_id: "laser_frame", source_index: 5 },
+          ],
+          scan_preview_point_count: 2,
+          scan_preview_source_point_count: 80,
+          scan_preview_frame_id: "laser_frame",
+        },
+      },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.map.radar_overlay_status).toBe("partial");
+      expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("robot_pose_missing_for_map_radar_overlay");
+      expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("2");
+      expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("80");
+      expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser_frame");
+      expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("not_observed");
+      expect(summary.o3_proof_summary.scan_preview_point_count).toBe(2);
+      expect(summary.o3_proof_summary.robot_pose).toBeNull();
+      expect(summary.safe_to_control).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
 
   it("Robot Control summary infers UVC sibling node roles from camera devices when health omits them", async () => {
     // live 7001 形态：health 只知道选中了 /dev/video1，devices 只读枚举能补出同一 UVC 的 metadata 兄弟节点。

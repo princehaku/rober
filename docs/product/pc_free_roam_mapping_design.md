@@ -360,6 +360,12 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 不显示地图坐标雷达点 SVG，也不显示小车 marker；坐标口径必须写明雷达只显示车身局部轮廓、不贴到地图。
 该规则对应当前 live 的 `robot_pose_missing_for_map_radar_overlay` 形态，仍不触发任何运动或定位命令。
 
+2026-06-27 21:47 起，Robot Control summary 的 `readback_summary.map` 也暴露同一雷达 overlay 口径：
+`radar_overlay_status`、`radar_overlay_blocked_reasons`、`radar_overlay_scan_preview_*` 和
+`radar_overlay_robot_pose_status`。因此只读 summary、普通首屏和 `/api/robot-control/map/preview`
+都能一致表达“有局部雷达点但没有机器人地图坐标，只能显示局部轮廓，不能贴到地图”。该改动不新增地图刷新、
+雷达刷新、定位、Nav2、manual、free-roam、delivery、stop 或 `/cmd_vel` 调用。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，

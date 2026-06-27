@@ -2456,6 +2456,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       map_quality_status: string;
       map_free_cell_count: string;
       map_usable_for_navigation: string;
+      radar_overlay_status: string;
+      radar_overlay_blocked_reasons: string;
+      radar_overlay_scan_preview_point_count: string;
+      radar_overlay_scan_preview_source_point_count: string;
+      radar_overlay_scan_preview_frame_id: string;
+      radar_overlay_robot_pose_status: string;
     };
     localization: {
       status: string;

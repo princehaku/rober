@@ -3346,6 +3346,16 @@ function mapSummaryFromReadbacks(
 ): RobotControlSummaryResponse["readback_summary"]["map"] {
   // 地图摘要把 proof/latest 的关键事实提升到 readback_summary，方便普通 UI 直接解释地图是否真的读到。
   const mapProof = readbackById(readbacks, "map_proof_latest");
+  const hasScanPreviewPoints = proof.scan_preview_point_count > 0;
+  const radarOverlayBlockedReasons = [
+    ...(!hasScanPreviewPoints ? ["scan_preview_points_missing"] : []),
+    ...(!proof.robot_pose ? ["robot_pose_missing_for_map_radar_overlay"] : []),
+  ];
+  const radarOverlayStatus = hasScanPreviewPoints && proof.robot_pose
+    ? "loaded"
+    : hasScanPreviewPoints
+      ? "partial"
+      : "not_loaded";
   return {
     status: mapProof?.status ?? "not_loaded",
     map_once_observed: booleanSummaryValue(proof.map_once_observed),
@@ -3361,6 +3371,12 @@ function mapSummaryFromReadbacks(
       proofText(readbacks, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       mapProofText(mapProof, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       "not_loaded",
+    radar_overlay_status: radarOverlayStatus,
+    radar_overlay_blocked_reasons: radarOverlayBlockedReasons.join(",") || "none",
+    radar_overlay_scan_preview_point_count: String(proof.scan_preview_point_count),
+    radar_overlay_scan_preview_source_point_count: proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count),
+    radar_overlay_scan_preview_frame_id: proof.scan_preview_frame_id || "not_loaded",
+    radar_overlay_robot_pose_status: proof.robot_pose ? "map_pose_observed" : "not_observed",
   };
 }
 
@@ -3749,6 +3765,12 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         map_quality_status: "not_loaded",
         map_free_cell_count: "not_loaded",
         map_usable_for_navigation: "not_loaded",
+        radar_overlay_status: "not_loaded",
+        radar_overlay_blocked_reasons: "not_loaded",
+        radar_overlay_scan_preview_point_count: "0",
+        radar_overlay_scan_preview_source_point_count: "0",
+        radar_overlay_scan_preview_frame_id: "not_loaded",
+        radar_overlay_robot_pose_status: "not_loaded",
       },
       localization: {
         status: "not_loaded",
