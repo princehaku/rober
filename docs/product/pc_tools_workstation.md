@@ -81,6 +81,9 @@ pc-tools/workstation/
 - 2026-06-28 21:40 起，上述 `<img>` 报错后的 5 秒等待窗口也进入普通首屏所见即所得状态：画面卡片、当前事实和共享画面状态都会显示
   `本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占`，直到 retry token 换 URL 或真实帧 load。该状态只消费本页
   MJPEG `error/load` 事件和只读 status，不新增相机 reader，不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-28 07:07 CST 起，共享 MJPEG status 请求 pending 时，普通首屏 `共享画面` 行显示
+  `正在读取 PC 共享流状态；返回前不证明本页已出图`。这避免把只读 status 读取中误说成当前页面已经看到画面；该状态不创建额外 camera reader，
+  不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 05:25 起，当 `/api/robot-control/camera/mjpeg/status` 已证明共享 relay 有最近帧缓存但当前页面 `<img>` 还没触发 load 时，普通首屏会额外显示“最近帧：共享流已有缓存帧，新页面会先显示最近画面，并继续接入实时流”。这只消费只读 status 证据，不新增相机 reader，不把缓存帧升级成“本页已绘制实时帧”，也不调用 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 19:05 CST 起，上述共享 MJPEG 最近帧缓存状态也同步进入普通首屏 `当前事实`：当 relay 已有缓存帧但本页 `<img>` 尚未 load 时显示“共享流已有最近帧缓存，新页面会先显示最近画面；本页仍在接入实时流”。这避免当前事实仍写“还没确认真实帧”而误导用户以为共享预览没有材料；该状态仍不等于本页已绘制实时帧，也不调用 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 18:43 起，上述共享 MJPEG 失败态也会把“页面会低频自动重试”写到普通首屏。`camera_source_first_frame_failed`、

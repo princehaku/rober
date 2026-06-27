@@ -18675,6 +18675,38 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("keeps shared camera status pending unproven until status polling returns", async () => {
+    // 共享流 status 还没返回时，不能把“正在读取”说成页面已经出图。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "ready";
+    summaryFixture.readback_summary.camera.devices_status = "loaded";
+    summaryFixture.readback_summary.camera.video_source = "/dev/video1";
+    let resolveMjpegStatus!: (value: unknown) => void;
+    const delayedMjpegStatus = new Promise((resolve) => {
+      resolveMjpegStatus = resolve;
+    });
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": delayedMjpegStatus,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：正在读取 PC 共享流状态；返回前不证明本页已出图。");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').text()).not.toContain("MJPEG 实时流已显示");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+
+    resolveMjpegStatus(fixtures["/api/robot-control/camera/mjpeg/status"]);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("共享画面：2 个页面观看");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).not.toContain("返回前不证明本页已出图");
+  });
+
   it("uses Robot Control summary source first-frame failure when MJPEG status polling fails", async () => {
     // status 端点失败时，summary 内的 shared_preview_last_failure_reason 仍要能撑住普通首屏。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;

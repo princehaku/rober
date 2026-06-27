@@ -1577,7 +1577,7 @@ const plainCameraCachedFrameStatus = computed(() => {
 const plainCameraSharedPreviewStatus = computed(() => {
   // 共享预览状态只说明 PC Node 是否在复用同一条 MJPEG 上游流，不代替真实画面像素证据。
   if (cameraMjpegStatusPending.value) {
-    return "共享画面：正在读取 PC 共享流状态。";
+    return "共享画面：正在读取 PC 共享流状态；返回前不证明本页已出图。";
   }
   if (cameraMjpegStatusFailure.value) {
     return `共享画面：状态读取失败：${cameraMjpegStatusFailure.value}`;
