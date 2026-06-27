@@ -3604,6 +3604,7 @@ describe("App", () => {
     expect(currentFacts.text()).toContain("画面：还没确认真实帧。");
     expect(currentFacts.text()).toContain("雷达：已运行。");
     expect(currentFacts.text()).toContain("行程：还没执行。");
+    expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
     expect(currentFacts.text()).toContain("键盘：先复查手控条件。");
     const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
     expect(connectionPanel.exists()).toBe(true);
@@ -4124,6 +4125,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：点击开始自动扫图（低速）。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；运动发布已解锁，PC 仍等待真车 HIL 记录。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：运动发布已解锁，现场继续监看。");
 
     delayNextMapPreview = true;
     const delayedRefreshClick = wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -4388,6 +4390,7 @@ describe("App", () => {
     expect(readiness.text()).toContain("上车端自动扫图已就绪；点击后只启动上车状态机");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自动扫图（低速）后才会重新启动。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：可启动，但当前没有运动发布。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').attributes("aria-label")).toBe("自由移动记录 上次停止请求，当前未发布运动，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
@@ -4483,6 +4486,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出、雷达状态源不一致；仍可在安全确认后低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自由移动（低速）后才会重新启动。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：可启动，但当前没有运动发布。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

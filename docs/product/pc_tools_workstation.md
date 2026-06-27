@@ -3142,6 +3142,12 @@ summary 会把首屏相机状态提升为 `ready + first_frame_observed`，并�
 落到电机使能、供电、底盘模式或控制模式，而不是继续怀疑雷达；不改变 Nav2、manual、keyboard、delivery、
 free-roam 或 `/cmd_vel` 行为。
 
+2026-06-27 09:26 起，普通首屏 `当前事实` 新增自由移动行：当上车 runtime 仍是
+`artifact_only=true/cmd_vel_publish_enabled=false` 时显示 `自由移动：可启动，但当前没有运动发布` 或
+`自由移动：当前没有运动发布`；当 runtime 已解锁运动发布时显示 `自由移动：运动发布已解锁，现场继续监看`。
+这让“车能不能自助移动”和“当前是否正在发布运动”直接出现在首屏事实汇总里，不必展开自动扫图诊断；该行只读
+summary，不调用 free-roam start/stop、manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 07:53 起，PC `POST /api/robot-control/nav2/goal/execute` 在浏览器未指定底盘模式时也会默认转发
 `base_command_mode=ros`，普通首屏“执行图上路线”按钮同样显式携带 `base_command_mode=ros`。
 这让“下次将用 ros 复验”成为真实请求合同，而不是只停留在 summary 文案。`speed`/`pwm` 仍只作为白名单诊断 override，

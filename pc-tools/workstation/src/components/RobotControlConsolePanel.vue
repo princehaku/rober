@@ -1499,6 +1499,25 @@ const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const motionText = result.motion_unlock_requested ? "，运动双锁已请求" : "";
   return `状态机写入：启动参数已${strategy} ${countText}${motionText}${mappingText}${topicText}。`;
 });
+
+function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): string {
+  // 当前事实条只回答“现在会不会自己跑”；建图 readiness 和详细 gate 留在扫地式建图卡片。
+  const boundary = summary.safe_command_boundary;
+  const runtime = boundary.free_roam_autonomy_runtime;
+  if (runtime?.status === "loaded" && runtime.cmd_vel_publish_enabled === true && runtime.artifact_only === false) {
+    return "自由移动：运动发布已解锁，现场继续监看。";
+  }
+  if (runtime?.status === "loaded" && runtime.artifact_only === true && runtime.cmd_vel_publish_enabled === false) {
+    return boundary.free_roam_autonomy_start_ready
+      ? "自由移动：可启动，但当前没有运动发布。"
+      : "自由移动：当前没有运动发布。";
+  }
+  if (boundary.free_roam_autonomy_start_ready) {
+    return "自由移动：勾安全确认后可启动。";
+  }
+  return "自由移动：等待上车状态。";
+}
+
 const plainCurrentFactRows = computed(() => {
   // 首屏事实条只翻译当前 readback，不新增任何控制权限或验收结论。
   const summary = robotSummary.value;
@@ -1548,6 +1567,8 @@ const plainCurrentFactRows = computed(() => {
   } else {
     rows.push("行程：还没执行。");
   }
+
+  rows.push(plainCurrentFreeRoamFactText(summary));
 
   if (canArmKeyboardControl.value) {
     rows.push("键盘：可启用，按住才动，松开会停。");
