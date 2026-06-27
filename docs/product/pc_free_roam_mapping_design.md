@@ -344,6 +344,11 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 这不改变安全门禁，不自动启动 Nav2，不发送 `/cmd_vel`；它只把“规划成功 / action 成功 / controller 未 active / wheel raw 未闭环”
 四件事拆开展示，避免把自动驾驶没动误判成相机或雷达阻塞。
 
+2026-06-27 20:35 起，上述 controller 诊断会避开已完成 O11 执行 artifact 的事后 inactive 状态：
+如果最近 Nav2 执行已经 `goal_succeeded`、发出非零底盘命令、写入 WAVE ROVER UART command log 或读到 IMU 姿态变化，
+PC 下一步文案不再把 `controller_server_active=false` 当成主因，而是明确写“主因不是雷达、相机或 controller”，
+卡点仍是同窗口 `T=1001 L/R` 非零复验。该变更只修正诊断展示，不自动重跑 Nav2、不发送底盘命令。
+
 2026-06-27 20:19 起，PC 普通首屏在 `source_first_frame_failed` 但诊断明确不是外部独占时，
 仍优先自动接入共享 MJPEG 只读预览，面板状态显示“连接中 / 正在接入共享实时画面”。
 无帧根因不会丢失：当前事实和共享画面状态继续显示“不是页面独占、UVC 无帧、必要时检查 USB/供电或换 known-good UVC”。

@@ -4024,9 +4024,19 @@ function nav2GoalBoundaryGuidance(
   const right = nav2.goal_execution_base_feedback_latest_right_speed || "not_loaded";
   const currentMode = nav2.goal_execution_base_command_mode || "not_loaded";
   const nextMode = nav2.next_execution_base_command_mode || "not_loaded";
-  const controllerInactiveText = nav2.controller_server_active === "false"
+  const baseCommandCount = Number(nav2.goal_execution_base_command_nonzero_count);
+  const executionMotionMaterialObserved = nav2.goal_execution_base_command_nonzero_observed === "true"
+    || (Number.isFinite(baseCommandCount) && baseCommandCount > 0)
+    || nav2.goal_execution_sends_base_motion_commands === "true"
+    || nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true";
+  const controllerInactiveText = nav2.controller_server_active === "false" && !executionMotionMaterialObserved
     ? "；Nav2 controller 当前未 active，重跑时需先让 controller active"
     : "";
+  const executionMotionText = nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true"
+    ? "；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller"
+    : executionMotionMaterialObserved
+      ? "；已看到执行运动材料，主因不是雷达、相机或 controller"
+      : "";
   const modeChanged = !["", "not_loaded"].includes(currentMode) && !["", "not_loaded"].includes(nextMode) && currentMode !== nextMode;
   const modeLabel = modeChanged
     ? `上次 ${currentMode}，下次 ${nextMode}`
@@ -4046,7 +4056,7 @@ function nav2GoalBoundaryGuidance(
     return {
       ...base,
       nav2_goal_wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
-      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${controllerInactiveText}；勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`,
+      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${controllerInactiveText}；勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`,
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
