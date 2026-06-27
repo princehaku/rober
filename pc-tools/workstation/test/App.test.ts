@@ -17160,10 +17160,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(radarProofRefreshStarted).toBe(true);
-    expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，正在刷新新雷达点。");
+    expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，正在刷新新雷达点；返回前不把旧点当作新点。");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已启动，位置未读到");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已启动，地图位置未读到，等待刷新确认");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达启动已返回，正在刷新新点位。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已启动，地图位置未读到，返回前不把旧点当作新点");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达启动已返回，正在刷新新点位；返回前不把旧点当作新点。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
 
     resolveRadarProofRefresh({

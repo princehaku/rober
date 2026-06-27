@@ -1182,7 +1182,7 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   }
   if (radarRefreshPending.value) {
     if (radarStartSucceeded(radarLifecycleResult.value)) {
-      return { state: "刷新中", hint: "雷达启动已返回，正在刷新新雷达点。" };
+      return { state: "刷新中", hint: "雷达启动已返回，正在刷新新雷达点；返回前不把旧点当作新点。" };
     }
     return { state: "刷新中", hint: "正在刷新雷达状态。" };
   }
@@ -3160,7 +3160,7 @@ function plainRadarFreshnessLabel(
   if (radarState === "雷达待刷新" || radarState === "刷新中") {
     const staleRuntimeText = staleRuntimeLabel ? `；${staleRuntimeLabel}` : "";
     if (radarState === "刷新中" && radarStartSucceeded(radarLifecycleResult.value)) {
-      return `雷达点口径：雷达启动已返回，正在刷新新点位${staleRuntimeText}。`;
+      return `雷达点口径：雷达启动已返回，正在刷新新点位；返回前不把旧点当作新点${staleRuntimeText}。`;
     }
     if (poseObserved && mapPointCount > 0) {
       if (radarScanOverlay.source === "map_preview") {
@@ -3676,10 +3676,10 @@ const plainMapVisualSummary = computed(() => {
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
     ? radarStartAwaitingRefresh
-      ? "雷达已启动扫描范围，跟随机器人位置，等待刷新确认"
+      ? "雷达已启动扫描范围，跟随机器人位置，返回前不把旧点当作新点"
       : `${radarState}扫描范围，跟随机器人位置`
     : radarStartAwaitingRefresh
-      ? "雷达已启动扫描范围占位，等待刷新确认和机器人地图位置"
+      ? "雷达已启动扫描范围占位，返回前不把旧点当作新点，等待机器人地图位置"
       : radarState === "雷达启动中"
       ? "雷达启动中扫描范围占位，返回前未证明雷达已运行，等待机器人地图位置"
       : `${radarState}扫描范围占位，等待机器人地图位置`;
@@ -3689,7 +3689,7 @@ const plainMapVisualSummary = computed(() => {
       : radarRefreshFailureText
       ? `${radarRefreshFailureText}，已叠在机器人位置`
       : radarStartAwaitingRefresh
-      ? "雷达已启动，已叠在机器人位置，等待刷新确认"
+      ? "雷达已启动，已叠在机器人位置，返回前不把旧点当作新点"
       : radarState === "雷达停止中"
       ? "雷达停止请求已发送，已叠在机器人位置，返回前未证明已停止"
       : radarScalarObstacleOnly
@@ -3708,7 +3708,7 @@ const plainMapVisualSummary = computed(() => {
       : radarRefreshFailureText
       ? `${radarRefreshFailureText}，地图位置未读到`
       : radarStartAwaitingRefresh
-      ? "雷达已启动，地图位置未读到，等待刷新确认"
+      ? "雷达已启动，地图位置未读到，返回前不把旧点当作新点"
       : radarState === "雷达启动中"
       ? "雷达启动中，地图位置未读到，返回前未证明雷达已运行"
       : radarState === "雷达停止中"
