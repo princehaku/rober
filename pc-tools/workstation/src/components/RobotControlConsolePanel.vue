@@ -22,6 +22,7 @@ import {
   getRobotControlNav2GoalExecutionLatest,
   postRobotControlNav2GoalExecute,
   postRobotControlNav2GoalPreflight,
+  postRobotControlNav2Start,
   postRobotControlMapProofRefresh,
   postRobotControlNav2ProofRefresh,
   postRobotControlOperatorReport,
@@ -49,6 +50,7 @@ import type {
   RobotControlFreeRoamAutonomyResponse,
   RobotControlMapLifecycleResponse,
   RobotControlMapPreviewResponse,
+  RobotControlNav2LifecycleResponse,
   RobotControlNavGoalExecutionLatestResponse,
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalPreflightResponse,
@@ -104,6 +106,7 @@ const radarLifecyclePendingAction = ref<"start" | "stop" | null>(null);
 const radarRestartPending = ref(false);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
+const nav2LifecycleResult = ref<RobotControlNav2LifecycleResponse | null>(null);
 const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(null);
 const navGoalExecutionResult = ref<RobotControlNavGoalExecutionResponse | null>(null);
 const navGoalExecutionLatestResult = ref<RobotControlNavGoalExecutionLatestResponse | null>(null);
@@ -214,6 +217,7 @@ function mapWysiwygRefreshPendingText(): string {
   return mapPreviewPending.value ? "地图画面刷新中" : "地图状态刷新中";
 }
 const nav2RefreshPending = ref(false);
+const nav2LifecyclePending = ref(false);
 const navGoalPreflightPending = ref(false);
 const navGoalExecutionPending = ref(false);
 const navGoalExecutionLatestPending = ref(false);
@@ -1647,6 +1651,7 @@ const canResetLocalization = computed(() => (
 const canRefreshNav2Proof = computed(() => (
   !loading.value
   && !nav2RefreshPending.value
+  && !nav2LifecyclePending.value
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
@@ -6377,12 +6382,43 @@ const plainGoalProgressBlockerSummary = computed(() => {
   return "验收卡点：四项都已满足，保持待命。";
 });
 
-const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value || nav2RefreshPending.value);
+const plainTripActionPending = computed(() => navGoalPreflightPending.value || navGoalExecutionPending.value || navGoalExecutionLatestPending.value || nav2RefreshPending.value || nav2LifecyclePending.value);
 const plainTripMapWysiwygPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
 const manualMotionActiveForTrip = computed(() => (
   // 行程执行和手控/键盘不能同时作为新动作启动；stop 仍走独立兜底入口。
   manualCommandPending.value || Boolean(keyboardHeldDirection.value)
 ));
+const plainTripNav2NeedsLifecycleRestore = computed(() => {
+  // planner/controller 未 active 时，继续点“准备路线”只会反复失败；先提供固定服务恢复入口。
+  const blockers = robotSummary.value?.safe_command_boundary.nav2_goal_blockers ?? [];
+  return blockers.includes("planner_server_inactive")
+    || blockers.includes("controller_server_inactive");
+});
+const canRestorePlainNav2Lifecycle = computed(() => (
+  robotApiBaseUrl.value.trim().length > 0
+  && plainTripNav2NeedsLifecycleRestore.value
+  && !plainTripActionPending.value
+  && !manualMotionActiveForTrip.value
+));
+const plainTripNav2LifecycleButtonLabel = computed(() => (
+  nav2LifecyclePending.value ? "恢复自动驾驶服务中" : "恢复自动驾驶服务（不发车）"
+));
+const plainTripNav2LifecycleStatus = computed(() => {
+  // 这条状态只解释服务恢复结果；路线是否可执行仍由后续图上路线 proof 决定。
+  if (nav2LifecyclePending.value) {
+    return "正在恢复自动驾驶服务；不会发车。";
+  }
+  if (nav2LifecycleResult.value) {
+    if (nav2LifecycleResult.value.proxy_status === "lifecycle_forwarded") {
+      const result = nav2LifecycleResult.value.command_result;
+      return result.ok === true
+        ? "自动驾驶服务恢复命令已返回成功；下一步准备图上路线。"
+        : `自动驾驶服务恢复命令已返回：${nav2LifecycleResult.value.failure_reason || result.mode || "等待重新读取状态"}。`;
+    }
+    return `自动驾驶服务恢复未完成：${nav2LifecycleResult.value.failure_reason || "查看高级诊断"}。`;
+  }
+  return plainTripNav2NeedsLifecycleRestore.value ? "自动驾驶服务未运行：先恢复 planner/controller（不发车）。" : "";
+});
 function plainTripMapWysiwygPendingText(): string {
   // 地图 proof 和地图画面任一刷新中，都不能把旧路线当成当前可执行图上路线。
   return mapPreviewPending.value ? "地图画面刷新中" : "地图状态刷新中";
@@ -6457,6 +6493,9 @@ const plainTripSummary = computed(() => {
   if (nav2RefreshPending.value) {
     return { state: "准备中", hint: "正在准备图上路线；不会发车。" };
   }
+  if (nav2LifecyclePending.value) {
+    return { state: "恢复中", hint: "正在恢复自动驾驶服务；不会发车。" };
+  }
   if (navGoalPreflightPending.value) {
     return { state: "复查中", hint: "正在可选复查行程条件；不会发车。" };
   }
@@ -6484,6 +6523,9 @@ const plainTripSummary = computed(() => {
   }
   if (navGoalExecutionResult.value?.proxy_status === "execution_failed" || navGoalExecutionResult.value?.proxy_status === "execution_rejected") {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
+  }
+  if (plainTripNav2NeedsLifecycleRestore.value) {
+    return { state: "需恢复", hint: "自动驾驶服务未运行，先点恢复自动驾驶服务（不发车），再准备图上路线。" };
   }
   if (plainTripPreparedByRefresh.value) {
     const routeVisible = latestNavPathOverlay() !== null;
@@ -6561,6 +6603,9 @@ const plainTripRunStatus = computed(() => {
   if (nav2RefreshPending.value) {
     return "行程状态：正在准备路线，不会发车。";
   }
+  if (nav2LifecyclePending.value) {
+    return "行程状态：正在恢复自动驾驶服务，不会发车。";
+  }
   if (navGoalPreflightPending.value) {
     return "行程状态：正在可选复查行程条件，不会发车。";
   }
@@ -6589,6 +6634,9 @@ const plainTripRunStatus = computed(() => {
       return `行程状态：读到旧行程成功记录；下一步${actionText}。`;
     }
     return "行程状态：读到旧行程成功记录；如需本轮验收，请重新执行图上路线。";
+  }
+  if (plainTripNav2NeedsLifecycleRestore.value) {
+    return "行程状态：自动驾驶服务未运行；先恢复服务，不会发车。";
   }
   if (!plainManualSafetyConfirmed.value) {
     return "行程状态：先勾安全确认，小车不会出发。";
@@ -6678,7 +6726,7 @@ function plainTripVisibleRouteGoal() {
 
 const canRefreshPlainTripPreparation = computed(() => {
   // 可选刷新路线只刷新 no-motion planner proof；主流程仍由执行按钮按路线状态自动准备或发车。
-  return !deliveryNav2GoalReady.value && canRefreshNav2Proof.value && plainManualSafetyConfirmed.value;
+  return !deliveryNav2GoalReady.value && canRefreshNav2Proof.value && plainManualSafetyConfirmed.value && !plainTripNav2NeedsLifecycleRestore.value;
 });
 
 const canRunPlainTripExecution = computed(() => {
@@ -6689,6 +6737,7 @@ const canRunPlainTripExecution = computed(() => {
     && !manualMotionActiveForTrip.value
     && robotApiBaseUrl.value.trim().length > 0
     && plainManualSafetyConfirmed.value
+    && !plainTripNav2NeedsLifecycleRestore.value
     && !plainTripMapWysiwygPending.value;
 });
 
@@ -6702,6 +6751,9 @@ const plainTripPreparationButtonLabel = computed(() => {
   }
   if (nav2RefreshPending.value) {
     return "刷新路线中（不发车）";
+  }
+  if (plainTripNav2NeedsLifecycleRestore.value) {
+    return "先恢复服务";
   }
   if (mapWysiwygRefreshPending.value) {
     return "等待地图刷新";
@@ -6720,6 +6772,9 @@ const plainTripExecutionButtonLabel = computed(() => {
   if (nav2RefreshPending.value) {
     return "准备路线中（不发车）";
   }
+  if (nav2LifecyclePending.value) {
+    return "恢复服务中";
+  }
   if (navGoalExecutionLatestPending.value) {
     return "读取行程结果中";
   }
@@ -6731,6 +6786,9 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   if (!plainManualSafetyConfirmed.value) {
     return "先勾选确认";
+  }
+  if (plainTripNav2NeedsLifecycleRestore.value) {
+    return "先恢复自动驾驶服务";
   }
   if (plainTripMapWysiwygPending.value && plainTripPreparedBySummary.value) {
     return "等待地图刷新";
@@ -7936,6 +7994,32 @@ function makeRadarLifecycleFallback(action: "start" | "stop", reason: string): R
   };
 }
 
+function makeNav2LifecycleFallback(action: "start" | "stop", reason: string): RobotControlNav2LifecycleResponse {
+  // 服务恢复失败时也保持 fail-closed；它不是行程执行结果，更不能暗示已发车。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_nav2_lifecycle_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    action,
+    proxy_status: "lifecycle_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    remote_endpoint: action === "start" ? "/api/nav2/start" : "/api/nav2/stop",
+    remote_method: "POST",
+    remote_http_status: null,
+    status: "blocked",
+    command_result: { mode: "not_loaded", executed: false, ok: null },
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function mapLifecycleRequestBody() {
   // 可选输入只从高级诊断进入；空值不发送，保持 save 的默认软件 guard 行为。
   return {
@@ -8954,6 +9038,22 @@ async function refreshNav2Proof(): Promise<void> {
     nav2RefreshPending,
   );
   await refreshMapPreview();
+}
+
+async function restorePlainNav2Lifecycle(): Promise<void> {
+  // 恢复服务只走固定 /api/nav2/start；不发 goal，不发布 /cmd_vel，也不触发底盘 manual。
+  if (!canRestorePlainNav2Lifecycle.value) {
+    return;
+  }
+  nav2LifecyclePending.value = true;
+  try {
+    nav2LifecycleResult.value = await postRobotControlNav2Start(robotApiBaseUrl.value);
+  } catch (err) {
+    nav2LifecycleResult.value = makeNav2LifecycleFallback("start", err instanceof Error ? err.message : "nav2_lifecycle_start_request_failed");
+  } finally {
+    nav2LifecyclePending.value = false;
+    await refreshConsole();
+  }
 }
 
 async function resetLocalizationProof(): Promise<void> {
@@ -11231,6 +11331,9 @@ onBeforeUnmount(() => {
               <button ref="plainTripExecuteButton" type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
                 {{ plainTripExecutionButtonLabel }}
               </button>
+              <button v-if="plainTripNav2NeedsLifecycleRestore" type="button" class="secondary compact-stop" :disabled="!canRestorePlainNav2Lifecycle" data-testid="plain-trip-nav2-restore" @click="restorePlainNav2Lifecycle">
+                {{ plainTripNav2LifecycleButtonLabel }}
+              </button>
               <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="!canLoadNavGoalExecutionLatest" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
                 {{ plainTripLatestButtonLabel }}
               </button>
@@ -11239,6 +11342,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
+            <p v-if="plainTripNav2LifecycleStatus" class="panel-note" data-testid="plain-trip-nav2-restore-status">{{ plainTripNav2LifecycleStatus }}</p>
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
             <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
             <p v-if="plainTripExecutionProgress" class="panel-note" data-testid="plain-trip-execution-progress">{{ plainTripExecutionProgress }}</p>

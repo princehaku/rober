@@ -2678,6 +2678,31 @@ export interface RobotControlRadarLifecycleResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export type RobotControlNav2LifecycleAction = "start" | "stop";
+export type RobotControlNav2LifecycleProxyStatus = "lifecycle_forwarded" | "lifecycle_rejected" | "lifecycle_failed";
+export type RobotControlNav2LifecycleEndpoint = "/api/nav2/start" | "/api/nav2/stop";
+
+export interface RobotControlNav2LifecycleResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_nav2_lifecycle_proxy.v1";
+  action: RobotControlNav2LifecycleAction;
+  proxy_status: RobotControlNav2LifecycleProxyStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: RobotControlNav2LifecycleEndpoint;
+  remote_method: "POST";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  command_result: {
+    mode: string;
+    executed: boolean;
+    ok: boolean | null;
+  };
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export interface RobotControlRadarStatusResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_radar_status_proxy.v1";
   proxy_status: "status_loaded" | "status_rejected" | "status_failed";
@@ -3297,6 +3322,8 @@ export const API_ROUTES = [
   "/api/robot-control/map/reset?baseUrl=<robot-api-base-url>",
   "/api/robot-control/free-roam/autonomy/start?baseUrl=<robot-api-base-url>",
   "/api/robot-control/free-roam/autonomy/stop?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/nav2/start?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/nav2/stop?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/proof/refresh?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/goal/preflight?baseUrl=<robot-api-base-url>",
   "/api/robot-control/nav2/goal/execute?baseUrl=<robot-api-base-url>",

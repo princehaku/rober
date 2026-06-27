@@ -3467,6 +3467,16 @@ Nav2 bridge 默认 `command_mode=ros` / `T=13`。PC 首屏的 Nav2 恢复动作�
 `ROBER_NAV2_START_COMMAND` 未配置，但 start 本身不发送 NavigateToPose goal、不发布 `/cmd_vel`、
 不调用 manual/keyboard/free-roam/delivery；完整路线执行仍需要用户勾选行程安全确认后显式点击执行。
 
+2026-06-28 00:02 起，PC Node 也提供固定 `POST /api/robot-control/nav2/start|stop?baseUrl=...`
+代理：只能转发到上位机 `/api/nav2/start|stop`，浏览器 body 被忽略，响应顶层继续固定
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。
+Nav2 lifecycle 允许上位机声明 `starts_nav2=true` 作为服务恢复事实，但仍会拦截
+`sends_motion_commands=true`、`sends_base_motion_commands=true`、`publishes_cmd_vel=true` 等运动字段。
+普通首屏 `行程操作` 在 `nav2_goal_blockers` 明确包含 `planner_server_inactive` 或
+`controller_server_inactive` 时显示 `恢复自动驾驶服务（不发车）`，并禁用主执行按钮，避免用户反复点 no-motion
+路线准备只得到同一个 planner/controller inactive 失败。恢复成功后仍必须再准备/显示图上路线，并在现场安全确认后显式执行；
+该按钮不发送 NavigateToPose goal、不调用 manual/keyboard/free-roam/delivery/stop 或浏览器直连 `/cmd_vel`。
+
 2026-06-27 19:07 起，普通首屏自由移动 / 建图缺口会消费相机 source diagnosis：当缺口为
 `camera_first_frame` 且 summary 已证明 `uvc_no_frame_not_exclusive` 或 `source_diagnosis_not_exclusive=true` 时，
 建图验收和当前事实显示 `画面首帧未出（不是页面独占）`，而不是泛化的 `画面首帧未出`。这让 live 形态

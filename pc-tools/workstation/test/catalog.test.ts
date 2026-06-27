@@ -29,6 +29,7 @@ import {
   buildLocalizationResetProxy,
   buildMapProofRefreshProxy,
   buildNavGoalPreflightProxy,
+  buildNav2LifecycleProxy,
   buildNav2NoMotionProofRefreshProxy,
   buildOperatorReportProxy,
   buildRadarLifecycleProxy,
@@ -7342,6 +7343,99 @@ describe("workstation fail-closed API contracts", () => {
       expect(stopBody.command_result.executed).toBe(false);
       expect(upstream.receivedBodies["/api/radar/start"]).toEqual([{}]);
       expect(upstream.receivedBodies["/api/radar/stop"]).toEqual([{}]);
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation Nav2 lifecycle proxies use fixed endpoints and reject motion claims", async () => {
+    // Nav2 start 可以恢复服务栈，但不能接受目标执行、/cmd_vel 或底盘运动声明。
+    const directRejected = await buildNav2LifecycleProxy("", "start");
+    expect(directRejected.proxy_status).toBe("lifecycle_rejected");
+    expect(directRejected.failure_reason).toBe("baseUrl_not_provided");
+    expect(directRejected.safe_to_control).toBe(false);
+
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/nav2/start": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle",
+          status: "nav2_stack_started",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          starts_nav2: true,
+          sends_motion_commands: false,
+          sends_base_motion_commands: false,
+          publishes_cmd_vel: false,
+          command_result: { mode: "configured_command", executed: true, ok: true },
+          blocked_reasons: [],
+        },
+      },
+      "/api/nav2/stop": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle",
+          status: "unsafe_motion_claim",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          starts_nav2: true,
+          sends_motion_commands: true,
+          publishes_cmd_vel: true,
+          command_result: { mode: "configured_command", executed: true, ok: false },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const startResponse = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/start?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: "/api/nav2/goal/execute", goal_x: 99, publishes_cmd_vel: true }),
+      });
+      const startBody = (await startResponse.json()) as {
+        action: string;
+        proxy_status: string;
+        remote_endpoint: string;
+        command_result: { mode: string; executed: boolean; ok: boolean };
+        hard_dangerous_true_fields: string[];
+        robot_control_executed: boolean;
+        safe_to_control: boolean;
+      };
+      expect(startResponse.status).toBe(200);
+      expect(startBody.action).toBe("start");
+      expect(startBody.proxy_status).toBe("lifecycle_forwarded");
+      expect(startBody.remote_endpoint).toBe("/api/nav2/start");
+      expect(startBody.command_result).toEqual({ mode: "configured_command", executed: true, ok: true });
+      expect(startBody.hard_dangerous_true_fields).toEqual([]);
+      expect(startBody.robot_control_executed).toBe(false);
+      expect(startBody.safe_to_control).toBe(false);
+
+      const stopResponse = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/stop?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: "/api/base/manual" }),
+      });
+      const stopBody = (await stopResponse.json()) as {
+        proxy_status: string;
+        status: string;
+        failure_reason: string;
+        hard_dangerous_true_fields: string[];
+        robot_control_executed: boolean;
+      };
+      expect(stopResponse.status).toBe(502);
+      expect(stopBody.proxy_status).toBe("lifecycle_failed");
+      expect(stopBody.status).toBe("blocked");
+      expect(stopBody.failure_reason).toBe("hard_dangerous_true_field:sends_motion_commands");
+      expect(stopBody.hard_dangerous_true_fields).toEqual(expect.arrayContaining(["sends_motion_commands", "publishes_cmd_vel"]));
+      expect(stopBody.hard_dangerous_true_fields).not.toContain("starts_nav2");
+      expect(stopBody.robot_control_executed).toBe(false);
+      expect(upstream.receivedBodies["/api/nav2/start"]).toEqual([{}]);
+      expect(upstream.receivedBodies["/api/nav2/stop"]).toEqual([{}]);
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
     } finally {
       await workstation.close();

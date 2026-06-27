@@ -864,6 +864,23 @@ const fixtures: Record<string, unknown> = {
       non_motion_evidence_actions_observed: [],
       ...PROOF_FLAGS,
     },
+    "/api/robot-control/nav2/start": {
+      schema: "trashbot.pc_tools_workstation.robot_control_nav2_lifecycle_proxy.v1",
+      action: "start",
+      proxy_status: "lifecycle_forwarded",
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      remote_endpoint: "/api/nav2/start",
+      remote_method: "POST",
+      remote_http_status: 200,
+      status: "loaded_fail_closed_summary",
+      command_result: { mode: "configured_command", executed: true, ok: true },
+      failure_reason: "",
+      blocked_reasons: [],
+      hard_dangerous_true_fields: [],
+      robot_control_executed: false,
+      ...PROOF_FLAGS,
+    },
     "/api/robot-control/nav2/goal/preflight": {
       schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1",
       proxy_status: "preflight_passed",
@@ -3414,6 +3431,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/map/proof/refresh";
     } else if (url.startsWith("/api/robot-control/nav2/proof/refresh")) {
       fixtureKey = "/api/robot-control/nav2/proof/refresh";
+    } else if (url.startsWith("/api/robot-control/nav2/start")) {
+      fixtureKey = "/api/robot-control/nav2/start";
     } else if (url.startsWith("/api/robot-control/nav2/goal/preflight")) {
       fixtureKey = "/api/robot-control/nav2/goal/preflight";
     } else if (url.startsWith("/api/robot-control/nav2/goal/execute")) {
@@ -15948,6 +15967,84 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("shows a no-motion Nav2 restore action when planner or controller is inactive", async () => {
+    // planner/controller 未运行时，普通用户先恢复服务栈；这个动作不能偷偷变成路线准备或目标执行。
+    const blockedSummaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    blockedSummaryFixture.safe_command_boundary.nav2_goal_blockers = [
+      "path_generation_not_observed",
+      "planner_server_inactive",
+      "controller_server_inactive",
+    ];
+    blockedSummaryFixture.readback_summary.nav2.planner_server_active = "false";
+    blockedSummaryFixture.readback_summary.nav2.controller_server_active = "false";
+    const restoredSummaryFixture = cloneFixture(blockedSummaryFixture) as Record<string, any>;
+    restoredSummaryFixture.safe_command_boundary.nav2_goal_blockers = ["path_generation_not_observed"];
+    restoredSummaryFixture.readback_summary.nav2.planner_server_active = "true";
+    restoredSummaryFixture.readback_summary.nav2.controller_server_active = "true";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": blockedSummaryFixture,
+      "/api/robot-control/nav2/start": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav2_lifecycle_proxy.v1",
+        action: "start",
+        proxy_status: "lifecycle_forwarded",
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/nav2/start",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        command_result: { mode: "configured_command", executed: true, ok: true },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+    });
+    const originalFetch = mockedFetch.getMockImplementation();
+    let nav2RestoreReturned = false;
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/summary?")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => (nav2RestoreReturned ? restoredSummaryFixture : blockedSummaryFixture),
+        });
+      }
+      if (String(url).startsWith("/api/robot-control/nav2/start?")) {
+        nav2RestoreReturned = true;
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("需恢复");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先恢复自动驾驶服务");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("先恢复服务");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').text()).toBe("恢复自动驾驶服务（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("自动驾驶服务未运行");
+
+    await wrapper.find('[data-testid="plain-trip-nav2-restore"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/start?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("恢复命令已返回成功");
   });
 
   it("auto-refreshes radar proof after plain radar start reports ok", async () => {

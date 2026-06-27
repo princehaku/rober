@@ -23,6 +23,9 @@ import type {
   RobotControlOperatorReportStructuredHilClaims,
   RobotControlProofRefreshProxyResponse,
   RobotControlProofRefreshKind,
+  RobotControlNav2LifecycleAction,
+  RobotControlNav2LifecycleEndpoint,
+  RobotControlNav2LifecycleResponse,
   RobotControlRadarLifecycleAction,
   RobotControlRadarLifecycleEndpoint,
   RobotControlRadarLifecycleResponse,
@@ -342,6 +345,16 @@ const RADAR_LIFECYCLE_CONFIGS: Record<RobotControlRadarLifecycleAction, RobotRad
   stop: { action: "stop", endpoint: "/api/radar/stop" },
 };
 
+type RobotNav2LifecycleConfig = {
+  action: RobotControlNav2LifecycleAction;
+  endpoint: RobotControlNav2LifecycleEndpoint;
+};
+
+const NAV2_LIFECYCLE_CONFIGS: Record<RobotControlNav2LifecycleAction, RobotNav2LifecycleConfig> = {
+  start: { action: "start", endpoint: "/api/nav2/start" },
+  stop: { action: "stop", endpoint: "/api/nav2/stop" },
+};
+
 const REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS = new Set(["sends_commands", "starts_ros2"]);
 
 const HARD_DANGEROUS_TRUE_FIELDS = new Set([
@@ -365,6 +378,9 @@ const HARD_DANGEROUS_TRUE_FIELDS = new Set([
   "hil_pass",
 ]);
 
+const NAV2_LIFECYCLE_HARD_DANGEROUS_TRUE_FIELDS = new Set(
+  [...HARD_DANGEROUS_TRUE_FIELDS].filter((field) => field !== "starts_nav2"),
+);
 const DANGEROUS_TRUE_FIELDS = new Set([...HARD_DANGEROUS_TRUE_FIELDS, ...REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS]);
 const NO_TRUE_FIELD_EXEMPTIONS = new Set<string>();
 const STATUS_BASE_FEEDBACK_TRUE_FIELD_EXEMPTIONS = new Set([
@@ -2184,6 +2200,31 @@ function blockedRadarLifecycleResponse(
   };
 }
 
+function blockedNav2LifecycleResponse(
+  sourceBaseUrl: string,
+  config: RobotNav2LifecycleConfig,
+  reason: string,
+): RobotControlNav2LifecycleResponse {
+  // Nav2 lifecycle 只恢复/停止服务进程；失败合同不能把它伪装成导航执行结果。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_nav2_lifecycle_proxy.v1",
+    ...PROOF_FLAGS,
+    action: config.action,
+    proxy_status: "lifecycle_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: config.endpoint,
+    remote_method: "POST",
+    remote_http_status: null,
+    status: "blocked",
+    command_result: { mode: "not_loaded", executed: false, ok: null },
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function remoteBlockedReasons(payload: JsonRecord | null): string[] {
   // 上位机 guard 的 blocked_reasons 是诊断信息，不自动等同 PC 代理拦截。
   return stringList(findFirstKey(payload, ["blocked_reasons"]), 8);
@@ -2286,6 +2327,93 @@ export async function buildRadarLifecycleProxy(
       hardDangerous.length > 0
         ? `hard_dangerous_true_field:${hardDangerous[0]}`
         : asString(findFirstKey(payload, ["failure_reason", "error"]), response.ok ? "" : `radar_lifecycle_http_status_${response.status}`),
+    blocked_reasons: blockedReasons,
+    hard_dangerous_true_fields: hardDangerous,
+    robot_control_executed: false,
+  };
+}
+
+export async function buildNav2LifecycleProxy(
+  baseUrl: string,
+  action: RobotControlNav2LifecycleAction,
+): Promise<RobotControlNav2LifecycleResponse> {
+  // Nav2 lifecycle 只代理 start/stop 两个固定 endpoint；不接受 goal、cmd_vel 或任意 body。
+  const config = NAV2_LIFECYCLE_CONFIGS[action];
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return blockedNav2LifecycleResponse(baseUrl, config, normalized.reason);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(normalized.normalized, config.endpoint), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.name === "TimeoutError"
+        ? "fetch_timeout_20000ms"
+        : error instanceof Error
+          ? error.message.slice(0, 180)
+          : "fetch_failed";
+    return {
+      ...blockedNav2LifecycleResponse(baseUrl, config, reason),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    };
+  }
+
+  let bodyJson: unknown;
+  try {
+    bodyJson = await response.json();
+  } catch {
+    return {
+      ...blockedNav2LifecycleResponse(baseUrl, config, "response_json_parse_failed"),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_parse_failed", `nav2_lifecycle_http_status_${response.status}`],
+    };
+  }
+
+  const payload = asRecord(bodyJson);
+  if (!payload) {
+    return {
+      ...blockedNav2LifecycleResponse(baseUrl, config, "response_json_not_object"),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_not_object", `nav2_lifecycle_http_status_${response.status}`],
+    };
+  }
+
+  const hardDangerous = scanDangerousTrueFields(payload, "", NAV2_LIFECYCLE_HARD_DANGEROUS_TRUE_FIELDS);
+  const commandResult = commandResultSummary(payload);
+  const blockedReasons = [
+    ...(response.ok ? [] : [`nav2_lifecycle_http_status_${response.status}`]),
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+    ...remoteBlockedReasons(payload),
+  ];
+  const forwarded = response.ok && hardDangerous.length === 0;
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_nav2_lifecycle_proxy.v1",
+    ...PROOF_FLAGS,
+    action: config.action,
+    proxy_status: forwarded ? "lifecycle_forwarded" : "lifecycle_failed",
+    source_base_url: baseUrl,
+    normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    remote_endpoint: config.endpoint,
+    remote_method: "POST",
+    remote_http_status: response.status,
+    status: forwarded ? "loaded_fail_closed_summary" : "blocked",
+    command_result: commandResult,
+    failure_reason:
+      hardDangerous.length > 0
+        ? `hard_dangerous_true_field:${hardDangerous[0]}`
+        : asString(findFirstKey(payload, ["failure_reason", "error"]), response.ok ? "" : `nav2_lifecycle_http_status_${response.status}`),
     blocked_reasons: blockedReasons,
     hard_dangerous_true_fields: hardDangerous,
     robot_control_executed: false,

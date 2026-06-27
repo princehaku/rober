@@ -24,6 +24,7 @@ export {
   buildMapLifecycleProxy,
   buildMapPreviewProxy,
   buildNavGoalPreflightProxy,
+  buildNav2LifecycleProxy,
   buildNav2NoMotionProofRefreshProxy,
   buildOperatorReportProxy,
   buildMapProofRefreshProxy,

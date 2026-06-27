@@ -31,6 +31,7 @@ import {
   buildMapPreviewProxy,
   buildMapProofRefreshProxy,
   buildNavGoalPreflightProxy,
+  buildNav2LifecycleProxy,
   buildNav2NoMotionProofRefreshProxy,
   buildOperatorReportProxy,
   buildRobotControlSummary,
@@ -74,6 +75,7 @@ import type {
   RobotControlFreeRoamAutonomyResponse,
   RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
+  RobotControlNav2LifecycleAction,
   RobotControlRadarLifecycleAction,
   RobotControlRadarStatusResponse,
   RobotControlNavGoalExecutionResponse,
@@ -2151,6 +2153,17 @@ export function createWorkstationApp(): express.Express {
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
+  });
+
+  ([
+    ["start", "/api/robot-control/nav2/start"],
+    ["stop", "/api/robot-control/nav2/stop"],
+  ] as Array<[RobotControlNav2LifecycleAction, string]>).forEach(([action, route]) => {
+    workstationApp.post(route, async (req, res) => {
+      // Nav2 lifecycle 只恢复/停止服务栈；body 被忽略，不能透传目标点或速度控制。
+      const response = await buildNav2LifecycleProxy(robotControlFixedProxyQueryBaseUrl(req.query.baseUrl), action);
+      res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
+    });
   });
 
   workstationApp.post("/api/robot-control/nav2/goal/preflight", async (req, res) => {

@@ -41,6 +41,7 @@ import type {
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
   RobotControlDeliveryGapCheckResponse,
+  RobotControlNav2LifecycleResponse,
   RobotControlOperatorReportProxyResponse,
   RobotControlOperatorReportRequest,
   RobotControlSummaryResponse,
@@ -118,6 +119,8 @@ const API_ENDPOINTS = {
   robotControlRadarStop: "/api/robot-control/radar/stop",
   robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
   robotControlMapPreview: "/api/robot-control/map/preview",
+  robotControlNav2Start: "/api/robot-control/nav2/start",
+  robotControlNav2Stop: "/api/robot-control/nav2/stop",
   robotControlNav2ProofRefresh: "/api/robot-control/nav2/proof/refresh",
   robotControlNav2GoalPreflight: "/api/robot-control/nav2/goal/preflight",
   robotControlNav2GoalExecute: "/api/robot-control/nav2/goal/execute",
@@ -570,6 +573,22 @@ export async function postRobotControlNav2ProofRefresh(baseUrl: string): Promise
   // Nav2 refresh 只请求 no-motion 路径规划证明，前端不能传 goal、start/stop 或任意 body。
   return postJson<RobotControlProofRefreshProxyResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2ProofRefresh, baseUrl),
+    {},
+  );
+}
+
+export async function postRobotControlNav2Start(baseUrl: string): Promise<RobotControlNav2LifecycleResponse> {
+  // Nav2 start 只恢复上位机服务栈；真正路线执行必须另走 goal/execute 固定代理。
+  return postJson<RobotControlNav2LifecycleResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2Start, baseUrl),
+    {},
+  );
+}
+
+export async function postRobotControlNav2Stop(baseUrl: string): Promise<RobotControlNav2LifecycleResponse> {
+  // Nav2 stop 只停止服务栈；它不是行程急停，急停仍走 base stop 兜底。
+  return postJson<RobotControlNav2LifecycleResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2Stop, baseUrl),
     {},
   );
 }

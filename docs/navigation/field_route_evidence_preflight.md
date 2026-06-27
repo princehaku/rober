@@ -357,3 +357,20 @@ delivery success 证明。
 因此 PC 或上位机现在可以先用固定 `/api/nav2/start` 恢复 planner/controller runtime，再通过
 `/api/nav2/proof/refresh` 重新采集 map/AMCL/planner/controller 证据。该修正不等于真实路线执行成功，也不等于
 wheel raw L/R 非零、dropoff 或 delivery success。
+
+## 2026-06-28 PC Nav2 lifecycle 恢复入口
+
+PC 工作站新增固定 `POST /api/robot-control/nav2/start|stop?baseUrl=...` 代理，供普通首屏在
+`planner_server_inactive/controller_server_inactive` 时先恢复自动驾驶服务。该代理只允许访问上位机固定
+`/api/nav2/start|stop`，请求 body 固定 `{}`；浏览器传入的 endpoint、goal、速度字段都会被忽略。
+
+安全边界：
+
+- `starts_nav2=true` 只表示服务栈恢复事实，不能作为路线执行或 HIL 通过证明。
+- `sends_motion_commands=true`、`sends_base_motion_commands=true`、`publishes_cmd_vel=true`、
+  `calls_base_manual=true` 或 `robot_control_executed=true` 仍会让 PC 代理 fail closed。
+- 普通首屏按钮文案为 `恢复自动驾驶服务（不发车）`；恢复后仍需重新执行
+  `/api/nav2/proof/refresh` 生成图上路线，再由用户勾选安全确认并显式点击执行路线。
+
+这条入口解决的是 planner/controller runtime 未运行导致的“自动驾驶无法准备/无法动”，不是摄像头问题，也不要求雷达作为
+低速底盘能动的前置条件；真实完整路线执行、wheel raw L/R 非零和 delivery success 仍要后续独立证明。
