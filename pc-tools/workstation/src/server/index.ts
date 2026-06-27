@@ -178,6 +178,7 @@ type CameraMjpegRelayLastFailure = {
   failure_reason: string;
   remote_http_status: number | null;
   failed_at_ms: number | null;
+  last_error_payload?: Record<string, unknown> | null;
   source_diagnosis_status?: string;
   source_diagnosis_plain_hint?: string;
   source_diagnosis_next_action?: string;
@@ -1425,12 +1426,19 @@ function removeCameraMjpegClient(relay: CameraMjpegRelay, client: CameraMjpegRel
   }
 }
 
-function endCameraMjpegRelayClients(relay: CameraMjpegRelay, status: number, error: string, remoteStatus: number | null): void {
+function endCameraMjpegRelayClients(
+  relay: CameraMjpegRelay,
+  status: number,
+  error: string,
+  remoteStatus: number | null,
+  lastErrorPayload: Record<string, unknown> | null = null,
+): void {
   // 上游失败时只收口所有预览响应；不能影响 summary、键盘或 Nav2 代理。
   cameraMjpegRelayLastFailures.set(relay.key, {
     failure_reason: error,
     remote_http_status: remoteStatus,
     failed_at_ms: Date.now(),
+    last_error_payload: lastErrorPayload,
   });
   const clients = Array.from(relay.clients);
   relay.clients.clear();
@@ -1452,27 +1460,29 @@ function endCameraMjpegRelayClients(relay: CameraMjpegRelay, status: number, err
   }
 }
 
-async function cameraMjpegRemoteFailureReason(remote: globalThis.Response): Promise<string> {
+async function cameraMjpegRemoteFailure(remote: globalThis.Response): Promise<{ reason: string; payload: Record<string, unknown> | null }> {
   // 上位机 relay 会把 8088 的真实失败放进 JSON；保留这个短原因，避免 PC 首屏误报成泛化 timeout。
   try {
     const payload = asRecord(await remote.clone().json().catch(() => null));
     const relay = asRecord(payload?.relay);
+    const relayPayload = asRecord(relay?.last_error_payload);
+    const lastErrorPayload = relayPayload ?? payload;
     const relayReason = normalizeCameraMjpegRemoteFailureReason(shortText(relay?.last_failure_reason, ""));
     if (relayReason) {
-      return relayReason;
+      return { reason: relayReason, payload: lastErrorPayload };
     }
     const failureReason = normalizeCameraMjpegRemoteFailureReason(shortText(payload?.failure_reason, ""));
     if (failureReason) {
-      return failureReason;
+      return { reason: failureReason, payload: lastErrorPayload };
     }
     const error = normalizeCameraMjpegRemoteFailureReason(shortText(payload?.error, ""));
     if (error) {
-      return error;
+      return { reason: error, payload: lastErrorPayload };
     }
   } catch {
     // 非 JSON 错误页只保留通用短原因，防止 HTML/代理错误污染普通首屏。
   }
-  return "camera_mjpeg_proxy_failed";
+  return { reason: "camera_mjpeg_proxy_failed", payload: null };
 }
 
 function normalizeCameraMjpegRemoteFailureReason(reason: string): string {
@@ -1503,8 +1513,8 @@ async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<v
     clearTimeout(connectTimeout);
     const contentType = remote.headers.get("content-type") ?? "";
     if (!remote.ok || !contentType.includes("multipart/x-mixed-replace") || !remote.body) {
-      const remoteReason = await cameraMjpegRemoteFailureReason(remote);
-      endCameraMjpegRelayClients(relay, 502, remoteReason, remote.status);
+      const remoteFailure = await cameraMjpegRemoteFailure(remote);
+      endCameraMjpegRelayClients(relay, 502, remoteFailure.reason, remote.status, remoteFailure.payload);
       return;
     }
     relay.contentType = contentType;
@@ -1756,6 +1766,7 @@ export function createWorkstationApp(): express.Express {
         source_diagnosis_plain_hint: lastFailureForOverlay?.source_diagnosis_plain_hint,
         source_diagnosis_next_action: lastFailureForOverlay?.source_diagnosis_next_action,
         source_diagnosis_not_exclusive: lastFailureForOverlay?.source_diagnosis_not_exclusive,
+        last_error_payload: lastFailureForOverlay?.last_error_payload ?? null,
       }
       : lastFailureForOverlay
         ? {
@@ -1773,6 +1784,7 @@ export function createWorkstationApp(): express.Express {
           source_diagnosis_plain_hint: lastFailureForOverlay.source_diagnosis_plain_hint,
           source_diagnosis_next_action: lastFailureForOverlay.source_diagnosis_next_action,
           source_diagnosis_not_exclusive: lastFailureForOverlay.source_diagnosis_not_exclusive,
+          last_error_payload: lastFailureForOverlay.last_error_payload ?? null,
         }
         : null;
     res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay, {

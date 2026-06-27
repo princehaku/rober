@@ -823,6 +823,26 @@ def camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[Came
     return specs
 
 
+def mjpeg_camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[CameraCaptureAttemptSpec]:
+    """共享 MJPEG 首屏预算短，必须先横跨 MJPG/YUYV/default，而不是被一串 MJPG 吃完。"""
+    priority_specs = [
+        CameraCaptureAttemptSpec("MJPG", width, height, fps),
+        # 真实 DV20 枚举里 YUYV 640x480 是 22fps；早试它可以验证“不是只卡 MJPG”。
+        CameraCaptureAttemptSpec("YUYV", width, height, 22),
+        # 不写 V4L2 属性的原生模式可绕过部分驱动对 set(fourcc/fps) 的异常协商。
+        CameraCaptureAttemptSpec(None, None, None, None, apply_settings=False),
+    ]
+    ordered: list[CameraCaptureAttemptSpec] = []
+    seen: set[tuple[str | None, int | None, int | None, int | None, bool]] = set()
+    for spec in priority_specs + camera_capture_attempt_specs(width, height, fps):
+        key = (spec.fourcc, spec.width, spec.height, spec.fps, spec.apply_settings)
+        if key in seen:
+            continue
+        seen.add(key)
+        ordered.append(spec)
+    return ordered
+
+
 def apply_camera_capture_settings(cv2: Any, capture: Any, width: int | None, height: int | None, fps: int | None, fourcc: str | None) -> None:
     """请求 UVC 采集格式；set 失败不算成功或失败，首帧 read 才是最终事实。"""
     if fourcc:
@@ -1089,12 +1109,14 @@ class CameraServiceState:
         cv2: Any,
         timeout_s: float = FIRST_FRAME_TIMEOUT_S,
         total_timeout_s: float | None = None,
+        specs: list[CameraCaptureAttemptSpec] | None = None,
     ) -> tuple[SharedCameraCapture | None, Any, list[dict[str, Any]], dict[str, Any] | None]:
         """按多组 UVC 常见模式尝试首帧；每次失败都释放，不能长期占用坏格式。"""
         attempts: list[dict[str, Any]] = []
         last_payload: dict[str, Any] | None = None
         started = time.monotonic()
-        for spec in camera_capture_attempt_specs(self.width, self.height, self.fps):
+        # 调用方可为短预算共享预览传入更激进的顺序；默认 WebRTC 仍保留完整矩阵。
+        for spec in specs or camera_capture_attempt_specs(self.width, self.height, self.fps):
             remaining_total = None if total_timeout_s is None else total_timeout_s - (time.monotonic() - started)
             if remaining_total is not None and remaining_total <= 0:
                 last_payload = error_payload(
@@ -1583,6 +1605,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             cv2,
             timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
             total_timeout_s=MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S,
+            specs=mjpeg_camera_capture_attempt_specs(self.state.width, self.state.height, self.state.fps),
         )
         if shared_capture is None or first_frame is None:
             payload = first_frame_error or error_payload(

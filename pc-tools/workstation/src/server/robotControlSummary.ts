@@ -1456,7 +1456,7 @@ function cameraSummaryFromReadbacks(
   const sourceSummary = asRecord(findFirstKey(healthPayload, ["source_summary"]));
   const sourceSummarySelection = asRecord(sourceSummary?.current_selection);
   const mediaDiagnostics = asRecord(findFirstKey(healthPayload, ["media_diagnostics"]));
-  const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error);
+  const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error) ?? asRecord(mjpegRelayOverlay?.last_error_payload);
   const selectedCandidate = cameraSelectedCandidateSummary(healthPayload, devicesReadback?.payload ?? null);
   const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage);
   const sourceDiagnosis = asRecord(findFirstKey(healthPayload, ["source_diagnosis"]) ?? mediaDiagnostics?.source_diagnosis);
@@ -1650,6 +1650,7 @@ export type RobotControlCameraMjpegRelayOverlay = {
   last_failure_reason: string;
   last_remote_http_status: number | null;
   last_failure_at_ms: number | null;
+  last_error_payload?: JsonRecord | null;
   source_diagnosis_status?: string;
   source_diagnosis_plain_hint?: string;
   source_diagnosis_next_action?: string;

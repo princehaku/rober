@@ -1294,7 +1294,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         with mock.patch.object(upper_robot_api, "run_configured_command") as run_mock:
             payload = api.nav2_control("start")
 
-        run_mock.assert_not_called()
+        run_mock.assert_called_once_with(upper_robot_api.DEFAULT_NAV2_STATUS_COMMAND, timeout_s=20.0)
         self.assertFalse(payload["command_result"]["executed"])
         self.assertFalse(payload["command_result"]["ok"])
         self.assertEqual("unsupported_runtime_command", payload["command_result"]["error"]["type"])
@@ -1675,6 +1675,31 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             relay.unregister(second)
 
         asyncio.run(scenario())
+
+    def test_shared_camera_mjpeg_relay_preserves_upstream_first_frame_error_body(self) -> None:
+        """8088 无首帧的 JSON 失败体必须透出，否则 PC 只会看到泛化 502。"""
+        relay = upper_robot_api.SharedCameraMjpegRelay("http://127.0.0.1:8088/mjpeg")
+        relay.mark_upstream_failure(
+            503,
+            {
+                "error": "first_frame_unreadable",
+                "failure_reason": "first_frame_total_timeout",
+                "first_frame_format_attempts": [
+                    {"label": "MJPG@640x480@15", "status": "first_frame_unreadable"},
+                    {"label": "YUYV@640x480@22", "status": "first_frame_unreadable"},
+                    {"label": "default@current", "status": "first_frame_unreadable"},
+                ],
+            },
+        )
+
+        snapshot = relay.snapshot()
+        self.assertEqual(503, snapshot["last_remote_http_status"])
+        self.assertEqual("first_frame_total_timeout", snapshot["last_failure_reason"])
+        self.assertEqual("first_frame_total_timeout", snapshot["last_error_payload"]["failure_reason"])
+        self.assertEqual(
+            ["MJPG@640x480@15", "YUYV@640x480@22", "default@current"],
+            [item["label"] for item in snapshot["last_error_payload"]["first_frame_format_attempts"]],
+        )
 
     def test_free_roam_readiness_allows_optional_camera_and_stale_radar_for_motion(self) -> None:
         """自由移动只看安全双锁；相机/雷达缺口进入 mapping_readiness，不阻止低速启动。"""

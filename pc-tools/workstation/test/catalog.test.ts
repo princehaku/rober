@@ -10484,6 +10484,14 @@ describe("workstation fail-closed API contracts", () => {
           error: "camera_mjpeg_proxy_failed",
           relay: {
             last_failure_reason: "camera_mjpeg_http_status_503",
+            last_error_payload: {
+              failure_reason: "first_frame_total_timeout",
+              first_frame_format_attempts: [
+                { label: "MJPG@640x480@15", status: "first_frame_unreadable" },
+                { label: "YUYV@640x480@22", status: "first_frame_unreadable" },
+                { label: "default@current", status: "first_frame_unreadable" },
+              ],
+            },
           },
         }));
         return;
@@ -10530,6 +10538,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.preview_status).toBe("idle_not_started");
       expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_mjpeg_http_status_503");
       expect(summaryBody.readback_summary.camera.shared_preview_last_remote_http_status).toBe("502");
+      expect(summaryBody.readback_summary.camera.last_offer_format_attempts_summary).toBe("MJPG@640x480@15 无首帧；YUYV@640x480@22 无首帧；default@current 无首帧");
       expect(Number(summaryBody.readback_summary.camera.shared_preview_last_failure_at_ms)).toBeGreaterThan(0);
       expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
       expect(upstreamRequestCount).toBe(1);

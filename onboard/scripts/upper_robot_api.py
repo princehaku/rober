@@ -28,6 +28,8 @@ SCHEMA = "trashbot.upper_robot_api.v1"
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8787
 DEFAULT_CAMERA_BASE_URL = "http://127.0.0.1:8088"
+CAMERA_MJPEG_RELAY_HEADER_TIMEOUT_S = 12.0
+CAMERA_MJPEG_RELAY_SOCK_READ_TIMEOUT_S = 12.0
 DEFAULT_BASE_PORT = "/dev/ttyS5"
 DEFAULT_BASE_BAUDRATE = 115200
 DEFAULT_MAX_SPEED = 0.12
@@ -277,6 +279,7 @@ class SharedCameraMjpegRelay:
         self.last_failure_reason = ""
         self.last_remote_http_status: int | None = None
         self.last_failure_at_ms: int | None = None
+        self.last_error_payload: dict[str, Any] | None = None
 
     def snapshot(self) -> dict[str, Any]:
         """状态只给诊断使用；不能据此宣称画面像素已经可见。"""
@@ -289,6 +292,7 @@ class SharedCameraMjpegRelay:
             "last_failure_reason": self.last_failure_reason,
             "last_remote_http_status": self.last_remote_http_status,
             "last_failure_at_ms": self.last_failure_at_ms,
+            "last_error_payload": self.last_error_payload,
         }
 
     def register(self) -> asyncio.Queue[bytes | None]:
@@ -298,6 +302,7 @@ class SharedCameraMjpegRelay:
         if self.upstream_task is None or self.upstream_task.done():
             self.content_type = ""
             self.content_type_loaded.clear()
+            self.last_error_payload = None
             self.upstream_task = asyncio.create_task(self._run_upstream())
         return queue
 
@@ -317,22 +322,41 @@ class SharedCameraMjpegRelay:
                     pass
             await queue.put(chunk)
 
+    def mark_upstream_failure(self, status: int | None, payload: dict[str, Any] | None = None, fallback_reason: str = "") -> None:
+        """记录 8088 失败体；无首帧 attempts 要能穿过 8787 给 PC 做 WYSIWYG 诊断。"""
+        self.last_remote_http_status = status
+        self.last_error_payload = payload
+        failure_reason = ""
+        if payload:
+            failure_reason = str(payload.get("failure_reason") or payload.get("error") or "")
+        self.last_failure_reason = failure_reason or fallback_reason or (f"camera_mjpeg_http_status_{status}" if status is not None else "camera_mjpeg_upstream_failed")
+        self.last_failure_at_ms = now_ms()
+        self.content_type_loaded.set()
+
     async def _run_upstream(self) -> None:
         """真实摄像头只由这一条协程拉取；失败后所有等待者都收到结束信号。"""
         from aiohttp import ClientSession, ClientTimeout
 
         try:
-            async with ClientSession(timeout=ClientTimeout(total=None, sock_connect=6, sock_read=8)) as session:
+            async with ClientSession(timeout=ClientTimeout(total=None, sock_connect=6, sock_read=CAMERA_MJPEG_RELAY_SOCK_READ_TIMEOUT_S)) as session:
                 async with session.get(self.target_url) as upstream:
                     self.last_remote_http_status = upstream.status
                     content_type = upstream.headers.get("Content-Type", "")
                     if upstream.status != 200 or "multipart/x-mixed-replace" not in content_type:
-                        self.last_failure_reason = f"camera_mjpeg_http_status_{upstream.status}"
-                        self.last_failure_at_ms = now_ms()
-                        self.content_type_loaded.set()
+                        upstream_error_payload: dict[str, Any] | None = None
+                        if "json" in content_type.lower():
+                            try:
+                                maybe_payload = await upstream.json(content_type=None)
+                                if isinstance(maybe_payload, dict):
+                                    upstream_error_payload = maybe_payload
+                            except Exception as exc:  # noqa: BLE001 - 失败体读不到时仍保留 HTTP 状态。
+                                upstream_error_payload = {"error": "camera_mjpeg_error_body_unreadable", "detail": compact_error(exc)}
+                        # 8088 会在无首帧时返回结构化 JSON；保留根因，PC 才能看到 YUYV/default 尝试矩阵。
+                        self.mark_upstream_failure(upstream.status, upstream_error_payload)
                         return
                     self.content_type = content_type
                     self.last_failure_reason = ""
+                    self.last_error_payload = None
                     self.content_type_loaded.set()
                     async for chunk in upstream.content.iter_chunked(65536):
                         if not self.clients:
@@ -341,10 +365,12 @@ class SharedCameraMjpegRelay:
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001 - 流式预览失败必须降级成诊断状态，不能拖垮主 API。
-            self.last_failure_reason = compact_error(exc)["message"]
-            self.last_remote_http_status = None
-            self.last_failure_at_ms = now_ms()
-            self.content_type_loaded.set()
+            error_detail = compact_error(exc)
+            self.mark_upstream_failure(
+                None,
+                {"error": "camera_mjpeg_upstream_exception", "detail": error_detail},
+                fallback_reason=error_detail["message"],
+            )
         finally:
             await self._broadcast(None)
 
@@ -7815,7 +7841,7 @@ def create_app(api: UpperRobotApi) -> Any:
         stream_response: Any | None = None
         try:
             # 首个客户端负责拉起共享上游；后续客户端只等待同一个 content-type 事件。
-            await asyncio.wait_for(camera_mjpeg_relay.content_type_loaded.wait(), timeout=8)
+            await asyncio.wait_for(camera_mjpeg_relay.content_type_loaded.wait(), timeout=CAMERA_MJPEG_RELAY_HEADER_TIMEOUT_S)
             content_type = camera_mjpeg_relay.content_type
             if "multipart/x-mixed-replace" not in content_type:
                 return json_response(
