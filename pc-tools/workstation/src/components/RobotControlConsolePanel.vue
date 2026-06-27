@@ -7366,7 +7366,7 @@ const plainMotionSummary = computed(() => {
       return { state: "已试动", hint: "试动请求已发送；观察小车，需要时点停止。" };
     }
     if (plainFirstJogResult.value.failure_reason === "first_jog_preflight_required") {
-      return { state: "未试动", hint: "还需要先记录现场画面，小车没有移动。" };
+      return { state: "未试动", hint: "历史试动入口还需要现场画面；可直接用底盘试动，底盘试动只要求安全确认。" };
     }
     return { state: "试动失败", hint: "请求被拒绝，小车没有移动。" };
   }
@@ -7378,7 +7378,7 @@ const plainMotionSummary = computed(() => {
   }
   if (plainVisualMaterialResult.value) {
     if (plainVisualMaterialResult.value.proxy_status === "report_forwarded" && plainVisualMaterialResult.value.status !== "blocked") {
-      return { state: "已记录", hint: "现场画面已记录；可以试动一下。" };
+      return { state: "已记录", hint: "现场画面已记录；发车前仍只需要安全确认。" };
     }
     return { state: "记录失败", hint: "现场画面记录失败，小车没有移动。" };
   }
@@ -7386,13 +7386,10 @@ const plainMotionSummary = computed(() => {
     return { state: "处理中", hint: "正在处理请求。" };
   }
   if (!manualCommandResult.value) {
-    if (firstJogMaterialRestoreReady.value) {
-      return { state: "待确认", hint: "已有现场画面；请恢复试动确认后再试动，恢复确认不会发车。" };
+    if (!plainManualSafetyConfirmed.value) {
+      return { state: "待确认", hint: "勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。" };
     }
-    if (firstJogVisualMaterialReady.value) {
-      return { state: "待试动", hint: "现场画面已记录；可以试动一下。" };
-    }
-    return { state: "待记录", hint: "先记录现场画面，再试动一下；需要时可直接停止。" };
+    return { state: "待命", hint: "安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。" };
   }
   if (manualCommandResult.value.command_kind === "stop" && manualCommandResult.value.proxy_status === "command_forwarded") {
     return { state: "已停止", hint: "停止请求已发送。" };
@@ -7400,9 +7397,9 @@ const plainMotionSummary = computed(() => {
   if (manualCommandResult.value.command_kind === "stop") {
     return { state: "停止失败", hint: manualCommandResult.value.failure_reason || "停止请求失败。" };
   }
-  return operatorMaterialReady.value
-    ? { state: "待命", hint: "安全确认已勾；需要时可直接停止。" }
-    : { state: "待记录", hint: "先记录现场画面，再试动一下；需要时可直接停止。" };
+  return plainManualSafetyConfirmed.value
+    ? { state: "待命", hint: "安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。" }
+    : { state: "待确认", hint: "勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。" };
 });
 
 const plainEvidenceSweepSummary = computed(() => {

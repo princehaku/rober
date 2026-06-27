@@ -3713,11 +3713,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("待确认");
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("保存地图");
-    expect(firstScreenText).toContain("待试动");
+    expect(firstScreenText).toContain("待确认");
     const motionPanel = wrapper.find('[data-testid="plain-motion-panel"]');
     expect(motionPanel.exists()).toBe(true);
-    expect(motionPanel.attributes("data-state")).toBe("待试动");
-    expect(firstScreenText).toContain("现场画面已记录；可以试动一下。");
+    expect(motionPanel.attributes("data-state")).toBe("待确认");
+    expect(firstScreenText).toContain("勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。");
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).not.toContain("移动前检查");
     expect(firstScreenText).toContain("启用键盘");
@@ -3783,6 +3783,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-panel[data-state="地图处理中"]');
     expect(workstationStyles).toContain('.plain-connection-panel[data-state="已连接"]');
     expect(workstationStyles).toContain('.plain-connection-panel[data-state="有异常"]');
+    expect(workstationStyles).toContain('.plain-motion-panel[data-state="待命"]');
     expect(workstationStyles).toContain('.plain-motion-panel[data-state="待试动"]');
     expect(workstationStyles).toContain('.plain-motion-panel[data-state="已试动"]');
     expect(workstationStyles).toContain('.plain-camera-panel[data-state="画面可见"][data-frame-state="已绘制帧"]');
@@ -5406,7 +5407,7 @@ describe("App", () => {
     expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
     expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(true);
     expect((wrapper.find('[data-testid="advanced-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
-    expect(wrapper.find('[data-testid="plain-motion-panel"]').attributes("data-state")).toBe("待试动");
+    expect(wrapper.find('[data-testid="plain-motion-panel"]').attributes("data-state")).toBe("待命");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
@@ -11039,8 +11040,8 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("wheel_feedback_lr_nonzero_proven");
     expect(diagnostics.text()).toContain("physical_motion_lidar_delta_proven");
     const firstScreenText = visiblePlainHomeText(wrapper);
-    expect(firstScreenText).toContain("待记录");
-    expect(firstScreenText).toContain("先记录现场画面，再试动一下；需要时可直接停止。");
+    expect(firstScreenText).toContain("待命");
+    expect(firstScreenText).toContain("安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
     expect(firstScreenText).not.toContain("现场材料");
     expect(firstScreenText).not.toContain("external_video_recorded");
     expect(firstScreenText).not.toContain("physical_motion_lidar_delta_proven");
@@ -11843,7 +11844,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-    expect(visiblePlainHomeText(wrapper)).toContain("已有现场画面；请恢复试动确认后再试动，恢复确认不会发车。");
+    expect(visiblePlainHomeText(wrapper)).toContain("勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。");
     expect(visiblePlainHomeText(wrapper)).toContain("试动按钮已锁定：请先点恢复试动确认（不会发车）。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("先点“恢复试动确认”（不会发车），再试动读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("恢复试动确认");
@@ -12031,7 +12032,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
-    expect(visiblePlainHomeText(wrapper)).toContain("已有现场画面；请恢复试动确认后再试动，恢复确认不会发车。");
+    expect(visiblePlainHomeText(wrapper)).toContain("勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("先点“恢复试动确认”（不会发车），再试动读取轮速。");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("delivery latest draft visual material kept");
     expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
@@ -12662,7 +12663,7 @@ describe("App", () => {
 
     const firstScreenAfter = visiblePlainHomeText(wrapper);
     expect(firstScreenAfter).toContain("未试动");
-    expect(firstScreenAfter).toContain("还需要先记录现场画面，小车没有移动。");
+    expect(firstScreenAfter).toContain("历史试动入口还需要现场画面；可直接用底盘试动，底盘试动只要求安全确认。");
     expect(firstScreenAfter).not.toContain("first_jog_preflight_required");
     expect(firstScreenAfter).not.toContain("external_video_or_visible_camera");
     expect(firstScreenAfter).not.toContain("physical_motion_lidar_delta_proven");
@@ -14380,7 +14381,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("待命");
-    expect(firstScreenText).toContain("安全确认已勾；需要时可直接停止。");
+    expect(firstScreenText).toContain("安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
     for (const token of DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS) {
       expect(firstScreenText).not.toContain(token);
     }
