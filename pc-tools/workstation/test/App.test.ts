@@ -460,6 +460,8 @@ const fixtures: Record<string, unknown> = {
       base: {
         status: "base_status_not_proven",
         latest_feedback_status: "feedback_samples_not_proven",
+        current_feedback_read_status: "not_loaded",
+        current_feedback_failure_reason: "not_loaded",
         feedback_ack_status: "blocked_no_ack",
         latest_t1001_observed_count: "not_loaded",
         wheel_feedback_lr_nonzero_proven: "not_loaded",
@@ -9279,6 +9281,34 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+  });
+
+  it("shows current base feedback read errors before stale wheel samples", async () => {
+    // 真实现场可能旧 samples 读到过 T1001，但当前 T=130 已经读错；普通首屏必须以当前读回为准。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=not_loaded";
+    summaryFixture.readback_summary.base.latest_feedback_status = "current_read_error";
+    summaryFixture.readback_summary.base.current_feedback_read_status = "read_error";
+    summaryFixture.readback_summary.base.current_feedback_failure_reason = "device reports readiness to read but returned no data";
+    summaryFixture.readback_summary.base.feedback_link_status = "current_t130_read_error";
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "3";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("轮速：当前 T=130 读底盘反馈失败：device reports readiness to read but returned no data");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("旧 samples 不能当当前轮速结论");
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toBe("当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=0/0；先刷新当前轮速（只读），再低速试动读非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("当前未读到新反馈帧");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("shows historical wheel material separately from current zero readback", async () => {

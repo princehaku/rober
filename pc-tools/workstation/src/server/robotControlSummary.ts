@@ -4121,6 +4121,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       base: {
         status: "not_loaded",
         latest_feedback_status: "not_loaded",
+        current_feedback_read_status: "not_loaded",
+        current_feedback_failure_reason: "not_loaded",
         feedback_ack_status: "not_loaded",
         latest_t1001_observed_count: "not_loaded",
         wheel_feedback_lr_nonzero_proven: "not_loaded",
@@ -4753,17 +4755,43 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   // T=1001 只说明 WAVE ROVER feedback 链路有回包，不代表轮速非零、真实运动或 HIL pass。
   const baseStatus = pickReadback(readbacks, "base_status");
   const feedbackLatest = pickReadback(readbacks, "base_feedback_samples_latest");
+  const basePayload = readbackById(readbacks, "base_status")?.payload ?? null;
+  const currentFeedbackReadback = asRecord(findFirstKey(basePayload, ["feedback_readback"]));
+  const currentSerialRead = asRecord(currentFeedbackReadback?.serial_read);
+  const currentSerialError = asRecord(currentSerialRead?.error);
+  const currentFeedbackAck = asRecord(findFirstKey(basePayload, ["feedback_ack"]));
+  const currentT1001Observed = currentFeedbackAck?.t1001_observed;
+  const currentFeedbackReadStatus = currentSerialRead?.ok === false
+    ? "read_error"
+    : currentT1001Observed === false
+      ? "t1001_not_observed"
+      : currentT1001Observed === true ? "t1001_observed" : "not_loaded";
+  const currentFeedbackFailureReason = currentSerialRead?.ok === false
+    ? compactValueText(currentSerialError?.message ?? currentSerialError?.type ?? "serial_read_failed", 220)
+    : currentT1001Observed === false
+      ? compactValueText(currentFeedbackAck?.reason ?? "T=1001 not observed after current T=130 request", 220)
+      : "";
   const statusT1001 = baseStatus?.key_values.latest_t1001_observed_count;
   const latestT1001 = feedbackLatest?.key_values.latest_t1001_observed_count ?? feedbackLatest?.key_values.t1001_observed_count;
   const observedCount = statusT1001 ?? latestT1001 ?? "not_loaded";
   const baseStatusHasFreshT1001 = statusT1001 !== undefined && statusT1001 !== "not_loaded" && Number(statusT1001) > 0;
-  const latestFeedbackStatus = baseStatusHasFreshT1001
+  const latestFeedbackStatus = currentFeedbackReadStatus === "read_error"
+    ? "current_read_error"
+    : currentFeedbackReadStatus === "t1001_not_observed"
+      ? "current_t1001_not_observed"
+      : baseStatusHasFreshT1001
     ? "fresh_base_status_readback"
     : feedbackLatest?.key_values.feedback_samples_freshness_status
       ?? baseStatus?.key_values.feedback_samples_freshness_status
       ?? feedbackLatest?.status
       ?? "not_loaded";
-  const ackStatus = baseStatus?.key_values.feedback_ack_status ?? (Number(observedCount) > 0 ? "t1001_observed" : "not_loaded");
+  const ackStatus = currentFeedbackReadStatus === "t1001_observed"
+    ? "t1001_observed"
+    : currentFeedbackReadStatus === "t1001_not_observed"
+      ? "t1001_not_observed"
+      : currentFeedbackReadStatus === "read_error"
+        ? "read_error"
+        : baseStatus?.key_values.feedback_ack_status ?? (Number(observedCount) > 0 ? "t1001_observed" : "not_loaded");
   const wheelFeedbackProven = baseStatus?.key_values.wheel_feedback_lr_nonzero_proven
     ?? feedbackLatest?.key_values.wheel_feedback_lr_nonzero_proven
     ?? "not_loaded";
@@ -4794,6 +4822,8 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   return {
     status: baseStatus?.status ?? "not_loaded",
     latest_feedback_status: latestFeedbackStatus,
+    current_feedback_read_status: currentFeedbackReadStatus,
+    current_feedback_failure_reason: currentFeedbackFailureReason || "not_loaded",
     feedback_ack_status: ackStatus,
     latest_t1001_observed_count: observedCount,
     wheel_feedback_lr_nonzero_proven: wheelFeedbackProven,
@@ -4805,7 +4835,11 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     wheel_feedback_latest_nonzero_left_speed: latestNonzeroLeft,
     wheel_feedback_latest_nonzero_right_speed: latestNonzeroRight,
     feedback_voltage_v: feedbackVoltage,
-    feedback_link_status: wheelFeedbackProven === "true" || wheelFeedbackObserved === "true"
+    feedback_link_status: currentFeedbackReadStatus === "read_error"
+      ? "current_t130_read_error"
+      : currentFeedbackReadStatus === "t1001_not_observed"
+        ? "current_t130_no_t1001"
+        : wheelFeedbackProven === "true" || wheelFeedbackObserved === "true"
       ? "t1001_lr_nonzero_material_observed_not_hil"
       : Number(observedCount) > 0 ? "t1001_observed_not_motion_proof" : "not_observed",
   };

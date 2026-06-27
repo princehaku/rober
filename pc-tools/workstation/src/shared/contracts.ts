@@ -2441,6 +2441,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     base: {
       status: string;
       latest_feedback_status: string;
+      current_feedback_read_status: string;
+      current_feedback_failure_reason: string;
       feedback_ack_status: string;
       latest_t1001_observed_count: string;
       wheel_feedback_lr_nonzero_proven: string;

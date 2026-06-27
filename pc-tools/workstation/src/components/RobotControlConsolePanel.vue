@@ -2095,10 +2095,20 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
   return "建图：等待上车端建图 readiness；自由移动可按单独条件判断。";
 }
 
-function plainCurrentWheelFactText(): string {
+function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string {
   // 轮速刷新挂起时优先讲“正在等当前读数”，避免旧 L/R 被误当成实时结论。
   if (baseFeedbackSamplesPending.value) {
     return "轮速：正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。";
+  }
+  const base = summary.readback_summary.base;
+  if (base.current_feedback_read_status === "read_error") {
+    const reason = base.current_feedback_failure_reason && !["", "not_loaded"].includes(base.current_feedback_failure_reason)
+      ? `：${base.current_feedback_failure_reason}`
+      : "";
+    return `轮速：当前 T=130 读底盘反馈失败${reason}；旧 samples 不能当当前轮速结论，先刷新当前轮速或检查串口占用、底盘供电和模式。`;
+  }
+  if (base.current_feedback_read_status === "t1001_not_observed") {
+    return "轮速：当前 T=130 请求未读到 T=1001 反馈；旧 samples 不能当当前轮速结论，先刷新当前轮速或检查底盘反馈链路。";
   }
   return "";
 }
@@ -2272,7 +2282,7 @@ const plainCurrentFactRows = computed(() => {
   rows.push(plainCurrentRadarFactText());
   rows.push(plainCurrentMapFactText(summary));
   rows.push(plainCurrentMappingFactText(summary));
-  const wheelFact = plainCurrentWheelFactText();
+  const wheelFact = plainCurrentWheelFactText(summary);
   if (wheelFact) {
     rows.push(wheelFact);
   }
@@ -4995,6 +5005,10 @@ function baseReadbackIsStaleOrEmpty(base: RobotControlSummaryResponse["readback_
   // live 上常见形态是 L/R 仍带 0/0，但 T1001 帧为 0 或已过期；普通用户需要先刷新，而不是把它当作当前轮速证据。
   return Boolean(base && (
     base.latest_feedback_status === "stale"
+    || base.latest_feedback_status === "current_read_error"
+    || base.latest_feedback_status === "current_t1001_not_observed"
+    || base.current_feedback_read_status === "read_error"
+    || base.current_feedback_read_status === "t1001_not_observed"
     || baseReadbackFreshFrameCount(base) === 0
   ));
 }

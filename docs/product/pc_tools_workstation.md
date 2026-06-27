@@ -67,6 +67,7 @@ pc-tools/workstation/
 - 2026-06-27 13:16 起，普通首屏键盘区在安全确认后新增 `键盘轮速目标` 行：当前 wheel raw L/R 为 `0/0` 时直接显示“启用后按住方向键读取非零 L/R / 还不是非零证据”，启用键盘后切换为“按住方向键读取非零 L/R”。该行只消费 summary/base readback 和本地 armed 状态，不自动启用键盘、不发送 manual、stop、Nav2、delivery、free-roam 或 `/cmd_vel`。
 - 2026-06-27 17:59 起，普通首屏轮速卡片会把 `latest_feedback_status=stale` 或 `latest_t1001_observed_count=0` 翻译成“当前没有新鲜底盘反馈帧”，不再显示“已读到 0 帧”或隐藏轮速摘要。下一步明确为先点 `刷新当前轮速（只读）`，再低速试动或键盘按住读取非零 L/R。该判断只消费 summary/base readback，不调用 manual、keyboard pulse、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-28 05:31 CST 起，普通首屏 `当前事实` 会同步显示 `刷新当前轮速（只读）` 的 pending 状态：轮速只读样本请求未返回前显示“正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论”。该事实条只消费 PC 本地 pending 状态和固定 base feedback samples 只读代理，不调用 manual、keyboard pulse、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
+- 2026-06-28 05:45 CST 起，PC Node summary 的底盘摘要新增 `current_feedback_read_status/current_feedback_failure_reason`，优先使用当前 `/api/base/status` 或 `/api/status` 内 fresh `T=130` 读回；当当前读回是 `read_error` 或 `t1001_not_observed` 时，`latest_feedback_status` 分别标为 `current_read_error/current_t1001_not_observed`，普通首屏 `当前事实` 显示“当前 T=130 读底盘反馈失败/未读到 T=1001”，并声明旧 samples 不能当当前轮速结论。该字段只消费只读 base status，不发送 manual、keyboard、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-27 16:18 起，普通首屏行程区会优先消费 summary/safe boundary 的 Nav2 重跑事实：当上次
   `base_command_mode=pwm`、下一次 `next_execution_base_command_mode=ros`，且执行窗口
   `wheel raw L/R=0/0` 未闭环时，状态、最小预检和主按钮都显示 `用 ROS 重跑图上路线`。这只改变普通用户可见文案；
