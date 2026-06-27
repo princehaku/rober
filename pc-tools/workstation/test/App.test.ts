@@ -17146,7 +17146,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。 页面会低频自动重试。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -17178,7 +17178,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 当前相机源没有输出首帧；设备没人占用，通常是 USB、摄像头输入或供电问题，不是浏览器独占。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 当前相机源没有输出首帧；设备没人占用，通常是 USB、摄像头输入或供电问题，不是浏览器独占。 页面会低频自动重试。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 没人占用但没有输出视频帧。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -17216,7 +17216,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。 页面会低频自动重试。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
@@ -17249,7 +17249,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览等不到上游画面；通常是相机能被选中但没有输出帧，不是浏览器独占。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览等不到上游画面；通常是相机能被选中但没有输出帧，不是浏览器独占。 页面会低频自动重试。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_upstream_timeout");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
@@ -17967,7 +17967,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).not.toContain("OpenCV/V4L2 后端尝试");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：USB Composite Device: DV20 USB 摄像头能打开，但没有取到视频帧；检查 USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).not.toContain("采集尝试");
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。 页面会低频自动重试。");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("只读检查：上位机 health 已确认相机源没有首帧");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("不是页面独占");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).not.toContain("还没做首帧检查");

@@ -1256,14 +1256,15 @@ function sharedPreviewFailureText(
   const statusText = remoteHttpStatus === null || remoteHttpStatus === undefined || remoteHttpStatus === "none"
     ? ""
     : ` HTTP ${remoteHttpStatus}`;
+  const retryText = " 页面会低频自动重试。";
   if (reason === "camera_mjpeg_upstream_timeout") {
-    return " 最近失败：共享预览等不到上游画面；通常是相机能被选中但没有输出帧，不是浏览器独占。";
+    return ` 最近失败：共享预览等不到上游画面；通常是相机能被选中但没有输出帧，不是浏览器独占。${retryText}`;
   }
   if (reason === "camera_source_first_frame_failed") {
     if (hasPlainHint) {
-      return ` ${sourceDiagnosisPlainHint}`;
+      return ` ${sourceDiagnosisPlainHint}${retryText}`;
     }
-    return " 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。";
+    return ` 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。${retryText}`;
   }
   if (
     reason === "camera_mjpeg_proxy_failed"
@@ -1272,7 +1273,7 @@ function sharedPreviewFailureText(
     || statusText.includes(" 502")
     || statusText.includes(" 503")
   ) {
-    return ` 最近失败：共享预览上游没有返回可用画面${statusText}；通常是相机无帧或相机后端不可用，不是浏览器独占。`;
+    return ` 最近失败：共享预览上游没有返回可用画面${statusText}；通常是相机无帧或相机后端不可用，不是浏览器独占。${retryText}`;
   }
   return ` 最近失败：${reason}${statusText}。`;
 }
@@ -1285,16 +1286,17 @@ function sharedPreviewSourceNoFrameText(
   if (existingFailureText || !cameraSourceFirstFrameFailed(camera)) {
     return "";
   }
+  const retryText = " 页面会低频自动重试。";
   if (
     camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
     && camera.source_diagnosis_plain_hint
     && !["", "not_loaded", "none"].includes(camera.source_diagnosis_plain_hint)
   ) {
-    return ` ${camera.source_diagnosis_plain_hint}`;
+    return ` ${camera.source_diagnosis_plain_hint}${retryText}`;
   }
   const notInUse = camera?.source_usage_status === "not_in_use" || camera?.source_usage_owner_count === "0";
   const ownerText = notInUse ? "设备没人占用，" : "";
-  return ` 当前相机源没有输出首帧；${ownerText}通常是 USB、摄像头输入或供电问题，不是浏览器独占。`;
+  return ` 当前相机源没有输出首帧；${ownerText}通常是 USB、摄像头输入或供电问题，不是浏览器独占。${retryText}`;
 }
 
 const plainCameraSharedPreviewStatus = computed(() => {
