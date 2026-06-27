@@ -4109,6 +4109,51 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary keeps camera status and readiness aligned when relay proves first-frame failure", async () => {
+    // live 形态：health 可能慢到超时，但共享 relay 已知道上游无首帧；summary 不能返回 status failed + readiness not_loaded。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/camera/health": {
+        delay_ms: 50,
+        payload: {
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "ready",
+          source_readiness: "source_selected_not_probed",
+          source_failure_reason: "",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl, null, {
+        client_count: 0,
+        upstream_active: false,
+        content_type_loaded: false,
+        cached_frame_loaded: false,
+        cached_frame_age_ms: null,
+        shared_capture: true,
+        exclusive_camera_claim: false,
+        last_failure_reason: "camera_source_first_frame_failed",
+        last_remote_http_status: 200,
+        last_failure_at_ms: 1234,
+        source_diagnosis_status: "uvc_no_frame_not_exclusive",
+        source_diagnosis_plain_hint: "不是页面独占：共享 relay 已证明 UVC 没有输出首帧。",
+        source_diagnosis_next_action: "check_usb_camera_input_power_or_known_good_uvc",
+        source_diagnosis_not_exclusive: "true",
+      }, { readbackTimeoutMs: 1 });
+
+      expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+      expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
+      expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary derives Nav2 execution proof from live execution facts", async () => {
     // 现场上位机 latest 可能不带旧 nav2_goal_execution_proven key；PC 摘要必须从 action 成功和 wheel L/R 非零推导。
     const robotApi = await listenRobotApiReadbackByPath({

@@ -1394,9 +1394,12 @@ function cameraSummaryFromReadbacks(
     : rawHealthStatus === "ready" && sourceReadiness === "source_selected_not_probed" && sharedPreviewStatus !== "streaming"
       ? "source_not_probed"
       : rawHealthStatus;
+  const resolvedSourceReadiness = cameraStatus === "source_first_frame_failed" && sourceReadiness !== "first_frame_observed"
+    ? "first_frame_failed"
+    : sourceReadiness;
   const sourceFirstFrameFailedForSharedPreview = Boolean(
     cameraStatus === "source_first_frame_failed"
-    || sourceReadiness === "first_frame_failed"
+    || resolvedSourceReadiness === "first_frame_failed"
     || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(sourceFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number])
     || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(asString(lastOfferError?.failure_reason, "") as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number]),
   );
@@ -1480,7 +1483,8 @@ function cameraSummaryFromReadbacks(
     selected_sibling_video_node_count: selectedCandidate.selected_sibling_video_node_count === undefined
       ? "not_loaded"
       : compactValueText(selectedCandidate.selected_sibling_video_node_count),
-    source_readiness: sourceReadiness,
+    // 最终 status 若已由 health/relay 判定为无首帧，readiness 也必须同口径，避免首屏和高级诊断互相矛盾。
+    source_readiness: resolvedSourceReadiness,
     source_failure_reason: sourceFailureReason,
     source_diagnosis_status: derivedSourceDiagnosis.status,
     source_diagnosis_plain_hint: derivedSourceDiagnosis.plain_hint,

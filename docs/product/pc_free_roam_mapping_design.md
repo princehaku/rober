@@ -116,6 +116,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `shared_preview_cached_frame_loaded/shared_preview_cached_frame_age_ms`，普通首屏“共享画面”行在上游已连接且已有最近帧时
   明确显示“后进页面会先显示最近帧”。这样 status 轮询失败时仍能从 summary 读到缓存帧事实，同时不把缓存帧当成建图
   camera ready 或浏览器已绘制新帧。
+- 2026-06-28 02:28 起，PC summary 的相机字段会把最终 `status` 与 `source_readiness` 对齐：
+  如果 health 超时但共享 relay 或最近失败已经证明 `source_first_frame_failed`，返回给首屏和高级诊断的
+  `source_readiness` 也会同步为 `first_frame_failed`，不再出现“状态无首帧、readiness 仍 not_loaded”的矛盾口径。
 - 2026-06-27 13:35 起，共享预览 status 不再只返回 relay 计数和最近失败 token；它会短读只读 camera health，并在不创建新
   MJPEG client 的前提下透出 `source_diagnosis_status/plain_hint/next_action/not_exclusive`。当真实状态是“设备没人占用但无首帧”时，
   后进入的页面也能直接看到不是独占原因，而不是空白预览或内部 token。
