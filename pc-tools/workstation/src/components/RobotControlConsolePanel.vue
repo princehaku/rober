@@ -1522,6 +1522,12 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
     return "自由移动：运动发布已解锁，现场继续监看。";
   }
   if (runtime?.status === "loaded" && runtime.artifact_only === true && runtime.cmd_vel_publish_enabled === false) {
+    if (runtime.state === "stopping") {
+      const reasonText = runtime.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
+      return boundary.free_roam_autonomy_start_ready
+        ? `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，可启动。`
+        : `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布。`;
+    }
     return boundary.free_roam_autonomy_start_ready
       ? "自由移动：可启动，但当前没有运动发布。"
       : "自由移动：当前没有运动发布。";

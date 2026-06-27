@@ -3168,7 +3168,9 @@ free-roam 或 `/cmd_vel` 行为。
 
 2026-06-27 09:26 起，普通首屏 `当前事实` 新增自由移动行：当上车 runtime 仍是
 `artifact_only=true/cmd_vel_publish_enabled=false` 时显示 `自由移动：可启动，但当前没有运动发布` 或
-`自由移动：当前没有运动发布`；当 runtime 已解锁运动发布时显示 `自由移动：运动发布已解锁，现场继续监看`。
+`自由移动：当前没有运动发布`；如果同一 runtime 是 record-only 的 `stopping/现场请求停止`，则显示
+`自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动`；当 runtime 已解锁运动发布时显示
+`自由移动：运动发布已解锁，现场继续监看`。
 这让“车能不能自助移动”和“当前是否正在发布运动”直接出现在首屏事实汇总里，不必展开自动扫图诊断；该行只读
 summary，不调用 free-roam start/stop、manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
 
