@@ -4287,14 +4287,16 @@ function nav2GoalBoundaryGuidance(
   }
   if (succeeded && nav2.goal_execution_base_feedback_lr_nonzero_proven === "false") {
     const rerunMode = !["", "not_loaded"].includes(nextMode) ? nextMode.toUpperCase() : "当前模式";
+    const serviceRestoreActions = inactiveServiceNames.length ? [`恢复 ${inactiveServiceNames.join(" 和 ")}`] : [];
+    const routeReadinessActions = base.nav2_goal_ready ? [] : ["生成图上路线并读到小车地图位置"];
     const routePrepActions = [
-      base.nav2_goal_ready ? "" : "生成图上路线并读到小车地图位置",
-      inactiveServiceNames.length ? `恢复 ${inactiveServiceNames.join(" 和 ")}` : "",
-    ].filter(Boolean);
+      ...serviceRestoreActions,
+      ...routeReadinessActions,
+    ];
     const rerunNextAction = !base.nav2_goal_ready
-      ? `当前图上路线未就绪，先${routePrepActions.join("，并")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
+      ? `当前图上路线未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
       : inactiveServiceNames.length
-        ? `当前 Nav2 服务未就绪，先${routePrepActions.join("，并")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
+        ? `当前 Nav2 服务未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
         : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`;
     return {
       ...base,

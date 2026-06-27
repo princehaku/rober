@@ -514,6 +514,11 @@ blocked reasons 带 `runtime_scan_stale_for_map_radar_overlay` 与 `radar_lifecy
 wheel raw L/R。只有图上路线和服务都 ready 时，才显示直接重跑路线。该规则只修正 PC summary/首屏引导，
 不自动启动 Nav2、不发送 goal、不发布 `/cmd_vel`。
 
+2026-06-28 11:20 起，上述引导的动作顺序按 live 根因再收紧：
+当 Nav2 planner/controller inactive 且图上路线也未就绪时，`nav2_goal_next_action` 必须先写“恢复 Nav2 planner/controller”，
+再写“生成图上路线并读到小车地图位置”。服务没起来时不应先引导用户准备路线，避免自动驾驶排障顺序反过来。
+该改动仍只影响 PC summary/首屏文字，不自动调用 `/api/nav2/start`、goal execute、`/cmd_vel` 或底盘 manual。
+
 2026-06-28 01:59 起，高级 Nav2 目标预检/执行入口也和普通首屏使用同一个“现场安全确认”：
 预检按钮不再需要单独勾“确认仅做导航目标预检”，请求体固定发送兼容字段 `confirm_navigation_preflight=true`；
 执行按钮不再维护独立 `confirmNavigationExecution`，而是读取全页面统一的 `plainUnifiedSafetyConfirmed`。
