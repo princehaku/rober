@@ -47,6 +47,7 @@ import {
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
   ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS,
+  ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
   fetchFirstJogOperatorReportPreflight,
   notRequiredConfirmedManualOperatorReportPreflight,
   notRequiredOperatorReportPreflight,
@@ -90,6 +91,7 @@ import type {
   RobotControlCameraMjpegRelayOverlay,
 } from "./robotControlSummary";
 
+const ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS = 600;
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1274,11 +1276,14 @@ function cameraMjpegStatusResponse(
   };
 }
 
-async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): Promise<CameraMjpegRelayLastFailure | null> {
+async function cameraSourceFirstFrameFailureForStatus(
+  normalizedBaseUrl: URL,
+  timeoutMs = ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS,
+): Promise<CameraMjpegRelayLastFailure | null> {
   // status 端点不创建 MJPEG client；只读 health，并与 summary 共享 camera 读取预算，避免慢 health 丢掉“不是独占”的现场诊断。
   try {
     const response = await fetch(endpointUrl(normalizedBaseUrl, "/api/camera/health"), {
-      signal: AbortSignal.timeout(ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
       return null;
@@ -1704,7 +1709,9 @@ export function createWorkstationApp(): express.Express {
       : null;
     const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
     const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
-    const sourceFailure = normalized.ok ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized) : null;
+    const sourceFailure = normalized.ok
+      ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized, ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS)
+      : null;
     const lastFailureForOverlay = lastFailure ?? sourceFailure;
     const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
       ? {
@@ -1733,7 +1740,9 @@ export function createWorkstationApp(): express.Express {
           last_failure_at_ms: lastFailureForOverlay.failed_at_ms,
         }
         : null;
-    res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay));
+    res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay, {
+      readbackTimeoutMs: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
+    }));
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {

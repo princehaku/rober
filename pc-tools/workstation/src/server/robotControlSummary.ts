@@ -36,11 +36,15 @@ type JsonRecord = Record<string, unknown>;
 type InternalRobotApiEndpointReadback = RobotApiEndpointReadback & {
   payload: JsonRecord | null;
 };
+type RobotControlSummaryBuildOptions = {
+  readbackTimeoutMs?: number;
+};
 
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 1500;
 const SLOW_READBACK_TIMEOUT_MS = 4000;
 const HEAVY_READBACK_TIMEOUT_MS = 8000;
+export const ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS = 2400;
 export const ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS = HEAVY_READBACK_TIMEOUT_MS;
 export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
 export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
@@ -2743,20 +2747,23 @@ export async function buildMapLifecycleProxy(
   };
 }
 
-async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise<InternalRobotApiEndpointReadback> {
+async function readEndpoint(base: URL, config: RobotReadEndpointConfig, timeoutOverrideMs?: number): Promise<InternalRobotApiEndpointReadback> {
   // 每条读请求都按白名单 endpoint 带独立超时；慢端点允许更宽窗口，但范围仍局限在只读 GET。
   const { id, endpoint, timeout_ms } = config;
+  const effectiveTimeoutMs = timeoutOverrideMs && Number.isFinite(timeoutOverrideMs)
+    ? Math.max(1, Math.min(timeout_ms, Math.floor(timeoutOverrideMs)))
+    : timeout_ms;
   const url = endpointUrl(base, endpoint);
   let response: Response;
   try {
     response = await fetch(url, {
       method: "GET",
-      signal: AbortSignal.timeout(timeout_ms),
+      signal: AbortSignal.timeout(effectiveTimeoutMs),
     });
   } catch (error) {
     const timeoutReason =
       error instanceof Error && error.name === "TimeoutError"
-        ? `fetch_timeout_${timeout_ms}ms`
+        ? `fetch_timeout_${effectiveTimeoutMs}ms`
         : error instanceof Error
           ? error.message.slice(0, 180)
           : "fetch_failed";
@@ -4536,6 +4543,7 @@ export async function buildRobotControlSummary(
   baseUrl: string,
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
   mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = null,
+  options: RobotControlSummaryBuildOptions = {},
 ): Promise<RobotControlSummaryResponse> {
   // 这是 PC Robot Control Console V1 的唯一 Robot API 入口；浏览器永远不直连上位机。
   const normalized = normalizeRobotApiBaseUrl(baseUrl);
@@ -4545,7 +4553,7 @@ export async function buildRobotControlSummary(
 
   const observedAt = Date.now();
   const readbacks = await Promise.all(
-    READ_ENDPOINTS.map((item) => readEndpoint(normalized.normalized, item)),
+    READ_ENDPOINTS.map((item) => readEndpoint(normalized.normalized, item, options.readbackTimeoutMs)),
   );
   const readEndpoints: RobotApiEndpointReadback[] = readbacks.map((item) => ({
     // summary 对外只暴露压缩 readback；完整 payload 只在本函数内用于现场材料摘要。
@@ -4571,6 +4579,12 @@ export async function buildRobotControlSummary(
     ...readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`)),
     ...dangerous.map((field) => `dangerous_true_field:${field}`),
   ];
+  const hardBlockedReasons = [
+    ...readbacks
+      .filter((item) => item.request_status === "blocked")
+      .flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`)),
+    ...dangerous.map((field) => `dangerous_true_field:${field}`),
+  ];
   const proofSummary = buildProofSummary(readbacks);
   const operatorHilMaterialSummary = buildOperatorHilMaterialSummary(readbacks);
   const freeRoamRuntimeGates = freeRoamRuntimeGatesFromReadbacks(readbacks);
@@ -4580,7 +4594,7 @@ export async function buildRobotControlSummary(
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
-    console_status: blockedReasons.length ? "blocked" : "loaded_fail_closed_summary",
+    console_status: hardBlockedReasons.length ? "blocked" : "loaded_fail_closed_summary",
     source_base_url: baseUrl,
     normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
     proxy_policy: {

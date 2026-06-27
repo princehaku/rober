@@ -460,3 +460,16 @@ PC 下一步文案会把“旧执行主因不是雷达或相机”和“当前 c
 无帧根因不会丢失：当前事实和共享画面状态继续显示“不是页面独占、UVC 无帧、必要时检查 USB/供电或换 known-good UVC”。
 如果确实是外部进程占用，相机卡片仍显示占用失败，不会误导用户继续抢设备。该调整只改变 PC 页面展示和只读 `<img>` 接入，
 不发送运动命令，不把正在连接的流当作建图 camera ready；建图验收仍要求真实首帧或 MJPEG 帧已绘制。
+
+2026-06-28 09:20 起，PC `/api/robot-control/summary` 的普通首屏 HTTP 路径使用短只读预算：
+相机 source failure 覆盖最多等待 600ms，summary 每个只读 endpoint 最多等待 2400ms。慢 `camera/health`、`/api/status`
+或其他只读端点只会把 `robot_api_connection.status` 标为 degraded，并在对应 readback 里记录 timeout；
+不会再让已返回的自由移动、雷达、Nav2 或地图读数整页空壳。底层 `buildRobotControlSummary()` 默认宽超时仍保留给离线验证。
+该规则不发送 free-roam、manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 09:20 现场只读复验口径：
+共享相机预览仍是 `single_shared_capture_for_multiple_clients`，`exclusive=false`，所以“谁进来都能看”由 PC Node 单上游 MJPEG 广播承担；
+当前无画面根因是摄像头源 `source_first_frame_failed/first_frame_total_timeout`，不是浏览器独占。自由移动读数为
+`free_roam_motion_start_ready=true`，因此低速自由移动不依赖雷达 ready；建图验收仍因 `camera_first_frame`、`lidar_fresh`、
+`mapping_active`、`fresh_map_preview` 缺失而未 ready。自动驾驶当前卡点是 Nav2 `planner_server_active=false`、
+`controller_server_active=false`，并且图上路线/地图定位未 ready；普通入口应先点“恢复自动驾驶服务（不发车）”，再准备路线并显式安全确认执行。

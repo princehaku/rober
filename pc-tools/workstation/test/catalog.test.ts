@@ -6567,6 +6567,129 @@ describe("workstation fail-closed API contracts", () => {
     }
   }, 10_000);
 
+  it("Robot Control summary returns partial readbacks when the HTTP first-screen budget is shorter than slow camera health", async () => {
+    // 首屏不能因为 camera health 或 status 慢就让普通页面空白；慢项标 timeout，已读到的自由移动/Nav2/雷达事实先展示。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        delay_ms: 300,
+        payload: safePayload("trashbot.upper_robot_api.v1.status", "ready_but_slow"),
+      },
+      "/api/map/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed"),
+          map_once_observed: true,
+          map_file_observed: true,
+          map_metadata_observed: true,
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed"),
+          amcl_pose_observed: true,
+          amcl_pose: { frame_id: "map", x: 0.1, y: 0.2, yaw: 0, source: "/amcl_pose" },
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "loaded"),
+          planner_server_active: false,
+          controller_server_active: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "nav2_path_ready"),
+          path_generated: true,
+          path_point_count: 3,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_goal_execution_latest", "not_proven"),
+      },
+      "/api/operator/report": {
+        payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded"),
+      },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          free_roam_runtime_artifact_proven: true,
+          free_roam_state_machine_observed: true,
+          ros2_runtime_proven: true,
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            decision: {
+              state: "stopping",
+              reason: "停止兜底已就绪，雷达过期后按无雷达低速自由移动",
+              stop_required: true,
+              start_ready: true,
+              motion_start_ready: true,
+              mapping_ready: false,
+              mapping_missing: ["camera_first_frame", "lidar_fresh"],
+            },
+          },
+        },
+      },
+      "/api/camera/health": {
+        delay_ms: 300,
+        payload: safePayload("trashbot.upper_robot_api.v1.camera_health", "source_first_frame_failed"),
+      },
+      "/api/camera/devices": {
+        payload: safePayload("trashbot.upper_robot_api.v1.camera_devices", "devices_ready"),
+      },
+      "/api/radar/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "stale_window_observed"),
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_scan_proof_latest", "scan_stale"),
+      },
+      "/api/radar/raw-packet-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_raw_packet_proof_latest", "raw_packet_not_proven"),
+      },
+      "/api/base/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded"),
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples", "loaded"),
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl, null, null, { readbackTimeoutMs: 50 });
+
+      expect(summary.console_status).toBe("loaded_fail_closed_summary");
+      expect(summary.robot_api_connection.status).toBe("degraded");
+      expect(summary.robot_api_connection.failed_count).toBe(2);
+      expect(summary.read_endpoints.find((item) => item.id === "status")).toEqual(expect.objectContaining({
+        request_status: "fetch_failed",
+        blocked_reasons: ["fetch_timeout_50ms"],
+      }));
+      expect(summary.read_endpoints.find((item) => item.id === "camera_health")).toEqual(expect.objectContaining({
+        request_status: "fetch_failed",
+        blocked_reasons: ["fetch_timeout_50ms"],
+      }));
+      expect(summary.readback_summary.free_roam.motion_start_ready).toBe("true");
+      expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(true);
+      expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(false);
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(expect.arrayContaining([
+        "planner_server_inactive",
+        "controller_server_inactive",
+      ]));
+      expect(summary.readback_summary.camera.devices_status).toBe("devices_ready");
+      expect(summary.readback_summary.lidar.status).toBe("stale_window_observed");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary exposes partial map radar overlay when scan points exist but map pose is missing", async () => {
     // 当前 live 形态会读到局部 scan 点，但没有机器人 map pose；summary 必须把“局部点，不贴地图”结构化暴露。
     const safePayload = (schema: string, status = "loaded") => ({
