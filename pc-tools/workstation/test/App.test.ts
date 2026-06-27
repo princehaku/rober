@@ -15014,6 +15014,80 @@ describe("App", () => {
     wrapper.unmount();
   });
 
+  it("shows the first keyboard pulse as sending until the manual proxy returns", async () => {
+    // 第一次按住方向键时，PC 已发请求但后端还没回包；首屏不能提前说小车正在移动。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const manualFixture = {
+      schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      command_kind: "manual",
+      proxy_status: "command_forwarded",
+      remote_http_status: 200,
+      remote_endpoint: "/api/base/manual",
+      status: "loaded_fail_closed_summary",
+      requested_direction: "forward",
+      applied_direction: "forward",
+      confirm_hil_checklist: true,
+      evidence_capture_status: "captured",
+      evidence_capture_endpoints: [],
+      evidence_capture_blocked_reasons: [],
+      motion_evidence_gaps: [],
+      remote_motion_key_values: {
+        wheel_feedback_latest_raw_left: "0.08",
+        wheel_feedback_latest_raw_right: "0.07",
+        wheel_feedback_lr_nonzero_proven: "true",
+        wheel_feedback_nonzero_observed: "true",
+      },
+      failure_reason: "",
+      blocked_reasons: [],
+      ...PROOF_FLAGS,
+    };
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    const originalFetch = mockedFetch.getMockImplementation();
+    let resolveManual!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedManual = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveManual = resolve;
+    });
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/base/manual?")) {
+        return delayedManual;
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：正在发送前进低速脉冲，返回前不把它当作已移动；松开会停。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("正在前进，松开即停");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    resolveManual({ ok: true, json: async () => manualFixture });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：正在前进，按住连续低速脉冲");
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    wrapper.unmount();
+  });
+
   it("does not verify keyboard control when the manual pulse is rejected", async () => {
     // 键盘验收必须来自固定 manual proxy 成功转发；单纯按键或失败响应不能算已验证。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

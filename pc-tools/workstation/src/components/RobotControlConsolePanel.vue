@@ -2207,6 +2207,9 @@ function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): str
     : "；走 ROS/T=13 低速入口；按住连续低速脉冲";
   const stopText = "，松开/失焦/切页会停";
   if (keyboardHeldDirection.value) {
+    if (keyboardControlStatus.value === "sending_keyboard_pulse") {
+      return `键盘：正在发送${keyboardDirectionPlainLabel.value}低速脉冲，返回前不把它当作已移动；松开会停。`;
+    }
     const wheelText = keyboardWheelFeedbackPlainText();
     return `键盘：正在${keyboardDirectionPlainLabel.value}，按住连续低速脉冲${wheelText}；松开即停。`;
   }
