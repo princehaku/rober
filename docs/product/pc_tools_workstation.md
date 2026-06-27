@@ -3293,6 +3293,14 @@ Nav2、delivery、stop 或 `/cmd_vel`。
 `X/Z` 控制入口，`T=11` 是 PWM 诊断入口，`T=130/T=1001` 继续用于 wheel raw L/R 反馈复验。
 这让键盘连续手控和下一次 Nav2 ROS 复验使用同一底盘控制入口；仍要求勾选现场安全确认，仍保留自动 stop
 和三模式 stop 兜底，不绕过速度/时长 clamp，不自动发车或确认 delivery success。
+
+2026-06-27 14:47 起，Robot Control summary 的 `readback_summary.nav2` 新增
+`goal_execution_mode_rerun_status`。当最近一次 Nav2 artifact 是旧 `base_command_mode=pwm`，而上车
+`nav2_base_command_mode=ros` 表示下一次将用 ROS/T=13 执行时，该字段返回
+`pending_ros_rerun_after_pwm`；模式一致时返回 `not_required`。普通首屏自动驾驶诊断会显示
+`旧 PWM 结果，等待 ROS 复验`，再说明上次已发非零底盘命令但同窗口 `wheel raw L/R=0/0`。
+该改动只修正 PC/API WYSIWYG 诊断，不触发 `nav2/goal/execute`、manual、keyboard、free-roam、
+delivery、stop 或 `/cmd_vel`。
 同轮 `base_status` 里的 `wheel_feedback_lr_nonzero_proven` 也同步收紧：只有本次 `T=130` readback 或 fresh
 `base_feedback_samples_latest` artifact 能把它置 true；stale artifact 里的历史非零 L/R 只保留在
 `feedback_samples_latest` 作为历史摘要，不再污染当前首屏判断。

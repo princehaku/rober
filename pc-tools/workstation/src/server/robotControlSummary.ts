@@ -3188,6 +3188,15 @@ function nav2SummaryFromReadbacks(
   const goalExecutionProven = nav2GoalExecutionProvenText(goalResultPayload);
   const goalExecutionResultStatus = summaryValueText(goalResultPayload, ["result_status"]);
   const wheelFeedbackProven = summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]);
+  const lastBaseMode = summaryValueText(goalResultPayload, ["base_command_mode"]);
+  const nextBaseMode = statusReadback?.key_values.nav2_base_command_mode
+    ?? baseStatusReadback?.key_values.nav2_base_command_mode
+    ?? "not_loaded";
+  const modeRerunStatus = !["", "not_loaded"].includes(lastBaseMode)
+    && !["", "not_loaded"].includes(nextBaseMode)
+    && lastBaseMode !== nextBaseMode
+    ? `pending_${nextBaseMode}_rerun_after_${lastBaseMode}`
+    : "not_required";
   const goalSucceeded = goalExecutionStatus === "goal_succeeded" || goalExecutionResultStatus === "succeeded";
   const summaryStatus = goalExecutionProven === "true" && goalExecutionStatus !== "not_loaded"
     ? goalExecutionStatus
@@ -3210,10 +3219,9 @@ function nav2SummaryFromReadbacks(
     goal_execution_evidence_ref: summaryValueText(goalResultPayload, ["evidence_ref"]),
     goal_execution_robot_control_executed: summaryValueText(goalResultPayload, ["robot_control_executed"]),
     goal_execution_feedback_sample_count: summaryValueText(goalResultPayload, ["feedback_sample_count", "nav2_feedback_sample_count"]),
-    goal_execution_base_command_mode: summaryValueText(goalResultPayload, ["base_command_mode"]),
-    next_execution_base_command_mode: statusReadback?.key_values.nav2_base_command_mode
-      ?? baseStatusReadback?.key_values.nav2_base_command_mode
-      ?? "not_loaded",
+    goal_execution_base_command_mode: lastBaseMode,
+    next_execution_base_command_mode: nextBaseMode,
+    goal_execution_mode_rerun_status: modeRerunStatus,
     goal_execution_base_command_nonzero_observed: summaryValueText(baseCommandSummary, ["nonzero_command_observed"]),
     goal_execution_base_command_nonzero_count: summaryValueText(baseCommandSummary, ["nonzero_command_count"]),
     goal_execution_base_feedback_sample_count: summaryValueText(baseFeedbackSummary, ["sample_count"]),
@@ -3491,6 +3499,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         goal_execution_feedback_sample_count: "not_loaded",
         goal_execution_base_command_mode: "not_loaded",
         next_execution_base_command_mode: "not_loaded",
+        goal_execution_mode_rerun_status: "not_loaded",
         goal_execution_base_command_nonzero_observed: "not_loaded",
         goal_execution_base_command_nonzero_count: "not_loaded",
         goal_execution_base_feedback_sample_count: "not_loaded",

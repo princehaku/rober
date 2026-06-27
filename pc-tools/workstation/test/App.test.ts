@@ -499,6 +499,7 @@ const fixtures: Record<string, unknown> = {
         goal_execution_feedback_sample_count: "not_loaded",
         goal_execution_base_command_mode: "not_loaded",
         next_execution_base_command_mode: "not_loaded",
+        goal_execution_mode_rerun_status: "not_loaded",
         goal_execution_base_command_nonzero_observed: "not_loaded",
         goal_execution_base_command_nonzero_count: "not_loaded",
         goal_execution_base_feedback_sample_count: "not_loaded",
@@ -6928,6 +6929,7 @@ describe("App", () => {
     initialSummary.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
     initialSummary.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
     initialSummary.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    initialSummary.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
     initialSummary.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
     initialSummary.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
     initialSummary.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
@@ -6948,6 +6950,7 @@ describe("App", () => {
     refreshedSummary.readback_summary.nav2.goal_execution_feedback_sample_count = "19";
     refreshedSummary.readback_summary.nav2.goal_execution_base_command_mode = "ros";
     refreshedSummary.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    refreshedSummary.readback_summary.nav2.goal_execution_mode_rerun_status = "not_required";
     refreshedSummary.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
     refreshedSummary.readback_summary.nav2.goal_execution_base_command_nonzero_count = "19";
     refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_sample_count = "19";
@@ -7137,6 +7140,7 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "239";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
     summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
     summaryFixture.safe_command_boundary.nav2_goal_wheel_feedback_status = "goal_succeeded_but_wheel_lr_zero";
     summaryFixture.safe_command_boundary.nav2_goal_next_action = "上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线";
     summaryFixture.safe_command_boundary.nav2_goal_execution_mode_label = "上次 pwm，下次 ros";
@@ -7200,7 +7204,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；车身姿态有变化，pitch 变化 24.210531；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；上次 PWM 执行已发到底盘，但 wheel raw L/R=0/0，车身姿态有变化，pitch 变化 24.210531；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 PWM 结果，等待 ROS 复验；上次 PWM 执行已发到底盘，但 wheel raw L/R=0/0，车身姿态有变化，pitch 变化 24.210531；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");

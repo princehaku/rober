@@ -2465,6 +2465,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       goal_execution_feedback_sample_count: string;
       goal_execution_base_command_mode: string;
       next_execution_base_command_mode: string;
+      goal_execution_mode_rerun_status: string;
       goal_execution_base_command_nonzero_observed: string;
       goal_execution_base_command_nonzero_count: string;
       goal_execution_base_feedback_sample_count: string;

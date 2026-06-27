@@ -2280,6 +2280,12 @@ IMU 姿态变化事实：
 完整 Nav2 路线执行仍需要下一次按 `next_execution_base_command_mode=ros` 复验，
 并在同一执行窗口证明 L/R 非零。
 
+2026-06-27 14:47 起，PC summary 额外暴露机器可读字段
+`readback_summary.nav2.goal_execution_mode_rerun_status`。当前 live 形态会被标成
+`pending_ros_rerun_after_pwm`：最近 artifact 来自旧 PWM 执行，下一次执行模式已经是 ROS/T=13。
+普通首屏据此把自动驾驶诊断写成“旧 PWM 结果，等待 ROS 复验”，避免把旧结果误读成当前 ROS
+模式已经失败。该字段只用于诊断与 UI 收口，不自动执行 NavigateToPose。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

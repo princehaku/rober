@@ -4544,6 +4544,7 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
   putSummaryNav2Value(values, "feedback_sample_count", nav2.goal_execution_feedback_sample_count);
   putSummaryNav2Value(values, "base_command_mode", nav2.goal_execution_base_command_mode);
   putSummaryNav2Value(values, "next_execution_base_command_mode", nav2.next_execution_base_command_mode);
+  putSummaryNav2Value(values, "mode_rerun_status", nav2.goal_execution_mode_rerun_status);
   putSummaryNav2Value(values, "base_command_nonzero_observed", nav2.goal_execution_base_command_nonzero_observed);
   putSummaryNav2Value(values, "base_command_nonzero_count", nav2.goal_execution_base_command_nonzero_count);
   putSummaryNav2Value(values, "base_feedback_sample_count", nav2.goal_execution_base_feedback_sample_count);
@@ -4639,6 +4640,21 @@ function nav2CommandFeedbackFactText(values: Record<string, string> | undefined)
   return `已发非零底盘命令${countText}${sampleText}${pairText}${motionSignalText ? `；${motionSignalText}` : ""}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
 }
 
+function nav2PendingModeRerunText(values: Record<string, string> | undefined): string {
+  // 机器可读 rerun 状态用于把“旧 PWM 结果”和“下一轮 ROS 复验”明确拆开，不靠解析中文 next_action。
+  const status = values?.mode_rerun_status;
+  if (!status || status === "not_loaded" || status === "not_required") {
+    return "";
+  }
+  const lastMode = values?.base_command_mode && values.base_command_mode !== "not_loaded"
+    ? values.base_command_mode.toUpperCase()
+    : "上一模式";
+  const nextMode = values?.next_execution_base_command_mode && values.next_execution_base_command_mode !== "not_loaded"
+    ? values.next_execution_base_command_mode.toUpperCase()
+    : "下一模式";
+  return `旧 ${lastMode} 结果，等待 ${nextMode} 复验`;
+}
+
 function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | undefined): string {
   // 用户问“自动驾驶为什么不动”时，首屏要把根因从行程事实里拎出来：不是摄像头/雷达，而是底盘闭环。
   if (!nav2GoalSucceeded(values) || !nav2BaseCommandWithoutWheelFeedback(values)) {
@@ -4652,7 +4668,8 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
   const pairText = pair ? `wheel raw L/R=${pair.left}/${pair.right}` : "wheel raw L/R 未非零";
   const motionSignal = nav2BaseMotionSignalText(values);
   const modeText = lastMode ? `上次 ${lastMode} 执行` : "上次执行";
-  return `自动驾驶：不是摄像头或雷达阻塞；${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
+  const pendingModeText = nav2PendingModeRerunText(values);
+  return `自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
 }
 
 function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): string {
