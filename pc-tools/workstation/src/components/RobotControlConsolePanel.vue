@@ -735,6 +735,30 @@ function robotReadEndpoint(id: RobotControlSummaryResponse["read_endpoints"][num
   return robotSummary.value?.read_endpoints.find((endpoint) => endpoint.id === id && endpoint.request_status === "loaded") ?? null;
 }
 
+function gateDerivedLidarReadback(): LidarReadback | null {
+  // 有些 live summary 只带 free-roam gate，不带 readback_summary.lidar；此时用 runtime /scan 证据补一个只读雷达口径。
+  if (!latestRadarRuntimeScanReady()) {
+    return null;
+  }
+  return {
+    status: "free_roam_runtime_scan_fresh",
+    latest_scan_proof_status: "not_loaded",
+    latest_raw_packet_proof_status: "not_loaded",
+    latest_scan_proof_result_status: "free_roam_runtime_scan_fresh",
+    raw_packet_once_observed: "not_loaded",
+    continuous_scan_status: "free_roam_runtime_scan_fresh",
+    lifecycle_running: "true",
+    lifecycle_state: "running",
+    continuous_window_observed: "true",
+    continuity_window_status: "free_roam_runtime_scan_fresh",
+    latest_scan_proof_fresh: "true",
+    scan_preview_point_count: "0",
+    scan_preview_source_point_count: "not_loaded",
+    scan_preview_frame_id: "not_loaded",
+    radar_start_configured: "true",
+  };
+}
+
 function radarEndpointConflictSummary(): string {
   // 真实现场可能 status 和 scan-proof latest 一新一旧；冲突时必须照实显示，不能压成单一“已运行/未运行”。
   const statusEndpoint = robotReadEndpoint("radar_status");
@@ -763,27 +787,28 @@ function radarEndpointConflictSummary(): string {
 }
 
 const effectiveLidarReadback = computed<LidarReadback | null>(() => {
-  // 地图雷达 marker 必须使用最新可用口径：radar/status 优先，summary 作为兼容兜底。
+  // 地图雷达 marker 必须使用最新可用口径：radar/status 优先，summary 作为兼容兜底，最后才消费 runtime gate。
   const summary = robotSummary.value?.readback_summary.lidar;
-  if (!summary && radarStatusResult.value?.proxy_status !== "status_loaded") {
+  const gateDerived = gateDerivedLidarReadback();
+  if (!summary && radarStatusResult.value?.proxy_status !== "status_loaded" && !gateDerived) {
     return null;
   }
   return {
-    status: radarStatusValue("status") ?? summary?.status ?? "not_loaded",
-    latest_scan_proof_status: radarStatusValue("latest_scan_proof_status") ?? summary?.latest_scan_proof_status ?? "not_loaded",
-    latest_raw_packet_proof_status: radarStatusValue("latest_raw_packet_proof_status") ?? summary?.latest_raw_packet_proof_status ?? "not_loaded",
-    latest_scan_proof_result_status: radarStatusValue("latest_scan_proof_result_status") ?? radarStatusValue("latest_proof_status") ?? summary?.latest_scan_proof_result_status ?? "not_loaded",
-    raw_packet_once_observed: radarStatusValue("raw_packet_once_observed") ?? radarStatusValue("latest_raw_packet_once_observed") ?? summary?.raw_packet_once_observed ?? "not_loaded",
-    continuous_scan_status: radarStatusValue("continuous_scan_status") ?? summary?.continuous_scan_status ?? "not_loaded",
-    lifecycle_running: radarStatusValue("lifecycle_running") ?? summary?.lifecycle_running ?? "false",
-    lifecycle_state: radarStatusValue("lifecycle_state") ?? summary?.lifecycle_state ?? "not_loaded",
-    continuous_window_observed: radarStatusValue("continuous_window_observed") ?? summary?.continuous_window_observed ?? "false",
-    continuity_window_status: radarStatusValue("continuity_window_status") ?? summary?.continuity_window_status ?? "not_loaded",
-    latest_scan_proof_fresh: radarStatusValue("latest_scan_proof_fresh") ?? summary?.latest_scan_proof_fresh ?? "false",
-    scan_preview_point_count: radarStatusValue("scan_preview_point_count") ?? summary?.scan_preview_point_count ?? "0",
-    scan_preview_source_point_count: radarStatusValue("scan_preview_source_point_count") ?? summary?.scan_preview_source_point_count ?? "not_loaded",
-    scan_preview_frame_id: radarStatusValue("scan_preview_frame_id") ?? summary?.scan_preview_frame_id ?? "not_loaded",
-    radar_start_configured: summary?.radar_start_configured ?? "true",
+    status: radarStatusValue("status") ?? summary?.status ?? gateDerived?.status ?? "not_loaded",
+    latest_scan_proof_status: radarStatusValue("latest_scan_proof_status") ?? summary?.latest_scan_proof_status ?? gateDerived?.latest_scan_proof_status ?? "not_loaded",
+    latest_raw_packet_proof_status: radarStatusValue("latest_raw_packet_proof_status") ?? summary?.latest_raw_packet_proof_status ?? gateDerived?.latest_raw_packet_proof_status ?? "not_loaded",
+    latest_scan_proof_result_status: radarStatusValue("latest_scan_proof_result_status") ?? radarStatusValue("latest_proof_status") ?? summary?.latest_scan_proof_result_status ?? gateDerived?.latest_scan_proof_result_status ?? "not_loaded",
+    raw_packet_once_observed: radarStatusValue("raw_packet_once_observed") ?? radarStatusValue("latest_raw_packet_once_observed") ?? summary?.raw_packet_once_observed ?? gateDerived?.raw_packet_once_observed ?? "not_loaded",
+    continuous_scan_status: radarStatusValue("continuous_scan_status") ?? summary?.continuous_scan_status ?? gateDerived?.continuous_scan_status ?? "not_loaded",
+    lifecycle_running: radarStatusValue("lifecycle_running") ?? summary?.lifecycle_running ?? gateDerived?.lifecycle_running ?? "false",
+    lifecycle_state: radarStatusValue("lifecycle_state") ?? summary?.lifecycle_state ?? gateDerived?.lifecycle_state ?? "not_loaded",
+    continuous_window_observed: radarStatusValue("continuous_window_observed") ?? summary?.continuous_window_observed ?? gateDerived?.continuous_window_observed ?? "false",
+    continuity_window_status: radarStatusValue("continuity_window_status") ?? summary?.continuity_window_status ?? gateDerived?.continuity_window_status ?? "not_loaded",
+    latest_scan_proof_fresh: radarStatusValue("latest_scan_proof_fresh") ?? summary?.latest_scan_proof_fresh ?? gateDerived?.latest_scan_proof_fresh ?? "false",
+    scan_preview_point_count: radarStatusValue("scan_preview_point_count") ?? summary?.scan_preview_point_count ?? gateDerived?.scan_preview_point_count ?? "0",
+    scan_preview_source_point_count: radarStatusValue("scan_preview_source_point_count") ?? summary?.scan_preview_source_point_count ?? gateDerived?.scan_preview_source_point_count ?? "not_loaded",
+    scan_preview_frame_id: radarStatusValue("scan_preview_frame_id") ?? summary?.scan_preview_frame_id ?? gateDerived?.scan_preview_frame_id ?? "not_loaded",
+    radar_start_configured: summary?.radar_start_configured ?? gateDerived?.radar_start_configured ?? "true",
   };
 });
 
@@ -863,6 +888,14 @@ function latestRadarObstacleDistanceLabel(): string {
   return distance === null ? "" : `最近障碍 ${distance.toFixed(2)}m`;
 }
 
+function latestRadarRuntimeScanReady(): boolean {
+  // free-roam runtime 直接消费 /scan；当它已证明新鲜时，地图应显示“实时距离读数”，而不是继续按旧 proof 标成待刷新。
+  const gates = robotSummary.value?.safe_command_boundary.free_roam_autonomy_gates ?? [];
+  const lidarGate = gates.find((gate) => gate.id === "lidar_fresh");
+  const evidence = lidarGate?.evidence ?? "";
+  return lidarGate?.state === "ready" && /runtime\s*\/scan\s*新鲜|free-roam runtime/i.test(evidence);
+}
+
 function radarRunningWithoutVisiblePoints(lidar: RobotControlSummaryResponse["readback_summary"]["lidar"]): boolean {
   // lifecycle 在跑但没有点数组、点数或障碍距离时，现场更需要看到“无新点”，而不是泛化“待刷新”。
   const pointCount = radarPreviewReadbackPointCount();
@@ -923,6 +956,11 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   const lifecycleRunning = radarFieldIsTrue(lidar.lifecycle_running);
   const windowObserved = radarFieldIsTrue(lidar.continuous_window_observed);
   const latestFresh = radarFieldIsTrue(lidar.latest_scan_proof_fresh);
+  const obstacleLabel = latestRadarObstacleDistanceLabel();
+  const noRadarPointArray = (robotSummary.value?.o3_proof_summary.scan_preview_points?.length ?? 0) <= 0;
+  if (latestRadarRuntimeScanReady() && obstacleLabel && radarPreviewReadbackPointCount() <= 0 && noRadarPointArray) {
+    return { state: "雷达已运行", hint: `free-roam runtime 已读到实时 /scan；当前没有地图点数组，只显示${obstacleLabel}，等点位后再贴地图。` };
+  }
   if (lifecycleRunning && windowObserved && latestFresh) {
     const pointHint = plainRadarPointHint(true);
     return { state: "雷达已运行", hint: pointHint ? `当前窗口已看到新的雷达状态；${pointHint}` : "当前窗口已看到新的雷达状态。" };
@@ -930,6 +968,9 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   if (lifecycleRunning) {
     const pointHint = plainRadarPointHint(false);
     const reason = plainRadarRefreshReason(lidar);
+    if (latestRadarRuntimeScanReady() && obstacleLabel) {
+      return { state: "雷达已运行", hint: `free-roam runtime 已读到实时 /scan；当前没有地图点数组，只显示${obstacleLabel}，等点位后再贴地图。` };
+    }
     if (radarRunningWithoutVisiblePoints(lidar)) {
       if (radarRawPacketObservedWithoutVisiblePoints(lidar)) {
         return { state: "雷达无新点", hint: `雷达驱动正在运行，已收到原始包，但还没解析出地图雷达点；检查雷达扫描解析、串口数据质量和驱动日志。` };

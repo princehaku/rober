@@ -168,6 +168,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `lidar_fresh` 就按 runtime scan 显示 ready，即使旧 `radar/scan-proof/latest` artifact 已过期。
   没有 runtime snapshot 时仍按 proof freshness 降级，避免旧 ready gate 误导。该规则只修正只读
   所见即所得，不启动雷达、不发布 `/cmd_vel`。
+- 2026-06-27 15:47 起，PC 普通地图 marker 会把 `lidar_fresh=ready` 的 runtime `/scan` gate 作为
+  `readback_summary.lidar` 缺失时的只读兜底。若同时只有 `obstacle_clear` 的最近障碍距离、没有
+  `scan_preview_points`，地图显示“雷达距离：最近障碍 Xm（非地图点）”，并在口径里声明这是距离读数、
+  不是已贴到地图的雷达点。该规则只修正 PC 展示，不生成点云、不刷新雷达、不触发自由移动或 `/cmd_vel`。
 - 2026-06-27 15:32 起，PC 普通首屏会把建图缺口和真实地图画面做本地对齐：当
   `/api/robot-control/map/preview` 已显示真实 `image_data_url` 时，即使 summary 里还带旧
   `fresh_map_preview`，界面也不再提示“地图画面未刷新”。这只移除已经被 PC 画面证明满足的缺口；

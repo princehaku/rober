@@ -225,6 +225,11 @@ pc-tools/workstation/
   `lidar_fresh=ready`，并把 evidence 写成 `free-roam runtime /scan 新鲜`。这样 live 雷达已经开始并被
   free-roam 节点读到时，建图缺口不再被过期 proof artifact 误加 `lidar_fresh`；没有实时 snapshot 的旧 gate
   仍按上一条规则降级。该处理只读 summary/runtime，不刷新雷达、不启动 free-roam、不发送任何运动控制。
+- 2026-06-27 15:47 起，普通首屏地图 marker 也消费上述 runtime scan gate：当 live summary 暂无
+  `readback_summary.lidar`，但 `lidar_fresh=ready` 且 evidence 明确为 `free-roam runtime /scan 新鲜` 时，
+  UI 会把雷达显示为 `雷达已运行`，并把 `obstacle_clear` 的最近障碍距离画成“非地图点”的只读距离读数。
+  这只补齐现场 WYSIWYG，不伪造 `scan_preview_points`、不把距离贴到地图、不刷新雷达、不启动
+  free-roam/manual/keyboard/Nav2/delivery/stop，也不发送 `/cmd_vel`。
 - 2026-06-27 15:32 起，普通首屏建图 readiness 还会叠加 PC 本地真实地图画面状态：如果
   `/api/robot-control/map/preview` 已经返回 `preview_forwarded` 且带 `image_data_url`，界面不再把上车端旧
   `fresh_map_preview` token 展示成“当前缺口”。相机首帧、地图记录未启动和雷达 freshness 仍按 summary/readback
