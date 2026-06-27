@@ -2077,7 +2077,7 @@ function plainCurrentRadarFactText(): string {
       ? `雷达：已运行，雷达点 ${pointCount} 个${obstacleText}。`
       : `雷达：已运行${obstacleText}。`;
   }
-  return `雷达：${state}${notCurrentSuffix}。`;
+  return `雷达：${state}${staleRuntimeText}${notCurrentSuffix}。`;
 }
 
 function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): string {
