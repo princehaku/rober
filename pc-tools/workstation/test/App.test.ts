@@ -16434,6 +16434,71 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("keeps a stopped Nav2 stack ahead of ROS rerun for an old PWM route", async () => {
+    // live 形状可能同时有旧 PWM 成功记录和当前 stack stopped；普通首屏必须先启动服务，不能让用户直接重跑。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.nav2_goal_label = "自动驾驶服务未启动";
+    summaryFixture.safe_command_boundary.nav2_goal_blockers = [
+      "nav2_stack_not_running",
+      "path_generation_not_observed",
+      "path_point_count_not_positive",
+      "robot_map_pose_not_observed",
+    ];
+    summaryFixture.safe_command_boundary.nav2_goal_wheel_feedback_status = "goal_succeeded_but_wheel_lr_zero";
+    summaryFixture.safe_command_boundary.nav2_goal_next_action = "上次路线 action 成功但 wheel raw L/R=0/0 未非零；当前图上路线未就绪，先启动自动驾驶服务（不发车），再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R";
+    summaryFixture.safe_command_boundary.nav2_goal_execution_mode_label = "上次 pwm，下次 ros";
+    summaryFixture.readback_summary.nav2.nav2_stack_running = "false";
+    summaryFixture.readback_summary.nav2.nav2_stack_lifecycle_state = "stopped";
+    summaryFixture.readback_summary.nav2.planner_server_active = "false";
+    summaryFixture.readback_summary.nav2.controller_server_active = "false";
+    summaryFixture.readback_summary.nav2.path_generated = "false";
+    summaryFixture.readback_summary.nav2.path_generation_succeeded = "false";
+    summaryFixture.readback_summary.nav2.path_point_count = "0";
+    summaryFixture.readback_summary.nav2.path_preview_point_count = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_proven = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_hil_pass = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
+    summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_imu_attitude_delta_observed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_imu_pitch_delta = "24.210531";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_uses_base_uart = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("需恢复");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先启动自动驾驶服务");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("旧 PWM 结果，等待 ROS 复验");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶服务未运行，重跑前先启动");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("当前图上路线未就绪，先启动自动驾驶服务");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶当前：未准备好，图上行程未准备，自动驾驶服务未启动");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("auto-refreshes radar proof after plain radar start reports ok", async () => {
     // 只有上位机 lifecycle 明确 ok=true，普通首屏才自动刷新雷达 proof，并把地图 marker 更新为真实运行读回。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

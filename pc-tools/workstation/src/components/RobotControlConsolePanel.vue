@@ -5317,16 +5317,18 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
   const modeText = modeLabel ? `上次 ${modeLabel} 执行` : "上次执行";
   const pendingModeText = nav2PendingModeRerunText(values);
   const summary = robotSummary.value;
+  const stackNotRunning = plainNav2StackNotRunning(summary);
   const inactiveServices = [
-    summary?.readback_summary.nav2.planner_server_active === "false"
+    stackNotRunning ? "自动驾驶服务" : "",
+    !stackNotRunning && (summary?.readback_summary.nav2.planner_server_active === "false"
       || summary?.safe_command_boundary.nav2_goal_blockers?.includes("planner_server_inactive")
-      ? "规划服务" : "",
-    summary?.readback_summary.nav2.controller_server_active === "false"
+      ? "规划服务" : ""),
+    !stackNotRunning && (summary?.readback_summary.nav2.controller_server_active === "false"
       || summary?.safe_command_boundary.nav2_goal_blockers?.includes("controller_server_inactive")
-      ? "控制服务" : "",
+      ? "控制服务" : ""),
   ].filter(Boolean);
   const serviceText = inactiveServices.length
-    ? `${inactiveServices.join("和")}未运行，重跑前先恢复；`
+    ? `${inactiveServices.join("和")}未运行，重跑前先${stackNotRunning ? "启动" : "恢复"}；`
     : "";
   return plainNav2UserFacingText(`自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但${pairText}${motionSignal ? `，${motionSignal}` : ""}；${serviceText}下一步${nextText}并确认同窗口 wheel raw L/R 非零。`);
 }
@@ -6709,6 +6711,11 @@ const plainTripSummary = computed(() => {
   if (deliveryNav2GoalReady.value) {
     return { state: "已完成", hint: plainTripEvidenceSummary.value || "已读到最近行程完成，可以准备送达材料。" };
   }
+  if (plainTripNav2NeedsLifecycleRestore.value) {
+    const actionText = plainNav2StackNotRunning() ? "启动自动驾驶服务" : "恢复自动驾驶服务";
+    const evidenceText = plainTripHasFreshUnprovenControlEvidence.value ? `；${plainTripFreshUnprovenHintText()}` : "";
+    return { state: "需恢复", hint: `当前自动驾驶服务未运行，先${actionText}（不发车）${evidenceText}` };
+  }
   if (plainTripHasFreshUnprovenControlEvidence.value) {
     return { state: "需复验", hint: plainTripEvidenceSummary.value || "最近行程未证明真车执行，需要重新执行完整行程。" };
   }
@@ -6820,6 +6827,11 @@ const plainTripRunStatus = computed(() => {
       return `行程状态：本轮行程已完成，但执行后地图画面刷新失败：${postExecutionMapFailure}；先刷新地图画面。`;
     }
     return "行程状态：本轮行程已完成，可以准备送达材料。";
+  }
+  if (plainTripNav2NeedsLifecycleRestore.value) {
+    const actionText = plainNav2StackNotRunning() ? "启动自动驾驶服务" : "恢复自动驾驶服务";
+    const rerunText = plainTripHasFreshUnprovenControlEvidence.value ? `；${plainTripFreshUnprovenHintText()}` : "";
+    return `行程状态：当前自动驾驶服务未运行，先${actionText}（不发车）${rerunText}`;
   }
   if (plainTripHasFreshIncompleteEvidence.value) {
     return "行程状态：最近行程缺少反馈样本，重新读取或重新执行后再送达。";

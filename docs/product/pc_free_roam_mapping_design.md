@@ -620,3 +620,8 @@ planner/controller inactive 仍保留“恢复规划/控制服务”的文案。
 `Nav2 planner/controller` 显示为 `规划服务/控制服务`，`wheel raw L/R` 显示为 `执行窗口轮速 L/R`，
 `路线 action 成功` 显示为 `路线结果成功`。高级诊断和 API 字段仍保留原始 token；本变更只修正普通首屏文案，
 不启动 Nav2、不执行路线、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-28 04:20 起，live 若同时读到“旧 PWM 路线结果成功但执行窗口轮速 L/R=0/0”和
+`nav2_stack_not_running`，普通行程卡状态优先显示“需恢复 / 先启动自动驾驶服务（不发车）”，
+自动驾驶诊断也写成“自动驾驶服务未运行，重跑前先启动”。旧 PWM/ROS 复验建议仍保留为下一步说明，
+但不会盖过当前服务未启动这一前置卡点，也不会触发 goal execute、manual 或 `/cmd_vel`。
