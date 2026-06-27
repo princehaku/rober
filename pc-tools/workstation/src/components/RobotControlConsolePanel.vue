@@ -1824,7 +1824,17 @@ const plainFreeRoamLatestSummary = computed(() => {
       ? "运动发布已解锁，等待真车 HIL"
       : "运动发布未解锁";
   const stop = kv.stop_required === "true" ? "，要求停止兜底" : "";
-  return `最新读取：${state}${reason}${stop}；${mode}。`;
+  const mappingMissingRaw = kv.mapping_missing || "";
+  const mappingMissing = ["", "none", "not_loaded", "unknown"].includes(mappingMissingRaw)
+    ? []
+    : freeRoamMappingMissingPlainLabelsForVisibleState(mappingMissingRaw);
+  // latest 按钮是现场临时只读核对入口；必须直接显示建图缺口，避免 operator 还要去高级 JSON 里找。
+  const mappingText = kv.mapping_ready === "true"
+    ? "；建图验收已 ready"
+    : mappingMissing.length > 0
+      ? `；建图缺口：${mappingMissing.join("、")}`
+      : "";
+  return `最新读取：${state}${reason}${stop}；${mode}${mappingText}。`;
 });
 function freeRoamMappingMissingPlainLabels(missing: string[] | string | undefined): string[] {
   // 上车端二次确认会返回稳定 token；普通首屏要翻译成现场可行动的建图缺口。

@@ -161,6 +161,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `mapping_required_ids`、`mapping_missing`、`mapping_ready` 和 `runtime_gate_count`。即使上车 runtime 只返回部分
   gates，脚本和页面也能直接看到 `camera_first_frame/lidar_fresh/mapping_active/fresh_map_preview`
   哪几项还缺；该读回不启动 free-roam、不打开相机、不刷新雷达、不发布 `/cmd_vel`。
+- 2026-06-28 04:01 起，普通首屏的 `刷新自由移动状态（只读）` 结果也会消费上述
+  `mapping_missing/mapping_ready`，并结合页面已经显示的地图画面、雷达状态和地图记录会话过滤上一拍旧缺口；
+  摘要会直接显示仍未满足的 `建图缺口：...`，或 `建图验收已 ready`。这样现场人员不用打开高级 JSON，
+  就能从只读刷新结果判断当前是只能自由移动，还是可以按建图验收。
 - 2026-06-28 13:25 起，若上车端 free-roam runtime 没有返回完整建图验收 gates，PC summary 会补齐
   `camera_first_frame`、`mapping_active`、`lidar_fresh` 和 `fresh_map_preview` 的只读兜底 gate。这样
   `free_roam_mapping_missing_reasons` 里的每个必需缺口都能在 `free_roam_autonomy_gates` 中看到对应 evidence 和 next action；

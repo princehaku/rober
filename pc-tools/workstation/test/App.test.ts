@@ -1208,6 +1208,11 @@ const fixtures: Record<string, unknown> = {
       artifact_only: "true",
       cmd_vel_publish_enabled: "false",
       gate_count: "5",
+      runtime_gate_count: "5",
+      mapping_gate_count: "4",
+      mapping_required_ids: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+      mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+      mapping_ready: "false",
     },
     failure_reason: "",
     blocked_reasons: [],
@@ -4163,7 +4168,7 @@ describe("App", () => {
     const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/latest?"))).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-latest-summary"]').text()).toBe(
-      "最新读取：locked：还未勾选现场安全确认，要求停止兜底；当前只是记录模式，不会自己跑。",
+      "最新读取：locked：还未勾选现场安全确认，要求停止兜底；当前只是记录模式，不会自己跑；建图缺口：画面首帧未出、地图记录未启动。",
     );
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?"))).toBe(false);
