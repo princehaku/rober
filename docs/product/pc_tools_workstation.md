@@ -3294,6 +3294,8 @@ Nav2、delivery、stop 或 `/cmd_vel`。
 `X/Z` 控制入口，`T=11` 是 PWM 诊断入口，`T=130/T=1001` 继续用于 wheel raw L/R 反馈复验。
 这让键盘连续手控和下一次 Nav2 ROS 复验使用同一底盘控制入口；仍要求勾选现场安全确认，仍保留自动 stop
 和三模式 stop 兜底，不绕过速度/时长 clamp，不自动发车或确认 delivery success。
+2026-06-27 23:30 起，普通首屏的当前事实条和键盘说明会直接写出“ROS/T=13 低速入口”，让现场能确认 PC 键盘连续手控没有回到旧 PWM 默认。
+该改动只显示既有 PC proxy 转发口径，不新增模式选择、不改变安全确认、不发送 manual、stop、Nav2、delivery、free-roam 或 `/cmd_vel`。
 
 2026-06-27 14:47 起，Robot Control summary 的 `readback_summary.nav2` 新增
 `goal_execution_mode_rerun_status`。当最近一次 Nav2 artifact 是旧 `base_command_mode=pwm`，而上车

@@ -3637,7 +3637,7 @@ describe("App", () => {
     expect(currentFacts.text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个。");
     expect(currentFacts.text()).toContain("行程：还没执行。");
     expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
-    expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用；按住连续低速脉冲 240ms/每 260ms，松开/失焦/切页会停。");
+    expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用；走 ROS/T=13 低速入口；按住连续低速脉冲 240ms/每 260ms，松开/失焦/切页会停。");
     const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
     expect(connectionPanel.exists()).toBe(true);
     expect(connectionPanel.attributes("data-state")).toBe("已连接");
@@ -13525,7 +13525,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="可手控"]');
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="手控中"]');
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="已验证"]');
-    expect(wrapper.find('[data-testid="keyboard-control-guide"]').text()).toBe("W/A/S/D 或方向键：前进、左转、后退、右转。按住会持续低速移动，约每 0.26 秒发送 0.24 秒低速脉冲，最高 0.12 m/s、单次上限 800 ms；松开、窗口失焦或切页面都会停。");
+    expect(wrapper.find('[data-testid="keyboard-control-guide"]').text()).toBe("W/A/S/D 或方向键：前进、左转、后退、右转。按住会通过 ROS/T=13 低速入口持续移动，约每 0.26 秒发送 0.24 秒低速脉冲，最高 0.12 m/s、单次上限 800 ms；松开、窗口失焦或切页面都会停。");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("未启用，先点启用键盘。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：未记录。");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').text()).not.toContain("还差：");
