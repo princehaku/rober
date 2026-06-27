@@ -4236,6 +4236,7 @@ describe("workstation fail-closed API contracts", () => {
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
+          latest_planner_active: false,
           latest_controller_active: false,
           latest_controller_requested: true,
         },
@@ -4252,6 +4253,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("pwm");
       expect(summary.readback_summary.nav2.goal_execution_base_command_mode_counts).toBe("{\"pwm\":49}");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
+      expect(summary.readback_summary.nav2.planner_server_active).toBe("false");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.readback_summary.nav2.controller_server_requested).toBe("true");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
@@ -4260,9 +4262,10 @@ describe("workstation fail-closed API contracts", () => {
         "path_generation_not_observed",
         "path_point_count_not_positive",
         "robot_map_pose_not_observed",
+        "planner_server_inactive",
         "controller_server_inactive",
       ]));
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；Nav2 controller 当前未 active，重跑前需先恢复 Nav2 controller；勾选行程前安全确认后用 ROS 重跑图上路线");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；当前图上路线未就绪，先生成图上路线并读到小车地图位置，并恢复 Nav2 planner 和 Nav2 controller，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
       await robotApi.close();
@@ -4327,7 +4330,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.next_execution_base_command_mode).toBe("speed");
       expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_speed_rerun_after_ros");
       expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("ros");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toContain("用 SPEED 重跑图上路线");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toContain("用 SPEED 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 ros，下次 speed");
     } finally {
       await robotApi.close();
@@ -4473,7 +4476,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机；Nav2 controller 当前未 active，重跑前需先恢复 Nav2 controller；勾选行程前安全确认后用 ROS 重跑图上路线");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机；当前图上路线未就绪，先生成图上路线并读到小车地图位置，并恢复 Nav2 controller，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
       await robotApi.close();

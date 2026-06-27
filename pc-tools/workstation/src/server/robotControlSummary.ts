@@ -440,6 +440,7 @@ const STATUS_KEYS = [
   "planner_server_active",
   "controller_server_active",
   "controller_server_requested",
+  "latest_planner_active",
   "latest_controller_active",
   "latest_controller_requested",
   "latest_path_generated",
@@ -3643,7 +3644,7 @@ function nav2SummaryFromReadbacks(
   return {
     status: summaryStatus,
     nav2_status: nav2Status?.status ?? "not_loaded",
-    planner_server_active: booleanSummaryValue(proof.planner_server_active),
+    planner_server_active: proofText(readbacks, ["planner_server_active", "planner_active", "latest_planner_active"]) ?? booleanSummaryValue(proof.planner_server_active),
     controller_server_active: proofText(readbacks, ["controller_server_active", "latest_controller_active"]) ?? "not_loaded",
     controller_server_requested: proofText(readbacks, ["controller_server_requested", "latest_controller_requested"]) ?? "not_loaded",
     path_generated: booleanSummaryValue(proof.path_generated),
@@ -4286,6 +4287,15 @@ function nav2GoalBoundaryGuidance(
   }
   if (succeeded && nav2.goal_execution_base_feedback_lr_nonzero_proven === "false") {
     const rerunMode = !["", "not_loaded"].includes(nextMode) ? nextMode.toUpperCase() : "当前模式";
+    const routePrepActions = [
+      base.nav2_goal_ready ? "" : "生成图上路线并读到小车地图位置",
+      inactiveServiceNames.length ? `恢复 ${inactiveServiceNames.join(" 和 ")}` : "",
+    ].filter(Boolean);
+    const rerunNextAction = !base.nav2_goal_ready
+      ? `当前图上路线未就绪，先${routePrepActions.join("，并")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
+      : inactiveServiceNames.length
+        ? `当前 Nav2 服务未就绪，先${routePrepActions.join("，并")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
+        : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`;
     return {
       ...base,
       nav2_goal_ready: plannerInactive || controllerInactive ? false : base.nav2_goal_ready,
@@ -4296,7 +4306,7 @@ function nav2GoalBoundaryGuidance(
           : controllerInactive && base.nav2_goal_ready ? "Nav2 controller 未就绪" : base.nav2_goal_label,
       nav2_goal_blockers: nav2ServiceBlockers,
       nav2_goal_wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
-      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${serviceInactiveSuffix}；勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`,
+      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${routePrepActions.length ? "" : serviceInactiveSuffix}；${rerunNextAction}`,
       nav2_goal_execution_mode_label: modeLabel,
     };
   }

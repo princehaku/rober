@@ -501,3 +501,10 @@ blocked reasons 带 `runtime_scan_stale_for_map_radar_overlay` 与 `radar_lifecy
 和 `mapping_blocked_reasons`；不 ready 时仍可 `mapping_active=false` 启动低速自由移动，回包必须明确
 `free_move_blocked_reasons=[]` 与建图缺口。PC 代理同步透传这些字段，方便普通界面直接解释：
 车能不能自己低速动，和本轮能不能按建图验收收口，是两件事。
+
+2026-06-28 01:51 起，Nav2 普通首屏的“下一步”文案继续收紧 WYSIWYG：
+当旧 `NavigateToPose` action 已经 `succeeded` 但同窗口 wheel raw L/R 仍为 `0/0`，并且当前
+`nav2_goal_ready=false`（缺图上路线、路径点或小车 map 坐标）时，页面不再直接提示“勾安全确认后重跑图上路线”。
+它必须先提示恢复 Nav2 planner/controller、重新生成图上路线并读到小车地图位置，再让 operator 勾安全确认后用建议模式重跑并复验
+wheel raw L/R。只有图上路线和服务都 ready 时，才显示直接重跑路线。该规则只修正 PC summary/首屏引导，
+不自动启动 Nav2、不发送 goal、不发布 `/cmd_vel`。
