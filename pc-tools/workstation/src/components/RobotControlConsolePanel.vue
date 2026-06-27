@@ -2283,7 +2283,7 @@ function plainMapCoordinateTruthLabel(
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, true);
     const scanText = radarScanOverlay.dots.length > 0
       ? `${scanPrefix} ${radarScanOverlay.dots.length} 个已贴到地图`
-      : countOnlyLabel || "雷达点未贴图";
+      : countOnlyLabel || (obstacleDistanceLabel ? `只读距离读数：${obstacleDistanceLabel}，没有点数组，未贴到地图` : "雷达点未贴图");
     const routeText = routePath ? `${routePath.coordinateLabel}已贴到地图` : "路线未显示";
     return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
   }
@@ -2344,7 +2344,9 @@ function plainRadarFreshnessLabel(
       return `雷达点口径：${countOnlyLabel}${obstacleText}，暂不能作为已贴图实时雷达。`;
     }
     if (obstacleDistanceLabel) {
-      return `雷达点口径：实时雷达未返回点数组，只显示${obstacleDistanceLabel}，等点位或定位后再贴地图。`;
+      return poseObserved
+        ? `雷达点口径：实时雷达未返回点数组，只显示${obstacleDistanceLabel}；这是距离读数，不是已贴到地图的雷达点。`
+        : `雷达点口径：实时雷达未返回点数组，只显示${obstacleDistanceLabel}，等点位或定位后再贴地图。`;
     }
     return "雷达点口径：雷达已运行，但当前还没读到点位。";
   }
@@ -2375,7 +2377,9 @@ function plainRadarFreshnessLabel(
       return `雷达点口径：正在确认实时性，当前只有${countOnlyLabel}${obstacleText}；刷新后再确认点位。`;
     }
     if (obstacleDistanceLabel) {
-      return `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
+      return poseObserved
+        ? `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}；这是距离读数，不是已贴到地图的雷达点。`
+        : `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
     }
     return localPointCount > 0
       ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
@@ -2819,6 +2823,12 @@ const plainMapVisualSummary = computed(() => {
       : "";
   const radarCanShowObstacleDistance = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "刷新中";
   const showRadarObstacleDistance = !poseObserved && radarCanShowObstacleDistance && radarLocalPointCount === 0 && !radarCountOnlyMarkerLabel && Boolean(radarObstacleDistanceLabel);
+  const radarScalarObstacleOnly = poseObserved
+    && radarCanShowObstacleDistance
+    && radarScanOverlay.dots.length === 0
+    && radarLocalPointCount === 0
+    && !radarCountOnlyMarkerLabel
+    && Boolean(radarObstacleDistanceLabel);
   const hasRecentLocalScan = !poseObserved && !radarNeedsMapPose && radarLocalScanOverlay.dots.length > 0;
   const radarStoppedWithZeroPoints = radarState === "雷达未运行" && radarPreviewReadbackPointCount() <= 0 && radarLocalPointCount === 0;
   const radarOverlayLabel = poseObserved
@@ -2828,6 +2838,8 @@ const plainMapVisualSummary = computed(() => {
       ? radarRefreshFailureText
       : radarStartAwaitingRefresh
       ? "雷达已启动，待刷新"
+      : radarScalarObstacleOnly
+      ? `雷达距离：${radarObstacleDistanceLabel}（非地图点）`
       : radarState === "雷达已运行"
       ? "雷达"
       : radarNoVisiblePointLabel
@@ -2861,6 +2873,8 @@ const plainMapVisualSummary = computed(() => {
       ? `${radarRefreshFailureText}，已叠在机器人位置`
       : radarStartAwaitingRefresh
       ? "雷达已启动，已叠在机器人位置，等待刷新确认"
+      : radarScalarObstacleOnly
+      ? `${radarState}，已叠在机器人位置，只显示${radarObstacleDistanceLabel}，这是距离读数，不是已贴到地图的雷达点`
       : radarNoVisiblePointAria
       ? `${radarState}，已叠在机器人位置，${radarNoVisiblePointAria}`
       : radarStoppedWithZeroPoints
@@ -2911,7 +2925,7 @@ const plainMapVisualSummary = computed(() => {
     showRadarSweep,
     radarSweepAria,
     radarScanDots: radarScanOverlay.dots,
-    radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : showRadarObstacleDistance ? `${radarObstacleDistanceLabel}，等待地图位置` : radarScanOverlay.label,
+    radarScanLabel: radarLocalScanOverlay.dots.length > 0 ? radarLocalScanOverlay.label : radarScalarObstacleOnly ? `${radarObstacleDistanceLabel}，没有地图点数组` : showRadarObstacleDistance ? `${radarObstacleDistanceLabel}，等待地图位置` : radarScanOverlay.label,
     radarFreshnessLabel: plainRadarFreshnessLabel(displayedRadarState, poseObserved, radarScanOverlay, radarLocalScanOverlay, radarObstacleDistanceLabel),
     coordinateTruthLabel: plainMapCoordinateTruthLabel(poseObserved, radarScanOverlay, radarLocalScanOverlay, routePath, displayedRadarState, localizationFailureLabel, (displayedRadarState === "雷达已运行" || radarStateUsesPendingPoints(displayedRadarState)) ? radarObstacleDistanceLabel : ""),
     tripExecutionLabel: plainMapTripExecutionLabel(),

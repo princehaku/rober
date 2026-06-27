@@ -6293,6 +6293,54 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
   });
 
+  it("labels obstacle-only running radar as a scalar distance instead of a mapped point", async () => {
+    // live 形状：有 map pose，但雷达只给最近障碍距离、没有 scan 点数组；地图 marker 不能冒充已贴图雷达点。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.amcl_pose_observed = true;
+    summaryFixture.o3_proof_summary.localization_tf_observed = true;
+    summaryFixture.o3_proof_summary.robot_pose = {
+      x: 0.5,
+      y: 0.5,
+      yaw: 0,
+      frame_id: "map",
+      source: "/amcl_pose",
+    };
+    summaryFixture.o3_proof_summary.scan_preview_points = [];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 0;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = null;
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "true";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "0";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = summaryFixture.safe_command_boundary.free_roam_autonomy_gates.map((gate) =>
+      gate.id === "obstacle_clear"
+        ? { ...gate, evidence: "最近障碍 0.04m", next_action: "原地换向避让，不继续直行" }
+        : gate,
+    );
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
+    expect(marker.text()).toBe("雷达距离：最近障碍 0.04m（非地图点）");
+    expect(marker.attributes("data-state")).toBe("雷达已运行");
+    expect(marker.classes()).toContain("mode-known-pose-running");
+    expect(marker.attributes("aria-label")).toBe("雷达已运行，已叠在机器人位置，只显示最近障碍 0.04m，这是距离读数，不是已贴到地图的雷达点");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("最近障碍 0.04m，没有地图点数组");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达未返回点数组，只显示最近障碍 0.04m；这是距离读数，不是已贴到地图的雷达点。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，只读距离读数：最近障碍 0.04m，没有点数组，未贴到地图，路线未显示。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已运行，最近障碍 0.04m。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows local radar scan dots instead of fake map dots when pose is missing", async () => {
     // 有 scan 点但没有 map-frame 位姿时，只能展示局部雷达轮廓，不能落到真实地图坐标。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

@@ -3211,3 +3211,10 @@ summary，不调用 free-roam start/stop、manual、keyboard、Nav2、delivery�
 可通行格数量；只有 artifact/metadata 时显示“已读到地图材料，但还没显示真实地图图像；先刷新地图画面”。
 这让“地图所见即所得”不再依赖用户滚到地图卡片才知道当前显示的是图像还是材料读回；该行只读 summary 和
 map preview，不触发地图刷新、建图、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 11:15 起，普通首屏地图的雷达 marker 进一步区分“点数组已贴图”和“只有最近障碍距离标量”：
+当已有机器人 map pose、雷达状态为运行/待确认，但 `scan_preview_points=[]` 且只从自动扫图 gate 读到
+`最近障碍 0.04m` 这类距离时，地图 marker 显示 `雷达距离：最近障碍 ...（非地图点）`，aria 写明这是距离读数，
+不是已贴到地图的雷达点；caption 同步写“没有点数组，未贴到地图”。只有真实 scan 点数组经过 pose/外参投影后，
+才显示为已贴到地图的实时雷达点。该改动只修正雷达地图所见即所得，不启动雷达、不刷新 proof、不发送
+manual/keyboard/free-roam/Nav2/delivery/stop 或 `/cmd_vel`。
