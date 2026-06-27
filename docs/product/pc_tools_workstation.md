@@ -3176,6 +3176,12 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 `safe_command_boundary.keyboard_jog_duration_ms/keyboard_jog_interval_ms`，不自动启用键盘、不发
 manual pulse、不调用 stop/Nav2/delivery/free-roam 或 `/cmd_vel`；真正运动仍必须先做现场安全确认并显式启用键盘。
 
+2026-06-27 12:16 起，PC 键盘连续手控不再被地图 proof/preview 刷新中的 WYSIWYG 围栏硬阻断。
+地图刷新中仍会阻止 `执行图上路线`、送达材料和建图验收等依赖当前地图画面的动作，但不会阻止已经勾选安全确认、
+显式启用键盘后的低速 bounded manual pulse。这样“小车能先自己低速动起来”不依赖雷达、地图或相机状态；
+只有把这次移动作为建图验收时，才继续要求画面、雷达、地图记录和新鲜地图画面都 ready。该改动仍只走固定
+`POST /api/robot-control/base/manual` 和 `/api/robot-control/base/stop`，不调用 Nav2、free-roam、delivery 或 `/cmd_vel`。
+
 2026-06-27 07:40 起，PC Node 的 Robot Control summary 会消费最近一次只读首帧 probe overlay：
 如果上车 `/api/camera/health` 仍停在旧的 `source_first_frame_failed`，但用户刚点过
 `检查画面（只读）` 且 probe 回报 `open_ok=true/read_ok=true/visible_content_proven=true`，

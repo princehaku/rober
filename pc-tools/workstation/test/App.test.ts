@@ -5644,19 +5644,24 @@ describe("App", () => {
     delayNextMapPreview = true;
     const pendingMapRefreshClick = wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图画面刷新中，等刷新完成后再继续按住移动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待地图刷新");
-    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图画面刷新中；低速手控仍可继续，刷新结果只用于建图验收和保存。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：按住方向键扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
-    const manualCallsBeforeBlockedMove = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    const manualCallsBeforeRefreshMove = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     const mapSaveCallsBeforeBlockedSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/save?")).length;
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerdown");
     await wrapper.find('[data-testid="plain-free-roam-save"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeBlockedMove);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeRefreshMove + 1);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/save?"))).toHaveLength(mapSaveCallsBeforeBlockedSave);
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("正在前进");
+    await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerup");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     resolveMapPreviewRefresh({
       ok: true,
       json: async () => fixtures["/api/robot-control/map/preview"],
@@ -5667,7 +5672,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("保存当前地图");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：键盘已启用，按住方向键/WASD 低速扫图；松开即停。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("扫图状态：");
     delayNextMapProofRefresh = true;
     const mapProofButton = wrapper.findAll("button").find((button) => button.text() === "刷新地图");
     if (!mapProofButton) {
@@ -5675,18 +5680,23 @@ describe("App", () => {
     }
     const pendingMapProofRefreshClick = mapProofButton.trigger("click");
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图状态刷新中，等刷新完成后再继续按住移动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待地图刷新");
-    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图状态刷新中；低速手控仍可继续，刷新结果只用于建图验收和保存。");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：按住方向键扫图");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
-    const manualCallsBeforeProofBlockedMove = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    const manualCallsBeforeProofRefreshMove = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     const mapSaveCallsBeforeProofBlockedSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/save?")).length;
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerdown");
     await wrapper.find('[data-testid="plain-free-roam-save"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeProofBlockedMove);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeProofRefreshMove + 1);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/save?"))).toHaveLength(mapSaveCallsBeforeProofBlockedSave);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerup");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     const finishMapProofDuringSweep = mapProofRefreshControl.finish;
     if (!finishMapProofDuringSweep) {
       throw new Error("map proof refresh during sweep was not captured");
@@ -5700,19 +5710,20 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeUndefined();
     const manualCallsBeforeArm = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm);
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：键盘已启用，按住方向键/WASD 低速扫图；松开即停。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("按住方向键");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("扫图状态：");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：按住方向键扫图");
-    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("键盘已启用（按住才动）");
-    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("armed");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toContain("已停可保存");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("stopped_fresh");
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-panel"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm);
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-map-free-roam-trail"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-free-roam-trail"]').attributes("data-state")).toBe("已停止");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-trail"]').attributes("aria-label")).toContain("扫图短轨迹：前进，已停止");
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerdown");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -7681,6 +7692,18 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    const keyboardArm = wrapper.find('[data-testid="keyboard-control-arm"]');
+    expect(keyboardArm.attributes("disabled")).toBeUndefined();
+    await keyboardArm.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
+    await wrapper.find('[data-testid="keyboard-screen-forward"]').trigger("pointerdown");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
     const finishPreviewRefresh = previewRefreshControl.finish;

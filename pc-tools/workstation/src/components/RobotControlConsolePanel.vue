@@ -3034,14 +3034,9 @@ const mapRuntimeStarted = computed(() => (
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
   && mapLifecycleResult.value.command_result.executed === true
 ));
-const keyboardMapWysiwygBlocked = computed(() => (
-  // 地图画面或 proof 刷新中不能开始新的扫图移动；已经按住移动时仍允许松开并发送 stop。
-  mapRuntimeStarted.value && mapWysiwygRefreshPending.value && !keyboardHeldDirection.value
-));
 const canPressKeyboardDirection = computed(() => (
   keyboardControlArmed.value
   && canUseKeyboardControl.value
-  && !keyboardMapWysiwygBlocked.value
   && !keyboardStopFailedAfterPulse.value
 ));
 const mapSavedThisSession = computed(() => (
@@ -3299,9 +3294,6 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (mapRuntimeStarted.value && !keyboardControlArmed.value) {
     return canArmPlainFreeRoamKeyboard.value ? "下一步：启用键盘" : "下一步：补齐键盘条件";
   }
-  if (keyboardMapWysiwygBlocked.value) {
-    return "下一步：等待地图刷新";
-  }
   if (keyboardHeldDirection.value) {
     return "下一步：松开或停止";
   }
@@ -3425,8 +3417,8 @@ const plainFreeRoamDriveStatus = computed(() => {
       return `扫图状态：地图记录中，但扫图画面刷新失败：${failureText}；重试刷新扫图画面后再继续保存。`;
     }
   }
-  if (keyboardMapWysiwygBlocked.value) {
-    return `扫图状态：${mapWysiwygRefreshPendingText()}，等刷新完成后再继续按住移动。`;
+  if (mapRuntimeStarted.value && mapWysiwygRefreshPending.value) {
+    return `扫图状态：${mapWysiwygRefreshPendingText()}；低速手控仍可继续，刷新结果只用于建图验收和保存。`;
   }
   if (keyboardHeldDirection.value) {
     const wheelText = keyboardWheelFeedbackPlainText();
@@ -9742,10 +9734,6 @@ function startKeyboardControl(direction: ManualDirection): void {
   }
   if (keyboardStopFailedAfterPulse.value) {
     keyboardControlStatus.value = "blocked_keyboard_stop_failed:recheck_before_next_move";
-    return;
-  }
-  if (keyboardMapWysiwygBlocked.value) {
-    keyboardControlStatus.value = "blocked_map_preview_pending";
     return;
   }
   clearKeyboardJogTimer();
