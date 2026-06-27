@@ -16653,6 +16653,41 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows current Nav2 blocker reasons in first-screen facts", async () => {
+    // 真实上位机会给出 /scan、/amcl_pose、map->odom 等 blocker；普通首屏要直接说明根因。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.nav2.path_generated = "false";
+    summaryFixture.readback_summary.nav2.path_generation_succeeded = "false";
+    summaryFixture.readback_summary.nav2.path_point_count = "0";
+    summaryFixture.readback_summary.nav2.path_preview_point_count = "0";
+    summaryFixture.readback_summary.nav2.current_blocker_reasons = [
+      "/scan_once_not_observed",
+      "/amcl_pose_once_not_observed",
+      "map_to_odom_not_observed",
+      "localization_not_ready_for_path_generation",
+    ].join(",");
+    summaryFixture.readback_summary.nav2.current_blocker_labels = "未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线";
+    summaryFixture.readback_summary.localization.robot_pose_status = "not_observed";
+    summaryFixture.readback_summary.localization.amcl_pose_observed = "false";
+    summaryFixture.readback_summary.localization.localization_tf_observed = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const facts = wrapper.find('[data-testid="plain-current-facts"]').text();
+    expect(facts).toContain("自动驾驶当前：未准备好");
+    expect(facts).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线");
+    expect(facts).toContain("相机/雷达不挡底盘试动或键盘手控");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps a stopped Nav2 stack ahead of ROS rerun for an old PWM route", async () => {
     // live 形状可能同时有旧 PWM 成功记录和当前 stack stopped；普通首屏必须先启动服务，不能让用户直接重跑。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

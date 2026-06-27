@@ -2481,6 +2481,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       nav2_status: string;
       nav2_stack_running: string;
       nav2_stack_lifecycle_state: string;
+      current_blocker_reasons: string;
+      current_blocker_labels: string;
       planner_server_active: string;
       controller_server_active: string;
       controller_server_requested: string;

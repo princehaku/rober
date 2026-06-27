@@ -2239,13 +2239,17 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
   if (blockers.length === 0) {
     return "";
   }
+  const currentBlockerLabels = nav2.current_blocker_labels && !["", "not_loaded", "none"].includes(nav2.current_blocker_labels)
+    ? nav2.current_blocker_labels.split("、").map((item) => item.trim()).filter(Boolean).slice(0, 6)
+    : [];
+  const currentRootCauseText = currentBlockerLabels.length ? `；读回根因：${currentBlockerLabels.join("、")}` : "";
   const inactiveServices = plainNav2InactiveServiceText(summary);
   const nextAction = inactiveServices
     ? `先${nav2StackNotRunning ? "启动" : "恢复"}${inactiveServices}，再准备图上行程并按地图画面确认`
     : routeReady
     ? "先重新定位或刷新地图画面"
     : "先准备图上行程，再按地图画面确认";
-  return `自动驾驶当前：未准备好，${blockers.join("，")}；${nextAction}。相机/雷达不挡底盘试动或键盘手控。`;
+  return `自动驾驶当前：未准备好，${blockers.join("，")}${currentRootCauseText}；${nextAction}。相机/雷达不挡底盘试动或键盘手控。`;
 }
 
 const plainCurrentFactRows = computed(() => {

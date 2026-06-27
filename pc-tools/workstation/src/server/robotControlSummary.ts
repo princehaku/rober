@@ -996,6 +996,66 @@ function stringList(value: unknown, limit = 8): string[] {
   });
 }
 
+function nav2ProofBlockerReasons(value: unknown, limit = 8): string[] {
+  // Nav2 proof.blockers 是当前不能自动驾驶的最直接读数；优先保留 reason，再补 detail。
+  const rawBlockers = findFirstKey(value, ["blockers"]);
+  if (!Array.isArray(rawBlockers)) {
+    return [];
+  }
+  const reasons: string[] = [];
+  for (const item of rawBlockers) {
+    if (typeof item === "string") {
+      reasons.push(item);
+    } else if (item && typeof item === "object") {
+      const record = item as JsonRecord;
+      const reason = compactValueText(record.reason, 160);
+      const detail = compactValueText(record.detail, 160);
+      if (reason && reason !== "undefined") {
+        reasons.push(reason);
+      }
+      if (detail && detail !== "undefined") {
+        reasons.push(detail);
+      }
+    }
+  }
+  return [...new Set(reasons.filter(Boolean))].slice(0, limit);
+}
+
+function nav2ProofBlockerLabels(reasons: string[]): string[] {
+  // 普通首屏不显示 raw proof 对象，但保留 ROS topic/TF 名称，方便现场按真实根因排查。
+  const labels = reasons.map((reason) => {
+    if (reason === "/scan_once_not_observed" || reason === "scan_once_not_observed") {
+      return "未读到 /scan";
+    }
+    if (reason === "/amcl_pose_once_not_observed" || reason === "amcl_pose_once_not_observed") {
+      return "未读到 /amcl_pose";
+    }
+    if (reason === "map_to_odom_not_observed") {
+      return "未读到 map->odom TF";
+    }
+    if (reason === "map_to_base_link_blocked_by_missing_map_to_odom") {
+      return "缺 map->odom，无法得到小车地图坐标";
+    }
+    if (reason === "amcl_map_to_odom_tf_not_observed_on_tf") {
+      return "AMCL 没有发布 map->odom";
+    }
+    if (reason === "localization_not_ready_for_path_generation") {
+      return "定位未 ready，无法生成图上路线";
+    }
+    if (reason === "planner_server_inactive") {
+      return "规划服务未运行";
+    }
+    if (reason === "controller_server_inactive") {
+      return "控制服务未运行";
+    }
+    if (reason === "nav2_stack_not_running") {
+      return "自动驾驶服务未启动";
+    }
+    return reason;
+  });
+  return [...new Set(labels)].slice(0, 8);
+}
+
 function numberList(value: unknown, limit = 8): number[] {
   // origin 这类短数组只保留有限数值，避免异常 payload 进入前端计算。
   if (!Array.isArray(value)) {
@@ -3714,6 +3774,8 @@ function nav2SummaryFromReadbacks(
   const statusReadback = readbackById(readbacks, "status");
   const baseStatusReadback = readbackById(readbacks, "base_status");
   const goalExecution = readbackById(readbacks, "nav2_goal_execution_latest");
+  const currentBlockerReasons = nav2ProofBlockerReasons(nav2Proof?.payload);
+  const currentBlockerLabels = nav2ProofBlockerLabels(currentBlockerReasons);
   const goalPayload = goalExecution?.payload ?? null;
   const goalResultPayload = asRecord(goalPayload?.latest_result) ?? goalPayload;
   const baseCommandSummary = asRecord(goalResultPayload?.base_command_summary);
@@ -3768,6 +3830,8 @@ function nav2SummaryFromReadbacks(
     nav2_status: nav2Status?.status ?? "not_loaded",
     nav2_stack_running: summaryValueText(nav2StatusPayload, ["lifecycle_running"], summaryValueText(lifecycleManager, ["running"])),
     nav2_stack_lifecycle_state: summaryValueText(nav2StatusPayload, ["lifecycle_state"], summaryValueText(lifecycleManager, ["state"])),
+    current_blocker_reasons: currentBlockerReasons.join(",") || "none",
+    current_blocker_labels: currentBlockerLabels.join("、") || "not_loaded",
     planner_server_active: proofText(readbacks, ["planner_server_active", "planner_active", "latest_planner_active"]) ?? booleanSummaryValue(proof.planner_server_active),
     controller_server_active: proofText(readbacks, ["controller_server_active", "latest_controller_active"]) ?? "not_loaded",
     controller_server_requested: proofText(readbacks, ["controller_server_requested", "latest_controller_requested"]) ?? "not_loaded",
@@ -4095,6 +4159,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         nav2_status: "not_loaded",
         nav2_stack_running: "not_loaded",
         nav2_stack_lifecycle_state: "not_loaded",
+        current_blocker_reasons: "none",
+        current_blocker_labels: "not_loaded",
         planner_server_active: "not_loaded",
         controller_server_active: "not_loaded",
         controller_server_requested: "not_loaded",
