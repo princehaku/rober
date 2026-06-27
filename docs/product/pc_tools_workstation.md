@@ -2881,6 +2881,12 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 `readback_summary.camera` 和共享 MJPEG 摘要，不打开相机、不重试 WebRTC，也不调用 manual、keyboard、Nav2、delivery、
 free-roam start/stop 或 `/cmd_vel`。
 
+2026-06-28 17:25 起，普通首屏 `当前事实` 的画面行也优先消费本地相机会话状态：
+检查当前画面 pending、关闭实时画面 pending、MJPEG 已绘制、首帧探针偏暗、WebRTC 正在打开和 streaming 但浏览器还没绘帧时，
+会直接显示“正在检查当前画面”“正在关闭实时画面”“已看到 MJPEG 实时画面”“画面太暗”“正在打开实时画面”或“等待浏览器绘出第一帧”。
+这样画面卡片、overlay 和 `当前事实` 不会在同一页面里互相打架。该改动只调整只读 UI 文案，不新增 camera probe/MJPEG/WebRTC
+请求，也不调用 manual、keyboard、Nav2、delivery、free-roam 或 `/cmd_vel`。
+
 2026-06-26 21:10 起，Robot Control summary 的 `safe_command_boundary.free_roam_autonomy_label` 区分“可以发起 start 请求”和
 “已经运动发布解锁”：当 `free_roam_autonomy_start_ready=true` 但 runtime 仍是 `artifact_only=true/cmd_vel_publish_enabled=false`
 时，label 显示 `自动扫图（勾确认后可启动）`；只有 runtime 已 `cmd_vel_publish_enabled=true` 且 gates ready 时才显示

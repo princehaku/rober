@@ -12369,6 +12369,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("检查中");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("正在检查当前画面，等待上位机返回样张。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在检查当前画面，等待上位机返回样张。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：正在检查当前画面，等待上位机返回样张。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

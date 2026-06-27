@@ -554,6 +554,28 @@ function cameraSourcePlainFailureDetailHint(): string {
 
 function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readback_summary"]["camera"]): string {
   // 当前事实条要短而准：把共享预览事实放在前面，避免用户误判成浏览器独占。
+  const visualSaveFailureHint = plainVisualMaterialSaveFailureHint();
+  if (cameraFirstFrameProbePending.value && !browserVideoFrameDrawn()) {
+    return "画面：正在检查当前画面，等待上位机返回样张。";
+  }
+  if (visualSaveFailureHint) {
+    return `画面：${visualSaveFailureHint}`;
+  }
+  if (previewStopPending.value) {
+    return "画面：正在关闭实时画面，等待上位机释放视频会话。";
+  }
+  if (cameraProbeFrameTooDark()) {
+    return "画面：上位机样张已读到，但画面太暗，先检查镜头/光线。";
+  }
+  if (cameraMjpegFrameObserved.value) {
+    return "画面：已看到 MJPEG 实时画面。";
+  }
+  if (previewStatus.value === "starting_local_peer" || previewStatus.value === "connecting_offer_posted") {
+    return "画面：正在打开实时画面。";
+  }
+  if (previewStatus.value === "streaming" && !browserVideoFrameDrawn() && !cameraSourceFirstFrameFailed(camera)) {
+    return "画面：视频已接入，等待浏览器绘出第一帧。";
+  }
   const clientCount = camera.shared_preview_client_count && !["", "not_loaded", "none"].includes(camera.shared_preview_client_count)
     ? `${camera.shared_preview_client_count} 个页面观看`
     : "";
