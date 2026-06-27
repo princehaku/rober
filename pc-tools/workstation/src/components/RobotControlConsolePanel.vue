@@ -409,6 +409,13 @@ function cameraSourcePlainFailureHint(): string {
     if (probeFailureHint) {
       return probeFailureHint;
     }
+    if (
+      camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+      && camera.source_diagnosis_plain_hint
+      && !["", "not_loaded", "none"].includes(camera.source_diagnosis_plain_hint)
+    ) {
+      return `${camera.source_diagnosis_plain_hint}${formatAttempts}`;
+    }
     if (camera?.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
       const attempts = camera.first_frame_probe_backend_attempts && camera.first_frame_probe_backend_attempts !== "0"
         ? `，OpenCV/V4L2 后端尝试 ${camera.first_frame_probe_backend_attempts} 种方式`
@@ -476,6 +483,9 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
   }
   if (camera.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
     return `画面：${prefix}${selectedName} 多种方式也没有取到视频帧。`;
+  }
+  if (camera.source_diagnosis_status === "uvc_no_frame_not_exclusive") {
+    return `画面：${prefix}${selectedName} 不是独占，UVC 没有输出视频帧。`;
   }
   if (camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0") {
     return `画面：${prefix}${selectedName} 没人占用但没有输出视频帧。`;
@@ -1182,6 +1192,13 @@ function sharedPreviewSourceNoFrameText(
   // MJPEG relay 刚重启时可能还没有 last_failure；此时仍要消费 camera health 的首帧结论。
   if (existingFailureText || !cameraSourceFirstFrameFailed(camera)) {
     return "";
+  }
+  if (
+    camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+    && camera.source_diagnosis_plain_hint
+    && !["", "not_loaded", "none"].includes(camera.source_diagnosis_plain_hint)
+  ) {
+    return ` ${camera.source_diagnosis_plain_hint}`;
   }
   const notInUse = camera?.source_usage_status === "not_in_use" || camera?.source_usage_owner_count === "0";
   const ownerText = notInUse ? "设备没人占用，" : "";
@@ -10927,6 +10944,14 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.source_readiness ?? "not_loaded" }}</dd>
             <dt>camera_source_failure_reason</dt>
             <dd>{{ robotSummary?.readback_summary.camera.source_failure_reason ?? "none" }}</dd>
+            <dt>camera_source_diagnosis</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_status ?? "not_loaded" }}</dd>
+            <dt>camera_source_diagnosis_hint</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_plain_hint ?? "not_loaded" }}</dd>
+            <dt>camera_source_diagnosis_next_action</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_next_action ?? "not_loaded" }}</dd>
+            <dt>camera_source_diagnosis_not_exclusive</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_not_exclusive ?? "not_loaded" }}</dd>
             <dt>camera_source_usage_status</dt>
             <dd>{{ robotSummary?.readback_summary.camera.source_usage_status ?? "not_loaded" }}</dd>
             <dt>camera_source_usage_owner_count</dt>

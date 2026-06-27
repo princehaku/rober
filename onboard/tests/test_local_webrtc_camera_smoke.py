@@ -593,6 +593,8 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("system_diagnostics", payload)
         self.assertIn("media_diagnostics", payload)
         self.assertIn("source_candidates_summary", payload)
+        self.assertEqual("source_selected_not_probed", payload["source_diagnosis"]["status"])
+        self.assertTrue(payload["source_diagnosis"]["not_exclusive"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 
@@ -625,6 +627,9 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual("source_first_frame_failed", payload["status"])
         self.assertEqual("first_frame_failed", payload["source_readiness"])
         self.assertEqual("capture_read_returned_false", payload["source_failure_reason"])
+        self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis"]["status"])
+        self.assertIn("不是页面独占", payload["source_diagnosis"]["plain_hint"])
+        self.assertEqual("check_usb_camera_input_power_or_known_good_uvc", payload["source_diagnosis"]["next_action"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 

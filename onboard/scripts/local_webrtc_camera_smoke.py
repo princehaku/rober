@@ -48,6 +48,7 @@ STALE_PEER_NO_FRAME_MAX_AGE_MS = 30_000
 PEER_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,32}$")
 API_CAMERA_PREFIX = "/api/camera"
 IMPORTS = ("aiortc", "cv2", "av")
+FIRST_FRAME_FAILURE_REASONS = {"first_frame_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
 TEMPERATURE_GLOBS = (
     "/sys/class/thermal/thermal_zone*/temp",
     "/sys/class/hwmon/hwmon*/temp*_input",
@@ -183,6 +184,9 @@ TEMPERATURE_GLOBS = (
 # 实现边界说明 128：共享 capture 的最后一个 peer 关闭时才 release，确保多人预览不会互相踢掉画面。
 # 实现边界说明 129：首帧格式尝试必须带分辨率/fps，现场才能判断是不是卡在不兼容采集模式。
 # 实现边界说明 130：最后一轮 raw-default 不写任何 capture 属性，用当前内核协商模式兜底。
+# 实现边界说明 131：source_diagnosis 只翻译媒体事实，不能自动修复 USB 或改变运动门禁。
+# 实现边界说明 132：no-frame 且无人占用时必须明确写“不是独占”，避免现场反复刷新浏览器误判根因。
+# 实现边界说明 133：诊断建议只指向 USB/摄像头/供电/known-good UVC，不把相机失败归因到雷达或底盘。
 
 
 @dataclass(frozen=True)
@@ -647,6 +651,65 @@ def source_candidates_summary(snapshot: dict[str, Any], selection: dict[str, Any
     }
 
 
+def build_source_diagnosis(
+    selected_path: str | None,
+    source_failed: bool,
+    source_observed: bool,
+    source_usage: dict[str, Any],
+    selected_candidate: dict[str, Any] | None,
+    last_offer_reason: str,
+) -> dict[str, Any]:
+    """把 health 的工程事实压成稳定归因，PC 普通界面不用猜是不是浏览器独占。"""
+    usage_status = str(source_usage.get("status") or "not_loaded")
+    owner_count = int(source_usage.get("owner_count") or 0) if str(source_usage.get("owner_count") or "").isdigit() else 0
+    other_owner_count = int(source_usage.get("other_owner_count") or 0) if str(source_usage.get("other_owner_count") or "").isdigit() else 0
+    selected_name = str((selected_candidate or {}).get("v4l2_name") or (selected_candidate or {}).get("sysfs_name") or selected_path or "camera")
+    selected_is_uvc = bool((selected_candidate or {}).get("is_uvc_or_usb"))
+    not_exclusive = usage_status == "not_in_use" or (owner_count <= 0 and other_owner_count <= 0)
+    if not selected_path:
+        status = "no_video_source"
+        plain_hint = "没有选中可用摄像头源；检查 USB 摄像头枚举。"
+        next_action = "check_camera_device_enumeration"
+    elif source_observed:
+        status = "first_frame_observed"
+        plain_hint = f"{selected_name} 已读到真实首帧，可继续看实时预览。"
+        next_action = "open_shared_preview"
+    elif usage_status in {"in_use_by_probe", "in_use_by_other_process"}:
+        status = "source_busy"
+        plain_hint = f"{selected_name} 当前被其他进程占用；释放占用或重启相机服务后再打开画面。"
+        next_action = "release_camera_owner_or_restart_camera_service"
+    elif source_failed and not_exclusive and selected_is_uvc:
+        status = "uvc_no_frame_not_exclusive"
+        plain_hint = f"不是页面独占：{selected_name} 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。"
+        next_action = "check_usb_camera_input_power_or_known_good_uvc"
+    elif source_failed and not_exclusive:
+        status = "source_no_frame_not_exclusive"
+        plain_hint = f"不是页面独占：{selected_name} 当前没人占用，但摄像头没有输出视频帧；检查输入源和供电。"
+        next_action = "check_camera_input_or_power"
+    elif source_failed:
+        status = "source_first_frame_failed"
+        plain_hint = f"{selected_name} 没有输出首帧；先看占用和格式尝试，再检查 USB/供电。"
+        next_action = "inspect_usage_and_format_attempts"
+    else:
+        status = "source_selected_not_probed"
+        plain_hint = f"{selected_name} 已选中但还没读过首帧；打开共享预览或运行首帧检查。"
+        next_action = "open_shared_preview_or_run_first_frame_probe"
+    return {
+        "status": status,
+        "plain_hint": plain_hint,
+        "next_action": next_action,
+        "not_exclusive": bool(not_exclusive),
+        "selected_is_uvc_or_usb": selected_is_uvc,
+        "selected_name": selected_name,
+        "source_usage_status": usage_status,
+        "source_usage_owner_count": owner_count,
+        "source_failure_reason": last_offer_reason or "none",
+        "shared_preview_contract": "single_shared_capture_for_multiple_clients",
+        "opens_camera": False,
+        **proof_flags(),
+    }
+
+
 def validate_offer_payload(payload: Any) -> tuple[bool, str | None]:
     """只接受最小 SDP offer，坏输入不创建 peer、不打开摄像头。"""
     if not isinstance(payload, dict):
@@ -1085,7 +1148,7 @@ class CameraServiceState:
         source_failed = bool(
             selected_path
             and last_offer_source == selected_path
-            and last_offer_reason in {"first_frame_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
+            and last_offer_reason in FIRST_FRAME_FAILURE_REASONS
         )
         last_success = self.last_successful_frame if isinstance(self.last_successful_frame, dict) else {}
         source_observed = bool(selected_path and last_success.get("source") == selected_path)
@@ -1095,6 +1158,14 @@ class CameraServiceState:
             else "first_frame_observed" if source_observed else ("source_selected_not_probed" if selected_path else "no_video_source")
         )
         source_usage = collect_device_usage(str(selected_path) if selected_path else None)
+        source_diagnosis = build_source_diagnosis(
+            str(selected_path) if selected_path else None,
+            source_failed,
+            source_observed,
+            source_usage,
+            selection.get("selected") if isinstance(selection.get("selected"), dict) else None,
+            last_offer_reason,
+        )
         return {
             "schema": SCHEMA,
             "app": APP_NAME,
@@ -1107,6 +1178,7 @@ class CameraServiceState:
             "source_failure_reason": last_offer_reason if source_failed else "",
             "last_successful_frame": self.last_successful_frame,
             "source_usage": source_usage,
+            "source_diagnosis": source_diagnosis,
             "width": self.width,
             "height": self.height,
             "fps": self.fps,
@@ -1123,6 +1195,7 @@ class CameraServiceState:
                 "last_offer_error": self.last_offer_error,
                 "last_successful_frame": self.last_successful_frame,
                 "source_usage": source_usage,
+                "source_diagnosis": source_diagnosis,
             },
             "source_summary": source_candidates_summary(snapshot, selection),
             "source_candidates_summary": source_candidates_summary(snapshot, selection),

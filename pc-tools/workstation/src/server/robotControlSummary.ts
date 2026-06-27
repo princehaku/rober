@@ -1184,6 +1184,7 @@ function cameraSummaryFromReadbacks(
   const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error);
   const selectedCandidate = cameraSelectedCandidateSummary(healthPayload);
   const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage);
+  const sourceDiagnosis = asRecord(findFirstKey(healthPayload, ["source_diagnosis"]) ?? mediaDiagnostics?.source_diagnosis);
   const sourceUsageOwners = Array.isArray(sourceUsage?.owners) ? sourceUsage.owners : [];
   const sourceUsageSummary = sourceUsageOwners
     .map((owner) => {
@@ -1266,6 +1267,10 @@ function cameraSummaryFromReadbacks(
     selected_formats_summary: asString(selectedCandidate.selected_formats_summary, "not_loaded"),
     source_readiness: sourceReadiness,
     source_failure_reason: sourceFailureReason,
+    source_diagnosis_status: asString(sourceDiagnosis?.status, "not_loaded"),
+    source_diagnosis_plain_hint: asString(sourceDiagnosis?.plain_hint, "not_loaded"),
+    source_diagnosis_next_action: asString(sourceDiagnosis?.next_action, "not_loaded"),
+    source_diagnosis_not_exclusive: sourceDiagnosis?.not_exclusive === undefined ? "not_loaded" : compactValueText(sourceDiagnosis.not_exclusive),
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
     source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
     source_usage_summary: sourceUsageSummary || "none",
@@ -3398,6 +3403,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         selected_formats_summary: "not_loaded",
         source_readiness: "not_loaded",
         source_failure_reason: "not_loaded",
+        source_diagnosis_status: "not_loaded",
+        source_diagnosis_plain_hint: "not_loaded",
+        source_diagnosis_next_action: "not_loaded",
+        source_diagnosis_not_exclusive: "not_loaded",
         source_usage_status: "not_loaded",
         source_usage_owner_count: "not_loaded",
         source_usage_summary: "not_loaded",

@@ -312,6 +312,26 @@ PC Node 对 MJPEG 只维护一条上游流再 fanout，8088 camera service 的 `
 格式协商或替换 known-good UVC 摄像头验证。本结论不发布 `/cmd_vel`，不调用底盘串口，不改变
 `safe_to_control=false`、`robot_control_executed=false`。
 
+## 2026-06-27 12:41 camera no-frame not-exclusive diagnosis
+
+本轮把“看不到实时画面是否因为页面独占”固化为上车端和 PC 端的结构化诊断：
+
+- 8088 `local_webrtc_camera_smoke.py` 的 `/health` 新增 `source_diagnosis`。
+  当选中 DV20 `/dev/video1`、最近首帧失败、`source_usage` 显示没有其它进程占用且候选是
+  UVC/USB 时，返回 `status=uvc_no_frame_not_exclusive`、`not_exclusive=true`、
+  `shared_preview_contract=single_shared_capture_for_multiple_clients`。
+- PC summary 透出 `source_diagnosis_status/plain_hint/next_action/not_exclusive`，
+  普通用户首屏优先显示“不是页面独占，UVC 没有输出视频帧”，高级诊断保留机器可读字段。
+- 本轮不启动 Nav2、不调用 `/api/base/manual`、不发布 `/cmd_vel`、不写 WAVE ROVER UART。
+  它只让相机故障更可解释；真正恢复实时预览仍需要检查 USB、摄像头输入、供电或换 known-good
+  UVC 摄像头复测。
+
+真实上位机部署后，`GET http://192.168.1.11:8088/health` 读回：
+`status=source_first_frame_failed`、`source_usage.status=not_in_use`、
+`source_diagnosis.status=uvc_no_frame_not_exclusive`、`source_diagnosis.not_exclusive=true`。
+PC 7001 summary 同步读回 `shared_preview_exclusive_camera_claim=false` 和
+`source_diagnosis_plain_hint=不是页面独占...UVC 设备没有输出视频帧...`。
+
 ## 2026-06-11 20:05 camera visible content gate refresh
 
 `sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/` 继续只做
