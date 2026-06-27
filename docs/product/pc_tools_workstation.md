@@ -2986,6 +2986,11 @@ Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达
 `pointerleave`，避免鼠标/手指移出按钮后仍保留连续点动。该验证只锁定 PC 前端事件收口和固定 stop 代理，不发真实
 manual、Nav2、free-roam motion、delivery 或 `/cmd_vel`。
 
+2026-06-27 09:13 起，PC 键盘连续手控回归测试进一步覆盖窗口失焦和页面隐藏收口：按住 `W/A/S/D` 后，如果浏览器窗口失焦
+或页面被切到后台，普通首屏必须立即把当前方向清回 `未按键`，通过固定 `/api/robot-control/base/stop` 代理发送停止，
+并保留“窗口或面板失焦”/“页面隐藏”的上次停止原因。该验证只锁定浏览器事件下的 stop 兜底，不新增 Nav2、delivery、
+free-roam motion、manual 旁路或 `/cmd_vel` 调用；PC 工作站公开入口继续是 `0.0.0.0:7001`。
+
 2026-06-27 08:26 起，普通首屏会消费上车端自由移动 start 回包里的
 `sensor_readiness.mapping_readiness.missing`：当 PC 请求建图记录但上车端二次确认把
 `mapping_active_applied=false` 时，状态机写入行会显示 `本轮只按自由移动记录，建图缺口：画面首帧未出、雷达未刷新`

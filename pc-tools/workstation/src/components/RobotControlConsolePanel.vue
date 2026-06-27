@@ -3885,13 +3885,15 @@ const plainKeyboardLiveStatus = computed(() => {
   if (keyboardControlStatus.value.startsWith("blocked_keyboard_stop_failed")) {
     return "键盘停止请求未成功，未记为已验证。";
   }
-  if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("released")) {
+  if (keyboardControlStatus.value.startsWith("released")) {
+    // 失焦或切页会先退出 armed 状态；停止中的文案仍必须优先展示给 operator。
     return "已松开，正在发送停止。";
   }
   if (keyboardStopSettledAfterPulse.value) {
     return `键盘手控已验证，${keyboardForwardedPulseProgressText.value}，停止已发送；需要继续移动可按住方向键。`;
   }
-  if (keyboardControlArmed.value && keyboardControlStatus.value.startsWith("stop_sent")) {
+  if (keyboardControlStatus.value.startsWith("stop_sent")) {
+    // stop_sent 是安全收口结果，不能因为 armed 已被失焦清掉而退回连续次数提示。
     return "已停止，按住方向键可继续点动。";
   }
   if (keyboardVerifiedPulseCount.value > 0 && !keyboardManualPulseObserved.value) {
