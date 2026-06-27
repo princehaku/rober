@@ -16681,7 +16681,16 @@ describe("App", () => {
     const facts = wrapper.find('[data-testid="plain-current-facts"]').text();
     expect(facts).toContain("自动驾驶当前：未准备好");
     expect(facts).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线");
+    expect(facts).toMatch(/先.*雷达.*重新定位.*准备图上路线/);
     expect(facts).toContain("相机/雷达不挡底盘试动或键盘手控");
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    const tripNextActionPattern = /先.*雷达.*重新定位.*准备图上路线/;
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("待雷达/定位");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toMatch(tripNextActionPattern);
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toMatch(tripNextActionPattern);
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toMatch(tripNextActionPattern);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);

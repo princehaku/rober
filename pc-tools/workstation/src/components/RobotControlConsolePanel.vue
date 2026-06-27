@@ -2244,11 +2244,15 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
     : [];
   const currentRootCauseText = currentBlockerLabels.length ? `；读回根因：${currentBlockerLabels.join("、")}` : "";
   const inactiveServices = plainNav2InactiveServiceText(summary);
+  const blockerNextAction = plainNav2CurrentBlockerNextAction(summary);
+  const blockerNextTail = blockerNextAction ? blockerNextAction.replace(/^先/, "再") : "";
   const nextAction = inactiveServices
-    ? `先${nav2StackNotRunning ? "启动" : "恢复"}${inactiveServices}，再准备图上行程并按地图画面确认`
-    : routeReady
-    ? "先重新定位或刷新地图画面"
-    : "先准备图上行程，再按地图画面确认";
+    ? `先${nav2StackNotRunning ? "启动" : "恢复"}${inactiveServices}，${blockerNextTail || "再准备图上行程并按地图画面确认"}`
+    : blockerNextAction || (
+      routeReady
+        ? "先重新定位或刷新地图画面"
+        : "先准备图上行程，再按地图画面确认"
+    );
   return `自动驾驶当前：未准备好，${blockers.join("，")}${currentRootCauseText}；${nextAction}。相机/雷达不挡底盘试动或键盘手控。`;
 }
 
@@ -6330,6 +6334,10 @@ const plainTripGoalNextAction = computed(() => {
   if (plainTripLatestNotProvenEvidence.value) {
     return "下一步：检查或重新执行行程。";
   }
+  const blockerNextAction = plainNav2CurrentBlockerNextAction();
+  if (blockerNextAction && !plainTripPreparedBySummary.value) {
+    return `下一步：${blockerNextAction}。`;
+  }
   if (plainTripPreparedBySummary.value && plainManualSafetyConfirmed.value) {
     if (plainTripMapWysiwygPending.value) {
       return `下一步：等待${plainTripMapWysiwygWaitText()}。`;
@@ -6762,6 +6770,44 @@ function plainNav2InactiveServiceText(summary: RobotControlSummaryResponse | nul
   }
   return labels.join("和");
 }
+function plainNav2CurrentBlockerReasonSet(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): Set<string> {
+  // current_blocker_reasons 来自上车 Nav2 proof；这里只解析，不把它当成控制权限。
+  const rawReasons = summary?.readback_summary.nav2.current_blocker_reasons ?? "";
+  return new Set(
+    rawReasons
+      .split(",")
+      .map((reason) => reason.trim())
+      .filter((reason) => reason && !["none", "not_loaded"].includes(reason)),
+  );
+}
+function plainNav2CurrentBlockerNextAction(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): string {
+  // 真实现场常见顺序是先让 /scan 当前，再让 AMCL/TF 定位，最后再生成图上路线。
+  const reasons = plainNav2CurrentBlockerReasonSet(summary);
+  if (reasons.size === 0) {
+    return "";
+  }
+  const needsScan = reasons.has("/scan_once_not_observed") || reasons.has("scan_once_not_observed");
+  const needsLocalization = [
+    "/amcl_pose_once_not_observed",
+    "amcl_pose_once_not_observed",
+    "map_to_odom_not_observed",
+    "map_to_base_link_blocked_by_missing_map_to_odom",
+    "amcl_map_to_odom_tf_not_observed_on_tf",
+    "localization_not_ready_for_path_generation",
+  ].some((reason) => reasons.has(reason));
+  const steps: string[] = [];
+  if (needsScan) {
+    steps.push(radarSummary.value.state === "雷达已运行" ? "刷新雷达点" : "启动/刷新雷达");
+  }
+  if (needsLocalization) {
+    steps.push("重新定位");
+  }
+  if (steps.length === 0) {
+    return "";
+  }
+  steps.push("准备图上路线");
+  return `先${steps.join("，再")}，再按地图画面确认`;
+}
 function plainNav2StackNotRunning(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): boolean {
   // Nav2 stack stopped 和 planner/controller inactive 是两层问题；stopped 时普通用户先启动整体服务。
   const blockers = summary?.safe_command_boundary.nav2_goal_blockers ?? [];
@@ -6943,6 +6989,10 @@ const plainTripSummary = computed(() => {
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
     return { state: "待准备", hint: plainTripPreparationFailureHint() };
   }
+  const blockerNextAction = plainNav2CurrentBlockerNextAction();
+  if (blockerNextAction && !plainTripPreparedBySummary.value && plainManualSafetyConfirmed.value) {
+    return { state: "待雷达/定位", hint: `读回自动驾驶缺口；${blockerNextAction}。` };
+  }
   if (plainTripPreparedBySummary.value) {
     const routeVisible = latestNavPathOverlay() !== null;
     const mapFailure = plainTripPreparedRouteMapPreviewFailureText(routeVisible);
@@ -7074,6 +7124,10 @@ const plainTripRunStatus = computed(() => {
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
     return `行程状态：${plainTripPreparationFailureHint()}`;
   }
+  const blockerNextAction = plainNav2CurrentBlockerNextAction();
+  if (blockerNextAction && !plainTripPreparedBySummary.value) {
+    return `行程状态：读回自动驾驶缺口；${blockerNextAction}。`;
+  }
   return "行程状态：已勾安全确认；点主按钮准备图上路线。";
 });
 const plainTripMinimalPrecheckSummary = computed(() => {
@@ -7096,6 +7150,10 @@ const plainTripMinimalPrecheckSummary = computed(() => {
   }
   if (plainTripPreparedBySummary.value) {
     return "行程前确认：安全确认已完成；先刷新地图画面确认图上路线。";
+  }
+  const blockerNextAction = plainNav2CurrentBlockerNextAction();
+  if (blockerNextAction) {
+    return `行程前确认：安全确认已完成；${blockerNextAction}。`;
   }
   return "行程前确认：安全确认已完成；点主按钮准备图上路线。";
 });
