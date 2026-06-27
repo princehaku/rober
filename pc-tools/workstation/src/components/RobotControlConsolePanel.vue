@@ -949,11 +949,14 @@ function latestRadarObstacleDistanceLabel(): string {
 
 function latestRadarRuntimeScanDistanceText(): string {
   const structured = finitePlainNumber(robotSummary.value?.readback_summary?.lidar?.runtime_lidar_min_distance_m);
-  if (structured !== null) {
+  if (robotSummary.value?.readback_summary?.lidar?.runtime_scan_status === "fresh" && structured !== null) {
     return structured.toFixed(2);
   }
   const gates = robotSummary.value?.safe_command_boundary.free_roam_autonomy_gates ?? [];
   const lidarGate = gates.find((gate) => gate.id === "lidar_fresh");
+  if (lidarGate?.state !== "ready") {
+    return "";
+  }
   const match = lidarGate?.evidence.match(/距离\s*([0-9]+(?:\.[0-9]+)?)\s*m/i);
   const distance = finitePlainNumber(match?.[1]);
   return distance === null ? "" : distance.toFixed(2);
@@ -961,14 +964,32 @@ function latestRadarRuntimeScanDistanceText(): string {
 
 function latestRadarRuntimeScanAgeText(): string {
   const structured = finitePlainNumber(robotSummary.value?.readback_summary?.lidar?.runtime_lidar_age_s);
-  if (structured !== null) {
+  if (robotSummary.value?.readback_summary?.lidar?.runtime_scan_status === "fresh" && structured !== null) {
     return structured.toFixed(2);
   }
   const gates = robotSummary.value?.safe_command_boundary.free_roam_autonomy_gates ?? [];
   const lidarGate = gates.find((gate) => gate.id === "lidar_fresh");
+  if (lidarGate?.state !== "ready") {
+    return "";
+  }
   const match = lidarGate?.evidence.match(/延迟\s*([0-9]+(?:\.[0-9]+)?)\s*s/i);
   const age = finitePlainNumber(match?.[1]);
   return age === null ? "" : age.toFixed(2);
+}
+
+function latestRadarRuntimeScanStaleLabel(): string {
+  // stale runtime 距离只用于解释“旧读数存在”，不能再被地图 marker 或近障碍策略当作当前距离。
+  const lidar = robotSummary.value?.readback_summary?.lidar;
+  if (lidar?.runtime_scan_status !== "stale") {
+    return "";
+  }
+  const distance = finitePlainNumber(lidar.runtime_lidar_min_distance_m);
+  if (distance === null) {
+    return "";
+  }
+  const age = finitePlainNumber(lidar.runtime_lidar_age_s);
+  const ageText = age !== null ? `，约 ${age.toFixed(2)}s 前` : "";
+  return `旧 /scan 距离 ${distance.toFixed(2)}m${ageText}，已过期，不贴到地图`;
 }
 
 function latestRadarRuntimeScanReady(): boolean {
@@ -1065,6 +1086,7 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   const windowObserved = radarFieldIsTrue(lidar.continuous_window_observed);
   const latestFresh = radarFieldIsTrue(lidar.latest_scan_proof_fresh);
   const obstacleLabel = latestRadarObstacleDistanceLabel();
+  const staleRuntimeLabel = latestRadarRuntimeScanStaleLabel();
   const noRadarPointArray = (robotSummary.value?.o3_proof_summary.scan_preview_points?.length ?? 0) <= 0;
   if (latestRadarRuntimeScanReady() && obstacleLabel && radarPreviewReadbackPointCount() <= 0 && noRadarPointArray) {
     return { state: "雷达已运行", hint: `free-roam runtime 已读到实时 /scan；当前没有地图点数组，只显示${obstacleLabel}，等点位后再贴地图。` };
@@ -1080,12 +1102,19 @@ function summarizeRadarState(): { state: PlainRadarState; hint: string } {
       return { state: "雷达已运行", hint: `free-roam runtime 已读到实时 /scan；当前没有地图点数组，只显示${obstacleLabel}，等点位后再贴地图。` };
     }
     if (radarRunningWithoutVisiblePoints(lidar)) {
+      const staleRuntimeHint = staleRuntimeLabel ? `${staleRuntimeLabel}。` : "";
       if (radarRawPacketObservedWithoutVisiblePoints(lidar)) {
-        return { state: "雷达无新点", hint: `雷达驱动正在运行，已收到原始包，但还没解析出地图雷达点；检查雷达扫描解析、串口数据质量和驱动日志。` };
+        return { state: "雷达无新点", hint: `雷达驱动正在运行，已收到原始包，但还没解析出地图雷达点；检查雷达扫描解析、串口数据质量和驱动日志。${staleRuntimeHint}` };
       }
-      return { state: "雷达无新点", hint: `雷达驱动正在运行，但${reason}，当前没有读到新的雷达点；检查雷达供电、串口数据和驱动日志。` };
+      return { state: "雷达无新点", hint: `雷达驱动正在运行，但${reason}，当前没有读到新的雷达点；检查雷达供电、串口数据和驱动日志。${staleRuntimeHint}` };
     }
-    return { state: "雷达待刷新", hint: pointHint ? `雷达正在运行，但${reason}；先刷新雷达确认。${pointHint}` : `雷达正在运行，但${reason}；先刷新雷达确认。` };
+    const staleRuntimeHint = staleRuntimeLabel ? `${staleRuntimeLabel}。` : "";
+    return {
+      state: "雷达待刷新",
+      hint: pointHint || staleRuntimeHint
+        ? `雷达正在运行，但${reason}；先刷新雷达确认。${pointHint}${staleRuntimeHint}`
+        : `雷达正在运行，但${reason}；先刷新雷达确认。`,
+    };
   }
   if (!radarStartCommandConfigured()) {
     return { state: "雷达未运行", hint: "上位机雷达启动命令未配置，先配置后再启动雷达。" };
@@ -1889,17 +1918,18 @@ function plainCurrentRadarFactText(): string {
   const pointCount = radarPreviewReadbackPointCount();
   const pointText = pointCount > 0 ? `，待刷新雷达点 ${pointCount} 个` : "";
   const obstacleText = latestRadarObstacleDistanceLabel() ? `，${latestRadarObstacleDistanceLabel()}` : "";
+  const staleRuntimeText = latestRadarRuntimeScanStaleLabel() ? `，${latestRadarRuntimeScanStaleLabel()}` : "";
   if (state === "雷达无新点" && radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
-    return "雷达：已收到原始包，但地图上没有雷达点。";
+    return `雷达：已收到原始包，但地图上没有雷达点${staleRuntimeText}。`;
   }
   if (state === "雷达无新点") {
-    return "雷达：已启动，但地图上没有新点。";
+    return `雷达：已启动，但地图上没有新点${staleRuntimeText}。`;
   }
   if (state === "雷达待刷新") {
-    return `雷达：运行中待刷新${pointText}${obstacleText}。`;
+    return `雷达：运行中待刷新${pointText}${obstacleText}${staleRuntimeText}。`;
   }
   if (state === "刷新中") {
-    return `雷达：正在刷新${pointText}${obstacleText}。`;
+    return `雷达：正在刷新${pointText}${obstacleText}${staleRuntimeText}。`;
   }
   if (state === "雷达已运行") {
     return pointCount > 0
@@ -2690,6 +2720,7 @@ function plainRadarFreshnessLabel(
   const mapPointCount = radarScanOverlay.dots.length;
   const localPointCount = radarLocalScanOverlay.dots.length;
   const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, poseObserved);
+  const staleRuntimeLabel = latestRadarRuntimeScanStaleLabel();
   if (radarState === "雷达已运行") {
     if (poseObserved && mapPointCount > 0) {
       if (radarScanOverlay.source === "map_preview") {
@@ -2721,34 +2752,36 @@ function plainRadarFreshnessLabel(
     return "雷达点口径：雷达刷新失败，未显示新点位。";
   }
   if (radarState === "雷达无新点") {
+    const staleRuntimeText = latestRadarRuntimeScanStaleLabel() ? `；${latestRadarRuntimeScanStaleLabel()}` : "";
     if (radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
-      return "雷达点口径：雷达原始包已收到，但当前没有解析出地图雷达点；这不是地图没刷新。";
+      return `雷达点口径：雷达原始包已收到，但当前没有解析出地图雷达点；这不是地图没刷新${staleRuntimeText}。`;
     }
-    return "雷达点口径：雷达驱动在运行，但当前没有读到新的雷达点；这不是地图没刷新。";
+    return `雷达点口径：雷达驱动在运行，但当前没有读到新的雷达点；这不是地图没刷新${staleRuntimeText}。`;
   }
   if (radarState === "雷达待刷新" || radarState === "刷新中") {
+    const staleRuntimeText = staleRuntimeLabel ? `；${staleRuntimeLabel}` : "";
     if (radarState === "刷新中" && radarStartSucceeded(radarLifecycleResult.value)) {
-      return "雷达点口径：雷达启动已返回，正在刷新新点位。";
+      return `雷达点口径：雷达启动已返回，正在刷新新点位${staleRuntimeText}。`;
     }
     if (poseObserved && mapPointCount > 0) {
       if (radarScanOverlay.source === "map_preview") {
-        return `雷达点口径：正在确认实时性，当前地图预览随图显示雷达点 ${mapPointCount} 个。`;
+        return `雷达点口径：正在确认实时性，当前地图预览随图显示雷达点 ${mapPointCount} 个${staleRuntimeText}。`;
       }
-      return `雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 ${mapPointCount} 个。`;
+      return `雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 ${mapPointCount} 个${staleRuntimeText}。`;
     }
     if (localPointCount > 0) {
-      return `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`;
+      return `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点${staleRuntimeText}。`;
     }
     if (countOnlyLabel) {
       const obstacleText = obstacleDistanceLabel ? `，同时只读门禁显示${obstacleDistanceLabel}` : "";
-      return `雷达点口径：正在确认实时性，当前只有${countOnlyLabel}${obstacleText}；刷新后再确认点位。`;
+      return `雷达点口径：正在确认实时性，当前只有${countOnlyLabel}${obstacleText}${staleRuntimeText}；刷新后再确认点位。`;
     }
     if (obstacleDistanceLabel) {
       return poseObserved
-        ? `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}；这是距离读数，不是已贴到地图的雷达点。`
-        : `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
+        ? `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}${staleRuntimeText}；这是距离读数，不是已贴到地图的雷达点。`
+        : `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}${staleRuntimeText}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
     }
-    return "雷达点口径：正在确认实时性，刷新后才显示新点位。";
+    return `雷达点口径：正在确认实时性${staleRuntimeText}，刷新后才显示新点位。`;
   }
   if (localPointCount > 0) {
     return `雷达点口径：这是最近记录 ${localPointCount} 个点，不是实时雷达。`;

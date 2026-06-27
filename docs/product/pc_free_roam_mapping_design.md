@@ -366,6 +366,12 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 都能一致表达“有局部雷达点但没有机器人地图坐标，只能显示局部轮廓，不能贴到地图”。该改动不新增地图刷新、
 雷达刷新、定位、Nav2、manual、free-roam、delivery、stop 或 `/cmd_vel` 调用。
 
+2026-06-27 23:20 起，PC 地图和自由移动卡片不会把 stale runtime `/scan` 距离当作当前障碍：
+`runtime_scan_status=stale` 时，即使 `runtime_lidar_min_distance_m=0.04` 仍存在，也只显示为
+`旧 /scan 距离 0.04m ... 已过期，不贴到地图`；只有 `runtime_scan_status=fresh` 或 ready 的 runtime gate
+才能生成 `最近障碍 Xm`。这保持“雷达开始后地图标记所见即所得”：旧距离可以解释历史材料，但不能变成地图点、
+当前近障碍或建图 ready 证据。低速自由移动仍只看安全确认和停止兜底，不新增任何运动命令。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，

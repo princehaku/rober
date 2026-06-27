@@ -3490,3 +3490,9 @@ wheel raw L/R=0/0 的 live 记录也能让普通首屏显示 `PWM/T=11`，不会
 PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障碍 Xm（非地图点）`，不再依赖解析
 `free_roam_autonomy_gates[].evidence` 的中文文案。该显示只解释实时距离读数，不把距离伪造成地图雷达点，
 也不触发 radar refresh、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 23:20 起，普通首屏进一步区分 stale runtime `/scan` 距离：只有
+`runtime_scan_status=fresh` 时，`runtime_lidar_min_distance_m` 才能作为当前 `最近障碍` 展示；
+若 runtime snapshot 仍带旧距离但状态为 `stale`，雷达卡片、当前事实和地图 `雷达点口径`
+会显示 `旧 /scan 距离 ... 已过期，不贴到地图`。这样 live 中残留的 `0.04m` 不会被误读成当前近障碍，
+也不会影响自由移动启动门禁；该改动不发送 radar refresh、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
