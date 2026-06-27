@@ -3847,6 +3847,16 @@ const plainFreeRoamMappingQualityReady = computed(() => (
   && plainCameraReadyForFreeRoamAutonomy.value
   && plainRadarReadyForFreeRoamMapping.value
 ));
+const plainFreeRoamMappingSensorsReady = computed(() => (
+  // 相机和雷达都 ready 且上车端允许 start 时，首屏才优先进入建图流程；明确 locked 时仍按自由移动降级。
+  plainCameraReadyForFreeRoamAutonomy.value
+  && plainRadarReadyForFreeRoamMapping.value
+  && (
+    robotSummary.value?.safe_command_boundary.free_roam_autonomy === "ready"
+    || robotSummary.value?.safe_command_boundary.free_roam_autonomy === "start_ready"
+    || robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
+  )
+));
 const plainFreeRoamMotionModeName = computed(() => {
   // start 回包最能说明本轮到底是可验收建图，还是只按自由移动记录；缺回包时再看当前 readiness。
   const startForwarded = freeRoamAutonomyResult.value?.action === "start"
@@ -3857,7 +3867,7 @@ const plainFreeRoamMotionModeName = computed(() => {
   if (startForwarded && freeRoamAutonomyResult.value?.mapping_active_applied === false) {
     return "自由移动";
   }
-  return plainFreeRoamMappingQualityReady.value ? "自动扫图" : "自由移动";
+  return plainFreeRoamMappingSensorsReady.value ? "自动扫图" : "自由移动";
 });
 const plainFreeRoamPanelCopy = computed(() => {
   // 面板标题按当前传感器事实区分“先让车能动”和“可验收建图”，避免把雷达/相机缺口误读成移动硬门禁。
@@ -3919,6 +3929,7 @@ const canSavePlainFreeRoamMapping = computed(() => (
 ));
 const canStartFreeRoamAutonomy = computed(() => (
   plainManualSafetyConfirmed.value
+  && (plainFreeRoamMotionModeName.value !== "自动扫图" || mapRuntimeStarted.value || mapSavedThisSession.value)
   && (!mapRuntimeStarted.value || !freeRoamMapWysiwygPending.value)
   && canSendStop.value
   && !freeRoamAutonomyPending.value

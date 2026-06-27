@@ -4490,6 +4490,64 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
+  it("starts map recording before auto sweep when camera and radar are ready", async () => {
+    // 传感器 ready 后，自动扫图入口必须先补地图记录，再用 confirm_mapping_active=true 走固定 start 代理。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = cloneFixture(fixtures["/api/robot-control/map/start"]) as Record<string, any>;
+    const autoStartFixture = cloneFixture(fixtures["/api/robot-control/free-roam/autonomy/start"]) as Record<string, any>;
+    markMappingSensorsReady(summaryFixture);
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    autoStartFixture.mapping_active_requested = true;
+    autoStartFixture.mapping_active_applied = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "ready";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
+      status: "loaded",
+      state: "ready",
+      reason: "等待 PC start",
+      stop_required: false,
+      artifact_only: false,
+      cmd_vel_publish_enabled: false,
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/free-roam/autonomy/start": autoStartFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可建图");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
+    const mapStartIndex = newCalls.findIndex(([url]) => String(url).startsWith("/api/robot-control/map/start?"));
+    const autoStartIndex = newCalls.findIndex(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"));
+    expect(mapStartIndex).toBeGreaterThanOrEqual(0);
+    expect(autoStartIndex).toBeGreaterThan(mapStartIndex);
+    const autoStartCall = newCalls[autoStartIndex];
+    expect(JSON.parse(String((autoStartCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual({
+      confirm_operator_safety: true,
+      confirm_mapping_active: true,
+    });
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮可按建图记录，未改速度话题。");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图低速运行中");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows start-ready free-roam autonomy as startable while runtime is still artifact-only", async () => {
     // live 形状：start_ready=true 但 runtime 还没启动，cmd_vel_publish_enabled=false；普通 UI 应显示可发起 start。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

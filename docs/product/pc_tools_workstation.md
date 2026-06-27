@@ -3032,6 +3032,12 @@ free-roam autonomy、stop 或 `/cmd_vel`。
 时自动扫图请求仍为 `confirm_mapping_active=false`。该 gate 不阻止自由移动，不调用 manual、keyboard、Nav2、delivery、stop
 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
 
+2026-06-28 20:20 起，普通首屏在摄像头和雷达都 ready、但地图记录尚未启动时，会把自由移动卡片目标切到 `自动扫图`：
+点击 `开始自动扫图（低速）` 会先通过固定 map lifecycle 代理启动地图记录并刷新扫图画面，然后才调用固定
+`/api/robot-control/free-roam/autonomy/start`，请求体为 `confirm_operator_safety=true`、`confirm_mapping_active=true`。
+这样“雷达和摄像头都 ready 后可以建图”不再需要 operator 先猜要按哪个记录按钮；缺相机或雷达时仍按自由移动记录，不把建图质量误报为 ready。
+该流程仍不调用 base manual、keyboard pulse、Nav2、delivery、stop 或浏览器直连 `/cmd_vel`，也不修改 Clash 或系统代理配置。
+
 2026-06-26 23:59 起，普通首屏地图在 `scan_preview_point_count=N` 但 `scan_preview_points=[]` 时不再写成
 `雷达点位未读取`。地图 scan label、雷达点口径和坐标口径都会显示
 `最近雷达记录 N 个（仅点数，没有点数组，未显示局部轮廓）` 或
