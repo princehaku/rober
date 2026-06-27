@@ -570,6 +570,9 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
   if (cameraMjpegFrameObserved.value) {
     return "画面：已看到 MJPEG 实时画面。";
   }
+  if (cameraMjpegRetryPending.value) {
+    return "画面：本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。";
+  }
   if (previewStatus.value === "starting_local_peer" || previewStatus.value === "connecting_offer_posted") {
     return "画面：正在打开实时画面。";
   }
@@ -1338,6 +1341,10 @@ const cameraMjpegFallbackVisible = computed(() => (
   cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
 ));
 const cameraMjpegFrameObserved = computed(() => cameraMjpegFallbackVisible.value && mjpegPreviewLoaded.value && !mjpegPreviewFailed.value);
+const cameraMjpegRetryPending = computed(() => (
+  // 本页 img error 后会等 5 秒再换 URL；这段时间必须说成“待重试”，不能说成已恢复或已出图。
+  cameraMjpegFallbackVisible.value && mjpegPreviewFailed.value && !mjpegPreviewLoaded.value
+));
 const cameraMjpegCachedFramePending = computed(() => {
   // 共享 relay 已有最近帧时，后来打开的页面会先收到缓存帧；这只说明首屏有可复用画面证据，不等于本页已完成实时绘制。
   const status = cameraMjpegStatusResult.value;
@@ -1552,6 +1559,13 @@ function sharedPreviewCachedFrameText(
   return ` 已有最近帧缓存${ageText}，后进页面会先显示最近帧。`;
 }
 
+function sharedPreviewLocalRetryText(): string {
+  // img error 是本页接入状态，不代表共享 relay 不能给其它页面复用；展示等待重试可减少误判为独占。
+  return cameraMjpegRetryPending.value
+    ? " 本页 MJPEG 预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。"
+    : "";
+}
+
 const plainCameraCachedFrameStatus = computed(() => {
   // 这行只服务普通首屏：告诉后来进入的页面“已有最近帧可先看”，但仍等待本页 img/load 或 video 像素后才写成画面可见。
   if (!cameraMjpegCachedFramePending.value) {
@@ -1594,10 +1608,11 @@ const plainCameraSharedPreviewStatus = computed(() => {
         summaryCamera.shared_preview_cached_frame_loaded,
         summaryCamera.shared_preview_cached_frame_age_ms,
       );
+      const localRetry = sharedPreviewLocalRetryText();
       const autoJoinText = sharedPreviewCanStillJoin(failure || sourceNoFrame)
         ? " 页面正在接入共享预览；新页面会共用同一条上游流。"
         : "";
-      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${cachedFrame}${autoJoinText}${failure}${sourceNoFrame}`;
+      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${cachedFrame}${localRetry}${autoJoinText}${failure}${sourceNoFrame}`;
     }
     return "共享画面：未读取到共享流状态。";
   }
@@ -1607,10 +1622,11 @@ const plainCameraSharedPreviewStatus = computed(() => {
   const failure = sharedPreviewFailureText(status.last_failure_reason, status.last_remote_http_status, status.source_diagnosis_plain_hint);
   const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
   const cachedFrame = sharedPreviewCachedFrameText(status.upstream_active && status.content_type_loaded, status.cached_frame_loaded, status.cached_frame_age_ms);
+  const localRetry = sharedPreviewLocalRetryText();
   const autoJoinText = sharedPreviewCanStillJoin(failure || sourceNoFrame)
     ? " 页面正在接入共享预览；新页面会共用同一条上游流。"
     : "";
-  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${cachedFrame}${autoJoinText}${failure}${sourceNoFrame}`;
+  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${cachedFrame}${localRetry}${autoJoinText}${failure}${sourceNoFrame}`;
 });
 
 const cameraFirstFrameProbeSummary = computed(() => {

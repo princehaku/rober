@@ -18790,6 +18790,12 @@ describe("App", () => {
     expect(firstSrc).not.toContain("retry=");
 
     await mjpegPreview.trigger("error");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：共享预览暂时没有出画面；页面会自动重试，不是浏览器独占。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("本页 MJPEG 预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。");
     await vi.advanceTimersByTimeAsync(4900);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').attributes("src")).toBe(firstSrc);
