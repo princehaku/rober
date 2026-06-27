@@ -1813,6 +1813,7 @@ function freeRoamMappingMissingPlainLabelsForVisibleState(missing: string[] | st
   const labels = freeRoamMappingMissingPlainLabels(missing).map((label) => (
     label === "画面首帧未出" ? cameraFirstFrameMissingPlainLabel() : label
   ));
+  const staleRuntimeLabel = latestRadarRuntimeScanStaleLabel();
   const visibleLabels = labels.filter((label) => {
     // PC 已经看到的事实优先于上车端上一拍 summary，避免页面显示着画面/记录却继续报旧缺口。
     if (label === "地图画面未刷新" && plainMapPreviewImageLoaded()) {
@@ -1826,7 +1827,9 @@ function freeRoamMappingMissingPlainLabelsForVisibleState(missing: string[] | st
     }
     return true;
   });
-  return [...new Set(visibleLabels)];
+  return [...new Set(visibleLabels.map((label) => (
+    label === "雷达未刷新" && staleRuntimeLabel ? `雷达未刷新（${staleRuntimeLabel}）` : label
+  )))];
 }
 
 function plainFreeRoamMappingMissingForVisibleState(): string[] {

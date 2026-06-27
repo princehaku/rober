@@ -15452,6 +15452,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达无新点");
     expect(firstScreenText).toContain("旧 /scan 距离 0.04m，约 12 秒前，已过期，不贴到地图");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已收到原始包，但地图上没有雷达点，旧 /scan 距离 0.04m，约 12 秒前，已过期，不贴到地图。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出、雷达未刷新（旧 /scan 距离 0.04m，约 12 秒前，已过期，不贴到地图）");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("缺口：画面首帧未出、雷达未刷新（旧 /scan 距离 0.04m，约 12 秒前，已过期，不贴到地图）");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toContain("旧 /scan 距离 0.04m，约 12 秒前，已过期，不贴到地图");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).not.toContain("最近障碍 0.04m");
     expect(firstScreenText).not.toContain("最近障碍 0.04m");

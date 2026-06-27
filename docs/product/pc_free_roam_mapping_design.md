@@ -376,6 +376,10 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 `约 N 秒前 / 约 N 分钟前 / 约 N 小时 N 分前 / 约 N 天 N 小时前`。这避免现场看到
 `10234.64s` 后难以判断距离有多旧；刷新、建图 ready 和地图贴点判定仍保持原来的结构化 freshness 口径。
 
+2026-06-27 23:30 起，`free_roam_mapping_missing_reasons=lidar_fresh` 的普通文案也会带上 stale
+runtime `/scan` 说明，例如 `雷达未刷新（旧 /scan 距离 0.04m，约 2 小时 51 分前，已过期，不贴到地图）`。
+这让自由移动/建图分层更直观：小车仍可在安全确认后低速自由移动，但本轮不能用旧雷达距离按建图验收。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
