@@ -394,16 +394,13 @@ function cameraSourceFirstFrameFailed(camera: RobotControlSummaryResponse["readb
 }
 
 function cameraSourcePlainFailureHint(): string {
-  // summary 已经完成工程归因；普通首屏只翻译成可处理的现场动作。
+  // 首屏 overlay/status 只放短结论；格式矩阵等长证据放到只读检查里，避免同一失败原因重复刷屏。
   const camera = robotSummary.value?.readback_summary.camera;
   const probeFailureHint = cameraProbePlainFailureHint();
-  const formatAttempts = camera?.last_offer_format_attempts_summary && camera.last_offer_format_attempts_summary !== "none"
-    ? ` 采集尝试：${camera.last_offer_format_attempts_summary}。`
-    : "";
   const selectedName = camera?.selected_name && !["", "not_loaded", "none"].includes(camera.selected_name)
     ? camera.selected_name
     : "";
-  const sourcePrefix = selectedName ? `${selectedName}：` : "";
+  const sourcePrefix = selectedName ? `${selectedName} ` : "";
   const sourceFailed = cameraSourceFirstFrameFailed(camera);
   if (sourceFailed || probeFailureHint) {
     if (probeFailureHint) {
@@ -414,13 +411,10 @@ function cameraSourcePlainFailureHint(): string {
       && camera.source_diagnosis_plain_hint
       && !["", "not_loaded", "none"].includes(camera.source_diagnosis_plain_hint)
     ) {
-      return `${camera.source_diagnosis_plain_hint}${formatAttempts}`;
+      return `不是页面独占：${sourcePrefix}没人占用，但 UVC 没有输出视频帧；检查 USB、摄像头输入或供电。`;
     }
     if (camera?.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
-      const attempts = camera.first_frame_probe_backend_attempts && camera.first_frame_probe_backend_attempts !== "0"
-        ? `，OpenCV/V4L2 后端尝试 ${camera.first_frame_probe_backend_attempts} 种方式`
-        : "";
-      return `不是页面独占：${sourcePrefix}摄像头能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电。`;
+      return `不是页面独占：${sourcePrefix}摄像头能打开，但没有取到视频帧；检查 USB、摄像头输入、格式或供电。`;
     }
     if (camera?.source_usage_status === "in_use_by_probe" || camera?.source_usage_status === "in_use_by_other_process") {
       const ownerCount = camera.source_usage_owner_count && camera.source_usage_owner_count !== "not_loaded"
@@ -429,13 +423,13 @@ function cameraSourcePlainFailureHint(): string {
       return `相机当前被 ${ownerCount} 个进程占用，等检查释放或重启相机服务后再打开。`;
     }
     if (camera?.source_usage_status === "in_use_by_camera_service") {
-      return `${sourcePrefix}相机服务已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。${formatAttempts}`;
+      return `${sourcePrefix}相机服务已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。`;
     }
     if (camera?.source_usage_status === "not_in_use") {
       if (camera?.source_failure_reason === "capture_read_call_timeout" || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout") {
-        return `不是页面独占：${sourcePrefix}相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。${formatAttempts}`;
+        return `不是页面独占：${sourcePrefix}相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。`;
       }
-      return `不是页面独占：${sourcePrefix}相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。${formatAttempts}`;
+      return `不是页面独占：${sourcePrefix}相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。`;
     }
     return "相机没有出画面，检查摄像头/视频线。";
   }
@@ -450,6 +444,16 @@ function cameraSourcePlainFailureHint(): string {
       : `最近检查没有读到画面：${camera.first_frame_probe_failure_reason || camera.first_frame_probe_status}`;
   }
   return "";
+}
+
+function cameraSourcePlainFailureDetailHint(): string {
+  // 详细排障保留格式尝试，放在“只读检查”里；首屏主状态继续保持短句。
+  const baseHint = cameraSourcePlainFailureHint();
+  const camera = robotSummary.value?.readback_summary.camera;
+  const formatAttempts = camera?.last_offer_format_attempts_summary && camera.last_offer_format_attempts_summary !== "none"
+    ? ` 采集尝试：${camera.last_offer_format_attempts_summary}。`
+    : "";
+  return `${baseHint}${formatAttempts}`;
 }
 
 function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readback_summary"]["camera"]): string {
@@ -485,7 +489,9 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
     return `画面：${prefix}${selectedName} 多种方式也没有取到视频帧。`;
   }
   if (camera.source_diagnosis_status === "uvc_no_frame_not_exclusive") {
-    return `画面：${prefix}${selectedName} 不是独占，UVC 没有输出视频帧。`;
+    const notExclusiveText = prefix ? "" : "不是页面独占，";
+    const deviceText = selectedName ? `${selectedName} 的 UVC` : "UVC";
+    return `画面：${prefix}${deviceText} ${notExclusiveText}没有输出视频帧。`;
   }
   if (camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0") {
     return `画面：${prefix}${selectedName} 没人占用但没有输出视频帧。`;
@@ -1323,7 +1329,7 @@ const plainCameraProbeSummary = computed(() => {
   const result = cameraFirstFrameProbeResult.value;
   if (!result) {
     if (cameraSourceFirstFrameFailed(robotSummary.value?.readback_summary.camera)) {
-      const healthFailureHint = cameraSourcePlainFailureHint();
+      const healthFailureHint = cameraSourcePlainFailureDetailHint();
       return healthFailureHint
         ? `只读检查：上位机 health 已确认相机源没有首帧；${healthFailureHint}`
         : "只读检查：上位机 health 已确认相机源没有首帧；点检查画面可复测样张，不会发车。";
@@ -10372,7 +10378,7 @@ onBeforeUnmount(() => {
               <span>{{ cameraSummary.hint }}</span>
             </div>
           </div>
-          <p class="panel-note">{{ cameraSummary.hint }}</p>
+          <p v-if="cameraSummary.state !== '失败'" class="panel-note">{{ cameraSummary.hint }}</p>
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
           <p class="panel-note" data-testid="robot-camera-shared-preview-status">{{ plainCameraSharedPreviewStatus }}</p>
           <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>
