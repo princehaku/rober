@@ -4261,6 +4261,7 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
   putSummaryNav2Value(values, "robot_control_executed", nav2.goal_execution_robot_control_executed);
   putSummaryNav2Value(values, "feedback_sample_count", nav2.goal_execution_feedback_sample_count);
   putSummaryNav2Value(values, "base_command_mode", nav2.goal_execution_base_command_mode);
+  putSummaryNav2Value(values, "next_execution_base_command_mode", nav2.next_execution_base_command_mode);
   putSummaryNav2Value(values, "base_command_nonzero_observed", nav2.goal_execution_base_command_nonzero_observed);
   putSummaryNav2Value(values, "base_command_nonzero_count", nav2.goal_execution_base_command_nonzero_count);
   putSummaryNav2Value(values, "base_feedback_sample_count", nav2.goal_execution_base_feedback_sample_count);
@@ -4353,6 +4354,19 @@ function nav2CommandFeedbackFactText(values: Record<string, string> | undefined)
   return `已发非零底盘命令${countText}${sampleText}${pairText}；不是雷达阻塞${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
 }
 
+function nav2NextExecutionRerunText(values: Record<string, string> | undefined): string {
+  // 上次执行和下一次执行模式不一致时，普通卡片要直接告诉现场“下一次怎么复验”，避免把旧 PWM 结果当成新 ROS 结果。
+  const nextMode = values?.next_execution_base_command_mode?.trim();
+  const lastMode = values?.base_command_mode?.trim();
+  if (!nextMode || nextMode === "not_loaded") {
+    return "";
+  }
+  if (lastMode && lastMode !== "not_loaded" && lastMode === nextMode) {
+    return "";
+  }
+  return `下次将用 ${nextMode} 重新执行这条图上路线`;
+}
+
 function nav2BaseMotionSignalText(values: Record<string, string> | undefined): string {
   if (explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)) {
     const pair = nav2BaseFeedbackPair(values);
@@ -4419,17 +4433,19 @@ function nav2MotionSignalSummaryText(values: Record<string, string> | undefined)
 }
 
 function nav2UnprovenControlDetail(values: Record<string, string> | undefined): string {
+  const rerunText = nav2NextExecutionRerunText(values);
+  const rerunSuffix = rerunText ? `；${rerunText}` : "";
   if (nav2BaseCommandWithoutWheelFeedback(values)) {
     const count = nav2BaseCommandCount(values);
     const pair = nav2BaseFeedbackPair(values);
     const countText = count > 0 ? ` ${count} 条` : "";
     const pairText = pair ? `，底盘反馈 L/R=${pair.left}/${pair.right}` : "";
     if (explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)) {
-      return `Nav2 已发非零底盘命令${countText}${pairText}，轮速非零未证明，但${nav2MotionSignalSummaryText(values)}；这不是雷达阻塞`;
+      return `Nav2 已发非零底盘命令${countText}${pairText}，轮速非零未证明，但${nav2MotionSignalSummaryText(values)}；这不是雷达阻塞${rerunSuffix}`;
     }
-    return `Nav2 已发非零底盘命令${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达阻塞`;
+    return `Nav2 已发非零底盘命令${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达阻塞${rerunSuffix}`;
   }
-  return "真车执行未证明";
+  return rerunText ? `真车执行未证明；${rerunText}` : "真车执行未证明";
 }
 
 function plainTripFailureReasonText(result: { failure_reason?: string } | null | undefined, values: Record<string, string> | undefined): string {
