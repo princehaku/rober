@@ -2095,6 +2095,14 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
   return "建图：等待上车端建图 readiness；自由移动可按单独条件判断。";
 }
 
+function plainCurrentWheelFactText(): string {
+  // 轮速刷新挂起时优先讲“正在等当前读数”，避免旧 L/R 被误当成实时结论。
+  if (baseFeedbackSamplesPending.value) {
+    return "轮速：正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。";
+  }
+  return "";
+}
+
 function plainCurrentMapFactText(summary: RobotControlSummaryResponse): string {
   // 地图事实必须区分“真实图像已显示”和“只读到地图 artifact”，避免 metadata 冒充画面。
   const preview = mapPreviewResult.value;
@@ -2256,6 +2264,10 @@ const plainCurrentFactRows = computed(() => {
   rows.push(plainCurrentRadarFactText());
   rows.push(plainCurrentMapFactText(summary));
   rows.push(plainCurrentMappingFactText(summary));
+  const wheelFact = plainCurrentWheelFactText();
+  if (wheelFact) {
+    rows.push(wheelFact);
+  }
 
   const nav2 = summary.readback_summary.nav2;
   if (navGoalExecutionPending.value) {

@@ -11975,6 +11975,56 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows wheel readback pending in current facts", async () => {
+    // 只读轮速刷新挂起时，当前事实必须说明旧 L/R 不能当实时读数，且不能发出任何运动请求。
+    let delayNextFeedbackSamples = false;
+    let resolveFeedbackSamples!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedFeedbackSamples = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveFeedbackSamples = resolve;
+    });
+    const baseFetch = stubWorkstationFetch();
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/base/feedback-samples?") && delayNextFeedbackSamples) {
+        delayNextFeedbackSamples = false;
+        return delayedFeedbackSamples;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const feedbackCallsBefore = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/feedback-samples?"),
+    ).length;
+    delayNextFeedbackSamples = true;
+    const refreshClick = wrapper.find('[data-testid="plain-wheel-readback-refresh"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新中");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain(
+      "轮速：正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。",
+    );
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/feedback-samples?"),
+    ).length).toBe(feedbackCallsBefore + 1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    resolveFeedbackSamples({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/base/feedback-samples"],
+    });
+    await refreshClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
+  });
+
   it("guides the wheel goal to readonly L/R refresh before trial when summary has no wheel readback", async () => {
     // live summary 可能还没带当前 L/R；先用固定只读 samples 读出 0/0，再引导低速试动，不直接发车。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
