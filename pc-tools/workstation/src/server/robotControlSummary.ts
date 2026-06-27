@@ -3219,6 +3219,20 @@ function nav2SummaryFromReadbacks(
     && lastBaseMode !== nextBaseMode
     ? `pending_${nextBaseMode}_rerun_after_${lastBaseMode}`
     : "not_required";
+  const baseCommandNonzeroObserved = summaryValueText(baseCommandSummary, ["nonzero_command_observed"]);
+  const baseCommandNonzeroCount = summaryValueText(baseCommandSummary, ["nonzero_command_count"]);
+  const parsedBaseCommandNonzeroCount = Number(baseCommandNonzeroCount);
+  const baseCommandModeCanFallback = ["ros", "pwm", "speed"].includes(lastBaseMode)
+    && Number.isFinite(parsedBaseCommandNonzeroCount)
+    && parsedBaseCommandNonzeroCount > 0;
+  const baseCommandLatestNonzeroMode = summaryValueText(baseCommandSummary, ["latest_nonzero_command_mode"]);
+  const baseCommandModeCounts = summaryValueText(baseCommandSummary, ["command_mode_counts"], "{}");
+  const effectiveBaseCommandLatestNonzeroMode = baseCommandLatestNonzeroMode === "not_loaded" && baseCommandModeCanFallback
+    ? lastBaseMode
+    : baseCommandLatestNonzeroMode;
+  const effectiveBaseCommandModeCounts = baseCommandModeCounts === "{}" && baseCommandModeCanFallback
+    ? JSON.stringify({ [lastBaseMode]: parsedBaseCommandNonzeroCount })
+    : baseCommandModeCounts;
   const goalSucceeded = goalExecutionStatus === "goal_succeeded" || goalExecutionResultStatus === "succeeded";
   const summaryStatus = goalExecutionProven === "true" && goalExecutionStatus !== "not_loaded"
     ? goalExecutionStatus
@@ -3244,10 +3258,10 @@ function nav2SummaryFromReadbacks(
     goal_execution_base_command_mode: lastBaseMode,
     next_execution_base_command_mode: nextBaseMode,
     goal_execution_mode_rerun_status: modeRerunStatus,
-    goal_execution_base_command_nonzero_observed: summaryValueText(baseCommandSummary, ["nonzero_command_observed"]),
-    goal_execution_base_command_nonzero_count: summaryValueText(baseCommandSummary, ["nonzero_command_count"]),
-    goal_execution_base_command_latest_nonzero_mode: summaryValueText(baseCommandSummary, ["latest_nonzero_command_mode"]),
-    goal_execution_base_command_mode_counts: summaryValueText(baseCommandSummary, ["command_mode_counts"], "{}"),
+    goal_execution_base_command_nonzero_observed: baseCommandNonzeroObserved,
+    goal_execution_base_command_nonzero_count: baseCommandNonzeroCount,
+    goal_execution_base_command_latest_nonzero_mode: effectiveBaseCommandLatestNonzeroMode,
+    goal_execution_base_command_mode_counts: effectiveBaseCommandModeCounts,
     goal_execution_base_feedback_sample_count: summaryValueText(baseFeedbackSummary, ["sample_count"]),
     goal_execution_base_feedback_nonzero_sample_count: summaryValueText(baseFeedbackSummary, ["nonzero_sample_count"]),
     goal_execution_base_feedback_lr_nonzero_proven: summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]),

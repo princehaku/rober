@@ -3447,3 +3447,10 @@ multipart JPEG，失败继续返回结构化 503 和 `first_frame_unreadable` / 
 建图验收和当前事实显示 `画面首帧未出（不是页面独占）`，而不是泛化的 `画面首帧未出`。这让 live 形态
 “每个页面共享预览没问题，但 UVC 本身无首帧”在自由移动卡片里也所见即所得；低速自由移动仍只看安全确认和停止兜底，
 相机首帧只影响可验收建图，不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 19:11 起，Robot Control summary 对旧 O11 Nav2 artifact 增加只读兼容：如果
+`base_command_summary` 已有 `nonzero_command_count>0`，但还没有 `latest_nonzero_command_mode` 或
+`command_mode_counts`，PC 会用同一 artifact 的 `base_command_mode=ros|pwm|speed` 补出
+`goal_execution_base_command_latest_nonzero_mode` 和 `goal_execution_base_command_mode_counts`。因此旧 PWM 成功但
+wheel raw L/R=0/0 的 live 记录也能让普通首屏显示 `PWM/T=11`，不会等上车重新产出新字段才可排障。
+该 fallback 只读现有 artifact，不触发 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
