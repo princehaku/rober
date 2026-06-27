@@ -453,6 +453,8 @@ const STATUS_KEYS = [
   "wheel_feedback_nonzero_observed",
   "wheel_feedback_latest_left_speed",
   "wheel_feedback_latest_right_speed",
+  "wheel_feedback_latest_raw_left",
+  "wheel_feedback_latest_raw_right",
   "wheel_feedback_latest_nonzero_left_speed",
   "wheel_feedback_latest_nonzero_right_speed",
   "wheel_feedback_nonzero_frame_count",
@@ -942,7 +944,7 @@ function appendFreshBaseFeedbackFrameCount(payload: JsonRecord | null, result: R
 }
 
 function appendWheelFeedbackSummaryKeyValues(payload: JsonRecord | null, result: Record<string, string>, keys: readonly string[]): void {
-  // 真实上位机把 L/R 放在 wheel_feedback_summary.latest_pair；这里派生成既有 PC 摘要字段。
+  // 真实上位机把 L/R 放在 wheel_feedback_summary.latest_pair；这里同时派生 speed/raw 两套别名，避免 UI 和脚本口径割裂。
   const wheelSummary = asRecord(findFirstKey(payload, ["wheel_feedback_summary"]));
   if (!wheelSummary) {
     return;
@@ -957,6 +959,8 @@ function appendWheelFeedbackSummaryKeyValues(payload: JsonRecord | null, result:
   };
   fill("wheel_feedback_latest_left_speed", latestPair?.left_speed);
   fill("wheel_feedback_latest_right_speed", latestPair?.right_speed);
+  fill("wheel_feedback_latest_raw_left", latestPair?.left_speed);
+  fill("wheel_feedback_latest_raw_right", latestPair?.right_speed);
   fill("left_speed", latestPair?.left_speed);
   fill("right_speed", latestPair?.right_speed);
   fill("wheel_feedback_nonzero_frame_count", wheelSummary.nonzero_frame_count);
@@ -4552,11 +4556,15 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     ?? feedbackLatest?.key_values.wheel_feedback_nonzero_observed
     ?? "not_loaded";
   const latestLeft = baseStatus?.key_values.wheel_feedback_latest_left_speed
+    ?? baseStatus?.key_values.wheel_feedback_latest_raw_left
     ?? feedbackLatest?.key_values.wheel_feedback_latest_left_speed
+    ?? feedbackLatest?.key_values.wheel_feedback_latest_raw_left
     ?? feedbackLatest?.key_values.left_speed
     ?? "not_loaded";
   const latestRight = baseStatus?.key_values.wheel_feedback_latest_right_speed
+    ?? baseStatus?.key_values.wheel_feedback_latest_raw_right
     ?? feedbackLatest?.key_values.wheel_feedback_latest_right_speed
+    ?? feedbackLatest?.key_values.wheel_feedback_latest_raw_right
     ?? feedbackLatest?.key_values.right_speed
     ?? "not_loaded";
   const latestNonzeroLeft = baseStatus?.key_values.wheel_feedback_latest_nonzero_left_speed
@@ -4577,6 +4585,8 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     wheel_feedback_nonzero_observed: wheelFeedbackObserved,
     wheel_feedback_latest_left_speed: latestLeft,
     wheel_feedback_latest_right_speed: latestRight,
+    wheel_feedback_latest_raw_left: latestLeft,
+    wheel_feedback_latest_raw_right: latestRight,
     wheel_feedback_latest_nonzero_left_speed: latestNonzeroLeft,
     wheel_feedback_latest_nonzero_right_speed: latestNonzeroRight,
     feedback_voltage_v: feedbackVoltage,

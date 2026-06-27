@@ -178,6 +178,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   控制轮速、`T=130/T=1001` 回读反馈，固件 setpoint/feedback 节奏约 200ms；旧的 220ms
   上限容易在 first-jog 停车前漏掉非零 `T=1001 L/R`。新策略仍保留 stop 兜底，并且不要求雷达或摄像头
   ready 才能低速试动；雷达和摄像头只决定本轮是否可按“可建图”验收。
+- 2026-06-28 12:05 起，PC summary 在 `readback_summary.base` 和只读 endpoint key_values 中同时暴露
+  `wheel_feedback_latest_raw_left/right`，它们是最新 `T=1001 L/R` 读数的 `left_speed/right_speed` 只读别名。
+  这只是让 API 字段名和普通首屏的 `wheel raw L/R` 文案保持一致，不新增运动命令，也不把 `0/0` 或历史非零样本外推为
+  当前完整 Nav2 路线、delivery success 或 HIL 通过。
 - 同轮后续真机复验确认：依据 vendor `json_cmd.h` 的 `T=11` PWM 示例，PC 手控、上位机
   `/api/base/manual` 和 O11 Nav2 托管 bridge 默认使用 `pwm_min_abs=164/pwm_max_abs=164`。手控
   `T=11 L=164/R=164` 已读到运动中 `T=1001 L/R=164/164`，停车后回到 `0/0`；Nav2 bounded
