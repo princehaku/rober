@@ -1563,6 +1563,29 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
   return "建图：等待上车端建图 readiness；自由移动可按单独条件判断。";
 }
 
+function plainCurrentMapFactText(summary: RobotControlSummaryResponse): string {
+  // 地图事实必须区分“真实图像已显示”和“只读到地图 artifact”，避免 metadata 冒充画面。
+  const preview = mapPreviewResult.value;
+  const previewLoaded = preview?.proxy_status === "preview_forwarded" && Boolean(preview.image_data_url);
+  const imageLabel = plainMapImageFreshnessLabel(previewLoaded);
+  if (previewLoaded) {
+    const freeCells = plainCellCount(preview, "free");
+    const freeText = freeCells > 0 ? `，可通行格 ${freeCells} 个` : "，未读到可通行格";
+    return `地图：显示最近读取的真实地图画面，${preview.width}x${preview.height}${freeText}。`;
+  }
+  if (mapPreviewPending.value || mapPreviewFailureText(preview)) {
+    return imageLabel.replace(/^地图画面：/, "地图：");
+  }
+  const mapReadback = summary.readback_summary.map;
+  if (mapReadback.map_once_observed === "true") {
+    const freeCellText = mapReadback.map_free_cell_count && mapReadback.map_free_cell_count !== "not_loaded"
+      ? `，读到可通行格 ${mapReadback.map_free_cell_count} 个`
+      : "";
+    return `地图：已读到地图材料${freeCellText}，但还没显示真实地图图像；先刷新地图画面。`;
+  }
+  return "地图：还没读到真实地图图像。";
+}
+
 function plainCurrentRadarFactText(): string {
   // 当前事实条要把雷达“有没有材料”和“是否实时”合在一句里，详细坐标口径仍留在地图 caption。
   const state = radarSummary.value.state;
@@ -1599,6 +1622,7 @@ const plainCurrentFactRows = computed(() => {
   const camera = summary.readback_summary.camera;
   rows.push(plainCurrentCameraFactText(camera));
   rows.push(plainCurrentRadarFactText());
+  rows.push(plainCurrentMapFactText(summary));
   rows.push(plainCurrentMappingFactText(summary));
 
   const nav2 = summary.readback_summary.nav2;

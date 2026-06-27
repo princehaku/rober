@@ -3193,3 +3193,9 @@ summary，不调用 free-roam start/stop、manual、keyboard、Nav2、delivery�
 `camera_source_first_frame_failed`，并把 `shared_preview_last_remote_http_status` 标成 health 的 HTTP 状态。这样只看
 `/api/robot-control/summary` 的页面、刷新前状态和 status fallback 都能得到一致结论，不再一边显示相机无首帧、一边显示共享预览无失败。
 该 overlay 不创建 MJPEG client，不打开上游流，不改变 `safe_to_control=false`、`robot_control_executed=false`。
+
+2026-06-27 10:55 起，普通首屏 `当前事实` 新增地图行，专门区分三种状态：真实地图图像已经显示、只读到
+`map_once`/metadata 但没有 `image_data_url`、完全没有读到地图图像。真实图像已显示时会写出地图尺寸和
+可通行格数量；只有 artifact/metadata 时显示“已读到地图材料，但还没显示真实地图图像；先刷新地图画面”。
+这让“地图所见即所得”不再依赖用户滚到地图卡片才知道当前显示的是图像还是材料读回；该行只读 summary 和
+map preview，不触发地图刷新、建图、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。

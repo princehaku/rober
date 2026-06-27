@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.vue";
 import TrainingLabelingPanel from "../src/components/TrainingLabelingPanel.vue";
-import { PROOF_FLAGS, type RobotControlSummaryResponse } from "../src/shared/contracts";
+import { PROOF_FLAGS, type RobotControlMapPreviewResponse, type RobotControlSummaryResponse } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
@@ -3629,6 +3629,7 @@ describe("App", () => {
     expect(currentFacts.exists()).toBe(true);
     expect(currentFacts.text()).toContain("画面：还没确认真实帧。");
     expect(currentFacts.text()).toContain("雷达：已运行，最近障碍 0.30m。");
+    expect(currentFacts.text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个。");
     expect(currentFacts.text()).toContain("行程：还没执行。");
     expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
     expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用。");
@@ -3969,6 +3970,33 @@ describe("App", () => {
     expect(diagnostics.text()).not.toContain("现场有人扶控并准备急停");
     expect(diagnostics.text()).not.toContain("本轮不是自动导航任务");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("shows map artifact readback separately from a visible map image in current facts", async () => {
+    // map_once 只能说明上车端读到地图材料；没有 image_data_url 时不能在首屏冒充真实地图画面。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.readback_summary.map.status = "map_once_artifact_metadata_observed";
+    summaryFixture.readback_summary.map.map_once_observed = "true";
+    summaryFixture.readback_summary.map.map_free_cell_count = "not_loaded";
+    summaryFixture.readback_summary.map.map_usable_for_navigation = "not_loaded";
+    const previewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
+    previewFixture.image_data_url = "";
+    previewFixture.has_free_cells = false;
+    previewFixture.cell_counts = { free: 0, unknown: 0, occupied: 0, other: 0 };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/preview": previewFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：已读到地图材料，但还没显示真实地图图像；先刷新地图画面。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("地图：显示最近读取的真实地图画面");
+    expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：还没读到真实地图图像。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
   it("surfaces generated trip readback while map pose is still missing", async () => {
