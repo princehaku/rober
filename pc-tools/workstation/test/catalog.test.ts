@@ -7487,6 +7487,118 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("map preview radar overlay is partial when scan points exist without map pose", async () => {
+    // live 形态：地图图像和雷达点都读到了，但定位只有 TF 信号没有 map-frame pose；不能把雷达点冒充成已贴地图。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/map/preview": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_preview",
+          status: "loaded",
+          safe_to_control: false,
+          robot_control_executed: false,
+          map_name: "floor_1",
+          map_yaml_name: "floor_1.yaml",
+          map_image_name: "floor_1.pgm",
+          width: 20,
+          height: 10,
+          resolution: 0.05,
+          origin: [0, 0, 0],
+          cell_counts: { free: 10, unknown: 0, occupied: 0, other: 0 },
+          has_free_cells: true,
+          navigation_quality: "has_free_cells",
+          image_mime_type: "image/png",
+          image_data_url: "data:image/png;base64,abc",
+          source_image_format: "pgm_p5",
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_proof_latest",
+          status: "pose_signal_observed_without_map_coordinates",
+          safe_to_control: false,
+          robot_control_executed: false,
+          amcl_pose_observed: false,
+          localization_tf_observed: true,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "not_proven",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof",
+          status: "not_proven",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/radar/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          status: "fresh",
+          safe_to_control: false,
+          robot_control_executed: false,
+          scan_preview_points: [
+            { x_m: 0.8, y_m: 0.1, range_m: 0.81, angle_rad: 0.12, frame_id: "laser_frame", source_index: 3 },
+          ],
+          scan_preview_source_point_count: 65,
+        },
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_scan_proof",
+          status: "scan_once_observed",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/map/preview?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        image_data_url: string;
+        radar_overlay: {
+          overlay_status: string;
+          scan_preview_point_count: number;
+          scan_preview_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
+          robot_pose: null | { frame_id: string };
+          blocked_reasons: string[];
+        };
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("preview_forwarded");
+      expect(body.image_data_url).toContain("data:image/png;base64,");
+      expect(body.radar_overlay.overlay_status).toBe("partial");
+      expect(body.radar_overlay.scan_preview_point_count).toBe(1);
+      expect(body.radar_overlay.scan_preview_points[0]).toEqual(expect.objectContaining({ x_m: 0.8, y_m: 0.1, frame_id: "laser_frame" }));
+      expect(body.radar_overlay.robot_pose).toBeNull();
+      expect(body.radar_overlay.blocked_reasons).toContain("robot_pose_missing_for_map_radar_overlay");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(expect.arrayContaining([
+        "/api/map/preview",
+        "/api/localize/proof/latest",
+        "/api/nav2/status",
+        "/api/nav2/proof/latest",
+        "/api/radar/status",
+        "/api/radar/scan-proof/latest",
+      ]));
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation map lifecycle proxy forwards safe executed no-motion helper results", async () => {
     // executed=true 只代表受控 no-motion helper 跑过；只要无危险字段和远端 failure，代理应通过。
     const upstream = await listenRobotMapLifecycleApi({

@@ -2344,10 +2344,18 @@ async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPr
   const readbacks = await Promise.all(endpoints.map((endpoint) => readEndpoint(base, endpoint)));
   const proofSummary = buildProofSummary(readbacks);
   const blockedReasons = readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`));
-  const hasVisibleOverlay = proofSummary.scan_preview_point_count > 0 || proofSummary.robot_pose !== null;
+  const hasRadarPoints = proofSummary.scan_preview_point_count > 0 || proofSummary.scan_preview_points.length > 0;
+  const hasMapPose = proofSummary.robot_pose !== null;
+  const overlayGaps = [
+    hasRadarPoints && !hasMapPose ? "robot_pose_missing_for_map_radar_overlay" : "",
+    hasMapPose && !hasRadarPoints ? "scan_preview_points_missing_for_map_radar_overlay" : "",
+  ].filter(Boolean);
+  const overlayBlockedReasons = [...blockedReasons, ...overlayGaps];
+  const hasVisibleOverlay = hasRadarPoints || hasMapPose;
+  const hasCompleteOverlay = hasRadarPoints && hasMapPose;
   const overlayStatus: RobotControlMapPreviewRadarOverlay["overlay_status"] = hasVisibleOverlay
-    ? blockedReasons.length > 0 ? "partial" : "loaded"
-    : blockedReasons.length > 0 ? "blocked" : "not_loaded";
+    ? overlayBlockedReasons.length > 0 || !hasCompleteOverlay ? "partial" : "loaded"
+    : overlayBlockedReasons.length > 0 ? "blocked" : "not_loaded";
   return {
     overlay_status: overlayStatus,
     scan_preview_points: proofSummary.scan_preview_points,
@@ -2356,7 +2364,7 @@ async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPr
     scan_preview_frame_id: proofSummary.scan_preview_frame_id,
     robot_pose: proofSummary.robot_pose,
     source_endpoint_ids: endpoints.map((endpoint) => endpoint.id),
-    blocked_reasons: blockedReasons,
+    blocked_reasons: overlayBlockedReasons,
   };
 }
 
