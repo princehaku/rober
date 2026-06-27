@@ -59,6 +59,7 @@ import type {
   RobotControlRadarLifecycleResponse,
   RobotControlRadarStatusResponse,
   RobotApiFrameTransform,
+  RobotApiMapPose,
   RobotApiScanPreviewPoint,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
@@ -69,6 +70,14 @@ type MapNavGoal = {
   goal_x: number;
   goal_y: number;
   goal_yaw: number;
+};
+type PlainMapRadarOverlaySource = "map_preview" | "summary";
+type PlainMapRadarReadback = {
+  points: RobotApiScanPreviewPoint[];
+  pointCount: number;
+  sourcePointCount: number | null;
+  frameId: string;
+  source: PlainMapRadarOverlaySource;
 };
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
@@ -2025,20 +2034,72 @@ function mapCoordinateStyle(goalX: number, goalY: number, preview: RobotControlM
   return { left: `${left.toFixed(2)}%`, top: `${top.toFixed(2)}%` };
 }
 
-function latestRobotPoseOverlay() {
+function mapPreviewRadarOverlayForPlainMap() {
   const preview = mapPreviewResult.value;
-  const pose = robotSummary.value?.o3_proof_summary.robot_pose;
-  if (!preview || preview.proxy_status !== "preview_forwarded" || !pose || pose.frame_id !== "map") {
+  const overlay = preview?.radar_overlay;
+  if (!preview || preview.proxy_status !== "preview_forwarded" || !overlay) {
     return null;
   }
+  const pointCount = finitePlainNumber(overlay.scan_preview_point_count) ?? 0;
+  const pointArrayCount = overlay.scan_preview_points.length;
+  // map preview 和 overlay 来自同一轮只读刷新；blocked/not_loaded 只保留为缺口，不参与贴图。
+  if (!["loaded", "partial"].includes(overlay.overlay_status) || (pointCount <= 0 && pointArrayCount <= 0 && !overlay.robot_pose)) {
+    return null;
+  }
+  return overlay;
+}
+
+function effectivePlainMapRobotPose(): { pose: RobotApiMapPose; source: PlainMapRadarOverlaySource } | null {
+  const previewPose = mapPreviewRadarOverlayForPlainMap()?.robot_pose;
+  if (previewPose?.frame_id === "map") {
+    return { pose: previewPose, source: "map_preview" };
+  }
+  const summaryPose = robotSummary.value?.o3_proof_summary.robot_pose;
+  return summaryPose?.frame_id === "map" ? { pose: summaryPose, source: "summary" } : null;
+}
+
+function effectivePlainMapRadarReadback(): PlainMapRadarReadback {
+  const overlay = mapPreviewRadarOverlayForPlainMap();
+  const overlayPointCount = finitePlainNumber(overlay?.scan_preview_point_count);
+  if (overlay && ((overlay.scan_preview_points.length > 0) || (overlayPointCount ?? 0) > 0)) {
+    return {
+      points: overlay.scan_preview_points,
+      pointCount: Math.max(overlayPointCount ?? 0, overlay.scan_preview_points.length),
+      sourcePointCount: finitePlainNumber(overlay.scan_preview_source_point_count),
+      frameId: overlay.scan_preview_frame_id || "",
+      source: "map_preview",
+    };
+  }
+  const proof = robotSummary.value?.o3_proof_summary;
+  const summaryPoints = proof?.scan_preview_points ?? [];
+  const summaryPointCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
+  return {
+    points: summaryPoints,
+    pointCount: Math.max(summaryPointCount, summaryPoints.length),
+    sourcePointCount: finitePlainNumber(proof?.scan_preview_source_point_count),
+    frameId: proof?.scan_preview_frame_id || "",
+    source: "summary",
+  };
+}
+
+function latestRobotPoseOverlay() {
+  const preview = mapPreviewResult.value;
+  const poseReadback = effectivePlainMapRobotPose();
+  if (!preview || preview.proxy_status !== "preview_forwarded" || !poseReadback) {
+    return null;
+  }
+  const { pose, source } = poseReadback;
   const style = mapCoordinateStyle(pose.x, pose.y, preview);
   if (!style) {
     return null;
   }
   return {
     pose,
+    source,
     style,
-    aria: `机器人位置，地图坐标 x=${pose.x.toFixed(2)}, y=${pose.y.toFixed(2)}`,
+    aria: source === "map_preview"
+      ? `机器人位置，地图预览随图坐标 x=${pose.x.toFixed(2)}, y=${pose.y.toFixed(2)}`
+      : `机器人位置，地图坐标 x=${pose.x.toFixed(2)}, y=${pose.y.toFixed(2)}`,
   };
 }
 
@@ -2083,15 +2144,17 @@ function radarPreviewReadbackPointCount(): number {
   // 点数组缺失时仍保留 summary 点数证据；但这个点数不能被用来伪造地图坐标。
   const proof = robotSummary.value?.o3_proof_summary;
   const lidar = effectiveLidarReadback.value ?? robotSummary.value?.readback_summary.lidar;
+  const overlayCount = effectivePlainMapRadarReadback().pointCount;
   const proofCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
   const lidarCount = finitePlainNumber(lidar?.scan_preview_point_count) ?? 0;
-  return Math.max(proofCount, lidarCount);
+  return Math.max(overlayCount, proofCount, lidarCount);
 }
 
 function radarPreviewCountOnlyLabel(radarState: string, poseObserved: boolean): string {
   // 待刷新状态下即使 artifact 带旧点数组，也只能当材料计数，不能继续贴到地图。
+  const readback = effectivePlainMapRadarReadback();
   const pointCount = radarPreviewReadbackPointCount();
-  const pointArrayCount = robotSummary.value?.o3_proof_summary.scan_preview_points?.length ?? 0;
+  const pointArrayCount = readback.points.length;
   const pending = radarStateUsesPendingPoints(radarState);
   if (pointCount <= 0 || (pointArrayCount > 0 && !pending)) {
     return "";
@@ -2099,7 +2162,9 @@ function radarPreviewCountOnlyLabel(radarState: string, poseObserved: boolean): 
   const prefix = radarStateUsesPendingPoints(radarState)
     ? "待刷新雷达点"
     : radarState === "雷达已运行" ? "雷达点" : "最近雷达记录";
-  const sourceText = pointArrayCount > 0 ? "旧点数组" : "仅点数，没有点数组";
+  const sourceText = readback.source === "map_preview"
+    ? "地图预览随图返回"
+    : pointArrayCount > 0 ? "旧点数组" : "仅点数，没有点数组";
   return poseObserved
     ? `${prefix} ${pointCount} 个（${sourceText}，未贴到地图）`
     : `${prefix} ${pointCount} 个（${sourceText}，未显示局部轮廓）`;
@@ -2107,8 +2172,9 @@ function radarPreviewCountOnlyLabel(radarState: string, poseObserved: boolean): 
 
 function radarPreviewCountOnlyMarkerLabel(radarState: string): string {
   // 地图 marker 空间有限，只显示点数；完整“不贴图/旧点数组”解释放在 freshness/坐标口径。
+  const readback = effectivePlainMapRadarReadback();
   const pointCount = radarPreviewReadbackPointCount();
-  const pointArrayCount = robotSummary.value?.o3_proof_summary.scan_preview_points?.length ?? 0;
+  const pointArrayCount = readback.points.length;
   if (pointCount <= 0 || (pointArrayCount > 0 && !radarStateUsesPendingPoints(radarState))) {
     return "";
   }
@@ -2120,18 +2186,20 @@ function radarPreviewCountOnlyMarkerLabel(radarState: string): string {
 
 function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>, radarState = "") {
   // 没有 map-frame 位姿时不把雷达点强行落到地图坐标，只返回待定位提示。
-  const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
+  const readback = effectivePlainMapRadarReadback();
+  const points = readback.points;
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
   const preview = mapPreviewResult.value;
-  if (radarStateUsesPendingPoints(radarState)) {
+  if (radarStateUsesPendingPoints(radarState) && readback.source !== "map_preview") {
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
-    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `待刷新雷达点 ${points.length} 个，未贴到地图` : "雷达点位未读取") };
+    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `待刷新雷达点 ${points.length} 个，未贴到地图` : "雷达点位未读取"), source: readback.source };
   }
   if (!robotPose || !preview || preview.proxy_status !== "preview_forwarded" || points.length === 0) {
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
     return {
       dots: [],
       label: countOnlyLabel || (points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取"),
+      source: readback.source,
     };
   }
   const dots = points
@@ -2149,33 +2217,37 @@ function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOver
     .filter((point): point is { key: string; left: number; top: number } => point !== null);
   const transformedCount = points.filter((point) => ["laser", "laser_frame"].includes(point.frame_id || "")).length;
   const transformLabel = transform && transformedCount > 0 ? "，已套用雷达外参" : "";
-  const prefix = radarStateUsesPendingPoints(radarState)
+  const prefix = readback.source === "map_preview"
+    ? "地图预览雷达点"
+    : radarStateUsesPendingPoints(radarState)
     ? "待刷新雷达点"
     : radarState === "雷达已运行" || !radarState ? "雷达点" : "最近雷达点";
   return {
     dots,
     label: dots.length > 0 ? `${prefix} ${dots.length} 个${transformLabel}` : "雷达点位未读取",
+    source: readback.source,
   };
 }
 
 function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>, radarState = "") {
   // 缺 map-frame 位姿时只能画雷达局部轮廓，不能冒充地图坐标。
-  const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
+  const readback = effectivePlainMapRadarReadback();
+  const points = readback.points;
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
-  if (radarStateUsesPendingPoints(radarState) && robotPose) {
+  if (radarStateUsesPendingPoints(radarState) && robotPose && readback.source !== "map_preview") {
     // 有 map 位姿时 stale 点数组也不能贴地图；只保留点数解释给 caption。
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
-    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `待刷新雷达局部点 ${points.length} 个，未显示局部轮廓` : "雷达点位未读取"), state: "" };
+    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `待刷新雷达局部点 ${points.length} 个，未显示局部轮廓` : "雷达点位未读取"), state: "", source: readback.source };
   }
   if (robotPose || points.length === 0) {
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
-    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取"), state: "" };
+    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取"), state: "", source: readback.source };
   }
   const localPoints = points
     .map((point) => scanPointInBaseFrame(point, transform))
     .filter((point): point is { x: number; y: number; transformApplied: boolean } => point !== null);
   if (localPoints.length === 0) {
-    return { dots: [], label: "雷达点位未读取", state: "" };
+    return { dots: [], label: "雷达点位未读取", state: "", source: readback.source };
   }
   const radius = Math.max(0.4, ...localPoints.map((point) => Math.hypot(point.x, point.y)));
   const dots = localPoints.map((point, index) => ({
@@ -2189,11 +2261,14 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
   const pendingRadar = radarStateUsesPendingPoints(radarState);
   const state = freshRadar ? "实时局部点" : pendingRadar ? "待刷新局部点" : "最近局部点";
   const statusLabel = freshRadar ? "" : `，${radarState}`;
-  const prefix = freshRadar ? "雷达局部点" : pendingRadar ? "待刷新雷达局部点" : "最近雷达局部点";
+  const prefix = readback.source === "map_preview"
+    ? "地图预览雷达局部点"
+    : freshRadar ? "雷达局部点" : pendingRadar ? "待刷新雷达局部点" : "最近雷达局部点";
   return {
     dots,
     label: `${prefix} ${dots.length} 个${transformLabel}${statusLabel}，等待地图位置`,
     state,
+    source: readback.source,
   };
 }
 
@@ -2486,6 +2561,7 @@ function plainMapCoordinateTruthLabel(
     const scanPrefix = radarStateUsesPendingPoints(radarState)
       ? "待刷新雷达点"
       : radarState === "雷达已运行" ? "雷达点" : "最近雷达点";
+    const mapScanPrefix = radarScanOverlay.source === "map_preview" ? "地图预览雷达点" : scanPrefix;
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, true);
     const noVisiblePointText = radarState === "雷达无新点"
       ? radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)
@@ -2493,7 +2569,7 @@ function plainMapCoordinateTruthLabel(
         : "当前暂无地图雷达点"
       : "雷达点未贴图";
     const scanText = radarScanOverlay.dots.length > 0
-      ? `${scanPrefix} ${radarScanOverlay.dots.length} 个已贴到地图`
+      ? `${mapScanPrefix} ${radarScanOverlay.dots.length} 个已贴到地图`
       : countOnlyLabel || (obstacleDistanceLabel ? `只读距离读数：${obstacleDistanceLabel}，没有点数组，未贴到地图` : noVisiblePointText);
     const routeText = routePath ? `${routePath.coordinateLabel}已贴到地图` : "路线未显示";
     return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
@@ -2545,6 +2621,9 @@ function plainRadarFreshnessLabel(
   const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, poseObserved);
   if (radarState === "雷达已运行") {
     if (poseObserved && mapPointCount > 0) {
+      if (radarScanOverlay.source === "map_preview") {
+        return `雷达点口径：地图预览随图返回 ${mapPointCount} 个雷达点，已贴到地图；实时性以当前地图刷新为准。`;
+      }
       return `雷达点口径：实时雷达 ${mapPointCount} 个已贴到地图。`;
     }
     if (localPointCount > 0) {
@@ -2581,6 +2660,9 @@ function plainRadarFreshnessLabel(
       return "雷达点口径：雷达启动已返回，正在刷新新点位。";
     }
     if (poseObserved && mapPointCount > 0) {
+      if (radarScanOverlay.source === "map_preview") {
+        return `雷达点口径：正在确认实时性，当前地图预览随图显示雷达点 ${mapPointCount} 个。`;
+      }
       return `雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 ${mapPointCount} 个。`;
     }
     if (localPointCount > 0) {

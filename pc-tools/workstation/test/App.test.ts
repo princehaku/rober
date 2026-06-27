@@ -6551,6 +6551,72 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
   });
 
+  it("draws map preview radar overlay when summary scan points are missing", async () => {
+    // map preview 返回的 overlay 和地图图像是同一轮只读材料；summary 暂缺点数组时也要按随图材料展示。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.amcl_pose_observed = false;
+    summaryFixture.o3_proof_summary.localization_tf_observed = false;
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.o3_proof_summary.scan_preview_points = [];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 0;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = null;
+    summaryFixture.o3_proof_summary.scan_preview_frame_id = "";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "true";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "0";
+    const previewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
+    previewFixture.radar_overlay = {
+      overlay_status: "loaded",
+      scan_preview_points: [
+        { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
+        { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
+      ],
+      scan_preview_point_count: 2,
+      scan_preview_source_point_count: 2,
+      scan_preview_frame_id: "laser_frame",
+      robot_pose: {
+        x: 0.5,
+        y: 0.5,
+        yaw: 0,
+        frame_id: "map",
+        source: "/api/map/preview.radar_overlay.robot_pose",
+      },
+      source_endpoint_ids: ["localize_proof_latest", "radar_scan_proof_latest"],
+      blocked_reasons: [],
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/preview": previewFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
+    expect(marker.text()).toBe("雷达");
+    expect(marker.classes()).toContain("mode-known-pose-running");
+    expect(marker.attributes("style")).toContain("left: 50%; top: 50%;");
+    expect(marker.attributes("aria-label")).toBe("雷达已运行，已叠在机器人位置");
+    const robotMarker = wrapper.find('[data-testid="plain-map-robot-marker"]');
+    expect(robotMarker.exists()).toBe(true);
+    expect(robotMarker.attributes("style")).toContain("left: 50%; top: 50%;");
+    expect(robotMarker.attributes("aria-label")).toBe("机器人位置，地图预览随图坐标 x=0.50, y=0.50");
+    const scanPoints = wrapper.find('[data-testid="plain-map-radar-scan-points"]');
+    expect(scanPoints.exists()).toBe(true);
+    expect(scanPoints.attributes("aria-label")).toBe("雷达点位，地图预览雷达点 2 个");
+    expect(scanPoints.findAll("circle")).toHaveLength(2);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("地图预览雷达点 2 个");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：地图预览随图返回 2 个雷达点，已贴到地图；实时性以当前地图刷新为准。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，地图预览雷达点 2 个已贴到地图，路线未显示。");
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').exists()).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("labels obstacle-only running radar as a scalar distance instead of a mapped point", async () => {
     // live 形状：有 map pose，但雷达只给最近障碍距离、没有 scan 点数组；地图 marker 不能冒充已贴图雷达点。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

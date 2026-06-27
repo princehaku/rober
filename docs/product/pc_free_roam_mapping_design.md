@@ -332,6 +332,11 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 `radar_overlay.overlay_status` 与 `radar_overlay.blocked_reasons`。这让 PC 地图预览响应本身具备
 “图片 + 雷达点 + 小车位姿”的同轮只读材料，前端无需再靠多个接口异步猜测地图上应显示什么。
 
+2026-06-27 20:26 起，PC 普通地图前端优先消费 `/api/robot-control/map/preview.radar_overlay`：
+当 summary 暂时没有 `robot_pose` 或 `scan_preview_points`，但当前地图预览响应已随图返回位姿和雷达点时，
+地图 marker、雷达点、雷达点口径和坐标口径都按这份同轮只读 overlay 展示，并明确标为“地图预览雷达点”。
+该规则只修正所见即所得显示，不启动雷达、不刷新地图、不发送 manual/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
