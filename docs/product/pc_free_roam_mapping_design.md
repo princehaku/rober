@@ -123,6 +123,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-27 16:55 起，当 `free_roam_autonomy_start_ready=true` 但本地地图记录或扫图画面还没就绪时，普通首屏的
   `开始自动扫图（低速）` 按钮会走自动扫图向导：先启动地图记录，再把地图预览刷新计入本轮扫图 fresh gate，满足条件后再调用固定 start 代理。
   该向导仍不会自动勾选安全确认，也不会绕过上车端 camera 复检。
+- 2026-06-27 16:09 起，普通首屏把地图记录按钮和自由移动按钮拆清：`开始记录（不发车）` 只调用地图记录，
+  不暗示小车会移动；真正低速自移动只能点 `开始自由移动（低速）`，且仍要求本地安全确认和停止兜底。
+  readiness gate 在本地 safety checkbox 已勾选时同步显示“现场安全确认已满足”，避免继续展示旧 summary 的 blocked 文案。
 - 2026-06-26 18:10 起，当 live 形状为 `free_roam_autonomy_start_ready=true`、`free_roam_autonomy=locked` 且 runtime
   仍是 `artifact_only=true/cmd_vel_publish_enabled=false` 时，普通首屏不再把它解释成“自动扫图未开放”。这表示尚未点击 start，
   但已经可以发起固定 start 请求；UI 会显示 `开始自动扫图（低速）`，runtime 文案写明“当前尚未启动，所以仍是记录模式；

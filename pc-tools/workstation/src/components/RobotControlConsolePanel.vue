@@ -3338,7 +3338,7 @@ const plainFreeRoamMappingSummary = computed(() => {
       !plainCameraReadyForFreeRoamAutonomy.value ? "画面未 ready" : "",
       !plainRadarReadyForFreeRoamMapping.value ? "雷达未 ready" : "",
     ].filter(Boolean).join("、");
-    return { state: "可移动", hint: `勾选安全确认后可先启动记录并低速移动；${missing}，本轮先按移动练习处理，ready 后再算可建图。` };
+    return { state: "可移动", hint: `可先启动地图记录（不发车）；低速自移动用“开始自由移动（低速）”；${missing}，本轮先按移动练习处理，ready 后再算可建图。` };
   }
   return { state: "可建图", hint: "摄像头和雷达已 ready；先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图。" };
 });
@@ -3349,7 +3349,7 @@ const plainFreeRoamMappingStartLabel = computed(() => (
       ? "等待地图刷新"
       : !plainManualSafetyConfirmed.value
         ? "先勾安全确认"
-        : mapRuntimeStarted.value ? "重新启动记录" : "开始记录并低速移动"
+        : mapRuntimeStarted.value ? "重新启动记录" : "开始记录（不发车）"
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
@@ -3409,7 +3409,7 @@ const plainFreeRoamNextActionLabel = computed(() => {
     if (!robotApiBaseUrl.value.trim()) {
       return "下一步：连接小车";
     }
-    return canStartPlainFreeRoamMapping.value ? "下一步：开始记录" : "下一步：等待连接";
+    return canStartPlainFreeRoamMapping.value ? "下一步：开始记录（不发车）" : "下一步：等待连接";
   }
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
     return "下一步：等待启动返回后自动停止";
@@ -3460,8 +3460,8 @@ const plainFreeRoamManualGuideButtonLabel = computed(() => {
   if (nextAction === "勾安全确认") {
     return "先勾安全确认";
   }
-  if (nextAction === "开始记录") {
-    return "开始记录并继续";
+  if (nextAction === "开始记录（不发车）") {
+    return "开始记录（不发车）";
   }
   if (nextAction === "启用键盘") {
     return "启用键盘扫图";
@@ -3483,7 +3483,7 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
     return "先勾安全确认";
   }
   if (!mapRuntimeStarted.value) {
-    return "开始记录并继续";
+    return "开始记录（不发车）";
   }
   if (!plainFreeRoamMapPreviewFreshForSession.value) {
     return "刷新扫图画面";
@@ -3802,6 +3802,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     return `${prefix}：${gate.label || gateLabel(gate.id)}`;
   };
   const freeRoamGateState = (gate: { id: string; state: string; scope?: string }): string => {
+    if (gate.id === "operator_confirmed" && plainManualSafetyConfirmed.value) {
+      return "已满足";
+    }
     const scope = freeRoamGateScope(gate);
     if (scope === "mapping_acceptance" && gate.state !== "ready") {
       return "可降级";
@@ -3812,6 +3815,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     return gateStateLabel(gate.state);
   };
   const freeRoamGateHint = (gate: { id: string; next_action?: string; evidence?: string; scope?: string }): string => {
+    if (gate.id === "operator_confirmed" && plainManualSafetyConfirmed.value) {
+      return "；已勾选现场安全确认。";
+    }
     const base = gateHintText(gate.next_action || gate.evidence);
     const scope = freeRoamGateScope(gate);
     if (scope === "mapping_acceptance") {

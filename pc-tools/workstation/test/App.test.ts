@@ -5289,15 +5289,17 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动地图记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("低速自移动用“开始自由移动（低速）”");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未 ready");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自由移动（随时可点）");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：点击开始自由移动（低速）。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("启动条件：现场安全确认已满足；已勾选现场安全确认。");
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
@@ -5349,11 +5351,12 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动地图记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("低速自移动用“开始自由移动（低速）”");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未 ready");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录（不发车）");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
 
@@ -5676,7 +5679,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：还没开始记录，键盘扫图锁定。");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').exists()).toBe(false);
     const callsBeforeStartNext = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
@@ -9975,7 +9978,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未 ready");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录并低速移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
