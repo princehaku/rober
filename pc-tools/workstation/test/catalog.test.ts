@@ -5209,6 +5209,73 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("hides stale obstacle distance when free-roam lidar freshness is expired", async () => {
+    // 雷达过期时，旧的最近障碍距离只能作为“需要刷新”的风险，不能继续喂给地图 marker 当实时预览。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "ready",
+              reason: "停止兜底已就绪，雷达过期后按无雷达低速自由移动",
+              stop_required: false,
+              gates: [
+                { id: "stop_available", label: "停止兜底", state: "ready", evidence: "停止入口可用", next_action: "可以低速自助移动" },
+                { id: "lidar_fresh", label: "雷达监看", state: "not_proven", evidence: "雷达距离已过期，按无雷达低速自由移动", next_action: "刷新雷达状态" },
+                { id: "obstacle_clear", label: "前方障碍", state: "not_proven", evidence: "最近障碍 0.04m", next_action: "原地换向避让，不继续直行" },
+              ],
+            },
+          },
+        },
+      },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "stopped") },
+      "/api/radar/scan-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const obstacleGate = summary.safe_command_boundary.free_roam_autonomy_gates.find((gate) => gate.id === "obstacle_clear");
+
+      expect(summary.safe_command_boundary.free_roam_autonomy_start_ready).toBe(true);
+      expect(obstacleGate).toEqual(expect.objectContaining({
+        state: "not_proven",
+        evidence: "雷达未刷新，障碍距离不可用",
+        next_action: "先刷新雷达；刷新前不把旧障碍距离贴到地图",
+      }));
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "lidar_fresh", state: "not_proven" }),
+        expect.objectContaining({ id: "stop_available", state: "ready" }),
+      ]));
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("marks free-roam autonomy ready only from an unlocked runtime artifact while keeping PC control flags false", async () => {
     // ready 只说明上车端自动扫图状态机已双重解锁；PC summary 仍不能把自己标成 safe_to_control。
     const safePayload = (schema: string, status = "loaded") => ({

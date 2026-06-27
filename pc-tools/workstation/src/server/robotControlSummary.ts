@@ -3502,6 +3502,21 @@ function freeRoamRuntimeGatesFromReadbacks(
         next_action: asString(gate.next_action, "等待上车端自动扫图节点更新"),
       };
     });
+  const lidarFreshGate = gateRows.find((gate) => gate.id === "lidar_fresh");
+  const lidarFreshExpired = Boolean(
+    lidarFreshGate
+    && lidarFreshGate.state !== "ready"
+    && /过期|未运行|stopped|lifecycle_not_running/i.test(`${lidarFreshGate.evidence} ${lidarFreshGate.next_action}`),
+  );
+  if (lidarFreshExpired) {
+    const obstacleGate = gateRows.find((gate) => gate.id === "obstacle_clear");
+    if (obstacleGate && /(?:最近障碍|障碍|距离)\s*[0-9]+(?:\.[0-9]+)?\s*m/i.test(obstacleGate.evidence)) {
+      // 雷达已过期或未运行时不能继续把旧障碍距离贴到地图；只保留“需要刷新”的事实。
+      obstacleGate.state = "not_proven";
+      obstacleGate.evidence = "雷达未刷新，障碍距离不可用";
+      obstacleGate.next_action = "先刷新雷达；刷新前不把旧障碍距离贴到地图";
+    }
+  }
   if (!hasRuntimeMappingGate && (runtimeMappingActive !== null || mapRuntimeStarted)) {
     // 新 runtime 的 mapping_active gate 优先；只有旧 runtime 没有该 gate 时才从 snapshot/map proof 兼容补齐。
     const active = runtimeMappingActive === true || (runtimeMappingActive === null && mapRuntimeStarted);
