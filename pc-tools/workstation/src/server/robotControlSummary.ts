@@ -106,6 +106,21 @@ const MAP_PREVIEW_OVERLAY_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = ne
   "radar_status",
   "radar_scan_proof_latest",
 ]);
+const ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES = [
+  "trashbot.upper_robot_api.v1",
+  "trashbot.local_webrtc_camera_",
+] as const;
+
+function isRobotReadbackSchemaMismatch(readback: InternalRobotApiEndpointReadback): boolean {
+  // schema mismatch 只统计已成功读到的真实合同错配；超时、optional missing 和无 schema 哨兵不应污染连接诊断。
+  if (readback.request_status !== "loaded") {
+    return false;
+  }
+  if (["schema_missing", "not_loaded", "not_object"].includes(readback.schema)) {
+    return false;
+  }
+  return !ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES.some((prefix) => readback.schema.startsWith(prefix));
+}
 
 export type RobotProofRefreshConfig = {
   kind: RobotControlProofRefreshKind;
@@ -4631,9 +4646,7 @@ export async function buildRobotControlSummary(
   const loadedCount = readbacks.filter((item) => item.request_status === "loaded").length;
   const failedCount = readbacks.filter((item) => item.request_status === "fetch_failed" || item.request_status === "bad_json" || item.request_status === "not_object").length;
   const blockedCount = readbacks.filter((item) => item.request_status === "blocked").length;
-  const schemaMismatchCount = readbacks.filter(
-    (item) => item.schema !== "schema_missing" && !item.schema.startsWith("trashbot.upper_robot_api.v1"),
-  ).length;
+  const schemaMismatchCount = readbacks.filter(isRobotReadbackSchemaMismatch).length;
   const blockedReasons = [
     ...readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`)),
     ...dangerous.map((field) => `dangerous_true_field:${field}`),

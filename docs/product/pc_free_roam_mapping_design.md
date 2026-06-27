@@ -126,6 +126,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   已明确 `camera_source_first_frame_failed` 并带出 `uvc_no_frame_not_exclusive` 诊断，summary 就显示
   `status=source_first_frame_failed`、`source_readiness=first_frame_failed`。单纯坏 JSON 仍保留读取异常；
   只有已有 relay 事实能证明无首帧时才归并，避免普通首屏一边说坏 JSON、一边又说不是独占。
+- 2026-06-28 12:45 起，PC summary 的 `schema_mismatch_count` 只统计已成功读取但 schema 前缀不在允许列表里的真实合同错配。
+  `fetch_failed`、optional latest missing、`schema_missing/not_loaded` 和合法的本地相机 schema
+  `trashbot.local_webrtc_camera_*` 不再计入 mismatch。这样 live 上 `/api/status` 或 camera health 偶发超时只显示为部分读取降级，
+  不再额外制造“schema mismatch”噪音。
 - 2026-06-27 13:35 起，共享预览 status 不再只返回 relay 计数和最近失败 token；它会短读只读 camera health，并在不创建新
   MJPEG client 的前提下透出 `source_diagnosis_status/plain_hint/next_action/not_exclusive`。当真实状态是“设备没人占用但无首帧”时，
   后进入的页面也能直接看到不是独占原因，而不是空白预览或内部 token。

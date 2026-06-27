@@ -5291,6 +5291,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.console_status).toBe("loaded_fail_closed_summary");
       expect(summary.robot_api_connection.status).toBe("readable");
       expect(summary.robot_api_connection.blocked_count).toBe(0);
+      expect(summary.robot_api_connection.failed_count).toBe(0);
+      expect(summary.robot_api_connection.schema_mismatch_count).toBe(0);
       expect(summary.robot_api_connection.blocked_reasons).toEqual([]);
       expect(summary.readback_summary.lidar.latest_scan_proof_status).toBe("missing");
       expect(summary.readback_summary.lidar.latest_raw_packet_proof_status).toBe("missing");
@@ -6807,6 +6809,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.console_status).toBe("loaded_fail_closed_summary");
       expect(summary.robot_api_connection.status).toBe("degraded");
       expect(summary.robot_api_connection.failed_count).toBe(2);
+      expect(summary.robot_api_connection.schema_mismatch_count).toBe(0);
       expect(summary.read_endpoints.find((item) => item.id === "status")).toEqual(expect.objectContaining({
         request_status: "fetch_failed",
         blocked_reasons: ["fetch_timeout_50ms"],
