@@ -2045,8 +2045,9 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
   if (blockers.length === 0) {
     return "";
   }
-  const nextAction = nav2.controller_server_active === "false"
-    ? "先恢复控制服务，再准备图上行程并按地图画面确认"
+  const inactiveServices = plainNav2InactiveServiceText(summary);
+  const nextAction = inactiveServices
+    ? `先恢复${inactiveServices}，再准备图上行程并按地图画面确认`
     : routeReady
     ? "先重新定位或刷新地图画面"
     : "先准备图上行程，再按地图画面确认";
@@ -6451,6 +6452,29 @@ const manualMotionActiveForTrip = computed(() => (
   // 行程执行和手控/键盘不能同时作为新动作启动；stop 仍走独立兜底入口。
   manualCommandPending.value || Boolean(keyboardHeldDirection.value)
 ));
+function plainNav2InactiveServiceLabels(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): string[] {
+  // summary 旧版本可能漏 blockers；readback active=false 也要进入恢复服务路径，避免继续准备必失败路线。
+  const blockers = summary?.safe_command_boundary.nav2_goal_blockers ?? [];
+  const nav2 = summary?.readback_summary.nav2;
+  const labels: string[] = [];
+  // 普通用户只需要知道要恢复“规划服务”，不需要理解 planner_server 的 ROS 内部名。
+  if (blockers.includes("planner_server_inactive") || nav2?.planner_server_active === "false") {
+    labels.push("规划服务");
+  }
+  // controller inactive 会导致路线有了也跑不起来，因此和 planner 一样提前拦到恢复服务入口。
+  if (blockers.includes("controller_server_inactive") || nav2?.controller_server_active === "false") {
+    labels.push("控制服务");
+  }
+  return labels;
+}
+function plainNav2InactiveServiceText(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): string {
+  // 多个服务一起展示，避免页面只提示其中一个问题而让下一轮操作继续卡住。
+  const labels = plainNav2InactiveServiceLabels(summary);
+  if (labels.length === 0) {
+    return "";
+  }
+  return labels.join("和");
+}
 const plainTripNav2NeedsLifecycleRestore = computed(() => {
   // planner/controller 未 active 时，继续点“准备路线”只会反复失败；先提供固定服务恢复入口。
   const blockers = robotSummary.value?.safe_command_boundary.nav2_goal_blockers ?? [];
@@ -6480,7 +6504,8 @@ const plainTripNav2LifecycleStatus = computed(() => {
     }
     return `自动驾驶服务恢复未完成：${nav2LifecycleResult.value.failure_reason || "查看高级诊断"}。`;
   }
-  return plainTripNav2NeedsLifecycleRestore.value ? "自动驾驶服务未运行：先恢复 planner/controller（不发车）。" : "";
+  const inactiveServices = plainNav2InactiveServiceText();
+  return inactiveServices ? `自动驾驶服务未运行：先恢复${inactiveServices}（不发车）。` : "";
 });
 function plainTripMapWysiwygPendingText(): string {
   // 地图 proof 和地图画面任一刷新中，都不能把旧路线当成当前可执行图上路线。

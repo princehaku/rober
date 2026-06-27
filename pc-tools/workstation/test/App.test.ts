@@ -10019,7 +10019,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程服务还没准备好，先点重新定位，或稍后再准备一次。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶当前：未准备好，图上行程未准备，规划服务未运行，小车地图坐标未读到；先准备图上行程，再按地图画面确认。相机/雷达不挡底盘试动或键盘手控。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶当前：未准备好，图上行程未准备，规划服务未运行，小车地图坐标未读到；先恢复规划服务，再准备图上行程并按地图画面确认。相机/雷达不挡底盘试动或键盘手控。");
     expect(firstScreenText).not.toContain("planner_server_not_active");
     expect(firstScreenText).not.toContain("root_causes");
     expect(firstScreenText).not.toContain("Nav2");
@@ -16122,7 +16122,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("先恢复服务");
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').text()).toBe("恢复自动驾驶服务（不发车）");
-    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("自动驾驶服务未运行");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("自动驾驶服务未运行：先恢复规划服务和控制服务（不发车）。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("规划服务未运行，控制服务未运行");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("先恢复规划服务和控制服务，再准备图上行程并按地图画面确认");
 
     await wrapper.find('[data-testid="plain-trip-nav2-restore"]').trigger("click");
     await flushPromises();

@@ -404,6 +404,11 @@ runtime `/scan` 说明，例如 `雷达未刷新（旧 /scan 距离 0.04m，约 
 用户不需要打开高级诊断或读取 API，就能在 `当前事实` 里看到重跑前应先恢复 Nav2 planner/controller。
 该提示只影响 PC 文案，不改变发车前安全确认、不绕过 Nav2 服务状态。
 
+2026-06-28 07:20 起，普通首屏会把 planner/controller inactive 的下一步统一翻译为
+`先恢复规划服务/控制服务，再准备图上行程并按地图画面确认`。如果两项都 inactive，恢复入口状态显示
+`先恢复规划服务和控制服务（不发车）`，避免把自动驾驶不能动误导成相机、雷达或单纯路线未准备。
+该规则只改变 PC 诊断文案和无运动恢复入口展示，不自动执行 Nav2 路线、不发送底盘命令。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
