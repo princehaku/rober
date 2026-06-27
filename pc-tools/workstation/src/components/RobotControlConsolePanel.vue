@@ -2199,6 +2199,17 @@ function effectivePlainMapRadarReadback(): PlainMapRadarReadback {
       source: "map_preview",
     };
   }
+  const mapReadback = robotSummary.value?.readback_summary.map;
+  if (mapReadback?.radar_overlay_status === "not_current") {
+    // summary 已确认旧雷达点不能作为当前地图 overlay；保留 source count 只给高级诊断，普通地图不再回捞旧 proof。
+    return {
+      points: [],
+      pointCount: finitePlainNumber(mapReadback.radar_overlay_scan_preview_point_count) ?? 0,
+      sourcePointCount: finitePlainNumber(mapReadback.radar_overlay_scan_preview_source_point_count),
+      frameId: mapReadback.radar_overlay_scan_preview_frame_id || "",
+      source: "summary",
+    };
+  }
   const proof = robotSummary.value?.o3_proof_summary;
   const summaryPoints = proof?.scan_preview_points ?? [];
   const summaryPointCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
@@ -2271,9 +2282,12 @@ function radarStateUsesPendingPoints(radarState: string): boolean {
 
 function radarPreviewReadbackPointCount(): number {
   // 点数组缺失时仍保留 summary 点数证据；但这个点数不能被用来伪造地图坐标。
+  const overlayCount = effectivePlainMapRadarReadback().pointCount;
+  if (robotSummary.value?.readback_summary.map.radar_overlay_status === "not_current") {
+    return overlayCount;
+  }
   const proof = robotSummary.value?.o3_proof_summary;
   const lidar = effectiveLidarReadback.value ?? robotSummary.value?.readback_summary.lidar;
-  const overlayCount = effectivePlainMapRadarReadback().pointCount;
   const proofCount = finitePlainNumber(proof?.scan_preview_point_count) ?? 0;
   const lidarCount = finitePlainNumber(lidar?.scan_preview_point_count) ?? 0;
   return Math.max(overlayCount, proofCount, lidarCount);

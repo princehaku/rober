@@ -3374,7 +3374,8 @@ marker 和 caption 只保留 `待刷新雷达点 N 个（旧点数组，未贴�
 `readback_summary.lidar.runtime_scan_status=stale` 或 `lifecycle_running=false`，即使 `o3_proof_summary.scan_preview_point_count`
 仍保留旧 scan proof 点数作为诊断材料，`readback_summary.map.radar_overlay_scan_preview_point_count` 也会归零，
 `radar_overlay_status=not_current`，blocked reasons 写明 `runtime_scan_stale_for_map_radar_overlay` 或
-`radar_lifecycle_not_running_for_map_radar_overlay`。这样 summary 合同本身不再把 stopped/stale 的旧雷达点描述成当前地图 overlay。
+`radar_lifecycle_not_running_for_map_radar_overlay`。普通首屏地图也消费这个 `not_current` 状态，不再从
+`o3_proof_summary.scan_preview_points` 回捞旧点数组或点数画局部点云。这样 summary 合同和 UI 都不再把 stopped/stale 的旧雷达点描述成当前地图 overlay。
 
 2026-06-27 12:48 起，上车 `/api/nav2/goal/execute` 外层回包和 O11 helper/PC summary 使用同一条完整路线证明口径：
 只有最近一次 NavigateToPose artifact 同窗口 `base_feedback_summary.wheel_feedback_lr_nonzero_proven=true` 时，
