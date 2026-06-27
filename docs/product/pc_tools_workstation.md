@@ -3247,3 +3247,8 @@ map preview，不触发地图刷新、建图、manual、keyboard、free-roam、N
 不是已贴到地图的雷达点；caption 同步写“没有点数组，未贴到地图”。只有真实 scan 点数组经过 pose/外参投影后，
 才显示为已贴到地图的实时雷达点。该改动只修正雷达地图所见即所得，不启动雷达、不刷新 proof、不发送
 manual/keyboard/free-roam/Nav2/delivery/stop 或 `/cmd_vel`。
+
+2026-06-27 12:34 起，普通首屏进一步收紧 stale radar proof 的地图显示：当雷达 lifecycle 正在或刚启动、
+但 `latest_scan_proof_fresh=false` 时，即使旧 proof 里仍有 `scan_preview_points` 数组，地图也不再画这些旧点。
+marker 和 caption 只保留 `待刷新雷达点 N 个（旧点数组，未贴到地图）` 或最近障碍距离，提示刷新后再确认实时性。
+这样“雷达开始后地图上的标记”只显示当前真实点、点数材料或距离材料，不把过期点数组伪装成地图上的实时雷达点。

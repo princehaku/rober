@@ -6397,8 +6397,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
-  it("marks mapped radar points as pending when lifecycle is running but proof is not fresh", async () => {
-    // live 上位机可能有 map-frame 位姿和 scan 点，但 latest proof 不完整；地图不能把这些点叫实时雷达点。
+  it("keeps stale mapped radar point arrays off the map when lifecycle proof is not fresh", async () => {
+    // live 上位机可能有 map-frame 位姿和 scan 点，但 latest proof 不完整；旧点数组不能继续贴成地图雷达点。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     summaryFixture.o3_proof_summary.amcl_pose_observed = true;
     summaryFixture.o3_proof_summary.localization_tf_observed = true;
@@ -6440,13 +6440,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达待刷新");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，待刷新雷达点 3 个，最近障碍 0.30m");
     const scanPoints = wrapper.find('[data-testid="plain-map-radar-scan-points"]');
-    expect(scanPoints.exists()).toBe(true);
-    expect(scanPoints.attributes("aria-label")).toBe("雷达点位，待刷新雷达点 3 个，已套用雷达外参");
-    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("待刷新雷达点 3 个，已套用雷达外参");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 3 个。");
-    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，待刷新雷达点 3 个已贴到地图，路线未显示。");
+    expect(scanPoints.exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-local-scan"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("待刷新雷达点 3 个（旧点数组，未贴到地图）");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：正在确认实时性，当前只有待刷新雷达点 3 个（旧点数组，未贴到地图），同时只读门禁显示最近障碍 0.30m；刷新后再确认点位。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，待刷新雷达点 3 个（旧点数组，未贴到地图），路线未显示。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

@@ -1902,25 +1902,27 @@ function radarPreviewReadbackPointCount(): number {
 }
 
 function radarPreviewCountOnlyLabel(radarState: string, poseObserved: boolean): string {
-  // 只有点数没有点数组时，普通地图要承认证据存在，同时明确不能贴图或当实时点使用。
+  // 待刷新状态下即使 artifact 带旧点数组，也只能当材料计数，不能继续贴到地图。
   const pointCount = radarPreviewReadbackPointCount();
   const pointArrayCount = robotSummary.value?.o3_proof_summary.scan_preview_points?.length ?? 0;
-  if (pointCount <= 0 || pointArrayCount > 0) {
+  const pending = radarStateUsesPendingPoints(radarState);
+  if (pointCount <= 0 || (pointArrayCount > 0 && !pending)) {
     return "";
   }
   const prefix = radarStateUsesPendingPoints(radarState)
     ? "待刷新雷达点"
     : radarState === "雷达已运行" ? "雷达点" : "最近雷达记录";
+  const sourceText = pointArrayCount > 0 ? "旧点数组" : "仅点数，没有点数组";
   return poseObserved
-    ? `${prefix} ${pointCount} 个（仅点数，没有点数组，未贴到地图）`
-    : `${prefix} ${pointCount} 个（仅点数，没有点数组，未显示局部轮廓）`;
+    ? `${prefix} ${pointCount} 个（${sourceText}，未贴到地图）`
+    : `${prefix} ${pointCount} 个（${sourceText}，未显示局部轮廓）`;
 }
 
 function radarPreviewCountOnlyMarkerLabel(radarState: string): string {
-  // 地图 marker 空间有限，只显示点数；完整“不贴图”解释放在 freshness/坐标口径。
+  // 地图 marker 空间有限，只显示点数；完整“不贴图/旧点数组”解释放在 freshness/坐标口径。
   const pointCount = radarPreviewReadbackPointCount();
   const pointArrayCount = robotSummary.value?.o3_proof_summary.scan_preview_points?.length ?? 0;
-  if (pointCount <= 0 || pointArrayCount > 0) {
+  if (pointCount <= 0 || (pointArrayCount > 0 && !radarStateUsesPendingPoints(radarState))) {
     return "";
   }
   const prefix = radarStateUsesPendingPoints(radarState)
@@ -1934,6 +1936,10 @@ function latestRadarScanOverlay(robotPose: ReturnType<typeof latestRobotPoseOver
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
   const preview = mapPreviewResult.value;
+  if (radarStateUsesPendingPoints(radarState)) {
+    const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
+    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `待刷新雷达点 ${points.length} 个，未贴到地图` : "雷达点位未读取") };
+  }
   if (!robotPose || !preview || preview.proxy_status !== "preview_forwarded" || points.length === 0) {
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
     return {
@@ -1969,6 +1975,10 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
   // 缺 map-frame 位姿时只能画雷达局部轮廓，不能冒充地图坐标。
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
+  if (radarStateUsesPendingPoints(radarState)) {
+    const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
+    return { dots: [], label: countOnlyLabel || (points.length > 0 ? `待刷新雷达局部点 ${points.length} 个，未显示局部轮廓` : "雷达点位未读取"), state: "" };
+  }
   if (robotPose || points.length === 0) {
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
     return { dots: [], label: countOnlyLabel || (points.length > 0 ? `雷达点已读取 ${points.length} 个，等待地图位置` : "雷达点位未读取"), state: "" };
@@ -2846,6 +2856,8 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达已启动，待刷新"
       : radarScalarObstacleOnly
       ? `雷达距离：${radarObstacleDistanceLabel}（非地图点）`
+      : radarCountOnlyMarkerLabel
+      ? `${radarState}，${radarCountOnlyMarkerWithObstacleLabel}`
       : radarState === "雷达已运行"
       ? "雷达"
       : radarNoVisiblePointLabel
@@ -2881,6 +2893,8 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达已启动，已叠在机器人位置，等待刷新确认"
       : radarScalarObstacleOnly
       ? `${radarState}，已叠在机器人位置，只显示${radarObstacleDistanceLabel}，这是距离读数，不是已贴到地图的雷达点`
+      : radarCountOnlyMarkerLabel
+      ? `${radarState}，已叠在机器人位置，${radarCountOnlyMarkerWithObstacleLabel}，未贴到地图`
       : radarNoVisiblePointAria
       ? `${radarState}，已叠在机器人位置，${radarNoVisiblePointAria}`
       : radarStoppedWithZeroPoints
