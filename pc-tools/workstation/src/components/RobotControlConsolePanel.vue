@@ -2046,16 +2046,20 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
   // 自动驾驶当前态要和旧执行证据分开：旧路线成功不代表现在已能重新发车。
   const nav2 = summary.readback_summary.nav2;
   const localization = summary.readback_summary.localization;
+  const nav2StackNotRunning = plainNav2StackNotRunning(summary);
   const routePointCount = plainNav2CountText(nav2.path_preview_point_count) || plainNav2CountText(nav2.path_point_count);
   const routeReady = (nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") && routePointCount > 0;
   const blockers: string[] = [];
   if (!routeReady) {
     blockers.push("图上行程未准备");
   }
-  if (nav2.planner_server_active === "false") {
+  if (nav2StackNotRunning) {
+    blockers.push("自动驾驶服务未启动");
+  }
+  if (!nav2StackNotRunning && nav2.planner_server_active === "false") {
     blockers.push("规划服务未运行");
   }
-  if (nav2.controller_server_active === "false") {
+  if (!nav2StackNotRunning && nav2.controller_server_active === "false") {
     blockers.push("控制服务未运行");
   }
   if (localization.robot_pose_status !== "map_pose_observed") {
@@ -2072,7 +2076,7 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
   }
   const inactiveServices = plainNav2InactiveServiceText(summary);
   const nextAction = inactiveServices
-    ? `先恢复${inactiveServices}，再准备图上行程并按地图画面确认`
+    ? `先${nav2StackNotRunning ? "启动" : "恢复"}${inactiveServices}，再准备图上行程并按地图画面确认`
     : routeReady
     ? "先重新定位或刷新地图画面"
     : "先准备图上行程，再按地图画面确认";
@@ -6520,6 +6524,9 @@ const manualMotionActiveForTrip = computed(() => (
 ));
 function plainNav2InactiveServiceLabels(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): string[] {
   // summary 旧版本可能漏 blockers；readback active=false 也要进入恢复服务路径，避免继续准备必失败路线。
+  if (plainNav2StackNotRunning(summary)) {
+    return ["自动驾驶服务"];
+  }
   const blockers = summary?.safe_command_boundary.nav2_goal_blockers ?? [];
   const nav2 = summary?.readback_summary.nav2;
   const labels: string[] = [];
@@ -6541,10 +6548,19 @@ function plainNav2InactiveServiceText(summary: RobotControlSummaryResponse | nul
   }
   return labels.join("和");
 }
+function plainNav2StackNotRunning(summary: RobotControlSummaryResponse | null | undefined = robotSummary.value): boolean {
+  // Nav2 stack stopped 和 planner/controller inactive 是两层问题；stopped 时普通用户先启动整体服务。
+  const blockers = summary?.safe_command_boundary.nav2_goal_blockers ?? [];
+  const nav2 = summary?.readback_summary.nav2;
+  return blockers.includes("nav2_stack_not_running")
+    || nav2?.nav2_stack_running === "false"
+    || nav2?.nav2_stack_lifecycle_state === "stopped";
+}
 const plainTripNav2NeedsLifecycleRestore = computed(() => {
-  // planner/controller 未 active 时，继续点“准备路线”只会反复失败；先提供固定服务恢复入口。
+  // Nav2 stack stopped 或 planner/controller 未 active 时，继续点“准备路线”只会反复失败；先提供固定服务入口。
   const blockers = robotSummary.value?.safe_command_boundary.nav2_goal_blockers ?? [];
-  return blockers.includes("planner_server_inactive")
+  return plainNav2StackNotRunning(robotSummary.value)
+    || blockers.includes("planner_server_inactive")
     || blockers.includes("controller_server_inactive");
 });
 const canRestorePlainNav2Lifecycle = computed(() => (
@@ -6554,25 +6570,30 @@ const canRestorePlainNav2Lifecycle = computed(() => (
   && !manualMotionActiveForTrip.value
 ));
 const plainTripNav2LifecycleButtonLabel = computed(() => (
-  nav2LifecyclePending.value ? "恢复自动驾驶服务中" : "恢复自动驾驶服务（不发车）"
+  nav2LifecyclePending.value
+    ? plainNav2StackNotRunning() ? "启动自动驾驶服务中" : "恢复自动驾驶服务中"
+    : plainNav2StackNotRunning() ? "启动自动驾驶服务（不发车）" : "恢复自动驾驶服务（不发车）"
 ));
 const plainTripNav2LifecycleStatus = computed(() => {
   // 这条状态只解释服务恢复结果；路线是否可执行仍由后续图上路线 proof 决定。
+  const stackNotRunning = plainNav2StackNotRunning();
   if (nav2LifecyclePending.value) {
-    return "正在恢复自动驾驶服务；不会发车。";
+    return stackNotRunning ? "正在启动自动驾驶服务；不会发车。" : "正在恢复自动驾驶服务；不会发车。";
   }
   if (nav2LifecycleResult.value) {
     if (nav2LifecycleResult.value.proxy_status === "lifecycle_forwarded") {
       const result = nav2LifecycleResult.value.command_result;
       const refreshText = nav2RefreshResult.value ? "；已自动重新检查图上路线（不发车）" : "";
       return result.ok === true
-        ? `自动驾驶服务恢复命令已返回成功${refreshText}；下一步按地图画面确认路线。`
-        : `自动驾驶服务恢复命令已返回：${nav2LifecycleResult.value.failure_reason || result.mode || "等待重新读取状态"}。`;
+        ? `自动驾驶服务${stackNotRunning ? "启动" : "恢复"}命令已返回成功${refreshText}；下一步按地图画面确认路线。`
+        : `自动驾驶服务${stackNotRunning ? "启动" : "恢复"}命令已返回：${nav2LifecycleResult.value.failure_reason || result.mode || "等待重新读取状态"}。`;
     }
-    return `自动驾驶服务恢复未完成：${nav2LifecycleResult.value.failure_reason || "查看高级诊断"}。`;
+    return `自动驾驶服务${stackNotRunning ? "启动" : "恢复"}未完成：${nav2LifecycleResult.value.failure_reason || "查看高级诊断"}。`;
   }
   const inactiveServices = plainNav2InactiveServiceText();
-  return inactiveServices ? `自动驾驶服务未运行：先恢复${inactiveServices}（不发车）。` : "";
+  return inactiveServices
+    ? `自动驾驶服务未运行：先${stackNotRunning ? "启动" : "恢复"}${inactiveServices}（不发车）。`
+    : "";
 });
 function plainTripMapWysiwygPendingText(): string {
   // 地图 proof 和地图画面任一刷新中，都不能把旧路线当成当前可执行图上路线。
@@ -6680,7 +6701,12 @@ const plainTripSummary = computed(() => {
     return { state: "执行失败", hint: navGoalExecutionResult.value.failure_reason || "行程执行未通过。" };
   }
   if (plainTripNav2NeedsLifecycleRestore.value) {
-    return { state: "需恢复", hint: "自动驾驶服务未运行，先点恢复自动驾驶服务（不发车），再准备图上路线。" };
+    return {
+      state: "需恢复",
+      hint: plainNav2StackNotRunning()
+        ? "自动驾驶服务未启动，先点启动自动驾驶服务（不发车），再准备图上路线。"
+        : "自动驾驶服务未运行，先点恢复自动驾驶服务（不发车），再准备图上路线。",
+    };
   }
   if (plainTripPreparedByRefresh.value) {
     const routeVisible = latestNavPathOverlay() !== null;
@@ -6791,7 +6817,9 @@ const plainTripRunStatus = computed(() => {
     return "行程状态：读到旧行程成功记录；如需本轮验收，请重新执行图上路线。";
   }
   if (plainTripNav2NeedsLifecycleRestore.value) {
-    return "行程状态：自动驾驶服务未运行；先恢复服务，不会发车。";
+    return plainNav2StackNotRunning()
+      ? "行程状态：自动驾驶服务未启动；先启动服务，不会发车。"
+      : "行程状态：自动驾驶服务未运行；先恢复服务，不会发车。";
   }
   if (!plainManualSafetyConfirmed.value) {
     return "行程状态：先勾安全确认，小车不会出发。";
@@ -6906,7 +6934,7 @@ const plainTripPreparationButtonLabel = computed(() => {
     return "刷新路线中（不发车）";
   }
   if (plainTripNav2NeedsLifecycleRestore.value) {
-    return "先恢复服务";
+    return plainNav2StackNotRunning() ? "先启动服务" : "先恢复服务";
   }
   if (mapWysiwygRefreshPending.value) {
     return "等待地图刷新";
@@ -6941,7 +6969,7 @@ const plainTripExecutionButtonLabel = computed(() => {
     return "先勾选确认";
   }
   if (plainTripNav2NeedsLifecycleRestore.value) {
-    return "先恢复自动驾驶服务";
+    return plainNav2StackNotRunning() ? "先启动自动驾驶服务" : "先恢复自动驾驶服务";
   }
   if (plainTripMapWysiwygPending.value && plainTripPreparedBySummary.value) {
     return "等待地图刷新";

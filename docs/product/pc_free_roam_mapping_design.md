@@ -591,3 +591,10 @@ ROS2、不发送 `NavigateToPose`、不发布 `/cmd_vel`、不碰底盘串口。
 并验证 `ros2 pkg prefix nav2_bringup`、`ros2 pkg prefix navigation2` 均可解析到 `/opt/ros/humble`。
 安装依赖不等于发车或 Nav2 HIL 通过；没有现场安全确认前，PC 仍只显示 `Nav2 服务未启动` 和恢复顺序，不自动调用
 `/api/nav2/start`、`NavigateToPose` 或 `/cmd_vel`。
+
+2026-06-28 15:50 起，普通 PC 行程入口也直接消费 `nav2_stack_not_running`：
+当 summary 明确 `nav2_stack_running=false/lifecycle_state=stopped` 时，主执行按钮显示“先启动自动驾驶服务”，
+可操作入口显示“启动自动驾驶服务（不发车）”，当前事实条写“自动驾驶服务未启动；先启动自动驾驶服务，再准备图上行程并按地图画面确认”。
+planner/controller inactive 仍保留“恢复规划/控制服务”的文案。两者都只调用固定
+`/api/robot-control/nav2/start`，成功后自动做 no-motion `/api/robot-control/nav2/proof/refresh` 和地图预览刷新；
+不会调用 `NavigateToPose`、`/cmd_vel` 或底盘 manual。
