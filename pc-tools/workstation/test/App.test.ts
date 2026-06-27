@@ -10377,9 +10377,11 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：启用后按住方向键读取非零 L/R；当前 wheel raw L/R=0/0，还不是非零证据。");
     await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：按住方向键读取非零 L/R；当前 wheel raw L/R=0/0，还不是非零证据。");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();

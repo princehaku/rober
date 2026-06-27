@@ -6729,6 +6729,24 @@ const plainKeyboardSafetySummary = computed(() => {
     : "键盘手控：安全确认已完成，等待手控入口复查。";
 });
 
+const plainKeyboardWheelReadbackGoal = computed(() => {
+  // 键盘连续手控也是补 wheel raw L/R 的现场路径；启用前就把当前 L/R 和目标说清楚，避免用户盲按。
+  if (!canUseKeyboardControl.value && !keyboardControlArmed.value) {
+    return "";
+  }
+  const actionText = keyboardControlArmed.value
+    ? "按住方向键读取非零 L/R"
+    : "启用后按住方向键读取非零 L/R";
+  if (!currentWheelReadbackLoaded.value) {
+    return `键盘轮速目标：${actionText}；当前还没读到 L/R。`;
+  }
+  const { left, right } = currentWheelReadback.value;
+  if (isZeroWheelPair(left, right)) {
+    return `键盘轮速目标：${actionText}；当前 wheel raw L/R=${left}/${right}，还不是非零证据。`;
+  }
+  return `键盘轮速目标：当前 wheel raw L/R=${left}/${right} 已非零；继续按住方向键完成连续验证。`;
+});
+
 const plainKeyboardControlSummary = computed(() => {
   // 普通首屏只说“能不能用”和“怎么停”，不展示 operator report 字段名或 HIL 术语。
   if (keyboardHeldDirection.value) {
@@ -10493,6 +10511,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
             <p class="panel-note" data-testid="plain-keyboard-safety-summary">{{ plainKeyboardSafetySummary }}</p>
+            <p v-if="plainKeyboardWheelReadbackGoal" class="panel-note" data-testid="keyboard-wheel-readback-goal">{{ plainKeyboardWheelReadbackGoal }}</p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
             <p v-if="plainKeyboardWheelFeedbackSummary" class="panel-note" data-testid="keyboard-wheel-feedback-summary">{{ plainKeyboardWheelFeedbackSummary }}</p>
             <p class="panel-note" data-testid="keyboard-last-stop-summary">{{ plainKeyboardLastStopSummary }}</p>
