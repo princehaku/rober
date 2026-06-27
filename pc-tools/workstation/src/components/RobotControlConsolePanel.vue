@@ -4245,6 +4245,16 @@ function nonEmptyExecutionValues(values: Record<string, string> | undefined): Re
   return values && Object.keys(values).length > 0 ? values : undefined;
 }
 
+function preferredNav2ExecutionValues(): Record<string, string> | undefined {
+  // 本次 execute 回包通常更快但字段更短；latest 若引用同一 evidence_ref，则用 latest 的完整 wheel/反馈证据。
+  const direct = nonEmptyExecutionValues(navGoalExecutionResult.value?.goal_execution_key_values);
+  const latest = nonEmptyExecutionValues(navGoalExecutionLatestResult.value?.goal_execution_key_values);
+  if (direct && latest && direct.evidence_ref && direct.evidence_ref === latest.evidence_ref) {
+    return latest;
+  }
+  return direct ?? latest;
+}
+
 function putSummaryNav2Value(values: Record<string, string>, key: string, value: string | undefined): void {
   // summary 字段的 not_loaded 只是读不到，不应覆盖同一套行程证据里的有效字段。
   if (value && value !== "not_loaded") {
@@ -4496,8 +4506,7 @@ function plainTripFailureReasonText(result: { failure_reason?: string } | null |
 function directNav2ExecutionValues(): Record<string, string> | undefined {
   // 地图和行程卡只展示直接执行/最近执行结果；delivery 摘要只用于收口，不反推地图执行进度。
   return directNav2ExecutionFallbackValues()
-    ?? nonEmptyExecutionValues(navGoalExecutionResult.value?.goal_execution_key_values)
-    ?? nonEmptyExecutionValues(navGoalExecutionLatestResult.value?.goal_execution_key_values)
+    ?? preferredNav2ExecutionValues()
     ?? summaryNav2ExecutionValues();
 }
 
@@ -5184,8 +5193,7 @@ function formatEvidenceAge(values: Record<string, string> | undefined, staleMess
 
 const plainTripEvidenceSummary = computed(() => {
   // 行程成功只展示普通证据摘要；完整 evidence_ref 和 action 细节留在高级诊断。
-  const values = nonEmptyExecutionValues(navGoalExecutionResult.value?.goal_execution_key_values)
-    ?? nonEmptyExecutionValues(navGoalExecutionLatestResult.value?.goal_execution_key_values)
+  const values = preferredNav2ExecutionValues()
     ?? summaryNav2ExecutionValues()
     ?? deliveryLatestResult.value?.delivery_key_values
     ?? deliveryGapCheckResult.value?.delivery_key_values
@@ -8155,6 +8163,8 @@ async function runPlainTripExecution(): Promise<void> {
   await refreshMapPreview({ tripExecutionRefresh: true });
   if (navGoalExecutionResult.value?.proxy_status === "execution_forwarded") {
     await loadNavGoalExecutionLatest();
+    // latest proof 写盘后再读一次 summary，确保完整路线证据、wheel L/R 和 delivery gate 立刻回到首屏。
+    await refreshConsole();
   }
   fillDeliveryRouteRefFromLatestNav2();
   if (deliveryNav2GoalReady.value) {

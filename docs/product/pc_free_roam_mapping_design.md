@@ -160,6 +160,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   带进行程证据文案：当上次 Nav2 结果是旧 `pwm` 执行、但下一次上位机策略已切到 `ros`，且同窗口
   wheel raw L/R 仍未非零时，行程进度和证据摘要明确显示“下次将用 ros 重新执行这条图上路线”。
   这只修正所见即所得文案，不触发执行、不放宽安全确认，也不把旧 `goal_succeeded` 外推为完整路线或送达成功。
+- 2026-06-27 09:03 起，普通首屏执行图上 Nav2 路线后，会按固定顺序完成 `execute -> map preview -> execution latest -> summary`
+  只读刷新。`execute` 请求仍固定带 `base_command_mode=ros` 和现场安全确认；如果 latest 和本次 execute 的
+  `evidence_ref` 一致，行程证据摘要优先使用 latest 里的完整 wheel raw L/R 与反馈样本数，随后再刷新 PC summary，
+  让“当前事实”、地图行程 marker 和送达 gate 看到同一轮 ROS 执行证据。该刷新链路不新增 `/cmd_vel`、manual 或 delivery
+  调用，也不会把旧 latest 覆盖到新执行上。
 
 ## 用户流程
 

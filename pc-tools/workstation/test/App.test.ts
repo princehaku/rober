@@ -6685,6 +6685,217 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("refreshes Robot Control summary after plain Nav2 execution latest is loaded", async () => {
+    // 执行返回后 latest 会先落盘；PC 必须再读 summary，让首页事实条拿到本轮 wheel L/R 复验证据。
+    const initialSummary = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const refreshedSummary = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    for (const summary of [initialSummary, refreshedSummary]) {
+      summary.o3_proof_summary.path_preview_points = [
+        { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+        { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+        { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+      ];
+      summary.o3_proof_summary.path_preview_point_count = 3;
+      summary.o3_proof_summary.path_preview_source_point_count = 15;
+      summary.o3_proof_summary.path_preview_frame_id = "map";
+      summary.o3_proof_summary.path_generated = true;
+      summary.o3_proof_summary.path_generation_succeeded = true;
+      markRobotPoseVisible(summary);
+    }
+    initialSummary.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    initialSummary.readback_summary.nav2.goal_execution_proven = "false";
+    initialSummary.readback_summary.nav2.goal_execution_hil_pass = "false";
+    initialSummary.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    initialSummary.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    initialSummary.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
+    initialSummary.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
+    initialSummary.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    initialSummary.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
+    initialSummary.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
+    initialSummary.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
+    initialSummary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
+    initialSummary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "0";
+    initialSummary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "0";
+    initialSummary.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
+    initialSummary.readback_summary.nav2.goal_execution_uses_base_uart = "true";
+    initialSummary.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    initialSummary.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    initialSummary.readback_summary.nav2.goal_execution_goal_y = "0";
+    refreshedSummary.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    refreshedSummary.readback_summary.nav2.goal_execution_proven = "true";
+    refreshedSummary.readback_summary.nav2.goal_execution_hil_pass = "true";
+    refreshedSummary.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    refreshedSummary.readback_summary.nav2.goal_execution_evidence_ref = "o11-nav2-goal-execution-ros-refresh-fixture";
+    refreshedSummary.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    refreshedSummary.readback_summary.nav2.goal_execution_feedback_sample_count = "19";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_command_mode = "ros";
+    refreshedSummary.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_command_nonzero_count = "19";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_sample_count = "19";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_nonzero_sample_count = "19";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "true";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "164";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "164";
+    refreshedSummary.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
+    refreshedSummary.readback_summary.nav2.goal_execution_uses_base_uart = "true";
+    refreshedSummary.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    refreshedSummary.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    refreshedSummary.readback_summary.nav2.goal_execution_goal_y = "0";
+    refreshedSummary.readback_summary.nav2.goal_execution_generated_at_ms = "1782151441201";
+    refreshedSummary.readback_summary.nav2.goal_execution_response_generated_at_ms = "1782151442201";
+
+    let summaryCalls = 0;
+    let latestCalls = 0;
+    const baseFetch = stubWorkstationFetch({
+      "/api/robot-control/nav2/goal/execute": {
+        ...(fixtures["/api/robot-control/nav2/goal/execute"] as Record<string, unknown>),
+        proxy_status: "execution_forwarded",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-ros-refresh-fixture",
+          result_status: "succeeded",
+          feedback_sample_count: "8",
+          base_command_mode: "ros",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
+        },
+      },
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {
+          status: "goal_succeeded",
+          evidence_ref: "o11-nav2-goal-execution-ros-refresh-fixture",
+          result_status: "succeeded",
+          feedback_sample_count: "19",
+          base_command_mode: "ros",
+          base_feedback_lr_nonzero_proven: "true",
+          base_feedback_latest_left_speed: "164",
+          base_feedback_latest_right_speed: "164",
+          goal_frame_id: "map",
+          goal_x: "0.8",
+          goal_y: "0",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/summary")) {
+        summaryCalls += 1;
+        const body = summaryCalls >= 3 ? refreshedSummary : initialSummary;
+        return Promise.resolve({ ok: true, json: async () => body });
+      }
+      if (String(url).startsWith("/api/robot-control/nav2/goal/execution/latest")) {
+        latestCalls += 1;
+        const body = latestCalls >= 2
+          ? {
+            schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+            proxy_status: "latest_loaded",
+            source: "software_proof",
+            proof_status: "not_proven",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+            pc_only: true,
+            source_base_url: "http://192.168.1.11:8787",
+            normalized_base_url: "http://192.168.1.11:8787",
+            workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+            remote_endpoint: "/api/nav2/goal/execution/latest",
+            remote_http_status: 200,
+            status: "loaded_fail_closed_summary",
+            goal_execution_key_values: {
+              status: "goal_succeeded",
+              evidence_ref: "o11-nav2-goal-execution-ros-refresh-fixture",
+              result_status: "succeeded",
+              feedback_sample_count: "19",
+              base_command_mode: "ros",
+              base_feedback_lr_nonzero_proven: "true",
+              base_feedback_latest_left_speed: "164",
+              base_feedback_latest_right_speed: "164",
+              goal_frame_id: "map",
+              goal_x: "0.8",
+              goal_y: "0",
+            },
+            failure_reason: "",
+            blocked_reasons: [],
+            hard_dangerous_true_fields: [],
+            robot_control_executed: false,
+          }
+          : {
+            schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+            proxy_status: "latest_loaded",
+            source: "software_proof",
+            proof_status: "not_proven",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+            pc_only: true,
+            source_base_url: "http://192.168.1.11:8787",
+            normalized_base_url: "http://192.168.1.11:8787",
+            workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+            remote_endpoint: "/api/nav2/goal/execution/latest",
+            remote_http_status: 200,
+            status: "loaded_fail_closed_summary",
+            goal_execution_key_values: {},
+            failure_reason: "",
+            blocked_reasons: [],
+            hard_dangerous_true_fields: [],
+            robot_control_executed: false,
+          };
+        return Promise.resolve({ ok: true, json: async () => body });
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("L/R=0/0；不是雷达阻塞");
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const urls = mockedFetch.mock.calls.map(([url]) => String(url));
+    const executeIndex = urls.findIndex((url) => url.startsWith("/api/robot-control/nav2/goal/execute?"));
+    const latestIndex = urls.findIndex((url, index) => index > executeIndex && url.startsWith("/api/robot-control/nav2/goal/execution/latest?"));
+    const summaryAfterLatestIndex = urls.findIndex((url, index) => index > latestIndex && url.startsWith("/api/robot-control/summary?"));
+    expect(summaryCalls).toBeGreaterThanOrEqual(3);
+    expect(latestCalls).toBeGreaterThanOrEqual(2);
+    expect(executeIndex).toBeGreaterThan(-1);
+    expect(latestIndex).toBeGreaterThan(executeIndex);
+    expect(summaryAfterLatestIndex).toBeGreaterThan(latestIndex);
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，轮速已复验。");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 19 次");
+    const executeBody = JSON.parse(String((mockedFetch.mock.calls[executeIndex]?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
+    expect(executeBody).toEqual(expect.objectContaining({
+      base_command_mode: "ros",
+      confirm_navigation_execution: true,
+    }));
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps IMU-only route arrival visible while calling out zero wheel readback", async () => {
     // 现场可能已看到 action 成功和车身姿态变化，但 wheel raw L/R 仍是 0/0；PC 要把两件事分开说。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
