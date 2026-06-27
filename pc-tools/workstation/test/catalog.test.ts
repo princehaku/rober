@@ -4013,12 +4013,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal).toBe("Nav2 NavigateToPose locked");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线未就绪");
-      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(expect.arrayContaining([
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([
+        "planner_server_inactive",
         "path_generation_not_observed",
         "path_point_count_not_positive",
         "robot_map_pose_not_observed",
-        "planner_server_inactive",
-      ]));
+      ]);
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复 Nav2 planner，再生成图上路线并读到小车地图位置");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("not_loaded");
@@ -4373,13 +4373,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.controller_server_requested).toBe("true");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线未就绪");
-      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(expect.arrayContaining([
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([
+        "planner_server_inactive",
+        "controller_server_inactive",
         "path_generation_not_observed",
         "path_point_count_not_positive",
         "robot_map_pose_not_observed",
-        "planner_server_inactive",
-        "controller_server_inactive",
-      ]));
+      ]);
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复 Nav2 planner 和 Nav2 controller，再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
@@ -6821,10 +6821,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.motion_start_ready).toBe("true");
       expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(true);
       expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(false);
-      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(expect.arrayContaining([
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([
         "planner_server_inactive",
         "controller_server_inactive",
-      ]));
+      ]);
       expect(summary.readback_summary.camera.devices_status).toBe("devices_ready");
       expect(summary.readback_summary.lidar.status).toBe("stale_window_observed");
     } finally {

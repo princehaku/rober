@@ -547,6 +547,11 @@ wheel raw L/R。只有图上路线和服务都 ready 时，才显示直接重跑
 只要 summary 看到 `planner_server_inactive` 或 `controller_server_inactive`，并且路线读数未 ready，下一步统一写成
 “先恢复 Nav2 planner/controller，再生成图上路线并读到小车地图位置”。页面不再出现“先生成路线；同时恢复服务”的反向顺序。
 
+2026-06-28 13:05 起，结构化 `safe_command_boundary.nav2_goal_blockers` 也按同一操作顺序返回：
+`planner_server_inactive/controller_server_inactive` 排在 `path_generation_not_observed`、`path_point_count_not_positive`
+和 `robot_map_pose_not_observed` 前面。这样外部脚本、高级诊断和普通首屏都先看到“恢复 Nav2 服务”，
+再处理路线和定位读数；该变更只调整只读 summary 顺序，不执行 Nav2、不发送 `/cmd_vel`、不放宽发车安全确认。
+
 2026-06-28 11:50 起，普通雷达刷新/启动后的 WYSIWYG 闭环再收紧：
 `refreshRadarProof()` 在完成固定 `/api/robot-control/radar/scan-proof/refresh` 和只读 `/api/robot-control/radar/status`
 后，默认立即刷新一次 `/api/robot-control/map/preview`。这样雷达开始或刷新后的地图 marker、雷达点口径和真实地图画面同轮更新；

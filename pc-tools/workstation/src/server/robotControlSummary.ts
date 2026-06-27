@@ -110,6 +110,13 @@ const ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES = [
   "trashbot.upper_robot_api.v1",
   "trashbot.local_webrtc_camera_",
 ] as const;
+const NAV2_GOAL_BLOCKER_ORDER = [
+  "planner_server_inactive",
+  "controller_server_inactive",
+  "path_generation_not_observed",
+  "path_point_count_not_positive",
+  "robot_map_pose_not_observed",
+] as const;
 
 function isRobotReadbackSchemaMismatch(readback: InternalRobotApiEndpointReadback): boolean {
   // schema mismatch 只统计已成功读到的真实合同错配；超时、optional missing 和无 schema 哨兵不应污染连接诊断。
@@ -120,6 +127,16 @@ function isRobotReadbackSchemaMismatch(readback: InternalRobotApiEndpointReadbac
     return false;
   }
   return !ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES.some((prefix) => readback.schema.startsWith(prefix));
+}
+
+function sortNav2GoalBlockers(blockers: string[]): string[] {
+  // blocker 顺序就是普通首屏操作顺序：先恢复 Nav2 服务，再处理路线/位姿读数。
+  const order = new Map<string, number>(NAV2_GOAL_BLOCKER_ORDER.map((item, index) => [item, index]));
+  return [...blockers].sort((left, right) => {
+    const leftOrder = order.get(left) ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = order.get(right) ?? Number.MAX_SAFE_INTEGER;
+    return leftOrder === rightOrder ? left.localeCompare(right) : leftOrder - rightOrder;
+  });
 }
 
 export type RobotProofRefreshConfig = {
@@ -4274,7 +4291,7 @@ function nav2GoalBoundaryGuidance(
     plannerInactive ? "planner_server_inactive" : "",
     controllerInactive ? "controller_server_inactive" : "",
   ].filter(Boolean);
-  const nav2ServiceBlockers = [...new Set(serviceAwareBlockers)];
+  const nav2ServiceBlockers = sortNav2GoalBlockers([...new Set(serviceAwareBlockers)]);
   const inactiveServiceNames = [
     plannerInactive ? "Nav2 planner" : "",
     controllerInactive ? "Nav2 controller" : "",
