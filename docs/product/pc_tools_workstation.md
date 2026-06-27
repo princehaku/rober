@@ -2974,6 +2974,11 @@ Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达
 在 8 秒内没有输出，主 `lidar_driver` 进程仍在。这说明当前雷达问题应查 LiDAR 供电、串口数据或驱动发布链，
 不是 PC 地图刷新、不是底盘运动门禁，也不触发 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
 
+2026-06-27 08:22 起，PC 屏幕方向键的连续手控回归测试覆盖 `pointercancel` 收口：按住屏幕方向键后如果触屏取消，
+必须通过固定 `/api/robot-control/base/stop` 代理发送停止，并在普通首屏显示“方向键触控取消”。现有模板同样覆盖
+`pointerleave`，避免鼠标/手指移出按钮后仍保留连续点动。该验证只锁定 PC 前端事件收口和固定 stop 代理，不发真实
+manual、Nav2、free-roam motion、delivery 或 `/cmd_vel`。
+
 2026-06-27 05:02 起，普通首屏在 `雷达无新点` 状态下新增 `重启雷达` 按钮。
 它只串联已有固定代理 `POST /api/robot-control/radar/stop`、`POST /api/robot-control/radar/start` 和
 `POST /api/robot-control/radar/scan-proof/refresh`，不会调用 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
