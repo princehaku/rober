@@ -1727,6 +1727,10 @@ const plainCurrentFactRows = computed(() => {
         : nav2BaseCommandWithoutWheelFeedback(nav2Values)
           ? `行程：路线返回成功，但${nav2CommandFeedbackFactText(nav2Values)}${modeSuffix}。`
           : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);
+      const autodriveDiagnosis = plainAutonomousDrivingDiagnosisText(nav2Values);
+      if (autodriveDiagnosis) {
+        rows.push(autodriveDiagnosis);
+      }
     }
   } else if (plainTripPreparedBySummary.value || nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
     if (plainTripCurrentRouteVisible.value && plainTripRobotPoseVisibleForExecution.value) {
@@ -4605,6 +4609,22 @@ function nav2CommandFeedbackFactText(values: Record<string, string> | undefined)
     : "";
   const baseReadbackContext = baseWheelNonzeroReadbackContextText();
   return `已发非零底盘命令${countText}${sampleText}${pairText}${motionSignalText ? `；${motionSignalText}` : ""}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
+}
+
+function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | undefined): string {
+  // 用户问“自动驾驶为什么不动”时，首屏要把根因从行程事实里拎出来：不是摄像头/雷达，而是底盘闭环。
+  if (!nav2GoalSucceeded(values) || !nav2BaseCommandWithoutWheelFeedback(values)) {
+    return "";
+  }
+  const lastMode = values?.base_command_mode && values.base_command_mode !== "not_loaded"
+    ? values.base_command_mode.toUpperCase()
+    : "";
+  const nextText = (nav2NextExecutionRerunText(values) || "用 ROS 重跑图上路线").replace(/[。；\s]+$/g, "");
+  const pair = nav2BaseFeedbackPair(values);
+  const pairText = pair ? `wheel raw L/R=${pair.left}/${pair.right}` : "wheel raw L/R 未非零";
+  const motionSignal = nav2BaseMotionSignalText(values);
+  const modeText = lastMode ? `上次 ${lastMode} 执行` : "上次执行";
+  return `自动驾驶：不是摄像头或雷达阻塞；${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
 }
 
 function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): string {

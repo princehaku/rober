@@ -7197,6 +7197,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；车身姿态有变化，pitch 变化 24.210531；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；上次 PWM 执行已发到底盘，但 wheel raw L/R=0/0，车身姿态有变化，pitch 变化 24.210531；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
