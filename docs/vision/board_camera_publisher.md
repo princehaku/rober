@@ -994,3 +994,25 @@ PC 页面独占；更接近 DV20/UVC 设备枚举正常但内核 streaming 不�
 摄像头输入源/模式、线缆或替换 known-good UVC。软件侧新增的 backend smoke 会继续把
 `no_frame_timeout`、0 字节和 `no_kernel_frame_observed` 展示给 PC，而不会伪造预览、解锁建图 ready
 或发送任何运动命令。
+
+## 2026-06-27 10:16 PC 普通首屏 OpenCV/V4L2 无帧提示
+
+在 `root@192.168.1.11 -p 37878` 上复核当前 live 摄像头链路：
+
+- `GET /api/camera/health` 仍显示 `/dev/video1` 被选为
+  `USB Composite Device: DV20 USB`，`source_readiness=first_frame_failed`，
+  `source_failure_reason=capture_read_returned_false`，`source_usage.status=not_in_use`，
+  `owner_count=0`。
+- 顺序执行 `v4l2-ctl` 对 `/dev/video1` 采 `YUYV 640x480` 与 `MJPG 640x480`
+  均 10 秒超时，输出 raw 文件为 0 字节；前后 `fuser /dev/video1 /dev/video2`
+  无占用输出。
+- 通过 PC Node 固定探针
+  `POST /api/robot-control/camera/first-frame/probe?backendSmoke=1`
+  返回 `proxy_status=probe_failed`、`status=first_frame_timeout`、
+  `open_ok=true`、`read_ok=false`、`backend_smoke_status=backend_no_frame_observed`、
+  `backend_attempts=4`。
+
+PC 普通首屏因此把失败提示改为“不是页面独占，摄像头能打开，OpenCV/V4L2
+后端尝试多种方式也没有取到视频帧”。这条文案明确区分浏览器/WebRTC/多人预览
+fanout 与上车端底层采集无帧；仍不把 `/dev/video1` 可枚举或 camera service
+active 当作画面 ready，也不会解锁建图验收。

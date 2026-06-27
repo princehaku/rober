@@ -411,7 +411,7 @@ function cameraSourcePlainFailureHint(): string {
     }
     if (camera?.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
       const attempts = camera.first_frame_probe_backend_attempts && camera.first_frame_probe_backend_attempts !== "0"
-        ? `，后端尝试 ${camera.first_frame_probe_backend_attempts} 种方式`
+        ? `，OpenCV/V4L2 后端尝试 ${camera.first_frame_probe_backend_attempts} 种方式`
         : "";
       return `不是页面独占：${sourcePrefix}摄像头能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电。`;
     }
@@ -494,7 +494,7 @@ function cameraProbePlainFailureHint(): string {
   }
   if (values.backend_smoke_status === "backend_no_frame_observed") {
     const attempts = values.backend_attempts && values.backend_attempts !== "0"
-      ? `，后端尝试 ${values.backend_attempts} 种方式`
+      ? `，OpenCV/V4L2 后端尝试 ${values.backend_attempts} 种方式`
       : "";
     return `不是页面独占：摄像头能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电。`;
   }
