@@ -211,6 +211,11 @@ pc-tools/workstation/
 - 2026-06-27 13:55 起，`safe_command_boundary.free_roam_autonomy` 同步采用三态：`locked` 表示基础启动条件未读到，`start_ready` 表示上车 runtime 与停止兜底已满足、勾安全确认即可发起自由移动，`ready` 只表示上车端已经打开运动发布。这样 live summary 不再出现 `free_roam_autonomy_start_ready=true` 但主状态仍叫 `locked` 的矛盾口径；相机/雷达仍只影响建图验收，不阻塞低速自由移动。
 - 2026-06-27 14:01 起，普通首屏事实条会把自由移动 start-ready 和本地安全确认合并成人话：未勾确认时显示“勾安全确认后可启动”，勾上后才显示“可启动”。这保持发车前预检最小化为单个安全确认，同时避免把 `start_ready` 误读成已经允许立即动作；仍不自动启动 free-roam、manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 13:25 起，free-roam 建图验收 gate 会用同轮 `/api/radar/status` 和 `/api/radar/scan-proof/latest` 复核 `latest_scan_proof_fresh`：如果 runtime 旧 gate 仍显示 `lidar_fresh=ready`，但雷达 readback 没证明 fresh，PC summary 会把 `lidar_fresh` 放回 `mapping_missing`，并把 gate 文案改为“雷达最新扫描未刷新”。自由移动仍可启动；只是不能按可验收建图收口。该交叉校验只读 summary/proof，不启动雷达/free-roam，不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+- 2026-06-27 15:24 起，上述交叉校验增加实时 runtime 例外：如果 `free_roam_autonomy_latest.latest_result.snapshot`
+  直接给出 `lidar_age_s <= 1.5` 且 `lidar_min_distance_m` 为有限值，PC summary 会保留
+  `lidar_fresh=ready`，并把 evidence 写成 `free-roam runtime /scan 新鲜`。这样 live 雷达已经开始并被
+  free-roam 节点读到时，建图缺口不再被过期 proof artifact 误加 `lidar_fresh`；没有实时 snapshot 的旧 gate
+  仍按上一条规则降级。该处理只读 summary/runtime，不刷新雷达、不启动 free-roam、不发送任何运动控制。
 - 2026-06-27 13:29 起，上述雷达 fresh 交叉校验会同步清理 `obstacle_clear` 的旧距离：当 `lidar_fresh` 已降级为未刷新/stale/not fresh 时，普通首屏不再显示旧的“最近障碍 0.04m”作为实时障碍，而是显示“雷达未刷新，障碍距离不可用”。该修正只清理只读 gate 文案，不刷新雷达、不启动 free-roam、不发送任何运动控制。
 - 2026-06-27 14:40 起，地图坐标口径同步区分“原始包已收到但暂无地图雷达点”：当 LiDAR lifecycle running、raw packet 已到、但 `scan_preview_points` 为空时，marker、雷达点口径和坐标口径都会表达同一事实，不再只泛化成“雷达点未贴图”。该展示只读 summary/status，不刷新雷达、不启动 free-roam、不发送 Nav2/manual/keyboard/delivery/stop 或 `/cmd_vel`。
 - 2026-06-28 03:45 起，普通首屏和地图 marker 对 free-roam latest 的 `state=stopping` 做 record-only 区分：如果同时读到 `artifact_only=true` 且 `cmd_vel_publish_enabled=false`，界面显示“上次记录停在停止请求 / 自由移动记录：上次停止请求”，并注明当前未发布运动；不再把这类 latest 画成“自动扫图：停止中”。该口径只消费只读 latest，不自动清除 artifact、不发送 stop/start/manual，也不把自由移动或建图状态提升为完成。

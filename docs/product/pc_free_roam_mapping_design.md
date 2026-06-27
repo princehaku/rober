@@ -163,6 +163,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   带进行程证据文案：当上次 Nav2 结果是旧 `pwm` 执行、但下一次上位机策略已切到 `ros`，且同窗口
   wheel raw L/R 仍未非零时，行程进度和证据摘要明确显示“下次将用 ros 重新执行这条图上路线”。
   这只修正所见即所得文案，不触发执行、不放宽安全确认，也不把旧 `goal_succeeded` 外推为完整路线或送达成功。
+- 2026-06-27 15:24 起，PC summary 的建图雷达 gate 会优先消费 free-roam runtime 的实时
+  `/scan` 快照：只要 `snapshot.lidar_age_s <= 1.5` 且 `snapshot.lidar_min_distance_m` 有限，
+  `lidar_fresh` 就按 runtime scan 显示 ready，即使旧 `radar/scan-proof/latest` artifact 已过期。
+  没有 runtime snapshot 时仍按 proof freshness 降级，避免旧 ready gate 误导。该规则只修正只读
+  所见即所得，不启动雷达、不发布 `/cmd_vel`。
 - 2026-06-27 15:18 起，O11 Nav2 执行 artifact 的 `proof_status` 也按真实
   `base_command_mode` 标记缺口：ROS 重跑若仍只看到非零命令、但同窗口 `T1001 L/R=0/0`，
   会写成 `nav2_goal_succeeded_with_ros_commands_but_wheel_lr_zero`。这样自动驾驶排障会指向

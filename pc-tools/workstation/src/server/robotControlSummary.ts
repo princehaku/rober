@@ -3576,6 +3576,13 @@ function freeRoamRuntimeGatesFromReadbacks(
   }
   const decision = asRecord(latest.decision);
   const snapshot = asRecord(latest.snapshot);
+  const runtimeLidarAgeS = finitePathCoordinate(snapshot?.lidar_age_s);
+  const runtimeLidarMinDistanceM = finitePathCoordinate(snapshot?.lidar_min_distance_m);
+  const runtimeLidarFreshFromSnapshot = Boolean(
+    runtimeLidarAgeS !== null
+    && runtimeLidarAgeS <= 1.5
+    && runtimeLidarMinDistanceM !== null,
+  );
   const rawGates = Array.isArray(decision?.gates) ? decision.gates : [];
   const hasRuntimeMappingGate = rawGates
     .map((item) => asRecord(item))
@@ -3617,8 +3624,15 @@ function freeRoamRuntimeGatesFromReadbacks(
   const radarFreshReadbackLoaded = radarFreshValues.length > 0;
   const radarFreshProven = radarFreshValues.some((value) => value === "true");
   const runtimeLidarFreshGate = gateRows.find((gate) => gate.id === "lidar_fresh");
-  if (runtimeLidarFreshGate && radarFreshReadbackLoaded && !radarFreshProven) {
-    // 建图验收必须以同轮雷达 freshness 为准；runtime 旧 gate 不能覆盖最新 stale readback。
+  if (runtimeLidarFreshGate && runtimeLidarFreshFromSnapshot) {
+    // free-roam runtime 直接消费实时 /scan；它比过期 proof artifact 更贴近当前地图雷达所见即所得。
+    runtimeLidarFreshGate.state = "ready";
+    runtimeLidarFreshGate.evidence = `free-roam runtime /scan 新鲜：距离 ${runtimeLidarMinDistanceM?.toFixed(2)}m，延迟 ${runtimeLidarAgeS?.toFixed(2)}s`;
+    runtimeLidarFreshGate.next_action = radarFreshReadbackLoaded && !radarFreshProven
+      ? "proof latest 可能过期；建图按 runtime scan 继续监看，必要时再刷新雷达 proof"
+      : "继续保持雷达运行";
+  } else if (runtimeLidarFreshGate && radarFreshReadbackLoaded && !radarFreshProven) {
+    // 没有同轮 runtime scan 快照时，建图验收必须以最新 proof freshness 为准；旧 gate 不能覆盖 stale readback。
     runtimeLidarFreshGate.state = "not_proven";
     runtimeLidarFreshGate.evidence = "雷达最新扫描未刷新";
     runtimeLidarFreshGate.next_action = "先刷新雷达；刷新前只能按自由移动记录";
