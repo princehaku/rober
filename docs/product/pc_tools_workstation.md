@@ -3400,6 +3400,13 @@ live 出现 `obstacle_clear=not_proven/evidence=最近障碍 0.04m` 时，普通
 只有相机和雷达已 ready、当前目标切到可建图/扫图时，下一步才继续引导先开始地图记录。该改动只改变 PC 焦点导航，
 不自动勾选安全确认、不启动地图、不发送 manual、keyboard pulse、free-roam autonomy、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-27 18:39 起，上车自由移动 start 也锁定同一口径：相机未出首帧、地图记录未启动或 `fresh_map_preview`
+缺失时，勾选现场安全确认后仍可点击 `开始自由移动（低速）`，PC 只向固定
+`POST /api/robot-control/free-roam/autonomy/start` 发送 `confirm_operator_safety=true` 与 `confirm_mapping_active=false`。
+状态机写入摘要会显示 `本轮只按自由移动记录`，避免 operator 把低速自由移动误收口成可验收建图。只有画面、雷达、
+地图记录和新地图画面都 ready 时，`confirm_mapping_active` 才会变成 true 并进入建图验收口径。该改动不自动启动地图记录、
+不发送 manual、keyboard pulse、Nav2、delivery、stop 或浏览器直连 `/cmd_vel`。
+
 2026-06-27 16:51 起，普通首屏共享画面状态在 MJPEG status 轮询失败时，也会从 Robot Control summary 的
 `source_diagnosis_plain_hint` 读取具体归因。这样 summary 已证明 `uvc_no_frame_not_exclusive` 时，画面卡片仍显示
 “不是页面独占、UVC 设备没有输出视频帧”，而不是退回泛化的“相机源没有输出首帧”。该改动只修正失败归因展示，

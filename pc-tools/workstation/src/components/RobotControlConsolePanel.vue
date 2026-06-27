@@ -1698,7 +1698,7 @@ const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const mappingMissingText = mappingMissing.length ? `，建图缺口：${mappingMissing.join("、")}` : "";
   const mappingText = result.mapping_active_requested
     ? result.mapping_active_applied === true ? "，本轮可按建图记录" : `，本轮只按自由移动记录${mappingMissingText}`
-    : "";
+    : "，本轮只按自由移动记录";
   const motionText = result.motion_unlock_requested ? "，运动双锁已请求" : "";
   return `状态机写入：启动参数已${strategy} ${countText}${motionText}${mappingText}${topicText}。`;
 });
@@ -3506,6 +3506,10 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
   // 自由移动最小条件缺失时，按钮只做补证引导，不能伪装成真正 start。
   if (!plainManualSafetyConfirmed.value) {
     return "先勾安全确认";
+  }
+  if (plainFreeRoamMotionModeName.value === "自由移动") {
+    // 自由移动不要求先启动地图记录；缺口只应指向停止兜底或低速移动条件。
+    return canSendStop.value ? "检查自由移动条件" : "补停止兜底";
   }
   if (!mapRuntimeStarted.value) {
     return "开始记录（不发车）";
@@ -9039,14 +9043,20 @@ function plainFreeRoamAutonomyNextTarget(): HTMLElement | null {
   if (!plainManualSafetyConfirmed.value) {
     return plainFreeRoamConfirmCheckbox.value;
   }
+  if (!canSendStop.value) {
+    return enabledButton(keyboardControlRecheckButton.value) ?? keyboardControlPanel.value;
+  }
+  if (plainFreeRoamMotionModeName.value === "自由移动" && !mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    // 自由移动模式不把地图记录当成补证目标；建图记录只影响可验收建图。
+    return enabledButton(plainFreeRoamKeyboardButton.value)
+      ?? plainKeyboardNextTarget()
+      ?? plainFreeRoamKeyboardButton.value;
+  }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     return enabledButton(plainFreeRoamStartButton.value) ?? plainFreeRoamStartButton.value;
   }
   if (freeRoamMapWysiwygPending.value || !plainFreeRoamMapPreviewFreshForSession.value) {
     return enabledButton(plainFreeRoamMapRefreshButton.value) ?? plainFreeRoamMapRefreshButton.value;
-  }
-  if (!canSendStop.value) {
-    return enabledButton(keyboardControlRecheckButton.value) ?? keyboardControlPanel.value;
   }
   return plainFreeRoamNextTarget();
 }

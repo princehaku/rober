@@ -4664,6 +4664,76 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
   });
 
+  it("starts free movement without mapping acceptance when camera is not ready", async () => {
+    // 自由移动只看安全确认和停止兜底；相机/地图缺口只能把本轮降级为自由移动记录，不能阻塞 start。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "locked";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_start_ready = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自由移动（勾确认后可启动）";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
+      status: "loaded",
+      state: "stopping",
+      reason: "现场请求停止",
+      stop_required: true,
+      artifact_only: true,
+      cmd_vel_publish_enabled: false,
+    };
+    summaryFixture.readback_summary.free_roam.mapping_missing = "camera_first_frame,mapping_active,fresh_map_preview";
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "first_frame_total_timeout";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
+    const startFixture = structuredClone(fixtures["/api/robot-control/free-roam/autonomy/start"] as Record<string, any>);
+    startFixture.request_body = { confirm_operator_safety: true, confirm_mapping_active: false };
+    startFixture.mapping_active_requested = false;
+    startFixture.mapping_active_applied = false;
+    startFixture.command_result = {
+      ...startFixture.command_result,
+      parameters: ["operator_confirmed", "stop_available", "external_stop_requested", "motion_hil_unlocked", "enable_cmd_vel_publish"],
+      parameter_count: 5,
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/free-roam/autonomy/start": startFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动准备");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("当前只按自由移动记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("先勾安全确认");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：点击开始自由移动（低速）。");
+
+    const callsBeforeStart = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const newCalls = mockedFetch.mock.calls.slice(callsBeforeStart);
+    const startCall = newCalls.find(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"));
+    expect(startCall).toBeDefined();
+    const startBody = JSON.parse(String((startCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
+    expect(startBody).toEqual({
+      confirm_operator_safety: true,
+      confirm_mapping_active: false,
+    });
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(newCalls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toContain("本轮只按自由移动记录");
+  });
+
   it("uses the visible map preview over stale fresh-map-preview missing tokens", async () => {
     // summary 可能还保留 fresh_map_preview 缺口；PC 已显示真实地图图像时，普通界面不能继续说地图没刷新。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
