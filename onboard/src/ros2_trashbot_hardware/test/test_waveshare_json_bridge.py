@@ -591,7 +591,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertEqual(record["vendor_command"], {"L": 164, "R": 164, "T": 11})
             self.assertEqual(node._last_cmd_linear, 0.2)
 
-    def test_declare_and_load_bridge_config_defaults_publish_odom_tf_true(self):
+    def test_declare_and_load_bridge_config_defaults_to_ros_command_mode(self):
         bridge_config = importlib.import_module("ros2_trashbot_hardware.bridge_config")
 
         class _ConfigNode:
@@ -608,6 +608,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         bridge_config.declare_bridge_parameters(node)
         config = bridge_config.load_bridge_config(node)
 
+        self.assertEqual(config.command_mode, "ros")
         self.assertTrue(config.publish_odom_tf)
         self.assertEqual(config.feedback_debug_log_path, "")
         self.assertEqual(config.command_debug_log_path, "")

@@ -68,7 +68,8 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("serial_baudrate", 115200)
     node.declare_parameter("port", "")
     node.declare_parameter("baudrate", 0)
-    node.declare_parameter("command_mode", "speed")
+    # 默认走 vendor ROS 控制命令 T=13，让 Nav2、键盘和自由移动共享同一 /cmd_vel 控制面。
+    node.declare_parameter("command_mode", "ros")
     node.declare_parameter("track_width_m", 0.172)
     node.declare_parameter("max_wheel_speed_mps", 1.3)
     node.declare_parameter("pwm_min_abs", 90)

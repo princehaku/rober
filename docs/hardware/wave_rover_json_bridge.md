@@ -91,11 +91,11 @@
 `WAVE_ROVER_V0.9/json_cmd.h` 定义 `T=13` 为 `CMD_ROS_CTRL`，字段为 `X/Z`
 并标注 `(m/s,rad/s)`；`uart_ctrl.h` 在收到 `CMD_ROS_CTRL` 后调用 `rosCtrl(X,Z)`；
 `movtion_module.h` 的 `rosCtrl` 将 `X/Z` 转为左右轮 setpoint 后进入 `setGoalSpeed`。
-因此 O11 Nav2 托管执行 helper 默认使用 `base_command_mode=ros` 更贴近 ROS
+因此 O11 Nav2 托管执行 helper 和上车 launch 默认使用 `base_command_mode=ros` 更贴近 ROS
 `/cmd_vel` 语义。`T=11` PWM 和 `T=1` speed 仍保留为白名单复验模式，但不再是
 Nav2 helper 的硬编码唯一通路。
 
-该改动只改变上位机托管 `esp32_bridge` 的命令模式选择，不降低验收标准：
+该改动只改变上位机托管 `esp32_bridge` 的命令模式选择和 launch 默认参数，不降低验收标准：
 Nav2 goal 只有在同一 execution artifact 内同时满足 action succeeded 和
 `T=1001.L/R` 最新非零反馈时，才能被 PC/上位机视为完整路线执行证明。
 
@@ -114,8 +114,14 @@ Nav2 goal 只有在同一 execution artifact 内同时满足 action succeeded �
 
 ## Command Modes
 
-- `speed`：将 `/cmd_vel` 映射为 `T=1` 的 `L/R`，当前项目默认。
-- `ros`：将 `/cmd_vel` 映射为 `T=13` 的 `X/Z`。仅在 `source=hil_pass` 的方向与安全验证后使用。
+- `ros`：将 `/cmd_vel` 映射为 vendor `T=13` 的 `X/Z`，当前 bringup/autonomous 与硬件 bridge 默认值。
+- `speed`：将 `/cmd_vel` 映射为 `T=1` 的 `L/R`，仅作为显式诊断 override。
+- `pwm`：将 `/cmd_vel` 映射为 `T=11` 的 `L/R`，仅作为显式诊断 override。
+
+默认切到 `ros` 的原因是 Nav2、键盘连续手控和自由移动都以 ROS `/cmd_vel` 为同一控制面，
+避免上车启动默认 `speed/T=1`，而 PC/上位机下一步提示要求 `ros/T=13` 的口径分叉。
+这不降低验收标准：真实路线执行仍必须在同一 artifact 内证明 action succeeded 且
+vendor `T=1001.L/R` 同窗口非零。
 
 对于 `speed` 模式，差速关系：
 
@@ -124,7 +130,7 @@ left_mps = linear.x - angular.z * track_width_m / 2
 right_mps = linear.x + angular.z * track_width_m / 2
 ```
 
-当前桥接在项目侧默认将 `T=1` 值按 `max_wheel_speed_mps` 归一化并夹到 `[-1,1]`，该参数是可调的项目参数，不能当作硬件标称校准值。
+`speed` 诊断模式在项目侧将 `T=1` 值按 `max_wheel_speed_mps` 归一化并夹到 `[-1,1]`，该参数是可调的项目参数，不能当作硬件标称校准值。
 
 ### 2026-06-10 低速起动阈值边界
 
@@ -134,9 +140,10 @@ right_mps = linear.x + angular.z * track_width_m / 2
 
 2026-06-27 真机 smoke 曾单独观测到 `T=11 L=90/R=90` 回 `T=1001 L/R=90/90`，
 但同轮 Nav2 托管执行里 `T=11 L=90/R=-90` 仍未形成非零轮速闭环。因此
-bringup/autonomous 默认保持 vendor 主路径 `command_mode=speed`，即 `/cmd_vel` 转
-`T=1 L/R`；`command_mode=pwm` 只作为显式 HIL/诊断 override，不能在没有本轮证明时当作
-默认成功路径。在 `command_mode=speed` 下，`max_wheel_speed_mps=1.3`
+bringup/autonomous 默认改为 vendor ROS 控制路径 `command_mode=ros`，即 `/cmd_vel` 转
+`T=13 X/Z`；`command_mode=speed` 和 `command_mode=pwm` 只作为显式 HIL/诊断 override，
+不能在没有本轮证明时当作默认成功路径。在 `command_mode=speed` 诊断模式下，
+`max_wheel_speed_mps=1.3`
 对应 expected command：
 
 - `0.03m/s -> {"T":1,"L":0.023077,"R":0.023077}`

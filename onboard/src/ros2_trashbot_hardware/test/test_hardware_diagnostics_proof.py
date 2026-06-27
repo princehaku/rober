@@ -75,7 +75,7 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
         ):
             self.assertIn(key, proof)
         self.assertIn("docs/vendor/VENDOR_INDEX.md", proof["vendor_sources"])
-        self.assertEqual(proof["config"]["command_mode"], "speed")
+        self.assertEqual(proof["config"]["command_mode"], "ros")
         self.assertEqual(proof["feedback_sample"]["status"], "parsed")
         self.assertEqual(proof["feedback_sample"]["parsed"]["voltage"], 11.7)
 

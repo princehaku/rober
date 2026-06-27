@@ -436,7 +436,7 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertNotIn("'port': serial_port", hardware_block)
                 self.assertNotIn("'baudrate': serial_baudrate", hardware_block)
 
-    def test_hardware_bridge_launches_with_vendor_speed_default_and_pwm_override(self):
+    def test_hardware_bridge_launches_with_vendor_ros_default_and_diagnostic_overrides(self):
         # bringup/autonomous 默认必须和硬件 bridge 纯参数默认一致，避免 Nav2 与手动入口漂到不同控制面。
         for launch_name in ("bringup.launch.py", "autonomous.launch.py"):
             with self.subTest(launch_name=launch_name):
@@ -447,8 +447,9 @@ class LaunchContractStaticTest(unittest.TestCase):
                     source.index("executable='waypoint_manager'" if launch_name == "bringup.launch.py" else "# Nav2 bringup")
                 ]
 
-                self.assertIn("'command_mode', default_value='speed'", source)
-                self.assertIn("speed uses vendor T=1 default", source)
+                self.assertIn("'command_mode', default_value='ros'", source)
+                self.assertIn("ros uses vendor T=13 default for /cmd_vel", source)
+                self.assertIn("speed uses T=1 diagnostic override", source)
                 self.assertIn("pwm uses explicit T=11 diagnostic override", source)
                 self.assertIn("'command_mode': command_mode", hardware_block)
                 self.assertIn("'pwm_min_abs': pwm_min_abs", hardware_block)
