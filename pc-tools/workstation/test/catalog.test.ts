@@ -4022,7 +4022,7 @@ describe("workstation fail-closed API contracts", () => {
         "robot_map_pose_not_observed",
       ]);
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复 Nav2 planner，再生成图上路线并读到小车地图位置");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线并读到小车地图位置");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("not_loaded");
       expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_safety_confirmation_only");
       expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);
@@ -4126,14 +4126,14 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.readback_summary.nav2.nav2_stack_running).toBe("false");
       expect(summary.readback_summary.nav2.nav2_stack_lifecycle_state).toBe("stopped");
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("Nav2 服务未启动");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("自动驾驶服务未启动");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([
         "nav2_stack_not_running",
         "path_generation_not_observed",
         "path_point_count_not_positive",
         "robot_map_pose_not_observed",
       ]);
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先启动 Nav2 服务（不发车），再生成图上路线并读到小车地图位置");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先启动自动驾驶服务（不发车），再生成图上路线并读到小车地图位置");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("雷达");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("相机");
     } finally {
@@ -4447,7 +4447,7 @@ describe("workstation fail-closed API contracts", () => {
         "path_point_count_not_positive",
         "robot_map_pose_not_observed",
       ]);
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复 Nav2 planner 和 Nav2 controller，再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复规划服务和控制服务，再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
       await robotApi.close();
@@ -4660,7 +4660,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复 Nav2 controller，再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复控制服务，再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
       await robotApi.close();
@@ -7467,10 +7467,10 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("Nav2 controller 未就绪");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("控制服务未就绪");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(["controller_server_inactive"]);
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("awaiting_route_execution");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复 Nav2 controller，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复控制服务，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();

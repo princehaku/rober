@@ -4379,6 +4379,11 @@ function freeRoamMappingMissingIds(
   return mappingRequiredIds.filter((id) => mappingGateById.get(id)?.state !== "ready");
 }
 
+function joinChineseList(items: string[]): string {
+  // 短中文列表不加技术分隔符，普通首屏读起来更像一句话。
+  return items.join("和");
+}
+
 function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
   "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_execution_mode_label"
@@ -4435,17 +4440,17 @@ function nav2GoalBoundaryGuidance(
   ].filter(Boolean);
   const nav2ServiceBlockers = sortNav2GoalBlockers([...new Set(serviceAwareBlockers)]);
   const inactiveServiceNames = [
-    nav2StackNotRunning ? "Nav2 服务（不发车）" : "",
-    !nav2StackNotRunning && plannerInactive ? "Nav2 planner" : "",
-    !nav2StackNotRunning && controllerInactive ? "Nav2 controller" : "",
+    nav2StackNotRunning ? "自动驾驶服务（不发车）" : "",
+    !nav2StackNotRunning && plannerInactive ? "规划服务" : "",
+    !nav2StackNotRunning && controllerInactive ? "控制服务" : "",
   ].filter(Boolean);
   const serviceInactiveText = [
-    nav2StackNotRunning ? "Nav2 stack 当前未运行" : "",
-    !nav2StackNotRunning && plannerInactive ? "Nav2 planner 当前未 active" : "",
-    !nav2StackNotRunning && controllerInactive ? "Nav2 controller 当前未 active" : "",
+    nav2StackNotRunning ? "自动驾驶服务当前未启动" : "",
+    !nav2StackNotRunning && plannerInactive ? "规划服务当前未运行" : "",
+    !nav2StackNotRunning && controllerInactive ? "控制服务当前未运行" : "",
   ].filter(Boolean);
   const serviceInactiveSuffix = serviceInactiveText.length
-    ? `；${serviceInactiveText.join("，")}，重跑前需先${nav2StackNotRunning ? "启动" : "恢复"} ${inactiveServiceNames.join(" 和 ")}`
+    ? `；${serviceInactiveText.join("，")}，重跑前需先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}`
     : "";
   const nav2ServiceInactive = nav2StackNotRunning || plannerInactive || controllerInactive;
   const executionMotionText = nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true"
@@ -4474,7 +4479,7 @@ function nav2GoalBoundaryGuidance(
   if (succeeded && nav2.goal_execution_base_feedback_lr_nonzero_proven === "false") {
     const rerunMode = !["", "not_loaded"].includes(nextMode) ? nextMode.toUpperCase() : "当前模式";
     const serviceRestoreActions = inactiveServiceNames.length
-      ? [`${nav2StackNotRunning ? "启动" : "恢复"} ${inactiveServiceNames.join(" 和 ")}`]
+      ? [`${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}`]
       : [];
     const routeReadinessActions = base.nav2_goal_ready ? [] : ["生成图上路线并读到小车地图位置"];
     const routePrepActions = [
@@ -4484,18 +4489,18 @@ function nav2GoalBoundaryGuidance(
     const rerunNextAction = !base.nav2_goal_ready
       ? `当前图上路线未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
       : inactiveServiceNames.length
-        ? `当前 Nav2 服务未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
+        ? `当前自动驾驶服务未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
         : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`;
     return {
       ...base,
       nav2_goal_ready: nav2StackNotRunning || plannerInactive || controllerInactive ? false : base.nav2_goal_ready,
       nav2_goal_label: nav2StackNotRunning
-        ? "Nav2 服务未启动"
+        ? "自动驾驶服务未启动"
         : plannerInactive && controllerInactive && base.nav2_goal_ready
-        ? "Nav2 planner/controller 未就绪"
+        ? "规划/控制服务未就绪"
         : plannerInactive && base.nav2_goal_ready
-          ? "Nav2 planner 未就绪"
-          : controllerInactive && base.nav2_goal_ready ? "Nav2 controller 未就绪" : base.nav2_goal_label,
+          ? "规划服务未就绪"
+          : controllerInactive && base.nav2_goal_ready ? "控制服务未就绪" : base.nav2_goal_label,
       nav2_goal_blockers: nav2ServiceBlockers,
       nav2_goal_wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
       nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${routePrepActions.length ? "" : serviceInactiveSuffix}；${rerunNextAction}`,
@@ -4504,13 +4509,13 @@ function nav2GoalBoundaryGuidance(
   }
   if (base.nav2_goal_ready && (nav2StackNotRunning || plannerInactive || controllerInactive)) {
     const serviceLabel = nav2StackNotRunning
-      ? "Nav2 服务未启动"
+      ? "自动驾驶服务未启动"
       : plannerInactive && controllerInactive
-      ? "Nav2 planner/controller 未就绪"
-      : plannerInactive ? "Nav2 planner 未就绪" : "Nav2 controller 未就绪";
+      ? "规划/控制服务未就绪"
+      : plannerInactive ? "规划服务未就绪" : "控制服务未就绪";
     const serviceNextAction = inactiveServiceNames.length
-      ? `先${nav2StackNotRunning ? "启动" : "恢复"} ${inactiveServiceNames.join(" 和 ")}，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R`
-      : "先恢复 Nav2 服务，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R";
+      ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R`
+      : "先恢复自动驾驶服务，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R";
     return {
       ...base,
       nav2_goal_ready: false,
@@ -4531,10 +4536,10 @@ function nav2GoalBoundaryGuidance(
   }
   return {
     ...base,
-    nav2_goal_label: nav2StackNotRunning ? "Nav2 服务未启动" : base.nav2_goal_label,
+    nav2_goal_label: nav2StackNotRunning ? "自动驾驶服务未启动" : base.nav2_goal_label,
     nav2_goal_blockers: nav2ServiceBlockers,
     nav2_goal_next_action: inactiveServiceNames.length
-      ? `先${nav2StackNotRunning ? "启动" : "恢复"} ${inactiveServiceNames.join(" 和 ")}，再生成图上路线并读到小车地图位置`
+      ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再生成图上路线并读到小车地图位置`
       : base.nav2_goal_next_action,
     nav2_goal_execution_mode_label: modeLabel,
   };

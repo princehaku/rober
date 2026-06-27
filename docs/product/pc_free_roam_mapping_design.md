@@ -598,3 +598,8 @@ ROS2、不发送 `NavigateToPose`、不发布 `/cmd_vel`、不碰底盘串口。
 planner/controller inactive 仍保留“恢复规划/控制服务”的文案。两者都只调用固定
 `/api/robot-control/nav2/start`，成功后自动做 no-motion `/api/robot-control/nav2/proof/refresh` 和地图预览刷新；
 不会调用 `NavigateToPose`、`/cmd_vel` 或底盘 manual。
+
+2026-06-28 03:52 起，PC summary 的 `safe_command_boundary.nav2_goal_label/nav2_goal_next_action` 也采用普通用户口径：
+`nav2_stack_not_running` 显示“自动驾驶服务未启动 / 先启动自动驾驶服务（不发车）”，planner/controller inactive
+显示“规划服务 / 控制服务”。blocker id 仍保留 `nav2_stack_not_running`、`planner_server_inactive`、
+`controller_server_inactive` 给自动化和高级诊断使用；改动只影响中文状态文案，不发送 Nav2 start、goal、manual 或 `/cmd_vel`。
