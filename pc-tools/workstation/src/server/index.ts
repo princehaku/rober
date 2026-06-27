@@ -1677,6 +1677,8 @@ export function createWorkstationApp(): express.Express {
       : null;
     const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
     const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
+    const sourceFailure = normalized.ok ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized) : null;
+    const lastFailureForOverlay = lastFailure ?? sourceFailure;
     const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
       ? {
         client_count: relay.clients.size,
@@ -1684,20 +1686,20 @@ export function createWorkstationApp(): express.Express {
         content_type_loaded: Boolean(relay.contentType),
         shared_capture: true,
         exclusive_camera_claim: false,
-        last_failure_reason: lastFailure?.failure_reason ?? "",
-        last_remote_http_status: lastFailure?.remote_http_status ?? null,
-        last_failure_at_ms: lastFailure?.failed_at_ms ?? null,
+        last_failure_reason: lastFailureForOverlay?.failure_reason ?? "",
+        last_remote_http_status: lastFailureForOverlay?.remote_http_status ?? null,
+        last_failure_at_ms: lastFailureForOverlay?.failed_at_ms ?? null,
       }
-      : lastFailure
+      : lastFailureForOverlay
         ? {
           client_count: 0,
           upstream_active: false,
           content_type_loaded: false,
           shared_capture: true,
           exclusive_camera_claim: false,
-          last_failure_reason: lastFailure.failure_reason,
-          last_remote_http_status: lastFailure.remote_http_status,
-          last_failure_at_ms: lastFailure.failed_at_ms,
+          last_failure_reason: lastFailureForOverlay.failure_reason,
+          last_remote_http_status: lastFailureForOverlay.remote_http_status,
+          last_failure_at_ms: lastFailureForOverlay.failed_at_ms,
         }
         : null;
     res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay));

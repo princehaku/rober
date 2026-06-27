@@ -3340,7 +3340,9 @@ summary，不调用 free-roam start/stop、manual、keyboard、Nav2、delivery�
 也会在没有 MJPEG relay 失败记录时消费同一份 camera health：如果 health 已证明相机源首帧失败，summary 同步显示
 `camera_source_first_frame_failed`，并把 `shared_preview_last_remote_http_status` 标成 health 的 HTTP 状态。这样只看
 `/api/robot-control/summary` 的页面、刷新前状态和 status fallback 都能得到一致结论，不再一边显示相机无首帧、一边显示共享预览无失败。
-该 overlay 不创建 MJPEG client，不打开上游流，不改变 `safe_to_control=false`、`robot_control_executed=false`。
+2026-06-27 21:55 起，summary handler 与 `/camera/mjpeg/status` 共享这条 source-failure overlay，并同步
+`shared_preview_last_failure_at_ms`，避免同一页面上 status 有失败时间、summary 仍显示 `none`。该 overlay 不创建 MJPEG client，
+不打开上游流，不改变 `safe_to_control=false`、`robot_control_executed=false`。
 
 2026-06-27 11:09 起，普通首屏在相机服务 ready 或 devices loaded、且页面会自动挂载共享 MJPEG `<img>` 时，
 实时画面卡不再显示“未打开/先点打开画面”，而是显示 `连接中` 与“正在接入共享实时画面；新页面会共用同一条上游流”。
