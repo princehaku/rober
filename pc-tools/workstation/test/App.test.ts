@@ -4397,7 +4397,7 @@ describe("App", () => {
     expect(readiness.text()).not.toContain("还差：雷达待刷新");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：运动发布已解锁，不依赖雷达新鲜度；当前雷达近障碍：等待雷达最新证明，先刷新雷达；现场继续监看。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：运动发布已解锁，不依赖雷达新鲜度；当前雷达近障碍：等待雷达最新证明；建议先刷新雷达；这只影响建图验收和直行策略，不阻塞低速自由移动；现场继续监看。");
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
     const radarRefreshCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) =>
@@ -4611,12 +4611,12 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"] h3').text()).toBe("自由移动 / 建图");
     expect(wrapper.find('[data-testid="plain-free-roam-mode-subtitle"]').text()).toBe("先确认安全，可低速自由移动；相机和雷达 ready 后再按建图验收。");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m，原地换向避让，不继续直行。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出、地图记录未启动；仍可在安全确认后低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自由移动（低速）后才会重新启动。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出、地图记录未启动；自由移动不受影响。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，勾安全确认后可启动；当前雷达近障碍：最近障碍 0.30m，原地换向避让，不继续直行；低速自移动不依赖雷达新鲜度。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，勾安全确认后可启动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动；低速自移动不依赖雷达新鲜度。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -4626,6 +4626,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘自由移动");
@@ -5719,7 +5721,7 @@ describe("App", () => {
 
     const freeRoamPanel = wrapper.find('[data-testid="plain-free-roam-mapping"]');
     expect(freeRoamPanel.attributes("data-state")).toBe("待确认");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m，原地换向避让，不继续直行。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先勾安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-direction-pad"]').exists()).toBe(true);
@@ -6706,9 +6708,14 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达已运行");
     expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("free-roam runtime 已读到实时 /scan；当前没有地图点数组，只显示最近障碍 0.04m，等点位后再贴地图。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已运行，最近障碍 0.04m。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("当前雷达近障碍：最近障碍 0.04m，原地换向避让，不继续直行");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("当前雷达近障碍：最近障碍 0.04m，原地换向避让，不继续直行");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("当前雷达近障碍：最近障碍 0.04m，原地换向避让，不继续直行");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("当前雷达近障碍：最近障碍 0.04m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("当前雷达近障碍：最近障碍 0.04m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("当前雷达近障碍：最近障碍 0.04m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动");
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
     expect(marker.text()).toBe("雷达已运行，最近障碍 0.04m");
     expect(marker.attributes("data-state")).toBe("雷达已运行");

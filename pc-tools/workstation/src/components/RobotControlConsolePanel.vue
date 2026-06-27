@@ -934,8 +934,9 @@ function plainFreeRoamObstacleCautionPlainText(summary: RobotControlSummaryRespo
   const nextAction = obstacleGate.next_action && obstacleGate.next_action !== "not_loaded"
     ? obstacleGate.next_action
     : "先避让，不继续直行";
-  const obstacleText = evidence ? `${evidence}，${nextAction}` : nextAction;
-  return `当前雷达近障碍：${obstacleText}`;
+  const obstacleText = evidence ? `${evidence}；建议${nextAction}` : `建议${nextAction}`;
+  // 近障碍是运行后的监看建议；自由移动 start 仍只看安全确认和停止兜底，避免雷达重新变成启动前置。
+  return `当前雷达近障碍：${obstacleText}；这只影响建图验收和直行策略，不阻塞低速自由移动`;
 }
 
 function radarRunningWithoutVisiblePoints(lidar: RobotControlSummaryResponse["readback_summary"]["lidar"]): boolean {

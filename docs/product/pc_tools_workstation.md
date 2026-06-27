@@ -3374,6 +3374,11 @@ manual、keyboard、free-roam start、Nav2、delivery、stop 或 `/cmd_vel`，�
 安全确认已勾选但还未发布运动时，会写出“当前没有运动发布；当前雷达近障碍...”。该提示只是把 runtime 雷达事实前移到主操作卡片，
 不改变 `free_roam_autonomy_start_ready` 门禁，不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-27 18:21 起，上述近障碍提示进一步改为“建议原地换向避让；这只影响建图验收和直行策略，不阻塞低速自由移动”。
+live 出现 `obstacle_clear=not_proven/evidence=最近障碍 0.04m` 时，普通首屏仍在地图上显示最近障碍、不画假点，
+但勾选安全确认后 `开始自由移动（低速）` 继续可用；雷达近障碍不会被重新解释成自由移动启动前置。
+该改动只修正 PC 文案和门禁展示，不自动启动 free-roam、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 17:22 起，普通首屏自由移动 / 建图卡片的键盘快捷入口按当前目标拆分：相机或雷达未 ready 时，
 勾安全确认后即可点“启用键盘自由移动”，启用本身不发送 manual，只有按住方向键/WASD 才走固定
 `/api/robot-control/base/manual` 低速 pulse，松开仍走 `/api/robot-control/base/stop`；相机和雷达都 ready、已进入可建图口径时，
