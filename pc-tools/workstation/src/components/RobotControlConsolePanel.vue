@@ -2026,10 +2026,12 @@ function plainCurrentMapFactText(summary: RobotControlSummaryResponse): string {
   const preview = mapPreviewResult.value;
   const previewLoaded = preview?.proxy_status === "preview_forwarded" && Boolean(preview.image_data_url);
   const imageLabel = plainMapImageFreshnessLabel(previewLoaded);
+  const radarNotCurrentText = radarNotCurrentSourcePointText();
+  const radarSuffix = radarNotCurrentText ? `；${radarNotCurrentText}` : "";
   if (previewLoaded) {
     const freeCells = plainCellCount(preview, "free");
     const freeText = freeCells > 0 ? `，可通行格 ${freeCells} 个` : "，未读到可通行格";
-    return `地图：显示最近读取的真实地图画面，${preview.width}x${preview.height}${freeText}。`;
+    return `地图：显示最近读取的真实地图画面，${preview.width}x${preview.height}${freeText}${radarSuffix}。`;
   }
   if (mapPreviewPending.value || mapPreviewFailureText(preview)) {
     return imageLabel.replace(/^地图画面：/, "地图：");
@@ -2039,7 +2041,7 @@ function plainCurrentMapFactText(summary: RobotControlSummaryResponse): string {
     const freeCellText = mapReadback.map_free_cell_count && mapReadback.map_free_cell_count !== "not_loaded"
       ? `，读到可通行格 ${mapReadback.map_free_cell_count} 个`
       : "";
-    return `地图：已读到地图材料${freeCellText}，但还没显示真实地图图像；先刷新地图画面。`;
+    return `地图：已读到地图材料${freeCellText}，但还没显示真实地图图像${radarSuffix}；先刷新地图画面。`;
   }
   return "地图：还没读到真实地图图像。";
 }
