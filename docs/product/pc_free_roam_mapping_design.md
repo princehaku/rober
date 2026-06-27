@@ -255,6 +255,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `camera_first_frame/fresh_radar_scan/map_recording_active/fresh_map_preview` 四项显示 `2/4`，并和下方
 “缺口：画面首帧未出、地图记录未启动”对齐。
 
+2026-06-27 16:47 起，普通首屏 `当前事实` 的自由移动行会消费 `obstacle_clear` gate：
+当 gate 非 ready 且上车端 runtime 已给出 `最近障碍 0.04m` 这类证据时，文案直接追加
+`当前雷达近障碍：最近障碍 ...，原地换向避让，不继续直行`。这条信息只解释现场预期动作，
+不把雷达或近障碍反向变成自由移动启动硬门禁；`free_roam_autonomy_start_ready=true` 时仍显示可在安全确认后请求低速自由移动，
+建图验收仍由 camera/radar/map preview 的 mapping gate 单独决定。
+
 2026-06-27 03:50 起，PC `自动扫图准备` 明确新增一行 `建图验收`：`free_roam_autonomy_start_ready=true`
 只表示可在安全确认后发起低速自由移动；如果 camera 没有首帧或雷达未达到 `雷达已运行`，本轮只能按自由移动记录，
 不能按可验收建图收口。只有画面可见证据和雷达运行证据同时满足，才把本轮标成“可按建图记录监看”。

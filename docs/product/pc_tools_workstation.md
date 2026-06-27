@@ -3348,3 +3348,9 @@ delivery、stop 或 `/cmd_vel`。
 同轮 `base_status` 里的 `wheel_feedback_lr_nonzero_proven` 也同步收紧：只有本次 `T=130` readback 或 fresh
 `base_feedback_samples_latest` artifact 能把它置 true；stale artifact 里的历史非零 L/R 只保留在
 `feedback_samples_latest` 作为历史摘要，不再污染当前首屏判断。
+
+2026-06-27 16:47 起，普通首屏 `当前事实` 的自由移动行会把 `free_roam_autonomy_gates[]`
+里的 `obstacle_clear` 非 ready 证据贴出来。现场形态为 `free-roam runtime /scan 新鲜` 但
+`obstacle_clear=not_proven/evidence=最近障碍 0.04m` 时，首屏不再只写“勾安全确认后可启动”，
+而是同步写出“当前雷达近障碍：最近障碍 0.04m，原地换向避让，不继续直行”。该展示仍不触发
+manual、keyboard、free-roam start、Nav2、delivery、stop 或 `/cmd_vel`，也不把雷达 freshness 改成自由移动启动前置条件。

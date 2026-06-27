@@ -902,6 +902,20 @@ function latestRadarRuntimeScanReady(): boolean {
   return lidarGate?.state === "ready" && /runtime\s*\/scan\s*新鲜|free-roam runtime/i.test(evidence);
 }
 
+function plainFreeRoamObstacleCautionText(summary: RobotControlSummaryResponse): string {
+  // 近障碍只影响现场预期动作，不反向改写自由移动门禁；否则 operator 会误以为雷达是启动前置条件。
+  const obstacleGate = summary.safe_command_boundary.free_roam_autonomy_gates.find((gate) => gate.id === "obstacle_clear");
+  if (!obstacleGate || obstacleGate.state === "ready") {
+    return "";
+  }
+  const evidence = obstacleGate.evidence && obstacleGate.evidence !== "not_loaded" ? obstacleGate.evidence : "";
+  const nextAction = obstacleGate.next_action && obstacleGate.next_action !== "not_loaded"
+    ? obstacleGate.next_action
+    : "先避让，不继续直行";
+  const obstacleText = evidence ? `${evidence}，${nextAction}` : nextAction;
+  return `；当前雷达近障碍：${obstacleText}`;
+}
+
 function radarRunningWithoutVisiblePoints(lidar: RobotControlSummaryResponse["readback_summary"]["lidar"]): boolean {
   // lifecycle 在跑但没有点数组、点数或障碍距离时，现场更需要看到“无新点”，而不是泛化“待刷新”。
   const pointCount = radarPreviewReadbackPointCount();
@@ -1658,23 +1672,24 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   // 当前事实条只回答“现在会不会自己跑”；建图 readiness 和详细 gate 留在扫地式建图卡片。
   const boundary = summary.safe_command_boundary;
   const runtime = boundary.free_roam_autonomy_runtime;
+  const obstacleCaution = plainFreeRoamObstacleCautionText(summary);
   if (runtime?.status === "loaded" && runtime.cmd_vel_publish_enabled === true && runtime.artifact_only === false) {
-    return "自由移动：运动发布已解锁，不依赖雷达新鲜度；现场继续监看。";
+    return `自由移动：运动发布已解锁，不依赖雷达新鲜度${obstacleCaution}；现场继续监看。`;
   }
   if (runtime?.status === "loaded" && runtime.artifact_only === true && runtime.cmd_vel_publish_enabled === false) {
     const startText = plainManualSafetyConfirmed.value ? "可启动" : "勾安全确认后可启动";
     if (runtime.state === "stopping") {
       const reasonText = runtime.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
       return boundary.free_roam_autonomy_start_ready
-        ? `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，${startText}；低速自移动不依赖雷达新鲜度。`
+        ? `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，${startText}${obstacleCaution}；低速自移动不依赖雷达新鲜度。`
         : `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布。`;
     }
     return boundary.free_roam_autonomy_start_ready
-      ? `自由移动：${startText}，但当前没有运动发布；低速自移动不依赖雷达新鲜度。`
+      ? `自由移动：${startText}，但当前没有运动发布${obstacleCaution}；低速自移动不依赖雷达新鲜度。`
       : "自由移动：当前没有运动发布。";
   }
   if (boundary.free_roam_autonomy_start_ready) {
-    return "自由移动：勾安全确认后可启动；低速自移动不依赖雷达新鲜度。";
+    return `自由移动：勾安全确认后可启动${obstacleCaution}；低速自移动不依赖雷达新鲜度。`;
   }
   return "自由移动：等待上车状态。";
 }
