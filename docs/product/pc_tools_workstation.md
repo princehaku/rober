@@ -2822,6 +2822,12 @@ manual、keyboard pulse、Nav2、delivery、free-roam start/stop、stop 或 `/cm
 实时性和近障碍风险同时所见即所得；它不刷新雷达、不启动雷达、不调用 manual、keyboard pulse、Nav2、delivery、
 free-roam start/stop、stop 或 `/cmd_vel`。
 
+2026-06-27 09:29 起，普通首屏 `当前事实` 的雷达行同步显示压缩点数和最近障碍距离：
+live 形状 `latest_proof_incomplete_while_lifecycle_running + scan_preview_point_count=72 + 最近障碍 0.04m`
+会显示 `雷达：运行中待刷新，待刷新雷达点 72 个，最近障碍 0.04m`。这样 operator 不必只靠地图 marker 才能知道
+雷达已经有材料但实时性未确认；该行只读 summary，不调用 radar refresh/start、manual、keyboard、Nav2、delivery、
+free-roam start/stop、stop 或 `/cmd_vel`。
+
 2026-06-26 23:05 起，普通首屏 `扫地式建图` 的主按钮不再把摄像头首帧或雷达 fresh 当作低速移动硬门禁；
 勾选安全确认后即可点击 `开始记录并低速移动`，再通过键盘按住移动或显式自动扫图入口让小车低速走。摄像头和雷达
 readiness 只决定本轮是否能按“可建图”验收：二者都 ready 时显示 `可建图`；缺任一项时显示 `可移动`，并明确提示

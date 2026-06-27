@@ -1518,6 +1518,32 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   return "自由移动：等待上车状态。";
 }
 
+function plainCurrentRadarFactText(): string {
+  // 当前事实条要把雷达“有没有材料”和“是否实时”合在一句里，详细坐标口径仍留在地图 caption。
+  const state = radarSummary.value.state;
+  const pointCount = radarPreviewReadbackPointCount();
+  const pointText = pointCount > 0 ? `，待刷新雷达点 ${pointCount} 个` : "";
+  const obstacleText = latestRadarObstacleDistanceLabel() ? `，${latestRadarObstacleDistanceLabel()}` : "";
+  if (state === "雷达无新点" && radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
+    return "雷达：已收到原始包，但地图上没有雷达点。";
+  }
+  if (state === "雷达无新点") {
+    return "雷达：已启动，但地图上没有新点。";
+  }
+  if (state === "雷达待刷新") {
+    return `雷达：运行中待刷新${pointText}${obstacleText}。`;
+  }
+  if (state === "刷新中") {
+    return `雷达：正在刷新${pointText}${obstacleText}。`;
+  }
+  if (state === "雷达已运行") {
+    return pointCount > 0
+      ? `雷达：已运行，雷达点 ${pointCount} 个${obstacleText}。`
+      : `雷达：已运行${obstacleText}。`;
+  }
+  return `雷达：${state}。`;
+}
+
 const plainCurrentFactRows = computed(() => {
   // 首屏事实条只翻译当前 readback，不新增任何控制权限或验收结论。
   const summary = robotSummary.value;
@@ -1527,16 +1553,7 @@ const plainCurrentFactRows = computed(() => {
   const rows: string[] = [];
   const camera = summary.readback_summary.camera;
   rows.push(plainCurrentCameraFactText(camera));
-
-  if (radarSummary.value.state === "雷达无新点" && radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
-    rows.push("雷达：已收到原始包，但地图上没有雷达点。");
-  } else if (radarSummary.value.state === "雷达无新点") {
-    rows.push("雷达：已启动，但地图上没有新点。");
-  } else if (radarSummary.value.state === "雷达已运行") {
-    rows.push("雷达：已运行。");
-  } else {
-    rows.push(`雷达：${radarSummary.value.state}。`);
-  }
+  rows.push(plainCurrentRadarFactText());
 
   const nav2 = summary.readback_summary.nav2;
   if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {

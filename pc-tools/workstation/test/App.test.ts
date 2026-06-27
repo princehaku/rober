@@ -3602,7 +3602,7 @@ describe("App", () => {
     const currentFacts = wrapper.find('[data-testid="plain-current-facts"]');
     expect(currentFacts.exists()).toBe(true);
     expect(currentFacts.text()).toContain("画面：还没确认真实帧。");
-    expect(currentFacts.text()).toContain("雷达：已运行。");
+    expect(currentFacts.text()).toContain("雷达：已运行，最近障碍 0.30m。");
     expect(currentFacts.text()).toContain("行程：还没执行。");
     expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
     expect(currentFacts.text()).toContain("键盘：先复查手控条件。");
@@ -14560,6 +14560,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达待刷新");
     expect(wrapper.find('[data-testid="plain-radar-panel"]').text()).toContain("已有雷达点 72 个，当前先显示局部轮廓，刷新后确认实时性。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：运行中待刷新，待刷新雷达点 72 个，最近障碍 0.04m。");
     const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
     expect(marker.text()).toBe("雷达待刷新，待刷新雷达点 72 个，最近障碍 0.04m");
     expect(marker.attributes("data-state")).toBe("雷达待刷新");
