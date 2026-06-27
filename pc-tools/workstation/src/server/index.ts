@@ -1731,6 +1731,10 @@ export function createWorkstationApp(): express.Express {
         last_failure_reason: lastFailureForOverlay?.failure_reason ?? "",
         last_remote_http_status: lastFailureForOverlay?.remote_http_status ?? null,
         last_failure_at_ms: lastFailureForOverlay?.failed_at_ms ?? null,
+        source_diagnosis_status: lastFailureForOverlay?.source_diagnosis_status,
+        source_diagnosis_plain_hint: lastFailureForOverlay?.source_diagnosis_plain_hint,
+        source_diagnosis_next_action: lastFailureForOverlay?.source_diagnosis_next_action,
+        source_diagnosis_not_exclusive: lastFailureForOverlay?.source_diagnosis_not_exclusive,
       }
       : lastFailureForOverlay
         ? {
@@ -1744,6 +1748,10 @@ export function createWorkstationApp(): express.Express {
           last_failure_reason: lastFailureForOverlay.failure_reason,
           last_remote_http_status: lastFailureForOverlay.remote_http_status,
           last_failure_at_ms: lastFailureForOverlay.failed_at_ms,
+          source_diagnosis_status: lastFailureForOverlay.source_diagnosis_status,
+          source_diagnosis_plain_hint: lastFailureForOverlay.source_diagnosis_plain_hint,
+          source_diagnosis_next_action: lastFailureForOverlay.source_diagnosis_next_action,
+          source_diagnosis_not_exclusive: lastFailureForOverlay.source_diagnosis_not_exclusive,
         }
         : null;
     res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay, {

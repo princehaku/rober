@@ -486,3 +486,10 @@ delivery、stop 或 `/cmd_vel`。
 blocked reasons 带 `runtime_scan_stale_for_map_radar_overlay` 与 `radar_lifecycle_not_running_for_map_radar_overlay`。
 旧 `scan_preview_points` 仍可作为 `readback_summary.lidar` 的历史材料解释，但不能再作为“地图上的当前雷达标记”。
 该规则只修正只读 summary 和 WYSIWYG 口径，不启动雷达、不刷新地图、不发送运动命令。
+
+2026-06-28 10:35 起，PC summary 的相机只读诊断增加共享预览覆盖兜底：
+如果普通首屏短预算下 `/api/camera/health` 超时，但 summary handler 在 600ms source failure 检查或 MJPEG relay
+内存里已经拿到 `camera_source_first_frame_failed` 与 `uvc_no_frame_not_exclusive`，`readback_summary.camera.status`
+仍保持 `source_first_frame_failed`，并把 `source_diagnosis_*` 透传到普通首屏。这样页面不会在 camera health 慢时从
+“不是页面独占，UVC 无帧”退回 `fetch_failed/not_loaded`。该规则只复用 PC Node 已有只读诊断，不创建新 camera reader，
+不发送运动、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -1386,6 +1386,8 @@ function cameraSummaryFromReadbacks(
   const rawHealthStatus = healthReadback?.status ?? "not_loaded";
   const cameraStatus = probeVisibleContentObserved && ["", "not_loaded", "source_not_probed", "source_first_frame_failed"].includes(rawHealthStatus)
     ? "ready"
+    : healthReadback?.request_status === "fetch_failed" && mjpegRelayOverlay?.last_failure_reason === "camera_source_first_frame_failed"
+      ? "source_first_frame_failed"
     : sourceReadiness === "first_frame_failed"
     ? "source_first_frame_failed"
     : rawHealthStatus === "ready" && sourceReadiness === "source_selected_not_probed" && sharedPreviewStatus !== "streaming"
@@ -1405,6 +1407,18 @@ function cameraSummaryFromReadbacks(
     && firstFrameProbeOverlay.backend_frame_observed === "false"
     && sourceUsageLooksFree
   );
+  const overlaySourceDiagnosis = {
+    status: asString(mjpegRelayOverlay?.source_diagnosis_status, ""),
+    plain_hint: asString(mjpegRelayOverlay?.source_diagnosis_plain_hint, ""),
+    next_action: asString(mjpegRelayOverlay?.source_diagnosis_next_action, ""),
+    not_exclusive: asString(mjpegRelayOverlay?.source_diagnosis_not_exclusive, ""),
+  };
+  const overlayDiagnosisAvailable = Boolean(
+    overlaySourceDiagnosis.status
+    && !["not_loaded", "none"].includes(overlaySourceDiagnosis.status)
+    && overlaySourceDiagnosis.plain_hint
+    && !["not_loaded", "none"].includes(overlaySourceDiagnosis.plain_hint)
+  );
   const derivedSourceDiagnosis = probeBackendNoFrameNotExclusive
     ? {
       status: "uvc_no_frame_not_exclusive",
@@ -1412,6 +1426,13 @@ function cameraSummaryFromReadbacks(
       next_action: "check_usb_camera_input_power_or_known_good_uvc",
       not_exclusive: true,
     }
+    : overlayDiagnosisAvailable && !asRecord(sourceDiagnosis)
+      ? {
+        status: overlaySourceDiagnosis.status,
+        plain_hint: overlaySourceDiagnosis.plain_hint,
+        next_action: overlaySourceDiagnosis.next_action || "check_usb_camera_input_power_or_known_good_uvc",
+        not_exclusive: overlaySourceDiagnosis.not_exclusive || "not_loaded",
+      }
     : {
       status: asString(sourceDiagnosis?.status, "not_loaded"),
       plain_hint: asString(sourceDiagnosis?.plain_hint, "not_loaded"),
@@ -1509,6 +1530,10 @@ export type RobotControlCameraMjpegRelayOverlay = {
   last_failure_reason: string;
   last_remote_http_status: number | null;
   last_failure_at_ms: number | null;
+  source_diagnosis_status?: string;
+  source_diagnosis_plain_hint?: string;
+  source_diagnosis_next_action?: string;
+  source_diagnosis_not_exclusive?: string;
 };
 
 function compactTrueFields(fields: string[]): string[] {

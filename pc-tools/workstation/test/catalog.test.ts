@@ -6690,6 +6690,99 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary keeps camera no-frame diagnosis when camera health times out but shared overlay has source failure", async () => {
+    // live 7001 形态：summary 短预算可能让 camera health timeout；PC 仍应用共享预览覆盖诊断解释“不是独占”。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.status", "source_first_frame_failed"),
+      },
+      "/api/map/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed"),
+      },
+      "/api/localize/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "blocked_with_root_cause"),
+      },
+      "/api/nav2/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven"),
+      },
+      "/api/nav2/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven"),
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_goal_execution_latest", "not_proven"),
+      },
+      "/api/operator/report": {
+        payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded"),
+      },
+      "/api/free-roam/autonomy/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+      },
+      "/api/camera/health": {
+        delay_ms: 300,
+        payload: safePayload("trashbot.upper_robot_api.v1.camera_health", "source_first_frame_failed"),
+      },
+      "/api/camera/devices": {
+        payload: safePayload("trashbot.upper_robot_api.v1.camera_devices", "devices_ready"),
+      },
+      "/api/radar/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "loaded"),
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_scan_proof_latest", "scan_stale"),
+      },
+      "/api/radar/raw-packet-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_raw_packet_proof_latest", "raw_packet_not_proven"),
+      },
+      "/api/base/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded"),
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples", "loaded"),
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl, null, {
+        client_count: 0,
+        upstream_active: false,
+        content_type_loaded: false,
+        cached_frame_loaded: false,
+        cached_frame_age_ms: null,
+        shared_capture: true,
+        exclusive_camera_claim: false,
+        last_failure_reason: "camera_source_first_frame_failed",
+        last_remote_http_status: 200,
+        last_failure_at_ms: 1782581956648,
+        source_diagnosis_status: "uvc_no_frame_not_exclusive",
+        source_diagnosis_plain_hint: "不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。",
+        source_diagnosis_next_action: "check_usb_camera_input_power_or_known_good_uvc",
+        source_diagnosis_not_exclusive: "true",
+      }, { readbackTimeoutMs: 50 });
+
+      expect(summary.read_endpoints.find((item) => item.id === "camera_health")).toEqual(expect.objectContaining({
+        request_status: "fetch_failed",
+        blocked_reasons: ["fetch_timeout_50ms"],
+      }));
+      expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+      expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(summary.readback_summary.camera.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summary.robot_api_connection.status).toBe("degraded");
+      expect(summary.safe_to_control).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary exposes partial map radar overlay when scan points exist but map pose is missing", async () => {
     // 当前 live 形态会读到局部 scan 点，但没有机器人 map pose；summary 必须把“局部点，不贴地图”结构化暴露。
     const safePayload = (schema: string, status = "loaded") => ({
