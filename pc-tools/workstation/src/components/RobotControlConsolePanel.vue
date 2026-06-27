@@ -9024,6 +9024,13 @@ function plainFreeRoamNextTarget(): HTMLElement | null {
     return plainFreeRoamConfirmCheckbox.value;
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    if (!plainFreeRoamKeyboardRequiresMapRuntime.value) {
+      // 自由移动模式下，相机/雷达缺口只影响建图验收；下一步应先带用户到低速键盘入口。
+      return enabledButton(plainFreeRoamKeyboardButton.value)
+        ?? enabledButton(plainFreeRoamStartButton.value)
+        ?? plainFreeRoamKeyboardButton.value
+        ?? plainFreeRoamStartButton.value;
+    }
     if (!plainCameraReadyForFreeRoamAutonomy.value) {
       return enabledButton(plainCameraProbeButton.value) ?? plainCameraProbeButton.value;
     }

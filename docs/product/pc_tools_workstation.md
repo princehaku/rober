@@ -3373,6 +3373,11 @@ manual、keyboard、free-roam start、Nav2、delivery、stop 或 `/cmd_vel`，�
 快捷键盘仍显示“先开始记录”，必须先启动地图记录再扫图。该改动只调整 PC 普通入口的 gate 和文案，不绕过后端 manual gate，
 不新增 `/cmd_vel`、Nav2、free-roam autonomy、delivery 或任意浏览器直连控制通道。
 
+2026-06-27 17:32 起，上述“自由移动优先”的口径也同步到卡片里的 `下一步` 聚焦：当相机或雷达未 ready、
+但低速键盘手控已满足时，点击“下一步：启用键盘自由移动”会聚焦自由移动键盘按钮，不再跳到相机探针或雷达刷新。
+只有相机和雷达已 ready、当前目标切到可建图/扫图时，下一步才继续引导先开始地图记录。该改动只改变 PC 焦点导航，
+不自动勾选安全确认、不启动地图、不发送 manual、keyboard pulse、free-roam autonomy、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 16:51 起，普通首屏共享画面状态在 MJPEG status 轮询失败时，也会从 Robot Control summary 的
 `source_diagnosis_plain_hint` 读取具体归因。这样 summary 已证明 `uvc_no_frame_not_exclusive` 时，画面卡片仍显示
 “不是页面独占、UVC 设备没有输出视频帧”，而不是退回泛化的“相机源没有输出首帧”。该改动只修正失败归因展示，

@@ -4630,6 +4630,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeDefined();
+    const keyboardFocusSpy = vi.fn();
+    const cameraProbeFocusSpy = vi.fn();
+    (wrapper.find('[data-testid="plain-free-roam-keyboard"]').element as HTMLElement).focus = keyboardFocusSpy;
+    (wrapper.find('[data-testid="plain-camera-probe"]').element as HTMLElement).focus = cameraProbeFocusSpy;
+    await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(keyboardFocusSpy).toHaveBeenCalledWith({ preventScroll: true });
+    expect(cameraProbeFocusSpy).not.toHaveBeenCalled();
     const manualCallsBeforeArm = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     await wrapper.find('[data-testid="plain-free-roam-keyboard"]').trigger("click");
     await flushPromises();
