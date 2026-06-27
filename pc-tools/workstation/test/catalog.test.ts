@@ -4216,6 +4216,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.readback_summary.nav2.controller_server_requested).toBe("true");
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线未就绪");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(expect.arrayContaining([
+        "path_generation_not_observed",
+        "path_point_count_not_positive",
+        "robot_map_pose_not_observed",
+        "controller_server_inactive",
+      ]));
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；Nav2 controller 当前未 active，重跑前需先恢复 controller；勾选行程前安全确认后用 ROS 重跑图上路线");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
@@ -6834,6 +6842,80 @@ describe("workstation fail-closed API contracts", () => {
       await robotApi.close();
     }
   }, 10_000);
+
+  it("Robot Control summary blocks ready Nav2 route when controller is inactive", async () => {
+    // 路线、点数和 map pose 都 ready 时，controller inactive 仍必须是结构化 blocker，不能只藏在下一步文案里。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_proof_latest",
+          status: "localization_pose_observed",
+          amcl_pose_observed: true,
+          localization_tf_observed: { map_to_odom: true, map_to_base_link: true },
+          amcl_pose: { frame_id: "map", source: "/amcl_pose", x: 0.01, y: 0.02, yaw: 0 },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          status: "path_generated",
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 12,
+          path_preview_point_count: 12,
+          path_preview_frame_id: "map",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "not_proven",
+          latest_controller_active: false,
+          latest_controller_requested: true,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest_result",
+          status: "not_loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("Nav2 controller 未就绪");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(["controller_server_inactive"]);
+      expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("awaiting_route_execution");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复 Nav2 controller，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
 
   it("workstation proof refresh proxies only allow fixed radar, map, and Nav2 POST bodies", async () => {
     // refresh 代理必须把 body 锁死成 workstation 预设值，且危险 true 字段仍然 fail closed。

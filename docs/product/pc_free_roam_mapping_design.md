@@ -378,6 +378,11 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 PC 下一步文案会把“旧执行主因不是雷达或相机”和“当前 controller 未 active，重跑前需先恢复 controller”分开，
 卡点仍是同窗口 `T=1001 L/R` 非零复验。该变更只修正诊断展示，不自动重跑 Nav2、不发送底盘命令。
 
+2026-06-27 21:58 起，`controller_server_active=false` 也进入
+`safe_command_boundary.nav2_goal_blockers=controller_server_inactive`。当路线读数和 map pose 已 ready 但 controller inactive 时，
+`nav2_goal_ready=false` 且 label 显示 `Nav2 controller 未就绪`；当路线本身还未 ready 时，label 仍保持 `图上路线未就绪`，
+但 blocker 列表会同时列出 controller 缺口。这样 PC 和自动化脚本不再需要从中文 `next_action` 里反推 controller 状态。
+
 2026-06-27 20:19 起，PC 普通首屏在 `source_first_frame_failed` 但诊断明确不是外部独占时，
 仍优先自动接入共享 MJPEG 只读预览，面板状态显示“连接中 / 正在接入共享实时画面”。
 无帧根因不会丢失：当前事实和共享画面状态继续显示“不是页面独占、UVC 无帧、必要时检查 USB/供电或换 known-good UVC”。
