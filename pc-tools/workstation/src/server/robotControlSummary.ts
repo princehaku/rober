@@ -4751,26 +4751,57 @@ function buildFirstJogReadinessSummary(
   };
 }
 
+function currentBaseFeedbackReadState(payload: JsonRecord | null): { status: string; reason: string } {
+  // 当前底盘反馈状态可能来自 /api/base/status，也可能嵌在 /api/status.base；两个来源都只读，不代表运动。
+  const currentFeedbackReadback = asRecord(findFirstKey(payload, ["feedback_readback"]));
+  const currentSerialRead = asRecord(currentFeedbackReadback?.serial_read);
+  const currentSerialError = asRecord(currentSerialRead?.error);
+  const currentFeedbackAck = asRecord(findFirstKey(payload, ["feedback_ack"]));
+  const currentT1001Observed = currentFeedbackAck?.t1001_observed;
+  if (currentSerialRead?.ok === false) {
+    return {
+      status: "read_error",
+      reason: compactValueText(currentSerialError?.message ?? currentSerialError?.type ?? "serial_read_failed", 220),
+    };
+  }
+  if (currentT1001Observed === false) {
+    return {
+      status: "t1001_not_observed",
+      reason: compactValueText(currentFeedbackAck?.reason ?? "T=1001 not observed after current T=130 request", 220),
+    };
+  }
+  if (currentT1001Observed === true) {
+    return { status: "t1001_observed", reason: "" };
+  }
+  return { status: "not_loaded", reason: "" };
+}
+
+function mergeCurrentBaseFeedbackReadStates(
+  states: Array<{ status: string; reason: string }>,
+): { status: string; reason: string } {
+  // 多个 fresh readback 有冲突时按更保守的口径显示，避免较好的端点盖住另一个端点的当前错误。
+  const order = new Map([
+    ["read_error", 0],
+    ["t1001_not_observed", 1],
+    ["t1001_observed", 2],
+    ["not_loaded", 3],
+  ]);
+  return [...states].sort((left, right) => (order.get(left.status) ?? 9) - (order.get(right.status) ?? 9))[0]
+    ?? { status: "not_loaded", reason: "" };
+}
+
 function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[]): RobotControlSummaryResponse["readback_summary"]["base"] {
   // T=1001 只说明 WAVE ROVER feedback 链路有回包，不代表轮速非零、真实运动或 HIL pass。
   const baseStatus = pickReadback(readbacks, "base_status");
   const feedbackLatest = pickReadback(readbacks, "base_feedback_samples_latest");
   const basePayload = readbackById(readbacks, "base_status")?.payload ?? null;
-  const currentFeedbackReadback = asRecord(findFirstKey(basePayload, ["feedback_readback"]));
-  const currentSerialRead = asRecord(currentFeedbackReadback?.serial_read);
-  const currentSerialError = asRecord(currentSerialRead?.error);
-  const currentFeedbackAck = asRecord(findFirstKey(basePayload, ["feedback_ack"]));
-  const currentT1001Observed = currentFeedbackAck?.t1001_observed;
-  const currentFeedbackReadStatus = currentSerialRead?.ok === false
-    ? "read_error"
-    : currentT1001Observed === false
-      ? "t1001_not_observed"
-      : currentT1001Observed === true ? "t1001_observed" : "not_loaded";
-  const currentFeedbackFailureReason = currentSerialRead?.ok === false
-    ? compactValueText(currentSerialError?.message ?? currentSerialError?.type ?? "serial_read_failed", 220)
-    : currentT1001Observed === false
-      ? compactValueText(currentFeedbackAck?.reason ?? "T=1001 not observed after current T=130 request", 220)
-      : "";
+  const statusPayload = readbackById(readbacks, "status")?.payload ?? null;
+  const currentFeedbackState = mergeCurrentBaseFeedbackReadStates([
+    currentBaseFeedbackReadState(asRecord(basePayload)),
+    currentBaseFeedbackReadState(asRecord(findFirstKey(statusPayload, ["base"]))),
+  ]);
+  const currentFeedbackReadStatus = currentFeedbackState.status;
+  const currentFeedbackFailureReason = currentFeedbackState.reason;
   const statusT1001 = baseStatus?.key_values.latest_t1001_observed_count;
   const latestT1001 = feedbackLatest?.key_values.latest_t1001_observed_count ?? feedbackLatest?.key_values.t1001_observed_count;
   const observedCount = statusT1001 ?? latestT1001 ?? "not_loaded";

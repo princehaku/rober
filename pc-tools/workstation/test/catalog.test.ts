@@ -5064,8 +5064,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Robot Control summary keeps current T130 read errors ahead of old feedback samples", async () => {
-    // 当前 T=130 读错时，旧 latest samples 不能把首屏 summary 伪装成当前反馈链路正常。
+  it("Robot Control summary keeps nested status T130 read errors ahead of direct base status and old samples", async () => {
+    // 当前 T=130 读错可能只出现在 /api/status.base；合并时必须按更保守状态显示。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
         payload: {
@@ -5086,7 +5086,7 @@ describe("workstation fail-closed API contracts", () => {
                 ok: false,
                 error: {
                   type: "SerialException",
-                  message: "device reports readiness to read but returned no data",
+                  message: "status nested read failed",
                 },
               },
               sends_commands: true,
@@ -5110,12 +5110,10 @@ describe("workstation fail-closed API contracts", () => {
           },
           feedback_readback: {
             schema: "trashbot.upper_robot_api.v1.base_feedback_request_result",
+            t1001_feedback_frames: [],
+            t1001_feedback_status: "not_observed_after_t130",
             serial_read: {
-              ok: false,
-              error: {
-                type: "SerialException",
-                message: "device reports readiness to read but returned no data",
-              },
+              ok: true,
             },
             sends_commands: true,
             sends_motion_commands: false,
@@ -5154,11 +5152,11 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(baseStatusReadback?.dangerous_true_fields).not.toContain("feedback_readback.sends_commands");
       expect(summary.readback_summary.base.current_feedback_read_status).toBe("read_error");
-      expect(summary.readback_summary.base.current_feedback_failure_reason).toContain("device reports readiness to read but returned no data");
+      expect(summary.readback_summary.base.current_feedback_failure_reason).toContain("status nested read failed");
       expect(summary.readback_summary.base.latest_feedback_status).toBe("current_read_error");
       expect(summary.readback_summary.base.feedback_ack_status).toBe("read_error");
       expect(summary.readback_summary.base.feedback_link_status).toBe("current_t130_read_error");
-      expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("3");
+      expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("true");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.feedback_readback.sends_commands");
     } finally {
