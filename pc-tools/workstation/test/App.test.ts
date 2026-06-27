@@ -8684,7 +8684,7 @@ describe("App", () => {
           goal_x: 0.8,
           goal_y: 0,
           goal_yaw: 0,
-          result_timeout_s: 8,
+          result_timeout_s: 20,
           confirm_navigation_execution: true,
         },
         goal_execution_key_values: {
@@ -9267,7 +9267,7 @@ describe("App", () => {
           goal_x: 0.8,
           goal_y: 0,
           goal_yaw: 0,
-          result_timeout_s: 8,
+          result_timeout_s: 20,
           confirm_navigation_execution: true,
         },
         goal_execution_key_values: {

@@ -196,7 +196,7 @@ const deliveryOperatorConfirmations = ref({
   route_video_refs_verified: false,
   delivery_success: false,
 });
-const navGoalExecutionTimeoutS = ref(8);
+const navGoalExecutionTimeoutS = ref(20);
 
 // WebRTC 状态单独维护，是为了把“上位机 readback”与“本地页面会话状态”区分开。
 const previewStatus = ref<RobotControlPreviewStatus>("idle_not_started");

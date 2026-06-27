@@ -428,6 +428,10 @@ runtime `/scan` 说明，例如 `雷达未刷新（旧 /scan 距离 0.04m，约 
 页面会继续提示“建议先重新定位或刷新地图”，但它不再作为发车前硬挡。执行请求仍发送地图上可见路线终点，
 不回落到默认表单目标，后端继续复核安全确认和固定白名单。
 
+2026-06-28 08:40 起，普通 PC 行程执行默认结果等待窗口从 8s 提升到 20s。
+这只让已点击执行的 Nav2 路线有更完整的结果回传时间，减少长一点的真实路线被 PC 过早判定 timeout；
+不新增自动发车，不改变安全确认、路线目标、ROS base command mode 或后端最小 preflight。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
