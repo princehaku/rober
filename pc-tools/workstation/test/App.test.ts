@@ -5234,6 +5234,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：只需勾选现场安全确认；不会要求额外预检。");
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：勾选安全确认后即可启用；按住方向键才会动。");
+    expect(wrapper.find('[data-testid="plain-motion-panel"]').text()).toContain("勾一次，全页面生效");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').text()).toContain("勾一次，全页面生效");
 
     const callsBeforeSharedSafety = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);

@@ -10569,7 +10569,7 @@ onBeforeUnmount(() => {
           </div>
           <label class="plain-trip-confirm">
             <input ref="plainFreeRoamConfirmCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
-            <span>人在旁边、周围安全、可以随时按停止</span>
+            <span>人在旁边、周围安全、可以随时按停止（勾一次，全页面生效）</span>
           </label>
           <div class="panel-action-row wrap-actions">
             <button ref="plainFreeRoamStartButton" type="button" :disabled="!canStartPlainFreeRoamMapping" data-testid="plain-free-roam-start" @click="startMapRuntime">
@@ -10705,7 +10705,7 @@ onBeforeUnmount(() => {
           <h3>移动/导航</h3>
           <label class="plain-trip-confirm">
             <input v-model="plainUnifiedSafetyConfirmed" type="checkbox" data-testid="plain-motion-safety-confirm">
-            <span>人在旁边、周围安全、停止手段就绪</span>
+            <span>人在旁边、周围安全、停止手段就绪（勾一次，全页面生效）</span>
           </label>
           <div class="panel-action-row wrap-actions">
             <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
@@ -10854,7 +10854,7 @@ onBeforeUnmount(() => {
             </div>
             <label class="plain-trip-confirm">
               <input ref="plainTripSafetyCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainTripSafetyConfirmed" type="checkbox">
-              <span>人在旁边、周围安全、停止手段就绪</span>
+              <span>人在旁边、周围安全、停止手段就绪（勾一次，全页面生效）</span>
             </label>
             <div class="simple-status-row">
               <button ref="plainTripPrepareButton" type="button" class="secondary compact-stop" :disabled="!canRefreshPlainTripPreparation" data-testid="plain-trip-prepare" @click="refreshNav2Proof">
@@ -11844,7 +11844,7 @@ onBeforeUnmount(() => {
             <p class="checklist-title">现场确认</p>
             <label class="checklist-item">
               <input v-model="plainUnifiedSafetyConfirmed" type="checkbox" data-testid="advanced-motion-safety-confirm">
-              <span>人在旁边、周围安全、停止手段就绪</span>
+              <span>人在旁边、周围安全、停止手段就绪（勾一次，全页面生效）</span>
             </label>
           </div>
           <p class="panel-note">{{ manualMotionSummary.hint }}</p>
