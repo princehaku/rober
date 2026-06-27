@@ -2053,7 +2053,7 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
     return `${modeName}：停止已排队，启动请求返回后会立刻请求上车端停止。`;
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return `${modeName}：启动请求已发送，等待上车端返回；返回前不把它当作已低速运行。`;
+    return `${modeName}：启动请求已发送，等待上车端返回；返回前未证明已启动或已低速运行。`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
     return `${modeName}：停止请求已发送，等待上车端返回；返回前未证明已停止。`;
@@ -3469,7 +3469,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label: `${modeName}停止已排队`, state: "auto_stop_queued", style, aria: `上车端${modeName}启动返回后会立刻请求停止${locatedSuffix}` };
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return { label: `${modeName}请求中（等待返回）`, state: "auto_starting", style, aria: `${modeName}启动请求已发送，等待上车端返回，未确认低速运行${locatedSuffix}` };
+    return { label: `${modeName}请求中（等待返回）`, state: "auto_starting", style, aria: `${modeName}启动请求已发送，等待上车端返回，返回前未证明已启动或已低速运行${locatedSuffix}` };
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
     return { label: `${modeName}停止请求中`, state: "auto_stopping", style, aria: `${modeName}停止请求已发送，等待上车端返回，未证明已停止${locatedSuffix}` };
@@ -4255,7 +4255,7 @@ const plainFreeRoamDriveStatus = computed(() => {
     return `${statusPrefix}：停止${plainFreeRoamMotionModeName.value}已排队，启动请求返回后会立刻请求上车端停止。`;
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return `${statusPrefix}：启动请求已发送，等待上车端返回；返回前不把它当作已低速运行。`;
+    return `${statusPrefix}：启动请求已发送，等待上车端返回；返回前未证明已启动或已低速运行。`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
     return `${statusPrefix}：停止请求已发送，等待上车端返回；返回前未证明已停止。`;
