@@ -2816,6 +2816,12 @@ delivery、free-roam start/stop、stop 或 `/cmd_vel`；真实底盘是否产生
 和“这些点是否已经能贴到地图坐标”分开表达，避免普通用户把点数组缺失误解成雷达完全没材料；它不调用 radar start/refresh、
 manual、keyboard pulse、Nav2、delivery、free-roam start/stop、stop 或 `/cmd_vel`。
 
+2026-06-27 09:21 起，普通首屏地图雷达 marker 在 `雷达待刷新` 且只有压缩点数时，会同时显示上车端自动扫图门禁读到的最近障碍距离。
+例如 live 形状 `scan_preview_point_count=72`、`latest_proof_incomplete_while_lifecycle_running`、`最近障碍 0.04m` 会显示为
+`雷达待刷新，待刷新雷达点 72 个，最近障碍 0.04m`，口径行继续声明“仅点数，没有点数组，未贴到地图”。这让雷达开始后的材料、
+实时性和近障碍风险同时所见即所得；它不刷新雷达、不启动雷达、不调用 manual、keyboard pulse、Nav2、delivery、
+free-roam start/stop、stop 或 `/cmd_vel`。
+
 2026-06-26 23:05 起，普通首屏 `扫地式建图` 的主按钮不再把摄像头首帧或雷达 fresh 当作低速移动硬门禁；
 勾选安全确认后即可点击 `开始记录并低速移动`，再通过键盘按住移动或显式自动扫图入口让小车低速走。摄像头和雷达
 readiness 只决定本轮是否能按“可建图”验收：二者都 ready 时显示 `可建图`；缺任一项时显示 `可移动`，并明确提示
