@@ -6501,12 +6501,14 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerup");
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已松开，正在发送停止；完成前不要继续移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已松开，停止请求已发送，等待返回；返回前未证明已停止。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已松开，停止请求已发送，等待返回；返回前未证明已停止。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：已松开，停止请求已发送，等待返回；返回前未证明已停止；上次方向前进。");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待停止完成");
     const marker = wrapper.find('[data-testid="plain-map-free-roam-action-marker"]');
-    expect(marker.text()).toBe("停止发送中：前进，轮速非零");
+    expect(marker.text()).toBe("停止请求中：前进，轮速非零");
     expect(marker.attributes("data-state")).toBe("stopping");
-    expect(marker.attributes("aria-label")).toBe("已松开方向键，上次方向前进，停止原因松开屏幕方向键，轮速 L/R=0.07/0.08，非零已读到，正在发送停止，机器人地图位置未读到，标记不代表坐标");
+    expect(marker.attributes("aria-label")).toBe("已松开方向键，上次方向前进，停止原因松开屏幕方向键，轮速 L/R=0.07/0.08，非零已读到，停止请求已发送，等待返回，返回前未证明已停止，机器人地图位置未读到，标记不代表坐标");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-map-free-roam-action-marker[data-state="stopping"]');
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
@@ -15471,7 +15473,7 @@ describe("App", () => {
 
     await wrapper.find('[data-testid="keyboard-control-stop"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已松开，正在发送停止。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已松开，停止请求已发送，等待返回；返回前未证明已停止。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：点击停止。");
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(0);
 

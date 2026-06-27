@@ -2233,7 +2233,7 @@ function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): str
     return `键盘：正在${keyboardDirectionPlainLabel.value}，按住连续低速脉冲${wheelText}；松开即停。`;
   }
   if (keyboardControlStatus.value.startsWith("released")) {
-    return `键盘：已松开，正在发送停止；上次方向${manualDirectionPlainLabel(keyboardLastDirection.value)}。`;
+    return `键盘：已松开，停止请求已发送，等待返回；返回前未证明已停止；上次方向${manualDirectionPlainLabel(keyboardLastDirection.value)}。`;
   }
   if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
     return "键盘：手控请求失败，未记为连续验证；检查连接和底盘入口后重试。";
@@ -3523,7 +3523,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
   if (mapRuntimeStarted.value && keyboardControlStatus.value.startsWith("released")) {
     const stopLabelSuffix = keyboardLastStopMapSuffix();
     const stopAriaSuffix = keyboardLastStopMapAria();
-    return { label: `停止发送中${stopLabelSuffix}`, state: "stopping", style, aria: `已松开方向键${stopAriaSuffix}，正在发送停止${locatedSuffix}` };
+    return { label: `停止请求中${stopLabelSuffix}`, state: "stopping", style, aria: `已松开方向键${stopAriaSuffix}，停止请求已发送，等待返回，返回前未证明已停止${locatedSuffix}` };
   }
   if (mapRuntimeStarted.value && keyboardStopFailedAfterPulse.value) {
     const stopLabelSuffix = keyboardLastStopMapSuffix();
@@ -4316,7 +4316,7 @@ const plainFreeRoamDriveStatus = computed(() => {
     return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，松开即停；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
   }
   if (keyboardControlStatus.value.startsWith("released")) {
-    return `${statusPrefix}：已松开，正在发送停止；完成前不要继续移动。`;
+    return `${statusPrefix}：已松开，停止请求已发送，等待返回；返回前未证明已停止。`;
   }
   if (keyboardStopFailedAfterPulse.value) {
     return `${statusPrefix}：停止请求失败，未证明小车已停止；请点红色停止并现场接管。`;
@@ -5001,7 +5001,7 @@ const plainKeyboardLiveStatus = computed(() => {
   }
   if (keyboardControlStatus.value.startsWith("released")) {
     // 失焦或切页会先退出 armed 状态；停止中的文案仍必须优先展示给 operator。
-    return "已松开，正在发送停止。";
+    return "已松开，停止请求已发送，等待返回；返回前未证明已停止。";
   }
   if (keyboardStopSettledAfterPulse.value) {
     return `键盘手控已验证，${keyboardForwardedPulseProgressText.value}，停止已发送；需要继续移动可按住方向键。`;
