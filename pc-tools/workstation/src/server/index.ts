@@ -426,6 +426,8 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     base_command_sample_count: shortValue(baseCommandSummary?.sample_count, "0"),
     base_command_nonzero_count: shortValue(baseCommandSummary?.nonzero_command_count, "0"),
     base_command_nonzero_observed: shortValue(baseCommandSummary?.nonzero_command_observed, "false"),
+    base_command_latest_nonzero_mode: shortValue(baseCommandSummary?.latest_nonzero_command_mode, "not_loaded"),
+    base_command_mode_counts: shortValue(baseCommandSummary?.command_mode_counts, "{}"),
     robot_control_executed: shortValue(latestResult?.robot_control_executed ?? payload?.robot_control_executed, "false"),
     sends_base_motion_commands: shortValue(latestResult?.sends_base_motion_commands ?? payload?.sends_base_motion_commands, "not_loaded"),
     uses_base_uart: shortValue(latestResult?.uses_base_uart ?? payload?.uses_base_uart, "not_loaded"),

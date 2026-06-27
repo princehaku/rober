@@ -502,6 +502,8 @@ const fixtures: Record<string, unknown> = {
         goal_execution_mode_rerun_status: "not_loaded",
         goal_execution_base_command_nonzero_observed: "not_loaded",
         goal_execution_base_command_nonzero_count: "not_loaded",
+        goal_execution_base_command_latest_nonzero_mode: "not_loaded",
+        goal_execution_base_command_mode_counts: "{}",
         goal_execution_base_feedback_sample_count: "not_loaded",
         goal_execution_base_feedback_nonzero_sample_count: "not_loaded",
         goal_execution_base_feedback_lr_nonzero_proven: "not_loaded",

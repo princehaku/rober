@@ -116,7 +116,32 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
         self.assertEqual(summary["nonzero_command_count"], 1)
         self.assertEqual(summary["malformed_line_count"], 1)
         self.assertTrue(summary["nonzero_command_observed"])
+        self.assertEqual(summary["command_mode_counts"], {"pwm": 2})
+        self.assertEqual(summary["latest_nonzero_command_mode"], "pwm")
         self.assertEqual(summary["latest_nonzero_command"]["vendor_command"], {"T": 11, "L": 90, "R": 90})
+
+    def test_command_debug_log_summary_tracks_ros_t13_nonzero_commands(self) -> None:
+        """ROS/T=13 重跑必须把 X/Z 非零计为底盘命令已到 bridge。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "command.jsonl"
+            log_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"command_mode": "ros", "vendor_command": {"T": 13, "X": 0, "Z": 0}, "linear_x": 0, "angular_z": 0}),
+                        json.dumps({"command_mode": "ros", "vendor_command": {"T": 13, "X": 0.08, "Z": 0.0}, "linear_x": 0.08, "angular_z": 0}),
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            summary = HELPER.summarize_command_debug_log(str(log_path))
+
+        self.assertEqual(summary["sample_count"], 2)
+        self.assertEqual(summary["nonzero_command_count"], 1)
+        self.assertTrue(summary["nonzero_command_observed"])
+        self.assertEqual(summary["command_mode_counts"], {"ros": 2})
+        self.assertEqual(summary["latest_nonzero_command_mode"], "ros")
+        self.assertEqual(summary["latest_nonzero_command"]["vendor_command"], {"T": 13, "X": 0.08, "Z": 0.0})
 
     def test_feedback_debug_log_tracks_imu_delta_separately_from_wheel_feedback(self) -> None:
         """IMU 姿态变化是运动迹象，不能被误包装成 L/R 轮速非零。"""

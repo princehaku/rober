@@ -4078,7 +4078,15 @@ describe("workstation fail-closed API contracts", () => {
             sends_motion_commands: true,
             sends_base_motion_commands: true,
             uses_base_uart: true,
+            base_command_mode: "ros",
             goal_request: { frame_id: "map", x: 0.8, y: 0 },
+            base_command_summary: {
+              sample_count: 2,
+              nonzero_command_count: 1,
+              nonzero_command_observed: true,
+              latest_nonzero_command_mode: "ros",
+              command_mode_counts: { ros: 2 },
+            },
             base_feedback_summary: {
               sample_count: 12,
               nonzero_sample_count: 2,
@@ -4102,6 +4110,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_feedback_sample_count).toBe("8");
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("ros");
+      expect(summary.readback_summary.nav2.goal_execution_base_command_mode_counts).toBe("{\"ros\":2}");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("true");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("wheel_lr_nonzero_proven");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("本轮路线和 wheel raw L/R 已证明，继续送达确认");
@@ -8109,6 +8119,13 @@ describe("workstation fail-closed API contracts", () => {
           nav2_goal_execution_proven: true,
           delivery_success: false,
           base_command_mode: "pwm",
+          base_command_summary: {
+            sample_count: 2,
+            nonzero_command_count: 1,
+            nonzero_command_observed: true,
+            latest_nonzero_command_mode: "ros",
+            command_mode_counts: { ros: 2 },
+          },
           base_feedback_summary: {
             sample_count: 2,
             nonzero_sample_count: 1,
@@ -8141,6 +8158,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.hard_dangerous_true_fields).toEqual([]);
       expect(body.goal_execution_key_values.hil_pass).toBe("true");
       expect(body.goal_execution_key_values.base_command_mode).toBe("pwm");
+      expect(body.goal_execution_key_values.base_command_latest_nonzero_mode).toBe("ros");
+      expect(body.goal_execution_key_values.base_command_mode_counts).toBe("{\"ros\":2}");
       expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("true");
       expect(body.goal_execution_key_values.base_feedback_latest_left_speed).toBe("90");
       expect(body.goal_execution_key_values.delivery_success).toBe("false");

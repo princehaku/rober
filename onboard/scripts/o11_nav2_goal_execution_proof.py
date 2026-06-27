@@ -408,6 +408,8 @@ def summarize_command_debug_log(path: str) -> dict[str, Any]:
         "sample_count": 0,
         "nonzero_command_count": 0,
         "nonzero_command_observed": False,
+        "command_mode_counts": {},
+        "latest_nonzero_command_mode": "not_loaded",
         "latest_command": None,
         "latest_nonzero_command": None,
         "malformed_line_count": 0,
@@ -442,17 +444,23 @@ def summarize_command_debug_log(path: str) -> dict[str, Any]:
         ros_z = command.get("Z")
         values = [value for value in (left, right, ros_x, ros_z) if isinstance(value, (int, float))]
         is_nonzero = any(abs(float(value)) > 1e-6 for value in values)
+        command_mode = str(record.get("command_mode") or "").strip().lower()
+        if not command_mode:
+            # 历史日志可能没有 command_mode；按 vendor T 值补一个诊断口径，便于现场区分 ROS/T=13 与 PWM/T=11。
+            command_mode = {13: "ros", 1: "speed", 11: "pwm"}.get(command.get("T"), "unknown")
         short_record = {
             "observed_at_unix_s": record.get("observed_at_unix_s"),
             "linear_x": record.get("linear_x"),
             "angular_z": record.get("angular_z"),
-            "command_mode": record.get("command_mode"),
+            "command_mode": command_mode,
             "vendor_command": command,
         }
         summary["sample_count"] += 1
+        summary["command_mode_counts"][command_mode] = summary["command_mode_counts"].get(command_mode, 0) + 1
         summary["latest_command"] = short_record
         if is_nonzero:
             summary["nonzero_command_count"] += 1
+            summary["latest_nonzero_command_mode"] = command_mode
             summary["latest_nonzero_command"] = short_record
 
     summary["nonzero_command_observed"] = summary["nonzero_command_count"] > 0

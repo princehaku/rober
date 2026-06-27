@@ -218,6 +218,12 @@ pc-tools/workstation/
 - 2026-06-27 00:37 起，Robot Control summary 和 Nav2 latest/execute 代理会显式消费上车端 `hil_pass`。如果最近 `NavigateToPose` action 返回
   `goal_succeeded` 但 artifact 里 `hil_pass=false`，PC 仍显示 `goal_execution_proven=false`，普通首屏行程 marker 显示
   `已到达，真车未证明`，并继续要求重新执行完整行程；只有 action success、反馈样本和真车执行/HIL 材料都成立，才允许把本轮路线视作完整执行。
+- 2026-06-27 18:58 起，O11 Nav2 执行证据和 PC summary 会额外展示同窗口底盘命令模式事实：
+  `base_command_summary.latest_nonzero_command_mode` 与 `command_mode_counts`。上车端 helper 会按 WAVE ROVER vendor JSON
+  `T=13` 归类为 `ros`、`T=11` 归类为 `pwm`、`T=1` 归类为 `speed`，并把 `X/Z` 或 `L/R` 非零计为底盘命令已进入 bridge。
+  这样下一次 ROS/T=13 重跑图上路线时，PC 能直接区分“Nav2 已经发出 ROS/T=13 非零命令”和“同窗口 wheel raw
+  L/R 仍未非零”。该证据只服务排障和完整路线验收，不把 action success、IMU 姿态变化或命令非零升级为 delivery success，
+  也不调用 manual、keyboard、free-roam、Nav2 execute、delivery、stop 或 `/cmd_vel`。
   现场复核中，当前旧 `o11-nav2-goal-execution-1782099547218` action 是 `goal_succeeded`，但 `hil_pass=false`，因此 PC summary
   保持 `readback_summary.nav2.status=not_proven`。该口径只修正 WYSIWYG 和送达 gate，不自动重跑 Nav2、不发送 manual/stop 或 `/cmd_vel`。
 - 2026-06-28 02:55 起，普通首屏把 Nav2 action 成功、底盘运动迹象和 wheel raw L/R 非零分层展示：如果最近路线 `goal_succeeded`、反馈样本存在、已发非零底盘命令且 IMU 姿态变化存在，但 `base_feedback_lr_nonzero_proven=false` 且 latest L/R 仍为 `0/0`，地图 caption、行程进度和行程摘要都会显示 `轮速 L/R=0/0 待复验`。这类 IMU-only 到达仍可作为“已到达/底盘已响应”的现场线索，但不能替代 wheel raw L/R 非零，也不会自动确认送达或提升 `delivery_success`。
