@@ -91,7 +91,7 @@ pc-tools/workstation/
 - 2026-06-25 18:50 起，同一条 no-motion planner path preview 还会在地图上显示路线端点：有真实执行目标 marker 时只补 `起点`，没有执行目标时显示 `起点/终点`。端点 marker 来自 path 首尾点，只说明规划路线首尾，不代表机器人当前位置，也不会放开发车门禁或调用 Nav2 execute/manual/keyboard/delivery/`/cmd_vel`。
 - 2026-06-25 22:00 起，普通首屏“行程操作”在地图已显示路线点时，把可执行提示和红色按钮从泛化 `执行行程` 收敛为 `执行图上路线`，并在提示里写明“地图上已显示路线 N 个点”。这只让 operator 知道即将执行的是地图里看到的路线；实际执行仍走原固定 Nav2 execute 代理和后端定位/路线复查 gate，不自动发车、不调用 manual、keyboard、delivery、stop 或 `/cmd_vel`。
 - 2026-06-26 21:55 起，Robot Control summary 的 `safe_command_boundary` 增加 `nav2_goal_ready/nav2_goal_label/nav2_goal_blockers`，用当前只读 Nav2 proof 中的 path generated、path point count 和 map-frame robot pose 判断“路线读数已准备/未就绪”。该字段不证明浏览器地图画面已经显示当前路线；普通首屏仍必须由地图 overlay gate 决定是否显示 `执行图上路线`。该字段只改善 PC 首屏和高级诊断的可解释性，不把 `safe_to_control`、`primary_actions_enabled` 或 `robot_control_executed` 置 true；真正点击执行仍走固定 Nav2 execute 代理，并在发车前重新跑定位与路线 preflight。
-- 2026-06-27 07:15 起，普通首屏“当前事实”的行程行也按同一 WYSIWYG 边界收敛：只读到路线点数时显示“路线读数已准备，先刷新地图画面”；地图已画出当前路线但没有小车 map 位姿时显示“图上路线已显示，先重新定位”；只有当前路线和小车位置都可见时才显示“图上路线可执行”。该事实条只翻译 readback 和地图 overlay，不自动执行 Nav2、不发送 manual/keyboard、delivery、stop 或 `/cmd_vel`。
+- 2026-06-27 12:56 起，普通首屏“当前事实”的行程行按最小发车前确认收敛：只读到路线点数时仍显示“路线读数已准备，先刷新地图画面”；地图已画出当前路线但没有小车 map 位姿时显示“小车位置未显示，执行结果以上车端返回为准”，不再要求先重新定位；只有当前路线和小车位置都可见时显示“图上路线可执行”。该事实条只翻译 readback 和地图 overlay，不自动执行 Nav2、不发送 manual/keyboard、delivery、stop 或 `/cmd_vel`。
 - 2026-06-26 05:50 起，如果地图画面或地图 proof 正在刷新，即使旧画面上还显示路线，普通首屏也会把 `执行图上路线` 临时切成 `等待地图刷新` 并禁用按钮；行程状态和本轮进度同步提示“刷新完成后再执行”。该状态只等待只读 `/api/robot-control/map/preview` 或 `/api/robot-control/map/proof/refresh` 返回，避免按旧图发车，不自动执行 Nav2、不发送 manual、keyboard、delivery、stop 或 `/cmd_vel`。
 - 2026-06-26 04:40 起，普通首屏把 `执行图上路线` 和 PC 手控/键盘入口做互斥：Nav2 行程执行请求未返回时，键盘启用按钮显示 `行程中`、方向键禁用，新的 manual/keyboard pulse 不会发出；反过来手控按住或 manual 请求未收口时，`执行图上路线` 显示 `等待手控停止` 并禁用。该互锁只拦截新的非 stop 控制请求，`停止` 仍作为接管兜底可用，不提交 delivery complete 或 `/cmd_vel`。
 - 2026-06-25 21:00 起，普通首屏地图会区分“当前路线”和“最近路线”：如果 `path_preview_points` 仍存在但 `path_generated/path_generation_succeeded` 没有证明当前 planner 成功，地图继续照实画出最近路线点，但 caption 改为 `最近路线已显示 N/M 个点，待重新规划`，端点状态也标为最近路线。该提示只修正 WYSIWYG 语义，不自动重新规划、不执行 Nav2、不调用 manual、keyboard、delivery、stop 或 `/cmd_vel`。
@@ -2648,11 +2648,11 @@ camera health 返回 `source_first_frame_failed`、`source_readiness=first_frame
 小车连接、现场安全确认、按住才动和停止兜底，不把雷达作为移动前置，也不修改 Clash 或系统代理配置；PC Node 公开入口仍是
 `0.0.0.0:7001`。
 
-2026-06-26 19:35 起，普通首屏 `执行图上路线` 进一步要求地图上同时看得到当前路线和小车 map-frame 位置。只有路线点可见但
-`robot_pose=null` 或无法投到当前地图画面时，路线仍照实显示，坐标口径继续说明路线按地图坐标显示；但执行按钮显示
-`先重新定位` 并禁用，进度卡提示 `小车位置未读到；先重新定位`，点击主进度按钮只聚焦 `重新定位`，不会调用
-`/api/robot-control/nav2/goal/execute`。该门禁防止“只看到路线、看不到车”的情况下启动完整 Nav2 行程，不发送 manual/keyboard
-pulse、delivery、stop 或 `/cmd_vel`。
+2026-06-27 12:56 起，普通首屏 `执行图上路线` 不再把小车 map-frame 位置缺失作为发车前硬挡。只有路线点可见但
+`robot_pose=null` 或无法投到当前地图画面时，路线仍照实显示，坐标口径继续说明路线按地图坐标显示；执行按钮在勾选现场安全确认后
+仍显示 `执行图上路线` 并允许调用 `/api/robot-control/nav2/goal/execute`，进度卡提示 `小车位置未显示，仍可执行，执行后以结果和轮速反馈收口`。
+该调整把定位显示降级为 WYSIWYG 警告，发车前硬挡只保留现场安全确认、地图刷新同步、手控互斥和最近旧路线保护；不会自动发送
+manual/keyboard pulse、delivery、stop 或 `/cmd_vel`。
 
 2026-06-27 18:10 起，PC Node 新增只读 `GET /api/robot-control/camera/mjpeg/status?baseUrl=...`，用于展示实时画面 MJPEG fallback
 是否复用同一条上游流。该端点只读取本机 relay 表，返回观看页面数、上游是否连接、content-type 是否已拿到、`shared_capture=true`
