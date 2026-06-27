@@ -3252,3 +3252,9 @@ manual/keyboard/free-roam/Nav2/delivery/stop 或 `/cmd_vel`。
 但 `latest_scan_proof_fresh=false` 时，即使旧 proof 里仍有 `scan_preview_points` 数组，地图也不再画这些旧点。
 marker 和 caption 只保留 `待刷新雷达点 N 个（旧点数组，未贴到地图）` 或最近障碍距离，提示刷新后再确认实时性。
 这样“雷达开始后地图上的标记”只显示当前真实点、点数材料或距离材料，不把过期点数组伪装成地图上的实时雷达点。
+
+2026-06-27 12:48 起，上车 `/api/nav2/goal/execute` 外层回包和 O11 helper/PC summary 使用同一条完整路线证明口径：
+只有最近一次 NavigateToPose artifact 同窗口 `base_feedback_summary.wheel_feedback_lr_nonzero_proven=true` 时，
+`nav2_goal_execution_proven` 和 `hil_pass` 才能为 true。若 action 已 `goal_succeeded` 但 wheel raw L/R 仍未非零，
+外层回包返回 `nav2_goal_execution_proven=false`，并在 `not_proven` 中包含 `wheel_feedback_lr_nonzero`。
+这避免 PC 执行接口短暂把“Nav2 返回成功”显示成“完整自动驾驶已完成”；真正 delivery success 仍必须另由送达确认闭环。

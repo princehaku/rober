@@ -1780,6 +1780,43 @@ def nav2_goal_execution_artifact_info(path: str) -> dict[str, Any]:
     }
 
 
+def bool_field_true(value: Any) -> bool:
+    """兼容 bool 和 JSON 字符串；外层证明字段不能被任意 truthy 文本误抬高。"""
+    return value is True or (isinstance(value, str) and value.strip().lower() == "true")
+
+
+def nav2_goal_execution_proven_from_latest_result(latest_result: dict[str, Any]) -> bool:
+    """完整 Nav2 路线必须同窗口 wheel L/R 非零；action success 本身只算导航返回。"""
+    if not isinstance(latest_result, dict):
+        return False
+    base_feedback = latest_result.get("base_feedback_summary") if isinstance(latest_result.get("base_feedback_summary"), dict) else {}
+    wheel_nonzero = bool_field_true(base_feedback.get("wheel_feedback_lr_nonzero_proven"))
+    if not wheel_nonzero:
+        return False
+    if bool_field_true(latest_result.get("nav2_goal_execution_proven")):
+        return True
+    return (
+        latest_result.get("status") == "goal_succeeded"
+        and bool_field_true(latest_result.get("goal_accepted"))
+        and bool_field_true(latest_result.get("result_received"))
+        and latest_result.get("result_status") == "succeeded"
+        and bool_field_true(latest_result.get("robot_control_executed"))
+    )
+
+
+def nav2_goal_execution_not_proven_reasons(latest_result: dict[str, Any], proven: bool) -> list[str]:
+    """外层 execute 回包要解释还差什么，不能只留下泛化 delivery 缺口。"""
+    reasons = ["delivery_success", "operator_dropoff_confirmation"]
+    if proven:
+        return reasons
+    status = latest_result.get("status") if isinstance(latest_result, dict) else "not_loaded"
+    base_feedback = latest_result.get("base_feedback_summary") if isinstance(latest_result.get("base_feedback_summary"), dict) else {}
+    wheel_nonzero = bool_field_true(base_feedback.get("wheel_feedback_lr_nonzero_proven"))
+    if status == "goal_succeeded" and not wheel_nonzero:
+        return ["wheel_feedback_lr_nonzero", *reasons]
+    return ["nav2_goal_execution", *reasons]
+
+
 def delivery_completion_artifact_info(path: str) -> dict[str, Any]:
     """送达完成 artifact 只由 delivery gate 写入，不能由 Nav2 或 operator report 单独替代。"""
     resolved_path = resolve_onboard_runtime_path(path)
@@ -6552,6 +6589,8 @@ class UpperRobotApi:
         http_status, latest = self.nav2_goal_execution_latest()
         latest_result = latest.get("latest_result") if isinstance(latest.get("latest_result"), dict) else {}
         latest_status = latest_result.get("status") if isinstance(latest_result, dict) else "not_loaded"
+        nav2_execution_proven = nav2_goal_execution_proven_from_latest_result(latest_result)
+        nav2_not_proven = nav2_goal_execution_not_proven_reasons(latest_result, nav2_execution_proven)
         return software_guard_payload(
             schema_suffix="nav2_goal_execution_result",
             action="nav2_goal_execute",
@@ -6583,20 +6622,21 @@ class UpperRobotApi:
                 "result_status": latest_result.get("result_status") if isinstance(latest_result, dict) else "not_loaded",
                 "cancel_requested": bool(latest_result.get("cancel_requested")) if isinstance(latest_result, dict) else False,
                 "feedback_sample_count": int(latest_result.get("feedback_sample_count") or 0) if isinstance(latest_result, dict) else 0,
-                "nav2_goal_execution_proven": latest_status == "goal_succeeded",
+                "nav2_goal_execution_proven": nav2_execution_proven,
                 "sends_commands": bool(latest_result.get("sends_motion_commands")) if isinstance(latest_result, dict) else False,
                 "sends_motion_commands": bool(latest_result.get("sends_motion_commands")) if isinstance(latest_result, dict) else False,
                 "sends_base_motion_commands": bool(latest_result.get("sends_base_motion_commands")) if isinstance(latest_result, dict) else False,
                 "uses_base_uart": bool(latest_result.get("uses_base_uart")) if isinstance(latest_result, dict) else False,
                 "publishes_cmd_vel": latest_result.get("publishes_cmd_vel") if isinstance(latest_result, dict) else False,
                 "calls_base_manual": bool(latest_result.get("calls_base_manual")) if isinstance(latest_result, dict) else False,
+                "hil_pass": bool(latest_result.get("hil_pass")) and nav2_execution_proven if isinstance(latest_result, dict) else False,
                 "blocked_devices_not_touched": [],
                 "blocked_commands_not_sent": [],
                 "delivery_success": False,
                 "safe_to_control": False,
                 "primary_actions_enabled": False,
                 "robot_control_executed": bool(latest_result.get("robot_control_executed")) if isinstance(latest_result, dict) else False,
-                "not_proven": ["delivery_success", "operator_dropoff_confirmation"],
+                "not_proven": nav2_not_proven,
             },
         )
 

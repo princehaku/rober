@@ -2346,6 +2346,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "uses_base_uart": True,
             "publishes_cmd_vel": "nav2_controller_may_publish_cmd_vel_when_goal_is_active",
             "calls_base_manual": False,
+            "base_feedback_summary": {"wheel_feedback_lr_nonzero_proven": True},
+            "hil_pass": True,
         }
 
         with mock.patch.object(api, "nav2_proof_latest", return_value=(200, {"latest_result": {"proof": {"managed_runtime_map_yaml": "/tmp/map.yaml"}}})):
@@ -2357,12 +2359,49 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("ros", payload["goal_request"]["base_command_mode"])
         self.assertEqual("ros", helper_mock.call_args.kwargs["base_command_mode"])
         self.assertTrue(payload["nav2_goal_execution_proven"])
+        self.assertTrue(payload["hil_pass"])
         self.assertTrue(payload["sends_motion_commands"])
         self.assertTrue(payload["sends_base_motion_commands"])
         self.assertTrue(payload["uses_base_uart"])
         self.assertEqual([], payload["blocked_devices_not_touched"])
         self.assertEqual([], payload["blocked_commands_not_sent"])
         self.assertTrue(payload["robot_control_executed"])
+        self.assertFalse(payload["delivery_success"])
+
+    def test_nav2_goal_execute_does_not_prove_route_without_wheel_lr(self) -> None:
+        """NavigateToPose 成功但同窗口 L/R 未非零时，上车外层回包也必须保持未证明。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        latest_result = {
+            "status": "goal_succeeded",
+            "goal_accepted": True,
+            "result_received": True,
+            "result_status": "succeeded",
+            "feedback_sample_count": 8,
+            "robot_control_executed": True,
+            "sends_motion_commands": True,
+            "sends_base_motion_commands": True,
+            "uses_base_uart": True,
+            "nav2_goal_execution_proven": True,
+            "hil_pass": True,
+            "base_feedback_summary": {"wheel_feedback_lr_nonzero_proven": False},
+        }
+
+        with mock.patch.object(api, "nav2_proof_latest", return_value=(200, {"latest_result": {"proof": {"managed_runtime_map_yaml": "/tmp/map.yaml"}}})):
+            with mock.patch.object(upper_robot_api, "run_nav2_goal_execution_helper", return_value={"mode": "o11", "executed": True, "ok": True}):
+                with mock.patch.object(api, "nav2_goal_execution_latest", return_value=(200, {"latest_result": latest_result})):
+                    payload = asyncio.run(api.nav2_goal_execute({"confirm_navigation_execution": True}))
+
+        self.assertEqual("goal_succeeded", payload["status"])
+        self.assertFalse(payload["nav2_goal_execution_proven"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertIn("wheel_feedback_lr_nonzero", payload["not_proven"])
+        self.assertTrue(payload["robot_control_executed"])
+        self.assertTrue(payload["sends_base_motion_commands"])
         self.assertFalse(payload["delivery_success"])
 
     def test_nav2_goal_execute_allows_explicit_base_command_mode_override(self) -> None:
