@@ -125,6 +125,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `free_roam_mapping_missing_reasons`。前者只表示勾安全确认后可请求低速自由移动；后两者只表示能否按建图验收收口，
   缺口会列出 `camera_first_frame/lidar_fresh/mapping_active/fresh_map_preview`。这样外部脚本、PC 首屏和现场人员不再需要从
   gates 文案里反推“能动”和“能建图”的区别。
+- 2026-06-27 20:58 起，普通首屏建图验收文案优先消费 `safe_command_boundary.free_roam_mapping_ready` 与
+  `free_roam_mapping_missing_reasons`，只有旧上车端缺少该字段时才 fallback 到 `readback_summary.free_roam.mapping_missing`。
+  若 PC 本地刚启动地图记录或已经显示真实地图画面，会过滤上一拍 summary 里的 `mapping_active/fresh_map_preview` 旧缺口；
+  但相机首帧和雷达 fresh 仍必须由真实材料证明，不能被旧 readback 的 `mapping_ready=true` 翻案。
 - 2026-06-27 16:55 起，当 `free_roam_autonomy_start_ready=true` 但本地地图记录或扫图画面还没就绪时，普通首屏的
   `开始自动扫图（低速）` 按钮会走自动扫图向导：先启动地图记录，再把地图预览刷新计入本轮扫图 fresh gate，满足条件后再调用固定 start 代理。
   该向导仍不会自动勾选安全确认，也不会绕过上车端 camera 复检。

@@ -4513,6 +4513,9 @@ describe("App", () => {
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     summaryFixture.safe_command_boundary.free_roam_autonomy = "locked";
     summaryFixture.safe_command_boundary.free_roam_autonomy_start_ready = true;
+    summaryFixture.safe_command_boundary.free_roam_motion_start_ready = true;
+    summaryFixture.safe_command_boundary.free_roam_mapping_ready = false;
+    summaryFixture.safe_command_boundary.free_roam_mapping_missing_reasons = ["camera_first_frame", "mapping_active"];
     summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
       status: "loaded",
       state: "stopping",
@@ -4521,7 +4524,8 @@ describe("App", () => {
       artifact_only: true,
       cmd_vel_publish_enabled: false,
     };
-    summaryFixture.readback_summary.free_roam.mapping_missing = "camera_first_frame,mapping_active,fresh_map_preview";
+    summaryFixture.readback_summary.free_roam.mapping_ready = "true";
+    summaryFixture.readback_summary.free_roam.mapping_missing = "not_loaded";
     summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
     summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
     summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
@@ -4623,6 +4627,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mode-subtitle"]').text()).toBe("先确认安全，可低速自由移动；相机和雷达 ready 后再按建图验收。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可在安全确认后低速自由移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).not.toContain("画面和雷达都 ready");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自由移动（低速）后才会重新启动。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出（不是页面独占）、地图记录未启动；自由移动不受影响。");

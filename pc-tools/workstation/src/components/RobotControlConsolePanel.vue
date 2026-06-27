@@ -1728,6 +1728,7 @@ function freeRoamMappingMissingPlainLabels(missing: string[] | string | undefine
     fresh_map_preview: "地图画面未刷新",
     map_recording_active: "地图记录未启动",
     mapping_active: "地图记录未启动",
+    lidar_fresh: "雷达未刷新",
     radar_scan_proof_not_fresh: "雷达未刷新",
     fresh_radar_scan: "雷达未刷新",
     radar_not_ready: "雷达未就绪",
@@ -1761,10 +1762,31 @@ function freeRoamMappingMissingPlainLabelsForVisibleState(missing: string[] | st
   const labels = freeRoamMappingMissingPlainLabels(missing).map((label) => (
     label === "画面首帧未出" ? cameraFirstFrameMissingPlainLabel() : label
   ));
-  if (!plainMapPreviewImageLoaded()) {
-    return [...new Set(labels)];
+  const visibleLabels = labels.filter((label) => {
+    // PC 已经看到的事实优先于上车端上一拍 summary，避免页面显示着画面/记录却继续报旧缺口。
+    if (label === "地图画面未刷新" && plainMapPreviewImageLoaded()) {
+      return false;
+    }
+    if (label === "地图记录未启动" && mapRuntimeStarted.value) {
+      return false;
+    }
+    if (label === "雷达未刷新" && plainRadarReadyForFreeRoamMapping.value) {
+      return false;
+    }
+    return true;
+  });
+  return [...new Set(visibleLabels)];
+}
+
+function plainFreeRoamMappingMissingForVisibleState(): string[] {
+  const boundary = robotSummary.value?.safe_command_boundary;
+  if (boundary?.free_roam_mapping_ready === true) {
+    return [];
   }
-  return [...new Set(labels.filter((label) => label !== "地图画面未刷新"))];
+  if (Array.isArray(boundary?.free_roam_mapping_missing_reasons)) {
+    return freeRoamMappingMissingPlainLabelsForVisibleState(boundary.free_roam_mapping_missing_reasons);
+  }
+  return freeRoamMappingMissingPlainLabelsForVisibleState(robotSummary.value?.readback_summary.free_roam.mapping_missing);
 }
 const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const result = freeRoamAutonomyResult.value;
@@ -1822,9 +1844,12 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
 function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): string {
   // 建图是“可验收材料”，不是低速移动门禁；首屏要把这层差异直接讲清楚。
   const freeRoam = summary.readback_summary.free_roam;
-  const missing = freeRoamMappingMissingPlainLabelsForVisibleState(freeRoam.mapping_missing);
+  const missing = plainFreeRoamMappingMissingForVisibleState();
+  const boundaryMappingReady = summary.safe_command_boundary.free_roam_mapping_ready;
+  const boundaryMappingKnown = typeof boundaryMappingReady === "boolean";
   if (
-    freeRoam.mapping_ready === "true"
+    boundaryMappingReady === true
+    || (!boundaryMappingKnown && freeRoam.mapping_ready === "true")
     || (mapRuntimeStarted.value && plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
   ) {
     return "建图：画面、雷达和地图记录已 ready，可按建图记录监看。";
@@ -4048,7 +4073,13 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
   const mappingReadinessText = (() => {
     // 自由低速移动和可验收建图是两层能力：相机/雷达只决定建图验收，不阻塞低速自由移动入口。
-    const onboardMissing = freeRoamMappingMissingPlainLabelsForVisibleState(robotSummary.value?.readback_summary.free_roam.mapping_missing);
+    if (
+      boundary?.free_roam_mapping_ready === true
+      || (mapRuntimeStarted.value && plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
+    ) {
+      return "建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。";
+    }
+    const onboardMissing = plainFreeRoamMappingMissingForVisibleState();
     if (onboardMissing.length > 0) {
       return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动。`;
     }
