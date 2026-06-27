@@ -4008,6 +4008,41 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary reflects camera source first-frame failure in shared preview status", async () => {
+    // 只看 summary 的页面也要知道共享画面不是独占，而是相机源没有首帧。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/camera/health": {
+        payload: {
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "capture_read_returned_false",
+          video_source: "/dev/video1",
+          source_usage: { status: "not_in_use", owner_count: 0, owners: [] },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+      expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
+      expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
+      expect(summary.readback_summary.camera.shared_preview_upstream_active).toBe("false");
+      expect(summary.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
+      expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(summary.readback_summary.camera.shared_preview_last_remote_http_status).toBe("200");
+      expect(summary.readback_summary.camera.shared_preview_last_failure_at_ms).toBe("none");
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary derives Nav2 execution proof from live execution facts", async () => {
     // 现场上位机 latest 可能不带旧 nav2_goal_execution_proven key；PC 摘要必须从 action 成功和 wheel L/R 非零推导。
     const robotApi = await listenRobotApiReadbackByPath({

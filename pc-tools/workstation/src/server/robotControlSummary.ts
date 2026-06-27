@@ -1215,6 +1215,19 @@ function cameraSummaryFromReadbacks(
     : rawHealthStatus === "ready" && sourceReadiness === "source_selected_not_probed" && sharedPreviewStatus !== "streaming"
       ? "source_not_probed"
       : rawHealthStatus;
+  const sourceFirstFrameFailedForSharedPreview = Boolean(
+    cameraStatus === "source_first_frame_failed"
+    || sourceReadiness === "first_frame_failed"
+    || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(sourceFailureReason)
+    || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(asString(lastOfferError?.failure_reason, "")),
+  );
+  const sharedPreviewLastFailureReason = mjpegRelayOverlay?.last_failure_reason
+    || (sourceFirstFrameFailedForSharedPreview ? "camera_source_first_frame_failed" : "none");
+  const sharedPreviewLastRemoteHttpStatus = mjpegRelayOverlay?.last_remote_http_status === null || mjpegRelayOverlay?.last_remote_http_status === undefined
+    ? sourceFirstFrameFailedForSharedPreview && healthReadback?.http_status !== null && healthReadback?.http_status !== undefined
+      ? compactValueText(healthReadback.http_status)
+      : "none"
+    : compactValueText(mjpegRelayOverlay.last_remote_http_status);
   return {
     status: cameraStatus,
     devices_status: devicesReadback?.status ?? "not_loaded",
@@ -1225,10 +1238,8 @@ function cameraSummaryFromReadbacks(
     shared_preview_content_type_loaded: compactValueText(mjpegRelayOverlay?.content_type_loaded === true),
     shared_preview_shared_capture: compactValueText(true),
     shared_preview_exclusive_camera_claim: compactValueText(false),
-    shared_preview_last_failure_reason: mjpegRelayOverlay?.last_failure_reason || "none",
-    shared_preview_last_remote_http_status: mjpegRelayOverlay?.last_remote_http_status === null || mjpegRelayOverlay?.last_remote_http_status === undefined
-      ? "none"
-      : compactValueText(mjpegRelayOverlay.last_remote_http_status),
+    shared_preview_last_failure_reason: sharedPreviewLastFailureReason,
+    shared_preview_last_remote_http_status: sharedPreviewLastRemoteHttpStatus,
     shared_preview_last_failure_at_ms: mjpegRelayOverlay?.last_failure_at_ms === null || mjpegRelayOverlay?.last_failure_at_ms === undefined
       ? "none"
       : compactValueText(mjpegRelayOverlay.last_failure_at_ms),

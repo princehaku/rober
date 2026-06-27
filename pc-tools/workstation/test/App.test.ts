@@ -15717,6 +15717,38 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("uses Robot Control summary source first-frame failure when MJPEG status polling fails", async () => {
+    // status 端点失败时，summary 内的 shared_preview_last_failure_reason 仍要能撑住普通首屏。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.preview_status = "idle_not_started";
+    summaryFixture.readback_summary.camera.shared_preview_client_count = "0";
+    summaryFixture.readback_summary.camera.shared_preview_upstream_active = "false";
+    summaryFixture.readback_summary.camera.shared_preview_content_type_loaded = "false";
+    summaryFixture.readback_summary.camera.shared_preview_shared_capture = "true";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    summaryFixture.readback_summary.camera.shared_preview_last_failure_reason = "camera_source_first_frame_failed";
+    summaryFixture.readback_summary.camera.shared_preview_last_remote_http_status = "200";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "capture_read_returned_false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": {
+        ...(fixtures["/api/robot-control/camera/mjpeg/status"] as Record<string, unknown>),
+        proxy_status: "status_rejected",
+        failure_reason: "status_fixture_rejected",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("uses camera health first-frame failure when shared preview has no latest failure", async () => {
     // PC Node 刚重启时 MJPEG status 可能没有 last_failure；health 已证明无首帧时仍要告诉用户不是独占。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
