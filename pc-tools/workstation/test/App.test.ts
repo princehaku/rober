@@ -8084,6 +8084,7 @@ describe("App", () => {
     expect(pendingGoal.attributes("aria-label")).toBe("正在读取最近行程结果，旧结果暂不作为当前结论，地图坐标 x=0.80, y=0.00");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在读取最近行程结果");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在读取最近行程结果，返回前不把旧结果当作当前结论。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：正在读取最近行程结果，返回前不把旧结果当作当前结论。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

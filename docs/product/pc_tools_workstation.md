@@ -2633,6 +2633,10 @@ stop 或 `/cmd_vel`。
 当前结论。该状态只等待固定只读 `/api/robot-control/nav2/goal/execution/latest` 返回，不执行 Nav2、不提交 delivery、
 不发送 manual/keyboard pulse、stop 或 `/cmd_vel`。
 
+2026-06-28 18:05 起，上述 latest pending 状态也同步到普通首屏 `当前事实` 的行程行：读取期间显示
+`行程：正在读取最近行程结果，返回前不把旧结果当作当前结论`，不会继续展示旧到达或旧失败记录。该改动只修正只读事实文案，
+不改变 latest 请求、Nav2 execute、delivery、manual、keyboard、stop 或 `/cmd_vel` 行为。
+
 2026-06-26 03:12 起，如果本轮 `delivery success` 已通过且 route/map ref 对齐当前 Nav2 execution evidence，
 普通首屏地图 caption 也会从 `已到达，准备送达材料` 升级为 `行程执行：已送达，反馈 N 次，delivery gate 已确认`，和地图终点
 marker 的 `已送达` 保持一致。该 caption 只消费已读到的 delivery latest/complete 与 Nav2 evidence，不自动提交送达、
