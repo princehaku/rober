@@ -118,6 +118,16 @@ const NAV2_GOAL_BLOCKER_ORDER = [
   "path_point_count_not_positive",
   "robot_map_pose_not_observed",
 ] as const;
+const FREE_ROAM_GATE_ORDER = [
+  "operator_confirmed",
+  "stop_available",
+  "motion_hil_unlock",
+  "camera_first_frame",
+  "lidar_fresh",
+  "mapping_active",
+  "fresh_map_preview",
+  "obstacle_clear",
+] as const;
 
 function isRobotReadbackSchemaMismatch(readback: InternalRobotApiEndpointReadback): boolean {
   // schema mismatch 只统计已成功读到的真实合同错配；超时、optional missing 和无 schema 哨兵不应污染连接诊断。
@@ -137,6 +147,26 @@ function sortNav2GoalBlockers(blockers: string[]): string[] {
     const leftOrder = order.get(left) ?? Number.MAX_SAFE_INTEGER;
     const rightOrder = order.get(right) ?? Number.MAX_SAFE_INTEGER;
     return leftOrder === rightOrder ? left.localeCompare(right) : leftOrder - rightOrder;
+  });
+}
+
+function sortFreeRoamGateRows(gates: FreeRoamGateRow[]): FreeRoamGateRow[] {
+  // gate 顺序必须先回答“能不能低速移动”，再回答“能不能按建图验收”。
+  const order = new Map<string, number>(FREE_ROAM_GATE_ORDER.map((item, index) => [item, index]));
+  const scopeOrder: Record<NonNullable<FreeRoamGateRow["scope"]>, number> = {
+    free_move_start: 0,
+    runtime_diagnostic: 1,
+    mapping_acceptance: 2,
+  };
+  return [...gates].sort((left, right) => {
+    const leftOrder = order.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = order.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+    const leftScope = scopeOrder[left.scope ?? "runtime_diagnostic"];
+    const rightScope = scopeOrder[right.scope ?? "runtime_diagnostic"];
+    return leftScope === rightScope ? left.id.localeCompare(right.id) : leftScope - rightScope;
   });
 }
 
@@ -4248,7 +4278,7 @@ function freeRoamRuntimeGatesFromReadbacks(
         ? "勾选现场安全确认后点击开始自由移动（低速）"
         : "先确认上车端停止兜底和自动扫图 runtime",
   });
-  return gateRows.length > 0 ? gateRows : null;
+  return gateRows.length > 0 ? sortFreeRoamGateRows(gateRows) : null;
 }
 
 function freeRoamRuntimeLatestFromReadbacks(readbacks: InternalRobotApiEndpointReadback[]): JsonRecord | null {

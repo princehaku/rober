@@ -5930,6 +5930,14 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates.map((gate) => gate.id)).toEqual([
+        "stop_available",
+        "motion_hil_unlock",
+        "camera_first_frame",
+        "lidar_fresh",
+        "mapping_active",
+        "fresh_map_preview",
+      ]);
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
         expect.objectContaining({
           id: "camera_first_frame",

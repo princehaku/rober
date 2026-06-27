@@ -160,6 +160,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `camera_first_frame`、`mapping_active`、`lidar_fresh` 和 `fresh_map_preview` 的只读兜底 gate。这样
   `free_roam_mapping_missing_reasons` 里的每个必需缺口都能在 `free_roam_autonomy_gates` 中看到对应 evidence 和 next action；
   这只改善“能自由移动”和“能否按建图验收”之间的所见即所得解释，不新开摄像头、不刷新地图、不启动雷达、不发布 `/cmd_vel`。
+- 2026-06-28 13:45 起，`free_roam_autonomy_gates` 的返回顺序也按产品分层固定：
+  先显示自由移动启动条件 `operator_confirmed/stop_available/motion_hil_unlock`，再显示建图验收条件
+  `camera_first_frame/lidar_fresh/mapping_active/fresh_map_preview/obstacle_clear`。这样外部脚本和高级诊断直接读数组时，
+  不会把地图记录、相机或雷达误认为低速自由移动的前置条件；该变更仍只调整只读 summary 顺序。
 - 2026-06-27 23:45 起，建图验收缺口里的 `camera_first_frame` 会复用相机 source diagnosis 的现场建议：
   当 live summary 已证明 `uvc_no_frame_not_exclusive`，并带有 known-good UVC 建议时，普通首屏显示
   `画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）`。这让多人共享预览和建图验收使用同一口径：
