@@ -14652,6 +14652,7 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("已启用");
     expect(keyboardPanel.attributes("data-state")).toBe("已启用");
     expect(keyboardPanel.text()).toContain("本页非输入区");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：已启用，按住才动");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
     const manualCallsBeforeEditableKey = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
@@ -14666,6 +14667,7 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("手控中");
     expect(keyboardPanel.attributes("data-state")).toBe("手控中");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0.08/0.07，非零已读到。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：正在前进，按住连续低速脉冲；轮速 L/R=0.08/0.07，非零已读到；松开即停。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("正在按住：前进");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘待验证");
@@ -14678,6 +14680,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已停止，按住方向键可继续点动。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：已启用，按住才动");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：松开键盘。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
     const keyboardClosureItemAfterSplitPulse = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
@@ -14723,6 +14726,7 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("已验证");
     expect(keyboardPanel.attributes("data-state")).toBe("已验证");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘手控已验证，已连续 2/2 次，停止已发送；需要继续移动可按住方向键。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：连续手控已验证，已连续 2/2 次，停止已发送；需要继续移动可再按住方向键。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：松开键盘。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控已验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("键盘已验证");

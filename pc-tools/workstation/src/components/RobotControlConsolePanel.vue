@@ -2110,6 +2110,19 @@ function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): str
     ? `；走 ROS/T=13 低速入口；按住连续低速脉冲 ${duration}ms/每 ${interval}ms`
     : "；走 ROS/T=13 低速入口；按住连续低速脉冲";
   const stopText = "，松开/失焦/切页会停";
+  if (keyboardHeldDirection.value) {
+    const wheelText = keyboardWheelFeedbackPlainText();
+    return `键盘：正在${keyboardDirectionPlainLabel.value}，按住连续低速脉冲${wheelText}；松开即停。`;
+  }
+  if (keyboardControlStatus.value.startsWith("released")) {
+    return `键盘：已松开，正在发送停止；上次方向${manualDirectionPlainLabel(keyboardLastDirection.value)}。`;
+  }
+  if (keyboardStopSettledAfterPulse.value) {
+    return `键盘：连续手控已验证，${keyboardForwardedPulseProgressText.value}，停止已发送；需要继续移动可再按住方向键。`;
+  }
+  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+    return `键盘：已启用，按住才动${pulseText}${stopText}。`;
+  }
   if (canArmKeyboardControl.value) {
     return `键盘：可启用，按住才动${pulseText}${stopText}。`;
   }
