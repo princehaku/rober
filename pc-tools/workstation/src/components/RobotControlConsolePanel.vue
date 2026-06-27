@@ -1710,19 +1710,21 @@ const plainCurrentFactRows = computed(() => {
       rows.push(`行程：旧路线成功记录${feedbackText}${formatEvidenceAge(nav2Values, "需重新执行本轮行程")}。`);
     } else {
       const baseReadbackText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true" ? "" : baseWheelNonzeroReadbackContextText();
-      const modeText = nav2.next_execution_base_command_mode
-        && nav2.next_execution_base_command_mode !== "not_loaded"
-        && nav2.goal_execution_base_command_mode !== "not_loaded"
-        && nav2.next_execution_base_command_mode !== nav2.goal_execution_base_command_mode
-        ? `；下次将用 ${nav2.next_execution_base_command_mode} 复验`
-        : "";
+      const modeText = summaryNav2GoalNextActionText("full")
+        || (nav2.next_execution_base_command_mode
+          && nav2.next_execution_base_command_mode !== "not_loaded"
+          && nav2.goal_execution_base_command_mode !== "not_loaded"
+          && nav2.next_execution_base_command_mode !== nav2.goal_execution_base_command_mode
+          ? `下次将用 ${nav2.next_execution_base_command_mode} 复验`
+          : "");
+      const modeSuffix = modeText ? `；${modeText}` : "";
       const wheelText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
         ? "轮速已复验"
-        : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}${modeText}`;
+        : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}${modeSuffix}`;
       rows.push(nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
         ? `行程：路线返回成功，${wheelText}。`
         : nav2BaseCommandWithoutWheelFeedback(nav2Values)
-          ? `行程：路线返回成功，但${nav2CommandFeedbackFactText(nav2Values)}${modeText}。`
+          ? `行程：路线返回成功，但${nav2CommandFeedbackFactText(nav2Values)}${modeSuffix}。`
           : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);
     }
   } else if (plainTripPreparedBySummary.value || nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
@@ -4604,8 +4606,29 @@ function nav2CommandFeedbackFactText(values: Record<string, string> | undefined)
   return `已发非零底盘命令${countText}${sampleText}${pairText}${motionSignalText ? `；${motionSignalText}` : ""}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
 }
 
+function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): string {
+  // 后端 summary 已经把 live 的 pwm->ros 复验策略压成普通话，前端优先复用，避免各卡片各自拼出不一致文案。
+  const boundary = robotSummary.value?.safe_command_boundary;
+  if (boundary?.nav2_goal_wheel_feedback_status !== "goal_succeeded_but_wheel_lr_zero") {
+    return "";
+  }
+  const action = boundary.nav2_goal_next_action?.trim();
+  if (!action || action === "not_loaded") {
+    return "";
+  }
+  if (scope === "full") {
+    return action;
+  }
+  const parts = action.split("；").map((part) => part.trim()).filter(Boolean);
+  return parts[parts.length - 1] || action;
+}
+
 function nav2NextExecutionRerunText(values: Record<string, string> | undefined): string {
   // 上次执行和下一次执行模式不一致时，普通卡片要直接告诉现场“下一次怎么复验”，避免把旧 PWM 结果当成新 ROS 结果。
+  const summaryAction = summaryNav2GoalNextActionText("short");
+  if (summaryAction) {
+    return summaryAction;
+  }
   const nextMode = values?.next_execution_base_command_mode?.trim();
   const lastMode = values?.base_command_mode?.trim();
   if (!nextMode || nextMode === "not_loaded") {
