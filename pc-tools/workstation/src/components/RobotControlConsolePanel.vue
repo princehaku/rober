@@ -4704,6 +4704,8 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
   putSummaryNav2Value(values, "mode_rerun_status", nav2.goal_execution_mode_rerun_status);
   putSummaryNav2Value(values, "base_command_nonzero_observed", nav2.goal_execution_base_command_nonzero_observed);
   putSummaryNav2Value(values, "base_command_nonzero_count", nav2.goal_execution_base_command_nonzero_count);
+  putSummaryNav2Value(values, "base_command_latest_nonzero_mode", nav2.goal_execution_base_command_latest_nonzero_mode);
+  putSummaryNav2Value(values, "base_command_mode_counts", nav2.goal_execution_base_command_mode_counts);
   putSummaryNav2Value(values, "base_feedback_sample_count", nav2.goal_execution_base_feedback_sample_count);
   putSummaryNav2Value(values, "base_feedback_nonzero_sample_count", nav2.goal_execution_base_feedback_nonzero_sample_count);
   putSummaryNav2Value(values, "base_feedback_lr_nonzero_proven", nav2.goal_execution_base_feedback_lr_nonzero_proven);
@@ -4782,6 +4784,26 @@ function nav2BaseCommandWithoutWheelFeedback(values: Record<string, string> | un
     && explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven);
 }
 
+function nav2BaseCommandModeVendorLabel(values: Record<string, string> | undefined): string {
+  // WAVE ROVER vendor JSON 模式要在首屏说成人能核对的入口，避免 ros/pwm 这种内部枚举再次误导现场排障。
+  const mode = (values?.base_command_latest_nonzero_mode || values?.base_command_mode || "").trim().toLowerCase();
+  if (mode === "ros") {
+    return "ROS/T=13";
+  }
+  if (mode === "pwm") {
+    return "PWM/T=11";
+  }
+  if (mode === "speed") {
+    return "speed/T=1";
+  }
+  return "";
+}
+
+function nav2BaseCommandPhrase(values: Record<string, string> | undefined, prefix = "已发"): string {
+  const mode = nav2BaseCommandModeVendorLabel(values);
+  return mode ? `${prefix} ${mode} 非零底盘命令` : `${prefix}非零底盘命令`;
+}
+
 function nav2CommandFeedbackFactText(values: Record<string, string> | undefined): string {
   // 当前事实条优先回答“命令有没有发、反馈有没有读、为什么还不算动”，不要重复长段排障文案。
   const count = nav2BaseCommandCount(values);
@@ -4794,7 +4816,7 @@ function nav2CommandFeedbackFactText(values: Record<string, string> | undefined)
     ? nav2BaseMotionSignalText(values)
     : "";
   const baseReadbackContext = baseWheelNonzeroReadbackContextText();
-  return `已发非零底盘命令${countText}${sampleText}${pairText}${motionSignalText ? `；${motionSignalText}` : ""}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
+  return `${nav2BaseCommandPhrase(values)}${countText}${sampleText}${pairText}${motionSignalText ? `；${motionSignalText}` : ""}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
 }
 
 function nav2PendingModeRerunText(values: Record<string, string> | undefined): string {
@@ -4822,14 +4844,12 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
   if (!nav2GoalSucceeded(values) || !nav2BaseCommandWithoutWheelFeedback(values)) {
     return "";
   }
-  const lastMode = values?.base_command_mode && values.base_command_mode !== "not_loaded"
-    ? values.base_command_mode.toUpperCase()
-    : "";
   const nextText = (nav2NextExecutionRerunText(values) || "用 ROS 重跑图上路线").replace(/[。；\s]+$/g, "");
   const pair = nav2BaseFeedbackPair(values);
   const pairText = pair ? `wheel raw L/R=${pair.left}/${pair.right}` : "wheel raw L/R 未非零";
   const motionSignal = nav2BaseMotionSignalText(values);
-  const modeText = lastMode ? `上次 ${lastMode} 执行` : "上次执行";
+  const modeLabel = nav2BaseCommandModeVendorLabel(values);
+  const modeText = modeLabel ? `上次 ${modeLabel} 执行` : "上次执行";
   const pendingModeText = nav2PendingModeRerunText(values);
   return `自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
 }
@@ -4970,9 +4990,9 @@ function nav2UnprovenControlDetail(values: Record<string, string> | undefined): 
     const countText = count > 0 ? ` ${count} 条` : "";
     const pairText = pair ? `，底盘反馈 L/R=${pair.left}/${pair.right}` : "";
     if (explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)) {
-      return `Nav2 已发非零底盘命令${countText}${pairText}，轮速非零未证明，但${nav2MotionSignalSummaryText(values)}；这不是雷达或相机阻塞${rerunSuffix}`;
+      return `Nav2 ${nav2BaseCommandPhrase(values)}${countText}${pairText}，轮速非零未证明，但${nav2MotionSignalSummaryText(values)}；这不是雷达或相机阻塞${rerunSuffix}`;
     }
-    return `Nav2 已发非零底盘命令${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达或相机阻塞${rerunSuffix}`;
+    return `Nav2 ${nav2BaseCommandPhrase(values)}${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达或相机阻塞${rerunSuffix}`;
   }
   return rerunText ? `真车执行未证明；${rerunText}` : "真车执行未证明";
 }

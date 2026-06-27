@@ -7460,6 +7460,8 @@ describe("App", () => {
     initialSummary.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
     initialSummary.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
     initialSummary.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
+    initialSummary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode = "pwm";
+    initialSummary.readback_summary.nav2.goal_execution_base_command_mode_counts = "{\"pwm\":49}";
     initialSummary.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
     initialSummary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
     initialSummary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "0";
@@ -7674,6 +7676,8 @@ describe("App", () => {
     summaryFixture.safe_command_boundary.nav2_goal_execution_mode_label = "上次 pwm，下次 ros";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode = "pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_mode_counts = "{\"pwm\":49}";
     summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
     summaryFixture.readback_summary.nav2.goal_execution_base_feedback_nonzero_sample_count = "0";
     summaryFixture.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
@@ -7725,14 +7729,14 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 PWM 结果，等待 ROS 复验");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("行程进度：路线返回成功并读到 239 次反馈，但Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("行程进度：路线返回成功并读到 239 次反馈，但Nav2 已发 PWM/T=11 非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("轮速非零未证明，但车身姿态有变化，pitch 变化 24.210531");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 239 次，刚刚；Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 239 次，刚刚；Nav2 已发 PWM/T=11 非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；车身姿态有变化，pitch 变化 24.210531；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 PWM 结果，等待 ROS 复验；上次 PWM 执行已发到底盘，但 wheel raw L/R=0/0，车身姿态有变化，pitch 变化 24.210531；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 PWM/T=11 非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；车身姿态有变化，pitch 变化 24.210531；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 PWM 结果，等待 ROS 复验；上次 PWM/T=11 执行已发到底盘，但 wheel raw L/R=0/0，车身姿态有变化，pitch 变化 24.210531；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
@@ -10356,19 +10360,88 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发 PWM/T=11 非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("不是雷达或相机阻塞");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("优先查电机使能、供电、底盘模式和控制模式");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("到达未证明");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toContain("旧 PWM 结果，等待 ROS 复验");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("Nav2 已发非零底盘命令 49 条");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("Nav2 已发 PWM/T=11 非零底盘命令 49 条");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：下次将用 ros 重新执行这条图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新执行完整行程。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("shows ROS T13 command evidence on the plain screen when wheel feedback is still zero", async () => {
+    // 下一轮复验如果 ROS/T=13 已经发出但 L/R 仍为 0/0，普通首屏必须直接把控制入口说出来。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_proven = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_hil_pass = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_evidence_ref = "o11-nav2-goal-execution-ros-t13-zero-wheel-fixture";
+    summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "ros";
+    summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_status = "not_required";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "19";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode = "ros";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_mode_counts = "{\"ros\":19}";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "42";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_nonzero_sample_count = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_uses_base_uart = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_generated_at_ms = "1782495677637";
+    summaryFixture.readback_summary.nav2.goal_execution_response_generated_at_ms = "1782495706743";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {},
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/operator/report": { proxy_status: "should_not_be_called" },
+      "/api/robot-control/delivery/complete": { proxy_status: "should_not_be_called" },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发 ROS/T=13 非零底盘命令 19 条，底盘反馈 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 ROS/T=13 非零底盘命令 19 条，读到底盘反馈 42 次，L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；上次 ROS/T=13 执行已发到底盘，但 wheel raw L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
