@@ -3060,6 +3060,12 @@ PC 共享 MJPEG relay 继续可供多个页面复用同一条上游流，只是�
 画面无帧不是浏览器独占；雷达启动和雷达点是两件事；Nav2 action 成功和完整真车收口是两件事；
 键盘连续手控仍是“勾确认后启用、按住才动、松开会停”。
 
+2026-06-27 09:48 起，PC 默认回归 fixture 也和真实 Robot Control summary 对齐：默认首屏带
+`keyboard_control_mode=bounded_repeating_manual_pulse`、`keyboard_reuses_manual_gate=true` 和
+`keyboard_control_start_ready=true`。因此普通首屏在未勾安全确认时显示“键盘：勾安全确认后可启用”，目标收口也只提示
+`还差：安全确认`，不再误写 `键盘入口` 缺失。该改动只同步测试合同和首屏验收口径，不自动启用键盘、不发送
+manual/keyboard pulse、Nav2、delivery、free-roam 或 `/cmd_vel`。
+
 2026-06-27 05:24 起，Nav2 目标预检进一步按“发车前预检最小化”收敛到 Node 代理：
 `POST /api/robot-control/nav2/goal/preflight` 仍读取 `/api/localize/proof/latest`、
 `/api/nav2/proof/latest` 和 `/api/nav2/status` 作为只读摘要，但 `missing_requirements`

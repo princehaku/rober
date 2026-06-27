@@ -547,7 +547,16 @@ const fixtures: Record<string, unknown> = {
       nav2_goal_blockers: ["path_generation_not_observed", "path_point_count_not_positive", "robot_map_pose_not_observed"],
       map_start: "map start locked",
       radar_start: "radar start locked",
-      keyboard_control: "keyboard control locked",
+      keyboard_control: "bounded repeating manual pulse gated",
+      keyboard_control_mode: "bounded_repeating_manual_pulse",
+      keyboard_manual_proxy_endpoint: "/api/robot-control/base/manual",
+      keyboard_stop_proxy_endpoint: "/api/robot-control/base/stop",
+      keyboard_jog_interval_ms: 260,
+      keyboard_jog_duration_ms: 240,
+      keyboard_stop_triggers: ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"],
+      keyboard_reuses_manual_gate: true,
+      keyboard_control_start_ready: true,
+      keyboard_control_label: "键盘手控（勾确认后可启用）",
       free_roam_autonomy: "locked",
       free_roam_autonomy_label: "自动扫图（未开放）",
       free_roam_autonomy_policy: {
@@ -3605,7 +3614,7 @@ describe("App", () => {
     expect(currentFacts.text()).toContain("雷达：已运行，最近障碍 0.30m。");
     expect(currentFacts.text()).toContain("行程：还没执行。");
     expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
-    expect(currentFacts.text()).toContain("键盘：先复查手控条件。");
+    expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用。");
     const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
     expect(connectionPanel.exists()).toBe(true);
     expect(connectionPanel.attributes("data-state")).toBe("已连接");
@@ -3706,16 +3715,16 @@ describe("App", () => {
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
-    expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：键盘入口、安全确认。");
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先复查入口，不发车）");
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先复查入口）");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：复查手控条件。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：键盘入口、安全确认。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：复查手控条件。");
+    expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：安全确认。");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：勾选安全确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：安全确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选安全确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("已完成。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先完成行程。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-keyboard"]').text()).toBe("下一步：复查手控条件。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-keyboard"]').text()).toBe("下一步：勾选安全确认。");
     expect(firstScreenText).toContain("最终确认");
     expect(firstScreenText).toContain("待行程");
     expect(firstScreenText).toContain("先完成本轮行程，再做最终确认。");
@@ -3909,7 +3918,7 @@ describe("App", () => {
     const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
-    expect(keyboardClosureItem?.text()).toContain("键盘合同未从 summary 读到");
+    expect(keyboardClosureItem?.text()).toContain("键盘入口已在，仍需补齐：安全确认");
     expect(diagnostics.text()).toContain("task_id");
     expect(diagnostics.text()).toContain("Robot API status");
     expect(diagnostics.text()).toContain("Node server only; Vue direct access=false");
@@ -9939,16 +9948,17 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterForward);
     expect(wrapper.find(".robot-console .advanced-details").text()).not.toContain("blocked_keyboard_manual_gate");
 
-    const blockedArmButton = wrapper.find('[data-testid="keyboard-control-arm"]');
-    expect(blockedArmButton.attributes("disabled")).toBeDefined();
-    await blockedArmButton.trigger("click");
-    await flushPromises();
-    await wrapper.vm.$nextTick();
-    const blockedKeyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
-    await blockedKeyboardPanel.trigger("keydown", { key: "w" });
+    const keyboardArmButton = wrapper.find('[data-testid="keyboard-control-arm"]');
+    expect(keyboardArmButton.attributes("disabled")).toBeUndefined();
+    await keyboardArmButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterForward);
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterForward + 1);
     expect(wrapper.find(".robot-console .advanced-details").text()).not.toContain("blocked_keyboard_manual_gate");
     const feedbackCallsBeforeKeyboardRecheck = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/feedback-samples?"),
@@ -9959,7 +9969,7 @@ describe("App", () => {
     expect(
       mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?")).length,
     ).toBe(feedbackCallsBeforeKeyboardRecheck + 1);
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterForward);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsAfterForward + 1);
 
     await stopButton?.trigger("click");
     await flushPromises();
@@ -10281,6 +10291,10 @@ describe("App", () => {
     summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
     summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
     summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.safe_command_boundary.keyboard_control = "keyboard control locked";
+    delete summaryFixture.safe_command_boundary.keyboard_control_mode;
+    delete summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate;
+    delete summaryFixture.safe_command_boundary.keyboard_control_start_ready;
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/base/manual": {
