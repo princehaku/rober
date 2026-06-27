@@ -18769,6 +18769,12 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.status = "ready";
     summaryFixture.readback_summary.camera.devices_status = "loaded";
     summaryFixture.readback_summary.camera.video_source = "/dev/video1";
+    summaryFixture.readback_summary.camera.shared_preview_client_count = "2";
+    summaryFixture.readback_summary.camera.shared_preview_upstream_active = "true";
+    summaryFixture.readback_summary.camera.shared_preview_content_type_loaded = "true";
+    summaryFixture.readback_summary.camera.shared_preview_cached_frame_loaded = "true";
+    summaryFixture.readback_summary.camera.shared_preview_cached_frame_age_ms = "120";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
     let resolveMjpegStatus!: (value: unknown) => void;
     const delayedMjpegStatus = new Promise((resolve) => {
       resolveMjpegStatus = resolve;
@@ -18782,7 +18788,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：正在读取 PC 共享流状态；返回前不证明本页已出图。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：正在读取 PC 共享流状态；summary 显示 2 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。 已有最近帧缓存（约0.1秒前），后进页面会先显示最近帧。 返回前不证明本页已出图。");
+    expect(wrapper.find('[data-testid="robot-camera-cached-frame-status"]').text()).toBe("最近帧：共享流已有缓存帧，新页面会先显示最近画面，并继续接入实时流。");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').text()).not.toContain("MJPEG 实时流已显示");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);

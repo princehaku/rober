@@ -41,6 +41,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 起，普通首屏行程卡也会显示 `自动驾驶诊断`：Nav2 stack、规划/控制服务、定位、`/scan`/AMCL/TF 等缺口会直接落在行程操作区，并明确相机/雷达不挡底盘试动或键盘手控。摄像头共享预览继续走 PC 单上游 MJPEG relay，多页面共享同一条流；无首帧时按 UVC/输入/供电排查，不按“页面独占”处理。
 
+同日起，共享 MJPEG status 请求尚未返回时，首屏会保留 summary 里已有的共享流事实，例如观看页面数、上游是否已连接、是否已有视频边界和最近缓存帧；但仍明确 status 返回前不证明本页已经出图。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

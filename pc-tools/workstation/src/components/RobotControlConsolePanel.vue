@@ -1348,14 +1348,25 @@ const cameraMjpegRetryPending = computed(() => (
 const cameraMjpegCachedFramePending = computed(() => {
   // 共享 relay 已有最近帧时，后来打开的页面会先收到缓存帧；这只说明首屏有可复用画面证据，不等于本页已完成实时绘制。
   const status = cameraMjpegStatusResult.value;
+  const summaryCamera = robotSummary.value?.readback_summary.camera;
+  const summaryHasCachedFrame = Boolean(
+    summaryCamera?.shared_preview_upstream_active === "true"
+    && summaryCamera.shared_preview_content_type_loaded === "true"
+    && summaryCamera.shared_preview_cached_frame_loaded === "true",
+  );
   return Boolean(
     cameraMjpegFallbackVisible.value
     && !cameraMjpegFrameObserved.value
     && !mjpegPreviewFailed.value
-    && status?.proxy_status === "status_loaded"
-    && status.upstream_active
-    && status.content_type_loaded
-    && status.cached_frame_loaded,
+    && (
+      (
+        status?.proxy_status === "status_loaded"
+        && status.upstream_active
+        && status.content_type_loaded
+        && status.cached_frame_loaded
+      )
+      || (status?.proxy_status !== "status_loaded" && summaryHasCachedFrame)
+    ),
   );
 });
 function cameraSourceFailureCanAutoJoinSharedPreview(
@@ -1577,6 +1588,19 @@ const plainCameraCachedFrameStatus = computed(() => {
 const plainCameraSharedPreviewStatus = computed(() => {
   // 共享预览状态只说明 PC Node 是否在复用同一条 MJPEG 上游流，不代替真实画面像素证据。
   if (cameraMjpegStatusPending.value) {
+    const summaryCamera = robotSummary.value?.readback_summary.camera;
+    if (summaryCamera) {
+      const upstream = summaryCamera.shared_preview_upstream_active === "true" ? "上游已连接" : "上游未连接";
+      const content = summaryCamera.shared_preview_content_type_loaded === "true" ? "已拿到视频边界" : "等待视频边界";
+      const exclusive = sharedPreviewExclusiveText(summaryCamera.shared_preview_exclusive_camera_claim === "true");
+      const cachedFrame = sharedPreviewCachedFrameText(
+        summaryCamera.shared_preview_upstream_active === "true" && summaryCamera.shared_preview_content_type_loaded === "true",
+        summaryCamera.shared_preview_cached_frame_loaded,
+        summaryCamera.shared_preview_cached_frame_age_ms,
+      );
+      const pendingTruth = cachedFrame ? ` ${cachedFrame.trim()} 返回前不证明本页已出图。` : " 返回前不证明本页已出图。";
+      return `共享画面：正在读取 PC 共享流状态；summary 显示 ${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${pendingTruth}`;
+    }
     return "共享画面：正在读取 PC 共享流状态；返回前不证明本页已出图。";
   }
   if (cameraMjpegStatusFailure.value) {

@@ -88,6 +88,7 @@ pc-tools/workstation/
 - 2026-06-28 07:07 CST 起，共享 MJPEG status 请求 pending 时，普通首屏 `共享画面` 行显示
   `正在读取 PC 共享流状态；返回前不证明本页已出图`。这避免把只读 status 读取中误说成当前页面已经看到画面；该状态不创建额外 camera reader，
   不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 00:40 CST 起，上述 pending 状态会优先保留 Robot Control summary 里的共享预览事实：若 summary 已带 `shared_preview_client_count`、上游连接、视频边界或最近缓存帧，普通首屏会显示“summary 显示 N 个页面观看、上游已连接、已有最近帧缓存”，同时继续写明“返回前不证明本页已出图”。这样新页面进入时不会在 status 请求未返回的窗口丢掉“可复用共享流/缓存帧”的所见即所得信息；它仍不调用 camera probe、Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 05:25 起，当 `/api/robot-control/camera/mjpeg/status` 已证明共享 relay 有最近帧缓存但当前页面 `<img>` 还没触发 load 时，普通首屏会额外显示“最近帧：共享流已有缓存帧，新页面会先显示最近画面，并继续接入实时流”。这只消费只读 status 证据，不新增相机 reader，不把缓存帧升级成“本页已绘制实时帧”，也不调用 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 19:05 CST 起，上述共享 MJPEG 最近帧缓存状态也同步进入普通首屏 `当前事实`：当 relay 已有缓存帧但本页 `<img>` 尚未 load 时显示“共享流已有最近帧缓存，新页面会先显示最近画面；本页仍在接入实时流”。这避免当前事实仍写“还没确认真实帧”而误导用户以为共享预览没有材料；该状态仍不等于本页已绘制实时帧，也不调用 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 18:43 起，上述共享 MJPEG 失败态也会把“页面会低频自动重试”写到普通首屏。`camera_source_first_frame_failed`、
