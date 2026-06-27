@@ -1100,6 +1100,7 @@ function lidarSummaryFromReadbacks(
   proof: RobotApiProofSummary,
 ): RobotControlSummaryResponse["readback_summary"]["lidar"] {
   // 普通首屏只消费 summary 压缩字段，因此把 radar status 的 continuity/lifecycle 结论集中收口在这里。
+  const runtimeScan = freeRoamRuntimeScanSummaryFromReadbacks(readbacks);
   const radarStatusReadback = readbackById(readbacks, "radar_status");
   const radarScanProofReadback = readbackById(readbacks, "radar_scan_proof_latest");
   const radarRawPacketProofReadback = readbackById(readbacks, "radar_raw_packet_proof_latest");
@@ -1162,10 +1163,42 @@ function lidarSummaryFromReadbacks(
     continuous_window_observed: summaryValueText(radarStatusPayload, ["continuous_window_observed"]),
     continuity_window_status: summaryValueText(radarStatusPayload, ["continuity_window_status"]),
     latest_scan_proof_fresh: summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"]),
+    runtime_scan_status: runtimeScan.status,
+    runtime_lidar_min_distance_m: runtimeScan.min_distance_m,
+    runtime_lidar_age_s: runtimeScan.age_s,
+    runtime_scan_source: runtimeScan.source,
     scan_preview_point_count: String(proof.scan_preview_point_count),
     scan_preview_source_point_count: proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count),
     scan_preview_frame_id: proof.scan_preview_frame_id || "not_loaded",
     radar_start_configured: summaryValueText(radarStartCommand, ["configured"]),
+  };
+}
+
+function freeRoamRuntimeScanSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[]): {
+  status: string;
+  min_distance_m: string;
+  age_s: string;
+  source: string;
+} {
+  // free-roam runtime 直接消费实时 /scan；把结构化 snapshot 提到 lidar summary，避免前端解析 gate 中文文案。
+  const latest = freeRoamRuntimeLatestFromReadbacks(readbacks);
+  const snapshot = asRecord(latest?.snapshot);
+  const age = finitePathCoordinate(snapshot?.lidar_age_s);
+  const minDistance = finitePathCoordinate(snapshot?.lidar_min_distance_m);
+  if (age === null || minDistance === null) {
+    return {
+      status: "not_loaded",
+      min_distance_m: "not_loaded",
+      age_s: "not_loaded",
+      source: "not_loaded",
+    };
+  }
+  const fresh = age <= 1.5;
+  return {
+    status: fresh ? "fresh" : "stale",
+    min_distance_m: minDistance.toFixed(2),
+    age_s: age.toFixed(2),
+    source: "free_roam_runtime_snapshot",
   };
 }
 
@@ -3484,6 +3517,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         continuous_window_observed: "not_loaded",
         continuity_window_status: "not_loaded",
         latest_scan_proof_fresh: "not_loaded",
+        runtime_scan_status: "not_loaded",
+        runtime_lidar_min_distance_m: "not_loaded",
+        runtime_lidar_age_s: "not_loaded",
+        runtime_scan_source: "not_loaded",
         scan_preview_point_count: "0",
         scan_preview_source_point_count: "not_loaded",
         scan_preview_frame_id: "not_loaded",

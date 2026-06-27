@@ -5404,6 +5404,10 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
+      expect(summary.readback_summary.lidar.runtime_scan_status).toBe("fresh");
+      expect(summary.readback_summary.lidar.runtime_lidar_min_distance_m).toBe("5.44");
+      expect(summary.readback_summary.lidar.runtime_lidar_age_s).toBe("0.02");
+      expect(summary.readback_summary.lidar.runtime_scan_source).toBe("free_roam_runtime_snapshot");
       expect(summary.readback_summary.free_roam.mapping_ready).toBe("false");
       expect(summary.readback_summary.free_roam.mapping_missing).toBe("camera_first_frame,mapping_active,fresh_map_preview");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([

@@ -770,6 +770,10 @@ function gateDerivedLidarReadback(): LidarReadback | null {
     continuous_window_observed: "true",
     continuity_window_status: "free_roam_runtime_scan_fresh",
     latest_scan_proof_fresh: "true",
+    runtime_scan_status: "fresh",
+    runtime_lidar_min_distance_m: latestRadarRuntimeScanDistanceText() || "not_loaded",
+    runtime_lidar_age_s: latestRadarRuntimeScanAgeText() || "not_loaded",
+    runtime_scan_source: "free_roam_runtime_gate",
     scan_preview_point_count: "0",
     scan_preview_source_point_count: "not_loaded",
     scan_preview_frame_id: "not_loaded",
@@ -827,6 +831,10 @@ const effectiveLidarReadback = computed<LidarReadback | null>(() => {
     continuous_window_observed: runtimeValue("continuous_window_observed") ?? radarStatusValue("continuous_window_observed") ?? summary?.continuous_window_observed ?? gateDerived?.continuous_window_observed ?? "false",
     continuity_window_status: runtimeValue("continuity_window_status") ?? radarStatusValue("continuity_window_status") ?? summary?.continuity_window_status ?? gateDerived?.continuity_window_status ?? "not_loaded",
     latest_scan_proof_fresh: runtimeValue("latest_scan_proof_fresh") ?? radarStatusValue("latest_scan_proof_fresh") ?? summary?.latest_scan_proof_fresh ?? gateDerived?.latest_scan_proof_fresh ?? "false",
+    runtime_scan_status: runtimeValue("runtime_scan_status") ?? summary?.runtime_scan_status ?? gateDerived?.runtime_scan_status ?? "not_loaded",
+    runtime_lidar_min_distance_m: runtimeValue("runtime_lidar_min_distance_m") ?? summary?.runtime_lidar_min_distance_m ?? gateDerived?.runtime_lidar_min_distance_m ?? "not_loaded",
+    runtime_lidar_age_s: runtimeValue("runtime_lidar_age_s") ?? summary?.runtime_lidar_age_s ?? gateDerived?.runtime_lidar_age_s ?? "not_loaded",
+    runtime_scan_source: runtimeValue("runtime_scan_source") ?? summary?.runtime_scan_source ?? gateDerived?.runtime_scan_source ?? "not_loaded",
     scan_preview_point_count: runtimeValue("scan_preview_point_count") ?? radarStatusValue("scan_preview_point_count") ?? summary?.scan_preview_point_count ?? gateDerived?.scan_preview_point_count ?? "0",
     scan_preview_source_point_count: runtimeValue("scan_preview_source_point_count") ?? radarStatusValue("scan_preview_source_point_count") ?? summary?.scan_preview_source_point_count ?? gateDerived?.scan_preview_source_point_count ?? "not_loaded",
     scan_preview_frame_id: runtimeValue("scan_preview_frame_id") ?? radarStatusValue("scan_preview_frame_id") ?? summary?.scan_preview_frame_id ?? gateDerived?.scan_preview_frame_id ?? "not_loaded",
@@ -903,6 +911,11 @@ function plainRadarRefreshReason(lidar: RobotControlSummaryResponse["readback_su
 
 function latestRadarObstacleDistanceLabel(): string {
   // 上位机有时只给自动扫图 gate 的最近障碍距离，没有 scan 点数组；此时只能显示局部距离，不能伪造地图坐标。
+  const runtimeDistance = finitePlainNumber(robotSummary.value?.readback_summary?.lidar?.runtime_lidar_min_distance_m);
+  const runtimeFresh = robotSummary.value?.readback_summary?.lidar?.runtime_scan_status === "fresh";
+  if (runtimeFresh && runtimeDistance !== null) {
+    return `最近障碍 ${runtimeDistance.toFixed(2)}m`;
+  }
   const gates = robotSummary.value?.safe_command_boundary.free_roam_autonomy_gates ?? [];
   const obstacleGate = gates.find((gate) => gate.id === "obstacle_clear");
   const match = obstacleGate?.evidence.match(/(?:最近障碍|障碍|距离)\s*([0-9]+(?:\.[0-9]+)?)\s*m/i);
@@ -910,8 +923,36 @@ function latestRadarObstacleDistanceLabel(): string {
   return distance === null ? "" : `最近障碍 ${distance.toFixed(2)}m`;
 }
 
+function latestRadarRuntimeScanDistanceText(): string {
+  const structured = finitePlainNumber(robotSummary.value?.readback_summary?.lidar?.runtime_lidar_min_distance_m);
+  if (structured !== null) {
+    return structured.toFixed(2);
+  }
+  const gates = robotSummary.value?.safe_command_boundary.free_roam_autonomy_gates ?? [];
+  const lidarGate = gates.find((gate) => gate.id === "lidar_fresh");
+  const match = lidarGate?.evidence.match(/距离\s*([0-9]+(?:\.[0-9]+)?)\s*m/i);
+  const distance = finitePlainNumber(match?.[1]);
+  return distance === null ? "" : distance.toFixed(2);
+}
+
+function latestRadarRuntimeScanAgeText(): string {
+  const structured = finitePlainNumber(robotSummary.value?.readback_summary?.lidar?.runtime_lidar_age_s);
+  if (structured !== null) {
+    return structured.toFixed(2);
+  }
+  const gates = robotSummary.value?.safe_command_boundary.free_roam_autonomy_gates ?? [];
+  const lidarGate = gates.find((gate) => gate.id === "lidar_fresh");
+  const match = lidarGate?.evidence.match(/延迟\s*([0-9]+(?:\.[0-9]+)?)\s*s/i);
+  const age = finitePlainNumber(match?.[1]);
+  return age === null ? "" : age.toFixed(2);
+}
+
 function latestRadarRuntimeScanReady(): boolean {
   // free-roam runtime 直接消费 /scan；当它已证明新鲜时，地图应显示“实时距离读数”，而不是继续按旧 proof 标成待刷新。
+  const lidar = robotSummary.value?.readback_summary?.lidar;
+  if (lidar?.runtime_scan_status === "fresh" && finitePlainNumber(lidar.runtime_lidar_min_distance_m) !== null) {
+    return true;
+  }
   const gates = robotSummary.value?.safe_command_boundary.free_roam_autonomy_gates ?? [];
   const lidarGate = gates.find((gate) => gate.id === "lidar_fresh");
   const evidence = lidarGate?.evidence ?? "";
@@ -2967,6 +3008,10 @@ const plainMapVisualSummary = computed(() => {
       ? "当前暂无地图雷达点"
       : "";
   const radarCanShowObstacleDistance = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "刷新中";
+  const radarStructuredRuntimeDistanceVisible = robotSummary.value?.readback_summary?.lidar?.runtime_scan_status === "fresh"
+    && finitePlainNumber(robotSummary.value?.readback_summary?.lidar?.runtime_lidar_min_distance_m) !== null
+    && radarPreviewReadbackPointCount() <= 0
+    && radarLocalPointCount === 0;
   const showRadarObstacleDistance = !poseObserved && radarCanShowObstacleDistance && radarLocalPointCount === 0 && !radarCountOnlyMarkerLabel && Boolean(radarObstacleDistanceLabel);
   const radarScalarObstacleOnly = poseObserved
     && radarCanShowObstacleDistance
@@ -3003,7 +3048,7 @@ const plainMapVisualSummary = computed(() => {
       : radarState === "雷达启动中"
       ? "雷达启动中，位置未读到"
       : radarNeedsMapPose
-      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerWithObstacleLabel ? `${radarState}，${radarCountOnlyMarkerWithObstacleLabel}` : showRadarObstacleDistance ? `${radarState}，${radarObstacleDistanceLabel}` : radarNoVisiblePointLabel ? `${radarState}，${radarNoVisiblePointLabel}` : `${radarState}，位置未读到`
+      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerWithObstacleLabel ? `${radarState}，${radarCountOnlyMarkerWithObstacleLabel}` : showRadarObstacleDistance ? (radarStructuredRuntimeDistanceVisible ? `雷达距离：${radarObstacleDistanceLabel}（非地图点）` : `${radarState}，${radarObstacleDistanceLabel}`) : radarNoVisiblePointLabel ? `${radarState}，${radarNoVisiblePointLabel}` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarStoppedWithZeroPoints ? `${radarState}，地图0点` : radarState;
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
@@ -3038,7 +3083,9 @@ const plainMapVisualSummary = computed(() => {
       : radarState === "雷达启动中"
       ? "雷达启动中，地图位置未读到，等待刷新确认"
       : showRadarObstacleDistance
-        ? `${radarState}，地图位置未读到，${radarObstacleDistanceLabel}，按雷达局部距离显示，未贴到地图`
+        ? radarStructuredRuntimeDistanceVisible
+          ? `${radarState}，地图位置未读到，只显示${radarObstacleDistanceLabel}，这是距离读数，不是已贴到地图的雷达点`
+          : `${radarState}，地图位置未读到，${radarObstacleDistanceLabel}，按雷达局部距离显示，未贴到地图`
       : radarNoVisiblePointAria
         ? `${radarState}，地图位置未读到，${radarNoVisiblePointAria}`
       : radarStoppedWithZeroPoints

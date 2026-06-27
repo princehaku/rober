@@ -308,3 +308,10 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 `画面：不是独占，摄像头没人占用但没有输出视频帧`；如果 backend smoke 已证明多后端无帧，则显示
 `画面：不是独占，后端多种方式也没有取到视频帧`。这样 operator 不用展开画面卡片也能知道问题不是后来进入的页面独占；
 摄像头仍然必须读到真实帧后才可按可建图验收。
+
+2026-06-27 19:23 起，PC summary 会把 free-roam runtime snapshot 中的 `/scan` 新鲜距离提升为
+`readback_summary.lidar.runtime_*` 结构化字段。普通地图 marker 若没有雷达点数组，会显示
+`雷达距离：最近障碍 Xm（非地图点）`；坐标口径继续说明这是距离读数，不是已贴到地图的雷达点。
+这样 live 形态下 `radar/status` proof stale、`scan_preview_point_count=0`，但 free-roam runtime
+已读到 `/scan` 距离时，地图仍能所见即所得地显示当前雷达距离。该变更不改变自由移动启动门禁，
+不自动刷新雷达，不发布 `/cmd_vel`，不把距离读数当成可验收建图点云。

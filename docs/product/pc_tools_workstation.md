@@ -3454,3 +3454,10 @@ multipart JPEG，失败继续返回结构化 503 和 `first_frame_unreadable` / 
 `goal_execution_base_command_latest_nonzero_mode` 和 `goal_execution_base_command_mode_counts`。因此旧 PWM 成功但
 wheel raw L/R=0/0 的 live 记录也能让普通首屏显示 `PWM/T=11`，不会等上车重新产出新字段才可排障。
 该 fallback 只读现有 artifact，不触发 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 19:23 起，Robot Control summary 的 `readback_summary.lidar` 新增
+`runtime_scan_status`、`runtime_lidar_min_distance_m`、`runtime_lidar_age_s` 和 `runtime_scan_source`。
+当 radar proof latest 仍是旧窗口或没有点数组，但 free-roam runtime snapshot 已读到新鲜 `/scan` 距离时，
+PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障碍 Xm（非地图点）`，不再依赖解析
+`free_roam_autonomy_gates[].evidence` 的中文文案。该显示只解释实时距离读数，不把距离伪造成地图雷达点，
+也不触发 radar refresh、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。

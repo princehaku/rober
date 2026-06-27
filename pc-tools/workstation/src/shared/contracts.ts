@@ -2412,6 +2412,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       continuous_window_observed: string;
       continuity_window_status: string;
       latest_scan_proof_fresh: string;
+      runtime_scan_status: string;
+      runtime_lidar_min_distance_m: string;
+      runtime_lidar_age_s: string;
+      runtime_scan_source: string;
       scan_preview_point_count: string;
       scan_preview_source_point_count: string;
       scan_preview_frame_id: string;

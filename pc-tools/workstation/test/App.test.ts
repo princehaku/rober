@@ -15563,6 +15563,50 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows structured runtime scan distance on the map without parsing free-roam gate copy", async () => {
+    // live 形态：radar proof 没有点数组，但 free-roam runtime snapshot 已有新鲜 /scan 距离；地图必须按结构化字段显示。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.o3_proof_summary.scan_preview_points = [];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 0;
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_incomplete_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "0";
+    summaryFixture.readback_summary.lidar.scan_preview_source_point_count = "not_loaded";
+    summaryFixture.readback_summary.lidar.runtime_scan_status = "fresh";
+    summaryFixture.readback_summary.lidar.runtime_lidar_min_distance_m = "2.12";
+    summaryFixture.readback_summary.lidar.runtime_lidar_age_s = "0.03";
+    summaryFixture.readback_summary.lidar.runtime_scan_source = "free_roam_runtime_snapshot";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = summaryFixture.safe_command_boundary.free_roam_autonomy_gates.map((gate: Record<string, string>) =>
+      gate.id === "lidar_fresh"
+        ? { ...gate, state: "ready", evidence: "runtime scan ready", next_action: "继续监看雷达" }
+        : gate.id === "obstacle_clear"
+          ? { ...gate, state: "ready", evidence: "障碍距离来自结构化字段", next_action: "继续直行" }
+          : gate,
+    );
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达已运行");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已运行，最近障碍 2.12m。");
+    const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
+    expect(marker.text()).toBe("雷达距离：最近障碍 2.12m（非地图点）");
+    expect(marker.attributes("data-state")).toBe("雷达已运行");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达未返回点数组，只显示最近障碍 2.12m，等点位或定位后再贴地图。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows plain radar refresh failure reason on the map", async () => {
     // refresh 失败后地图不能只写“刷新失败”；普通用户要直接看到失败原因和未显示新点位。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
