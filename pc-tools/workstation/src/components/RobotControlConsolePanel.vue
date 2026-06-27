@@ -2102,6 +2102,11 @@ function plainCurrentMapFactText(summary: RobotControlSummaryResponse): string {
   const imageLabel = plainMapImageFreshnessLabel(previewLoaded);
   const radarNotCurrentText = radarNotCurrentSourcePointText();
   const radarSuffix = radarNotCurrentText ? `；${radarNotCurrentText}` : "";
+  if (localizationResetPending.value) {
+    return previewLoaded
+      ? `地图：正在重新定位，小车地图位置刷新中；当前仍显示地图画面，返回前不把旧位置当作当前定位${radarSuffix}。`
+      : "地图：正在重新定位，小车地图位置刷新中；返回前不把旧位置当作当前定位。";
+  }
   if (mapRefreshPending.value) {
     return previewLoaded
       ? `地图：地图状态刷新中；当前仍显示上次真实地图画面，刷新完成后再按最新状态判断${radarSuffix}。`

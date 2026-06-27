@@ -7245,6 +7245,52 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows localization reset pending in current map facts", async () => {
+    // 重新定位 pending 期间，当前事实不能继续把旧机器人位置当作当前定位。
+    let delayNextLocalizationReset = false;
+    let resolveLocalizationReset!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedLocalizationReset = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveLocalizationReset = resolve;
+    });
+    const baseFetch = stubWorkstationFetch();
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/localize/reset?") && delayNextLocalizationReset) {
+        delayNextLocalizationReset = false;
+        return delayedLocalizationReset;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const resetCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/localize/reset?")).length;
+    delayNextLocalizationReset = true;
+    const resetClick = wrapper.find('[data-testid="plain-localization-reset"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    const facts = wrapper.find('[data-testid="plain-current-facts"]').text();
+    expect(facts).toContain("地图：正在重新定位，小车地图位置刷新中");
+    expect(facts).toContain("返回前不把旧位置当作当前定位");
+    expect(wrapper.find('[data-testid="plain-motion-panel"]').text()).toContain("定位中");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/localize/reset?")).length).toBe(resetCallsBefore + 1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    resolveLocalizationReset({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/localize/reset"],
+    });
+    await resetClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-motion-panel"]').text()).toContain("已定位");
+  });
+
   it("shows AMCL/TF observed as missing map coordinates when robot pose is absent", async () => {
     // 现场可能已经发布 initialpose 且 TF 可见，但 AMCL 坐标仍为空；普通地图不能把这误写成已定位。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

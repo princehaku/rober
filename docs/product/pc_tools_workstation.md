@@ -2712,6 +2712,11 @@ manual、keyboard pulse、Nav2、delivery、stop 或 `/cmd_vel`，也不修改 C
 不执行 Nav2、不发送 manual、keyboard pulse、delivery、stop 或 `/cmd_vel`，也不修改 Clash 或系统代理配置；PC 工作站
 默认公开入口继续是 `0.0.0.0:7001`。
 
+2026-06-28 05:28 起，普通首屏 `当前事实` 的地图行也同步 `重新定位` pending：固定
+`/api/robot-control/localize/reset` 返回前显示 `地图：正在重新定位，小车地图位置刷新中；返回前不把旧位置当作当前定位`。
+如果旧地图画面仍可见，则同时说明“当前仍显示地图画面”。该状态只修正只读事实文案，不自动执行 Nav2、
+manual、keyboard、delivery、stop 或 `/cmd_vel`。
+
 2026-06-26 08:05 起，地图位置缺位 marker 也带 `data-state`：普通缺位为 `位置未读到`，localization reset 失败为
 `定位失败` 并使用失败视觉态。测试锁定 `定位失败` CSS 选择器，避免定位失败和普通未读到在地图上看起来一样。该状态只影响
 PC 地图呈现，不自动重新定位、不启动雷达、不执行 Nav2、不发送 manual/keyboard pulse、delivery、stop 或 `/cmd_vel`。
