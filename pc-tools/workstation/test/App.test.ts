@@ -16311,12 +16311,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/start?") && options?.method === "POST")).toBe(true);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?") && options?.method === "POST")).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("恢复命令已返回成功");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("已自动重新检查图上路线（不发车）");
   });
 
   it("auto-refreshes radar proof after plain radar start reports ok", async () => {

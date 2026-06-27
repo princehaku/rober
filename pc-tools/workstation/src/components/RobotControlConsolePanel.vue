@@ -6526,8 +6526,9 @@ const plainTripNav2LifecycleStatus = computed(() => {
   if (nav2LifecycleResult.value) {
     if (nav2LifecycleResult.value.proxy_status === "lifecycle_forwarded") {
       const result = nav2LifecycleResult.value.command_result;
+      const refreshText = nav2RefreshResult.value ? "；已自动重新检查图上路线（不发车）" : "";
       return result.ok === true
-        ? "自动驾驶服务恢复命令已返回成功；下一步准备图上路线。"
+        ? `自动驾驶服务恢复命令已返回成功${refreshText}；下一步按地图画面确认路线。`
         : `自动驾驶服务恢复命令已返回：${nav2LifecycleResult.value.failure_reason || result.mode || "等待重新读取状态"}。`;
     }
     return `自动驾驶服务恢复未完成：${nav2LifecycleResult.value.failure_reason || "查看高级诊断"}。`;
@@ -9162,6 +9163,10 @@ async function restorePlainNav2Lifecycle(): Promise<void> {
   nav2LifecyclePending.value = true;
   try {
     nav2LifecycleResult.value = await postRobotControlNav2Start(robotApiBaseUrl.value);
+    if (nav2LifecycleResult.value.proxy_status === "lifecycle_forwarded" && nav2LifecycleResult.value.command_result.ok === true) {
+      // 服务恢复后立即做一次无运动路线检查，避免用户在“恢复成功”和“准备路线”之间继续猜下一步。
+      await refreshNav2Proof();
+    }
   } catch (err) {
     nav2LifecycleResult.value = makeNav2LifecycleFallback("start", err instanceof Error ? err.message : "nav2_lifecycle_start_request_failed");
   } finally {

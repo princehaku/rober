@@ -474,6 +474,11 @@ PC 下一步文案会把“旧执行主因不是雷达或相机”和“当前 c
 `mapping_active`、`fresh_map_preview` 缺失而未 ready。自动驾驶当前卡点是 Nav2 `planner_server_active=false`、
 `controller_server_active=false`，并且图上路线/地图定位未 ready；普通入口应先点“恢复自动驾驶服务（不发车）”，再准备路线并显式安全确认执行。
 
+2026-06-28 11:05 起，PC 普通行程入口在“恢复自动驾驶服务（不发车）”成功后会自动串联一次
+`/api/robot-control/nav2/proof/refresh` 与地图预览刷新。该刷新仍是 no-motion planner proof，只检查服务、定位、路线点和图上显示；
+不会调用 `/api/nav2/goal/execute`、`NavigateToPose`、`/cmd_vel`、`/api/base/manual` 或 free-roam。这样 operator 点恢复后能直接看到
+“服务恢复成功且已重新检查图上路线”，不必在恢复服务和准备路线之间继续猜下一步。
+
 2026-06-28 09:45 起，PC 相机只读诊断把 `first_frame_total_timeout` 纳入首帧失败同类原因：
 summary 与 `/api/robot-control/camera/mjpeg/status` 都会把它解释为“相机源没有输出视频帧”。如果同时读到
 `source_usage.status=not_in_use` 或 `owner_count=0`，普通首屏显示“不是页面独占，检查 USB/输入/供电或换 known-good UVC”，
