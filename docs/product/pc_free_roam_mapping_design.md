@@ -414,6 +414,10 @@ runtime `/scan` 说明，例如 `雷达未刷新（旧 /scan 距离 0.04m，约 
 `当前事实不能当作实时读数` / `下面可能是上一次读数`。这样现场不会把旧相机、旧雷达、旧地图或旧 Nav2 状态误当成当前画面；
 详细 timeout 字段仍留在 alert/高级诊断，普通首屏不暴露 `/api/*` 或 `fetch_timeout`。
 
+2026-06-28 07:50 起，浏览器读取 PC Node `/api/robot-control/summary` 增加 3.5s 客户端超时。
+如果 7001 自身间歇卡住，普通首屏会退出 loading 并进入 fail-closed 连接失败事实，而不是无限等待。
+该超时只包住首屏只读 summary GET，不缩短地图刷新、Nav2 规划/执行、自由移动 start/stop 或任何 POST 控制代理的服务端等待窗口。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，

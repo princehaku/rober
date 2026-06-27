@@ -8882,6 +8882,45 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("fails closed when the browser-side summary request times out", async () => {
+    // PC Node 自己无响应时，浏览器也必须退出 loading，不能让普通首屏一直等；超时仍不触发任何控制 endpoint。
+    vi.useFakeTimers();
+    const mockedFetch = stubWorkstationFetch();
+    const originalFetch = mockedFetch.getMockImplementation();
+    let summarySignalObserved = false;
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/summary?")) {
+        return new Promise((_resolve, reject) => {
+          const signal = options?.signal;
+          summarySignalObserved = Boolean(signal);
+          signal?.addEventListener("abort", () => {
+            reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+          }, { once: true });
+        });
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+
+    const wrapper = mount(App);
+    await vi.advanceTimersByTimeAsync(3500);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(summarySignalObserved).toBe(true);
+    expect(wrapper.find('[role="alert"]').text()).toContain("client_timeout_3500ms");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("小车：连接/刷新失败；先检查小车电源、网络和上位机服务。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("client_timeout_3500ms");
+    expect(wrapper.find('[data-testid="robot-api-refresh"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("refreshes plain goal progress with read-only endpoints only", async () => {
     // 普通首屏的进度刷新只重读摘要、底盘反馈、最近行程和送达状态；不能借刷新触发运动或送达确认。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

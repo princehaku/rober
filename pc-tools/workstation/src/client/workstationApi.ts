@@ -51,6 +51,8 @@ import type {
   TrainingLabelingResponse,
 } from "../shared/contracts";
 
+const ROBOT_CONTROL_SUMMARY_CLIENT_TIMEOUT_MS = 3500;
+
 export interface RouteDebugInputs {
   statusJson: string;
   taskRecord: string;
@@ -145,13 +147,29 @@ const API_ENDPOINTS = {
   proofBoundary: "/api/proof-boundary",
 } as const;
 
-async function loadJson<T>(url: string): Promise<T> {
+async function loadJson<T>(url: string, options: { timeoutMs?: number } = {}): Promise<T> {
   // fetch 失败只抛出 API 层错误；App 负责把错误保持在 fail-closed 展示。
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`${url} returned ${response.status}`);
+  const timeoutMs = options.timeoutMs;
+  const controller = timeoutMs ? new AbortController() : null;
+  const timeoutId = timeoutMs
+    ? setTimeout(() => controller?.abort(), timeoutMs)
+    : null;
+  try {
+    const response = await fetch(url, controller ? { signal: controller.signal } : undefined);
+    if (!response.ok) {
+      throw new Error(`${url} returned ${response.status}`);
+    }
+    return (await response.json()) as T;
+  } catch (error) {
+    if (timeoutMs && error instanceof Error && error.name === "AbortError") {
+      throw new Error(`${url} client_timeout_${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
   }
-  return (await response.json()) as T;
 }
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
@@ -486,7 +504,11 @@ export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7Clo
 
 export async function getRobotControlSummary(baseUrl: string): Promise<RobotControlSummaryResponse> {
   // Robot Control V1 只读取 Node 代理后的 fail-closed 摘要，不接收前端任意 endpoint。
-  return loadJson<RobotControlSummaryResponse>(robotControlSummaryUrl(baseUrl));
+  // 浏览器侧也要有短超时；否则 PC Node 本身卡住时，普通首屏会一直 loading，无法进入“旧读数”提示。
+  return loadJson<RobotControlSummaryResponse>(
+    robotControlSummaryUrl(baseUrl),
+    { timeoutMs: ROBOT_CONTROL_SUMMARY_CLIENT_TIMEOUT_MS },
+  );
 }
 
 export async function postRobotControlBaseManual(
