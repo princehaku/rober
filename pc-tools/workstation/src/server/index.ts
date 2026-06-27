@@ -98,6 +98,12 @@ const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "first_frame_timeout",
   "first_frame_total_timeout",
 ]);
+const FREE_ROAM_MAPPING_REQUIRED_GATE_IDS = [
+  "camera_first_frame",
+  "lidar_fresh",
+  "mapping_active",
+  "fresh_map_preview",
+] as const;
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1090,6 +1096,12 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
   const latest = asRecord(payload?.latest_result) ?? payload;
   const decision = asRecord(latest?.decision);
   const gates = Array.isArray(decision?.gates) ? decision.gates : [];
+  const gateStateById = new Map(gates
+    .map((gate) => asRecord(gate))
+    .filter((gate): gate is Record<string, unknown> => gate !== null)
+    .map((gate) => [shortValue(gate.id), shortValue(gate.state)]));
+  // 自由移动只看 runtime 启停门禁；建图验收必须把四个材料缺口补齐，避免 latest 和 summary 口径打架。
+  const mappingMissing = FREE_ROAM_MAPPING_REQUIRED_GATE_IDS.filter((id) => gateStateById.get(id) !== "ready");
   return {
     status: shortValue(payload?.status),
     runtime_status: shortValue(latest?.status, "loaded"),
@@ -1099,6 +1111,11 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
     artifact_only: shortValue(latest?.artifact_only),
     cmd_vel_publish_enabled: shortValue(latest?.cmd_vel_publish_enabled),
     gate_count: String(gates.length),
+    runtime_gate_count: String(gates.length),
+    mapping_gate_count: String(FREE_ROAM_MAPPING_REQUIRED_GATE_IDS.length),
+    mapping_required_ids: FREE_ROAM_MAPPING_REQUIRED_GATE_IDS.join(","),
+    mapping_missing: mappingMissing.length > 0 ? mappingMissing.join(",") : "none",
+    mapping_ready: mappingMissing.length === 0 ? "true" : "false",
   };
 }
 

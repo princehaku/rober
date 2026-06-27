@@ -9691,6 +9691,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.latest_key_values.artifact_only).toBe("false");
       expect(body.latest_key_values.cmd_vel_publish_enabled).toBe("true");
       expect(body.latest_key_values.gate_count).toBe("2");
+      expect(body.latest_key_values.runtime_gate_count).toBe("2");
+      expect(body.latest_key_values.mapping_gate_count).toBe("4");
+      expect(body.latest_key_values.mapping_required_ids).toBe("camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview");
+      expect(body.latest_key_values.mapping_missing).toBe("camera_first_frame,mapping_active,fresh_map_preview");
+      expect(body.latest_key_values.mapping_ready).toBe("false");
       expect(body.hard_dangerous_true_fields).toEqual([]);
       expect(body.safe_to_control).toBe(false);
       expect(body.delivery_success).toBe(false);
