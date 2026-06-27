@@ -2185,7 +2185,7 @@ function latestNavPathOverlay() {
 }
 
 function freeRoamAutonomyRuntimeActive(): boolean {
-  // 自动扫图 start 已转发或上车端 runtime 正在动作时，草图只能作为监看覆盖参考，不能再说“不会自动移动”。
+  // 自由移动 start 已转发或上车端 runtime 正在动作时，草图只能作为监看覆盖参考，不能再说“不会自动移动”。
   const resultActive = freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded"
     && freeRoamAutonomyResult.value.action === "start";
   const runtime = robotSummary.value?.safe_command_boundary.free_roam_autonomy_runtime;
@@ -2223,13 +2223,14 @@ function latestFreeRoamSweepPlanOverlay(robotPose: ReturnType<typeof latestRobot
     points.push(`${endX.toFixed(2)},${y.toFixed(2)}`);
   }
   const activeAutonomy = freeRoamAutonomyRuntimeActive();
+  const modeName = plainFreeRoamMotionModeName.value;
   const activeAutonomyText = activeAutonomy
-    ? "自动扫图运行中，草图用于监看覆盖，不是固定路线。"
+    ? `${modeName}运行中，草图用于监看覆盖，不是固定路线。`
     : "只读计划，不会自动移动。";
   return {
     points: points.join(" "),
     laneCount,
-    state: activeAutonomy ? "自动扫图运行中" : "只读计划",
+    state: activeAutonomy ? `${modeName}运行中` : "只读计划",
     showStart: Boolean(robotStart),
     startStyle: robotStart ? { left: `${robotStart.left.toFixed(2)}%`, top: `${robotStart.top.toFixed(2)}%` } : {},
     label: robotStart
@@ -2685,6 +2686,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     : { left: "12px", top: "84px" };
   const locatedSuffix = robotPose ? "，贴近机器人当前位置" : "，机器人地图位置未读到，标记不代表坐标";
   const autonomyResult = freeRoamAutonomyResult.value;
+  const modeName = plainFreeRoamMotionModeName.value;
   if (mapLifecyclePendingAction.value === "start") {
     return { label: "扫图记录启动中", state: "starting", style, aria: `扫图记录启动中${locatedSuffix}` };
   }
@@ -2698,18 +2700,18 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label, state: "map_failed", style, aria: `${label}${locatedSuffix}` };
   }
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
-    return { label: "自动扫图停止已排队", state: "auto_stop_queued", style, aria: `上车端自动扫图启动返回后会立刻请求停止${locatedSuffix}` };
+    return { label: `${modeName}停止已排队`, state: "auto_stop_queued", style, aria: `上车端${modeName}启动返回后会立刻请求停止${locatedSuffix}` };
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return { label: "自动扫图启动中", state: "auto_starting", style, aria: `上车端自动扫图状态机正在启动${locatedSuffix}` };
+    return { label: `${modeName}启动中`, state: "auto_starting", style, aria: `上车端${modeName}状态机正在启动${locatedSuffix}` };
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
-    return { label: "自动扫图停止中", state: "auto_stopping", style, aria: `上车端自动扫图状态机正在停止${locatedSuffix}` };
+    return { label: `${modeName}停止中`, state: "auto_stopping", style, aria: `上车端${modeName}状态机正在停止${locatedSuffix}` };
   }
   if (autonomyResult?.proxy_status === "autonomy_failed") {
     const actionText = autonomyResult.action === "start" ? "启动" : "停止";
     const failureText = freeRoamAutonomyFailureText(autonomyResult);
-    const label = failureText ? `自动扫图${actionText}失败：${failureText}` : `自动扫图${actionText}失败`;
+    const label = failureText ? `${modeName}${actionText}失败：${failureText}` : `${modeName}${actionText}失败`;
     return {
       label,
       state: "auto_failed",
@@ -2720,22 +2722,22 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
   if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "start") {
     const radarFailureText = radarRefreshFailureLabel(radarRefreshResult.value);
     if (radarFailureText) {
-      return { label: `自动扫图已启动，${radarFailureText}`, state: "auto_radar_failed", style, aria: `自动扫图状态机已启动，但${radarFailureText}${locatedSuffix}` };
+      return { label: `${modeName}已启动，${radarFailureText}`, state: "auto_radar_failed", style, aria: `${modeName}状态机已启动，但${radarFailureText}${locatedSuffix}` };
     }
     if (plainFreeRoamMapPreviewRefreshFailedForSession.value) {
       const failureText = mapPreviewFailureText(mapPreviewResult.value);
-      const label = failureText ? `自动扫图已启动，地图刷新失败：${failureText}` : "自动扫图已启动，地图刷新失败";
-      return { label, state: "auto_map_failed", style, aria: `自动扫图状态机已启动，但地图画面刷新失败${failureText ? `：${failureText}` : ""}${locatedSuffix}` };
+      const label = failureText ? `${modeName}已启动，地图刷新失败：${failureText}` : `${modeName}已启动，地图刷新失败`;
+      return { label, state: "auto_map_failed", style, aria: `${modeName}状态机已启动，但地图画面刷新失败${failureText ? `：${failureText}` : ""}${locatedSuffix}` };
     }
     if (mapPreviewPending.value && mapRuntimeStarted.value) {
-      return { label: "自动扫图已启动，刷新中", state: "auto_refreshing", style, aria: `自动扫图状态机已启动，地图画面正在刷新${locatedSuffix}` };
+      return { label: `${modeName}已启动，刷新中`, state: "auto_refreshing", style, aria: `${modeName}状态机已启动，地图画面正在刷新${locatedSuffix}` };
     }
-    return { label: "自动扫图低速运行中", state: "auto_running", style, aria: `自动扫图状态机已启动，低速运行中，PC 正在监看地图和雷达${locatedSuffix}` };
+    return { label: `${modeName}低速运行中`, state: "auto_running", style, aria: `${modeName}状态机已启动，低速运行中，PC 正在监看地图和雷达${locatedSuffix}` };
   }
   if (autonomyResult?.proxy_status === "autonomy_forwarded" && autonomyResult.action === "stop") {
     return plainFreeRoamMapPreviewFreshForSession.value
-      ? { label: "自动扫图已停止，可保存", state: "auto_stopped_fresh", style, aria: `自动扫图停止请求已发送，地图画面已刷新，可以保存${locatedSuffix}` }
-      : { label: "自动扫图已停止，待刷新画面", state: "auto_stopped_needs_refresh", style, aria: `自动扫图停止请求已发送，需要刷新停止后的地图画面${locatedSuffix}` };
+      ? { label: `${modeName}已停止，可保存`, state: "auto_stopped_fresh", style, aria: `${modeName}停止请求已发送，地图画面已刷新，可以保存${locatedSuffix}` }
+      : { label: `${modeName}已停止，待刷新画面`, state: "auto_stopped_needs_refresh", style, aria: `${modeName}停止请求已发送，需要刷新停止后的地图画面${locatedSuffix}` };
   }
   if (mapPreviewPending.value && mapSavedThisSession.value) {
     return { label: "保存后刷新中", state: "saved_refreshing", style, aria: `扫图地图已保存，正在自动刷新最新画面${locatedSuffix}` };
@@ -3395,9 +3397,6 @@ const plainFreeRoamDriveStatus = computed(() => {
     const reasonSuffix = failureText ? `：${failureText}` : "";
     return `扫图状态：${actionText}失败${reasonSuffix}，小车不会移动；检查上位机地图服务后重试。`;
   }
-  if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
-    return "扫图状态：还没开始记录，键盘扫图锁定。";
-  }
   if (mapPreviewPending.value && mapSavedThisSession.value) {
     return "扫图状态：地图已保存，正在自动刷新最新画面。";
   }
@@ -3431,6 +3430,9 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
     return `扫图状态：${plainFreeRoamMotionModeName.value}停止请求已发送，继续看地图和雷达确认现场收口。`;
+  }
+  if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    return "扫图状态：还没开始记录，键盘扫图锁定。";
   }
   if (mapSavedThisSession.value) {
     if (plainFreeRoamSavedMapPreviewRefreshFailed.value) {
@@ -3504,8 +3506,8 @@ const plainFreeRoamSweepPlanSummary = computed(() => {
   }
   if (freeRoamAutonomyRuntimeActive()) {
     return plan.showStart
-      ? "扫地图草图：自动扫图运行中，蛇形草图用于监看覆盖，不是固定路线。"
-      : "扫地图草图：自动扫图运行中，等待定位后接入当前位置；草图只作覆盖监看参考。";
+      ? `扫地图草图：${plainFreeRoamMotionModeName.value}运行中，蛇形草图用于监看覆盖，不是固定路线。`
+      : `扫地图草图：${plainFreeRoamMotionModeName.value}运行中，等待定位后接入当前位置；草图只作覆盖监看参考。`;
   }
   return plan.showStart
     ? "扫地图草图：已从当前位置画出蛇形覆盖草图；不会自动移动。"
@@ -3803,11 +3805,11 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       : freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
       ? freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
         ? radarRefreshFailureLabel(radarRefreshResult.value)
-          ? `自动扫图状态机已启动；${radarRefreshFailureLabel(radarRefreshResult.value)}，PC 继续保留停止兜底。`
+          ? `${motionModeName}状态机已启动；${radarRefreshFailureLabel(radarRefreshResult.value)}，PC 继续保留停止兜底。`
           : plainFreeRoamMapPreviewRefreshFailedForSession.value
-            ? `自动扫图状态机已启动；地图画面刷新失败${mapPreviewFailureText(mapPreviewResult.value) ? `：${mapPreviewFailureText(mapPreviewResult.value)}` : ""}，PC 继续保留停止兜底。`
-          : "自动扫图状态机已启动；PC 继续监看地图、雷达和停止兜底。"
-        : "自动扫图状态机已启动；PC 继续监看地图、雷达和停止兜底。"
+            ? `${motionModeName}状态机已启动；地图画面刷新失败${mapPreviewFailureText(mapPreviewResult.value) ? `：${mapPreviewFailureText(mapPreviewResult.value)}` : ""}，PC 继续保留停止兜底。`
+          : `${motionModeName}状态机已启动；PC 继续监看地图、雷达和停止兜底。`
+        : `${motionModeName}状态机已启动；PC 继续监看地图、雷达和停止兜底。`
       : blockers.length
         ? `还差：${blockers.slice(0, 3).join("、")}。`
       : autonomyRunningUnlocked
@@ -3819,7 +3821,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     mappingReadinessText,
     runtimeText: runtimeModeText,
     policyText: hasRuntimeGateRows
-      ? `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，正在读取上车端自动扫图门禁。`
+      ? `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，正在读取上车端${motionModeName}门禁。`
       : `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，必须先通过 ${policyGates.slice(0, 3).map(gateLabel).join("、")}。`,
   };
 });
@@ -3853,15 +3855,15 @@ const plainFreeRoamMappingSteps = computed(() => {
     {
       id: "drive",
       label: "低速扫图",
-      state: saved || autoStopped ? "已完成" : autoStartFailed ? "失败" : autoStarted ? "自动扫图中" : keyboardMoving ? "手控中" : keyboardReady && mappingStarted ? "可手控" : mappingStarted ? "待手控" : "待完成",
+      state: saved || autoStopped ? "已完成" : autoStartFailed ? "失败" : autoStarted ? `${plainFreeRoamMotionModeName.value}中` : keyboardMoving ? "手控中" : keyboardReady && mappingStarted ? "可手控" : mappingStarted ? "待手控" : "待完成",
       hint: saved
         ? "扫图已收口，检查地图效果"
         : autoStopped
-          ? "自动扫图已停止，检查停止后的地图画面"
+          ? `${plainFreeRoamMotionModeName.value}已停止，检查停止后的地图画面`
         : autoStartFailed
-          ? `自动扫图启动失败${autoFailureSuffix}，继续人工按住扫图或重试`
+          ? `${plainFreeRoamMotionModeName.value}启动失败${autoFailureSuffix}，继续人工按住扫图或重试`
         : autoStarted
-          ? "自动扫图运行中，PC 监看地图和雷达"
+          ? `${plainFreeRoamMotionModeName.value}运行中，PC 监看地图和雷达`
         : keyboardMoving
           ? `正在${keyboardDirectionPlainLabel.value}，松开即停`
           : keyboardReady && mappingStarted

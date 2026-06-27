@@ -4650,6 +4650,10 @@ describe("App", () => {
       confirm_operator_safety: true,
       confirm_mapping_active: false,
     });
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动状态机已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("自动扫图状态机已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自由移动状态机已启动");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自由移动低速运行中");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
