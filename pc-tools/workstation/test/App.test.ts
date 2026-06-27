@@ -4597,6 +4597,68 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows onboard mapping-readiness gaps when free roam start is downgraded from mapping", async () => {
+    // PC 会请求建图记录，但上车端仍会二次确认相机/雷达；降级原因必须回到普通首屏。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markMappingSensorsReady(summaryFixture);
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "locked";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_start_ready = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+      "/api/robot-control/free-roam/autonomy/start": {
+        ...(fixtures["/api/robot-control/free-roam/autonomy/start"] as Record<string, unknown>),
+        request_body: { confirm_operator_safety: true, confirm_mapping_active: true },
+        mapping_active_requested: true,
+        mapping_active_applied: false,
+        sensor_readiness: {
+          ready: true,
+          missing: [],
+          free_move_ready: true,
+          free_move_without_camera_allowed: true,
+          motion_without_radar_allowed: true,
+          degraded_without_radar: true,
+          mapping_readiness: {
+            ready: false,
+            missing: ["camera_first_frame_not_observed", "radar_scan_proof_not_fresh"],
+            requires_camera_first_frame: true,
+            requires_fresh_radar_scan: true,
+            free_move_allowed_when_mapping_not_ready: true,
+          },
+        },
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const startCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"));
+    expect(startCall).toBeDefined();
+    expect(JSON.parse(String((startCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual({
+      confirm_operator_safety: true,
+      confirm_mapping_active: true,
+    });
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮只按自由移动记录，建图缺口：画面首帧未出、雷达未刷新，未改速度话题。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows free-roam autonomy radar refresh failures on the map", async () => {
     // 自动扫图 start 已转发后，如果自动雷达 proof refresh 失败，扫图状态不能继续说“雷达监看中”。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

@@ -1433,6 +1433,20 @@ const plainFreeRoamLatestSummary = computed(() => {
   const stop = kv.stop_required === "true" ? "，要求停止兜底" : "";
   return `最新读取：${state}${reason}${stop}；${mode}。`;
 });
+function freeRoamMappingMissingPlainLabels(missing: string[] | undefined): string[] {
+  // 上车端二次确认会返回稳定 token；普通首屏要翻译成现场可行动的建图缺口。
+  const labels: Record<string, string> = {
+    camera_first_frame_not_observed: "画面首帧未出",
+    camera_health_unreachable: "相机服务未连上",
+    camera_not_ready: "画面未确认",
+    radar_scan_proof_not_fresh: "雷达未刷新",
+    radar_not_ready: "雷达未就绪",
+  };
+  const items = (missing ?? [])
+    .map((item) => labels[item] ?? item)
+    .filter((item) => item && item !== "unknown" && item !== "not_loaded");
+  return [...new Set(items)];
+}
 const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const result = freeRoamAutonomyResult.value;
   if (!result || !result.command_result.executed) {
@@ -1451,8 +1465,10 @@ const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   if (result.action === "stop") {
     return `状态机写入：停止参数已${strategy} ${countText}${topicText}。`;
   }
+  const mappingMissing = freeRoamMappingMissingPlainLabels(result.sensor_readiness?.mapping_readiness?.missing);
+  const mappingMissingText = mappingMissing.length ? `，建图缺口：${mappingMissing.join("、")}` : "";
   const mappingText = result.mapping_active_requested
-    ? result.mapping_active_applied === true ? "，本轮可按建图记录" : "，本轮只按自由移动记录"
+    ? result.mapping_active_applied === true ? "，本轮可按建图记录" : `，本轮只按自由移动记录${mappingMissingText}`
     : "";
   const motionText = result.motion_unlock_requested ? "，运动双锁已请求" : "";
   return `状态机写入：启动参数已${strategy} ${countText}${motionText}${mappingText}${topicText}。`;

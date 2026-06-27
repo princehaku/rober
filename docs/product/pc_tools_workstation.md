@@ -2979,6 +2979,12 @@ Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达
 `pointerleave`，避免鼠标/手指移出按钮后仍保留连续点动。该验证只锁定 PC 前端事件收口和固定 stop 代理，不发真实
 manual、Nav2、free-roam motion、delivery 或 `/cmd_vel`。
 
+2026-06-27 08:26 起，普通首屏会消费上车端自由移动 start 回包里的
+`sensor_readiness.mapping_readiness.missing`：当 PC 请求建图记录但上车端二次确认把
+`mapping_active_applied=false` 时，状态机写入行会显示 `本轮只按自由移动记录，建图缺口：画面首帧未出、雷达未刷新`
+这类具体原因。这样自由移动仍可启动，但 operator 不会把降级记录误当作可验收建图。该展示只翻译 start 回包，不改变
+start 请求、不跳过上车端二次确认、不发 manual/Nav2/delivery 或 `/cmd_vel`。
+
 2026-06-27 05:02 起，普通首屏在 `雷达无新点` 状态下新增 `重启雷达` 按钮。
 它只串联已有固定代理 `POST /api/robot-control/radar/stop`、`POST /api/robot-control/radar/start` 和
 `POST /api/robot-control/radar/scan-proof/refresh`，不会调用 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
