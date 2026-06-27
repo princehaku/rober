@@ -6679,6 +6679,7 @@ describe("App", () => {
     expect(scanPoints.exists()).toBe(true);
     expect(scanPoints.attributes("aria-label")).toBe("雷达点位，地图预览雷达点 2 个");
     expect(scanPoints.findAll("circle")).toHaveLength(2);
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已运行，雷达点 2 个，最近障碍 0.30m，地图预览雷达点 2 个已贴到地图。");
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("地图预览雷达点 2 个");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：地图预览随图返回 2 个雷达点，已贴到地图；实时性以当前地图刷新为准。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置已读到，地图预览雷达点 2 个已贴到地图，路线未显示。");
@@ -6740,6 +6741,7 @@ describe("App", () => {
     const marker = wrapper.find('[data-testid="plain-map-radar-marker"]');
     expect(marker.text()).toBe("雷达已运行，局部点 2 个");
     expect(marker.classes()).toContain("mode-pose-missing");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已运行，雷达点 2 个，最近障碍 0.30m，雷达局部轮廓 2 个，未贴到地图。");
     expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("地图预览雷达局部点 2 个，等待地图位置");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达 2 个只显示局部轮廓，等定位后再贴地图。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人TF 已观察，AMCL 坐标未读到，雷达只显示车身局部轮廓 2 个点，不贴到地图；目标线未显示。");

@@ -2148,6 +2148,22 @@ function plainCurrentMapFactText(summary: RobotControlSummaryResponse): string {
   return "地图：还没读到真实地图图像。";
 }
 
+function plainCurrentRadarMapAttachmentText(state: string): string {
+  // 当前事实也要说明雷达点到底有没有贴进地图坐标；不能只在地图 caption 里解释。
+  const robotPose = latestRobotPoseOverlay();
+  const mapOverlay = latestRadarScanOverlay(robotPose, state);
+  if (mapOverlay.dots.length > 0) {
+    return mapOverlay.source === "map_preview"
+      ? `，地图预览雷达点 ${mapOverlay.dots.length} 个已贴到地图`
+      : `，雷达点 ${mapOverlay.dots.length} 个已贴到地图`;
+  }
+  const localOverlay = latestRadarLocalScanOverlay(robotPose, state);
+  if (localOverlay.dots.length > 0) {
+    return `，雷达局部轮廓 ${localOverlay.dots.length} 个，未贴到地图`;
+  }
+  return "";
+}
+
 function plainCurrentRadarFactText(): string {
   // 当前事实条要把雷达“有没有材料”和“是否实时”合在一句里，详细坐标口径仍留在地图 caption。
   const state = radarSummary.value.state;
@@ -2157,22 +2173,23 @@ function plainCurrentRadarFactText(): string {
   const staleRuntimeText = latestRadarRuntimeScanStaleLabel() ? `，${latestRadarRuntimeScanStaleLabel()}` : "";
   const notCurrentText = radarNotCurrentSourcePointText();
   const notCurrentSuffix = notCurrentText ? `；${notCurrentText}` : "";
+  const mapAttachmentText = plainCurrentRadarMapAttachmentText(state);
   if (state === "雷达无新点" && radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
-    return `雷达：已收到原始包，但地图上没有雷达点${staleRuntimeText}。`;
+    return `雷达：已收到原始包，但地图上没有雷达点${staleRuntimeText}${mapAttachmentText}。`;
   }
   if (state === "雷达无新点") {
-    return `雷达：已启动，但地图上没有新点${staleRuntimeText}。`;
+    return `雷达：已启动，但地图上没有新点${staleRuntimeText}${mapAttachmentText}。`;
   }
   if (state === "雷达待刷新") {
-    return `雷达：运行中待刷新${pointText}${obstacleText}${staleRuntimeText}。`;
+    return `雷达：运行中待刷新${pointText}${obstacleText}${staleRuntimeText}${mapAttachmentText}。`;
   }
   if (state === "刷新中") {
-    return `雷达：正在刷新${pointText}${obstacleText}${staleRuntimeText}。`;
+    return `雷达：正在刷新${pointText}${obstacleText}${staleRuntimeText}${mapAttachmentText}。`;
   }
   if (state === "雷达已运行") {
     return pointCount > 0
-      ? `雷达：已运行，雷达点 ${pointCount} 个${obstacleText}。`
-      : `雷达：已运行${obstacleText}。`;
+      ? `雷达：已运行，雷达点 ${pointCount} 个${obstacleText}${mapAttachmentText}。`
+      : `雷达：已运行${obstacleText}${mapAttachmentText}。`;
   }
   return `雷达：${state}${staleRuntimeText}${notCurrentSuffix}。`;
 }
