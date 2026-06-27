@@ -3469,6 +3469,13 @@ multipart JPEG，失败继续返回结构化 503 和 `first_frame_unreadable` / 
 wheel raw L/R=0/0 的 live 记录也能让普通首屏显示 `PWM/T=11`，不会等上车重新产出新字段才可排障。
 该 fallback 只读现有 artifact，不触发 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-27 21:41 起，单独的
+`GET /api/robot-control/nav2/goal/execution/latest` 代理也采用同一口径：当上车 live artifact 只在
+`base_command_summary.latest_nonzero_command.command_mode` 里记录 `pwm/ros/speed`，且没有
+`command_mode_counts` 时，PC 会从 `nonzero_command_count` 合成 `base_command_mode_counts`。这样“最新路线执行详情”
+和普通首屏 summary 都能如实显示上次 Nav2 已发非零底盘命令，但 wheel raw L/R 仍未非零；该路径仍是只读 latest，
+不会重放 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 19:23 起，Robot Control summary 的 `readback_summary.lidar` 新增
 `runtime_scan_status`、`runtime_lidar_min_distance_m`、`runtime_lidar_age_s` 和 `runtime_scan_source`。
 当 radar proof latest 仍是旧窗口或没有点数组，但 free-roam runtime snapshot 已读到新鲜 `/scan` 距离时，

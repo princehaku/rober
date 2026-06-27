@@ -8492,6 +8492,73 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Nav2 latest execution proxy derives command mode counts from live nested nonzero command shape", async () => {
+    // 现场 latest_result.base_command_summary 可能只给 latest_nonzero_command.command_mode；PC 代理不能把它降成 not_loaded。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          generated_at_ms: 1782567632121,
+          latest_result: {
+            status: "goal_succeeded",
+            evidence_ref: "o11-nav2-goal-execution-live-nested-command",
+            nav2_goal_execution_proven: false,
+            goal_accepted: true,
+            result_received: true,
+            result_status: "succeeded",
+            robot_control_executed: true,
+            sends_base_motion_commands: true,
+            uses_base_uart: true,
+            base_command_mode: "pwm",
+            base_command_summary: {
+              sample_count: 50,
+              nonzero_command_count: 49,
+              nonzero_command_observed: true,
+              latest_nonzero_command: {
+                command_mode: "pwm",
+                vendor_command: { T: 11, L: 164, R: -164 },
+              },
+            },
+            base_feedback_summary: {
+              sample_count: 239,
+              nonzero_sample_count: 0,
+              wheel_feedback_lr_nonzero_proven: false,
+              latest_pair: { left_speed: 0, right_speed: 0 },
+            },
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/goal/execution/latest?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        goal_execution_key_values: Record<string, string>;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("latest_loaded");
+      expect(body.goal_execution_key_values.status).toBe("goal_succeeded");
+      expect(body.goal_execution_key_values.base_command_mode).toBe("pwm");
+      expect(body.goal_execution_key_values.base_command_nonzero_observed).toBe("true");
+      expect(body.goal_execution_key_values.base_command_nonzero_count).toBe("49");
+      expect(body.goal_execution_key_values.base_command_latest_nonzero_mode).toBe("pwm");
+      expect(body.goal_execution_key_values.base_command_mode_counts).toBe("{\"pwm\":49}");
+      expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("false");
+      expect(body.goal_execution_key_values.base_feedback_latest_left_speed).toBe("0");
+      expect(body.goal_execution_key_values.base_feedback_latest_right_speed).toBe("0");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/nav2/goal/execution/latest"]);
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("Nav2 latest execution proxy keeps hil_pass false as not proven", async () => {
     // HIL false 是真车未证明的强信号，即使 action succeeded 也不能点亮完整路线。
     const upstream = await listenRobotBaseCommandApi({}, {

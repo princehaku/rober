@@ -395,6 +395,26 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
   const baseCommandSummary = asRecord(latestResult?.base_command_summary) ?? asRecord(payload?.base_command_summary);
   const latestNonzeroPair = asRecord(baseFeedbackSummary?.latest_nonzero_pair);
   const latestPair = asRecord(baseFeedbackSummary?.latest_pair);
+  const latestNonzeroCommand = asRecord(baseCommandSummary?.latest_nonzero_command);
+  const baseCommandMode = shortValue(latestResult?.base_command_mode ?? payload?.base_command_mode, "not_loaded");
+  const baseCommandNonzeroCount = shortValue(baseCommandSummary?.nonzero_command_count, "0");
+  const baseCommandLatestNonzeroMode = shortValue(
+    baseCommandSummary?.latest_nonzero_command_mode ?? latestNonzeroCommand?.command_mode,
+    "not_loaded",
+  );
+  const baseCommandModeCounts = (() => {
+    // 真实上车 latest 可能只给 latest_nonzero_command.command_mode；PC 仍要把非零命令模式读成可见证据。
+    const explicitCounts = baseCommandSummary?.command_mode_counts;
+    if (explicitCounts !== undefined && explicitCounts !== null) {
+      return shortValue(explicitCounts, "{}");
+    }
+    const count = Number(baseCommandNonzeroCount);
+    const mode = baseCommandLatestNonzeroMode !== "not_loaded" ? baseCommandLatestNonzeroMode : baseCommandMode;
+    if (["ros", "pwm", "speed"].includes(mode) && Number.isFinite(count) && count > 0) {
+      return JSON.stringify({ [mode]: count });
+    }
+    return "{}";
+  })();
   return {
     status: shortValue(latestResult?.status ?? payload?.status),
     evidence_ref: shortValue(payload?.evidence_ref ?? latestResult?.evidence_ref),
@@ -414,7 +434,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     cancel_requested: shortValue(payload?.cancel_requested ?? latestResult?.cancel_requested),
     cancel_accepted: shortValue(cancelResponse?.accepted, "false"),
     feedback_sample_count: shortValue(payload?.feedback_sample_count ?? latestResult?.feedback_sample_count, "0"),
-    base_command_mode: shortValue(latestResult?.base_command_mode ?? payload?.base_command_mode, "not_loaded"),
+    base_command_mode: baseCommandMode,
     base_feedback_sample_count: shortValue(baseFeedbackSummary?.sample_count, "0"),
     base_feedback_nonzero_sample_count: shortValue(baseFeedbackSummary?.nonzero_sample_count, "0"),
     base_feedback_lr_nonzero_proven: shortValue(baseFeedbackSummary?.wheel_feedback_lr_nonzero_proven, "false"),
@@ -424,10 +444,10 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     base_feedback_latest_left_speed: shortValue(latestNonzeroPair?.left_speed ?? latestPair?.left_speed, "not_observed"),
     base_feedback_latest_right_speed: shortValue(latestNonzeroPair?.right_speed ?? latestPair?.right_speed, "not_observed"),
     base_command_sample_count: shortValue(baseCommandSummary?.sample_count, "0"),
-    base_command_nonzero_count: shortValue(baseCommandSummary?.nonzero_command_count, "0"),
+    base_command_nonzero_count: baseCommandNonzeroCount,
     base_command_nonzero_observed: shortValue(baseCommandSummary?.nonzero_command_observed, "false"),
-    base_command_latest_nonzero_mode: shortValue(baseCommandSummary?.latest_nonzero_command_mode, "not_loaded"),
-    base_command_mode_counts: shortValue(baseCommandSummary?.command_mode_counts, "{}"),
+    base_command_latest_nonzero_mode: baseCommandLatestNonzeroMode,
+    base_command_mode_counts: baseCommandModeCounts,
     robot_control_executed: shortValue(latestResult?.robot_control_executed ?? payload?.robot_control_executed, "false"),
     sends_base_motion_commands: shortValue(latestResult?.sends_base_motion_commands ?? payload?.sends_base_motion_commands, "not_loaded"),
     uses_base_uart: shortValue(latestResult?.uses_base_uart ?? payload?.uses_base_uart, "not_loaded"),
