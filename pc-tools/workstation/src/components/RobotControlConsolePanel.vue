@@ -1271,7 +1271,7 @@ function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读�
   // lifecycle 摘要只说普通建图动作结果，不把 endpoint、proof 或命令细节放回首页。
   if (mapLifecyclePending.value) {
     if (mapLifecyclePendingAction.value === "start") {
-      return { state: "处理中", hint: "正在启动地图记录，返回前先不要移动。" };
+      return { state: "处理中", hint: "正在启动地图记录，返回前未证明记录已启动；先不要移动。" };
     }
     if (mapLifecyclePendingAction.value === "save") {
       return { state: "处理中", hint: "正在保存当前地图，保存完成前不要继续移动。" };
@@ -3454,7 +3454,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
   const autonomyResult = freeRoamAutonomyResult.value;
   const modeName = plainFreeRoamMotionModeName.value;
   if (mapLifecyclePendingAction.value === "start") {
-    return { label: "地图记录启动中（不发车）", state: "starting", style, aria: `地图记录启动中，不发车${locatedSuffix}` };
+    return { label: "地图记录启动中（不发车）", state: "starting", style, aria: `地图记录启动请求已发送，不发车，返回前未证明记录已启动${locatedSuffix}` };
   }
   if (mapLifecyclePendingAction.value === "save") {
     return { label: "地图保存中", state: "saving", style, aria: `当前扫图地图正在保存${locatedSuffix}` };
@@ -3998,7 +3998,7 @@ const plainFreeRoamMappingSummary = computed(() => {
   }
   if (mapLifecyclePending.value) {
     if (mapLifecyclePendingAction.value === "start") {
-      return { state: "启动中", hint: "正在启动地图记录；启动返回前不要移动小车。" };
+      return { state: "启动中", hint: "正在启动地图记录；返回前未证明记录已启动，不要移动小车。" };
     }
     if (mapLifecyclePendingAction.value === "save") {
       return { state: "保存中", hint: "正在保存当前扫图地图；保存完成前不要继续移动。" };
@@ -4237,7 +4237,7 @@ const plainFreeRoamDriveStatus = computed(() => {
     return `${statusPrefix}：先勾安全确认，小车不会移动${obstacleSuffix}。`;
   }
   if (mapLifecyclePendingAction.value === "start") {
-    return "扫图状态：正在启动地图记录，等记录启动后再移动。";
+    return "扫图状态：正在启动地图记录；返回前未证明记录已启动，不要移动。";
   }
   if (mapLifecyclePendingAction.value === "save") {
     return "扫图状态：正在保存当前地图，保存完成前不要继续移动。";

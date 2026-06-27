@@ -4545,9 +4545,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("地图记录启动中（不发车）");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("starting");
-    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("地图记录启动中，不发车，机器人地图位置未读到，标记不代表坐标");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("正在启动地图记录；启动返回前不要移动小车。");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在启动地图记录，等记录启动后再移动。");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("地图记录启动请求已发送，不发车，返回前未证明记录已启动，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("正在启动地图记录；返回前未证明记录已启动，不要移动小车。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在启动地图记录；返回前未证明记录已启动，不要移动。");
     expect(mockedFetch.mock.calls.slice(callsBeforeClick).some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     resolveMapStart({
       ok: true,
