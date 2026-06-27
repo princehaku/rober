@@ -234,6 +234,10 @@ pc-tools/workstation/
 - 2026-06-27 16:01 起，相机失败态的普通首屏文案改为短结论：overlay 和 `画面状态` 只显示
   “不是页面独占、设备没人占用但 UVC 没有输出视频帧、检查 USB/输入/供电”；MJPG/YUYV 格式尝试等长证据只放在
   `只读检查` 和共享状态里。这样多人共享预览的事实仍可见，但普通用户不再被同一条无首帧诊断重复刷屏。
+- 2026-06-27 18:16 起，上述短结论会保留上位机 `source_diagnosis_next_action=check_usb_camera_input_power_or_known_good_uvc`
+  的现场下一步：普通首屏 overlay 和 `画面状态` 在“没人占用但 UVC 无帧”时追加“必要时换 known-good UVC 复测”。
+  这样“谁进来都看不到实时预览”的场景不再被误解成 PC 页面独占，排障会收敛到 USB/摄像头输入/供电/已知好 UVC。
+  该改动只修正文案透出，不创建额外 camera client、不触发首帧 probe、不发送 manual/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
 - 2026-06-27 13:20 起，`readback_summary.free_roam` 新增 `motion_start_ready`，专门表示“上车 runtime 与停止兜底已满足，勾安全确认后可发起自由移动”；原 `motion_ready` 继续表示“当前上车端已经打开运动发布”。因此 live 里 `motion_start_ready=true` 且 `motion_ready=false` 表示“可启动但当前还没有自己跑”，不再把未启动状态误读成不能自由移动。该字段只修正只读 summary 语义，不启动 free-roam、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 - 2026-06-27 13:55 起，`safe_command_boundary.free_roam_autonomy` 同步采用三态：`locked` 表示基础启动条件未读到，`start_ready` 表示上车 runtime 与停止兜底已满足、勾安全确认即可发起自由移动，`ready` 只表示上车端已经打开运动发布。这样 live summary 不再出现 `free_roam_autonomy_start_ready=true` 但主状态仍叫 `locked` 的矛盾口径；相机/雷达仍只影响建图验收，不阻塞低速自由移动。
 - 2026-06-27 14:01 起，普通首屏事实条会把自由移动 start-ready 和本地安全确认合并成人话：未勾确认时显示“勾安全确认后可启动”，勾上后才显示“可启动”。这保持发车前预检最小化为单个安全确认，同时避免把 `start_ready` 误读成已经允许立即动作；仍不自动启动 free-roam、manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。

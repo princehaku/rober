@@ -395,10 +395,20 @@ function cameraSourceFirstFrameFailed(camera: RobotControlSummaryResponse["readb
   );
 }
 
+function cameraKnownGoodUvcSuffix(camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined): string {
+  // 上位机已经证明“没人占用但无首帧”时，首屏也要保留换已知好 UVC 的下一步，避免继续误查页面独占。
+  const nextAction = camera?.source_diagnosis_next_action ?? "";
+  const plainHint = camera?.source_diagnosis_plain_hint ?? "";
+  return nextAction === "check_usb_camera_input_power_or_known_good_uvc" || /known-good|known good|换.*UVC/i.test(plainHint)
+    ? "，必要时换 known-good UVC 复测"
+    : "";
+}
+
 function cameraSourcePlainFailureHint(): string {
   // 首屏 overlay/status 只放短结论；格式矩阵等长证据放到只读检查里，避免同一失败原因重复刷屏。
   const camera = robotSummary.value?.readback_summary.camera;
   const probeFailureHint = cameraProbePlainFailureHint();
+  const knownGoodUvcSuffix = cameraKnownGoodUvcSuffix(camera);
   const selectedName = camera?.selected_name && !["", "not_loaded", "none"].includes(camera.selected_name)
     ? camera.selected_name
     : "";
@@ -413,10 +423,10 @@ function cameraSourcePlainFailureHint(): string {
       && camera.source_diagnosis_plain_hint
       && !["", "not_loaded", "none"].includes(camera.source_diagnosis_plain_hint)
     ) {
-      return `不是页面独占：${sourcePrefix}没人占用，但 UVC 没有输出视频帧；检查 USB、摄像头输入或供电。`;
+      return `不是页面独占：${sourcePrefix}没人占用，但 UVC 没有输出视频帧；检查 USB、摄像头输入或供电${knownGoodUvcSuffix}。`;
     }
     if (camera?.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
-      return `不是页面独占：${sourcePrefix}摄像头能打开，但没有取到视频帧；检查 USB、摄像头输入、格式或供电。`;
+      return `不是页面独占：${sourcePrefix}摄像头能打开，但没有取到视频帧；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
     }
     if (camera?.source_usage_status === "in_use_by_probe" || camera?.source_usage_status === "in_use_by_other_process") {
       const ownerCount = camera.source_usage_owner_count && camera.source_usage_owner_count !== "not_loaded"
@@ -429,9 +439,9 @@ function cameraSourcePlainFailureHint(): string {
     }
     if (camera?.source_usage_status === "not_in_use") {
       if (camera?.source_failure_reason === "capture_read_call_timeout" || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout") {
-        return `不是页面独占：${sourcePrefix}相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。`;
+        return `不是页面独占：${sourcePrefix}相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
       }
-      return `不是页面独占：${sourcePrefix}相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。`;
+      return `不是页面独占：${sourcePrefix}相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电${knownGoodUvcSuffix}。`;
     }
     return "相机没有出画面，检查摄像头/视频线。";
   }
