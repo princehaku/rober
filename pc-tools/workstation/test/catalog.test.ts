@@ -4020,7 +4020,7 @@ describe("workstation fail-closed API contracts", () => {
         "planner_server_inactive",
       ]));
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先生成图上路线并读到小车地图位置；同时恢复 Nav2 planner");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复 Nav2 planner，再生成图上路线并读到小车地图位置");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("not_loaded");
       expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_safety_confirmation_only");
       expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);

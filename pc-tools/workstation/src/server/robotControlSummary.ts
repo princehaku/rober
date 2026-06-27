@@ -4341,7 +4341,7 @@ function nav2GoalBoundaryGuidance(
     ...base,
     nav2_goal_blockers: nav2ServiceBlockers,
     nav2_goal_next_action: inactiveServiceNames.length
-      ? `${base.nav2_goal_next_action}；同时恢复 ${inactiveServiceNames.join(" 和 ")}`
+      ? `先恢复 ${inactiveServiceNames.join(" 和 ")}，再生成图上路线并读到小车地图位置`
       : base.nav2_goal_next_action,
     nav2_goal_execution_mode_label: modeLabel,
   };
