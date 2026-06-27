@@ -2266,7 +2266,6 @@ export function createWorkstationApp(): express.Express {
         signal: AbortSignal.timeout(10000),
       });
       const remotePayload = asRecord(await remote.json().catch(() => null));
-      const latestResult = asRecord(remotePayload?.latest_result);
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
         (field) => !nav2GoalExecutionAllowedTrueField(field),
       );
@@ -2282,8 +2281,8 @@ export function createWorkstationApp(): express.Express {
           ...dangerous.map((field) => `dangerous_true_field:${field}`),
         ],
         hard_dangerous_true_fields: dangerous,
-        // latest 是只读回放，不会发起 NavigateToPose；这里仅如实展示历史 artifact 的执行证据。
-        robot_control_executed: remotePayload?.robot_control_executed === true || latestResult?.robot_control_executed === true,
+        // latest 是只读回放，不会发起 NavigateToPose；历史执行事实只留在 goal_execution_key_values。
+        robot_control_executed: false,
       };
       res.status(responseBody.proxy_status === "latest_loaded" ? 200 : 502).json(responseBody);
     } catch (error) {

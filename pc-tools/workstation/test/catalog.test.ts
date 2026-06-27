@@ -7925,7 +7925,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("true");
       expect(body.goal_execution_key_values.delivery_success).toBe("false");
       expect(body.hard_dangerous_true_fields).toEqual([]);
-      expect(body.robot_control_executed).toBe(true);
+      expect(body.robot_control_executed).toBe(false);
       expect(body.delivery_success).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/nav2/goal/execution/latest"]);
       expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
@@ -7993,7 +7993,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("false");
       expect(body.goal_execution_key_values.base_feedback_imu_attitude_delta_observed).toBe("true");
       expect(body.goal_execution_key_values.feedback_sample_count).toBe("8");
-      expect(body.robot_control_executed).toBe(true);
+      expect(body.robot_control_executed).toBe(false);
       expect(body.delivery_success).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/nav2/goal/execution/latest"]);
       expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
