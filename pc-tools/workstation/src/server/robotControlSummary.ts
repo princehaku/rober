@@ -3269,6 +3269,8 @@ function nav2GoalExecutionProvenText(goalResultPayload: JsonRecord | null): stri
 
 function freeRoamSummaryFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
+  freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null = null,
+  freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
 ): RobotControlSummaryResponse["readback_summary"]["free_roam"] {
   // free-roam 摘要把自动扫图 artifact 的最近状态提升给首屏；它只解释状态，不代表 PC 可以直接发车。
   const readback = readbackById(readbacks, "free_roam_autonomy_latest");
@@ -3278,6 +3280,16 @@ function freeRoamSummaryFromReadbacks(
   const rawGates = Array.isArray(decision?.gates) ? decision.gates : [];
   const payloadGateCount = summaryValueText(payload, ["gate_count"]);
   const gateCount = rawGates.length > 0 ? String(rawGates.length) : payloadGateCount && payloadGateCount !== "not_loaded" ? payloadGateCount : "0";
+  const stopGates = (freeRoamRuntimeGates ?? []).filter((gate) => gate.id === "stop_available");
+  const stopFallbackReady = stopGates.length === 0 || stopGates.every((gate) => gate.state === "ready");
+  const startReady = Boolean(freeRoamRuntime?.status === "loaded" && stopFallbackReady);
+  const motionReady = Boolean(startReady && freeRoamRuntime?.cmd_vel_publish_enabled === true);
+  const mappingRequiredIds = ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"];
+  const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
+    .filter((gate) => gate.scope === "mapping_acceptance")
+    .map((gate) => [gate.id, gate]));
+  const mappingMissing = mappingRequiredIds.filter((id) => mappingGateById.get(id)?.state !== "ready");
+  const mappingReady = startReady && mappingMissing.length === 0;
   return {
     status: readback?.status ?? "not_loaded",
     runtime_status: asString(payload?.runtime_status, latest ? "loaded" : "not_loaded"),
@@ -3286,6 +3298,10 @@ function freeRoamSummaryFromReadbacks(
     stop_required: decision ? booleanSummaryValue(decision.stop_required === true) : summaryValueText(payload, ["stop_required"]) ?? "not_loaded",
     artifact_only: latest ? booleanSummaryValue(latest.artifact_only !== false) : summaryValueText(payload, ["artifact_only"]) ?? "not_loaded",
     cmd_vel_publish_enabled: latest ? booleanSummaryValue(latest.cmd_vel_publish_enabled === true) : summaryValueText(payload, ["cmd_vel_publish_enabled"]) ?? "not_loaded",
+    start_ready: booleanSummaryValue(startReady),
+    motion_ready: booleanSummaryValue(motionReady),
+    mapping_ready: booleanSummaryValue(mappingReady),
+    mapping_missing: mappingMissing.length ? mappingMissing.join(",") : "none",
     runtime_artifact_proven: summaryValueText(payload, ["free_roam_runtime_artifact_proven"]) ?? "not_loaded",
     state_machine_observed: summaryValueText(payload, ["free_roam_state_machine_observed"]) ?? "not_loaded",
     ros2_runtime_proven: summaryValueText(payload, ["ros2_runtime_proven"]) ?? "not_loaded",
@@ -3476,6 +3492,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         stop_required: "not_loaded",
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
+        start_ready: "false",
+        motion_ready: "false",
+        mapping_ready: "false",
+        mapping_missing: "not_loaded",
         runtime_artifact_proven: "not_loaded",
         state_machine_observed: "not_loaded",
         ros2_runtime_proven: "not_loaded",
@@ -3937,7 +3957,7 @@ export async function buildRobotControlSummary(
       map: mapSummaryFromReadbacks(readbacks, proofSummary),
       localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
       nav2: nav2SummaryFromReadbacks(readbacks, proofSummary),
-      free_roam: freeRoamSummaryFromReadbacks(readbacks),
+      free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime),
     },
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),

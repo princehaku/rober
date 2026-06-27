@@ -2487,6 +2487,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       stop_required: string;
       artifact_only: string;
       cmd_vel_publish_enabled: string;
+      start_ready: string;
+      motion_ready: string;
+      mapping_ready: string;
+      mapping_missing: string;
       runtime_artifact_proven: string;
       state_machine_observed: string;
       ros2_runtime_proven: string;
