@@ -793,27 +793,31 @@ function radarEndpointConflictSummary(): string {
 }
 
 const effectiveLidarReadback = computed<LidarReadback | null>(() => {
-  // 地图雷达 marker 必须使用最新可用口径：radar/status 优先，summary 作为兼容兜底，最后才消费 runtime gate。
+  // 地图雷达 marker 必须优先使用真正贴近当前时刻的口径；runtime /scan 新鲜时，过期 proof/status 只能做诊断。
   const summary = robotSummary.value?.readback_summary.lidar;
   const gateDerived = gateDerivedLidarReadback();
   if (!summary && radarStatusResult.value?.proxy_status !== "status_loaded" && !gateDerived) {
     return null;
   }
+  const runtimeScanFresh = Boolean(gateDerived && latestRadarRuntimeScanReady());
+  const runtimeValue = <K extends keyof LidarReadback>(key: K): LidarReadback[K] | undefined => (
+    runtimeScanFresh ? gateDerived?.[key] : undefined
+  );
   return {
-    status: radarStatusValue("status") ?? summary?.status ?? gateDerived?.status ?? "not_loaded",
-    latest_scan_proof_status: radarStatusValue("latest_scan_proof_status") ?? summary?.latest_scan_proof_status ?? gateDerived?.latest_scan_proof_status ?? "not_loaded",
-    latest_raw_packet_proof_status: radarStatusValue("latest_raw_packet_proof_status") ?? summary?.latest_raw_packet_proof_status ?? gateDerived?.latest_raw_packet_proof_status ?? "not_loaded",
-    latest_scan_proof_result_status: radarStatusValue("latest_scan_proof_result_status") ?? radarStatusValue("latest_proof_status") ?? summary?.latest_scan_proof_result_status ?? gateDerived?.latest_scan_proof_result_status ?? "not_loaded",
-    raw_packet_once_observed: radarStatusValue("raw_packet_once_observed") ?? radarStatusValue("latest_raw_packet_once_observed") ?? summary?.raw_packet_once_observed ?? gateDerived?.raw_packet_once_observed ?? "not_loaded",
-    continuous_scan_status: radarStatusValue("continuous_scan_status") ?? summary?.continuous_scan_status ?? gateDerived?.continuous_scan_status ?? "not_loaded",
-    lifecycle_running: radarStatusValue("lifecycle_running") ?? summary?.lifecycle_running ?? gateDerived?.lifecycle_running ?? "false",
-    lifecycle_state: radarStatusValue("lifecycle_state") ?? summary?.lifecycle_state ?? gateDerived?.lifecycle_state ?? "not_loaded",
-    continuous_window_observed: radarStatusValue("continuous_window_observed") ?? summary?.continuous_window_observed ?? gateDerived?.continuous_window_observed ?? "false",
-    continuity_window_status: radarStatusValue("continuity_window_status") ?? summary?.continuity_window_status ?? gateDerived?.continuity_window_status ?? "not_loaded",
-    latest_scan_proof_fresh: radarStatusValue("latest_scan_proof_fresh") ?? summary?.latest_scan_proof_fresh ?? gateDerived?.latest_scan_proof_fresh ?? "false",
-    scan_preview_point_count: radarStatusValue("scan_preview_point_count") ?? summary?.scan_preview_point_count ?? gateDerived?.scan_preview_point_count ?? "0",
-    scan_preview_source_point_count: radarStatusValue("scan_preview_source_point_count") ?? summary?.scan_preview_source_point_count ?? gateDerived?.scan_preview_source_point_count ?? "not_loaded",
-    scan_preview_frame_id: radarStatusValue("scan_preview_frame_id") ?? summary?.scan_preview_frame_id ?? gateDerived?.scan_preview_frame_id ?? "not_loaded",
+    status: runtimeValue("status") ?? radarStatusValue("status") ?? summary?.status ?? gateDerived?.status ?? "not_loaded",
+    latest_scan_proof_status: runtimeValue("latest_scan_proof_status") ?? radarStatusValue("latest_scan_proof_status") ?? summary?.latest_scan_proof_status ?? gateDerived?.latest_scan_proof_status ?? "not_loaded",
+    latest_raw_packet_proof_status: runtimeValue("latest_raw_packet_proof_status") ?? radarStatusValue("latest_raw_packet_proof_status") ?? summary?.latest_raw_packet_proof_status ?? gateDerived?.latest_raw_packet_proof_status ?? "not_loaded",
+    latest_scan_proof_result_status: runtimeValue("latest_scan_proof_result_status") ?? radarStatusValue("latest_scan_proof_result_status") ?? radarStatusValue("latest_proof_status") ?? summary?.latest_scan_proof_result_status ?? gateDerived?.latest_scan_proof_result_status ?? "not_loaded",
+    raw_packet_once_observed: runtimeValue("raw_packet_once_observed") ?? radarStatusValue("raw_packet_once_observed") ?? radarStatusValue("latest_raw_packet_once_observed") ?? summary?.raw_packet_once_observed ?? gateDerived?.raw_packet_once_observed ?? "not_loaded",
+    continuous_scan_status: runtimeValue("continuous_scan_status") ?? radarStatusValue("continuous_scan_status") ?? summary?.continuous_scan_status ?? gateDerived?.continuous_scan_status ?? "not_loaded",
+    lifecycle_running: runtimeValue("lifecycle_running") ?? radarStatusValue("lifecycle_running") ?? summary?.lifecycle_running ?? gateDerived?.lifecycle_running ?? "false",
+    lifecycle_state: runtimeValue("lifecycle_state") ?? radarStatusValue("lifecycle_state") ?? summary?.lifecycle_state ?? gateDerived?.lifecycle_state ?? "not_loaded",
+    continuous_window_observed: runtimeValue("continuous_window_observed") ?? radarStatusValue("continuous_window_observed") ?? summary?.continuous_window_observed ?? gateDerived?.continuous_window_observed ?? "false",
+    continuity_window_status: runtimeValue("continuity_window_status") ?? radarStatusValue("continuity_window_status") ?? summary?.continuity_window_status ?? gateDerived?.continuity_window_status ?? "not_loaded",
+    latest_scan_proof_fresh: runtimeValue("latest_scan_proof_fresh") ?? radarStatusValue("latest_scan_proof_fresh") ?? summary?.latest_scan_proof_fresh ?? gateDerived?.latest_scan_proof_fresh ?? "false",
+    scan_preview_point_count: runtimeValue("scan_preview_point_count") ?? radarStatusValue("scan_preview_point_count") ?? summary?.scan_preview_point_count ?? gateDerived?.scan_preview_point_count ?? "0",
+    scan_preview_source_point_count: runtimeValue("scan_preview_source_point_count") ?? radarStatusValue("scan_preview_source_point_count") ?? summary?.scan_preview_source_point_count ?? gateDerived?.scan_preview_source_point_count ?? "not_loaded",
+    scan_preview_frame_id: runtimeValue("scan_preview_frame_id") ?? radarStatusValue("scan_preview_frame_id") ?? summary?.scan_preview_frame_id ?? gateDerived?.scan_preview_frame_id ?? "not_loaded",
     radar_start_configured: summary?.radar_start_configured ?? gateDerived?.radar_start_configured ?? "true",
   };
 });
