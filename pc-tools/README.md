@@ -43,6 +43,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 同日起，共享 MJPEG status 请求尚未返回时，首屏会保留 summary 里已有的共享流事实，例如观看页面数、上游是否已连接、是否已有视频边界和最近缓存帧；但仍明确 status 返回前不证明本页已经出图。
 
+2026-06-28 07:35 CST 起，地图画面或地图 proof 刷新中时，行程前确认继续保持最小化：勾选安全确认后只提示等待地图画面/状态刷新，并明确这不是额外预检，而是避免按旧地图发车的所见即所得保护。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

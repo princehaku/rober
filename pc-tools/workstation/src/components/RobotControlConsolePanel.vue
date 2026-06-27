@@ -7267,7 +7267,7 @@ const plainTripMinimalPrecheckSummary = computed(() => {
     return "行程前确认：只需勾选现场安全确认；不会要求额外预检。";
   }
   if (plainTripMapWysiwygPending.value) {
-    return `行程前确认：安全确认已完成；等待${plainTripMapWysiwygPendingText()}后再执行。`;
+    return `行程前确认：安全确认已完成；等待${plainTripMapWysiwygWaitText()}后再执行。这不是额外预检，是避免按旧地图发车。`;
   }
   if (plainTripCurrentRouteVisible.value) {
     const actionText = plainTripExecutionActionText();

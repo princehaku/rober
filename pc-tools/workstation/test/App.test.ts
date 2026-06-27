@@ -8722,6 +8722,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图画面刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，地图画面刷新中；刷新完成后再执行图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；等待地图画面刷新后再执行。这不是额外预检，是避免按旧地图发车。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图画面刷新。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图画面刷新中，刷新完成后再执行");
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：正在刷新当前地图。");
@@ -8814,6 +8815,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图状态刷新中；刷新完成后再执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，地图状态刷新中；刷新完成后再执行图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；等待地图状态刷新后再执行。这不是额外预检，是避免按旧地图发车。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图状态刷新。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图状态刷新中，刷新完成后再执行");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：地图状态刷新中；当前仍显示上次真实地图画面，刷新完成后再按最新状态判断。");
