@@ -2130,7 +2130,7 @@ const plainCurrentFactRows = computed(() => {
     if (plainTripCurrentRouteVisible.value && plainTripRobotPoseVisibleForExecution.value) {
       rows.push("行程：图上路线可执行。");
     } else if (plainTripCurrentRouteVisible.value) {
-      rows.push("行程：图上路线已显示；小车位置未显示，先重新定位或刷新地图后再执行。");
+      rows.push("行程：图上路线已显示；小车位置未显示，建议先重新定位或刷新地图，但不再作为发车前硬挡。");
     } else {
       rows.push("行程：路线读数已准备，先刷新地图画面。");
     }
@@ -6081,7 +6081,7 @@ const plainTripGoalNextAction = computed(() => {
       return `下一步：等待${plainTripMapWysiwygWaitText()}。`;
     }
     if (plainTripCurrentRouteVisible.value) {
-      return plainTripRobotPoseVisibleForExecution.value ? "下一步：执行行程。" : "下一步：重新定位或刷新地图。";
+      return "下一步：执行行程。";
     }
     return "下一步：刷新地图画面。";
   }
@@ -6336,7 +6336,7 @@ const plainGoalProgressItems = computed(() => {
       state: navReady ? "已完成" : "待完成",
       hint: navReady
         ? plainTripEvidenceSummary.value || "最近行程已读到成功结果。"
-        : plainTripHasFreshUnprovenControlEvidence.value ? plainTripFreshUnprovenHintText() : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText() : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? (plainTripRobotPoseVisibleForExecution.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，先重新定位或刷新地图。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选现场安全确认。`) : "还没读到最近行程成功结果。",
+        : plainTripHasFreshUnprovenControlEvidence.value ? plainTripFreshUnprovenHintText() : plainTripHasFreshIncompleteEvidence.value ? "最近行程缺少反馈样本，需要重新读取或执行完整行程。" : plainTripHasSucceededEvidence.value ? "最近行程记录较旧，需要重新执行本轮行程。" : plainTripLatestNotProvenEvidence.value ? plainTripFailureSummaryText() : plainTripPreparedBySummary.value ? (plainManualSafetyConfirmed.value ? (plainTripCurrentRouteVisible.value ? (plainTripRobotPoseVisibleForExecution.value ? `路线已准备 ${plainTripPreparedPointCount.value} 个点，可执行行程。` : `路线已准备 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，建议先重新定位或刷新地图，但可执行当前图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先刷新地图画面确认图上路线。`) : `路线已准备 ${plainTripPreparedPointCount.value} 个点，先勾选现场安全确认。`) : "还没读到最近行程成功结果。",
       nextAction: plainTripGoalNextAction.value,
     },
     {
@@ -6452,7 +6452,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
     return plainTripHasSucceededEvidence.value
       ? "验收卡点：行程成功记录较旧，需要重新执行本轮行程。"
       : plainTripLatestNotProvenEvidence.value ? `验收卡点：${plainTripFailureSummaryText()}`
-      : plainTripPreparedBySummary.value ? (plainTripMapWysiwygPending.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，${plainTripMapWysiwygPendingText()}，刷新完成后再执行。` : plainTripCurrentRouteVisible.value ? (plainTripRobotPoseVisibleForExecution.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程并读到成功结果。` : `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，先重新定位或刷新地图后再执行。`) : `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要刷新地图画面确认图上路线。`)
+      : plainTripPreparedBySummary.value ? (plainTripMapWysiwygPending.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，${plainTripMapWysiwygPendingText()}，刷新完成后再执行。` : plainTripCurrentRouteVisible.value ? (plainTripRobotPoseVisibleForExecution.value ? `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程并读到成功结果。` : `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要点击执行行程；小车位置未显示，建议先重新定位或刷新地图。`) : `验收卡点：路线已准备 ${plainTripPreparedPointCount.value} 个点，还需要刷新地图画面确认图上路线。`)
         : "验收卡点：还没读到行程成功结果。";
   }
   if (!deliverySuccessReady.value) {
@@ -6655,8 +6655,8 @@ const plainTripSummary = computed(() => {
       return { state: "待刷新", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备，但地图画面刷新失败：${mapFailure}；重试刷新图上路线。` };
     }
     return plainManualSafetyConfirmed.value
-      ? { state: routeVisible && !plainTripRobotPoseVisibleForExecution.value ? "待定位" : "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可执行图上路线，执行接口只复核安全确认和固定白名单。` : `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，先重新定位或刷新地图后再执行。`) : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
-      : { state: routeVisible && !plainTripRobotPoseVisibleForExecution.value ? "待定位" : "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，先重新定位或刷新地图。`) : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
+      ? { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可执行图上路线，执行接口只复核安全确认和固定白名单。` : `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，建议先重新定位或刷新地图，但可执行当前图上路线。`) : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
+      : { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，勾选安全确认后仍可执行。`) : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
   }
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
     return { state: "待准备", hint: plainTripPreparationFailureHint() };
@@ -6671,8 +6671,8 @@ const plainTripSummary = computed(() => {
       return { state: "待刷新", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备，但地图画面刷新失败：${mapFailure}；重试刷新图上路线。` };
     }
     return plainManualSafetyConfirmed.value
-      ? { state: routeVisible && !plainTripRobotPoseVisibleForExecution.value ? "待定位" : "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可直接执行图上路线，执行接口只复核安全确认和固定白名单。` : `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，先重新定位或刷新地图后再执行。`) : `路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
-      : { state: routeVisible && !plainTripRobotPoseVisibleForExecution.value ? "待定位" : "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，先重新定位或刷新地图。`) : `路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
+      ? { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可直接执行图上路线，执行接口只复核安全确认和固定白名单。` : `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，建议先重新定位或刷新地图，但可直接执行图上路线。`) : `路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
+      : { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，勾选安全确认后仍可执行。`) : `路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
   }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
     return { state: "可执行", hint: "可选复查通过；确认人在旁边后可执行一次图上路线。" };
@@ -6695,7 +6695,7 @@ const plainTripRouteWysiwygSummary = computed(() => {
       return `${plainTripMapWysiwygPendingText()}；刷新完成后再执行这条图上路线（${routeIdentity}）。`;
     }
     if (!routePath.caption.startsWith("最近") && !plainTripRobotPoseVisibleForExecution.value) {
-      return `地图上已显示路线（${routeIdentity}）；小车位置未显示，先重新定位或刷新地图后再执行。`;
+      return `地图上已显示路线（${routeIdentity}）；小车位置未显示，建议先重新定位或刷新地图，确认路线无误后仍可执行。`;
     }
     return routePath.caption.startsWith("最近")
       ? `地图上显示的是最近路线（${routeIdentity}）；点主按钮重新准备新的图上路线。`
@@ -6772,7 +6772,7 @@ const plainTripRunStatus = computed(() => {
   if (plainTripCurrentRouteVisible.value) {
     const actionText = plainTripExecutionActionText();
     if (!plainTripRobotPoseVisibleForExecution.value) {
-      return "行程状态：图上路线已显示；小车位置未显示，先重新定位或刷新地图后再执行。";
+      return "行程状态：图上路线已显示；小车位置未显示，建议先重新定位或刷新地图，确认路线后可执行。";
     }
     if (actionText !== "执行图上路线") {
       return `行程状态：图上路线已可执行；下一步${actionText}，点击前确认起点、终点和路径。`;
@@ -6801,7 +6801,7 @@ const plainTripMinimalPrecheckSummary = computed(() => {
   if (plainTripCurrentRouteVisible.value) {
     const actionText = plainTripExecutionActionText();
     if (!plainTripRobotPoseVisibleForExecution.value) {
-      return "行程前确认：安全确认已完成；但小车位置未显示，先重新定位或刷新地图。";
+      return `行程前确认：安全确认已完成；小车位置未显示，建议先重新定位或刷新地图；仍可${actionText}。`;
     }
     return `行程前确认：安全确认已完成；可以${actionText}，执行接口只复核安全确认和固定白名单。`;
   }
@@ -6846,6 +6846,7 @@ const canRefreshPlainTripPreparation = computed(() => {
 
 const canRunPlainTripExecution = computed(() => {
   // 行程按钮承担普通首屏向导：无图上路线时只准备并刷新地图，已有图上路线时才执行。
+  // 小车位置可见性只作为 WYSIWYG 警告，不再做前端硬挡；后端仍复核安全确认和固定白名单。
   return !deliveryNav2GoalReady.value
     && !loading.value
     && !plainTripActionPending.value
@@ -6853,8 +6854,7 @@ const canRunPlainTripExecution = computed(() => {
     && robotApiBaseUrl.value.trim().length > 0
     && plainManualSafetyConfirmed.value
     && !plainTripNav2NeedsLifecycleRestore.value
-    && !plainTripMapWysiwygPending.value
-    && (!plainTripCurrentRouteVisible.value || plainTripRobotPoseVisibleForExecution.value);
+    && !plainTripMapWysiwygPending.value;
 });
 
 const plainTripPreparationButtonLabel = computed(() => {
@@ -6911,9 +6911,6 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   if (plainTripRecentRouteVisible.value) {
     return "重新准备路线（不发车）";
-  }
-  if (plainTripCurrentRouteVisible.value && !plainTripRobotPoseVisibleForExecution.value) {
-    return "先重新定位";
   }
   if (!plainTripCurrentRouteVisible.value) {
     return plainTripPreparedBySummary.value ? "刷新图上路线" : "准备图上路线";

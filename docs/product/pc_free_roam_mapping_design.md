@@ -423,6 +423,11 @@ runtime `/scan` 说明，例如 `雷达未刷新（旧 /scan 距离 0.04m，约 
 完整 summary 刷新延后到松开、停止、失败或其他显式只读刷新。安全确认、速度/时长上限、stop 兜底和固定
 `/api/robot-control/base/manual` 代理不变。
 
+2026-06-28 08:25 起，PC 行程执行前端门禁进一步收敛：
+当前地图上已经显示路线且已勾选安全确认时，即使小车位置 marker 未显示，执行按钮仍可执行这条图上路线；
+页面会继续提示“建议先重新定位或刷新地图”，但它不再作为发车前硬挡。执行请求仍发送地图上可见路线终点，
+不回落到默认表单目标，后端继续复核安全确认和固定白名单。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
