@@ -1223,9 +1223,14 @@ const plainCameraSharedPreviewStatus = computed(() => {
   }
   const status = cameraMjpegStatusResult.value;
   const summaryCamera = robotSummary.value?.readback_summary.camera;
-  const autoJoinText = cameraMjpegFallbackVisible.value && !cameraMjpegFrameObserved.value && !mjpegPreviewFailed.value
-    ? " 页面正在接入共享预览；新页面会共用同一条上游流。"
-    : "";
+  const sharedPreviewCanStillJoin = (failureText: string): boolean => (
+    // 已经知道相机源无首帧或共享上游失败时，不能再说“正在接入”，否则会把硬件/输入无帧误读成加载中。
+    cameraMjpegFallbackVisible.value
+    && !cameraMjpegFrameObserved.value
+    && !mjpegPreviewFailed.value
+    && !failureText
+    && !cameraSourceFirstFrameFailed(summaryCamera)
+  );
   if (!status || status.proxy_status !== "status_loaded") {
     if (summaryCamera) {
       const upstream = summaryCamera.shared_preview_upstream_active === "true" ? "上游已连接" : "上游未连接";
@@ -1236,6 +1241,9 @@ const plainCameraSharedPreviewStatus = computed(() => {
         summaryCamera.shared_preview_last_remote_http_status,
       );
       const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
+      const autoJoinText = sharedPreviewCanStillJoin(failure || sourceNoFrame)
+        ? " 页面正在接入共享预览；新页面会共用同一条上游流。"
+        : "";
       return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${autoJoinText}${failure}${sourceNoFrame}`;
     }
     return "共享画面：未读取到共享流状态。";
@@ -1245,6 +1253,9 @@ const plainCameraSharedPreviewStatus = computed(() => {
   const exclusive = sharedPreviewExclusiveText(status.exclusive_camera_claim);
   const failure = sharedPreviewFailureText(status.last_failure_reason, status.last_remote_http_status, status.source_diagnosis_plain_hint);
   const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
+  const autoJoinText = sharedPreviewCanStillJoin(failure || sourceNoFrame)
+    ? " 页面正在接入共享预览；新页面会共用同一条上游流。"
+    : "";
   return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${autoJoinText}${failure}${sourceNoFrame}`;
 });
 

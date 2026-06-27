@@ -1069,3 +1069,10 @@ V4L2 设备和只读首帧探针，不发布 `/cmd_vel`，不访问 WAVE ROVER U
 链路进入实时预览；但 DV20 `/dev/video1` 仍是“能打开、不能读首帧”。软件侧必须继续
 fail-closed，把建图缺口保留为 `camera_first_frame`，不能因为服务 active 或设备枚举正常
 就宣称画面可用。
+
+2026-06-27 14:52 起，PC 普通首屏共享预览文案进一步按失败事实收口：当 summary 或
+`/api/robot-control/camera/mjpeg/status` 已明确 `camera_source_first_frame_failed`、
+`camera_mjpeg_upstream_timeout`、HTTP 5xx 或 health 首帧失败时，状态行不再写
+`页面正在接入共享预览`。这样 live 的“0 个页面观看、上游未连接、不是独占、UVC 无首帧”
+不会被误解成仍在加载；只有相机 ready 且无已知失败时才显示正在接入共享预览。
+该调整只影响 PC 文案，不打开额外摄像头、不运行首帧探针、不发布运动命令。
