@@ -404,6 +404,14 @@ function cameraKnownGoodUvcSuffix(camera: RobotControlSummaryResponse["readback_
     : "";
 }
 
+function cameraBackendNoFrameAttemptText(camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined): string {
+  // 刷新页面后只剩 summary overlay，也要保留“后端多方式取帧失败”这个比普通 UVC 无帧更强的证据。
+  const attempts = camera?.first_frame_probe_backend_attempts;
+  return attempts && !["0", "not_loaded", "none", ""].includes(attempts)
+    ? `，OpenCV/V4L2 后端尝试 ${attempts} 种方式`
+    : "，OpenCV/V4L2 后端";
+}
+
 function cameraSourcePlainFailureHint(): string {
   // 首屏 overlay/status 只放短结论；格式矩阵等长证据放到只读检查里，避免同一失败原因重复刷屏。
   const camera = robotSummary.value?.readback_summary.camera;
@@ -418,15 +426,16 @@ function cameraSourcePlainFailureHint(): string {
     if (probeFailureHint) {
       return probeFailureHint;
     }
+    if (camera?.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
+      const attempts = cameraBackendNoFrameAttemptText(camera);
+      return `不是页面独占：${sourcePrefix}摄像头能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
+    }
     if (
       camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
       && camera.source_diagnosis_plain_hint
       && !["", "not_loaded", "none"].includes(camera.source_diagnosis_plain_hint)
     ) {
       return `不是页面独占：${sourcePrefix}没人占用，但 UVC 没有输出视频帧；检查 USB、摄像头输入或供电${knownGoodUvcSuffix}。`;
-    }
-    if (camera?.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
-      return `不是页面独占：${sourcePrefix}摄像头能打开，但没有取到视频帧；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
     }
     if (camera?.source_usage_status === "in_use_by_probe" || camera?.source_usage_status === "in_use_by_other_process") {
       const ownerCount = camera.source_usage_owner_count && camera.source_usage_owner_count !== "not_loaded"
@@ -498,7 +507,10 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
     return "画面：还没确认真实帧。";
   }
   if (camera.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
-    return `画面：${prefix}${selectedName} 多种方式也没有取到视频帧。`;
+    const attempts = camera.first_frame_probe_backend_attempts && !["0", "not_loaded", "none", ""].includes(camera.first_frame_probe_backend_attempts)
+      ? `OpenCV/V4L2 ${camera.first_frame_probe_backend_attempts} 种方式`
+      : "OpenCV/V4L2 多种方式";
+    return `画面：${prefix}${selectedName} ${attempts}也没有取到视频帧。`;
   }
   if (camera.source_diagnosis_status === "uvc_no_frame_not_exclusive") {
     const notExclusiveText = prefix ? "" : "不是页面独占，";
