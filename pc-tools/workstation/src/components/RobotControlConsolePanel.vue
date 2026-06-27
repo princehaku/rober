@@ -4786,6 +4786,10 @@ function nav2NextExecutionRerunText(values: Record<string, string> | undefined):
 
 function nav2NextExecutionButtonText(values: Record<string, string> | undefined): string {
   // 主按钮也要跟随下一次控制模式，否则用户只看到“重新执行”会误以为还是复用上一轮 PWM 结果。
+  const summaryAction = summaryNav2GoalNextActionText("short");
+  if (/用\s*ROS\s*重跑图上路线/i.test(summaryAction)) {
+    return "用 ROS 重跑图上路线";
+  }
   const nextMode = values?.next_execution_base_command_mode?.trim();
   const lastMode = values?.base_command_mode?.trim();
   if (!nextMode || nextMode === "not_loaded") {
@@ -4795,6 +4799,11 @@ function nav2NextExecutionButtonText(values: Record<string, string> | undefined)
     return "";
   }
   return `用 ${nextMode.toUpperCase()} 重跑图上路线`;
+}
+
+function plainTripExecutionActionText(): string {
+  // 旧 PWM 成功但 wheel raw L/R=0/0 时，summary 仍是现场最新事实；按钮和预检要露出“下次 ROS 重跑”。
+  return nav2NextExecutionButtonText(directNav2ExecutionValues()) || "执行图上路线";
 }
 
 function nav2BaseMotionSignalText(values: Record<string, string> | undefined): string {
@@ -6170,6 +6179,10 @@ const plainTripRunStatus = computed(() => {
     return `行程状态：${plainTripFailureSummaryText().replace("需要", "先")}`;
   }
   if (plainTripHasSucceededEvidence.value) {
+    const actionText = plainTripExecutionActionText();
+    if (actionText !== "执行图上路线") {
+      return `行程状态：读到旧行程成功记录；下一步${actionText}。`;
+    }
     return "行程状态：读到旧行程成功记录；如需本轮验收，请重新执行图上路线。";
   }
   if (!plainManualSafetyConfirmed.value) {
@@ -6186,8 +6199,15 @@ const plainTripRunStatus = computed(() => {
     return `行程状态：路线已准备 ${plainTripPreparedPointCount.value} 个点，但地图上还没显示；先刷新地图画面。`;
   }
   if (plainTripCurrentRouteVisible.value) {
+    const actionText = plainTripExecutionActionText();
     if (!plainTripRobotPoseVisibleForExecution.value) {
-      return "行程状态：图上路线已显示；小车位置未显示，仍可执行，结果以上车端返回为准。";
+      if (actionText === "执行图上路线") {
+        return "行程状态：图上路线已显示；小车位置未显示，仍可执行，结果以上车端返回为准。";
+      }
+      return `行程状态：图上路线已显示；小车位置未显示，仍可${actionText}，结果以上车端返回为准。`;
+    }
+    if (actionText !== "执行图上路线") {
+      return `行程状态：图上路线已可执行；下一步${actionText}，点击前确认起点、终点和路径。`;
     }
     return "行程状态：图上路线已可执行；点击执行前确认起点、终点和路径。";
   }
@@ -6211,10 +6231,11 @@ const plainTripMinimalPrecheckSummary = computed(() => {
     return `行程前确认：安全确认已完成；等待${plainTripMapWysiwygPendingText()}后再执行。`;
   }
   if (plainTripCurrentRouteVisible.value) {
+    const actionText = plainTripExecutionActionText();
     if (!plainTripRobotPoseVisibleForExecution.value) {
-      return "行程前确认：安全确认已完成；可以执行图上路线；小车位置未显示，结果以上车端返回为准。";
+      return `行程前确认：安全确认已完成；可以${actionText}；小车位置未显示，结果以上车端返回为准。`;
     }
-    return "行程前确认：安全确认已完成；可以执行图上路线，执行接口只复核安全确认和固定白名单。";
+    return `行程前确认：安全确认已完成；可以${actionText}，执行接口只复核安全确认和固定白名单。`;
   }
   if (plainTripPreparedBySummary.value) {
     return "行程前确认：安全确认已完成；先刷新地图画面确认图上路线。";
@@ -6318,7 +6339,7 @@ const plainTripExecutionButtonLabel = computed(() => {
   if (plainTripHasFreshUnprovenControlEvidence.value || plainTripHasFreshIncompleteEvidence.value || plainTripLatestNotProvenEvidence.value) {
     return nav2NextExecutionButtonText(freshUnprovenNav2ExecutionValues()) || "重新执行图上路线";
   }
-  return plainTripPreparedBySummary.value ? "执行图上路线" : "执行行程";
+  return plainTripPreparedBySummary.value ? plainTripExecutionActionText() : "执行行程";
 });
 const plainTripLatestButtonLabel = computed(() => {
   if (mapWysiwygRefreshPending.value) {

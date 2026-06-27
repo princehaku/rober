@@ -7085,6 +7085,85 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("keeps the summary-requested ROS rerun visible for an old PWM route with zero wheel readback", async () => {
+    // 现场 live summary 可能已经说明“上次 PWM 成功但 L/R=0/0，下次 ROS 重跑”，即使 latest 仍是空读数也不能退回通用按钮。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    markRobotPoseVisible(summaryFixture);
+    summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_proven = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_hil_pass = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
+    summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_uses_base_uart = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_generated_at_ms = "1782500121051";
+    summaryFixture.readback_summary.nav2.goal_execution_response_generated_at_ms = "1782547991993";
+    summaryFixture.safe_command_boundary.nav2_goal_wheel_feedback_status = "goal_succeeded_but_wheel_lr_zero";
+    summaryFixture.safe_command_boundary.nav2_goal_next_action = "上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线";
+    summaryFixture.safe_command_boundary.nav2_goal_execution_mode_label = "上次 pwm，下次 ros";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execution/latest": {
+        schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_latest_proxy.v1",
+        proxy_status: "latest_loaded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        workstation_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+        remote_endpoint: "/api/nav2/goal/execution/latest",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        goal_execution_key_values: {},
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：读到旧行程成功记录；下一步用 ROS 重跑图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；可以用 ROS 重跑图上路线，执行接口只复核安全确认和固定白名单。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("用 ROS 重跑图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("refreshes Robot Control summary after plain Nav2 execution latest is loaded", async () => {
     // 执行返回后 latest 会先落盘；PC 必须再读 summary，让首页事实条拿到本轮 wheel L/R 复验证据。
     const initialSummary = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
