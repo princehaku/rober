@@ -377,6 +377,11 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 都能一致表达“有局部雷达点但没有机器人地图坐标，只能显示局部轮廓，不能贴到地图”。该改动不新增地图刷新、
 雷达刷新、定位、Nav2、manual、free-roam、delivery、stop 或 `/cmd_vel` 调用。
 
+2026-06-28 07:05 起，PC 普通地图前端不再只信 `readback_summary.map.radar_overlay_status`：
+如果旧 7001 还把 overlay 报成 `partial/loaded`，但 `readback_summary.lidar.runtime_scan_status=stale`
+或 `lifecycle_running=false/lifecycle_state=stopped`，前端会把 summary overlay 视为 not-current，
+不从 `o3_proof_summary` 回捞旧点数组，也不显示 `雷达局部点 ...`。这让未重启到最新后端的现场页面也不会把旧雷达材料画成当前地图标记。
+
 2026-06-27 23:20 起，PC 地图和自由移动卡片不会把 stale runtime `/scan` 距离当作当前障碍：
 `runtime_scan_status=stale` 时，即使 `runtime_lidar_min_distance_m=0.04` 仍存在，也只显示为
 `旧 /scan 距离 0.04m ... 已过期，不贴到地图`；只有 `runtime_scan_status=fresh` 或 ready 的 runtime gate

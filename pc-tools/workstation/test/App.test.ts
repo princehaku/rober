@@ -15532,6 +15532,49 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("treats stale stopped lidar as not-current even when map overlay summary is still partial", async () => {
+    // 混合版本现场可能旧 7001 还把 map overlay 报 partial；只要 lidar 事实是 stopped/stale，前端就不能画旧点。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.o3_proof_summary.scan_preview_points = [
+      { x_m: -0.43, y_m: 0.02, range_m: 0.43, angle_rad: 3.1, frame_id: "laser_frame", source_index: 1 },
+      { x_m: -0.43, y_m: -0.02, range_m: 0.43, angle_rad: 3.18, frame_id: "laser_frame", source_index: 5 },
+    ];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 2;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = 65;
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.readback_summary.lidar.lifecycle_running = "false";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
+    summaryFixture.readback_summary.lidar.runtime_scan_status = "stale";
+    summaryFixture.readback_summary.lidar.runtime_lidar_min_distance_m = "0.04";
+    summaryFixture.readback_summary.lidar.runtime_lidar_age_s = "15542.14";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "65";
+    summaryFixture.readback_summary.lidar.scan_preview_source_point_count = "80";
+    summaryFixture.readback_summary.map.radar_overlay_status = "partial";
+    summaryFixture.readback_summary.map.radar_overlay_blocked_reasons = "robot_pose_missing_for_map_radar_overlay";
+    summaryFixture.readback_summary.map.radar_overlay_scan_preview_point_count = "65";
+    summaryFixture.readback_summary.map.radar_overlay_scan_preview_source_point_count = "80";
+    summaryFixture.readback_summary.map.radar_overlay_scan_preview_frame_id = "laser_frame";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(wrapper.find('[data-testid="plain-map-radar-local-scan"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：未读到可显示的实时雷达点。");
+    expect(firstScreenText).not.toContain("雷达局部点 2 个");
+    expect(firstScreenText).not.toContain("雷达局部点 65 个");
+    expect(firstScreenText).not.toContain("待刷新雷达点 65 个");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("formats long stale runtime scan age as human time instead of raw seconds", async () => {
     // live 形状会出现 10234.64s 这类大秒数；普通用户需要看懂这是几小时前的旧 /scan。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

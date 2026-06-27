@@ -2214,6 +2214,25 @@ function effectivePlainMapRobotPose(): { pose: RobotApiMapPose; source: PlainMap
   return summaryPose?.frame_id === "map" ? { pose: summaryPose, source: "summary" } : null;
 }
 
+function summaryRadarOverlayNotCurrentForPlainMap(): boolean {
+  // 旧 PC Node 可能还把 stopped/stale 雷达 summary 报成 partial；前端再用 lidar 事实兜底，避免回捞旧点上图。
+  const mapReadback = robotSummary.value?.readback_summary.map;
+  if (!mapReadback) {
+    return false;
+  }
+  if (mapReadback.radar_overlay_status === "not_current") {
+    return true;
+  }
+  const lidar = effectiveLidarReadback.value ?? robotSummary.value?.readback_summary.lidar;
+  if (!lidar) {
+    return false;
+  }
+  const runtimeStale = lidar.runtime_scan_status === "stale";
+  const lifecycleStopped = lidar.lifecycle_running === "false" || lidar.lifecycle_state === "stopped";
+  return ["loaded", "partial"].includes(mapReadback.radar_overlay_status)
+    && (runtimeStale || lifecycleStopped);
+}
+
 function effectivePlainMapRadarReadback(): PlainMapRadarReadback {
   const overlay = mapPreviewRadarOverlayForPlainMap();
   const overlayPointCount = finitePlainNumber(overlay?.scan_preview_point_count);
@@ -2227,13 +2246,13 @@ function effectivePlainMapRadarReadback(): PlainMapRadarReadback {
     };
   }
   const mapReadback = robotSummary.value?.readback_summary.map;
-  if (mapReadback?.radar_overlay_status === "not_current") {
+  if (summaryRadarOverlayNotCurrentForPlainMap()) {
     // summary 已确认旧雷达点不能作为当前地图 overlay；保留 source count 只给高级诊断，普通地图不再回捞旧 proof。
     return {
       points: [],
-      pointCount: finitePlainNumber(mapReadback.radar_overlay_scan_preview_point_count) ?? 0,
-      sourcePointCount: finitePlainNumber(mapReadback.radar_overlay_scan_preview_source_point_count),
-      frameId: mapReadback.radar_overlay_scan_preview_frame_id || "",
+      pointCount: 0,
+      sourcePointCount: finitePlainNumber(mapReadback?.radar_overlay_scan_preview_source_point_count),
+      frameId: mapReadback?.radar_overlay_scan_preview_frame_id || "",
       source: "summary",
     };
   }
@@ -2310,7 +2329,7 @@ function radarStateUsesPendingPoints(radarState: string): boolean {
 function radarPreviewReadbackPointCount(): number {
   // 点数组缺失时仍保留 summary 点数证据；但这个点数不能被用来伪造地图坐标。
   const overlayCount = effectivePlainMapRadarReadback().pointCount;
-  if (robotSummary.value?.readback_summary.map.radar_overlay_status === "not_current") {
+  if (summaryRadarOverlayNotCurrentForPlainMap()) {
     return overlayCount;
   }
   const proof = robotSummary.value?.o3_proof_summary;
