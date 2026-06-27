@@ -5237,11 +5237,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("启动中");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自动扫图（随时可点）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动扫图：正在启动上车端自动扫图状态机，PC 保持地图、雷达和停止兜底。");
 
     await wrapper.find('[data-testid="plain-free-roam-auto-stop"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止已排队");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：停止自动扫图已排队，启动请求返回后会立刻请求上车端停止。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动扫图：停止已排队，启动请求返回后会立刻请求上车端停止。");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待启动返回后自动停止");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图停止已排队");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stop_queued");
@@ -5262,6 +5264,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自动扫图（随时可点）");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止，待刷新画面");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopped_needs_refresh");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动扫图：停止请求已发送，继续看地图和雷达确认现场收口。");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先刷新画面");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

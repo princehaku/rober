@@ -2007,6 +2007,29 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   const boundary = summary.safe_command_boundary;
   const runtime = boundary.free_roam_autonomy_runtime;
   const obstacleCaution = plainFreeRoamObstacleCautionText(summary);
+  const modeName = plainFreeRoamMotionModeName.value;
+  if (freeRoamAutonomyStopQueuedAfterStart.value) {
+    return `${modeName}：停止已排队，启动请求返回后会立刻请求上车端停止。`;
+  }
+  if (freeRoamAutonomyPendingAction.value === "start") {
+    return `${modeName}：正在启动上车端${modeName}状态机，PC 保持地图、雷达和停止兜底。`;
+  }
+  if (freeRoamAutonomyPendingAction.value === "stop") {
+    return `${modeName}：正在请求上车端${modeName}停止，红色停止仍可随时兜底。`;
+  }
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
+    const failureText = freeRoamAutonomyFailureText(freeRoamAutonomyResult.value);
+    const reasonSuffix = failureText ? `：${failureText}` : "";
+    return freeRoamAutonomyResult.value.action === "start"
+      ? `${modeName}：启动失败${reasonSuffix}，未证明上车状态机已启动；当前不要按已移动验收。`
+      : `${modeName}：停止失败${reasonSuffix}，未证明上车状态机已停止；必要时点击红色停止。`;
+  }
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
+    return `${modeName}：状态机已启动，本轮按${modeName}记录；现场继续监看，必要时停止。`;
+  }
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
+    return `${modeName}：停止请求已发送，继续看地图和雷达确认现场收口。`;
+  }
   if (runtime?.status === "loaded" && runtime.cmd_vel_publish_enabled === true && runtime.artifact_only === false) {
     return `自由移动：运动发布已解锁，不依赖雷达新鲜度${obstacleCaution}；现场继续监看。`;
   }

@@ -2722,6 +2722,12 @@ Nav2、delivery、stop 或 `/cmd_vel`。
 `/api/robot-control/free-roam/autonomy/stop`。该排队只作用于上车端自动扫图状态机 stop 参数，不发送 manual/keyboard pulse、
 Nav2、delivery、base stop 或 `/cmd_vel`。
 
+2026-06-28 16:40 起，普通首屏 `当前事实` 的自由移动/自动扫图行同步显示同一套本地会话状态：
+start pending、stop pending、stop queued、start/stop 失败和 start/stop 已转发会优先覆盖旧 summary runtime。
+这样 operator 在首屏就能看到“正在启动状态机”“停止已排队”或“停止请求已发送”，不会在点击后继续读到旧的
+`当前没有运动发布`。该展示只消费浏览器本地请求状态和固定代理回包，不额外发送 free-roam、manual、keyboard、
+Nav2、delivery、base stop 或 `/cmd_vel`。
+
 2026-06-26 07:35 起，上述 `停止已排队` 同步纳入地图扫图 marker 的等待/警示视觉态，避免排队停止期间退回普通灰色标记；
 测试同时锁定 `auto_stop_queued` 状态和 CSS 选择器。
 
