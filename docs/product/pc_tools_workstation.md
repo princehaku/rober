@@ -79,6 +79,7 @@ pc-tools/workstation/
 - 2026-06-28 05:41 CST 起，普通首屏会把上述 Nav2 blocker 转成下一步顺序：若服务未运行先提示启动/恢复自动驾驶服务（不发车），随后按“启动/刷新雷达 -> 重新定位 -> 准备图上路线 -> 按地图画面确认”引导。该顺序只写入 `当前事实`、行程状态、最小确认提示和本轮进度，不自动点击雷达、定位、Nav2 start、Nav2 execute、manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-27 07:20 起，普通首屏共享 MJPEG 画面在浏览器 `<img>` 报错后会每 5 秒低频换一次只读 URL retry token，重新请求同一条 PC Node 共享 relay。这样摄像头服务后来恢复首帧时，已经打开页面的用户也能自动重新看到实时预览；该 retry 只访问 `/api/robot-control/camera/mjpeg` 和 status，不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 05:25 起，当 `/api/robot-control/camera/mjpeg/status` 已证明共享 relay 有最近帧缓存但当前页面 `<img>` 还没触发 load 时，普通首屏会额外显示“最近帧：共享流已有缓存帧，新页面会先显示最近画面，并继续接入实时流”。这只消费只读 status 证据，不新增相机 reader，不把缓存帧升级成“本页已绘制实时帧”，也不调用 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-28 19:05 CST 起，上述共享 MJPEG 最近帧缓存状态也同步进入普通首屏 `当前事实`：当 relay 已有缓存帧但本页 `<img>` 尚未 load 时显示“共享流已有最近帧缓存，新页面会先显示最近画面；本页仍在接入实时流”。这避免当前事实仍写“还没确认真实帧”而误导用户以为共享预览没有材料；该状态仍不等于本页已绘制实时帧，也不调用 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 18:43 起，上述共享 MJPEG 失败态也会把“页面会低频自动重试”写到普通首屏。`camera_source_first_frame_failed`、
   `camera_mjpeg_upstream_timeout`、HTTP 502/503 或 health-only 首帧失败都会继续显示“不是独占 / UVC 无帧 / 上游无画面”，
   并补充页面会自动换 retry token 重连，避免现场误以为必须刷新网页或另开独占连接。该提示只解释已有只读 retry 机制，

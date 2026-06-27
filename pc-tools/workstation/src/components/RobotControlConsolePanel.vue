@@ -574,6 +574,9 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
     return "画面：正在打开实时画面。";
   }
   if (previewStatus.value === "streaming" && !browserVideoFrameDrawn() && !cameraSourceFirstFrameFailed(camera)) {
+    if (cameraMjpegCachedFramePending.value) {
+      return "画面：共享流已有最近帧缓存，新页面会先显示最近画面；本页仍在接入实时流。";
+    }
     return "画面：视频已接入，等待浏览器绘出第一帧。";
   }
   const clientCount = camera.shared_preview_client_count && !["", "not_loaded", "none"].includes(camera.shared_preview_client_count)

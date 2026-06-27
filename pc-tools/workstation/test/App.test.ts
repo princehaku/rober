@@ -18376,6 +18376,7 @@ describe("App", () => {
     expect(mjpegPreview.exists()).toBe(true);
     expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
     expect(wrapper.find('[data-testid="robot-camera-cached-frame-status"]').text()).toBe("最近帧：共享流已有缓存帧，新页面会先显示最近画面，并继续接入实时流。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享流已有最近帧缓存，新页面会先显示最近画面；本页仍在接入实时流。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
