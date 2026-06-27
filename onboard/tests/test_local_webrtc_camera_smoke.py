@@ -166,6 +166,11 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("YUYV@320x240@20", labels)
         self.assertEqual(len(labels), len(set(labels)))
 
+    def test_mjpeg_first_frame_budget_matches_webrtc_offer(self) -> None:
+        """共享 MJPEG 是多人默认预览，不能比 WebRTC 更早放弃 UVC 首帧 warmup。"""
+        self.assertEqual(camera.FIRST_FRAME_TIMEOUT_S, camera.MJPEG_FIRST_FRAME_TIMEOUT_S)
+        self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, 3.0)
+
     def test_missing_webrtc_dependencies_return_structured_fail_closed(self) -> None:
         """缺 aiortc/cv2/av 时 /offer 必须结构化失败，不能伪造图像。"""
         state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)

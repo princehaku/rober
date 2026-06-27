@@ -264,6 +264,10 @@ client 只增加引用计数，最后一个 client 断开后才释放设备。�
 `/cmd_vel`，不调用底盘串口，不改变 `safe_to_control=false`、
 `robot_control_executed=false`。
 
+2026-06-27 17:36 起，MJPEG 首帧 warmup 预算与 WebRTC offer 对齐为 3 秒：
+PC 首屏多人共享预览不再使用更短的 1 秒预算提前判定 UVC 无帧。该路径仍必须读到真实
+OpenCV 帧才输出 JPEG；读不到帧时继续返回结构化失败，不输出黑帧或 placeholder。
+
 本轮真机 smoke：
 
 - `GET http://127.0.0.1:8088/mjpeg` 返回 multipart MJPEG，2 秒截取约 526 KB，
