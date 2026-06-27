@@ -2871,6 +2871,10 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   last_failure_reason: string;
   last_remote_http_status: number | null;
   last_failure_at_ms: number | null;
+  source_diagnosis_status: string;
+  source_diagnosis_plain_hint: string;
+  source_diagnosis_next_action: string;
+  source_diagnosis_not_exclusive: string;
   failure_reason: string;
   blocked_reasons: string[];
   robot_control_executed: false;

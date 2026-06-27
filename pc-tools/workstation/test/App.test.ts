@@ -16531,6 +16531,10 @@ describe("App", () => {
     mjpegStatusFixture.exclusive_camera_claim = false;
     mjpegStatusFixture.last_failure_reason = "camera_source_first_frame_failed";
     mjpegStatusFixture.last_remote_http_status = 200;
+    mjpegStatusFixture.source_diagnosis_status = "uvc_no_frame_not_exclusive";
+    mjpegStatusFixture.source_diagnosis_plain_hint = "不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。";
+    mjpegStatusFixture.source_diagnosis_next_action = "check_usb_camera_input_power_or_known_good_uvc";
+    mjpegStatusFixture.source_diagnosis_not_exclusive = "true";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/camera/mjpeg/status": mjpegStatusFixture,
@@ -16540,7 +16544,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。 不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);

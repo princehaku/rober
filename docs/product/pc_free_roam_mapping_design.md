@@ -107,6 +107,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   报 `source_first_frame_failed`，只要设备已加载或已选中 `/dev/video1`，页面仍会挂载只读
   `/api/robot-control/camera/mjpeg` 共享预览，让后来进入的页面也能复用同一条上游流并看到真实画面或真实失败原因；
   只有浏览器 `load`/真实帧证据出现后才把状态提升为“画面可见”，因此不会把无帧误报成可建图。
+- 2026-06-27 13:35 起，共享预览 status 不再只返回 relay 计数和最近失败 token；它会短读只读 camera health，并在不创建新
+  MJPEG client 的前提下透出 `source_diagnosis_status/plain_hint/next_action/not_exclusive`。当真实状态是“设备没人占用但无首帧”时，
+  后进入的页面也能直接看到不是独占原因，而不是空白预览或内部 token。
 - 2026-06-26 22:05 起，“自动扫图准备”从只读状态机门禁推进到上车端受控发车门禁：PC 按钮仍只调用固定 start 代理，
   不直接发布 `/cmd_vel`，但上车端会打开 free-roam 节点双锁，让策略节点按 `/scan`、`/map`
   和 watchdog 决策低速移动。若摄像头不 ready，start 不再返回 `blocked_sensor_readiness`，而是在 `sensor_readiness.mapping_readiness`

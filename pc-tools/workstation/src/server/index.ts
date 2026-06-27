@@ -162,6 +162,10 @@ type CameraMjpegRelayLastFailure = {
   failure_reason: string;
   remote_http_status: number | null;
   failed_at_ms: number;
+  source_diagnosis_status?: string;
+  source_diagnosis_plain_hint?: string;
+  source_diagnosis_next_action?: string;
+  source_diagnosis_not_exclusive?: string;
 };
 
 let nextCameraMjpegRelayClientId = 1;
@@ -1222,6 +1226,10 @@ function cameraMjpegStatusResponse(
     last_failure_reason: lastFailure?.failure_reason ?? "",
     last_remote_http_status: lastFailure?.remote_http_status ?? null,
     last_failure_at_ms: lastFailure?.failed_at_ms ?? null,
+    source_diagnosis_status: lastFailure?.source_diagnosis_status ?? "not_loaded",
+    source_diagnosis_plain_hint: lastFailure?.source_diagnosis_plain_hint ?? "not_loaded",
+    source_diagnosis_next_action: lastFailure?.source_diagnosis_next_action ?? "not_loaded",
+    source_diagnosis_not_exclusive: lastFailure?.source_diagnosis_not_exclusive ?? "not_loaded",
     failure_reason: failureReason,
     blocked_reasons: failureReason ? [failureReason] : [],
     robot_control_executed: false,
@@ -1244,6 +1252,8 @@ async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): P
     const reason = shortText(payload?.source_failure_reason, "");
     const lastOffer = asRecord(asRecord(payload?.media_diagnostics)?.last_offer_error);
     const lastOfferReason = shortText(lastOffer?.failure_reason, "");
+    const sourceDiagnosis = asRecord(payload?.source_diagnosis)
+      ?? asRecord(asRecord(payload?.media_diagnostics)?.source_diagnosis);
     const firstFrameFailed = status === "source_first_frame_failed"
       || readiness === "first_frame_failed"
       || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(reason)
@@ -1255,6 +1265,12 @@ async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): P
       failure_reason: "camera_source_first_frame_failed",
       remote_http_status: response.status,
       failed_at_ms: Date.now(),
+      source_diagnosis_status: shortText(sourceDiagnosis?.status, "not_loaded"),
+      source_diagnosis_plain_hint: shortText(sourceDiagnosis?.plain_hint, "not_loaded"),
+      source_diagnosis_next_action: shortText(sourceDiagnosis?.next_action, "not_loaded"),
+      source_diagnosis_not_exclusive: sourceDiagnosis?.not_exclusive === undefined
+        ? "not_loaded"
+        : String(sourceDiagnosis.not_exclusive),
     };
   } catch {
     return null;

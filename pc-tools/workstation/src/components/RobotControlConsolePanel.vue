@@ -1159,11 +1159,16 @@ function sharedPreviewExclusiveText(exclusiveClaim: boolean): string {
   return exclusiveClaim ? "检测到可能的独占摄像头请求" : "不是独占，每个页面共享同一条上游流";
 }
 
-function sharedPreviewFailureText(reason: string | null | undefined, remoteHttpStatus: number | string | null | undefined): string {
+function sharedPreviewFailureText(
+  reason: string | null | undefined,
+  remoteHttpStatus: number | string | null | undefined,
+  sourceDiagnosisPlainHint?: string,
+): string {
   // 后端保留 token 便于排障；首屏把常见 MJPEG 失败翻译成“无帧/后端不可用”。
   if (!reason || reason === "none") {
     return "";
   }
+  const hasPlainHint = sourceDiagnosisPlainHint && !["", "not_loaded", "none"].includes(sourceDiagnosisPlainHint);
   const statusText = remoteHttpStatus === null || remoteHttpStatus === undefined || remoteHttpStatus === "none"
     ? ""
     : ` HTTP ${remoteHttpStatus}`;
@@ -1171,6 +1176,9 @@ function sharedPreviewFailureText(reason: string | null | undefined, remoteHttpS
     return " 最近失败：共享预览等不到上游画面；通常是相机能被选中但没有输出帧，不是浏览器独占。";
   }
   if (reason === "camera_source_first_frame_failed") {
+    if (hasPlainHint) {
+      return ` ${sourceDiagnosisPlainHint}`;
+    }
     return " 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。";
   }
   if (
@@ -1235,7 +1243,7 @@ const plainCameraSharedPreviewStatus = computed(() => {
   const upstream = status.upstream_active ? "上游已连接" : "上游未连接";
   const content = status.content_type_loaded ? "已拿到视频边界" : "等待视频边界";
   const exclusive = sharedPreviewExclusiveText(status.exclusive_camera_claim);
-  const failure = sharedPreviewFailureText(status.last_failure_reason, status.last_remote_http_status);
+  const failure = sharedPreviewFailureText(status.last_failure_reason, status.last_remote_http_status, status.source_diagnosis_plain_hint);
   const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
   return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${autoJoinText}${failure}${sourceNoFrame}`;
 });

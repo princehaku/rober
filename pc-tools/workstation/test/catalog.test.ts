@@ -8374,6 +8374,10 @@ describe("workstation fail-closed API contracts", () => {
         last_failure_reason: string;
         last_remote_http_status: number | null;
         last_failure_at_ms: number | null;
+        source_diagnosis_status: string;
+        source_diagnosis_plain_hint: string;
+        source_diagnosis_next_action: string;
+        source_diagnosis_not_exclusive: string;
         robot_control_executed: boolean;
       };
       expect(statusResponse.status).toBe(200);
@@ -8386,6 +8390,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.last_failure_reason).toBe("");
       expect(statusBody.last_remote_http_status).toBe(null);
       expect(statusBody.last_failure_at_ms).toBe(null);
+      expect(statusBody.source_diagnosis_status).toBe("not_loaded");
+      expect(statusBody.source_diagnosis_plain_hint).toBe("not_loaded");
+      expect(statusBody.source_diagnosis_next_action).toBe("not_loaded");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("not_loaded");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);
@@ -8409,6 +8417,12 @@ describe("workstation fail-closed API contracts", () => {
           status: "source_first_frame_failed",
           source_readiness: "first_frame_failed",
           source_failure_reason: "capture_read_returned_false",
+          source_diagnosis: {
+            status: "uvc_no_frame_not_exclusive",
+            plain_hint: "不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。",
+            next_action: "check_usb_camera_input_power_or_known_good_uvc",
+            not_exclusive: true,
+          },
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
@@ -8447,6 +8461,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.last_failure_reason).toBe("camera_source_first_frame_failed");
       expect(statusBody.last_remote_http_status).toBe(200);
       expect(typeof statusBody.last_failure_at_ms).toBe("number");
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);
