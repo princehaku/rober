@@ -2140,8 +2140,17 @@ function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): str
   if (keyboardControlStatus.value.startsWith("released")) {
     return `键盘：已松开，正在发送停止；上次方向${manualDirectionPlainLabel(keyboardLastDirection.value)}。`;
   }
+  if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
+    return "键盘：手控请求失败，未记为连续验证；检查连接和底盘入口后重试。";
+  }
+  if (keyboardControlStatus.value.startsWith("blocked_keyboard_stop_failed")) {
+    return "键盘：停止请求失败，未记为连续验证；请点红色停止并现场接管。";
+  }
   if (keyboardStopSettledAfterPulse.value) {
     return `键盘：连续手控已验证，${keyboardForwardedPulseProgressText.value}，停止已发送；需要继续移动可再按住方向键。`;
+  }
+  if (keyboardControlStatus.value.startsWith("stop_sent")) {
+    return `键盘：已停止，上次方向${manualDirectionPlainLabel(keyboardLastDirection.value)}；${keyboardForwardedPulseProgressText.value}，未达到连续验证；需要继续移动可再按住方向键。`;
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return `键盘：已启用，按住才动${pulseText}${stopText}。`;

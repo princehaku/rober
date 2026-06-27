@@ -14683,7 +14683,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已停止，按住方向键可继续点动。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：已启用，按住才动");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：已停止，上次方向前进；最佳连续 1/2 次，未达到连续验证；需要继续移动可再按住方向键。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：松开键盘。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控待验证");
     const keyboardClosureItemAfterSplitPulse = wrapper.findAll('[data-testid="goal-closure-checklist"] li')

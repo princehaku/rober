@@ -3301,6 +3301,11 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 `safe_command_boundary.keyboard_jog_duration_ms/keyboard_jog_interval_ms`，不自动启用键盘、不发
 manual pulse、不调用 stop/Nav2/delivery/free-roam 或 `/cmd_vel`；真正运动仍必须先做现场安全确认并显式启用键盘。
 
+2026-06-28 17:05 起，普通首屏 `当前事实` 的键盘行会优先显示本地手控收口状态：
+一次短按松开后如果 stop 已发送但还没达到连续 `2/2` 验证，该行显示“已停止、上次方向、最佳连续 1/2 次、未达到连续验证”，
+不再退回泛泛的“已启用，按住才动”。键盘 pulse 请求失败或 stop 请求失败也会直接显示失败事实。该改动只调整只读事实文案，
+不改变 240ms/260ms 连续脉冲、速度/时长上限、安全确认、stop 兜底或任何 manual/Nav2/delivery/free-roam/`/cmd_vel` 调用。
+
 2026-06-27 12:16 起，PC 键盘连续手控不再被地图 proof/preview 刷新中的 WYSIWYG 围栏硬阻断。
 地图刷新中仍会阻止 `执行图上路线`、送达材料和建图验收等依赖当前地图画面的动作，但不会阻止已经勾选安全确认、
 显式启用键盘后的低速 bounded manual pulse。这样“小车能先自己低速动起来”不依赖雷达、地图或相机状态；
