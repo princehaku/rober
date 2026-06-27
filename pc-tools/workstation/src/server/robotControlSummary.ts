@@ -3981,15 +3981,15 @@ function freeRoamRuntimeSummaryFromReadbacks(
   };
 }
 
-function freeRoamMappingAcceptanceReady(
+function freeRoamMappingMissingIds(
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null,
-): boolean {
-  // 自动扫图这个词只留给“能动 + 建图验收材料齐全”；缺任一材料时仍是自由移动。
+): string[] {
+  // 自由移动不依赖相机/雷达；建图验收才需要这些材料同时 ready。
   const mappingRequiredIds = ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"];
   const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
     .filter((gate) => gate.scope === "mapping_acceptance")
     .map((gate) => [gate.id, gate]));
-  return mappingRequiredIds.every((id) => mappingGateById.get(id)?.state === "ready");
+  return mappingRequiredIds.filter((id) => mappingGateById.get(id)?.state !== "ready");
 }
 
 function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
@@ -4100,7 +4100,8 @@ function lockedBoundary(
     && freeRoamRuntime.cmd_vel_publish_enabled
     && stopFallbackReady,
   );
-  const freeRoamMappingReady = freeRoamMappingAcceptanceReady(freeRoamRuntimeGates);
+  const freeRoamMappingMissingReasons = freeRoamMappingMissingIds(freeRoamRuntimeGates);
+  const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
   return {
     manual_endpoint: "/api/base/manual",
@@ -4122,6 +4123,9 @@ function lockedBoundary(
     keyboard_control_label: "键盘手控（勾确认后可启用）",
     free_roam_autonomy: freeRoamStatus,
     free_roam_autonomy_start_ready: freeRoamStartReady,
+    free_roam_motion_start_ready: freeRoamStartReady,
+    free_roam_mapping_ready: freeRoamMappingReady,
+    free_roam_mapping_missing_reasons: freeRoamMappingMissingReasons,
     free_roam_autonomy_label: freeRoamReady
       ? freeRoamMappingReady ? "自动扫图" : "自由移动（运行中）"
       : freeRoamStartReady

@@ -120,6 +120,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-27 16:25 起，PC summary 拆出 `free_roam_autonomy_start_ready`：它只表示上车端 stop 兜底与自动扫图基础门禁已满足，
   不要求 `cmd_vel_publish_enabled=true`。普通首屏是否真正能点 `开始自动扫图（低速）` 还要叠加本地安全确认、地图记录、
   地图画面刷新和停止兜底；点击后由上车端回传 camera/radar `mapping_readiness` 并打开双锁，雷达作为可选监看证据回传。这样避免“必须先解锁才能点击解锁”的循环，也避免把“不能建图”误当成“不能自由移动”。
+- 2026-06-27 20:47 起，PC summary 的 `safe_command_boundary` 进一步显式暴露
+  `free_roam_motion_start_ready`、`free_roam_mapping_ready` 和
+  `free_roam_mapping_missing_reasons`。前者只表示勾安全确认后可请求低速自由移动；后两者只表示能否按建图验收收口，
+  缺口会列出 `camera_first_frame/lidar_fresh/mapping_active/fresh_map_preview`。这样外部脚本、PC 首屏和现场人员不再需要从
+  gates 文案里反推“能动”和“能建图”的区别。
 - 2026-06-27 16:55 起，当 `free_roam_autonomy_start_ready=true` 但本地地图记录或扫图画面还没就绪时，普通首屏的
   `开始自动扫图（低速）` 按钮会走自动扫图向导：先启动地图记录，再把地图预览刷新计入本轮扫图 fresh gate，满足条件后再调用固定 start 代理。
   该向导仍不会自动勾选安全确认，也不会绕过上车端 camera 复检。

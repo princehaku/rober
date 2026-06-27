@@ -586,6 +586,10 @@ const fixtures: Record<string, unknown> = {
       keyboard_control_start_ready: true,
       keyboard_control_label: "键盘手控（勾确认后可启用）",
       free_roam_autonomy: "locked",
+      free_roam_autonomy_start_ready: false,
+      free_roam_motion_start_ready: false,
+      free_roam_mapping_ready: false,
+      free_roam_mapping_missing_reasons: ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"],
       free_roam_autonomy_label: "自动扫图（未开放）",
       free_roam_autonomy_policy: {
         mode: "free_move_requires_safety_confirm_stop_fallback",

@@ -2559,6 +2559,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_control_label: "键盘手控（勾确认后可启用）";
     free_roam_autonomy: "locked" | "start_ready" | "ready";
     free_roam_autonomy_start_ready: boolean;
+    free_roam_motion_start_ready: boolean;
+    free_roam_mapping_ready: boolean;
+    free_roam_mapping_missing_reasons: string[];
     free_roam_autonomy_label: "自动扫图（未开放）" | "自由移动（勾确认后可启动）" | "自由移动（运行中）" | "自动扫图";
     free_roam_autonomy_policy: {
       mode: "free_move_requires_safety_confirm_stop_fallback";

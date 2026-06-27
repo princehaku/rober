@@ -3992,6 +3992,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_control_label).toBe("键盘手控（勾确认后可启用）");
       expect(summary.safe_command_boundary.keyboard_control_enabled).toBe(false);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
+      expect(summary.safe_command_boundary.free_roam_autonomy_start_ready).toBe(false);
+      expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(false);
+      expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(false);
+      expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toEqual([
+        "camera_first_frame",
+        "lidar_fresh",
+        "mapping_active",
+        "fresh_map_preview",
+      ]);
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（未开放）");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.mode).toBe("free_move_requires_safety_confirm_stop_fallback");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.mapping_mode).toBe("mapping_acceptance_requires_camera_and_fresh_radar");
@@ -5724,6 +5733,14 @@ describe("workstation fail-closed API contracts", () => {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
       expect(summary.safe_command_boundary.free_roam_autonomy_start_ready).toBe(true);
+      expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(true);
+      expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(false);
+      expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toEqual([
+        "camera_first_frame",
+        "lidar_fresh",
+        "mapping_active",
+        "fresh_map_preview",
+      ]);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
@@ -5870,6 +5887,10 @@ describe("workstation fail-closed API contracts", () => {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("ready");
+      expect(summary.safe_command_boundary.free_roam_autonomy_start_ready).toBe(true);
+      expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(true);
+      expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(true);
+      expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toEqual([]);
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图");
       expect(summary.safe_command_boundary.free_roam_autonomy_runtime).toEqual(expect.objectContaining({
         status: "loaded",
