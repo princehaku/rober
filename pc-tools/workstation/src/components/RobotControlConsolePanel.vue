@@ -3547,7 +3547,11 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
 });
 const plainFreeRoamDriveStatus = computed(() => {
   // 扫图状态只解释当前本地流程，不自动启用键盘、不发送 manual，也不把自动扫图说成已开放。
-  const statusPrefix = plainFreeRoamPanelCopy.value.title === "自由移动 / 建图" ? "自由移动状态" : "扫图状态";
+  const freeRoamActionInSession = freeRoamAutonomyPendingAction.value !== null || Boolean(freeRoamAutonomyResult.value?.action);
+  const statusPrefix = plainFreeRoamMotionModeName.value === "自由移动"
+    && (!plainFreeRoamKeyboardRequiresMapRuntime.value || freeRoamActionInSession)
+    ? "自由移动状态"
+    : "扫图状态";
   if (!plainManualSafetyConfirmed.value) {
     const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
     const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
@@ -3569,35 +3573,36 @@ const plainFreeRoamDriveStatus = computed(() => {
     return "扫图状态：地图已保存，正在自动刷新最新画面。";
   }
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
-    return `扫图状态：停止${plainFreeRoamMotionModeName.value}已排队，启动请求返回后会立刻请求上车端停止。`;
+    return `${statusPrefix}：停止${plainFreeRoamMotionModeName.value}已排队，启动请求返回后会立刻请求上车端停止。`;
   }
   if (freeRoamAutonomyPendingAction.value === "start") {
-    return `扫图状态：正在启动上车端${plainFreeRoamMotionModeName.value}状态机，PC 保持地图、雷达和停止兜底。`;
+    return `${statusPrefix}：正在启动上车端${plainFreeRoamMotionModeName.value}状态机，PC 保持地图、雷达和停止兜底。`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
-    return `扫图状态：正在请求上车端${plainFreeRoamMotionModeName.value}停止，红色停止仍可随时兜底。`;
+    return `${statusPrefix}：正在请求上车端${plainFreeRoamMotionModeName.value}停止，红色停止仍可随时兜底。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
     const failureText = freeRoamAutonomyFailureText(freeRoamAutonomyResult.value);
     const reasonSuffix = failureText ? `：${failureText}` : "";
+    const retryText = statusPrefix === "自由移动状态" ? "继续人工按住移动或重试" : "继续人工按住扫图或重试";
     return freeRoamAutonomyResult.value.action === "start"
-      ? `扫图状态：${plainFreeRoamMotionModeName.value}启动失败${reasonSuffix}，未证明上车状态机已启动；继续人工按住扫图或重试。`
-      : `扫图状态：${plainFreeRoamMotionModeName.value}停止失败${reasonSuffix}，未证明上车状态机已停止；必要时点击红色停止。`;
+      ? `${statusPrefix}：${plainFreeRoamMotionModeName.value}启动失败${reasonSuffix}，未证明上车状态机已启动；${retryText}。`
+      : `${statusPrefix}：${plainFreeRoamMotionModeName.value}停止失败${reasonSuffix}，未证明上车状态机已停止；必要时点击红色停止。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
     const radarFailureText = radarRefreshFailureLabel(radarRefreshResult.value);
     if (radarFailureText) {
-      return `扫图状态：${plainFreeRoamMotionModeName.value}状态机已启动，但${radarFailureText}；继续现场接管，必要时停止${plainFreeRoamMotionModeName.value}。`;
+      return `${statusPrefix}：${plainFreeRoamMotionModeName.value}状态机已启动，但${radarFailureText}；继续现场接管，必要时停止${plainFreeRoamMotionModeName.value}。`;
     }
     if (plainFreeRoamMapPreviewRefreshFailedForSession.value) {
       const failureText = mapPreviewFailureText(mapPreviewResult.value);
       const reasonSuffix = failureText ? `：${failureText}` : "";
-      return `扫图状态：${plainFreeRoamMotionModeName.value}状态机已启动，但地图画面刷新失败${reasonSuffix}；当前地图不是${plainFreeRoamMotionModeName.value}启动后的新画面。`;
+      return `${statusPrefix}：${plainFreeRoamMotionModeName.value}状态机已启动，但地图画面刷新失败${reasonSuffix}；当前地图不是${plainFreeRoamMotionModeName.value}启动后的新画面。`;
     }
-    return `扫图状态：${plainFreeRoamMotionModeName.value}状态机已启动，低速运行中，地图和雷达监看中；需要收口时点击停止${plainFreeRoamMotionModeName.value}或红色停止。`;
+    return `${statusPrefix}：${plainFreeRoamMotionModeName.value}状态机已启动，低速运行中，地图和雷达监看中；需要收口时点击停止${plainFreeRoamMotionModeName.value}或红色停止。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
-    return `扫图状态：${plainFreeRoamMotionModeName.value}停止请求已发送，继续看地图和雷达确认现场收口。`;
+    return `${statusPrefix}：${plainFreeRoamMotionModeName.value}停止请求已发送，继续看地图和雷达确认现场收口。`;
   }
   if (mapSavedThisSession.value) {
     if (plainFreeRoamSavedMapPreviewRefreshFailed.value) {

@@ -5408,7 +5408,7 @@ describe("App", () => {
       confirm_mapping_active: false,
     });
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自由移动（随时可点）");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自由移动状态机已启动");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：自由移动状态机已启动，低速运行中，地图和雷达监看中；需要收口时点击停止自由移动或红色停止。");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：监看或停止自由移动");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
