@@ -1313,6 +1313,19 @@ const cameraMjpegFallbackVisible = computed(() => (
   cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
 ));
 const cameraMjpegFrameObserved = computed(() => cameraMjpegFallbackVisible.value && mjpegPreviewLoaded.value && !mjpegPreviewFailed.value);
+const cameraMjpegCachedFramePending = computed(() => {
+  // 共享 relay 已有最近帧时，后来打开的页面会先收到缓存帧；这只说明首屏有可复用画面证据，不等于本页已完成实时绘制。
+  const status = cameraMjpegStatusResult.value;
+  return Boolean(
+    cameraMjpegFallbackVisible.value
+    && !cameraMjpegFrameObserved.value
+    && !mjpegPreviewFailed.value
+    && status?.proxy_status === "status_loaded"
+    && status.upstream_active
+    && status.content_type_loaded
+    && status.cached_frame_loaded,
+  );
+});
 function cameraSourceFailureCanAutoJoinSharedPreview(
   camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined,
 ): boolean {
@@ -1513,6 +1526,14 @@ function sharedPreviewCachedFrameText(
     : "";
   return ` 已有最近帧缓存${ageText}，后进页面会先显示最近帧。`;
 }
+
+const plainCameraCachedFrameStatus = computed(() => {
+  // 这行只服务普通首屏：告诉后来进入的页面“已有最近帧可先看”，但仍等待本页 img/load 或 video 像素后才写成画面可见。
+  if (!cameraMjpegCachedFramePending.value) {
+    return "";
+  }
+  return "最近帧：共享流已有缓存帧，新页面会先显示最近画面，并继续接入实时流。";
+});
 
 const plainCameraSharedPreviewStatus = computed(() => {
   // 共享预览状态只说明 PC Node 是否在复用同一条 MJPEG 上游流，不代替真实画面像素证据。
@@ -11203,6 +11224,7 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="cameraSummary.state !== '失败'" class="panel-note">{{ cameraSummary.hint }}</p>
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
+          <p v-if="plainCameraCachedFrameStatus" class="panel-note" data-testid="robot-camera-cached-frame-status">{{ plainCameraCachedFrameStatus }}</p>
           <p class="panel-note" data-testid="robot-camera-shared-preview-status">{{ plainCameraSharedPreviewStatus }}</p>
           <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>
         </article>

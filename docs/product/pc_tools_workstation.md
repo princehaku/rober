@@ -71,6 +71,7 @@ pc-tools/workstation/
   `wheel raw L/R=0/0` 未闭环时，状态、最小预检和主按钮都显示 `用 ROS 重跑图上路线`。这只改变普通用户可见文案；
   勾选安全确认不会自动发车，也不会调用 manual、stop、free-roam、delivery 或 `/cmd_vel`。
 - 2026-06-27 07:20 起，普通首屏共享 MJPEG 画面在浏览器 `<img>` 报错后会每 5 秒低频换一次只读 URL retry token，重新请求同一条 PC Node 共享 relay。这样摄像头服务后来恢复首帧时，已经打开页面的用户也能自动重新看到实时预览；该 retry 只访问 `/api/robot-control/camera/mjpeg` 和 status，不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-28 05:25 起，当 `/api/robot-control/camera/mjpeg/status` 已证明共享 relay 有最近帧缓存但当前页面 `<img>` 还没触发 load 时，普通首屏会额外显示“最近帧：共享流已有缓存帧，新页面会先显示最近画面，并继续接入实时流”。这只消费只读 status 证据，不新增相机 reader，不把缓存帧升级成“本页已绘制实时帧”，也不调用 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 18:43 起，上述共享 MJPEG 失败态也会把“页面会低频自动重试”写到普通首屏。`camera_source_first_frame_failed`、
   `camera_mjpeg_upstream_timeout`、HTTP 502/503 或 health-only 首帧失败都会继续显示“不是独占 / UVC 无帧 / 上游无画面”，
   并补充页面会自动换 retry token 重连，避免现场误以为必须刷新网页或另开独占连接。该提示只解释已有只读 retry 机制，
