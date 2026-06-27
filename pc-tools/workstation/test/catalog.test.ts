@@ -5064,6 +5064,108 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary keeps current T130 read errors ahead of old feedback samples", async () => {
+    // 当前 T=130 读错时，旧 latest samples 不能把首屏 summary 伪装成当前反馈链路正常。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "ready",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          base: {
+            feedback_ack: {
+              t1001_observed: false,
+              robot_ack_connected: false,
+              reason: "T=1001 not observed after explicit T=130 request",
+            },
+            feedback_readback: {
+              schema: "trashbot.upper_robot_api.v1.base_feedback_request_result",
+              serial_read: {
+                ok: false,
+                error: {
+                  type: "SerialException",
+                  message: "device reports readiness to read but returned no data",
+                },
+              },
+              sends_commands: true,
+              sends_motion_commands: false,
+              robot_control_executed: false,
+            },
+          },
+        },
+      },
+      "/api/base/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_status",
+          status: "ready",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          feedback_ack: {
+            t1001_observed: false,
+            robot_ack_connected: false,
+            reason: "T=1001 not observed after explicit T=130 request",
+          },
+          feedback_readback: {
+            schema: "trashbot.upper_robot_api.v1.base_feedback_request_result",
+            serial_read: {
+              ok: false,
+              error: {
+                type: "SerialException",
+                message: "device reports readiness to read but returned no data",
+              },
+            },
+            sends_commands: true,
+            sends_motion_commands: false,
+            robot_control_executed: false,
+          },
+        },
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_result: {
+            sends_commands: true,
+            sends_motion_commands: false,
+            robot_control_executed: false,
+            t1001_observed_count: 3,
+            wheel_feedback_lr_nonzero_proven: true,
+            wheel_feedback_nonzero_observed: true,
+            wheel_feedback_summary: {
+              frame_count: 3,
+              latest_pair: { left_speed: 0, right_speed: 0, source: "vendor_t1001_L_R" },
+              latest_nonzero_pair: { left_speed: 164, right_speed: 164, source: "vendor_t1001_L_R" },
+              nonzero_frame_count: 2,
+              source: "vendor_t1001_L_R",
+            },
+          },
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const baseStatusReadback = summary.read_endpoints.find((item) => item.id === "base_status");
+
+      expect(baseStatusReadback?.dangerous_true_fields).not.toContain("feedback_readback.sends_commands");
+      expect(summary.readback_summary.base.current_feedback_read_status).toBe("read_error");
+      expect(summary.readback_summary.base.current_feedback_failure_reason).toContain("device reports readiness to read but returned no data");
+      expect(summary.readback_summary.base.latest_feedback_status).toBe("current_read_error");
+      expect(summary.readback_summary.base.feedback_ack_status).toBe("read_error");
+      expect(summary.readback_summary.base.feedback_link_status).toBe("current_t130_read_error");
+      expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("3");
+      expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("true");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.feedback_readback.sends_commands");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary treats structured HIL delivery as operator material only", async () => {
     // /api/operator/report 的 structured_hil_claims 是人工材料索引，不得把 delivery_success claim 当成顶层成功。
     const robotApi = await listenRobotApiReadbackByPath({

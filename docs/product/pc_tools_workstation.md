@@ -68,6 +68,7 @@ pc-tools/workstation/
 - 2026-06-27 17:59 起，普通首屏轮速卡片会把 `latest_feedback_status=stale` 或 `latest_t1001_observed_count=0` 翻译成“当前没有新鲜底盘反馈帧”，不再显示“已读到 0 帧”或隐藏轮速摘要。下一步明确为先点 `刷新当前轮速（只读）`，再低速试动或键盘按住读取非零 L/R。该判断只消费 summary/base readback，不调用 manual、keyboard pulse、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-28 05:31 CST 起，普通首屏 `当前事实` 会同步显示 `刷新当前轮速（只读）` 的 pending 状态：轮速只读样本请求未返回前显示“正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论”。该事实条只消费 PC 本地 pending 状态和固定 base feedback samples 只读代理，不调用 manual、keyboard pulse、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-28 05:45 CST 起，PC Node summary 的底盘摘要新增 `current_feedback_read_status/current_feedback_failure_reason`，优先使用当前 `/api/base/status` 或 `/api/status` 内 fresh `T=130` 读回；当当前读回是 `read_error` 或 `t1001_not_observed` 时，`latest_feedback_status` 分别标为 `current_read_error/current_t1001_not_observed`，普通首屏 `当前事实` 显示“当前 T=130 读底盘反馈失败/未读到 T=1001”，并声明旧 samples 不能当当前轮速结论。该字段只消费只读 base status，不发送 manual、keyboard、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
+- 2026-06-28 05:48 CST 起，上述底盘当前读回优先级增加 PC Node summary 层回归测试：模拟当前 `/api/base/status` fresh `T=130` read error，同时旧 `/api/base/feedback-samples/latest` 带历史 T=1001 和非零材料时，`readback_summary.base.latest_feedback_status` 仍必须是 `current_read_error`，`feedback_link_status=current_t130_read_error`。这保证普通首屏不会因为旧 samples 误判当前底盘反馈链路已恢复。
 - 2026-06-27 16:18 起，普通首屏行程区会优先消费 summary/safe boundary 的 Nav2 重跑事实：当上次
   `base_command_mode=pwm`、下一次 `next_execution_base_command_mode=ros`，且执行窗口
   `wheel raw L/R=0/0` 未闭环时，状态、最小预检和主按钮都显示 `用 ROS 重跑图上路线`。这只改变普通用户可见文案；
