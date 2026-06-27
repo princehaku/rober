@@ -14655,6 +14655,99 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?")).length).toBeGreaterThan(1);
   });
 
+  it("keeps keyboard pulses continuous when summary refresh stalls during hold", async () => {
+    // 按住键盘时只读 summary 变慢不能拖死 260ms 连续脉冲；松开/失败后再补完整刷新。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: false,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/manual",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        requested_direction: "forward",
+        applied_direction: "forward",
+        requested_speed_mps: 0.08,
+        clamped_speed_mps: 0.08,
+        requested_duration_ms: 240,
+        clamped_duration_ms: 240,
+        confirm_hil_checklist: true,
+        non_stop_requires_confirm_hil_checklist: true,
+        hil_checklist_gate_status: "manual_allowed",
+        checklist_missing: [],
+        operator_report_preflight: { status: "loaded", failure_reason: "", missing_fields: [] },
+        request_contract: {
+          max_speed_mps: 0.12,
+          max_duration_ms: 800,
+          allowed_directions: ["forward", "back", "left", "right", "stop"],
+        },
+        evidence_capture_status: "captured",
+        evidence_capture_endpoints: [],
+        evidence_capture_blocked_reasons: [],
+        before_readback: {},
+        after_readback: {},
+        remote_motion_key_values: {
+          wheel_feedback_latest_raw_left: "0.08",
+          wheel_feedback_latest_raw_right: "0.07",
+          wheel_feedback_lr_nonzero_proven: "true",
+          wheel_feedback_nonzero_observed: "true",
+        },
+        motion_evidence_summary: "keyboard manual pulse fixture",
+        motion_evidence_gaps: [],
+        failure_reason: "",
+        blocked_reasons: [],
+      },
+    });
+    const originalFetch = mockedFetch.getMockImplementation();
+    let stallSummary = false;
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (stallSummary && String(url).startsWith("/api/robot-control/summary?")) {
+        return new Promise(() => {});
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    stallSummary = true;
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(260);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(2);
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("已连续 2/2 次");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it("does not verify keyboard control when the manual pulse is rejected", async () => {
     // 键盘验收必须来自固定 manual proxy 成功转发；单纯按键或失败响应不能算已验证。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

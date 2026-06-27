@@ -10475,12 +10475,16 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
   } finally {
     manualCommandPending.value = false;
     keyboardJogInFlight = false;
+    const keepHoldingAfterPulse = keyboardHeldDirection.value === direction
+      && keyboardControlStatus.value === "holding_keyboard_jog";
     if (keyboardStopAfterPulseReason && !keyboardHeldDirection.value) {
       const reason = keyboardStopAfterPulseReason;
       keyboardStopAfterPulseReason = null;
       await sendKeyboardReleaseStop(reason);
+    } else if (!keepHoldingAfterPulse) {
+      // 按住期间不能被慢 summary 打断；回包里的轮速已足够刷新手控状态，完整读数等松开或失败后再补。
+      await refreshConsole();
     }
-    await refreshConsole();
   }
 }
 

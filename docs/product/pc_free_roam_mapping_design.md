@@ -418,6 +418,11 @@ runtime `/scan` 说明，例如 `雷达未刷新（旧 /scan 距离 0.04m，约 
 如果 7001 自身间歇卡住，普通首屏会退出 loading 并进入 fail-closed 连接失败事实，而不是无限等待。
 该超时只包住首屏只读 summary GET，不缩短地图刷新、Nav2 规划/执行、自由移动 start/stop 或任何 POST 控制代理的服务端等待窗口。
 
+2026-06-28 08:05 起，键盘连续手控按住期间不再等待全量 summary 刷新：
+每个 240ms manual pulse 成功后直接用回包 wheel raw L/R 更新手控状态，并允许 260ms 定时器继续发下一次固定低速脉冲；
+完整 summary 刷新延后到松开、停止、失败或其他显式只读刷新。安全确认、速度/时长上限、stop 兜底和固定
+`/api/robot-control/base/manual` 代理不变。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
