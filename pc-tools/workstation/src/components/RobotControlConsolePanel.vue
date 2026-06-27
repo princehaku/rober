@@ -3126,6 +3126,22 @@ const plainFreeRoamMotionModeName = computed(() => {
   }
   return plainFreeRoamMappingQualityReady.value ? "自动扫图" : "自由移动";
 });
+const plainFreeRoamPanelCopy = computed(() => {
+  // 面板标题按当前传感器事实区分“先让车能动”和“可验收建图”，避免把雷达/相机缺口误读成移动硬门禁。
+  const movementOnly = plainFreeRoamMotionModeName.value === "自由移动"
+    && (!plainCameraReadyForFreeRoamAutonomy.value || !plainRadarReadyForFreeRoamMapping.value)
+    && !mapRuntimeStarted.value
+    && !mapSavedThisSession.value;
+  return movementOnly
+    ? {
+      title: "自由移动 / 建图",
+      subtitle: "先确认安全，可低速自由移动；相机和雷达 ready 后再按建图验收。",
+    }
+    : {
+      title: "扫地式建图",
+      subtitle: "先建图，再低速扫一圈，最后保存。",
+    };
+});
 const plainFreeRoamMotionStartButtonText = computed(() => (
   plainFreeRoamMotionModeName.value === "自动扫图" ? "开始自动扫图（低速）" : "开始自由移动（低速）"
 ));
@@ -3407,8 +3423,9 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
 });
 const plainFreeRoamDriveStatus = computed(() => {
   // 扫图状态只解释当前本地流程，不自动启用键盘、不发送 manual，也不把自动扫图说成已开放。
+  const statusPrefix = plainFreeRoamPanelCopy.value.title === "自由移动 / 建图" ? "自由移动状态" : "扫图状态";
   if (!plainManualSafetyConfirmed.value) {
-    return "扫图状态：先勾安全确认，小车不会移动。";
+    return `${statusPrefix}：先勾安全确认，小车不会移动。`;
   }
   if (mapLifecyclePendingAction.value === "start") {
     return "扫图状态：正在启动地图记录，等记录启动后再移动。";
@@ -3457,6 +3474,12 @@ const plainFreeRoamDriveStatus = computed(() => {
     return `扫图状态：${plainFreeRoamMotionModeName.value}停止请求已发送，继续看地图和雷达确认现场收口。`;
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    if (statusPrefix === "自由移动状态") {
+      const readyText = robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
+        ? `可点击${plainFreeRoamMotionStartButtonText.value}`
+        : "等待上车自由移动状态";
+      return `自由移动状态：${readyText}；当前没有运动发布，低速自移动不依赖雷达新鲜度；建图另看相机和雷达。`;
+    }
     return "扫图状态：还没开始记录，键盘扫图锁定。";
   }
   if (mapSavedThisSession.value) {
@@ -10372,10 +10395,10 @@ onBeforeUnmount(() => {
         </article>
 
         <article class="snapshot-panel plain-free-roam-map" :data-state="plainFreeRoamMappingSummary.state" data-testid="plain-free-roam-mapping">
-          <h3>扫地式建图</h3>
+          <h3>{{ plainFreeRoamPanelCopy.title }}</h3>
           <div class="simple-status-row">
             <span class="status-chip" :data-state="plainFreeRoamMappingSummary.state">{{ plainFreeRoamMappingSummary.state }}</span>
-            <span class="muted">先建图，再低速扫一圈，最后保存。</span>
+            <span class="muted" data-testid="plain-free-roam-mode-subtitle">{{ plainFreeRoamPanelCopy.subtitle }}</span>
           </div>
           <label class="plain-trip-confirm">
             <input ref="plainFreeRoamConfirmCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">

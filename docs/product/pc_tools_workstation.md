@@ -3173,6 +3173,11 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 这让“小车可以低速自己动”与“可按完整自动扫图/建图验收”分开表达，避免缺雷达或缺画面时把自由移动入口误说成自动扫图失败。
 该改动只影响 PC WYSIWYG 文案，不新增 motion API，不发送 manual pulse、Nav2 goal、delivery complete 或 `/cmd_vel`。
 
+2026-06-27 14:50 起，普通首屏的 `扫地式建图` 操作卡在相机或雷达未 ready、且地图记录还未启动时会切成
+`自由移动 / 建图` 标题，并把状态行显示为 `自由移动状态`。该状态会明确写出“当前没有运动发布、低速自移动不依赖雷达新鲜度、建图另看相机和雷达”，
+不再用 `扫图状态：还没开始记录，键盘扫图锁定` 覆盖基础自由移动入口。地图记录启动或传感器满足建图验收口径后，卡片仍回到扫地式建图流程。
+该改动只修正 PC 普通首屏可见文案和测试断言，不启动地图记录、不调用 free-roam start、manual pulse、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 07:30 起，普通首屏实时画面卡在相机源首帧失败、但用户还没跑过只读首帧检查时，会显示只读检查下一步；
 2026-06-27 13:05 起，如果 summary/camera health 已经明确 `source_usage_owner_count=0`、`capture_read_returned_false`
 或 `source_diagnosis_status=uvc_no_frame_not_exclusive`，该行进一步改为直接显示 health 诊断“不是页面独占、相机源没有首帧”，
