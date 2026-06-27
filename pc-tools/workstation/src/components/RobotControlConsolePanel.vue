@@ -2169,7 +2169,8 @@ function plainCurrentMapFactText(summary: RobotControlSummaryResponse): string {
 
 function plainCurrentRadarMapAttachmentText(state: string): string {
   // 当前事实也要说明雷达点到底有没有贴进地图坐标；不能只在地图 caption 里解释。
-  const robotPose = latestRobotPoseOverlay();
+  // 重新定位请求未返回时，旧 map-frame pose 只能作为历史材料，不能继续画成当前小车位置。
+  const robotPose = localizationResetPending.value ? null : latestRobotPoseOverlay();
   const mapOverlay = latestRadarScanOverlay(robotPose, state);
   if (mapOverlay.dots.length > 0) {
     return mapOverlay.source === "map_preview"
@@ -3734,9 +3735,11 @@ const plainMapVisualSummary = computed(() => {
     || "";
   const localizationFailureLabel = localizationResetFailureLabel(localizationResetResult.value);
   const poseMissingDetailLabel = localizationPoseMissingLabel();
-  const poseLabel = poseObserved ? "位置已读到" : localizationFailureLabel ? `定位失败：${localizationFailureLabel}` : poseMissingDetailLabel || "位置未读到";
-  const poseMissingState = localizationFailureLabel ? "定位失败" : poseMissingDetailLabel ? "定位缺坐标" : "位置未读到";
-  const poseMissingAria = localizationFailureLabel
+  const poseLabel = localizationResetPending.value ? "定位中" : poseObserved ? "位置已读到" : localizationFailureLabel ? `定位失败：${localizationFailureLabel}` : poseMissingDetailLabel || "位置未读到";
+  const poseMissingState = localizationResetPending.value ? "定位中" : localizationFailureLabel ? "定位失败" : poseMissingDetailLabel ? "定位缺坐标" : "位置未读到";
+  const poseMissingAria = localizationResetPending.value
+    ? "正在重新定位，返回前不把旧位置当作当前定位"
+    : localizationFailureLabel
     ? `定位失败：${localizationFailureLabel}，地图上的小车位置未读到`
     : poseMissingDetailLabel
       ? `${poseMissingDetailLabel}，地图上的小车位置未读到`
@@ -3771,7 +3774,7 @@ const plainMapVisualSummary = computed(() => {
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
     frameStyle: mapFrameStyle(mapPreviewResult.value?.width ?? 0, mapPreviewResult.value?.height ?? 0),
-    showRobotPose: poseObserved,
+    showRobotPose: poseObserved && !localizationResetPending.value,
     robotPoseStyle: robotPose?.style ?? {},
     robotPoseAria: robotPose?.aria ?? "机器人位置未读到",
     showRadarPulse: poseObserved && radarState === "雷达已运行",

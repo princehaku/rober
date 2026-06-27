@@ -7372,12 +7372,14 @@ describe("App", () => {
 
   it("shows localization reset pending in current map facts", async () => {
     // 重新定位 pending 期间，当前事实不能继续把旧机器人位置当作当前定位。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    markRobotPoseVisible(summaryFixture);
     let delayNextLocalizationReset = false;
     let resolveLocalizationReset!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
     const delayedLocalizationReset = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
       resolveLocalizationReset = resolve;
     });
-    const baseFetch = stubWorkstationFetch();
+    const baseFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
     const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
       if (String(url).startsWith("/api/robot-control/localize/reset?") && delayNextLocalizationReset) {
         delayNextLocalizationReset = false;
@@ -7390,6 +7392,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(true);
 
     const resetCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/localize/reset?")).length;
     delayNextLocalizationReset = true;
@@ -7399,6 +7402,10 @@ describe("App", () => {
     const facts = wrapper.find('[data-testid="plain-current-facts"]').text();
     expect(facts).toContain("地图：正在重新定位，小车地图位置刷新中");
     expect(facts).toContain("返回前不把旧位置当作当前定位");
+    expect(wrapper.find('[data-testid="plain-map-robot-marker"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("定位中");
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').attributes("data-state")).toBe("定位中");
+    expect(wrapper.find('[data-testid="plain-map-pose-missing"]').attributes("aria-label")).toBe("正在重新定位，返回前不把旧位置当作当前定位");
     expect(wrapper.find('[data-testid="plain-motion-panel"]').text()).toContain("定位中");
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/localize/reset?")).length).toBe(resetCallsBefore + 1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
