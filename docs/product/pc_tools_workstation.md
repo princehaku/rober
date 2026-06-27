@@ -3658,6 +3658,12 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 而是避免按旧地图或旧行程材料确认送达。该状态仍只禁用送达确认、送达材料、latest 和缺口复查入口，
 不调用 delivery complete、operator report、Nav2、manual、keyboard、free-roam、stop 或 `/cmd_vel`。
 
+2026-06-28 07:54 起，普通首屏 `启动/恢复自动驾驶服务（不发车）` 成功后的状态会继续按地图所见即所得给下一步：
+若 no-motion 图上路线检查仍在返回中，则提示等待；若路线点已准备但还没贴到当前地图，则提示刷新地图画面确认图上路线；
+若当前路线已贴到地图，则提示按当前地图确认起点和终点后再执行；若仍有 `/scan`、AMCL 或 TF blocker，则继续提示启动/刷新雷达、
+重新定位、准备图上路线。该变化只改 PC 普通首屏向导，不改变固定 `/api/nav2/start` 和 no-motion Nav2 proof refresh 合同，
+不发送 NavigateToPose goal、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 23:30 起，建图验收缺口也消费同一 stale runtime `/scan` 事实：
 当缺口包含 `lidar_fresh` 且 PC summary 里只有 stale `/scan` 距离时，`建图验收` 和 `当前事实`
 会显示 `雷达未刷新（旧 /scan 距离 ... 已过期，不贴到地图）`。低速自由移动入口仍不受影响；

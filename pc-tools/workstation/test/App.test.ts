@@ -16909,6 +16909,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("恢复命令已返回成功");
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("已自动重新检查图上路线（不发车）");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("下一步：刷新地图画面确认图上路线");
   });
 
   it("shows a no-motion Nav2 start action when the stack is stopped", async () => {
@@ -16994,6 +16995,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("启动命令已返回成功");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("下一步：刷新地图画面确认图上路线");
   });
 
   it("shows current Nav2 blocker reasons in first-screen facts", async () => {
