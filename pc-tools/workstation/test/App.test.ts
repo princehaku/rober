@@ -8896,6 +8896,7 @@ describe("App", () => {
     expect(connectionPanel.attributes("data-state")).toBe("已连接");
     expect(connectionPanel.text()).toContain("已读到小车状态；画面健康读取较慢，具体看画面行的无帧诊断。");
     expect(connectionPanel.text()).not.toContain("部分项目未通过");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("小车：已读到状态；画面健康读取较慢，画面行显示真实无帧诊断。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("不是独占，UVC 没有输出视频帧");
     expect(visiblePlainHomeText(wrapper)).not.toContain("fetch_timeout_2400ms");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -8935,6 +8936,7 @@ describe("App", () => {
     expect(connectionPanel.attributes("data-state")).toBe("已连接");
     expect(connectionPanel.text()).toContain("已读到小车状态；部分读取较慢，下面按画面、雷达、地图和行程分项显示已读事实。");
     expect(connectionPanel.text()).not.toContain("部分项目未通过");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("小车：已读到状态；少数读取较慢，下面各项按已读事实显示。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶服务未启动");
     expect(visiblePlainHomeText(wrapper)).not.toContain("fetch_timeout_2400ms");

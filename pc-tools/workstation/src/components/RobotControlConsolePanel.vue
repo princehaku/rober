@@ -441,6 +441,12 @@ function plainRobotConnectionFactText(summary: RobotControlSummaryResponse | nul
   if (connection.dangerous_true_fields.length > 0) {
     return "小车：读到危险字段，控制保持锁定；先查看高级诊断。";
   }
+  if (cameraHealthTimeoutExplainedByPreview(summary)) {
+    return "小车：已读到状态；画面健康读取较慢，画面行显示真实无帧诊断。";
+  }
+  if (robotConnectionPartialTimeoutOnly(summary)) {
+    return "小车：已读到状态；少数读取较慢，下面各项按已读事实显示。";
+  }
   return "";
 }
 
