@@ -2748,6 +2748,12 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 `0.0.0.0:7001` 后台启动后自动退出。该改动不新增任何控制入口，不调用 manual、keyboard、Nav2、delivery、free-roam
 或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
 
+2026-06-27 起，普通首屏“当前事实”的画面行会把共享预览也压进一句短事实：例如 live 形态显示
+“0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 没人占用但没有输出视频帧”。这样用户刚进
+`0.0.0.0:7001` 就能判断当前问题不是浏览器独占或别人占用，而是已选相机源没有真实首帧。该行仍只消费
+`readback_summary.camera` 和共享 MJPEG 摘要，不打开相机、不重试 WebRTC，也不调用 manual、keyboard、Nav2、delivery、
+free-roam start/stop 或 `/cmd_vel`。
+
 2026-06-26 21:10 起，Robot Control summary 的 `safe_command_boundary.free_roam_autonomy_label` 区分“可以发起 start 请求”和
 “已经运动发布解锁”：当 `free_roam_autonomy_start_ready=true` 但 runtime 仍是 `artifact_only=true/cmd_vel_publish_enabled=false`
 时，label 显示 `自动扫图（勾确认后可启动）`；只有 runtime 已 `cmd_vel_publish_enabled=true` 且 gates ready 时才显示

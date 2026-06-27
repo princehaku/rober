@@ -446,20 +446,34 @@ function cameraSourcePlainFailureHint(): string {
 }
 
 function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readback_summary"]["camera"]): string {
-  // 当前事实条要短而准：先回答是不是独占，再回答有没有真实帧，复杂排障留在画面卡片。
+  // 当前事实条要短而准：把共享预览事实放在前面，避免用户误判成浏览器独占。
+  const clientCount = camera.shared_preview_client_count && !["", "not_loaded", "none"].includes(camera.shared_preview_client_count)
+    ? `${camera.shared_preview_client_count} 个页面观看`
+    : "";
+  const sharedStream = camera.shared_preview_upstream_active === "true"
+    ? "共享流已连接"
+    : camera.shared_preview_upstream_active === "false" ? "共享流未连接" : "";
+  const exclusive = camera.shared_preview_exclusive_camera_claim === "true"
+    ? "相机可能被独占"
+    : camera.shared_preview_exclusive_camera_claim === "false" ? "不是独占" : "";
+  const selectedName = camera.selected_name && !["", "not_loaded", "none"].includes(camera.selected_name)
+    ? camera.selected_name
+    : "摄像头";
+  const sharedFactPrefix = [clientCount, sharedStream, exclusive].filter(Boolean).join("，");
+  const prefix = sharedFactPrefix ? `${sharedFactPrefix}，` : "";
   if (!cameraSourceFirstFrameFailed(camera)) {
     return cameraVisibleForFreeRoamMapping.value ? "画面：已看到真实帧。" : "画面：还没确认真实帧。";
   }
   if (camera.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
-    return "画面：不是独占，后端多种方式也没有取到视频帧。";
+    return `画面：${prefix}${selectedName} 多种方式也没有取到视频帧。`;
   }
   if (camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0") {
-    return "画面：不是独占，摄像头没人占用但没有输出视频帧。";
+    return `画面：${prefix}${selectedName} 没人占用但没有输出视频帧。`;
   }
   if (camera.source_usage_status === "in_use_by_probe" || camera.source_usage_status === "in_use_by_other_process") {
-    return "画面：相机被占用，先释放占用后再看实时画面。";
+    return `画面：${prefix}相机被占用，先释放占用后再看实时画面。`;
   }
-  return "画面：没有首帧，先看画面卡片里的失败原因。";
+  return `画面：${prefix}没有首帧，先看画面卡片里的失败原因。`;
 }
 
 function cameraProbePlainFailureHint(): string {
