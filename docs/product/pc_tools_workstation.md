@@ -3505,3 +3505,8 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 当缺口包含 `lidar_fresh` 且 PC summary 里只有 stale `/scan` 距离时，`建图验收` 和 `当前事实`
 会显示 `雷达未刷新（旧 /scan 距离 ... 已过期，不贴到地图）`。低速自由移动入口仍不受影响；
 这只是把“为什么当前不能按可验收建图收口”说清楚。
+
+2026-06-27 23:35 起，Robot Control summary 的 `safe_command_boundary.nav2_goal_blockers`
+会把 `planner_server_active=false` 结构化为 `planner_server_inactive`。因此 live 同时出现路线未生成、robot map pose
+未读到、planner/controller inactive 时，普通 PC 和自动化脚本不再只能从中文 `当前事实` 推断 planner 缺口；
+`nav2_goal_next_action` 也会提示先生成图上路线、读到小车地图位置，并同时恢复 Nav2 planner/controller。

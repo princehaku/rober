@@ -4059,19 +4059,32 @@ function nav2GoalBoundaryGuidance(
     || (Number.isFinite(baseCommandCount) && baseCommandCount > 0)
     || nav2.goal_execution_sends_base_motion_commands === "true"
     || nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true";
+  const plannerInactive = nav2.planner_server_active === "false";
   const controllerInactive = nav2.controller_server_active === "false";
-  const controllerAwareBlockers = controllerInactive
-    ? [...new Set([...base.nav2_goal_blockers, "controller_server_inactive"])]
-    : base.nav2_goal_blockers;
-  const controllerInactiveText = controllerInactive
-    ? "；Nav2 controller 当前未 active，重跑前需先恢复 controller"
+  const serviceAwareBlockers = [
+    ...base.nav2_goal_blockers,
+    plannerInactive ? "planner_server_inactive" : "",
+    controllerInactive ? "controller_server_inactive" : "",
+  ].filter(Boolean);
+  const nav2ServiceBlockers = [...new Set(serviceAwareBlockers)];
+  const inactiveServiceNames = [
+    plannerInactive ? "Nav2 planner" : "",
+    controllerInactive ? "Nav2 controller" : "",
+  ].filter(Boolean);
+  const serviceInactiveText = [
+    plannerInactive ? "Nav2 planner 当前未 active" : "",
+    controllerInactive ? "Nav2 controller 当前未 active" : "",
+  ].filter(Boolean);
+  const serviceInactiveSuffix = serviceInactiveText.length
+    ? `；${serviceInactiveText.join("，")}，重跑前需先恢复 ${inactiveServiceNames.join(" 和 ")}`
     : "";
+  const nav2ServiceInactive = plannerInactive || controllerInactive;
   const executionMotionText = nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true"
-    ? controllerInactive
+    ? nav2ServiceInactive
       ? "；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机"
       : "；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller"
     : executionMotionMaterialObserved
-      ? controllerInactive
+      ? nav2ServiceInactive
         ? "；已看到旧执行运动材料，旧执行主因不是雷达或相机"
         : "；已看到执行运动材料，主因不是雷达、相机或 controller"
       : "";
@@ -4093,22 +4106,32 @@ function nav2GoalBoundaryGuidance(
     const rerunMode = !["", "not_loaded"].includes(nextMode) ? nextMode.toUpperCase() : "当前模式";
     return {
       ...base,
-      nav2_goal_ready: controllerInactive ? false : base.nav2_goal_ready,
-      nav2_goal_label: controllerInactive && base.nav2_goal_ready ? "Nav2 controller 未就绪" : base.nav2_goal_label,
-      nav2_goal_blockers: controllerAwareBlockers,
+      nav2_goal_ready: plannerInactive || controllerInactive ? false : base.nav2_goal_ready,
+      nav2_goal_label: plannerInactive && controllerInactive && base.nav2_goal_ready
+        ? "Nav2 planner/controller 未就绪"
+        : plannerInactive && base.nav2_goal_ready
+          ? "Nav2 planner 未就绪"
+          : controllerInactive && base.nav2_goal_ready ? "Nav2 controller 未就绪" : base.nav2_goal_label,
+      nav2_goal_blockers: nav2ServiceBlockers,
       nav2_goal_wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
-      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${controllerInactiveText}；勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`,
+      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${serviceInactiveSuffix}；勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`,
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
-  if (base.nav2_goal_ready && controllerInactive) {
+  if (base.nav2_goal_ready && (plannerInactive || controllerInactive)) {
+    const serviceLabel = plannerInactive && controllerInactive
+      ? "Nav2 planner/controller 未就绪"
+      : plannerInactive ? "Nav2 planner 未就绪" : "Nav2 controller 未就绪";
+    const serviceNextAction = inactiveServiceNames.length
+      ? `先恢复 ${inactiveServiceNames.join(" 和 ")}，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R`
+      : "先恢复 Nav2 服务，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R";
     return {
       ...base,
       nav2_goal_ready: false,
-      nav2_goal_label: "Nav2 controller 未就绪",
-      nav2_goal_blockers: controllerAwareBlockers,
+      nav2_goal_label: serviceLabel,
+      nav2_goal_blockers: nav2ServiceBlockers,
       nav2_goal_wheel_feedback_status: "awaiting_route_execution",
-      nav2_goal_next_action: "先恢复 Nav2 controller，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R",
+      nav2_goal_next_action: serviceNextAction,
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
@@ -4122,6 +4145,10 @@ function nav2GoalBoundaryGuidance(
   }
   return {
     ...base,
+    nav2_goal_blockers: nav2ServiceBlockers,
+    nav2_goal_next_action: inactiveServiceNames.length
+      ? `${base.nav2_goal_next_action}；同时恢复 ${inactiveServiceNames.join(" 和 ")}`
+      : base.nav2_goal_next_action,
     nav2_goal_execution_mode_label: modeLabel,
   };
 }

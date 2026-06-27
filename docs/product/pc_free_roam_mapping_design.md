@@ -380,6 +380,10 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 runtime `/scan` 说明，例如 `雷达未刷新（旧 /scan 距离 0.04m，约 2 小时 51 分前，已过期，不贴到地图）`。
 这让自由移动/建图分层更直观：小车仍可在安全确认后低速自由移动，但本轮不能用旧雷达距离按建图验收。
 
+2026-06-27 23:35 起，Nav2 自动驾驶 readiness 的服务缺口也结构化到 PC summary：
+`planner_server_active=false` 会进入 `nav2_goal_blockers=planner_server_inactive`，与
+`controller_server_inactive` 同级展示。该变更只影响只读 readiness 和文案，不启动 Nav2、不生成路线、不发送底盘命令。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
