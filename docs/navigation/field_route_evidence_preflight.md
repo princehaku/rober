@@ -332,3 +332,28 @@ canonical map candidates 中选择包含 free cell 的地图；本轮选择：
 能生成路线；它没有调用 NavigateToPose、controller execution、`/cmd_vel`、`/api/base/manual`
 或 WAVE ROVER UART 运动命令。因此它不是真实路线执行、wheel raw L/R 非零、dropoff 或
 delivery success 证明。
+
+## 2026-06-27 Nav2 受管 lifecycle start 修正
+
+真实上位机 `root@192.168.1.11:37878` 只读复核显示，当前 `/api/nav2/status` 的 `commands.start.configured=false`，
+即 `ROBER_NAV2_START_COMMAND` 未配置；PC summary 同步表现为 `planner_server_active=false`、
+`controller_server_active=false`，并带 `planner_server_inactive/controller_server_inactive` blocker。
+这说明自动驾驶当前不是被摄像头卡住，也不是“车能不能低速动”的问题，而是 Nav2 runtime 没有受管 start 入口。
+
+本轮新增 `onboard/scripts/o11_nav2_lifecycle.sh`，并把 `upper_robot_api.py` 的默认
+`/api/nav2/start|stop` 接到该脚本：
+
+- `start` 固定调用 `ros2 launch ros2_trashbot_bringup autonomous.launch.py nav2_stack_only:=true`。
+- `nav2_stack_only=true` 只启动 ESP32 bridge 与 Nav2 bringup，不启动 `waypoint_manager`、`nav_to_goal`、
+  `task_orchestrator`、`fixed_route_autonomy`、operator gateway 或 remote bridge。
+- 默认地图为 `/root/rober/onboard/runtime/maps/trashbot_map.yaml`。
+- 默认 WAVE ROVER UART 为现场确认的 `/dev/ttyS5@115200`，默认 `command_mode=ros`，即按
+  `docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 和
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 的本地资料使用 newline JSON，
+  ROS `cmd_vel` bridge 口径对应 `T=13`。
+- `start` 本身不发送 NavigateToPose goal、不发布 `/cmd_vel`、不调用 `/api/base/manual`，真正路线执行仍只能走
+  显式安全确认后的 `/api/nav2/goal/execute`。
+
+因此 PC 或上位机现在可以先用固定 `/api/nav2/start` 恢复 planner/controller runtime，再通过
+`/api/nav2/proof/refresh` 重新采集 map/AMCL/planner/controller 证据。该修正不等于真实路线执行成功，也不等于
+wheel raw L/R 非零、dropoff 或 delivery success。

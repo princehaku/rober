@@ -1,7 +1,7 @@
 """Autonomous mode launch - patrol, collect, deliver."""
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
 from launch.substitutions import PythonExpression
 from launch_ros.actions import Node
@@ -69,6 +69,10 @@ def generate_launch_description():
     fixed_route_dry_run_arg = DeclareLaunchArgument(
         'fixed_route_dry_run', default_value='true',
         description='Run fixed-route checkpoints without creating Nav2 BasicNavigator')
+
+    nav2_stack_only_arg = DeclareLaunchArgument(
+        'nav2_stack_only', default_value='false',
+        description='Start only ESP32 bridge and Nav2 bringup; skip patrol/task nodes')
 
     debug_status_file_arg = DeclareLaunchArgument(
         'debug_status_file', default_value='/tmp/trashbot_fixed_route_status.json',
@@ -201,6 +205,7 @@ def generate_launch_description():
     enable_visual_gate = LaunchConfiguration('enable_visual_gate')
     visual_match_threshold = LaunchConfiguration('visual_match_threshold')
     fixed_route_dry_run = LaunchConfiguration('fixed_route_dry_run')
+    nav2_stack_only = LaunchConfiguration('nav2_stack_only')
     debug_status_file = LaunchConfiguration('debug_status_file')
     route_debug_web = LaunchConfiguration('route_debug_web')
     operator_gateway = LaunchConfiguration('operator_gateway')
@@ -236,17 +241,28 @@ def generate_launch_description():
         'config',
         'nav2_params.yaml',
     ])
-    fixed_route_expression = PythonExpression([
-        "'", navigation_mode, "' == 'fixed_route' or '", delivery_mode, "' == 'fixed_route'"
+    full_fixed_route_expression = PythonExpression([
+        "'", nav2_stack_only, "'.lower() != 'true' and ('",
+        navigation_mode, "' == 'fixed_route' or '", delivery_mode, "' == 'fixed_route')"
     ])
-    fixed_route_condition = IfCondition(fixed_route_expression)
-    waypoint_condition = UnlessCondition(fixed_route_expression)
+    full_waypoint_expression = PythonExpression([
+        "'", nav2_stack_only, "'.lower() != 'true' and not ('",
+        navigation_mode, "' == 'fixed_route' or '", delivery_mode, "' == 'fixed_route')"
+    ])
+    full_stack_expression = PythonExpression(["'", nav2_stack_only, "'.lower() != 'true'"])
+    fixed_route_condition = IfCondition(full_fixed_route_expression)
+    waypoint_condition = IfCondition(full_waypoint_expression)
+    full_stack_condition = IfCondition(full_stack_expression)
     route_debug_web_condition = IfCondition(PythonExpression([
-        "('", navigation_mode, "' == 'fixed_route' or '", delivery_mode,
+        "'", nav2_stack_only, "'.lower() != 'true' and ('", navigation_mode, "' == 'fixed_route' or '", delivery_mode,
         "' == 'fixed_route') and '", route_debug_web, "' == 'true'"
     ]))
-    operator_gateway_condition = IfCondition(operator_gateway)
-    remote_bridge_condition = IfCondition(remote_bridge)
+    operator_gateway_condition = IfCondition(PythonExpression([
+        "'", nav2_stack_only, "'.lower() != 'true' and '", operator_gateway, "'.lower() == 'true'"
+    ]))
+    remote_bridge_condition = IfCondition(PythonExpression([
+        "'", nav2_stack_only, "'.lower() != 'true' and '", remote_bridge, "'.lower() == 'true'"
+    ]))
 
     return LaunchDescription([
         use_sim_time_arg,
@@ -258,6 +274,7 @@ def generate_launch_description():
         enable_visual_gate_arg,
         visual_match_threshold_arg,
         fixed_route_dry_run_arg,
+        nav2_stack_only_arg,
         debug_status_file_arg,
         route_debug_web_arg,
         operator_gateway_arg,
@@ -337,6 +354,7 @@ def generate_launch_description():
             executable='task_orchestrator',
             name='task_orchestrator',
             output='screen',
+            condition=full_stack_condition,
             parameters=[{
                 'use_sim_time': use_sim_time,
                 'waypoint_file': waypoint_file,

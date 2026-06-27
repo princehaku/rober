@@ -106,12 +106,19 @@ BLOCKED_LIDAR_RUNTIME_COMMAND_TOKENS = (
 )
 SAFE_LIDAR_RUNTIME_SCRIPT = "o1_lidar_ros2_scan_smoke.sh"
 SAFE_RADAR_LIFECYCLE_SCRIPT = "o1_lidar_lifecycle.sh"
+SAFE_NAV2_LIFECYCLE_SCRIPT = "o11_nav2_lifecycle.sh"
 SAFE_LIDAR_RUNTIME_SHELLS = ("bash", "sh")
 DEFAULT_RADAR_START_COMMAND = (
     "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
     "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
 )
 DEFAULT_RADAR_STOP_COMMAND = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
+DEFAULT_NAV2_START_COMMAND = (
+    "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
+    "--map-file /root/rober/onboard/runtime/maps/trashbot_map.yaml "
+    "--base-port /dev/ttyS5 --base-baudrate 115200 --command-mode ros"
+)
+DEFAULT_NAV2_STOP_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh stop"
 OPERATOR_REPORT_FIELDS = (
     "operator_present",
     "evidence_ref",
@@ -2286,6 +2293,15 @@ def _is_lidar_serial_path(path: str) -> bool:
     )
 
 
+def _is_wave_rover_base_serial_path(path: str) -> bool:
+    """只允许现场确认过的 WAVE ROVER 底盘 UART 或稳定 udev 路径。"""
+    return (
+        path == "/dev/ttyS5"
+        or (path.startswith("/dev/serial/by-id/") and path.strip())
+        or (path.startswith("/dev/serial/by-path/") and path.strip())
+    )
+
+
 def validate_lidar_runtime_command(command: str | None) -> tuple[list[str], dict[str, str] | None]:
     """只接受项目 LiDAR-only smoke 脚本，拒绝任意 shell/底盘控制命令。"""
     if not command or not command.strip():
@@ -2360,6 +2376,57 @@ def run_radar_lifecycle_command(command: str | None, action: str) -> dict[str, A
             "uses_base_uart": False,
         }
     return run_configured_command(command)
+
+
+def validate_nav2_lifecycle_command(command: str | None, action: str) -> tuple[list[str], dict[str, str] | None]:
+    """Nav2 start/stop 只能调用受管 stack-only 脚本，不能退化成任意 shell。"""
+    if not command or not command.strip():
+        return [], {"type": "no_command_configured", "message": f"ROBER_NAV2_{action.upper()}_COMMAND is not configured"}
+    try:
+        argv = shlex.split(command)
+    except ValueError as exc:
+        return [], compact_error(exc)
+    if not argv:
+        return [], {"type": "empty_command", "message": "nav2 lifecycle command parsed to empty argv"}
+    joined = " ".join(argv)
+    if any(token in joined for token in (";", "&&", "||", "|", "$(", "`")):
+        return [], {"type": "unsafe_runtime_command", "message": "shell operators are not allowed in Nav2 lifecycle command"}
+    for token in ("/api/base", "/cmd_vel", "cmd_vel", "T=1", "T=11", "T=13", "T=130", "T=131", "NavigateToPose"):
+        if token in joined:
+            return [], {"type": "unsafe_runtime_command", "message": f"blocked token in Nav2 lifecycle command: {token}"}
+    script_index = 1 if Path(argv[0]).name in SAFE_LIDAR_RUNTIME_SHELLS else 0
+    if script_index >= len(argv) or Path(argv[script_index]).name != SAFE_NAV2_LIFECYCLE_SCRIPT:
+        return [], {
+            "type": "unsupported_runtime_command",
+            "message": f"only {SAFE_NAV2_LIFECYCLE_SCRIPT} is allowed for Nav2 start/stop",
+        }
+    action_index = script_index + 1
+    if action_index >= len(argv) or argv[action_index] != action:
+        return [], {"type": "unsupported_nav2_action", "message": f"Nav2 lifecycle command must call {action}"}
+    base_port = _extract_flag_value(argv, "--base-port")
+    if base_port and not _is_wave_rover_base_serial_path(base_port):
+        return [], {"type": "unsafe_base_serial_path", "message": f"refusing unexpected WAVE ROVER UART: {base_port}"}
+    command_mode = _extract_flag_value(argv, "--command-mode")
+    if command_mode and command_mode not in ALLOWED_NAV2_BASE_COMMAND_MODES:
+        return [], {"type": "unsupported_nav2_command_mode", "message": f"unsupported Nav2 base command mode: {command_mode}"}
+    return argv, None
+
+
+def run_nav2_lifecycle_command(command: str | None, action: str) -> dict[str, Any]:
+    """先做 Nav2 lifecycle 白名单校验，再运行受管 stack-only 脚本。"""
+    argv, error = validate_nav2_lifecycle_command(command, action)
+    if error:
+        return {
+            "mode": "command" if command and command.strip() else "dry_run_stub",
+            "executed": False,
+            "ok": False,
+            "argv": argv,
+            "error": error,
+            "allowed_script": SAFE_NAV2_LIFECYCLE_SCRIPT,
+            "sends_base_motion_commands": False,
+            "uses_base_uart": False,
+        }
+    return run_configured_command(command, timeout_s=20.0)
 
 
 def start_lidar_scan_proof_runtime(command: str | None, warmup_s: float) -> dict[str, Any]:
@@ -5638,8 +5705,8 @@ class UpperRobotApi:
         map_save_command: str | None = None,
         map_load_command: str | None = None,
         localize_reset_command: str | None = None,
-        nav2_start_command: str | None = None,
-        nav2_stop_command: str | None = None,
+        nav2_start_command: str | None = DEFAULT_NAV2_START_COMMAND,
+        nav2_stop_command: str | None = DEFAULT_NAV2_STOP_COMMAND,
     ) -> None:
         self.camera_base_url = camera_base_url.rstrip("/")
         self.base_port = base_port
@@ -7086,7 +7153,7 @@ class UpperRobotApi:
         }
 
     def nav2_control(self, action: str) -> dict[str, Any]:
-        """Nav2 start/stop 是配置命令入口；默认不启动 lifecycle manager。"""
+        """Nav2 start/stop 是受管 stack-only 入口；启动本身不发送目标或底盘运动。"""
         if action == "start":
             endpoint = ROUTE_PATHS["nav2_start"]
             command_env = "ROBER_NAV2_START_COMMAND"
@@ -7103,7 +7170,7 @@ class UpperRobotApi:
                 artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
                 extra={"error": {"type": "unsupported_nav2_action", "message": "action must be start or stop"}},
             )
-        command_result = run_configured_command(command)
+        command_result = run_nav2_lifecycle_command(command, action)
         return software_guard_payload(
             schema_suffix="nav2_lifecycle_result",
             action=f"nav2_{action}",
@@ -7593,8 +7660,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--map-save-command", default=os.getenv("ROBER_MAP_SAVE_COMMAND"))
     parser.add_argument("--map-load-command", default=os.getenv("ROBER_MAP_LOAD_COMMAND"))
     parser.add_argument("--localize-reset-command", default=os.getenv("ROBER_LOCALIZE_RESET_COMMAND"))
-    parser.add_argument("--nav2-start-command", default=os.getenv("ROBER_NAV2_START_COMMAND"))
-    parser.add_argument("--nav2-stop-command", default=os.getenv("ROBER_NAV2_STOP_COMMAND"))
+    parser.add_argument("--nav2-start-command", default=os.getenv("ROBER_NAV2_START_COMMAND", DEFAULT_NAV2_START_COMMAND))
+    parser.add_argument("--nav2-stop-command", default=os.getenv("ROBER_NAV2_STOP_COMMAND", DEFAULT_NAV2_STOP_COMMAND))
     return parser.parse_args()
 
 

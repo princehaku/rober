@@ -1178,6 +1178,96 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["base_uart_touched"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_nav2_status_defaults_to_managed_lifecycle_commands(self) -> None:
+        """默认上位机应暴露受管 Nav2 stack-only start/stop，不再是 dry-run stub。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        status = api.nav2_status()
+
+        start_command = status["commands"]["start"]
+        stop_command = status["commands"]["stop"]
+        self.assertTrue(start_command["configured"])
+        self.assertEqual("command", start_command["mode"])
+        self.assertIn("o11_nav2_lifecycle.sh", start_command["argv"][1])
+        self.assertIn("/dev/ttyS5", start_command["argv"])
+        self.assertIn("ros", start_command["argv"])
+        self.assertTrue(stop_command["configured"])
+        self.assertEqual("command", stop_command["mode"])
+        self.assertFalse(status["sends_motion_commands"])
+        self.assertFalse(status["sends_base_motion_commands"])
+        self.assertFalse(status["safe_to_control"])
+
+    def test_nav2_control_uses_default_managed_lifecycle_command(self) -> None:
+        """Nav2 start 默认只调用受管 stack-only 脚本，不执行 NavigateToPose。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        with mock.patch.object(
+            upper_robot_api,
+            "run_configured_command",
+            return_value={"mode": "command", "executed": True, "ok": True, "returncode": 0},
+        ) as run_mock:
+            payload = api.nav2_control("start")
+
+        run_mock.assert_called_once_with(upper_robot_api.DEFAULT_NAV2_START_COMMAND, timeout_s=20.0)
+        self.assertTrue(payload["command_result"]["executed"])
+        self.assertTrue(payload["command_result"]["ok"])
+        self.assertEqual(
+            shlex.split(upper_robot_api.DEFAULT_NAV2_START_COMMAND),
+            payload["configured_command"]["argv"],
+        )
+        self.assertFalse(payload["sends_base_motion_commands"])
+        self.assertFalse(payload["safe_to_control"])
+
+    def test_nav2_lifecycle_validation_rejects_unsafe_command_without_execution(self) -> None:
+        """Nav2 lifecycle 命令不能夹带 shell、直接 /cmd_vel 或错误底盘串口。"""
+        unsafe_shell = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start; ros2 topic pub /cmd_vel"
+        unsafe_token = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start /cmd_vel"
+        unsafe_port = (
+            "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
+            "--base-port /dev/ttyACM0 --command-mode ros"
+        )
+
+        _, shell_error = upper_robot_api.validate_nav2_lifecycle_command(unsafe_shell, "start")
+        _, token_error = upper_robot_api.validate_nav2_lifecycle_command(unsafe_token, "start")
+        _, port_error = upper_robot_api.validate_nav2_lifecycle_command(unsafe_port, "start")
+
+        self.assertIsNotNone(shell_error)
+        self.assertEqual("unsafe_runtime_command", shell_error["type"])
+        self.assertIsNotNone(token_error)
+        self.assertEqual("unsafe_runtime_command", token_error["type"])
+        self.assertIsNotNone(port_error)
+        self.assertEqual("unsafe_base_serial_path", port_error["type"])
+
+    def test_nav2_control_rejects_unmanaged_lifecycle_command_without_execution(self) -> None:
+        """API nav2 start 只能走 o11_nav2_lifecycle.sh，不能直接执行 ros2 launch 字符串。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+            nav2_start_command="ros2 launch ros2_trashbot_bringup autonomous.launch.py",
+        )
+
+        with mock.patch.object(upper_robot_api, "run_configured_command") as run_mock:
+            payload = api.nav2_control("start")
+
+        run_mock.assert_not_called()
+        self.assertFalse(payload["command_result"]["executed"])
+        self.assertFalse(payload["command_result"]["ok"])
+        self.assertEqual("unsupported_runtime_command", payload["command_result"]["error"]["type"])
+        self.assertFalse(payload["sends_base_motion_commands"])
+        self.assertFalse(payload["safe_to_control"])
+
     def test_free_roam_start_requires_operator_confirmation(self) -> None:
         """自动扫图 start 必须来自普通首屏安全确认，裸 POST 不能放开状态机。"""
         api = upper_robot_api.UpperRobotApi(

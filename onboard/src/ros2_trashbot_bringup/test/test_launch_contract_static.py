@@ -57,6 +57,7 @@ class LaunchContractStaticTest(unittest.TestCase):
             "'enable_visual_gate'",
             "'visual_match_threshold'",
             "'fixed_route_dry_run'",
+            "'nav2_stack_only'",
             "'debug_status_file'",
             "'route_debug_web'",
             "'operator_gateway'",
@@ -86,6 +87,27 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("waypoint_condition", source)
         self.assertIn("condition=waypoint_condition", source)
         self.assertIn("condition=fixed_route_condition", source)
+
+    def test_autonomous_nav2_stack_only_skips_business_navigation_nodes(self):
+        # 受管 Nav2 lifecycle start 只需要 ESP32 bridge 和 Nav2 bringup；
+        # 巡逻、任务编排和固定路线节点必须显式受 nav2_stack_only gate 保护。
+        source = read_launch("autonomous.launch.py")
+        ast.parse(source)
+
+        self.assertIn("'nav2_stack_only', default_value='false'", source)
+        self.assertIn("full_stack_condition", source)
+        for executable in (
+            "task_orchestrator",
+            "nav_to_goal",
+            "waypoint_manager",
+            "fixed_route_autonomy",
+            "operator_gateway",
+            "remote_bridge",
+        ):
+            block = node_block(source, executable)
+            self.assertIn("condition=", block)
+        self.assertIn("full_stack_expression", source)
+        self.assertIn("nav2_stack_only", source)
 
     def test_autonomous_passes_debug_status_file_to_task_orchestrator(self):
         source = read_launch("autonomous.launch.py")

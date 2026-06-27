@@ -3458,6 +3458,15 @@ multipart JPEG，失败继续返回结构化 503 和 `first_frame_unreadable` / 
 是否可见仍由 PC 前端 WYSIWYG gate 判断；API 短文案不再写成“先看地图画面”，避免在 PC 已自动刷新地图或正在刷新地图时给普通用户一个多余手动步骤。
 该改动只修正 Nav2 ready 的用户文案，不触发 `nav2/goal/execute`、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-27 23:54 起，上位机默认提供受管 `/api/nav2/start|stop`：`start` 只调用
+`onboard/scripts/o11_nav2_lifecycle.sh start`，以 `autonomous.launch.py nav2_stack_only:=true` 带起 ESP32 bridge 和 Nav2 bringup，
+不启动巡逻、任务编排、固定路线 runner 或远程 bridge。默认 WAVE ROVER 串口和命令口径来自
+`docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 与
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`：现场 `/dev/ttyS5@115200`、newline JSON、
+Nav2 bridge 默认 `command_mode=ros` / `T=13`。PC 首屏的 Nav2 恢复动作因此不再卡在
+`ROBER_NAV2_START_COMMAND` 未配置，但 start 本身不发送 NavigateToPose goal、不发布 `/cmd_vel`、
+不调用 manual/keyboard/free-roam/delivery；完整路线执行仍需要用户勾选行程安全确认后显式点击执行。
+
 2026-06-27 19:07 起，普通首屏自由移动 / 建图缺口会消费相机 source diagnosis：当缺口为
 `camera_first_frame` 且 summary 已证明 `uvc_no_frame_not_exclusive` 或 `source_diagnosis_not_exclusive=true` 时，
 建图验收和当前事实显示 `画面首帧未出（不是页面独占）`，而不是泛化的 `画面首帧未出`。这让 live 形态
