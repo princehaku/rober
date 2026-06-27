@@ -2479,6 +2479,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     nav2: {
       status: string;
       nav2_status: string;
+      nav2_stack_running: string;
+      nav2_stack_lifecycle_state: string;
       planner_server_active: string;
       controller_server_active: string;
       controller_server_requested: string;
@@ -2509,6 +2511,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       goal_execution_base_feedback_imu_pitch_delta: string;
       goal_execution_base_feedback_latest_left_speed: string;
       goal_execution_base_feedback_latest_right_speed: string;
+      goal_execution_base_feedback_latest_raw_left: string;
+      goal_execution_base_feedback_latest_raw_right: string;
       goal_execution_sends_base_motion_commands: string;
       goal_execution_uses_base_uart: string;
       goal_execution_goal_frame_id: string;
@@ -2550,7 +2554,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     cmd_vel_topic: "/cmd_vel";
     nav2_goal: "Nav2 NavigateToPose locked";
     nav2_goal_ready: boolean;
-    nav2_goal_label: "路线读数已准备，等待地图画面确认" | "图上路线未就绪" | "Nav2 planner 未就绪" | "Nav2 controller 未就绪" | "Nav2 planner/controller 未就绪";
+    nav2_goal_label: "路线读数已准备，等待地图画面确认" | "图上路线未就绪" | "Nav2 服务未启动" | "Nav2 planner 未就绪" | "Nav2 controller 未就绪" | "Nav2 planner/controller 未就绪";
     nav2_goal_blockers: string[];
     nav2_goal_wheel_feedback_status: string;
     nav2_goal_next_action: string;

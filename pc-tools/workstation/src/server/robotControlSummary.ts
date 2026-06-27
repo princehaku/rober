@@ -112,6 +112,7 @@ const ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES = [
   "trashbot.local_webrtc_camera_",
 ] as const;
 const NAV2_GOAL_BLOCKER_ORDER = [
+  "nav2_stack_not_running",
   "planner_server_inactive",
   "controller_server_inactive",
   "path_generation_not_observed",
@@ -3719,6 +3720,8 @@ function nav2SummaryFromReadbacks(
   const latestNonzeroPair = asRecord(baseFeedbackSummary?.latest_nonzero_pair);
   const latestPair = asRecord(baseFeedbackSummary?.latest_pair);
   const goalExecutionStatus = summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded");
+  const nav2StatusPayload = nav2Status?.payload ?? null;
+  const lifecycleManager = asRecord(nav2StatusPayload?.lifecycle_manager);
   const goalExecutionProven = nav2GoalExecutionProvenText(goalResultPayload);
   const goalExecutionResultStatus = summaryValueText(goalResultPayload, ["result_status"]);
   const wheelFeedbackProven = summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]);
@@ -3762,6 +3765,8 @@ function nav2SummaryFromReadbacks(
   return {
     status: summaryStatus,
     nav2_status: nav2Status?.status ?? "not_loaded",
+    nav2_stack_running: summaryValueText(nav2StatusPayload, ["lifecycle_running"], summaryValueText(lifecycleManager, ["running"])),
+    nav2_stack_lifecycle_state: summaryValueText(nav2StatusPayload, ["lifecycle_state"], summaryValueText(lifecycleManager, ["state"])),
     planner_server_active: proofText(readbacks, ["planner_server_active", "planner_active", "latest_planner_active"]) ?? booleanSummaryValue(proof.planner_server_active),
     controller_server_active: proofText(readbacks, ["controller_server_active", "latest_controller_active"]) ?? "not_loaded",
     controller_server_requested: proofText(readbacks, ["controller_server_requested", "latest_controller_requested"]) ?? "not_loaded",
@@ -3792,6 +3797,8 @@ function nav2SummaryFromReadbacks(
     goal_execution_base_feedback_imu_pitch_delta: summaryValueText(asRecord(baseFeedbackSummary?.imu_attitude_delta_summary), ["max_abs_pitch_delta"]),
     goal_execution_base_feedback_latest_left_speed: summaryValueText(latestNonzeroPair ?? latestPair, ["left_speed"]),
     goal_execution_base_feedback_latest_right_speed: summaryValueText(latestNonzeroPair ?? latestPair, ["right_speed"]),
+    goal_execution_base_feedback_latest_raw_left: summaryValueText(latestNonzeroPair ?? latestPair, ["left_speed"]),
+    goal_execution_base_feedback_latest_raw_right: summaryValueText(latestNonzeroPair ?? latestPair, ["right_speed"]),
     goal_execution_sends_base_motion_commands: summaryValueText(goalResultPayload, ["sends_base_motion_commands"]),
     goal_execution_uses_base_uart: summaryValueText(goalResultPayload, ["uses_base_uart"]),
     goal_execution_goal_frame_id: summaryValueText(goalResultPayload, ["goal_frame_id", "frame_id"]),
@@ -4085,6 +4092,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       nav2: {
         status: "not_loaded",
         nav2_status: "not_loaded",
+        nav2_stack_running: "not_loaded",
+        nav2_stack_lifecycle_state: "not_loaded",
         planner_server_active: "not_loaded",
         controller_server_active: "not_loaded",
         controller_server_requested: "not_loaded",
@@ -4115,6 +4124,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         goal_execution_base_feedback_imu_pitch_delta: "not_loaded",
         goal_execution_base_feedback_latest_left_speed: "not_loaded",
         goal_execution_base_feedback_latest_right_speed: "not_loaded",
+        goal_execution_base_feedback_latest_raw_left: "not_loaded",
+        goal_execution_base_feedback_latest_raw_right: "not_loaded",
         goal_execution_sends_base_motion_commands: "not_loaded",
         goal_execution_uses_base_uart: "not_loaded",
         goal_execution_goal_frame_id: "not_loaded",
@@ -4403,8 +4414,8 @@ function nav2GoalBoundaryGuidance(
   const succeeded = nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded";
   const proven = nav2.goal_execution_proven === "true";
   const wheelProven = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true";
-  const left = nav2.goal_execution_base_feedback_latest_left_speed || "not_loaded";
-  const right = nav2.goal_execution_base_feedback_latest_right_speed || "not_loaded";
+  const left = nav2.goal_execution_base_feedback_latest_raw_left || nav2.goal_execution_base_feedback_latest_left_speed || "not_loaded";
+  const right = nav2.goal_execution_base_feedback_latest_raw_right || nav2.goal_execution_base_feedback_latest_right_speed || "not_loaded";
   const currentMode = nav2.goal_execution_base_command_mode || "not_loaded";
   const nextMode = nav2.next_execution_base_command_mode || "not_loaded";
   const baseCommandCount = Number(nav2.goal_execution_base_command_nonzero_count);
@@ -4414,24 +4425,28 @@ function nav2GoalBoundaryGuidance(
     || nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true";
   const plannerInactive = nav2.planner_server_active === "false";
   const controllerInactive = nav2.controller_server_active === "false";
+  const nav2StackNotRunning = nav2.nav2_stack_running === "false";
   const serviceAwareBlockers = [
     ...base.nav2_goal_blockers,
-    plannerInactive ? "planner_server_inactive" : "",
-    controllerInactive ? "controller_server_inactive" : "",
+    nav2StackNotRunning ? "nav2_stack_not_running" : "",
+    !nav2StackNotRunning && plannerInactive ? "planner_server_inactive" : "",
+    !nav2StackNotRunning && controllerInactive ? "controller_server_inactive" : "",
   ].filter(Boolean);
   const nav2ServiceBlockers = sortNav2GoalBlockers([...new Set(serviceAwareBlockers)]);
   const inactiveServiceNames = [
-    plannerInactive ? "Nav2 planner" : "",
-    controllerInactive ? "Nav2 controller" : "",
+    nav2StackNotRunning ? "Nav2 服务（不发车）" : "",
+    !nav2StackNotRunning && plannerInactive ? "Nav2 planner" : "",
+    !nav2StackNotRunning && controllerInactive ? "Nav2 controller" : "",
   ].filter(Boolean);
   const serviceInactiveText = [
-    plannerInactive ? "Nav2 planner 当前未 active" : "",
-    controllerInactive ? "Nav2 controller 当前未 active" : "",
+    nav2StackNotRunning ? "Nav2 stack 当前未运行" : "",
+    !nav2StackNotRunning && plannerInactive ? "Nav2 planner 当前未 active" : "",
+    !nav2StackNotRunning && controllerInactive ? "Nav2 controller 当前未 active" : "",
   ].filter(Boolean);
   const serviceInactiveSuffix = serviceInactiveText.length
-    ? `；${serviceInactiveText.join("，")}，重跑前需先恢复 ${inactiveServiceNames.join(" 和 ")}`
+    ? `；${serviceInactiveText.join("，")}，重跑前需先${nav2StackNotRunning ? "启动" : "恢复"} ${inactiveServiceNames.join(" 和 ")}`
     : "";
-  const nav2ServiceInactive = plannerInactive || controllerInactive;
+  const nav2ServiceInactive = nav2StackNotRunning || plannerInactive || controllerInactive;
   const executionMotionText = nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true"
     ? nav2ServiceInactive
       ? "；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机"
@@ -4457,7 +4472,9 @@ function nav2GoalBoundaryGuidance(
   }
   if (succeeded && nav2.goal_execution_base_feedback_lr_nonzero_proven === "false") {
     const rerunMode = !["", "not_loaded"].includes(nextMode) ? nextMode.toUpperCase() : "当前模式";
-    const serviceRestoreActions = inactiveServiceNames.length ? [`恢复 ${inactiveServiceNames.join(" 和 ")}`] : [];
+    const serviceRestoreActions = inactiveServiceNames.length
+      ? [`${nav2StackNotRunning ? "启动" : "恢复"} ${inactiveServiceNames.join(" 和 ")}`]
+      : [];
     const routeReadinessActions = base.nav2_goal_ready ? [] : ["生成图上路线并读到小车地图位置"];
     const routePrepActions = [
       ...serviceRestoreActions,
@@ -4470,8 +4487,10 @@ function nav2GoalBoundaryGuidance(
         : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`;
     return {
       ...base,
-      nav2_goal_ready: plannerInactive || controllerInactive ? false : base.nav2_goal_ready,
-      nav2_goal_label: plannerInactive && controllerInactive && base.nav2_goal_ready
+      nav2_goal_ready: nav2StackNotRunning || plannerInactive || controllerInactive ? false : base.nav2_goal_ready,
+      nav2_goal_label: nav2StackNotRunning
+        ? "Nav2 服务未启动"
+        : plannerInactive && controllerInactive && base.nav2_goal_ready
         ? "Nav2 planner/controller 未就绪"
         : plannerInactive && base.nav2_goal_ready
           ? "Nav2 planner 未就绪"
@@ -4482,12 +4501,14 @@ function nav2GoalBoundaryGuidance(
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
-  if (base.nav2_goal_ready && (plannerInactive || controllerInactive)) {
-    const serviceLabel = plannerInactive && controllerInactive
+  if (base.nav2_goal_ready && (nav2StackNotRunning || plannerInactive || controllerInactive)) {
+    const serviceLabel = nav2StackNotRunning
+      ? "Nav2 服务未启动"
+      : plannerInactive && controllerInactive
       ? "Nav2 planner/controller 未就绪"
       : plannerInactive ? "Nav2 planner 未就绪" : "Nav2 controller 未就绪";
     const serviceNextAction = inactiveServiceNames.length
-      ? `先恢复 ${inactiveServiceNames.join(" 和 ")}，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R`
+      ? `先${nav2StackNotRunning ? "启动" : "恢复"} ${inactiveServiceNames.join(" 和 ")}，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R`
       : "先恢复 Nav2 服务，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R";
     return {
       ...base,
@@ -4509,9 +4530,10 @@ function nav2GoalBoundaryGuidance(
   }
   return {
     ...base,
+    nav2_goal_label: nav2StackNotRunning ? "Nav2 服务未启动" : base.nav2_goal_label,
     nav2_goal_blockers: nav2ServiceBlockers,
     nav2_goal_next_action: inactiveServiceNames.length
-      ? `先恢复 ${inactiveServiceNames.join(" 和 ")}，再生成图上路线并读到小车地图位置`
+      ? `先${nav2StackNotRunning ? "启动" : "恢复"} ${inactiveServiceNames.join(" 和 ")}，再生成图上路线并读到小车地图位置`
       : base.nav2_goal_next_action,
     nav2_goal_execution_mode_label: modeLabel,
   };

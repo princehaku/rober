@@ -1191,6 +1191,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         start_command = status["commands"]["start"]
         stop_command = status["commands"]["stop"]
+        status_command = status["commands"]["status"]
         self.assertTrue(start_command["configured"])
         self.assertEqual("command", start_command["mode"])
         self.assertIn("o11_nav2_lifecycle.sh", start_command["argv"][1])
@@ -1198,9 +1199,39 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertIn("ros", start_command["argv"])
         self.assertTrue(stop_command["configured"])
         self.assertEqual("command", stop_command["mode"])
+        self.assertTrue(status_command["configured"])
+        self.assertEqual("status", status_command["argv"][2])
+        self.assertIn("lifecycle_manager", status)
+        self.assertFalse(status["lifecycle_manager"]["sends_motion_commands"])
         self.assertFalse(status["sends_motion_commands"])
         self.assertFalse(status["sends_base_motion_commands"])
         self.assertFalse(status["safe_to_control"])
+
+    def test_nav2_lifecycle_status_parse_failure_is_not_stopped(self) -> None:
+        """status 脚本读不到 JSON 时不能把未知状态误报成 stopped。"""
+        parsed = upper_robot_api.parse_nav2_lifecycle_status_result(
+            {"mode": "command", "executed": True, "ok": False, "stdout": "", "reason": "script_missing"}
+        )
+
+        self.assertEqual("not_loaded", parsed["status"])
+        self.assertEqual("not_loaded", parsed["running"])
+        self.assertEqual("not_loaded", parsed["state"])
+        self.assertFalse(parsed["sends_motion_commands"])
+
+    def test_nav2_lifecycle_status_parses_stdout_preview(self) -> None:
+        """run_configured_command 只保存 stdout_preview，status 解析必须消费这个字段。"""
+        parsed = upper_robot_api.parse_nav2_lifecycle_status_result(
+            {
+                "mode": "command",
+                "executed": True,
+                "ok": True,
+                "stdout_preview": json.dumps({"running": False, "state": "stopped", "message": "Nav2 lifecycle not running"}),
+            }
+        )
+
+        self.assertEqual("loaded", parsed["status"])
+        self.assertFalse(parsed["running"])
+        self.assertEqual("stopped", parsed["state"])
 
     def test_nav2_control_uses_default_managed_lifecycle_command(self) -> None:
         """Nav2 start 默认只调用受管 stack-only 脚本，不执行 NavigateToPose。"""
@@ -1218,7 +1249,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         ) as run_mock:
             payload = api.nav2_control("start")
 
-        run_mock.assert_called_once_with(upper_robot_api.DEFAULT_NAV2_START_COMMAND, timeout_s=20.0)
+        self.assertEqual(run_mock.call_args_list[0], mock.call(upper_robot_api.DEFAULT_NAV2_START_COMMAND, timeout_s=20.0))
+        self.assertEqual(run_mock.call_args_list[1], mock.call(upper_robot_api.DEFAULT_NAV2_STATUS_COMMAND, timeout_s=20.0))
+        self.assertEqual(run_mock.call_count, 2)
         self.assertTrue(payload["command_result"]["executed"])
         self.assertTrue(payload["command_result"]["ok"])
         self.assertEqual(

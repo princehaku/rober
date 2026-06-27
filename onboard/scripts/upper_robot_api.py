@@ -119,6 +119,7 @@ DEFAULT_NAV2_START_COMMAND = (
     "--base-port /dev/ttyS5 --base-baudrate 115200 --command-mode ros"
 )
 DEFAULT_NAV2_STOP_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh stop"
+DEFAULT_NAV2_STATUS_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh status"
 OPERATOR_REPORT_FIELDS = (
     "operator_present",
     "evidence_ref",
@@ -2379,7 +2380,7 @@ def run_radar_lifecycle_command(command: str | None, action: str) -> dict[str, A
 
 
 def validate_nav2_lifecycle_command(command: str | None, action: str) -> tuple[list[str], dict[str, str] | None]:
-    """Nav2 start/stop 只能调用受管 stack-only 脚本，不能退化成任意 shell。"""
+    """Nav2 start/stop/status 只能调用受管 stack-only 脚本，不能退化成任意 shell。"""
     if not command or not command.strip():
         return [], {"type": "no_command_configured", "message": f"ROBER_NAV2_{action.upper()}_COMMAND is not configured"}
     try:
@@ -2427,6 +2428,36 @@ def run_nav2_lifecycle_command(command: str | None, action: str) -> dict[str, An
             "uses_base_uart": False,
         }
     return run_configured_command(command, timeout_s=20.0)
+
+
+def parse_nav2_lifecycle_status_result(command_result: dict[str, Any]) -> dict[str, Any]:
+    """把 o11 status 的 stdout JSON 压成只读状态；解析失败也不能影响 /api/nav2/status。"""
+    stdout = command_result.get("stdout", command_result.get("stdout_preview"))
+    payload: dict[str, Any] | None = None
+    if isinstance(stdout, str) and stdout.strip():
+        try:
+            parsed = json.loads(stdout)
+            if isinstance(parsed, dict):
+                payload = parsed
+        except json.JSONDecodeError:
+            payload = None
+    running = payload.get("running") if payload else "not_loaded"
+    state = payload.get("state") if payload else "not_loaded"
+    message = payload.get("message") if payload else command_result.get("reason") or "not_loaded"
+    return {
+        "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_manager_status",
+        "status": "loaded" if payload else "not_loaded",
+        "running": running if isinstance(running, bool) else "not_loaded",
+        "state": str(state or "not_loaded"),
+        "message": str(message or "not_loaded"),
+        "pid": payload.get("pid") if payload else None,
+        "command_result": command_result,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "robot_control_executed": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+    }
 
 
 def start_lidar_scan_proof_runtime(command: str | None, warmup_s: float) -> dict[str, Any]:
@@ -5707,6 +5738,7 @@ class UpperRobotApi:
         localize_reset_command: str | None = None,
         nav2_start_command: str | None = DEFAULT_NAV2_START_COMMAND,
         nav2_stop_command: str | None = DEFAULT_NAV2_STOP_COMMAND,
+        nav2_status_command: str | None = DEFAULT_NAV2_STATUS_COMMAND,
     ) -> None:
         self.camera_base_url = camera_base_url.rstrip("/")
         self.base_port = base_port
@@ -5741,6 +5773,7 @@ class UpperRobotApi:
         self.localize_reset_command = localize_reset_command
         self.nav2_start_command = nav2_start_command
         self.nav2_stop_command = nav2_stop_command
+        self.nav2_status_command = nav2_status_command
 
     def base_status(self) -> dict[str, Any]:
         """底盘状态执行非运动 T=130 readback，但仍不授予运动控制权限。"""
@@ -7128,6 +7161,9 @@ class UpperRobotApi:
 
     def nav2_status(self) -> dict[str, Any]:
         """Nav2 lifecycle 状态只读 artifact；真实 graph 查询由外部 collector 写材料。"""
+        lifecycle_manager = parse_nav2_lifecycle_status_result(
+            run_nav2_lifecycle_command(self.nav2_status_command, "status")
+        )
         return {
             "schema": f"{SCHEMA}.nav2_lifecycle_status",
             "generated_at_ms": now_ms(),
@@ -7152,7 +7188,11 @@ class UpperRobotApi:
             "commands": {
                 "start": command_config_info("ROBER_NAV2_START_COMMAND", self.nav2_start_command),
                 "stop": command_config_info("ROBER_NAV2_STOP_COMMAND", self.nav2_stop_command),
+                "status": command_config_info("ROBER_NAV2_STATUS_COMMAND", self.nav2_status_command),
             },
+            "lifecycle_manager": lifecycle_manager,
+            "lifecycle_running": lifecycle_manager["running"],
+            "lifecycle_state": lifecycle_manager["state"],
             "runtime_entrypoints": {
                 "autonomous_launch": "ros2 launch ros2_trashbot_bringup autonomous.launch.py map_file:=<map.yaml>",
                 "lifecycle_nodes_expected": ["map_server", "amcl", "planner_server", "controller_server"],
@@ -7676,6 +7716,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--localize-reset-command", default=os.getenv("ROBER_LOCALIZE_RESET_COMMAND"))
     parser.add_argument("--nav2-start-command", default=os.getenv("ROBER_NAV2_START_COMMAND", DEFAULT_NAV2_START_COMMAND))
     parser.add_argument("--nav2-stop-command", default=os.getenv("ROBER_NAV2_STOP_COMMAND", DEFAULT_NAV2_STOP_COMMAND))
+    parser.add_argument("--nav2-status-command", default=os.getenv("ROBER_NAV2_STATUS_COMMAND", DEFAULT_NAV2_STATUS_COMMAND))
     return parser.parse_args()
 
 
@@ -7715,6 +7756,7 @@ async def run_server(args: argparse.Namespace) -> None:
         localize_reset_command=args.localize_reset_command,
         nav2_start_command=args.nav2_start_command,
         nav2_stop_command=args.nav2_stop_command,
+        nav2_status_command=args.nav2_status_command,
     )
     app = create_app(api)
     runner = web.AppRunner(app)

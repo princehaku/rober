@@ -3977,6 +3977,8 @@ describe("workstation fail-closed API contracts", () => {
       });
       expect(summary.readback_summary.nav2).toMatchObject({
         status: expect.any(String),
+        nav2_stack_running: expect.any(String),
+        nav2_stack_lifecycle_state: expect.any(String),
         planner_server_active: "false",
         controller_server_active: expect.any(String),
         controller_server_requested: expect.any(String),
@@ -4076,6 +4078,64 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
       expect(summary.primary_actions_enabled).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary prioritizes stopped Nav2 stack before planner recovery", async () => {
+    // 真实车上 `/api/nav2/status` 会只读 o11 lifecycle manager；stopped 时普通首屏应先提示启动服务，不误导成雷达问题。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "not_proven",
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          lifecycle_manager: {
+            schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_manager_status",
+            status: "loaded",
+            running: false,
+            state: "stopped",
+            message: "Nav2 lifecycle not running",
+            sends_motion_commands: false,
+            sends_base_motion_commands: false,
+            robot_control_executed: false,
+            safe_to_control: false,
+            delivery_success: false,
+          },
+          latest_planner_active: false,
+          latest_controller_active: false,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.nav2_stack_running).toBe("false");
+      expect(summary.readback_summary.nav2.nav2_stack_lifecycle_state).toBe("stopped");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("Nav2 服务未启动");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([
+        "nav2_stack_not_running",
+        "path_generation_not_observed",
+        "path_point_count_not_positive",
+        "robot_map_pose_not_observed",
+      ]);
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先启动 Nav2 服务（不发车），再生成图上路线并读到小车地图位置");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("雷达");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("相机");
     } finally {
       await robotApi.close();
     }
@@ -4597,6 +4657,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_imu_attitude_delta_observed).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复 Nav2 controller，再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
@@ -5524,6 +5586,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.status).toBe("goal_succeeded_wheel_feedback_not_proven");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 pwm，下次 ros");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线");

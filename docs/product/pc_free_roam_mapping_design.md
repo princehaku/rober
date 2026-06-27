@@ -573,3 +573,21 @@ free-roam start 仍保留自己的建图会话地图刷新，避免重复计数�
 执行按钮不再维护独立 `confirmNavigationExecution`，而是读取全页面统一的 `plainUnifiedSafetyConfirmed`。
 后端仍保留 `confirm_navigation_execution_required` 兜底，直接打 API 没带确认仍会拒绝。这样 UI 上的发车前确认只剩一个勾选，
 符合“勾了安全确认即可”的普通用户口径，同时不放宽后端安全门禁。
+
+2026-06-28 15:17 起，上位机 `/api/nav2/status` 会额外只读执行
+`o11_nav2_lifecycle.sh status`，返回 `lifecycle_manager.running/state` 以及顶层
+`lifecycle_running/lifecycle_state`。该 status 命令只读取受管 Nav2 stack-only manager 的 pid/state，不启动
+ROS2、不发送 `NavigateToPose`、不发布 `/cmd_vel`、不碰底盘串口。PC summary 只有在该字段明确
+`lifecycle_running=false` 时才把 `safe_command_boundary.nav2_goal_blockers` 首项标为
+`nav2_stack_not_running`，并把下一步写成“先启动 Nav2 服务（不发车），再生成图上路线并读到小车地图位置”；
+如果 status 读不到 JSON，则保持 `not_loaded`，不误报 stopped。同期 Nav2 最近路线执行摘要新增
+`goal_execution_base_feedback_latest_raw_left/right`，和底盘摘要的 wheel raw L/R 同口径，便于现场排查
+“旧 action succeeded 但轮速仍 0/0”。这次仍只改变只读诊断和首屏引导，不自动启动 Nav2、不发车。
+
+2026-06-28 15:35 起，`o11_nav2_lifecycle.sh` 修复 stale running 回放：
+`ros2 launch ... autonomous.launch.py nav2_stack_only:=true` 退出后会写 `failed/stopped` 并清理 pid 文件；
+`status` 发现 pid 不存在时会覆盖旧 running status 文件。现场只读日志确认旧失败根因为
+`package 'nav2_bringup' not found`，因此已在车上安装 `ros-humble-navigation2` 和 `ros-humble-nav2-bringup`，
+并验证 `ros2 pkg prefix nav2_bringup`、`ros2 pkg prefix navigation2` 均可解析到 `/opt/ros/humble`。
+安装依赖不等于发车或 Nav2 HIL 通过；没有现场安全确认前，PC 仍只显示 `Nav2 服务未启动` 和恢复顺序，不自动调用
+`/api/nav2/start`、`NavigateToPose` 或 `/cmd_vel`。

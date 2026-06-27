@@ -209,6 +209,7 @@ run_manager() {
   require_runtime
   write_status_file true "$$" "running" "Nav2 stack-only launch running; wait for proof refresh to verify planner/controller"
   cd "$ONBOARD_ROOT"
+  set +e
   ros2 launch ros2_trashbot_bringup autonomous.launch.py \
     nav2_stack_only:=true \
     map_file:="$MAP_FILE" \
@@ -216,6 +217,15 @@ run_manager() {
     serial_baudrate:="$BASE_BAUDRATE" \
     command_mode:="$COMMAND_MODE" \
     >"$LAUNCH_LOG" 2>&1
+  local launch_rc=$?
+  set -e
+  rm -f "$PID_FILE"
+  if [[ "$launch_rc" -eq 0 ]]; then
+    write_status_file false "" "stopped" "Nav2 stack-only launch exited cleanly"
+  else
+    write_status_file false "" "failed" "Nav2 stack-only launch exited with rc=$launch_rc; see $LAUNCH_LOG"
+  fi
+  return "$launch_rc"
 }
 
 start_manager() {
@@ -283,6 +293,8 @@ case "$ACTION" in
     if is_running; then
       emit_status_file_or_fallback true "$(current_pid)" "running" "Nav2 lifecycle running"
     else
+      rm -f "$PID_FILE"
+      write_status_file false "" "stopped" "Nav2 lifecycle not running"
       emit_status_file_or_fallback false "" "stopped" "Nav2 lifecycle not running"
     fi
     ;;
@@ -295,4 +307,3 @@ case "$ACTION" in
     exit 2
     ;;
 esac
-
