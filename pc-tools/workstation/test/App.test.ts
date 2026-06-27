@@ -15712,7 +15712,10 @@ describe("App", () => {
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(wrapper.find('[data-testid="plain-map-radar-local-scan"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：未读到可显示的实时雷达点。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达未运行，旧点未贴图");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达未运行，地图位置未读到，旧雷达点 65 个已过期未贴到地图");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：旧雷达点 65 个已判定为不当前，未贴到地图；启动或刷新雷达后才显示新点位。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，旧雷达点 65 个已判定为不当前，未贴到地图；目标线未显示。");
     expect(firstScreenText).not.toContain("最近记录 2 个点");
     expect(firstScreenText).not.toContain("雷达局部点 2 个");
     expect(firstScreenText).not.toContain("雷达局部点 65 个");
@@ -15755,7 +15758,10 @@ describe("App", () => {
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(wrapper.find('[data-testid="plain-map-radar-local-scan"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：未读到可显示的实时雷达点。");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达未运行，旧点未贴图");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达未运行，地图位置未读到，旧雷达点 80 个已过期未贴到地图");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：旧雷达点 80 个已判定为不当前，未贴到地图；启动或刷新雷达后才显示新点位。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，旧雷达点 80 个已判定为不当前，未贴到地图；目标线未显示。");
     expect(firstScreenText).not.toContain("雷达局部点 2 个");
     expect(firstScreenText).not.toContain("雷达局部点 65 个");
     expect(firstScreenText).not.toContain("待刷新雷达点 65 个");
