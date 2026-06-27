@@ -15806,6 +15806,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，旧雷达点 65 个已判定为不当前，未贴到地图；目标线未显示。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：雷达未运行；旧雷达点 65 个已判定为不当前，未贴到地图。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个；旧雷达点 65 个已判定为不当前，未贴到地图。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出、雷达未刷新（旧雷达点 65 个已判定为不当前，未贴到地图）、地图记录未启动");
     expect(firstScreenText).not.toContain("最近记录 2 个点");
     expect(firstScreenText).not.toContain("雷达局部点 2 个");
     expect(firstScreenText).not.toContain("雷达局部点 65 个");
@@ -15854,6 +15855,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，旧雷达点 80 个已判定为不当前，未贴到地图；目标线未显示。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：雷达未运行；旧雷达点 80 个已判定为不当前，未贴到地图。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("旧雷达点 80 个已判定为不当前，未贴到地图");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达未刷新（旧 /scan 距离 0.04m");
     expect(firstScreenText).not.toContain("雷达局部点 2 个");
     expect(firstScreenText).not.toContain("雷达局部点 65 个");
     expect(firstScreenText).not.toContain("待刷新雷达点 65 个");
