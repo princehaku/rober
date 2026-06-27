@@ -3441,3 +3441,9 @@ multipart JPEG，失败继续返回结构化 503 和 `first_frame_unreadable` / 
 在路线读数 ready 时改为 `路线读数已准备，等待地图画面确认`。地图画面是否已显示、路线是否已贴到地图、机器人 map pose
 是否可见仍由 PC 前端 WYSIWYG gate 判断；API 短文案不再写成“先看地图画面”，避免在 PC 已自动刷新地图或正在刷新地图时给普通用户一个多余手动步骤。
 该改动只修正 Nav2 ready 的用户文案，不触发 `nav2/goal/execute`、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 19:07 起，普通首屏自由移动 / 建图缺口会消费相机 source diagnosis：当缺口为
+`camera_first_frame` 且 summary 已证明 `uvc_no_frame_not_exclusive` 或 `source_diagnosis_not_exclusive=true` 时，
+建图验收和当前事实显示 `画面首帧未出（不是页面独占）`，而不是泛化的 `画面首帧未出`。这让 live 形态
+“每个页面共享预览没问题，但 UVC 本身无首帧”在自由移动卡片里也所见即所得；低速自由移动仍只看安全确认和停止兜底，
+相机首帧只影响可验收建图，不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。

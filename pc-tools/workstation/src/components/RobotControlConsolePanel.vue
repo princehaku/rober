@@ -1665,6 +1665,15 @@ function freeRoamMappingMissingPlainLabels(missing: string[] | string | undefine
   return [...new Set(items)];
 }
 
+function cameraFirstFrameMissingPlainLabel(): string {
+  // live 里“首帧未出”经常不是页面独占，而是 UVC 本身无帧；建图缺口也要带这个 WYSIWYG 事实。
+  const camera = robotSummary.value?.readback_summary.camera;
+  const notExclusive = camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+    || camera?.source_diagnosis_not_exclusive === "true"
+    || (camera?.source_usage_status === "not_in_use" && camera?.source_usage_owner_count === "0");
+  return notExclusive ? "画面首帧未出（不是页面独占）" : "画面首帧未出";
+}
+
 function plainMapPreviewImageLoaded(): boolean {
   // 上车端 summary 有时晚于 PC 的真实预览；普通界面以已经显示的图像为准，避免“图在眼前却说未刷新”。
   const preview = mapPreviewResult.value;
@@ -1672,11 +1681,13 @@ function plainMapPreviewImageLoaded(): boolean {
 }
 
 function freeRoamMappingMissingPlainLabelsForVisibleState(missing: string[] | string | undefined): string[] {
-  const labels = freeRoamMappingMissingPlainLabels(missing);
+  const labels = freeRoamMappingMissingPlainLabels(missing).map((label) => (
+    label === "画面首帧未出" ? cameraFirstFrameMissingPlainLabel() : label
+  ));
   if (!plainMapPreviewImageLoaded()) {
-    return labels;
+    return [...new Set(labels)];
   }
-  return labels.filter((label) => label !== "地图画面未刷新");
+  return [...new Set(labels.filter((label) => label !== "地图画面未刷新"))];
 }
 const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const result = freeRoamAutonomyResult.value;
@@ -3888,7 +3899,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     const gaps: string[] = [];
     const camera = robotSummary.value?.readback_summary.camera;
     if (!plainCameraReadyForFreeRoamAutonomy.value) {
-      gaps.push(cameraSourceFirstFrameFailed(camera) ? "画面首帧未出" : "画面未确认");
+      gaps.push(cameraSourceFirstFrameFailed(camera) ? cameraFirstFrameMissingPlainLabel() : "画面未确认");
     }
     if (radarSummary.value.state !== "雷达已运行") {
       const conflict = radarEndpointConflictSummary();
