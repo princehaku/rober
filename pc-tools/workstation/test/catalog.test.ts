@@ -9108,6 +9108,7 @@ describe("workstation fail-closed API contracts", () => {
           direction: "forward",
           speed: 0.12,
           duration_ms: 800,
+          command_mode: "ros",
           confirm_hil_checklist: true,
         },
       ]);
@@ -9180,6 +9181,7 @@ describe("workstation fail-closed API contracts", () => {
           direction: "forward",
           speed: 0.08,
           duration_ms: 500,
+          command_mode: "ros",
           confirm_hil_checklist: true,
         },
       ]);
@@ -9330,6 +9332,7 @@ describe("workstation fail-closed API contracts", () => {
           direction: "left",
           speed: 0.12,
           duration_ms: 800,
+          command_mode: "ros",
           confirm_hil_checklist: true,
         },
       ]);

@@ -1702,6 +1702,7 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
+      command_mode: "ros",
       confirm_hil_checklist: true,
     });
     const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
@@ -1808,6 +1809,7 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
+      command_mode: "ros",
       confirm_hil_checklist: true,
     });
     const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");

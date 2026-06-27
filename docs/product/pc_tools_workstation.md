@@ -3278,3 +3278,14 @@ marker 和 caption 只保留 `待刷新雷达点 N 个（旧点数组，未贴�
 只有运动已解锁且四个建图材料都 ready 时才返回 `自动扫图`。这样“小车可以自己低速动”和“本轮可按完整自动扫图/建图验收”
 不会在 API 层混成同一个状态；该改动只改 summary 合同和文案，不触发 free-roam start/stop、manual、keyboard、
 Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 14:15 起，普通 PC 手控、键盘连续控制和 first-jog 的上车 `/api/base/manual`
+默认底盘命令模式统一改为 ROS/T=13，并且 PC 代理显式转发 `command_mode=ros`。上车 API 仍保留
+`command_mode=pwm` 和 `command_mode=speed` 作为高级诊断 override，但普通用户路径不再默认走旧 PWM。
+该口径依据 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER UART JSON 资料：`T=13` 是 ROS
+`X/Z` 控制入口，`T=11` 是 PWM 诊断入口，`T=130/T=1001` 继续用于 wheel raw L/R 反馈复验。
+这让键盘连续手控和下一次 Nav2 ROS 复验使用同一底盘控制入口；仍要求勾选现场安全确认，仍保留自动 stop
+和三模式 stop 兜底，不绕过速度/时长 clamp，不自动发车或确认 delivery success。
+同轮 `base_status` 里的 `wheel_feedback_lr_nonzero_proven` 也同步收紧：只有本次 `T=130` readback 或 fresh
+`base_feedback_samples_latest` artifact 能把它置 true；stale artifact 里的历史非零 L/R 只保留在
+`feedback_samples_latest` 作为历史摘要，不再污染当前首屏判断。

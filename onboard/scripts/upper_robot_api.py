@@ -31,14 +31,14 @@ DEFAULT_CAMERA_BASE_URL = "http://127.0.0.1:8088"
 DEFAULT_BASE_PORT = "/dev/ttyS5"
 DEFAULT_BASE_BAUDRATE = 115200
 DEFAULT_MAX_SPEED = 0.12
-DEFAULT_BASE_COMMAND_MODE = "pwm"
+DEFAULT_BASE_COMMAND_MODE = "ros"
 DEFAULT_NAV2_BASE_COMMAND_MODE = "ros"
 DEFAULT_MANUAL_PWM_MIN_ABS = 164
 DEFAULT_MANUAL_PWM_MAX_ABS = 164
 DEFAULT_PULSE_MS = 260
 MAX_PULSE_MS = 800
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
-ALLOWED_BASE_COMMAND_MODES = frozenset({"speed", "pwm"})
+ALLOWED_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 ALLOWED_NAV2_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 DEFAULT_FEEDBACK_READ_TIMEOUT_S = 0.2
 DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
@@ -446,6 +446,23 @@ def pwm_command_for_direction(
     return {"T": 11, "L": left, "R": right}
 
 
+def ros_command_for_direction(direction: str, speed: float) -> dict[str, float | int]:
+    """把 PC 方向键转换为 vendor T=13 ROS 控制；与 Nav2/ROS 控制链路保持同一入口。"""
+    if direction == "forward":
+        linear_x, angular_z = speed, 0.0
+    elif direction == "back":
+        linear_x, angular_z = -speed, 0.0
+    elif direction == "left":
+        linear_x, angular_z = 0.0, speed
+    elif direction == "right":
+        linear_x, angular_z = 0.0, -speed
+    elif direction == "stop":
+        linear_x, angular_z = 0.0, 0.0
+    else:
+        raise ValueError(f"unsupported_direction:{direction}")
+    return {"T": 13, "X": round(linear_x, 3), "Z": round(angular_z, 3)}
+
+
 def manual_command_for_direction(
     direction: str,
     speed: float,
@@ -455,7 +472,9 @@ def manual_command_for_direction(
     pwm_min_abs: int,
     pwm_max_abs: int,
 ) -> dict[str, float | int]:
-    """按现场验证结果选择底盘命令；默认 pwm，不再让 PC 试动卡在无效速度模式。"""
+    """按现场验证结果选择底盘命令；默认 ROS/T=13，PWM 仅保留为显式诊断模式。"""
+    if command_mode == "ros":
+        return ros_command_for_direction(direction, speed)
     if command_mode == "pwm":
         return pwm_command_for_direction(
             direction,
@@ -469,7 +488,12 @@ def manual_command_for_direction(
 
 def stop_commands_for_mode(command_mode: str) -> list[dict[str, float | int]]:
     """停车同时覆盖 PWM、speed 和 ROS 三种 vendor 控制面，避免模式切换后残留运动。"""
-    primary = {"T": 11, "L": 0, "R": 0} if command_mode == "pwm" else {"T": 1, "L": 0, "R": 0}
+    if command_mode == "pwm":
+        primary: dict[str, float | int] = {"T": 11, "L": 0, "R": 0}
+    elif command_mode == "ros":
+        primary = {"T": 13, "X": 0, "Z": 0}
+    else:
+        primary = {"T": 1, "L": 0, "R": 0}
     backups: list[dict[str, float | int]] = [
         {"T": 11, "L": 0, "R": 0},
         {"T": 1, "L": 0, "R": 0},
@@ -5648,9 +5672,11 @@ class UpperRobotApi:
             read_window_s=DEFAULT_FEEDBACK_READ_WINDOW_S,
         )
         feedback_ack = feedback_ack_from_fresh_evidence(feedback_readback, feedback_samples_latest)
+        feedback_samples_freshness = feedback_samples_latest.get("freshness")
+        feedback_samples_is_fresh = isinstance(feedback_samples_freshness, dict) and feedback_samples_freshness.get("status") == "fresh"
         wheel_feedback_nonzero = bool(
             feedback_readback.get("wheel_feedback_lr_nonzero_proven")
-            or feedback_samples_latest.get("wheel_feedback_lr_nonzero_proven")
+            or (feedback_samples_is_fresh and feedback_samples_latest.get("wheel_feedback_lr_nonzero_proven"))
         )
         return {
             "schema": f"{SCHEMA}.base_status",

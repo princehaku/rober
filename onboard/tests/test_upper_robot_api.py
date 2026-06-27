@@ -211,6 +211,40 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(status["primary_actions_enabled"])
         self.assertFalse(status["robot_control_executed"])
 
+    def test_base_status_ignores_stale_wheel_nonzero_artifact(self) -> None:
+        """当前 L/R 证明必须来自本次 readback 或 fresh artifact，不能复用旧非零材料。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        zero_readback = {
+            "feedback_ack": {"t1001_observed": True},
+            "wheel_feedback_lr_nonzero_proven": False,
+            "wheel_feedback_nonzero_observed": False,
+            "sends_commands": True,
+            "sends_motion_commands": False,
+        }
+        stale_nonzero_artifact = {
+            "freshness": {"status": "stale"},
+            "latest_t1001_observed_count": 2,
+            "wheel_feedback_lr_nonzero_proven": True,
+            "wheel_feedback_nonzero_observed": True,
+        }
+
+        with mock.patch.object(upper_robot_api, "request_base_feedback_once", return_value=zero_readback):
+            with mock.patch.object(upper_robot_api, "summarize_feedback_samples_latest_artifact", return_value=stale_nonzero_artifact):
+                with mock.patch.object(upper_robot_api, "describe_path", return_value={"exists": True}):
+                    with mock.patch.object(upper_robot_api, "load_serial_module", return_value=(object(), None)):
+                        status = api.base_status()
+
+        self.assertFalse(status["wheel_feedback_nonzero_observed"])
+        self.assertFalse(status["wheel_feedback_lr_nonzero_proven"])
+        self.assertTrue(status["feedback_samples_latest"]["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual("stale", status["feedback_samples_latest"]["freshness"]["status"])
+        self.assertFalse(status["safe_to_control"])
+
     def test_manual_control_samples_wheel_feedback_during_motion_window(self) -> None:
         """manual 点动必须在停车前采样轮速，避免动作后 0/0 覆盖真实运动材料。"""
         api = upper_robot_api.UpperRobotApi(
@@ -255,13 +289,13 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["auto_stop_executed"])
         self.assertTrue(payload["feedback_during_motion_attempted"])
         mocked_transaction.assert_called_once()
-        self.assertEqual({"T": 11, "L": 164, "R": 164}, mocked_transaction.call_args.kwargs["command"])
+        self.assertEqual({"T": 13, "X": 0.04, "Z": 0.0}, mocked_transaction.call_args.kwargs["command"])
         self.assertEqual(
-            [{"T": 11, "L": 0, "R": 0}, {"T": 1, "L": 0, "R": 0}, {"T": 13, "X": 0, "Z": 0}],
+            [{"T": 13, "X": 0, "Z": 0}, {"T": 11, "L": 0, "R": 0}, {"T": 1, "L": 0, "R": 0}],
             mocked_transaction.call_args.kwargs["stop_commands"],
         )
         self.assertEqual(transaction, payload["serial_motion_transaction"])
-        self.assertEqual("pwm", payload["base_command_mode"])
+        self.assertEqual("ros", payload["base_command_mode"])
         self.assertTrue(payload["manual_feedback_samples_latest"]["wheel_feedback_lr_nonzero_proven"])
         self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
         self.assertEqual(1, payload["manual_wheel_feedback_summary"]["nonzero_frame_count"])
@@ -300,7 +334,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         kwargs = mocked_transaction.call_args.kwargs
         self.assertEqual(500, kwargs["pulse_ms"])
-        self.assertEqual({"T": 11, "L": 164, "R": 164}, kwargs["command"])
+        self.assertEqual({"T": 13, "X": 0.08, "Z": 0.0}, kwargs["command"])
         self.assertAlmostEqual(0.45, kwargs["motion_read_window_s"])
         self.assertTrue(payload["manual_command_executed"])
 
@@ -334,9 +368,42 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         kwargs = mocked_transaction.call_args.kwargs
         self.assertEqual(240, kwargs["pulse_ms"])
-        self.assertEqual({"T": 11, "L": 164, "R": 164}, kwargs["command"])
+        self.assertEqual({"T": 13, "X": 0.08, "Z": 0.0}, kwargs["command"])
         self.assertAlmostEqual(0.19, kwargs["motion_read_window_s"])
         self.assertTrue(payload["manual_command_executed"])
+
+    def test_manual_control_allows_explicit_pwm_diagnostic_override(self) -> None:
+        """PWM 只作为显式诊断模式保留，普通手控默认不再走旧 PWM 控制入口。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        transaction = {
+            "command_result": {"ok": True, "bytes_written": 22, "command": {"T": 11, "L": 164, "R": 164}},
+            "stop_result": {"ok": True, "bytes_written": 20, "command": {"T": 11, "L": 0, "R": 0}},
+            "feedback_during_motion": {
+                "t1001_feedback_status": "observed",
+                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
+                "feedback_ack": {"t1001_observed": True},
+            },
+            "feedback_after_stop": {
+                "t1001_feedback_status": "observed",
+                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
+                "feedback_ack": {"t1001_observed": True},
+            },
+            "serial_session_error": None,
+        }
+
+        with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact", side_effect=lambda _path, payload: {**payload, "artifact": {"write": {"ok": True}}}):
+            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction", return_value=transaction) as mocked_transaction:
+                payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 240, "command_mode": "pwm"}))
+
+        self.assertEqual({"T": 11, "L": 164, "R": 164}, mocked_transaction.call_args.kwargs["command"])
+        self.assertEqual("pwm", payload["base_command_mode"])
+        self.assertTrue(payload["manual_command_executed"])
+        self.assertFalse(payload["safe_to_control"])
 
     def test_operator_report_persists_structured_hil_claims_without_hil_pass(self) -> None:
         """结构化 HIL 字段必须可机器回读，但 report 本身仍不是 HIL pass。"""
@@ -2428,7 +2495,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         self.assertEqual("pwm", helper_mock.call_args.kwargs["base_command_mode"])
         self.assertEqual("pwm", payload["goal_request"]["base_command_mode"])
-        self.assertEqual("pwm", api.base_command_mode)
+        self.assertEqual("ros", api.base_command_mode)
         self.assertEqual("ros", api.nav2_base_command_mode)
 
     def test_nav2_proof_refresh_managed_path_generation_stays_no_motion(self) -> None:
