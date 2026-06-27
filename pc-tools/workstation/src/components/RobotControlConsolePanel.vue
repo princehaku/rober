@@ -1590,14 +1590,15 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
     return "自由移动：运动发布已解锁，不依赖雷达新鲜度；现场继续监看。";
   }
   if (runtime?.status === "loaded" && runtime.artifact_only === true && runtime.cmd_vel_publish_enabled === false) {
+    const startText = plainManualSafetyConfirmed.value ? "可启动" : "勾安全确认后可启动";
     if (runtime.state === "stopping") {
       const reasonText = runtime.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
       return boundary.free_roam_autonomy_start_ready
-        ? `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，可启动；低速自移动不依赖雷达新鲜度。`
+        ? `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，${startText}；低速自移动不依赖雷达新鲜度。`
         : `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布。`;
     }
     return boundary.free_roam_autonomy_start_ready
-      ? "自由移动：可启动，但当前没有运动发布；低速自移动不依赖雷达新鲜度。"
+      ? `自由移动：${startText}，但当前没有运动发布；低速自移动不依赖雷达新鲜度。`
       : "自由移动：当前没有运动发布。";
   }
   if (boundary.free_roam_autonomy_start_ready) {
