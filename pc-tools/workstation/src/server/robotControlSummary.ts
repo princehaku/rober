@@ -3771,6 +3771,7 @@ function lockedBoundary(
     && freeRoamRuntime.cmd_vel_publish_enabled
     && stopFallbackReady,
   );
+  const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",
@@ -3789,7 +3790,7 @@ function lockedBoundary(
     keyboard_reuses_manual_gate: true,
     keyboard_control_start_ready: true,
     keyboard_control_label: "键盘手控（勾确认后可启用）",
-    free_roam_autonomy: freeRoamReady ? "ready" : "locked",
+    free_roam_autonomy: freeRoamStatus,
     free_roam_autonomy_start_ready: freeRoamStartReady,
     free_roam_autonomy_label: freeRoamReady
       ? "自动扫图"

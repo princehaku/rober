@@ -5022,7 +5022,7 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
-      expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
+      expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_runtime).toEqual({
         status: "loaded",
         state: "turning_for_coverage",
@@ -5457,7 +5457,7 @@ describe("workstation fail-closed API contracts", () => {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
       expect(summary.safe_command_boundary.free_roam_autonomy_start_ready).toBe(true);
-      expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
+      expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
         expect.objectContaining({ id: "lidar_fresh", state: "blocked" }),
