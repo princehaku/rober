@@ -231,6 +231,14 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `雷达无新点`，并说明“雷达驱动在运行，但当前没有读到新的雷达点”。这样现场点击启动雷达后不会把“驱动已运行但 proof
 尚未写出/窗口无新点”误读成“雷达未运行”；同时仍不把无点云误报为可验收建图。
 
+2026-06-27 12:26 起，上车端 `free_roam_motion_readiness()` 的建图雷达判断同时消费
+`/api/radar/status` 的 proof freshness 和 `free_roam_autonomy_latest.json` 内的实时 `/scan` 快照。
+当 radar proof artifact 因旧窗口而 stale，但 free-roam runtime 显示 `snapshot.lidar_age_s <= 1.5` 且
+`snapshot.lidar_min_distance_m` 为有限值时，`sensor_readiness.mapping_readiness` 可把雷达项视为 ready；
+返回体会保留 `radar.proof_ready=false`、`radar.runtime_scan_ready=true` 和 runtime scan 明细。这样“雷达已经开始并被
+free-roam 节点实时读到”不会被旧 proof 文件卡成不能建图；若相机仍无首帧，mapping readiness 仍会缺
+`camera_first_frame_not_observed`。该改动不改 WAVE ROVER UART/JSON 命令、不发布 `/cmd_vel`，只修正 start 代理进入建图会话前的只读 readiness 聚合。
+
 2026-06-27 04:38 起，上车端 `camera_first_frame_probe.py` 的 backend smoke 使用进程组超时清理，并把
 v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后遗留 `ffmpeg` 或 probe 进程占用
 `/dev/video1`。现场复测 `backendSmoke=1` 在 23s 内结构化返回 `first_frame_timeout/capture_read_call_timeout`，

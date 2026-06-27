@@ -3182,6 +3182,12 @@ manual pulse、不调用 stop/Nav2/delivery/free-roam 或 `/cmd_vel`；真正运
 只有把这次移动作为建图验收时，才继续要求画面、雷达、地图记录和新鲜地图画面都 ready。该改动仍只走固定
 `POST /api/robot-control/base/manual` 和 `/api/robot-control/base/stop`，不调用 Nav2、free-roam、delivery 或 `/cmd_vel`。
 
+2026-06-27 12:26 起，上车端 free-roam start 代理的建图 readiness 不再只依赖旧 radar proof artifact。
+如果 `/api/radar/status` 显示 proof stale，但 `free_roam_autonomy_latest.json` 已由 free-roam 节点实时写出
+`snapshot.lidar_age_s <= 1.5` 和有限 `snapshot.lidar_min_distance_m`，则 `sensor_readiness.radar.runtime_scan_ready=true`
+可满足建图雷达项；如果相机仍无首帧，建图 readiness 仍继续缺相机。这样“雷达开始后”的建图判断跟实际 `/scan`
+runtime 对齐，不会被过期 proof 文件误挡；自由移动启动仍只要求现场安全确认，真实运动仍必须由上车端双锁控制。
+
 2026-06-27 07:40 起，PC Node 的 Robot Control summary 会消费最近一次只读首帧 probe overlay：
 如果上车 `/api/camera/health` 仍停在旧的 `source_first_frame_failed`，但用户刚点过
 `检查画面（只读）` 且 probe 回报 `open_ok=true/read_ok=true/visible_content_proven=true`，

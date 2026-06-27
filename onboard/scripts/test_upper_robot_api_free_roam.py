@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -98,6 +99,106 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
             self.assertFalse(payload["mapping_active_applied"])
             self.assertFalse(payload["sensor_readiness"]["mapping_readiness"]["ready"])
             self.assertEqual(payload["blocked_parameters_not_touched"], ["cmd_vel_topic"])
+            self.assertFalse(payload["robot_control_executed"])
+            self.assertFalse(payload["safe_to_control"])
+        finally:
+            module.run_free_roam_param_sequence = original_param_sequence
+
+    def test_runtime_lidar_snapshot_allows_mapping_when_scan_proof_is_stale(self) -> None:
+        """雷达 proof 旧时，free-roam runtime 的实时 /scan 快照仍可作为建图 readiness。"""
+        module = load_upper_robot_api_module()
+        calls: list[dict[str, object]] = []
+
+        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True):
+            calls.append({
+                "action": action,
+                "enable_motion": enable_motion,
+                "mapping_active": mapping_active,
+            })
+            return {
+                "mode": "free_roam_param_sequence",
+                "action": action,
+                "motion_unlock_requested": bool(action == "start" and enable_motion),
+                "executed": True,
+                "ok": True,
+                "touched_parameters": [
+                    "operator_confirmed",
+                    "mapping_active",
+                    "stop_available",
+                    "external_stop_requested",
+                    "motion_hil_unlocked",
+                    "enable_cmd_vel_publish",
+                ],
+                "blocked_parameters_not_touched": ["cmd_vel_topic"],
+            }
+
+        original_param_sequence = module.run_free_roam_param_sequence
+        module.run_free_roam_param_sequence = fake_param_sequence
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                artifact_path = Path(td) / "free_roam.json"
+                artifact_path.write_text(json.dumps({
+                    "schema": "trashbot.free_roam_autonomy.runtime.v1",
+                    "artifact_only": True,
+                    "cmd_vel_publish_enabled": False,
+                    "snapshot": {
+                        "lidar_age_s": 0.04,
+                        "lidar_min_distance_m": 0.72,
+                        "mapping_active": False,
+                    },
+                    "decision": {
+                        "schema": "trashbot.free_roam_autonomy.decision.v1",
+                        "state": "stopping",
+                        "gates": [
+                            {
+                                "id": "lidar_fresh",
+                                "state": "ready",
+                                "evidence": "雷达距离 0.72m，延迟 0.04s",
+                            },
+                        ],
+                    },
+                }, ensure_ascii=False), encoding="utf-8")
+                api = module.UpperRobotApi(
+                    camera_base_url="http://127.0.0.1:8088",
+                    base_port="/dev/null",
+                    base_baudrate=115200,
+                    max_speed=0.12,
+                    free_roam_autonomy_artifact_path=str(artifact_path),
+                )
+                api.camera_motion_readiness = lambda: {
+                    "ready": True,
+                    "missing": [],
+                    "status": "ready",
+                    "source_readiness": "first_frame_observed",
+                }
+                api.radar_status = lambda: {
+                    "lifecycle_running": True,
+                    "lifecycle_state": "running",
+                    "latest_scan_proof_fresh": False,
+                    "continuous_window_observed": False,
+                    "continuity_blocked_reasons": ["latest_scan_proof_stale"],
+                }
+
+                readiness = api.free_roam_motion_readiness()
+                payload = api.free_roam_autonomy_control(
+                    "start",
+                    {"confirm_operator_safety": True, "confirm_mapping_active": True},
+                )
+
+            self.assertTrue(readiness["mapping_readiness"]["ready"])
+            self.assertEqual(readiness["mapping_readiness"]["missing"], [])
+            self.assertTrue(readiness["radar"]["runtime_scan_ready"])
+            self.assertFalse(readiness["radar"]["proof_ready"])
+            self.assertEqual(readiness["radar"]["runtime_scan"]["source"], "free_roam_runtime_scan_snapshot")
+            self.assertEqual(calls, [{
+                "action": "start",
+                "enable_motion": True,
+                "mapping_active": True,
+            }])
+            self.assertTrue(payload["mapping_active_requested"])
+            self.assertTrue(payload["mapping_active_applied"])
+            self.assertTrue(payload["sensor_readiness"]["mapping_readiness"]["ready"])
+            self.assertTrue(payload["publishes_cmd_vel"])
             self.assertFalse(payload["robot_control_executed"])
             self.assertFalse(payload["safe_to_control"])
         finally:

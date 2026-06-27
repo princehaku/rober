@@ -6705,6 +6705,44 @@ class UpperRobotApi:
             "software_guard": True,
         }
 
+    def free_roam_runtime_lidar_readiness(self) -> dict[str, Any]:
+        """建图雷达 readiness 优先复用 free-roam 节点的实时 /scan 快照。"""
+        http_status, payload = self.free_roam_autonomy_latest()
+        latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else {}
+        snapshot = latest.get("snapshot") if isinstance(latest.get("snapshot"), dict) else {}
+        decision = latest.get("decision") if isinstance(latest.get("decision"), dict) else {}
+        gates = decision.get("gates") if isinstance(decision.get("gates"), list) else []
+        lidar_gate = next(
+            (
+                gate
+                for gate in gates
+                if isinstance(gate, dict) and gate.get("id") == "lidar_fresh"
+            ),
+            {},
+        )
+        lidar_age_s = finite_lidar_scan_number(snapshot.get("lidar_age_s"))
+        lidar_min_distance_m = finite_lidar_scan_number(snapshot.get("lidar_min_distance_m"))
+        # free_roam_autonomy_node 默认同样使用 1.5s 雷达新鲜度；这里不猜测硬件，只消费该 runtime 事实。
+        fresh_timeout_s = 1.5
+        ready = (
+            http_status == 200
+            and lidar_age_s is not None
+            and lidar_age_s <= fresh_timeout_s
+            and lidar_min_distance_m is not None
+        )
+        return {
+            "ready": ready,
+            "source": "free_roam_runtime_scan_snapshot",
+            "http_status": http_status,
+            "runtime_status": payload.get("runtime_status") or "not_loaded",
+            "lidar_age_s": lidar_age_s,
+            "lidar_min_distance_m": lidar_min_distance_m,
+            "fresh_timeout_s": fresh_timeout_s,
+            "gate_state": lidar_gate.get("state") if isinstance(lidar_gate, dict) else "not_loaded",
+            "gate_evidence": lidar_gate.get("evidence") if isinstance(lidar_gate, dict) else "not_loaded",
+            "artifact_status": (payload.get("artifact") or {}).get("status") if isinstance(payload.get("artifact"), dict) else "not_loaded",
+        }
+
     def camera_motion_readiness(self) -> dict[str, Any]:
         """自动扫图发车前同步确认相机子服务和采集源在线，避免异步 route 依赖泄漏到控制路径。"""
         import urllib.error
@@ -6757,7 +6795,9 @@ class UpperRobotApi:
         """自由自助移动不把相机/雷达当硬门禁；建图能力单独用 mapping_readiness 表达。"""
         camera = self.camera_motion_readiness()
         radar = self.radar_status()
-        radar_ready = bool(radar.get("lifecycle_running")) and bool(radar.get("latest_scan_proof_fresh"))
+        runtime_lidar = self.free_roam_runtime_lidar_readiness()
+        radar_proof_ready = bool(radar.get("lifecycle_running")) and bool(radar.get("latest_scan_proof_fresh"))
+        radar_ready = radar_proof_ready or bool(runtime_lidar.get("ready"))
         camera_missing = camera.get("missing") if isinstance(camera.get("missing"), list) else ["camera_not_ready"]
         mapping_missing = []
         if not camera.get("ready"):
@@ -6783,6 +6823,9 @@ class UpperRobotApi:
                 "ready": radar_ready,
                 "optional": True,
                 "blocking": False,
+                "proof_ready": radar_proof_ready,
+                "runtime_scan_ready": bool(runtime_lidar.get("ready")),
+                "runtime_scan": runtime_lidar,
                 "lifecycle_running": bool(radar.get("lifecycle_running")),
                 "lifecycle_state": radar.get("lifecycle_state") or "not_loaded",
                 "latest_scan_proof_fresh": bool(radar.get("latest_scan_proof_fresh")),
