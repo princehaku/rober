@@ -8828,7 +8828,30 @@ describe("workstation fail-closed API contracts", () => {
   it("workstation camera MJPEG status and summary remember the latest upstream failure", async () => {
     // 真实现场若上位机 MJPEG 返回 502，首屏不能退化成“没人观看”；要留下最近失败原因。
     let upstreamRequestCount = 0;
+    let healthRequestCount = 0;
     const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "capture_read_returned_false",
+          source_diagnosis: {
+            status: "uvc_no_frame_not_exclusive",
+            plain_hint: "不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。",
+            next_action: "check_usb_camera_input_power_or_known_good_uvc",
+            not_exclusive: true,
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
       if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
         upstreamRequestCount += 1;
         res.statusCode = 502;
@@ -8873,6 +8896,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.last_failure_reason).toBe("camera_mjpeg_http_status_503");
       expect(statusBody.last_remote_http_status).toBe(502);
       expect(typeof statusBody.last_failure_at_ms).toBe("number");
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
 
       const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
@@ -8882,6 +8909,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(Number(summaryBody.readback_summary.camera.shared_preview_last_failure_at_ms)).toBeGreaterThan(0);
       expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
       expect(upstreamRequestCount).toBe(1);
+      expect(healthRequestCount).toBeGreaterThanOrEqual(1);
     } finally {
       await workstation.close();
       await upstream.close();

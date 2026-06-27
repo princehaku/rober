@@ -1208,7 +1208,10 @@ function cameraMjpegStatusResponse(
 ): RobotControlCameraMjpegStatusResponse {
   // 这个端点只读本机 relay 状态，帮助现场判断多个 PC 页面是否共享同一个上游视频流。
   const relayKey = normalizedBaseUrl ? cameraMjpegRelayKey(normalizedBaseUrl) : "not_loaded";
-  const lastFailure = normalizedBaseUrl ? cameraMjpegRelayLastFailures.get(relayKey) ?? sourceFailure : sourceFailure;
+  const relayFailure = normalizedBaseUrl ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
+  const lastFailure = relayFailure ?? sourceFailure;
+  // relay failure 说明共享 MJPEG 最近为什么失败；health 里的 source diagnosis 说明相机源为什么无帧，两者不能互相覆盖。
+  const diagnosisSource = sourceFailure ?? relayFailure;
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -1226,10 +1229,10 @@ function cameraMjpegStatusResponse(
     last_failure_reason: lastFailure?.failure_reason ?? "",
     last_remote_http_status: lastFailure?.remote_http_status ?? null,
     last_failure_at_ms: lastFailure?.failed_at_ms ?? null,
-    source_diagnosis_status: lastFailure?.source_diagnosis_status ?? "not_loaded",
-    source_diagnosis_plain_hint: lastFailure?.source_diagnosis_plain_hint ?? "not_loaded",
-    source_diagnosis_next_action: lastFailure?.source_diagnosis_next_action ?? "not_loaded",
-    source_diagnosis_not_exclusive: lastFailure?.source_diagnosis_not_exclusive ?? "not_loaded",
+    source_diagnosis_status: diagnosisSource?.source_diagnosis_status ?? "not_loaded",
+    source_diagnosis_plain_hint: diagnosisSource?.source_diagnosis_plain_hint ?? "not_loaded",
+    source_diagnosis_next_action: diagnosisSource?.source_diagnosis_next_action ?? "not_loaded",
+    source_diagnosis_not_exclusive: diagnosisSource?.source_diagnosis_not_exclusive ?? "not_loaded",
     failure_reason: failureReason,
     blocked_reasons: failureReason ? [failureReason] : [],
     robot_control_executed: false,
