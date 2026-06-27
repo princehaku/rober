@@ -2334,9 +2334,14 @@ function plainMapCoordinateTruthLabel(
       ? "待刷新雷达点"
       : radarState === "雷达已运行" ? "雷达点" : "最近雷达点";
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, true);
+    const noVisiblePointText = radarState === "雷达无新点"
+      ? radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)
+        ? "原始包已收到但暂无地图雷达点"
+        : "当前暂无地图雷达点"
+      : "雷达点未贴图";
     const scanText = radarScanOverlay.dots.length > 0
       ? `${scanPrefix} ${radarScanOverlay.dots.length} 个已贴到地图`
-      : countOnlyLabel || (obstacleDistanceLabel ? `只读距离读数：${obstacleDistanceLabel}，没有点数组，未贴到地图` : "雷达点未贴图");
+      : countOnlyLabel || (obstacleDistanceLabel ? `只读距离读数：${obstacleDistanceLabel}，没有点数组，未贴到地图` : noVisiblePointText);
     const routeText = routePath ? `${routePath.coordinateLabel}已贴到地图` : "路线未显示";
     return `坐标口径：机器人位置已读到，${scanText}，${routeText}。`;
   }
