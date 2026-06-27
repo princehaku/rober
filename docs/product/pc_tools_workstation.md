@@ -118,6 +118,7 @@ pc-tools/workstation/
 - 2026-06-26 07:50 起，实时画面 16:9 框本身也按 `data-state` 呈现视觉态：`连接中/关闭中/检查中/等待画面/已打开` 使用等待态边框和遮罩，`画面可见` 使用可见态边框，`画面偏暗/失败` 使用失败态边框。测试锁定这些 CSS 选择器，避免画面文字已经变化但框体仍像普通黑屏。该改动只影响 PC 前端呈现，不自动打开/关闭 WebRTC，不调用 first-frame probe、Nav2、manual、keyboard、stop、delivery 或 `/cmd_vel`。
 - 2026-06-26 09:10 起，普通首屏“实时画面”整张卡片也带 `data-state` 与 `data-frame-state` 外层状态线：`画面可见 + 已绘制帧` 显示可见态，连接/关闭/检查/等待显示等待态，未打开显示中性态，`画面偏暗/失败` 显示异常态。该外层状态只汇总已有画面框和浏览器绘帧结果，不自动打开相机、不调用 first-frame probe、Nav2、manual、keyboard pulse、stop、delivery complete 或 `/cmd_vel`。
 - 2026-06-26 13:50 起，普通首屏“实时画面”新增“检查画面（只读）”按钮。该按钮只调用固定 `POST /api/robot-control/camera/first-frame/probe`，把上位机是否读到首帧样张显示为 `只读检查` 短文案；样张读到时仍明确“实时窗口仍未打开”，避免把 camera probe 误说成 WebRTC 实时画面已显示。该入口不调用 camera offer、不创建 peer、不保存 operator report、不执行 Nav2/manual/keyboard/delivery/stop 或 `/cmd_vel`。
+- 2026-06-27 13:05 起，如果 summary/camera health 已经给出 `source_first_frame_failed` 且 `source_diagnosis_status=uvc_no_frame_not_exclusive`，普通首屏 `只读检查` 不再显示“还没做首帧检查”，而是直接显示“health 已确认相机源没有首帧 / 不是页面独占 / UVC 没有输出视频帧”。`检查画面（只读）` 仍保留为复测入口，但页面不会把已知 health 诊断降级成未知状态；该展示不创建 camera peer、不发送 Nav2、manual、keyboard、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 14:10 起，上车端 8088 WebRTC camera service 对同一 `video_source` 使用进程内共享 OpenCV capture，并在新 offer 前自动释放卡在 `connection_state=new` 且 0 帧的陈旧 peer。这样多个 PC 页面/浏览器进入实时画面时不再各自独占打开 `/dev/video1`；最后一个 peer 关闭时才 release capture。该修复只影响摄像头句柄生命周期，所有 camera 响应仍固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`，不启动雷达、地图、Nav2、manual、keyboard、delivery、stop 或 `/cmd_vel`。
 - 2026-06-22 起，PC 代理的 `POST /api/robot-control/camera/first-frame/probe` 会额外透出 `visible_content_candidate`、`sample_path`、`sample_write_ok`、`max_luma` 和 `dynamic_range_luma`。这些字段只放在默认关闭的 `高级诊断`，用于复核上位机是否真的写出可追溯样张；普通首屏仍只显示短状态和“打开画面/关闭画面”。本轮真实上位机 probe 已生成 `/root/rober/onboard/runtime/camera/first_frame_probe_1782060889824.jpg`，并用该 ref 提交 operator report，使 first-jog readiness 从缺 `external_video_or_visible_camera` 变为 `ready_for_first_jog`。该材料不证明轮速反馈、LiDAR 位移、路线地图或 delivery success。
 - 2026-06-22 起，普通首屏在 `试动一下` 返回 `wheel_feedback_lr_nonzero_proven=true` 后才显示 `保存轮速证据`。该按钮只把 first-jog 响应里的 wheel raw L/R、during-motion T1001 帧数和短 evidence ref 写入固定 `POST /api/robot-control/operator/report` 代理，不再次调用 `/api/base/manual`、Nav2 goal、stop 之外的控制接口，也不自动补齐 LiDAR delta、real route map 或 delivery success。普通用户看到的状态只保留“轮速证据已拿到/已保存”这类短句；完整 `structured_hil_claims` 仍留在默认关闭的 `高级诊断`。
@@ -3159,10 +3160,10 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 这让“小车可以低速自己动”与“可按完整自动扫图/建图验收”分开表达，避免缺雷达或缺画面时把自由移动入口误说成自动扫图失败。
 该改动只影响 PC WYSIWYG 文案，不新增 motion API，不发送 manual pulse、Nav2 goal、delivery complete 或 `/cmd_vel`。
 
-2026-06-27 07:30 起，普通首屏实时画面卡在相机源首帧失败、但用户还没跑过只读首帧检查时，会直接显示：
-`只读检查：还没做首帧检查；点检查画面确认上位机能否读到样张，不会发车。`
-这补齐 live 场景里 `source_usage_owner_count=0`、`capture_read_returned_false` 已经说明“不是页面独占”，但
-`first_frame_probe_status=not_loaded` 时缺少下一步动作的问题。按钮仍只调用
+2026-06-27 07:30 起，普通首屏实时画面卡在相机源首帧失败、但用户还没跑过只读首帧检查时，会显示只读检查下一步；
+2026-06-27 13:05 起，如果 summary/camera health 已经明确 `source_usage_owner_count=0`、`capture_read_returned_false`
+或 `source_diagnosis_status=uvc_no_frame_not_exclusive`，该行进一步改为直接显示 health 诊断“不是页面独占、相机源没有首帧”，
+不再回退成“还没做首帧检查”。按钮仍只调用
 `POST /api/robot-control/camera/first-frame/probe`，不会打开 manual、free-roam、Nav2、delivery 或 `/cmd_vel`。
 
 2026-06-27 07:34 起，普通首屏键盘指南会直接展示当前 bounded pulse 边界：

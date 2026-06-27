@@ -1263,7 +1263,10 @@ const plainCameraProbeSummary = computed(() => {
   const result = cameraFirstFrameProbeResult.value;
   if (!result) {
     if (cameraSourceFirstFrameFailed(robotSummary.value?.readback_summary.camera)) {
-      return "只读检查：还没做首帧检查；点检查画面确认上位机能否读到样张，不会发车。";
+      const healthFailureHint = cameraSourcePlainFailureHint();
+      return healthFailureHint
+        ? `只读检查：上位机 health 已确认相机源没有首帧；${healthFailureHint}`
+        : "只读检查：上位机 health 已确认相机源没有首帧；点检查画面可复测样张，不会发车。";
     }
     return "";
   }
