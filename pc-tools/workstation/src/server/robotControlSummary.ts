@@ -3471,18 +3471,26 @@ function mapProofText(mapProof: InternalRobotApiEndpointReadback | null, keys: s
 function mapSummaryFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
   proof: RobotApiProofSummary,
+  lidar: RobotControlSummaryResponse["readback_summary"]["lidar"],
 ): RobotControlSummaryResponse["readback_summary"]["map"] {
   // 地图摘要把 proof/latest 的关键事实提升到 readback_summary，方便普通 UI 直接解释地图是否真的读到。
   const mapProof = readbackById(readbacks, "map_proof_latest");
   const hasScanPreviewPoints = proof.scan_preview_point_count > 0;
+  const radarRuntimeStale = lidar.runtime_scan_status === "stale";
+  const radarLifecycleStopped = lidar.lifecycle_running === "false";
+  const radarOverlayCurrent = hasScanPreviewPoints && !radarRuntimeStale && !radarLifecycleStopped;
   const radarOverlayBlockedReasons = [
     ...(!hasScanPreviewPoints ? ["scan_preview_points_missing"] : []),
+    ...(radarRuntimeStale ? ["runtime_scan_stale_for_map_radar_overlay"] : []),
+    ...(radarLifecycleStopped ? ["radar_lifecycle_not_running_for_map_radar_overlay"] : []),
     ...(!proof.robot_pose ? ["robot_pose_missing_for_map_radar_overlay"] : []),
   ];
-  const radarOverlayStatus = hasScanPreviewPoints && proof.robot_pose
+  const radarOverlayStatus = radarOverlayCurrent && proof.robot_pose
     ? "loaded"
-    : hasScanPreviewPoints
+    : radarOverlayCurrent
       ? "partial"
+      : hasScanPreviewPoints
+        ? "not_current"
       : "not_loaded";
   return {
     status: mapProof?.status ?? "not_loaded",
@@ -3501,7 +3509,7 @@ function mapSummaryFromReadbacks(
       "not_loaded",
     radar_overlay_status: radarOverlayStatus,
     radar_overlay_blocked_reasons: radarOverlayBlockedReasons.join(",") || "none",
-    radar_overlay_scan_preview_point_count: String(proof.scan_preview_point_count),
+    radar_overlay_scan_preview_point_count: String(radarOverlayCurrent ? proof.scan_preview_point_count : 0),
     radar_overlay_scan_preview_source_point_count: proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count),
     radar_overlay_scan_preview_frame_id: proof.scan_preview_frame_id || "not_loaded",
     radar_overlay_robot_pose_status: proof.robot_pose ? "map_pose_observed" : "not_observed",
@@ -4560,6 +4568,7 @@ export async function buildRobotControlSummary(
   const freeRoamRuntimeGates = freeRoamRuntimeGatesFromReadbacks(readbacks);
   const freeRoamRuntime = freeRoamRuntimeSummaryFromReadbacks(readbacks);
   const nav2Summary = nav2SummaryFromReadbacks(readbacks, proofSummary);
+  const lidarSummary = lidarSummaryFromReadbacks(readbacks, proofSummary);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -4588,9 +4597,9 @@ export async function buildRobotControlSummary(
     },
     readback_summary: {
       camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay, mjpegRelayOverlay),
-      lidar: lidarSummaryFromReadbacks(readbacks, proofSummary),
+      lidar: lidarSummary,
       base: baseSummaryFromReadbacks(readbacks),
-      map: mapSummaryFromReadbacks(readbacks, proofSummary),
+      map: mapSummaryFromReadbacks(readbacks, proofSummary, lidarSummary),
       localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
       nav2: nav2Summary,
       free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime),
