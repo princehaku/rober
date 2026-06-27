@@ -170,6 +170,51 @@ function sortFreeRoamGateRows(gates: FreeRoamGateRow[]): FreeRoamGateRow[] {
   });
 }
 
+function defaultFreeRoamGateRows(): FreeRoamGateRow[] {
+  return sortFreeRoamGateRows([
+    {
+      id: "operator_confirmed",
+      label: "现场安全确认",
+      scope: "free_move_start",
+      state: "blocked",
+      evidence: "还未勾选现场安全确认",
+      next_action: "勾选人在旁边、周围安全、停止手段就绪",
+    },
+    {
+      id: "stop_available",
+      label: "停止兜底",
+      scope: "free_move_start",
+      state: "ready",
+      evidence: "PC 固定停止按钮已存在，仍需现场保持可点击",
+      next_action: "继续保持现场可接管",
+    },
+    {
+      id: "camera_first_frame",
+      label: "画面首帧",
+      scope: "mapping_acceptance",
+      state: "not_proven",
+      evidence: "未读到摄像头首帧",
+      next_action: "画面未 ready 时仍可自由移动，但不能按建图验收",
+    },
+    {
+      id: "lidar_fresh",
+      label: "雷达监看",
+      scope: "mapping_acceptance",
+      state: "not_proven",
+      evidence: "未读到 fresh 雷达扫描",
+      next_action: "雷达未 ready 时仍可自由移动，但不能按建图验收",
+    },
+    {
+      id: "motion_hil_unlock",
+      label: "运动发布状态",
+      scope: "runtime_diagnostic",
+      state: "not_proven",
+      evidence: "当前尚未启动自由移动",
+      next_action: "勾选现场安全确认后点击开始自由移动（低速）",
+    },
+  ]);
+}
+
 export type RobotProofRefreshConfig = {
   kind: RobotControlProofRefreshKind;
   endpoint: "/api/radar/scan-proof/refresh" | "/api/map/proof/refresh" | "/api/nav2/proof/refresh" | "/api/localize/reset";
@@ -4538,48 +4583,7 @@ function lockedBoundary(
         "fresh_map_preview",
       ],
     },
-    free_roam_autonomy_gates: freeRoamRuntimeGates ?? [
-      {
-        id: "operator_confirmed",
-        label: "现场安全确认",
-        scope: "free_move_start",
-        state: "blocked",
-        evidence: "还未勾选现场安全确认",
-        next_action: "勾选人在旁边、周围安全、停止手段就绪",
-      },
-      {
-        id: "stop_available",
-        label: "停止兜底",
-        scope: "free_move_start",
-        state: "ready",
-        evidence: "PC 固定停止按钮已存在，仍需现场保持可点击",
-        next_action: "继续保持现场可接管",
-      },
-      {
-        id: "camera_first_frame",
-        label: "画面首帧",
-        scope: "mapping_acceptance",
-        state: "not_proven",
-        evidence: "未读到摄像头首帧",
-        next_action: "画面未 ready 时仍可自由移动，但不能按建图验收",
-      },
-      {
-        id: "lidar_fresh",
-        label: "雷达监看",
-        scope: "mapping_acceptance",
-        state: "not_proven",
-        evidence: "未读到 fresh 雷达扫描",
-        next_action: "雷达未 ready 时仍可自由移动，但不能按建图验收",
-      },
-      {
-        id: "motion_hil_unlock",
-        label: "运动发布状态",
-        scope: "runtime_diagnostic",
-        state: "not_proven",
-        evidence: "当前尚未启动自由移动",
-        next_action: "勾选现场安全确认后点击开始自由移动（低速）",
-      },
-    ],
+    free_roam_autonomy_gates: freeRoamRuntimeGates ?? defaultFreeRoamGateRows(),
     free_roam_autonomy_runtime: freeRoamRuntime ?? {
       status: "not_loaded",
       state: "not_loaded",

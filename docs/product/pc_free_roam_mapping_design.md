@@ -164,6 +164,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   先显示自由移动启动条件 `operator_confirmed/stop_available/motion_hil_unlock`，再显示建图验收条件
   `camera_first_frame/lidar_fresh/mapping_active/fresh_map_preview/obstacle_clear`。这样外部脚本和高级诊断直接读数组时，
   不会把地图记录、相机或雷达误认为低速自由移动的前置条件；该变更仍只调整只读 summary 顺序。
+- 2026-06-28 14:05 起，即使上车端 free-roam runtime 暂时缺失，PC summary 的 fallback gates 也复用同一顺序：
+  `operator_confirmed/stop_available/motion_hil_unlock` 先出现，`camera_first_frame/lidar_fresh` 作为建图验收缺口随后出现。
+  这样初始加载、runtime missing 或连接降级时也不会退回到“先看相机/雷达再看能不能动”的旧顺序。
 - 2026-06-27 23:45 起，建图验收缺口里的 `camera_first_frame` 会复用相机 source diagnosis 的现场建议：
   当 live summary 已证明 `uvc_no_frame_not_exclusive`，并带有 known-good UVC 建议时，普通首屏显示
   `画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）`。这让多人共享预览和建图验收使用同一口径：

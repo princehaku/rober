@@ -4066,6 +4066,13 @@ describe("workstation fail-closed API contracts", () => {
         "map_recording_active",
         "fresh_map_preview",
       ]);
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates.map((gate) => gate.id)).toEqual([
+        "operator_confirmed",
+        "stop_available",
+        "motion_hil_unlock",
+        "camera_first_frame",
+        "lidar_fresh",
+      ]);
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
       expect(summary.primary_actions_enabled).toBe(false);
