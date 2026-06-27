@@ -5061,6 +5061,93 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("keeps stale radar readback in free-roam mapping gaps even when runtime gate is old-ready", async () => {
+    // 自由移动可以启动，但建图验收必须以同轮雷达 freshness 为准，不能被 runtime 旧 gate 覆盖。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "ready",
+              reason: "等待启动",
+              stop_required: false,
+              gates: [
+                { id: "operator_confirmed", label: "现场安全确认", state: "ready", evidence: "已勾选现场安全确认", next_action: "继续保持现场可接管" },
+                { id: "stop_available", label: "停止兜底", state: "ready", evidence: "stop endpoint ready", next_action: "继续保持停止可用" },
+                { id: "camera_first_frame", label: "画面首帧", state: "ready", evidence: "画面首帧已读到", next_action: "继续监看画面" },
+                { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "runtime 旧记录显示 fresh", next_action: "继续监看雷达" },
+                { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续记录地图" },
+                { id: "fresh_map_preview", label: "地图画面", state: "ready", evidence: "地图画面已刷新", next_action: "继续监看地图" },
+              ],
+            },
+          },
+        },
+      },
+      "/api/camera/health": {
+        payload: {
+          ...safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready"),
+          visible_content_proven: true,
+        },
+      },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.radar_status", "latest_proof_stale_while_lifecycle_running"),
+          latest_scan_proof_fresh: false,
+          lifecycle_running: true,
+          lifecycle_state: "running",
+        },
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "loaded"),
+          latest_scan_proof_fresh: false,
+        },
+      },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.free_roam.motion_start_ready).toBe("true");
+      expect(summary.readback_summary.free_roam.motion_ready).toBe("false");
+      expect(summary.readback_summary.free_roam.mapping_ready).toBe("false");
+      expect(summary.readback_summary.free_roam.mapping_missing).toBe("lidar_fresh");
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: "lidar_fresh",
+          state: "not_proven",
+          evidence: "雷达最新扫描未刷新",
+          next_action: "先刷新雷达；刷新前只能按自由移动记录",
+        }),
+      ]));
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("keeps explicit free-roam mapping gate when map proof looks started", async () => {
     // free-roam runtime 是自助移动状态机的当前事实；它明确说地图记录未启动时，旧 map proof 不能把 gate 改成 ready。
     const safePayload = (schema: string, status = "loaded") => ({

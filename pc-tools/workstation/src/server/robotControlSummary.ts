@@ -3578,6 +3578,21 @@ function freeRoamRuntimeGatesFromReadbacks(
         next_action: asString(gate.next_action, "等待上车端自动扫图节点更新"),
       };
     });
+  const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
+  const radarScanProofPayload = readbackById(readbacks, "radar_scan_proof_latest")?.payload ?? null;
+  const radarFreshValues = [
+    summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"], ""),
+    summaryValueText(radarScanProofPayload, ["latest_scan_proof_fresh"], ""),
+  ].filter((value) => value !== "");
+  const radarFreshReadbackLoaded = radarFreshValues.length > 0;
+  const radarFreshProven = radarFreshValues.some((value) => value === "true");
+  const runtimeLidarFreshGate = gateRows.find((gate) => gate.id === "lidar_fresh");
+  if (runtimeLidarFreshGate && radarFreshReadbackLoaded && !radarFreshProven) {
+    // 建图验收必须以同轮雷达 freshness 为准；runtime 旧 gate 不能覆盖最新 stale readback。
+    runtimeLidarFreshGate.state = "not_proven";
+    runtimeLidarFreshGate.evidence = "雷达最新扫描未刷新";
+    runtimeLidarFreshGate.next_action = "先刷新雷达；刷新前只能按自由移动记录";
+  }
   const lidarFreshGate = gateRows.find((gate) => gate.id === "lidar_fresh");
   const lidarFreshExpired = Boolean(
     lidarFreshGate
