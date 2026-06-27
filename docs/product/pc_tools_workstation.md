@@ -2380,6 +2380,11 @@ artifact-only 时，operator 会直接看到下一步是勾选安全确认、开
 地图画面。只要 summary 读到当前 `path_preview_points`，地图会直接显示路线 polyline、起点/终点和 `路线已显示 N/M 个点`，
 `执行图上路线` 按钮也会按这条可见路线放开；不再要求普通用户额外点击 `刷新地图画面`。该自动刷新只读 map preview，
 不调用 Nav2 execute、manual、keyboard、delivery、stop 或 `/cmd_vel`。
+2026-06-27 18:33 起，普通首屏初次加载也锁定同一 WYSIWYG 口径：如果 summary 已经带 `path_preview_points`
+和 map-frame 坐标，页面初载的只读地图预览成功后会直接显示当前路线、起点/终点和 `路线已显示 N/M 个点`，
+勾选现场安全确认后主按钮进入 `执行图上路线` 或当前 summary 指定的 ROS 重跑文案；不会再要求先手动点击
+`刷新图上路线`。如果 summary 只有点数没有坐标数组，首屏仍只提示路线已准备并要求刷新地图画面，避免凭空画假路线。
+该验证只覆盖 PC 前端 WYSIWYG 和只读 map preview，不自动执行 Nav2、manual、keyboard、delivery、stop 或 `/cmd_vel`。
 2026-06-26 06:10 起，地图画面或地图 proof 正在刷新时，普通首屏 `准备行程（不发车）` 和高级诊断
 `检查路径（高级）` 也会显示 `等待地图刷新` 并禁用；函数入口同步 fail-closed，不再允许在旧图尚未同步时刷新
 Nav2 no-motion proof 覆盖路线 readback。刷新完成后两个入口恢复原文案和可用状态。该 gate 只拦截 planner proof refresh，
