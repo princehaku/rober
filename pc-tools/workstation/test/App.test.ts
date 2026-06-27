@@ -16257,6 +16257,7 @@ describe("App", () => {
 
   it("shows a no-motion Nav2 restore action when planner or controller is inactive", async () => {
     // planner/controller 未运行时，普通用户先恢复服务栈；这个动作不能偷偷变成路线准备或目标执行。
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     const blockedSummaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     blockedSummaryFixture.safe_command_boundary.nav2_goal_blockers = [
       "path_generation_not_observed",
@@ -16321,6 +16322,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("自动驾驶服务未运行：先恢复规划服务和控制服务（不发车）。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("规划服务未运行，控制服务未运行");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("先恢复规划服务和控制服务，再准备图上行程并按地图画面确认");
+    const callsBeforeGoTrip = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-go-trip"]').trigger("click");
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-nav2-restore"]').element);
+    expect(mockedFetch.mock.calls.length).toBe(callsBeforeGoTrip);
 
     await wrapper.find('[data-testid="plain-trip-nav2-restore"]').trigger("click");
     await flushPromises();

@@ -487,6 +487,10 @@ PC 下一步文案会把“旧执行主因不是雷达或相机”和“当前 c
 不会调用 `/api/nav2/goal/execute`、`NavigateToPose`、`/cmd_vel`、`/api/base/manual` 或 free-roam。这样 operator 点恢复后能直接看到
 “服务恢复成功且已重新检查图上路线”，不必在恢复服务和准备路线之间继续猜下一步。
 
+2026-06-28 02:36 起，当 Nav2 planner/controller inactive 且 operator 已勾选行程安全确认时，目标进度里的“去行程”
+会直接聚焦“恢复自动驾驶服务（不发车）”按钮，而不是停在已禁用的执行/准备按钮。该跳转只移动焦点，不调用
+Nav2 start、proof refresh、goal execute、manual、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-28 09:45 起，PC 相机只读诊断把 `first_frame_total_timeout` 纳入首帧失败同类原因：
 summary 与 `/api/robot-control/camera/mjpeg/status` 都会把它解释为“相机源没有输出视频帧”。如果同时读到
 `source_usage.status=not_in_use` 或 `owner_count=0`，普通首屏显示“不是页面独占，检查 USB/输入/供电或换 known-good UVC”，

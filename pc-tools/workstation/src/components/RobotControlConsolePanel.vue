@@ -271,6 +271,7 @@ const plainTripRunPanel = ref<HTMLElement | null>(null);
 const plainTripSafetyCheckbox = ref<HTMLInputElement | null>(null);
 const plainTripPrepareButton = ref<HTMLButtonElement | null>(null);
 const plainTripExecuteButton = ref<HTMLButtonElement | null>(null);
+const plainTripNav2RestoreButton = ref<HTMLButtonElement | null>(null);
 const plainTripLatestButton = ref<HTMLButtonElement | null>(null);
 const plainWheelRecordPanel = ref<HTMLElement | null>(null);
 const plainMotionRestoreButton = ref<HTMLButtonElement | null>(null);
@@ -9464,6 +9465,10 @@ function plainTripGoalTarget(): HTMLElement | null {
   if (!plainManualSafetyConfirmed.value) {
     return plainTripSafetyCheckbox.value ?? plainTripRunPanel.value;
   }
+  if (plainTripNav2NeedsLifecycleRestore.value) {
+    return enabledButton(plainTripNav2RestoreButton.value)
+      ?? plainTripRunPanel.value;
+  }
   return enabledButton(plainTripExecuteButton.value)
     ?? enabledButton(plainTripPrepareButton.value)
     ?? enabledButton(plainTripLatestButton.value)
@@ -11499,7 +11504,7 @@ onBeforeUnmount(() => {
               <button ref="plainTripExecuteButton" type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
                 {{ plainTripExecutionButtonLabel }}
               </button>
-              <button v-if="plainTripNav2NeedsLifecycleRestore" type="button" class="secondary compact-stop" :disabled="!canRestorePlainNav2Lifecycle" data-testid="plain-trip-nav2-restore" @click="restorePlainNav2Lifecycle">
+              <button v-if="plainTripNav2NeedsLifecycleRestore" ref="plainTripNav2RestoreButton" type="button" class="secondary compact-stop" :disabled="!canRestorePlainNav2Lifecycle" data-testid="plain-trip-nav2-restore" @click="restorePlainNav2Lifecycle">
                 {{ plainTripNav2LifecycleButtonLabel }}
               </button>
               <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="!canLoadNavGoalExecutionLatest" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
