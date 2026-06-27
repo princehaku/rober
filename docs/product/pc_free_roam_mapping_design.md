@@ -347,6 +347,11 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 返回 `partial` 并带 `robot_pose_missing_for_map_radar_overlay`。普通地图仍可显示局部雷达轮廓和点数，
 但不能把这些点冒充成已贴到地图坐标。该变更只修正只读状态，不触发定位、雷达或运动命令。
 
+2026-06-27 20:52 起，PC 普通地图前端回归锁定 partial overlay 行为：当 map preview
+随图返回雷达点但没有 `robot_pose` 时，页面只显示 `地图预览雷达局部点 ... 等待地图位置`，
+不显示地图坐标雷达点 SVG，也不显示小车 marker；坐标口径必须写明雷达只显示车身局部轮廓、不贴到地图。
+该规则对应当前 live 的 `robot_pose_missing_for_map_radar_overlay` 形态，仍不触发任何运动或定位命令。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
