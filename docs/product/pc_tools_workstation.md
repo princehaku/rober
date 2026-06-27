@@ -3464,6 +3464,11 @@ multipart JPEG，失败继续返回结构化 503 和 `first_frame_unreadable` / 
 “每个页面共享预览没问题，但 UVC 本身无首帧”在自由移动卡片里也所见即所得；低速自由移动仍只看安全确认和停止兜底，
 相机首帧只影响可验收建图，不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-27 23:45 起，上述建图验收缺口会继续带出现场下一步：当相机诊断已经证明不是页面独占，且 summary 带有
+known-good UVC 建议时，`当前事实` 与 `建图验收` 都显示
+`画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）`。这只把 live 失败原因翻译到普通首屏，
+不重新打开摄像头、不创建额外 capture、不把相机首帧缺口算作 ready，也不触发 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 19:11 起，Robot Control summary 对旧 O11 Nav2 artifact 增加只读兼容：如果
 `base_command_summary` 已有 `nonzero_command_count>0`，但还没有 `latest_nonzero_command_mode` 或
 `command_mode_counts`，PC 会用同一 artifact 的 `base_command_mode=ros|pwm|speed` 补出

@@ -1800,7 +1800,10 @@ function cameraFirstFrameMissingPlainLabel(): string {
   const notExclusive = camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
     || camera?.source_diagnosis_not_exclusive === "true"
     || (camera?.source_usage_status === "not_in_use" && camera?.source_usage_owner_count === "0");
-  return notExclusive ? "画面首帧未出（不是页面独占）" : "画面首帧未出";
+  const knownGoodHint = cameraKnownGoodUvcSuffix(camera)
+    ? "；检查 USB/输入/供电，必要时换 known-good UVC"
+    : "";
+  return notExclusive ? `画面首帧未出（不是页面独占${knownGoodHint}）` : "画面首帧未出";
 }
 
 function plainMapPreviewImageLoaded(): boolean {
