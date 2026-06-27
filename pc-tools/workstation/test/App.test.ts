@@ -4390,6 +4390,8 @@ describe("App", () => {
     expect(readiness.attributes("data-state")).toBe("已就绪");
     expect(readiness.text()).toContain("已读到上车端自由移动门禁");
     expect(readiness.text()).not.toContain("正在读取上车端自由移动门禁");
+    expect(readiness.text()).toMatch(/建图验收 \d\/4 已满足/);
+    expect(readiness.text()).not.toContain("建图验收 1/3 已满足");
     expect(readiness.text()).toContain("雷达监看");
     expect(readiness.text()).toContain("可降级");
     expect(readiness.text()).not.toContain("还差：雷达待刷新");

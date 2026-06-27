@@ -249,6 +249,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `启动条件 x/y 已满足` 与 `建图验收 x/y 已满足`。只有缺少结构化 gates 的旧上车端才显示固定 policy
 前置项，避免 gate 列表已出现时顶部仍误写“正在读取”。
 
+2026-06-27 16:37 起，顶部 `建图验收 x/y` 的分母改为 `free_roam_autonomy_policy.mapping_required_gates`
+的真实数量，而不是当前 `mapping_acceptance` gate rows 的数量。这样 live 形态下即使结构化 gate rows
+只返回 `mapping_active/lidar_fresh/obstacle_clear`，顶部仍按 policy 的
+`camera_first_frame/fresh_radar_scan/map_recording_active/fresh_map_preview` 四项显示 `2/4`，并和下方
+“缺口：画面首帧未出、地图记录未启动”对齐。
+
 2026-06-27 03:50 起，PC `自动扫图准备` 明确新增一行 `建图验收`：`free_roam_autonomy_start_ready=true`
 只表示可在安全确认后发起低速自由移动；如果 camera 没有首帧或雷达未达到 `雷达已运行`，本轮只能按自由移动记录，
 不能按可验收建图收口。只有画面可见证据和雷达运行证据同时满足，才把本轮标成“可按建图记录监看”。

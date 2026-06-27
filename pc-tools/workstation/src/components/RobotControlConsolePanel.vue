@@ -3925,9 +3925,26 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     const startRows = contractGateRows.filter((gate) => gate.scope === "free_move_start");
     const mappingRows = contractGateRows.filter((gate) => gate.scope === "mapping_acceptance");
     const startReady = startRows.filter((gate) => gate.state === "已满足").length;
-    const mappingReady = mappingRows.filter((gate) => gate.state === "已满足").length;
+    const mappingPolicyGates = policy?.mapping_required_gates ?? mappingRows.map((gate) => gate.id);
+    const mappingGateReady = (gate: string): boolean => {
+      // 建图验收计数按 policy 的四个门计算；结构化 gate 缺相机/地图画面时，用 PC 已显示事实兜底。
+      if (gate === "camera_first_frame" || gate === "camera_first_frame_not_observed" || gate === "camera_not_ready") {
+        return plainCameraReadyForFreeRoamAutonomy.value;
+      }
+      if (gate === "fresh_radar_scan" || gate === "radar_scan_proof_not_fresh" || gate === "radar_not_ready") {
+        return plainRadarReadyForFreeRoamMapping.value || mappingRows.some((row) => row.id === "lidar_fresh" && row.state === "已满足");
+      }
+      if (gate === "map_recording_active" || gate === "mapping_active") {
+        return mapRuntimeStarted.value || mappingRows.some((row) => row.id === "mapping_active" && row.state === "已满足");
+      }
+      if (gate === "fresh_map_preview") {
+        return plainMapPreviewImageLoaded();
+      }
+      return mappingRows.some((row) => row.id === gate && row.state === "已满足");
+    };
+    const mappingReady = mappingPolicyGates.filter(mappingGateReady).length;
     const startText = startRows.length ? `启动条件 ${startReady}/${startRows.length} 已满足` : "启动条件已读到";
-    const mappingText = mappingRows.length ? `建图验收 ${mappingReady}/${mappingRows.length} 已满足` : "";
+    const mappingText = mappingPolicyGates.length ? `建图验收 ${mappingReady}/${mappingPolicyGates.length} 已满足` : "";
     return `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，已读到上车端${motionModeName}门禁：${[startText, mappingText].filter(Boolean).join("；")}。`;
   })();
   return {
