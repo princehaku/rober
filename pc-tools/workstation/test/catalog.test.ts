@@ -4770,6 +4770,68 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary lifts nested map proof quality into readback summary", async () => {
+    // 真实上位机的地图质量可能只在 latest_result.proof 内；PC summary 只能只读透传，不能触发 map refresh。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.status", "ready"),
+          map_once_observed: true,
+        },
+      },
+      "/api/map/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.map_proof_latest", "map_once_artifact_metadata_observed"),
+          latest_result: {
+            proof: {
+              map_quality_status: "has_usable_map",
+              map_metrics: {
+                free_cells: 421,
+              },
+              algorithm_boundary: {
+                map_usable_for_navigation: true,
+              },
+            },
+          },
+        },
+      },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "not_loaded") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_loaded") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_loaded") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": { payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded") },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "not_loaded") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "not_loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "not_loaded") },
+      "/api/radar/scan-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "not_loaded") },
+      "/api/radar/raw-packet-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result", "not_loaded") },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "not_loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "not_loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.map).toMatchObject({
+        status: "map_once_artifact_metadata_observed",
+        map_once_observed: "true",
+        map_quality_status: "has_usable_map",
+        map_free_cell_count: "421",
+        map_usable_for_navigation: "true",
+      });
+      expect(summary.safe_to_control).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary still blocks forged structured HIL claims outside operator report", async () => {
     // 只有 operator_report_latest 端点的结构化 delivery claim 旁路；其它 endpoint 伪造同名字段仍 hard block。
     const robotApi = await listenRobotApiReadback({

@@ -3110,6 +3110,12 @@ function booleanSummaryValue(value: boolean | null): string {
   return value === null ? "not_loaded" : String(value);
 }
 
+function mapProofText(mapProof: InternalRobotApiEndpointReadback | null, keys: string[]): string | null {
+  // 真实上位机会把地图质量塞进 latest_result.proof 多层结构；PC 只读消费已有 proof，不触发刷新或建图。
+  const found = findFirstKey(asRecord(mapProof?.payload), keys);
+  return found === undefined ? null : compactValueText(found);
+}
+
 function mapSummaryFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
   proof: RobotApiProofSummary,
@@ -3119,9 +3125,18 @@ function mapSummaryFromReadbacks(
   return {
     status: mapProof?.status ?? "not_loaded",
     map_once_observed: booleanSummaryValue(proof.map_once_observed),
-    map_quality_status: proofText(readbacks, ["latest_map_quality_status", "map_quality_status"]) ?? "not_loaded",
-    map_free_cell_count: proofText(readbacks, ["latest_map_free_cell_count", "map_free_cell_count"]) ?? "not_loaded",
-    map_usable_for_navigation: proofText(readbacks, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ?? "not_loaded",
+    map_quality_status:
+      proofText(readbacks, ["latest_map_quality_status", "map_quality_status"]) ??
+      mapProofText(mapProof, ["latest_map_quality_status", "map_quality_status"]) ??
+      "not_loaded",
+    map_free_cell_count:
+      proofText(readbacks, ["latest_map_free_cell_count", "map_free_cell_count", "free_cell_count", "free_cells"]) ??
+      mapProofText(mapProof, ["latest_map_free_cell_count", "map_free_cell_count", "free_cell_count", "free_cells"]) ??
+      "not_loaded",
+    map_usable_for_navigation:
+      proofText(readbacks, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
+      mapProofText(mapProof, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
+      "not_loaded",
   };
 }
 

@@ -538,6 +538,13 @@ map proof refresh 的高级诊断 readback 同步展示
 `latest_map_usable_for_navigation=false`；PC 首屏仍只保留普通地图动作，不把这些
 工程字段暴露到 `.simple-user-console`。
 
+2026-06-27 起，Robot Control summary 在只读读取 `/api/map/proof/latest` 时，会从
+`latest_result.proof` 这类嵌套结构兜底提取 `map_quality_status`、
+`free_cells/map_free_cell_count` 和 `map_usable_for_navigation`，并提升到
+`readback_summary.map`。这解决真实上位机已经给出地图质量 proof、但 PC 当前事实仍显示
+`not_loaded` 的错觉；该逻辑只消费现有 proof，不触发 `/api/map/start`、map refresh、
+Nav2 goal、`/cmd_vel` 或底盘运动。
+
 2026-06-11 08:05 起，上位机 map lifecycle helper 对 `/scan` clean proof 做了
 稳定化：`/scan_once_observed` 仍是必需条件，但 helper 会用 sensor_data QoS 的
 `ros2 topic echo --once /scan` 做最多 2 次独立采样并记录 attempts。PC 代理因此可在
