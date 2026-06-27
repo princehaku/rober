@@ -2680,7 +2680,7 @@ const plainMapVisualSummary = computed(() => {
       : radarState === "雷达启动中"
       ? "雷达启动中，位置未读到"
       : radarNeedsMapPose
-      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerLabel ? `${radarState}，${radarCountOnlyMarkerLabel}` : showRadarObstacleDistance ? `${radarState}，${radarObstacleDistanceLabel}` : radarRawPacketNoPoints ? `${radarState}，原始包已收到，暂无地图点` : `${radarState}，位置未读到`
+      ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerLabel ? `${radarState}，${radarCountOnlyMarkerLabel}` : showRadarObstacleDistance ? `${radarState}，${radarObstacleDistanceLabel}` : radarNoVisiblePointLabel ? `${radarState}，${radarNoVisiblePointLabel}` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarStoppedWithZeroPoints ? `${radarState}，地图0点` : radarState;
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
@@ -2712,8 +2712,8 @@ const plainMapVisualSummary = computed(() => {
       ? "雷达启动中，地图位置未读到，等待刷新确认"
       : showRadarObstacleDistance
         ? `${radarState}，地图位置未读到，${radarObstacleDistanceLabel}，按雷达局部距离显示，未贴到地图`
-      : radarRawPacketNoPoints
-        ? `${radarState}，地图位置未读到，原始包已收到但暂无地图雷达点`
+      : radarNoVisiblePointAria
+        ? `${radarState}，地图位置未读到，${radarNoVisiblePointAria}`
       : radarStoppedWithZeroPoints
         ? `${radarState}，地图位置未读到，地图0点`
       : radarNeedsMapPose && radarCountOnlyMarkerLabel

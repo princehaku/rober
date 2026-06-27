@@ -1136,15 +1136,28 @@ function lidarSummaryFromReadbacks(
   const radarControls = asRecord(findFirstKey(radarStatusPayload, ["controls"]));
   const radarStartControl = asRecord(radarControls?.start);
   const radarStartCommand = asRecord(radarStartControl?.command);
+  const radarLifecycleRunning = summaryValueText(radarStatusPayload, ["lifecycle_running"]);
+  const radarContinuousStatus = summaryValueText(radarStatusPayload, ["continuous_scan_status"]);
+  const radarLifecycleState = summaryValueText(radarStatusPayload, ["lifecycle_state"]);
+  const radarEndpointStatus = radarStatusReadback?.status ?? "not_loaded";
+  const radarSummaryStatus =
+    radarLifecycleRunning === "true" && radarContinuousStatus !== "not_loaded"
+      // lifecycle 已经运行时，连续性结论比 latest proof 缺失更贴近现场状态，地图 marker 不能再退回 missing。
+      ? radarContinuousStatus
+      : radarEndpointStatus === "missing" && radarContinuousStatus !== "not_loaded"
+        ? radarContinuousStatus
+        : radarEndpointStatus === "not_loaded" && radarLifecycleState !== "not_loaded"
+          ? radarLifecycleState
+          : radarEndpointStatus;
   return {
-    status: radarStatusReadback?.status ?? "not_loaded",
+    status: radarSummaryStatus,
     latest_scan_proof_status: radarScanProofReadback?.status ?? "not_loaded",
     latest_raw_packet_proof_status: radarRawPacketProofReadback?.status ?? "not_loaded",
     latest_scan_proof_result_status: latestScanProofResultStatus,
     raw_packet_once_observed: rawPacketOnceObserved,
-    continuous_scan_status: summaryValueText(radarStatusPayload, ["continuous_scan_status"]),
-    lifecycle_running: summaryValueText(radarStatusPayload, ["lifecycle_running"]),
-    lifecycle_state: summaryValueText(radarStatusPayload, ["lifecycle_state"]),
+    continuous_scan_status: radarContinuousStatus,
+    lifecycle_running: radarLifecycleRunning,
+    lifecycle_state: radarLifecycleState,
     continuous_window_observed: summaryValueText(radarStatusPayload, ["continuous_window_observed"]),
     continuity_window_status: summaryValueText(radarStatusPayload, ["continuity_window_status"]),
     latest_scan_proof_fresh: summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"]),

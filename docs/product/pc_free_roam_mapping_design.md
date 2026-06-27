@@ -221,6 +221,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `scan_preview_point_count=72`，且机器人 map pose 已读到。该证据证明雷达可以从 stopped 拉到 running/fresh，
 地图雷达 marker 可以使用本轮真实点位；仍不等于 camera 首帧、Nav2 完整路线 HIL 或 delivery success 已完成。
 
+2026-06-27 08:51 起，PC summary 在 `/api/radar/status` 已显示 `lifecycle_running=true` 时，优先把
+`continuous_scan_status` 作为普通首屏雷达主状态；如果独立 latest proof endpoint 仍是 404/missing，地图和雷达卡片显示
+`雷达无新点`，并说明“雷达驱动在运行，但当前没有读到新的雷达点”。这样现场点击启动雷达后不会把“驱动已运行但 proof
+尚未写出/窗口无新点”误读成“雷达未运行”；同时仍不把无点云误报为可验收建图。
+
 2026-06-27 04:38 起，上车端 `camera_first_frame_probe.py` 的 backend smoke 使用进程组超时清理，并把
 v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后遗留 `ffmpeg` 或 probe 进程占用
 `/dev/video1`。现场复测 `backendSmoke=1` 在 23s 内结构化返回 `first_frame_timeout/capture_read_call_timeout`，

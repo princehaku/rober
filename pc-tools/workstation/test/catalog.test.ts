@@ -5535,6 +5535,55 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary surfaces running radar lifecycle when latest proof endpoints are missing", async () => {
+    // 现场雷达启动成功后可能还没有最新 proof 文件；summary 必须显示“运行但无新 proof”，不能退回 missing。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      evidence_ref: "running-lidar-missing-proof-fixture",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "source_first_frame_failed") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": { payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "not_proven") },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.radar_status", "missing"),
+          lifecycle_running: true,
+          lifecycle_state: "running",
+          continuous_scan_status: "latest_proof_missing_while_lifecycle_running",
+          continuous_window_observed: false,
+          continuity_window_status: "latest_proof_missing_while_lifecycle_running",
+          latest_scan_proof_fresh: false,
+        },
+      },
+      "/api/radar/scan-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.lidar.status).toBe("latest_proof_missing_while_lifecycle_running");
+      expect(summary.readback_summary.lidar.latest_scan_proof_status).toBe("missing");
+      expect(summary.readback_summary.lidar.latest_raw_packet_proof_status).toBe("missing");
+      expect(summary.readback_summary.lidar.lifecycle_running).toBe("true");
+      expect(summary.readback_summary.lidar.continuous_scan_status).toBe("latest_proof_missing_while_lifecycle_running");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary keeps slow status and camera endpoints readable with endpoint timeouts", async () => {
     // status/camera 在真实板端可能慢于 proof latest；只要仍在白名单窗口内，就不应被误记成 fetch_failed。
     const robotApi = await listenRobotApiReadbackByPath({

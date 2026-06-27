@@ -13959,6 +13959,53 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows running lidar with missing latest proof as no-new-points on the map", async () => {
+    // live 可见 lifecycle 已 running，但 latest proof 文件还没写出；首屏要说“无新点”，不是“雷达未运行/missing”。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.o3_proof_summary.scan_preview_points = [];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 0;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = null;
+    summaryFixture.o3_proof_summary.scan_preview_frame_id = "";
+    summaryFixture.readback_summary.lidar.status = "latest_proof_missing_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_status = "missing";
+    summaryFixture.readback_summary.lidar.latest_raw_packet_proof_status = "missing";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_result_status = "not_loaded";
+    summaryFixture.readback_summary.lidar.raw_packet_once_observed = "not_loaded";
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_missing_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_missing_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "0";
+    summaryFixture.readback_summary.lidar.scan_preview_source_point_count = "not_loaded";
+    summaryFixture.readback_summary.lidar.scan_preview_frame_id = "not_loaded";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = summaryFixture.safe_command_boundary.free_roam_autonomy_gates.filter(
+      (gate: { id?: string }) => gate.id !== "obstacle_clear",
+    );
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达无新点");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已启动，但地图上没有新点。");
+    expect(firstScreenText).toContain("雷达驱动正在运行，但连续窗口还没读到，当前没有读到新的雷达点；检查雷达供电、串口数据和驱动日志。");
+    expect(firstScreenText).not.toContain("雷达未运行");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达无新点，暂无地图点");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达无新点");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达无新点，地图位置未读到，当前暂无地图雷达点");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达驱动在运行，但当前没有读到新的雷达点；这不是地图没刷新。");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("data-state")).toBe("雷达无新点");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').text()).toBe("重启雷达");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows running lidar with zero fresh points as no-new-points instead of generic refresh", async () => {
     // live 现场可见 lidar_driver 仍在跑，但 /scan 和 raw packet 没有新输出；地图要说无新点，不再让用户只反复刷新。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
