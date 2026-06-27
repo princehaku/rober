@@ -908,6 +908,12 @@ function latestRadarRuntimeScanReady(): boolean {
 
 function plainFreeRoamObstacleCautionText(summary: RobotControlSummaryResponse): string {
   // 近障碍只影响现场预期动作，不反向改写自由移动门禁；否则 operator 会误以为雷达是启动前置条件。
+  const caution = plainFreeRoamObstacleCautionPlainText(summary);
+  return caution ? `；${caution}` : "";
+}
+
+function plainFreeRoamObstacleCautionPlainText(summary: RobotControlSummaryResponse): string {
+  // 卡片主状态需要同样的人话提示，但不能带分号前缀，避免不同句式拼接出双标点。
   const obstacleGate = summary.safe_command_boundary.free_roam_autonomy_gates.find((gate) => gate.id === "obstacle_clear");
   if (!obstacleGate || obstacleGate.state === "ready") {
     return "";
@@ -917,7 +923,7 @@ function plainFreeRoamObstacleCautionText(summary: RobotControlSummaryResponse):
     ? obstacleGate.next_action
     : "先避让，不继续直行";
   const obstacleText = evidence ? `${evidence}，${nextAction}` : nextAction;
-  return `；当前雷达近障碍：${obstacleText}`;
+  return `当前雷达近障碍：${obstacleText}`;
 }
 
 function radarRunningWithoutVisiblePoints(lidar: RobotControlSummaryResponse["readback_summary"]["lidar"]): boolean {
@@ -3305,7 +3311,9 @@ const plainFreeRoamMappingSummary = computed(() => {
     return { state: "未连接", hint: "先连接默认小车，再开始扫地式建图。" };
   }
   if (!plainManualSafetyConfirmed.value) {
-    return { state: "待确认", hint: "勾选现场安全确认后，才允许启动建图向导。" };
+    const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
+    const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
+    return { state: "待确认", hint: `勾选现场安全确认后，才允许启动建图向导${obstacleSuffix}。` };
   }
   if (mapLifecyclePending.value) {
     if (mapLifecyclePendingAction.value === "start") {
@@ -3354,13 +3362,17 @@ const plainFreeRoamMappingSummary = computed(() => {
       : { state: "待手控", hint: `建图已启动，但键盘移动条件还没满足。${plainKeyboardNextActionSummary.value}` };
   }
   if (!plainCameraReadyForFreeRoamAutonomy.value || !plainRadarReadyForFreeRoamMapping.value) {
+    const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
+    const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
     const missing = [
       !plainCameraReadyForFreeRoamAutonomy.value ? "画面未 ready" : "",
       !plainRadarReadyForFreeRoamMapping.value ? "雷达未 ready" : "",
     ].filter(Boolean).join("、");
-    return { state: "可移动", hint: `可先启动地图记录（不发车）；低速自移动用“开始自由移动（低速）”；${missing}，本轮先按移动练习处理，ready 后再算可建图。` };
+    return { state: "可移动", hint: `可先启动地图记录（不发车）；低速自移动用“开始自由移动（低速）”；${missing}${obstacleSuffix}，本轮先按移动练习处理，ready 后再算可建图。` };
   }
-  return { state: "可建图", hint: "摄像头和雷达已 ready；先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图。" };
+  const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
+  const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
+  return { state: "可建图", hint: `摄像头和雷达已 ready；先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图${obstacleSuffix}。` };
 });
 const plainFreeRoamMappingStartLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "start"
@@ -3517,7 +3529,9 @@ const plainFreeRoamDriveStatus = computed(() => {
   // 扫图状态只解释当前本地流程，不自动启用键盘、不发送 manual，也不把自动扫图说成已开放。
   const statusPrefix = plainFreeRoamPanelCopy.value.title === "自由移动 / 建图" ? "自由移动状态" : "扫图状态";
   if (!plainManualSafetyConfirmed.value) {
-    return `${statusPrefix}：先勾安全确认，小车不会移动。`;
+    const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
+    const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
+    return `${statusPrefix}：先勾安全确认，小车不会移动${obstacleSuffix}。`;
   }
   if (mapLifecyclePendingAction.value === "start") {
     return "扫图状态：正在启动地图记录，等记录启动后再移动。";
@@ -3570,7 +3584,9 @@ const plainFreeRoamDriveStatus = computed(() => {
       const readyText = robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
         ? `可点击${plainFreeRoamMotionStartButtonText.value}`
         : "等待上车自由移动状态";
-      return `自由移动状态：${readyText}；当前没有运动发布，低速自移动不依赖雷达新鲜度；建图另看相机和雷达。`;
+      const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
+      const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
+      return `自由移动状态：${readyText}；当前没有运动发布${obstacleSuffix}；低速自移动不依赖雷达新鲜度；建图另看相机和雷达。`;
     }
     return "扫图状态：还没开始记录，键盘扫图锁定。";
   }

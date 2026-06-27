@@ -3359,6 +3359,11 @@ delivery、stop 或 `/cmd_vel`。
 而是同步写出“当前雷达近障碍：最近障碍 0.04m，原地换向避让，不继续直行”。该展示仍不触发
 manual、keyboard、free-roam start、Nav2、delivery、stop 或 `/cmd_vel`，也不把雷达 freshness 改成自由移动启动前置条件。
 
+2026-06-27 17:15 起，普通首屏自由移动主卡片的 `hint` 和 `drive-status` 也会同步显示同一条近障碍提示。
+安全确认未勾选时，卡片会写出“先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.04m，原地换向避让，不继续直行”；
+安全确认已勾选但还未发布运动时，会写出“当前没有运动发布；当前雷达近障碍...”。该提示只是把 runtime 雷达事实前移到主操作卡片，
+不改变 `free_roam_autonomy_start_ready` 门禁，不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 16:51 起，普通首屏共享画面状态在 MJPEG status 轮询失败时，也会从 Robot Control summary 的
 `source_diagnosis_plain_hint` 读取具体归因。这样 summary 已证明 `uvc_no_frame_not_exclusive` 时，画面卡片仍显示
 “不是页面独占、UVC 设备没有输出视频帧”，而不是退回泛化的“相机源没有输出首帧”。该改动只修正失败归因展示，
