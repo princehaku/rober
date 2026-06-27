@@ -2099,6 +2099,11 @@ function plainCurrentMapFactText(summary: RobotControlSummaryResponse): string {
   const imageLabel = plainMapImageFreshnessLabel(previewLoaded);
   const radarNotCurrentText = radarNotCurrentSourcePointText();
   const radarSuffix = radarNotCurrentText ? `；${radarNotCurrentText}` : "";
+  if (mapRefreshPending.value) {
+    return previewLoaded
+      ? `地图：地图状态刷新中；当前仍显示上次真实地图画面，刷新完成后再按最新状态判断${radarSuffix}。`
+      : "地图：地图状态刷新中；刷新完成前不要把旧地图状态当作最新。";
+  }
   if (previewLoaded) {
     const freeCells = plainCellCount(preview, "free");
     const freeText = freeCells > 0 ? `，可通行格 ${freeCells} 个` : "，未读到可通行格";

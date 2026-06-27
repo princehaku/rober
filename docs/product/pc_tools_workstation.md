@@ -3378,6 +3378,12 @@ summary，不调用 free-roam start/stop、manual、keyboard、Nav2、delivery�
 可通行格数量；只有 artifact/metadata 时显示“已读到地图材料，但还没显示真实地图图像；先刷新地图画面”。
 这让“地图所见即所得”不再依赖用户滚到地图卡片才知道当前显示的是图像还是材料读回；该行只读 summary 和
 map preview，不触发地图刷新、建图、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 17:45 起，普通首屏 `当前事实` 的地图行也同步地图状态刷新 pending：当 `map/proof`
+正在刷新但旧地图画面仍显示时，事实行显示“地图状态刷新中；当前仍显示上次真实地图画面，刷新完成后再按最新状态判断”，
+不会继续把旧图写成最新事实。该改动只修正只读文案，不改变地图 proof/preview 请求，也不发送 manual、keyboard、
+free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 15:25 起，普通首屏 `连接/刷新` 不再只刷新 summary；它会在 summary 后继续只读刷新
 `/api/robot-control/map/preview`，并顺带读取 `/api/robot-control/radar/status`，让地图图像和雷达 marker
 跟最新连接状态一起更新。该入口仍只读，不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。

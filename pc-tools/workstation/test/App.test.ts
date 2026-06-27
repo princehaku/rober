@@ -8613,6 +8613,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 3 个点，地图状态刷新中；刷新完成后再执行图上路线。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：等待地图状态刷新。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("地图状态刷新中，刷新完成后再执行");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：地图状态刷新中；当前仍显示上次真实地图画面，刷新完成后再按最新状态判断。");
     const mapPreviewCallsBeforeProofBlockedClick = mapPreviewRefreshCallCount();
     await wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
     await wrapper.vm.$nextTick();
