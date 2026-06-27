@@ -4154,6 +4154,62 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary uses relay no-frame diagnosis when camera health returns bad JSON", async () => {
+    // live 形态：camera health 可能被上游异常内容打成 bad_json，但 relay status 已证明不是页面独占，而是 UVC 没有首帧。
+    const server = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end("{not json");
+        return;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const robotApi = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            server.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl, null, {
+        client_count: 0,
+        upstream_active: false,
+        content_type_loaded: false,
+        cached_frame_loaded: false,
+        cached_frame_age_ms: null,
+        shared_capture: true,
+        exclusive_camera_claim: false,
+        last_failure_reason: "camera_source_first_frame_failed",
+        last_remote_http_status: 200,
+        last_failure_at_ms: 1234,
+        source_diagnosis_status: "uvc_no_frame_not_exclusive",
+        source_diagnosis_plain_hint: "不是页面独占：共享 relay 已证明 UVC 没有输出首帧。",
+        source_diagnosis_next_action: "check_usb_camera_input_power_or_known_good_uvc",
+        source_diagnosis_not_exclusive: "true",
+      });
+
+      const cameraHealthReadback = summary.read_endpoints.find((item) => item.id === "camera_health");
+      expect(cameraHealthReadback?.request_status).toBe("bad_json");
+      expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+      expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
+      expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary derives Nav2 execution proof from live execution facts", async () => {
     // 现场上位机 latest 可能不带旧 nav2_goal_execution_proven key；PC 摘要必须从 action 成功和 wheel L/R 非零推导。
     const robotApi = await listenRobotApiReadbackByPath({

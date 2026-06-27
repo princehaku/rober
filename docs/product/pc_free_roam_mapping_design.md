@@ -122,6 +122,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-28 02:28 起，PC summary 的相机字段会把最终 `status` 与 `source_readiness` 对齐：
   如果 health 超时但共享 relay 或最近失败已经证明 `source_first_frame_failed`，返回给首屏和高级诊断的
   `source_readiness` 也会同步为 `first_frame_failed`，不再出现“状态无首帧、readiness 仍 not_loaded”的矛盾口径。
+- 2026-06-28 12:25 起，上述对齐也覆盖 camera health 返回 `bad_json/not_object` 的情况：只要 PC 共享 MJPEG relay
+  已明确 `camera_source_first_frame_failed` 并带出 `uvc_no_frame_not_exclusive` 诊断，summary 就显示
+  `status=source_first_frame_failed`、`source_readiness=first_frame_failed`。单纯坏 JSON 仍保留读取异常；
+  只有已有 relay 事实能证明无首帧时才归并，避免普通首屏一边说坏 JSON、一边又说不是独占。
 - 2026-06-27 13:35 起，共享预览 status 不再只返回 relay 计数和最近失败 token；它会短读只读 camera health，并在不创建新
   MJPEG client 的前提下透出 `source_diagnosis_status/plain_hint/next_action/not_exclusive`。当真实状态是“设备没人占用但无首帧”时，
   后进入的页面也能直接看到不是独占原因，而不是空白预览或内部 token。

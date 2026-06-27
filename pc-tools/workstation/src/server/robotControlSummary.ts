@@ -1389,9 +1389,11 @@ function cameraSummaryFromReadbacks(
       : "starting_local_peer"
     : "idle_not_started";
   const rawHealthStatus = healthReadback?.status ?? "not_loaded";
+  const healthReadFailedButRelayHasCameraFact = ["fetch_failed", "bad_json", "not_object"].includes(healthReadback?.request_status ?? "")
+    && mjpegRelayOverlay?.last_failure_reason === "camera_source_first_frame_failed";
   const cameraStatus = probeVisibleContentObserved && ["", "not_loaded", "source_not_probed", "source_first_frame_failed"].includes(rawHealthStatus)
     ? "ready"
-    : healthReadback?.request_status === "fetch_failed" && mjpegRelayOverlay?.last_failure_reason === "camera_source_first_frame_failed"
+    : healthReadFailedButRelayHasCameraFact
       ? "source_first_frame_failed"
     : sourceReadiness === "first_frame_failed"
     ? "source_first_frame_failed"
