@@ -1300,6 +1300,7 @@ const plainCameraSharedPreviewStatus = computed(() => {
       const failure = sharedPreviewFailureText(
         summaryCamera.shared_preview_last_failure_reason,
         summaryCamera.shared_preview_last_remote_http_status,
+        summaryCamera.source_diagnosis_plain_hint,
       );
       const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
       const autoJoinText = sharedPreviewCanStillJoin(failure || sourceNoFrame)

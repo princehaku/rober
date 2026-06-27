@@ -3354,3 +3354,8 @@ delivery、stop 或 `/cmd_vel`。
 `obstacle_clear=not_proven/evidence=最近障碍 0.04m` 时，首屏不再只写“勾安全确认后可启动”，
 而是同步写出“当前雷达近障碍：最近障碍 0.04m，原地换向避让，不继续直行”。该展示仍不触发
 manual、keyboard、free-roam start、Nav2、delivery、stop 或 `/cmd_vel`，也不把雷达 freshness 改成自由移动启动前置条件。
+
+2026-06-27 16:51 起，普通首屏共享画面状态在 MJPEG status 轮询失败时，也会从 Robot Control summary 的
+`source_diagnosis_plain_hint` 读取具体归因。这样 summary 已证明 `uvc_no_frame_not_exclusive` 时，画面卡片仍显示
+“不是页面独占、UVC 设备没有输出视频帧”，而不是退回泛化的“相机源没有输出首帧”。该改动只修正失败归因展示，
+不打开新的相机独占采集、不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
