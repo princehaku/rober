@@ -3299,10 +3299,15 @@ const freeRoamAutonomyStoppedThisSession = computed(() => (
   freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded"
   && freeRoamAutonomyResult.value.action === "stop"
 ));
+const plainFreeRoamKeyboardRequiresMapRuntime = computed(() => (
+  // 自由移动不应被地图记录锁死；传感器已满足建图验收时，快捷键盘才要求先启动地图记录。
+  plainFreeRoamMotionModeName.value === "自动扫图"
+  || (plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
+));
 const canArmPlainFreeRoamKeyboard = computed(() => (
-  // 扫图键盘入口必须等地图记录真的启动；普通键盘手控仍保持最小安全确认入口。
+  // 自由移动快捷入口复用普通键盘安全门禁；扫图快捷入口才额外要求地图记录已启动。
   plainManualSafetyConfirmed.value
-  && mapRuntimeStarted.value
+  && (!plainFreeRoamKeyboardRequiresMapRuntime.value || mapRuntimeStarted.value)
   && canArmKeyboardControl.value
 ));
 const plainFreeRoamMappingSummary = computed(() => {
@@ -3408,17 +3413,20 @@ const plainFreeRoamMapPreviewLabel = computed(() => {
   return mapRuntimeStarted.value || mapSavedThisSession.value ? "刷新扫图画面" : "先开始记录";
 });
 const plainFreeRoamKeyboardLabel = computed(() => {
-  // 按扫地式建图顺序提示下一步，避免 operator 在未记录地图时先移动。
+  // 自由移动模式优先让车能低速动；建图模式仍保持先记录再扫图的顺序。
   if (!plainManualSafetyConfirmed.value) {
     return "先勾安全确认";
   }
-  if (!mapRuntimeStarted.value) {
+  if (plainFreeRoamKeyboardRequiresMapRuntime.value && !mapRuntimeStarted.value) {
     return "先开始记录";
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return "键盘已启用（按住才动）";
   }
-  return canArmKeyboardControl.value ? "启用键盘扫图" : "键盘条件未满足";
+  if (!canArmPlainFreeRoamKeyboard.value) {
+    return "键盘条件未满足";
+  }
+  return plainFreeRoamKeyboardRequiresMapRuntime.value ? "启用键盘扫图" : "启用键盘自由移动";
 });
 const plainFreeRoamNextActionLabel = computed(() => {
   // “下一步”只做流程导航，不能替现场确认、启动建图、发送手控或保存地图。
@@ -3440,6 +3448,17 @@ const plainFreeRoamNextActionLabel = computed(() => {
     }
     if (!robotApiBaseUrl.value.trim()) {
       return "下一步：连接小车";
+    }
+    if (!plainFreeRoamKeyboardRequiresMapRuntime.value) {
+      if (keyboardHeldDirection.value) {
+        return "下一步：松开按键停止";
+      }
+      if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+        return "下一步：按住方向键自由移动";
+      }
+      if (canArmPlainFreeRoamKeyboard.value) {
+        return "下一步：启用键盘自由移动";
+      }
     }
     return canStartPlainFreeRoamMapping.value ? "下一步：开始记录（不发车）" : "下一步：等待连接";
   }
@@ -3579,17 +3598,6 @@ const plainFreeRoamDriveStatus = computed(() => {
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
     return `扫图状态：${plainFreeRoamMotionModeName.value}停止请求已发送，继续看地图和雷达确认现场收口。`;
   }
-  if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
-    if (statusPrefix === "自由移动状态") {
-      const readyText = robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
-        ? `可点击${plainFreeRoamMotionStartButtonText.value}`
-        : "等待上车自由移动状态";
-      const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
-      const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
-      return `自由移动状态：${readyText}；当前没有运动发布${obstacleSuffix}；低速自移动不依赖雷达新鲜度；建图另看相机和雷达。`;
-    }
-    return "扫图状态：还没开始记录，键盘扫图锁定。";
-  }
   if (mapSavedThisSession.value) {
     if (plainFreeRoamSavedMapPreviewRefreshFailed.value) {
       const failureText = mapPreviewFailureText(mapPreviewResult.value);
@@ -3617,15 +3625,21 @@ const plainFreeRoamDriveStatus = computed(() => {
     if (plainFreeRoamLiveMapPreviewRefreshedForHold.value) {
       return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，地图画面已跟随刷新；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
     }
+    if (statusPrefix === "自由移动状态") {
+      return `自由移动状态：正在${keyboardDirectionPlainLabel.value}，松开即停；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
+    }
     return `扫图状态：正在${keyboardDirectionPlainLabel.value}扫图，松开即停；${keyboardForwardedPulseProgressText.value}${wheelText}。`;
   }
   if (keyboardControlStatus.value.startsWith("released")) {
-    return "扫图状态：已松开，正在发送停止；完成前不要继续移动。";
+    return `${statusPrefix}：已松开，正在发送停止；完成前不要继续移动。`;
   }
   if (keyboardStopFailedAfterPulse.value) {
-    return "扫图状态：停止请求失败，未证明小车已停止；请点红色停止并现场接管。";
+    return `${statusPrefix}：停止请求失败，未证明小车已停止；请点红色停止并现场接管。`;
   }
   if (keyboardControlStatus.value.startsWith("stop_sent")) {
+    if (statusPrefix === "自由移动状态") {
+      return "自由移动状态：已停止，按住方向键可继续低速移动。";
+    }
     const failureText = mapPreviewFailureText(mapPreviewResult.value);
     if (failureText) {
       return `扫图状态：已停止，但扫图画面刷新失败：${failureText}；重试刷新扫图画面后再保存地图。`;
@@ -3638,7 +3652,21 @@ const plainFreeRoamDriveStatus = computed(() => {
       : "扫图状态：已停止，先刷新扫图画面，再保存地图。";
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+    if (statusPrefix === "自由移动状态") {
+      return "自由移动状态：键盘已启用，按住方向键/WASD 低速移动；松开即停。";
+    }
     return "扫图状态：键盘已启用，按住方向键/WASD 低速扫图；松开即停。";
+  }
+  if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+    if (statusPrefix === "自由移动状态") {
+      const readyText = robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
+        ? `可点击${plainFreeRoamMotionStartButtonText.value}`
+        : "等待上车自由移动状态";
+      const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
+      const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
+      return `自由移动状态：${readyText}；当前没有运动发布${obstacleSuffix}；低速自移动不依赖雷达新鲜度；建图另看相机和雷达。`;
+    }
+    return "扫图状态：还没开始记录，键盘扫图锁定。";
   }
   if (mapRuntimeStarted.value) {
     return canArmPlainFreeRoamKeyboard.value

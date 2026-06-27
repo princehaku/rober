@@ -4567,6 +4567,42 @@ describe("App", () => {
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/radar/stop": radarStopFixture,
       "/api/robot-control/radar/start": radarStartFixture,
+      "/api/robot-control/base/manual": {
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "forward",
+        applied_direction: "forward",
+        failure_reason: "",
+        blocked_reasons: [],
+        remote_motion_key_values: {
+          feedback_during_motion_t1001_frame_count: "2",
+          wheel_feedback_latest_raw_left: "0.07",
+          wheel_feedback_latest_raw_right: "0.08",
+          wheel_feedback_lr_nonzero_proven: "true",
+        },
+        operator_report_preflight: {
+          status: "loaded",
+          failure_reason: "",
+          missing_fields: [],
+        },
+        ...PROOF_FLAGS,
+      },
+      "/api/robot-control/base/stop": {
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "stop",
+        applied_direction: "stop",
+        failure_reason: "",
+        blocked_reasons: [],
+        operator_report_preflight: {
+          status: "not_required_for_stop",
+          failure_reason: "",
+          missing_fields: [],
+        },
+        ...PROOF_FLAGS,
+      },
     });
 
     const wrapper = mount(App);
@@ -4585,6 +4621,36 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeDefined();
+    const manualCallsBeforeArm = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
+    await wrapper.find('[data-testid="plain-free-roam-keyboard"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeArm);
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：键盘已启用，按住方向键/WASD 低速移动；松开即停。");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("键盘已启用（按住才动）");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
+
+    await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerdown");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自由移动状态：正在前进，松开即停");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：松开按键停止");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm + 1);
+    await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerup");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
   });
 
   it("uses the visible map preview over stale fresh-map-preview missing tokens", async () => {
@@ -5301,7 +5367,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未 ready");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自由移动（随时可点）");
@@ -5363,7 +5431,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未 ready");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘自由移动");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
 

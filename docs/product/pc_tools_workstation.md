@@ -3364,6 +3364,12 @@ manual、keyboard、free-roam start、Nav2、delivery、stop 或 `/cmd_vel`，�
 安全确认已勾选但还未发布运动时，会写出“当前没有运动发布；当前雷达近障碍...”。该提示只是把 runtime 雷达事实前移到主操作卡片，
 不改变 `free_roam_autonomy_start_ready` 门禁，不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-27 17:22 起，普通首屏自由移动 / 建图卡片的键盘快捷入口按当前目标拆分：相机或雷达未 ready 时，
+勾安全确认后即可点“启用键盘自由移动”，启用本身不发送 manual，只有按住方向键/WASD 才走固定
+`/api/robot-control/base/manual` 低速 pulse，松开仍走 `/api/robot-control/base/stop`；相机和雷达都 ready、已进入可建图口径时，
+快捷键盘仍显示“先开始记录”，必须先启动地图记录再扫图。该改动只调整 PC 普通入口的 gate 和文案，不绕过后端 manual gate，
+不新增 `/cmd_vel`、Nav2、free-roam autonomy、delivery 或任意浏览器直连控制通道。
+
 2026-06-27 16:51 起，普通首屏共享画面状态在 MJPEG status 轮询失败时，也会从 Robot Control summary 的
 `source_diagnosis_plain_hint` 读取具体归因。这样 summary 已证明 `uvc_no_frame_not_exclusive` 时，画面卡片仍显示
 “不是页面独占、UVC 设备没有输出视频帧”，而不是退回泛化的“相机源没有输出首帧”。该改动只修正失败归因展示，
