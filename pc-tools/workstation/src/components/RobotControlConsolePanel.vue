@@ -1547,6 +1547,22 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   return "自由移动：等待上车状态。";
 }
 
+function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): string {
+  // 建图是“可验收材料”，不是低速移动门禁；首屏要把这层差异直接讲清楚。
+  const freeRoam = summary.readback_summary.free_roam;
+  const missing = freeRoamMappingMissingPlainLabels(freeRoam.mapping_missing);
+  if (
+    freeRoam.mapping_ready === "true"
+    || (mapRuntimeStarted.value && plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
+  ) {
+    return "建图：画面、雷达和地图记录已 ready，可按建图记录监看。";
+  }
+  if (missing.length > 0) {
+    return `建图：上车端缺口：${missing.join("、")}；自由移动不受影响。`;
+  }
+  return "建图：等待上车端建图 readiness；自由移动可按单独条件判断。";
+}
+
 function plainCurrentRadarFactText(): string {
   // 当前事实条要把雷达“有没有材料”和“是否实时”合在一句里，详细坐标口径仍留在地图 caption。
   const state = radarSummary.value.state;
@@ -1583,6 +1599,7 @@ const plainCurrentFactRows = computed(() => {
   const camera = summary.readback_summary.camera;
   rows.push(plainCurrentCameraFactText(camera));
   rows.push(plainCurrentRadarFactText());
+  rows.push(plainCurrentMappingFactText(summary));
 
   const nav2 = summary.readback_summary.nav2;
   if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
