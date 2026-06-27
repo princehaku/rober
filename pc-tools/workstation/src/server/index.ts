@@ -162,6 +162,8 @@ type CameraMjpegRelay = {
   controller: AbortController | null;
   contentType: string;
   upstreamActive: boolean;
+  latestFrameChunk: Buffer | null;
+  latestFrameUpdatedAtMs: number | null;
 };
 
 type CameraMjpegRelayLastFailure = {
@@ -1222,6 +1224,8 @@ function getCameraMjpegRelay(normalizedBaseUrl: URL): CameraMjpegRelay {
     controller: null,
     contentType: "",
     upstreamActive: false,
+    latestFrameChunk: null,
+    latestFrameUpdatedAtMs: null,
   };
   cameraMjpegRelays.set(key, relay);
   return relay;
@@ -1252,6 +1256,8 @@ function cameraMjpegStatusResponse(
     upstream_active: relay?.upstreamActive ?? false,
     content_type_loaded: Boolean(relay?.contentType),
     content_type: relay?.contentType ?? "",
+    cached_frame_loaded: Boolean(relay?.latestFrameChunk),
+    cached_frame_age_ms: relay?.latestFrameUpdatedAtMs ? Math.max(0, Date.now() - relay.latestFrameUpdatedAtMs) : null,
     shared_capture: true,
     exclusive_camera_claim: false,
     last_failure_reason: lastFailure?.failure_reason ?? "",
@@ -1363,6 +1369,19 @@ function startCameraMjpegClient(client: CameraMjpegRelayClient, contentType: str
   client.headersStarted = true;
 }
 
+function writeCachedCameraMjpegFrame(relay: CameraMjpegRelay, client: CameraMjpegRelayClient): void {
+  // 后进页面先收到最近一帧，再继续跟随实时流；这不会新开相机 reader，也不改变上车端占用。
+  if (!relay.latestFrameChunk || client.response.destroyed) {
+    return;
+  }
+  try {
+    startCameraMjpegClient(client, relay.contentType);
+    client.response.write(relay.latestFrameChunk);
+  } catch {
+    removeCameraMjpegClient(relay, client);
+  }
+}
+
 function removeCameraMjpegClient(relay: CameraMjpegRelay, client: CameraMjpegRelayClient): void {
   relay.clients.delete(client);
   if (relay.clients.size === 0) {
@@ -1467,10 +1486,13 @@ async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<v
       if (done) {
         break;
       }
+      const frameChunk = Buffer.from(value);
+      relay.latestFrameChunk = frameChunk;
+      relay.latestFrameUpdatedAtMs = Date.now();
       for (const client of Array.from(relay.clients)) {
         try {
           startCameraMjpegClient(client, contentType);
-          client.response.write(Buffer.from(value));
+          client.response.write(frameChunk);
         } catch {
           removeCameraMjpegClient(relay, client);
         }
@@ -2873,6 +2895,7 @@ export function createWorkstationApp(): express.Express {
     res.on("close", () => removeCameraMjpegClient(relay, client));
     if (relay.contentType) {
       startCameraMjpegClient(client, relay.contentType);
+      writeCachedCameraMjpegFrame(relay, client);
     }
     void ensureCameraMjpegRelayStarted(relay);
   });

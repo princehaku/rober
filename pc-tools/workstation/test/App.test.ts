@@ -1243,6 +1243,8 @@ const fixtures: Record<string, unknown> = {
     upstream_active: true,
     content_type_loaded: true,
     content_type: "multipart/x-mixed-replace; boundary=roberframe",
+    cached_frame_loaded: true,
+    cached_frame_age_ms: 120,
     shared_capture: true,
     exclusive_camera_claim: false,
     last_failure_reason: "",

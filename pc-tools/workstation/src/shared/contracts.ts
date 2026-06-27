@@ -2928,6 +2928,8 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   upstream_active: boolean;
   content_type_loaded: boolean;
   content_type: string;
+  cached_frame_loaded: boolean;
+  cached_frame_age_ms: number | null;
   shared_capture: true;
   exclusive_camera_claim: false;
   last_failure_reason: string;

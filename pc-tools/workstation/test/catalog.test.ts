@@ -9520,6 +9520,21 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
       expect(upstreamRequestCount).toBe(1);
 
+      const lateResponse = await openMjpegClient(endpoint);
+      openedClients.push(lateResponse);
+      expect(lateResponse.statusCode).toBe(200);
+      expect(String(lateResponse.headers["content-type"])).toContain("multipart/x-mixed-replace");
+      expect(lateResponse.headers["x-robber-proxy"]).toBe("camera-mjpeg-shared-readonly");
+      const lateText = await lateResponse.waitForText("jpeg");
+      expect(lateText).toContain("jpeg");
+      expect(upstreamRequestCount).toBe(1);
+      const statusResponse = await fetch(
+        `${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`,
+      );
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+      expect(statusBody.cached_frame_loaded).toBe(true);
+      expect(Number(statusBody.cached_frame_age_ms)).toBeGreaterThanOrEqual(0);
+
       upstreamControl.release?.();
       const secondResponse = await secondResponsePromise;
       openedClients.push(secondResponse);
