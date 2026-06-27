@@ -1260,16 +1260,38 @@ async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): P
     const lastOfferReason = shortText(lastOffer?.failure_reason, "");
     const sourceDiagnosis = asRecord(payload?.source_diagnosis)
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_diagnosis);
+    const sourceUsage = asRecord(payload?.source_usage)
+      ?? asRecord(asRecord(payload?.media_diagnostics)?.source_usage);
+    const selectedName = shortText(
+      payload?.selected_name
+        ?? asRecord(payload?.source_summary)?.selected_name
+        ?? asRecord(payload?.current_selection)?.selected_name,
+      "USB 摄像头",
+    );
     const diagnosisStatus = shortText(sourceDiagnosis?.status, "");
     const diagnosisPlainHint = shortText(sourceDiagnosis?.plain_hint, "");
     const diagnosisNextAction = shortText(sourceDiagnosis?.next_action, "");
-    const diagnosisNotExclusive = sourceDiagnosis?.not_exclusive === undefined
+    const rawDiagnosisNotExclusive = sourceDiagnosis?.not_exclusive === undefined
       ? "not_loaded"
       : String(sourceDiagnosis.not_exclusive);
     const firstFrameFailed = status === "source_first_frame_failed"
       || readiness === "first_frame_failed"
       || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(reason)
       || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(lastOfferReason);
+    const sourceUsageStatus = shortText(sourceUsage?.status, "");
+    const sourceUsageOwnerCount = sourceUsage?.owner_count === undefined ? "not_loaded" : String(sourceUsage.owner_count);
+    const sourceUsageLooksFree = sourceUsageStatus === "not_in_use" || sourceUsageOwnerCount === "0";
+    const canExplainNoFrameAsNotExclusive = firstFrameFailed && sourceUsageLooksFree && rawDiagnosisNotExclusive !== "true";
+    const resolvedDiagnosisStatus = canExplainNoFrameAsNotExclusive && diagnosisStatus !== "uvc_no_frame_not_exclusive"
+      ? "uvc_no_frame_not_exclusive"
+      : diagnosisStatus;
+    const resolvedDiagnosisPlainHint = canExplainNoFrameAsNotExclusive && (!diagnosisPlainHint || !diagnosisPlainHint.includes("不是页面独占"))
+      ? `不是页面独占：${selectedName} 当前没人占用，但 UVC 设备没有输出视频帧。`
+      : diagnosisPlainHint;
+    const resolvedDiagnosisNextAction = canExplainNoFrameAsNotExclusive
+      ? "check_usb_camera_input_power_or_known_good_uvc"
+      : diagnosisNextAction;
+    const resolvedDiagnosisNotExclusive = canExplainNoFrameAsNotExclusive ? "true" : rawDiagnosisNotExclusive;
     const sourceSelectedNotProbed = status === "source_not_probed" || readiness === "source_selected_not_probed";
     const hasUsefulSourceDiagnosis = Boolean(
       diagnosisStatus && diagnosisStatus !== "not_loaded" && diagnosisStatus !== "none",
@@ -1282,20 +1304,20 @@ async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): P
         failure_reason: "",
         remote_http_status: response.status,
         failed_at_ms: null,
-        source_diagnosis_status: diagnosisStatus || readiness || status || "not_loaded",
-        source_diagnosis_plain_hint: diagnosisPlainHint || "相机源已选中但还没读过首帧；打开共享预览或运行首帧检查。",
-        source_diagnosis_next_action: diagnosisNextAction || "open_shared_preview_or_run_first_frame_probe",
-        source_diagnosis_not_exclusive: diagnosisNotExclusive,
+        source_diagnosis_status: resolvedDiagnosisStatus || readiness || status || "not_loaded",
+        source_diagnosis_plain_hint: resolvedDiagnosisPlainHint || "相机源已选中但还没读过首帧；打开共享预览或运行首帧检查。",
+        source_diagnosis_next_action: resolvedDiagnosisNextAction || "open_shared_preview_or_run_first_frame_probe",
+        source_diagnosis_not_exclusive: resolvedDiagnosisNotExclusive,
       };
     }
     return {
       failure_reason: "camera_source_first_frame_failed",
       remote_http_status: response.status,
       failed_at_ms: Date.now(),
-      source_diagnosis_status: diagnosisStatus || "not_loaded",
-      source_diagnosis_plain_hint: diagnosisPlainHint || "not_loaded",
-      source_diagnosis_next_action: diagnosisNextAction || "not_loaded",
-      source_diagnosis_not_exclusive: diagnosisNotExclusive,
+      source_diagnosis_status: resolvedDiagnosisStatus || "not_loaded",
+      source_diagnosis_plain_hint: resolvedDiagnosisPlainHint || "not_loaded",
+      source_diagnosis_next_action: resolvedDiagnosisNextAction || "not_loaded",
+      source_diagnosis_not_exclusive: resolvedDiagnosisNotExclusive,
     };
   } catch {
     return null;

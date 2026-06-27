@@ -9237,6 +9237,83 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation camera MJPEG status derives non-exclusive no-frame diagnosis from source usage", async () => {
+    // live 形态可能只在 health 里报告 source_first_frame_failed 和 not_in_use；status 仍要说清不是页面独占。
+    let healthRequestCount = 0;
+    let mjpegRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_first_frame_failed",
+          video_source: "/dev/video1",
+          selected_name: "USB Composite Device: DV20 USB",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            owners: [],
+          },
+          source_diagnosis: {
+            status: "source_first_frame_failed",
+            plain_hint: "USB Composite Device: DV20 USB 没有输出首帧；先看占用和格式尝试，再检查 USB/供电。",
+            next_action: "inspect_usage_and_format_attempts",
+            not_exclusive: false,
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.proxy_status).toBe("status_loaded");
+      expect(statusBody.client_count).toBe(0);
+      expect(statusBody.upstream_active).toBe(false);
+      expect(statusBody.last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(statusBody.last_remote_http_status).toBe(200);
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBe(1);
+      expect(mjpegRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("waits for slower camera health before returning MJPEG source diagnosis", async () => {
     // 真实上位机 camera health 偶发超过 2.5s；status 要和 summary 共用宽读取窗口，否则普通首屏会丢掉“不是独占”的诊断。
     let healthRequestCount = 0;
