@@ -3929,6 +3929,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2).toMatchObject({
         status: expect.any(String),
         planner_server_active: "false",
+        controller_server_active: expect.any(String),
+        controller_server_requested: expect.any(String),
         path_generated: "false",
         path_generation_succeeded: "false",
         path_point_count: "0",
@@ -4099,6 +4101,17 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
         },
       },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_controller_active: false,
+          latest_controller_requested: true,
+        },
+      },
     });
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
@@ -4169,6 +4182,17 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
         },
       },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_controller_active: false,
+          latest_controller_requested: true,
+        },
+      },
     });
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
@@ -4181,7 +4205,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("pwm");
       expect(summary.readback_summary.nav2.goal_execution_base_command_mode_counts).toBe("{\"pwm\":49}");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toContain("用 ROS 重跑图上路线");
+      expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
+      expect(summary.readback_summary.nav2.controller_server_requested).toBe("true");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；Nav2 controller 当前未 active，重跑时需先让 controller active；勾选行程前安全确认后用 ROS 重跑图上路线");
     } finally {
       await robotApi.close();
     }

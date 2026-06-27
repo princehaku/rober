@@ -2470,6 +2470,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       status: string;
       nav2_status: string;
       planner_server_active: string;
+      controller_server_active: string;
+      controller_server_requested: string;
       path_generated: string;
       path_generation_succeeded: string;
       path_point_count: string;

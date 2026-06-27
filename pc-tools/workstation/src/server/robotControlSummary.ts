@@ -412,6 +412,10 @@ const STATUS_KEYS = [
   "amcl_pose_observed",
   "localization_tf_observed",
   "planner_server_active",
+  "controller_server_active",
+  "controller_server_requested",
+  "latest_controller_active",
+  "latest_controller_requested",
   "latest_path_generated",
   "latest_proof_status",
   "feedback_ack_status",
@@ -3436,6 +3440,8 @@ function nav2SummaryFromReadbacks(
     status: summaryStatus,
     nav2_status: nav2Status?.status ?? "not_loaded",
     planner_server_active: booleanSummaryValue(proof.planner_server_active),
+    controller_server_active: proofText(readbacks, ["controller_server_active", "latest_controller_active"]) ?? "not_loaded",
+    controller_server_requested: proofText(readbacks, ["controller_server_requested", "latest_controller_requested"]) ?? "not_loaded",
     path_generated: booleanSummaryValue(proof.path_generated),
     path_generation_succeeded: booleanSummaryValue(proof.path_generation_succeeded),
     path_point_count: proof.path_point_count === null ? "not_loaded" : String(proof.path_point_count),
@@ -3749,6 +3755,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         status: "not_loaded",
         nav2_status: "not_loaded",
         planner_server_active: "not_loaded",
+        controller_server_active: "not_loaded",
+        controller_server_requested: "not_loaded",
         path_generated: "not_loaded",
         path_generation_succeeded: "not_loaded",
         path_point_count: "not_loaded",
@@ -4016,6 +4024,9 @@ function nav2GoalBoundaryGuidance(
   const right = nav2.goal_execution_base_feedback_latest_right_speed || "not_loaded";
   const currentMode = nav2.goal_execution_base_command_mode || "not_loaded";
   const nextMode = nav2.next_execution_base_command_mode || "not_loaded";
+  const controllerInactiveText = nav2.controller_server_active === "false"
+    ? "；Nav2 controller 当前未 active，重跑时需先让 controller active"
+    : "";
   const modeChanged = !["", "not_loaded"].includes(currentMode) && !["", "not_loaded"].includes(nextMode) && currentMode !== nextMode;
   const modeLabel = modeChanged
     ? `上次 ${currentMode}，下次 ${nextMode}`
@@ -4035,7 +4046,7 @@ function nav2GoalBoundaryGuidance(
     return {
       ...base,
       nav2_goal_wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
-      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零；勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`,
+      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${controllerInactiveText}；勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`,
       nav2_goal_execution_mode_label: modeLabel,
     };
   }

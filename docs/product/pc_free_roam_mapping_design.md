@@ -331,3 +331,10 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 地图图片失败或 overlay 读不到时不互相冒充：图片状态仍由 `/api/map/preview` 决定，雷达/位姿缺口只写入
 `radar_overlay.overlay_status` 与 `radar_overlay.blocked_reasons`。这让 PC 地图预览响应本身具备
 “图片 + 雷达点 + 小车位姿”的同轮只读材料，前端无需再靠多个接口异步猜测地图上应显示什么。
+
+2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
+`controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
+但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
+`safe_command_boundary.nav2_goal_next_action` 会同时说明“controller 当前未 active”和“下一次需用当前建议模式重跑并复验同窗口 L/R”。
+这不改变安全门禁，不自动启动 Nav2，不发送 `/cmd_vel`；它只把“规划成功 / action 成功 / controller 未 active / wheel raw 未闭环”
+四件事拆开展示，避免把自动驾驶没动误判成相机或雷达阻塞。
