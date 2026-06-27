@@ -3260,14 +3260,9 @@ function nav2SummaryFromReadbacks(
   const goalExecutionResultStatus = summaryValueText(goalResultPayload, ["result_status"]);
   const wheelFeedbackProven = summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]);
   const lastBaseMode = summaryValueText(goalResultPayload, ["base_command_mode"]);
-  const nextBaseMode = statusReadback?.key_values.nav2_base_command_mode
+  const configuredNextBaseMode = statusReadback?.key_values.nav2_base_command_mode
     ?? baseStatusReadback?.key_values.nav2_base_command_mode
     ?? "not_loaded";
-  const modeRerunStatus = !["", "not_loaded"].includes(lastBaseMode)
-    && !["", "not_loaded"].includes(nextBaseMode)
-    && lastBaseMode !== nextBaseMode
-    ? `pending_${nextBaseMode}_rerun_after_${lastBaseMode}`
-    : "not_required";
   const baseCommandNonzeroObserved = summaryValueText(baseCommandSummary, ["nonzero_command_observed"]);
   const baseCommandNonzeroCount = summaryValueText(baseCommandSummary, ["nonzero_command_count"]);
   const parsedBaseCommandNonzeroCount = Number(baseCommandNonzeroCount);
@@ -3283,6 +3278,19 @@ function nav2SummaryFromReadbacks(
     ? JSON.stringify({ [lastBaseMode]: parsedBaseCommandNonzeroCount })
     : baseCommandModeCounts;
   const goalSucceeded = goalExecutionStatus === "goal_succeeded" || goalExecutionResultStatus === "succeeded";
+  const nextBaseMode = nav2NextExecutionBaseCommandMode({
+    configuredNextBaseMode,
+    lastBaseMode,
+    goalSucceeded,
+    wheelFeedbackProven,
+    baseCommandNonzeroObserved,
+    parsedBaseCommandNonzeroCount,
+  });
+  const modeRerunStatus = !["", "not_loaded"].includes(lastBaseMode)
+    && !["", "not_loaded"].includes(nextBaseMode)
+    && lastBaseMode !== nextBaseMode
+    ? `pending_${nextBaseMode}_rerun_after_${lastBaseMode}`
+    : "not_required";
   const summaryStatus = goalExecutionProven === "true" && goalExecutionStatus !== "not_loaded"
     ? goalExecutionStatus
     : goalSucceeded && wheelFeedbackProven === "false"
@@ -3327,6 +3335,31 @@ function nav2SummaryFromReadbacks(
     goal_execution_generated_at_ms: summaryValueText(goalResultPayload, ["generated_at_ms", "nav2_generated_at_ms"]),
     goal_execution_response_generated_at_ms: summaryValueText(goalPayload, ["response_generated_at_ms", "generated_at_ms"]),
   };
+}
+
+function nav2NextExecutionBaseCommandMode(args: {
+  configuredNextBaseMode: string;
+  lastBaseMode: string;
+  goalSucceeded: boolean;
+  wheelFeedbackProven: string;
+  baseCommandNonzeroObserved: string;
+  parsedBaseCommandNonzeroCount: number;
+}): string {
+  // Vendor index 要求 T=13 未经硬件闭环时可回退 T=1；避免 ROS/T=13 零轮速后无限继续 ROS 重跑。
+  const configured = args.configuredNextBaseMode || "not_loaded";
+  const last = args.lastBaseMode || "not_loaded";
+  const nonzeroCommandObserved = args.baseCommandNonzeroObserved === "true"
+    || (Number.isFinite(args.parsedBaseCommandNonzeroCount) && args.parsedBaseCommandNonzeroCount > 0);
+  const wheelZeroAfterCommand = args.goalSucceeded
+    && args.wheelFeedbackProven === "false"
+    && nonzeroCommandObserved;
+  if (wheelZeroAfterCommand && last === "ros") {
+    return "speed";
+  }
+  if (wheelZeroAfterCommand && last === "pwm") {
+    return "ros";
+  }
+  return configured;
 }
 
 function nav2GoalExecutionProvenText(goalResultPayload: JsonRecord | null): string {

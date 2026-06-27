@@ -4187,6 +4187,71 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary falls back to speed T1 after ROS T13 Nav2 wheel-zero rerun", async () => {
+    // Vendor index 明确 T=13 未闭环时要能回退 T=1，不能让自动驾驶无限重复同一个 ROS/T=13 零轮速路径。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          base: {
+            control_policy: {
+              nav2_base_command_mode: "ros",
+            },
+          },
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "not_proven",
+          latest_result: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            hil_pass: false,
+            evidence_ref: "o11-nav2-goal-execution-ros-zero-wheel",
+            feedback_sample_count: 8,
+            robot_control_executed: true,
+            sends_base_motion_commands: true,
+            uses_base_uart: true,
+            base_command_mode: "ros",
+            base_command_summary: {
+              sample_count: 20,
+              nonzero_command_count: 19,
+              nonzero_command_observed: true,
+              latest_nonzero_command_mode: "ros",
+              command_mode_counts: { ros: 20 },
+            },
+            base_feedback_summary: {
+              sample_count: 42,
+              nonzero_sample_count: 0,
+              wheel_feedback_lr_nonzero_proven: false,
+              latest_pair: { left_speed: 0, right_speed: 0 },
+            },
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.goal_execution_base_command_mode).toBe("ros");
+      expect(summary.readback_summary.nav2.next_execution_base_command_mode).toBe("speed");
+      expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_speed_rerun_after_ros");
+      expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("ros");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toContain("用 SPEED 重跑图上路线");
+      expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 ros，下次 speed");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary does not treat Nav2 action success as route execution when HIL is false", async () => {
     // 真实现场可出现 NavigateToPose succeeded 但 hil_pass=false；PC 不能把它说成完整路线已执行。
     const robotApi = await listenRobotApiReadbackByPath({
