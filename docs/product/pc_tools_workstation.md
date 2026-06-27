@@ -3510,3 +3510,8 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 会把 `planner_server_active=false` 结构化为 `planner_server_inactive`。因此 live 同时出现路线未生成、robot map pose
 未读到、planner/controller inactive 时，普通 PC 和自动化脚本不再只能从中文 `当前事实` 推断 planner 缺口；
 `nav2_goal_next_action` 也会提示先生成图上路线、读到小车地图位置，并同时恢复 Nav2 planner/controller。
+
+2026-06-27 23:39 起，普通首屏的自动驾驶诊断也消费同一 service blocker：
+旧 Nav2 action 已发非零底盘命令但 wheel raw L/R 仍为 `0/0` 时，如果 planner/controller 当前未 active，
+`当前事实` 会显示 `Nav2 planner 和 Nav2 controller 未 active，重跑前先恢复`，再引导安全确认后重跑路线并复验同窗口 L/R。
+这让普通用户看到的首屏文案和 summary API 的 blocker 完全一致。

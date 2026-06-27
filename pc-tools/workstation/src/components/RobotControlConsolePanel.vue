@@ -5153,11 +5153,19 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
   const modeLabel = nav2BaseCommandModeVendorLabel(values);
   const modeText = modeLabel ? `上次 ${modeLabel} 执行` : "上次执行";
   const pendingModeText = nav2PendingModeRerunText(values);
-  const controllerText = robotSummary.value?.readback_summary.nav2.controller_server_active === "false"
-    || robotSummary.value?.safe_command_boundary.nav2_goal_blockers?.includes("controller_server_inactive")
-    ? "Nav2 controller 未 active，重跑前先恢复；"
+  const summary = robotSummary.value;
+  const inactiveServices = [
+    summary?.readback_summary.nav2.planner_server_active === "false"
+      || summary?.safe_command_boundary.nav2_goal_blockers?.includes("planner_server_inactive")
+      ? "Nav2 planner" : "",
+    summary?.readback_summary.nav2.controller_server_active === "false"
+      || summary?.safe_command_boundary.nav2_goal_blockers?.includes("controller_server_inactive")
+      ? "Nav2 controller" : "",
+  ].filter(Boolean);
+  const serviceText = inactiveServices.length
+    ? `${inactiveServices.join(" 和 ")} 未 active，重跑前先恢复；`
     : "";
-  return `自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；${controllerText}下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
+  return `自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；${serviceText}下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
 }
 
 function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): string {

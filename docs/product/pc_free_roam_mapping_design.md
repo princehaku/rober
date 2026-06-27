@@ -384,6 +384,10 @@ runtime `/scan` 说明，例如 `雷达未刷新（旧 /scan 距离 0.04m，约 
 `planner_server_active=false` 会进入 `nav2_goal_blockers=planner_server_inactive`，与
 `controller_server_inactive` 同级展示。该变更只影响只读 readiness 和文案，不启动 Nav2、不生成路线、不发送底盘命令。
 
+2026-06-27 23:39 起，普通首屏自动驾驶行也同步该结构化缺口：planner/controller 当前 inactive 时，
+用户不需要打开高级诊断或读取 API，就能在 `当前事实` 里看到重跑前应先恢复 Nav2 planner/controller。
+该提示只影响 PC 文案，不改变发车前安全确认、不绕过 Nav2 服务状态。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，
