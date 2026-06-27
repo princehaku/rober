@@ -140,6 +140,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `source_first_frame_failed` 且 `source_usage.status=not_in_use` 或 `owner_count=0` 时，会把诊断统一提升为
   `uvc_no_frame_not_exclusive`，并返回 `source_diagnosis_not_exclusive=true`。这样 summary、MJPEG status
   和普通首屏都一致说明“不是页面独占，是 UVC 没有输出真实帧”，同时 status 查询仍不会打开 MJPEG 上游流。
+- 2026-06-28 04:13 起，普通首屏同样覆盖 live 的降级形状：即使 `source_usage_status/selected_name`
+  暂时是 `not_loaded`，只要 summary 已返回 `source_diagnosis_status=uvc_no_frame_not_exclusive`，
+  当前事实条仍显示“共享预览支持多人观看、不是独占、UVC 没有输出视频帧”，不会退回成“可能页面独占”或“等待画面”。
 - 2026-06-26 22:05 起，“自动扫图准备”从只读状态机门禁推进到上车端受控发车门禁：PC 按钮仍只调用固定 start 代理，
   不直接发布 `/cmd_vel`，但上车端会打开 free-roam 节点双锁，让策略节点按 `/scan`、`/map`
   和 watchdog 决策低速移动。若摄像头不 ready，start 不再返回 `blocked_sensor_readiness`，而是在 `sensor_readiness.mapping_readiness`

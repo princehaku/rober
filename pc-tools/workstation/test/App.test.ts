@@ -18883,6 +18883,42 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });
 
+  it("uses camera diagnosis when source usage is not loaded", async () => {
+    // live 形状可能只有 uvc_no_frame_not_exclusive 诊断，usage/selected device 暂时 not_loaded；首屏仍要说不是独占。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.devices_status = "loaded";
+    summaryFixture.readback_summary.camera.preview_status = "idle_not_started";
+    summaryFixture.readback_summary.camera.shared_preview_client_count = "0";
+    summaryFixture.readback_summary.camera.shared_preview_upstream_active = "false";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    summaryFixture.readback_summary.camera.shared_preview_contract = "single_shared_capture_for_multiple_clients";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "not_loaded";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_loaded";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "not_loaded";
+    summaryFixture.readback_summary.camera.selected_name = "not_loaded";
+    summaryFixture.readback_summary.camera.source_diagnosis_status = "uvc_no_frame_not_exclusive";
+    summaryFixture.readback_summary.camera.source_diagnosis_plain_hint = "不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。";
+    summaryFixture.readback_summary.camera.source_diagnosis_next_action = "check_usb_camera_input_power_or_known_good_uvc";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-camera-start"]').text()).toBe("重试共享画面");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，UVC 没有输出视频帧。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）");
+    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("不是页面独占");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("source_usage_status");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("uvc_no_frame_not_exclusive");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("keeps failure status after Start Preview fails instead of collapsing to stopped_by_user", async () => {
     // Start 失败后仍要保留失败态，避免 operator 只看到 stopped_by_user 而丢失归因。
     const mockedFetch = vi.fn(async (url: string) => {

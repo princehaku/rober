@@ -552,7 +552,7 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
   }
   if (camera.source_diagnosis_status === "uvc_no_frame_not_exclusive") {
     const notExclusiveText = prefix ? "" : "不是页面独占，";
-    const deviceText = selectedName ? `${selectedName} 的 UVC` : "UVC";
+    const deviceText = selectedName && selectedName !== "摄像头" ? `${selectedName} 的 UVC` : "UVC";
     return `画面：${prefix}${deviceText} ${notExclusiveText}没有输出视频帧。`;
   }
   if (camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0") {
