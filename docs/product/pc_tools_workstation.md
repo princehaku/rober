@@ -3118,3 +3118,10 @@ free-roam 或 `/cmd_vel` 行为。
 不在普通用户首屏暴露；该改动不自动执行路线、不放宽安全确认、不确认 delivery success。硬件资料依据
 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`CMD_ROS_CTRL/T=13` 是 ROS 控制入口，
 `CMD_PWM_INPUT/T=11` 是 PWM 诊断入口。
+
+2026-06-27 08:00 起，PC `GET /api/robot-control/camera/mjpeg/status` 在不创建 MJPEG client 的前提下，会短读
+上车 `/api/camera/health`。如果共享 relay 刚重启还没有 `last_failure_reason`，但 health 已证明
+`source_first_frame_failed/first_frame_failed/capture_read_returned_false`，status 会返回
+`last_failure_reason=camera_source_first_frame_failed`。普通首屏翻译为“相机源没有输出首帧；设备可被共享读取，但当前没有真实画面”，
+避免多人进入页面时把无首帧误判成浏览器独占。该只读 health 检查不会打开 MJPEG 上游流、不会创建 camera peer、
+不会触发 manual、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。

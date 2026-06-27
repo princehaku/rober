@@ -8015,10 +8015,16 @@ describe("workstation fail-closed API contracts", () => {
   }, 10_000);
 
   it("workstation camera MJPEG status is readonly and does not open upstream capture", async () => {
-    // status 只读 PC Node relay 表；没有页面观看时不能为了查状态去打开相机。
-    let upstreamRequestCount = 0;
+    // status 只允许短读 health 解释源状态；没有页面观看时不能为了查状态去打开 MJPEG 相机流。
+    let healthRequestCount = 0;
+    let mjpegRequestCount = 0;
     const upstreamServer = http.createServer((req, res) => {
-      upstreamRequestCount += 1;
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+      }
       res.statusCode = 404;
       res.end(JSON.stringify({ method: req.method, url: req.url }));
     });
@@ -8060,7 +8066,69 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.last_remote_http_status).toBe(null);
       expect(statusBody.last_failure_at_ms).toBe(null);
       expect(statusBody.robot_control_executed).toBe(false);
-      expect(upstreamRequestCount).toBe(0);
+      expect(healthRequestCount).toBe(1);
+      expect(mjpegRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation camera MJPEG status reports source first-frame failure without opening the stream", async () => {
+    // live 7001 形态是 health 已知 source_first_frame_failed，但 relay 刚重启还没有 MJPEG last_failure。
+    let healthRequestCount = 0;
+    let mjpegRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "capture_read_returned_false",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.proxy_status).toBe("status_loaded");
+      expect(statusBody.client_count).toBe(0);
+      expect(statusBody.upstream_active).toBe(false);
+      expect(statusBody.last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(statusBody.last_remote_http_status).toBe(200);
+      expect(typeof statusBody.last_failure_at_ms).toBe("number");
+      expect(statusBody.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBe(1);
+      expect(mjpegRequestCount).toBe(0);
     } finally {
       await workstation.close();
       await upstream.close();

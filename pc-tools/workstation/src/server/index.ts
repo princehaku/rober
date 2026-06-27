@@ -1196,10 +1196,11 @@ function cameraMjpegStatusResponse(
   normalizedBaseUrl: URL | null,
   relay: CameraMjpegRelay | null,
   failureReason = "",
+  sourceFailure: CameraMjpegRelayLastFailure | null = null,
 ): RobotControlCameraMjpegStatusResponse {
   // 这个端点只读本机 relay 状态，帮助现场判断多个 PC 页面是否共享同一个上游视频流。
   const relayKey = normalizedBaseUrl ? cameraMjpegRelayKey(normalizedBaseUrl) : "not_loaded";
-  const lastFailure = normalizedBaseUrl ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
+  const lastFailure = normalizedBaseUrl ? cameraMjpegRelayLastFailures.get(relayKey) ?? sourceFailure : sourceFailure;
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -1222,6 +1223,38 @@ function cameraMjpegStatusResponse(
     robot_control_executed: false,
     ...PROOF_FLAGS,
   };
+}
+
+async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): Promise<CameraMjpegRelayLastFailure | null> {
+  // status 端点不创建 MJPEG client；只短读 health，把“源无首帧”贴到共享预览状态上。
+  try {
+    const response = await fetch(endpointUrl(normalizedBaseUrl, "/api/camera/health"), {
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const payload = asRecord(await response.json().catch(() => null));
+    const status = shortText(payload?.status, "");
+    const readiness = shortText(payload?.source_readiness, "");
+    const reason = shortText(payload?.source_failure_reason, "");
+    const lastOffer = asRecord(asRecord(payload?.media_diagnostics)?.last_offer_error);
+    const lastOfferReason = shortText(lastOffer?.failure_reason, "");
+    const firstFrameFailed = status === "source_first_frame_failed"
+      || readiness === "first_frame_failed"
+      || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(reason)
+      || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(lastOfferReason);
+    if (!firstFrameFailed) {
+      return null;
+    }
+    return {
+      failure_reason: "camera_source_first_frame_failed",
+      remote_http_status: response.status,
+      failed_at_ms: Date.now(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function startCameraMjpegClient(client: CameraMjpegRelayClient, contentType: string): void {
@@ -2660,7 +2693,8 @@ export function createWorkstationApp(): express.Express {
       return;
     }
     const relayKey = cameraMjpegRelayKey(normalized.normalized);
-    res.json(cameraMjpegStatusResponse(sourceBaseUrl, normalized.normalized, cameraMjpegRelays.get(relayKey) ?? null));
+    const sourceFailure = await cameraSourceFirstFrameFailureForStatus(normalized.normalized);
+    res.json(cameraMjpegStatusResponse(sourceBaseUrl, normalized.normalized, cameraMjpegRelays.get(relayKey) ?? null, "", sourceFailure));
   });
 
   workstationApp.get("/api/robot-control/camera/mjpeg", async (req, res) => {
