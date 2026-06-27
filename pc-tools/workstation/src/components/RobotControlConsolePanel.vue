@@ -9026,8 +9026,8 @@ async function runRefreshAction(
   }
 }
 
-async function refreshRadarProof(options: { focusAfterReady?: boolean } = {}): Promise<void> {
-  // Radar refresh 只刷新 no-motion scan proof snapshot，不开启任何底盘动作。
+async function refreshRadarProof(options: { focusAfterReady?: boolean; mapPreviewAfter?: boolean } = {}): Promise<void> {
+  // Radar refresh 只刷新 no-motion scan proof snapshot；随后默认刷新地图预览，让 marker 跟着同轮雷达材料更新。
   if (mapWysiwygRefreshPending.value) {
     return;
   }
@@ -9042,6 +9042,9 @@ async function refreshRadarProof(options: { focusAfterReady?: boolean } = {}): P
     radarStatusResult.value = await getRobotControlRadarStatus(robotApiBaseUrl.value);
   } catch (err) {
     radarStatusResult.value = makeRadarStatusFallback(err instanceof Error ? err.message : "radar_status_request_failed");
+  }
+  if (options.mapPreviewAfter !== false) {
+    await refreshMapPreview();
   }
   if (options.focusAfterReady !== false) {
     await focusPlainGoalProgressAfterRadarReady();
@@ -10082,7 +10085,7 @@ async function startFreeRoamAutonomy(): Promise<void> {
   }
   await refreshConsole();
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
-    await refreshRadarProof({ focusAfterReady: false });
+    await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: false });
   }
   await refreshMapPreview({ countForFreeRoamSession: true });
 }

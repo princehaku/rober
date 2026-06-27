@@ -15265,6 +15265,9 @@ describe("App", () => {
     const firstJogCallsBeforeRadarRefresh = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/first-jog?"),
     ).length;
+    const mapPreviewCallsBeforeRadarRefresh = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length;
 
     await wrapper.findAll("button").find((button) => button.text() === "刷新雷达")?.trigger("click");
     await flushPromises();
@@ -15291,6 +15294,9 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/first-jog?"),
     ).length).toBe(firstJogCallsBeforeRadarRefresh);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length).toBe(mapPreviewCallsBeforeRadarRefresh + 1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     const summaryCallsAfterRadar = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterRadar).toBeGreaterThan(summaryCallsBefore);

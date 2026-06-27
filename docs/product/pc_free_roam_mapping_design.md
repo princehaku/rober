@@ -523,6 +523,11 @@ wheel raw L/R。只有图上路线和服务都 ready 时，才显示直接重跑
 只要 summary 看到 `planner_server_inactive` 或 `controller_server_inactive`，并且路线读数未 ready，下一步统一写成
 “先恢复 Nav2 planner/controller，再生成图上路线并读到小车地图位置”。页面不再出现“先生成路线；同时恢复服务”的反向顺序。
 
+2026-06-28 11:50 起，普通雷达刷新/启动后的 WYSIWYG 闭环再收紧：
+`refreshRadarProof()` 在完成固定 `/api/robot-control/radar/scan-proof/refresh` 和只读 `/api/robot-control/radar/status`
+后，默认立即刷新一次 `/api/robot-control/map/preview`。这样雷达开始或刷新后的地图 marker、雷达点口径和真实地图画面同轮更新；
+free-roam start 仍保留自己的建图会话地图刷新，避免重复计数。该路径不发送 manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-28 01:59 起，高级 Nav2 目标预检/执行入口也和普通首屏使用同一个“现场安全确认”：
 预检按钮不再需要单独勾“确认仅做导航目标预检”，请求体固定发送兼容字段 `confirm_navigation_preflight=true`；
 执行按钮不再维护独立 `confirmNavigationExecution`，而是读取全页面统一的 `plainUnifiedSafetyConfirmed`。
