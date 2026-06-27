@@ -7625,7 +7625,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("行程进度：路线返回成功并读到 239 次反馈，但Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("轮速非零未证明，但车身姿态有变化，pitch 变化 24.210531");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线");
@@ -7638,7 +7638,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("Nav2 仍需同窗口复验");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -10101,6 +10101,8 @@ describe("App", () => {
           nav2_goal_execution_proven: "false",
           robot_control_executed: "true",
           base_command_mode: "pwm",
+          next_execution_base_command_mode: "ros",
+          mode_rerun_status: "pending_ros_rerun_after_pwm",
           base_command_nonzero_observed: "true",
           base_command_nonzero_count: "49",
           base_feedback_sample_count: "216",
@@ -10129,9 +10131,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("不是雷达或相机阻塞");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("优先查电机使能、供电、底盘模式和控制模式");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 PWM 结果，等待 ROS 复验");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("到达未证明");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toContain("旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("Nav2 已发非零底盘命令 49 条");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：重新执行完整行程，并确认执行窗口 wheel raw L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：下次将用 ros 重新执行这条图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新执行完整行程。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
@@ -10172,6 +10177,8 @@ describe("App", () => {
           sends_base_motion_commands: "true",
           uses_base_uart: "true",
           base_command_mode: "pwm",
+          next_execution_base_command_mode: "ros",
+          mode_rerun_status: "pending_ros_rerun_after_pwm",
           base_command_nonzero_observed: "true",
           base_command_nonzero_count: "49",
           base_feedback_sample_count: "239",
@@ -10203,7 +10210,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速非零未证明，但车身姿态有变化");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速 L/R=0/0 待复验");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 PWM 结果，等待 ROS 复验");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("重新执行完整行程");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");

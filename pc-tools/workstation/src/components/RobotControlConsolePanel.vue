@@ -2220,8 +2220,9 @@ function latestNavGoalOverlay() {
   const failureText = state === "行程未通过"
     ? plainTripFailureReasonText(navGoalExecutionResult.value ?? navGoalExecutionLatestResult.value, values)
     : "";
-  const label = failureText ? `${state}：${failureText}` : state;
-  const failureAria = failureText ? `，失败原因${failureText}` : "";
+  const controlUnprovenText = state === "到达未证明" ? nav2MapControlUnprovenText(values) : "";
+  const label = failureText ? `${state}：${failureText}` : controlUnprovenText ? `${state}：${controlUnprovenText}` : state;
+  const failureAria = failureText ? `，失败原因${failureText}` : controlUnprovenText ? `，${controlUnprovenText}` : "";
   return {
     label,
     state,
@@ -4825,6 +4826,11 @@ function nav2PendingModeRerunText(values: Record<string, string> | undefined): s
   return `旧 ${lastMode} 结果，等待 ${nextMode} 复验`;
 }
 
+function nav2MapControlUnprovenText(values: Record<string, string> | undefined): string {
+  // 地图标记空间很短；只有存在模式切换复验时才额外贴到地图，普通未证明仍保留原短状态。
+  return nav2PendingModeRerunText(values);
+}
+
 function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | undefined): string {
   // 用户问“自动驾驶为什么不动”时，首屏要把根因从行程事实里拎出来：不是摄像头/雷达，而是底盘闭环。
   if (!nav2GoalSucceeded(values) || !nav2BaseCommandWithoutWheelFeedback(values)) {
@@ -5839,7 +5845,10 @@ function plainMapTripExecutionLabel(): string {
     return "行程执行：旧到达记录";
   }
   if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
-    return nav2BaseCommandWithoutWheelFeedback(values) ? "行程执行：路线返回成功，底盘反馈 0/0" : "行程执行：路线返回成功，真车未证明";
+    const mapRerunText = nav2MapControlUnprovenText(values);
+    return nav2BaseCommandWithoutWheelFeedback(values)
+      ? mapRerunText ? `行程执行：路线返回成功，底盘反馈 0/0，${mapRerunText}` : "行程执行：路线返回成功，底盘反馈 0/0"
+      : mapRerunText ? `行程执行：路线返回成功，${mapRerunText}` : "行程执行：路线返回成功，真车未证明";
   }
   if (nav2GoalSucceeded(values)) {
     return "行程执行：已到达，缺反馈";
