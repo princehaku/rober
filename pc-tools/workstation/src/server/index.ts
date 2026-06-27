@@ -45,6 +45,7 @@ import {
   ROBOT_CONTROL_HIL_CHECKLIST,
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+  ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS,
   fetchFirstJogOperatorReportPreflight,
   notRequiredConfirmedManualOperatorReportPreflight,
   notRequiredOperatorReportPreflight,
@@ -1241,10 +1242,10 @@ function cameraMjpegStatusResponse(
 }
 
 async function cameraSourceFirstFrameFailureForStatus(normalizedBaseUrl: URL): Promise<CameraMjpegRelayLastFailure | null> {
-  // status 端点不创建 MJPEG client；只短读 health，把“源诊断/源无首帧”贴到共享预览状态上。
+  // status 端点不创建 MJPEG client；只读 health，并与 summary 共享 camera 读取预算，避免慢 health 丢掉“不是独占”的现场诊断。
   try {
     const response = await fetch(endpointUrl(normalizedBaseUrl, "/api/camera/health"), {
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS),
     });
     if (!response.ok) {
       return null;

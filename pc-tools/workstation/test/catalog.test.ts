@@ -8753,6 +8753,78 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("waits for slower camera health before returning MJPEG source diagnosis", async () => {
+    // 真实上位机 camera health 偶发超过 2.5s；status 要和 summary 共用宽读取窗口，否则普通首屏会丢掉“不是独占”的诊断。
+    let healthRequestCount = 0;
+    let mjpegRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        setTimeout(() => {
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({
+            schema: "trashbot.local_webrtc_camera_smoke.v1",
+            status: "source_first_frame_failed",
+            source_readiness: "first_frame_failed",
+            source_failure_reason: "capture_read_returned_false",
+            source_diagnosis: {
+              status: "uvc_no_frame_not_exclusive",
+              plain_hint: "不是页面独占：慢 health 返回后仍证明 UVC 没有输出视频帧。",
+              next_action: "check_usb_camera_input_power_or_known_good_uvc",
+              not_exclusive: true,
+            },
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+            robot_control_executed: false,
+          }));
+        }, 2700);
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.proxy_status).toBe("status_loaded");
+      expect(statusBody.client_count).toBe(0);
+      expect(statusBody.upstream_active).toBe(false);
+      expect(statusBody.last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(statusBody.last_remote_http_status).toBe(200);
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：慢 health 返回后仍证明 UVC 没有输出视频帧。");
+      expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBe(1);
+      expect(mjpegRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  }, 10_000);
+
   it("workstation camera MJPEG status reports selected source diagnosis without opening the stream", async () => {
     // live 形态：摄像头已选中且没人占用，但还没读首帧；共享状态要把下一步讲清楚，不应要求用户先打开高级诊断。
     let healthRequestCount = 0;
