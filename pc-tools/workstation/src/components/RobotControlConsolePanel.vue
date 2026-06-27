@@ -1163,7 +1163,13 @@ function sharedPreviewFailureText(reason: string | null | undefined, remoteHttpS
   if (reason === "camera_source_first_frame_failed") {
     return " 最近失败：相机源没有输出首帧；设备可被共享读取，但当前没有真实画面。";
   }
-  if (reason === "camera_mjpeg_proxy_failed" || statusText.includes(" 502") || statusText.includes(" 503")) {
+  if (
+    reason === "camera_mjpeg_proxy_failed"
+    || reason.startsWith("camera_mjpeg_http_status_")
+    || reason === "camera_backend_unavailable"
+    || statusText.includes(" 502")
+    || statusText.includes(" 503")
+  ) {
     return ` 最近失败：共享预览上游没有返回可用画面${statusText}；通常是相机无帧或相机后端不可用，不是浏览器独占。`;
   }
   return ` 最近失败：${reason}${statusText}。`;

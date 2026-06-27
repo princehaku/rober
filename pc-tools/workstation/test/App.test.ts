@@ -17221,7 +17221,7 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
     summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
     summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
-    summaryFixture.readback_summary.camera.shared_preview_last_failure_reason = "camera_mjpeg_proxy_failed";
+    summaryFixture.readback_summary.camera.shared_preview_last_failure_reason = "camera_mjpeg_http_status_503";
     summaryFixture.readback_summary.camera.shared_preview_last_remote_http_status = "503";
     summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
     summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
@@ -17235,7 +17235,7 @@ describe("App", () => {
     mjpegStatusFixture.upstream_active = false;
     mjpegStatusFixture.content_type_loaded = false;
     mjpegStatusFixture.exclusive_camera_claim = false;
-    mjpegStatusFixture.last_failure_reason = "camera_mjpeg_proxy_failed";
+    mjpegStatusFixture.last_failure_reason = "camera_mjpeg_http_status_503";
     mjpegStatusFixture.last_remote_http_status = 503;
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -17257,6 +17257,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：还没做首帧检查；点检查画面确认上位机能否读到样张，不会发车。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_proxy_failed");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_http_status_503");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);

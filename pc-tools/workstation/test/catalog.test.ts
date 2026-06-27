@@ -8368,7 +8368,12 @@ describe("workstation fail-closed API contracts", () => {
         upstreamRequestCount += 1;
         res.statusCode = 502;
         res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ error: "camera_backend_unavailable" }));
+        res.end(JSON.stringify({
+          error: "camera_mjpeg_proxy_failed",
+          relay: {
+            last_failure_reason: "camera_mjpeg_http_status_503",
+          },
+        }));
         return;
       }
       res.statusCode = 404;
@@ -8392,7 +8397,7 @@ describe("workstation fail-closed API contracts", () => {
       const mjpegResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const mjpegBody = await mjpegResponse.json() as { error: string; remote_http_status: number };
       expect(mjpegResponse.status).toBe(502);
-      expect(mjpegBody.error).toBe("camera_mjpeg_proxy_failed");
+      expect(mjpegBody.error).toBe("camera_mjpeg_http_status_503");
       expect(mjpegBody.remote_http_status).toBe(502);
 
       const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
@@ -8400,14 +8405,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.proxy_status).toBe("status_loaded");
       expect(statusBody.client_count).toBe(0);
       expect(statusBody.upstream_active).toBe(false);
-      expect(statusBody.last_failure_reason).toBe("camera_mjpeg_proxy_failed");
+      expect(statusBody.last_failure_reason).toBe("camera_mjpeg_http_status_503");
       expect(statusBody.last_remote_http_status).toBe(502);
       expect(typeof statusBody.last_failure_at_ms).toBe("number");
 
       const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
       expect(summaryBody.readback_summary.camera.preview_status).toBe("idle_not_started");
-      expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_mjpeg_proxy_failed");
+      expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_mjpeg_http_status_503");
       expect(summaryBody.readback_summary.camera.shared_preview_last_remote_http_status).toBe("502");
       expect(Number(summaryBody.readback_summary.camera.shared_preview_last_failure_at_ms)).toBeGreaterThan(0);
       expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
@@ -8479,6 +8484,54 @@ describe("workstation fail-closed API contracts", () => {
       await upstream.close();
     }
   }, 5000);
+
+  it("workstation camera MJPEG proxy normalizes upstream socket read timeout", async () => {
+    // 8787 relay 可能把 8088 无帧表现成 aiohttp socket 文本；PC 首屏要继续显示“上游等不到画面”。
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        res.statusCode = 502;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          error: "camera_mjpeg_proxy_failed",
+          relay: {
+            last_failure_reason: "Timeout on reading data from socket",
+          },
+        }));
+        return;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const mjpegResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const mjpegBody = await mjpegResponse.json() as { error: string; remote_http_status: number };
+      expect(mjpegResponse.status).toBe(502);
+      expect(mjpegBody.error).toBe("camera_mjpeg_upstream_timeout");
+      expect(mjpegBody.remote_http_status).toBe(502);
+
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+      expect(statusBody.last_failure_reason).toBe("camera_mjpeg_upstream_timeout");
+      expect(statusBody.last_remote_http_status).toBe(502);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
 
   it("workstation camera first-frame probe uses quick source check without backend smoke", async () => {
     // 普通首屏检查画面不能默认启动 ffmpeg/v4l2 后端矩阵，否则失败时会长时间占住摄像头。

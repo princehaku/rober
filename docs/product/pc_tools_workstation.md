@@ -2980,6 +2980,16 @@ Robot API 路径、不直接发布 `/cmd_vel`、不执行 Nav2、不启动雷达
 相机后端不可用，不是浏览器独占”。工程 token 仍保留在高级诊断/API 响应里，普通首屏不展示
 `camera_mjpeg_proxy_failed`，也不因共享预览失败发送 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
 
+2026-06-27 12:08 起，PC 7001 的共享 MJPEG relay 会解析上位机 `/api/camera/mjpeg` 失败 JSON，
+优先保留 `relay.last_failure_reason`、`failure_reason` 或 `error`。因此当 8787 已经知道 8088
+上游是 `camera_mjpeg_http_status_503`、`camera_open_failed` 或其它明确原因时，PC summary/status 不再统一压成
+`camera_mjpeg_proxy_failed` 或 `camera_mjpeg_upstream_timeout`。普通首屏仍把这些 token 翻译为
+“共享预览上游没有返回可用画面；通常是相机无帧或后端不可用，不是浏览器独占”，高级诊断保留原始短 token。
+PC 默认 MJPEG 上游等待窗口为 12s，略长于上位机 8787 的 8s relay 窗口，避免 PC 抢先 abort 而丢失远端失败 JSON。
+若远端失败文本是 aiohttp 的 `Timeout on reading data from socket`，PC 会归一为 `camera_mjpeg_upstream_timeout`，
+继续走“上游等不到画面”的中文解释。
+该改动只修正 WYSIWYG 失败归因，不启动相机探针、不发送 manual、Nav2、delivery、free-roam start、stop 或 `/cmd_vel`。
+
 2026-06-27 03:37 起，普通首屏 `底盘读回` 会拆开“历史 wheel raw L/R 非零材料”和“当前轮速”：
 如果上位机曾经记录 `wheel_feedback_lr_nonzero_proven=true`，但最新 `T=1001 L/R` 已回到 `0/0`，
 页面显示“已有历史非零轮速材料，但当前轮速是 L/R=0/0；本轮仍需底盘试动读非零”，不再写成

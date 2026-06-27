@@ -170,9 +170,9 @@ const cameraMjpegRelayLastFailures = new Map<string, CameraMjpegRelayLastFailure
 const cameraFirstFrameProbeOverlays = new Map<string, RobotControlCameraFirstFrameProbeOverlay>();
 
 function cameraMjpegUpstreamTimeoutMs(): number {
-  // MJPEG 预览是首屏所见即所得路径；上游长时间不回首帧时要快速失败，避免新页面一直空等。
-  const parsed = Number(process.env.ROBER_CAMERA_MJPEG_UPSTREAM_TIMEOUT_MS ?? "8000");
-  return Number.isFinite(parsed) && parsed >= 100 ? Math.min(parsed, 60000) : 8000;
+  // PC 等待窗口要略长于上位机 8787 的 8s relay 窗口，才能拿到真实 503/无帧 JSON，而不是抢先报 timeout。
+  const parsed = Number(process.env.ROBER_CAMERA_MJPEG_UPSTREAM_TIMEOUT_MS ?? "12000");
+  return Number.isFinite(parsed) && parsed >= 100 ? Math.min(parsed, 60000) : 12000;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -1313,6 +1313,38 @@ function endCameraMjpegRelayClients(relay: CameraMjpegRelay, status: number, err
   }
 }
 
+async function cameraMjpegRemoteFailureReason(remote: globalThis.Response): Promise<string> {
+  // 上位机 relay 会把 8088 的真实失败放进 JSON；保留这个短原因，避免 PC 首屏误报成泛化 timeout。
+  try {
+    const payload = asRecord(await remote.clone().json().catch(() => null));
+    const relay = asRecord(payload?.relay);
+    const relayReason = normalizeCameraMjpegRemoteFailureReason(shortText(relay?.last_failure_reason, ""));
+    if (relayReason) {
+      return relayReason;
+    }
+    const failureReason = normalizeCameraMjpegRemoteFailureReason(shortText(payload?.failure_reason, ""));
+    if (failureReason) {
+      return failureReason;
+    }
+    const error = normalizeCameraMjpegRemoteFailureReason(shortText(payload?.error, ""));
+    if (error) {
+      return error;
+    }
+  } catch {
+    // 非 JSON 错误页只保留通用短原因，防止 HTML/代理错误污染普通首屏。
+  }
+  return "camera_mjpeg_proxy_failed";
+}
+
+function normalizeCameraMjpegRemoteFailureReason(reason: string): string {
+  // aiohttp 的 socket read timeout 本质是上游 MJPEG 没等到帧；普通 UI 复用既有中文解释。
+  const lower = reason.toLowerCase();
+  if (lower.includes("timeout on reading data from socket") || lower.includes("shared_mjpeg_relay_timeout")) {
+    return "camera_mjpeg_upstream_timeout";
+  }
+  return reason;
+}
+
 async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<void> {
   if (relay.upstreamActive) {
     return;
@@ -1332,7 +1364,8 @@ async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<v
     clearTimeout(connectTimeout);
     const contentType = remote.headers.get("content-type") ?? "";
     if (!remote.ok || !contentType.includes("multipart/x-mixed-replace") || !remote.body) {
-      endCameraMjpegRelayClients(relay, 502, "camera_mjpeg_proxy_failed", remote.status);
+      const remoteReason = await cameraMjpegRemoteFailureReason(remote);
+      endCameraMjpegRelayClients(relay, 502, remoteReason, remote.status);
       return;
     }
     relay.contentType = contentType;
