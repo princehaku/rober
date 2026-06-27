@@ -3496,7 +3496,7 @@ function mapSummaryFromReadbacks(
   const mapProof = readbackById(readbacks, "map_proof_latest");
   const hasScanPreviewPoints = proof.scan_preview_point_count > 0;
   const radarRuntimeStale = lidar.runtime_scan_status === "stale";
-  const radarLifecycleStopped = lidar.lifecycle_running === "false";
+  const radarLifecycleStopped = lidar.lifecycle_running === "false" || lidar.lifecycle_state === "stopped";
   const radarOverlayCurrent = hasScanPreviewPoints && !radarRuntimeStale && !radarLifecycleStopped;
   const radarOverlayBlockedReasons = [
     ...(!hasScanPreviewPoints ? ["scan_preview_points_missing"] : []),

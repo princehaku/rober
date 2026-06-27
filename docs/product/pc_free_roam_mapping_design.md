@@ -479,3 +479,10 @@ summary 与 `/api/robot-control/camera/mjpeg/status` 都会把它解释为“相
 `source_usage.status=not_in_use` 或 `owner_count=0`，普通首屏显示“不是页面独占，检查 USB/输入/供电或换 known-good UVC”，
 而不是泛化成共享预览未知失败。该规则只修正相机状态文案与共享预览状态，不创建额外相机 reader，不发送运动、Nav2、free-roam、
 delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 10:05 起，PC summary 的地图雷达 overlay 对 stopped/stale 雷达口径进一步收紧：
+即使上位机 `radar/status` 没有填 `lifecycle_running=false`，只要 `lifecycle_state=stopped`，并且 runtime `/scan`
+已经 stale，`readback_summary.map.radar_overlay_status` 就降级为 `not_current`，当前地图 overlay 点数置 0，
+blocked reasons 带 `runtime_scan_stale_for_map_radar_overlay` 与 `radar_lifecycle_not_running_for_map_radar_overlay`。
+旧 `scan_preview_points` 仍可作为 `readback_summary.lidar` 的历史材料解释，但不能再作为“地图上的当前雷达标记”。
+该规则只修正只读 summary 和 WYSIWYG 口径，不启动雷达、不刷新地图、不发送运动命令。

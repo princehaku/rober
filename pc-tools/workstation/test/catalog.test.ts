@@ -6755,7 +6755,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("Robot Control summary does not count stale stopped radar proof as current map overlay", async () => {
-    // live 形态：scan proof 里有旧点，但 runtime /scan 已过期且雷达 lifecycle stopped；地图 overlay 不能继续报 65 个当前点。
+    // live 形态：scan proof 里有旧点，但 runtime /scan 已过期且雷达 lifecycle_state=stopped；地图 overlay 不能继续报 65 个当前点。
     const safePayload = (schema: string, status = "loaded") => ({
       schema,
       status,
@@ -6797,7 +6797,6 @@ describe("workstation fail-closed API contracts", () => {
       "/api/radar/status": {
         payload: {
           ...safePayload("trashbot.upper_robot_api.v1.radar_status", "scan_once_hz_raw_packet_tf_observed"),
-          lifecycle_running: false,
           lifecycle_state: "stopped",
           latest_scan_proof_fresh: false,
         },
@@ -6821,7 +6820,8 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
-      expect(summary.readback_summary.lidar.lifecycle_running).toBe("false");
+      expect(summary.readback_summary.lidar.lifecycle_running).toBe("not_loaded");
+      expect(summary.readback_summary.lidar.lifecycle_state).toBe("stopped");
       expect(summary.readback_summary.lidar.runtime_scan_status).toBe("stale");
       expect(summary.o3_proof_summary.scan_preview_point_count).toBe(2);
       expect(summary.readback_summary.map.radar_overlay_status).toBe("not_current");
