@@ -4151,7 +4151,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：点击开始自动扫图（低速）。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；运动发布已解锁，PC 仍等待真车 HIL 记录。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：运动发布已解锁，现场继续监看。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：运动发布已解锁，不依赖雷达新鲜度；现场继续监看。");
 
     delayNextMapPreview = true;
     const delayedRefreshClick = wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -4416,7 +4416,7 @@ describe("App", () => {
     expect(readiness.text()).toContain("上车端自动扫图已就绪；点击后只启动上车状态机");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自动扫图（低速）后才会重新启动。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动；低速自移动不依赖雷达新鲜度。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').attributes("aria-label")).toBe("自由移动记录 上次停止请求，当前未发布运动，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
@@ -4512,7 +4512,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出、雷达状态源不一致；仍可在安全确认后低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自由移动（低速）后才会重新启动。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动；低速自移动不依赖雷达新鲜度。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -6898,7 +6898,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("L/R=0/0；不是雷达阻塞");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("L/R=0/0；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
@@ -7007,7 +7007,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 239 次，刚刚；Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("下次将用 ros 重新执行这条图上路线");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；不是雷达阻塞；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；下次将用 ros 复验。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；下次将用 ros 复验。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：下次将用 ros 重新执行这条图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("下次将用 ros 重新执行这条图上路线，并确认执行窗口 wheel raw L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
@@ -9486,7 +9486,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发非零底盘命令 49 条，底盘反馈 L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("不是雷达阻塞");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("不是雷达或相机阻塞");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("优先查电机使能、供电、底盘模式和控制模式");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("Nav2 已发非零底盘命令 49 条");
@@ -16355,7 +16355,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 当前相机源没有输出首帧；设备没人占用，通常是 USB、摄像头输入或供电问题，不是浏览器独占。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 没人占用但没有输出视频帧。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 没人占用但没有输出视频帧。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
@@ -17130,7 +17130,7 @@ describe("App", () => {
     expect(mjpegPreview.exists()).toBe(true);
     expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 多种方式也没有取到视频帧。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB 多种方式也没有取到视频帧。");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：USB Composite Device: DV20 USB：摄像头能打开，OpenCV/V4L2 后端尝试 4 种方式也没有取到视频帧");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：USB Composite Device: DV20 USB：摄像头能打开，OpenCV/V4L2 后端尝试 4 种方式也没有取到视频帧；检查 USB、摄像头输入、格式或供电。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。");

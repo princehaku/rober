@@ -459,7 +459,7 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
   const selectedName = camera.selected_name && !["", "not_loaded", "none"].includes(camera.selected_name)
     ? camera.selected_name
     : "摄像头";
-  const sharedFactPrefix = [clientCount, sharedStream, exclusive].filter(Boolean).join("，");
+  const sharedFactPrefix = ["共享预览支持多人观看", clientCount, sharedStream, exclusive].filter(Boolean).join("，");
   const prefix = sharedFactPrefix ? `${sharedFactPrefix}，` : "";
   if (!cameraSourceFirstFrameFailed(camera)) {
     return cameraVisibleForFreeRoamMapping.value ? "画面：已看到真实帧。" : "画面：还没确认真实帧。";
@@ -1519,21 +1519,21 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   const boundary = summary.safe_command_boundary;
   const runtime = boundary.free_roam_autonomy_runtime;
   if (runtime?.status === "loaded" && runtime.cmd_vel_publish_enabled === true && runtime.artifact_only === false) {
-    return "自由移动：运动发布已解锁，现场继续监看。";
+    return "自由移动：运动发布已解锁，不依赖雷达新鲜度；现场继续监看。";
   }
   if (runtime?.status === "loaded" && runtime.artifact_only === true && runtime.cmd_vel_publish_enabled === false) {
     if (runtime.state === "stopping") {
       const reasonText = runtime.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
       return boundary.free_roam_autonomy_start_ready
-        ? `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，可启动。`
+        ? `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，可启动；低速自移动不依赖雷达新鲜度。`
         : `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布。`;
     }
     return boundary.free_roam_autonomy_start_ready
-      ? "自由移动：可启动，但当前没有运动发布。"
+      ? "自由移动：可启动，但当前没有运动发布；低速自移动不依赖雷达新鲜度。"
       : "自由移动：当前没有运动发布。";
   }
   if (boundary.free_roam_autonomy_start_ready) {
-    return "自由移动：勾安全确认后可启动。";
+    return "自由移动：勾安全确认后可启动；低速自移动不依赖雷达新鲜度。";
   }
   return "自由移动：等待上车状态。";
 }
@@ -4444,7 +4444,7 @@ function nav2CommandFeedbackFactText(values: Record<string, string> | undefined)
   const pair = nav2BaseFeedbackPair(values);
   const pairText = pair ? `，L/R=${pair.left}/${pair.right}` : "，轮速非零未证明";
   const baseReadbackContext = baseWheelNonzeroReadbackContextText();
-  return `已发非零底盘命令${countText}${sampleText}${pairText}；不是雷达阻塞${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
+  return `已发非零底盘命令${countText}${sampleText}${pairText}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
 }
 
 function nav2NextExecutionRerunText(values: Record<string, string> | undefined): string {
@@ -4534,9 +4534,9 @@ function nav2UnprovenControlDetail(values: Record<string, string> | undefined): 
     const countText = count > 0 ? ` ${count} 条` : "";
     const pairText = pair ? `，底盘反馈 L/R=${pair.left}/${pair.right}` : "";
     if (explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)) {
-      return `Nav2 已发非零底盘命令${countText}${pairText}，轮速非零未证明，但${nav2MotionSignalSummaryText(values)}；这不是雷达阻塞${rerunSuffix}`;
+      return `Nav2 已发非零底盘命令${countText}${pairText}，轮速非零未证明，但${nav2MotionSignalSummaryText(values)}；这不是雷达或相机阻塞${rerunSuffix}`;
     }
-    return `Nav2 已发非零底盘命令${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达阻塞${rerunSuffix}`;
+    return `Nav2 已发非零底盘命令${countText}${pairText}，但轮速非零未证明；优先查电机使能、供电、底盘模式和控制模式，不是雷达或相机阻塞${rerunSuffix}`;
   }
   return rerunText ? `真车执行未证明；${rerunText}` : "真车执行未证明";
 }
@@ -4684,7 +4684,7 @@ function freshUnprovenNav2ExecutionValues(): Record<string, string> | undefined 
 }
 
 function plainTripFreshUnprovenRerunActionText(): string {
-  // 当前现场最容易误判的是“action 成功但 wheel raw L/R=0/0”；下一步必须说清是复验同窗口轮速，不是雷达阻塞。
+  // 当前现场最容易误判的是“action 成功但 wheel raw L/R=0/0”；下一步必须说清是复验同窗口轮速，不是雷达或相机阻塞。
   const values = freshUnprovenNav2ExecutionValues();
   const rerunText = nav2NextExecutionRerunText(values) || "重新执行完整行程";
   if (nav2BaseCommandWithoutWheelFeedback(values)) {
