@@ -2053,6 +2053,8 @@ function plainCurrentRadarFactText(): string {
   const pointText = pointCount > 0 ? `，待刷新雷达点 ${pointCount} 个` : "";
   const obstacleText = latestRadarObstacleDistanceLabel() ? `，${latestRadarObstacleDistanceLabel()}` : "";
   const staleRuntimeText = latestRadarRuntimeScanStaleLabel() ? `，${latestRadarRuntimeScanStaleLabel()}` : "";
+  const notCurrentText = radarNotCurrentSourcePointText();
+  const notCurrentSuffix = notCurrentText ? `；${notCurrentText}` : "";
   if (state === "雷达无新点" && radarRawPacketObservedWithoutVisiblePoints(effectiveLidarReadback.value)) {
     return `雷达：已收到原始包，但地图上没有雷达点${staleRuntimeText}。`;
   }
@@ -2070,7 +2072,7 @@ function plainCurrentRadarFactText(): string {
       ? `雷达：已运行，雷达点 ${pointCount} 个${obstacleText}。`
       : `雷达：已运行${obstacleText}。`;
   }
-  return `雷达：${state}。`;
+  return `雷达：${state}${notCurrentSuffix}。`;
 }
 
 function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): string {

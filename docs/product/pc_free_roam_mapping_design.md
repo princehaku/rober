@@ -72,6 +72,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-28 04:36 起，`当前事实` 的地图行也同步该 not-current overlay 事实：如果已经显示真实地图画面或已读到地图材料，
   但雷达 overlay 被 summary 判定为 `not_current`，地图行直接追加“旧雷达点 N 个已判定为不当前，未贴到地图”。
   这样 operator 不必看地图 marker 小字，也能在首屏事实条里知道为什么地图上没有雷达点。
+- 2026-06-28 04:42 起，`当前事实` 的雷达行也同步该 not-current 旧点事实：当雷达 lifecycle stopped/stale
+  但 summary 仍带旧 scan point count 时，雷达行显示“雷达未运行；旧雷达点 N 个已判定为不当前，未贴到地图”，
+  与地图行、地图 marker 和雷达点口径保持同一结论。
 - 2026-06-26 12:15 起，如果自动扫图 start 成功后的只读雷达 proof refresh 失败，普通首屏扫图状态和地图扫图 marker
   会显示 `自动扫图已启动，雷达刷新失败：<原因>`，不再继续写成“地图和雷达监看中”。该状态只消费固定
   `/api/robot-control/radar/scan-proof/refresh` 回包，不自动重试、不停止自动扫图、不发送 manual、Nav2、delivery 或 `/cmd_vel`。
