@@ -77,6 +77,7 @@ pc-tools/workstation/
   勾选安全确认不会自动发车，也不会调用 manual、stop、free-roam、delivery 或 `/cmd_vel`。
 - 2026-06-28 05:37 CST 起，PC Node summary 会把 `/api/nav2/proof/latest` 里的 `proof.blockers[]` 压成 `readback_summary.nav2.current_blocker_reasons/current_blocker_labels`；普通首屏 `当前事实` 的自动驾驶行会直接显示“读回根因”。当前真实只读诊断形态包括 `/scan_once_not_observed`、`/amcl_pose_once_not_observed`、`map_to_odom_not_observed` 和 `localization_not_ready_for_path_generation`，页面翻译为未读到 `/scan`、未读到 `/amcl_pose`、未读到 `map->odom TF`、定位未 ready。该字段只消费只读 summary/proof，不启动 Nav2、不执行路线、不发送 manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-28 05:41 CST 起，普通首屏会把上述 Nav2 blocker 转成下一步顺序：若服务未运行先提示启动/恢复自动驾驶服务（不发车），随后按“启动/刷新雷达 -> 重新定位 -> 准备图上路线 -> 按地图画面确认”引导。该顺序只写入 `当前事实`、行程状态、最小确认提示和本轮进度，不自动点击雷达、定位、Nav2 start、Nav2 execute、manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
+- 2026-06-29 00:20 CST 起，普通首屏 `行程操作` 卡片新增 `自动驾驶诊断` 行，复用 `当前事实` 的 Nav2/service/localization/root-cause 口径。规划服务、控制服务、Nav2 stack、定位、`/scan`/AMCL/TF 缺口会直接显示在行程卡内，并明确“相机/雷达不挡底盘试动或键盘手控”。该行只解释只读 readback，不自动启动雷达、相机、Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 07:12 CST 起，普通首屏 `读取/重新读取行程结果（只读）` pending 时，按钮、行程卡、行程状态、进度、当前事实和地图终点 marker 统一显示
   `返回前不把旧结果当作当前结论`。地图 caption 也从旧到达状态切换为“正在读取最近行程结果，旧结果暂不作为当前结论”，避免刷新 latest 期间误把旧行程当作本轮可送达依据。该状态只读
   `/api/robot-control/nav2/goal/execution/latest`，不执行 Nav2 goal，不调用 manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。

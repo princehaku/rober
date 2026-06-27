@@ -7222,6 +7222,18 @@ const plainTripRunStatus = computed(() => {
   }
   return "行程状态：已勾安全确认；点主按钮准备图上路线。";
 });
+const plainTripAutonomousDiagnosis = computed(() => {
+  // 行程卡要直接回答“自动驾驶为什么不动”；相机/雷达不再被误写成底盘手控门禁。
+  const summary = robotSummary.value;
+  if (!summary || navGoalExecutionPending.value || nav2RefreshPending.value || nav2LifecyclePending.value || deliveryNav2GoalReady.value) {
+    return "";
+  }
+  const currentDiagnosis = plainCurrentAutonomousReadinessFactText(summary);
+  if (!currentDiagnosis) {
+    return "";
+  }
+  return currentDiagnosis.replace(/^自动驾驶当前：/, "自动驾驶诊断：");
+});
 const plainTripMinimalPrecheckSummary = computed(() => {
   // 普通首屏只保留一个现场安全确认；路线画面是所见即所得约束，不再作为隐藏预检步骤。
   if (!robotApiBaseUrl.value.trim()) {
@@ -11923,6 +11935,7 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
             <p v-if="plainTripNav2LifecycleStatus" class="panel-note" data-testid="plain-trip-nav2-restore-status">{{ plainTripNav2LifecycleStatus }}</p>
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
+            <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
             <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
             <p v-if="plainTripExecutionProgress" class="panel-note" data-testid="plain-trip-execution-progress">{{ plainTripExecutionProgress }}</p>
             <p v-if="plainTripRouteWysiwygSummary" class="panel-note" data-testid="plain-trip-route-wysiwyg">
