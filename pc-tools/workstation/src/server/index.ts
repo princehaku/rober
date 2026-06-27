@@ -92,6 +92,12 @@ import type {
 } from "./robotControlSummary";
 
 const ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS = 600;
+const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
+  "capture_read_returned_false",
+  "capture_read_call_timeout",
+  "first_frame_timeout",
+  "first_frame_total_timeout",
+]);
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1312,8 +1318,8 @@ async function cameraSourceFirstFrameFailureForStatus(
       : String(sourceDiagnosis.not_exclusive);
     const firstFrameFailed = status === "source_first_frame_failed"
       || readiness === "first_frame_failed"
-      || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(reason)
-      || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(lastOfferReason);
+      || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(reason)
+      || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(lastOfferReason);
     const sourceUsageStatus = shortText(sourceUsage?.status, "");
     const sourceUsageOwnerCount = sourceUsage?.owner_count === undefined ? "not_loaded" : String(sourceUsage.owner_count);
     const sourceUsageLooksFree = sourceUsageStatus === "not_in_use" || sourceUsageOwnerCount === "0";

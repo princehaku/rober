@@ -46,6 +46,12 @@ const SLOW_READBACK_TIMEOUT_MS = 4000;
 const HEAVY_READBACK_TIMEOUT_MS = 8000;
 export const ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS = 2400;
 export const ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS = HEAVY_READBACK_TIMEOUT_MS;
+const CAMERA_FIRST_FRAME_FAILURE_REASONS = [
+  "capture_read_returned_false",
+  "capture_read_call_timeout",
+  "first_frame_timeout",
+  "first_frame_total_timeout",
+] as const;
 export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
 export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
 export const ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS = 260;
@@ -1367,7 +1373,7 @@ function cameraSummaryFromReadbacks(
     : probeFailed && ["", "not_loaded", "source_selected_not_probed"].includes(rawSourceReadiness)
       ? "first_frame_failed"
       : rawSourceReadiness;
-  const sourceFailureReason = probeVisibleContentObserved && ["", "none", "not_loaded", "first_frame_timeout", "capture_read_call_timeout", "capture_read_returned_false"].includes(rawSourceFailureReason)
+  const sourceFailureReason = probeVisibleContentObserved && ["", "none", "not_loaded", ...CAMERA_FIRST_FRAME_FAILURE_REASONS].includes(rawSourceFailureReason)
     ? "none"
     : probeFailed && ["", "none", "not_loaded"].includes(rawSourceFailureReason)
       ? probeFailureReason || "first_frame_probe_failed"
@@ -1388,8 +1394,8 @@ function cameraSummaryFromReadbacks(
   const sourceFirstFrameFailedForSharedPreview = Boolean(
     cameraStatus === "source_first_frame_failed"
     || sourceReadiness === "first_frame_failed"
-    || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(sourceFailureReason)
-    || ["capture_read_returned_false", "capture_read_call_timeout", "first_frame_timeout"].includes(asString(lastOfferError?.failure_reason, "")),
+    || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(sourceFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number])
+    || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(asString(lastOfferError?.failure_reason, "") as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number]),
   );
   const selectedName = cameraDisplayDeviceName(selectedCandidate.selected_name) || "摄像头";
   const sourceUsageLooksFree = ["not_in_use", ""].includes(asString(sourceUsage?.status, ""))

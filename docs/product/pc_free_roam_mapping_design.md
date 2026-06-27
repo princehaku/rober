@@ -473,3 +473,9 @@ PC 下一步文案会把“旧执行主因不是雷达或相机”和“当前 c
 `free_roam_motion_start_ready=true`，因此低速自由移动不依赖雷达 ready；建图验收仍因 `camera_first_frame`、`lidar_fresh`、
 `mapping_active`、`fresh_map_preview` 缺失而未 ready。自动驾驶当前卡点是 Nav2 `planner_server_active=false`、
 `controller_server_active=false`，并且图上路线/地图定位未 ready；普通入口应先点“恢复自动驾驶服务（不发车）”，再准备路线并显式安全确认执行。
+
+2026-06-28 09:45 起，PC 相机只读诊断把 `first_frame_total_timeout` 纳入首帧失败同类原因：
+summary 与 `/api/robot-control/camera/mjpeg/status` 都会把它解释为“相机源没有输出视频帧”。如果同时读到
+`source_usage.status=not_in_use` 或 `owner_count=0`，普通首屏显示“不是页面独占，检查 USB/输入/供电或换 known-good UVC”，
+而不是泛化成共享预览未知失败。该规则只修正相机状态文案与共享预览状态，不创建额外相机 reader，不发送运动、Nav2、free-roam、
+delivery、stop 或 `/cmd_vel`。
