@@ -2518,6 +2518,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     nav2_goal_ready: boolean;
     nav2_goal_label: "路线读数已准备，先看地图画面" | "图上路线未就绪";
     nav2_goal_blockers: string[];
+    nav2_goal_wheel_feedback_status: string;
+    nav2_goal_next_action: string;
+    nav2_goal_execution_mode_label: string;
     map_start: "map start locked";
     radar_start: "radar start locked";
     keyboard_control: "bounded repeating manual pulse gated";

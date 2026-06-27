@@ -3965,6 +3965,9 @@ describe("workstation fail-closed API contracts", () => {
         "path_point_count_not_positive",
         "robot_map_pose_not_observed",
       ]));
+      expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先生成图上路线并读到小车地图位置");
+      expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("not_loaded");
       expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_safety_confirmation_only");
       expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);
       expect(summary.safe_command_boundary.operator_report_preflight_endpoint).toBe("/api/operator/report");
@@ -4100,6 +4103,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("true");
+      expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("wheel_lr_nonzero_proven");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("本轮路线和 wheel raw L/R 已证明，继续送达确认");
+      expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("下次 ros");
     } finally {
       await robotApi.close();
     }
@@ -5055,6 +5061,100 @@ describe("workstation fail-closed API contracts", () => {
         gate_count: "1",
       });
       expect(summary.safe_to_control).toBe(false);
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary tells the operator to rerun ROS Nav2 when PWM success lacks wheel raw L/R", async () => {
+    // live 形状：旧 pwm NavigateToPose succeeded，但 wheel raw L/R 同窗口仍是 0/0；PC 要明确下次用 ROS 重跑。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          base: {
+            control_policy: {
+              base_command_mode: "pwm",
+              nav2_base_command_mode: "ros",
+            },
+          },
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "nav2_path_ready",
+          planner_server_active: true,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 36,
+          path_preview_points: [
+            { x: 0, y: 0, frame_id: "map", source_index: 0 },
+            { x: 0.8, y: 0, frame_id: "map", source_index: 35 },
+          ],
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localize_proof_latest",
+          status: "loaded",
+          amcl_pose: { frame_id: "map", x: 0.01, y: 0.02, yaw: 0 },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "not_proven",
+          latest_result: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            hil_pass: false,
+            evidence_ref: "o11-nav2-goal-execution-live-pwm-zero-lr",
+            feedback_sample_count: 8,
+            robot_control_executed: true,
+            sends_motion_commands: true,
+            sends_base_motion_commands: true,
+            uses_base_uart: true,
+            base_command_mode: "pwm",
+            goal_request: { frame_id: "map", x: 0.8, y: 0 },
+            base_feedback_summary: {
+              sample_count: 239,
+              nonzero_sample_count: 0,
+              wheel_feedback_lr_nonzero_proven: false,
+              latest_pair: { left_speed: 0, right_speed: 0 },
+            },
+            base_command_summary: {
+              nonzero_command_observed: true,
+              nonzero_command_count: 49,
+            },
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
+      expect(summary.readback_summary.nav2.status).toBe("goal_succeeded_wheel_feedback_not_proven");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed).toBe("0");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
+      expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
+      expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 pwm，下次 ros");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();

@@ -3678,7 +3678,7 @@ function freeRoamRuntimeSummaryFromReadbacks(
 
 function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
-  "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers"
+  "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_execution_mode_label"
 > {
   // summary 只能证明路线读数和 map-frame 位姿，地图画面是否已渲染交给前端 WYSIWYG gate 判断。
   const blockers = [
@@ -3691,6 +3691,65 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
     nav2_goal_ready: ready,
     nav2_goal_label: ready ? "路线读数已准备，先看地图画面" : "图上路线未就绪",
     nav2_goal_blockers: blockers,
+    nav2_goal_wheel_feedback_status: "not_loaded",
+    nav2_goal_next_action: ready ? "勾选行程前安全确认后执行图上路线" : "先生成图上路线并读到小车地图位置",
+    nav2_goal_execution_mode_label: "not_loaded",
+  };
+}
+
+function nav2GoalBoundaryGuidance(
+  proof: RobotApiProofSummary | null,
+  nav2: RobotControlSummaryResponse["readback_summary"]["nav2"] | null = null,
+): Pick<
+  RobotControlSummaryResponse["safe_command_boundary"],
+  "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_execution_mode_label"
+> {
+  // 这组字段是给普通 PC 首屏/API 的短口径：路线能不能点、上次执行为什么不算完整、下一次应该怎么复验。
+  const base = nav2GoalBoundaryFromProof(proof);
+  if (!nav2) {
+    return base;
+  }
+  const succeeded = nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded";
+  const proven = nav2.goal_execution_proven === "true";
+  const wheelProven = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true";
+  const left = nav2.goal_execution_base_feedback_latest_left_speed || "not_loaded";
+  const right = nav2.goal_execution_base_feedback_latest_right_speed || "not_loaded";
+  const currentMode = nav2.goal_execution_base_command_mode || "not_loaded";
+  const nextMode = nav2.next_execution_base_command_mode || "not_loaded";
+  const modeChanged = !["", "not_loaded"].includes(currentMode) && !["", "not_loaded"].includes(nextMode) && currentMode !== nextMode;
+  const modeLabel = modeChanged
+    ? `上次 ${currentMode}，下次 ${nextMode}`
+    : !["", "not_loaded"].includes(nextMode)
+      ? `下次 ${nextMode}`
+      : !["", "not_loaded"].includes(currentMode) ? `上次 ${currentMode}` : "not_loaded";
+  if (proven || wheelProven) {
+    return {
+      ...base,
+      nav2_goal_wheel_feedback_status: "wheel_lr_nonzero_proven",
+      nav2_goal_next_action: "本轮路线和 wheel raw L/R 已证明，继续送达确认",
+      nav2_goal_execution_mode_label: modeLabel,
+    };
+  }
+  if (succeeded && nav2.goal_execution_base_feedback_lr_nonzero_proven === "false") {
+    const rerunMode = !["", "not_loaded"].includes(nextMode) ? nextMode.toUpperCase() : "当前模式";
+    return {
+      ...base,
+      nav2_goal_wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
+      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零；勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`,
+      nav2_goal_execution_mode_label: modeLabel,
+    };
+  }
+  if (base.nav2_goal_ready) {
+    return {
+      ...base,
+      nav2_goal_wheel_feedback_status: "awaiting_route_execution",
+      nav2_goal_next_action: "勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R",
+      nav2_goal_execution_mode_label: modeLabel,
+    };
+  }
+  return {
+    ...base,
+    nav2_goal_execution_mode_label: modeLabel,
   };
 }
 
@@ -3698,6 +3757,7 @@ function lockedBoundary(
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null = null,
   freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
   proof: RobotApiProofSummary | null = null,
+  nav2: RobotControlSummaryResponse["readback_summary"]["nav2"] | null = null,
 ): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
   const startGates = (freeRoamRuntimeGates ?? []).filter((gate) => gate.id === "stop_available");
@@ -3716,7 +3776,7 @@ function lockedBoundary(
     stop_endpoint: "/api/base/stop",
     cmd_vel_topic: "/cmd_vel",
     nav2_goal: "Nav2 NavigateToPose locked",
-    ...nav2GoalBoundaryFromProof(proof),
+    ...nav2GoalBoundaryGuidance(proof, nav2),
     map_start: "map start locked",
     radar_start: "radar start locked",
     keyboard_control: "bounded repeating manual pulse gated",
@@ -3965,6 +4025,7 @@ export async function buildRobotControlSummary(
   const operatorHilMaterialSummary = buildOperatorHilMaterialSummary(readbacks);
   const freeRoamRuntimeGates = freeRoamRuntimeGatesFromReadbacks(readbacks);
   const freeRoamRuntime = freeRoamRuntimeSummaryFromReadbacks(readbacks);
+  const nav2Summary = nav2SummaryFromReadbacks(readbacks, proofSummary);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -3997,12 +4058,12 @@ export async function buildRobotControlSummary(
       base: baseSummaryFromReadbacks(readbacks),
       map: mapSummaryFromReadbacks(readbacks, proofSummary),
       localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
-      nav2: nav2SummaryFromReadbacks(readbacks, proofSummary),
+      nav2: nav2Summary,
       free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime),
     },
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),
-    safe_command_boundary: lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary),
+    safe_command_boundary: lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary),
     blocked_reasons: blockedReasons.length ? blockedReasons : ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success", "safe_to_control_true", "real_robot_ack"],
     ...PROOF_FLAGS,
