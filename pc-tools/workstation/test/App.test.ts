@@ -4388,6 +4388,8 @@ describe("App", () => {
 
     const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
     expect(readiness.attributes("data-state")).toBe("已就绪");
+    expect(readiness.text()).toContain("已读到上车端自由移动门禁");
+    expect(readiness.text()).not.toContain("正在读取上车端自由移动门禁");
     expect(readiness.text()).toContain("雷达监看");
     expect(readiness.text()).toContain("可降级");
     expect(readiness.text()).not.toContain("还差：雷达待刷新");

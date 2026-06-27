@@ -3917,6 +3917,19 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     }));
   const speedLimit = policy?.max_speed_mps ?? manualSpeedLimit.value;
   const runtimeLimit = policy?.max_runtime_s ?? 60;
+  const gatePolicyText = (() => {
+    // summary 已返回结构化 gates 时，顶部摘要必须说“已读到”，不能继续让现场以为门禁还在加载。
+    if (!hasRuntimeGateRows) {
+      return `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，必须先通过 ${policyGates.slice(0, 3).map(gateLabel).join("、")}。`;
+    }
+    const startRows = contractGateRows.filter((gate) => gate.scope === "free_move_start");
+    const mappingRows = contractGateRows.filter((gate) => gate.scope === "mapping_acceptance");
+    const startReady = startRows.filter((gate) => gate.state === "已满足").length;
+    const mappingReady = mappingRows.filter((gate) => gate.state === "已满足").length;
+    const startText = startRows.length ? `启动条件 ${startReady}/${startRows.length} 已满足` : "启动条件已读到";
+    const mappingText = mappingRows.length ? `建图验收 ${mappingReady}/${mappingRows.length} 已满足` : "";
+    return `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，已读到上车端${motionModeName}门禁：${[startText, mappingText].filter(Boolean).join("；")}。`;
+  })();
   return {
     state: autonomyReady && blockers.length === 0 ? "已就绪" : autonomyReady ? "待处理" : "未满足",
     buttonLabel: freeRoamAutonomyPending.value && freeRoamAutonomyPendingAction.value === "start"
@@ -3946,9 +3959,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     gateRows: contractGateRows,
     mappingReadinessText,
     runtimeText: runtimeModeText,
-    policyText: hasRuntimeGateRows
-      ? `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，正在读取上车端${motionModeName}门禁。`
-      : `上限 ${speedLimit.toFixed(2)} m/s，最长 ${runtimeLimit}s，必须先通过 ${policyGates.slice(0, 3).map(gateLabel).join("、")}。`,
+    policyText: gatePolicyText,
   };
 });
 const plainFreeRoamMappingSteps = computed(() => {
