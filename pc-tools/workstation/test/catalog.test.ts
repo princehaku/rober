@@ -5761,7 +5761,7 @@ describe("workstation fail-closed API contracts", () => {
         expect.objectContaining({
           id: "motion_hil_unlock",
           state: "not_proven",
-          evidence: "当前尚未启动自动扫图，点击开始后由上车端打开运动双锁",
+          evidence: "当前尚未启动自由移动，点击开始后由上车端打开运动双锁",
           next_action: "勾选现场安全确认后点击开始自由移动（低速）",
         }),
       ]));
@@ -5840,7 +5840,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("marks free-roam autonomy ready only from an unlocked runtime artifact while keeping PC control flags false", async () => {
-    // ready 只说明上车端自动扫图状态机已双重解锁；PC summary 仍不能把自己标成 safe_to_control。
+    // ready 只说明上车端自由移动状态机已打开运动发布；PC summary 仍不能把自己标成 safe_to_control。
     const safePayload = (schema: string, status = "loaded") => ({
       schema,
       status,
@@ -5915,7 +5915,7 @@ describe("workstation fail-closed API contracts", () => {
         expect.objectContaining({
           id: "motion_hil_unlock",
           state: "ready",
-          evidence: "自动扫图节点已双重解锁运动发布",
+          evidence: "自由移动状态机已打开运动发布",
         }),
       ]));
       expect(summary.safe_to_control).toBe(false);

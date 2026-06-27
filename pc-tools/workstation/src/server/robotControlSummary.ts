@@ -3938,10 +3938,10 @@ function freeRoamRuntimeGatesFromReadbacks(
     scope: "runtime_diagnostic",
     state: motionGateState,
     evidence: cmdVelPublishEnabled
-      ? "自动扫图节点已双重解锁运动发布"
+      ? "自由移动状态机已打开运动发布"
       : startFallbackReady
-        ? "当前尚未启动自动扫图，点击开始后由上车端打开运动双锁"
-        : "自动扫图节点默认只写记录，不发布运动",
+        ? "当前尚未启动自由移动，点击开始后由上车端打开运动双锁"
+        : "自由移动状态机默认只写记录，不发布运动",
     next_action: cmdVelPublishEnabled
       ? "PC 继续只读监看地图、雷达和停止兜底，不在 summary 中直接发车"
       : startFallbackReady

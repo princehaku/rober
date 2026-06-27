@@ -151,7 +151,7 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   在双锁打开后按策略输出 0.12m/s 以内的受限 Twist。
 - 2026-06-27 17:45 起，PC summary 的 `motion_hil_unlock` gate 区分“尚未启动”和“不能启动”：
   当 `stop_available=ready` 且 runtime 仍是 `artifact_only=true/cmd_vel_publish_enabled=false` 时，gate 显示
-  `not_proven` 和 `当前尚未启动自动扫图，点击开始后由上车端打开运动双锁`；只有停止兜底或 runtime 本身缺失时才显示
+  `not_proven` 和 `当前尚未启动自由移动，点击开始后由上车端打开运动双锁`；只有停止兜底或 runtime 本身缺失时才显示
   blocked。这样 live 首屏不会在 `free_roam_autonomy_start_ready=true` 时又误提示“完成 HIL 后再解锁”。
 - 2026-06-27 00:42 起，上位机 `/api/base/manual` 的默认运动中反馈读窗按点动时长计算：
   500ms first-jog 默认读约 450ms，240ms 键盘连续 pulse 默认读约 190ms。依据

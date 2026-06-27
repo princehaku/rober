@@ -640,7 +640,7 @@ const fixtures: Record<string, unknown> = {
           id: "motion_hil_unlock",
           label: "真车低速放行",
           state: "blocked",
-          evidence: "自动扫图节点默认只写记录，不发布运动",
+          evidence: "自由移动状态机默认只写记录，不发布运动",
           next_action: "完成 stop 兜底、雷达避障和地图覆盖验证后再解锁",
         },
       ],
@@ -3692,7 +3692,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("自动扫图真车验证未完成");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("启动条件已满足");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("当前尚未启动自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("点击开始后由上车端打开运动双锁");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).not.toContain("当前尚未启动自动扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("启动条件：现场安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("建图验收：雷达监看");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("建图验收：雷达障碍监看");
@@ -4160,7 +4162,7 @@ describe("App", () => {
       { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
       { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
       { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
-      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自由移动状态机已打开运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
     ];
     summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
       status: "loaded",
@@ -4218,7 +4220,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：点击开始自动扫图（低速）。");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；运动发布已解锁，PC 仍等待真车 HIL 记录。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；自由移动运动发布已打开，PC 仍只读监看真车 HIL 记录。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：运动发布已解锁，不依赖雷达新鲜度；现场继续监看。");
 
     delayNextMapPreview = true;
@@ -4359,7 +4361,7 @@ describe("App", () => {
       { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
       { id: "lidar_fresh", label: "雷达新鲜", state: "blocked", evidence: "雷达最新证明不完整", next_action: "刷新雷达确认最新距离" },
       { id: "obstacle_clear", label: "前方障碍", state: "not_proven", evidence: "等待雷达最新证明", next_action: "先刷新雷达" },
-      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自由移动状态机已打开运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
     ];
     summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
       status: "loaded",
@@ -4984,7 +4986,7 @@ describe("App", () => {
       { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
       { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
       { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
-      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自由移动状态机已打开运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
     ];
     summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
       status: "loaded",
@@ -5064,7 +5066,7 @@ describe("App", () => {
       { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
       { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
       { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
-      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自由移动状态机已打开运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
     ];
     summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
       status: "loaded",
@@ -5158,7 +5160,7 @@ describe("App", () => {
       { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
       { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
       { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
-      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自由移动状态机已打开运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
     ];
     summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
       status: "loaded",
@@ -5253,7 +5255,7 @@ describe("App", () => {
       { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
       { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
       { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
-      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自由移动状态机已打开运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
     ];
     summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
       status: "loaded",
@@ -5320,7 +5322,7 @@ describe("App", () => {
       { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
       { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "雷达距离 1.00m，延迟 0.10s", next_action: "继续保持雷达运行" },
       { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "前方障碍距离满足低速扫图", next_action: "继续低速监看" },
-      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自动扫图节点已双重解锁运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
+      { id: "motion_hil_unlock", label: "真车低速放行", state: "ready", evidence: "自由移动状态机已打开运动发布", next_action: "PC 继续只读监看地图、雷达和停止兜底" },
     ];
     summaryFixture.safe_command_boundary.free_roam_autonomy_runtime = {
       status: "loaded",

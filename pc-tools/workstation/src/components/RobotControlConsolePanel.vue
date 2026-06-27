@@ -4149,11 +4149,11 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       return `${motionModeName}状态：上次记录停在停止请求${runtimeReason}；当前没有运动发布，点击${motionStartButtonText}后才会重新启动。`;
     }
     const motionBoundary = autonomyStartReady && !runtime.cmd_vel_publish_enabled
-      ? "启动条件已满足；当前尚未启动，所以仍是记录模式；点击开始后由上车端打开运动双锁，建图 readiness 单独显示。"
+      ? "启动条件已满足；当前尚未启动自由移动，点击开始后由上车端打开运动双锁，建图 readiness 单独显示。"
       : runtime.artifact_only
       ? "当前只是记录模式；勾安全确认后可请求低速自由移动，建图另看相机/雷达 readiness。"
       : runtime.cmd_vel_publish_enabled
-      ? "运动发布已解锁，PC 仍等待真车 HIL 记录。"
+      ? "自由移动运动发布已打开，PC 仍只读监看真车 HIL 记录。"
       : "运动发布未解锁，不会自己跑。";
     const stateLabels: Record<string, string> = {
       locked: "门禁锁定",

@@ -2488,6 +2488,10 @@ delivery complete、manual、keyboard pulse、stop 或 `/cmd_vel`。
 `停止自动扫图` 调用固定 stop 代理，stop 会写回 `enable_cmd_vel_publish=false` 与 `motion_hil_unlocked=false`，
 再请求状态机停止；红色底盘停止仍保留为独立兜底。
 
+2026-06-27 21:36 起，PC summary 的 `motion_hil_unlock` 运行态诊断统一使用“自由移动”文案：
+未点击开始时显示 `当前尚未启动自由移动，点击开始后由上车端打开运动双锁`，已打开发布时显示
+`自由移动状态机已打开运动发布`。自动扫图/建图只作为地图记录验收状态展示，避免首屏把“可低速自由移动”误说成“尚未启动自动扫图”。
+
 2026-06-26 21:35 起，PC 普通首屏不再把 camera readiness 纳入自动低速移动按钮门禁：上车 `/api/status` 中 camera health 未 ready
 或采集源失败时，`开始扫地式建图` 仍显示 `检查摄像头后建图` 并阻断建图记录入口，但 `开始自动扫图（低速）` 仍可在安全确认后调用固定 start 代理，
 并在请求体中用 `confirm_mapping_active=false` 表达“当前只是自由移动，不作为建图”。雷达未 fresh 时仍显示
