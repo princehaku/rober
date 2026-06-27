@@ -7035,6 +7035,7 @@ describe("App", () => {
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("用 ROS 重跑图上路线");
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();

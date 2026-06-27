@@ -4607,6 +4607,19 @@ function nav2NextExecutionRerunText(values: Record<string, string> | undefined):
   return `下次将用 ${nextMode} 重新执行这条图上路线`;
 }
 
+function nav2NextExecutionButtonText(values: Record<string, string> | undefined): string {
+  // 主按钮也要跟随下一次控制模式，否则用户只看到“重新执行”会误以为还是复用上一轮 PWM 结果。
+  const nextMode = values?.next_execution_base_command_mode?.trim();
+  const lastMode = values?.base_command_mode?.trim();
+  if (!nextMode || nextMode === "not_loaded") {
+    return "";
+  }
+  if (lastMode && lastMode !== "not_loaded" && lastMode === nextMode) {
+    return "";
+  }
+  return `用 ${nextMode.toUpperCase()} 重跑图上路线`;
+}
+
 function nav2BaseMotionSignalText(values: Record<string, string> | undefined): string {
   if (explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)) {
     const pair = nav2BaseFeedbackPair(values);
@@ -6126,7 +6139,7 @@ const plainTripExecutionButtonLabel = computed(() => {
     return plainTripPreparedBySummary.value ? "刷新图上路线" : "准备图上路线";
   }
   if (plainTripHasFreshUnprovenControlEvidence.value || plainTripHasFreshIncompleteEvidence.value || plainTripLatestNotProvenEvidence.value) {
-    return "重新执行图上路线";
+    return nav2NextExecutionButtonText(freshUnprovenNav2ExecutionValues()) || "重新执行图上路线";
   }
   return plainTripPreparedBySummary.value ? "执行图上路线" : "执行行程";
 });
