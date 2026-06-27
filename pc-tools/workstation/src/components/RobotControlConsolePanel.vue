@@ -2039,6 +2039,9 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   if (freeRoamAutonomyPendingAction.value === "stop") {
     return `${modeName}：正在请求上车端${modeName}停止，红色停止仍可随时兜底。`;
   }
+  if (freeRoamAutonomyLatestPending.value) {
+    return `${modeName}：正在读取最新上车状态，返回前不把旧自由移动记录当作当前结论。`;
+  }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
     const failureText = freeRoamAutonomyFailureText(freeRoamAutonomyResult.value);
     const reasonSuffix = failureText ? `：${failureText}` : "";

@@ -2192,6 +2192,11 @@ delivery complete/stop 或 `/cmd_vel`。
 它不触发 `/api/free-roam/autonomy/start`、`/api/free-roam/autonomy/stop`、manual、Nav2、delivery 或 `/cmd_vel`；
 用于让“扫地式建图/自动扫图准备”所见即所得，而不是开放 PC 侧自动发车。
 
+2026-06-28 05:17 起，上述 latest 只读刷新 pending 也同步到普通首屏 `当前事实` 的自由移动行：
+读取期间显示 `自由移动/自动扫图：正在读取最新上车状态，返回前不把旧自由移动记录当作当前结论`。这样 operator
+点击“刷新自由移动状态（只读）”后，不会在请求返回前继续把旧 artifact-only、已停止或已运行记录当作当前状态。该改动只修正
+只读事实文案，不触发 free-roam start/stop、manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-25 21:34 起，普通首屏 `执行图上路线` 成功返回后，会自动追加一次只读
 `/api/robot-control/nav2/goal/execution/latest` 和 `/api/robot-control/delivery/latest` 同步，并用本轮
 Nav2 execution `evidence_ref` 预填送达 `route/map` 材料。这样执行按钮、行程进度、送达材料入口和页面刷新后的 latest

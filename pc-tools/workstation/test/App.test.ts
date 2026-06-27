@@ -4150,7 +4150,20 @@ describe("App", () => {
 
   it("refreshes free-roam autonomy latest as a read-only first-screen action", async () => {
     // latest 只读按钮只拉 runtime artifact 和 summary，不允许误触发自动扫图或底盘运动。
-    const mockedFetch = stubWorkstationFetch();
+    let delayNextLatest = false;
+    let resolveLatest!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedLatest = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveLatest = resolve;
+    });
+    const baseFetch = stubWorkstationFetch();
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/free-roam/autonomy/latest") && delayNextLatest) {
+        delayNextLatest = false;
+        return delayedLatest;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4161,7 +4174,18 @@ describe("App", () => {
     expect(button.attributes("disabled")).toBeUndefined();
     const callsBeforeClick = mockedFetch.mock.calls.length;
 
-    await button.trigger("click");
+    delayNextLatest = true;
+    const latestClick = button.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-latest"]').text()).toBe("刷新中");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain(
+      "自由移动：正在读取最新上车状态，返回前不把旧自由移动记录当作当前结论。",
+    );
+    resolveLatest({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/free-roam/autonomy/latest"],
+    });
+    await latestClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
 
