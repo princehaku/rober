@@ -77,6 +77,9 @@ pc-tools/workstation/
   勾选安全确认不会自动发车，也不会调用 manual、stop、free-roam、delivery 或 `/cmd_vel`。
 - 2026-06-28 05:37 CST 起，PC Node summary 会把 `/api/nav2/proof/latest` 里的 `proof.blockers[]` 压成 `readback_summary.nav2.current_blocker_reasons/current_blocker_labels`；普通首屏 `当前事实` 的自动驾驶行会直接显示“读回根因”。当前真实只读诊断形态包括 `/scan_once_not_observed`、`/amcl_pose_once_not_observed`、`map_to_odom_not_observed` 和 `localization_not_ready_for_path_generation`，页面翻译为未读到 `/scan`、未读到 `/amcl_pose`、未读到 `map->odom TF`、定位未 ready。该字段只消费只读 summary/proof，不启动 Nav2、不执行路线、不发送 manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-28 05:41 CST 起，普通首屏会把上述 Nav2 blocker 转成下一步顺序：若服务未运行先提示启动/恢复自动驾驶服务（不发车），随后按“启动/刷新雷达 -> 重新定位 -> 准备图上路线 -> 按地图画面确认”引导。该顺序只写入 `当前事实`、行程状态、最小确认提示和本轮进度，不自动点击雷达、定位、Nav2 start、Nav2 execute、manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
+- 2026-06-28 07:12 CST 起，普通首屏 `读取/重新读取行程结果（只读）` pending 时，按钮、行程卡、行程状态、进度、当前事实和地图终点 marker 统一显示
+  `返回前不把旧结果当作当前结论`。地图 caption 也从旧到达状态切换为“正在读取最近行程结果，旧结果暂不作为当前结论”，避免刷新 latest 期间误把旧行程当作本轮可送达依据。该状态只读
+  `/api/robot-control/nav2/goal/execution/latest`，不执行 Nav2 goal，不调用 manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-27 07:20 起，普通首屏共享 MJPEG 画面在浏览器 `<img>` 报错后会每 5 秒低频换一次只读 URL retry token，重新请求同一条 PC Node 共享 relay。这样摄像头服务后来恢复首帧时，已经打开页面的用户也能自动重新看到实时预览；该 retry 只访问 `/api/robot-control/camera/mjpeg` 和 status，不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 21:40 起，上述 `<img>` 报错后的 5 秒等待窗口也进入普通首屏所见即所得状态：画面卡片、当前事实和共享画面状态都会显示
   `本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占`，直到 retry token 换 URL 或真实帧 load。该状态只消费本页

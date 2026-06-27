@@ -8277,7 +8277,7 @@ describe("App", () => {
     expect(pendingGoal.text()).toBe("读取中");
     expect(pendingGoal.attributes("data-state")).toBe("读取中");
     expect(pendingGoal.attributes("aria-label")).toBe("正在读取最近行程结果，旧结果暂不作为当前结论，地图坐标 x=0.80, y=0.00");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在读取最近行程结果");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在读取最近行程结果，旧结果暂不作为当前结论");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在读取最近行程结果，返回前不把旧结果当作当前结论。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：正在读取最近行程结果，返回前不把旧结果当作当前结论。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -17805,6 +17805,81 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-delivery-latest"]').text()).toBe("刷新送达状态（只读）");
+  });
+
+  it("keeps trip latest pending unproven across trip card and map", async () => {
+    // 最近行程 latest 正在读取时，行程卡和地图都不能继续把旧结果当作当前结论。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
+    summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_evidence_ref = "o11-nav2-goal-execution-old-fixture";
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
+    let delayNextTripLatest = false;
+    let resolveTripLatest!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedTripLatest = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveTripLatest = resolve;
+    });
+    const baseFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?") && delayNextTripLatest) {
+        delayNextTripLatest = false;
+        return delayedTripLatest;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const latestCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?")).length;
+    delayNextTripLatest = true;
+    const latestClick = wrapper.find('[data-testid="plain-trip-latest"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("读取行程结果中");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("读取中");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("正在读取最近行程结果；返回前不把旧结果当作当前结论。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("正在读取最近行程结果，返回前不把旧结果当作当前结论。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在读取最近行程结果，返回前不把旧结果当作当前结论。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：正在读取最近行程结果，返回前不把旧结果当作当前结论。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在读取最近行程结果，旧结果暂不作为当前结论");
+    const pendingGoal = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(pendingGoal.text()).toBe("读取中");
+    expect(pendingGoal.attributes("data-state")).toBe("读取中");
+    expect(pendingGoal.attributes("aria-label")).toBe("正在读取最近行程结果，旧结果暂不作为当前结论，地图坐标 x=0.80, y=0.00");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?")).length).toBe(latestCallsBefore + 1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    resolveTripLatest({
+      ok: true,
+      json: async () => fixtures["/api/robot-control/nav2/goal/execution/latest"],
+    });
+    await latestClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程（只读）");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).not.toContain("旧结果暂不作为当前结论");
   });
 
   it("shows delivery confirmation pending on the map while final completion is in flight", async () => {

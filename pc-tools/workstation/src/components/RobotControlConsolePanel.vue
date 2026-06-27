@@ -6579,7 +6579,7 @@ function plainMapTripExecutionLabel(): string {
     return targetText ? `行程执行：${stopState.actionText}（${targetText}）` : `行程执行：${stopState.actionText}`;
   }
   if (navGoalExecutionLatestPending.value) {
-    return "行程执行：正在读取最近行程结果";
+    return "行程执行：正在读取最近行程结果，旧结果暂不作为当前结论";
   }
   const values = directNav2ExecutionValues();
   const status = nav2EvidenceStatus(values);
@@ -7020,7 +7020,7 @@ const plainTripSummary = computed(() => {
     return { state: "复查中", hint: "正在可选复查行程条件；不会发车。" };
   }
   if (navGoalExecutionLatestPending.value) {
-    return { state: "读取中", hint: "正在读取最近行程结果。" };
+    return { state: "读取中", hint: "正在读取最近行程结果；返回前不把旧结果当作当前结论。" };
   }
   const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
   if (postExecutionMapFailure) {
@@ -7142,6 +7142,9 @@ const plainTripRunStatus = computed(() => {
   }
   if (navGoalPreflightPending.value) {
     return "行程状态：正在可选复查行程条件，不会发车。";
+  }
+  if (navGoalExecutionLatestPending.value) {
+    return "行程状态：正在读取最近行程结果，返回前不把旧结果当作当前结论。";
   }
   if (deliveryNav2GoalReady.value) {
     const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
@@ -7354,6 +7357,9 @@ const plainTripExecutionButtonLabel = computed(() => {
 const plainTripLatestButtonLabel = computed(() => {
   if (mapWysiwygRefreshPending.value) {
     return "等待地图刷新";
+  }
+  if (navGoalExecutionLatestPending.value) {
+    return "读取行程结果中";
   }
   return deliveryNav2GoalReady.value ? "重新读取行程（只读）" : "读取行程结果（只读）";
 });
