@@ -36,6 +36,7 @@ type JsonRecord = Record<string, unknown>;
 type InternalRobotApiEndpointReadback = RobotApiEndpointReadback & {
   payload: JsonRecord | null;
 };
+type FreeRoamGateRow = RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"][number];
 type RobotControlSummaryBuildOptions = {
   readbackTimeoutMs?: number;
 };
@@ -4107,7 +4108,7 @@ function freeRoamRuntimeGatesFromReadbacks(
     }
     return "runtime_diagnostic";
   };
-  const gateRows = rawGates
+  const gateRows: FreeRoamGateRow[] = rawGates
     .map((item) => asRecord(item))
     .filter((item): item is JsonRecord => item !== null)
     .map((gate) => {
@@ -4123,6 +4124,7 @@ function freeRoamRuntimeGatesFromReadbacks(
         next_action: asString(gate.next_action, "等待上车端自动扫图节点更新"),
       };
     });
+  const hasGate = (id: string): boolean => gateRows.some((gate) => gate.id === id);
   const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
   const radarScanProofPayload = readbackById(readbacks, "radar_scan_proof_latest")?.payload ?? null;
   const radarFreshValues = [
@@ -4160,7 +4162,7 @@ function freeRoamRuntimeGatesFromReadbacks(
       obstacleGate.next_action = "先刷新雷达；刷新前不把旧障碍距离贴到地图";
     }
   }
-  if (!hasRuntimeMappingGate && (runtimeMappingActive !== null || mapRuntimeStarted)) {
+  if (!hasRuntimeMappingGate) {
     // 新 runtime 的 mapping_active gate 优先；只有旧 runtime 没有该 gate 时才从 snapshot/map proof 兼容补齐。
     const active = runtimeMappingActive === true || (runtimeMappingActive === null && mapRuntimeStarted);
     gateRows.push({
@@ -4170,6 +4172,57 @@ function freeRoamRuntimeGatesFromReadbacks(
       state: active ? "ready" : "not_proven",
       evidence: active ? "当前读回已证明地图记录 runtime 已启动" : "free-roam runtime 显示地图记录未启动",
       next_action: active ? "继续保持地图记录并监看画面" : "先启动扫地式建图记录；仍可按自由移动记录低速移动",
+    });
+  }
+  if (!hasGate("camera_first_frame")) {
+    const cameraHealthPayload = readbackById(readbacks, "camera_health")?.payload ?? null;
+    const cameraStatus = readbackById(readbacks, "camera_health")?.status ?? summaryValueText(cameraHealthPayload, ["status"], "");
+    const sourceReadiness = summaryValueText(cameraHealthPayload, ["source_readiness"], "");
+    const visibleContent = summaryValueText(cameraHealthPayload, ["visible_content_proven"], "");
+    const sourceDiagnosis = asRecord(findFirstKey(cameraHealthPayload, ["source_diagnosis"]));
+    const notExclusive = sourceDiagnosis?.not_exclusive === true || asString(sourceDiagnosis?.status, "") === "uvc_no_frame_not_exclusive";
+    const ready = sourceReadiness === "first_frame_observed" || visibleContent === "true";
+    const failed = cameraStatus === "source_first_frame_failed" || sourceReadiness === "first_frame_failed";
+    gateRows.push({
+      id: "camera_first_frame",
+      label: "画面首帧",
+      scope: "mapping_acceptance",
+      state: ready ? "ready" : "not_proven",
+      evidence: ready
+        ? "摄像头首帧已读到"
+        : failed && notExclusive
+          ? "画面首帧未出，不是页面独占"
+          : failed ? "画面首帧未出" : "未读到摄像头首帧证据",
+      next_action: ready
+        ? "继续监看共享预览"
+        : failed
+          ? "检查 USB/摄像头输入/供电，必要时换 known-good UVC；自由移动可继续监看"
+          : "先打开共享预览或检查画面；自由移动可继续监看",
+    });
+  }
+  if (!hasGate("lidar_fresh")) {
+    const lidarFreshReady = runtimeLidarFreshFromSnapshot || radarFreshProven;
+    gateRows.push({
+      id: "lidar_fresh",
+      label: "雷达新鲜",
+      scope: "mapping_acceptance",
+      state: lidarFreshReady ? "ready" : "not_proven",
+      evidence: lidarFreshReady
+        ? "雷达扫描已刷新"
+        : "雷达最新扫描未刷新",
+      next_action: lidarFreshReady
+        ? "继续保持雷达运行"
+        : "先刷新雷达；刷新前只能按自由移动记录",
+    });
+  }
+  if (!hasGate("fresh_map_preview")) {
+    gateRows.push({
+      id: "fresh_map_preview",
+      label: "地图画面",
+      scope: "mapping_acceptance",
+      state: "not_proven",
+      evidence: "地图画面未刷新",
+      next_action: "刷新地图画面后再按建图验收",
     });
   }
   const cmdVelPublishEnabled = latest.cmd_vel_publish_enabled === true;

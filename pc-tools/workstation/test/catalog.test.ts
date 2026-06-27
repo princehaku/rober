@@ -5931,7 +5931,24 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: "camera_first_frame",
+          scope: "mapping_acceptance",
+          state: "not_proven",
+          evidence: "未读到摄像头首帧证据",
+        }),
         expect.objectContaining({ id: "lidar_fresh", state: "blocked" }),
+        expect.objectContaining({
+          id: "mapping_active",
+          scope: "mapping_acceptance",
+          state: "not_proven",
+        }),
+        expect.objectContaining({
+          id: "fresh_map_preview",
+          scope: "mapping_acceptance",
+          state: "not_proven",
+          evidence: "地图画面未刷新",
+        }),
         expect.objectContaining({
           id: "motion_hil_unlock",
           state: "not_proven",

@@ -156,6 +156,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `free_roam_mapping_missing_reasons`，只有旧上车端缺少该字段时才 fallback 到 `readback_summary.free_roam.mapping_missing`。
   若 PC 本地刚启动地图记录或已经显示真实地图画面，会过滤上一拍 summary 里的 `mapping_active/fresh_map_preview` 旧缺口；
   但相机首帧和雷达 fresh 仍必须由真实材料证明，不能被旧 readback 的 `mapping_ready=true` 翻案。
+- 2026-06-28 13:25 起，若上车端 free-roam runtime 没有返回完整建图验收 gates，PC summary 会补齐
+  `camera_first_frame`、`mapping_active`、`lidar_fresh` 和 `fresh_map_preview` 的只读兜底 gate。这样
+  `free_roam_mapping_missing_reasons` 里的每个必需缺口都能在 `free_roam_autonomy_gates` 中看到对应 evidence 和 next action；
+  这只改善“能自由移动”和“能否按建图验收”之间的所见即所得解释，不新开摄像头、不刷新地图、不启动雷达、不发布 `/cmd_vel`。
 - 2026-06-27 23:45 起，建图验收缺口里的 `camera_first_frame` 会复用相机 source diagnosis 的现场建议：
   当 live summary 已证明 `uvc_no_frame_not_exclusive`，并带有 known-good UVC 建议时，普通首屏显示
   `画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）`。这让多人共享预览和建图验收使用同一口径：
