@@ -104,6 +104,70 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         finally:
             module.run_free_roam_param_sequence = original_param_sequence
 
+    def test_start_uses_free_move_ready_not_mapping_ready(self) -> None:
+        """旧调用可能把整体 ready 写成 false；start 必须优先看 free_move_ready。"""
+        module = load_upper_robot_api_module()
+        calls: list[dict[str, object]] = []
+
+        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True):
+            calls.append({
+                "action": action,
+                "enable_motion": enable_motion,
+                "mapping_active": mapping_active,
+            })
+            return {
+                "mode": "free_roam_param_sequence",
+                "action": action,
+                "motion_unlock_requested": bool(action == "start" and enable_motion),
+                "executed": True,
+                "ok": True,
+                "touched_parameters": ["operator_confirmed", "motion_hil_unlocked", "enable_cmd_vel_publish"],
+                "blocked_parameters_not_touched": ["cmd_vel_topic"],
+            }
+
+        original_param_sequence = module.run_free_roam_param_sequence
+        module.run_free_roam_param_sequence = fake_param_sequence
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                api = module.UpperRobotApi(
+                    camera_base_url="http://127.0.0.1:8088",
+                    base_port="/dev/null",
+                    base_baudrate=115200,
+                    max_speed=0.12,
+                    free_roam_autonomy_artifact_path=str(Path(td) / "free_roam.json"),
+                )
+                api.free_roam_motion_readiness = lambda: {
+                    "ready": False,
+                    "missing": [],
+                    "free_move_ready": True,
+                    "mapping_readiness": {
+                        "ready": False,
+                        "missing": ["camera_first_frame_not_observed"],
+                        "free_move_allowed_when_mapping_not_ready": True,
+                    },
+                }
+                api.free_roam_autonomy_latest = lambda: (200, {"decision_state": "stopping"})
+
+                payload = api.free_roam_autonomy_control(
+                    "start",
+                    {"confirm_operator_safety": True, "confirm_mapping_active": True},
+                )
+
+            self.assertEqual(calls, [{
+                "action": "start",
+                "enable_motion": True,
+                "mapping_active": False,
+            }])
+            self.assertEqual(payload["status"], "requested")
+            self.assertTrue(payload["free_move_start_ready"])
+            self.assertEqual(payload["free_move_blocked_reasons"], [])
+            self.assertFalse(payload["mapping_readiness_ready"])
+            self.assertEqual(payload["mapping_blocked_reasons"], ["camera_first_frame_not_observed"])
+            self.assertTrue(payload["motion_unlock_requested"])
+            self.assertTrue(payload["publishes_cmd_vel"])
+        finally:
+            module.run_free_roam_param_sequence = original_param_sequence
+
     def test_runtime_lidar_snapshot_allows_mapping_when_scan_proof_is_stale(self) -> None:
         """雷达 proof 旧时，free-roam runtime 的实时 /scan 快照仍可作为建图 readiness。"""
         module = load_upper_robot_api_module()

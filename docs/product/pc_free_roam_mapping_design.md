@@ -493,3 +493,11 @@ blocked reasons 带 `runtime_scan_stale_for_map_radar_overlay` 与 `radar_lifecy
 仍保持 `source_first_frame_failed`，并把 `source_diagnosis_*` 透传到普通首屏。这样页面不会在 camera health 慢时从
 “不是页面独占，UVC 无帧”退回 `fetch_failed/not_loaded`。该规则只复用 PC Node 已有只读诊断，不创建新 camera reader，
 不发送运动、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 01:46 起，上位机 free-roam start 合同再次收敛为“自由移动”和“建图验收”两层：
+`POST /api/free-roam/autonomy/start` 的运动解锁只看 `confirm_operator_safety` 与
+`free_move_ready/free_move_start_ready`，不再把相机首帧或雷达新鲜度误当成低速自由移动硬门禁。
+相机首帧、雷达新鲜度和地图画面只决定 `mapping_active_applied`、`mapping_readiness_ready`
+和 `mapping_blocked_reasons`；不 ready 时仍可 `mapping_active=false` 启动低速自由移动，回包必须明确
+`free_move_blocked_reasons=[]` 与建图缺口。PC 代理同步透传这些字段，方便普通界面直接解释：
+车能不能自己低速动，和本轮能不能按建图验收收口，是两件事。

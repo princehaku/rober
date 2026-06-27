@@ -6897,7 +6897,7 @@ class UpperRobotApi:
         }
 
     def camera_motion_readiness(self) -> dict[str, Any]:
-        """自动扫图发车前同步确认相机子服务和采集源在线，避免异步 route 依赖泄漏到控制路径。"""
+        """建图验收前同步确认相机首帧；自由移动本身不把相机作为硬门禁。"""
         import urllib.error
         import urllib.request
 
@@ -7019,7 +7019,8 @@ class UpperRobotApi:
                     },
                 )
             sensor_readiness = self.free_roam_motion_readiness()
-            if not sensor_readiness.get("ready"):
+            free_move_ready = bool(sensor_readiness.get("free_move_ready", sensor_readiness.get("ready")))
+            if not free_move_ready:
                 return software_guard_payload(
                     schema_suffix="free_roam_autonomy_control_result",
                     action="free_roam_autonomy_start",
@@ -7069,6 +7070,11 @@ class UpperRobotApi:
             if isinstance(mapping_readiness, dict)
             else False
         )
+        mapping_blocked_reasons = (
+            list(mapping_readiness.get("missing", []))
+            if isinstance(mapping_readiness, dict) and isinstance(mapping_readiness.get("missing"), list)
+            else []
+        )
         # 自由移动只需要现场安全确认；建图会话必须由上位机再次确认相机和雷达质量，避免直接打 API 绕过 PC 门禁。
         mapping_active_applied = bool(mapping_active_requested and mapping_ready)
         if action == "start":
@@ -7094,6 +7100,14 @@ class UpperRobotApi:
                 },
                 "mapping_active_requested": mapping_active_requested,
                 "mapping_active_applied": mapping_active_applied,
+                "free_move_start_ready": bool(sensor_readiness.get("free_move_ready", sensor_readiness.get("ready")))
+                if isinstance(sensor_readiness, dict)
+                else False,
+                "free_move_blocked_reasons": sensor_readiness.get("missing", [])
+                if isinstance(sensor_readiness, dict) and not bool(sensor_readiness.get("free_move_ready", sensor_readiness.get("ready")))
+                else [],
+                "mapping_readiness_ready": mapping_ready,
+                "mapping_blocked_reasons": mapping_blocked_reasons,
                 "latest_http_status": http_status,
                 "latest_decision_state": (
                     latest.get("decision_state")

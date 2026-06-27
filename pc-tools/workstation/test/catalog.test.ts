@@ -1361,9 +1361,14 @@ describe("workstation fail-closed API contracts", () => {
           latest_decision_state: "ready",
           sets_state_machine_parameters: true,
           mapping_active_requested: false,
+          mapping_active_applied: false,
           direct_cmd_vel_publish: false,
           motion_unlock_requested: true,
           does_not_set_motion_unlock: false,
+          free_move_start_ready: true,
+          free_move_blocked_reasons: [],
+          mapping_readiness_ready: false,
+          mapping_blocked_reasons: ["camera_first_frame_not_observed", "radar_scan_proof_not_fresh"],
           sensor_readiness: {
             ready: true,
             missing: [],
@@ -1404,7 +1409,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.blocked_reasons).toEqual([]);
       expect(body.sets_state_machine_parameters).toBe(true);
       expect(body.mapping_active_requested).toBe(false);
+      expect(body.mapping_active_applied).toBe(false);
       expect(body.motion_unlock_requested).toBe(true);
+      expect(body.free_move_start_ready).toBe(true);
+      expect(body.free_move_blocked_reasons).toEqual([]);
+      expect(body.mapping_readiness_ready).toBe(false);
+      expect(body.mapping_blocked_reasons).toEqual([
+        "camera_first_frame_not_observed",
+        "radar_scan_proof_not_fresh",
+      ]);
       expect(body.sensor_readiness.ready).toBe(true);
       expect(body.sensor_readiness.mapping_readiness.ready).toBe(false);
       expect(body.sensor_readiness.mapping_readiness.missing).toEqual([

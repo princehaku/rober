@@ -2829,6 +2829,10 @@ export interface RobotControlFreeRoamAutonomyResponse extends ProofFlags {
   direct_cmd_vel_publish: false;
   motion_unlock_requested: boolean;
   does_not_set_motion_unlock: boolean;
+  free_move_start_ready: boolean;
+  free_move_blocked_reasons: string[];
+  mapping_readiness_ready: boolean;
+  mapping_blocked_reasons: string[];
   sensor_readiness: RobotControlFreeRoamAutonomySensorReadiness;
   blocked_parameters_not_touched: string[];
   failure_reason: string;

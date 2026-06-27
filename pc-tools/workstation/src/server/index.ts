@@ -957,6 +957,10 @@ function freeRoamAutonomyProxyFailure(
     direct_cmd_vel_publish: false,
     motion_unlock_requested: false,
     does_not_set_motion_unlock: true,
+    free_move_start_ready: false,
+    free_move_blocked_reasons: [reason],
+    mapping_readiness_ready: false,
+    mapping_blocked_reasons: ["not_checked"],
     sensor_readiness: {
       ready: false,
       missing: ["not_checked"],
@@ -996,6 +1000,19 @@ function freeRoamAutonomyProxyResponse(
   const sensorReadiness = asRecord(remote.payload.sensor_readiness);
   const mappingReadiness = asRecord(sensorReadiness?.mapping_readiness);
   const motionUnlockRequested = remote.payload.motion_unlock_requested === true;
+  const freeMoveStartReady = remote.payload.free_move_start_ready === true
+    || sensorReadiness?.free_move_ready === true
+    || sensorReadiness?.ready === true;
+  const freeMoveBlockedReasons = Array.isArray(remote.payload.free_move_blocked_reasons)
+    ? remote.payload.free_move_blocked_reasons.map((item) => shortValue(item, "unknown"))
+    : Array.isArray(sensorReadiness?.missing) && !freeMoveStartReady
+      ? sensorReadiness.missing.map((item) => shortValue(item, "unknown"))
+      : [];
+  const mappingBlockedReasons = Array.isArray(remote.payload.mapping_blocked_reasons)
+    ? remote.payload.mapping_blocked_reasons.map((item) => shortValue(item, "unknown"))
+    : Array.isArray(mappingReadiness?.missing)
+      ? mappingReadiness.missing.map((item) => shortValue(item, "unknown"))
+      : [];
   const forwarded = remote.remote_http_status !== null && remote.remote_http_status >= 200 && remote.remote_http_status < 300 && remote.payload.status === "requested";
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1",
@@ -1030,6 +1047,10 @@ function freeRoamAutonomyProxyResponse(
     direct_cmd_vel_publish: false,
     motion_unlock_requested: motionUnlockRequested,
     does_not_set_motion_unlock: remote.payload.does_not_set_motion_unlock === false ? false : true,
+    free_move_start_ready: freeMoveStartReady,
+    free_move_blocked_reasons: freeMoveBlockedReasons,
+    mapping_readiness_ready: remote.payload.mapping_readiness_ready === true || mappingReadiness?.ready === true,
+    mapping_blocked_reasons: mappingBlockedReasons,
     sensor_readiness: {
       ready: sensorReadiness?.ready === true,
       missing: Array.isArray(sensorReadiness?.missing)
