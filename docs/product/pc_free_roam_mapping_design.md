@@ -372,6 +372,10 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 才能生成 `最近障碍 Xm`。这保持“雷达开始后地图标记所见即所得”：旧距离可以解释历史材料，但不能变成地图点、
 当前近障碍或建图 ready 证据。低速自由移动仍只看安全确认和停止兜底，不新增任何运动命令。
 
+2026-06-27 23:24 起，旧 `/scan` 距离的年龄不再直出大秒数：PC 会把 stale age 翻译为
+`约 N 秒前 / 约 N 分钟前 / 约 N 小时 N 分前 / 约 N 天 N 小时前`。这避免现场看到
+`10234.64s` 后难以判断距离有多旧；刷新、建图 ready 和地图贴点判定仍保持原来的结构化 freshness 口径。
+
 2026-06-27 20:15 起，PC summary 的 `readback_summary.nav2` 额外提升
 `controller_server_active` 与 `controller_server_requested`。当最近一次 Nav2 action 已返回 succeeded、
 但执行窗口 wheel raw L/R 仍为 `0/0`，且当前 Nav2 controller 读数为 inactive 时，

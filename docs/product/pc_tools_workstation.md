@@ -3496,3 +3496,7 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 若 runtime snapshot 仍带旧距离但状态为 `stale`，雷达卡片、当前事实和地图 `雷达点口径`
 会显示 `旧 /scan 距离 ... 已过期，不贴到地图`。这样 live 中残留的 `0.04m` 不会被误读成当前近障碍，
 也不会影响自由移动启动门禁；该改动不发送 radar refresh、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-27 23:24 起，上述 stale runtime `/scan` 年龄会从机器秒数转成人话：
+`12.30s` 显示为 `约 12 秒前`，`10234.64s` 显示为 `约 2 小时 51 分前`。
+这只改变 PC 可读性，不改变 freshness 判定，不把 stale 距离升级为当前障碍或地图雷达点。

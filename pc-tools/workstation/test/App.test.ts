@@ -15450,15 +15450,49 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达无新点");
-    expect(firstScreenText).toContain("旧 /scan 距离 0.04m，约 12.30s 前，已过期，不贴到地图");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已收到原始包，但地图上没有雷达点，旧 /scan 距离 0.04m，约 12.30s 前，已过期，不贴到地图。");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toContain("旧 /scan 距离 0.04m，约 12.30s 前，已过期，不贴到地图");
+    expect(firstScreenText).toContain("旧 /scan 距离 0.04m，约 12 秒前，已过期，不贴到地图");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：已收到原始包，但地图上没有雷达点，旧 /scan 距离 0.04m，约 12 秒前，已过期，不贴到地图。");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toContain("旧 /scan 距离 0.04m，约 12 秒前，已过期，不贴到地图");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).not.toContain("最近障碍 0.04m");
     expect(firstScreenText).not.toContain("最近障碍 0.04m");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("formats long stale runtime scan age as human time instead of raw seconds", async () => {
+    // live 形状会出现 10234.64s 这类大秒数；普通用户需要看懂这是几小时前的旧 /scan。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.o3_proof_summary.scan_preview_points = [];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 0;
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_stale_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_stale_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.runtime_scan_status = "stale";
+    summaryFixture.readback_summary.lidar.runtime_lidar_min_distance_m = "0.04";
+    summaryFixture.readback_summary.lidar.runtime_lidar_age_s = "10234.64";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = summaryFixture.safe_command_boundary.free_roam_autonomy_gates.map((gate: Record<string, string>) =>
+      gate.id === "obstacle_clear"
+        ? { ...gate, state: "not_proven", evidence: "雷达未刷新，障碍距离不可用", next_action: "先刷新雷达" }
+        : gate,
+    );
+    stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("旧 /scan 距离 0.04m，约 2 小时 51 分前，已过期，不贴到地图");
+    expect(firstScreenText).not.toContain("10234.64s");
+    expect(firstScreenText).not.toContain("最近障碍 0.04m");
   });
 
   it("shows running lidar with missing latest proof as no-new-points on the map", async () => {

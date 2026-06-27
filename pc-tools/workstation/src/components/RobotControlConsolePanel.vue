@@ -977,6 +977,28 @@ function latestRadarRuntimeScanAgeText(): string {
   return age === null ? "" : age.toFixed(2);
 }
 
+function formatPlainDurationFromSeconds(seconds: number): string {
+  // 雷达 stale age 来自机器秒数；普通首屏要把大秒数翻成可判断的新旧程度。
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return "";
+  }
+  if (seconds < 60) {
+    return `约 ${Math.max(1, Math.round(seconds))} 秒前`;
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) {
+    return `约 ${minutes} 分钟前`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours < 24) {
+    return remainingMinutes > 0 ? `约 ${hours} 小时 ${remainingMinutes} 分前` : `约 ${hours} 小时前`;
+  }
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  return remainingHours > 0 ? `约 ${days} 天 ${remainingHours} 小时前` : `约 ${days} 天前`;
+}
+
 function latestRadarRuntimeScanStaleLabel(): string {
   // stale runtime 距离只用于解释“旧读数存在”，不能再被地图 marker 或近障碍策略当作当前距离。
   const lidar = robotSummary.value?.readback_summary?.lidar;
@@ -988,7 +1010,7 @@ function latestRadarRuntimeScanStaleLabel(): string {
     return "";
   }
   const age = finitePlainNumber(lidar.runtime_lidar_age_s);
-  const ageText = age !== null ? `，约 ${age.toFixed(2)}s 前` : "";
+  const ageText = age !== null ? `，${formatPlainDurationFromSeconds(age)}` : "";
   return `旧 /scan 距离 ${distance.toFixed(2)}m${ageText}，已过期，不贴到地图`;
 }
 
