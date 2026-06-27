@@ -3597,7 +3597,7 @@ function freeRoamRuntimeGatesFromReadbacks(
   const lidarFreshExpired = Boolean(
     lidarFreshGate
     && lidarFreshGate.state !== "ready"
-    && /过期|未运行|stopped|lifecycle_not_running/i.test(`${lidarFreshGate.evidence} ${lidarFreshGate.next_action}`),
+    && /未刷新|过期|未运行|stale|not_fresh|stopped|lifecycle_not_running/i.test(`${lidarFreshGate.evidence} ${lidarFreshGate.next_action}`),
   );
   if (lidarFreshExpired) {
     const obstacleGate = gateRows.find((gate) => gate.id === "obstacle_clear");

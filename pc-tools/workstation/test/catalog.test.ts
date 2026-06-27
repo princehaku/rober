@@ -5095,6 +5095,7 @@ describe("workstation fail-closed API contracts", () => {
                 { id: "stop_available", label: "停止兜底", state: "ready", evidence: "stop endpoint ready", next_action: "继续保持停止可用" },
                 { id: "camera_first_frame", label: "画面首帧", state: "ready", evidence: "画面首帧已读到", next_action: "继续监看画面" },
                 { id: "lidar_fresh", label: "雷达新鲜", state: "ready", evidence: "runtime 旧记录显示 fresh", next_action: "继续监看雷达" },
+                { id: "obstacle_clear", label: "前方障碍", state: "ready", evidence: "最近障碍 0.04m", next_action: "原地换向避让，不继续直行" },
                 { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续记录地图" },
                 { id: "fresh_map_preview", label: "地图画面", state: "ready", evidence: "地图画面已刷新", next_action: "继续监看地图" },
               ],
@@ -5140,6 +5141,12 @@ describe("workstation fail-closed API contracts", () => {
           state: "not_proven",
           evidence: "雷达最新扫描未刷新",
           next_action: "先刷新雷达；刷新前只能按自由移动记录",
+        }),
+        expect.objectContaining({
+          id: "obstacle_clear",
+          state: "not_proven",
+          evidence: "雷达未刷新，障碍距离不可用",
+          next_action: "先刷新雷达；刷新前不把旧障碍距离贴到地图",
         }),
       ]));
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
