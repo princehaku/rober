@@ -369,7 +369,7 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 
 2026-06-27 20:35 起，上述 controller 诊断会避开已完成 O11 执行 artifact 的事后 inactive 状态：
 如果最近 Nav2 执行已经 `goal_succeeded`、发出非零底盘命令、写入 WAVE ROVER UART command log 或读到 IMU 姿态变化，
-PC 下一步文案不再把 `controller_server_active=false` 当成主因，而是明确写“主因不是雷达、相机或 controller”，
+PC 下一步文案会把“旧执行主因不是雷达或相机”和“当前 controller 未 active，重跑前需先恢复 controller”分开，
 卡点仍是同窗口 `T=1001 L/R` 非零复验。该变更只修正诊断展示，不自动重跑 Nav2、不发送底盘命令。
 
 2026-06-27 20:19 起，PC 普通首屏在 `source_first_frame_failed` 但诊断明确不是外部独占时，

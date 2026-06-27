@@ -4037,13 +4037,18 @@ function nav2GoalBoundaryGuidance(
     || (Number.isFinite(baseCommandCount) && baseCommandCount > 0)
     || nav2.goal_execution_sends_base_motion_commands === "true"
     || nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true";
-  const controllerInactiveText = nav2.controller_server_active === "false" && !executionMotionMaterialObserved
-    ? "；Nav2 controller 当前未 active，重跑时需先让 controller active"
+  const controllerInactive = nav2.controller_server_active === "false";
+  const controllerInactiveText = controllerInactive
+    ? "；Nav2 controller 当前未 active，重跑前需先恢复 controller"
     : "";
   const executionMotionText = nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true"
-    ? "；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller"
+    ? controllerInactive
+      ? "；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机"
+      : "；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller"
     : executionMotionMaterialObserved
-      ? "；已看到执行运动材料，主因不是雷达、相机或 controller"
+      ? controllerInactive
+        ? "；已看到旧执行运动材料，旧执行主因不是雷达或相机"
+        : "；已看到执行运动材料，主因不是雷达、相机或 controller"
       : "";
   const modeChanged = !["", "not_loaded"].includes(currentMode) && !["", "not_loaded"].includes(nextMode) && currentMode !== nextMode;
   const modeLabel = modeChanged

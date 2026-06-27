@@ -240,6 +240,7 @@ pc-tools/workstation/
 - 2026-06-27 13:51 起，普通首屏的事实条、行程进度、行程摘要和本轮进度下一步会优先消费上述 `nav2_goal_next_action`。因此 live 出现 `goal_succeeded_but_wheel_lr_zero` 时，用户直接看到“勾选行程前安全确认后用 ROS 重跑图上路线”，而不是只看到内部 `ros` 模式名或误以为 action success 等于完整到达。该展示仍只读 summary，不自动执行 Nav2、不发送 manual/keyboard/delivery/stop 或 `/cmd_vel`。
 - 2026-06-27 14:25 起，普通首屏事实条在上述 `goal_succeeded_but_wheel_lr_zero` 形态下额外显示“自动驾驶”诊断行：明确不是摄像头或雷达阻塞，而是上次底盘命令已发出但同窗口 `wheel raw L/R` 未非零，并提示下一步用 ROS 重跑图上路线。该诊断只消费 summary/latest 只读材料，不自动执行 Nav2、不发送 manual/keyboard/delivery/stop 或 `/cmd_vel`。
 - 2026-06-27 21:24 起，普通首屏事实条进一步拆分“当前自动驾驶准备状态”和“旧路线执行证据”：即使最近路线曾返回成功，只要当前图上行程未准备、规划/控制服务未运行或小车地图坐标未读到，首屏都会显示 `自动驾驶当前：未准备好...`，并提示先准备图上行程或重新定位；同时说明相机/雷达不挡底盘试动或键盘手控。该行只翻译 readback，不自动发车，不调用 Nav2 execute、manual、keyboard、delivery、stop 或 `/cmd_vel`。
+- 2026-06-27 21:30 起，summary 的 `nav2_goal_next_action` 不再在 `controller_server_active=false` 时写“不是 controller”。如果旧执行已有非零底盘命令或 IMU 姿态变化，summary 只说明旧执行主因不是雷达或相机；同时单独提示当前 controller 未 active，重跑前需要恢复 controller。该字段仍只读 latest/status，不自动执行 Nav2、不发送 manual/keyboard/delivery/stop 或 `/cmd_vel`。
 - 2026-06-27 17:27 起，普通首屏地图上的 Nav2 终点 marker 和 `行程执行` caption 也消费同一条模式复验证据。最近行程为
   `base_command_mode=pwm`、`next_execution_base_command_mode=ros`、`wheel raw L/R=0/0` 时，地图不再只写“到达未证明 / 底盘反馈 0/0”，而是同步显示
   “旧 PWM 结果，等待 ROS 复验”。该展示只修正地图 WYSIWYG 语义，不自动点击 `执行图上路线`，不调用 Nav2 execute、manual、keyboard、delivery、stop 或 `/cmd_vel`。
