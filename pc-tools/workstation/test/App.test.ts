@@ -5413,19 +5413,33 @@ describe("App", () => {
       artifact_only: false,
       cmd_vel_publish_enabled: true,
     };
-    const mockedFetch = stubWorkstationFetch({
+    const stopFailureFixture = {
+      ...(fixtures["/api/robot-control/free-roam/autonomy/stop"] as Record<string, unknown>),
+      action: "stop",
+      proxy_status: "autonomy_failed",
+      status: "blocked",
+      command_result: { mode: "stop_timeout", executed: false, ok: false },
+      failure_reason: "stop_timeout",
+      blocked_reasons: ["stop_timeout"],
+    };
+    let delayNextAutoStop = false;
+    let resolveAutoStop!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedAutoStop = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveAutoStop = resolve;
+    });
+    const baseFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/start": mapStartFixture,
-      "/api/robot-control/free-roam/autonomy/stop": {
-        ...(fixtures["/api/robot-control/free-roam/autonomy/stop"] as Record<string, unknown>),
-        action: "stop",
-        proxy_status: "autonomy_failed",
-        status: "blocked",
-        command_result: { mode: "stop_timeout", executed: false, ok: false },
-        failure_reason: "stop_timeout",
-        blocked_reasons: ["stop_timeout"],
-      },
+      "/api/robot-control/free-roam/autonomy/stop": stopFailureFixture,
     });
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/free-roam/autonomy/stop") && delayNextAutoStop) {
+        delayNextAutoStop = false;
+        return delayedAutoStop;
+      }
+      return baseFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
 
     const wrapper = mount(App);
     await flushPromises();
@@ -5441,7 +5455,23 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-auto-stop"]').trigger("click");
+    delayNextAutoStop = true;
+    const stopClick = wrapper.find('[data-testid="plain-free-roam-auto-stop"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止请求中");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自由移动停止请求中");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopping");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("自由移动停止请求已发送，等待上车端返回，未证明已停止，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：停止请求已发送，等待上车端返回；返回前未证明已停止。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：停止请求已发送，等待上车端返回；返回前未证明已停止。");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先停止自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
+    resolveAutoStop({
+      ok: true,
+      json: async () => stopFailureFixture,
+    });
+    await stopClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
 

@@ -1879,7 +1879,7 @@ const canStopFreeRoamAutonomy = computed(() => (
 ));
 const plainFreeRoamAutoStopButtonLabel = computed(() => {
   if (freeRoamAutonomyPendingAction.value === "stop") {
-    return "停止中";
+    return "停止请求中";
   }
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
     return "停止已排队";
@@ -2040,7 +2040,7 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
     return `${modeName}：启动请求已发送，等待上车端返回；返回前不把它当作已低速运行。`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
-    return `${modeName}：正在请求上车端${modeName}停止，红色停止仍可随时兜底。`;
+    return `${modeName}：停止请求已发送，等待上车端返回；返回前未证明已停止。`;
   }
   if (freeRoamAutonomyLatestPending.value) {
     return `${modeName}：正在读取最新上车状态，返回前不把旧自由移动记录当作当前结论。`;
@@ -3450,7 +3450,7 @@ function freeRoamActionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOve
     return { label: `${modeName}请求中（等待返回）`, state: "auto_starting", style, aria: `${modeName}启动请求已发送，等待上车端返回，未确认低速运行${locatedSuffix}` };
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
-    return { label: `${modeName}停止中`, state: "auto_stopping", style, aria: `上车端${modeName}状态机正在停止${locatedSuffix}` };
+    return { label: `${modeName}停止请求中`, state: "auto_stopping", style, aria: `${modeName}停止请求已发送，等待上车端返回，未证明已停止${locatedSuffix}` };
   }
   if (autonomyResult?.proxy_status === "autonomy_failed") {
     const actionText = autonomyResult.action === "start" ? "启动" : "停止";
@@ -4228,7 +4228,7 @@ const plainFreeRoamDriveStatus = computed(() => {
     return `${statusPrefix}：启动请求已发送，等待上车端返回；返回前不把它当作已低速运行。`;
   }
   if (freeRoamAutonomyPendingAction.value === "stop") {
-    return `${statusPrefix}：正在请求上车端${plainFreeRoamMotionModeName.value}停止，红色停止仍可随时兜底。`;
+    return `${statusPrefix}：停止请求已发送，等待上车端返回；返回前未证明已停止。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
     const failureText = freeRoamAutonomyFailureText(freeRoamAutonomyResult.value);

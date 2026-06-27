@@ -3048,6 +3048,11 @@ aria 同步写明“不发车”，自由移动/建图卡片提示“启动返�
 `自动扫图请求中（等待返回）`。红色停止仍可点击并排队到 start 返回后立即发送；该 pending 呈现只反映固定代理请求窗口，不新增
 manual、keyboard、Nav2、delivery、stop 之外的新动作或 `/cmd_vel` 调用。
 
+2026-06-28 21:20 起，`free-roam/autonomy/stop` 已发送但尚未返回时，普通首屏按钮显示 `停止请求中`，
+当前事实、扫图状态和地图 marker 显示“停止请求已发送，等待上车端返回；返回前未证明已停止”。保存地图继续保持禁用并提示
+先停止当前自由移动或自动扫图；回包失败时仍 fail-closed 并引导点击红色停止。该 pending 呈现不新增 manual、keyboard、
+Nav2、delivery、map save 或 `/cmd_vel` 调用。
+
 2026-06-26 23:59 起，普通首屏地图在 `scan_preview_point_count=N` 但 `scan_preview_points=[]` 时不再写成
 `雷达点位未读取`。地图 scan label、雷达点口径和坐标口径都会显示
 `最近雷达记录 N 个（仅点数，没有点数组，未显示局部轮廓）` 或
