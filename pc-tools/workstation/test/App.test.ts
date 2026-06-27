@@ -6716,6 +6716,46 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("shows stale summary Nav2 execution as an old record in current facts", async () => {
+    // summary 自身可能反复刷新旧行程 artifact；当前事实条必须看 action 时间，不能看最新响应时间。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_proven = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_evidence_ref = "o11-nav2-goal-execution-summary-stale-fixture";
+    summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
+    summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_generated_at_ms = "1782099547218";
+    summaryFixture.readback_summary.nav2.goal_execution_response_generated_at_ms = "1782150147954";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：旧路线成功记录，反馈 8 次，约 14 小时前；需重新执行本轮行程。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：旧到达记录");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，约 14 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达仍需现场确认。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("refreshes Robot Control summary after plain Nav2 execution latest is loaded", async () => {
     // 执行返回后 latest 会先落盘；PC 必须再读 summary，让首页事实条拿到本轮 wheel L/R 复验证据。
     const initialSummary = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

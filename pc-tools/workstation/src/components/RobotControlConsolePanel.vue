@@ -1587,21 +1587,26 @@ const plainCurrentFactRows = computed(() => {
   const nav2 = summary.readback_summary.nav2;
   if (nav2.goal_execution_status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") {
     const nav2Values = summaryNav2ExecutionValues();
-    const baseReadbackText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true" ? "" : baseWheelNonzeroReadbackContextText();
-    const modeText = nav2.next_execution_base_command_mode
-      && nav2.next_execution_base_command_mode !== "not_loaded"
-      && nav2.goal_execution_base_command_mode !== "not_loaded"
-      && nav2.next_execution_base_command_mode !== nav2.goal_execution_base_command_mode
-      ? `；下次将用 ${nav2.next_execution_base_command_mode} 复验`
-      : "";
-    const wheelText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
-      ? "轮速已复验"
-      : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}${modeText}`;
-    rows.push(nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
-      ? `行程：路线返回成功，${wheelText}。`
-      : nav2BaseCommandWithoutWheelFeedback(nav2Values)
-        ? `行程：路线返回成功，但${nav2CommandFeedbackFactText(nav2Values)}${modeText}。`
-        : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);
+    if (evidenceIsStale(nav2Values)) {
+      const feedbackText = nav2FeedbackSampleCount(nav2Values) > 0 ? `，反馈 ${nav2FeedbackSampleCount(nav2Values)} 次` : "";
+      rows.push(`行程：旧路线成功记录${feedbackText}${formatEvidenceAge(nav2Values, "需重新执行本轮行程")}。`);
+    } else {
+      const baseReadbackText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true" ? "" : baseWheelNonzeroReadbackContextText();
+      const modeText = nav2.next_execution_base_command_mode
+        && nav2.next_execution_base_command_mode !== "not_loaded"
+        && nav2.goal_execution_base_command_mode !== "not_loaded"
+        && nav2.next_execution_base_command_mode !== nav2.goal_execution_base_command_mode
+        ? `；下次将用 ${nav2.next_execution_base_command_mode} 复验`
+        : "";
+      const wheelText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
+        ? "轮速已复验"
+        : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}${modeText}`;
+      rows.push(nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
+        ? `行程：路线返回成功，${wheelText}。`
+        : nav2BaseCommandWithoutWheelFeedback(nav2Values)
+          ? `行程：路线返回成功，但${nav2CommandFeedbackFactText(nav2Values)}${modeText}。`
+          : `行程：路线返回成功，但同窗口轮速未证明，${wheelText}。`);
+    }
   } else if (plainTripPreparedBySummary.value || nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") {
     if (plainTripCurrentRouteVisible.value && plainTripRobotPoseVisibleForExecution.value) {
       rows.push("行程：图上路线可执行。");
