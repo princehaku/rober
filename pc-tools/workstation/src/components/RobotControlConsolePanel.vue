@@ -5367,7 +5367,7 @@ const plainDeliveryNextActionSummary = computed(() => {
     return plainTripHasSucceededEvidence.value ? `${draftReusePrefix}下一步：重新执行本轮行程。` : `${draftReusePrefix}下一步：先完成行程。`;
   }
   if (plainDeliveryMapWysiwygPending.value) {
-    return `下一步：等待${plainTripMapWysiwygWaitText()}。`;
+    return `下一步：等待${plainTripMapWysiwygWaitText()}，避免按旧地图确认送达。`;
   }
   if (!deliveryRouteMapMatchesFreshNav2.value) {
     return "下一步：更新行程材料。";
@@ -6173,7 +6173,10 @@ const plainDeliveryConfirmSummary = computed(() => {
     return { state: "待材料", hint: "送达成功记录的行程材料不是本轮记录，先重新准备材料并确认送达。" };
   }
   if (plainDeliveryMapWysiwygPending.value) {
-    return { state: "刷新中", hint: `${plainTripMapWysiwygPendingText()}；刷新完成后再提交送达确认。` };
+    return {
+      state: "刷新中",
+      hint: `${plainTripMapWysiwygPendingText()}；刷新完成后再提交送达确认。这不是额外预检，是避免按旧地图或旧行程材料确认送达。`,
+    };
   }
   if (!deliveryNav2GoalReady.value) {
     if (plainTripHasFreshUnprovenControlEvidence.value) {

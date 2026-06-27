@@ -18065,7 +18065,7 @@ describe("App", () => {
     const mapRefreshClick = wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：等待地图画面刷新。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：等待地图画面刷新，避免按旧地图确认送达。");
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-draft-save"]').attributes("disabled")).toBeDefined();
@@ -18078,7 +18078,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（等待地图刷新）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("地图画面刷新完成");
-    expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').text()).toContain("地图画面刷新中；刷新完成后再提交送达确认。");
+    expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').text()).toContain(
+      "地图画面刷新中；刷新完成后再提交送达确认。这不是额外预检，是避免按旧地图或旧行程材料确认送达。",
+    );
     expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("地图画面刷新中；刷新完成后再准备或保存送达材料。");
 
     const reportCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([callUrl]) =>
