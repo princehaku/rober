@@ -1439,6 +1439,20 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("keeps advanced Nav2 confirmation collapsed into the unified safety checkbox", async () => {
+    // 发车前预检对普通和高级入口都只保留一个现场安全确认；底层兼容字段仍由请求体发送。
+    const source = await readFile(path.join(process.cwd(), "src/components/RobotControlConsolePanel.vue"), "utf8");
+
+    expect(source).not.toContain("confirmNavigationPreflight");
+    expect(source).not.toContain("confirmNavigationExecution");
+    expect(source).not.toContain("确认仅做导航目标预检");
+    expect(source).not.toContain("确认执行一次受限导航目标");
+    expect(source).toContain('name="advancedNavSafetyConfirmed"');
+    expect(source).toContain("现场安全确认（全页面一次生效）");
+    expect(source).toContain("confirm_navigation_preflight: true");
+    expect(source).toContain("confirm_navigation_execution: plainManualSafetyConfirmed.value");
+  });
+
   it("formats public API port conflict with operator next steps", () => {
     // 公网绑定失败是现场访问问题；提示必须给出占用排查和换端口兜底。
     const message = listenFailureHint(

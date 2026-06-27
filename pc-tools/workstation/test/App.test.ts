@@ -3998,7 +3998,9 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("Nav2 规划详情");
     expect(diagnostics.text()).toContain("检查路径（高级）");
     expect(diagnostics.text()).toContain("导航目标预检（高级）");
-    expect(diagnostics.text()).toContain("确认仅做导航目标预检");
+    expect(diagnostics.text()).toContain("现场安全确认（全页面一次生效）");
+    expect(diagnostics.text()).not.toContain("确认仅做导航目标预检");
+    expect(diagnostics.text()).not.toContain("确认执行一次受限导航目标");
     expect(diagnostics.text()).toContain("启动雷达（高级）");
     expect(diagnostics.text()).toContain("停止雷达（高级）");
     expect(diagnostics.text()).toContain("latest_proof_fresh_while_lifecycle_running");
@@ -15350,7 +15352,9 @@ describe("App", () => {
     await wrapper.find("details").element.setAttribute("open", "");
     await wrapper.vm.$nextTick();
     await wrapper.find("input[name='navGoalX']").setValue("99");
-    await wrapper.find("input[name='confirmNavigationPreflight']").setValue(true);
+    expect(wrapper.find("input[name='confirmNavigationPreflight']").exists()).toBe(false);
+    expect(wrapper.find("input[name='confirmNavigationExecution']").exists()).toBe(false);
+    expect(wrapper.find("input[name='advancedNavSafetyConfirmed']").exists()).toBe(true);
     const navGoalPreflightForm = wrapper.findAll("form").find((form) => form.text().includes("导航目标预检"));
     expect(navGoalPreflightForm).toBeTruthy();
     await navGoalPreflightForm?.trigger("submit");

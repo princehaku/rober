@@ -179,8 +179,6 @@ const jogDurationMs = ref(500);
 const navGoalX = ref(0.8);
 const navGoalY = ref(0);
 const navGoalYaw = ref(0);
-const confirmNavigationPreflight = ref(false);
-const confirmNavigationExecution = ref(false);
 const plainTripSafetyConfirmed = ref(false);
 const confirmDeliveryCompletion = ref(false);
 const deliveryEvidenceRef = ref("");
@@ -7895,7 +7893,7 @@ function makeNavGoalPreflightFallback(reason: string): RobotControlNavGoalPrefli
       goal_x: navGoalX.value,
       goal_y: navGoalY.value,
       goal_yaw: navGoalYaw.value,
-      confirm_navigation_preflight: confirmNavigationPreflight.value,
+      confirm_navigation_preflight: true,
     },
     goal_limits: {
       frame_id: "map",
@@ -7956,7 +7954,7 @@ function makeNavGoalExecutionFallback(reason: string): RobotControlNavGoalExecut
       goal_y: navGoalY.value,
       goal_yaw: navGoalYaw.value,
       result_timeout_s: navGoalExecutionTimeoutS.value,
-      confirm_navigation_execution: confirmNavigationExecution.value,
+      confirm_navigation_execution: plainManualSafetyConfirmed.value,
     },
     goal_execution_key_values: {},
     failure_reason: reason,
@@ -9197,7 +9195,7 @@ async function runNavGoalPreflight(): Promise<void> {
       goal_x: navGoalX.value,
       goal_y: navGoalY.value,
       goal_yaw: navGoalYaw.value,
-      confirm_navigation_preflight: confirmNavigationPreflight.value,
+      confirm_navigation_preflight: true,
     });
   } catch (err) {
     navGoalPreflightResult.value = makeNavGoalPreflightFallback(err instanceof Error ? err.message : "nav_goal_preflight_request_failed");
@@ -9232,7 +9230,7 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
       goal_yaw: goalRequest.goal_yaw,
       result_timeout_s: navGoalExecutionTimeoutS.value,
       base_command_mode: plainTripRequestedBaseCommandMode(),
-      confirm_navigation_execution: confirmNavigationExecution.value,
+      confirm_navigation_execution: plainManualSafetyConfirmed.value,
     });
   } catch (err) {
     navGoalExecutionResult.value = makeNavGoalExecutionFallback(err instanceof Error ? err.message : "nav_goal_execution_request_failed");
@@ -9259,7 +9257,6 @@ async function runPlainTripExecution(): Promise<void> {
     (enabledButton(plainTripExecuteButton.value) ?? enabledButton(plainTripPrepareButton.value))?.focus({ preventScroll: true });
     return;
   }
-  confirmNavigationExecution.value = true;
   await runNavGoalExecution(routeGoal);
   await refreshMapPreview({ tripExecutionRefresh: true });
   if (navGoalExecutionResult.value?.proxy_status === "execution_forwarded") {
@@ -12003,10 +12000,6 @@ onBeforeUnmount(() => {
               <span>目标 yaw（rad）</span>
               <input v-model.number="navGoalYaw" name="navGoalYaw" type="number" min="-3.1416" max="3.1416" step="0.1">
             </label>
-            <label class="checkbox-inline">
-              <input v-model="confirmNavigationPreflight" name="confirmNavigationPreflight" type="checkbox">
-              <span>确认仅做导航目标预检</span>
-            </label>
             <button class="secondary" type="submit" :disabled="loading || navGoalPreflightPending || !robotApiBaseUrl.trim()">
               导航目标预检（高级）
             </button>
@@ -12017,10 +12010,10 @@ onBeforeUnmount(() => {
               <input v-model.number="navGoalExecutionTimeoutS" name="navGoalExecutionTimeoutS" type="number" min="2" max="20" step="1">
             </label>
             <label class="checkbox-inline">
-              <input v-model="confirmNavigationExecution" name="confirmNavigationExecution" type="checkbox">
-              <span>确认执行一次受限导航目标</span>
+              <input v-model="plainUnifiedSafetyConfirmed" name="advancedNavSafetyConfirmed" type="checkbox">
+              <span>现场安全确认（全页面一次生效）</span>
             </label>
-            <button class="danger-button" type="submit" :disabled="loading || navGoalExecutionPending || !robotApiBaseUrl.trim() || !confirmNavigationExecution">
+            <button class="danger-button" type="submit" :disabled="loading || navGoalExecutionPending || !robotApiBaseUrl.trim() || !plainManualSafetyConfirmed">
               执行导航目标（高级）
             </button>
           </form>
@@ -12135,7 +12128,7 @@ onBeforeUnmount(() => {
               {{ navGoalPreflightResult?.preflight_status ?? "not_loaded" }}
             </dd>
             <dt>goal request</dt>
-            <dd>{{ JSON.stringify(navGoalPreflightResult?.goal_request ?? { goal_frame_id: "map", goal_x: navGoalX, goal_y: navGoalY, goal_yaw: navGoalYaw, confirm_navigation_preflight: confirmNavigationPreflight }) }}</dd>
+            <dd>{{ JSON.stringify(navGoalPreflightResult?.goal_request ?? { goal_frame_id: "map", goal_x: navGoalX, goal_y: navGoalY, goal_yaw: navGoalYaw, confirm_navigation_preflight: true }) }}</dd>
             <dt>goal missing requirements</dt>
             <dd>{{ listText(navGoalPreflightResult?.missing_requirements, "none") }}</dd>
             <dt>goal localization summary</dt>
