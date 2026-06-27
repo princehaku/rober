@@ -693,7 +693,7 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
       }
       return { state: "失败", hint: cameraOfferPlainFailureHint(rawFailureReason.value || failureReason.value) || "打开画面失败。" };
     default:
-      if (sourceFailureHint) {
+      if (sourceFailureHint && !cameraSourceFailureCanAutoJoinSharedPreview(camera)) {
         return { state: "失败", hint: sourceFailureHint };
       }
       if (cameraOnline && cameraMjpegFallbackVisible.value && !mjpegPreviewLoaded.value && !mjpegPreviewFailed.value) {
@@ -701,6 +701,9 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
       }
       if (cameraOnline && cameraMjpegFallbackVisible.value && mjpegPreviewFailed.value) {
         return { state: "失败", hint: "共享预览暂时没有出画面；页面会自动重试，不是浏览器独占。" };
+      }
+      if (sourceFailureHint) {
+        return { state: "失败", hint: sourceFailureHint };
       }
       if (cameraSourceNotProbed && cameraOnline) {
         return { state: "未打开", hint: "相机在线但还没确认首帧，先点检查画面或打开画面。" };
@@ -1184,6 +1187,18 @@ const cameraMjpegFallbackVisible = computed(() => (
   cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
 ));
 const cameraMjpegFrameObserved = computed(() => cameraMjpegFallbackVisible.value && mjpegPreviewLoaded.value && !mjpegPreviewFailed.value);
+function cameraSourceFailureCanAutoJoinSharedPreview(
+  camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined,
+): boolean {
+  // 无首帧但不是外部独占时仍要尝试共享 MJPEG；新页面应看到真实画面或真实失败，而不是停在静态错误。
+  if (!cameraSourceFirstFrameFailed(camera) || !cameraMjpegFallbackVisible.value) {
+    return false;
+  }
+  return camera?.shared_preview_exclusive_camera_claim === "false"
+    || camera?.source_diagnosis_not_exclusive === "true"
+    || camera?.source_usage_status === "not_in_use"
+    || camera?.source_usage_status === "in_use_by_camera_service";
+}
 const cameraReadbackFirstFrameObserved = computed(() => {
   // 上车 camera service 只有在自身 WebRTC/MJPEG 读到过真实帧后才会上报 first_frame_observed。
   const camera = robotSummary.value?.readback_summary.camera;

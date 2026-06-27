@@ -338,3 +338,9 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 `safe_command_boundary.nav2_goal_next_action` 会同时说明“controller 当前未 active”和“下一次需用当前建议模式重跑并复验同窗口 L/R”。
 这不改变安全门禁，不自动启动 Nav2，不发送 `/cmd_vel`；它只把“规划成功 / action 成功 / controller 未 active / wheel raw 未闭环”
 四件事拆开展示，避免把自动驾驶没动误判成相机或雷达阻塞。
+
+2026-06-27 20:19 起，PC 普通首屏在 `source_first_frame_failed` 但诊断明确不是外部独占时，
+仍优先自动接入共享 MJPEG 只读预览，面板状态显示“连接中 / 正在接入共享实时画面”。
+无帧根因不会丢失：当前事实和共享画面状态继续显示“不是页面独占、UVC 无帧、必要时检查 USB/供电或换 known-good UVC”。
+如果确实是外部进程占用，相机卡片仍显示占用失败，不会误导用户继续抢设备。该调整只改变 PC 页面展示和只读 `<img>` 接入，
+不发送运动命令，不把正在连接的流当作建图 camera ready；建图验收仍要求真实首帧或 MJPEG 帧已绘制。
