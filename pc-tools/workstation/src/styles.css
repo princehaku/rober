@@ -1008,6 +1008,13 @@ h3 {
     rgba(247, 253, 249, 0.94);
 }
 
+.plain-map-radar-local-scan[data-state="待刷新局部点"] {
+  border-color: rgba(180, 83, 9, 0.56);
+  background:
+    radial-gradient(circle, rgba(180, 83, 9, 0.13) 0 2px, transparent 3px),
+    rgba(255, 251, 235, 0.94);
+}
+
 .plain-map-radar-local-scan[data-state="最近局部点"] {
   border-color: rgba(164, 93, 0, 0.52);
   background:
@@ -1026,6 +1033,11 @@ h3 {
   stroke-dasharray: 2.4 1.8;
 }
 
+.plain-map-radar-local-scan[data-state="待刷新局部点"] line {
+  stroke: rgba(180, 83, 9, 0.44);
+  stroke-dasharray: 3 2;
+}
+
 .plain-map-radar-local-scan circle {
   fill: rgba(16, 124, 16, 0.68);
   stroke: rgba(255, 255, 255, 0.86);
@@ -1035,6 +1047,10 @@ h3 {
 
 .plain-map-radar-local-scan[data-state="最近局部点"] circle {
   fill: rgba(180, 83, 9, 0.7);
+}
+
+.plain-map-radar-local-scan[data-state="待刷新局部点"] circle {
+  fill: rgba(217, 119, 6, 0.72);
 }
 
 .plain-map-robot-marker {

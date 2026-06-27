@@ -2003,7 +2003,8 @@ function latestRadarLocalScanOverlay(robotPose: ReturnType<typeof latestRobotPos
   // 缺 map-frame 位姿时只能画雷达局部轮廓，不能冒充地图坐标。
   const points = robotSummary.value?.o3_proof_summary.scan_preview_points ?? [];
   const transform = robotSummary.value?.o3_proof_summary.frame_transforms.base_link_to_laser_frame ?? null;
-  if (radarStateUsesPendingPoints(radarState)) {
+  if (radarStateUsesPendingPoints(radarState) && robotPose) {
+    // 有 map 位姿时 stale 点数组也不能贴地图；只保留点数解释给 caption。
     const countOnlyLabel = radarPreviewCountOnlyLabel(radarState, Boolean(robotPose));
     return { dots: [], label: countOnlyLabel || (points.length > 0 ? `待刷新雷达局部点 ${points.length} 个，未显示局部轮廓` : "雷达点位未读取"), state: "" };
   }
@@ -2417,6 +2418,9 @@ function plainRadarFreshnessLabel(
     if (poseObserved && mapPointCount > 0) {
       return `雷达点口径：正在确认实时性，当前地图上显示待刷新雷达点 ${mapPointCount} 个。`;
     }
+    if (localPointCount > 0) {
+      return `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`;
+    }
     if (countOnlyLabel) {
       const obstacleText = obstacleDistanceLabel ? `，同时只读门禁显示${obstacleDistanceLabel}` : "";
       return `雷达点口径：正在确认实时性，当前只有${countOnlyLabel}${obstacleText}；刷新后再确认点位。`;
@@ -2426,9 +2430,7 @@ function plainRadarFreshnessLabel(
         ? `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}；这是距离读数，不是已贴到地图的雷达点。`
         : `雷达点口径：正在确认实时性，当前只显示自动扫图门禁读到的${obstacleDistanceLabel}，不是已贴到地图的实时雷达点；刷新后再确认点位。`;
     }
-    return localPointCount > 0
-      ? `雷达点口径：正在确认实时性，当前先显示局部轮廓 ${localPointCount} 个点。`
-      : "雷达点口径：正在确认实时性，刷新后才显示新点位。";
+    return "雷达点口径：正在确认实时性，刷新后才显示新点位。";
   }
   if (localPointCount > 0) {
     return `雷达点口径：这是最近记录 ${localPointCount} 个点，不是实时雷达。`;
@@ -2944,10 +2946,10 @@ const plainMapVisualSummary = computed(() => {
         ? `${radarState}，地图位置未读到，${radarNoVisiblePointAria}`
       : radarStoppedWithZeroPoints
         ? `${radarState}，地图位置未读到，地图0点`
-      : radarNeedsMapPose && radarCountOnlyMarkerLabel
-        ? `${radarState}，地图位置未读到，${radarCountOnlyMarkerWithObstacleLabel}，仅点数没有点数组，未贴到地图`
       : radarNeedsMapPose && radarLocalPointCount > 0
         ? `${radarState}，地图位置未读到，局部轮廓 ${radarLocalPointCount} 个点等待定位`
+      : radarNeedsMapPose && radarCountOnlyMarkerLabel
+        ? `${radarState}，地图位置未读到，${radarCountOnlyMarkerWithObstacleLabel}，仅点数没有点数组，未贴到地图`
         : `${radarState}，地图位置未读到`;
   const mapRef = claimRefFromSummary(robotSummary.value?.operator_hil_material_summary.route_map)
     || lifecycle?.map_names?.[0]

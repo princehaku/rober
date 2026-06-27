@@ -6402,6 +6402,54 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
   });
 
+  it("draws stale running radar scan points as pending local dots when pose is missing", async () => {
+    // live 形状：雷达 lifecycle 在跑但 proof stale；没有 map 位姿时只能画待刷新局部轮廓，不能假装实时贴图。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.robot_pose = null;
+    summaryFixture.o3_proof_summary.amcl_pose_observed = false;
+    summaryFixture.o3_proof_summary.localization_tf_observed = false;
+    summaryFixture.o3_proof_summary.scan_preview_points = [
+      { x_m: 1.0, y_m: 0, range_m: 1.0, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
+      { x_m: 0.0, y_m: 0.9, range_m: 0.9, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
+      { x_m: -0.7, y_m: -0.2, range_m: 0.73, angle_rad: -2.8633, frame_id: "laser_frame", source_index: 2 },
+    ];
+    summaryFixture.o3_proof_summary.scan_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.scan_preview_source_point_count = 72;
+    summaryFixture.o3_proof_summary.scan_preview_frame_id = "laser_frame";
+    summaryFixture.readback_summary.lidar.continuous_scan_status = "latest_proof_stale_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.continuous_window_observed = "false";
+    summaryFixture.readback_summary.lidar.continuity_window_status = "latest_proof_stale_while_lifecycle_running";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达待刷新");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达待刷新，局部点 3 个");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达待刷新，地图位置未读到，局部轮廓 3 个点等待定位");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
+    const localScan = wrapper.find('[data-testid="plain-map-radar-local-scan"]');
+    expect(localScan.exists()).toBe(true);
+    expect(localScan.attributes("data-state")).toBe("待刷新局部点");
+    expect(localScan.attributes("aria-label")).toBe("雷达局部点位，待刷新雷达局部点 3 个，雷达待刷新，等待地图位置");
+    expect(localScan.findAll("circle")).toHaveLength(3);
+    const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain('.plain-map-radar-local-scan[data-state="待刷新局部点"]');
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-label"]').text()).toBe("待刷新雷达局部点 3 个，雷达待刷新，等待地图位置");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：正在确认实时性，当前先显示局部轮廓 3 个点。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示车身局部轮廓 3 个点，不贴到地图；目标线未显示。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("keeps stale mapped radar point arrays off the map when lifecycle proof is not fresh", async () => {
     // live 上位机可能有 map-frame 位姿和 scan 点，但 latest proof 不完整；旧点数组不能继续贴成地图雷达点。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
