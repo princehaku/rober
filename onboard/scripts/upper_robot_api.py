@@ -1841,6 +1841,25 @@ def nav2_goal_execution_not_proven_reasons(latest_result: dict[str, Any], proven
     return ["nav2_goal_execution", *reasons]
 
 
+def enrich_nav2_goal_execution_latest_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """latest 只读回包补派生结论，旧 artifact 不改盘也能暴露 wheel raw 根因。"""
+    latest_result = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else {}
+    if not latest_result:
+        return payload
+    proven = nav2_goal_execution_proven_from_latest_result(latest_result)
+    reasons = nav2_goal_execution_not_proven_reasons(latest_result, proven)
+    hil_pass = bool(latest_result.get("hil_pass")) and proven
+    enriched_latest = dict(latest_result)
+    enriched_latest["nav2_goal_execution_proven"] = proven
+    enriched_latest["hil_pass"] = hil_pass
+    enriched_latest["not_proven"] = reasons
+    payload["latest_result"] = enriched_latest
+    payload["nav2_goal_execution_proven"] = proven
+    payload["nav2_goal_execution_not_proven"] = reasons
+    payload["hil_pass"] = hil_pass
+    return payload
+
+
 def delivery_completion_artifact_info(path: str) -> dict[str, Any]:
     """送达完成 artifact 只由 delivery gate 写入，不能由 Nav2 或 operator report 单独替代。"""
     resolved_path = resolve_onboard_runtime_path(path)
@@ -6668,7 +6687,7 @@ class UpperRobotApi:
 
     def nav2_goal_execution_latest(self) -> tuple[int, dict[str, Any]]:
         """只读最近一次 NavigateToPose 执行 artifact，不触发 action。"""
-        return read_runtime_artifact_latest(
+        http_status, payload = read_runtime_artifact_latest(
             self.nav2_goal_execution_artifact_path,
             artifact_info=nav2_goal_execution_artifact_info(self.nav2_goal_execution_artifact_path),
             schema_suffix="nav2_goal_execution_latest",
@@ -6676,6 +6695,7 @@ class UpperRobotApi:
             boundary="readback_only_not_delivery_success",
             source="nav2_goal_execution_artifact",
         )
+        return http_status, enrich_nav2_goal_execution_latest_payload(payload)
 
     def delivery_complete(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """确认交付完成；只合成 Nav2 latest 与 operator report latest，不触发机器人动作。"""

@@ -2498,6 +2498,46 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("ros", api.base_command_mode)
         self.assertEqual("ros", api.nav2_base_command_mode)
 
+    def test_nav2_goal_execution_latest_derives_wheel_lr_gap_from_old_artifact(self) -> None:
+        """旧 Nav2 artifact 被只读读取时，也必须补出 wheel raw L/R 未非零根因。"""
+        latest_result = {
+            "schema": "trashbot.upper_robot_api.v1.nav2_goal_execution_proof",
+            "status": "goal_succeeded",
+            "goal_accepted": True,
+            "result_received": True,
+            "result_status": "succeeded",
+            "robot_control_executed": True,
+            "sends_motion_commands": True,
+            "sends_base_motion_commands": True,
+            "uses_base_uart": True,
+            "nav2_goal_execution_proven": True,
+            "hil_pass": True,
+            "not_proven": ["delivery_success", "operator_dropoff_confirmation"],
+            "base_feedback_summary": {"wheel_feedback_lr_nonzero_proven": False},
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            latest_path = Path(temp_dir) / "nav2_goal_execution_latest.json"
+            latest_path.write_text(json.dumps(latest_result), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                nav2_goal_execution_artifact_path=str(latest_path),
+            )
+
+            http_status, payload = api.nav2_goal_execution_latest()
+
+        self.assertEqual(200, http_status)
+        self.assertFalse(payload["nav2_goal_execution_proven"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertIn("wheel_feedback_lr_nonzero", payload["nav2_goal_execution_not_proven"])
+        self.assertFalse(payload["latest_result"]["nav2_goal_execution_proven"])
+        self.assertFalse(payload["latest_result"]["hil_pass"])
+        self.assertIn("wheel_feedback_lr_nonzero", payload["latest_result"]["not_proven"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["robot_control_executed"])
+
     def test_nav2_proof_refresh_managed_path_generation_stays_no_motion(self) -> None:
         """PC 检查路径使用 managed runtime，但不能被包装成 Nav2 start 或底盘控制。"""
         clean_artifact = {
