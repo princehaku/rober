@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -1235,6 +1235,18 @@ describe("workstation fail-closed API contracts", () => {
     expect(WORKSTATION_DEV_PORT).toBe(7002);
     expect(WORKSTATION_DEV_PORT).not.toBe(WORKSTATION_NODE_PORT);
     expect(WORKSTATION_DEV_API_PROXY_TARGET).toBe("http://127.0.0.1:7001");
+  });
+
+  it("keeps public npm aliases on the same default workstation entrypoints", async () => {
+    // public 别名只保留兼容入口，避免以后把 7001/7002 默认值写散后再次漂移。
+    const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8")) as {
+      scripts: Record<string, string>;
+    };
+
+    expect(packageJson.scripts.api).toBe("tsx src/server/index.ts");
+    expect(packageJson.scripts["api:public"]).toBe("npm run api");
+    expect(packageJson.scripts.dev).toBe("vite");
+    expect(packageJson.scripts["dev:public"]).toBe("npm run dev");
   });
 
   it("defaults Robot Control summary reads to the fixed robot API address", () => {

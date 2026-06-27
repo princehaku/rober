@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:public": "HOST=0.0.0.0 PORT=7002 vite",
+    "dev:public": "npm run dev",
     "api": "tsx src/server/index.ts",
-    "api:public": "HOST=0.0.0.0 PORT=7001 tsx src/server/index.ts",
+    "api:public": "npm run api",
     "build": "tsc -p tsconfig.app.json && vite build && tsc -p tsconfig.server.json",
     "test": "vitest run",
     "lint": "eslint ."

@@ -17,13 +17,13 @@ pc-tools/workstation/
 
 `workstation/` 构建后可直接用 `npm run api` 启动 Node/Express 工作站；默认监听
 `0.0.0.0:7001`，方便同局域网设备访问。需要临时换地址或端口时，在启动前设置
-`HOST=<host> PORT=<port>`；`api:public` 只是兼容旧入口。该 HTTP 入口只暴露 PC
+`HOST=<host> PORT=<port>`；`api:public` 只是复用 `npm run api` 的兼容旧入口。该 HTTP 入口只暴露 PC
 工作站，不会自动执行 Nav2、manual、delivery complete、keyboard pulse、stop 或
 `/cmd_vel`。
 
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，
-再打开 7002 看热更新页；正式现场访问仍优先使用 7001 的 Node/Express 工作站。
+再打开 7002 看热更新页；`dev:public` 只是复用 `npm run dev` 的兼容旧入口，正式现场访问仍优先使用 7001 的 Node/Express 工作站。
 
 若启动时报 `0.0.0.0:7001: address already in use`，先查
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开

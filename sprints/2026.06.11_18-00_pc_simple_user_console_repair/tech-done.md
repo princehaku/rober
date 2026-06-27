@@ -39,3 +39,26 @@ Browser DOM check:
 
 - 本轮只修复 PC 默认首屏视觉与文案，不改变真实雷达、建图、定位、手动移动或图传能力边界。
 - 其他未提交的旧改动仍留在工作树里，尤其是 `docs/hardware/field_hil_*` 和 `onboard/scripts|tests/motion_evidence_material_review.*`，本轮没有碰它们。
+
+## 2026-06-28 补充：PC 公开入口脚本去重
+
+### 实际改动
+
+- `pc-tools/workstation/package.json`：把 `api:public` 改成 `npm run api`，把 `dev:public` 改成 `npm run dev`；公开入口默认值继续由代码里的 `0.0.0.0:7001` 和 `0.0.0.0:7002` 统一维护，避免脚本重复写散后漂移。
+- `pc-tools/workstation/test/catalog.test.ts`：新增 npm scripts 契约测试，锁定 `api`/`dev` 默认入口和 public 兼容别名关系。
+- `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`：同步说明 public 脚本只是兼容别名，不修改 Clash、不调用上位机控制接口。
+
+### 验证结果
+
+- `cd pc-tools/workstation && npm test -- --maxWorkers=1 --no-fileParallelism`
+  - 通过，`Test Files 2 passed (2)`，`Tests 321 passed (321)`。
+- `cd pc-tools/workstation && npm run lint`
+  - 通过，无 ESLint 报错。
+- `cd pc-tools/workstation && npm run build`
+  - 通过，`vite build` 完成；仅保留既有 chunk size warning。
+- `git diff --check`
+  - 通过，无空白错误。
+
+### 剩余风险
+
+- 本补充只收敛 PC 端启动脚本和文档，不触发摄像头、Nav2、free-roam、manual、keyboard、stop 或 `/cmd_vel`；真实相机无首帧、Nav2 planner/controller inactive、雷达 runtime scan stale 仍需现场按首屏提示分别处理。
