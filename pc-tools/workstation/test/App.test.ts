@@ -7793,7 +7793,7 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("L/R=0/0；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("L/R=0/0；不是雷达或相机阻塞；卡在执行窗口轮速 L/R 非零复验");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
@@ -7911,10 +7911,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 239 次，刚刚；Nav2 已发 PWM/T=11 非零底盘命令 49 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 PWM/T=11 非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；车身姿态有变化，pitch 变化 24.210531；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；上次路线 action 成功但 wheel raw L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 PWM 结果，等待 ROS 复验；上次 PWM/T=11 执行已发到底盘，但 wheel raw L/R=0/0，车身姿态有变化，pitch 变化 24.210531；Nav2 planner 和 Nav2 controller 未 active，重跑前先恢复；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口 wheel raw L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 PWM/T=11 非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；车身姿态有变化，pitch 变化 24.210531；不是雷达或相机阻塞；卡在执行窗口轮速 L/R 非零复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 PWM 结果，等待 ROS 复验；上次 PWM/T=11 执行已发到底盘，但执行窗口轮速 L/R=0/0，车身姿态有变化，pitch 变化 24.210531；规划服务和控制服务未运行，重跑前先恢复；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口轮速 L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("Nav2 planner");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("Nav2 controller");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("wheel raw L/R");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口轮速 L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口轮速 L/R 非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("Nav2 仍需同窗口复验");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
@@ -10629,8 +10632,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("data-state")).toBe("到达未证明");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toContain("旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("Nav2 已发 PWM/T=11 非零底盘命令 49 条");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：下次将用 ros 重新执行这条图上路线，并确认执行窗口 wheel raw L/R 非零。");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("并确认执行窗口 wheel raw L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：下次将用 ros 重新执行这条图上路线，并确认执行窗口轮速 L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("并确认执行窗口轮速 L/R 非零。");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新执行完整行程。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -10711,8 +10714,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发 ROS/T=13 非零底盘命令 19 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 ROS/T=13 非零底盘命令 19 条，读到底盘反馈 42 次，L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 ROS 结果，等待 SPEED 复验；上次 ROS/T=13 执行已发到底盘，但 wheel raw L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("Nav2 planner 和 Nav2 controller 未 active，重跑前先恢复；下一步勾选行程前安全确认后用 SPEED 重跑图上路线并确认同窗口 wheel raw L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 ROS 结果，等待 SPEED 复验；上次 ROS/T=13 执行已发到底盘，但执行窗口轮速 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("规划服务和控制服务未运行，重跑前先恢复；下一步勾选行程前安全确认后用 SPEED 重跑图上路线并确认同窗口轮速 L/R 非零。");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 ROS 结果，等待 SPEED 复验");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -16349,7 +16352,7 @@ describe("App", () => {
   it("shows a no-motion Nav2 start action when the stack is stopped", async () => {
     // stack stopped 是比 planner/controller inactive 更早的一层；普通用户应先看到“启动服务（不发车）”。
     const blockedSummaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
-    blockedSummaryFixture.safe_command_boundary.nav2_goal_label = "Nav2 服务未启动";
+    blockedSummaryFixture.safe_command_boundary.nav2_goal_label = "自动驾驶服务未启动";
     blockedSummaryFixture.safe_command_boundary.nav2_goal_blockers = [
       "nav2_stack_not_running",
       "path_generation_not_observed",

@@ -598,7 +598,7 @@ ROS2、不发送 `NavigateToPose`、不发布 `/cmd_vel`、不碰底盘串口。
 `status` 发现 pid 不存在时会覆盖旧 running status 文件。现场只读日志确认旧失败根因为
 `package 'nav2_bringup' not found`，因此已在车上安装 `ros-humble-navigation2` 和 `ros-humble-nav2-bringup`，
 并验证 `ros2 pkg prefix nav2_bringup`、`ros2 pkg prefix navigation2` 均可解析到 `/opt/ros/humble`。
-安装依赖不等于发车或 Nav2 HIL 通过；没有现场安全确认前，PC 仍只显示 `Nav2 服务未启动` 和恢复顺序，不自动调用
+安装依赖不等于发车或 Nav2 HIL 通过；没有现场安全确认前，PC 仍只显示 `自动驾驶服务未启动` 和恢复顺序，不自动调用
 `/api/nav2/start`、`NavigateToPose` 或 `/cmd_vel`。
 
 2026-06-28 15:50 起，普通 PC 行程入口也直接消费 `nav2_stack_not_running`：
@@ -612,3 +612,8 @@ planner/controller inactive 仍保留“恢复规划/控制服务”的文案。
 `nav2_stack_not_running` 显示“自动驾驶服务未启动 / 先启动自动驾驶服务（不发车）”，planner/controller inactive
 显示“规划服务 / 控制服务”。blocker id 仍保留 `nav2_stack_not_running`、`planner_server_inactive`、
 `controller_server_inactive` 给自动化和高级诊断使用；改动只影响中文状态文案，不发送 Nav2 start、goal、manual 或 `/cmd_vel`。
+
+2026-06-28 04:07 起，普通首屏的自动驾驶当前事实会把内部诊断词翻成现场口径：
+`Nav2 planner/controller` 显示为 `规划服务/控制服务`，`wheel raw L/R` 显示为 `执行窗口轮速 L/R`，
+`路线 action 成功` 显示为 `路线结果成功`。高级诊断和 API 字段仍保留原始 token；本变更只修正普通首屏文案，
+不启动 Nav2、不执行路线、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。

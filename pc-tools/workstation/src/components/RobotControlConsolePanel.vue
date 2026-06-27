@@ -5255,6 +5255,20 @@ function nav2BaseCommandPhrase(values: Record<string, string> | undefined, prefi
   return mode ? `${prefix} ${mode} 非零底盘命令` : `${prefix}非零底盘命令`;
 }
 
+function plainNav2UserFacingText(text: string): string {
+  // 普通首屏只保留现场能操作的词；Nav2/token 细节留在高级诊断和合同字段里。
+  return text
+    .replace(/Nav2 planner 和 Nav2 controller/g, "规划服务和控制服务")
+    .replace(/Nav2 planner/g, "规划服务")
+    .replace(/Nav2 controller/g, "控制服务")
+    .replace(/执行窗口 wheel raw L\/R/g, "执行窗口轮速 L/R")
+    .replace(/同窗口 wheel raw L\/R/g, "同窗口轮速 L/R")
+    .replace(/但 wheel raw L\/R/g, "但执行窗口轮速 L/R")
+    .replace(/wheel raw L\/R/g, "执行窗口轮速 L/R")
+    .replace(/路线 action 成功/g, "路线结果成功")
+    .replace(/未 active/g, "未运行");
+}
+
 function nav2CommandFeedbackFactText(values: Record<string, string> | undefined): string {
   // 当前事实条优先回答“命令有没有发、反馈有没有读、为什么还不算动”，不要重复长段排障文案。
   const count = nav2BaseCommandCount(values);
@@ -5267,7 +5281,7 @@ function nav2CommandFeedbackFactText(values: Record<string, string> | undefined)
     ? nav2BaseMotionSignalText(values)
     : "";
   const baseReadbackContext = baseWheelNonzeroReadbackContextText();
-  return `${nav2BaseCommandPhrase(values)}${countText}${sampleText}${pairText}${motionSignalText ? `；${motionSignalText}` : ""}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
+  return plainNav2UserFacingText(`${nav2BaseCommandPhrase(values)}${countText}${sampleText}${pairText}${motionSignalText ? `；${motionSignalText}` : ""}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`);
 }
 
 function nav2PendingModeRerunText(values: Record<string, string> | undefined): string {
@@ -5306,15 +5320,15 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
   const inactiveServices = [
     summary?.readback_summary.nav2.planner_server_active === "false"
       || summary?.safe_command_boundary.nav2_goal_blockers?.includes("planner_server_inactive")
-      ? "Nav2 planner" : "",
+      ? "规划服务" : "",
     summary?.readback_summary.nav2.controller_server_active === "false"
       || summary?.safe_command_boundary.nav2_goal_blockers?.includes("controller_server_inactive")
-      ? "Nav2 controller" : "",
+      ? "控制服务" : "",
   ].filter(Boolean);
   const serviceText = inactiveServices.length
-    ? `${inactiveServices.join(" 和 ")} 未 active，重跑前先恢复；`
+    ? `${inactiveServices.join("和")}未运行，重跑前先恢复；`
     : "";
-  return `自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但 ${pairText}${motionSignal ? `，${motionSignal}` : ""}；${serviceText}下一步${nextText}并确认同窗口 wheel raw L/R 非零。`;
+  return plainNav2UserFacingText(`自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但${pairText}${motionSignal ? `，${motionSignal}` : ""}；${serviceText}下一步${nextText}并确认同窗口 wheel raw L/R 非零。`);
 }
 
 function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): string {
@@ -5328,10 +5342,10 @@ function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): strin
     return "";
   }
   if (scope === "full") {
-    return action;
+    return plainNav2UserFacingText(action);
   }
   const parts = action.split("；").map((part) => part.trim()).filter(Boolean);
-  return parts[parts.length - 1] || action;
+  return plainNav2UserFacingText(parts[parts.length - 1] || action);
 }
 
 function nav2NextExecutionRerunText(values: Record<string, string> | undefined): string {
@@ -5607,7 +5621,7 @@ function plainTripFreshUnprovenRerunActionText(): string {
   const values = freshUnprovenNav2ExecutionValues();
   const rerunText = nav2NextExecutionRerunText(values) || "重新执行完整行程";
   if (nav2BaseCommandWithoutWheelFeedback(values)) {
-    return `${rerunText}，并确认执行窗口 wheel raw L/R 非零`;
+    return plainNav2UserFacingText(`${rerunText}，并确认执行窗口 wheel raw L/R 非零`);
   }
   return `${rerunText}，并确认真车执行闭环`;
 }
