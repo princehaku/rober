@@ -1423,6 +1423,10 @@ function cameraSummaryFromReadbacks(
     shared_preview_client_count: compactValueText(mjpegRelayOverlay?.client_count ?? 0),
     shared_preview_upstream_active: compactValueText(mjpegRelayOverlay?.upstream_active === true),
     shared_preview_content_type_loaded: compactValueText(mjpegRelayOverlay?.content_type_loaded === true),
+    shared_preview_cached_frame_loaded: compactValueText(mjpegRelayOverlay?.cached_frame_loaded === true),
+    shared_preview_cached_frame_age_ms: mjpegRelayOverlay?.cached_frame_age_ms === null || mjpegRelayOverlay?.cached_frame_age_ms === undefined
+      ? "none"
+      : compactValueText(mjpegRelayOverlay.cached_frame_age_ms),
     shared_preview_shared_capture: compactValueText(true),
     shared_preview_exclusive_camera_claim: compactValueText(false),
     shared_preview_contract: sharedPreviewContract,
@@ -1488,6 +1492,8 @@ export type RobotControlCameraMjpegRelayOverlay = {
   client_count: number;
   upstream_active: boolean;
   content_type_loaded: boolean;
+  cached_frame_loaded: boolean;
+  cached_frame_age_ms: number | null;
   shared_capture: true;
   exclusive_camera_claim: false;
   last_failure_reason: string;
@@ -3821,6 +3827,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         shared_preview_client_count: "0",
         shared_preview_upstream_active: "false",
         shared_preview_content_type_loaded: "false",
+        shared_preview_cached_frame_loaded: "false",
+        shared_preview_cached_frame_age_ms: "none",
         shared_preview_shared_capture: "true",
         shared_preview_exclusive_camera_claim: "false",
         shared_preview_contract: "single_shared_capture_for_multiple_clients",

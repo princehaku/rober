@@ -110,6 +110,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-28 06:05 起，PC Node 共享 MJPEG relay 会保存最近一次广播的 frame chunk；后进入的浏览器页面如果已经有
   上游共享流，会先收到这份最近帧，再继续跟随实时流。`/api/robot-control/camera/mjpeg/status` 同步返回
   `cached_frame_loaded/cached_frame_age_ms` 作为只读证据；这不会新开第二条相机上游，也不会改变建图 camera ready gate。
+- 2026-06-28 06:50 起，PC summary 也会带出
+  `shared_preview_cached_frame_loaded/shared_preview_cached_frame_age_ms`，普通首屏“共享画面”行在上游已连接且已有最近帧时
+  明确显示“后进页面会先显示最近帧”。这样 status 轮询失败时仍能从 summary 读到缓存帧事实，同时不把缓存帧当成建图
+  camera ready 或浏览器已绘制新帧。
 - 2026-06-27 13:35 起，共享预览 status 不再只返回 relay 计数和最近失败 token；它会短读只读 camera health，并在不创建新
   MJPEG client 的前提下透出 `source_diagnosis_status/plain_hint/next_action/not_exclusive`。当真实状态是“设备没人占用但无首帧”时，
   后进入的页面也能直接看到不是独占原因，而不是空白预览或内部 token。

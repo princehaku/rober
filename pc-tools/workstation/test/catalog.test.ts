@@ -3973,6 +3973,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
       expect(summary.readback_summary.camera.shared_preview_upstream_active).toBe("false");
       expect(summary.readback_summary.camera.shared_preview_content_type_loaded).toBe("false");
+      expect(summary.readback_summary.camera.shared_preview_cached_frame_loaded).toBe("false");
+      expect(summary.readback_summary.camera.shared_preview_cached_frame_age_ms).toBe("none");
       expect(summary.readback_summary.camera.shared_preview_shared_capture).toBe("true");
       expect(summary.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
       expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("none");
@@ -9512,6 +9514,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(Number(summaryBody.readback_summary.camera.shared_preview_client_count)).toBeGreaterThan(0);
       expect(summaryBody.readback_summary.camera.shared_preview_upstream_active).toBe("true");
       expect(summaryBody.readback_summary.camera.shared_preview_content_type_loaded).toBe("true");
+      expect(summaryBody.readback_summary.camera.shared_preview_cached_frame_loaded).toBe("true");
+      expect(Number(summaryBody.readback_summary.camera.shared_preview_cached_frame_age_ms)).toBeGreaterThanOrEqual(0);
       expect(summaryBody.readback_summary.camera.shared_preview_shared_capture).toBe("true");
       expect(summaryBody.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
       expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("none");

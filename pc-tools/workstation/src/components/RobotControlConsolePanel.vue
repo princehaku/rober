@@ -1431,6 +1431,27 @@ function sharedPreviewSourceNoFrameText(
   return ` 当前相机源没有输出首帧；${ownerText}通常是 USB、摄像头输入或供电问题，不是浏览器独占。${retryText}`;
 }
 
+function sharedPreviewCachedFrameText(
+  streamReady: boolean,
+  cachedFrameLoaded: boolean | string | undefined,
+  cachedFrameAgeMs: number | string | null | undefined,
+): string {
+  // 最近帧缓存只是后进页面的首屏体验证据；它不等于浏览器已经绘制真实新帧。
+  const loaded = cachedFrameLoaded === true || cachedFrameLoaded === "true";
+  if (!streamReady || !loaded) {
+    return "";
+  }
+  const ageNumber = typeof cachedFrameAgeMs === "number"
+    ? cachedFrameAgeMs
+    : Number(cachedFrameAgeMs);
+  const ageText = Number.isFinite(ageNumber) && ageNumber >= 0
+    ? ageNumber < 50
+      ? "（刚刚）"
+      : `（约${(ageNumber / 1000).toFixed(ageNumber < 1000 ? 1 : 0).replace(/\.0$/, "")}秒前）`
+    : "";
+  return ` 已有最近帧缓存${ageText}，后进页面会先显示最近帧。`;
+}
+
 const plainCameraSharedPreviewStatus = computed(() => {
   // 共享预览状态只说明 PC Node 是否在复用同一条 MJPEG 上游流，不代替真实画面像素证据。
   if (cameraMjpegStatusPending.value) {
@@ -1460,10 +1481,15 @@ const plainCameraSharedPreviewStatus = computed(() => {
         summaryCamera.source_diagnosis_plain_hint,
       );
       const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
+      const cachedFrame = sharedPreviewCachedFrameText(
+        summaryCamera.shared_preview_upstream_active === "true" && summaryCamera.shared_preview_content_type_loaded === "true",
+        summaryCamera.shared_preview_cached_frame_loaded,
+        summaryCamera.shared_preview_cached_frame_age_ms,
+      );
       const autoJoinText = sharedPreviewCanStillJoin(failure || sourceNoFrame)
         ? " 页面正在接入共享预览；新页面会共用同一条上游流。"
         : "";
-      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${autoJoinText}${failure}${sourceNoFrame}`;
+      return `共享画面：${summaryCamera.shared_preview_client_count} 个页面观看，${upstream}，${content}；${exclusive}。${cachedFrame}${autoJoinText}${failure}${sourceNoFrame}`;
     }
     return "共享画面：未读取到共享流状态。";
   }
@@ -1472,10 +1498,11 @@ const plainCameraSharedPreviewStatus = computed(() => {
   const exclusive = sharedPreviewExclusiveText(status.exclusive_camera_claim);
   const failure = sharedPreviewFailureText(status.last_failure_reason, status.last_remote_http_status, status.source_diagnosis_plain_hint);
   const sourceNoFrame = sharedPreviewSourceNoFrameText(summaryCamera, failure);
+  const cachedFrame = sharedPreviewCachedFrameText(status.upstream_active && status.content_type_loaded, status.cached_frame_loaded, status.cached_frame_age_ms);
   const autoJoinText = sharedPreviewCanStillJoin(failure || sourceNoFrame)
     ? " 页面正在接入共享预览；新页面会共用同一条上游流。"
     : "";
-  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${autoJoinText}${failure}${sourceNoFrame}`;
+  return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${cachedFrame}${autoJoinText}${failure}${sourceNoFrame}`;
 });
 
 const cameraFirstFrameProbeSummary = computed(() => {

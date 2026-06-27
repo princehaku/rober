@@ -2376,6 +2376,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       shared_preview_client_count: string;
       shared_preview_upstream_active: string;
       shared_preview_content_type_loaded: string;
+      shared_preview_cached_frame_loaded: string;
+      shared_preview_cached_frame_age_ms: string;
       shared_preview_shared_capture: string;
       shared_preview_exclusive_camera_claim: string;
       shared_preview_contract: string;
