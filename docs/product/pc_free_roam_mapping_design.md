@@ -163,6 +163,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   带进行程证据文案：当上次 Nav2 结果是旧 `pwm` 执行、但下一次上位机策略已切到 `ros`，且同窗口
   wheel raw L/R 仍未非零时，行程进度和证据摘要明确显示“下次将用 ros 重新执行这条图上路线”。
   这只修正所见即所得文案，不触发执行、不放宽安全确认，也不把旧 `goal_succeeded` 外推为完整路线或送达成功。
+- 2026-06-27 15:18 起，O11 Nav2 执行 artifact 的 `proof_status` 也按真实
+  `base_command_mode` 标记缺口：ROS 重跑若仍只看到非零命令、但同窗口 `T1001 L/R=0/0`，
+  会写成 `nav2_goal_succeeded_with_ros_commands_but_wheel_lr_zero`。这样自动驾驶排障会指向
+  “ROS 控制命令已进 bridge、轮速闭环待复验”，不再沿用旧 PWM 诊断口径；这不触发发车，
+  也不把 IMU 姿态变化折算成 wheel raw L/R 非零。
 - 2026-06-27 09:03 起，普通首屏执行图上 Nav2 路线后，会按固定顺序完成 `execute -> map preview -> execution latest -> summary`
   只读刷新。`execute` 请求仍固定带 `base_command_mode=ros` 和现场安全确认；如果 latest 和本次 execute 的
   `evidence_ref` 一致，行程证据摘要优先使用 latest 里的完整 wheel raw L/R 与反馈样本数，随后再刷新 PC summary，

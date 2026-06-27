@@ -46,6 +46,21 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
 
         self.assertIn("-p command_mode:=pwm", command)
 
+    def test_wheel_zero_proof_status_tracks_actual_base_mode(self) -> None:
+        """Nav2 已切到 ROS 后，L/R=0 的缺口不能继续被误写成 PWM 路径。"""
+        self.assertEqual(
+            "nav2_goal_succeeded_with_ros_commands_but_wheel_lr_zero",
+            HELPER.wheel_zero_proof_status_for_mode("ros"),
+        )
+        self.assertEqual(
+            "nav2_goal_succeeded_with_pwm_commands_but_wheel_lr_zero",
+            HELPER.wheel_zero_proof_status_for_mode("pwm"),
+        )
+        self.assertEqual(
+            "nav2_goal_succeeded_with_ros_commands_but_wheel_lr_zero",
+            HELPER.wheel_zero_proof_status_for_mode("not-a-mode"),
+        )
+
     def test_feedback_debug_log_summary_proves_nonzero_wheel_feedback(self) -> None:
         """只有真实 T=1001 左右轮非零样本才能把 Nav2 HIL 证明推进为 true。"""
         with tempfile.TemporaryDirectory() as temp_dir:

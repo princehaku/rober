@@ -58,6 +58,12 @@ def normalize_base_command_mode(value: str) -> str:
     return mode if mode in ALLOWED_BASE_COMMAND_MODES else DEFAULT_BASE_COMMAND_MODE
 
 
+def wheel_zero_proof_status_for_mode(base_command_mode: str) -> str:
+    """按真实底盘控制模式标记缺口，避免 ROS 重跑后仍被误诊断成 PWM 问题。"""
+    command_mode = normalize_base_command_mode(base_command_mode)
+    return f"nav2_goal_succeeded_with_{command_mode}_commands_but_wheel_lr_zero"
+
+
 def managed_esp32_bridge_command(
     feedback_log_path: str,
     command_log_path: str = "",
@@ -653,6 +659,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         result["base_feedback_summary"] = base_feedback_summary
         result["base_command_summary"] = base_command_summary
         result["base_command_mode"] = managed_runtime.get("base_command_mode") or normalize_base_command_mode(args.base_command_mode)
+        result_base_command_mode = str(result["base_command_mode"])
         base_feedback_nonzero = bool(base_feedback_summary.get("wheel_feedback_lr_nonzero_proven"))
         base_command_nonzero = bool(base_command_summary.get("nonzero_command_observed"))
         result["base_motion_command_nonzero_proven"] = base_command_nonzero
@@ -668,8 +675,8 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         else:
             result["nav2_goal_execution_proven"] = False
             if result.get("status") == "goal_succeeded" and base_command_nonzero and not base_feedback_nonzero:
-                # 厂商 T=11 PWM 命令已到达 bridge，但完整路线仍必须等待 T=1001 L/R 非零复验。
-                result["proof_status"] = "nav2_goal_succeeded_with_pwm_commands_but_wheel_lr_zero"
+                # 非零命令已到达 bridge，但完整路线仍必须等待同窗口 T=1001 L/R 非零复验。
+                result["proof_status"] = wheel_zero_proof_status_for_mode(result_base_command_mode)
                 result["not_proven"] = [
                     "wheel_feedback_lr_nonzero",
                     "delivery_success",
