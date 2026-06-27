@@ -25,6 +25,8 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-25 21:44 起，地图画面会叠加只读“自动扫图”runtime 标记，把上车端状态机最近判断直接放到地图上；缺机器人地图位姿时标记固定在角落且不代表坐标。
 - 2026-06-25 23:25 起，普通首屏点击“开始扫地式建图”并且上位机确认地图记录启动后，PC 会自动进入“键盘已启用”状态；
   这一步只打开全局 W/A/S/D/方向键手控窗口，不发送 manual pulse、不调用 `/cmd_vel`。小车仍必须由 operator 按住方向键才会低速移动，松开或停止按钮会收口。
+- 2026-06-28 02:25 起，普通首屏点击“启用键盘”会把键盘控制框滚动到可见区域并重新聚焦该框；
+  这一步只改变页面可见性和焦点，不发送 manual、stop、Nav2、free-roam、delivery 或 `/cmd_vel` 请求，避免 operator 点完启用后仍在别的页面区域按键而误以为键盘无效。
 - 2026-06-25 23:45 起，PC summary 会从 `/api/free-roam/autonomy/latest` 的 runtime artifact 推导自动扫图 readiness：
   只有 `cmd_vel_publish_enabled=true` 且所有 `decision.gates` 加 PC 侧 `motion_hil_unlock` 门禁都为 `ready` 时，才把
   `safe_command_boundary.free_roam_autonomy` 显示为 `ready`。这只改变普通首屏“自动扫图准备”的所见即所得状态。

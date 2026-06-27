@@ -10559,7 +10559,9 @@ function activateKeyboardControl(): void {
   setKeyboardControlOwner();
   keyboardControlArmed.value = true;
   keyboardControlStatus.value = canSendManualMotion.value ? "armed_waiting_for_key" : `blocked_keyboard_manual_gate:${manualBlockedReason.value}`;
-  keyboardControlPanel.value?.focus();
+  // 普通用户点“启用键盘”后必须立刻看到可按键区域；滚动只改变页面焦点，不发送任何底盘命令。
+  keyboardControlPanel.value?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  keyboardControlPanel.value?.focus({ preventScroll: true });
 }
 
 function disarmKeyboardControl(reason: string): void {

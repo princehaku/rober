@@ -14526,6 +14526,8 @@ describe("App", () => {
     expect(armButton.text()).toBe("启用键盘（按键才动）");
     expect(visiblePlainHomeText(wrapper)).toContain("可手控");
     const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    const keyboardPanelScrollIntoView = vi.fn();
+    (keyboardPanel.element as HTMLElement).scrollIntoView = keyboardPanelScrollIntoView;
     expect(keyboardPanel.attributes("data-state")).toBe("可手控");
     expect(keyboardPanel.text()).toContain("本页非输入区");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
@@ -14556,6 +14558,8 @@ describe("App", () => {
     await armButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(keyboardPanelScrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(keyboardPanel.element);
     expect(visiblePlainHomeText(wrapper)).toContain("已启用");
     expect(keyboardPanel.attributes("data-state")).toBe("已启用");
     expect(keyboardPanel.text()).toContain("本页非输入区");
