@@ -6525,7 +6525,8 @@ function plainTripPendingRouteText(): string {
   }
   const routePath = latestNavPathOverlay();
   const routeText = routePath && !routePath.caption.startsWith("最近") ? `；${routePath.coordinateLabel}` : "";
-  return `目标 x=${goal.goal_x.toFixed(2)}, y=${goal.goal_y.toFixed(2)}${routeText}`;
+  const modeText = plainTripRequestedBaseCommandMode().toUpperCase();
+  return `目标 x=${goal.goal_x.toFixed(2)}, y=${goal.goal_y.toFixed(2)}${routeText}；本次用 ${modeText}`;
 }
 
 function plainTripStopOverlayState(): { label: string; state: string; ariaPrefix: string; actionText: string } {

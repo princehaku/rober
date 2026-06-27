@@ -3322,6 +3322,11 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 `ros` 时，会显示“下次将用 ros 复验”。这让旧失败结果和新执行配置同时所见即所得，
 不会把旧 PWM 结果误当作新 ROS 模式已经失败，也不会把模式切换本身当成路线完成证明。
 
+2026-06-28 22:20 起，普通首屏点击 `执行图上路线` 后，行程 pending 文案、当前事实、行程进度和地图执行 caption
+都会在目标坐标和路线点数后显示 `本次用 ROS/SPEED/PWM`。该模式来自同一个 `plainTripRequestedBaseCommandMode()`
+并随 `POST /api/robot-control/nav2/goal/execute` 的 `base_command_mode` body 一起验证，避免现场只看到“行程请求已发送”
+却不知道本轮是在复验 ROS 还是旧 PWM。该显示不新增 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel` 调用。
+
 2026-06-27 06:55 起，PC 普通地图的雷达 marker 在 `雷达无新点` 且 `scan_preview_point_count=0`
 时会直接显示 `原始包已收到，暂无地图点`；即使机器人 map pose 已读到、marker 已叠在机器人位置，
 也不会只显示泛化的 `雷达无新点`。`雷达未运行` 且没有任何可显示点时同步显示 `地图0点`。

@@ -9963,11 +9963,11 @@ describe("App", () => {
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-trip-run[data-state="执行中"]');
     expect(workstationStyles).toContain('.plain-map-route-path[data-state="执行中"] polyline');
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：行程请求已发送，等待结果返回（目标 x=0.80, y=0.00；路线 3/15 个点）");
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：行程请求已发送，等待结果返回（目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS）");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：行程请求已发送，等待结果返回，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-stop"]').text()).toBe("行程停止（随时可点）");
     expect(wrapper.find('[data-testid="plain-trip-stop"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（行程中）");
@@ -10006,9 +10006,9 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-route-goal-marker[data-state="停止已发送"]');
     expect(workstationStyles).toContain('.plain-map-route-path[data-state="停止中"] polyline');
     expect(workstationStyles).toContain('.plain-map-route-path[data-state="停止已发送"] polyline');
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在发送行程停止请求（目标 x=0.80, y=0.00；路线 3/15 个点）");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边接管，等待行程结果返回。");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在发送行程停止请求（目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS）");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
     expect(mockedFetch.mock.calls.filter(([url, options]) =>
       String(url).startsWith("/api/robot-control/base/stop?") && options?.method === "POST",
     )).toHaveLength(stopCallsBeforeTripStop + 1);
@@ -10041,7 +10041,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("data-state")).toBe("停止已发送");
     expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("aria-label")).toBe("行程停止请求已发送 3/15 个点");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程停止请求已发送 3/15 个点");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程停止请求已发送，目标 x=0.80, y=0.00；路线 3/15 个点；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程停止请求已发送，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
