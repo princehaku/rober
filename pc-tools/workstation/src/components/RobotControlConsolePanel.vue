@@ -5906,6 +5906,7 @@ const plainGoalProgressStateSummary = computed(() => {
 
 const plainGoalProgressEvidenceSummary = computed(() => {
   // 这行只压缩已读证据，不刷新接口，也不把只读材料外推成真实完成。
+  const cleanFragment = (text: string): string => text.replace(/[。；;\s]+$/g, "");
   const wheelReady = goalClosureChecklist.value.find((item) => item.id === "wheel_raw_lr")?.ready === true;
   const { left, right } = currentWheelReadback.value;
   const wheelText = wheelReady
@@ -5920,7 +5921,7 @@ const plainGoalProgressEvidenceSummary = computed(() => {
       : deliverySuccessEvidenceRouteMismatch.value ? "送达成功材料非本轮"
         : "送达未完成";
   const keyboardText = canUseKeyboardControl.value ? (keyboardStopSettledAfterPulse.value ? "键盘已验证" : "键盘待验证") : "键盘未满足";
-  return `当前读数：${wheelText}；${tripText}；${deliveryText}；${keyboardText}。`;
+  return `当前读数：${[wheelText, tripText, deliveryText, keyboardText].map(cleanFragment).join("；")}。`;
 });
 
 const plainGoalProgressBlockerSummary = computed(() => {

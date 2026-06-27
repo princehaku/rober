@@ -9568,7 +9568,9 @@ describe("App", () => {
     const staleSummary = "最近行程成功，反馈 8 次，约 14 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达仍需现场确认。";
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain(staleSummary);
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程记录较旧，需要重新执行本轮行程。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，约 14 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达未完成");
+    const evidenceSummary = wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text();
+    expect(evidenceSummary).toContain("最近行程成功，反馈 8 次，约 14 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达未完成");
+    expect(evidenceSummary).not.toContain("。；");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
