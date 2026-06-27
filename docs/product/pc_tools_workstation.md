@@ -2331,7 +2331,8 @@ bounded manual pulse，松开走统一 stop。这样 operator 不需要跳到下
 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 
 2026-06-25 22:49 起，普通首屏扫地式建图区会区分地图 lifecycle 的 `启动中/保存中/读取中/刷新中`。尤其点击
-`保存当前地图` 后，保存请求未返回前会显示 `正在保存当前扫图地图；保存完成前不要继续移动`，下一步锁定为等待地图动作
+`保存当前地图` 后，保存请求未返回前会显示 `正在保存当前扫图地图；返回前未证明地图已保存，不要继续移动`，地图 marker
+aria 同步写明保存请求已发送且返回前未证明地图已保存，下一步锁定为等待地图动作
 完成，避免 operator 在保存未完成时继续扫图。该状态只跟随 `/api/robot-control/map/*` 请求 pending，不发送
 manual/keyboard pulse、Nav2、delivery complete、stop 或 `/cmd_vel`。
 

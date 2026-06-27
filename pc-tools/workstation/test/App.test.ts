@@ -6258,11 +6258,12 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(freeRoamPanel.attributes("data-state")).toBe("保存中");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("保存中");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("正在保存当前扫图地图；保存完成前不要继续移动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在保存当前地图，保存完成前不要继续移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("正在保存当前扫图地图；返回前未证明地图已保存，不要继续移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在保存当前地图；返回前未证明地图已保存，不要继续移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待地图动作完成");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("地图保存中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("saving");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("地图保存请求已发送，返回前未证明地图已保存，机器人地图位置未读到，标记不代表坐标");
 	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
 	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
 	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toHaveLength(nav2ProofRefreshCallsBeforeSave);
