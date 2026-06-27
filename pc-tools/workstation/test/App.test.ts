@@ -11168,8 +11168,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("失败");
-    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：摄像头能打开，但 v4l2/ffmpeg 底层也没有取到视频帧");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：摄像头能打开，但 v4l2/ffmpeg 底层也没有取到视频帧；检查 USB、摄像头输入、格式或供电。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：摄像头能打开，后端尝试 4 种方式也没有取到视频帧");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：摄像头能打开，后端尝试 4 种方式也没有取到视频帧；检查 USB、摄像头输入、格式或供电。");
     expect((wrapper.find('input[name="plainExternalVideoRef"]').element as HTMLInputElement).value).toBe("");
     const currentFrameProbeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"));
     expect(String(currentFrameProbeCall?.[0])).toContain("backendSmoke=1");
@@ -16668,6 +16668,10 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
     summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
     summaryFixture.readback_summary.camera.last_offer_format_attempts_summary = "MJPG 无首帧；YUYV 无首帧；default 无首帧";
+    summaryFixture.readback_summary.camera.first_frame_probe_backend_smoke_status = "backend_no_frame_observed";
+    summaryFixture.readback_summary.camera.first_frame_probe_backend_frame_observed = "false";
+    summaryFixture.readback_summary.camera.first_frame_probe_backend_attempts = "4";
+    summaryFixture.readback_summary.camera.first_frame_probe_fallback_attempts_summary = "MJPG@640x480:first_frame_timeout/capture_read_call_timeout";
     const mjpegStatusFixture = cloneFixture(fixtures["/api/robot-control/camera/mjpeg/status"]) as Record<string, any>;
     mjpegStatusFixture.client_count = 0;
     mjpegStatusFixture.upstream_active = false;
@@ -16688,8 +16692,8 @@ describe("App", () => {
     expect(mjpegPreview.exists()).toBe(true);
     expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
-    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：USB Composite Device: DV20 USB：相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电。 采集尝试：MJPG 无首帧；YUYV 无首帧；default 无首帧。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("不是页面独占：USB Composite Device: DV20 USB：摄像头能打开，后端尝试 4 种方式也没有取到视频帧");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：不是页面独占：USB Composite Device: DV20 USB：摄像头能打开，后端尝试 4 种方式也没有取到视频帧；检查 USB、摄像头输入、格式或供电。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：还没做首帧检查；点检查画面确认上位机能否读到样张，不会发车。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");

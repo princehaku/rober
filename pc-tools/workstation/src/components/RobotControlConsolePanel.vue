@@ -409,6 +409,12 @@ function cameraSourcePlainFailureHint(): string {
     if (probeFailureHint) {
       return probeFailureHint;
     }
+    if (camera?.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
+      const attempts = camera.first_frame_probe_backend_attempts && camera.first_frame_probe_backend_attempts !== "0"
+        ? `，后端尝试 ${camera.first_frame_probe_backend_attempts} 种方式`
+        : "";
+      return `不是页面独占：${sourcePrefix}摄像头能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电。`;
+    }
     if (camera?.source_usage_status === "in_use_by_probe" || camera?.source_usage_status === "in_use_by_other_process") {
       const ownerCount = camera.source_usage_owner_count && camera.source_usage_owner_count !== "not_loaded"
         ? camera.source_usage_owner_count
@@ -455,14 +461,17 @@ function cameraProbePlainFailureHint(): string {
   if (!failed) {
     return "";
   }
+  if (values.backend_smoke_status === "backend_no_frame_observed") {
+    const attempts = values.backend_attempts && values.backend_attempts !== "0"
+      ? `，后端尝试 ${values.backend_attempts} 种方式`
+      : "";
+    return `不是页面独占：摄像头能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电。`;
+  }
   if (values.failure_reason === "capture_read_call_timeout" || result.failure_reason === "capture_read_call_timeout") {
     return "相机能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";
   }
   if (values.open_ok === "false") {
     return "相机没有打开；检查摄像头/视频线或占用后重试。";
-  }
-  if (values.backend_smoke_status === "backend_no_frame_observed") {
-    return "不是页面独占：摄像头能打开，但 v4l2/ffmpeg 底层也没有取到视频帧；检查 USB、摄像头输入、格式或供电。";
   }
   return "相机没有出画面，检查摄像头/视频线。";
 }

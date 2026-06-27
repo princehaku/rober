@@ -1265,6 +1265,10 @@ function cameraSummaryFromReadbacks(
     first_frame_probe_open_ok: firstFrameProbeOverlay?.open_ok ?? "not_loaded",
     first_frame_probe_read_ok: firstFrameProbeOverlay?.read_ok ?? "not_loaded",
     first_frame_probe_visible_content_proven: firstFrameProbeOverlay?.visible_content_proven ?? "not_loaded",
+    first_frame_probe_backend_smoke_status: firstFrameProbeOverlay?.backend_smoke_status ?? "not_requested",
+    first_frame_probe_backend_frame_observed: firstFrameProbeOverlay?.backend_frame_observed ?? "not_loaded",
+    first_frame_probe_backend_attempts: firstFrameProbeOverlay?.backend_attempts ?? "0",
+    first_frame_probe_fallback_attempts_summary: firstFrameProbeOverlay?.fallback_attempts_summary ?? "none",
     first_frame_probe_checked_at_ms: firstFrameProbeOverlay ? String(firstFrameProbeOverlay.checked_at_ms) : "not_loaded",
   };
 }
@@ -1277,6 +1281,10 @@ export type RobotControlCameraFirstFrameProbeOverlay = {
   open_ok: string;
   read_ok: string;
   visible_content_proven: string;
+  backend_smoke_status: string;
+  backend_frame_observed: string;
+  backend_attempts: string;
+  fallback_attempts_summary: string;
 };
 
 export type RobotControlCameraMjpegRelayOverlay = {
@@ -3353,6 +3361,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         first_frame_probe_open_ok: "not_loaded",
         first_frame_probe_read_ok: "not_loaded",
         first_frame_probe_visible_content_proven: "not_loaded",
+        first_frame_probe_backend_smoke_status: "not_requested",
+        first_frame_probe_backend_frame_observed: "not_loaded",
+        first_frame_probe_backend_attempts: "0",
+        first_frame_probe_fallback_attempts_summary: "none",
         first_frame_probe_checked_at_ms: "not_loaded",
       },
       lidar: {

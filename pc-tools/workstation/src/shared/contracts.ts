@@ -2390,6 +2390,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       first_frame_probe_open_ok: string;
       first_frame_probe_read_ok: string;
       first_frame_probe_visible_content_proven: string;
+      first_frame_probe_backend_smoke_status: string;
+      first_frame_probe_backend_frame_observed: string;
+      first_frame_probe_backend_attempts: string;
+      first_frame_probe_fallback_attempts_summary: string;
       first_frame_probe_checked_at_ms: string;
     };
     lidar: {

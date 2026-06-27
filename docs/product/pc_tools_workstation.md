@@ -2741,6 +2741,13 @@ yaw: 0.0012964370795674081}`，PC 7001 summary 因此返回
 这样刷新页面或另一个普通用户进入 7001 时，也能看到最近画面检查的真实失败，而不是误以为还没检查过。该缓存只保留 PC 只读诊断摘要，
 不会打开 MJPEG/WebRTC，不调用 backend smoke、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`。
 
+2026-06-27 08:39 起，上述 camera probe overlay 继续保留 `backend_smoke_status/backend_frame_observed/backend_attempts`
+和 fallback 尝试摘要，并透传到 `readback_summary.camera.first_frame_probe_backend_*`。当用户主动触发
+`backendSmoke=1` 后，普通首屏可以直接显示“不是页面独占，摄像头能打开，后端多种方式也没有取到视频帧”，不再要求用户打开高级诊断。
+同轮还修复 Node CLI 启动时 server 引用只保存在 Promise 局部变量的问题：CLI 入口改为模块级保留 server 引用，避免
+`0.0.0.0:7001` 后台启动后自动退出。该改动不新增任何控制入口，不调用 manual、keyboard、Nav2、delivery、free-roam
+或 `/cmd_vel`，也不修改 Clash 或系统代理配置。
+
 2026-06-26 21:10 起，Robot Control summary 的 `safe_command_boundary.free_roam_autonomy_label` 区分“可以发起 start 请求”和
 “已经运动发布解锁”：当 `free_roam_autonomy_start_ready=true` 但 runtime 仍是 `artifact_only=true/cmd_vel_publish_enabled=false`
 时，label 显示 `自动扫图（勾确认后可启动）`；只有 runtime 已 `cmd_vel_publish_enabled=true` 且 gates ready 时才显示

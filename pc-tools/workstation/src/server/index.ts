@@ -1161,7 +1161,7 @@ function cameraMjpegRelayKey(normalizedBaseUrl: URL): string {
 function cameraProbeOverlayFromResponse(
   response: RobotControlCameraFirstFrameProbeProxyResponse,
 ): RobotControlCameraFirstFrameProbeOverlay {
-  // summary 只需要首帧结论短字段；完整 probe 结果仍留在按钮响应和高级诊断。
+  // summary 保留首帧和 backend smoke 短结论，普通首屏才能解释“不是浏览器独占，而是源头无帧”。
   return {
     checked_at_ms: Date.now(),
     proxy_status: response.proxy_status,
@@ -1170,6 +1170,10 @@ function cameraProbeOverlayFromResponse(
     open_ok: response.probe_key_values.open_ok,
     read_ok: response.probe_key_values.read_ok,
     visible_content_proven: response.probe_key_values.visible_content_proven,
+    backend_smoke_status: response.probe_key_values.backend_smoke_status,
+    backend_frame_observed: response.probe_key_values.backend_frame_observed,
+    backend_attempts: response.probe_key_values.backend_attempts,
+    fallback_attempts_summary: response.probe_key_values.fallback_attempts_summary,
   };
 }
 
@@ -2810,15 +2814,16 @@ export function createWorkstationApp(): express.Express {
 }
 
 export const app = createWorkstationApp();
+let cliServer: ReturnType<typeof app.listen> | null = null;
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   // 启动前先探测端口，避免 7001 被其他服务占用时出现“已监听又失败”的误导日志。
   void preflightListenAddress(HOST, PORT).then(() => {
-    // 显式保留 server 引用，确保 public API 进程在 CLI 启动后持续监听。
-    const server = app.listen(PORT, HOST, () => {
+    // 显式在模块级保留 server 引用，确保 public API 后台启动后不会被回收退出。
+    cliServer = app.listen(PORT, HOST, () => {
       console.log(`pc-tools workstation API listening on ${workstationListenAddress()}`);
     });
-    server.on("error", (error: NodeJS.ErrnoException) => {
+    cliServer.on("error", (error: NodeJS.ErrnoException) => {
       console.error(listenFailureHint(error));
       process.exitCode = 1;
     });

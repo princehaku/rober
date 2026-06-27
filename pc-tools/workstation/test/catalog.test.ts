@@ -5854,6 +5854,10 @@ describe("workstation fail-closed API contracts", () => {
         open_ok: "true",
         read_ok: "true",
         visible_content_proven: "true",
+        backend_smoke_status: "not_requested",
+        backend_frame_observed: "not_loaded",
+        backend_attempts: "0",
+        fallback_attempts_summary: "none",
       });
 
       expect(summary.readback_summary.camera.status).toBe("ready");
@@ -8541,6 +8545,13 @@ describe("workstation fail-closed API contracts", () => {
           read_call_timeout_s: 4,
         },
       ]);
+      const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
+
+      expect(summaryBody.readback_summary.camera.first_frame_probe_status).toBe("first_frame_timeout");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_backend_smoke_status).toBe("backend_no_frame_observed");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_backend_frame_observed).toBe("false");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_backend_attempts).toBe("2");
     } finally {
       await workstation.close();
       await upstream.close();

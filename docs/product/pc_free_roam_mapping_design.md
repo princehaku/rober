@@ -226,3 +226,10 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 `/dev/video1`。现场复测 `backendSmoke=1` 在 23s 内结构化返回 `first_frame_timeout/capture_read_call_timeout`，
 `backend_smoke_status=backend_no_frame_observed`，且远端无残留进程。该证据说明当前仍是硬件/驱动无首帧，
 但 PC 画面失败态现在不会因为诊断工具残留而被二次污染。
+
+2026-06-27 08:39 起，PC summary 会把最近一次 camera first-frame probe 的 backend smoke 短结论透传到
+`readback_summary.camera`：`first_frame_probe_backend_smoke_status`、`first_frame_probe_backend_frame_observed`、
+`first_frame_probe_backend_attempts` 和 `first_frame_probe_fallback_attempts_summary`。普通首屏在
+`backend_no_frame_observed` 时优先显示“不是页面独占，摄像头能打开，后端多种方式也没有取到视频帧”，避免现场把
+共享预览失败误判成某个浏览器独占。同期 SSH 只读复核确认 8088/8787 正常监听、`/dev/video1` 为 DV20 UVC capture、
+无人占用，`v4l2-ctl --stream-mmap` 8 秒输出 0 字节；该证据不等于摄像头已修好，只把失败归因展示为所见即所得。
