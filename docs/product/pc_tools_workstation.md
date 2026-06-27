@@ -3153,6 +3153,12 @@ Nav2 artifact 仍显示旧 `goal_execution_base_command_mode=pwm`、但上位机
 这让“PC 键盘连续手控”可见为受限重复 manual pulse，而不是无限时长发车；不改变实际请求体、不绕过安全确认、
 不调用 Nav2、delivery、free-roam 或 `/cmd_vel`。
 
+2026-06-27 11:01 起，普通首屏 `当前事实` 的键盘行也同步展示 bounded pulse 合同：
+未勾安全确认时写成“键盘：勾安全确认后可启用；按住连续低速脉冲 240ms/每 260ms，松开/失焦/切页会停”，
+勾选后写成“键盘：可启用，按住才动；按住连续低速脉冲 ...”。该行只读翻译
+`safe_command_boundary.keyboard_jog_duration_ms/keyboard_jog_interval_ms`，不自动启用键盘、不发
+manual pulse、不调用 stop/Nav2/delivery/free-roam 或 `/cmd_vel`；真正运动仍必须先做现场安全确认并显式启用键盘。
+
 2026-06-27 07:40 起，PC Node 的 Robot Control summary 会消费最近一次只读首帧 probe overlay：
 如果上车 `/api/camera/health` 仍停在旧的 `source_first_frame_failed`，但用户刚点过
 `检查画面（只读）` 且 probe 回报 `open_ok=true/read_ok=true/visible_content_proven=true`，

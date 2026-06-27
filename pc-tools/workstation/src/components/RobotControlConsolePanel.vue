@@ -1612,6 +1612,24 @@ function plainCurrentRadarFactText(): string {
   return `雷达：${state}。`;
 }
 
+function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): string {
+  // 键盘事实条必须把“按住连续脉冲”和“自动停”的合同写清，避免用户误以为只是单次点动。
+  const boundary = summary.safe_command_boundary;
+  const duration = boundary.keyboard_jog_duration_ms;
+  const interval = boundary.keyboard_jog_interval_ms;
+  const pulseText = Number.isFinite(duration) && Number.isFinite(interval) && duration > 0 && interval > 0
+    ? `；按住连续低速脉冲 ${duration}ms/每 ${interval}ms`
+    : "；按住连续低速脉冲";
+  const stopText = "，松开/失焦/切页会停";
+  if (canArmKeyboardControl.value) {
+    return `键盘：可启用，按住才动${pulseText}${stopText}。`;
+  }
+  if (keyboardContractReady.value) {
+    return `键盘：勾安全确认后可启用${pulseText}${stopText}。`;
+  }
+  return "键盘：先复查手控条件。";
+}
+
 const plainCurrentFactRows = computed(() => {
   // 首屏事实条只翻译当前 readback，不新增任何控制权限或验收结论。
   const summary = robotSummary.value;
@@ -1662,13 +1680,7 @@ const plainCurrentFactRows = computed(() => {
 
   rows.push(plainCurrentFreeRoamFactText(summary));
 
-  if (canArmKeyboardControl.value) {
-    rows.push("键盘：可启用，按住才动，松开会停。");
-  } else if (keyboardContractReady.value) {
-    rows.push("键盘：勾安全确认后可启用。");
-  } else {
-    rows.push("键盘：先复查手控条件。");
-  }
+  rows.push(plainCurrentKeyboardFactText(summary));
   return rows;
 });
 const showPlainRadarStart = computed(() => {

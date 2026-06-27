@@ -3632,7 +3632,7 @@ describe("App", () => {
     expect(currentFacts.text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个。");
     expect(currentFacts.text()).toContain("行程：还没执行。");
     expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
-    expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用。");
+    expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用；按住连续低速脉冲 240ms/每 260ms，松开/失焦/切页会停。");
     const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
     expect(connectionPanel.exists()).toBe(true);
     expect(connectionPanel.attributes("data-state")).toBe("已连接");
