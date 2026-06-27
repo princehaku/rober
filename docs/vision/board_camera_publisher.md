@@ -1016,3 +1016,36 @@ PC 普通首屏因此把失败提示改为“不是页面独占，摄像头能�
 后端尝试多种方式也没有取到视频帧”。这条文案明确区分浏览器/WebRTC/多人预览
 fanout 与上车端底层采集无帧；仍不把 `/dev/video1` 可枚举或 camera service
 active 当作画面 ready，也不会解锁建图验收。
+
+## 2026-06-27 10:45 systemd 托管恢复但首帧仍失败
+
+按 `docs/vendor/VENDOR_INDEX.md` 的硬件资料入口要求，本轮仍以本地资料中的
+Orange Pi Zero 3 + WAVE ROVER 上位机链路为边界；本节只记录相机 HTTP 服务、
+V4L2 设备和只读首帧探针，不发布 `/cmd_vel`，不访问 WAVE ROVER UART。
+
+真实上位机 `root@192.168.1.11 -p 37878` 复查并恢复运行形态：
+
+- 8088 曾由手工 `python3 scripts/local_webrtc_camera_smoke.py ...` 进程占用，
+  导致 `trashbot-local-webrtc-camera.service` 进入 auto-restart；切回后
+  `trashbot-local-webrtc-camera.service=active`，8088 由
+  `/root/rober/onboard/scripts/local_webrtc_camera_smoke.py` 监听。
+- 8787 也曾被旧 upper API 进程占用，导致 `trashbot-upper-robot-api.service`
+  auto-restart；停止旧监听 PID 后重启服务，最终
+  `trashbot-upper-robot-api.service=active`，8787 由
+  `/root/rober/onboard/scripts/upper_robot_api.py` 监听。
+- `GET /api/camera/health` 在重启后先回到
+  `status=ready`、`source_readiness=source_selected_not_probed`、`selected_path=/dev/video1`、
+  `source_usage.status=not_in_use`，说明服务托管和自动选源恢复。
+- 通过 PC 7001 固定首帧探针再次打开摄像头后，summary 仍显示
+  `source_first_frame_failed`、`first_frame_probe_status=first_frame_timeout`、
+  `first_frame_probe_failure_reason=capture_read_call_timeout`、
+  `first_frame_probe_open_ok=true`、`first_frame_probe_read_ok=false`、
+  `first_frame_probe_backend_smoke_status=backend_no_frame_observed`。
+- PC 7001 live summary 同时显示
+  `shared_preview_exclusive_camera_claim=false`、`source_usage_status=not_in_use`、
+  `shared_preview_client_count=0`，因此当前看不到画面不是 PC 页面独占。
+
+结论：共享预览服务现在应由 systemd 稳定托管，支持多人通过同一 8088/8787/7001
+链路进入实时预览；但 DV20 `/dev/video1` 仍是“能打开、不能读首帧”。软件侧必须继续
+fail-closed，把建图缺口保留为 `camera_first_frame`，不能因为服务 active 或设备枚举正常
+就宣称画面可用。
