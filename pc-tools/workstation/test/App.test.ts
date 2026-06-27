@@ -17306,20 +17306,20 @@ describe("App", () => {
     const startClick = wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
     await wrapper.vm.$nextTick();
 
-    expect(visiblePlainHomeText(wrapper)).toContain("正在启动雷达，等待上位机返回。");
+    expect(visiblePlainHomeText(wrapper)).toContain("正在启动雷达，等待上位机返回；返回前未证明雷达已运行或已有新点。");
     expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达启动中");
     expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("雷达启动中");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达启动中，位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达启动中");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动中，地图位置未读到，等待刷新确认");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达启动中，地图位置未读到，返回前未证明雷达已运行");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-radar-panel[data-state="雷达启动中"]');
     expect(workstationStyles).toContain('.plain-map-radar-marker[data-state="雷达启动中"]');
     expect(workstationStyles).toContain('.plain-map-radar-sweep[data-state="雷达启动中"]');
-    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达启动中扫描范围占位，等待机器人地图位置");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达启动命令发送中，返回并刷新后才显示新点位。");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达启动中扫描范围占位，返回前未证明雷达已运行，等待机器人地图位置");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达启动命令发送中，返回前未证明雷达已运行；返回并刷新后才显示新点位。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);

@@ -1175,7 +1175,7 @@ function radarRawPacketObservedWithoutVisiblePoints(lidar: RobotControlSummaryRe
 function summarizeRadarState(): { state: PlainRadarState; hint: string } {
   // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
   if (radarLifecyclePendingAction.value === "start") {
-    return { state: "雷达启动中", hint: "正在启动雷达，等待上位机返回。" };
+    return { state: "雷达启动中", hint: "正在启动雷达，等待上位机返回；返回前未证明雷达已运行或已有新点。" };
   }
   if (radarLifecyclePendingAction.value === "stop") {
     return { state: "雷达停止中", hint: "停止请求已发送，等待上位机返回；返回前未证明雷达已停止。" };
@@ -3139,7 +3139,7 @@ function plainRadarFreshnessLabel(
     return "雷达点口径：雷达已运行，但当前还没读到点位。";
   }
   if (radarState === "雷达启动中") {
-    return "雷达点口径：雷达启动命令发送中，返回并刷新后才显示新点位。";
+    return "雷达点口径：雷达启动命令发送中，返回前未证明雷达已运行；返回并刷新后才显示新点位。";
   }
   if (radarState === "雷达停止中") {
     return "雷达点口径：雷达停止请求已发送，返回前不把旧点位当作已停止后的地图点。";
@@ -3680,6 +3680,8 @@ const plainMapVisualSummary = computed(() => {
       : `${radarState}扫描范围，跟随机器人位置`
     : radarStartAwaitingRefresh
       ? "雷达已启动扫描范围占位，等待刷新确认和机器人地图位置"
+      : radarState === "雷达启动中"
+      ? "雷达启动中扫描范围占位，返回前未证明雷达已运行，等待机器人地图位置"
       : `${radarState}扫描范围占位，等待机器人地图位置`;
   const radarOverlayAria = poseObserved
     ? radarStartFailureText
@@ -3708,7 +3710,7 @@ const plainMapVisualSummary = computed(() => {
       : radarStartAwaitingRefresh
       ? "雷达已启动，地图位置未读到，等待刷新确认"
       : radarState === "雷达启动中"
-      ? "雷达启动中，地图位置未读到，等待刷新确认"
+      ? "雷达启动中，地图位置未读到，返回前未证明雷达已运行"
       : radarState === "雷达停止中"
       ? "雷达停止请求已发送，地图位置未读到，返回前未证明已停止"
       : showRadarObstacleDistance
