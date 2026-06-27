@@ -2261,6 +2261,25 @@ wheel feedback 与 LiDAR motion delta 必须在第一次真实动作后才能生
 含 free cells 的 map_server 兼容地图。仍未完成完整路线采集、route.csv/keyframe、
 Nav2 path/runtime 执行、外部视频和 wheel L/R 非零反馈。
 
+2026-06-27 10:50 再次读取真实上位机 latest artifact 后，PC 首屏 Nav2 诊断补充
+IMU 姿态变化事实：
+
+- `nav2_goal_execution_latest.json` 显示最近一次 Nav2 action 返回 `goal_succeeded`，
+  `base_command_mode=pwm`，`base_command_summary.nonzero_command_count=49`。
+- 同一执行窗口底盘反馈日志有 `239` 条有效样本，但
+  `base_feedback_summary.wheel_feedback_lr_nonzero_proven=false`，
+  `latest_pair.left_speed=0.0`、`latest_pair.right_speed=0.0`。
+- 同一批反馈里的 IMU 姿态变化已观测到：
+  `imu_attitude_delta_observed=true`，`max_abs_roll_delta=4.387221`，
+  `max_abs_pitch_delta=24.210531`。
+- 因此 PC 普通首屏现在同时显示三件事：Nav2 已发非零底盘命令、车身姿态有变化、
+  wheel raw L/R 仍为 `0/0`。这能把问题从“雷达/相机阻塞”或“完全没有运动迹象”
+  收敛到“执行窗口 wheel raw L/R 非零复验未闭合”。
+
+结论仍保持保守：IMU 姿态变化只能作为运动迹象，不能替代 wheel raw L/R 非零；
+完整 Nav2 路线执行仍需要下一次按 `next_execution_base_command_mode=ros` 复验，
+并在同一执行窗口证明 L/R 非零。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

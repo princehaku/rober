@@ -4478,8 +4478,11 @@ function nav2CommandFeedbackFactText(values: Record<string, string> | undefined)
   const sampleText = Number.isFinite(feedbackSamples) && feedbackSamples > 0 ? `，读到底盘反馈 ${feedbackSamples} 次` : "";
   const pair = nav2BaseFeedbackPair(values);
   const pairText = pair ? `，L/R=${pair.left}/${pair.right}` : "，轮速非零未证明";
+  const motionSignalText = explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed)
+    ? nav2BaseMotionSignalText(values)
+    : "";
   const baseReadbackContext = baseWheelNonzeroReadbackContextText();
-  return `已发非零底盘命令${countText}${sampleText}${pairText}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
+  return `已发非零底盘命令${countText}${sampleText}${pairText}${motionSignalText ? `；${motionSignalText}` : ""}；不是雷达或相机阻塞；卡在执行窗口 wheel raw L/R 非零复验${baseReadbackContext ? `；${baseReadbackContext}` : ""}`;
 }
 
 function nav2NextExecutionRerunText(values: Record<string, string> | undefined): string {
