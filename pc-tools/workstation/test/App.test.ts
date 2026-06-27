@@ -8231,8 +8231,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
-  it("draws no-motion route markers and still executes after safety confirmation when robot pose is missing", async () => {
-    // 没有 map-frame 小车位置时仍保留可见警告；发车前硬挡只保留现场安全确认。
+  it("draws no-motion route markers but blocks execution when robot pose is missing", async () => {
+    // 地图所见即所得：没有 map-frame 小车位置时只显示路线，不允许把这条路线直接执行。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     summaryFixture.o3_proof_summary.path_generated = true;
     summaryFixture.o3_proof_summary.path_generation_succeeded = true;
@@ -8293,23 +8293,23 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；路线 3/15 个点仍按地图坐标显示。");
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图上已显示路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）；小车位置未显示，仍可执行，结果以上车端返回为准。");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("地图上已显示路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）；小车位置未显示，先重新定位或刷新地图后再执行。");
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
-    expect(tripPanel.attributes("data-state")).toBe("已准备");
-    expect(workstationStyles).toContain('.plain-trip-run[data-state="已准备"]');
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已显示；小车位置未显示，仍可执行，结果以上车端返回为准。");
-    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；可以执行图上路线；小车位置未显示，结果以上车端返回为准。");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：执行行程。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("小车位置未显示，仍可执行");
+    expect(tripPanel.attributes("data-state")).toBe("待定位");
+    expect(workstationStyles).toContain('.plain-trip-run[data-state="待定位"]');
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已显示；小车位置未显示，先重新定位或刷新地图后再执行。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；但小车位置未显示，先重新定位或刷新地图。");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先重新定位");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：重新定位或刷新地图。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("小车位置未显示，先重新定位或刷新地图后再执行");
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).not.toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     const nav2ExecuteCallsBeforeClick = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length;
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length).toBe(nav2ExecuteCallsBeforeClick + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length).toBe(nav2ExecuteCallsBeforeClick);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

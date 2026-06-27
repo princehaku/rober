@@ -1543,7 +1543,8 @@ h3 {
 }
 
 .plain-trip-run[data-state="待确认"],
-.plain-trip-run[data-state="待准备"] {
+.plain-trip-run[data-state="待准备"],
+.plain-trip-run[data-state="待定位"] {
   border-left-color: #d5d2a9;
 }
 
