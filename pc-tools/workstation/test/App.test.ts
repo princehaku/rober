@@ -4536,7 +4536,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可建图");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeClick = mockedFetch.mock.calls.length;
@@ -4650,6 +4650,62 @@ describe("App", () => {
     expect(newCalls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+  });
+
+  it("points mapping-ready users to start the map recording when only mapping runtime is missing", async () => {
+    // 相机和雷达都 ready 时，缺 mapping_active 应被翻译成“启动扫图记录”，不是重新排查传感器。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
+    markMappingSensorsReady(summaryFixture);
+    summaryFixture.safe_command_boundary.free_roam_autonomy = "start_ready";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_start_ready = true;
+    summaryFixture.safe_command_boundary.free_roam_motion_start_ready = true;
+    summaryFixture.safe_command_boundary.free_roam_mapping_ready = false;
+    summaryFixture.safe_command_boundary.free_roam_mapping_missing_reasons = ["mapping_active"];
+    summaryFixture.safe_command_boundary.free_roam_autonomy_gates = summaryFixture.safe_command_boundary.free_roam_autonomy_gates.map((gate) => (
+      gate.id === "mapping_active"
+        ? { ...gate, state: "not_proven", evidence: "地图记录未启动", next_action: "启动扫地式建图记录" }
+        : gate.id === "camera_first_frame"
+          ? { ...gate, state: "ready", evidence: "摄像头首帧已读到", next_action: "继续监看共享预览" }
+          : gate.id === "lidar_fresh"
+            ? { ...gate, state: "ready", evidence: "雷达扫描已刷新", next_action: "继续保持雷达运行" }
+            : gate
+    ));
+    summaryFixture.readback_summary.free_roam.mapping_ready = "false";
+    summaryFixture.readback_summary.free_roam.mapping_missing = "mapping_active";
+    summaryFixture.readback_summary.lidar.scan_preview_point_count = "0";
+    mapStartFixture.command_result = { mode: "map_lifecycle_runtime_helper", executed: true, ok: true };
+    mapStartFixture.failure_reason = "";
+    mapStartFixture.blocked_reasons = [];
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/start": mapStartFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可建图");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("摄像头和雷达已 ready；先启动地图记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面和雷达已 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
+
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
   it("splits free movement from mapping acceptance when camera and radar are not ready", async () => {

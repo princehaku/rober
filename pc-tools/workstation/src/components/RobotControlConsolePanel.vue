@@ -2043,6 +2043,12 @@ function plainFreeRoamMappingMissingForVisibleState(): string[] {
   }
   return freeRoamMappingMissingPlainLabelsForVisibleState(robotSummary.value?.readback_summary.free_roam.mapping_missing);
 }
+
+function onlyMissingMapRuntimeForMapping(missing: string[]): boolean {
+  // 相机和雷达都 ready 时，地图记录未启动不是传感器 blocker；普通用户下一步应直接进入扫图记录。
+  return missing.length > 0 && missing.every((label) => label === "地图记录未启动");
+}
+
 const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const result = freeRoamAutonomyResult.value;
   if (!result || !result.command_result.executed) {
@@ -2136,6 +2142,13 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
     return "建图：画面、雷达和地图记录已 ready，可按建图记录监看。";
   }
   if (missing.length > 0) {
+    if (
+      onlyMissingMapRuntimeForMapping(missing)
+      && plainCameraReadyForFreeRoamAutonomy.value
+      && plainRadarReadyForFreeRoamMapping.value
+    ) {
+      return "建图：画面和雷达已 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。";
+    }
     return `建图：当前缺口：${missing.join("、")}；自由移动不受影响。`;
   }
   return "建图：等待上车端建图 readiness；自由移动可按单独条件判断。";
@@ -4621,6 +4634,13 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     }
     const onboardMissing = plainFreeRoamMappingMissingForVisibleState();
     if (onboardMissing.length > 0) {
+      if (
+        onlyMissingMapRuntimeForMapping(onboardMissing)
+        && plainCameraReadyForFreeRoamAutonomy.value
+        && plainRadarReadyForFreeRoamMapping.value
+      ) {
+        return "建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。";
+      }
       return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动。`;
     }
     const gaps: string[] = [];
@@ -4740,6 +4760,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       ? "请求中"
       : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
       : autonomyReady && blockers.length ? plainFreeRoamAutonomyGuideButtonLabel.value
+      : autonomyReady && !canStartFreeRoamAutonomy.value ? plainFreeRoamAutonomyGuideButtonLabel.value
       : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : motionStartButtonText,
     // 连接后即可走固定上车状态机 start；建图 readiness 只决定请求里的 mapping_active。
     disabled: autonomyReady ? (freeRoamAutonomyPending.value || freeRoamMapWysiwygPending.value) : false,
