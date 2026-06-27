@@ -639,6 +639,7 @@ def source_candidates_summary(snapshot: dict[str, Any], selection: dict[str, Any
         )
     selected_path = selection.get("selected_path")
     selected_candidate = next((candidate for candidate in candidates if candidate.get("path") == selected_path), None)
+    selected_siblings = sibling_video_nodes_summary(candidates, selected_path)
     return {
         "candidate_count": len(candidates),
         "candidates": candidates,
@@ -649,9 +650,67 @@ def source_candidates_summary(snapshot: dict[str, Any], selection: dict[str, Any
             "selected_name": selected_candidate.get("name") if selected_candidate else None,
             "selected_is_uvc_or_usb": selected_candidate.get("is_uvc_or_usb") if selected_candidate else None,
             "selected_formats_summary": selected_candidate.get("formats_summary") if selected_candidate else None,
+            "selected_role": candidate_role(selected_candidate) if selected_candidate else "unknown",
+            "selected_sibling_video_nodes": selected_siblings,
+            "selected_sibling_video_node_count": len(selected_siblings),
+            "selected_sibling_video_nodes_summary": sibling_video_nodes_text(selected_siblings),
             "ranked": selection.get("ranked", [])[:8],
         },
+        "shared_preview_contract": "single_shared_capture_for_multiple_clients",
     }
+
+
+def candidate_role(candidate: dict[str, Any] | None) -> str:
+    """把 V4L2 节点身份压成普通诊断可读的短枚举。"""
+    if not candidate:
+        return "unknown"
+    if candidate.get("is_video_capture"):
+        return "video_capture"
+    if candidate.get("is_metadata"):
+        return "metadata"
+    if candidate.get("is_decoder"):
+        return "decoder"
+    return "other"
+
+
+def candidate_group_name(candidate: dict[str, Any] | None) -> str:
+    """同一 USB 复合设备通常共享 v4l2_name；用它识别 video1/video2 兄弟节点。"""
+    if not candidate:
+        return ""
+    return str(candidate.get("name") or candidate.get("v4l2_name") or candidate.get("sysfs_name") or "").strip()
+
+
+def sibling_video_nodes_summary(candidates: list[dict[str, Any]], selected_path: Any) -> list[dict[str, Any]]:
+    """列出同一设备下的其它 /dev/video* 节点，避免把 metadata 节点误当备用画面。"""
+    selected = next((candidate for candidate in candidates if candidate.get("path") == selected_path), None)
+    selected_group = candidate_group_name(selected)
+    if not selected_path or not selected_group:
+        return []
+    siblings = []
+    for candidate in candidates:
+        if candidate.get("path") == selected_path or candidate_group_name(candidate) != selected_group:
+            continue
+        siblings.append(
+            {
+                "path": candidate.get("path"),
+                "role": candidate_role(candidate),
+                "is_video_capture": candidate.get("is_video_capture"),
+                "is_metadata": candidate.get("is_metadata"),
+                "formats_summary": candidate.get("formats_summary"),
+            }
+        )
+    return siblings
+
+
+def sibling_video_nodes_text(siblings: list[dict[str, Any]]) -> str:
+    """PC summary 只需要一行事实：例如 `/dev/video2=metadata`。"""
+    parts = []
+    for item in siblings:
+        path = str(item.get("path") or "").strip()
+        role = str(item.get("role") or "unknown").strip()
+        if path:
+            parts.append(f"{path}={role}")
+    return "；".join(parts) if parts else "none"
 
 
 def build_source_diagnosis(
@@ -1187,6 +1246,8 @@ class CameraServiceState:
             selection.get("selected") if isinstance(selection.get("selected"), dict) else None,
             last_offer_reason,
         )
+        source_summary = source_candidates_summary(snapshot, selection)
+        source_summary_selection = source_summary.get("current_selection", {})
         health_status = (
             "source_first_frame_failed"
             if source_failed
@@ -1205,6 +1266,7 @@ class CameraServiceState:
             "last_successful_frame": self.last_successful_frame,
             "source_usage": source_usage,
             "source_diagnosis": source_diagnosis,
+            "shared_preview_contract": "single_shared_capture_for_multiple_clients",
             "width": self.width,
             "height": self.height,
             "fps": self.fps,
@@ -1222,13 +1284,21 @@ class CameraServiceState:
                 "last_successful_frame": self.last_successful_frame,
                 "source_usage": source_usage,
                 "source_diagnosis": source_diagnosis,
+                "shared_preview_contract": "single_shared_capture_for_multiple_clients",
             },
-            "source_summary": source_candidates_summary(snapshot, selection),
-            "source_candidates_summary": source_candidates_summary(snapshot, selection),
+            "source_summary": source_summary,
+            "source_candidates_summary": source_summary,
             "current_selection": {
                 "mode": selection.get("mode"),
                 "requested_source": selection.get("requested_source"),
                 "selected_path": selected_path,
+                "selected_name": source_summary_selection.get("selected_name"),
+                "selected_is_uvc_or_usb": source_summary_selection.get("selected_is_uvc_or_usb"),
+                "selected_formats_summary": source_summary_selection.get("selected_formats_summary"),
+                "selected_role": source_summary_selection.get("selected_role"),
+                "selected_sibling_video_nodes": source_summary_selection.get("selected_sibling_video_nodes"),
+                "selected_sibling_video_node_count": source_summary_selection.get("selected_sibling_video_node_count"),
+                "selected_sibling_video_nodes_summary": source_summary_selection.get("selected_sibling_video_nodes_summary"),
             },
             **proof_flags(),
         }

@@ -6158,7 +6158,11 @@ describe("workstation fail-closed API contracts", () => {
             selected_name: "USB Composite Device: DV20 USB",
             selected_is_uvc_or_usb: true,
             selected_formats_summary: "MJPG@640x480@30；YUYV@640x480@22",
+            selected_role: "video_capture",
+            selected_sibling_video_nodes_summary: "/dev/video2=metadata",
+            selected_sibling_video_node_count: 1,
           },
+          shared_preview_contract: "single_shared_capture_for_multiple_clients",
           media_diagnostics: {
             last_offer_error: {
               error: "first_frame_unreadable",
@@ -6332,7 +6336,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.selected_name).toBe("USB Composite Device: DV20 USB");
       expect(summary.readback_summary.camera.selected_is_uvc_or_usb).toBe("true");
       expect(summary.readback_summary.camera.selected_formats_summary).toBe("MJPG@640x480@30；YUYV@640x480@22");
-      expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
+      expect(summary.readback_summary.camera.selected_role).toBe("video_capture");
+      expect(summary.readback_summary.camera.selected_sibling_video_nodes_summary).toBe("/dev/video2=metadata");
+      expect(summary.readback_summary.camera.selected_sibling_video_node_count).toBe("1");
+      expect(summary.readback_summary.camera.shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
+	      expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
       expect(summary.readback_summary.camera.source_failure_reason).toBe("first_frame_timeout");
       expect(summary.readback_summary.camera.source_usage_status).toBe("in_use_by_probe");
       expect(summary.readback_summary.camera.source_usage_owner_count).toBe("1");

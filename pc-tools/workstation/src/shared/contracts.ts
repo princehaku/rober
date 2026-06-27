@@ -2367,6 +2367,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       shared_preview_content_type_loaded: string;
       shared_preview_shared_capture: string;
       shared_preview_exclusive_camera_claim: string;
+      shared_preview_contract: string;
       shared_preview_last_failure_reason: string;
       shared_preview_last_remote_http_status: string;
       shared_preview_last_failure_at_ms: string;
@@ -2376,6 +2377,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       selected_name: string;
       selected_is_uvc_or_usb: string;
       selected_formats_summary: string;
+      selected_role: string;
+      selected_sibling_video_nodes_summary: string;
+      selected_sibling_video_node_count: string;
       source_readiness: string;
       source_failure_reason: string;
       source_diagnosis_status: string;

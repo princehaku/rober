@@ -112,6 +112,45 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
             0,
         )
 
+    def test_source_summary_exposes_uvc_sibling_metadata_node(self) -> None:
+        """DV20 一类复合 UVC 要说明 video2 是兄弟 metadata 节点，不是备用画面源。"""
+        snapshot = {
+            "candidates": [
+                {
+                    "path": "/dev/video1",
+                    "exists": True,
+                    "v4l2_name": "USB Composite Device: DV20 USB",
+                    "sysfs_name": "USB Composite Device: DV20 USB",
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                    "formats_summary": "MJPG@640x480@30",
+                },
+                {
+                    "path": "/dev/video2",
+                    "exists": True,
+                    "v4l2_name": "USB Composite Device: DV20 USB",
+                    "sysfs_name": "USB Composite Device: DV20 USB",
+                    "is_video_capture": False,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": True,
+                    "formats_summary": "not_loaded",
+                },
+            ]
+        }
+        selection = {"mode": "auto", "requested_source": "auto", "selected_path": "/dev/video1", "ranked": []}
+
+        summary = camera.source_candidates_summary(snapshot, selection)
+        current = summary["current_selection"]
+
+        self.assertEqual("single_shared_capture_for_multiple_clients", summary["shared_preview_contract"])
+        self.assertEqual("video_capture", current["selected_role"])
+        self.assertEqual(1, current["selected_sibling_video_node_count"])
+        self.assertEqual("/dev/video2=metadata", current["selected_sibling_video_nodes_summary"])
+        self.assertEqual("metadata", current["selected_sibling_video_nodes"][0]["role"])
+
     def test_explicit_source_is_respected_without_auto_rerank(self) -> None:
         """显式指定源时必须尊重 operator 输入，便于现场排查枚举漂移。"""
         selection = camera.resolve_video_source("/dev/video9")
@@ -656,6 +695,9 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("system_diagnostics", payload)
         self.assertIn("media_diagnostics", payload)
         self.assertIn("source_candidates_summary", payload)
+        self.assertEqual("single_shared_capture_for_multiple_clients", payload["shared_preview_contract"])
+        self.assertEqual("video_capture", payload["current_selection"]["selected_role"])
+        self.assertEqual("none", payload["current_selection"]["selected_sibling_video_nodes_summary"])
         self.assertEqual("source_selected_not_probed", payload["source_diagnosis"]["status"])
         self.assertTrue(payload["source_diagnosis"]["not_exclusive"])
         self.assertFalse(payload["safe_to_control"])

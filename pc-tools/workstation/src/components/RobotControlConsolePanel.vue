@@ -11326,6 +11326,14 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.selected_is_uvc_or_usb ?? "not_loaded" }}</dd>
             <dt>camera_selected_formats</dt>
             <dd>{{ robotSummary?.readback_summary.camera.selected_formats_summary ?? "not_loaded" }}</dd>
+            <dt>camera_selected_role</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.selected_role ?? "not_loaded" }}</dd>
+            <dt>camera_sibling_video_nodes</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.selected_sibling_video_nodes_summary ?? "none" }}</dd>
+            <dt>camera_sibling_video_node_count</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.selected_sibling_video_node_count ?? "not_loaded" }}</dd>
+            <dt>camera_shared_preview_contract</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.shared_preview_contract ?? "not_loaded" }}</dd>
             <dt>camera_source_mode</dt>
             <dd>{{ robotSummary?.readback_summary.camera.video_source_mode ?? "not_loaded" }}</dd>
             <dt>camera_source_readiness</dt>

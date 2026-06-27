@@ -75,6 +75,10 @@ pc-tools/workstation/
   `camera_mjpeg_upstream_timeout`、HTTP 502/503 或 health-only 首帧失败都会继续显示“不是独占 / UVC 无帧 / 上游无画面”，
   并补充页面会自动换 retry token 重连，避免现场误以为必须刷新网页或另开独占连接。该提示只解释已有只读 retry 机制，
   不创建额外 camera reader，不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-27 19:35 起，上车 camera health 会把共享预览合同固定为 `single_shared_capture_for_multiple_clients`，并在选中 UVC 源时输出
+  `selected_role`、`selected_sibling_video_nodes_summary` 和 sibling count。DV20 这类复合 UVC 的 `/dev/video1` 会显示为 `video_capture`，
+  `/dev/video2=metadata` 只作为同设备兄弟节点解释，不当作备用画面源；PC summary 只消费这些短字段，不重新枚举或打开摄像头，
+  不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-26 23:55 起，普通首屏键盘轮速摘要区分“PC/上位机已转发点动并自动 stop”和“底盘 T1001 L/R 已非零”两层证据：如果键盘 pulse 回包里 `manual_command_executed=true`、`auto_stop_executed=true`，但 `wheel_feedback_lr_nonzero_proven=false` 且最新 L/R 仍为 `0/0`，界面显示“已发送点动并自动停止，但仍未读到非零”，并提示检查电机使能、供电、模式和现场空间后重试。该提示只消费 manual proxy 回包中的只读运动帧摘要，不把请求成功解释成 wheel raw L/R 非零，不调用额外 manual、stop、Nav2、delivery 或 `/cmd_vel`。
 - 2026-06-26 只读 latest/地图查询也复用固定小车默认地址：`GET /api/robot-control/nav2/goal/execution/latest`、`GET /api/robot-control/delivery/latest`、`GET /api/robot-control/map/list` 和 `GET /api/robot-control/map/preview` 在缺省 `baseUrl` 时默认读取 `http://192.168.1.11:8787`，与 summary 首屏一致，避免现场反复手填，也让地图画面只读入口和普通首屏一致。会动作的 manual、first-jog、Nav2 execute、delivery complete、operator report、map/radar lifecycle 等 POST 仍保持显式 baseUrl、确认项和原有 fail-closed gate，不因默认地址自动执行。
 - `o7LabelingPreview.ts` 只读 query 指定的本地 `trashbot.o7.labeling_fixture.v1` JSON，并生成 `trashbot.o7.labeling_preview.v1` 安全摘要；坏 JSON、缺文件、unsupported schema、unsafe copy、success/control/submit/rollback/export claim 均 fail-closed。

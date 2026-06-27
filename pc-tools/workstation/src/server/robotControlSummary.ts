@@ -1010,11 +1010,17 @@ function cameraSelectedCandidateSummary(healthPayload: JsonRecord | null): JsonR
   const selectedName = asString(currentSelection?.selected_name ?? summarySelection?.selected_name);
   const selectedFormats = asString(currentSelection?.selected_formats_summary ?? summarySelection?.selected_formats_summary);
   const selectedIsUvc = currentSelection?.selected_is_uvc_or_usb ?? summarySelection?.selected_is_uvc_or_usb;
-  if (selectedName || selectedFormats || selectedIsUvc !== undefined) {
+  const selectedRole = asString(currentSelection?.selected_role ?? summarySelection?.selected_role);
+  const siblingNodesSummary = asString(currentSelection?.selected_sibling_video_nodes_summary ?? summarySelection?.selected_sibling_video_nodes_summary);
+  const siblingNodesCount = currentSelection?.selected_sibling_video_node_count ?? summarySelection?.selected_sibling_video_node_count;
+  if (selectedName || selectedFormats || selectedIsUvc !== undefined || selectedRole || siblingNodesSummary || siblingNodesCount !== undefined) {
     return {
       selected_name: selectedName,
       selected_formats_summary: selectedFormats,
       selected_is_uvc_or_usb: selectedIsUvc,
+      selected_role: selectedRole,
+      selected_sibling_video_nodes_summary: siblingNodesSummary,
+      selected_sibling_video_node_count: siblingNodesCount,
     };
   }
   const candidates = Array.isArray(sourceSummary?.candidates) ? sourceSummary.candidates : [];
@@ -1025,6 +1031,9 @@ function cameraSelectedCandidateSummary(healthPayload: JsonRecord | null): JsonR
     selected_name: asString(selectedCandidate?.name),
     selected_formats_summary: asString(selectedCandidate?.formats_summary),
     selected_is_uvc_or_usb: selectedCandidate?.is_uvc_or_usb,
+    selected_role: asString(selectedCandidate?.selected_role),
+    selected_sibling_video_nodes_summary: "none",
+    selected_sibling_video_node_count: 0,
   };
 }
 
@@ -1219,6 +1228,7 @@ function cameraSummaryFromReadbacks(
   const selectedCandidate = cameraSelectedCandidateSummary(healthPayload);
   const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage);
   const sourceDiagnosis = asRecord(findFirstKey(healthPayload, ["source_diagnosis"]) ?? mediaDiagnostics?.source_diagnosis);
+  const sharedPreviewContract = asString(findFirstKey(healthPayload, ["shared_preview_contract"]) ?? mediaDiagnostics?.shared_preview_contract, "single_shared_capture_for_multiple_clients");
   const sourceUsageOwners = Array.isArray(sourceUsage?.owners) ? sourceUsage.owners : [];
   const sourceUsageSummary = sourceUsageOwners
     .map((owner) => {
@@ -1307,6 +1317,7 @@ function cameraSummaryFromReadbacks(
     shared_preview_content_type_loaded: compactValueText(mjpegRelayOverlay?.content_type_loaded === true),
     shared_preview_shared_capture: compactValueText(true),
     shared_preview_exclusive_camera_claim: compactValueText(false),
+    shared_preview_contract: sharedPreviewContract,
     shared_preview_last_failure_reason: sharedPreviewLastFailureReason,
     shared_preview_last_remote_http_status: sharedPreviewLastRemoteHttpStatus,
     shared_preview_last_failure_at_ms: mjpegRelayOverlay?.last_failure_at_ms === null || mjpegRelayOverlay?.last_failure_at_ms === undefined
@@ -1320,6 +1331,11 @@ function cameraSummaryFromReadbacks(
       ? "not_loaded"
       : compactValueText(selectedCandidate.selected_is_uvc_or_usb),
     selected_formats_summary: asString(selectedCandidate.selected_formats_summary, "not_loaded"),
+    selected_role: asString(selectedCandidate.selected_role, "not_loaded"),
+    selected_sibling_video_nodes_summary: asString(selectedCandidate.selected_sibling_video_nodes_summary, "none"),
+    selected_sibling_video_node_count: selectedCandidate.selected_sibling_video_node_count === undefined
+      ? "not_loaded"
+      : compactValueText(selectedCandidate.selected_sibling_video_node_count),
     source_readiness: sourceReadiness,
     source_failure_reason: sourceFailureReason,
     source_diagnosis_status: derivedSourceDiagnosis.status,
@@ -3472,6 +3488,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         shared_preview_content_type_loaded: "false",
         shared_preview_shared_capture: "true",
         shared_preview_exclusive_camera_claim: "false",
+        shared_preview_contract: "single_shared_capture_for_multiple_clients",
         shared_preview_last_failure_reason: "none",
         shared_preview_last_remote_http_status: "none",
         shared_preview_last_failure_at_ms: "none",
@@ -3481,6 +3498,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         selected_name: "not_loaded",
         selected_is_uvc_or_usb: "not_loaded",
         selected_formats_summary: "not_loaded",
+        selected_role: "not_loaded",
+        selected_sibling_video_nodes_summary: "none",
+        selected_sibling_video_node_count: "not_loaded",
         source_readiness: "not_loaded",
         source_failure_reason: "not_loaded",
         source_diagnosis_status: "not_loaded",
