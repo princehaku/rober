@@ -8705,6 +8705,13 @@ describe("workstation fail-closed API contracts", () => {
           status: "planner_server_active",
           safe_to_control: false,
           robot_control_executed: false,
+          path_preview_points: [
+            { x: 0.1, y: 0.2, frame_id: "map", source_index: 0 },
+            { x: 0.4, y: 0.2, frame_id: "map", source_index: 7 },
+          ],
+          path_preview_point_count: 2,
+          path_preview_source_point_count: 18,
+          path_preview_frame_id: "map",
         },
       },
       "/api/nav2/proof/latest": {
@@ -8823,6 +8830,11 @@ describe("workstation fail-closed API contracts", () => {
         image_data_url: string;
         robot_control_executed: boolean;
         safe_to_control: boolean;
+        path_preview_points: Array<{ x: number; y: number; frame_id: string; source_index: number | null }>;
+        path_preview_point_count: number;
+        path_preview_source_point_count: number | null;
+        path_preview_frame_id: string;
+        path_preview_source_endpoint_ids: string[];
         radar_overlay: {
           overlay_status: string;
           plain_hint: string;
@@ -8844,6 +8856,21 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.image_data_url).toContain("data:image/png;base64,");
       expect(previewBody.robot_control_executed).toBe(false);
       expect(previewBody.safe_to_control).toBe(false);
+      expect(previewBody.path_preview_points).toEqual([
+        { x: 0.1, y: 0.2, frame_id: "map", source_index: 0 },
+        { x: 0.4, y: 0.2, frame_id: "map", source_index: 7 },
+      ]);
+      expect(previewBody.path_preview_point_count).toBe(2);
+      expect(previewBody.path_preview_source_point_count).toBe(18);
+      expect(previewBody.path_preview_frame_id).toBe("map");
+      expect(previewBody.path_preview_source_endpoint_ids).toEqual([
+        "localize_proof_latest",
+        "nav2_status",
+        "nav2_proof_latest",
+        "free_roam_autonomy_latest",
+        "radar_status",
+        "radar_scan_proof_latest",
+      ]);
       expect(previewBody.radar_overlay.overlay_status).toBe("loaded");
       expect(previewBody.radar_overlay.plain_hint).toBe("雷达点已按当前扫描和小车地图位置贴到地图。");
       expect(previewBody.radar_overlay.next_action).toBe("continue_monitoring_map_radar_overlay");

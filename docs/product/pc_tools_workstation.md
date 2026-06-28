@@ -3849,6 +3849,13 @@ Robot Control summary 的 `readback_summary.map` 同步新增中文所见即所�
 或把旧点画成当前 marker。该变化只读取地图、雷达和定位状态，不启动雷达，不刷新 Nav2，不发送 manual、keyboard、
 free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-28 22:05 起，`/api/robot-control/map/preview` 也会随地图图片返回只读 Nav2 路线字段：
+`path_preview_points`、`path_preview_point_count`、`path_preview_source_point_count`、`path_preview_frame_id`
+和 `path_preview_source_endpoint_ids`。这些字段来自同一轮固定只读 overlay readback（`/api/nav2/status`、
+`/api/nav2/proof/latest` 等），用于让地图预览响应本身证明“图上路线已读到 N 个点”，不再只能从 summary 侧旁路推断。
+该变化不调用 `/api/nav2/goal/execute`，不启动 Nav2 lifecycle，不发送 manual、keyboard、free-roam、delivery、stop
+或 `/cmd_vel`；如果路线字段为空，普通首屏仍按现有 WYSIWYG gate 引导刷新路线或恢复自动驾驶服务。
+
 2026-06-28 21:45 起，普通首屏“当前事实”的实时画面行会在 `uvc_no_frame_not_exclusive` 或
 `source_usage_owner_count=0` 时直接显示处理动作：不是页面/浏览器独占，而是 UVC 源头没有输出视频帧，需要检查
 USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。共享预览仍保持

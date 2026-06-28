@@ -40,6 +40,15 @@ type FreeRoamGateRow = RobotControlSummaryResponse["safe_command_boundary"]["fre
 type RobotControlSummaryBuildOptions = {
   readbackTimeoutMs?: number;
 };
+type MapPreviewPathPreview = Pick<
+  RobotApiProofSummary,
+  "path_preview_points" | "path_preview_point_count" | "path_preview_source_point_count" | "path_preview_frame_id"
+>;
+type MapPreviewOverlayReadback = {
+  radarOverlay: RobotControlMapPreviewRadarOverlay;
+  pathPreview: MapPreviewPathPreview;
+  sourceEndpointIds: RobotApiReadEndpointId[];
+};
 
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 1500;
@@ -543,6 +552,9 @@ const STATUS_KEYS = [
   "path_generation_requested",
   "path_generation_succeeded",
   "path_point_count",
+  "path_preview_point_count",
+  "path_preview_source_point_count",
+  "path_preview_frame_id",
   "managed_runtime_started",
   "scan_once_observed",
   "map_once_observed",
@@ -2827,7 +2839,7 @@ function mapRadarOverlayExplanation(
   };
 }
 
-async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPreviewRadarOverlay> {
+async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOverlayReadback> {
   // 地图图片和雷达/位姿 overlay 分开读；overlay 只补“所见即所得”材料，不反向阻塞地图图片。
   const endpoints = READ_ENDPOINTS.filter((endpoint) => MAP_PREVIEW_OVERLAY_ENDPOINT_IDS.has(endpoint.id));
   const readbacks = await Promise.all(endpoints.map((endpoint) => readEndpoint(base, endpoint)));
@@ -2860,7 +2872,7 @@ async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPr
     proofSummary.scan_preview_source_point_count,
     proofSummary.robot_pose,
   );
-  return {
+  const radarOverlay: RobotControlMapPreviewRadarOverlay = {
     overlay_status: overlayStatus,
     plain_hint: explanation.plain_hint,
     next_action: explanation.next_action,
@@ -2873,12 +2885,29 @@ async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPr
     blocked_reasons: overlayBlockedReasons,
     blocked_reason_labels: explanation.blocked_reason_labels,
   };
+  return {
+    radarOverlay,
+    pathPreview: {
+      path_preview_points: proofSummary.path_preview_points,
+      path_preview_point_count: proofSummary.path_preview_point_count,
+      path_preview_source_point_count: proofSummary.path_preview_source_point_count,
+      path_preview_frame_id: proofSummary.path_preview_frame_id,
+    },
+    sourceEndpointIds: endpoints.map((endpoint) => endpoint.id),
+  };
 }
 
 function blockedMapPreviewResponse(
   sourceBaseUrl: string,
   reason: string,
   radarOverlay: RobotControlMapPreviewRadarOverlay = defaultMapPreviewRadarOverlay(reason),
+  pathPreview: MapPreviewPathPreview = {
+    path_preview_points: [],
+    path_preview_point_count: 0,
+    path_preview_source_point_count: null,
+    path_preview_frame_id: "",
+  },
+  pathPreviewSourceEndpointIds: RobotApiReadEndpointId[] = [],
 ): RobotControlMapPreviewResponse {
   // 地图预览失败也必须保持完整合同，前端才能稳定回退到状态视图。
   return {
@@ -2907,6 +2936,11 @@ function blockedMapPreviewResponse(
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
     radar_overlay: radarOverlay,
+    path_preview_points: pathPreview.path_preview_points,
+    path_preview_point_count: pathPreview.path_preview_point_count,
+    path_preview_source_point_count: pathPreview.path_preview_source_point_count,
+    path_preview_frame_id: pathPreview.path_preview_frame_id,
+    path_preview_source_endpoint_ids: pathPreviewSourceEndpointIds,
     robot_control_executed: false,
   };
 }
@@ -2917,7 +2951,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   if (!normalized.ok) {
     return blockedMapPreviewResponse(baseUrl, normalized.reason);
   }
-  const radarOverlayPromise = buildMapPreviewRadarOverlay(normalized.normalized);
+  const overlayReadbackPromise = buildMapPreviewOverlayReadback(normalized.normalized);
 
   let response: Response;
   try {
@@ -2932,8 +2966,15 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
         : error instanceof Error
           ? error.message.slice(0, 180)
           : "fetch_failed";
+    const overlayReadback = await overlayReadbackPromise;
     return {
-      ...blockedMapPreviewResponse(baseUrl, reason, await radarOverlayPromise),
+      ...blockedMapPreviewResponse(
+        baseUrl,
+        reason,
+        overlayReadback.radarOverlay,
+        overlayReadback.pathPreview,
+        overlayReadback.sourceEndpointIds,
+      ),
       proxy_status: "preview_failed",
       normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
     };
@@ -2943,8 +2984,15 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   try {
     bodyJson = await response.json();
   } catch {
+    const overlayReadback = await overlayReadbackPromise;
     return {
-      ...blockedMapPreviewResponse(baseUrl, "response_json_parse_failed", await radarOverlayPromise),
+      ...blockedMapPreviewResponse(
+        baseUrl,
+        "response_json_parse_failed",
+        overlayReadback.radarOverlay,
+        overlayReadback.pathPreview,
+        overlayReadback.sourceEndpointIds,
+      ),
       proxy_status: "preview_failed",
       normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
       remote_http_status: response.status,
@@ -2954,8 +3002,15 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
 
   const payload = asRecord(bodyJson);
   if (!payload) {
+    const overlayReadback = await overlayReadbackPromise;
     return {
-      ...blockedMapPreviewResponse(baseUrl, "response_json_not_object", await radarOverlayPromise),
+      ...blockedMapPreviewResponse(
+        baseUrl,
+        "response_json_not_object",
+        overlayReadback.radarOverlay,
+        overlayReadback.pathPreview,
+        overlayReadback.sourceEndpointIds,
+      ),
       proxy_status: "preview_failed",
       normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
       remote_http_status: response.status,
@@ -2981,7 +3036,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     ...(imageLooksSafe ? [] : ["map_preview_image_data_url_missing_or_invalid"]),
   ];
   const forwarded = response.ok && blockedReasons.length === 0;
-  const radarOverlay = await radarOverlayPromise;
+  const overlayReadback = await overlayReadbackPromise;
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
     ...PROOF_FLAGS,
@@ -3010,7 +3065,12 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
         : asString(findFirstKey(payload, ["failure_reason", "error"]), ""),
     blocked_reasons: blockedReasons,
     hard_dangerous_true_fields: hardDangerous,
-    radar_overlay: radarOverlay,
+    radar_overlay: overlayReadback.radarOverlay,
+    path_preview_points: overlayReadback.pathPreview.path_preview_points,
+    path_preview_point_count: overlayReadback.pathPreview.path_preview_point_count,
+    path_preview_source_point_count: overlayReadback.pathPreview.path_preview_source_point_count,
+    path_preview_frame_id: overlayReadback.pathPreview.path_preview_frame_id,
+    path_preview_source_endpoint_ids: overlayReadback.sourceEndpointIds,
     robot_control_executed: false,
   };
 }
