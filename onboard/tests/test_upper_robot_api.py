@@ -42,6 +42,67 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         # 部分 JSON 来源可能把 `T` 序列化成字符串，status 也要容错。
         self.assertEqual(1001, upper_robot_api.feedback_type_from_frame({"T": "1001", "y": None}))
 
+    def test_serial_feedback_parser_salvages_t1001_before_noisy_tail(self) -> None:
+        """现场 UART 会把合法 JSON 和损坏碎片粘一行，不能因此丢掉 T1001。"""
+        raw_line = (
+            b'{"T":1001,"L":0,"R":0,"r":-1.675361514,"p":0.726515055,'
+            b'"y":"null","v":12.4262495}\r{""10,L:,R:,r:172667""078468""ul"""1.29}\n'
+        )
+
+        frames = upper_robot_api.parse_serial_json_objects(raw_line)
+
+        self.assertEqual(1, len(frames))
+        self.assertTrue(upper_robot_api.t1001_feedback_observed_in_frame(frames[0]))
+        self.assertEqual(0, frames[0]["L"])
+        self.assertEqual("null", frames[0]["y"])
+
+    def test_feedback_status_keeps_observed_t1001_when_late_read_error_happens(self) -> None:
+        """读到 T1001 后的串口读空错误要保留部分成功状态，不能退回全失败。"""
+        status = upper_robot_api.feedback_request_status(
+            serial_open_ok=True,
+            serial_write_ok=True,
+            t1001_observed=True,
+            import_error=None,
+            read_error={
+                "type": "SerialException",
+                "message": "device reports readiness to read but returned no data",
+            },
+        )
+
+        self.assertEqual("observed_with_read_error", status)
+
+    def test_feedback_payload_keeps_partial_observed_status_with_read_error(self) -> None:
+        """payload 层也必须保留 observed_with_read_error，避免 PC 看到互相矛盾的字段。"""
+        payload = upper_robot_api.build_base_feedback_payload(
+            port="/dev/ttyS5",
+            baudrate=115200,
+            read_timeout_s=0.2,
+            read_window_s=1.2,
+            serial_open={"ok": True},
+            serial_write={"ok": True, "command": {"T": 130}},
+            serial_read={
+                "ok": False,
+                "window_s": 1.2,
+                "error": {"type": "SerialException", "message": "late read error"},
+            },
+            read_line_count=2,
+            parsed_json_count=1,
+            invalid_json_count=1,
+            observed_feedback_types=[1001],
+            t1001_feedback_frames=[{"T": 1001, "L": 0, "R": 0, "y": "null"}],
+            t1001_feedback_status=upper_robot_api.feedback_request_status(
+                serial_open_ok=True,
+                serial_write_ok=True,
+                t1001_observed=True,
+                import_error=None,
+                read_error={"type": "SerialException", "message": "late read error"},
+            ),
+        )
+
+        self.assertEqual("observed_with_read_error", payload["t1001_feedback_status"])
+        self.assertTrue(payload["feedback_ack"]["t1001_observed"])
+        self.assertEqual([1001], payload["observed_feedback_types"])
+
     def test_feedback_ack_prefers_fresh_readback(self) -> None:
         """本次 readback 已观测 T=1001 时，stale artifact 不能改变来源。"""
         # status 必须优先使用本轮 readback，不能依赖旧 artifact 伪造新鲜 ACK。
@@ -245,8 +306,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("stale", status["feedback_samples_latest"]["freshness"]["status"])
         self.assertFalse(status["safe_to_control"])
 
-    def test_manual_control_samples_wheel_feedback_during_motion_window(self) -> None:
-        """manual 点动必须在停车前采样轮速，避免动作后 0/0 覆盖真实运动材料。"""
+    def test_manual_control_pwm_diagnostic_samples_wheel_feedback_during_motion_window(self) -> None:
+        """PWM 诊断点动必须在停车前采样轮速，避免动作后 0/0 覆盖真实运动材料。"""
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
             base_port="/dev/ttyS5",
@@ -280,6 +341,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                             "direction": "forward",
                             "speed": 0.04,
                             "duration_ms": 300,
+                            "command_mode": "pwm",
                             "motion_read_window_s": 0.05,
                         }
                     )
@@ -289,13 +351,14 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["auto_stop_executed"])
         self.assertTrue(payload["feedback_during_motion_attempted"])
         mocked_transaction.assert_called_once()
-        self.assertEqual({"T": 13, "X": 0.04, "Z": 0.0}, mocked_transaction.call_args.kwargs["command"])
+        self.assertEqual({"T": 11, "L": 164, "R": 164}, mocked_transaction.call_args.kwargs["command"])
         self.assertEqual(
-            [{"T": 13, "X": 0, "Z": 0}, {"T": 11, "L": 0, "R": 0}, {"T": 1, "L": 0, "R": 0}],
+            [{"T": 11, "L": 0, "R": 0}, {"T": 1, "L": 0, "R": 0}, {"T": 13, "X": 0, "Z": 0}],
             mocked_transaction.call_args.kwargs["stop_commands"],
         )
         self.assertEqual(transaction, payload["serial_motion_transaction"])
-        self.assertEqual("ros", payload["base_command_mode"])
+        self.assertIsNone(payload["ros_cmd_vel_transaction"])
+        self.assertEqual("pwm", payload["base_command_mode"])
         self.assertTrue(payload["manual_feedback_samples_latest"]["wheel_feedback_lr_nonzero_proven"])
         self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
         self.assertEqual(1, payload["manual_wheel_feedback_summary"]["nonzero_frame_count"])
@@ -305,7 +368,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["primary_actions_enabled"])
 
     def test_manual_control_default_motion_window_tracks_pulse_duration(self) -> None:
-        """默认运动中读窗要覆盖大部分点动时间，避免 500ms first-jog 漏掉非零 T1001。"""
+        """默认 ROS 手控必须走 /cmd_vel bridge，不再抢 esp32_bridge 持有的 UART。"""
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
             base_port="/dev/ttyS5",
@@ -313,33 +376,29 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             max_speed=0.12,
         )
         transaction = {
-            "command_result": {"ok": True, "bytes_written": 26, "command": {"T": 1, "L": 0.08, "R": 0.08}},
-            "stop_result": {"ok": True, "bytes_written": 20, "command": {"T": 1, "L": 0, "R": 0}},
-            "feedback_during_motion": {
-                "t1001_feedback_status": "observed",
-                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
-                "feedback_ack": {"t1001_observed": True},
-            },
-            "feedback_after_stop": {
-                "t1001_feedback_status": "observed",
-                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
-                "feedback_ack": {"t1001_observed": True},
-            },
+            "mode": "ros_cmd_vel_bridge",
+            "command_result": {"ok": True, "mode": "ros_cmd_vel_once", "linear_x": 0.08, "angular_z": 0.0},
+            "stop_result": {"ok": True, "mode": "ros_cmd_vel_once", "linear_x": 0.0, "angular_z": 0.0},
+            "feedback_during_motion": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart"),
+            "feedback_after_stop": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart"),
             "serial_session_error": None,
         }
 
-        with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact", side_effect=lambda _path, payload: {**payload, "artifact": {"write": {"ok": True}}}):
-            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction", return_value=transaction) as mocked_transaction:
+        with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction") as mocked_serial_transaction:
+            with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_transaction", return_value=transaction) as mocked_transaction:
                 payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 500}))
 
         kwargs = mocked_transaction.call_args.kwargs
+        mocked_serial_transaction.assert_not_called()
         self.assertEqual(500, kwargs["pulse_ms"])
         self.assertEqual({"T": 13, "X": 0.08, "Z": 0.0}, kwargs["command"])
-        self.assertAlmostEqual(0.45, kwargs["motion_read_window_s"])
+        self.assertEqual(transaction, payload["ros_cmd_vel_transaction"])
+        self.assertIsNone(payload["serial_motion_transaction"])
+        self.assertIsNone(payload["manual_feedback_samples_latest"])
         self.assertTrue(payload["manual_command_executed"])
 
     def test_manual_control_keyboard_pulse_keeps_short_motion_window(self) -> None:
-        """键盘连续手控 240ms pulse 仍保持短读窗，避免按住续发被单次 read 阻塞太久。"""
+        """键盘连续手控 240ms pulse 走短 /cmd_vel 事务，避免串口读阻塞续发。"""
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
             base_port="/dev/ttyS5",
@@ -347,29 +406,24 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             max_speed=0.12,
         )
         transaction = {
-            "command_result": {"ok": True, "bytes_written": 26, "command": {"T": 1, "L": 0.08, "R": 0.08}},
-            "stop_result": {"ok": True, "bytes_written": 20, "command": {"T": 1, "L": 0, "R": 0}},
-            "feedback_during_motion": {
-                "t1001_feedback_status": "observed",
-                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
-                "feedback_ack": {"t1001_observed": True},
-            },
-            "feedback_after_stop": {
-                "t1001_feedback_status": "observed",
-                "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "y": "null"}],
-                "feedback_ack": {"t1001_observed": True},
-            },
+            "mode": "ros_cmd_vel_bridge",
+            "command_result": {"ok": True, "mode": "ros_cmd_vel_once", "linear_x": 0.08, "angular_z": 0.0},
+            "stop_result": {"ok": True, "mode": "ros_cmd_vel_once", "linear_x": 0.0, "angular_z": 0.0},
+            "feedback_during_motion": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart"),
+            "feedback_after_stop": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart"),
             "serial_session_error": None,
         }
 
-        with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact", side_effect=lambda _path, payload: {**payload, "artifact": {"write": {"ok": True}}}):
-            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction", return_value=transaction) as mocked_transaction:
+        with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction") as mocked_serial_transaction:
+            with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_transaction", return_value=transaction) as mocked_transaction:
                 payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 240}))
 
         kwargs = mocked_transaction.call_args.kwargs
+        mocked_serial_transaction.assert_not_called()
         self.assertEqual(240, kwargs["pulse_ms"])
         self.assertEqual({"T": 13, "X": 0.08, "Z": 0.0}, kwargs["command"])
-        self.assertAlmostEqual(0.19, kwargs["motion_read_window_s"])
+        self.assertEqual(transaction, payload["ros_cmd_vel_transaction"])
+        self.assertIsNone(payload["manual_feedback_samples_latest"])
         self.assertTrue(payload["manual_command_executed"])
 
     def test_manual_control_allows_explicit_pwm_diagnostic_override(self) -> None:

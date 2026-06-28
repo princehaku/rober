@@ -480,6 +480,10 @@ Nav2、delivery、stop 或 `/cmd_vel`。
 `/api/robot-control/base/stop` 代理先停止，并在首屏显示“安全确认取消”。这样键盘连续手控、自由移动和扫图入口
 继续共享一个最小安全确认，取消确认后不会残留 armed 状态。
 
+2026-06-29 04:20 CST 起，上车默认 `command_mode=ros` 的 `/api/base/manual` 改为发布短时
+`/cmd_vel` 给 `/esp32_bridge`，不再与 bridge 抢 `/dev/ttyS5`。PC 工作站仍只调用固定
+`/api/robot-control/base/manual`，浏览器不直连 `/cmd_vel`；PWM/speed 只保留为显式诊断模式。
+
 ## 2026-06-28 PC Nav2 Current Fact Raw L/R
 
 2026-06-28 08:46 CST 起，普通首屏 `当前事实` 的 Nav2 行程成功/待复验文案也统一使用

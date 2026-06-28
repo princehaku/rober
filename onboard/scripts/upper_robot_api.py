@@ -4645,6 +4645,8 @@ def feedback_request_status(
         return "serial_not_opened"
     if not serial_write_ok:
         return "write_failed"
+    if read_error and t1001_observed:
+        return "observed_with_read_error"
     if read_error:
         return "read_error"
     if t1001_observed:
@@ -4678,6 +4680,33 @@ def finite_feedback_number(value: Any) -> float | None:
     if not math.isfinite(number):
         return None
     return number
+
+
+def parse_serial_json_objects(raw_line: bytes) -> list[dict[str, Any]]:
+    """从一行 UART 噪声里提取完整 JSON 对象，允许 CR 后粘连损坏碎片。"""
+    try:
+        decoded = raw_line.decode("utf-8", errors="ignore").strip()
+    except Exception:
+        return []
+    if not decoded:
+        return []
+    decoder = json.JSONDecoder()
+    objects: list[dict[str, Any]] = []
+    index = 0
+    while index < len(decoded):
+        start = decoded.find("{", index)
+        if start < 0:
+            break
+        try:
+            parsed, end = decoder.raw_decode(decoded[start:])
+        except json.JSONDecodeError:
+            # 现场串口可能把损坏碎片和下一帧粘在同一行；跳过这个左花括号继续找下一段。
+            index = start + 1
+            continue
+        if isinstance(parsed, dict):
+            objects.append(parsed)
+        index = start + max(end, 1)
+    return objects
 
 
 def compact_t1001_feedback_frame(frame: dict[str, Any]) -> dict[str, Any] | None:
@@ -4894,23 +4923,19 @@ def request_base_feedback_once(
                 if not raw_line:
                     continue
                 read_line_count += 1
-                try:
-                    decoded = raw_line.decode("utf-8").strip()
-                    parsed = json.loads(decoded)
-                except (UnicodeDecodeError, json.JSONDecodeError):
+                parsed_objects = parse_serial_json_objects(raw_line)
+                if not parsed_objects:
                     invalid_json_count += 1
                     continue
-                if not isinstance(parsed, dict):
-                    invalid_json_count += 1
-                    continue
-                parsed_json_count += 1
-                feedback_type = feedback_type_from_frame(parsed)
-                if feedback_type is not None:
-                    observed_feedback_types.append(feedback_type)
-                compact_frame = compact_t1001_feedback_frame(parsed)
-                if compact_frame is not None:
-                    # T1001 帧数量由短 read window 限制；保留精简字段可直接复核 L/R。
-                    t1001_feedback_frames.append(compact_frame)
+                for parsed in parsed_objects:
+                    parsed_json_count += 1
+                    feedback_type = feedback_type_from_frame(parsed)
+                    if feedback_type is not None:
+                        observed_feedback_types.append(feedback_type)
+                    compact_frame = compact_t1001_feedback_frame(parsed)
+                    if compact_frame is not None:
+                        # T1001 帧数量由短 read window 限制；保留精简字段可直接复核 L/R。
+                        t1001_feedback_frames.append(compact_frame)
         except Exception as exc:  # noqa: BLE001 - 读阶段错误独立暴露，不改写 open/write 结果。
             serial_read["error"] = compact_error(exc)
         else:
@@ -4971,24 +4996,21 @@ def read_serial_json_window(serial_obj: Any, read_window_s: float) -> dict[str, 
             if not raw_line:
                 continue
             read_line_count += 1
-            try:
-                parsed = json.loads(raw_line.decode("utf-8").strip())
-            except (UnicodeDecodeError, json.JSONDecodeError):
+            parsed_objects = parse_serial_json_objects(raw_line)
+            if not parsed_objects:
                 invalid_json_count += 1
                 continue
-            if not isinstance(parsed, dict):
-                invalid_json_count += 1
-                continue
-            parsed_json_count += 1
-            compact_frame = {key: parsed.get(key) for key in ("T", "L", "R", "X", "Z", "cmd", "r", "p", "y", "v") if key in parsed}
-            if len(compact_frames) < 24:
-                compact_frames.append(compact_frame)
-            feedback_type = feedback_type_from_frame(parsed)
-            if feedback_type is not None:
-                observed_feedback_types.append(feedback_type)
-            compact_t1001 = compact_t1001_feedback_frame(parsed)
-            if compact_t1001 is not None:
-                t1001_feedback_frames.append(compact_t1001)
+            for parsed in parsed_objects:
+                parsed_json_count += 1
+                compact_frame = {key: parsed.get(key) for key in ("T", "L", "R", "X", "Z", "cmd", "r", "p", "y", "v") if key in parsed}
+                if len(compact_frames) < 24:
+                    compact_frames.append(compact_frame)
+                feedback_type = feedback_type_from_frame(parsed)
+                if feedback_type is not None:
+                    observed_feedback_types.append(feedback_type)
+                compact_t1001 = compact_t1001_feedback_frame(parsed)
+                if compact_t1001 is not None:
+                    t1001_feedback_frames.append(compact_t1001)
     except Exception as exc:  # noqa: BLE001 - 读阶段错误不能吞掉，否则现场会误判为无反馈。
         read_error = compact_error(exc)
     return {
@@ -5038,6 +5060,94 @@ def build_feedback_payload_from_open_serial_read(
     )
     payload["compact_frames"] = read_summary["compact_frames"]
     return payload
+
+
+def publish_ros_cmd_vel_once(linear_x: float, angular_z: float, *, timeout_s: float = 2.0) -> dict[str, Any]:
+    """通过 ROS /cmd_vel 给 esp32_bridge 发一次 Twist，避免 API 与 bridge 抢占 UART。"""
+    linear_x = round(float(linear_x), 6)
+    angular_z = round(float(angular_z), 6)
+    message = (
+        "{linear: {x: "
+        f"{linear_x}, y: 0.0, z: 0.0"
+        "}, angular: {x: 0.0, y: 0.0, z: "
+        f"{angular_z}"
+        "}}"
+    )
+    setup_script = (
+        "set +u; "
+        f"source {shlex.quote(DEFAULT_ROS_SETUP_PATH)}; "
+        f"if [ -f {shlex.quote(DEFAULT_ONBOARD_SETUP_PATH)} ]; then source {shlex.quote(DEFAULT_ONBOARD_SETUP_PATH)}; fi; "
+        "set -u; "
+        "ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "
+        f"{shlex.quote(message)}"
+    )
+    result: dict[str, Any] = {
+        "ok": False,
+        "mode": "ros_cmd_vel_once",
+        "topic": "/cmd_vel",
+        "message_type": "geometry_msgs/msg/Twist",
+        "linear_x": linear_x,
+        "angular_z": angular_z,
+        "argv": ["bash", "-lc", setup_script],
+    }
+    try:
+        completed = subprocess.run(  # noqa: S603 - 命令内容由固定 topic/type 和限速数值组成。
+            result["argv"],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+        )
+    except Exception as exc:  # noqa: BLE001 - ROS CLI 不可用时必须结构化 fail-closed。
+        result["error"] = compact_error(exc)
+        return result
+    result.update(
+        {
+            "ok": completed.returncode == 0,
+            "returncode": completed.returncode,
+            "stdout_preview": completed.stdout[-800:],
+            "stderr_preview": completed.stderr[-800:],
+        }
+    )
+    if completed.returncode != 0:
+        result["error"] = {
+            "type": "ros_cmd_vel_publish_failed",
+            "message": (completed.stderr or completed.stdout or f"ros2 topic pub exited {completed.returncode}")[-300:],
+        }
+    return result
+
+
+def manual_motion_ros_cmd_vel_transaction(
+    *,
+    port: str,
+    baudrate: int,
+    command: dict[str, Any],
+    pulse_ms: int,
+) -> dict[str, Any]:
+    """ROS 模式手控走 /cmd_vel 到 esp32_bridge，不直接打开 /dev/ttyS5。"""
+    linear_x = finite_feedback_number(command.get("X")) or 0.0
+    angular_z = finite_feedback_number(command.get("Z")) or 0.0
+    command_result = publish_ros_cmd_vel_once(linear_x, angular_z)
+    if pulse_ms > 0:
+        time.sleep(pulse_ms / 1000.0)
+    stop_result = publish_ros_cmd_vel_once(0.0, 0.0)
+    return {
+        "mode": "ros_cmd_vel_bridge",
+        "command_result": command_result,
+        "stop_result": stop_result,
+        "feedback_during_motion": skipped_manual_feedback_payload(
+            port,
+            baudrate,
+            "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart",
+        ),
+        "feedback_after_stop": skipped_manual_feedback_payload(
+            port,
+            baudrate,
+            "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart",
+        ),
+        "serial_session_error": None,
+        "blocked_base_uart": port,
+    }
 
 
 def manual_motion_serial_transaction(
@@ -7540,23 +7650,37 @@ class UpperRobotApi:
         read_window_s = clamp_float(body.get("read_window_s"), DEFAULT_FEEDBACK_READ_WINDOW_S, 0.01, MAX_FEEDBACK_READ_WINDOW_S)
         feedback_during_motion_attempted = direction != "stop" and pulse_ms > 0
         serial_motion_transaction: dict[str, Any] | None = None
+        ros_cmd_vel_transaction: dict[str, Any] | None = None
         if feedback_during_motion_attempted:
-            serial_motion_transaction = manual_motion_serial_transaction(
-                port=self.base_port,
-                baudrate=self.base_baudrate,
-                command=command,
-                stop_commands=stop_plan,
-                pulse_ms=pulse_ms,
-                motion_read_timeout_s=motion_read_timeout_s,
-                motion_read_window_s=motion_read_window_s,
-                after_stop_read_timeout_s=read_timeout_s,
-                after_stop_read_window_s=read_window_s,
-            )
-            first = serial_motion_transaction["command_result"]
-            stop = serial_motion_transaction["stop_result"]
-            feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
-            feedback_evidence = serial_motion_transaction["feedback_after_stop"]
-            feedback_after_stop_attempted = bool(stop.get("ok"))
+            if command_mode == "ros":
+                ros_cmd_vel_transaction = manual_motion_ros_cmd_vel_transaction(
+                    port=self.base_port,
+                    baudrate=self.base_baudrate,
+                    command=command,
+                    pulse_ms=pulse_ms,
+                )
+                first = ros_cmd_vel_transaction["command_result"]
+                stop = ros_cmd_vel_transaction["stop_result"]
+                feedback_during_motion = ros_cmd_vel_transaction["feedback_during_motion"]
+                feedback_evidence = ros_cmd_vel_transaction["feedback_after_stop"]
+                feedback_after_stop_attempted = False
+            else:
+                serial_motion_transaction = manual_motion_serial_transaction(
+                    port=self.base_port,
+                    baudrate=self.base_baudrate,
+                    command=command,
+                    stop_commands=stop_plan,
+                    pulse_ms=pulse_ms,
+                    motion_read_timeout_s=motion_read_timeout_s,
+                    motion_read_window_s=motion_read_window_s,
+                    after_stop_read_timeout_s=read_timeout_s,
+                    after_stop_read_window_s=read_window_s,
+                )
+                first = serial_motion_transaction["command_result"]
+                stop = serial_motion_transaction["stop_result"]
+                feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
+                feedback_evidence = serial_motion_transaction["feedback_after_stop"]
+                feedback_after_stop_attempted = bool(stop.get("ok"))
         else:
             started_monotonic = time.monotonic()
             first = write_serial_json(self.base_port, self.base_baudrate, command)
@@ -7610,7 +7734,7 @@ class UpperRobotApi:
             else "not_observed"
         )
         manual_feedback_samples_latest = None
-        if feedback_during_motion_attempted:
+        if feedback_during_motion_attempted and (wheel_feedback_frames or command_mode != "ros"):
             # first-jog/键盘手控的非零 T1001 必须落到 latest artifact，
             # 否则 PC 刷新 summary 会被停车后的 0/0 读回覆盖成“看似丢证据”。
             manual_feedback_samples_latest = persist_feedback_samples_artifact(
@@ -7648,6 +7772,7 @@ class UpperRobotApi:
             "feedback_evidence": feedback_evidence,
             "manual_feedback_samples_latest": manual_feedback_samples_latest,
             "serial_motion_transaction": serial_motion_transaction,
+            "ros_cmd_vel_transaction": ros_cmd_vel_transaction,
             "t1001_feedback_status": feedback_evidence.get("t1001_feedback_status"),
             "manual_wheel_feedback_summary": manual_wheel_feedback_summary,
             "manual_imu_attitude_delta_summary": manual_imu_delta_summary,

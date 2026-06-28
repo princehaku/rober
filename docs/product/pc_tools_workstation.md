@@ -3523,6 +3523,13 @@ Nav2、delivery、stop 或 `/cmd_vel`。
 2026-06-27 23:30 起，普通首屏的当前事实条和键盘说明会直接写出“ROS/T=13 低速入口”，让现场能确认 PC 键盘连续手控没有回到旧 PWM 默认。
 该改动只显示既有 PC proxy 转发口径，不新增模式选择、不改变安全确认、不发送 manual、stop、Nav2、delivery、free-roam 或 `/cmd_vel`。
 
+2026-06-29 04:20 起，上车 `/api/base/manual` 的默认 `command_mode=ros` 不再直开 `/dev/ttyS5`
+写 `T=13`，而是发布一次限速 `/cmd_vel` 给已经持有 UART 的 `/esp32_bridge`；pulse 到时后再发布一次
+零速 `/cmd_vel`。现场只读 `fuser/lsof /dev/ttyS5` 已确认当前串口 holder 是 `esp32_bridge`，
+所以 PC 键盘连续手控和 Nav2 都应复用 bridge 入口，避免 API 与 bridge 多进程抢串口。`command_mode=pwm/speed`
+仍作为显式高级诊断 override，才会走旧串口事务和 T1001 运动中采样。浏览器和 PC Node 仍只调用固定
+`/api/robot-control/base/manual` 代理，不直连 ROS `/cmd_vel`，也不绕过统一安全确认、速度/时长 clamp 或 stop 兜底。
+
 2026-06-27 14:47 起，Robot Control summary 的 `readback_summary.nav2` 新增
 `goal_execution_mode_rerun_status`。当最近一次 Nav2 artifact 是旧 `base_command_mode=pwm`，而上车
 `nav2_base_command_mode=ros` 表示下一次将用 ROS/T=13 执行时，该字段返回
