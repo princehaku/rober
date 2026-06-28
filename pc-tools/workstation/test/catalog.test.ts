@@ -3972,6 +3972,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map).toMatchObject({
         status: expect.any(String),
         map_once_observed: "true",
+        path_preview_status: "not_observed",
+        path_preview_point_count: "0",
+        path_preview_frame_id: "not_loaded",
+        path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
       });
       expect(summary.readback_summary.localization).toMatchObject({
         status: expect.any(String),
@@ -7328,6 +7332,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("5");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser");
       expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
+      expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
+      expect(summary.readback_summary.map.path_preview_point_count).toBe("3");
+      expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");
+      expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
       expect(summary.o3_proof_summary.path_preview_points).toEqual([
         { x: 0, y: 0, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.1, frame_id: "map", source_index: 12 },
@@ -7836,6 +7844,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("0");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("65");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser_frame");
+      expect(summary.readback_summary.map.path_preview_status).toBe("not_observed");
+      expect(summary.readback_summary.map.path_preview_point_count).toBe("0");
+      expect(summary.readback_summary.map.path_preview_frame_id).toBe("not_loaded");
+      expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
     } finally {
       await robotApi.close();
     }

@@ -4125,6 +4125,9 @@ function mapSummaryFromReadbacks(
     proof.scan_preview_source_point_count,
     proof.robot_pose,
   );
+  const pathPreviewStatus = proof.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
+  const robotPoseStatus = proof.robot_pose ? "map_pose_observed" : "not_observed";
+  const pathNextActionPlain = mapPreviewPathNextActionPlain(pathPreviewStatus, robotPoseStatus);
   return {
     status: mapProof?.status ?? "not_loaded",
     map_once_observed: booleanSummaryValue(proof.map_once_observed),
@@ -4140,6 +4143,10 @@ function mapSummaryFromReadbacks(
       proofText(readbacks, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       mapProofText(mapProof, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       "not_loaded",
+    path_preview_status: pathPreviewStatus,
+    path_preview_point_count: String(proof.path_preview_point_count),
+    path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
+    path_preview_next_action_plain: pathNextActionPlain,
     radar_overlay_status: radarOverlayStatus,
     radar_overlay_plain_hint: radarOverlayExplanation.plain_hint,
     radar_overlay_next_action: radarOverlayExplanation.next_action,
@@ -4584,6 +4591,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         map_quality_status: "not_loaded",
         map_free_cell_count: "not_loaded",
         map_usable_for_navigation: "not_loaded",
+        path_preview_status: "not_observed",
+        path_preview_point_count: "0",
+        path_preview_frame_id: "not_loaded",
+        path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
         radar_overlay_status: "not_loaded",
         radar_overlay_plain_hint: "地图雷达层未加载。",
         radar_overlay_next_action: "connect_robot_and_refresh_map_preview",

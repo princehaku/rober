@@ -493,6 +493,10 @@ const fixtures: Record<string, unknown> = {
         map_quality_status: "not_loaded",
         map_free_cell_count: "not_loaded",
         map_usable_for_navigation: "not_loaded",
+        path_preview_status: "not_observed",
+        path_preview_point_count: "0",
+        path_preview_frame_id: "not_loaded",
+        path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
       },
       localization: {
         status: "localization_not_proven",

@@ -206,6 +206,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-29 21:10 起，`/api/robot-control/map/preview` 顶层 `next_action_plain` 与 `path_preview_next_action_plain` 对齐：
   外部脚本或普通面板只读统一下一步字段时，也能直接看到图上路线的下一步。雷达贴图下一步继续放在 `radar_overlay_next_action_plain`，避免把路线执行确认和雷达刷新动作混在一起。
   该变化只补只读 map preview alias，不准备路线、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 21:30 起，`/api/robot-control/summary` 的 `readback_summary.map` 也增加路线 WYSIWYG 字段：
+  `path_preview_status`、`path_preview_point_count`、`path_preview_frame_id` 和 `path_preview_next_action_plain`。summary 主链路现在能在同一个 map 区块里同时表达地图质量、图上路线、雷达贴图和小车 map 位姿状态，不再要求外部脚本从 nav2 区块手动拼路线点数。
+  该变化只补只读 summary 字段，不准备路线、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，

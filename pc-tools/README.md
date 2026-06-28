@@ -117,6 +117,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 21:10 CST 起，地图预览响应顶层 `next_action_plain` 与 `path_preview_next_action_plain` 对齐。外部脚本或普通面板只读取统一下一步字段时，也能直接看到“先准备图上路线 / 路线已显示但小车位置未显示 / 确认起点终点和路线后再勾选安全确认执行”。雷达贴图仍使用独立的 `radar_overlay_next_action_plain`，避免把路线确认和雷达刷新混成一个动作。该变化只补只读 map preview alias，不准备路线、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 21:30 CST 起，Robot Control summary 的 `readback_summary.map` 也返回 `path_preview_status`、`path_preview_point_count`、`path_preview_frame_id` 和 `path_preview_next_action_plain`。这样普通首屏或外部脚本只读 summary，就能同时看到地图质量、图上路线、雷达贴图和小车 map 位姿状态；不必从 `readback_summary.nav2` 手动拼路线点数，也不必额外调用 map preview 才知道路线是否所见即所得。该变化只补只读 summary 字段，不准备路线、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、
