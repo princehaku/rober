@@ -129,6 +129,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 23:10 CST 起，相机共享预览的默认只读口径改为“页面会自动接入共享 MJPEG 预览”。`/api/robot-control/summary` 和 `/api/robot-control/camera/mjpeg/status` 在 idle 状态下返回 `preview_next_action=auto_join_shared_mjpeg_preview`，普通页面、脚本和后进浏览器都能直接理解：谁打开页面都会复用同一条上游 MJPEG 流；未出帧前不能把黑框当作画面可见，若仍无画面再点只读检查复测首帧。该变化只修正 PC 共享预览 readback，不新开独占采集、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 02:35 CST 起，`safe_command_boundary` 增加最小门禁白话字段：`nav2_goal_minimal_precheck_plain`、`keyboard_minimal_precheck_plain`、`free_roam_motion_minimal_precheck_plain` 和 `free_roam_mapping_acceptance_plain`。脚本只读 summary 时可以直接知道：执行图上路线只复核现场安全确认和固定白名单；键盘启用本身不发车，只有按住方向键/WASD 才发低速短脉冲；自由移动只要求安全确认和停止兜底；画面首帧、雷达新鲜、地图记录和地图画面只影响建图验收。该变化只补只读 summary 字段，不执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

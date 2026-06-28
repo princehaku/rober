@@ -4038,6 +4038,7 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线");
+      expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("nav2_map_not_consumed");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_service_unavailable");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_not_attempted");
@@ -4070,6 +4071,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_control_status).toBe("start_ready");
       expect(summary.safe_command_boundary.keyboard_control_label).toBe("键盘手控（勾确认后可启用）");
       expect(summary.safe_command_boundary.keyboard_control_next_action).toBe("勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停");
+      expect(summary.safe_command_boundary.keyboard_minimal_precheck_plain).toBe("键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。");
       expect(summary.safe_command_boundary.keyboard_teleop_start_ready).toBe(true);
       expect(summary.safe_command_boundary.keyboard_teleop_status).toBe("start_ready");
       expect(summary.safe_command_boundary.keyboard_teleop_next_action_plain).toBe(summary.safe_command_boundary.keyboard_control_next_action);
@@ -4085,6 +4087,8 @@ describe("workstation fail-closed API contracts", () => {
         "fresh_map_preview",
       ]);
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（未开放）");
+      expect(summary.safe_command_boundary.free_roam_motion_minimal_precheck_plain).toBe("自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。");
+      expect(summary.safe_command_boundary.free_roam_mapping_acceptance_plain).toBe("建图验收要求画面首帧、雷达新鲜、地图记录和地图画面 ready；这些缺口不阻止先低速自由移动。");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.mode).toBe("free_move_requires_safety_confirm_stop_fallback");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.mapping_mode).toBe("mapping_acceptance_requires_camera_and_fresh_radar");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.required_gates).toEqual([

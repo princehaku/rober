@@ -3911,3 +3911,11 @@ USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。�
 兜底会默认请求 `/api/robot-control/camera/mjpeg`，因此后进页面会复用同一条 PC Node 上游流；
 summary/status/readback 也同步说明“多个页面复用同一条上游流，未出帧前不当作画面可见”。该变化只修正
 只读共享预览口径，不新开独占采集、不重启相机、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 02:35 起，Robot Control summary 的 `safe_command_boundary` 新增最小门禁白话字段：
+`nav2_goal_minimal_precheck_plain`、`keyboard_minimal_precheck_plain`、
+`free_roam_motion_minimal_precheck_plain` 和 `free_roam_mapping_acceptance_plain`。
+这些字段把“发车前预检精简成最小，勾安全确认即可”拆成可直接读取的事实：Nav2 执行只复核现场安全确认和固定白名单；
+键盘连续手控只复用现场安全确认，启用键盘不发车，按住方向才发送低速短脉冲；自由移动只要求安全确认和停止兜底；
+画面/雷达/地图记录只影响建图验收，不阻止先低速自由移动。该变化只补 summary readback，不发送 manual、Nav2、
+keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

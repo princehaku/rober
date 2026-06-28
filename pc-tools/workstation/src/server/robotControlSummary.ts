@@ -5327,6 +5327,7 @@ function lockedBoundary(
     cmd_vel_topic: "/cmd_vel",
     nav2_goal: "Nav2 NavigateToPose locked",
     ...nav2GoalBoundaryGuidance(proof, nav2),
+    nav2_goal_minimal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。",
     map_start: "map start locked",
     radar_start: "radar start locked",
     keyboard_control: "bounded repeating manual pulse gated",
@@ -5345,6 +5346,7 @@ function lockedBoundary(
     keyboard_control_status: "start_ready",
     keyboard_control_label: "键盘手控（勾确认后可启用）",
     keyboard_control_next_action: keyboardNextAction,
+    keyboard_minimal_precheck_plain: "键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
     keyboard_teleop_start_ready: true,
     keyboard_teleop_status: "start_ready",
     keyboard_teleop_next_action_plain: keyboardNextAction,
@@ -5359,6 +5361,8 @@ function lockedBoundary(
         ? "自由移动（勾确认后可启动）"
         : "自动扫图（未开放）",
     free_roam_autonomy_next_action: freeRoamNextAction,
+    free_roam_motion_minimal_precheck_plain: "自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。",
+    free_roam_mapping_acceptance_plain: "建图验收要求画面首帧、雷达新鲜、地图记录和地图画面 ready；这些缺口不阻止先低速自由移动。",
     free_roam_autonomy_policy: {
       // 自由移动与建图验收分层：低速移动只看安全确认和停止兜底，建图才要求画面/雷达材料。
       mode: "free_move_requires_safety_confirm_stop_fallback",

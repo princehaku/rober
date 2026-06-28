@@ -2604,6 +2604,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     nav2_goal_wheel_feedback_status: string;
     nav2_goal_next_action: string;
     nav2_goal_next_action_plain: string;
+    nav2_goal_minimal_precheck_plain: string;
     nav2_goal_execution_mode_label: string;
     map_start: "map start locked";
     radar_start: "radar start locked";
@@ -2623,6 +2624,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_control_status: "start_ready" | "armed" | "active" | "blocked";
     keyboard_control_label: "键盘手控（勾确认后可启用）";
     keyboard_control_next_action: string;
+    keyboard_minimal_precheck_plain: string;
     keyboard_teleop_start_ready: boolean;
     keyboard_teleop_status: "start_ready" | "armed" | "active" | "blocked";
     keyboard_teleop_next_action_plain: string;
@@ -2633,6 +2635,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     free_roam_mapping_missing_reasons: string[];
     free_roam_autonomy_label: "自动扫图（未开放）" | "自由移动（勾确认后可启动）" | "自由移动（运行中）" | "自动扫图";
     free_roam_autonomy_next_action: string;
+    free_roam_motion_minimal_precheck_plain: string;
+    free_roam_mapping_acceptance_plain: string;
     free_roam_autonomy_policy: {
       mode: "free_move_requires_safety_confirm_stop_fallback";
       mapping_mode: "mapping_acceptance_requires_camera_and_fresh_radar";
