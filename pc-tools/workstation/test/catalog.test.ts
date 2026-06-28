@@ -7860,8 +7860,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Robot Control summary blocks ready Nav2 route when upper status reports lifecycle not running", async () => {
-    // 上车端 8787 已经把 lifecycle blocker 提升到 /api/nav2/status，PC 不能再把 blockers 显示为空。
+  it("Robot Control summary keeps ready Nav2 route clickable when managed runtime can start lifecycle", async () => {
+    // 上车端 8787 会把 lifecycle blocker 提升到 /api/nav2/status；PC 保留诊断，但 execute 会托管启动 runtime。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
         payload: {
@@ -7922,10 +7922,10 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.readback_summary.nav2.current_blocker_reasons).toBe("nav2_lifecycle_not_running");
       expect(summary.readback_summary.nav2.current_blocker_labels).toBe("自动驾驶 lifecycle 未运行");
-      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("自动驾驶服务未启动");
-      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(["nav2_lifecycle_not_running"]);
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先启动自动驾驶服务（不发车），再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口复验 wheel raw L/R；小车位置未显示时建议先重新定位或刷新地图");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();
@@ -9681,6 +9681,7 @@ describe("workstation fail-closed API contracts", () => {
         goal_y: 0,
         goal_yaw: 0,
         base_command_mode: "ros",
+        managed_runtime_opt_in: true,
         confirm_navigation_execution: true,
       }));
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
@@ -9751,6 +9752,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.status).toBe("goal_forwarded_by_default_ros_mode");
       expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toContainEqual(expect.objectContaining({
         base_command_mode: "ros",
+        managed_runtime_opt_in: true,
         confirm_navigation_execution: true,
       }));
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();

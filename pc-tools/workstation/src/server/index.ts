@@ -2304,6 +2304,10 @@ export function createWorkstationApp(): express.Express {
     const goalYaw = clamp(Number(payload?.goal_yaw ?? 0), -Math.PI, Math.PI);
     const resultTimeoutS = clamp(Number(payload?.result_timeout_s ?? 8), 2, 20);
     const serverTimeoutS = clamp(Number(payload?.server_timeout_s ?? 12), 1, 20);
+    // O11 execute helper 默认支持托管 runtime；PC 侧显式写入，避免普通用户先手动启动 Nav2 lifecycle。
+    const managedRuntimeOptIn = payload?.managed_runtime_opt_in !== false;
+    const managedStartupS = clamp(Number(payload?.managed_startup_s ?? 2), 0, 5);
+    const managedReadyTimeoutS = clamp(Number(payload?.managed_ready_timeout_s ?? 90), 10, 90);
     const requestedBaseCommandMode = String(payload?.base_command_mode ?? payload?.nav2_base_command_mode ?? "").trim().toLowerCase();
     // Nav2 普通执行默认走 ROS /cmd_vel 到 bridge，避免旧 PWM 诊断模式继续混入真实路线复验。
     const baseCommandMode = ["ros", "speed", "pwm"].includes(requestedBaseCommandMode)
@@ -2332,6 +2336,9 @@ export function createWorkstationApp(): express.Express {
         goal_yaw: goalYaw,
         result_timeout_s: resultTimeoutS,
         server_timeout_s: serverTimeoutS,
+        managed_runtime_opt_in: managedRuntimeOptIn,
+        managed_startup_s: managedStartupS,
+        managed_ready_timeout_s: managedReadyTimeoutS,
         confirm_navigation_execution: confirmNavigationExecution,
         base_command_mode: baseCommandMode,
       },
@@ -2384,6 +2391,9 @@ export function createWorkstationApp(): express.Express {
           goal_yaw: goalYaw,
           server_timeout_s: serverTimeoutS,
           result_timeout_s: resultTimeoutS,
+          managed_runtime_opt_in: managedRuntimeOptIn,
+          managed_startup_s: managedStartupS,
+          managed_ready_timeout_s: managedReadyTimeoutS,
           confirm_navigation_execution: true,
           base_command_mode: baseCommandMode,
         }),

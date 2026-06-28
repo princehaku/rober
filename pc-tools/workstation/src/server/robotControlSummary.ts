@@ -4581,8 +4581,8 @@ function nav2GoalBoundaryGuidance(
   const nav2StackNotRunning = nav2.nav2_stack_running === "false";
   const controllerRequested = nav2.controller_server_requested === "true";
   const nav2LifecycleBlocked = nav2.current_blocker_reasons.split(",").includes("nav2_lifecycle_not_running");
-  // no-motion planner proof 会在生成路线后清理 managed runtime；执行 endpoint 会重新启动 runtime，不能因此把已读到的路线挡住。
-  const nav2StackBlocksGoal = nav2StackNotRunning && (!base.nav2_goal_ready || nav2LifecycleBlocked);
+  // no-motion planner proof 会在生成路线后清理 managed runtime；execute endpoint 会托管启动 runtime，不能因此挡住已读到的路线。
+  const nav2StackBlocksGoal = nav2StackNotRunning && !base.nav2_goal_ready;
   const plannerBlocksGoal = !nav2StackBlocksGoal && plannerInactive && (!base.nav2_goal_ready || !nav2StackNotRunning);
   const controllerBlocksGoal = !nav2StackBlocksGoal && controllerInactive && controllerRequested;
   const serviceAwareBlockers = [
@@ -4606,6 +4606,9 @@ function nav2GoalBoundaryGuidance(
     ? `；${serviceInactiveText.join("，")}，重跑前需先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}`
     : "";
   const nav2ServiceInactive = nav2StackBlocksGoal || plannerBlocksGoal || controllerBlocksGoal;
+  const managedRuntimeHint = nav2LifecycleBlocked && base.nav2_goal_ready
+    ? "；执行时会自动启动自动驾驶 runtime"
+    : "";
   const executionMotionText = nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true"
     ? nav2ServiceInactive
       ? "；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机"
@@ -4643,7 +4646,7 @@ function nav2GoalBoundaryGuidance(
       ? `当前图上路线未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
       : inactiveServiceNames.length
         ? `当前自动驾驶服务未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
-        : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`;
+        : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线${managedRuntimeHint}`;
     return {
       ...base,
       nav2_goal_ready: nav2ServiceInactive ? false : base.nav2_goal_ready,
@@ -4684,7 +4687,7 @@ function nav2GoalBoundaryGuidance(
     return {
       ...base,
       nav2_goal_wheel_feedback_status: "awaiting_route_execution",
-      nav2_goal_next_action: `勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R${poseHint}`,
+      nav2_goal_next_action: `勾选行程前安全确认后执行图上路线${managedRuntimeHint}，并在同窗口复验 wheel raw L/R${poseHint}`,
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
