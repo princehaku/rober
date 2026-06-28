@@ -10624,6 +10624,7 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         goal_execution_key_values: Record<string, string>;
+        latest_key_values: Record<string, string>;
         route_execution_readiness_plain: string;
         route_execution_precheck_plain: string;
         goal_execution_wheel_raw_lr_status_plain: string;
@@ -10657,6 +10658,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.base_feedback_latest_raw_left).toBe("164");
       expect(body.goal_execution_key_values.base_feedback_latest_raw_right).toBe("164");
       expect(body.goal_execution_key_values.delivery_success).toBe("false");
+      expect(body.latest_key_values.base_feedback_lr_nonzero_proven).toBe("true");
+      expect(body.latest_key_values.next_execution_base_command_mode).toBe("ros");
+      expect(body.latest_key_values.goal_execution_wheel_raw_lr_status_plain).toBe("执行窗口 wheel raw L/R 已非零：L=164，R=164。");
       expect(body.execution_status_plain).toBe("本轮路线执行和执行窗口轮速 L/R 已证明。");
       expect(body.next_action_plain).toBe("继续送达确认；送达确认不会发车。");
       expect(body.route_execution_readiness_plain).toBe("完整路线执行已证明；同窗口 wheel raw L/R 已非零。");
@@ -10800,6 +10804,7 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         goal_execution_key_values: Record<string, string>;
+        latest_key_values: Record<string, string>;
         route_execution_readiness_plain: string;
         route_execution_precheck_plain: string;
         goal_execution_wheel_raw_lr_status_plain: string;
@@ -10830,6 +10835,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("false");
       expect(body.goal_execution_key_values.base_feedback_latest_left_speed).toBe("0");
       expect(body.goal_execution_key_values.base_feedback_latest_right_speed).toBe("0");
+      expect(body.latest_key_values.next_execution_base_command_mode).toBe("ros");
+      expect(body.latest_key_values.goal_execution_base_command_nonzero_count).toBe("49");
+      expect(body.latest_key_values.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
+      expect(body.latest_key_values.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。");
       expect(body.execution_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令，下一步重点复验执行窗口轮速 L/R。");
       expect(body.plain_hint).toBe(body.execution_status_plain);
       expect(body.next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");

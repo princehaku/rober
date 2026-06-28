@@ -3029,6 +3029,7 @@ export function createWorkstationApp(): express.Express {
       remote_http_status: null,
       status: "blocked",
       goal_execution_key_values: {},
+      latest_key_values: {},
       plain_hint: "图上路线还未准备完成。",
       execution_status_plain: "图上路线还未准备完成。",
       next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
@@ -3065,12 +3066,31 @@ export function createWorkstationApp(): express.Express {
       );
       const goalExecutionKeyValues = navGoalExecutionKeyValues(remotePayload);
       const latestPlainFields = navGoalLatestPlainFields(goalExecutionKeyValues);
+      const latestKeyValues = {
+        ...goalExecutionKeyValues,
+        route_execution_readiness_plain: latestPlainFields.route_execution_readiness_plain,
+        route_execution_precheck_plain: latestPlainFields.route_execution_precheck_plain,
+        goal_execution_wheel_raw_lr_status_plain: latestPlainFields.goal_execution_wheel_raw_lr_status_plain,
+        goal_execution_wheel_raw_lr_next_action_plain: latestPlainFields.goal_execution_wheel_raw_lr_next_action_plain,
+        execution_status_plain: latestPlainFields.execution_status_plain,
+        next_action_plain: latestPlainFields.next_action_plain,
+        goal_execution_base_command_mode: latestPlainFields.goal_execution_base_command_mode,
+        next_execution_base_command_mode: latestPlainFields.next_execution_base_command_mode,
+        goal_execution_base_command_nonzero_observed: latestPlainFields.goal_execution_base_command_nonzero_observed,
+        goal_execution_base_command_nonzero_count: latestPlainFields.goal_execution_base_command_nonzero_count,
+        goal_execution_base_command_mode_counts: latestPlainFields.goal_execution_base_command_mode_counts,
+        goal_execution_base_feedback_lr_nonzero_proven: latestPlainFields.goal_execution_base_feedback_lr_nonzero_proven,
+        goal_execution_base_feedback_imu_attitude_delta_observed: latestPlainFields.goal_execution_base_feedback_imu_attitude_delta_observed,
+        goal_execution_base_feedback_latest_raw_left: latestPlainFields.goal_execution_base_feedback_latest_raw_left,
+        goal_execution_base_feedback_latest_raw_right: latestPlainFields.goal_execution_base_feedback_latest_raw_right,
+      };
       const responseBody: RobotControlNavGoalExecutionLatestResponse = {
         ...fallbackBase,
         proxy_status: remote.ok && dangerous.length === 0 ? "latest_loaded" : "latest_failed",
         remote_http_status: remote.status,
         status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
         goal_execution_key_values: goalExecutionKeyValues,
+        latest_key_values: latestKeyValues,
         ...latestPlainFields,
         plain_hint: latestPlainFields.execution_status_plain,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `latest_http_status_${remote.status}`,

@@ -3968,6 +3968,14 @@ runtime `/scan` 过期或 lifecycle stopped，则总状态会明确写“雷达�
 误判成小车不能先自移动。该变化只展示 summary/readback，不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或
 `/cmd_vel`。
 
+2026-06-29 06:13 CST 起，独立 `GET /api/robot-control/nav2/goal/execution/latest` 新增
+`latest_key_values` 统一读数包。它保留原始 `goal_execution_key_values`，并同步加入 PC 推导出的
+`next_execution_base_command_mode`、`goal_execution_base_command_nonzero_count`、
+`goal_execution_base_feedback_lr_nonzero_proven`、`goal_execution_wheel_raw_lr_status_plain` 和下一步白话。
+这样外部脚本或普通页面可以机器可读地确认“上次路线 action 成功但 wheel raw L/R 未非零，下一次用 ROS 模式重跑复验”，
+不需要解析中文长句。该变化只读取 latest artifact，不执行 Nav2、不启动 runtime、不发送 manual、keyboard、free-roam、
+delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 04:24 CST 起，独立 `/api/robot-control/map/preview` 顶层也返回地图 WYSIWYG 总口径和路线别名：
 `map_wysiwyg_status_plain`、`map_wysiwyg_next_action_plain`、`path_wysiwyg_status_plain`、
 `path_wysiwyg_next_action_plain`、`nav2_route_overlay_status`、`nav2_route_overlay_point_count` 和
