@@ -5910,6 +5910,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("当前处于停止请求");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("可先自由移动");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action.match(/勾选现场安全确认/g)?.length).toBe(1);
       expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toContain("lidar_fresh");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
         expect.objectContaining({

@@ -5467,14 +5467,17 @@ function freeRoamAutonomyNextAction(
       : "自由移动运行中；继续监看建图验收材料";
   }
   if (status === "start_ready") {
-    const stopPrefix = externalStopRequested
-      ? "当前处于停止请求；勾选现场安全确认后点击开始自由移动会先解除停止请求。"
-      : "";
-    return mappingReady
-      ? `${stopPrefix}勾选现场安全确认后可开始自动扫图（低速）`
-      : missingText
-        ? `${stopPrefix}勾选现场安全确认后可先自由移动；建图验收还差：${missingText}`
-        : `${stopPrefix}勾选现场安全确认后可先自由移动；继续读取建图验收材料`;
+    const motionAction = externalStopRequested
+      ? "当前处于停止请求；勾选现场安全确认后可先自由移动，开始时会先解除停止请求"
+      : mappingReady
+        ? "勾选现场安全确认后可开始自动扫图（低速）"
+        : "勾选现场安全确认后可先自由移动";
+    if (mappingReady) {
+      return motionAction;
+    }
+    return missingText
+      ? `${motionAction}；建图验收还差：${missingText}`
+      : `${motionAction}；继续读取建图验收材料`;
   }
   return "先连接上车自由移动状态机，并确认停止兜底可用";
 }
