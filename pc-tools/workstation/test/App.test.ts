@@ -3771,7 +3771,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("去送达");
     expect(firstScreenText).toContain("去键盘");
     expect(firstScreenText).toContain("轮速记录");
-    expect(firstScreenText).toContain("点“试动一下”后读取轮速。");
+    expect(firstScreenText).toContain("点“试动一下”或“底盘试动”后读取轮速。");
     expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。");
     expect(firstScreenText).toContain("行程操作");
     expect(firstScreenText).toContain("先勾选现场安全确认，再用主按钮准备或执行行程。");
@@ -9371,7 +9371,7 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain(
-      "当前轮速 L/R=0/0，已读到 3 帧，下一步：低速试动读取非零 L/R。",
+      "当前轮速 L/R=0/0，已读到 3 帧，下一步：底盘试动读取非零 L/R。",
     );
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).not.toContain("历史轮速样本已过期");
 
@@ -9414,8 +9414,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去低速试动");
     expect(wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').text()).toBe("去轮速");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理轮速记录。当前轮速 L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：试动读取轮速。");
-    expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：低速试动读取非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：底盘试动读取轮速。");
+    expect(plainProgress).toContain("当前轮速 L/R=0/0，已读到 12 帧，反馈电压约 12.43V，下一步：底盘试动读取非零 L/R。");
     expect(plainProgress).not.toContain("12.43049049V");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还需要试动期间同帧 L/R 都非零。");
     const wheelClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
@@ -9457,9 +9457,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toBe("当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=0/0；反馈电压约 12.39V；先刷新当前轮速（只读），再低速试动读非零。");
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toBe("当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=0/0；反馈电压约 12.39V；先刷新当前轮速（只读），再底盘试动读非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("当前轮速 L/R=0/0，当前未读到新反馈帧");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("先刷新当前轮速（只读），再低速试动读取非零 L/R");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("先刷新当前轮速（只读），再底盘试动读取非零 L/R");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).not.toContain("已读到 0 帧");
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新当前轮速（只读）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -9487,7 +9487,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("轮速：当前 T=130 读底盘反馈失败：device reports readiness to read but returned no data");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("旧 samples 不能当当前轮速结论");
-    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toBe("当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=0/0；先刷新当前轮速（只读），再低速试动读非零。");
+    expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toBe("当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=0/0；先刷新当前轮速（只读），再底盘试动读非零。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("当前未读到新反馈帧");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -11517,7 +11517,22 @@ describe("App", () => {
         robot_control_executed: false,
       },
       "/api/robot-control/base/manual": {
-        proxy_status: "should_not_be_called",
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "forward",
+        applied_direction: "forward",
+        remote_motion_key_values: {
+          feedback_during_motion_t1001_frame_count: "2",
+          wheel_feedback_latest_raw_left: "0.07",
+          wheel_feedback_latest_raw_right: "0.08",
+          wheel_feedback_lr_nonzero_proven: "true",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
       },
       "/api/robot-control/base/stop": {
         schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
@@ -11600,10 +11615,15 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("现场材料");
     expect(firstScreenText).not.toContain("external_video_recorded");
     expect(firstScreenText).not.toContain("physical_motion_lidar_delta_proven");
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先记录画面再试动");
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先记录画面）");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("底盘试动读轮速");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先底盘试动）");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
+    await wrapper.find('[data-testid="plain-wheel-trial"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
 
     const motionButtons = wrapper.findAll(".motion-pad button");
     const forwardButton = motionButtons.find((button) => button.text() === "前进");
@@ -11614,7 +11634,7 @@ describe("App", () => {
     await forwardButton?.trigger("click");
     await flushPromises();
     const manualCallsAfterForward = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
-    expect(manualCallsAfterForward).toBe(1);
+    expect(manualCallsAfterForward).toBe(2);
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -12157,7 +12177,7 @@ describe("App", () => {
     expect(diagnosticsText).toContain("next=restore first-jog materials then run wheel nonzero trial");
     expect(visiblePlainHomeText(wrapper)).toContain("已读到底盘反馈，但当前轮速是 L/R=0/0；反馈电压约 12.43V；这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("12.43049049V");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，反馈电压约 12.43V，下一步：低速试动读取非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，反馈电压约 12.43V，下一步：底盘试动读取非零 L/R。");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').exists()).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(mockedFetch.mock.calls.filter(([url]) =>
@@ -12266,6 +12286,9 @@ describe("App", () => {
     const feedbackCallsBefore = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/feedback-samples?"),
     ).length;
+    const manualCallsBefore = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/manual?"),
+    ).length;
     delayNextFeedbackSamples = true;
     const refreshClick = wrapper.find('[data-testid="plain-wheel-readback-refresh"]').trigger("click");
     await wrapper.vm.$nextTick();
@@ -12277,7 +12300,9 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/feedback-samples?"),
     ).length).toBe(feedbackCallsBefore + 1);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/base/manual?"),
+    ).length).toBe(manualCallsBefore);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -12355,7 +12380,7 @@ describe("App", () => {
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：刷新当前轮速（只读）。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还没读到当前 L/R；先刷新当前轮速（只读），再低速试动读取非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还没读到当前 L/R；先刷新当前轮速（只读），再底盘试动读取非零。");
     const callsBeforeFocus = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').trigger("click");
     await wrapper.vm.$nextTick();
@@ -12368,8 +12393,8 @@ describe("App", () => {
 
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).toContain("已读到底盘反馈，但当前轮速是 L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：试动读取轮速。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，下一步：低速试动读取非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：底盘试动读取轮速。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，下一步：底盘试动读取非零 L/R。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -13761,9 +13786,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：试动读取轮速。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：底盘试动读取轮速。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain(
-      "当前轮速 L/R=0/0，已读到 12 帧，下一步：低速试动读取非零 L/R。",
+      "当前轮速 L/R=0/0，已读到 12 帧，下一步：底盘试动读取非零 L/R。",
     );
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe(
       "验收卡点：还需要试动期间同帧 L/R 都非零。",

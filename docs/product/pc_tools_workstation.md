@@ -3687,6 +3687,12 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 这样现场能直接判断“后来打开的页面不会抢摄像头，而是复用 PC Node 的同一条上游流”。
 该变化只消费共享预览 status 和本页图像 load 结果，不新建额外 capture、不重启相机、不发送 manual、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
 
+2026-06-28 08:24 起，普通首屏轮速卡不再把现场画面材料作为试动读 L/R 的硬前置：
+`试动读轮速` 会优先使用既有 first-jog；如果 first-jog 缺画面材料但用户已勾现场安全确认，则自动退到 `底盘试动` 固定入口，
+通过 workstation `/api/robot-control/base/manual` 的限速/限时代理读取 wheel raw L/R。
+相关下一步文案同步改成 `底盘试动读取轮速` / `底盘试动读取非零 L/R`，画面只影响旧 first-jog 材料和建图验收，
+不再影响底盘试动、键盘手控或最小行程安全确认；该变化不直连 `/cmd_vel`，也不触发 Nav2、delivery、free-roam 或 stop。
+
 2026-06-27 23:30 起，建图验收缺口也消费同一 stale runtime `/scan` 事实：
 当缺口包含 `lidar_fresh` 且 PC summary 里只有 stale `/scan` 距离时，`建图验收` 和 `当前事实`
 会显示 `雷达未刷新（旧 /scan 距离 ... 已过期，不贴到地图）`。低速自由移动入口仍不受影响；

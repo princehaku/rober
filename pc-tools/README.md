@@ -63,6 +63,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-28 08:16 CST 起，本页 MJPEG 共享预览真正出图后，首屏 `当前事实` 会同步显示 `N 个页面共享同一条上游流，不是浏览器独占`。这只消费 PC 共享流 status 和本页 `<img>` load 结果，不新建额外 camera capture、不重启相机、不发送 manual、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
 
+2026-06-28 08:24 CST 起，轮速卡的 `试动读轮速` 普通入口不再因为缺现场画面材料而卡住：first-jog 材料足够时仍走固定 first-jog；材料不足但已勾现场安全确认时，退到已有固定底盘试动入口读取 wheel raw L/R。画面只影响旧 first-jog 材料和建图验收，不再作为底盘试动或轮速读取前置；该入口仍走 workstation `/api/robot-control/base/manual` 固定代理，不直连 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

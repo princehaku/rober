@@ -6444,13 +6444,13 @@ const plainWheelGoalProgressHint = computed(() => {
     const frameText = staleOrEmptyReadback
       ? "，当前未读到新反馈帧"
       : frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
-    let nextStep = staleOrEmptyReadback ? "下一步：先刷新当前轮速（只读），再低速试动读取非零 L/R。" : "仍需试动读到非零。";
+    let nextStep = staleOrEmptyReadback ? "下一步：先刷新当前轮速（只读），再底盘试动读取非零 L/R。" : "仍需底盘试动读到非零。";
     if (firstJogMaterialRestoreReady.value) {
       nextStep = "先点恢复试动确认，再试动读非零。";
     } else if (plainWheelZeroBlockerActive.value) {
       nextStep = WHEEL_ZERO_NEXT_ACTION_SUMMARY;
-    } else if (!staleOrEmptyReadback && isZeroWheelPair(left, right) && canSendPlainFirstJog.value) {
-      nextStep = "下一步：低速试动读取非零 L/R。";
+    } else if (!staleOrEmptyReadback && isZeroWheelPair(left, right) && canSendPlainWheelTrial.value) {
+      nextStep = "下一步：底盘试动读取非零 L/R。";
     }
     return `当前轮速 L/R=${left}/${right}${frameText}${voltageText}，${nextStep}`;
   }
@@ -6458,7 +6458,7 @@ const plainWheelGoalProgressHint = computed(() => {
     return "先点恢复试动确认，再试动读取轮速。";
   }
   if (canRunBaseFeedbackSamples.value) {
-    return "还没读到当前 L/R；先刷新当前轮速（只读），再低速试动读取非零。";
+    return "还没读到当前 L/R；先刷新当前轮速（只读），再底盘试动读取非零。";
   }
   return "等待运动窗口读到非零 L/R。";
 });
@@ -6483,11 +6483,8 @@ const plainWheelGoalNextAction = computed(() => {
   if (!currentWheelReadbackLoaded.value && canRunBaseFeedbackSamples.value) {
     return "下一步：刷新当前轮速（只读）。";
   }
-  if (canSendPlainFirstJog.value) {
-    return "下一步：试动读取轮速。";
-  }
-  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
-    return "下一步：记录现场画面。";
+  if (canSendPlainWheelTrial.value) {
+    return "下一步：底盘试动读取轮速。";
   }
   return "下一步：勾选安全确认。";
 });
@@ -7616,8 +7613,9 @@ const canSendPlainFirstJog = computed(() => {
 });
 
 const canSendPlainWheelTrial = computed(() => {
-  // wheel raw L/R 的重试只要求现场先确认轮速卡点；雷达缺口留给行程/键盘移动记录处理。
-  return canSendPlainFirstJog.value && (!plainWheelZeroBlockerActive.value || plainWheelZeroBlockerChecked.value);
+  // wheel raw L/R 的重试优先用 first-jog 材料闭环；材料不足时退到底盘试动，避免相机/雷达重新变成移动前置。
+  return (canSendPlainFirstJog.value || canSendManualMotion.value)
+    && (!plainWheelZeroBlockerActive.value || plainWheelZeroBlockerChecked.value);
 });
 
 const plainWheelTrialDisabled = computed(() => !canSendPlainWheelTrial.value);
@@ -7637,7 +7635,7 @@ const plainFirstJogBlockedHint = computed(() => {
     return "试动按钮已锁定：请先点恢复试动确认（不会发车）。";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
-    return "试动按钮已锁定：请先记录现场画面。";
+    return "旧试动入口还需要现场画面；可直接用底盘试动，底盘试动只要求安全确认。";
   }
   return "试动按钮已锁定：移动前确认还未满足。";
 });
@@ -7703,16 +7701,16 @@ const plainWheelRecordSummary = computed(() => {
     return { state: "待确认", hint: "先点“恢复试动确认”（不会发车），再试动读取轮速。" };
   }
   if (canSendPlainFirstJog.value) {
-    return { state: "待试动", hint: "点“试动一下”后读取轮速。" };
+    return { state: "待试动", hint: "点“试动一下”或“底盘试动”后读取轮速。" };
   }
   if (firstJogVisualMaterialReady.value || plainVisualMaterialSubmitted.value) {
     return { state: "待确认", hint: "现场画面已在，先完成试动前确认。" };
   }
-  return { state: "待准备", hint: "先记录现场画面，再试动读取轮速。" };
+  return { state: "待试动", hint: "勾安全确认后点“底盘试动”读取轮速；画面只影响旧试动材料和建图验收。" };
 });
 
 const plainWheelTrialButtonLabel = computed(() => {
-  // 轮速面板里的按钮复用 first-jog；已有一次失败试动后，文案改为重试，减少现场误解。
+  // 轮速面板优先复用 first-jog；材料不足时同一个按钮退到底盘试动，不再要求先补画面。
   if (!robotApiBaseUrl.value.trim()) {
     return "连接后试动读轮速";
   }
@@ -7723,7 +7721,7 @@ const plainWheelTrialButtonLabel = computed(() => {
     return "先恢复确认再试动";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value && !plainFirstJogMaterialRestored.value) {
-    return "先记录画面再试动";
+    return plainManualSafetyConfirmed.value ? "底盘试动读轮速" : "先勾确认再试动";
   }
   if (plainWheelZeroBlockerActive.value && plainWheelZeroBlockerChecked.value) {
     return "检查后重试读非零 L/R";
@@ -7764,7 +7762,7 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
     return "保存轮速记录（先恢复确认）";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value && !plainFirstJogMaterialRestored.value) {
-    return "保存轮速记录（先记录画面）";
+    return "保存轮速记录（先底盘试动）";
   }
   if (!plainFirstJogResult.value) {
     return "保存轮速记录（先试动）";
@@ -7866,7 +7864,7 @@ const plainWheelReadbackSummary = computed(() => {
     return "";
   }
   if (staleOrEmptyReadback) {
-    return `当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=${left}/${right}${voltage}；先刷新当前轮速（只读），再低速试动读非零。`;
+    return `当前没有新鲜底盘反馈帧，最近轮速占位为 L/R=${left}/${right}${voltage}；先刷新当前轮速（只读），再底盘试动读非零。`;
   }
   if (base.wheel_feedback_lr_nonzero_proven === "true" || base.wheel_feedback_nonzero_observed === "true") {
     if (isZeroWheelPair(left, right)) {
@@ -10848,6 +10846,18 @@ async function sendPlainFirstJog(): Promise<void> {
   }
 }
 
+async function runPlainWheelTrial(): Promise<void> {
+  // 轮速卡片优先走 first-jog；材料不足时走底盘试动，保持“安全确认即可试动”的普通路径。
+  if (!canSendPlainWheelTrial.value) {
+    return;
+  }
+  if (canSendPlainFirstJog.value) {
+    await sendPlainFirstJog();
+    return;
+  }
+  await sendManualMotion("forward");
+}
+
 async function savePlainWheelEvidence(): Promise<void> {
   // 保存轮速材料只写 operator report；不补 LiDAR/route/delivery，也不再次发送运动命令。
   if (!canSavePlainWheelEvidence.value) {
@@ -12084,7 +12094,7 @@ onBeforeUnmount(() => {
               <button ref="plainFirstJogRestoreButton" type="button" class="secondary compact-stop" :disabled="!canRestorePlainFirstJogMaterial" data-testid="plain-first-jog-restore" @click="restorePlainFirstJogMaterial">
                 {{ plainFirstJogMaterialRestoreButtonLabel }}
               </button>
-              <button ref="plainWheelTrialButton" type="button" class="secondary compact-stop" :disabled="plainWheelTrialDisabled" data-testid="plain-wheel-trial" @click="sendPlainFirstJog">
+              <button ref="plainWheelTrialButton" type="button" class="secondary compact-stop" :disabled="plainWheelTrialDisabled" data-testid="plain-wheel-trial" @click="runPlainWheelTrial">
                 {{ plainWheelTrialButtonLabel }}
               </button>
               <button ref="plainWheelReadbackButton" type="button" class="secondary compact-stop" :disabled="loading || !canRunBaseFeedbackSamples" data-testid="plain-wheel-readback-refresh" @click="runBaseFeedbackSamples">
