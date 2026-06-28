@@ -2171,6 +2171,20 @@ function plainFreeRoamMappingMissingForVisibleState(): string[] {
   return freeRoamMappingMissingPlainLabelsForVisibleState(robotSummary.value?.readback_summary.free_roam.mapping_missing);
 }
 
+function plainFreeRoamMappingReadinessNextActionSuffix(missingLabels: string[]): string {
+  // 建图卡也要承接地图雷达 overlay 的下一步；只提示，不自动启动雷达或刷新地图。
+  const mapReadback = robotSummary.value?.readback_summary.map;
+  const radarMissing = missingLabels.some((label) => label.startsWith("雷达未刷新"));
+  if (
+    radarMissing
+    && mapReadback?.radar_overlay_status === "not_current"
+    && mapReadback.radar_overlay_next_action === "start_radar_then_refresh_map_preview"
+  ) {
+    return "；建图下一步：先启动雷达，再刷新地图画面";
+  }
+  return "";
+}
+
 function onlyMissingMapRuntimeForMapping(missing: string[]): boolean {
   // 相机和雷达都 ready 时，地图记录未启动不是传感器 blocker；普通用户下一步应直接进入扫图记录。
   return missing.length > 0 && missing.every((label) => label === "地图记录未启动");
@@ -4896,7 +4910,8 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       ) {
         return "建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。";
       }
-      return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动。`;
+      const nextActionSuffix = plainFreeRoamMappingReadinessNextActionSuffix(onboardMissing);
+      return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动${nextActionSuffix}。`;
     }
     const gaps: string[] = [];
     const camera = robotSummary.value?.readback_summary.camera;
