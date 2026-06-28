@@ -3677,6 +3677,11 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 刷新失败时显示停止已生效但地图画面刷新失败，并要求先重试刷新再保存。这样用户不需要在顶部事实和地图 marker 之间来回猜状态；
 该变化仍只读已有 stop/map preview 状态，不发送 manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`。
 
+2026-06-28 08:13 起，普通首屏 Nav2/行程失败原因会单独识别 wheel raw L/R 相关根因：
+当执行回包或 latest key values 包含 `wheel`、`base_feedback`、`lr_zero`、`L/R=0` 或 `nonzero` 等线索时，
+地图 marker、行程执行标签和行程状态显示 `轮速未响应`，避免把“路线已请求但执行窗口轮速未闭合”误读成泛化执行失败。
+该变化只翻译已有 Nav2 执行结果，不发送 Nav2 execute、manual、delivery、free-roam、stop 或 `/cmd_vel`。
+
 2026-06-27 23:30 起，建图验收缺口也消费同一 stale runtime `/scan` 事实：
 当缺口包含 `lidar_fresh` 且 PC summary 里只有 stale `/scan` 距离时，`建图验收` 和 `当前事实`
 会显示 `雷达未刷新（旧 /scan 距离 ... 已过期，不贴到地图）`。低速自由移动入口仍不受影响；

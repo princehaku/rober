@@ -10384,6 +10384,60 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("translates Nav2 wheel feedback failures into a plain wheel response blocker", async () => {
+    // 自动驾驶能回到失败但根因是执行窗口 wheel raw L/R 未闭合时，普通用户要看到轮速问题，而不是泛化“执行失败”。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/nav2/goal/execute": {
+        ...(fixtures["/api/robot-control/nav2/goal/execute"] as Record<string, unknown>),
+        proxy_status: "execution_rejected",
+        failure_reason: "goal_succeeded_wheel_feedback_not_proven",
+        blocked_reasons: ["goal_succeeded_wheel_feedback_not_proven"],
+        goal_execution_key_values: {
+          status: "goal_failed",
+          result_status: "goal_succeeded_wheel_feedback_not_proven",
+          evidence_ref: "plain-trip-execution-wheel-feedback-failed",
+          base_feedback_lr_nonzero_proven: "false",
+          base_feedback_latest_left_speed: "0",
+          base_feedback_latest_right_speed: "0",
+          delivery_success: "false",
+        },
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
+    expect(marker.text()).toBe("行程未通过：轮速未响应");
+    expect(marker.attributes("data-state")).toBe("行程未通过");
+    expect(marker.attributes("aria-label")).toBe("行程未通过，失败原因轮速未响应，地图坐标 x=0.80, y=0.00");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：未通过（轮速未响应）");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：最近行程未通过（轮速未响应），先检查或重新执行完整行程。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows locked Nav2 execution as trip not open on the visible route", async () => {
     // 现场 summary 常见 Nav2 locked；普通首屏要说“行程未开放”，而不是暴露 NavigateToPose 或泛化成执行失败。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

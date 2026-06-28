@@ -5815,6 +5815,15 @@ function plainTripFailureReasonText(result: { failure_reason?: string } | null |
   if (!reason) {
     return "";
   }
+  if (
+    reason.includes("wheel")
+    || reason.includes("base_feedback")
+    || reason.includes("lr_zero")
+    || reason.includes("l/r=0")
+    || reason.includes("nonzero")
+  ) {
+    return "轮速未响应";
+  }
   if (reason.includes("planner")) {
     return "规划失败";
   }
