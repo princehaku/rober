@@ -9063,6 +9063,13 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         image_data_url: string;
+        radar_overlay_status: string;
+        radar_overlay_plain_hint: string;
+        radar_overlay_next_action: string;
+        radar_overlay_count: number;
+        radar_overlay_source_count: number | null;
+        radar_overlay_frame_id: string;
+        radar_overlay_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
         radar_overlay: {
           overlay_status: string;
           plain_hint: string;
@@ -9084,6 +9091,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.next_action).toBe("refresh_localization_then_radar_scan");
       expect(body.radar_overlay.scan_preview_point_count).toBe(1);
       expect(body.radar_overlay.scan_preview_points[0]).toEqual(expect.objectContaining({ x_m: 0.8, y_m: 0.1, frame_id: "laser_frame" }));
+      expect(body.radar_overlay_status).toBe(body.radar_overlay.overlay_status);
+      expect(body.radar_overlay_plain_hint).toBe(body.radar_overlay.plain_hint);
+      expect(body.radar_overlay_next_action).toBe(body.radar_overlay.next_action);
+      expect(body.radar_overlay_count).toBe(body.radar_overlay.scan_preview_point_count);
+      expect(body.radar_overlay_points[0]).toEqual(expect.objectContaining({ x_m: 0.8, y_m: 0.1, frame_id: "laser_frame" }));
+      expect(body.radar_overlay_source_count).toBe(65);
+      expect(body.radar_overlay_frame_id).toBe("laser_frame");
       expect(body.radar_overlay.robot_pose).toBeNull();
       expect(body.radar_overlay.blocked_reasons).toContain("robot_pose_missing_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reason_labels).toContain("小车地图位置未读到");
@@ -9199,6 +9213,13 @@ describe("workstation fail-closed API contracts", () => {
       const response = await fetch(`${workstation.baseUrl}/api/robot-control/map/preview?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const body = (await response.json()) as {
         proxy_status: string;
+        radar_overlay_status: string;
+        radar_overlay_plain_hint: string;
+        radar_overlay_next_action: string;
+        radar_overlay_count: number;
+        radar_overlay_source_count: number | null;
+        radar_overlay_frame_id: string;
+        radar_overlay_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
         radar_overlay: {
           overlay_status: string;
           status: string;
@@ -9233,6 +9254,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.points).toEqual([]);
       expect(body.radar_overlay.source_count).toBe(65);
       expect(body.radar_overlay.frame_id).toBe("laser_frame");
+      expect(body.radar_overlay_status).toBe(body.radar_overlay.overlay_status);
+      expect(body.radar_overlay_plain_hint).toBe(body.radar_overlay.plain_hint);
+      expect(body.radar_overlay_next_action).toBe(body.radar_overlay.next_action);
+      expect(body.radar_overlay_count).toBe(0);
+      expect(body.radar_overlay_points).toEqual([]);
+      expect(body.radar_overlay_source_count).toBe(65);
+      expect(body.radar_overlay_frame_id).toBe("laser_frame");
       expect(body.radar_overlay.blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reason_labels).toContain("雷达扫描已过期");

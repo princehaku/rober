@@ -2822,6 +2822,30 @@ function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRa
   };
 }
 
+function mapPreviewRadarOverlayAliases(
+  radarOverlay: RobotControlMapPreviewRadarOverlay,
+): Pick<
+  RobotControlMapPreviewResponse,
+  | "radar_overlay_status"
+  | "radar_overlay_plain_hint"
+  | "radar_overlay_next_action"
+  | "radar_overlay_points"
+  | "radar_overlay_count"
+  | "radar_overlay_source_count"
+  | "radar_overlay_frame_id"
+> {
+  // 顶层 alias 与嵌套 overlay 同源，方便现场 curl/jq 一眼确认“地图上到底贴了几个当前雷达点”。
+  return {
+    radar_overlay_status: radarOverlay.overlay_status,
+    radar_overlay_plain_hint: radarOverlay.plain_hint,
+    radar_overlay_next_action: radarOverlay.next_action,
+    radar_overlay_points: radarOverlay.points,
+    radar_overlay_count: radarOverlay.count,
+    radar_overlay_source_count: radarOverlay.source_count,
+    radar_overlay_frame_id: radarOverlay.frame_id,
+  };
+}
+
 function mapRadarOverlayReasonLabel(reason: string): string {
   // overlay token 可能带 endpoint 前缀；普通接口要给现场能直接执行的短标签。
   const normalized = reason.includes(":") ? reason.split(":").slice(1).join(":") : reason;
@@ -2991,6 +3015,7 @@ function blockedMapPreviewResponse(
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
     radar_overlay: radarOverlay,
+    ...mapPreviewRadarOverlayAliases(radarOverlay),
     robot_pose: radarOverlay.robot_pose,
     path_preview_points: pathPreview.path_preview_points,
     path_preview_point_count: pathPreview.path_preview_point_count,
@@ -3122,6 +3147,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     blocked_reasons: blockedReasons,
     hard_dangerous_true_fields: hardDangerous,
     radar_overlay: overlayReadback.radarOverlay,
+    ...mapPreviewRadarOverlayAliases(overlayReadback.radarOverlay),
     robot_pose: overlayReadback.radarOverlay.robot_pose,
     path_preview_points: overlayReadback.pathPreview.path_preview_points,
     path_preview_point_count: overlayReadback.pathPreview.path_preview_point_count,

@@ -2925,6 +2925,13 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
   radar_overlay?: RobotControlMapPreviewRadarOverlay;
+  radar_overlay_status: RobotControlMapPreviewRadarOverlay["overlay_status"];
+  radar_overlay_plain_hint: string;
+  radar_overlay_next_action: string;
+  radar_overlay_points: RobotApiScanPreviewPoint[];
+  radar_overlay_count: number;
+  radar_overlay_source_count: number | null;
+  radar_overlay_frame_id: string;
   robot_pose: RobotApiMapPose | null;
   path_preview_points: RobotApiPathPreviewPoint[];
   path_preview_point_count: number;
