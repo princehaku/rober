@@ -1398,6 +1398,7 @@ function cameraMjpegStatusResponse(
   const diagnosisSource = sourceFailure ?? relayFailure;
   const previewStatus = cameraMjpegPreviewStatus(relay, failureReason, lastFailure, diagnosisSource);
   const previewGuidance = cameraMjpegPreviewGuidance(previewStatus, diagnosisSource);
+  const previewVisibility = cameraMjpegPreviewVisibility(previewStatus, previewGuidance);
   const clientCount = relay?.clients.size ?? 0;
   const upstreamActive = relay?.upstreamActive ?? false;
   const contentTypeLoaded = Boolean(relay?.contentType);
@@ -1445,10 +1446,64 @@ function cameraMjpegStatusResponse(
     preview_plain_hint: previewGuidance.plain_hint,
     preview_next_action: previewGuidance.next_action,
     preview_next_action_plain: previewGuidance.next_action_plain,
+    preview_visible_status: previewVisibility.visible_status,
+    preview_visible_plain: previewVisibility.visible_plain,
+    camera_wysiwyg_status_plain: previewVisibility.wysiwyg_status_plain,
+    camera_wysiwyg_next_action_plain: previewVisibility.wysiwyg_next_action_plain,
     failure_reason: failureReason,
     blocked_reasons: failureReason ? [failureReason] : [],
     robot_control_executed: false,
     ...PROOF_FLAGS,
+  };
+}
+
+function cameraMjpegPreviewVisibility(
+  previewStatus: RobotControlCameraMjpegStatusResponse["preview_status"],
+  previewGuidance: { plain_hint: string; next_action_plain: string },
+): {
+  visible_status: string;
+  visible_plain: string;
+  wysiwyg_status_plain: string;
+  wysiwyg_next_action_plain: string;
+} {
+  // 共享 relay 的连接状态不等于画面已经可见；status 端点也要直接返回所见即所得结论。
+  if (previewStatus === "streaming") {
+    return {
+      visible_status: "visible_cached_frame",
+      visible_plain: "当前有共享实时画面缓存帧；新页面复用同一条上游流。",
+      wysiwyg_status_plain: "画面已可见：共享实时画面已有缓存帧，多个页面复用同一条上游流。",
+      wysiwyg_next_action_plain: "继续监看共享实时画面。",
+    };
+  }
+  if (previewStatus === "source_first_frame_failed") {
+    return {
+      visible_status: "not_visible_source_first_frame_failed",
+      visible_plain: `当前没有实时画面；${previewGuidance.plain_hint}`,
+      wysiwyg_status_plain: `画面未可见：${previewGuidance.plain_hint}`,
+      wysiwyg_next_action_plain: previewGuidance.next_action_plain,
+    };
+  }
+  if (previewStatus === "waiting_for_first_frame") {
+    return {
+      visible_status: "not_visible_waiting_for_first_frame",
+      visible_plain: `当前没有实时画面；${previewGuidance.plain_hint}`,
+      wysiwyg_status_plain: `画面未可见：${previewGuidance.plain_hint}`,
+      wysiwyg_next_action_plain: previewGuidance.next_action_plain,
+    };
+  }
+  if (previewStatus === "blocked") {
+    return {
+      visible_status: "not_visible_blocked",
+      visible_plain: `当前没有实时画面；${previewGuidance.plain_hint}`,
+      wysiwyg_status_plain: `画面未可见：${previewGuidance.plain_hint}`,
+      wysiwyg_next_action_plain: previewGuidance.next_action_plain,
+    };
+  }
+  return {
+    visible_status: "not_visible_idle",
+    visible_plain: `当前没有实时画面；${previewGuidance.plain_hint}`,
+    wysiwyg_status_plain: `画面未可见：${previewGuidance.plain_hint}`,
+    wysiwyg_next_action_plain: previewGuidance.next_action_plain,
   };
 }
 

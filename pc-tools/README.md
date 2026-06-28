@@ -147,6 +147,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 03:15 CST 起，`readback_summary.camera` 增加 `preview_visible_status`、`preview_visible_plain`、`camera_wysiwyg_status_plain` 和 `camera_wysiwyg_next_action_plain`。脚本不用再从 `preview_status=idle_not_started` 和 `source_diagnosis_status=uvc_no_frame_not_exclusive` 拼判断；可以直接看到“当前没有实时画面；不是页面独占，UVC 设备没有输出视频帧”或“画面已可见：共享实时画面已有缓存帧”。该变化只补只读 summary 字段，不新开独占采集、不重启相机、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 03:41 CST 起，`/api/robot-control/camera/mjpeg/status` 也返回同一组画面 WYSIWYG 字段：`preview_visible_status`、`preview_visible_plain`、`camera_wysiwyg_status_plain` 和 `camera_wysiwyg_next_action_plain`。只读 camera status 现在能直接说明“当前有共享缓存帧可见”或“当前没有实时画面；不是页面独占而是 UVC 无首帧”，不必再旁路读取 summary。该变化只消费本机 MJPEG relay 状态和只读 camera health，不创建 MJPEG client、不打开额外 camera stream、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 03:19 CST 起，`readback_summary.nav2` 增加 `route_execution_readiness_plain` 和 `route_execution_precheck_plain`。外部脚本只读 Nav2 区块时，可以直接看到“图上路线可重跑复验；上次路线 action 成功但同窗口 wheel raw L/R=0/0 未非零”和“只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线”。该变化只补只读 summary 字段，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:24 CST 起，`readback_summary.keyboard` 增加 `readiness_plain` 和 `continuous_control_contract_plain`。外部脚本不用再从 `start_ready/enabled/hold_to_move/stop_triggers/pulse_timing` 多字段拼判断，可以直接显示“可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动”和“按住时约每 0.26 秒发送一次 0.24 秒 ROS 低速脉冲；松开、失焦、切页、换方向或点击停止都会停”。该变化只补只读 summary 字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。

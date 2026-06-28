@@ -3084,6 +3084,10 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   preview_plain_hint: string;
   preview_next_action: string;
   preview_next_action_plain: string;
+  preview_visible_status: string;
+  preview_visible_plain: string;
+  camera_wysiwyg_status_plain: string;
+  camera_wysiwyg_next_action_plain: string;
   failure_reason: string;
   blocked_reasons: string[];
   robot_control_executed: false;

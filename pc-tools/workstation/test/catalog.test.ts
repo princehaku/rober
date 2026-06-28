@@ -11257,6 +11257,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.shared_preview_shared_capture).toBe(true);
       expect(statusBody.shared_preview_exclusive_camera_claim).toBe(false);
       expect(statusBody.shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
+      expect(statusBody.preview_visible_status).toBe("visible_cached_frame");
+      expect(statusBody.preview_visible_plain).toBe("当前有共享实时画面缓存帧；新页面复用同一条上游流。");
+      expect(statusBody.camera_wysiwyg_status_plain).toBe("画面已可见：共享实时画面已有缓存帧，多个页面复用同一条上游流。");
+      expect(statusBody.camera_wysiwyg_next_action_plain).toBe("继续监看共享实时画面。");
 
       upstreamControl.release?.();
       const secondResponse = await secondResponsePromise;
@@ -11306,36 +11310,7 @@ describe("workstation fail-closed API contracts", () => {
     const workstation = await listen(createWorkstationApp());
     try {
       const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
-      const statusBody = (await statusResponse.json()) as {
-        proxy_status: string;
-        client_count: number;
-        shared_preview_client_count: number;
-        upstream_active: boolean;
-        shared_preview_upstream_active: boolean;
-        content_type_loaded: boolean;
-        shared_preview_content_type_loaded: boolean;
-        shared_capture: boolean;
-        shared_preview_shared_capture: boolean;
-        exclusive_camera_claim: boolean;
-        shared_preview_exclusive_camera_claim: boolean;
-        shared_preview_contract: string;
-        last_failure_reason: string;
-        shared_preview_last_failure_reason: string;
-        last_remote_http_status: number | null;
-        shared_preview_last_remote_http_status: number | null;
-        last_failure_at_ms: number | null;
-        shared_preview_last_failure_at_ms: number | null;
-        source_diagnosis_status: string;
-        source_diagnosis_plain_hint: string;
-        source_diagnosis_next_action: string;
-        source_diagnosis_next_action_plain: string;
-        source_diagnosis_not_exclusive: string;
-        preview_status: string;
-        preview_plain_hint: string;
-        preview_next_action: string;
-        preview_next_action_plain: string;
-        robot_control_executed: boolean;
-      };
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
       expect(statusResponse.status).toBe(200);
       expect(statusBody.proxy_status).toBe("status_loaded");
       expect(statusBody.client_count).toBe(0);
@@ -11364,6 +11339,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.preview_plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
       expect(statusBody.preview_next_action).toBe("auto_join_shared_mjpeg_preview");
       expect(statusBody.preview_next_action_plain).toBe("打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
+      expect(statusBody.preview_visible_status).toBe("not_visible_idle");
+      expect(statusBody.preview_visible_plain).toBe("当前没有实时画面；页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
+      expect(statusBody.camera_wysiwyg_status_plain).toBe("画面未可见：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
+      expect(statusBody.camera_wysiwyg_next_action_plain).toBe("打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);
@@ -11449,6 +11428,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.preview_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+      expect(statusBody.preview_visible_status).toBe("not_visible_source_first_frame_failed");
+      expect(statusBody.preview_visible_plain).toBe("当前没有实时画面；不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.camera_wysiwyg_status_plain).toBe("画面未可见：不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.camera_wysiwyg_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.robot_control_executed).toBe(false);
       const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
