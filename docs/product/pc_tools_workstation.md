@@ -3776,3 +3776,11 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 `confirm_hil_checklist=true` 后转发固定 `/api/base/manual`，并保留速度 `<=0.12m/s`、时长 `<=800ms`、
 `command_mode=ros` 和 stop 兜底口径。恢复试动确认按钮仍可用于补 operator report 材料，但它是可选补材料动作，不再改变试动按钮是否可点。
 该变化不直连 `/cmd_vel`，不自动执行 Nav2，不确认 delivery success，也不把相机/雷达缺口误解释成底盘不能移动。
+
+2026-06-28 11:55 起，Robot Control summary 的 Nav2 路线读数会同时消费直接
+`/api/nav2/proof/latest` 和 `/api/nav2/status.proof_latest`。真实上位机在服务刚恢复或 proof latest
+被较新 blocked artifact 覆盖时，仍可能把当前可用路线点、`latest_path_point_count`、planner/controller active
+和 `path_preview_points` 放在 status 的嵌套 `proof_latest` 里；PC 端不能因此把地图路线误判成 0 点。
+该变化只合并只读 evidence，不调用 `/api/nav2/goal/execute`、manual、keyboard、free-roam、delivery、stop
+或 `/cmd_vel`。如果 status 当前也显示 `blocked_with_root_cause`、路线 0 点或服务 inactive，普通首屏仍保持
+`图上路线未就绪`，并按真实 blocker 引导恢复服务、重新定位和生成路线。

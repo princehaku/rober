@@ -2305,6 +2305,13 @@ IMU 姿态变化事实：
 完整 Nav2 路线执行仍需要下一次按 `next_execution_base_command_mode=ros` 复验，
 并在同一执行窗口证明 L/R 非零。
 
+2026-06-28 11:55 起，PC workstation 的 Nav2 readiness 读数会把
+`/api/nav2/status.proof_latest` 中的嵌套路由证明纳入同一摘要。这个兜底只解决
+“路线点实际存在但 PC 端只看直接 proof latest 导致显示 0 点”的读数问题；
+它不发 NavigateToPose goal，不发布 `/cmd_vel`，不调用 `/api/base/manual`，也不证明
+wheel raw L/R 非零、完整路线执行或 delivery success。现场发车仍必须在普通首屏勾选安全确认后显式执行路线，
+并用同一执行窗口的 goal result、wheel raw L/R 和送达材料收口。
+
 2026-06-27 14:47 起，PC summary 额外暴露机器可读字段
 `readback_summary.nav2.goal_execution_mode_rerun_status`。当前 live 形态会被标成
 `pending_ros_rerun_after_pwm`：最近 artifact 来自旧 PWM 执行，下一次执行模式已经是 ROS/T=13。

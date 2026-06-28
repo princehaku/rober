@@ -555,10 +555,15 @@ const STATUS_KEYS = [
   "latest_controller_requested",
   "latest_map_consumed",
   "latest_path_generated",
+  "latest_path_generation_succeeded",
   "latest_path_generation_attempted",
   "latest_path_generation_service_available",
   "latest_path_generation_service_name",
   "latest_path_generation_ready",
+  "latest_path_point_count",
+  "latest_path_preview_point_count",
+  "latest_path_preview_source_point_count",
+  "latest_path_preview_frame_id",
   "latest_proof_status",
   "feedback_ack_status",
   "nav2_base_command_mode",
@@ -3471,12 +3476,18 @@ function proofPathPreview(readbacks: InternalRobotApiEndpointReadback[]): Pick<
   RobotApiProofSummary,
   "path_preview_points" | "path_preview_point_count" | "path_preview_source_point_count" | "path_preview_frame_id"
 > {
-  // 只从 nav2 proof 原始 payload 抽取结构化点；readback key_values 只保留短文本摘要。
-  const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
-  const payload = nav2Proof?.payload ?? null;
-  const rawPoints = findFirstKey(payload, ["path_preview_points"]);
+  // 只从 Nav2 proof/status 原始 payload 抽取结构化点；status 里嵌套的 proof_latest 是 live 上位机的常见兜底。
+  const candidatePayloads = [
+    readbackById(readbacks, "nav2_proof_latest")?.payload ?? null,
+    readbackById(readbacks, "nav2_status")?.payload ?? null,
+  ].filter((payload): payload is JsonRecord => payload !== null);
   const points: RobotApiPathPreviewPoint[] = [];
-  if (Array.isArray(rawPoints)) {
+  let sourcePayload: JsonRecord | null = null;
+  for (const payload of candidatePayloads) {
+    const rawPoints = findFirstKey(payload, ["path_preview_points"]);
+    if (!Array.isArray(rawPoints)) {
+      continue;
+    }
     for (const rawPoint of rawPoints.slice(0, ROBOT_CONTROL_PATH_PREVIEW_POINT_LIMIT)) {
       const record = asRecord(rawPoint);
       const x = finitePathCoordinate(record?.x);
@@ -3493,12 +3504,19 @@ function proofPathPreview(readbacks: InternalRobotApiEndpointReadback[]): Pick<
         source_index: sourceIndex === null ? null : Math.trunc(sourceIndex),
       });
     }
+    if (points.length > 0) {
+      sourcePayload = payload;
+      break;
+    }
   }
+  const countFallback = proofNumber(readbacks, ["path_preview_source_point_count", "latest_path_preview_source_point_count"])
+    ?? proofNumber(readbacks, ["path_point_count", "latest_path_point_count"]);
+  const frameFallback = proofText(readbacks, ["path_preview_frame_id", "latest_path_preview_frame_id"]) ?? "";
   return {
     path_preview_points: points,
-    path_preview_point_count: points.length,
-    path_preview_source_point_count: proofNumber(readbacks, ["path_preview_source_point_count"]) ?? proofNumber(readbacks, ["path_point_count", "latest_path_point_count"]),
-    path_preview_frame_id: asString(findFirstKey(payload, ["path_preview_frame_id"]), points[0]?.frame_id ?? ""),
+    path_preview_point_count: points.length || proofNumber(readbacks, ["path_preview_point_count", "latest_path_preview_point_count"]) || 0,
+    path_preview_source_point_count: countFallback,
+    path_preview_frame_id: asString(findFirstKey(sourcePayload, ["path_preview_frame_id"]), points[0]?.frame_id ?? frameFallback),
   };
 }
 
