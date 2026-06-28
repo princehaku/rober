@@ -2328,6 +2328,13 @@ transform，避免 managed runtime 刚启动时出现 `extrapolation into the pa
 wheel raw L/R 非零和送达材料收口；如果 wheel raw L/R 仍为 `0/0`，问题就不再是 planner/TF 路线准备，
 而要继续查底盘命令模式、bridge feedback 或 WAVE ROVER 反馈链路。
 
+2026-06-28 12:12 起，PC 侧不再要求 no-motion proof 的 managed runtime 常驻，才能把图上路线判为可执行。
+原因是 `/api/nav2/proof/refresh` 只负责生成路线证据，结束后会清理临时 runtime；真正
+`/api/nav2/goal/execute` 会按固定代理重新启动 bounded NavigateToPose runtime。真实 live summary
+验证形态为：`nav2_stack_running=false`、`controller_server_requested=false`、`path_generated=true`、
+`path_point_count=18`、`robot_pose` 已读到，PC `nav2_goal_ready=true`、`nav2_goal_blockers=[]`。
+这只解除 PC 误挡，仍不证明 wheel raw L/R 非零或真实路线执行完成。
+
 2026-06-27 14:47 起，PC summary 额外暴露机器可读字段
 `readback_summary.nav2.goal_execution_mode_rerun_status`。当前 live 形态会被标成
 `pending_ros_rerun_after_pwm`：最近 artifact 来自旧 PWM 执行，下一次执行模式已经是 ROS/T=13。

@@ -4670,8 +4670,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复控制服务，再生成图上路线，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller；当前图上路线未就绪，先生成图上路线，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
     } finally {
       await robotApi.close();
     }
@@ -5821,6 +5820,84 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary keeps generated no-motion Nav2 route executable after managed runtime cleanup", async () => {
+    // no-motion proof 生成路线后会清理 managed runtime；goal/execute 会自启 runtime，PC 不应把 lifecycle stopped 当硬挡。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "not_proven",
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 18,
+          path_preview_point_count: 18,
+          path_preview_frame_id: "map",
+          amcl_pose_observed: true,
+          amcl_pose: { frame_id: "map", source: "/amcl_pose", x: -0.0045, y: 0.0091, yaw: 0.0055 },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "not_proven",
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          latest_planner_active: true,
+          latest_controller_active: false,
+          latest_controller_requested: false,
+          proof_latest: {
+            latest_proof_status: "nav2_no_motion_path_generation_runtime_observed",
+            latest_path_generated: true,
+            latest_path_generation_succeeded: true,
+            latest_path_point_count: 18,
+            latest_path_preview_point_count: 18,
+            latest_path_preview_frame_id: "map",
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.nav2_stack_running).toBe("false");
+      expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
+      expect(summary.readback_summary.nav2.controller_server_requested).toBe("false");
+      expect(summary.o3_proof_summary.path_generated).toBe(true);
+      expect(summary.o3_proof_summary.path_point_count).toBe(18);
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
+      expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("awaiting_route_execution");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
     } finally {
       await robotApi.close();
     }
@@ -7147,7 +7224,6 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(false);
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([
         "planner_server_inactive",
-        "controller_server_inactive",
       ]);
       expect(summary.readback_summary.camera.devices_status).toBe("devices_ready");
       expect(summary.readback_summary.lidar.status).toBe("stale_window_observed");

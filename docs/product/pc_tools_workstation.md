@@ -3791,3 +3791,10 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 `map->odom->base_link->laser_frame` TF chain。PC 普通首屏因此可以把“自动驾驶路线已准备”与
 “还没完成真实路线执行 / wheel raw L/R 仍待复验”分开显示；下一步只能由现场勾选安全确认后显式执行路线，
 不能把 no-motion path proof 自动升级为送达成功。
+
+2026-06-28 12:12 起，PC `safe_command_boundary.nav2_goal_ready` 不再把 no-motion proof 清理后的
+`lifecycle_running=false` 或 `controller_server_active=false/controller_server_requested=false` 当作硬 blocker。
+只要路线读数已经有 `path_generated=true` 和正数 path points，普通首屏显示 `路线读数已准备，等待地图画面确认`，
+下一步写成 `勾选行程前安全确认后用 ROS 重跑图上路线` 并复验 wheel raw L/R。若路线未生成，或 controller
+明确 `requested=true` 但 inactive，仍保持 fail-closed blocker。该变化只修正 PC 读数/按钮 gate，
+不自动调用 `/api/nav2/goal/execute`、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

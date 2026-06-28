@@ -4574,27 +4574,32 @@ function nav2GoalBoundaryGuidance(
   const plannerInactive = nav2.planner_server_active === "false";
   const controllerInactive = nav2.controller_server_active === "false";
   const nav2StackNotRunning = nav2.nav2_stack_running === "false";
+  const controllerRequested = nav2.controller_server_requested === "true";
+  // no-motion planner proof 会在生成路线后清理 managed runtime；执行 endpoint 会重新启动 runtime，不能因此把已读到的路线挡住。
+  const nav2StackBlocksGoal = nav2StackNotRunning && !base.nav2_goal_ready;
+  const plannerBlocksGoal = !nav2StackBlocksGoal && plannerInactive && (!base.nav2_goal_ready || !nav2StackNotRunning);
+  const controllerBlocksGoal = !nav2StackBlocksGoal && controllerInactive && controllerRequested;
   const serviceAwareBlockers = [
     ...base.nav2_goal_blockers,
-    nav2StackNotRunning ? "nav2_stack_not_running" : "",
-    !nav2StackNotRunning && plannerInactive ? "planner_server_inactive" : "",
-    !nav2StackNotRunning && controllerInactive ? "controller_server_inactive" : "",
+    nav2StackBlocksGoal ? "nav2_stack_not_running" : "",
+    plannerBlocksGoal ? "planner_server_inactive" : "",
+    controllerBlocksGoal ? "controller_server_inactive" : "",
   ].filter(Boolean);
   const nav2ServiceBlockers = sortNav2GoalBlockers([...new Set(serviceAwareBlockers)]);
   const inactiveServiceNames = [
-    nav2StackNotRunning ? "自动驾驶服务（不发车）" : "",
-    !nav2StackNotRunning && plannerInactive ? "规划服务" : "",
-    !nav2StackNotRunning && controllerInactive ? "控制服务" : "",
+    nav2StackBlocksGoal ? "自动驾驶服务（不发车）" : "",
+    plannerBlocksGoal ? "规划服务" : "",
+    controllerBlocksGoal ? "控制服务" : "",
   ].filter(Boolean);
   const serviceInactiveText = [
-    nav2StackNotRunning ? "自动驾驶服务当前未启动" : "",
-    !nav2StackNotRunning && plannerInactive ? "规划服务当前未运行" : "",
-    !nav2StackNotRunning && controllerInactive ? "控制服务当前未运行" : "",
+    nav2StackBlocksGoal ? "自动驾驶服务当前未启动" : "",
+    plannerBlocksGoal ? "规划服务当前未运行" : "",
+    controllerBlocksGoal ? "控制服务当前未运行" : "",
   ].filter(Boolean);
   const serviceInactiveSuffix = serviceInactiveText.length
     ? `；${serviceInactiveText.join("，")}，重跑前需先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}`
     : "";
-  const nav2ServiceInactive = nav2StackNotRunning || plannerInactive || controllerInactive;
+  const nav2ServiceInactive = nav2StackBlocksGoal || plannerBlocksGoal || controllerBlocksGoal;
   const executionMotionText = nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true"
     ? nav2ServiceInactive
       ? "；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机"
@@ -4635,26 +4640,26 @@ function nav2GoalBoundaryGuidance(
         : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线`;
     return {
       ...base,
-      nav2_goal_ready: nav2StackNotRunning || plannerInactive || controllerInactive ? false : base.nav2_goal_ready,
-      nav2_goal_label: nav2StackNotRunning
+      nav2_goal_ready: nav2ServiceInactive ? false : base.nav2_goal_ready,
+      nav2_goal_label: nav2StackBlocksGoal
         ? "自动驾驶服务未启动"
-        : plannerInactive && controllerInactive && base.nav2_goal_ready
+        : plannerBlocksGoal && controllerBlocksGoal && base.nav2_goal_ready
         ? "规划/控制服务未就绪"
-        : plannerInactive && base.nav2_goal_ready
+        : plannerBlocksGoal && base.nav2_goal_ready
           ? "规划服务未就绪"
-          : controllerInactive && base.nav2_goal_ready ? "控制服务未就绪" : base.nav2_goal_label,
+          : controllerBlocksGoal && base.nav2_goal_ready ? "控制服务未就绪" : base.nav2_goal_label,
       nav2_goal_blockers: nav2ServiceBlockers,
       nav2_goal_wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
       nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${routePrepActions.length ? "" : serviceInactiveSuffix}；${rerunNextAction}`,
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
-  if (base.nav2_goal_ready && (nav2StackNotRunning || plannerInactive || controllerInactive)) {
-    const serviceLabel = nav2StackNotRunning
+  if (base.nav2_goal_ready && nav2ServiceInactive) {
+    const serviceLabel = nav2StackBlocksGoal
       ? "自动驾驶服务未启动"
-      : plannerInactive && controllerInactive
+      : plannerBlocksGoal && controllerBlocksGoal
       ? "规划/控制服务未就绪"
-      : plannerInactive ? "规划服务未就绪" : "控制服务未就绪";
+      : plannerBlocksGoal ? "规划服务未就绪" : "控制服务未就绪";
     const serviceNextAction = inactiveServiceNames.length
       ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R`
       : "先恢复自动驾驶服务，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R";
@@ -4679,7 +4684,7 @@ function nav2GoalBoundaryGuidance(
   }
   return {
     ...base,
-    nav2_goal_label: nav2StackNotRunning ? "自动驾驶服务未启动" : base.nav2_goal_label,
+    nav2_goal_label: nav2StackBlocksGoal ? "自动驾驶服务未启动" : base.nav2_goal_label,
     nav2_goal_blockers: nav2ServiceBlockers,
     nav2_goal_next_action: inactiveServiceNames.length
       ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再生成图上路线`
