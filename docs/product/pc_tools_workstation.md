@@ -3983,6 +3983,12 @@ delivery、stop 或 `/cmd_vel`。
 “图上路线已显示在当前地图画面”，没有时明确“不能把旧路线或空路线当作当前所见”。该变化只补 summary readback，
 不刷新地图、不准备或执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 06:23 CST 起，普通首屏地图 caption 新增 `图上行程事实` 标签，直接消费
+`readback_summary.map.path_wysiwyg_status_plain/path_wysiwyg_next_action_plain`。它和已有 `行程读数`
+并列显示：`行程读数` 解释 Nav2/定位/规划/控制服务读数，`图上行程事实` 只回答“当前看到的地图上是否真的贴了这条行程”。
+这样 operator 不需要打开高级诊断或单独请求 map preview，也能在第一屏确认图上路线是否所见即所得。该变化只展示只读
+summary，不刷新地图、不准备或执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 04:24 CST 起，独立 `/api/robot-control/map/preview` 顶层也返回地图 WYSIWYG 总口径和路线别名：
 `map_wysiwyg_status_plain`、`map_wysiwyg_next_action_plain`、`path_wysiwyg_status_plain`、
 `path_wysiwyg_next_action_plain`、`nav2_route_overlay_status`、`nav2_route_overlay_point_count` 和

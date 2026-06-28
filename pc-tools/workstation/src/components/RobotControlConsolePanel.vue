@@ -3367,6 +3367,21 @@ function plainMapRouteReadbackLabel(routePath: ReturnType<typeof latestNavPathOv
   return "";
 }
 
+function plainMapPathWysiwygReadbackLabel(): string {
+  // summary 已经给出路线是否贴到当前地图画面的权威口径；首屏直接展示，避免只看到路线点数却不知道是否所见即所得。
+  const map = robotSummary.value?.readback_summary.map;
+  const statusText = map?.path_wysiwyg_status_plain?.trim() ?? "";
+  if (!statusText || ["not_loaded", "none"].includes(statusText)) {
+    return "";
+  }
+  const nextActionText = map?.path_wysiwyg_next_action_plain?.trim() ?? "";
+  const cleanStatus = statusText.replace(/[。；\s]+$/g, "").replace(/图上路线/g, "图上行程").replace(/路线/g, "行程");
+  const cleanNext = nextActionText.replace(/[。；\s]+$/g, "").replace(/图上路线/g, "图上行程").replace(/路线/g, "行程");
+  return cleanNext && !["not_loaded", "none"].includes(cleanNext)
+    ? `图上行程事实：${cleanStatus}。下一步：${cleanNext}。`
+    : `图上行程事实：${cleanStatus}。`;
+}
+
 function plainMapCoordinateTruthLabel(
   poseObserved: boolean,
   radarScanOverlay: ReturnType<typeof latestRadarScanOverlay>,
@@ -4166,6 +4181,7 @@ const plainMapVisualSummary = computed(() => {
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     routePathLabel: plainRouteMapCaption(routePath),
     routeReadbackLabel: plainMapRouteReadbackLabel(routePath),
+    pathWysiwygReadbackLabel: plainMapPathWysiwygReadbackLabel(),
     imageDataUrl: mapPreviewResult.value?.image_data_url || "",
     imageAlt: previewLoaded ? `真实地图 ${mapPreviewResult.value?.map_name || ""}`.trim() : "",
     frameStyle: mapFrameStyle(mapPreviewResult.value?.width ?? 0, mapPreviewResult.value?.height ?? 0),
@@ -12313,6 +12329,7 @@ onBeforeUnmount(() => {
               <span class="muted">{{ plainMapVisualSummary.mapRefLabel }}</span>
               <span v-if="plainMapVisualSummary.routePathLabel" class="muted" data-testid="plain-map-route-label">{{ plainMapVisualSummary.routePathLabel }}</span>
               <span v-if="plainMapVisualSummary.routeReadbackLabel" class="muted" data-testid="plain-map-route-readback-label">{{ plainMapVisualSummary.routeReadbackLabel }}</span>
+              <span v-if="plainMapVisualSummary.pathWysiwygReadbackLabel" class="muted" data-testid="plain-map-path-wysiwyg-readback">{{ plainMapVisualSummary.pathWysiwygReadbackLabel }}</span>
               <span v-if="plainMapVisualSummary.freeRoamSweepPlanLabel" class="muted" data-testid="plain-map-free-roam-sweep-label">{{ plainMapVisualSummary.freeRoamSweepPlanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-freshness-label">{{ plainMapVisualSummary.radarFreshnessLabel }}</span>

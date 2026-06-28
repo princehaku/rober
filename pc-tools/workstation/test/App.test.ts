@@ -4072,6 +4072,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达未返回点数组，只显示最近障碍 0.30m，等点位或定位后再贴地图。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；目标线未显示。");
     expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：尚未准备图上行程；小车地图坐标未读到；行程服务未运行；控制服务未读取。");
+    expect(wrapper.find('[data-testid="plain-map-path-wysiwyg-readback"]').text()).toBe("图上行程事实：图上行程未显示；不能把旧行程或空行程当作当前所见。下一步：先准备图上行程，再刷新地图画面。");
     expect(wrapper.find('[data-testid="plain-map-radar-pulse"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').exists()).toBe(true);
@@ -4337,6 +4338,11 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.path_point_count = "36";
     summaryFixture.readback_summary.nav2.path_preview_point_count = "36";
     summaryFixture.readback_summary.nav2.path_preview_frame_id = "map";
+    summaryFixture.readback_summary.map.path_preview_status = "path_preview_observed";
+    summaryFixture.readback_summary.map.path_preview_point_count = "36";
+    summaryFixture.readback_summary.map.path_preview_frame_id = "map";
+    summaryFixture.readback_summary.map.path_wysiwyg_status_plain = "图上路线已显示在当前地图画面。";
+    summaryFixture.readback_summary.map.path_wysiwyg_next_action_plain = "图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。";
     stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
 
     const wrapper = mount(App);
@@ -4346,6 +4352,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/36 个点");
     expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：图上行程已画在地图上，36 个点（map）；定位有信号，但还没有小车地图坐标；行程服务已运行；控制服务已运行。");
+    expect(wrapper.find('[data-testid="plain-map-path-wysiwyg-readback"]').text()).toBe("图上行程事实：图上行程已显示在当前地图画面。下一步：图上行程和小车位置已显示；确认起点、终点和行程后，再勾选安全确认执行。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：先勾安全确认，小车不会出发。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人AMCL/TF 已观察，缺坐标，雷达只显示最近障碍 0.30m，不贴到地图；路线 3/36 个点仍按地图坐标显示。");
   });
