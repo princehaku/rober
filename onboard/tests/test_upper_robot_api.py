@@ -94,6 +94,67 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("single_shared_capture_for_multiple_clients", payload["shared_preview_contract"])
         self.assertFalse(payload.get("safe_to_control", False))
 
+    def test_map_preview_returns_not_current_radar_overlay_without_drawing_stale_points(self) -> None:
+        """8787 直连地图预览也要保守返回雷达层，旧雷达点不能继续画在地图上。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            map_dir = Path(temp_dir)
+            # 用最小 PGM/YAML 地图锁定 map preview 合同，不依赖真实 ROS2 地图进程。
+            (map_dir / "trashbot_map.pgm").write_bytes(b"P5\n2 2\n255\n" + bytes([254, 205, 0, 254]))
+            (map_dir / "trashbot_map.yaml").write_text(
+                "\n".join(
+                    [
+                        "image: trashbot_map.pgm",
+                        "resolution: 0.05",
+                        "origin: [0.0, 0.0, 0.0]",
+                        "negate: 0",
+                        "occupied_thresh: 0.65",
+                        "free_thresh: 0.196",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                map_artifact_dir=str(map_dir),
+            )
+            stale_radar = {
+                "lifecycle_running": False,
+                "lifecycle_state": "stopped",
+                "scan_proof_latest": {
+                    "scan_preview_points": [{"x_m": 1.0, "y_m": 0.2, "frame_id": "laser_frame", "source_index": 0}],
+                    "scan_preview_point_count": 1,
+                    "scan_preview_source_point_count": 78,
+                    "scan_preview_frame_id": "laser_frame",
+                    "freshness": {"status": "stale"},
+                },
+            }
+            nav2_latest = {
+                "amcl_pose": {"x": 0.1, "y": 0.2, "yaw": 0.0, "frame_id": "map", "source": "/amcl_pose"}
+            }
+
+            # 雷达 stale 或 lifecycle stopped 时，允许保留来源计数和位姿事实，但必须清空可绘制点。
+            with mock.patch.object(api, "radar_status", return_value=stale_radar):
+                with mock.patch.object(api, "nav2_proof_latest", return_value=(200, nav2_latest)):
+                    payload = api.map_preview()
+
+        overlay = payload["radar_overlay"]
+        self.assertEqual("loaded", payload["status"])
+        self.assertTrue(payload["image_data_url"].startswith("data:image/png;base64,"))
+        self.assertEqual("not_current", overlay["overlay_status"])
+        self.assertEqual([], overlay["scan_preview_points"])
+        self.assertEqual(0, overlay["scan_preview_point_count"])
+        self.assertEqual(78, overlay["scan_preview_source_point_count"])
+        self.assertEqual("laser_frame", overlay["scan_preview_frame_id"])
+        self.assertEqual(0.1, overlay["robot_pose"]["x"])
+        self.assertIn("runtime_scan_stale_for_map_radar_overlay", overlay["blocked_reasons"])
+        self.assertIn("radar_lifecycle_not_running_for_map_radar_overlay", overlay["blocked_reasons"])
+        self.assertFalse(payload["command_result"]["executed"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+
     def test_t1001_frame_allows_null_yaw(self) -> None:
         """ACK 只证明底盘反馈帧到达，不要求 yaw 可用于姿态发布。"""
         # 真实板上 yaw 可能是字符串 "null"，ACK 只证明 T=1001 到达。
@@ -1427,6 +1488,66 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(status["lifecycle_manager"]["sends_motion_commands"])
         self.assertFalse(status["sends_motion_commands"])
         self.assertFalse(status["sends_base_motion_commands"])
+        self.assertFalse(status["safe_to_control"])
+
+    def test_nav2_status_lifts_path_proof_and_service_blockers_without_motion(self) -> None:
+        """直连 8787 nav2 status 要说清路线已生成但 lifecycle 未运行，不能只给 not_proven。"""
+        clean_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+            "status": "nav2_no_motion_path_generation_runtime_observed",
+            "evidence_type": "robot_runtime_material",
+            "proof": {
+                "status": "nav2_no_motion_path_generation_runtime_observed",
+                "amcl_pose_observed": True,
+                "amcl_pose": {"frame_id": "map", "x": 0.1, "y": 0.2, "yaw": 0.0},
+                "localization_tf_observed": {"map_to_odom": True, "map_to_base_link": True},
+                "tf_chain_observed": {"map_to_odom": True, "odom_to_base_link": True, "map_to_base_link": True},
+                "path_generation_requested": True,
+                "path_generation_attempted": True,
+                "path_generation_service_name": "/compute_path_to_pose",
+                "path_generation_service_available": True,
+                "path_generation_succeeded": True,
+                "path_generated": True,
+                "path_point_count": 31,
+                "planner_server_active": True,
+                "controller_server_active": False,
+                "controller_server_requested": False,
+                "blocked_commands_not_sent": ["/cmd_vel", "/api/base/manual"],
+                "blocked_devices_not_opened": ["/dev/ttyS5"],
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            nav2_path = Path(temp_dir) / "nav2_lifecycle_latest.json"
+            nav2_path.write_text(json.dumps(clean_artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                nav2_lifecycle_artifact_path=str(nav2_path),
+                map_lifecycle_proof_artifact_path=str(Path(temp_dir) / "missing_map_proof.json"),
+                map_artifact_dir=str(Path(temp_dir) / "maps"),
+            )
+            lifecycle_stdout = json.dumps({"running": False, "state": "stopped", "message": "not running"})
+
+            # status 读取 lifecycle 是只读命令；测试里 mock 掉，避免本机需要 ROS2/systemd。
+            with mock.patch.object(
+                upper_robot_api,
+                "run_nav2_lifecycle_command",
+                return_value={"mode": "command", "executed": True, "ok": True, "stdout_preview": lifecycle_stdout},
+            ):
+                status = api.nav2_status()
+
+        self.assertEqual("path_ready_with_service_blockers", status["status"])
+        self.assertTrue(status["path_generated"])
+        self.assertEqual(31, status["path_point_count"])
+        self.assertEqual("/compute_path_to_pose", status["path_generation_service_name"])
+        self.assertEqual("map", status["amcl_pose"]["frame_id"])
+        self.assertFalse(status["lifecycle_running"])
+        self.assertIn("nav2_lifecycle_not_running", status["blocked_reasons"])
+        self.assertIn("启动或恢复 Nav2 lifecycle", status["next_action"])
+        self.assertFalse(status["sends_motion_commands"])
+        self.assertFalse(status["publishes_cmd_vel"])
         self.assertFalse(status["safe_to_control"])
 
     def test_nav2_lifecycle_status_parse_failure_is_not_stopped(self) -> None:

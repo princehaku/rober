@@ -3485,6 +3485,10 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
         "path_generation_requested": proof.get("path_generation_requested") is True,
         "path_generation_attempted": proof.get("path_generation_attempted") is True,
         "path_generated": proof.get("path_generated") is True,
+        "path_generation_service_name": proof.get("path_generation_service_name"),
+        "path_generation_service_available": proof.get("path_generation_service_available") is True,
+        "path_generation_succeeded": proof.get("path_generation_succeeded") is True,
+        "path_point_count": int(proof.get("path_point_count") or 0),
         "blocked_commands_not_sent": proof.get("blocked_commands_not_sent") if isinstance(proof.get("blocked_commands_not_sent"), list) else [
             "T=1",
             "T=13",
@@ -3560,8 +3564,36 @@ def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
         "last_phase",
         "last_successful_phase",
         "partial_artifact_preserved",
+        "path_generation_requested",
+        "path_generation_attempted",
+        "path_generated",
+        "path_generation_service_name",
+        "path_generation_service_available",
+        "path_generation_succeeded",
+        "path_point_count",
+        "blocked_commands_not_sent",
+        "blocked_devices_not_opened",
+        "readback_sends_commands",
+        "sends_commands",
+        "sends_motion_commands",
+        "sends_base_motion_commands",
+        "publishes_cmd_vel",
+        "calls_base_manual",
+        "uses_base_uart",
     ):
         summary[key] = readback.get(key)
+    proof = latest.get("proof") if isinstance(latest, dict) and isinstance(latest.get("proof"), dict) else {}
+    for key in (
+        "planner_server_active",
+        "controller_server_active",
+        "controller_server_requested",
+        "planner_readiness_summary",
+        "path_goal_request",
+        "path_goal_response",
+        "path_generation_boundary",
+    ):
+        if key in proof:
+            summary[key] = proof.get(key)
     return summary
 
 
@@ -6091,6 +6123,20 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     }
 
 
+def default_map_preview_radar_overlay(reason: str = "not_loaded") -> dict[str, Any]:
+    """地图预览即使没有雷达层，也返回稳定同形结构，避免 UI 猜字段是否存在。"""
+    return {
+        "overlay_status": "not_loaded",
+        "scan_preview_points": [],
+        "scan_preview_point_count": 0,
+        "scan_preview_source_point_count": None,
+        "scan_preview_frame_id": "",
+        "robot_pose": None,
+        "source_endpoint_ids": [],
+        "blocked_reasons": [reason] if reason else [],
+    }
+
+
 class UpperRobotApi:
     """把上位机各硬件入口收敛到一个 HTTP API，PC 不再分散猜端口。"""
 
@@ -6163,6 +6209,52 @@ class UpperRobotApi:
         self.nav2_start_command = nav2_start_command
         self.nav2_stop_command = nav2_stop_command
         self.nav2_status_command = nav2_status_command
+
+    def map_preview_radar_overlay(self) -> dict[str, Any]:
+        """把当前雷达点和 map-frame 位姿合并给 map preview；stale/停止雷达只报 not_current，不贴旧点。"""
+        try:
+            radar = self.radar_status()
+            _, nav2_latest = self.nav2_proof_latest()
+        except Exception as exc:  # noqa: BLE001 - overlay 失败不能阻断地图图片本身。
+            overlay = default_map_preview_radar_overlay("map_preview_overlay_read_failed")
+            overlay["blocked_reasons"].append(str(compact_error(exc)))
+            return overlay
+
+        scan_proof = radar.get("scan_proof_latest") if isinstance(radar.get("scan_proof_latest"), dict) else {}
+        points = scan_proof.get("scan_preview_points") if isinstance(scan_proof.get("scan_preview_points"), list) else []
+        point_count = int(scan_proof.get("scan_preview_point_count") or len(points) or 0)
+        source_point_count = scan_proof.get("scan_preview_source_point_count")
+        frame_id = str(scan_proof.get("scan_preview_frame_id") or "")
+        freshness = scan_proof.get("freshness") if isinstance(scan_proof.get("freshness"), dict) else {}
+        radar_stale = freshness.get("status") == "stale"
+        radar_stopped = radar.get("lifecycle_running") is False or radar.get("lifecycle_state") == "stopped"
+        robot_pose = nav2_latest.get("amcl_pose") if isinstance(nav2_latest.get("amcl_pose"), dict) else None
+        has_pose = bool(robot_pose and robot_pose.get("frame_id") == "map")
+        has_points = point_count > 0 or bool(points)
+        current_points_allowed = has_points and not radar_stale and not radar_stopped
+        blocked_reasons = [
+            "runtime_scan_stale_for_map_radar_overlay" if radar_stale else "",
+            "radar_lifecycle_not_running_for_map_radar_overlay" if radar_stopped else "",
+            "robot_pose_missing_for_map_radar_overlay" if has_points and not has_pose else "",
+            "scan_preview_points_missing_for_map_radar_overlay" if has_pose and not has_points else "",
+        ]
+        blocked_reasons = [reason for reason in blocked_reasons if reason]
+        if has_points and not current_points_allowed:
+            overlay_status = "not_current"
+        elif current_points_allowed or has_pose:
+            overlay_status = "loaded" if current_points_allowed and has_pose and not blocked_reasons else "partial"
+        else:
+            overlay_status = "blocked" if blocked_reasons else "not_loaded"
+        return {
+            "overlay_status": overlay_status,
+            "scan_preview_points": points if current_points_allowed else [],
+            "scan_preview_point_count": point_count if current_points_allowed else 0,
+            "scan_preview_source_point_count": source_point_count,
+            "scan_preview_frame_id": frame_id,
+            "robot_pose": robot_pose if has_pose else None,
+            "source_endpoint_ids": ["radar_status", "nav2_proof_latest"],
+            "blocked_reasons": blocked_reasons,
+        }
 
     def base_status(self) -> dict[str, Any]:
         """底盘状态执行非运动 T=130 readback，但仍不授予运动控制权限。"""
@@ -6665,6 +6757,7 @@ class UpperRobotApi:
         try:
             requested_map_name = safe_preview_map_name(map_name)
         except ValueError as exc:
+            radar_overlay = default_map_preview_radar_overlay(str(exc))
             return software_guard_payload(
                 schema_suffix="map_preview_result",
                 action="map_preview",
@@ -6676,10 +6769,12 @@ class UpperRobotApi:
                     "blocked_reasons": [str(exc)],
                     "map_name": map_name,
                     "image_data_url": "",
+                    "radar_overlay": radar_overlay,
                     "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
                 },
             )
         if not root.exists() or not root.is_dir():
+            radar_overlay = default_map_preview_radar_overlay("map_artifact_dir_missing")
             return software_guard_payload(
                 schema_suffix="map_preview_result",
                 action="map_preview",
@@ -6691,10 +6786,12 @@ class UpperRobotApi:
                     "blocked_reasons": ["map_artifact_dir_missing"],
                     "map_name": requested_map_name or "",
                     "image_data_url": "",
+                    "radar_overlay": radar_overlay,
                     "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
                 },
             )
         failures: list[str] = []
+        radar_overlay = self.map_preview_radar_overlay()
         for yaml_path in map_preview_candidates(root, requested_map_name):
             if not path_is_under(yaml_path, root):
                 failures.append("map_yaml_outside_artifact_dir")
@@ -6728,10 +6825,12 @@ class UpperRobotApi:
                         "image_mime_type": image_preview["image_mime_type"],
                         "image_data_url": image_preview["image_data_url"],
                         "source_image_format": image_preview["source_image_format"],
+                        "radar_overlay": radar_overlay,
                         "failure_reason": None,
                         "blocked_reasons": [],
                         "command_result": {"mode": "read_only_local_files", "executed": False, "ok": True},
                         "opens_base_uart": False,
+                        "sends_motion_commands": False,
                         "publishes_cmd_vel": False,
                         "calls_base_manual": False,
                         "sends_base_motion_commands": False,
@@ -6751,6 +6850,7 @@ class UpperRobotApi:
                 "blocked_reasons": failures[:8] or [reason],
                 "map_name": requested_map_name or "",
                 "image_data_url": "",
+                "radar_overlay": radar_overlay,
                 "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
             },
         )
@@ -7589,17 +7689,53 @@ class UpperRobotApi:
         lifecycle_manager = parse_nav2_lifecycle_status_result(
             run_nav2_lifecycle_command(self.nav2_status_command, "status")
         )
+        proof_latest = summarize_nav2_lifecycle_latest_artifact(self.nav2_lifecycle_artifact_path)
+        proof_blockers = proof_latest.get("blockers") if isinstance(proof_latest.get("blockers"), list) else []
+        if lifecycle_manager["running"] is False:
+            proof_blockers = [*proof_blockers, "nav2_lifecycle_not_running"]
+        status = "path_generated" if proof_latest.get("path_generated") else "not_proven"
+        if proof_blockers:
+            status = "blocked_with_root_cause" if status == "not_proven" else "path_ready_with_service_blockers"
         return {
             "schema": f"{SCHEMA}.nav2_lifecycle_status",
             "generated_at_ms": now_ms(),
-            "status": "not_proven",
+            "status": status,
+            "proof_state": status,
             "software_guard": True,
-            "not_proven": True,
+            "not_proven": not bool(proof_latest.get("path_generated")),
             "artifact": nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
-            "proof_latest": summarize_nav2_lifecycle_latest_artifact(self.nav2_lifecycle_artifact_path),
+            "proof_latest": proof_latest,
             "amcl_nav2_readiness": build_amcl_nav2_readiness_from_map_proof(
                 self.map_lifecycle_proof_artifact_path,
                 self.map_artifact_dir,
+            ),
+            "amcl_pose": proof_latest.get("amcl_pose"),
+            "amcl_pose_observed": proof_latest.get("amcl_pose_observed"),
+            "localization_tf_observed": proof_latest.get("localization_tf_observed"),
+            "tf_chain_observed": proof_latest.get("tf_chain_observed"),
+            "base_link_to_laser_frame_transform": proof_latest.get("base_link_to_laser_frame_transform"),
+            "path_generation_requested": proof_latest.get("path_generation_requested"),
+            "path_generation_attempted": proof_latest.get("path_generation_attempted"),
+            "path_generated": bool(proof_latest.get("path_generated")),
+            "path_point_count": int(proof_latest.get("path_point_count") or 0),
+            "path_generation_service_name": proof_latest.get("path_generation_service_name"),
+            "path_generation_service_available": bool(proof_latest.get("path_generation_service_available")),
+            "path_generation_succeeded": bool(proof_latest.get("path_generation_succeeded")),
+            "planner_server_active": proof_latest.get("planner_server_active"),
+            "controller_server_active": proof_latest.get("controller_server_active"),
+            "controller_server_requested": proof_latest.get("controller_server_requested"),
+            "planner_readiness_summary": proof_latest.get("planner_readiness_summary"),
+            "path_goal_request": proof_latest.get("path_goal_request"),
+            "path_goal_response": proof_latest.get("path_goal_response"),
+            "path_generation_boundary": proof_latest.get("path_generation_boundary"),
+            "blocked_reasons": list(dict.fromkeys(str(item) for item in proof_blockers)),
+            "root_causes": list(dict.fromkeys(str(item) for item in proof_blockers)),
+            "next_action": (
+                "启动或恢复 Nav2 lifecycle 后再执行图上路线"
+                if lifecycle_manager["running"] is False and proof_latest.get("path_generated")
+                else "先刷新 Nav2 路径 proof"
+                if not proof_latest.get("path_generated")
+                else "勾选现场安全确认后可执行图上路线，并复验 wheel raw L/R"
             ),
             "routes": {
                 "status": ROUTE_PATHS["nav2_status"],
@@ -7615,6 +7751,12 @@ class UpperRobotApi:
                 "stop": command_config_info("ROBER_NAV2_STOP_COMMAND", self.nav2_stop_command),
                 "status": command_config_info("ROBER_NAV2_STATUS_COMMAND", self.nav2_status_command),
             },
+            "sends_commands": False,
+            "sends_motion_commands": False,
+            "sends_base_motion_commands": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "uses_base_uart": False,
             "lifecycle_manager": lifecycle_manager,
             "lifecycle_running": lifecycle_manager["running"],
             "lifecycle_state": lifecycle_manager["state"],

@@ -113,6 +113,7 @@ const ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES = [
   "trashbot.local_webrtc_camera_",
 ] as const;
 const NAV2_GOAL_BLOCKER_ORDER = [
+  "nav2_lifecycle_not_running",
   "nav2_stack_not_running",
   "planner_server_inactive",
   "controller_server_inactive",
@@ -1009,7 +1010,7 @@ function stringList(value: unknown, limit = 8): string[] {
 
 function nav2ProofBlockerReasons(value: unknown, limit = 8): string[] {
   // Nav2 proof.blockers 是当前不能自动驾驶的最直接读数；优先保留 reason，再补 detail。
-  const rawBlockers = findFirstKey(value, ["blockers"]);
+  const rawBlockers = findFirstKey(value, ["blockers", "blocked_reasons", "root_causes"]);
   if (!Array.isArray(rawBlockers)) {
     return [];
   }
@@ -1067,6 +1068,9 @@ function nav2ProofBlockerLabels(reasons: string[]): string[] {
     }
     if (reason === "path_generation_not_attempted") {
       return "路径生成还没真正开始";
+    }
+    if (reason === "nav2_lifecycle_not_running") {
+      return "自动驾驶 lifecycle 未运行";
     }
     if (reason === "nav2_stack_not_running") {
       return "自动驾驶服务未启动";
@@ -3834,6 +3838,7 @@ function nav2SummaryFromReadbacks(
   const goalExecutionStatus = summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded");
   const nav2StatusPayload = nav2Status?.payload ?? null;
   const lifecycleManager = asRecord(nav2StatusPayload?.lifecycle_manager);
+  const statusBlockerReasons = nav2ProofBlockerReasons(nav2StatusPayload);
   const goalExecutionProven = nav2GoalExecutionProvenText(goalResultPayload);
   const goalExecutionResultStatus = summaryValueText(goalResultPayload, ["result_status"]);
   const wheelFeedbackProven = summaryValueText(baseFeedbackSummary, ["wheel_feedback_lr_nonzero_proven"]);
@@ -3883,7 +3888,7 @@ function nav2SummaryFromReadbacks(
     latestPathGenerationServiceAvailable === "false" ? "path_generation_service_unavailable" : "",
     latestPathGenerationAttempted === "false" && proof.path_generation_requested === true ? "path_generation_not_attempted" : "",
   ].filter(Boolean);
-  const effectiveCurrentBlockerReasons = [...new Set([...currentBlockerReasons, ...syntheticBlockerReasons])];
+  const effectiveCurrentBlockerReasons = [...new Set([...currentBlockerReasons, ...statusBlockerReasons, ...syntheticBlockerReasons])];
   const effectiveCurrentBlockerLabels = nav2ProofBlockerLabels(effectiveCurrentBlockerReasons);
   return {
     status: summaryStatus,
@@ -4575,13 +4580,14 @@ function nav2GoalBoundaryGuidance(
   const controllerInactive = nav2.controller_server_active === "false";
   const nav2StackNotRunning = nav2.nav2_stack_running === "false";
   const controllerRequested = nav2.controller_server_requested === "true";
+  const nav2LifecycleBlocked = nav2.current_blocker_reasons.split(",").includes("nav2_lifecycle_not_running");
   // no-motion planner proof 会在生成路线后清理 managed runtime；执行 endpoint 会重新启动 runtime，不能因此把已读到的路线挡住。
-  const nav2StackBlocksGoal = nav2StackNotRunning && !base.nav2_goal_ready;
+  const nav2StackBlocksGoal = nav2StackNotRunning && (!base.nav2_goal_ready || nav2LifecycleBlocked);
   const plannerBlocksGoal = !nav2StackBlocksGoal && plannerInactive && (!base.nav2_goal_ready || !nav2StackNotRunning);
   const controllerBlocksGoal = !nav2StackBlocksGoal && controllerInactive && controllerRequested;
   const serviceAwareBlockers = [
     ...base.nav2_goal_blockers,
-    nav2StackBlocksGoal ? "nav2_stack_not_running" : "",
+    nav2StackBlocksGoal ? (nav2LifecycleBlocked ? "nav2_lifecycle_not_running" : "nav2_stack_not_running") : "",
     plannerBlocksGoal ? "planner_server_inactive" : "",
     controllerBlocksGoal ? "controller_server_inactive" : "",
   ].filter(Boolean);

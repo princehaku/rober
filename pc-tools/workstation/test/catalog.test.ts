@@ -7860,6 +7860,78 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary blocks ready Nav2 route when upper status reports lifecycle not running", async () => {
+    // 上车端 8787 已经把 lifecycle blocker 提升到 /api/nav2/status，PC 不能再把 blockers 显示为空。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          status: "path_generated",
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 18,
+          path_preview_point_count: 18,
+          path_preview_frame_id: "map",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "path_ready_with_service_blockers",
+          proof_state: "path_ready_with_service_blockers",
+          path_generated: true,
+          path_point_count: 18,
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          planner_server_active: true,
+          controller_server_active: false,
+          controller_server_requested: false,
+          blocked_reasons: ["nav2_lifecycle_not_running"],
+          next_action: "启动或恢复 Nav2 lifecycle 后再执行图上路线",
+          sends_motion_commands: false,
+          publishes_cmd_vel: false,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest_result",
+          status: "not_loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.current_blocker_reasons).toBe("nav2_lifecycle_not_running");
+      expect(summary.readback_summary.nav2.current_blocker_labels).toBe("自动驾驶 lifecycle 未运行");
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("自动驾驶服务未启动");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(["nav2_lifecycle_not_running"]);
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先启动自动驾驶服务（不发车），再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("workstation proof refresh proxies only allow fixed radar, map, and Nav2 POST bodies", async () => {
     // refresh 代理必须把 body 锁死成 workstation 预设值，且危险 true 字段仍然 fail closed。
     const upstream = await listenRobotProofRefreshApi({
