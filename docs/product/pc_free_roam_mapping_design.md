@@ -200,6 +200,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   同轮 map preview 读到当前路线点时返回 `path_preview_observed`，否则返回 `not_observed`。
   外部脚本可以直接把 `path_preview_status`、`robot_pose_status`、`radar_overlay_status` 作为地图 WYSIWYG 三件套，不必手动推断点数和 frame。
   该变化只补只读 map preview 字段，不准备路线、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 20:50 起，`/api/robot-control/map/preview` 顶层增加 `path_preview_next_action_plain`：
+  路线和小车 map-frame 位置都可见时提示“确认起点、终点和路线后，再勾选安全确认执行”；路线不可见时提示先准备图上路线并刷新地图画面；路线可见但小车位置不可见时提示刷新定位或地图。
+  该变化只补只读 map preview 下一步文案，不准备路线、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，

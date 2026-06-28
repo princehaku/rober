@@ -3050,6 +3050,8 @@ function blockedMapPreviewResponse(
   pathPreviewSourceEndpointIds: RobotApiReadEndpointId[] = [],
 ): RobotControlMapPreviewResponse {
   // 地图预览失败也必须保持完整合同，前端才能稳定回退到状态视图。
+  const pathStatus = pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
+  const poseStatus = radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
     ...PROOF_FLAGS,
@@ -3078,15 +3080,30 @@ function blockedMapPreviewResponse(
     radar_overlay: radarOverlay,
     ...mapPreviewRadarOverlayAliases(radarOverlay),
     robot_pose: radarOverlay.robot_pose,
-    robot_pose_status: radarOverlay.robot_pose ? "map_pose_observed" : "not_observed",
+    robot_pose_status: poseStatus,
     path_preview_points: pathPreview.path_preview_points,
-    path_preview_status: pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed",
+    path_preview_status: pathStatus,
+    path_preview_next_action_plain: mapPreviewPathNextActionPlain(pathStatus, poseStatus),
     path_preview_point_count: pathPreview.path_preview_point_count,
     path_preview_source_point_count: pathPreview.path_preview_source_point_count,
     path_preview_frame_id: pathPreview.path_preview_frame_id,
     path_preview_source_endpoint_ids: pathPreviewSourceEndpointIds,
     robot_control_executed: false,
   };
+}
+
+function mapPreviewPathNextActionPlain(
+  pathStatus: RobotControlMapPreviewResponse["path_preview_status"],
+  poseStatus: RobotControlMapPreviewResponse["robot_pose_status"],
+): string {
+  // map preview 是现场正在看的画面；下一步只解释读图动作，不触发路线准备或执行。
+  if (pathStatus !== "path_preview_observed") {
+    return "先准备图上路线，再刷新地图画面。";
+  }
+  if (poseStatus !== "map_pose_observed") {
+    return "图上路线已显示；小车位置未显示，建议刷新定位或地图后再执行。";
+  }
+  return "图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。";
 }
 
 export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotControlMapPreviewResponse> {
@@ -3181,6 +3198,8 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   ];
   const forwarded = response.ok && blockedReasons.length === 0;
   const overlayReadback = await overlayReadbackPromise;
+  const pathStatus = overlayReadback.pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
+  const poseStatus = overlayReadback.radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
     ...PROOF_FLAGS,
@@ -3212,9 +3231,10 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     radar_overlay: overlayReadback.radarOverlay,
     ...mapPreviewRadarOverlayAliases(overlayReadback.radarOverlay),
     robot_pose: overlayReadback.radarOverlay.robot_pose,
-    robot_pose_status: overlayReadback.radarOverlay.robot_pose ? "map_pose_observed" : "not_observed",
+    robot_pose_status: poseStatus,
     path_preview_points: overlayReadback.pathPreview.path_preview_points,
-    path_preview_status: overlayReadback.pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed",
+    path_preview_status: pathStatus,
+    path_preview_next_action_plain: mapPreviewPathNextActionPlain(pathStatus, poseStatus),
     path_preview_point_count: overlayReadback.pathPreview.path_preview_point_count,
     path_preview_source_point_count: overlayReadback.pathPreview.path_preview_source_point_count,
     path_preview_frame_id: overlayReadback.pathPreview.path_preview_frame_id,
