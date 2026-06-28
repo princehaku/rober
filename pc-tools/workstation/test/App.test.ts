@@ -520,6 +520,8 @@ const fixtures: Record<string, unknown> = {
         path_point_count: "0",
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
+        execution_status_plain: "图上路线还未准备完成。",
+        next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
         goal_execution_status: "not_loaded",
         goal_execution_proven: "not_loaded",
         goal_execution_hil_pass: "not_loaded",

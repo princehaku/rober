@@ -4255,6 +4255,23 @@ function nav2SummaryFromReadbacks(
   ].filter(Boolean);
   const effectiveCurrentBlockerReasons = [...new Set([...currentBlockerReasons, ...statusBlockerReasons, ...syntheticBlockerReasons])];
   const effectiveCurrentBlockerLabels = nav2ProofBlockerLabels(effectiveCurrentBlockerReasons);
+  const latestLeft = summaryValueText(latestNonzeroPair ?? latestPair, ["left_speed"]);
+  const latestRight = summaryValueText(latestNonzeroPair ?? latestPair, ["right_speed"]);
+  const imuDeltaObserved = summaryValueText(baseFeedbackSummary, ["imu_attitude_delta_observed"]);
+  const readbackPlain = nav2ReadbackPlainSummary({
+    summaryStatus,
+    goalSucceeded,
+    goalExecutionProven,
+    wheelFeedbackProven,
+    latestLeft,
+    latestRight,
+    baseCommandNonzeroObserved,
+    baseCommandNonzeroCount,
+    imuDeltaObserved,
+    nextBaseMode,
+    proof,
+    effectiveCurrentBlockerLabels,
+  });
   return {
     status: summaryStatus,
     nav2_status: nav2Status?.status ?? "not_loaded",
@@ -4274,6 +4291,8 @@ function nav2SummaryFromReadbacks(
     path_point_count: proof.path_point_count === null ? "not_loaded" : String(proof.path_point_count),
     path_preview_point_count: String(proof.path_preview_point_count),
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
+    execution_status_plain: readbackPlain.execution_status_plain,
+    next_action_plain: readbackPlain.next_action_plain,
     goal_execution_status: goalExecutionStatus,
     goal_execution_proven: goalExecutionProven,
     goal_execution_hil_pass: summaryValueText(goalResultPayload, ["hil_pass"]),
@@ -4294,10 +4313,10 @@ function nav2SummaryFromReadbacks(
     goal_execution_base_feedback_imu_attitude_delta_observed: summaryValueText(baseFeedbackSummary, ["imu_attitude_delta_observed"]),
     goal_execution_base_feedback_imu_roll_delta: summaryValueText(asRecord(baseFeedbackSummary?.imu_attitude_delta_summary), ["max_abs_roll_delta"]),
     goal_execution_base_feedback_imu_pitch_delta: summaryValueText(asRecord(baseFeedbackSummary?.imu_attitude_delta_summary), ["max_abs_pitch_delta"]),
-    goal_execution_base_feedback_latest_left_speed: summaryValueText(latestNonzeroPair ?? latestPair, ["left_speed"]),
-    goal_execution_base_feedback_latest_right_speed: summaryValueText(latestNonzeroPair ?? latestPair, ["right_speed"]),
-    goal_execution_base_feedback_latest_raw_left: summaryValueText(latestNonzeroPair ?? latestPair, ["left_speed"]),
-    goal_execution_base_feedback_latest_raw_right: summaryValueText(latestNonzeroPair ?? latestPair, ["right_speed"]),
+    goal_execution_base_feedback_latest_left_speed: latestLeft,
+    goal_execution_base_feedback_latest_right_speed: latestRight,
+    goal_execution_base_feedback_latest_raw_left: latestLeft,
+    goal_execution_base_feedback_latest_raw_right: latestRight,
     goal_execution_sends_base_motion_commands: summaryValueText(goalResultPayload, ["sends_base_motion_commands"]),
     goal_execution_uses_base_uart: summaryValueText(goalResultPayload, ["uses_base_uart"]),
     goal_execution_goal_frame_id: summaryValueText(goalResultPayload, ["goal_frame_id", "frame_id"]),
@@ -4305,6 +4324,63 @@ function nav2SummaryFromReadbacks(
     goal_execution_goal_y: summaryValueText(goalResultPayload, ["goal_y", "y"]),
     goal_execution_generated_at_ms: summaryValueText(goalResultPayload, ["generated_at_ms", "nav2_generated_at_ms"]),
     goal_execution_response_generated_at_ms: summaryValueText(goalPayload, ["response_generated_at_ms", "generated_at_ms"]),
+  };
+}
+
+function nav2ReadbackPlainSummary(args: {
+  summaryStatus: string;
+  goalSucceeded: boolean;
+  goalExecutionProven: string;
+  wheelFeedbackProven: string;
+  latestLeft: string;
+  latestRight: string;
+  baseCommandNonzeroObserved: string;
+  baseCommandNonzeroCount: string;
+  imuDeltaObserved: string;
+  nextBaseMode: string;
+  proof: RobotApiProofSummary;
+  effectiveCurrentBlockerLabels: string[];
+}): { execution_status_plain: string; next_action_plain: string } {
+  // Nav2 readback 是脚本最常读的区块；这里给普通白话，避免外部再拼 wheel/raw/mode token。
+  const pathReady = args.proof.path_generated === true
+    || args.proof.path_generation_succeeded === true
+    || (args.proof.path_point_count ?? 0) > 0
+    || args.proof.path_preview_point_count > 0;
+  const nextMode = ["", "not_loaded"].includes(args.nextBaseMode)
+    ? "当前模式"
+    : nav2GoalNextActionPlainText(args.nextBaseMode.toUpperCase());
+  const nonzeroCommandCount = Number(args.baseCommandNonzeroCount);
+  const hasMotionCommand = args.baseCommandNonzeroObserved === "true"
+    || (Number.isFinite(nonzeroCommandCount) && nonzeroCommandCount > 0);
+  const motionMaterial = args.imuDeltaObserved === "true"
+    ? "已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或控制服务。"
+    : hasMotionCommand
+      ? "已看到非零底盘命令，下一步重点复验执行窗口轮速 L/R。"
+      : "还没有读到足够的底盘运动材料。";
+  if (args.goalExecutionProven === "true" || args.wheelFeedbackProven === "true") {
+    return {
+      execution_status_plain: "本轮路线执行和执行窗口轮速 L/R 已证明。",
+      next_action_plain: "继续送达确认；送达确认不会发车。",
+    };
+  }
+  if (args.goalSucceeded && args.wheelFeedbackProven === "false") {
+    return {
+      execution_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${args.latestLeft}/${args.latestRight} 未非零；${motionMaterial}`,
+      next_action_plain: `勾选行程前安全确认后用 ${nextMode}重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
+    };
+  }
+  if (pathReady) {
+    return {
+      execution_status_plain: "图上路线已准备，但本轮完整执行和轮速 L/R 还未证明。",
+      next_action_plain: "勾选行程前安全确认后执行图上路线，并在同窗口确认轮速 L/R 非零。",
+    };
+  }
+  const blockers = args.effectiveCurrentBlockerLabels.length > 0 && args.effectiveCurrentBlockerLabels.join("、") !== "not_loaded"
+    ? `当前根因：${args.effectiveCurrentBlockerLabels.join("、")}。`
+    : "";
+  return {
+    execution_status_plain: `图上路线还未准备完成。${blockers}`,
+    next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
   };
 }
 
@@ -4634,6 +4710,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         path_point_count: "not_loaded",
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
+        execution_status_plain: "图上路线还未准备完成。",
+        next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
         goal_execution_status: "not_loaded",
         goal_execution_proven: "not_loaded",
         goal_execution_hil_pass: "not_loaded",
