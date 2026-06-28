@@ -2466,8 +2466,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       wheel_feedback_nonzero_observed: string;
       wheel_feedback_latest_left_speed: string;
       wheel_feedback_latest_right_speed: string;
+      wheel_left_speed: string;
+      wheel_right_speed: string;
       wheel_feedback_latest_raw_left?: string;
       wheel_feedback_latest_raw_right?: string;
+      wheel_raw_left: string;
+      wheel_raw_right: string;
       wheel_feedback_latest_nonzero_left_speed: string;
       wheel_feedback_latest_nonzero_right_speed: string;
       feedback_voltage_v: string;

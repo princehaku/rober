@@ -5005,6 +5005,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_raw_right).toBe("0");
+      expect(summary.readback_summary.base.wheel_left_speed).toBe("0");
+      expect(summary.readback_summary.base.wheel_right_speed).toBe("0");
+      expect(summary.readback_summary.base.wheel_raw_left).toBe("0");
+      expect(summary.readback_summary.base.wheel_raw_right).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_nonzero_left_speed).toBe("164");
       expect(summary.readback_summary.base.wheel_feedback_latest_nonzero_right_speed).toBe("164");
       expect(summary.readback_summary.base.feedback_voltage_v).toBe("12.31");
@@ -5074,6 +5078,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.base.wheel_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.base.wheel_feedback_latest_raw_right).toBe("0");
+      expect(summary.readback_summary.base.wheel_left_speed).toBe("0");
+      expect(summary.readback_summary.base.wheel_right_speed).toBe("0");
+      expect(summary.readback_summary.base.wheel_raw_left).toBe("0");
+      expect(summary.readback_summary.base.wheel_raw_right).toBe("0");
       expect(summary.readback_summary.base.feedback_voltage_v).toBe("12.43");
       expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_observed_not_motion_proof");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.feedback_readback.sends_commands");
