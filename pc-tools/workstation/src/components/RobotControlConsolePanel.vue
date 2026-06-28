@@ -7611,6 +7611,18 @@ const plainTripAutonomousDiagnosis = computed(() => {
   }
   return currentDiagnosis.replace(/^自动驾驶当前：/, "自动驾驶诊断：");
 });
+
+function plainTripManagedRuntimePrecheckText(): string {
+  // live 常见形态是路线已准备但 Nav2 runtime 当前停着；PC execute 会托管启动，不能再把它写成额外预检。
+  const summary = robotSummary.value;
+  const nav2 = summary?.readback_summary.nav2;
+  const managedReady = summary?.safe_command_boundary.nav2_goal_ready === true && plainTripPreparedBySummary.value;
+  const serviceNotRunning = plainNav2StackNotRunning(summary)
+    || nav2?.controller_server_active === "false"
+    || nav2?.planner_server_active === "false";
+  return managedReady && serviceNotRunning ? "执行会自动启动自动驾驶 runtime；" : "";
+}
+
 const plainTripMinimalPrecheckSummary = computed(() => {
   // 普通首屏只保留一个现场安全确认；路线画面是所见即所得约束，不再作为隐藏预检步骤。
   if (!robotApiBaseUrl.value.trim()) {
@@ -7624,10 +7636,11 @@ const plainTripMinimalPrecheckSummary = computed(() => {
   }
   if (plainTripCurrentRouteVisible.value) {
     const actionText = plainTripExecutionActionText();
+    const runtimeText = plainTripManagedRuntimePrecheckText();
     if (!plainTripRobotPoseVisibleForExecution.value) {
-      return `行程前确认：安全确认已完成；小车位置未显示，建议先重新定位或刷新地图；仍可${actionText}。`;
+      return `行程前确认：安全确认已完成；小车位置未显示，建议先重新定位或刷新地图；${runtimeText}仍可${actionText}。`;
     }
-    return `行程前确认：安全确认已完成；可以${actionText}，执行接口只复核安全确认和固定白名单。`;
+    return `行程前确认：安全确认已完成；可以${actionText}，${runtimeText}执行接口只复核安全确认和固定白名单。`;
   }
   if (plainTripPreparedBySummary.value) {
     return "行程前确认：安全确认已完成；先刷新地图画面确认图上路线。";
