@@ -32,6 +32,68 @@ SPEC.loader.exec_module(upper_robot_api)
 class UpperRobotApiFeedbackAckTests(unittest.TestCase):
     """锁定 `/api/base/status.feedback_ack` 的新鲜证据和安全字段。"""
 
+    def test_camera_health_flattens_not_exclusive_source_diagnosis(self) -> None:
+        """8787 camera health 要直接暴露不是独占，避免 curl/PC 入口误判成浏览器占用。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        health_payload = {
+            "schema": "trashbot.local_webrtc_camera_smoke.v1",
+            "status": "source_first_frame_failed",
+            "video_source": "/dev/video1",
+            "source_readiness": "first_frame_failed",
+            "source_failure_reason": "first_frame_total_timeout",
+            "current_selection": {
+                "selected_path": "/dev/video1",
+                "selected_name": "USB Composite Device: DV20 USB",
+                "selected_is_uvc_or_usb": True,
+                "selected_formats_summary": "MJPG@640x480@30；YUYV@640x480@22",
+            },
+            "media_diagnostics": {
+                "source_usage": {
+                    "status": "not_in_use",
+                    "owner_count": 0,
+                    "other_owner_count": 0,
+                    "owners": [],
+                },
+                "source_diagnosis": {
+                    "status": "uvc_no_frame_not_exclusive",
+                    "plain_hint": "不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。",
+                    "next_action": "check_usb_camera_input_power_or_known_good_uvc",
+                    "not_exclusive": True,
+                    "selected_name": "USB Composite Device: DV20 USB",
+                    "shared_preview_contract": "single_shared_capture_for_multiple_clients",
+                },
+            },
+        }
+
+        async def fake_fetch_json(url: str, method: str = "GET", payload: dict[str, object] | None = None):
+            self.assertEqual("http://127.0.0.1:8088/health", url)
+            self.assertEqual("GET", method)
+            self.assertIsNone(payload)
+            return 200, dict(health_payload)
+
+        with mock.patch.object(upper_robot_api, "fetch_json", side_effect=fake_fetch_json):
+            status, payload = asyncio.run(api.camera_health())
+
+        self.assertEqual(200, status)
+        self.assertTrue(payload["upper_api_proxy"])
+        self.assertEqual("http://127.0.0.1:8088", payload["upper_api_camera_base_url"])
+        self.assertEqual("/dev/video1", payload["selected_path"])
+        self.assertEqual("USB Composite Device: DV20 USB", payload["selected_name"])
+        self.assertTrue(payload["selected_is_uvc_or_usb"])
+        self.assertEqual("not_in_use", payload["source_usage_status"])
+        self.assertEqual(0, payload["source_usage_owner_count"])
+        self.assertEqual("none", payload["source_usage_summary"])
+        self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis_status"])
+        self.assertEqual("check_usb_camera_input_power_or_known_good_uvc", payload["source_diagnosis_next_action"])
+        self.assertTrue(payload["source_diagnosis_not_exclusive"])
+        self.assertEqual("single_shared_capture_for_multiple_clients", payload["shared_preview_contract"])
+        self.assertFalse(payload.get("safe_to_control", False))
+
     def test_t1001_frame_allows_null_yaw(self) -> None:
         """ACK 只证明底盘反馈帧到达，不要求 yaw 可用于姿态发布。"""
         # 真实板上 yaw 可能是字符串 "null"，ACK 只证明 T=1001 到达。

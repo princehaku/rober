@@ -3798,3 +3798,11 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 下一步写成 `勾选行程前安全确认后用 ROS 重跑图上路线` 并复验 wheel raw L/R。若路线未生成，或 controller
 明确 `requested=true` 但 inactive，仍保持 fail-closed blocker。该变化只修正 PC 读数/按钮 gate，
 不自动调用 `/api/nav2/goal/execute`、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 12:22 起，上位机 `/api/camera/health` 会把 8088 camera service 的嵌套
+`current_selection`、`source_usage` 和 `source_diagnosis` 平铺到 8787 顶层：
+`selected_path`、`selected_name`、`source_usage_status`、`source_usage_owner_count`、
+`source_diagnosis_status`、`source_diagnosis_plain_hint`、`source_diagnosis_next_action` 和
+`source_diagnosis_not_exclusive`。这让 PC、curl 和后进浏览器不用解析深层 JSON，也能直接看到
+“共享预览不是浏览器独占；当前 `/dev/video1` DV20 UVC 无首帧”的事实。该 health alias 只复制只读诊断，
+不打开摄像头、不重启 camera service、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

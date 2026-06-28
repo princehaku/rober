@@ -3027,6 +3027,64 @@ def runtime_boundary_flags() -> dict[str, Any]:
     }
 
 
+def camera_source_usage_summary(source_usage: dict[str, Any]) -> str:
+    """把相机占用列表压成短文本；顶层 health 只需要说明有没有进程占用。"""
+    owners = source_usage.get("owners") if isinstance(source_usage.get("owners"), list) else []
+    if not owners:
+        return "none"
+    summary_items: list[str] = []
+    for owner in owners[:4]:
+        if not isinstance(owner, dict):
+            continue
+        pid = owner.get("pid", "unknown")
+        command = str(owner.get("command") or "unknown").strip()
+        summary_items.append(f"pid={pid} {command[:80]}")
+    return "；".join(summary_items) if summary_items else "none"
+
+
+def flatten_camera_health_aliases(payload: dict[str, Any]) -> dict[str, Any]:
+    """把 8088 health 的嵌套诊断平铺到 8787 顶层，方便 PC/ curl 直接判断是不是独占。"""
+    if not isinstance(payload, dict):
+        return {}
+    current_selection = payload.get("current_selection") if isinstance(payload.get("current_selection"), dict) else {}
+    source_usage = payload.get("source_usage") if isinstance(payload.get("source_usage"), dict) else {}
+    media_diagnostics = payload.get("media_diagnostics") if isinstance(payload.get("media_diagnostics"), dict) else {}
+    media_source_usage = (
+        media_diagnostics.get("source_usage")
+        if isinstance(media_diagnostics.get("source_usage"), dict)
+        else {}
+    )
+    source_diagnosis = payload.get("source_diagnosis") if isinstance(payload.get("source_diagnosis"), dict) else {}
+    media_source_diagnosis = (
+        media_diagnostics.get("source_diagnosis")
+        if isinstance(media_diagnostics.get("source_diagnosis"), dict)
+        else {}
+    )
+    diagnosis = source_diagnosis or media_source_diagnosis
+    usage = source_usage or media_source_usage
+    selected_path = payload.get("selected_path") or current_selection.get("selected_path") or payload.get("video_source")
+    selected_name = payload.get("selected_name") or current_selection.get("selected_name") or diagnosis.get("selected_name")
+    # 顶层 alias 只复制已有只读事实，不打开摄像头，也不改变 8088 原始嵌套合同。
+    return {
+        "selected_path": selected_path or None,
+        "selected_name": selected_name or None,
+        "selected_is_uvc_or_usb": bool(current_selection.get("selected_is_uvc_or_usb") or diagnosis.get("selected_is_uvc_or_usb")),
+        "selected_formats_summary": current_selection.get("selected_formats_summary") or "not_loaded",
+        "source_usage_status": usage.get("status") or diagnosis.get("source_usage_status") or "not_loaded",
+        "source_usage_owner_count": usage.get("owner_count") if usage.get("owner_count") is not None else diagnosis.get("source_usage_owner_count", "not_loaded"),
+        "source_usage_other_owner_count": usage.get("other_owner_count", "not_loaded"),
+        "source_usage_summary": camera_source_usage_summary(usage) if usage else "not_loaded",
+        "source_diagnosis_status": diagnosis.get("status") or "not_loaded",
+        "source_diagnosis_plain_hint": diagnosis.get("plain_hint") or "not_loaded",
+        "source_diagnosis_next_action": diagnosis.get("next_action") or "not_loaded",
+        "source_diagnosis_not_exclusive": diagnosis.get("not_exclusive") if diagnosis.get("not_exclusive") is not None else "not_loaded",
+        "shared_preview_contract": payload.get("shared_preview_contract")
+        or media_diagnostics.get("shared_preview_contract")
+        or diagnosis.get("shared_preview_contract")
+        or "single_shared_capture_for_multiple_clients",
+    }
+
+
 def build_runtime_artifact_readback_payload(
     *,
     schema_suffix: str,
@@ -7651,6 +7709,7 @@ class UpperRobotApi:
     async def camera_health(self) -> tuple[int, dict[str, Any]]:
         """camera 子接口代理 8088 /health，并标注统一 API 来源。"""
         status, payload = await fetch_json(urljoin(self.camera_base_url + "/", "health"))
+        payload.update(flatten_camera_health_aliases(payload))
         payload["upper_api_proxy"] = True
         payload["upper_api_camera_base_url"] = self.camera_base_url
         return status, payload
