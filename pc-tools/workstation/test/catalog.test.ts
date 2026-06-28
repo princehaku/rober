@@ -10060,6 +10060,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.statusCode).toBe(200);
       expect(String(response.headers["content-type"])).toContain("multipart/x-mixed-replace");
       expect(response.headers["x-robber-proxy"]).toBe("camera-mjpeg-shared-readonly");
+      expect(response.headers["x-robber-camera-shared-capture"]).toBe("single_shared_capture_for_multiple_clients");
+      expect(response.headers["x-robber-camera-exclusive-claim"]).toBe("false");
       expect(upstreamRequestCount).toBe(1);
       const firstText = await response.waitForText("jpeg");
       expect(firstText).toContain("Content-Type: image/jpeg");
@@ -10088,6 +10090,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(lateResponse.statusCode).toBe(200);
       expect(String(lateResponse.headers["content-type"])).toContain("multipart/x-mixed-replace");
       expect(lateResponse.headers["x-robber-proxy"]).toBe("camera-mjpeg-shared-readonly");
+      expect(lateResponse.headers["x-robber-camera-shared-capture"]).toBe("single_shared_capture_for_multiple_clients");
+      expect(lateResponse.headers["x-robber-camera-exclusive-claim"]).toBe("false");
       const lateText = await lateResponse.waitForText("jpeg");
       expect(lateText).toContain("jpeg");
       expect(upstreamRequestCount).toBe(1);
@@ -10104,6 +10108,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(secondResponse.statusCode).toBe(200);
       expect(String(secondResponse.headers["content-type"])).toContain("multipart/x-mixed-replace");
       expect(secondResponse.headers["x-robber-proxy"]).toBe("camera-mjpeg-shared-readonly");
+      expect(secondResponse.headers["x-robber-camera-shared-capture"]).toBe("single_shared_capture_for_multiple_clients");
+      expect(secondResponse.headers["x-robber-camera-exclusive-claim"]).toBe("false");
       const secondText = await secondResponse.waitForText("jpeg2");
       expect(secondText).toContain("jpeg2");
     } finally {

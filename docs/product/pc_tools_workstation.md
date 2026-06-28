@@ -3693,6 +3693,12 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 相关下一步文案同步改成 `底盘试动读取轮速` / `底盘试动读取非零 L/R`，画面只影响旧 first-jog 材料和建图验收，
 不再影响底盘试动、键盘手控或最小行程安全确认；该变化不直连 `/cmd_vel`，也不触发 Nav2、delivery、free-roam 或 stop。
 
+2026-06-28 08:29 起，PC 共享 MJPEG relay 在每个 multipart 响应上增加可机读 header：
+`X-Robber-Camera-Shared-Capture: single_shared_capture_for_multiple_clients` 和
+`X-Robber-Camera-Exclusive-Claim: false`。第一个页面、并发页面和后进页面都能用响应头确认自己接入的是同一条
+PC Node 只读共享上游，而不是单独抢占摄像头；这只强化 7001 共享预览 contract，不新增 camera capture、不重启相机，
+不发送 manual、keyboard、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
+
 2026-06-27 23:30 起，建图验收缺口也消费同一 stale runtime `/scan` 事实：
 当缺口包含 `lidar_fresh` 且 PC summary 里只有 stale `/scan` 距离时，`建图验收` 和 `当前事实`
 会显示 `雷达未刷新（旧 /scan 距离 ... 已过期，不贴到地图）`。低速自由移动入口仍不受影响；

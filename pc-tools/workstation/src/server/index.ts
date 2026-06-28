@@ -1415,6 +1415,8 @@ function startCameraMjpegClient(client: CameraMjpegRelayClient, contentType: str
   client.response.setHeader("Content-Type", contentType);
   client.response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   client.response.setHeader("X-Robber-Proxy", "camera-mjpeg-shared-readonly");
+  client.response.setHeader("X-Robber-Camera-Shared-Capture", "single_shared_capture_for_multiple_clients");
+  client.response.setHeader("X-Robber-Camera-Exclusive-Claim", "false");
   client.response.flushHeaders?.();
   client.headersStarted = true;
 }
