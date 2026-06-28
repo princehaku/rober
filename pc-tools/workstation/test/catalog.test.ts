@@ -7274,6 +7274,11 @@ describe("workstation fail-closed API contracts", () => {
           video_source_mode: "auto",
           source_readiness: "first_frame_failed",
           source_failure_reason: "first_frame_total_timeout",
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            owners: [],
+          },
           current_selection: {
             selected_path: "/dev/video1",
             selected_name: "USB Composite Device: DV20 USB",
@@ -7337,7 +7342,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.selected_role).toBe("video_capture");
       expect(summary.readback_summary.camera.selected_sibling_video_nodes_summary).toBe("/dev/video2=metadata");
       expect(summary.readback_summary.camera.selected_sibling_video_node_count).toBe("1");
-      expect(summary.readback_summary.camera.source_diagnosis_status).toBe("not_loaded");
+      expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(summary.readback_summary.camera.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
     } finally {
       await robotApi.close();
     }

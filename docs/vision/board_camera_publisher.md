@@ -1103,6 +1103,24 @@ live 只读复核：
 这表示新进入的页面即使还没有打开共享预览，也能看到“已选中 DV20 `/dev/video1`、不是页面独占、下一步打开共享预览或首帧检查”。
 该 status 查询不打开相机 reader、不触发首帧探针、不发送 manual、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
 
+## 2026-06-28 09:50 first_frame_total_timeout 非独占诊断
+
+本轮只读复核真实上位机 `root@192.168.1.11 -p 37878`，只请求 GET：
+
+- `/api/camera/health` 返回 `status=source_first_frame_failed`、
+  `source_readiness=first_frame_failed`、`source_failure_reason=first_frame_total_timeout`。
+- 同轮 `/api/radar/status` 返回 `lifecycle_running=false`、`lifecycle_state=stopped`；
+  `/api/free-roam/autonomy/latest` 与 `/api/nav2/status` 仍是 `not_proven`。
+
+PC Node 现在会在 camera health 没有显式 `source_diagnosis`、但读到“首帧失败 + 摄像头无人占用”
+时派生 `source_diagnosis_status=uvc_no_frame_not_exclusive`，并把建图 gate 里的
+`camera_first_frame` 同步标成“画面首帧未出，不是页面独占”。PC 普通首屏对旧 summary
+形状也会把 `first_frame_total_timeout` 翻成“读取首帧总超时”，避免现场继续排查浏览器独占。
+
+这个改动只修只读诊断和文案，不打开额外摄像头 reader，不启动雷达，不执行 Nav2，不发送
+manual/free-roam/keyboard/delivery/stop 或 `/cmd_vel`。真实摄像头仍需检查 USB、摄像头输入、
+格式、供电或替换 known-good UVC 后复测。
+
 ## 2026-06-27 15:05 camera health ready 收紧
 
 本轮继续只读复核真实上位机 camera 链路：

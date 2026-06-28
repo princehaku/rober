@@ -11365,6 +11365,35 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("not_in_use");
   });
 
+  it("shows first-frame total timeout as a non-exclusive camera source failure", async () => {
+    // live health 偶发只给 first_frame_total_timeout，没有 diagnosis；普通首屏仍要说清不是页面独占。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "first_frame_total_timeout";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
+    summaryFixture.readback_summary.camera.source_usage_summary = "none";
+    summaryFixture.readback_summary.camera.source_diagnosis_status = "not_loaded";
+    summaryFixture.readback_summary.camera.source_diagnosis_plain_hint = "not_loaded";
+    summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "first_frame_total_timeout";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("不是页面独占：USB Composite Device: DV20 USB 相机当前没人占用，但读取首帧总超时；检查 USB、摄像头输入、格式或供电。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("USB Composite Device: DV20 USB 没人占用但读取首帧总超时。");
+    expect(firstScreenText).not.toContain("first_frame_total_timeout");
+    expect(firstScreenText).not.toContain("/dev/video1");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+  });
+
   it("explains camera service owned no-frame failures without blaming another holder", async () => {
     // live health 里 camera service 自己会持有 /dev/video1；这不是外部独占，首屏要说清是读帧失败。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;

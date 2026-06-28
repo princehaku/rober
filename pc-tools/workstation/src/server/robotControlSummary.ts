@@ -1581,6 +1581,7 @@ function cameraSummaryFromReadbacks(
   const selectedName = cameraDisplayDeviceName(selectedCandidate.selected_name) || "摄像头";
   const sourceUsageLooksFree = ["not_in_use", ""].includes(asString(sourceUsage?.status, ""))
     || compactValueText(sourceUsage?.owner_count ?? "not_loaded") === "0";
+  const sourceNoFrameNotExclusive = Boolean(sourceFirstFrameFailedForSharedPreview && sourceUsageLooksFree);
   const probeBackendNoFrameNotExclusive = Boolean(
     firstFrameProbeOverlay?.backend_smoke_status === "backend_no_frame_observed"
     && firstFrameProbeOverlay.backend_frame_observed === "false"
@@ -1611,6 +1612,13 @@ function cameraSummaryFromReadbacks(
         plain_hint: overlaySourceDiagnosis.plain_hint,
         next_action: overlaySourceDiagnosis.next_action || "check_usb_camera_input_power_or_known_good_uvc",
         not_exclusive: overlaySourceDiagnosis.not_exclusive || "not_loaded",
+      }
+    : sourceNoFrameNotExclusive && !asRecord(sourceDiagnosis)
+      ? {
+        status: "uvc_no_frame_not_exclusive",
+        plain_hint: `不是页面独占：${selectedName} 当前没人占用，但 UVC 设备没有输出视频帧。`,
+        next_action: "check_usb_camera_input_power_or_known_good_uvc",
+        not_exclusive: true,
       }
     : {
       status: asString(sourceDiagnosis?.status, "not_loaded"),
@@ -4333,9 +4341,15 @@ function freeRoamRuntimeGatesFromReadbacks(
     const cameraHealthPayload = readbackById(readbacks, "camera_health")?.payload ?? null;
     const cameraStatus = readbackById(readbacks, "camera_health")?.status ?? summaryValueText(cameraHealthPayload, ["status"], "");
     const sourceReadiness = summaryValueText(cameraHealthPayload, ["source_readiness"], "");
+    const sourceFailureReason = summaryValueText(cameraHealthPayload, ["source_failure_reason"], "");
     const visibleContent = summaryValueText(cameraHealthPayload, ["visible_content_proven"], "");
     const sourceDiagnosis = asRecord(findFirstKey(cameraHealthPayload, ["source_diagnosis"]));
-    const notExclusive = sourceDiagnosis?.not_exclusive === true || asString(sourceDiagnosis?.status, "") === "uvc_no_frame_not_exclusive";
+    const sourceUsage = asRecord(findFirstKey(cameraHealthPayload, ["source_usage"]));
+    const usageLooksFree = ["not_in_use", ""].includes(asString(sourceUsage?.status, ""))
+      || compactValueText(sourceUsage?.owner_count ?? "not_loaded") === "0";
+    const notExclusive = sourceDiagnosis?.not_exclusive === true
+      || asString(sourceDiagnosis?.status, "") === "uvc_no_frame_not_exclusive"
+      || (usageLooksFree && CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(sourceFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number]));
     const ready = sourceReadiness === "first_frame_observed" || visibleContent === "true";
     const failed = cameraStatus === "source_first_frame_failed" || sourceReadiness === "first_frame_failed";
     gateRows.push({

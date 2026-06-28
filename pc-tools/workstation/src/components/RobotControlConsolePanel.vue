@@ -526,6 +526,9 @@ function cameraSourcePlainFailureHint(): string {
       if (camera?.source_failure_reason === "capture_read_call_timeout" || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout") {
         return `不是页面独占：${sourcePrefix}相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
       }
+      if (camera?.source_failure_reason === "first_frame_total_timeout" || camera?.last_offer_failure_reason === "first_frame_total_timeout") {
+        return `不是页面独占：${sourcePrefix}相机当前没人占用，但读取首帧总超时；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
+      }
       return `不是页面独占：${sourcePrefix}相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电${knownGoodUvcSuffix}。`;
     }
     return "相机没有出画面，检查摄像头/视频线。";
@@ -642,6 +645,9 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
     return `画面：${prefix}${deviceText} ${notExclusiveText}没有输出视频帧。`;
   }
   if (camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0") {
+    if (camera.source_failure_reason === "first_frame_total_timeout" || camera.last_offer_failure_reason === "first_frame_total_timeout") {
+      return `画面：${prefix}${selectedName} 没人占用但读取首帧总超时。`;
+    }
     return `画面：${prefix}${selectedName} 没人占用但没有输出视频帧。`;
   }
   if (camera.source_usage_status === "in_use_by_probe" || camera.source_usage_status === "in_use_by_other_process") {
