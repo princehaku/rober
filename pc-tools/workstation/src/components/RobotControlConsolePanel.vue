@@ -8192,6 +8192,11 @@ const canRefreshPlainKeyboardGate = computed(() => (
 
 const plainKeyboardNextActionSummary = computed(() => {
   // 键盘 gate 缺项可能较多；现场只需要知道当前先做哪个普通动作。
+  const boundaryNextAction = manualBoundary.value?.keyboard_control_next_action?.trim() || "";
+  const keyboardBoundaryNextText = (): string => {
+    const suffix = /[。！？.!?]$/.test(boundaryNextAction) ? "" : "。";
+    return `下一步：${boundaryNextAction}${suffix}`;
+  };
   if (canUseKeyboardControl.value) {
     if (!wheelClosureEvidence.value.ready) {
       const { left, right } = currentWheelReadback.value;
@@ -8208,6 +8213,9 @@ const plainKeyboardNextActionSummary = computed(() => {
   }
   if (navGoalExecutionPending.value) {
     return "下一步：等待行程执行返回，必要时按停止接管。";
+  }
+  if (boundaryNextAction) {
+    return keyboardBoundaryNextText();
   }
   if (!plainManualSafetyConfirmed.value) {
     return "下一步：勾选安全确认。";
