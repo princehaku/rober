@@ -1270,13 +1270,14 @@ function cameraOwnerFreeText(selectedName: string): string {
 function cameraSummaryPreviewGuidance(
   previewStatus: RobotControlSummaryResponse["readback_summary"]["camera"]["preview_status"],
   sourceFirstFrameFailed: boolean,
-  sourceDiagnosis: { plain_hint: string; next_action: string },
-): { plain_hint: string; next_action: string } {
+  sourceDiagnosis: { plain_hint: string; next_action: string; next_action_plain?: string },
+): { plain_hint: string; next_action: string; next_action_plain: string } {
   // summary 是普通首屏的主入口；这里把高级诊断压成“现在有没有画面”和“下一步”。
   if (previewStatus === "streaming") {
     return {
       plain_hint: "共享实时画面已有缓存帧，多个页面复用同一条上游流。",
       next_action: "continue_monitoring_shared_preview",
+      next_action_plain: "继续监看共享实时画面。",
     };
   }
   if (sourceFirstFrameFailed) {
@@ -1286,24 +1287,57 @@ function cameraSummaryPreviewGuidance(
     const nextAction = sourceDiagnosis.next_action && !["not_loaded", "none"].includes(sourceDiagnosis.next_action)
       ? sourceDiagnosis.next_action
       : "check_usb_camera_input_power_or_known_good_uvc";
-    return { plain_hint: plainHint, next_action: nextAction };
+    const nextActionPlain = sourceDiagnosis.next_action_plain && !["not_loaded", "none"].includes(sourceDiagnosis.next_action_plain)
+      ? sourceDiagnosis.next_action_plain
+      : cameraActionPlainText(nextAction);
+    return { plain_hint: plainHint, next_action: nextAction, next_action_plain: nextActionPlain };
   }
   if (["starting_local_peer", "connecting_offer_posted"].includes(previewStatus)) {
     return {
       plain_hint: "共享实时画面正在等待首帧；返回前不能把黑框当作画面可见。",
       next_action: "wait_or_run_first_frame_probe",
+      next_action_plain: "等待首帧，必要时点只读检查复测画面。",
     };
   }
   if (previewStatus === "start_failed" || previewStatus === "peer_cleanup_failed") {
     return {
       plain_hint: "共享实时画面打开或清理失败；先看失败原因，再重试共享预览。",
       next_action: "inspect_shared_preview_failure_and_retry",
+      next_action_plain: "查看共享预览失败原因后再重试。",
     };
   }
   return {
     plain_hint: "实时画面未打开；点击打开后才会接入共享预览。",
     next_action: "open_shared_preview_when_needed",
+    next_action_plain: "需要看画面时打开共享预览。",
   };
+}
+
+function cameraActionPlainText(action: string): string {
+  // 上车端和 PC relay 仍保留短 token；summary 额外给普通用户能直接执行的下一步。
+  const value = action.trim();
+  if (!value || value === "not_loaded" || value === "none") {
+    return "";
+  }
+  if (value === "check_usb_camera_input_power_or_known_good_uvc") {
+    return "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
+  }
+  if (value === "continue_monitoring_shared_preview") {
+    return "继续监看共享实时画面。";
+  }
+  if (value === "open_shared_preview_when_needed" || value === "open_shared_preview_or_run_first_frame_probe") {
+    return "需要看画面时打开共享预览，或点只读检查复测首帧。";
+  }
+  if (value === "wait_or_run_first_frame_probe") {
+    return "等待首帧，必要时点只读检查复测画面。";
+  }
+  if (value === "inspect_shared_preview_failure_and_retry") {
+    return "查看共享预览失败原因后再重试。";
+  }
+  if (value === "check_robot_api_base_url_and_retry") {
+    return "确认小车地址可访问后重试共享预览状态。";
+  }
+  return `${value.replace(/_/g, " ")}。`;
 }
 
 function cameraDeviceCandidateRole(candidate: JsonRecord | null): string {
@@ -1715,6 +1749,7 @@ function cameraSummaryFromReadbacks(
       status: "uvc_no_frame_not_exclusive",
       plain_hint: `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 OpenCV/V4L2 后端也没有取到视频帧。`,
       next_action: "check_usb_camera_input_power_or_known_good_uvc",
+      next_action_plain: cameraActionPlainText("check_usb_camera_input_power_or_known_good_uvc"),
       not_exclusive: true,
     }
     : overlayDiagnosisAvailable && !asRecord(sourceDiagnosis)
@@ -1722,6 +1757,7 @@ function cameraSummaryFromReadbacks(
         status: overlaySourceDiagnosis.status,
         plain_hint: overlaySourceDiagnosis.plain_hint,
         next_action: overlaySourceDiagnosis.next_action || "check_usb_camera_input_power_or_known_good_uvc",
+        next_action_plain: cameraActionPlainText(overlaySourceDiagnosis.next_action || "check_usb_camera_input_power_or_known_good_uvc"),
         not_exclusive: overlaySourceDiagnosis.not_exclusive || "not_loaded",
       }
     : sourceNoFrameNotExclusive && (
@@ -1733,12 +1769,14 @@ function cameraSummaryFromReadbacks(
         status: "uvc_no_frame_not_exclusive",
         plain_hint: `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`,
         next_action: "check_usb_camera_input_power_or_known_good_uvc",
+        next_action_plain: cameraActionPlainText("check_usb_camera_input_power_or_known_good_uvc"),
         not_exclusive: true,
       }
     : {
       status: asString(sourceDiagnosis?.status, "not_loaded"),
       plain_hint: cameraDiagnosisPlainHint(sourceDiagnosis?.plain_hint, selectedName) || "not_loaded",
       next_action: asString(sourceDiagnosis?.next_action, "not_loaded"),
+      next_action_plain: cameraActionPlainText(asString(sourceDiagnosis?.next_action, "not_loaded")),
       not_exclusive: sourceDiagnosis?.not_exclusive === undefined ? "not_loaded" : compactValueText(sourceDiagnosis.not_exclusive),
     };
   const sharedPreviewLastFailureReason = mjpegRelayOverlay?.last_failure_reason
@@ -1756,6 +1794,7 @@ function cameraSummaryFromReadbacks(
     preview_status: sharedPreviewStatus,
     preview_plain_hint: previewGuidance.plain_hint,
     preview_next_action: previewGuidance.next_action,
+    preview_next_action_plain: previewGuidance.next_action_plain,
     shared_preview_client_count: compactValueText(mjpegRelayOverlay?.client_count ?? 0),
     shared_preview_upstream_active: compactValueText(mjpegRelayOverlay?.upstream_active === true),
     shared_preview_content_type_loaded: compactValueText(mjpegRelayOverlay?.content_type_loaded === true),
@@ -1790,6 +1829,7 @@ function cameraSummaryFromReadbacks(
     source_diagnosis_status: derivedSourceDiagnosis.status,
     source_diagnosis_plain_hint: derivedSourceDiagnosis.plain_hint,
     source_diagnosis_next_action: derivedSourceDiagnosis.next_action,
+    source_diagnosis_next_action_plain: derivedSourceDiagnosis.next_action_plain,
     source_diagnosis_not_exclusive: compactValueText(derivedSourceDiagnosis.not_exclusive),
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
     source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
@@ -4421,6 +4461,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         preview_status: "idle_not_started",
         preview_plain_hint: "实时画面未打开；点击打开后才会接入共享预览。",
         preview_next_action: "open_shared_preview_when_needed",
+        preview_next_action_plain: "需要看画面时打开共享预览。",
         shared_preview_client_count: "0",
         shared_preview_upstream_active: "false",
         shared_preview_content_type_loaded: "false",
@@ -4446,6 +4487,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         source_diagnosis_status: "not_loaded",
         source_diagnosis_plain_hint: "not_loaded",
         source_diagnosis_next_action: "not_loaded",
+        source_diagnosis_next_action_plain: "",
         source_diagnosis_not_exclusive: "not_loaded",
         source_usage_status: "not_loaded",
         source_usage_owner_count: "not_loaded",

@@ -434,6 +434,14 @@ const fixtures: Record<string, unknown> = {
         selected_sibling_video_node_count: "1",
         source_readiness: "source_selected_not_probed",
         source_failure_reason: "none",
+        preview_plain_hint: "实时画面未打开；点击打开后才会接入共享预览。",
+        preview_next_action: "open_shared_preview_when_needed",
+        preview_next_action_plain: "需要看画面时打开共享预览。",
+        source_diagnosis_status: "not_loaded",
+        source_diagnosis_plain_hint: "not_loaded",
+        source_diagnosis_next_action: "not_loaded",
+        source_diagnosis_next_action_plain: "",
+        source_diagnosis_not_exclusive: "not_loaded",
         source_usage_status: "not_loaded",
         source_usage_owner_count: "not_loaded",
         source_usage_summary: "not_loaded",
@@ -1278,10 +1286,12 @@ const fixtures: Record<string, unknown> = {
     source_diagnosis_status: "not_loaded",
     source_diagnosis_plain_hint: "not_loaded",
     source_diagnosis_next_action: "not_loaded",
+    source_diagnosis_next_action_plain: "",
     source_diagnosis_not_exclusive: "not_loaded",
     preview_status: "streaming",
     preview_plain_hint: "共享实时画面已有缓存帧，多个页面复用同一条上游流。",
     preview_next_action: "continue_monitoring_shared_preview",
+    preview_next_action_plain: "继续监看共享实时画面。",
     failure_reason: "",
     blocked_reasons: [],
     ...PROOF_FLAGS,
@@ -19717,6 +19727,8 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.source_diagnosis_status = "uvc_no_frame_not_exclusive";
     summaryFixture.readback_summary.camera.source_diagnosis_plain_hint = "不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。";
     summaryFixture.readback_summary.camera.source_diagnosis_next_action = "check_usb_camera_input_power_or_known_good_uvc";
+    summaryFixture.readback_summary.camera.source_diagnosis_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
+    summaryFixture.readback_summary.camera.preview_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/camera/mjpeg/status": {
@@ -19790,6 +19802,8 @@ describe("App", () => {
     mjpegStatusFixture.source_diagnosis_status = "uvc_no_frame_not_exclusive";
     mjpegStatusFixture.source_diagnosis_plain_hint = "不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。";
     mjpegStatusFixture.source_diagnosis_next_action = "check_usb_camera_input_power_or_known_good_uvc";
+    mjpegStatusFixture.source_diagnosis_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
+    mjpegStatusFixture.preview_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
     mjpegStatusFixture.source_diagnosis_not_exclusive = "true";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -19801,7 +19815,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。 页面会低频自动重试。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-guidance"]').text()).toContain("下一步：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
+    expect(wrapper.find(".simple-user-console").text()).not.toContain("check_usb_camera_input_power_or_known_good_uvc");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });
@@ -20521,6 +20537,8 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
     summaryFixture.readback_summary.camera.source_diagnosis_plain_hint = "不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。";
     summaryFixture.readback_summary.camera.source_diagnosis_next_action = "check_usb_camera_input_power_or_known_good_uvc";
+    summaryFixture.readback_summary.camera.source_diagnosis_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
+    summaryFixture.readback_summary.camera.preview_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
     summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
     summaryFixture.readback_summary.camera.shared_preview_last_failure_reason = "camera_mjpeg_http_status_503";
     summaryFixture.readback_summary.camera.shared_preview_last_remote_http_status = "503";
@@ -20542,6 +20560,7 @@ describe("App", () => {
     mjpegStatusFixture.preview_status = "source_first_frame_failed";
     mjpegStatusFixture.preview_plain_hint = "不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。";
     mjpegStatusFixture.preview_next_action = "check_usb_camera_input_power_or_known_good_uvc";
+    mjpegStatusFixture.preview_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/camera/mjpeg/status": mjpegStatusFixture,

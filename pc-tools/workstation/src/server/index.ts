@@ -1420,10 +1420,12 @@ function cameraMjpegStatusResponse(
     source_diagnosis_status: diagnosisSource?.source_diagnosis_status ?? "not_loaded",
     source_diagnosis_plain_hint: diagnosisSource?.source_diagnosis_plain_hint ?? "not_loaded",
     source_diagnosis_next_action: diagnosisSource?.source_diagnosis_next_action ?? "not_loaded",
+    source_diagnosis_next_action_plain: cameraMjpegActionPlainText(diagnosisSource?.source_diagnosis_next_action ?? "not_loaded"),
     source_diagnosis_not_exclusive: diagnosisSource?.source_diagnosis_not_exclusive ?? "not_loaded",
     preview_status: previewStatus,
     preview_plain_hint: previewGuidance.plain_hint,
     preview_next_action: previewGuidance.next_action,
+    preview_next_action_plain: previewGuidance.next_action_plain,
     failure_reason: failureReason,
     blocked_reasons: failureReason ? [failureReason] : [],
     robot_control_executed: false,
@@ -1458,36 +1460,66 @@ function cameraMjpegPreviewStatus(
 function cameraMjpegPreviewGuidance(
   previewStatus: RobotControlCameraMjpegStatusResponse["preview_status"],
   diagnosisSource: CameraMjpegRelayLastFailure | null,
-): { plain_hint: string; next_action: string } {
+): { plain_hint: string; next_action: string; next_action_plain: string } {
   // 普通用户只需要看到“现在有没有实时画面”和下一步；完整诊断字段仍保留给高级区。
   if (previewStatus === "streaming") {
     return {
       plain_hint: "共享实时画面已有缓存帧，多个页面复用同一条上游流。",
       next_action: "continue_monitoring_shared_preview",
+      next_action_plain: "继续监看共享实时画面。",
     };
   }
   if (previewStatus === "source_first_frame_failed") {
+    const nextAction = diagnosisSource?.source_diagnosis_next_action ?? "check_usb_camera_input_power_or_known_good_uvc";
     return {
       plain_hint: diagnosisSource?.source_diagnosis_plain_hint ?? "不是页面独占：UVC 设备没有输出视频帧。",
-      next_action: diagnosisSource?.source_diagnosis_next_action ?? "check_usb_camera_input_power_or_known_good_uvc",
+      next_action: nextAction,
+      next_action_plain: cameraMjpegActionPlainText(nextAction),
     };
   }
   if (previewStatus === "waiting_for_first_frame") {
     return {
       plain_hint: "共享实时画面正在等待首帧；返回前不能把黑框当作画面可见。",
       next_action: "wait_or_run_first_frame_probe",
+      next_action_plain: "等待首帧，必要时点只读检查复测画面。",
     };
   }
   if (previewStatus === "blocked") {
     return {
       plain_hint: "共享实时画面状态读取被本机拒绝或失败。",
       next_action: "check_robot_api_base_url_and_retry",
+      next_action_plain: "确认小车地址可访问后重试共享预览状态。",
     };
   }
   return {
     plain_hint: "实时画面未打开；点击打开后才会接入共享预览。",
     next_action: "open_shared_preview_when_needed",
+    next_action_plain: "需要看画面时打开共享预览。",
   };
+}
+
+function cameraMjpegActionPlainText(action: string): string {
+  // MJPEG status 是很多页面共享的入口；除了 token，也给现场人员能直接执行的下一步。
+  const value = action.trim();
+  if (!value || value === "not_loaded" || value === "none") {
+    return "";
+  }
+  if (value === "check_usb_camera_input_power_or_known_good_uvc") {
+    return "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
+  }
+  if (value === "continue_monitoring_shared_preview") {
+    return "继续监看共享实时画面。";
+  }
+  if (value === "open_shared_preview_when_needed" || value === "open_shared_preview_or_run_first_frame_probe") {
+    return "需要看画面时打开共享预览，或点只读检查复测首帧。";
+  }
+  if (value === "wait_or_run_first_frame_probe") {
+    return "等待首帧，必要时点只读检查复测画面。";
+  }
+  if (value === "check_robot_api_base_url_and_retry") {
+    return "确认小车地址可访问后重试共享预览状态。";
+  }
+  return `${value.replace(/_/g, " ")}。`;
 }
 
 async function cameraSourceFirstFrameFailureForStatus(

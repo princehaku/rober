@@ -173,6 +173,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   同轮补充：若已读到多项状态且剩余失败全是 `fetch_timeout`（例如 `status/camera_health/camera_devices`
   一拍读取较慢），普通连接面板提示“部分读取较慢，下面按画面、雷达、地图和行程分项显示已读事实”，
   仍不隐藏高级诊断里的原始 timeout。
+- 2026-06-29 18:50 起，相机 source diagnosis 和共享预览 guidance 也新增白话下一步：
+  `preview_next_action_plain` / `source_diagnosis_next_action_plain` 会把 `check_usb_camera_input_power_or_known_good_uvc`
+  翻译为“检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占”。
+  普通首屏优先显示白话字段，旧响应才 fallback 到本地 token 翻译；这样后来进入的页面看到的是“共享预览不是独占，但 UVC 源无首帧”的现场动作，
+  不是内部状态名。该变化只消费只读 camera health 和 PC relay status，不打开额外相机、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，

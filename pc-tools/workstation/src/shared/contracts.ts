@@ -2391,6 +2391,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       preview_status: RobotControlPreviewStatus;
       preview_plain_hint: string;
       preview_next_action: string;
+      preview_next_action_plain: string;
       shared_preview_client_count: string;
       shared_preview_upstream_active: string;
       shared_preview_content_type_loaded: string;
@@ -2416,6 +2417,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       source_diagnosis_status: string;
       source_diagnosis_plain_hint: string;
       source_diagnosis_next_action: string;
+      source_diagnosis_next_action_plain: string;
       source_diagnosis_not_exclusive: string;
       source_usage_status: string;
       source_usage_owner_count: string;
@@ -3002,10 +3004,12 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   source_diagnosis_status: string;
   source_diagnosis_plain_hint: string;
   source_diagnosis_next_action: string;
+  source_diagnosis_next_action_plain: string;
   source_diagnosis_not_exclusive: string;
   preview_status: "idle_not_started" | "waiting_for_first_frame" | "streaming" | "source_first_frame_failed" | "blocked";
   preview_plain_hint: string;
   preview_next_action: string;
+  preview_next_action_plain: string;
   failure_reason: string;
   blocked_reasons: string[];
   robot_control_executed: false;

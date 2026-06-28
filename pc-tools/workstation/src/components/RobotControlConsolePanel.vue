@@ -1609,8 +1609,12 @@ function sharedPreviewLocalRetryText(): string {
     : "";
 }
 
-function plainCameraPreviewActionText(action: string | undefined): string {
+function plainCameraPreviewActionText(action: string | undefined, plainAction?: string): string {
   // 后端 action 是给接口对齐用的短 token；普通首屏要翻译成现场能直接执行的下一步。
+  const plain = plainAction?.trim() ?? "";
+  if (plain && !["not_loaded", "none"].includes(plain)) {
+    return `下一步：${plain.replace(/[。；\s]+$/g, "")}。`;
+  }
   const value = action?.trim() ?? "";
   if (!value || value === "not_loaded" || value === "none") {
     return "";
@@ -1633,8 +1637,9 @@ const plainCameraSharedPreviewGuidance = computed(() => {
   const summaryCamera = robotSummary.value?.readback_summary.camera;
   const hintSource = status?.proxy_status === "status_loaded" ? status.preview_plain_hint : summaryCamera?.preview_plain_hint;
   const actionSource = status?.proxy_status === "status_loaded" ? status.preview_next_action : summaryCamera?.preview_next_action;
+  const plainActionSource = status?.proxy_status === "status_loaded" ? status.preview_next_action_plain : summaryCamera?.preview_next_action_plain;
   const hint = hintSource?.trim();
-  const action = plainCameraPreviewActionText(actionSource);
+  const action = plainCameraPreviewActionText(actionSource, plainActionSource);
   if (!hint || hint === "not_loaded" || hint === "none") {
     return action ? `共享预览结论：${action}` : "";
   }
@@ -12834,6 +12839,8 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_plain_hint ?? "not_loaded" }}</dd>
             <dt>camera_source_diagnosis_next_action</dt>
             <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_next_action ?? "not_loaded" }}</dd>
+            <dt>camera_source_diagnosis_next_action_plain</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_next_action_plain ?? "not_loaded" }}</dd>
             <dt>camera_source_diagnosis_not_exclusive</dt>
             <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_not_exclusive ?? "not_loaded" }}</dd>
             <dt>camera_source_usage_status</dt>
