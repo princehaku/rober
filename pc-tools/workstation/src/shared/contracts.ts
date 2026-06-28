@@ -2013,6 +2013,8 @@ export interface RobotControlMapPreviewRadarOverlay {
   overlay_status: "loaded" | "partial" | "blocked" | "not_current" | "not_loaded";
   status: "loaded" | "partial" | "blocked" | "not_current" | "not_loaded";
   plain_hint: string;
+  wysiwyg_status_plain: string;
+  wysiwyg_next_action_plain: string;
   next_action: string;
   next_action_plain: string;
   scan_preview_points: RobotApiScanPreviewPoint[];
@@ -2986,6 +2988,8 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   radar_overlay?: RobotControlMapPreviewRadarOverlay;
   radar_overlay_status: RobotControlMapPreviewRadarOverlay["overlay_status"];
   radar_overlay_plain_hint: string;
+  radar_overlay_wysiwyg_status_plain: string;
+  radar_overlay_wysiwyg_next_action_plain: string;
   radar_overlay_next_action: string;
   radar_overlay_next_action_plain: string;
   radar_overlay_points: RobotApiScanPreviewPoint[];

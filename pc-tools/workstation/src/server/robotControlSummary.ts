@@ -2903,10 +2903,20 @@ function blockedMapLifecycleResponse(
 function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRadarOverlay {
   // 地图预览失败或 URL 不合法时也返回同形 overlay，前端不用猜测雷达层是否存在。
   const explanation = mapRadarOverlayExplanation("not_loaded", reason ? [reason] : [], 0, null);
+  const wysiwyg = radarOverlayWysiwygPlainSummary({
+    radarStatus: "not_loaded",
+    pointCount: "0",
+    sourcePointCount: "0",
+    frameId: "",
+    radarHint: explanation.plain_hint,
+    radarNextAction: explanation.next_action_plain,
+  });
   return {
     overlay_status: "not_loaded",
     status: "not_loaded",
     plain_hint: explanation.plain_hint,
+    wysiwyg_status_plain: wysiwyg.statusPlain,
+    wysiwyg_next_action_plain: wysiwyg.nextActionPlain,
     next_action: explanation.next_action,
     next_action_plain: explanation.next_action_plain,
     scan_preview_points: [],
@@ -2930,6 +2940,8 @@ function mapPreviewRadarOverlayAliases(
   RobotControlMapPreviewResponse,
   | "radar_overlay_status"
   | "radar_overlay_plain_hint"
+  | "radar_overlay_wysiwyg_status_plain"
+  | "radar_overlay_wysiwyg_next_action_plain"
   | "radar_overlay_next_action"
   | "radar_overlay_next_action_plain"
   | "radar_overlay_points"
@@ -2941,6 +2953,8 @@ function mapPreviewRadarOverlayAliases(
   return {
     radar_overlay_status: radarOverlay.overlay_status,
     radar_overlay_plain_hint: radarOverlay.plain_hint,
+    radar_overlay_wysiwyg_status_plain: radarOverlay.wysiwyg_status_plain,
+    radar_overlay_wysiwyg_next_action_plain: radarOverlay.wysiwyg_next_action_plain,
     radar_overlay_next_action: radarOverlay.next_action,
     radar_overlay_next_action_plain: radarOverlay.next_action_plain,
     radar_overlay_points: radarOverlay.points,
@@ -3065,11 +3079,21 @@ async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOver
   );
   const visibleRadarPoints = radarOverlayCurrent ? proofSummary.scan_preview_points : [];
   const visibleRadarPointCount = radarOverlayCurrent ? proofSummary.scan_preview_point_count : 0;
+  const wysiwyg = radarOverlayWysiwygPlainSummary({
+    radarStatus: overlayStatus,
+    pointCount: String(visibleRadarPointCount),
+    sourcePointCount: proofSummary.scan_preview_source_point_count === null ? "not_loaded" : String(proofSummary.scan_preview_source_point_count),
+    frameId: proofSummary.scan_preview_frame_id || "not_loaded",
+    radarHint: explanation.plain_hint,
+    radarNextAction: explanation.next_action_plain,
+  });
   const radarOverlay: RobotControlMapPreviewRadarOverlay = {
     overlay_status: overlayStatus,
     // 兼容普通调试脚本的一眼读法；旧字段仍保留为完整 contract。
     status: overlayStatus,
     plain_hint: explanation.plain_hint,
+    wysiwyg_status_plain: wysiwyg.statusPlain,
+    wysiwyg_next_action_plain: wysiwyg.nextActionPlain,
     next_action: explanation.next_action,
     next_action_plain: explanation.next_action_plain,
     scan_preview_points: visibleRadarPoints,

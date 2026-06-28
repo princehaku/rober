@@ -9433,6 +9433,8 @@ describe("workstation fail-closed API contracts", () => {
         image_data_url: string;
         radar_overlay_status: string;
         radar_overlay_plain_hint: string;
+        radar_overlay_wysiwyg_status_plain: string;
+        radar_overlay_wysiwyg_next_action_plain: string;
         radar_overlay_next_action: string;
         radar_overlay_next_action_plain: string;
         radar_overlay_count: number;
@@ -9442,6 +9444,8 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay: {
           overlay_status: string;
           plain_hint: string;
+          wysiwyg_status_plain: string;
+          wysiwyg_next_action_plain: string;
           next_action: string;
           next_action_plain: string;
           scan_preview_point_count: number;
@@ -9462,12 +9466,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.image_data_url).toContain("data:image/png;base64,");
       expect(body.radar_overlay.overlay_status).toBe("partial");
       expect(body.radar_overlay.plain_hint).toContain("小车地图位置未读到");
+      expect(body.radar_overlay.wysiwyg_status_plain).toBe("雷达材料已读到 65 个来源点，当前可用雷达点 1 个，但地图贴图未完整确认；已有雷达来源点 65 个，但小车地图位置未读到；当前不能把雷达点贴到地图坐标。");
+      expect(body.radar_overlay.wysiwyg_next_action_plain).toBe("先刷新定位，再刷新雷达扫描和地图画面。");
       expect(body.radar_overlay.next_action).toBe("refresh_localization_then_radar_scan");
       expect(body.radar_overlay.next_action_plain).toBe("先刷新定位，再刷新雷达扫描和地图画面。");
       expect(body.radar_overlay.scan_preview_point_count).toBe(1);
       expect(body.radar_overlay.scan_preview_points[0]).toEqual(expect.objectContaining({ x_m: 0.8, y_m: 0.1, frame_id: "laser_frame" }));
       expect(body.radar_overlay_status).toBe(body.radar_overlay.overlay_status);
       expect(body.radar_overlay_plain_hint).toBe(body.radar_overlay.plain_hint);
+      expect(body.radar_overlay_wysiwyg_status_plain).toBe(body.radar_overlay.wysiwyg_status_plain);
+      expect(body.radar_overlay_wysiwyg_next_action_plain).toBe(body.radar_overlay.wysiwyg_next_action_plain);
       expect(body.radar_overlay_next_action).toBe(body.radar_overlay.next_action);
       expect(body.radar_overlay_next_action_plain).toBe(body.radar_overlay.next_action_plain);
       expect(body.radar_overlay_count).toBe(body.radar_overlay.scan_preview_point_count);
@@ -9595,6 +9603,8 @@ describe("workstation fail-closed API contracts", () => {
         proxy_status: string;
         radar_overlay_status: string;
         radar_overlay_plain_hint: string;
+        radar_overlay_wysiwyg_status_plain: string;
+        radar_overlay_wysiwyg_next_action_plain: string;
         radar_overlay_next_action: string;
         radar_overlay_next_action_plain: string;
         radar_overlay_count: number;
@@ -9605,6 +9615,8 @@ describe("workstation fail-closed API contracts", () => {
           overlay_status: string;
           status: string;
           plain_hint: string;
+          wysiwyg_status_plain: string;
+          wysiwyg_next_action_plain: string;
           next_action: string;
           next_action_plain: string;
           scan_preview_point_count: number;
@@ -9627,6 +9639,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.status).toBe("not_current");
       expect(body.radar_overlay.plain_hint).toContain("已有雷达来源点 65 个");
       expect(body.radar_overlay.plain_hint).toContain("当前不贴到地图");
+      expect(body.radar_overlay.wysiwyg_status_plain).toBe("雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断。已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
+      expect(body.radar_overlay.wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
       expect(body.radar_overlay.next_action).toBe("start_radar_then_refresh_map_preview");
       expect(body.radar_overlay.next_action_plain).toBe("先启动雷达，再刷新地图画面。");
       expect(body.radar_overlay.scan_preview_point_count).toBe(0);
@@ -9639,6 +9653,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.frame_id).toBe("laser_frame");
       expect(body.radar_overlay_status).toBe(body.radar_overlay.overlay_status);
       expect(body.radar_overlay_plain_hint).toBe(body.radar_overlay.plain_hint);
+      expect(body.radar_overlay_wysiwyg_status_plain).toBe(body.radar_overlay.wysiwyg_status_plain);
+      expect(body.radar_overlay_wysiwyg_next_action_plain).toBe(body.radar_overlay.wysiwyg_next_action_plain);
       expect(body.radar_overlay_next_action).toBe(body.radar_overlay.next_action);
       expect(body.radar_overlay_next_action_plain).toBe(body.radar_overlay.next_action_plain);
       expect(body.radar_overlay_count).toBe(0);
