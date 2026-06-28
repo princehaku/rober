@@ -96,6 +96,7 @@ pc-tools/workstation/
   `/api/robot-control/nav2/goal/execution/latest`，不执行 Nav2 goal，不调用 manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-29 04:44 CST 起，`GET /api/robot-control/nav2/goal/execution/latest` 本身也直接返回 `execution_status_plain`、`next_action_plain`、`goal_execution_base_feedback_latest_raw_left/right`。这样现场脚本和 PC 行程结果重读不必再解析 `goal_execution_key_values` 或额外请求 summary，就能看到“上次路线为什么还不算完整执行”和 wheel raw L/R 证据；该入口仍是只读 latest 代理，不执行 Nav2 goal、不调用 manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-27 07:20 起，普通首屏共享 MJPEG 画面在浏览器 `<img>` 报错后会每 5 秒低频换一次只读 URL retry token，重新请求同一条 PC Node 共享 relay。这样摄像头服务后来恢复首帧时，已经打开页面的用户也能自动重新看到实时预览；该 retry 只访问 `/api/robot-control/camera/mjpeg` 和 status，不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 04:48 CST 起，`GET /api/robot-control/camera/mjpeg/status` 也直接返回顶层 `status/plain_hint`，分别对齐 `preview_status/preview_plain_hint`。这样现场脚本、普通页面和只读调试都能直接读到共享预览当前是否有画面、多个页面是否共享同一路上游流、看不到时是不是独占问题；该入口仍只读本机 MJPEG relay 状态，不新增相机 reader，不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 21:40 起，上述 `<img>` 报错后的 5 秒等待窗口也进入普通首屏所见即所得状态：画面卡片、当前事实和共享画面状态都会显示
   `本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占`，直到 retry token 换 URL 或真实帧 load。该状态只消费本页
   MJPEG `error/load` 事件和只读 status，不新增相机 reader，不调用 WebRTC offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。

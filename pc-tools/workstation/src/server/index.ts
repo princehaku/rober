@@ -1739,6 +1739,9 @@ function cameraMjpegStatusResponse(
     source_diagnosis_next_action: diagnosisSource?.source_diagnosis_next_action ?? "not_loaded",
     source_diagnosis_next_action_plain: cameraMjpegActionPlainText(diagnosisSource?.source_diagnosis_next_action ?? "not_loaded"),
     source_diagnosis_not_exclusive: diagnosisSource?.source_diagnosis_not_exclusive ?? "not_loaded",
+    // status/plain_hint 是 preview_* 的顶层别名，方便现场脚本直接读共享画面是否可见。
+    status: previewStatus,
+    plain_hint: previewGuidance.plain_hint,
     preview_status: previewStatus,
     preview_plain_hint: previewGuidance.plain_hint,
     preview_next_action: previewGuidance.next_action,

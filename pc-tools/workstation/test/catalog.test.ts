@@ -11537,6 +11537,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.shared_preview_exclusive_camera_claim).toBe(false);
       expect(statusBody.shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
       expect(statusBody.has_recent_frame).toBe(statusBody.cached_frame_loaded);
+      expect(statusBody.status).toBe(statusBody.preview_status);
+      expect(statusBody.plain_hint).toBe(statusBody.preview_plain_hint);
       expect(statusBody.preview_visible_status).toBe("visible_cached_frame");
       expect(statusBody.preview_visible_plain).toBe("当前有共享实时画面缓存帧；新页面复用同一条上游流。");
       expect(statusBody.camera_wysiwyg_status_plain).toBe("画面已可见：共享实时画面已有缓存帧，多个页面复用同一条上游流。");
@@ -11618,6 +11620,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_next_action).toBe("not_loaded");
       expect(statusBody.source_diagnosis_next_action_plain).toBe("");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("not_loaded");
+      expect(statusBody.status).toBe("idle_not_started");
+      expect(statusBody.plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
       expect(statusBody.preview_status).toBe("idle_not_started");
       expect(statusBody.preview_plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
       expect(statusBody.preview_next_action).toBe("auto_join_shared_mjpeg_preview");
