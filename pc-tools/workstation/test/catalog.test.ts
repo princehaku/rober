@@ -9088,6 +9088,7 @@ describe("workstation fail-closed API contracts", () => {
         robot_control_executed: boolean;
         safe_to_control: boolean;
         robot_pose: { x: number; y: number; yaw: number | null; frame_id: string; source: string } | null;
+        robot_pose_status: string;
         path_preview_points: Array<{ x: number; y: number; frame_id: string; source_index: number | null }>;
         path_preview_point_count: number;
         path_preview_source_point_count: number | null;
@@ -9120,6 +9121,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.robot_control_executed).toBe(false);
       expect(previewBody.safe_to_control).toBe(false);
       expect(previewBody.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
+      expect(previewBody.robot_pose_status).toBe("map_pose_observed");
       expect(previewBody.path_preview_points).toEqual([
         { x: 0.1, y: 0.2, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.2, frame_id: "map", source_index: 7 },
@@ -9318,6 +9320,7 @@ describe("workstation fail-closed API contracts", () => {
           blocked_reasons: string[];
           blocked_reason_labels: string[];
         };
+        robot_pose_status: string;
         robot_control_executed: boolean;
       };
 
@@ -9339,6 +9342,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay_source_count).toBe(65);
       expect(body.radar_overlay_frame_id).toBe("laser_frame");
       expect(body.radar_overlay.robot_pose).toBeNull();
+      expect(body.robot_pose_status).toBe("not_observed");
       expect(body.radar_overlay.blocked_reasons).toContain("robot_pose_missing_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reason_labels).toContain("小车地图位置未读到");
       expect(body.robot_control_executed).toBe(false);

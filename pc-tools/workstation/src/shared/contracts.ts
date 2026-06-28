@@ -2943,6 +2943,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   radar_overlay_source_count: number | null;
   radar_overlay_frame_id: string;
   robot_pose: RobotApiMapPose | null;
+  robot_pose_status: "map_pose_observed" | "not_observed";
   path_preview_points: RobotApiPathPreviewPoint[];
   path_preview_point_count: number;
   path_preview_source_point_count: number | null;
