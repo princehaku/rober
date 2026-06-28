@@ -9690,6 +9690,76 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("radar status proxy exposes top-level lifecycle and map-marker guidance", async () => {
+    // 独立雷达状态页只证明雷达本体；地图 marker 所见即所得仍要指向 map preview 的 overlay 计数。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/radar/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          evidence_ref: "o1-lidar-scan-proof-test",
+          latest_evidence_ref: "o1-lidar-scan-proof-test",
+          scan_status: "not_proven",
+          continuous_scan_status: "lifecycle_not_running",
+          continuity_window_status: "lifecycle_not_running",
+          continuous_window_observed: false,
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          lifecycle_status: "lifecycle_not_running",
+          latest_scan_proof_fresh: false,
+          scan_point_count: 81,
+          latest_scan_age_ms: 12000,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/radar/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        radar_key_values: Record<string, string>;
+        continuous_scan_status: string;
+        lifecycle_running: string;
+        lifecycle_state: string;
+        latest_scan_proof_fresh: string;
+        scan_point_count: string;
+        latest_scan_age_ms: string;
+        radar_status_plain: string;
+        radar_next_action_plain: string;
+        radar_overlay_point_count: string;
+        radar_overlay_source_point_count: string;
+        radar_overlay_wysiwyg_status_plain: string;
+        radar_overlay_wysiwyg_next_action_plain: string;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("status_loaded");
+      expect(body.radar_key_values.continuous_scan_status).toBe("lifecycle_not_running");
+      expect(body.continuous_scan_status).toBe("lifecycle_not_running");
+      expect(body.lifecycle_running).toBe("false");
+      expect(body.lifecycle_state).toBe("stopped");
+      expect(body.latest_scan_proof_fresh).toBe("false");
+      expect(body.scan_point_count).toBe("81");
+      expect(body.latest_scan_age_ms).toBe("12000");
+      expect(body.radar_status_plain).toBe("雷达未运行或扫描已停；旧雷达来源点不能当作当前地图 marker。");
+      expect(body.radar_next_action_plain).toBe("先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。");
+      expect(body.radar_overlay_point_count).toBe("not_loaded");
+      expect(body.radar_overlay_source_point_count).toBe("81");
+      expect(body.radar_overlay_wysiwyg_status_plain).toBe("雷达 status 不直接绘制地图 marker；雷达未运行或扫描已停；旧雷达来源点不能当作当前地图 marker。");
+      expect(body.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/radar/status"]);
+      expect(Object.keys(upstream.receivedBodies)).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation map lifecycle proxy forwards safe executed no-motion helper results", async () => {
     // executed=true 只代表受控 no-motion helper 跑过；只要无危险字段和远端 failure，代理应通过。
     const upstream = await listenRobotMapLifecycleApi({

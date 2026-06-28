@@ -2823,6 +2823,18 @@ export interface RobotControlRadarStatusResponse extends ProofFlags {
   remote_http_status: number | null;
   status: "blocked" | "loaded_fail_closed_summary";
   radar_key_values: Record<string, string>;
+  continuous_scan_status: string;
+  lifecycle_running: string;
+  lifecycle_state: string;
+  latest_scan_proof_fresh: string;
+  scan_point_count: string;
+  latest_scan_age_ms: string;
+  radar_status_plain: string;
+  radar_next_action_plain: string;
+  radar_overlay_point_count: string;
+  radar_overlay_source_point_count: string;
+  radar_overlay_wysiwyg_status_plain: string;
+  radar_overlay_wysiwyg_next_action_plain: string;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

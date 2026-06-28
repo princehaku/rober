@@ -782,6 +782,11 @@ const BASE_COMMAND_EVIDENCE_KEYS = [
   "latest_raw_packet_proof_status",
   "scan_once_observed",
   "scan_hz_observed",
+  "scan_point_count",
+  "scan_preview_point_count",
+  "scan_preview_source_point_count",
+  "latest_scan_age_ms",
+  "scan_age_ms",
   "raw_packet_once_observed",
   "tf_observed",
   "safe_to_control",
@@ -816,6 +821,58 @@ function compactKeyValues(payload: Record<string, unknown> | null): Record<strin
     return [[key, serialized.slice(0, 180)] as const];
   });
   return Object.fromEntries(entries);
+}
+
+function radarStatusPlainFields(
+  keyValues: Record<string, string>,
+): Pick<
+  RobotControlRadarStatusResponse,
+  | "continuous_scan_status"
+  | "lifecycle_running"
+  | "lifecycle_state"
+  | "latest_scan_proof_fresh"
+  | "scan_point_count"
+  | "latest_scan_age_ms"
+  | "radar_status_plain"
+  | "radar_next_action_plain"
+  | "radar_overlay_point_count"
+  | "radar_overlay_source_point_count"
+  | "radar_overlay_wysiwyg_status_plain"
+  | "radar_overlay_wysiwyg_next_action_plain"
+> {
+  // radar/status 只证明雷达本体；地图 marker 的所见即所得必须以 map preview 同轮 overlay 为准。
+  const continuous = keyValues.continuous_scan_status || "not_loaded";
+  const running = keyValues.lifecycle_running || "not_loaded";
+  const lifecycleState = keyValues.lifecycle_state || "not_loaded";
+  const fresh = keyValues.latest_scan_proof_fresh || "not_loaded";
+  const scanPointCount = keyValues.scan_point_count || keyValues.scan_preview_point_count || "not_loaded";
+  const scanAgeMs = keyValues.latest_scan_age_ms || keyValues.scan_age_ms || "not_loaded";
+  const radarReady = running === "true" && fresh === "true";
+  const radarStopped = running === "false" || lifecycleState === "stopped" || continuous === "lifecycle_not_running";
+  const radarStatusPlain = radarReady
+    ? "雷达已运行，最新扫描 fresh；地图上的 marker 仍以地图预览同轮 overlay 为准。"
+    : radarStopped
+      ? "雷达未运行或扫描已停；旧雷达来源点不能当作当前地图 marker。"
+      : "雷达状态未完全 ready；需要确认 lifecycle running 和最新扫描 fresh。";
+  const radarNextActionPlain = radarReady
+    ? "刷新地图画面，读取 map preview 的 radar_overlay_point_count 确认地图上实际 marker 数。"
+    : radarStopped
+      ? "先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。"
+      : "先刷新雷达状态或 scan proof，ready 后再刷新地图画面确认 marker。";
+  return {
+    continuous_scan_status: continuous,
+    lifecycle_running: running,
+    lifecycle_state: lifecycleState,
+    latest_scan_proof_fresh: fresh,
+    scan_point_count: scanPointCount,
+    latest_scan_age_ms: scanAgeMs,
+    radar_status_plain: radarStatusPlain,
+    radar_next_action_plain: radarNextActionPlain,
+    radar_overlay_point_count: "not_loaded",
+    radar_overlay_source_point_count: scanPointCount,
+    radar_overlay_wysiwyg_status_plain: `雷达 status 不直接绘制地图 marker；${radarStatusPlain}`,
+    radar_overlay_wysiwyg_next_action_plain: radarNextActionPlain,
+  };
 }
 
 function evidenceReadbackSummary(
@@ -2631,6 +2688,7 @@ export function createWorkstationApp(): express.Express {
       remote_http_status: null,
       status: "blocked",
       radar_key_values: {},
+      ...radarStatusPlainFields({}),
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
@@ -2646,12 +2704,14 @@ export function createWorkstationApp(): express.Express {
       });
       const remotePayload = asRecord(await remote.json().catch(() => null));
       const dangerous = scanDangerousTrueFields(remotePayload);
+      const radarKeyValues = compactKeyValues(remotePayload);
       const responseBody: RobotControlRadarStatusResponse = {
         ...fallbackBase,
         proxy_status: remote.ok && remotePayload && dangerous.length === 0 ? "status_loaded" : "status_failed",
         remote_http_status: remote.status,
         status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
-        radar_key_values: compactKeyValues(remotePayload),
+        radar_key_values: radarKeyValues,
+        ...radarStatusPlainFields(radarKeyValues),
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `radar_status_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`radar_status_http_status_${remote.status}`]),
