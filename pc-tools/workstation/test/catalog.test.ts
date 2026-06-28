@@ -4380,6 +4380,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("true");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("wheel_lr_nonzero_proven");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("本轮路线和 wheel raw L/R 已证明，继续送达确认");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("本轮路线和执行窗口轮速 L/R 已证明，继续送达确认");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("下次 ros");
     } finally {
       await robotApi.close();
@@ -4683,6 +4684,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller；当前图上路线未就绪，先生成图上路线，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或控制服务；当前图上路线未就绪，先生成图上路线，再勾选行程前安全确认后用 ROS 模式重跑并复验执行窗口轮速 L/R");
     } finally {
       await robotApi.close();
     }

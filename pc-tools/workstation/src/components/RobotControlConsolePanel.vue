@@ -5961,6 +5961,8 @@ function plainNav2UserFacingText(text: string): string {
     .replace(/Nav2 planner 和 Nav2 controller/g, "规划服务和控制服务")
     .replace(/Nav2 planner/g, "规划服务")
     .replace(/Nav2 controller/g, "控制服务")
+    .replace(/或 controller/g, "或控制服务")
+    .replace(/\bcontroller\b/g, "控制服务")
     .replace(/执行窗口 wheel raw L\/R/g, "执行窗口轮速 L/R")
     .replace(/同窗口 wheel raw L\/R/g, "同窗口轮速 L/R")
     .replace(/但 wheel raw L\/R/g, "但执行窗口轮速 L/R")
@@ -6007,7 +6009,7 @@ function nav2MapControlUnprovenText(values: Record<string, string> | undefined):
 function nav2ManagedRuntimeAutostartText(): string {
   // 后端已经把“执行时自动启动 runtime”纳入 nav2_goal_ready 时，普通界面不能再把 lifecycle stopped 说成额外预检。
   const boundary = robotSummary.value?.safe_command_boundary;
-  const action = boundary?.nav2_goal_next_action?.trim() ?? "";
+  const action = `${boundary?.nav2_goal_next_action_plain ?? ""} ${boundary?.nav2_goal_next_action ?? ""}`.trim();
   if (boundary?.nav2_goal_ready === true && /执行时会自动启动自动驾驶\s*runtime/i.test(action)) {
     return "执行时会自动启动自动驾驶 runtime";
   }
@@ -6053,15 +6055,25 @@ function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): strin
     return "";
   }
   const action = boundary.nav2_goal_next_action?.trim();
-  if (!action || action === "not_loaded") {
+  const plainAction = boundary.nav2_goal_next_action_plain?.trim() ?? "";
+  if ((!action || action === "not_loaded") && !plainAction) {
     return "";
   }
+  const staleDefaultPlainAction = plainAction && action && action !== plainAction
+    && /先生成图上路线/.test(plainAction)
+    && /(重跑|执行时会自动启动|重跑前先|当前图上路线未就绪)/.test(action);
+  const actionSource = staleDefaultPlainAction
+    ? plainNav2UserFacingText(action)
+    : plainAction || plainNav2UserFacingText(action || "");
   if (scope === "full") {
-    return plainNav2UserFacingText(action);
+    return actionSource;
   }
-  const parts = action.split("；").map((part) => part.trim()).filter(Boolean);
+  const parts = actionSource.split("；").map((part) => part.trim()).filter(Boolean);
   const actionable = [...parts].reverse().find((part) => /重跑|执行图上路线|重新执行/.test(part));
-  return plainNav2UserFacingText(actionable || parts[parts.length - 1] || action);
+  // 短行动句用于按钮/状态条，保留“用 ROS 重跑”这种现场口径，不把模式说明塞进控件文字。
+  return (actionable || parts[parts.length - 1] || actionSource)
+    .replace(/用\s+(ROS|PWM|SPEED)\s+模式重跑/g, "用 $1 重跑")
+    .replace(/用\s+(ROS|PWM|SPEED)\s+模式执行/g, "用 $1 执行");
 }
 
 function nav2NextExecutionRerunText(values: Record<string, string> | undefined): string {

@@ -2594,6 +2594,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     nav2_goal_blockers: string[];
     nav2_goal_wheel_feedback_status: string;
     nav2_goal_next_action: string;
+    nav2_goal_next_action_plain: string;
     nav2_goal_execution_mode_label: string;
     map_start: "map start locked";
     radar_start: "radar start locked";

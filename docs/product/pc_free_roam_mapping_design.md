@@ -178,6 +178,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   翻译为“检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占”。
   普通首屏优先显示白话字段，旧响应才 fallback 到本地 token 翻译；这样后来进入的页面看到的是“共享预览不是独占，但 UVC 源无首帧”的现场动作，
   不是内部状态名。该变化只消费只读 camera health 和 PC relay status，不打开额外相机、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 19:10 起，Nav2 行程边界新增 `nav2_goal_next_action_plain`：
+  当 summary 已知道旧行程 action 成功但执行窗口 `wheel raw L/R=0/0` 未闭环时，普通字段会显示
+  “路线结果成功但执行窗口轮速 L/R 未非零，勾安全确认后用 ROS 模式重跑并复验执行窗口轮速 L/R”。
+  原始 `nav2_goal_next_action` 继续保留给工程诊断；普通首屏优先消费白话字段，避免把 `wheel raw`、`controller`
+  或模式 token 当成普通用户说明。该变化只修正只读 summary 和 UI 文案，不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，

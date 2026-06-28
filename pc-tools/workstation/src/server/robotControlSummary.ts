@@ -4940,7 +4940,7 @@ function freeRoamAutonomyNextAction(
 
 function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
-  "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_execution_mode_label"
+  "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_next_action_plain" | "nav2_goal_execution_mode_label"
 > {
   // summary 只把路线读数作为硬条件；小车 map 位姿是 WYSIWYG 建议，不再阻塞最小发车确认。
   const blockers = [
@@ -4955,8 +4955,29 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
     nav2_goal_blockers: blockers,
     nav2_goal_wheel_feedback_status: "not_loaded",
     nav2_goal_next_action: ready ? `勾选行程前安全确认后执行图上路线${poseHint}` : "先生成图上路线",
+    nav2_goal_next_action_plain: nav2GoalNextActionPlainText(ready ? `勾选行程前安全确认后执行图上路线${poseHint}` : "先生成图上路线"),
     nav2_goal_execution_mode_label: "not_loaded",
   };
+}
+
+function nav2GoalNextActionPlainText(action: string): string {
+  // 普通用户只需要知道下一步怎么做；保留原 token/术语字段给高级诊断。
+  return action
+    .replace(/Nav2 planner 和 Nav2 controller/g, "规划服务和控制服务")
+    .replace(/Nav2 planner/g, "规划服务")
+    .replace(/Nav2 controller/g, "控制服务")
+    .replace(/或 controller/g, "或控制服务")
+    .replace(/\bcontroller\b/g, "控制服务")
+    .replace(/路线 action 成功/g, "路线结果成功")
+    .replace(/wheel raw L\/R/g, "执行窗口轮速 L/R")
+    .replace(/\bPWM\b/g, "PWM 模式")
+    .replace(/\bROS\b/g, "ROS 模式")
+    .replace(/\bSPEED\b/g, "SPEED 模式")
+    .replace(/和 执行窗口/g, "和执行窗口")
+    .replace(/但 执行窗口/g, "但执行窗口")
+    .replace(/复验 执行窗口/g, "复验执行窗口")
+    .replace(/模式 重跑/g, "模式重跑")
+    .replace(/\sruntime\b/gi, " runtime");
 }
 
 function nav2GoalBoundaryGuidance(
@@ -4964,7 +4985,7 @@ function nav2GoalBoundaryGuidance(
   nav2: RobotControlSummaryResponse["readback_summary"]["nav2"] | null = null,
 ): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
-  "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_execution_mode_label"
+  "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_next_action_plain" | "nav2_goal_execution_mode_label"
 > {
   // 这组字段是给普通 PC 首屏/API 的短口径：路线能不能点、上次执行为什么不算完整、下一次应该怎么复验。
   const base = nav2GoalBoundaryFromProof(proof);
@@ -5032,10 +5053,12 @@ function nav2GoalBoundaryGuidance(
       ? `下次 ${nextMode}`
       : !["", "not_loaded"].includes(currentMode) ? `上次 ${currentMode}` : "not_loaded";
   if (proven || wheelProven) {
+    const nextAction = "本轮路线和 wheel raw L/R 已证明，继续送达确认";
     return {
       ...base,
       nav2_goal_wheel_feedback_status: "wheel_lr_nonzero_proven",
-      nav2_goal_next_action: "本轮路线和 wheel raw L/R 已证明，继续送达确认",
+      nav2_goal_next_action: nextAction,
+      nav2_goal_next_action_plain: nav2GoalNextActionPlainText(nextAction),
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
@@ -5054,6 +5077,7 @@ function nav2GoalBoundaryGuidance(
       : inactiveServiceNames.length
         ? `当前自动驾驶服务未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
         : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线${managedRuntimeHint}`;
+    const nextAction = `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${routePrepActions.length ? "" : serviceInactiveSuffix}；${rerunNextAction}`;
     return {
       ...base,
       nav2_goal_ready: nav2ServiceInactive ? false : base.nav2_goal_ready,
@@ -5066,7 +5090,8 @@ function nav2GoalBoundaryGuidance(
           : controllerBlocksGoal && base.nav2_goal_ready ? "控制服务未就绪" : base.nav2_goal_label,
       nav2_goal_blockers: nav2ServiceBlockers,
       nav2_goal_wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
-      nav2_goal_next_action: `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${routePrepActions.length ? "" : serviceInactiveSuffix}；${rerunNextAction}`,
+      nav2_goal_next_action: nextAction,
+      nav2_goal_next_action_plain: nav2GoalNextActionPlainText(nextAction),
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
@@ -5086,25 +5111,30 @@ function nav2GoalBoundaryGuidance(
       nav2_goal_blockers: nav2ServiceBlockers,
       nav2_goal_wheel_feedback_status: "awaiting_route_execution",
       nav2_goal_next_action: serviceNextAction,
+      nav2_goal_next_action_plain: nav2GoalNextActionPlainText(serviceNextAction),
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
   if (base.nav2_goal_ready) {
     const poseHint = proof?.robot_pose ? "" : "；小车位置未显示时建议先重新定位或刷新地图";
+    const nextAction = `勾选行程前安全确认后执行图上路线${managedRuntimeHint}，并在同窗口复验 wheel raw L/R${poseHint}`;
     return {
       ...base,
       nav2_goal_wheel_feedback_status: "awaiting_route_execution",
-      nav2_goal_next_action: `勾选行程前安全确认后执行图上路线${managedRuntimeHint}，并在同窗口复验 wheel raw L/R${poseHint}`,
+      nav2_goal_next_action: nextAction,
+      nav2_goal_next_action_plain: nav2GoalNextActionPlainText(nextAction),
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
+  const fallbackNextAction = inactiveServiceNames.length
+    ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再生成图上路线`
+    : base.nav2_goal_next_action;
   return {
     ...base,
     nav2_goal_label: nav2StackBlocksGoal ? "自动驾驶服务未启动" : base.nav2_goal_label,
     nav2_goal_blockers: nav2ServiceBlockers,
-    nav2_goal_next_action: inactiveServiceNames.length
-      ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再生成图上路线`
-      : base.nav2_goal_next_action,
+    nav2_goal_next_action: fallbackNextAction,
+    nav2_goal_next_action_plain: nav2GoalNextActionPlainText(fallbackNextAction),
     nav2_goal_execution_mode_label: modeLabel,
   };
 }

@@ -594,6 +594,7 @@ const fixtures: Record<string, unknown> = {
       nav2_goal_blockers: ["path_generation_not_observed", "path_point_count_not_positive", "robot_map_pose_not_observed"],
       nav2_goal_wheel_feedback_status: "not_loaded",
       nav2_goal_next_action: "先生成图上路线并读到小车地图位置",
+      nav2_goal_next_action_plain: "先生成图上路线并读到小车地图位置",
       nav2_goal_execution_mode_label: "not_loaded",
       map_start: "map start locked",
       radar_start: "radar start locked",

@@ -103,6 +103,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 18:50 CST 起，相机共享预览的下一步也同时返回 token 和普通用户白话：Robot Control summary 与 `/api/robot-control/camera/mjpeg/status` 新增 `preview_next_action_plain` 和 `source_diagnosis_next_action_plain`。当 live 状态是 `uvc_no_frame_not_exclusive` 时，普通首屏和只读接口直接显示“检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占”，不再把 `check_usb_camera_input_power_or_known_good_uvc` 暴露给普通用户。该变化只读 camera health/relay status，不新建额外 capture、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 19:10 CST 起，自动驾驶行程边界也新增白话下一步：`safe_command_boundary.nav2_goal_next_action_plain` 会把 `wheel raw L/R`、`ROS/PWM/SPEED` 和 `controller` 等工程词翻译成“执行窗口轮速 L/R”“ROS 模式”和“控制服务”。live 上旧行程 action 成功但 L/R 仍为 `0/0` 时，summary 会同时保留工程字段和普通字段，普通首屏优先用普通字段说明下一步是勾安全确认后重跑图上路线，并确认同窗口轮速非零；相机和雷达仍不会被写成自动驾驶阻塞。该变化只修正只读 summary/UI 文案，不执行 Nav2 goal、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、
