@@ -9146,6 +9146,8 @@ function makeNavGoalExecutionLatestFallback(reason: string): RobotControlNavGoal
     remote_http_status: null,
     status: "blocked",
     goal_execution_key_values: {},
+    latest_key_values: {},
+    plain_hint: "图上路线还未准备完成。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行。",
     execution_status_plain: "图上路线还未准备完成。",
     next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
     route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",

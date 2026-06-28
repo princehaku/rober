@@ -4004,6 +4004,7 @@ describe("workstation fail-closed API contracts", () => {
       });
       expect(summary.readback_summary.nav2).toMatchObject({
         status: expect.any(String),
+        plain_hint: expect.stringContaining("图上路线还未准备完成。"),
         nav2_stack_running: expect.any(String),
         nav2_stack_lifecycle_state: expect.any(String),
         planner_server_active: "false",
@@ -4035,6 +4036,8 @@ describe("workstation fail-closed API contracts", () => {
         goal_execution_generated_at_ms: expect.any(String),
         goal_execution_response_generated_at_ms: expect.any(String),
       });
+      expect(summary.readback_summary.nav2.plain_hint).toContain("当前根因：planner_server_not_active、地图未被自动驾驶服务消费、路径生成服务不可用、路径生成还没真正开始。");
+      expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行。");
       expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
       expect(summary.readback_summary.camera.preview_plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
       expect(summary.readback_summary.camera.preview_next_action).toBe("auto_join_shared_mjpeg_preview");
@@ -4445,6 +4448,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_hil_pass).toBe("true");
       expect(summary.readback_summary.nav2.execution_status_plain).toBe("本轮路线执行和执行窗口轮速 L/R 已证明。");
       expect(summary.readback_summary.nav2.next_action_plain).toBe("继续送达确认；送达确认不会发车。");
+      expect(summary.readback_summary.nav2.plain_hint).toBe("本轮路线执行和执行窗口轮速 L/R 已证明。下一步：继续送达确认；送达确认不会发车。");
       expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("完整路线执行已证明；同窗口 wheel raw L/R 已非零。");
       expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("下一步是送达确认；送达确认不会发车。");
       expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("ros");
@@ -6045,6 +6049,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.next_action_plain).toContain("用 ROS 模式重跑图上路线");
+      expect(summary.readback_summary.nav2.plain_hint).toContain("执行窗口轮速 L/R=0/0 未非零");
+      expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：勾选行程前安全确认后用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线 action 成功，但同窗口 wheel raw L/R=0/0 未非零。");
       expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");

@@ -548,6 +548,7 @@ const fixtures: Record<string, unknown> = {
       },
       nav2: {
         status: "nav2_not_proven",
+        plain_hint: "图上路线还未准备完成。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行。",
         nav2_status: "nav2_not_proven",
         planner_server_active: "false",
         map_consumed: "not_loaded",

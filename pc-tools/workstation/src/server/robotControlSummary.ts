@@ -4683,6 +4683,7 @@ function nav2SummaryFromReadbacks(
   });
   return {
     status: summaryStatus,
+    plain_hint: nav2PlainHint(readbackPlain.execution_status_plain, readbackPlain.next_action_plain),
     nav2_status: nav2Status?.status ?? "not_loaded",
     nav2_stack_running: summaryValueText(nav2StatusPayload, ["lifecycle_running"], summaryValueText(lifecycleManager, ["running"])),
     nav2_stack_lifecycle_state: summaryValueText(nav2StatusPayload, ["lifecycle_state"], summaryValueText(lifecycleManager, ["state"])),
@@ -4738,6 +4739,22 @@ function nav2SummaryFromReadbacks(
     goal_execution_generated_at_ms: summaryValueText(goalResultPayload, ["generated_at_ms", "nav2_generated_at_ms"]),
     goal_execution_response_generated_at_ms: summaryValueText(goalPayload, ["response_generated_at_ms", "generated_at_ms"]),
   };
+}
+
+function nav2PlainHint(executionStatusPlain: string, nextActionPlain: string): string {
+  // 外部脚本常只读一个字段；这里把“当前证明状态”和“下一步”压成一句，但不改变任何发车门禁。
+  const status = executionStatusPlain.trim().replace(/[。；\s]+$/g, "");
+  const next = nextActionPlain.trim().replace(/^下一步[:：]?\s*/, "").replace(/[。；\s]+$/g, "");
+  if (!status && !next) {
+    return "自动驾驶事实未读到；先刷新 Robot Control summary。";
+  }
+  if (!next) {
+    return status;
+  }
+  if (!status) {
+    return `下一步：${next}。`;
+  }
+  return `${status}。下一步：${next}。`;
 }
 
 function nav2RouteExecutionPlainSummary(args: {
@@ -5242,6 +5259,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       },
       nav2: {
         status: "not_loaded",
+        plain_hint: "图上路线还未准备完成。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行。",
         nav2_status: "not_loaded",
         nav2_stack_running: "not_loaded",
         nav2_stack_lifecycle_state: "not_loaded",

@@ -2577,6 +2577,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     };
     nav2: {
       status: string;
+      plain_hint: string;
       nav2_status: string;
       nav2_stack_running: string;
       nav2_stack_lifecycle_state: string;
