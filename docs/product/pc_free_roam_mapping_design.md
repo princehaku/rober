@@ -212,6 +212,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-29 21:50 起，`/api/robot-control/camera/mjpeg/status` 顶层补齐与 summary 对齐的共享预览 alias：
   `shared_preview_client_count`、`shared_preview_upstream_active`、`shared_preview_content_type_loaded`、`shared_preview_cached_frame_loaded`、`shared_preview_cached_frame_age_ms`、`shared_preview_shared_capture`、`shared_preview_exclusive_camera_claim`、`shared_preview_contract` 和最近失败字段。只接相机状态接口的脚本也能直接确认多个页面共享同一条上游流、不是浏览器独占。
   该变化只补本机 relay 只读状态，不新开 camera capture、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 22:10 起，键盘连续手控 summary 增加 `keyboard_hold_to_move_plain`、`keyboard_stop_triggers_plain` 和
+  `keyboard_pulse_timing_plain`：summary 主链路直接说明必须按住才移动、只启用键盘不会发车、松开/失焦/切页/换方向/点停止都会停，以及当前短脉冲节奏。
+  该变化只补只读安全边界说明，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，

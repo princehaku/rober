@@ -2611,6 +2611,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_jog_interval_ms: number;
     keyboard_jog_duration_ms: number;
     keyboard_stop_triggers: string[];
+    keyboard_hold_to_move_plain: string;
+    keyboard_stop_triggers_plain: string;
+    keyboard_pulse_timing_plain: string;
     keyboard_reuses_manual_gate: true;
     keyboard_control_start_ready: boolean;
     keyboard_control_status: "start_ready" | "armed" | "active" | "blocked";

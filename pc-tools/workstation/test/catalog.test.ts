@@ -4060,6 +4060,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_jog_interval_ms).toBe(260);
       expect(summary.safe_command_boundary.keyboard_jog_duration_ms).toBe(240);
       expect(summary.safe_command_boundary.keyboard_stop_triggers).toContain("window_blur");
+      expect(summary.safe_command_boundary.keyboard_hold_to_move_plain).toBe("必须按住 W/A/S/D 或方向键才会连续低速移动；只启用键盘但不按方向不会发车。");
+      expect(summary.safe_command_boundary.keyboard_stop_triggers_plain).toBe("松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。");
+      expect(summary.safe_command_boundary.keyboard_pulse_timing_plain).toBe("按住时约每 0.26 秒发送一次 0.24 秒低速脉冲。");
       expect(summary.safe_command_boundary.keyboard_reuses_manual_gate).toBe(true);
       expect(summary.safe_command_boundary.keyboard_control_start_ready).toBe(true);
       expect(summary.safe_command_boundary.keyboard_control_status).toBe("start_ready");
