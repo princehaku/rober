@@ -1735,6 +1735,9 @@ const plainCameraSharedPreviewReadback = computed(() => {
   if (!camera) {
     return "";
   }
+  if (cameraSummaryPlainHintAligned(camera)) {
+    return "";
+  }
   const access = (camera.shared_preview_access_plain ?? "").trim();
   const realtime = (camera.shared_preview_realtime_plain ?? "").trim();
   const parts = [access, realtime]
@@ -1749,25 +1752,48 @@ const plainCameraWysiwygReadback = computed(() => {
   if (!camera) {
     return "";
   }
+  if (cameraSummaryPlainHintAligned(camera)) {
+    return `画面事实：${normalizeCameraReadbackPlain(camera.plain_hint)}。`;
+  }
   const status = (camera.camera_wysiwyg_status_plain ?? "").trim();
   if (!status || ["not_loaded", "none"].includes(status)) {
     return "";
   }
   const nextAction = (camera.camera_wysiwyg_next_action_plain ?? "").trim();
-  const cleanStatus = status
-    .replace(/[。；\s]+$/g, "")
-    .replace(/画面已可见/g, "已经看到画面")
-    .replace(/画面未可见/g, "画面未显示")
-    .replace(/画面可见/g, "已经看到画面");
-  const cleanNext = nextAction
-    .replace(/[。；\s]+$/g, "")
-    .replace(/画面已可见/g, "已经看到画面")
-    .replace(/画面未可见/g, "画面未显示")
-    .replace(/画面可见/g, "已经看到画面");
+  const cleanStatus = normalizeCameraReadbackPlain(status);
+  const cleanNext = normalizeCameraReadbackPlain(nextAction);
   return cleanNext && !["not_loaded", "none"].includes(cleanNext)
     ? `画面事实：${cleanStatus}。下一步：${cleanNext}。`
     : `画面事实：${cleanStatus}。`;
 });
+
+function normalizeCameraReadbackPlain(value: string | undefined): string {
+  // 相机 readback 给普通用户显示时统一换成“显示/看到”的口径，避免高级诊断里的“可见”混进首屏。
+  return (value ?? "")
+    .trim()
+    .replace(/画面已可见/g, "已经看到画面")
+    .replace(/画面未可见/g, "画面未显示")
+    .replace(/画面可见/g, "已经看到画面")
+    .replace(/不当作画面可见/g, "不当作已经看到画面")
+    .replace(/[。；\s]+$/g, "");
+}
+
+function cameraReadbackStatusCore(value: string | undefined): string {
+  // summary plain_hint 已经把动作放到“下一步”；对齐判断要先去掉旧 status 里偶尔混入的动作尾巴。
+  return normalizeCameraReadbackPlain(value)
+    .replace(/；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测$/g, "")
+    .replace(/；共享预览不是页面独占$/g, "");
+}
+
+function cameraSummaryPlainHintAligned(camera: RobotControlSummaryResponse["readback_summary"]["camera"]): boolean {
+  // 生产 summary 会同步生成 plain_hint；测试里若只临时改 camera_wysiwyg 字段，则回退旧拼接，避免展示旧总事实。
+  const plainHint = loadedAliasText(camera.plain_hint);
+  if (!plainHint) {
+    return false;
+  }
+  const statusCore = cameraReadbackStatusCore(camera.camera_wysiwyg_status_plain);
+  return !statusCore || normalizeCameraReadbackPlain(plainHint).includes(statusCore);
+}
 
 const cameraFirstFrameProbeSummary = computed(() => {
   // 首帧探针是高级诊断结果：只说明底层 camera readback，不升级为实时图传成功。

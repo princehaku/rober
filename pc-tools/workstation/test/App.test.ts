@@ -4038,8 +4038,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("还没有打开实时画面。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-readback"]').text()).toBe("画面事实：画面未显示：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。下一步：打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-readback"]').text()).toBe("共享预览事实：共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看；当前没有实时画面；页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-readback"]').text()).toBe("画面事实：画面未显示：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看。下一步：打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-readback"]').exists()).toBe(false);
     const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
     expect(mapPanel.exists()).toBe(true);
     expect(mapPanel.attributes("data-state")).toBe("地图可见");
@@ -19868,6 +19868,9 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.shared_preview_content_type_loaded = "true";
     summaryFixture.readback_summary.camera.shared_preview_shared_capture = "true";
     summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    summaryFixture.readback_summary.camera.camera_wysiwyg_status_plain = "画面已可见：共享实时画面已有缓存帧，多个页面复用同一条上游流。";
+    summaryFixture.readback_summary.camera.camera_wysiwyg_next_action_plain = "继续监看共享实时画面。";
+    summaryFixture.readback_summary.camera.plain_hint = "已经看到画面：共享实时画面已有缓存帧，多个页面复用同一条上游流。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 3 个页面观看。下一步：继续监看共享实时画面。";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/camera/mjpeg/status": {
@@ -19882,7 +19885,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：3 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。 页面正在接入共享预览；新页面会共用同一条上游流。");
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-readback"]').text()).toContain("共享预览事实：共享预览不是页面独占；谁打开页面都接入同一条上游流");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-readback"]').text()).toContain("画面事实：已经看到画面：共享实时画面已有缓存帧，多个页面复用同一条上游流。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 3 个页面观看。下一步：继续监看共享实时画面。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-readback"]').exists()).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
