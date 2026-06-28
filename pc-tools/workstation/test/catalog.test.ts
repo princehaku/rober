@@ -8336,6 +8336,18 @@ describe("workstation fail-closed API contracts", () => {
           robot_control_executed: false,
         },
       },
+      "/api/free-roam/autonomy/latest": {
+        method: "GET",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+          status: "loaded",
+          safe_to_control: false,
+          robot_control_executed: false,
+          latest_result: {
+            snapshot: {},
+          },
+        },
+      },
       "/api/radar/status": {
         method: "GET",
         payload: {
@@ -8459,6 +8471,7 @@ describe("workstation fail-closed API contracts", () => {
         "localize_proof_latest",
         "nav2_status",
         "nav2_proof_latest",
+        "free_roam_autonomy_latest",
         "radar_status",
         "radar_scan_proof_latest",
       ]);
@@ -8469,6 +8482,7 @@ describe("workstation fail-closed API contracts", () => {
         "/api/localize/proof/latest",
         "/api/nav2/status",
         "/api/nav2/proof/latest",
+        "/api/free-roam/autonomy/latest",
         "/api/radar/status",
         "/api/radar/scan-proof/latest",
       ]));
@@ -8631,6 +8645,136 @@ describe("workstation fail-closed API contracts", () => {
       ]));
       expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("map preview radar overlay does not draw stopped stale radar points", async () => {
+    // 地图预览自己也要执行雷达实时性门禁；不能只靠 summary 兜底，否则刷新地图时仍可能把旧点贴到图上。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/map/preview": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_preview",
+          status: "loaded",
+          safe_to_control: false,
+          robot_control_executed: false,
+          map_name: "floor_1",
+          map_yaml_name: "floor_1.yaml",
+          map_image_name: "floor_1.pgm",
+          width: 20,
+          height: 10,
+          resolution: 0.05,
+          origin: [0, 0, 0],
+          cell_counts: { free: 10, unknown: 0, occupied: 0, other: 0 },
+          has_free_cells: true,
+          navigation_quality: "has_free_cells",
+          image_mime_type: "image/png",
+          image_data_url: "data:image/png;base64,abc",
+          source_image_format: "pgm_p5",
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_proof_latest",
+          status: "localization_reset_observed",
+          safe_to_control: false,
+          robot_control_executed: false,
+          robot_pose: { x: 0.4, y: -0.2, yaw: 0.1, frame_id: "map", source: "/amcl_pose" },
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "not_proven",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof",
+          status: "not_proven",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+          status: "loaded",
+          safe_to_control: false,
+          robot_control_executed: false,
+          latest_result: {
+            snapshot: {
+              lidar_age_s: 14392.64,
+              lidar_min_distance_m: 0.04,
+            },
+          },
+        },
+      },
+      "/api/radar/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          status: "scan_once_hz_raw_packet_tf_observed",
+          safe_to_control: false,
+          robot_control_executed: false,
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          latest_scan_proof_fresh: false,
+        },
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_scan_proof",
+          status: "scan_once_observed",
+          safe_to_control: false,
+          robot_control_executed: false,
+          scan_preview_points: [
+            { x_m: 1.2, y_m: 0.3, range_m: 1.24, angle_rad: 0.2, frame_id: "laser_frame", source_index: 3 },
+            { x_m: 0.8, y_m: 0.1, range_m: 0.81, angle_rad: 0.12, frame_id: "laser_frame", source_index: 4 },
+          ],
+          scan_preview_point_count: 2,
+          scan_preview_source_point_count: 65,
+          scan_preview_frame_id: "laser_frame",
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/map/preview?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        radar_overlay: {
+          overlay_status: string;
+          scan_preview_point_count: number;
+          scan_preview_source_point_count: number | null;
+          scan_preview_frame_id: string;
+          scan_preview_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
+          blocked_reasons: string[];
+        };
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("preview_forwarded");
+      expect(body.radar_overlay.overlay_status).toBe("not_current");
+      expect(body.radar_overlay.scan_preview_point_count).toBe(0);
+      expect(body.radar_overlay.scan_preview_points).toEqual([]);
+      expect(body.radar_overlay.scan_preview_source_point_count).toBe(65);
+      expect(body.radar_overlay.scan_preview_frame_id).toBe("laser_frame");
+      expect(body.radar_overlay.blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
+      expect(body.radar_overlay.blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(expect.arrayContaining([
+        "/api/map/preview",
+        "/api/free-roam/autonomy/latest",
+        "/api/radar/status",
+        "/api/radar/scan-proof/latest",
+      ]));
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
     } finally {
       await workstation.close();
       await upstream.close();

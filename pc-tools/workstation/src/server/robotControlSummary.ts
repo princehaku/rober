@@ -104,6 +104,7 @@ const MAP_PREVIEW_OVERLAY_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = ne
   "localize_proof_latest",
   "nav2_status",
   "nav2_proof_latest",
+  "free_roam_autonomy_latest",
   "radar_status",
   "radar_scan_proof_latest",
 ]);
@@ -2718,23 +2719,32 @@ async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPr
   const endpoints = READ_ENDPOINTS.filter((endpoint) => MAP_PREVIEW_OVERLAY_ENDPOINT_IDS.has(endpoint.id));
   const readbacks = await Promise.all(endpoints.map((endpoint) => readEndpoint(base, endpoint)));
   const proofSummary = buildProofSummary(readbacks);
+  const lidar = lidarSummaryFromReadbacks(readbacks, proofSummary);
   const blockedReasons = readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`));
   const hasRadarPoints = proofSummary.scan_preview_point_count > 0 || proofSummary.scan_preview_points.length > 0;
   const hasMapPose = proofSummary.robot_pose !== null;
+  const radarRuntimeStale = lidar.runtime_scan_status === "stale";
+  const radarLifecycleStopped = lidar.lifecycle_running === "false" || lidar.lifecycle_state === "stopped";
+  const radarOverlayCurrent = hasRadarPoints && !radarRuntimeStale && !radarLifecycleStopped;
   const overlayGaps = [
     hasRadarPoints && !hasMapPose ? "robot_pose_missing_for_map_radar_overlay" : "",
+    radarRuntimeStale ? "runtime_scan_stale_for_map_radar_overlay" : "",
+    radarLifecycleStopped ? "radar_lifecycle_not_running_for_map_radar_overlay" : "",
     hasMapPose && !hasRadarPoints ? "scan_preview_points_missing_for_map_radar_overlay" : "",
   ].filter(Boolean);
   const overlayBlockedReasons = [...blockedReasons, ...overlayGaps];
-  const hasVisibleOverlay = hasRadarPoints || hasMapPose;
-  const hasCompleteOverlay = hasRadarPoints && hasMapPose;
-  const overlayStatus: RobotControlMapPreviewRadarOverlay["overlay_status"] = hasVisibleOverlay
-    ? overlayBlockedReasons.length > 0 || !hasCompleteOverlay ? "partial" : "loaded"
-    : overlayBlockedReasons.length > 0 ? "blocked" : "not_loaded";
+  const hasCurrentRadarPoints = radarOverlayCurrent;
+  const hasVisibleOverlay = hasCurrentRadarPoints || hasMapPose;
+  const hasCompleteOverlay = hasCurrentRadarPoints && hasMapPose;
+  const overlayStatus: RobotControlMapPreviewRadarOverlay["overlay_status"] = hasRadarPoints && !radarOverlayCurrent
+    ? "not_current"
+    : hasVisibleOverlay
+      ? overlayBlockedReasons.length > 0 || !hasCompleteOverlay ? "partial" : "loaded"
+      : overlayBlockedReasons.length > 0 ? "blocked" : "not_loaded";
   return {
     overlay_status: overlayStatus,
-    scan_preview_points: proofSummary.scan_preview_points,
-    scan_preview_point_count: proofSummary.scan_preview_point_count,
+    scan_preview_points: radarOverlayCurrent ? proofSummary.scan_preview_points : [],
+    scan_preview_point_count: radarOverlayCurrent ? proofSummary.scan_preview_point_count : 0,
     scan_preview_source_point_count: proofSummary.scan_preview_source_point_count,
     scan_preview_frame_id: proofSummary.scan_preview_frame_id,
     robot_pose: proofSummary.robot_pose,

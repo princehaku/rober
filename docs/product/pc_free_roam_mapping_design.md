@@ -691,3 +691,10 @@ planner/controller inactive 仍保留“恢复规划/控制服务”的文案。
 “runtime 已扫出 N 个可通行格 / runtime 未知区域 X%”，并明确提示这是 latest 的只读指标，
 刷新扫图画面后才按图片验收。该变更只执行 GET latest，不启动/停止 free-roam、不发送 manual/Nav2/delivery/stop
 或 `/cmd_vel`。
+
+2026-06-29 03:20 起，`/api/robot-control/map/preview` 随图返回的 `radar_overlay` 也执行实时性门禁：
+overlay 同轮读取 `/api/free-roam/autonomy/latest`、`/api/radar/status` 和 `/api/radar/scan-proof/latest`。
+如果旧 scan proof 有点，但 free-roam runtime `/scan` 已 stale 或 radar lifecycle 是 stopped，overlay 返回
+`overlay_status=not_current`，可绘制 `scan_preview_point_count=0`、`scan_preview_points=[]`，同时保留
+`scan_preview_source_point_count` 和 `scan_preview_frame_id` 作为诊断。这样刷新地图画面时不会把旧雷达点冒充成当前地图标记；
+该变更只做只读 GET，不启动雷达、不刷新 proof、不发送 manual/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。

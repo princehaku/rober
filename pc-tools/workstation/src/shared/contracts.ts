@@ -2010,7 +2010,7 @@ export interface RobotApiFrameTransform {
 }
 
 export interface RobotControlMapPreviewRadarOverlay {
-  overlay_status: "loaded" | "partial" | "blocked" | "not_loaded";
+  overlay_status: "loaded" | "partial" | "blocked" | "not_current" | "not_loaded";
   scan_preview_points: RobotApiScanPreviewPoint[];
   scan_preview_point_count: number;
   scan_preview_source_point_count: number | null;
