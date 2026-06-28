@@ -2664,6 +2664,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       motion_ready: string;
       mapping_ready: string;
       mapping_missing: string;
+      plain_hint: string;
       next_action_plain: string;
       motion_readiness_plain: string;
       mapping_readiness_plain: string;

@@ -5008,6 +5008,7 @@ function freeRoamSummaryFromReadbacks(
         : readback?.status ?? "not_loaded";
   const motionReadinessPlain = freeRoamMotionReadinessPlain(startReady, motionReady, externalStopRequested);
   const mappingReadinessPlain = freeRoamMappingReadinessPlain(startReady, mappingReady, mappingMissing);
+  const nextActionPlain = freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime);
   return {
     status: derivedStatus,
     runtime_status: asString(payload?.runtime_status, latest ? "loaded" : "not_loaded"),
@@ -5021,7 +5022,8 @@ function freeRoamSummaryFromReadbacks(
     motion_ready: booleanSummaryValue(motionReady),
     mapping_ready: booleanSummaryValue(mappingReady),
     mapping_missing: mappingMissing.length ? mappingMissing.join(",") : "none",
-    next_action_plain: freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime),
+    plain_hint: freeRoamPlainHint(motionReadinessPlain, mappingReadinessPlain, nextActionPlain),
+    next_action_plain: nextActionPlain,
     motion_readiness_plain: motionReadinessPlain,
     mapping_readiness_plain: mappingReadinessPlain,
     motion_next_action_plain: freeRoamMotionNextAction(startReady, motionReady, externalStopRequested),
@@ -5031,6 +5033,19 @@ function freeRoamSummaryFromReadbacks(
     ros2_runtime_proven: summaryValueText(payload, ["ros2_runtime_proven"]) ?? "not_loaded",
     gate_count: gateCount,
   };
+}
+
+function freeRoamPlainHint(motionReadinessPlain: string, mappingReadinessPlain: string, nextActionPlain: string): string {
+  // 外部脚本只读一个字段时，也必须看出“能先移动”和“建图验收缺什么”是两层能力。
+  const parts = [motionReadinessPlain, mappingReadinessPlain]
+    .map((item) => item.trim().replace(/[。；\s]+$/g, ""))
+    .filter((item) => item && !["not_loaded", "none"].includes(item));
+  const next = nextActionPlain.trim().replace(/[。；\s]+$/g, "");
+  const uniqueParts = Array.from(new Set(parts));
+  if (next && !uniqueParts.some((part) => part.includes(next) || next.includes(part))) {
+    uniqueParts.push(`下一步：${next}`);
+  }
+  return uniqueParts.length > 0 ? `${uniqueParts.join("。")}。` : "自由移动事实未读到；先刷新 Robot Control summary。";
 }
 
 function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryResponse {
@@ -5329,6 +5344,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         motion_ready: "false",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
+        plain_hint: "自由移动未就绪；先连接上车状态机并确认停止兜底。建图验收未 ready；还在等待上车状态机。下一步：先连接上车自由移动状态机，并确认停止兜底可用。",
         next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
         motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
         mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
