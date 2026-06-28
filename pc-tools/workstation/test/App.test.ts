@@ -3884,6 +3884,7 @@ describe("App", () => {
     const radarPanel = wrapper.find('[data-testid="plain-radar-panel"]');
     expect(radarPanel.exists()).toBe(true);
     expect(radarPanel.attributes("data-state")).toBe("雷达已运行");
+    expect(wrapper.find('[data-testid="plain-radar-map-marker-readback"]').text()).toBe("地图雷达事实：雷达 marker 未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。下一步：先刷新地图画面。");
     expect(firstScreenText).toContain("地图");
     expect(firstScreenText).toContain("地图可见");
     expect(firstScreenText).toContain("真实地图 100x100");

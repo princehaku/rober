@@ -1922,6 +1922,23 @@ const evidenceSweepSummary = computed(() => {
   return evidenceSweepLines.value.join(" | ");
 });
 const radarSummary = computed(() => summarizeRadarState());
+const plainRadarMapMarkerReadback = computed(() => {
+  // 地图上的雷达 marker 必须以 summary 的 overlay 事实为准，旧来源点只能做诊断，不能冒充当前贴图。
+  const radar = robotSummary.value?.readback_summary.radar;
+  if (!radar) {
+    return "";
+  }
+  const marker = (radar.radar_overlay_wysiwyg_status_plain ?? "").trim();
+  const nextAction = (radar.radar_overlay_wysiwyg_next_action_plain ?? radar.radar_next_action_plain ?? "").trim();
+  const cleanMarker = marker.replace(/[。；\s]+$/g, "");
+  const cleanNext = nextAction.replace(/[。；\s]+$/g, "");
+  if (!cleanMarker || ["not_loaded", "none"].includes(cleanMarker)) {
+    return "";
+  }
+  return cleanNext && !["not_loaded", "none"].includes(cleanNext)
+    ? `地图雷达事实：${cleanMarker}。下一步：${cleanNext}。`
+    : `地图雷达事实：${cleanMarker}。`;
+});
 const plainRadarReadyForFreeRoamMapping = computed(() => radarSummary.value.state === "雷达已运行");
 const plainRadarStartUnavailable = computed(() => {
   // 配置缺失时普通首屏仍展示卡点，但不让按钮发送一个注定 dry-run 的 start 请求。
@@ -12194,6 +12211,7 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
           </div>
           <p class="panel-note">{{ radarSummary.hint }}</p>
+          <p v-if="plainRadarMapMarkerReadback" class="panel-note" data-testid="plain-radar-map-marker-readback">{{ plainRadarMapMarkerReadback }}</p>
           <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
         </article>
 
