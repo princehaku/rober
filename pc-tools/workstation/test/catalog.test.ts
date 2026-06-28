@@ -7402,6 +7402,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.scan_preview_frame_id).toBe("laser");
       expect(summary.readback_summary.map.radar_overlay_status).toBe("loaded");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toBe("雷达点已按当前扫描和小车地图位置贴到地图。");
+      expect(summary.readback_summary.map.radar_overlay_wysiwyg_status_plain).toBe("雷达 marker 已贴到当前地图：当前显示 3 个点，frame=laser。");
+      expect(summary.readback_summary.map.radar_overlay_wysiwyg_next_action_plain).toBe("继续观察地图雷达层。");
       expect(summary.readback_summary.map.radar_overlay_next_action).toBe("continue_monitoring_map_radar_overlay");
       expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("继续观察地图雷达层。");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("none");
@@ -7834,6 +7836,8 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.readback_summary.map.radar_overlay_status).toBe("partial");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("robot_pose_missing_for_map_radar_overlay");
+      expect(summary.readback_summary.map.radar_overlay_wysiwyg_status_plain).toBe("雷达材料已读到 80 个来源点，当前可用雷达点 2 个，但地图贴图未完整确认；已有雷达来源点 80 个，但小车地图位置未读到；当前不能把雷达点贴到地图坐标。");
+      expect(summary.readback_summary.map.radar_overlay_wysiwyg_next_action_plain).toBe("先刷新定位，再刷新雷达扫描和地图画面。");
       expect(summary.readback_summary.map.radar_overlay_point_count).toBe("2");
       expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("80");
       expect(summary.readback_summary.map.radar_overlay_frame_id).toBe("laser_frame");
@@ -7935,6 +7939,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_status).toBe("not_current");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toContain("已有雷达来源点 65 个");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toContain("当前不贴到地图");
+      expect(summary.readback_summary.map.radar_overlay_wysiwyg_status_plain).toBe("雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断。已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
+      expect(summary.readback_summary.map.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
       expect(summary.readback_summary.map.radar_overlay_next_action).toBe("start_radar_then_refresh_map_preview");
       expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");

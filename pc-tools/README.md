@@ -141,6 +141,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 03:08 CST 起，`readback_summary.map` 增加所见即所得短别名：`robot_pose_status`、`radar_overlay_point_count`、`radar_overlay_source_point_count` 和 `radar_overlay_frame_id`。这些字段完全复用既有 `radar_overlay_robot_pose_status` / `radar_overlay_scan_preview_*` 事实，方便外部脚本直接判断“图上小车是否可见、当前雷达 marker 真正画了几个点、旧雷达来源点是否只作诊断”。该变化只补只读 summary alias，不刷新地图、不启动雷达、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 03:31 CST 起，`readback_summary.map` 增加 `radar_overlay_wysiwyg_status_plain` 和 `radar_overlay_wysiwyg_next_action_plain`。脚本和普通首屏不用再把 `radar_overlay_point_count=0` 与 `radar_overlay_source_point_count=81` 自己拼起来；live 形态会直接显示“雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 81 个只作诊断”，下一步仍是“先启动雷达，再刷新地图画面”。该变化只补只读地图/雷达贴图诊断，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 03:15 CST 起，`readback_summary.camera` 增加 `preview_visible_status`、`preview_visible_plain`、`camera_wysiwyg_status_plain` 和 `camera_wysiwyg_next_action_plain`。脚本不用再从 `preview_status=idle_not_started` 和 `source_diagnosis_status=uvc_no_frame_not_exclusive` 拼判断；可以直接看到“当前没有实时画面；不是页面独占，UVC 设备没有输出视频帧”或“画面已可见：共享实时画面已有缓存帧”。该变化只补只读 summary 字段，不新开独占采集、不重启相机、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:19 CST 起，`readback_summary.nav2` 增加 `route_execution_readiness_plain` 和 `route_execution_precheck_plain`。外部脚本只读 Nav2 区块时，可以直接看到“图上路线可重跑复验；上次路线 action 成功但同窗口 wheel raw L/R=0/0 未非零”和“只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线”。该变化只补只读 summary 字段，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。

@@ -3220,6 +3220,42 @@ function mapWysiwygPlainSummary(args: {
   };
 }
 
+function radarOverlayWysiwygPlainSummary(args: {
+  radarStatus: string;
+  pointCount: string;
+  sourcePointCount: string;
+  frameId: string;
+  radarHint: string;
+  radarNextAction: string;
+}): { statusPlain: string; nextActionPlain: string } {
+  // 雷达 WYSIWYG 单独说明“地图上实际画了几个 marker”，避免把旧来源点误当成当前贴图。
+  const displayedCount = args.pointCount && args.pointCount !== "not_loaded" ? args.pointCount : "0";
+  const sourceCount = args.sourcePointCount && args.sourcePointCount !== "not_loaded" ? args.sourcePointCount : "0";
+  const frameText = args.frameId && args.frameId !== "not_loaded" ? `，frame=${args.frameId}` : "";
+  if (args.radarStatus === "loaded") {
+    return {
+      statusPlain: `雷达 marker 已贴到当前地图：当前显示 ${displayedCount} 个点${frameText}。`,
+      nextActionPlain: "继续观察地图雷达层。",
+    };
+  }
+  if (args.radarStatus === "partial") {
+    return {
+      statusPlain: `雷达材料已读到 ${sourceCount} 个来源点，当前可用雷达点 ${displayedCount} 个，但地图贴图未完整确认；${args.radarHint}`,
+      nextActionPlain: args.radarNextAction,
+    };
+  }
+  if (args.radarStatus === "not_current") {
+    return {
+      statusPlain: `雷达 marker 未贴到当前地图：当前显示 ${displayedCount} 个点；旧来源点 ${sourceCount} 个只作诊断。${args.radarHint}`,
+      nextActionPlain: args.radarNextAction,
+    };
+  }
+  return {
+    statusPlain: `雷达 marker 未加载：当前显示 ${displayedCount} 个点；来源点 ${sourceCount} 个。${args.radarHint}`,
+    nextActionPlain: args.radarNextAction,
+  };
+}
+
 export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotControlMapPreviewResponse> {
   // Map preview 是只读固定代理；它只能读上位机 /api/map/preview，不能转成任意文件或控制代理。
   const normalized = normalizeRobotApiBaseUrl(baseUrl);
@@ -4252,6 +4288,14 @@ function mapSummaryFromReadbacks(
     pathNextAction: pathNextActionPlain,
     radarNextAction: radarOverlayExplanation.next_action_plain,
   });
+  const radarOverlayWysiwyg = radarOverlayWysiwygPlainSummary({
+    radarStatus: radarOverlayStatus,
+    pointCount: radarOverlayPointCount,
+    sourcePointCount: radarOverlaySourcePointCount,
+    frameId: radarOverlayFrameId,
+    radarHint: radarOverlayExplanation.plain_hint,
+    radarNextAction: radarOverlayExplanation.next_action_plain,
+  });
   return {
     status: mapProof?.status ?? "not_loaded",
     map_once_observed: booleanSummaryValue(proof.map_once_observed),
@@ -4276,6 +4320,8 @@ function mapSummaryFromReadbacks(
     robot_pose_status: robotPoseStatus,
     radar_overlay_status: radarOverlayStatus,
     radar_overlay_plain_hint: radarOverlayExplanation.plain_hint,
+    radar_overlay_wysiwyg_status_plain: radarOverlayWysiwyg.statusPlain,
+    radar_overlay_wysiwyg_next_action_plain: radarOverlayWysiwyg.nextActionPlain,
     radar_overlay_next_action: radarOverlayExplanation.next_action,
     radar_overlay_next_action_plain: radarOverlayExplanation.next_action_plain,
     radar_overlay_point_count: radarOverlayPointCount,
@@ -4923,6 +4969,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         robot_pose_status: "not_loaded",
         radar_overlay_status: "not_loaded",
         radar_overlay_plain_hint: "地图雷达层未加载。",
+        radar_overlay_wysiwyg_status_plain: "雷达 marker 未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。",
+        radar_overlay_wysiwyg_next_action_plain: "确认小车地址可访问后刷新地图画面。",
         radar_overlay_next_action: "connect_robot_and_refresh_map_preview",
         radar_overlay_next_action_plain: "确认小车地址可访问后刷新地图画面。",
         radar_overlay_point_count: "0",

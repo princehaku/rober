@@ -2923,6 +2923,10 @@ function radarNotCurrentSourcePointCount(): number {
 }
 
 function radarNotCurrentSourcePointText(): string {
+  const wysiwygStatus = robotSummary.value?.readback_summary.map.radar_overlay_wysiwyg_status_plain;
+  if (wysiwygStatus && !["not_loaded", "none"].includes(wysiwygStatus)) {
+    return wysiwygStatus.replace(/[。.!?]+$/, "");
+  }
   const plainHint = robotSummary.value?.readback_summary.map.radar_overlay_plain_hint;
   if (plainHint && !["not_loaded", "none"].includes(plainHint)) {
     return plainHint.replace(/[。.!?]+$/, "");
@@ -3466,7 +3470,11 @@ function plainRadarFreshnessLabel(
 function plainMapRadarNextActionText(): string {
   // 后端已经给出 overlay 下一步；这里转成普通用户能执行的地图提示，不触发任何雷达/运动请求。
   const nextAction = robotSummary.value?.readback_summary.map.radar_overlay_next_action;
-  const nextActionPlain = robotSummary.value?.readback_summary.map.radar_overlay_next_action_plain?.trim() ?? "";
+  const nextActionPlain = (
+    robotSummary.value?.readback_summary.map.radar_overlay_wysiwyg_next_action_plain
+    || robotSummary.value?.readback_summary.map.radar_overlay_next_action_plain
+    || ""
+  ).trim();
   if (!nextAction || ["not_loaded", "none", "continue_monitoring_map_radar_overlay"].includes(nextAction)) {
     return "";
   }
@@ -3494,7 +3502,11 @@ function plainMapRadarNextActionText(): string {
 function plainRadarCardNextActionText(): string {
   // 雷达卡也承接地图 overlay 的下一步；只提示 operator 去按固定按钮，不自动启动雷达或刷新地图。
   const nextAction = robotSummary.value?.readback_summary.map.radar_overlay_next_action;
-  const nextActionPlain = robotSummary.value?.readback_summary.map.radar_overlay_next_action_plain?.trim() ?? "";
+  const nextActionPlain = (
+    robotSummary.value?.readback_summary.map.radar_overlay_wysiwyg_next_action_plain
+    || robotSummary.value?.readback_summary.map.radar_overlay_next_action_plain
+    || ""
+  ).trim();
   if (!nextAction || ["not_loaded", "none", "continue_monitoring_map_radar_overlay"].includes(nextAction)) {
     return "";
   }
