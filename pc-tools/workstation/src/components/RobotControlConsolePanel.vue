@@ -4235,6 +4235,19 @@ const canArmPlainFreeRoamKeyboard = computed(() => (
   && (!plainFreeRoamKeyboardRequiresMapRuntime.value || mapRuntimeStarted.value)
   && canArmKeyboardControl.value
 ));
+
+function plainFreeRoamBoundaryNextActionForHint(): string {
+  // 上车端 next_action 是自由移动和建图验收分层后的结论；这里只翻译展示，不自动触发 start。
+  const action = robotSummary.value?.safe_command_boundary.free_roam_autonomy_next_action?.trim() ?? "";
+  if (!action || ["not_loaded", "none"].includes(action)) {
+    return "";
+  }
+  const visibleAction = plainManualSafetyConfirmed.value
+    ? action.replace(/^勾选现场安全确认后可先/, "已勾安全确认，可先")
+    : action;
+  return `上车建议：${visibleAction.replace(/[。.!?]+$/, "")}。`;
+}
+
 const plainFreeRoamMappingSummary = computed(() => {
   // 扫地式建图向导只编排已有安全入口；自由跑动仍必须由键盘低速脉冲和停止按钮兜底。
   if (!robotApiBaseUrl.value.trim()) {
@@ -4298,7 +4311,9 @@ const plainFreeRoamMappingSummary = computed(() => {
       !plainCameraReadyForFreeRoamAutonomy.value ? "画面未 ready" : "",
       !plainRadarReadyForFreeRoamMapping.value ? "雷达未 ready" : "",
     ].filter(Boolean).join("、");
-    return { state: "可移动", hint: `可先启动地图记录（不发车）；低速自移动用“开始自由移动（低速）”；${missing}${obstacleSuffix}，本轮先按移动练习处理，ready 后再算可建图。` };
+    const boundaryNextAction = plainFreeRoamBoundaryNextActionForHint();
+    const boundarySuffix = boundaryNextAction ? `；${boundaryNextAction}` : "";
+    return { state: "可移动", hint: `可先启动地图记录（不发车）；低速自移动用“开始自由移动（低速）”；${missing}${obstacleSuffix}，本轮先按移动练习处理，ready 后再算可建图。${boundarySuffix}` };
   }
   const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
   const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
