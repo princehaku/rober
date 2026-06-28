@@ -471,6 +471,11 @@ delivery、stop 或 `/cmd_vel`。
 该变化只同步本机键盘按住状态到 PC 地图显示，不自动启用键盘，不发送新的 manual pulse、free-roam start、
 Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 01:40 CST 起，普通首屏的统一安全确认取消后会立即撤销 PC 键盘控制权：
+如果只是点了“启用键盘”但没有按住方向，不会发送 manual 或 stop；如果正在按住方向键，则复用固定
+`/api/robot-control/base/stop` 代理先停止，并在首屏显示“安全确认取消”。这样键盘连续手控、自由移动和扫图入口
+继续共享一个最小安全确认，取消确认后不会残留 armed 状态。
+
 ## 2026-06-28 PC Nav2 Current Fact Raw L/R
 
 2026-06-28 08:46 CST 起，普通首屏 `当前事实` 的 Nav2 行程成功/待复验文案也统一使用

@@ -4979,6 +4979,9 @@ function keyboardStopReasonPlainLabel(reason: string): string {
   if (reason.includes("page_hidden")) {
     return "页面隐藏";
   }
+  if (reason.includes("safety_confirmation_removed")) {
+    return "安全确认取消";
+  }
   if (reason.includes("button_stop") || reason.includes("mapping_stop")) {
     return "点击停止";
   }
@@ -11579,6 +11582,14 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
   cameraMjpegStatusResult.value = null;
   cameraMjpegStatusFailure.value = "";
   void refreshCameraMjpegStatus();
+});
+
+watch(plainManualSafetyConfirmed, (confirmed) => {
+  // 安全确认取消后必须立即释放键盘所有权；若正在按住，则先复用统一 stop 收口。
+  if (confirmed || (!keyboardControlArmed.value && !keyboardHeldDirection.value)) {
+    return;
+  }
+  disarmKeyboardControl("safety_confirmation_removed");
 });
 
 watch(manualBoundary, () => {
