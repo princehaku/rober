@@ -880,7 +880,7 @@ function radarStatusPlainFields(
   | "radar_overlay_wysiwyg_status_plain"
   | "radar_overlay_wysiwyg_next_action_plain"
 > {
-  // radar/status 只证明雷达本体；地图 marker 的所见即所得必须以 map preview 同轮 overlay 为准。
+  // radar/status 只证明雷达本体；地图雷达点所见即所得必须以 map preview 同轮贴图为准。
   const continuous = keyValues.continuous_scan_status || "not_loaded";
   const running = keyValues.lifecycle_running || "not_loaded";
   const lifecycleState = keyValues.lifecycle_state || "not_loaded";
@@ -890,15 +890,15 @@ function radarStatusPlainFields(
   const radarReady = running === "true" && fresh === "true";
   const radarStopped = running === "false" || lifecycleState === "stopped" || continuous === "lifecycle_not_running";
   const radarStatusPlain = radarReady
-    ? "雷达已运行，最新扫描 fresh；地图上的 marker 仍以地图预览同轮 overlay 为准。"
+    ? "雷达已运行，最新扫描是新的；地图雷达点仍以同轮地图预览为准。"
     : radarStopped
-      ? "雷达未运行或扫描已停；旧雷达来源点不能当作当前地图 marker。"
-      : "雷达状态未完全 ready；需要确认 lifecycle running 和最新扫描 fresh。";
+      ? "雷达未运行或扫描已停；旧雷达来源点不能当作当前地图雷达点。"
+      : "雷达状态未完全 ready；需要确认雷达正在运行且有新扫描。";
   const radarNextActionPlain = radarReady
-    ? "刷新地图画面，读取 map preview 的 radar_overlay_point_count 确认地图上实际 marker 数。"
+    ? "刷新地图画面，确认地图上实际显示的雷达点数。"
     : radarStopped
-      ? "先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。"
-      : "先刷新雷达状态或 scan proof，ready 后再刷新地图画面确认 marker。";
+      ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
+      : "先刷新雷达状态，ready 后再刷新地图画面确认雷达点。";
   return {
     continuous_scan_status: continuous,
     lifecycle_running: running,
@@ -906,13 +906,13 @@ function radarStatusPlainFields(
     latest_scan_proof_fresh: fresh,
     scan_point_count: scanPointCount,
     latest_scan_age_ms: scanAgeMs,
-    plain_hint: radarStatusPlain,
+    plain_hint: `${radarStatusPlain.replace(/[。；\s]+$/g, "")}。下一步：${radarNextActionPlain.replace(/[。；\s]+$/g, "")}。`,
     next_action_plain: radarNextActionPlain,
     radar_status_plain: radarStatusPlain,
     radar_next_action_plain: radarNextActionPlain,
     radar_overlay_point_count: "not_loaded",
     radar_overlay_source_point_count: scanPointCount,
-    radar_overlay_wysiwyg_status_plain: `雷达 status 不直接绘制地图 marker；${radarStatusPlain}`,
+    radar_overlay_wysiwyg_status_plain: `雷达 status 不直接绘制地图雷达点；${radarStatusPlain}`,
     radar_overlay_wysiwyg_next_action_plain: radarNextActionPlain,
   };
 }

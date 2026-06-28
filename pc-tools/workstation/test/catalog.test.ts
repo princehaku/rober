@@ -3999,6 +3999,9 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_wysiwyg_status_plain: expect.any(String),
         map_marker_point_count: expect.any(String),
       });
+      expect(summary.readback_summary.radar.plain_hint).toContain("下一步：");
+      expect(summary.readback_summary.radar.plain_hint).not.toContain("marker");
+      expect(summary.readback_summary.radar.plain_hint).not.toContain("overlay");
       expect(summary.readback_summary.localization).toMatchObject({
         status: expect.any(String),
         amcl_pose_observed: "false",
@@ -9884,14 +9887,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.latest_scan_proof_fresh).toBe("false");
       expect(body.scan_point_count).toBe("81");
       expect(body.latest_scan_age_ms).toBe("12000");
-      expect(body.plain_hint).toBe(body.radar_status_plain);
+      expect(body.plain_hint).toBe("雷达未运行或扫描已停；旧雷达来源点不能当作当前地图雷达点。下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(body.next_action_plain).toBe(body.radar_next_action_plain);
-      expect(body.radar_status_plain).toBe("雷达未运行或扫描已停；旧雷达来源点不能当作当前地图 marker。");
-      expect(body.radar_next_action_plain).toBe("先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。");
+      expect(body.plain_hint).not.toContain("marker");
+      expect(body.plain_hint).not.toContain("overlay");
+      expect(body.radar_status_plain).toBe("雷达未运行或扫描已停；旧雷达来源点不能当作当前地图雷达点。");
+      expect(body.radar_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(body.radar_overlay_point_count).toBe("not_loaded");
       expect(body.radar_overlay_source_point_count).toBe("81");
-      expect(body.radar_overlay_wysiwyg_status_plain).toBe("雷达 status 不直接绘制地图 marker；雷达未运行或扫描已停；旧雷达来源点不能当作当前地图 marker。");
-      expect(body.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。");
+      expect(body.radar_overlay_wysiwyg_status_plain).toBe("雷达 status 不直接绘制地图雷达点；雷达未运行或扫描已停；旧雷达来源点不能当作当前地图雷达点。");
+      expect(body.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/radar/status"]);
       expect(Object.keys(upstream.receivedBodies)).toEqual([]);

@@ -9457,7 +9457,7 @@ function makeRadarStatusFallback(reason: string): RobotControlRadarStatusRespons
     radar_next_action_plain: "确认小车地址可访问后刷新雷达状态。",
     radar_overlay_point_count: "not_loaded",
     radar_overlay_source_point_count: "not_loaded",
-    radar_overlay_wysiwyg_status_plain: "雷达 status 不直接绘制地图 marker；雷达状态未加载。",
+    radar_overlay_wysiwyg_status_plain: "雷达 status 不直接绘制地图雷达点；雷达状态未加载。",
     radar_overlay_wysiwyg_next_action_plain: "确认小车地址可访问后刷新雷达状态，再刷新地图画面。",
     failure_reason: reason,
     blocked_reasons: [reason],

@@ -1701,23 +1701,23 @@ function radarSummaryFromReadbacks(
   // ready 但 marker 为 0 时仍要显式写 0 个点，方便脚本和现场人员对照地图画面。
   const radarStatusPlain = radarReady
     ? overlayLoaded
-      ? `雷达已运行且扫描 fresh；地图 marker 当前显示 ${overlayPointCount} 个点。`
-      : `雷达已运行且扫描 fresh；地图 marker 当前显示 ${overlayPointCount} 个点，仍需以地图预览同轮 overlay 为准。`
+      ? `雷达已运行且扫描是新的；地图雷达点当前显示 ${overlayPointCount} 个。`
+      : `雷达已运行且扫描是新的；地图雷达点当前显示 ${overlayPointCount} 个，仍需以同轮地图预览为准。`
     : radarStopped
       // 雷达停了就不能把来源点当作当前地图 marker；这是本轮 WYSIWYG 的关键边界。
-      ? `雷达未运行或扫描已停；地图 marker 当前显示 ${overlayPointCount} 个点，旧来源点 ${overlaySourcePointCount} 个只作诊断。`
-      : `雷达状态未完全 ready；地图 marker 当前显示 ${overlayPointCount} 个点，需确认 lifecycle running 和最新扫描 fresh。`;
+      ? `雷达未运行或扫描已停；地图雷达点当前显示 ${overlayPointCount} 个，旧来源点 ${overlaySourcePointCount} 个只作诊断。`
+      : `雷达状态未完全 ready；地图雷达点当前显示 ${overlayPointCount} 个，需确认雷达正在运行且有新扫描。`;
   // 下一步只引导 operator 做显式 start/refresh，不在 summary 构建时替 operator 发命令。
   const radarNextActionPlain = radarReady
     ? overlayLoaded
-      ? "继续监看地图 marker；若现场变化，刷新地图画面读取同轮 overlay。"
-      : "刷新地图画面，读取同轮 radar_overlay_point_count 确认地图上实际 marker 数。"
+      ? "继续监看地图雷达点；若现场变化，刷新地图画面读取同轮贴图。"
+      : "刷新地图画面，确认地图上实际显示的雷达点数。"
     : radarStopped
-      ? "先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。"
-      : "先刷新雷达状态或 scan proof，ready 后再刷新地图画面确认 marker。";
+      ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
+      : "先刷新雷达状态，ready 后再刷新地图画面确认雷达点。";
   return {
     status,
-    plain_hint: radarStatusPlain,
+    plain_hint: radarPlainHint(radarStatusPlain, radarNextActionPlain),
     next_action_plain: radarNextActionPlain,
     radar_status_plain: radarStatusPlain,
     radar_next_action_plain: radarNextActionPlain,
@@ -1741,6 +1741,19 @@ function radarSummaryFromReadbacks(
     map_marker_source_point_count: overlaySourcePointCount,
     map_marker_frame_id: overlayFrameId,
   };
+}
+
+function radarPlainHint(statusPlain: string, nextActionPlain: string): string {
+  // 脚本只读一个字段时也要知道下一步；拆分字段仍保留 status/next_action 供高级诊断。
+  const status = statusPlain.trim().replace(/[。；\s]+$/g, "");
+  const next = nextActionPlain.trim().replace(/^下一步[:：]?\s*/, "").replace(/[。；\s]+$/g, "");
+  if (!status && !next) {
+    return "雷达事实未读到；先刷新 Robot Control summary。";
+  }
+  if (!next || status.includes(next) || next.includes(status)) {
+    return `${status}。`;
+  }
+  return `${status}。下一步：${next}。`;
 }
 
 function freeRoamRuntimeScanSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[]): {
@@ -5280,9 +5293,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       },
       radar: {
         status: "not_loaded",
-        plain_hint: "雷达状态未加载；地图 marker 当前显示 0 个点。",
+        plain_hint: "雷达状态未加载；地图雷达点当前显示 0 个。下一步：确认小车地址可访问后刷新雷达状态和地图画面。",
         next_action_plain: "确认小车地址可访问后刷新雷达状态和地图画面。",
-        radar_status_plain: "雷达状态未加载；地图 marker 当前显示 0 个点。",
+        radar_status_plain: "雷达状态未加载；地图雷达点当前显示 0 个。",
         radar_next_action_plain: "确认小车地址可访问后刷新雷达状态和地图画面。",
         lifecycle_running: "not_loaded",
         lifecycle_state: "not_loaded",
