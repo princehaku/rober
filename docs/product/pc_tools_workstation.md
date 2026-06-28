@@ -3861,6 +3861,11 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 该变化不调用 `/api/nav2/goal/execute`，不启动 Nav2 lifecycle，不发送 manual、keyboard、free-roam、delivery、stop
 或 `/cmd_vel`；如果路线字段为空，普通首屏仍按现有 WYSIWYG gate 引导刷新路线或恢复自动驾驶服务。
 
+2026-06-28 22:30 起，`/api/robot-control/map/preview` 顶层同步返回 `robot_pose`，与
+`radar_overlay.robot_pose` 保持同一份 map-frame 小车位置。这样单次地图预览响应就同时包含地图图片、图上路线、
+小车位置和雷达贴图状态，外部调试脚本不必展开 `radar_overlay` 才知道当前小车是否能贴到地图。该字段只来自固定只读
+localize/Nav2 proof readback，不调用定位 reset、Nav2 goal、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-28 21:45 起，普通首屏“当前事实”的实时画面行会在 `uvc_no_frame_not_exclusive` 或
 `source_usage_owner_count=0` 时直接显示处理动作：不是页面/浏览器独占，而是 UVC 源头没有输出视频帧，需要检查
 USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。共享预览仍保持

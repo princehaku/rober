@@ -8833,6 +8833,7 @@ describe("workstation fail-closed API contracts", () => {
         image_data_url: string;
         robot_control_executed: boolean;
         safe_to_control: boolean;
+        robot_pose: { x: number; y: number; yaw: number | null; frame_id: string; source: string } | null;
         path_preview_points: Array<{ x: number; y: number; frame_id: string; source_index: number | null }>;
         path_preview_point_count: number;
         path_preview_source_point_count: number | null;
@@ -8859,6 +8860,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.image_data_url).toContain("data:image/png;base64,");
       expect(previewBody.robot_control_executed).toBe(false);
       expect(previewBody.safe_to_control).toBe(false);
+      expect(previewBody.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
       expect(previewBody.path_preview_points).toEqual([
         { x: 0.1, y: 0.2, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.2, frame_id: "map", source_index: 7 },
@@ -8882,6 +8884,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.radar_overlay.scan_preview_frame_id).toBe("laser_frame");
       expect(previewBody.radar_overlay.scan_preview_points[0]).toEqual(expect.objectContaining({ x_m: 1.2, y_m: 0.3, frame_id: "laser_frame" }));
       expect(previewBody.radar_overlay.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
+      expect(previewBody.robot_pose).toEqual(previewBody.radar_overlay.robot_pose);
       expect(previewBody.radar_overlay.source_endpoint_ids).toEqual([
         "localize_proof_latest",
         "nav2_status",
