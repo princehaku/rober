@@ -5304,6 +5304,13 @@ const plainKeyboardWheelFeedbackSummary = computed(() => {
   return `键盘轮速：L/R=${left}/${right}，还没读到非零。`;
 });
 
+function keyboardPulseContractShortText(): string {
+  // 让“连续手控”在状态行直接可见：按住才循环发低速短脉冲，松开/失焦/切页会停。
+  const intervalSeconds = (keyboardJogIntervalMs.value / 1000).toFixed(2).replace(/0$/, "");
+  const pulseSeconds = (keyboardJogDurationMs.value / 1000).toFixed(2).replace(/0$/, "");
+  return `按住后约每 ${intervalSeconds} 秒发送 ${pulseSeconds} 秒低速脉冲，松开/失焦/切页会停`;
+}
+
 const plainKeyboardLiveStatus = computed(() => {
   // 这行只解释本地键盘循环状态，不作为任何控制 gate 或成功证据。
   if (keyboardHeldDirection.value) {
@@ -5334,10 +5341,10 @@ const plainKeyboardLiveStatus = computed(() => {
     return `${keyboardForwardedPulseProgressText.value}，需同一次按住达到 ${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次。`;
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-    return "等待按键，按住才会动。";
+    return `等待按键，按住才会动；${keyboardPulseContractShortText()}。`;
   }
   if (canUseKeyboardControl.value) {
-    return "未启用，先点启用键盘。";
+    return `未启用，先点启用键盘；${keyboardPulseContractShortText()}。`;
   }
   return plainKeyboardMissingSummary.value || "键盘手控暂未满足。";
 });

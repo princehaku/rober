@@ -6177,7 +6177,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：键盘已启用，按住方向键/WASD 低速扫图；松开即停。");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("键盘已启用（按住才动）");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动；按住后约每 0.26 秒发送 0.24 秒低速脉冲，松开/失焦/切页会停。");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').text()).toBe("刷新扫图画面");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("先刷新画面");
@@ -15347,7 +15347,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="手控中"]');
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="已验证"]');
     expect(wrapper.find('[data-testid="keyboard-control-guide"]').text()).toBe("W/A/S/D 或方向键：前进、左转、后退、右转。按住会通过 ROS 桥接低速入口持续移动，约每 0.26 秒发送 0.24 秒低速脉冲，最高 0.12 m/s、单次上限 800 ms；松开、拖出按钮、窗口失焦或切页面都会停。");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("未启用，先点启用键盘。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("未启用，先点启用键盘；按住后约每 0.26 秒发送 0.24 秒低速脉冲，松开/失焦/切页会停。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：未记录。");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').text()).not.toContain("还差：");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
@@ -15376,7 +15376,7 @@ describe("App", () => {
     expect(keyboardPanel.attributes("data-state")).toBe("已启用");
     expect(keyboardPanel.text()).toContain("本页非输入区");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：已启用，按住才动");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动；按住后约每 0.26 秒发送 0.24 秒低速脉冲，松开/失焦/切页会停。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
     const manualCallsBeforeEditableKey = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     wrapper.find('input[name="plainExternalVideoRef"]').element.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
@@ -15847,7 +15847,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动；按住后约每 0.26 秒发送 0.24 秒低速脉冲，松开/失焦/切页会停。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="停止失败"]');
@@ -15881,7 +15881,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动；按住后约每 0.26 秒发送 0.24 秒低速脉冲，松开/失焦/切页会停。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
 
     await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(false);
