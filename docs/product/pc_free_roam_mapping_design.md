@@ -675,3 +675,11 @@ planner/controller inactive 仍保留“恢复规划/控制服务”的文案。
 但不会成为固定路线发车的默认前置门禁。需要软件演练或视觉 gate 时，现场分别显式传
 `fixed_route_dry_run:=true` 或 `enable_visual_gate:=true`。该变更只调整 launch 默认参数；
 真实发车仍依赖现场安全确认、停止兜底、Nav2 服务、地图、定位和底盘 `/cmd_vel` 链路。
+
+2026-06-29 02:40 起，PC summary 和普通首屏继续细化“自动驾驶为什么不能动”的只读根因：
+`latest_map_consumed=false` 会显示为“地图未被自动驾驶服务消费”，
+`latest_path_generation_service_available=false` 会显示为“路径生成服务不可用”，
+`latest_path_generation_attempted=false` 会显示为“路径生成还没真正开始”。普通首屏下一步会按
+“雷达/定位 -> 重新加载地图到自动驾驶服务 -> 恢复路径生成服务 -> 准备图上路线”的顺序展示，
+避免现场只看到泛化的“路线未生成”。该变更只读取 `/api/nav2/status` / latest proof 字段，
+不启动 Nav2、不执行路线、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。

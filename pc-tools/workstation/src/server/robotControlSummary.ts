@@ -115,6 +115,9 @@ const NAV2_GOAL_BLOCKER_ORDER = [
   "nav2_stack_not_running",
   "planner_server_inactive",
   "controller_server_inactive",
+  "nav2_map_not_consumed",
+  "path_generation_service_unavailable",
+  "path_generation_not_attempted",
   "path_generation_not_observed",
   "path_point_count_not_positive",
   "robot_map_pose_not_observed",
@@ -552,7 +555,12 @@ const STATUS_KEYS = [
   "latest_planner_active",
   "latest_controller_active",
   "latest_controller_requested",
+  "latest_map_consumed",
   "latest_path_generated",
+  "latest_path_generation_attempted",
+  "latest_path_generation_service_available",
+  "latest_path_generation_service_name",
+  "latest_path_generation_ready",
   "latest_proof_status",
   "feedback_ack_status",
   "nav2_base_command_mode",
@@ -1047,6 +1055,15 @@ function nav2ProofBlockerLabels(reasons: string[]): string[] {
     }
     if (reason === "controller_server_inactive") {
       return "控制服务未运行";
+    }
+    if (reason === "nav2_map_not_consumed") {
+      return "地图未被自动驾驶服务消费";
+    }
+    if (reason === "path_generation_service_unavailable") {
+      return "路径生成服务不可用";
+    }
+    if (reason === "path_generation_not_attempted") {
+      return "路径生成还没真正开始";
     }
     if (reason === "nav2_stack_not_running") {
       return "自动驾驶服务未启动";
@@ -3783,7 +3800,6 @@ function nav2SummaryFromReadbacks(
   const baseStatusReadback = readbackById(readbacks, "base_status");
   const goalExecution = readbackById(readbacks, "nav2_goal_execution_latest");
   const currentBlockerReasons = nav2ProofBlockerReasons(nav2Proof?.payload);
-  const currentBlockerLabels = nav2ProofBlockerLabels(currentBlockerReasons);
   const goalPayload = goalExecution?.payload ?? null;
   const goalResultPayload = asRecord(goalPayload?.latest_result) ?? goalPayload;
   const baseCommandSummary = asRecord(goalResultPayload?.base_command_summary);
@@ -3833,16 +3849,31 @@ function nav2SummaryFromReadbacks(
     : goalSucceeded && wheelFeedbackProven === "false"
       ? "goal_succeeded_wheel_feedback_not_proven"
     : nav2Proof?.status ?? "not_loaded";
+  const latestMapConsumed = proofText(readbacks, ["latest_map_consumed", "map_consumed"]) ?? "not_loaded";
+  const latestPathGenerationAttempted = proofText(readbacks, ["latest_path_generation_attempted", "path_generation_attempted"]) ?? "not_loaded";
+  const latestPathGenerationServiceAvailable = proofText(readbacks, ["latest_path_generation_service_available", "path_generation_service_available"]) ?? "not_loaded";
+  const latestPathGenerationServiceName = proofText(readbacks, ["latest_path_generation_service_name", "path_generation_service_name"]) ?? "not_loaded";
+  const syntheticBlockerReasons = [
+    latestMapConsumed === "false" ? "nav2_map_not_consumed" : "",
+    latestPathGenerationServiceAvailable === "false" ? "path_generation_service_unavailable" : "",
+    latestPathGenerationAttempted === "false" && proof.path_generation_requested === true ? "path_generation_not_attempted" : "",
+  ].filter(Boolean);
+  const effectiveCurrentBlockerReasons = [...new Set([...currentBlockerReasons, ...syntheticBlockerReasons])];
+  const effectiveCurrentBlockerLabels = nav2ProofBlockerLabels(effectiveCurrentBlockerReasons);
   return {
     status: summaryStatus,
     nav2_status: nav2Status?.status ?? "not_loaded",
     nav2_stack_running: summaryValueText(nav2StatusPayload, ["lifecycle_running"], summaryValueText(lifecycleManager, ["running"])),
     nav2_stack_lifecycle_state: summaryValueText(nav2StatusPayload, ["lifecycle_state"], summaryValueText(lifecycleManager, ["state"])),
-    current_blocker_reasons: currentBlockerReasons.join(",") || "none",
-    current_blocker_labels: currentBlockerLabels.join("、") || "not_loaded",
+    current_blocker_reasons: effectiveCurrentBlockerReasons.join(",") || "none",
+    current_blocker_labels: effectiveCurrentBlockerLabels.join("、") || "not_loaded",
     planner_server_active: proofText(readbacks, ["planner_server_active", "planner_active", "latest_planner_active"]) ?? booleanSummaryValue(proof.planner_server_active),
     controller_server_active: proofText(readbacks, ["controller_server_active", "latest_controller_active"]) ?? "not_loaded",
     controller_server_requested: proofText(readbacks, ["controller_server_requested", "latest_controller_requested"]) ?? "not_loaded",
+    map_consumed: latestMapConsumed,
+    path_generation_attempted: latestPathGenerationAttempted,
+    path_generation_service_available: latestPathGenerationServiceAvailable,
+    path_generation_service_name: latestPathGenerationServiceName,
     path_generated: booleanSummaryValue(proof.path_generated),
     path_generation_succeeded: booleanSummaryValue(proof.path_generation_succeeded),
     path_point_count: proof.path_point_count === null ? "not_loaded" : String(proof.path_point_count),
@@ -4174,6 +4205,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         planner_server_active: "not_loaded",
         controller_server_active: "not_loaded",
         controller_server_requested: "not_loaded",
+        map_consumed: "not_loaded",
+        path_generation_attempted: "not_loaded",
+        path_generation_service_available: "not_loaded",
+        path_generation_service_name: "not_loaded",
         path_generated: "not_loaded",
         path_generation_succeeded: "not_loaded",
         path_point_count: "not_loaded",

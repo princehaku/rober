@@ -2352,6 +2352,15 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
   if (!nav2StackNotRunning && nav2.controller_server_active === "false") {
     blockers.push("控制服务未运行");
   }
+  if (nav2.map_consumed === "false") {
+    blockers.push("地图未被自动驾驶服务消费");
+  }
+  if (nav2.path_generation_service_available === "false") {
+    blockers.push("路径生成服务不可用");
+  }
+  if (nav2.path_generation_attempted === "false" && nav2.path_generated === "false") {
+    blockers.push("路径生成还没真正开始");
+  }
   if (localization.robot_pose_status !== "map_pose_observed") {
     blockers.push(
       localization.robot_pose_status === "pose_signal_observed_without_map_coordinates"
@@ -7020,12 +7029,20 @@ function plainNav2CurrentBlockerNextAction(summary: RobotControlSummaryResponse 
     "amcl_map_to_odom_tf_not_observed_on_tf",
     "localization_not_ready_for_path_generation",
   ].some((reason) => reasons.has(reason));
+  const needsNav2MapReload = reasons.has("nav2_map_not_consumed");
+  const needsPathService = reasons.has("path_generation_service_unavailable") || reasons.has("path_generation_not_attempted");
   const steps: string[] = [];
   if (needsScan) {
     steps.push(radarSummary.value.state === "雷达已运行" ? "刷新雷达点" : "启动/刷新雷达");
   }
   if (needsLocalization) {
     steps.push("重新定位");
+  }
+  if (needsNav2MapReload) {
+    steps.push("重新加载地图到自动驾驶服务");
+  }
+  if (needsPathService) {
+    steps.push("恢复路径生成服务");
   }
   if (steps.length === 0) {
     return "";

@@ -3942,6 +3942,10 @@ describe("workstation fail-closed API contracts", () => {
       amcl_pose_observed: false,
       localization_tf_observed: false,
       planner_server_active: false,
+      latest_map_consumed: false,
+      latest_path_generation_attempted: false,
+      latest_path_generation_service_available: false,
+      latest_path_generation_service_name: "/planner_server/compute_path_to_pose",
       path_generation_requested: true,
       path_generation_succeeded: false,
       path_generated: false,
@@ -3982,6 +3986,10 @@ describe("workstation fail-closed API contracts", () => {
         planner_server_active: "false",
         controller_server_active: expect.any(String),
         controller_server_requested: expect.any(String),
+        map_consumed: "false",
+        path_generation_attempted: "false",
+        path_generation_service_available: "false",
+        path_generation_service_name: "/planner_server/compute_path_to_pose",
         path_generated: "false",
         path_generation_succeeded: "false",
         path_point_count: "0",
@@ -4022,6 +4030,11 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线");
+      expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("nav2_map_not_consumed");
+      expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_service_unavailable");
+      expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_not_attempted");
+      expect(summary.readback_summary.nav2.current_blocker_labels).toContain("地图未被自动驾驶服务消费");
+      expect(summary.readback_summary.nav2.current_blocker_labels).toContain("路径生成服务不可用");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("not_loaded");
       expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_safety_confirmation_only");
       expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);

@@ -2488,6 +2488,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       planner_server_active: string;
       controller_server_active: string;
       controller_server_requested: string;
+      map_consumed: string;
+      path_generation_attempted: string;
+      path_generation_service_available: string;
+      path_generation_service_name: string;
       path_generated: string;
       path_generation_succeeded: string;
       path_point_count: string;

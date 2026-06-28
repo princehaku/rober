@@ -495,6 +495,10 @@ const fixtures: Record<string, unknown> = {
         status: "nav2_not_proven",
         nav2_status: "nav2_not_proven",
         planner_server_active: "false",
+        map_consumed: "not_loaded",
+        path_generation_attempted: "not_loaded",
+        path_generation_service_available: "not_loaded",
+        path_generation_service_name: "not_loaded",
         path_generated: "false",
         path_generation_succeeded: "false",
         path_point_count: "0",
@@ -17453,8 +17457,14 @@ describe("App", () => {
       "/amcl_pose_once_not_observed",
       "map_to_odom_not_observed",
       "localization_not_ready_for_path_generation",
+      "nav2_map_not_consumed",
+      "path_generation_service_unavailable",
+      "path_generation_not_attempted",
     ].join(",");
-    summaryFixture.readback_summary.nav2.current_blocker_labels = "未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线";
+    summaryFixture.readback_summary.nav2.current_blocker_labels = "未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用、路径生成还没真正开始";
+    summaryFixture.readback_summary.nav2.map_consumed = "false";
+    summaryFixture.readback_summary.nav2.path_generation_service_available = "false";
+    summaryFixture.readback_summary.nav2.path_generation_attempted = "false";
     summaryFixture.readback_summary.localization.robot_pose_status = "not_observed";
     summaryFixture.readback_summary.localization.amcl_pose_observed = "false";
     summaryFixture.readback_summary.localization.localization_tf_observed = "false";
@@ -17468,17 +17478,19 @@ describe("App", () => {
 
     const facts = wrapper.find('[data-testid="plain-current-facts"]').text();
     expect(facts).toContain("自动驾驶当前：未准备好");
-    expect(facts).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线");
-    expect(facts).toMatch(/先.*雷达.*重新定位.*准备图上路线/);
+    expect(facts).toContain("路径生成服务不可用");
+    expect(facts).toContain("地图未被自动驾驶服务消费");
+    expect(facts).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用");
+    expect(facts).toMatch(/先.*雷达.*重新定位.*重新加载地图到自动驾驶服务.*恢复路径生成服务.*准备图上路线/);
     expect(facts).toContain("相机/雷达不挡底盘试动或键盘手控");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    const tripNextActionPattern = /先.*雷达.*重新定位.*准备图上路线/;
+    const tripNextActionPattern = /先.*雷达.*重新定位.*重新加载地图到自动驾驶服务.*恢复路径生成服务.*准备图上路线/;
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("待雷达/定位");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toMatch(tripNextActionPattern);
     expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("自动驾驶诊断：未准备好");
-    expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用");
     expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("相机/雷达不挡底盘试动或键盘手控");
     expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toMatch(tripNextActionPattern);
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toMatch(tripNextActionPattern);
