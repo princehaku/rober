@@ -55,6 +55,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-28 07:59 CST 起，同一 ready 场景下，建图卡主按钮、自动扫图补证按钮和下一步统一显示 `开始扫图记录（不发车）`，键盘/刷新前置提示也显示 `先开始扫图记录`；相机或雷达未 ready 时仍保留普通 `开始记录（不发车）`，自由移动入口不被传感器门禁锁死。
 
+2026-06-28 08:04 CST 起，自动扫图/自由移动状态机 stop 成功后，PC 会自动刷新一次停止后的地图画面；刷新成功则直接显示可保存，刷新失败仍保留重试刷新入口。该自动刷新只读 map preview 和 radar status，不发送 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

@@ -3668,6 +3668,10 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 `开始扫图记录（不发车）`，键盘/刷新前置提示也显示 `先开始扫图记录`。相机或雷达未 ready 时仍显示普通 `开始记录（不发车）`，并继续引导低速自由移动；
 这只让“可验收建图”的第一步更明确，不改变地图 lifecycle 固定代理，不自动启动 free-roam，不发送 manual、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-28 08:04 起，普通首屏自动扫图/自由移动状态机 stop 成功后，会自动刷新一次停止后的地图画面，并同步 radar status。
+刷新成功时地图 marker 直接显示 `自动扫图已停止，可保存`，下一步直接进入保存地图；刷新失败时仍保留重试刷新入口。
+该自动刷新只读 map preview / radar status，不重新启动 free-roam、不发送 manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 23:30 起，建图验收缺口也消费同一 stale runtime `/scan` 事实：
 当缺口包含 `lidar_fresh` 且 PC summary 里只有 stale `/scan` 距离时，`建图验收` 和 `当前事实`
 会显示 `雷达未刷新（旧 /scan 距离 ... 已过期，不贴到地图）`。低速自由移动入口仍不受影响；

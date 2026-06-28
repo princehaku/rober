@@ -10665,6 +10665,10 @@ async function stopFreeRoamAutonomy(): Promise<void> {
       plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
     }
     await refreshConsole();
+    if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
+      // stop 成功后自动刷新停止后的地图画面；保存前看到的必须是停止后的真实地图。
+      await refreshMapPreview({ countForFreeRoamSession: true, radarStatusRefresh: true });
+    }
   }
 }
 
