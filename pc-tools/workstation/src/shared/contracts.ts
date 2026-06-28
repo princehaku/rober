@@ -3071,6 +3071,12 @@ export interface RobotControlBaseFeedbackSamplesProxyResponse extends ProofFlags
     sends_motion_commands: string;
     robot_control_executed: string;
   };
+  wheel_raw_left: string;
+  wheel_raw_right: string;
+  wheel_feedback_lr_nonzero_proven: string;
+  wheel_feedback_source: string;
+  wheel_feedback_plain_hint: string;
+  wheel_feedback_next_action: string;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

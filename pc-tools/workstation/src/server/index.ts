@@ -401,6 +401,55 @@ function baseFeedbackSampleKeyValues(payload: Record<string, unknown> | null): R
   };
 }
 
+function baseFeedbackSampleAliases(
+  sampleKeyValues: RobotControlBaseFeedbackSamplesProxyResponse["sample_key_values"],
+): Pick<
+  RobotControlBaseFeedbackSamplesProxyResponse,
+  | "wheel_raw_left"
+  | "wheel_raw_right"
+  | "wheel_feedback_lr_nonzero_proven"
+  | "wheel_feedback_source"
+  | "wheel_feedback_plain_hint"
+  | "wheel_feedback_next_action"
+> {
+  // 顶层 wheel alias 与 sample_key_values 同源，方便现场一眼确认 L/R，同时避免把只读采样误当成运动证明。
+  const left = sampleKeyValues.wheel_feedback_latest_left_speed || "not_observed";
+  const right = sampleKeyValues.wheel_feedback_latest_right_speed || "not_observed";
+  const proven = sampleKeyValues.wheel_feedback_lr_nonzero_proven || "not_loaded";
+  const frameCount = sampleKeyValues.t1001_observed_count || "0";
+  const nonzeroFrames = sampleKeyValues.wheel_feedback_nonzero_frame_count || "0";
+  const source = sampleKeyValues.wheel_feedback_source || "not_observed";
+  const pairText = `wheel raw L/R=${left}/${right}`;
+  if (proven === "true") {
+    return {
+      wheel_raw_left: left,
+      wheel_raw_right: right,
+      wheel_feedback_lr_nonzero_proven: proven,
+      wheel_feedback_source: source,
+      wheel_feedback_plain_hint: `只读反馈采样读到 ${pairText}，非零帧 ${nonzeroFrames}/${frameCount}；这不是运动命令，也不能单独替代试动或 Nav2 执行窗口材料。`,
+      wheel_feedback_next_action: "继续用对应的试动、键盘或 Nav2 执行窗口材料收口 wheel raw L/R 非零。",
+    };
+  }
+  if (left !== "not_observed" || right !== "not_observed" || frameCount !== "0") {
+    return {
+      wheel_raw_left: left,
+      wheel_raw_right: right,
+      wheel_feedback_lr_nonzero_proven: proven,
+      wheel_feedback_source: source,
+      wheel_feedback_plain_hint: `只读反馈采样读到 ${pairText}，非零未证明，T1001 帧 ${frameCount}；这不是运动命令。`,
+      wheel_feedback_next_action: "勾选现场安全确认后低速试动或按住键盘方向键，再复验 wheel raw L/R 非零。",
+    };
+  }
+  return {
+    wheel_raw_left: left,
+    wheel_raw_right: right,
+    wheel_feedback_lr_nonzero_proven: proven,
+    wheel_feedback_source: source,
+    wheel_feedback_plain_hint: "只读反馈采样没有读到可用 wheel raw L/R；这不是运动命令。",
+    wheel_feedback_next_action: "先确认上位机底盘反馈链路，再勾安全确认做低速试动。",
+  };
+}
+
 function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
   // 上位机 manual 响应里的 during-motion 反馈是最贴近真实点动窗口的 wheel material。
   const wheelSummary = asRecord(payload?.manual_wheel_feedback_summary);
@@ -556,6 +605,7 @@ function deliveryMaterialRefs(payload: Record<string, unknown> | null): RobotCon
 
 function baseFeedbackSamplesFailure(sourceBaseUrl: string, reason: string): RobotControlBaseFeedbackSamplesProxyResponse {
   // 本机拒绝时不能触发任何串口请求；响应仍保持完整 fail-closed 形状。
+  const sampleKeyValues = baseFeedbackSampleKeyValues(null);
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
     source: "software_proof",
@@ -570,7 +620,8 @@ function baseFeedbackSamplesFailure(sourceBaseUrl: string, reason: string): Robo
     remote_endpoint: "/api/base/feedback-samples",
     remote_http_status: null,
     status: "blocked",
-    sample_key_values: baseFeedbackSampleKeyValues(null),
+    sample_key_values: sampleKeyValues,
+    ...baseFeedbackSampleAliases(sampleKeyValues),
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -2230,6 +2281,7 @@ export function createWorkstationApp(): express.Express {
       return;
     }
     const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_FEEDBACK_SAMPLE_FAIL_CLOSED_FIELDS);
+    const sampleKeyValues = baseFeedbackSampleKeyValues(remote.payload);
     const responseBody: RobotControlBaseFeedbackSamplesProxyResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
       proxy_status:
@@ -2245,7 +2297,8 @@ export function createWorkstationApp(): express.Express {
       remote_endpoint: "/api/base/feedback-samples",
       remote_http_status: remote.remote_http_status,
       status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked"),
-      sample_key_values: baseFeedbackSampleKeyValues(remote.payload),
+      sample_key_values: sampleKeyValues,
+      ...baseFeedbackSampleAliases(sampleKeyValues),
       failure_reason:
         dangerous.length > 0
           ? `dangerous_true_field:${dangerous[0]}`

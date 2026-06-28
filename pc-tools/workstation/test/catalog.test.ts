@@ -12160,6 +12160,86 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation base feedback samples expose top-level wheel raw aliases without motion", async () => {
+    // 只读反馈采样是现场排查 wheel raw 的入口；顶层 alias 必须和 sample_key_values 一致，且不能触发 manual/Nav2。
+    const upstream = await listenRobotBaseCommandApi(
+      {
+        "/api/base/feedback-samples": {
+          payload: {
+            schema: "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+            status: "loaded",
+            safe_to_control: false,
+            robot_control_executed: false,
+            requested_sample_count: 3,
+            completed_sample_count: 3,
+            t1001_observed_count: 2,
+            all_samples_observed_t1001: false,
+            partial_samples_observed_t1001: true,
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_nonzero_observed: false,
+            observed_feedback_types: [1001],
+            sends_motion_commands: false,
+            feedback_ack: {
+              t1001_observed: true,
+            },
+            wheel_feedback_summary: {
+              nonzero_frame_count: 0,
+              source: "vendor_t1001_L_R",
+              latest_pair: {
+                left_speed: 0,
+                right_speed: 0,
+              },
+            },
+          },
+        },
+      },
+      {},
+    );
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/feedback-samples?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        sample_key_values: Record<string, string>;
+        wheel_raw_left: string;
+        wheel_raw_right: string;
+        wheel_feedback_lr_nonzero_proven: string;
+        wheel_feedback_source: string;
+        wheel_feedback_plain_hint: string;
+        wheel_feedback_next_action: string;
+        sends_motion_commands: boolean;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("samples_forwarded");
+      expect(body.sample_key_values.wheel_feedback_latest_left_speed).toBe("0");
+      expect(body.sample_key_values.wheel_feedback_latest_right_speed).toBe("0");
+      expect(body.wheel_raw_left).toBe("0");
+      expect(body.wheel_raw_right).toBe("0");
+      expect(body.wheel_feedback_lr_nonzero_proven).toBe("false");
+      expect(body.wheel_feedback_source).toBe("vendor_t1001_L_R");
+      expect(body.wheel_feedback_plain_hint).toContain("wheel raw L/R=0/0");
+      expect(body.wheel_feedback_plain_hint).toContain("这不是运动命令");
+      expect(body.wheel_feedback_next_action).toContain("勾选现场安全确认后低速试动");
+      expect(body.sends_motion_commands).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedBodies["/api/base/feedback-samples"]).toEqual([{
+        sample_count: 3,
+        sample_interval_s: 0.15,
+        read_timeout_s: 0.25,
+        read_window_s: 0.35,
+      }]);
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation base manual proxy captures fixed GET evidence around local checklist reject", async () => {
     // 本地拒绝也要采集 before/after 证据快照；它只读固定 GET，不发送非零运动。
     const upstream = await listenRobotBaseCommandApi(
