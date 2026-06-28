@@ -6572,17 +6572,12 @@ const plainWheelGoalProgressHint = computed(() => {
       ? "，当前未读到新反馈帧"
       : frameCount !== "not_loaded" ? `，已读到 ${frameCount} 帧` : "";
     let nextStep = staleOrEmptyReadback ? "下一步：先刷新当前轮速（只读），再底盘试动读取非零 L/R。" : "仍需底盘试动读到非零。";
-    if (firstJogMaterialRestoreReady.value) {
-      nextStep = "先点恢复试动确认，再试动读非零。";
-    } else if (plainWheelZeroBlockerActive.value) {
+    if (plainWheelZeroBlockerActive.value) {
       nextStep = WHEEL_ZERO_NEXT_ACTION_SUMMARY;
     } else if (!staleOrEmptyReadback && isZeroWheelPair(left, right) && canSendPlainWheelTrial.value) {
       nextStep = "下一步：底盘试动读取非零 L/R。";
     }
     return `当前轮速 L/R=${left}/${right}${frameText}${voltageText}，${nextStep}`;
-  }
-  if (firstJogMaterialRestoreReady.value) {
-    return "先点恢复试动确认，再试动读取轮速。";
   }
   if (canRunBaseFeedbackSamples.value) {
     return "还没读到当前 L/R；先刷新当前轮速（只读），再底盘试动读取非零。";
@@ -6603,9 +6598,6 @@ const plainWheelGoalNextAction = computed(() => {
   }
   if (plainWheelZeroBlockerChecked.value) {
     return "下一步：重试读非零 L/R。";
-  }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return "下一步：恢复试动确认。";
   }
   if (!currentWheelReadbackLoaded.value && canRunBaseFeedbackSamples.value) {
     return "下一步：刷新当前轮速（只读）。";
@@ -6894,7 +6886,7 @@ const plainGoalProgressItems = computed(() => {
     {
       id: "wheel",
       label: "轮速记录",
-      actionLabel: firstJogMaterialRestoreBlocksMotion.value ? "去恢复" : "去轮速",
+      actionLabel: "去轮速",
       state: wheelReady ? "已完成" : "待完成",
       hint: wheelReady ? `${wheelEvidence.hint}。` : plainWheelGoalProgressHint.value,
       nextAction: plainWheelGoalNextAction.value,
@@ -6944,9 +6936,6 @@ const plainGoalProgressPrimaryTarget = computed(() => {
 const plainGoalProgressPrimaryActionLabel = computed(() => {
   // 文案直接写出要跳到哪个卡点，减少现场点按钮前的二次判断。
   const target = plainGoalProgressItems.value.find((item) => item.id === plainGoalProgressPrimaryTarget.value);
-  if (target?.id === "wheel" && firstJogMaterialRestoreBlocksMotion.value) {
-    return "去恢复确认";
-  }
   if (target?.id === "wheel" && canSendPlainWheelTrial.value) {
     return "去低速试动";
   }
@@ -7003,9 +6992,6 @@ const plainGoalProgressBlockerSummary = computed(() => {
   if (!wheelReady) {
     if (plainWheelEvidenceSaveFailed.value) {
       return "验收卡点：轮速已读到，但保存失败；先重试保存轮速记录。";
-    }
-    if (firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value) {
-      return "验收卡点：送达草稿覆盖了试动确认，先恢复试动确认，再低速试动读非零 L/R。";
     }
     if (plainWheelZeroBlockerActive.value && isZeroWheelPair(left, right)) {
       return `验收卡点：轮速 L/R=${left}/${right}，检查电机使能、供电、模式和现场空间后重试。`;
@@ -7716,10 +7702,6 @@ const plainFirstJogMaterialRestored = computed(() => {
   return plainFirstJogMaterialRestoreResult.value?.proxy_status === "report_forwarded" && plainFirstJogMaterialRestoreResult.value.status !== "blocked";
 });
 
-const firstJogMaterialRestoreBlocksMotion = computed(() => (
-  firstJogMaterialRestoreReady.value && !plainFirstJogMaterialRestored.value
-));
-
 const canRestorePlainFirstJogMaterial = computed(() => (
   !loading.value
   && !previewBusy.value
@@ -7745,17 +7727,11 @@ const plainFirstJogMaterialRestoreButtonLabel = computed(() => {
 });
 
 const canSendPlainFirstJog = computed(() => {
-  // 普通试动必须先有 first-jog 材料；送达草稿覆盖状态下必须先点“恢复试动确认”。
+  // 普通试动的硬门禁只有连接和安全确认；画面/雷达材料只影响后续验收，不再阻塞低速试动。
   if (!robotApiBaseUrl.value.trim() || loading.value || manualCommandPending.value) {
     return false;
   }
-  if (plainFirstJogMaterialRestored.value || plainVisualMaterialSubmitted.value) {
-    return true;
-  }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return false;
-  }
-  return robotSummary.value?.first_jog_readiness_summary?.status === "ready_for_first_jog";
+  return plainManualSafetyConfirmed.value;
 });
 
 const canSendPlainWheelTrial = computed(() => {
@@ -7777,13 +7753,10 @@ const plainFirstJogBlockedHint = computed(() => {
   if (loading.value || manualCommandPending.value) {
     return "试动按钮已锁定：正在处理上一条请求。";
   }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return "试动按钮已锁定：请先点恢复试动确认（不会发车）。";
+  if (!plainManualSafetyConfirmed.value) {
+    return "试动按钮已锁定：先勾选安全确认。";
   }
-  if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value) {
-    return "旧试动入口还需要现场画面；可直接用底盘试动，底盘试动只要求安全确认。";
-  }
-  return "试动按钮已锁定：移动前确认还未满足。";
+  return "试动按钮已锁定：当前条件暂不可用。";
 });
 
 const plainFirstJogEvidenceSummary = computed(() => {
@@ -7843,9 +7816,6 @@ const plainWheelRecordSummary = computed(() => {
     }
     return { state: "待重试", hint: "已试动，但还没拿到非零 L/R。" };
   }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return { state: "待确认", hint: "先点“恢复试动确认”（不会发车），再试动读取轮速。" };
-  }
   if (canSendPlainFirstJog.value) {
     return { state: "待试动", hint: "点“试动一下”或“底盘试动”后读取轮速。" };
   }
@@ -7862,9 +7832,6 @@ const plainWheelTrialButtonLabel = computed(() => {
   }
   if (loading.value || manualCommandPending.value) {
     return "等待上一条请求";
-  }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return "先恢复确认再试动";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value && !plainFirstJogMaterialRestored.value) {
     return plainManualSafetyConfirmed.value ? "底盘试动读轮速" : "先勾确认再试动";
@@ -7903,9 +7870,6 @@ const plainWheelEvidenceSaveButtonLabel = computed(() => {
   }
   if (plainFirstJogWheelEvidenceReady.value) {
     return "保存轮速记录";
-  }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return "保存轮速记录（先恢复确认）";
   }
   if (!firstJogVisualMaterialReady.value && !plainVisualMaterialSubmitted.value && !plainFirstJogMaterialRestored.value) {
     return "保存轮速记录（先底盘试动）";
@@ -10127,11 +10091,6 @@ function focusPlainGoalProgressTarget(targetId: string): void {
 
 function plainWheelGoalTarget(): HTMLElement | null {
   // 轮速目标的跳转要落到现场“下一手动作”，否则用户还得在面板里二次找卡点。
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return enabledButton(plainMotionRestoreButton.value)
-      ?? enabledButton(plainFirstJogRestoreButton.value)
-      ?? plainWheelRecordPanel.value;
-  }
   if (plainWheelZeroBlockerActive.value && !plainWheelZeroBlockerChecked.value) {
     return enabledButton(plainWheelZeroCheckButton.value) ?? plainWheelRecordPanel.value;
   }
@@ -10250,9 +10209,6 @@ function plainRadarNextTarget(): HTMLElement | null {
 function plainKeyboardNextTarget(): HTMLElement | null {
   if (canArmKeyboardControl.value) {
     return enabledButton(keyboardControlArmButton.value) ?? keyboardControlPanel.value;
-  }
-  if (firstJogMaterialRestoreBlocksMotion.value) {
-    return enabledButton(plainFirstJogRestoreButton.value) ?? plainWheelRecordPanel.value;
   }
   if (plainKeyboardMotionProofNextStep.value === "wheel") {
     return enabledButton(plainWheelSaveButton.value)
@@ -12079,7 +12035,7 @@ onBeforeUnmount(() => {
               {{ plainRecordCurrentCameraLabel }}
             </button>
             <button
-              v-if="firstJogMaterialRestoreBlocksMotion"
+              v-if="firstJogMaterialRestoreReady"
               ref="plainMotionRestoreButton"
               type="button"
               class="secondary compact-stop"

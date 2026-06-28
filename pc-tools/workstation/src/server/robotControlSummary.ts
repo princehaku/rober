@@ -403,10 +403,7 @@ export const ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS = [
   "scan_delta_ref",
 ] as const;
 export const ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS = [
-  "operator_present",
-  "physical_clearance_confirmed",
-  "emergency_stop_ready",
-  "external_video_or_visible_camera",
+  "confirm_hil_checklist",
 ] as const;
 const OPERATOR_REPORT_TOP_LEVEL_FIELDS = new Set([
   "operator_present",
@@ -4776,7 +4773,7 @@ function materialClaimReady(value: string): boolean {
 function buildFirstJogReadinessSummary(
   materialSummary: RobotControlOperatorHilMaterialSummary,
 ): RobotControlSummaryResponse["first_jog_readiness_summary"] {
-  // first-jog 只把首次试动的前置条件前移到 summary；轮速和 LiDAR delta 仍是试动后的证据。
+  // first-jog 的硬门禁已经收敛为本地安全确认；summary 只提供旧 operator report 的参考材料状态。
   if (materialSummary.status !== "loaded") {
     return {
       status: "not_loaded",
@@ -4792,22 +4789,13 @@ function buildFirstJogReadinessSummary(
     materialSummary.emergency_stop === "true" ? "" : "emergency_stop_ready",
   ].filter(Boolean);
   const visualReady = materialClaimReady(materialSummary.external_video) || materialClaimReady(materialSummary.camera_visible);
-  const missingFields = [...basicMissing, ...(visualReady ? [] : ["external_video_or_visible_camera"])];
   const basicReady = basicMissing.length === 0;
   return {
-    status: !basicReady
-      ? "blocked_missing_basic_safety"
-      : visualReady
-        ? "ready_for_first_jog"
-        : "blocked_missing_visual_material",
+    status: basicReady ? "ready_for_first_jog" : "blocked_missing_basic_safety",
     basic_safety_ready: basicReady,
     visual_material_ready: visualReady,
-    missing_fields: missingFields,
-    next_action: !basicReady
-      ? "complete_basic_safety_check"
-      : visualReady
-        ? "press_try_move"
-        : "record_visual_material",
+    missing_fields: basicMissing,
+    next_action: basicReady ? "press_try_move" : "complete_basic_safety_check",
   };
 }
 

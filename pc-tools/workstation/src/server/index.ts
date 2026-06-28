@@ -48,7 +48,6 @@ import {
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
   ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS,
   ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
-  fetchFirstJogOperatorReportPreflight,
   notRequiredConfirmedManualOperatorReportPreflight,
   notRequiredOperatorReportPreflight,
   scanDangerousTrueFields,
@@ -1847,7 +1846,7 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {
-    // 首次试动只解除“轮速/LiDAR delta 必须先存在”的循环；仍要求现场与可视材料。
+    // 首次试动与普通手控使用同一个最小门禁：用户勾安全确认即可，画面/雷达只影响后续验收。
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
@@ -1888,24 +1887,7 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
-    const operatorReportPreflight = await fetchFirstJogOperatorReportPreflight(normalized.normalized);
-    if (operatorReportPreflight.status !== "passed") {
-      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
-      res.status(400).json(baseCommandFailure(
-        sourceBaseUrl,
-        "manual",
-        "/api/base/manual",
-        "first_jog_preflight_required",
-        direction,
-        speed,
-        durationMs,
-        confirmHilChecklist,
-        evidenceCapture,
-        operatorReportPreflight,
-      ));
-      return;
-    }
+    const operatorReportPreflight = notRequiredConfirmedManualOperatorReportPreflight();
     const clampedSpeed = clamp(speed, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS);
     const clampedDurationMs = clamp(durationMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS);
     const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/manual", {

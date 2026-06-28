@@ -2256,19 +2256,18 @@ NavigateToPose、`/cmd_vel`、`/api/base/manual` 或 fixed-route movement。
 2026-06-21 起，PC 后端新增首次低速试动固定入口
 `POST /api/robot-control/base/first-jog?baseUrl=<robot-api-base-url>`，用于处理
 wheel feedback 与 LiDAR motion delta 必须在第一次真实动作后才能生成的循环。该入口
-只允许 `forward/back/left/right`、`speed<=0.12m/s`、`duration<=800ms`，仍要求
-`confirm_hil_checklist=true`、operator 基础三项为 true，并且必须存在外部视频 ref 或
-可见相机 artifact ref；它不把 wheel feedback/LiDAR delta 当作前置材料，而是把它们
-留作试动后的输出证据。真实上位机 smoke 中当前 operator report 只有基础三项，缺
-`external_video_or_visible_camera`，因此 PC 本机返回 HTTP 400
-`first_jog_preflight_required`、`remote_http_status=null`，没有调用远端
-`/api/base/manual`。这仍不是 fixed-route movement、Nav2 execution 或 delivery proof。
+只允许 `forward/back/left/right`、`speed<=0.12m/s`、`duration<=800ms`，并要求
+请求体 `confirm_hil_checklist=true`。2026-06-29 05:20 起，该入口不再把 operator report
+里的外部视频、可见相机、wheel feedback 或 LiDAR delta 当作发车前置；这些材料只作为试动后验收输出或建图/送达材料。
+PC 本机固定代理会在安全确认后转发远端 `/api/base/manual`，仍不直连 `/cmd_vel`，也不等于 fixed-route movement、
+Nav2 execution 或 delivery proof。
 
 同日 23:50 起，普通 PC 首屏把 first-jog 接成“记录现场画面 -> 试动一下”的普通流程。
 `记录画面` 只提交 external video ref，不提交 wheel feedback、LiDAR delta 或 route map
 成功；`试动一下` 固定请求 `forward speed=0.08 duration_ms=500` 的 first-jog 代理。
-真实 smoke 在当前缺外部视频/可见相机材料时仍返回 HTTP 400，未调用远端
-`/api/base/manual`，因此它只是 PC 控制触点推进，不是路线移动、建图移动或自动导航完成。
+最新口径下，缺外部视频/可见相机材料不再返回 HTTP 400；只要现场安全确认已勾选，就会通过固定代理发出限速限时
+`/api/base/manual`，再用回包和只读反馈判断 wheel raw L/R、LiDAR delta 或其它 motion evidence。
+因此它只是 PC 控制触点推进和低速试动入口，不是路线移动、建图移动或自动导航完成。
 
 2026-06-22 起，`sprints/2026.06.22_01-35_motion_map_runtime_probe/` 把该入口推进到
 真实 LiDAR delta 和小范围地图材料：

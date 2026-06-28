@@ -3779,7 +3779,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("去送达");
     expect(firstScreenText).toContain("去键盘");
     expect(firstScreenText).toContain("轮速记录");
-    expect(firstScreenText).toContain("点“试动一下”或“底盘试动”后读取轮速。");
+    expect(firstScreenText).toContain("试动按钮已锁定：先勾选安全确认。");
     expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。");
     expect(firstScreenText).toContain("行程操作");
     expect(firstScreenText).toContain("先勾选现场安全确认，再用主按钮准备或执行行程。");
@@ -9434,7 +9434,7 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain(
-      "当前轮速 L/R=0/0，已读到 3 帧，下一步：底盘试动读取非零 L/R。",
+      "当前轮速 L/R=0/0，已读到 3 帧，仍需底盘试动读到非零。",
     );
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).not.toContain("历史轮速样本已过期");
 
@@ -9471,6 +9471,9 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
 
     const plainProgress = wrapper.find('[data-testid="plain-goal-progress"]').text();
     expect(plainProgress).toContain("轮速记录");
@@ -9498,7 +9501,7 @@ describe("App", () => {
     expect(focusSpy).toHaveBeenCalled();
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFocus);
-    expect(visiblePlainHomeText(wrapper)).not.toContain("raw");
+    expect(visiblePlainHomeText(wrapper)).toContain("wheel raw L/R=0/0");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
@@ -9606,8 +9609,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(0);
   });
 
-  it("shows restore-first-jog as the next wheel step when delivery draft replaced basic safety", async () => {
-    // 送达草稿覆盖 basic safety 后，进度区应先引导恢复确认，再让现场试动读非零。
+  it("shows optional restore material without blocking the wheel step when delivery draft replaced basic safety", async () => {
+    // 送达草稿覆盖 basic safety 后，恢复确认只补材料；小车试动仍只看现场安全勾选。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.base.latest_t1001_observed_count = "13";
     summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
@@ -9634,10 +9637,10 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 13 帧，先点恢复试动确认，再试动读非零。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：送达草稿覆盖了试动确认，先恢复试动确认，再低速试动读非零 L/R。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去恢复确认");
-    expect(wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').text()).toBe("去恢复");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 13 帧，仍需底盘试动读到非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还需要试动期间同帧 L/R 都非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去轮速记录卡点");
+    expect(wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').text()).toBe("去轮速");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
     expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：勾选安全确认。");
@@ -9646,7 +9649,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     expect(focusSpy).toHaveBeenCalled();
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFocus);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-motion-restore"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-record"]').element);
     expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-first-jog-restore"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -11574,8 +11577,8 @@ describe("App", () => {
     expect(wrapper.find(".robot-console-grid").text()).not.toContain("外部视频");
   });
 
-  it("keeps non-stop motion disabled when operator material is incomplete but still allows stop", async () => {
-    // 非 stop 点动必须等 checklist 和现场材料都齐；材料缺项时只能保留 stop 作为 fail-safe。
+  it("allows confirmed low-speed motion when operator visual material is incomplete and still allows stop", async () => {
+    // 非 stop 点动只要求 checklist/安全确认；相机和雷达材料只影响后续验收，stop 仍是 fail-safe。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.external_video = "not_loaded";
     summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
@@ -11629,6 +11632,24 @@ describe("App", () => {
         robot_control_executed: false,
       },
       "/api/robot-control/base/manual": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "forward",
+        applied_direction: "forward",
+        remote_motion_key_values: {
+          feedback_during_motion_t1001_frame_count: "2",
+          wheel_feedback_latest_raw_left: "0.07",
+          wheel_feedback_latest_raw_right: "0.08",
+          wheel_feedback_lr_nonzero_proven: "true",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+      "/api/robot-control/base/first-jog": {
         schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
         command_kind: "manual",
         proxy_status: "command_forwarded",
@@ -11734,8 +11755,8 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-wheel-trial"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toHaveLength(1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(0);
 
     const motionButtons = wrapper.findAll(".motion-pad button");
     const forwardButton = motionButtons.find((button) => button.text() === "前进");
@@ -11746,7 +11767,7 @@ describe("App", () => {
     await forwardButton?.trigger("click");
     await flushPromises();
     const manualCallsAfterForward = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
-    expect(manualCallsAfterForward).toBe(2);
+    expect(manualCallsAfterForward).toBe(1);
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -12289,7 +12310,7 @@ describe("App", () => {
     expect(diagnosticsText).toContain("next=restore first-jog materials then run wheel nonzero trial");
     expect(visiblePlainHomeText(wrapper)).toContain("已读到底盘反馈，但当前轮速是 L/R=0/0；反馈电压约 12.43V；这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("12.43049049V");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，反馈电压约 12.43V，下一步：底盘试动读取非零 L/R。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，反馈电压约 12.43V，仍需底盘试动读到非零。");
     expect(wrapper.find('[data-testid="plain-wheel-next-action"]').exists()).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(mockedFetch.mock.calls.filter(([url]) =>
@@ -12489,6 +12510,9 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("下一步：刷新当前轮速（只读）。");
@@ -12587,15 +12611,15 @@ describe("App", () => {
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     expect(visiblePlainHomeText(wrapper)).toContain("勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。");
-    expect(visiblePlainHomeText(wrapper)).toContain("试动按钮已锁定：请先点恢复试动确认（不会发车）。");
-    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("先点“恢复试动确认”（不会发车），再试动读取轮速。");
+    expect(visiblePlainHomeText(wrapper)).toContain("试动按钮已锁定：先勾选安全确认。");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("现场画面已在，先完成试动前确认。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("恢复试动确认");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("first-jog material restore");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("latest-only operator report is delivery_material_draft_not_operator_confirmed");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("action=restore first-jog confirmation");
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("先恢复确认再试动");
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读轮速");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先恢复确认）");
+    expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
@@ -12657,6 +12681,9 @@ describe("App", () => {
       delivery_success: false,
       site_state: "plain_first_jog_material_restored_for_trial",
     }));
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     const firstJogButtonAfterRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButtonAfterRestore?.attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读非零 L/R");
@@ -12775,7 +12802,7 @@ describe("App", () => {
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     expect(visiblePlainHomeText(wrapper)).toContain("勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。");
-    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("先点“恢复试动确认”（不会发车），再试动读取轮速。");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("勾安全确认后点“底盘试动”读取轮速；画面只影响旧试动材料和建图验收。");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("delivery latest draft visual material kept");
     expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-first-jog-restore"]').attributes("disabled")).toBeUndefined();
@@ -12808,9 +12835,9 @@ describe("App", () => {
       site_state: "plain_first_jog_material_restored_for_trial",
     }));
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读非零 L/R");
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-record"]').element);
     expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeRestore);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -13383,6 +13410,9 @@ describe("App", () => {
     expect(reportBody.safe_to_control).toBeUndefined();
     expect(reportBody.delivery_success).toBeUndefined();
 
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     const firstJogButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     await firstJogButton?.trigger("click");
     await flushPromises();
@@ -13528,6 +13558,9 @@ describe("App", () => {
     const operatorReportCallCount = () => mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/operator/report?")).length;
 
     const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
@@ -13716,6 +13749,9 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
 
     const firstJogButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButton?.attributes("disabled")).toBeUndefined();
@@ -13836,6 +13872,9 @@ describe("App", () => {
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
     const firstJogButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
@@ -13894,6 +13933,9 @@ describe("App", () => {
       "/api/robot-control/base/manual": { proxy_status: "should_not_be_called" },
     });
     const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");

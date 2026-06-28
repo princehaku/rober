@@ -3768,3 +3768,11 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 同轮摄像头复核显示共享预览链路不是独占问题：`shared_preview_contract=single_shared_capture_for_multiple_clients`，
 `source_usage.owner_count=0`，但 `/dev/video1` DV20 UVC 返回 `uvc_no_frame_not_exclusive`。
 因此多人页面进入时会共享同一条预览/失败诊断；当前看不到实时画面的原因是摄像头源头没有输出首帧，而不是后来打开的页面抢占了设备。
+
+2026-06-29 05:20 起，PC 普通首屏和 fixed first-jog 统一为最小安全确认门禁：
+`试动一下`、轮速卡 `低速试动读轮速`、键盘连续手控和已准备行程执行都只把“人在旁边、周围安全、停止手段就绪”
+作为前端硬门槛；相机、雷达、外部视频和旧 first-jog 恢复材料只影响建图/验收/材料说明，不再阻止小车低速自己动。
+`POST /api/robot-control/base/first-jog` 不再读取 `/api/operator/report` 做视觉材料 preflight，而是要求请求体
+`confirm_hil_checklist=true` 后转发固定 `/api/base/manual`，并保留速度 `<=0.12m/s`、时长 `<=800ms`、
+`command_mode=ros` 和 stop 兜底口径。恢复试动确认按钮仍可用于补 operator report 材料，但它是可选补材料动作，不再改变试动按钮是否可点。
+该变化不直连 `/cmd_vel`，不自动执行 Nav2，不确认 delivery success，也不把相机/雷达缺口误解释成底盘不能移动。

@@ -5276,8 +5276,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("summarizes first-jog readiness when only visual material is missing", async () => {
-    // 当前实板常见状态：基础安全三项已记录，但外部视频/可见相机材料还没补。
+  it("summarizes first-jog as ready when only visual material is missing", async () => {
+    // 最新普通首屏口径：低速试动只需要安全确认；外部视频/可见相机材料只影响后续验收。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/operator/report": {
         payload: {
@@ -5305,11 +5305,11 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.operator_hil_material_summary.operator_present).toBe("true");
       expect(summary.first_jog_readiness_summary).toEqual({
-        status: "blocked_missing_visual_material",
+        status: "ready_for_first_jog",
         basic_safety_ready: true,
         visual_material_ready: false,
-        missing_fields: ["external_video_or_visible_camera"],
-        next_action: "record_visual_material",
+        missing_fields: [],
+        next_action: "press_try_move",
       });
       expect(summary.safe_to_control).toBe(false);
       expect(summary.primary_actions_enabled).toBe(false);
@@ -11395,11 +11395,17 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("workstation first-jog proxy rejects current circular motion evidence gap before remote manual", async () => {
-    // 首次试动不要求轮速/LiDAR delta 前置，但仍必须有外部视频或可见相机材料。
+  it("workstation first-jog proxy forwards confirmed low-speed motion without visual material", async () => {
+    // 勾安全确认即可低速试动；相机/外部视频不再是发车前置。
     const upstream = await listenRobotBaseCommandApi({
       "/api/base/manual": {
-        payload: { schema: "trashbot.upper_robot_api.v1.base_manual", status: "should_not_be_called" },
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_manual",
+          status: "accepted",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
       },
     }, {
       "/api/operator/report": {
@@ -11441,23 +11447,33 @@ describe("workstation fail-closed API contracts", () => {
         failure_reason: string;
         operator_report_preflight: { status: string; required_fields: string[]; missing_fields: string[]; failure_reason: string };
         robot_control_executed: boolean;
+        applied_direction: string;
+        clamped_speed_mps: number;
+        clamped_duration_ms: number;
       };
 
-      expect(response.status).toBe(400);
-      expect(body.proxy_status).toBe("command_rejected");
-      expect(body.failure_reason).toBe("first_jog_preflight_required");
-      expect(body.operator_report_preflight.failure_reason).toBe("first_jog_preflight_required");
-      expect(body.operator_report_preflight.required_fields).toEqual([
-        "operator_present",
-        "physical_clearance_confirmed",
-        "emergency_stop_ready",
-        "external_video_or_visible_camera",
-      ]);
-      expect(body.operator_report_preflight.missing_fields).toContain("external_video_or_visible_camera");
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("command_forwarded");
+      expect(body.failure_reason).toBe("");
+      expect(body.operator_report_preflight.status).toBe("not_required_for_confirmed_manual");
+      expect(body.operator_report_preflight.required_fields).toEqual([]);
+      expect(body.operator_report_preflight.missing_fields).toEqual([]);
       expect(body.operator_report_preflight.missing_fields).not.toContain("wheel_feedback_lr_nonzero_proven");
       expect(body.operator_report_preflight.missing_fields).not.toContain("physical_motion_lidar_delta_proven");
       expect(body.robot_control_executed).toBe(false);
-      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+      expect(body.applied_direction).toBe("forward");
+      expect(body.clamped_speed_mps).toBe(0.08);
+      expect(body.clamped_duration_ms).toBe(500);
+      expect(upstream.receivedGets).not.toContain("/api/operator/report");
+      expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
+        {
+          direction: "forward",
+          speed: 0.08,
+          duration_ms: 500,
+          command_mode: "ros",
+          confirm_hil_checklist: true,
+        },
+      ]);
     } finally {
       await workstation.close();
       await upstream.close();
@@ -11526,11 +11542,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.applied_direction).toBe("left");
       expect(body.clamped_speed_mps).toBe(0.12);
       expect(body.clamped_duration_ms).toBe(800);
-      expect(body.operator_report_preflight.status).toBe("passed");
+      expect(body.operator_report_preflight.status).toBe("not_required_for_confirmed_manual");
       expect(body.operator_report_preflight.missing_fields).toEqual([]);
-      expect(body.operator_report_preflight.evidence_ref).toBe("field-hil-first-jog-visual");
+      expect(body.operator_report_preflight.evidence_ref).toBe("not_required_for_confirmed_manual");
       expect(body.robot_control_executed).toBe(false);
       expect(body.safe_to_control).toBe(false);
+      expect(upstream.receivedGets).not.toContain("/api/operator/report");
       expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
         {
           direction: "left",
