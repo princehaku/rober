@@ -3976,6 +3976,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_fact_plain).toContain("自动驾驶：图上路线还未准备完成");
       expect(summary.current_fact_plain).toContain("键盘：必须按住 W/A/S/D 或方向键才会连续低速移动");
       expect(summary.current_fact_plain).toContain("发车前：执行图上路线只复核现场安全确认和固定白名单");
+      expect(summary.current_fact_plain).not.toContain("marker");
+      expect(summary.current_fact_plain).not.toContain("overlay");
       expect(summary.readback_summary.map).toMatchObject({
         status: expect.any(String),
         map_once_observed: "true",
@@ -8022,8 +8024,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.plain_hint).toContain("地图画面、图上路线和小车位置已显示");
       expect(summary.readback_summary.map.plain_hint).toContain("雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
-      expect(summary.current_fact_plain).toContain("地图画面、图上路线和小车位置已显示；雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断。");
-      expect(summary.current_fact_plain.match(/已有雷达来源点 65 个/g)?.length).toBe(1);
+      expect(summary.current_fact_plain).toContain("地图画面、图上路线和小车位置已显示");
+      expect(summary.current_fact_plain).toContain("雷达未运行或扫描已停；地图雷达点当前显示 0 个，旧来源点 65 个只作诊断");
+      expect(summary.current_fact_plain).not.toContain("雷达 marker");
+      expect(summary.current_fact_plain.match(/旧来源点 65 个只作诊断/g)?.length).toBe(1);
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
       expect(summary.readback_summary.map.path_preview_point_count).toBe("2");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");

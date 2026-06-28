@@ -6334,7 +6334,7 @@ function currentFactMapRadarParts(
   mapStatus: string,
   radarStatus: string,
 ): { map: string; radar: string } {
-  // 地图主句如果已经用分号追加了雷达诊断，顶层事实改由 radar overlay 专门说明，避免旧来源点和当前 marker 重复出现。
+  // 地图主句如果已经用分号追加了雷达诊断，顶层事实改由雷达 summary 专门说明，避免旧来源点和当前雷达点重复出现。
   const map = plainFactPart(mapStatus);
   const radar = plainFactPart(radarStatus);
   if (!map || !radar) {
@@ -6365,7 +6365,7 @@ function summaryCurrentFactPlain(
   const camera = currentFactCameraPart(readback.camera.camera_wysiwyg_status_plain);
   const { map, radar } = currentFactMapRadarParts(
     readback.map.map_wysiwyg_status_plain,
-    readback.radar.radar_overlay_wysiwyg_status_plain,
+    readback.radar.plain_hint || readback.radar.radar_overlay_wysiwyg_status_plain,
   );
   const nav2 = plainFactPart(readback.nav2.execution_status_plain || readback.nav2.route_execution_readiness_plain);
   const keyboard = plainFactPart(readback.keyboard.hold_to_move_plain || readback.keyboard.readiness_plain);
