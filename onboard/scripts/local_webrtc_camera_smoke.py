@@ -826,11 +826,14 @@ def camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[Came
 def mjpeg_camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[CameraCaptureAttemptSpec]:
     """共享 MJPEG 首屏预算短，必须先横跨 MJPG/YUYV/default，而不是被一串 MJPG 吃完。"""
     priority_specs = [
-        CameraCaptureAttemptSpec("MJPG", width, height, fps),
+        # 现场 DV20 枚举没有 15fps MJPG；共享首屏先试真实离散 30fps，避免把 3 秒预算花在不支持组合上。
+        CameraCaptureAttemptSpec("MJPG", width, height, 30),
         # 真实 DV20 枚举里 YUYV 640x480 是 22fps；早试它可以验证“不是只卡 MJPG”。
         CameraCaptureAttemptSpec("YUYV", width, height, 22),
         # 不写 V4L2 属性的原生模式可绕过部分驱动对 set(fourcc/fps) 的异常协商。
         CameraCaptureAttemptSpec(None, None, None, None, apply_settings=False),
+        # 配置值保留为后续兜底，兼容现场换成支持 15fps 的 UVC。
+        CameraCaptureAttemptSpec("MJPG", width, height, fps),
     ]
     ordered: list[CameraCaptureAttemptSpec] = []
     seen: set[tuple[str | None, int | None, int | None, int | None, bool]] = set()

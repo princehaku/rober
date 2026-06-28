@@ -623,11 +623,11 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(attempts, error["first_frame_format_attempts"])
 
     def test_mjpeg_attempt_specs_cover_yuyv_and_default_before_extra_mjpg_modes(self) -> None:
-        """共享预览 9 秒窗口内要先跨格式验证，不能被多个 MJPG 分辨率耗尽。"""
+        """共享预览 9 秒窗口内先试真实离散 MJPG，再跨格式验证，避免被不支持 fps 耗尽。"""
         specs = camera.mjpeg_camera_capture_attempt_specs(640, 480, 15)
 
         self.assertEqual(
-            ["MJPG@640x480@15", "YUYV@640x480@22", "default@current", "MJPG@640x480@30"],
+            ["MJPG@640x480@30", "YUYV@640x480@22", "default@current", "MJPG@640x480@15"],
             [spec.label() for spec in specs[:4]],
         )
         self.assertEqual(len(specs), len({(spec.fourcc, spec.width, spec.height, spec.fps, spec.apply_settings) for spec in specs}))

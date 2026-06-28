@@ -188,10 +188,11 @@ pc-tools/workstation/
 - 2026-06-27 14:52 起，普通首屏共享画面状态在已知 `camera_source_first_frame_failed`、`camera_mjpeg_upstream_timeout`、HTTP 5xx 或 health 首帧失败时，不再追加 `页面正在接入共享预览`。失败态只保留“不是独占 / 每个页面共享同一条上游流 / 相机源没有首帧或上游没有画面”的事实，避免把 DV20/UVC 无帧误读成页面仍在加载。相机 ready 且尚无失败时仍显示接入提示。该改动只修正 PC WYSIWYG 文案，不创建额外 camera client，不调用 first-frame probe、Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 18:04 起，普通首屏在 summary/camera health 已证明 `source_first_frame_failed`，且诊断是 `uvc_no_frame_not_exclusive`、设备没人占用或共享预览明确非独占时，主按钮从 `打开画面` 改为 `重试共享画面`；其他首帧失败仍显示 `重试打开画面`。这只修正按钮文案和 `first_frame_total_timeout` 失败识别，不创建额外 camera client，不自动调用 camera offer、first-frame probe、Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 03:40 起，上车 8088 共享 MJPEG 首帧短窗口不再被连续 MJPG 分辨率吃完：尝试顺序改为先覆盖
-  `MJPG@640x480@15 -> YUYV@640x480@22 -> default@current`，再继续其它完整矩阵。8787 共享 relay 的等待窗口同步放宽到
+  `MJPG@640x480@15 -> YUYV@640x480@22 -> default@current`，再继续其它完整矩阵。2026-06-28 21:10 CST 起，现场 DV20 UVC 枚举已证明 MJPG 离散帧率是 30fps，不是 15fps，因此共享 MJPEG 首屏优先顺序进一步调整为
+  `MJPG@640x480@30 -> YUYV@640x480@22 -> default@current -> MJPG@640x480@15`。8787 共享 relay 的等待窗口同步放宽到
   12s，并在 8088 返回 JSON 503 时保留 `last_error_payload.first_frame_format_attempts`；PC 7001 summary 会用该 payload
   补齐 `last_offer_format_attempts_summary`。live 验证显示当前 `/dev/video1` 仍为
-  `first_frame_total_timeout`，但证据已覆盖 MJPG、YUYV 和 default，结论是摄像头源仍无首帧，不是页面独占，也不是只试 MJPG。
+  `first_frame_total_timeout`，但证据已优先覆盖设备原生 MJPG@30、YUYV 和 default，结论是摄像头源仍无首帧，不是页面独占，也不是只试了不支持的 15fps。
 - 2026-06-22 起，PC 代理的 `POST /api/robot-control/camera/first-frame/probe` 会额外透出 `visible_content_candidate`、`sample_path`、`sample_write_ok`、`max_luma` 和 `dynamic_range_luma`。这些字段只放在默认关闭的 `高级诊断`，用于复核上位机是否真的写出可追溯样张；普通首屏仍只显示短状态和“打开画面/关闭画面”。本轮真实上位机 probe 已生成 `/root/rober/onboard/runtime/camera/first_frame_probe_1782060889824.jpg`，并用该 ref 提交 operator report，使 first-jog readiness 从缺 `external_video_or_visible_camera` 变为 `ready_for_first_jog`。该材料不证明轮速反馈、LiDAR 位移、路线地图或 delivery success。
 - 2026-06-22 起，普通首屏在 `试动一下` 返回 `wheel_feedback_lr_nonzero_proven=true` 后才显示 `保存轮速证据`。该按钮只把 first-jog 响应里的 wheel raw L/R、during-motion T1001 帧数和短 evidence ref 写入固定 `POST /api/robot-control/operator/report` 代理，不再次调用 `/api/base/manual`、Nav2 goal、stop 之外的控制接口，也不自动补齐 LiDAR delta、real route map 或 delivery success。普通用户看到的状态只保留“轮速证据已拿到/已保存”这类短句；完整 `structured_hil_claims` 仍留在默认关闭的 `高级诊断`。
 - 2026-06-26 09:25 起，普通首屏“移动/导航”整张卡片也带 `data-state` 外层状态线：已定位/已记录/已试动/已停止/待命显示完成态，定位中/记录中/确认中/处理中/待试动显示等待态，待记录/待确认/未试动显示中性态，定位/试动/确认/记录/停止失败显示异常态。该外层状态只汇总已有移动短状态，不自动勾选安全确认、不记录画面、不试动、不执行 Nav2、manual、keyboard pulse、delivery complete、stop 或 `/cmd_vel`。
@@ -2977,7 +2978,8 @@ PC 只试 MJPG 或 PC 独占导致，而是摄像头设备可打开但所有白�
 MJPEG/WebRTC、manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`，也不改变 Clash 或系统代理。
 
 2026-06-26 21:50 起，上车 8088 camera service 自身的 WebRTC offer 和 MJPEG fallback 也同步采用格式 fallback：
-`MJPG@640x480 -> YUYV@640x480 -> default@640x480`。PC 7001 拉取 `/api/robot-control/camera/mjpeg` 时，如果三种格式都失败，
+`MJPG@640x480 -> YUYV@640x480 -> default@640x480`。2026-06-28 21:10 CST 起，MJPEG fallback 的第一项改为 DV20 实际枚举支持的
+`MJPG@640x480@30`，再试 `YUYV@640x480@22` 和 `default@current`，最后保留配置里的 `MJPG@640x480@15` 兜底。PC 7001 拉取 `/api/robot-control/camera/mjpeg` 时，如果三种格式都失败，
 上车响应会带 `first_frame_format_attempts`；PC summary/status 继续保留最近 `camera_mjpeg_proxy_failed`。现场复测中，
 `/api/camera/health.source_usage.status=not_in_use`、`fuser /dev/video1` 无占用、三种 OpenCV 格式均
 `first_frame_unreadable/capture_read_returned_false`，固定 `v4l2-ctl` MJPG/YUYV 采样文件也都是 0 字节。普通首屏应把这解释为
@@ -3594,6 +3596,9 @@ multipart JPEG，失败继续返回结构化 503 和 `first_frame_unreadable` / 
 2026-06-27 17:44 起，8088 camera service 的共享 MJPEG 路径新增 9 秒首帧总预算：WebRTC offer 仍保留完整格式矩阵，
 但 PC 首屏默认多人预览在当前 DV20 UVC 无帧形态下会尽快返回结构化 `first_frame_total_timeout` / `first_frame_unreadable`
 诊断，不再让浏览器等待完整 9 格式矩阵约 25-28 秒。该改动仍不输出黑帧或 placeholder，也不改变任何运动、Nav2 或送达 gate。
+2026-06-28 21:10 CST 起，该 9 秒窗口内的前三项变为 `MJPG@640x480@30`、`YUYV@640x480@22`、`default@current`，
+贴合现场 `v4l2-ctl --list-formats-ext -d /dev/video1` 枚举。真机复测仍返回 `first_frame_total_timeout`，health 中
+`source_usage.owner_count=0`、`source_diagnosis.status=uvc_no_frame_not_exclusive`，说明当前失败边界已缩小到 UVC/输入/供电或采集卡本身。
 
 2026-06-27 16:56 起，Robot Control summary 的 `safe_command_boundary.nav2_goal_label`
 在路线读数 ready 时改为 `路线读数已准备，等待地图画面确认`。地图画面是否已显示、路线是否已贴到地图、机器人 map pose
