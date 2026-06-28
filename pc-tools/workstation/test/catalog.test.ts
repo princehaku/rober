@@ -10850,7 +10850,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
       expect(statusBody.robot_control_executed).toBe(false);
-      expect(healthRequestCount).toBe(1);
+      const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
+      expect(summaryResponse.status).toBe(200);
+      expect(summaryBody.readback_summary.camera.status).toBe("source_first_frame_failed");
+      expect(summaryBody.readback_summary.camera.source_readiness).toBe("first_frame_failed");
+      expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("不是页面独占");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("UVC 设备没有输出视频帧");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBeGreaterThanOrEqual(2);
       expect(mjpegRequestCount).toBe(0);
     } finally {
       await workstation.close();

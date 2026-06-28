@@ -90,7 +90,7 @@ import type {
   RobotControlCameraMjpegRelayOverlay,
 } from "./robotControlSummary";
 
-const ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS = 600;
+const ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS = ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS;
 const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "capture_read_returned_false",
   "capture_read_call_timeout",
