@@ -421,6 +421,8 @@ const fixtures: Record<string, unknown> = {
         shared_preview_cached_frame_loaded: "false",
         has_recent_frame: "false",
         shared_preview_cached_frame_age_ms: "none",
+        shared_preview_access_plain: "共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看。",
+        shared_preview_realtime_plain: "当前没有实时画面；页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",
         shared_preview_shared_capture: "true",
         shared_preview_exclusive_camera_claim: "false",
         shared_preview_contract: "single_shared_capture_for_multiple_clients",

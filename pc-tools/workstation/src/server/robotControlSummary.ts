@@ -1390,6 +1390,35 @@ function cameraPreviewVisibilityPlainSummary(args: {
   };
 }
 
+function cameraSharedPreviewPlainSummary(args: {
+  previewStatus: RobotControlSummaryResponse["readback_summary"]["camera"]["preview_status"];
+  clientCount: string;
+  cachedFrameLoaded: boolean;
+  cachedFrameAgeMs: string;
+  previewVisiblePlain: string;
+}): { accessPlain: string; realtimePlain: string } {
+  // 共享预览入口和画面可见是两件事：谁都能接入，不代表上游已经吐出可见帧。
+  const viewerText = `当前 ${args.clientCount} 个页面观看`;
+  const accessPlain = `共享预览不是页面独占；谁打开页面都接入同一条上游流，${viewerText}。`;
+  if (args.previewStatus === "streaming" && args.cachedFrameLoaded) {
+    const ageText = args.cachedFrameAgeMs === "none" ? "" : `，缓存帧约 ${args.cachedFrameAgeMs}ms 前更新`;
+    return {
+      accessPlain,
+      realtimePlain: `实时预览已可见；多个页面复用同一条上游流${ageText}。`,
+    };
+  }
+  if (args.previewStatus === "starting_local_peer" || args.previewStatus === "connecting_offer_posted") {
+    return {
+      accessPlain,
+      realtimePlain: "共享预览正在等待首帧；首帧出现前不能把黑框当作画面可见。",
+    };
+  }
+  return {
+    accessPlain,
+    realtimePlain: args.previewVisiblePlain,
+  };
+}
+
 function cameraDeviceCandidateRole(candidate: JsonRecord | null): string {
   // devices 端点只有布尔能力字段时，PC 也要给普通用户稳定的“这是画面节点还是元数据节点”。
   const explicitRole = asString(candidate?.selected_role ?? candidate?.role, "");
@@ -1905,6 +1934,18 @@ function cameraSummaryFromReadbacks(
     previewPlainHint: previewGuidance.plain_hint,
     previewNextActionPlain: previewGuidance.next_action_plain,
   });
+  const sharedPreviewClientCount = compactValueText(mjpegRelayOverlay?.client_count ?? 0);
+  const sharedPreviewCachedFrameLoaded = mjpegRelayOverlay?.cached_frame_loaded === true;
+  const sharedPreviewCachedFrameAgeMs = mjpegRelayOverlay?.cached_frame_age_ms === null || mjpegRelayOverlay?.cached_frame_age_ms === undefined
+    ? "none"
+    : compactValueText(mjpegRelayOverlay.cached_frame_age_ms);
+  const sharedPreviewPlain = cameraSharedPreviewPlainSummary({
+    previewStatus: sharedPreviewStatus,
+    clientCount: sharedPreviewClientCount,
+    cachedFrameLoaded: sharedPreviewCachedFrameLoaded,
+    cachedFrameAgeMs: sharedPreviewCachedFrameAgeMs,
+    previewVisiblePlain: previewVisibility.visiblePlain,
+  });
   return {
     status: cameraStatus,
     devices_status: devicesReadback?.status ?? "not_loaded",
@@ -1917,16 +1958,16 @@ function cameraSummaryFromReadbacks(
     preview_visible_plain: previewVisibility.visiblePlain,
     camera_wysiwyg_status_plain: previewVisibility.wysiwygStatusPlain,
     camera_wysiwyg_next_action_plain: previewVisibility.wysiwygNextActionPlain,
-    shared_preview_client_count: compactValueText(mjpegRelayOverlay?.client_count ?? 0),
-    viewer_count: compactValueText(mjpegRelayOverlay?.client_count ?? 0),
+    shared_preview_client_count: sharedPreviewClientCount,
+    viewer_count: sharedPreviewClientCount,
     shared_preview_upstream_active: compactValueText(mjpegRelayOverlay?.upstream_active === true),
     upstream_connected: compactValueText(mjpegRelayOverlay?.upstream_active === true),
     shared_preview_content_type_loaded: compactValueText(mjpegRelayOverlay?.content_type_loaded === true),
-    shared_preview_cached_frame_loaded: compactValueText(mjpegRelayOverlay?.cached_frame_loaded === true),
-    has_recent_frame: compactValueText(mjpegRelayOverlay?.cached_frame_loaded === true),
-    shared_preview_cached_frame_age_ms: mjpegRelayOverlay?.cached_frame_age_ms === null || mjpegRelayOverlay?.cached_frame_age_ms === undefined
-      ? "none"
-      : compactValueText(mjpegRelayOverlay.cached_frame_age_ms),
+    shared_preview_cached_frame_loaded: compactValueText(sharedPreviewCachedFrameLoaded),
+    has_recent_frame: compactValueText(sharedPreviewCachedFrameLoaded),
+    shared_preview_cached_frame_age_ms: sharedPreviewCachedFrameAgeMs,
+    shared_preview_access_plain: sharedPreviewPlain.accessPlain,
+    shared_preview_realtime_plain: sharedPreviewPlain.realtimePlain,
     shared_preview_shared_capture: compactValueText(true),
     shared_preview_exclusive_camera_claim: compactValueText(false),
     shared_preview_contract: sharedPreviewContract,
@@ -5046,6 +5087,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         shared_preview_cached_frame_loaded: "false",
         has_recent_frame: "false",
         shared_preview_cached_frame_age_ms: "none",
+        shared_preview_access_plain: "共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看。",
+        shared_preview_realtime_plain: "当前没有实时画面；页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",
         shared_preview_shared_capture: "true",
         shared_preview_exclusive_camera_claim: "false",
         shared_preview_contract: "single_shared_capture_for_multiple_clients",
