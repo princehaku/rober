@@ -3964,6 +3964,10 @@ const plainFreeRoamPanelCopy = computed(() => {
 const plainFreeRoamMotionStartButtonText = computed(() => (
   plainFreeRoamMotionModeName.value === "自动扫图" ? "开始自动扫图（低速）" : "开始自由移动（低速）"
 ));
+const plainFreeRoamRecordStartButtonText = computed(() => (
+  // 相机和雷达已 ready 时，地图记录就是可验收建图流程的第一步；未 ready 时仍只是普通记录入口。
+  plainFreeRoamKeyboardRequiresMapRuntime.value ? "开始扫图记录（不发车）" : "开始记录（不发车）"
+));
 const canStartMapLifecycle = computed(() => (
   !loading.value
   && !mapLifecyclePending.value
@@ -4108,7 +4112,7 @@ const plainFreeRoamMappingStartLabel = computed(() => (
       ? "等待地图刷新"
       : !plainManualSafetyConfirmed.value
         ? "先勾安全确认"
-        : mapRuntimeStarted.value ? "重新启动记录" : "开始记录（不发车）"
+        : mapRuntimeStarted.value ? "重新启动扫图记录" : plainFreeRoamRecordStartButtonText.value
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
@@ -4132,7 +4136,9 @@ const plainFreeRoamMapPreviewLabel = computed(() => {
   if (mapWysiwygRefreshPending.value) {
     return "等待地图刷新";
   }
-  return mapRuntimeStarted.value || mapSavedThisSession.value ? "刷新扫图画面" : "先开始记录";
+  return mapRuntimeStarted.value || mapSavedThisSession.value
+    ? "刷新扫图画面"
+    : plainFreeRoamKeyboardRequiresMapRuntime.value ? "先开始扫图记录" : "先开始记录";
 });
 const plainFreeRoamKeyboardLabel = computed(() => {
   // 自由移动模式优先让车能低速动；建图模式仍保持先记录再扫图的顺序。
@@ -4140,7 +4146,7 @@ const plainFreeRoamKeyboardLabel = computed(() => {
     return "先勾安全确认";
   }
   if (plainFreeRoamKeyboardRequiresMapRuntime.value && !mapRuntimeStarted.value) {
-    return "先开始记录";
+    return "先开始扫图记录";
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
     return "键盘已启用（按住才动）";
@@ -4182,7 +4188,7 @@ const plainFreeRoamNextActionLabel = computed(() => {
         return "下一步：启用键盘自由移动";
       }
     }
-    return canStartPlainFreeRoamMapping.value ? "下一步：开始记录（不发车）" : "下一步：等待连接";
+    return canStartPlainFreeRoamMapping.value ? `下一步：${plainFreeRoamRecordStartButtonText.value}` : "下一步：等待连接";
   }
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
     return "下一步：等待启动返回后自动停止";
@@ -4233,8 +4239,8 @@ const plainFreeRoamManualGuideButtonLabel = computed(() => {
   if (nextAction === "勾安全确认") {
     return "先勾安全确认";
   }
-  if (nextAction === "开始记录（不发车）") {
-    return "开始记录（不发车）";
+  if (nextAction === "开始记录（不发车）" || nextAction === "开始扫图记录（不发车）") {
+    return nextAction;
   }
   if (nextAction === "启用键盘") {
     return "启用键盘扫图";
@@ -4260,7 +4266,7 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
     return canSendStop.value ? "检查自由移动条件" : "补停止兜底";
   }
   if (!mapRuntimeStarted.value) {
-    return "开始记录（不发车）";
+    return plainFreeRoamRecordStartButtonText.value;
   }
   if (!plainFreeRoamMapPreviewFreshForSession.value) {
     return "刷新扫图画面";

@@ -3664,6 +3664,10 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 重新定位、准备图上路线。该变化只改 PC 普通首屏向导，不改变固定 `/api/nav2/start` 和 no-motion Nav2 proof refresh 合同，
 不发送 NavigateToPose goal、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-28 07:59 起，普通首屏在相机和雷达都 ready、只差地图记录时，建图卡主按钮、自动扫图补证按钮和下一步统一显示
+`开始扫图记录（不发车）`，键盘/刷新前置提示也显示 `先开始扫图记录`。相机或雷达未 ready 时仍显示普通 `开始记录（不发车）`，并继续引导低速自由移动；
+这只让“可验收建图”的第一步更明确，不改变地图 lifecycle 固定代理，不自动启动 free-roam，不发送 manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-27 23:30 起，建图验收缺口也消费同一 stale runtime `/scan` 事实：
 当缺口包含 `lidar_fresh` 且 PC summary 里只有 stale `/scan` 距离时，`建图验收` 和 `当前事实`
 会显示 `雷达未刷新（旧 /scan 距离 ... 已过期，不贴到地图）`。低速自由移动入口仍不受影响；
