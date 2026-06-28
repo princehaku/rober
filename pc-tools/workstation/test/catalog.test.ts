@@ -7971,6 +7971,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.robot_pose_status).toBe("map_pose_observed");
       expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线和小车位置已显示；雷达来源点存在但当前不贴到地图：已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
+      expect(summary.current_fact_plain).toContain("地图画面、图上路线和小车位置已显示；雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断。");
+      expect(summary.current_fact_plain.match(/已有雷达来源点 65 个/g)?.length).toBe(1);
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
       expect(summary.readback_summary.map.path_preview_point_count).toBe("2");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");

@@ -6020,14 +6020,35 @@ function plainFactPart(value: string | undefined, fallback = ""): string {
   return text.replace(/[。.!?]+$/, "");
 }
 
+function currentFactMapRadarParts(
+  mapStatus: string,
+  radarStatus: string,
+): { map: string; radar: string } {
+  // 地图主句如果已经用分号追加了雷达诊断，顶层事实改由 radar overlay 专门说明，避免旧来源点和当前 marker 重复出现。
+  const map = plainFactPart(mapStatus);
+  const radar = plainFactPart(radarStatus);
+  if (!map || !radar) {
+    return { map, radar };
+  }
+  if (map.includes("；雷达")) {
+    return { map: map.split("；雷达")[0] ?? map, radar };
+  }
+  if (map.includes("雷达标记都已按当前读数显示")) {
+    return { map, radar: "" };
+  }
+  return { map, radar };
+}
+
 function summaryCurrentFactPlain(
   readback: RobotControlSummaryResponse["readback_summary"],
   boundary: RobotControlSummaryResponse["safe_command_boundary"],
 ): string {
   // 这是给脚本和外部面板的一句话事实；Vue 仍保留本地 pending 态的更细实时文案。
   const camera = plainFactPart(readback.camera.camera_wysiwyg_status_plain);
-  const map = plainFactPart(readback.map.map_wysiwyg_status_plain);
-  const radar = plainFactPart(readback.map.radar_overlay_wysiwyg_status_plain);
+  const { map, radar } = currentFactMapRadarParts(
+    readback.map.map_wysiwyg_status_plain,
+    readback.map.radar_overlay_wysiwyg_status_plain,
+  );
   const nav2 = plainFactPart(readback.nav2.execution_status_plain || readback.nav2.route_execution_readiness_plain);
   const keyboard = plainFactPart(readback.keyboard.hold_to_move_plain || readback.keyboard.readiness_plain);
   const freeMove = plainFactPart(readback.free_roam.motion_readiness_plain);
