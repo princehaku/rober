@@ -5085,10 +5085,41 @@ function freeRoamPlainHint(motionReadinessPlain: string, mappingReadinessPlain: 
     .filter((item) => item && !["not_loaded", "none"].includes(item));
   const next = nextActionPlain.trim().replace(/[。；\s]+$/g, "");
   const uniqueParts = Array.from(new Set(parts));
-  if (next && !uniqueParts.some((part) => part.includes(next) || next.includes(part))) {
-    uniqueParts.push(`下一步：${next}`);
+  const nextParts = freeRoamPlainNextParts(next, uniqueParts);
+  if (nextParts.length > 0) {
+    uniqueParts.push(`下一步：${nextParts.join("；")}`);
   }
   return uniqueParts.length > 0 ? `${uniqueParts.join("。")}。` : "自由移动事实未读到；先刷新 Robot Control summary。";
+}
+
+function freeRoamPlainNextParts(nextActionPlain: string, existingParts: string[]): string[] {
+  // next_action_plain 来自安全边界，常把 motion 和 mapping 两层重复拼回去；总事实只保留新增动作。
+  const motionText = existingParts.find((part) => part.includes("自由移动")) ?? "";
+  const mappingText = existingParts.find((part) => part.includes("建图验收")) ?? "";
+  const stopAlreadyExplained = motionText.includes("停止请求");
+  const runningAlreadyExplained = motionText.includes("正在运行");
+  return nextActionPlain
+    .split(/[；;。]/)
+    .map((item) => item.trim().replace(/[。；\s]+$/g, ""))
+    .map((item) => (stopAlreadyExplained ? item.replace(/，开始时会先解除停止请求$/g, "") : item))
+    .filter((item) => {
+      if (!item || ["not_loaded", "none"].includes(item)) {
+        return false;
+      }
+      if (stopAlreadyExplained && item.startsWith("当前处于停止请求")) {
+        return false;
+      }
+      if (runningAlreadyExplained && item.includes("勾选现场安全确认后可先自由移动")) {
+        return false;
+      }
+      if (item.startsWith("建图验收还差") && mappingText.includes("建图验收未 ready")) {
+        return false;
+      }
+      if (item.includes("不影响先低速自由移动") && mappingText.includes("不影响先低速自由移动")) {
+        return false;
+      }
+      return !existingParts.some((part) => part.includes(item) || item.includes(part));
+    });
 }
 
 function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryResponse {
