@@ -3753,7 +3753,7 @@ const plainMapVisualSummary = computed(() => {
     : radarStartAwaitingRefresh
       ? "雷达已启动扫描范围占位，返回前不把旧点当作新点，等待机器人地图位置"
       : radarState === "雷达启动中"
-      ? "雷达启动中扫描范围占位，返回前未证明雷达已运行，等待机器人地图位置"
+      ? "雷达启动中扫描范围占位，返回前未证明雷达已运行，旧点不当新点，等待机器人地图位置"
       : `${radarState}扫描范围占位，等待机器人地图位置`;
   const radarOverlayAria = poseObserved
     ? radarStartFailureText
@@ -3782,7 +3782,7 @@ const plainMapVisualSummary = computed(() => {
       : radarStartAwaitingRefresh
       ? "雷达已启动，地图位置未读到，返回前不把旧点当作新点"
       : radarState === "雷达启动中"
-      ? "雷达启动中，地图位置未读到，返回前未证明雷达已运行"
+      ? "雷达启动中，地图位置未读到，返回前未证明雷达已运行，旧点不当新点"
       : radarState === "雷达停止中"
       ? "雷达停止请求已发送，地图位置未读到，返回前未证明已停止"
       : showRadarObstacleDistance
