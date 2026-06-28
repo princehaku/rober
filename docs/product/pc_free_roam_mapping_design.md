@@ -683,3 +683,11 @@ planner/controller inactive 仍保留“恢复规划/控制服务”的文案。
 “雷达/定位 -> 重新加载地图到自动驾驶服务 -> 恢复路径生成服务 -> 准备图上路线”的顺序展示，
 避免现场只看到泛化的“路线未生成”。该变更只读取 `/api/nav2/status` / latest proof 字段，
 不启动 Nav2、不执行路线、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 03:00 起，PC 普通首屏的 free-roam latest 只读入口会透出上车 runtime 地图指标：
+`/api/robot-control/free-roam/autonomy/latest` 从上车 `/api/free-roam/autonomy/latest` 的
+`latest_result.map_metrics.free_cells` 和 `latest_result.map_metrics.unknown_ratio` 提取短字段
+`map_free_cells`、`map_unknown_ratio`。当地图图片还没加载成功时，扫图覆盖卡优先显示
+“runtime 已扫出 N 个可通行格 / runtime 未知区域 X%”，并明确提示这是 latest 的只读指标，
+刷新扫图画面后才按图片验收。该变更只执行 GET latest，不启动/停止 free-roam、不发送 manual/Nav2/delivery/stop
+或 `/cmd_vel`。

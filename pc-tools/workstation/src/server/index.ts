@@ -1109,6 +1109,16 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
   // latest 只读 runtime 摘要；不把完整 decision/gates 原样透出，避免普通接口变成 raw artifact dump。
   const latest = asRecord(payload?.latest_result) ?? payload;
   const decision = asRecord(latest?.decision);
+  const mapMetrics = asRecord(latest?.map_metrics) ?? asRecord(payload?.map_metrics);
+  const snapshot = asRecord(latest?.snapshot) ?? asRecord(payload?.snapshot);
+  const mapFreeCells = shortValue(
+    mapMetrics?.free_cells ?? snapshot?.map_free_cells ?? snapshot?.free_cells,
+    "not_loaded",
+  );
+  const mapUnknownRatio = shortValue(
+    mapMetrics?.unknown_ratio ?? snapshot?.map_unknown_ratio ?? snapshot?.unknown_ratio,
+    "not_loaded",
+  );
   const gates = Array.isArray(decision?.gates) ? decision.gates : [];
   const gateStateById = new Map(gates
     .map((gate) => asRecord(gate))
@@ -1130,6 +1140,8 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
     mapping_required_ids: FREE_ROAM_MAPPING_REQUIRED_GATE_IDS.join(","),
     mapping_missing: mappingMissing.length > 0 ? mappingMissing.join(",") : "none",
     mapping_ready: mappingMissing.length === 0 ? "true" : "false",
+    map_free_cells: mapFreeCells,
+    map_unknown_ratio: mapUnknownRatio,
   };
 }
 

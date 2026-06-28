@@ -1957,6 +1957,34 @@ const plainFreeRoamLatestButtonLabel = computed(() => (
   freeRoamAutonomyLatestPending.value ? "刷新中" : `刷新${plainFreeRoamMotionModeName.value}状态（只读）`
 ));
 const plainFreeRoamAutonomyReadinessTitle = computed(() => `${plainFreeRoamMotionModeName.value}准备`);
+function freeRoamLatestNumber(key: string): number | null {
+  // latest key values 来自只读代理的短字段；只接受有限数字，避免把 unknown/not_loaded 误当成 0。
+  const raw = freeRoamAutonomyLatestResult.value?.latest_key_values?.[key];
+  if (!raw || ["unknown", "not_loaded", "none", ""].includes(raw)) {
+    return null;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function plainFreeRoamLatestMapMetricsText(): string {
+  // 上车端 latest 有时比地图图片更早拿到 runtime map_metrics；这里明确标成 runtime 指标。
+  const freeCells = freeRoamLatestNumber("map_free_cells");
+  const unknownRatio = freeRoamLatestNumber("map_unknown_ratio");
+  if (freeCells === null && unknownRatio === null) {
+    return "";
+  }
+  const parts: string[] = [];
+  if (freeCells !== null && freeCells >= 0) {
+    parts.push(`可通行 ${Math.trunc(freeCells)} 格`);
+  }
+  if (unknownRatio !== null && unknownRatio >= 0) {
+    const percent = unknownRatio <= 1 ? unknownRatio * 100 : unknownRatio;
+    parts.push(`未知 ${percentText(percent)}`);
+  }
+  return parts.length > 0 ? `；runtime 地图指标：${parts.join("，")}` : "";
+}
+
 const plainFreeRoamLatestSummary = computed(() => {
   const latest = freeRoamAutonomyLatestResult.value;
   if (!latest) {
@@ -1984,7 +2012,7 @@ const plainFreeRoamLatestSummary = computed(() => {
     : mappingMissing.length > 0
       ? `；建图缺口：${mappingMissing.join("、")}`
       : "";
-  return `最新读取：${state}${reason}${stop}；${mode}${mappingText}。`;
+  return `最新读取：${state}${reason}${stop}；${mode}${mappingText}${plainFreeRoamLatestMapMetricsText()}。`;
 });
 function freeRoamMappingMissingPlainLabels(missing: string[] | string | undefined): string[] {
   // 上车端二次确认会返回稳定 token；普通首屏要翻译成现场可行动的建图缺口。
@@ -4504,6 +4532,25 @@ const plainFreeRoamCoverageSummary = computed(() => {
   const preview = mapPreviewResult.value;
   const previewLoaded = preview?.proxy_status === "preview_forwarded";
   if (!previewLoaded) {
+    const latestFreeCells = freeRoamLatestNumber("map_free_cells");
+    const latestUnknownRatio = freeRoamLatestNumber("map_unknown_ratio");
+    const latestHasMapMetrics = latestFreeCells !== null || latestUnknownRatio !== null;
+    if (latestHasMapMetrics) {
+      const unknownPercent = latestUnknownRatio !== null
+        ? latestUnknownRatio <= 1 ? latestUnknownRatio * 100 : latestUnknownRatio
+        : 100;
+      const knownPercent = 100 - Math.max(0, Math.min(100, unknownPercent));
+      return {
+        state: latestFreeCells !== null && latestFreeCells > 0 ? "待继续" : "待刷新",
+        primary: latestFreeCells !== null && latestFreeCells > 0
+          ? `runtime 已扫出 ${Math.trunc(latestFreeCells)} 个可通行格`
+          : "runtime 还没扫出可通行区域",
+        secondary: `runtime 未知区域 ${percentText(unknownPercent)}，已知区域 ${percentText(knownPercent)}。`,
+        guidance: "这是上车 free-roam latest 的只读地图指标；刷新扫图画面后再按图片验收。",
+        barStyle: { "--coverage-known": percentText(knownPercent) },
+        quality: "runtime_map_metrics",
+      };
+    }
     if (mapSavedThisSession.value && plainFreeRoamSavedMapPreviewRefreshFailed.value) {
       const failureText = mapPreviewFailureText(mapPreviewResult.value);
       const reasonSuffix = failureText ? `：${failureText}` : "";

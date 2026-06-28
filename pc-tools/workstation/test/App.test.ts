@@ -1221,6 +1221,8 @@ const fixtures: Record<string, unknown> = {
       mapping_required_ids: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
       mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
       mapping_ready: "false",
+      map_free_cells: "421",
+      map_unknown_ratio: "0.9819",
     },
     failure_reason: "",
     blocked_reasons: [],
@@ -4204,12 +4206,47 @@ describe("App", () => {
     const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/latest?"))).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-latest-summary"]').text()).toBe(
-      "最新读取：locked：还未勾选现场安全确认，要求停止兜底；当前只是记录模式，不会自己跑；建图缺口：画面首帧未出、地图记录未启动。",
+      "最新读取：locked：还未勾选现场安全确认，要求停止兜底；当前只是记录模式，不会自己跑；建图缺口：画面首帧未出、地图记录未启动；runtime 地图指标：可通行 421 格，未知 98.2%。",
     );
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("shows runtime free-roam map metrics when map preview image is not loaded yet", async () => {
+    // latest 是只读状态快照；地图图片未刷出时，也要把 runtime 覆盖指标翻译给普通 operator。
+    const mapPreviewNotLoaded = {
+      ...(fixtures["/api/robot-control/map/preview"] as Record<string, unknown>),
+      proxy_status: "preview_failed",
+      remote_http_status: 502,
+      status: "blocked",
+      image_data_url: "",
+      cell_counts: { free: 0, unknown: 0, occupied: 0, other: 0 },
+      has_free_cells: false,
+      failure_reason: "map_preview_timeout",
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/map/preview": mapPreviewNotLoaded,
+    });
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage"]').text()).toContain("地图覆盖还没读取");
+
+    await wrapper.find('[data-testid="plain-free-roam-autonomy-latest"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const coveragePanel = wrapper.find('[data-testid="plain-free-roam-coverage"]');
+    expect(coveragePanel.attributes("data-state")).toBe("待继续");
+    expect(coveragePanel.text()).toContain("runtime 已扫出 421 个可通行格");
+    expect(coveragePanel.text()).toContain("runtime 未知区域 98.2%，已知区域 1.8%。");
+    expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("这是上车 free-roam latest 的只读地图指标；刷新扫图画面后再按图片验收。");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/latest?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
   it("starts free-roam autonomy through the fixed proxy only after ready readback and safety confirmation", async () => {

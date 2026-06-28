@@ -9845,6 +9845,10 @@ describe("workstation fail-closed API contracts", () => {
             schema: "trashbot.free_roam_autonomy.runtime.v1",
             artifact_only: false,
             cmd_vel_publish_enabled: true,
+            map_metrics: {
+              free_cells: 421,
+              unknown_ratio: 0.9819,
+            },
             decision: {
               schema: "trashbot.free_roam_autonomy.decision.v1",
               state: "running",
@@ -9887,6 +9891,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.latest_key_values.mapping_required_ids).toBe("camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview");
       expect(body.latest_key_values.mapping_missing).toBe("camera_first_frame,mapping_active,fresh_map_preview");
       expect(body.latest_key_values.mapping_ready).toBe("false");
+      expect(body.latest_key_values.map_free_cells).toBe("421");
+      expect(body.latest_key_values.map_unknown_ratio).toBe("0.9819");
       expect(body.hard_dangerous_true_fields).toEqual([]);
       expect(body.safe_to_control).toBe(false);
       expect(body.delivery_success).toBe(false);
