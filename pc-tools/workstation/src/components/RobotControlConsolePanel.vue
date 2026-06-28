@@ -496,7 +496,8 @@ function cameraSourcePlainFailureHint(): string {
   const selectedName = camera?.selected_name && !["", "not_loaded", "none"].includes(camera.selected_name)
     ? camera.selected_name
     : "";
-  const sourcePrefix = selectedName ? `${selectedName} ` : "";
+  const sourceSubject = selectedName ? `${selectedName} 相机` : "UVC 设备";
+  const sourceServicePrefix = selectedName ? `${selectedName} 相机服务` : "相机服务";
   const sourceFailed = cameraSourceFirstFrameFailed(camera);
   if (sourceFailed || probeFailureHint) {
     if (probeFailureHint) {
@@ -504,14 +505,14 @@ function cameraSourcePlainFailureHint(): string {
     }
     if (camera?.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
       const attempts = cameraBackendNoFrameAttemptText(camera);
-      return `不是页面独占：${sourcePrefix}摄像头能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
+      return `不是页面独占：${sourceSubject}能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
     }
     if (
       camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
       && camera.source_diagnosis_plain_hint
       && !["", "not_loaded", "none"].includes(camera.source_diagnosis_plain_hint)
     ) {
-      return `不是页面独占：${sourcePrefix}没人占用，但 UVC 没有输出视频帧；检查 USB、摄像头输入或供电${knownGoodUvcSuffix}。`;
+      return `不是页面独占：${sourceSubject}当前没人占用，但 UVC 没有输出视频帧；检查 USB、摄像头输入或供电${knownGoodUvcSuffix}。`;
     }
     if (camera?.source_usage_status === "in_use_by_probe" || camera?.source_usage_status === "in_use_by_other_process") {
       const ownerCount = camera.source_usage_owner_count && camera.source_usage_owner_count !== "not_loaded"
@@ -520,16 +521,16 @@ function cameraSourcePlainFailureHint(): string {
       return `相机当前被 ${ownerCount} 个进程占用，等检查释放或重启相机服务后再打开。`;
     }
     if (camera?.source_usage_status === "in_use_by_camera_service") {
-      return `${sourcePrefix}相机服务已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。`;
+      return `${sourceServicePrefix}已接管摄像头，但底层没有读到画面；检查镜头、USB、摄像头输入或供电。`;
     }
     if (camera?.source_usage_status === "not_in_use") {
       if (camera?.source_failure_reason === "capture_read_call_timeout" || camera?.first_frame_probe_failure_reason === "capture_read_call_timeout") {
-        return `不是页面独占：${sourcePrefix}相机当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
+        return `不是页面独占：${sourceSubject}当前没人占用，摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
       }
       if (camera?.source_failure_reason === "first_frame_total_timeout" || camera?.last_offer_failure_reason === "first_frame_total_timeout") {
-        return `不是页面独占：${sourcePrefix}相机当前没人占用，但读取首帧总超时；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
+        return `不是页面独占：${sourceSubject}当前没人占用，但读取首帧总超时；检查 USB、摄像头输入、格式或供电${knownGoodUvcSuffix}。`;
       }
-      return `不是页面独占：${sourcePrefix}相机当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电${knownGoodUvcSuffix}。`;
+      return `不是页面独占：${sourceSubject}当前没人占用，但摄像头没有输出视频帧；检查 USB、摄像头输入或供电${knownGoodUvcSuffix}。`;
     }
     return "相机没有出画面，检查摄像头/视频线。";
   }

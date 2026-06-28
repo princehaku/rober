@@ -1246,7 +1246,12 @@ function cameraDiagnosisPlainHint(value: unknown, fallbackDeviceName = "UVC 设�
   }
   const displayName = cameraDisplayDeviceName(fallbackDeviceName);
   const deviceName = displayName && displayName !== "摄像头" ? displayName : "UVC 设备";
-  return hint.replace(/：(not_loaded|none|unknown|null)\s*当前没人占用/g, `：${deviceName}当前没人占用`);
+  return hint.replace(/：(not_loaded|none|unknown|null|摄像头|USB 摄像头)\s*当前没人占用/g, `：${cameraOwnerFreeText(deviceName)}`);
+}
+
+function cameraOwnerFreeText(selectedName: string): string {
+  // 英文设备型号后接中文时保留一个空格；中文泛称直接连接，避免“摄像头 当前”这种断裂文案。
+  return /[A-Za-z0-9]$/.test(selectedName) ? `${selectedName} 当前没人占用` : `${selectedName}当前没人占用`;
 }
 
 function cameraDeviceCandidateRole(candidate: JsonRecord | null): string {
@@ -1632,7 +1637,7 @@ function cameraSummaryFromReadbacks(
     || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(resolvedSourceFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number])
     || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(lastOfferFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number]),
   );
-  const selectedName = cameraDisplayDeviceName(selectedCandidate.selected_name) || "摄像头";
+  const selectedName = cameraDisplayDeviceName(selectedCandidate.selected_name) || "UVC 设备";
   const sourceUsageLooksFree = ["not_in_use", ""].includes(asString(sourceUsage?.status, ""))
     || compactValueText(sourceUsage?.owner_count ?? "not_loaded") === "0";
   const sourceNoFrameNotExclusive = Boolean(sourceFirstFrameFailedForSharedPreview && sourceUsageLooksFree);
@@ -1656,7 +1661,7 @@ function cameraSummaryFromReadbacks(
   const derivedSourceDiagnosis = probeBackendNoFrameNotExclusive
     ? {
       status: "uvc_no_frame_not_exclusive",
-      plain_hint: `不是页面独占：${selectedName} 当前没人占用，但 OpenCV/V4L2 后端也没有取到视频帧。`,
+      plain_hint: `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 OpenCV/V4L2 后端也没有取到视频帧。`,
       next_action: "check_usb_camera_input_power_or_known_good_uvc",
       not_exclusive: true,
     }
@@ -1674,7 +1679,7 @@ function cameraSummaryFromReadbacks(
     )
       ? {
         status: "uvc_no_frame_not_exclusive",
-        plain_hint: `不是页面独占：${selectedName} 当前没人占用，但 UVC 设备没有输出视频帧。`,
+        plain_hint: `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`,
         next_action: "check_usb_camera_input_power_or_known_good_uvc",
         not_exclusive: true,
       }

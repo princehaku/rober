@@ -3860,3 +3860,10 @@ USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。�
 `not_loaded 当前没人占用`、`none 当前没人占用` 等会被替换为稳定的“USB 摄像头”或“UVC 设备”，已有真实设备名则保留。
 这样 API、首屏和高级诊断都不会把内部占位符当成用户可见设备名。该变化只改写只读诊断文字，
 不打开第二条相机上游、不重启 camera service、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 21:56 起，相机无帧诊断里的“当前没人占用”句式按设备名类型自动排版：
+英文/型号结尾的真实设备名后保留空格，例如 `USB Composite Device 当前没人占用`；中文泛称直接连接，例如
+`UVC 设备当前没人占用`。这避免 live 首屏出现“摄像头 当前没人占用”这种断裂文案，同时保留真实设备名。
+普通首屏自己的 MJPEG retry 派生文案也采用同一 subject 规则，设备名缺失时写成 `UVC 设备当前没人占用`，
+不再退化成“不是页面独占：没人占用”。
+该变化仍只清理只读诊断文字，不触发相机、底盘、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
