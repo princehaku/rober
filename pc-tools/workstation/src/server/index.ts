@@ -855,6 +855,8 @@ function radarStatusPlainFields(
   | "latest_scan_proof_fresh"
   | "scan_point_count"
   | "latest_scan_age_ms"
+  | "plain_hint"
+  | "next_action_plain"
   | "radar_status_plain"
   | "radar_next_action_plain"
   | "radar_overlay_point_count"
@@ -888,6 +890,8 @@ function radarStatusPlainFields(
     latest_scan_proof_fresh: fresh,
     scan_point_count: scanPointCount,
     latest_scan_age_ms: scanAgeMs,
+    plain_hint: radarStatusPlain,
+    next_action_plain: radarNextActionPlain,
     radar_status_plain: radarStatusPlain,
     radar_next_action_plain: radarNextActionPlain,
     radar_overlay_point_count: "not_loaded",

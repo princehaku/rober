@@ -9793,6 +9793,8 @@ describe("workstation fail-closed API contracts", () => {
         latest_scan_proof_fresh: string;
         scan_point_count: string;
         latest_scan_age_ms: string;
+        plain_hint: string;
+        next_action_plain: string;
         radar_status_plain: string;
         radar_next_action_plain: string;
         radar_overlay_point_count: string;
@@ -9811,6 +9813,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.latest_scan_proof_fresh).toBe("false");
       expect(body.scan_point_count).toBe("81");
       expect(body.latest_scan_age_ms).toBe("12000");
+      expect(body.plain_hint).toBe(body.radar_status_plain);
+      expect(body.next_action_plain).toBe(body.radar_next_action_plain);
       expect(body.radar_status_plain).toBe("雷达未运行或扫描已停；旧雷达来源点不能当作当前地图 marker。");
       expect(body.radar_next_action_plain).toBe("先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。");
       expect(body.radar_overlay_point_count).toBe("not_loaded");
