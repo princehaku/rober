@@ -61,6 +61,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 行程卡、执行按钮和当前事实都会显示“正在启动/恢复自动驾驶服务，不会发车”，并明确返回前不把旧服务状态当作已恢复。
 该 pending 状态只覆盖固定 `/api/robot-control/nav2/start` 请求，不会提前调用 Nav2 goal execute、manual、free-roam 或 `/cmd_vel`。
 
+2026-06-29 16:50 CST 起，当路线已经画到地图上、`nav2_goal_ready=true`，但 Nav2 runtime 当前停着时，普通首屏行程卡摘要和行程状态会直接写明“执行会自动启动自动驾驶 runtime”。这只是把既有 managed execute 合同前置到普通用户能看到的位置；仍然必须勾选现场安全确认并显式点击执行按钮，页面刷新不会自动执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-28 07:55 CST 起，如果共享 MJPEG relay 已有最近帧缓存但本页还在接入，首屏“当前事实”会直接提示新页面会先显示最近画面，并继续接入实时流；这不等于本页已证明出图。
 
 2026-06-28 08:15 CST 起，如果相机首帧和雷达都 ready、建图验收只差地图记录，首屏会把下一步写成“启动扫图记录”；这只是建图流程提示，不会自动启动自由移动或发 `/cmd_vel`。
