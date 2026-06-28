@@ -4275,10 +4275,16 @@ function plainFreeRoamBoundaryNextActionForHint(): string {
   if (!action || ["not_loaded", "none"].includes(action)) {
     return "";
   }
-  const visibleAction = plainManualSafetyConfirmed.value
-    ? action.replace(/^勾选现场安全确认后可先/, "已勾安全确认，可先")
-    : action;
-  return `上车建议：${visibleAction.replace(/[。.!?]+$/, "")}。`;
+  const parts = action.split("；").map((part) => part.trim()).filter(Boolean);
+  const mappingAction = parts.find((part) => part.startsWith("建图验收"));
+  const moveAction = mappingAction ? parts.find((part) => !part.startsWith("建图验收")) ?? action : action;
+  const visibleMoveAction = plainManualSafetyConfirmed.value
+    ? moveAction.replace(/^勾选现场安全确认后可先/, "已勾安全确认，可先")
+    : moveAction;
+  const mappingText = mappingAction
+    ? ` ${mappingAction.replace(/^建图验收还差[:：]?/, "建图缺口：").replace(/[。.!?]+$/, "")}。`
+    : "";
+  return `上车建议：${visibleMoveAction.replace(/[。.!?]+$/, "")}。${mappingText}`;
 }
 
 const plainFreeRoamMappingSummary = computed(() => {
@@ -4994,8 +5000,11 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     }
     const boundaryNextActionUsable = Boolean(boundaryNextAction && boundary?.free_roam_autonomy !== "locked");
     if (boundaryNextActionUsable) {
-      const suffix = /[。！？.!?]$/.test(boundaryNextAction) ? "" : "。";
-      return `${motionModeName}下一步：${boundaryNextAction}${suffix}`;
+      const boundaryParts = boundaryNextAction.split("；").map((part) => part.trim()).filter(Boolean);
+      const mappingAction = boundaryParts.find((part) => part.startsWith("建图验收"));
+      const moveAction = mappingAction ? boundaryParts.find((part) => part && !part.startsWith("建图验收")) ?? boundaryNextAction : boundaryNextAction;
+      const suffix = /[。！？.!?]$/.test(moveAction) ? "" : "。";
+      return `${motionModeName}下一步：${moveAction}${suffix}`;
     }
     if (!plainManualSafetyConfirmed.value) {
       return `${motionModeName}下一步：勾选现场安全确认。`;
