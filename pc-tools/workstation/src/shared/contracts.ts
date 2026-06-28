@@ -2260,10 +2260,14 @@ export interface RobotControlNavGoalExecutionLatestResponse extends ProofFlags {
   remote_http_status: number | null;
   status: "blocked" | "loaded_fail_closed_summary";
   goal_execution_key_values: Record<string, string>;
+  execution_status_plain: string;
+  next_action_plain: string;
   route_execution_readiness_plain: string;
   route_execution_precheck_plain: string;
   goal_execution_wheel_raw_lr_status_plain: string;
   goal_execution_wheel_raw_lr_next_action_plain: string;
+  goal_execution_base_feedback_latest_raw_left: string;
+  goal_execution_base_feedback_latest_raw_right: string;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

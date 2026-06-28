@@ -590,6 +590,10 @@ function navGoalLatestPlainFields(
   | "route_execution_precheck_plain"
   | "goal_execution_wheel_raw_lr_status_plain"
   | "goal_execution_wheel_raw_lr_next_action_plain"
+  | "execution_status_plain"
+  | "next_action_plain"
+  | "goal_execution_base_feedback_latest_raw_left"
+  | "goal_execution_base_feedback_latest_raw_right"
 > {
   // latest 是只读 artifact；这些字段只解释最近路线证据和下一步，不会重放 Nav2。
   const goalSucceeded = keyValues.status === "goal_succeeded" || keyValues.result_status === "succeeded";
@@ -604,27 +608,45 @@ function navGoalLatestPlainFields(
     ? `已看到 ${Number.isFinite(commandCount) ? commandCount : 0} 次非零底盘命令`
     : "未看到非零底盘命令";
   const imuText = keyValues.base_feedback_imu_attitude_delta_observed === "true" ? "，IMU 姿态有变化" : "";
+  const motionMaterial = keyValues.base_feedback_imu_attitude_delta_observed === "true"
+    ? "已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或控制服务。"
+    : keyValues.base_command_nonzero_observed === "true" || (Number.isFinite(commandCount) && commandCount > 0)
+      ? "已看到非零底盘命令，下一步重点复验执行窗口轮速 L/R。"
+      : "还没有读到足够的底盘运动材料。";
+  const baseFeedbackAliases = {
+    goal_execution_base_feedback_latest_raw_left: left,
+    goal_execution_base_feedback_latest_raw_right: right,
+  };
   if (executionProven || wheelProven) {
     return {
+      execution_status_plain: "本轮路线执行和执行窗口轮速 L/R 已证明。",
+      next_action_plain: "继续送达确认；送达确认不会发车。",
       route_execution_readiness_plain: "完整路线执行已证明；同窗口 wheel raw L/R 已非零。",
       route_execution_precheck_plain: "下一步是送达确认；送达确认不会发车。",
       goal_execution_wheel_raw_lr_status_plain: `执行窗口 wheel raw L/R 已非零：L=${left}，R=${right}。`,
       goal_execution_wheel_raw_lr_next_action_plain: "继续送达确认；送达确认不会发车。",
+      ...baseFeedbackAliases,
     };
   }
   if (goalSucceeded && wheelExplicitFalse) {
     return {
+      execution_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${left}/${right} 未非零；${motionMaterial}`,
+      next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
       route_execution_readiness_plain: `图上路线可重跑复验；上次路线 action 成功，但同窗口 wheel raw L/R=${left}/${right} 未非零。`,
       route_execution_precheck_plain: `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ${nextMode} 模式跑图上路线。`,
       goal_execution_wheel_raw_lr_status_plain: `上次路线 action 成功，但执行窗口 wheel raw L/R=${left}/${right} 未非零；${commandText}${imuText}。`,
       goal_execution_wheel_raw_lr_next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。`,
+      ...baseFeedbackAliases,
     };
   }
   return {
+    execution_status_plain: "图上路线还未准备完成。",
+    next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
     route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
     route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
     goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
     goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
+    ...baseFeedbackAliases,
   };
 }
 
@@ -2969,10 +2991,14 @@ export function createWorkstationApp(): express.Express {
       remote_http_status: null,
       status: "blocked",
       goal_execution_key_values: {},
+      execution_status_plain: "图上路线还未准备完成。",
+      next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
       route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
       route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
       goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
       goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
+      goal_execution_base_feedback_latest_raw_left: "not_loaded",
+      goal_execution_base_feedback_latest_raw_right: "not_loaded",
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
