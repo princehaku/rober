@@ -9401,6 +9401,45 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
+  it("shows base readback bad JSON as a format issue instead of a timeout", async () => {
+    // live 形态：base_status 有响应但不是可解析 JSON；普通首屏要按格式异常提示，不要误写成超时。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.robot_api_connection = {
+      status: "degraded",
+      loaded_count: 11,
+      blocked_count: 0,
+      failed_count: 4,
+      schema_mismatch_count: 0,
+      dangerous_true_fields: [],
+      blocked_reasons: [
+        "status:fetch_timeout_2400ms",
+        "camera_health:fetch_timeout_2400ms",
+        "camera_devices:fetch_timeout_2400ms",
+        "base_status:response_json_parse_failed",
+      ],
+      last_refresh_ms: 1782664344291,
+    };
+    summaryFixture.readback_summary.base.status = "bad_json";
+    summaryFixture.readback_summary.base.latest_feedback_status = "loaded";
+    summaryFixture.readback_summary.base.current_feedback_read_status = "not_loaded";
+    summaryFixture.readback_summary.base.current_feedback_failure_reason = "not_loaded";
+    summaryFixture.readback_summary.base.wheel_raw_left = "not_loaded";
+    summaryFixture.readback_summary.base.wheel_raw_right = "not_loaded";
+    const mockedFetch = stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const currentFacts = wrapper.find('[data-testid="plain-current-facts"]').text();
+    expect(currentFacts).toContain("轮速：当前底盘反馈返回格式异常；旧 L/R 不能当当前轮速结论，先刷新当前轮速（只读），或检查上位机底盘反馈接口和串口日志。");
+    expect(currentFacts).not.toContain("当前底盘反馈读取超时");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("response_json_parse_failed");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("marks stale facts when a plain refresh fails after a prior summary", async () => {
     // 现场上位机卡住时不能继续把上一拍相机/雷达/Nav2 文案伪装成实时事实；失败只改变展示，不触发运动。
     const mockedFetch = stubWorkstationFetch();

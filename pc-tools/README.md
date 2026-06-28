@@ -93,7 +93,7 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-28 08:24 CST 起，轮速卡的 `试动读轮速` 普通入口不再因为缺现场画面材料而卡住：first-jog 材料足够时仍走固定 first-jog；材料不足但已勾现场安全确认时，退到已有固定底盘试动入口读取 wheel raw L/R。画面只影响旧 first-jog 材料和建图验收，不再作为底盘试动或轮速读取前置；该入口仍走 workstation `/api/robot-control/base/manual` 固定代理，不直连 `/cmd_vel`。
 
-2026-06-29 17:10 CST 起，当主体状态已读到但 `base_status` 或 `base_feedback_samples_latest` 只读端点超时时，普通首屏 `当前事实` 会把它显示成轮速分项问题：“当前底盘反馈读取超时；旧 L/R 不能当当前轮速结论”。这不会暴露 `fetch_timeout_*` 内部 token，也不会自动发送 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
+2026-06-29 17:10 CST 起，当主体状态已读到但 `base_status` 或 `base_feedback_samples_latest` 只读端点超时、返回格式异常或读取失败时，普通首屏 `当前事实` 会把它显示成轮速分项问题：“当前底盘反馈读取超时 / 返回格式异常 / 读取失败；旧 L/R 不能当当前轮速结论”。这不会暴露 `fetch_timeout_*`、`response_json_parse_failed` 等内部 token，也不会自动发送 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外

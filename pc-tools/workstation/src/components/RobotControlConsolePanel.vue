@@ -2310,8 +2310,17 @@ function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string
   if (baseFeedbackSamplesPending.value) {
     return "轮速：正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。";
   }
-  if (summary.robot_api_connection.blocked_reasons.some((reason) => reason.startsWith("base_status:") || reason.startsWith("base_feedback_samples_latest:"))) {
-    return "轮速：当前底盘反馈读取超时；旧 L/R 不能当当前轮速结论，先刷新当前轮速（只读），或检查串口占用、底盘供电和模式。";
+  const baseReadbackConnectionIssues = summary.robot_api_connection.blocked_reasons.filter((reason) => (
+    reason.startsWith("base_status:") || reason.startsWith("base_feedback_samples_latest:")
+  ));
+  if (baseReadbackConnectionIssues.length > 0) {
+    if (baseReadbackConnectionIssues.some((reason) => reason.includes("json_parse_failed") || reason.includes("bad_json"))) {
+      return "轮速：当前底盘反馈返回格式异常；旧 L/R 不能当当前轮速结论，先刷新当前轮速（只读），或检查上位机底盘反馈接口和串口日志。";
+    }
+    if (baseReadbackConnectionIssues.some((reason) => reason.includes("fetch_timeout"))) {
+      return "轮速：当前底盘反馈读取超时；旧 L/R 不能当当前轮速结论，先刷新当前轮速（只读），或检查串口占用、底盘供电和模式。";
+    }
+    return "轮速：当前底盘反馈读取失败；旧 L/R 不能当当前轮速结论，先刷新当前轮速（只读），或检查底盘反馈链路。";
   }
   const base = summary.readback_summary.base;
   if (base.current_feedback_read_status === "read_error") {
