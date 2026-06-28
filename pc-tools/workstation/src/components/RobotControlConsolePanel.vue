@@ -2106,6 +2106,14 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
     return `${modeName}：状态机已启动，本轮按${modeName}记录；现场继续监看，必要时停止。`;
   }
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "stop") {
+    if (plainFreeRoamMapPreviewFreshForSession.value) {
+      return `${modeName}：已停止，停止后的地图画面已刷新，可以保存地图。`;
+    }
+    if (plainFreeRoamMapPreviewRefreshFailedForSession.value) {
+      const failureText = mapPreviewFailureText(mapPreviewResult.value);
+      const reasonSuffix = failureText ? `：${failureText}` : "";
+      return `${modeName}：已停止，但停止后的地图画面刷新失败${reasonSuffix}；先重试刷新再保存。`;
+    }
     return `${modeName}：停止请求已发送，继续看地图和雷达确认现场收口。`;
   }
   if (runtime?.status === "loaded" && runtime.cmd_vel_publish_enabled === true && runtime.artifact_only === false) {

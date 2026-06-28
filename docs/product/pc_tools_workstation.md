@@ -3672,6 +3672,11 @@ PC 地图 marker 优先用这些结构化字段显示 `雷达距离：最近障�
 刷新成功时地图 marker 直接显示 `自动扫图已停止，可保存`，下一步直接进入保存地图；刷新失败时仍保留重试刷新入口。
 该自动刷新只读 map preview / radar status，不重新启动 free-roam、不发送 manual、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-28 08:10 起，普通首屏 `当前事实` 也消费同一 stop 后地图刷新结果：
+刷新成功时显示 `自动扫图：已停止，停止后的地图画面已刷新，可以保存地图。`；
+刷新失败时显示停止已生效但地图画面刷新失败，并要求先重试刷新再保存。这样用户不需要在顶部事实和地图 marker 之间来回猜状态；
+该变化仍只读已有 stop/map preview 状态，不发送 manual、Nav2、delivery、free-roam start/stop 或 `/cmd_vel`。
+
 2026-06-27 23:30 起，建图验收缺口也消费同一 stale runtime `/scan` 事实：
 当缺口包含 `lidar_fresh` 且 PC summary 里只有 stale `/scan` 距离时，`建图验收` 和 `当前事实`
 会显示 `雷达未刷新（旧 /scan 距离 ... 已过期，不贴到地图）`。低速自由移动入口仍不受影响；
