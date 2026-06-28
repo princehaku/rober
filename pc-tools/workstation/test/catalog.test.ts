@@ -3972,6 +3972,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map).toMatchObject({
         status: expect.any(String),
         map_once_observed: "true",
+        map_wysiwyg_status_plain: "地图画面已读到，但图上路线还未显示。",
+        map_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
         path_preview_status: "not_observed",
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
@@ -5476,7 +5478,18 @@ describe("workstation fail-closed API contracts", () => {
       "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
       "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
       "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
-      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/nav2/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven"),
+          path_preview_points: [
+            { x: 0, y: 0, frame_id: "map", source_index: 0 },
+            { x: 0.8, y: 0, frame_id: "map", source_index: 17 },
+          ],
+          path_preview_point_count: 2,
+          path_preview_source_point_count: 18,
+          path_preview_frame_id: "map",
+        },
+      },
       "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
       "/api/free-roam/autonomy/latest": { statusCode: 405, payload: { error: "method_not_allowed" } },
       "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready") },
@@ -7359,6 +7372,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("5");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser");
       expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
+      expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
+      expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
       expect(summary.readback_summary.map.path_preview_point_count).toBe("3");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");
@@ -7811,10 +7826,22 @@ describe("workstation fail-closed API contracts", () => {
           ...safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "blocked_with_root_cause"),
           amcl_pose_observed: true,
           localization_tf_observed: true,
+          amcl_pose: { frame_id: "map", x: 0.2, y: 0.1, yaw: 0, source: "/amcl_pose" },
         },
       },
       "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
-      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/nav2/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven"),
+          path_preview_points: [
+            { x: 0, y: 0, frame_id: "map", source_index: 0 },
+            { x: 0.8, y: 0, frame_id: "map", source_index: 17 },
+          ],
+          path_preview_point_count: 2,
+          path_preview_source_point_count: 18,
+          path_preview_frame_id: "map",
+        },
+      },
       "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
       "/api/free-roam/autonomy/latest": {
         payload: {
@@ -7871,10 +7898,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("0");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("65");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser_frame");
-      expect(summary.readback_summary.map.path_preview_status).toBe("not_observed");
-      expect(summary.readback_summary.map.path_preview_point_count).toBe("0");
-      expect(summary.readback_summary.map.path_preview_frame_id).toBe("not_loaded");
-      expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
+      expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线和小车位置已显示；雷达来源点存在但当前不贴到地图：已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
+      expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
+      expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
+      expect(summary.readback_summary.map.path_preview_point_count).toBe("2");
+      expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");
+      expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
     } finally {
       await robotApi.close();
     }

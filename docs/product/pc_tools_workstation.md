@@ -3919,3 +3919,9 @@ summary/status/readback 也同步说明“多个页面复用同一条上游流�
 键盘连续手控只复用现场安全确认，启用键盘不发车，按住方向才发送低速短脉冲；自由移动只要求安全确认和停止兜底；
 画面/雷达/地图记录只影响建图验收，不阻止先低速自由移动。该变化只补 summary readback，不发送 manual、Nav2、
 keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 02:42 起，Robot Control summary 的 `readback_summary.map` 新增
+`map_wysiwyg_status_plain` 和 `map_wysiwyg_next_action_plain`。这两个字段把地图底图、图上路线、小车 map 位姿和
+雷达 overlay 合成一个 WYSIWYG 总口径：只有这些层都来自当前读数时才说全部已显示；如果雷达 proof 里有旧来源点但
+runtime `/scan` 过期或 lifecycle stopped，则总状态会明确写“雷达来源点存在但当前不贴到地图”，下一步指向启动/刷新雷达。
+该变化只消费已有只读 summary/proof，不启动雷达、不刷新地图、不执行 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -3111,6 +3111,58 @@ function mapPreviewPathNextActionPlain(
   return "图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。";
 }
 
+function mapWysiwygPlainSummary(args: {
+  mapObserved: string;
+  pathStatus: string;
+  poseStatus: string;
+  radarStatus: string;
+  radarHint: string;
+  pathNextAction: string;
+  radarNextAction: string;
+}): { statusPlain: string; nextActionPlain: string } {
+  // 地图总口径把图、路线、小车位置和雷达层一次讲清；脚本不用再拼多个 readback 字段。
+  if (args.mapObserved !== "true") {
+    return {
+      statusPlain: "地图画面未读到；不能把旧图或空白图当作当前所见。",
+      nextActionPlain: "先刷新地图画面。",
+    };
+  }
+  if (args.pathStatus !== "path_preview_observed") {
+    return {
+      statusPlain: "地图画面已读到，但图上路线还未显示。",
+      nextActionPlain: args.pathNextAction,
+    };
+  }
+  if (args.poseStatus !== "map_pose_observed") {
+    return {
+      statusPlain: "地图画面和图上路线已显示，但小车地图位置未显示。",
+      nextActionPlain: args.pathNextAction,
+    };
+  }
+  if (args.radarStatus === "loaded") {
+    return {
+      statusPlain: "地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。",
+      nextActionPlain: "继续按当前地图画面确认路线和雷达层。",
+    };
+  }
+  if (args.radarStatus === "partial") {
+    return {
+      statusPlain: `地图画面、图上路线和小车位置已显示；雷达层只显示局部读数：${args.radarHint}`,
+      nextActionPlain: args.radarNextAction,
+    };
+  }
+  if (args.radarStatus === "not_current") {
+    return {
+      statusPlain: `地图画面、图上路线和小车位置已显示；雷达来源点存在但当前不贴到地图：${args.radarHint}`,
+      nextActionPlain: args.radarNextAction,
+    };
+  }
+  return {
+    statusPlain: `地图画面、图上路线和小车位置已显示；雷达层还未加载：${args.radarHint}`,
+    nextActionPlain: args.radarNextAction,
+  };
+}
+
 export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotControlMapPreviewResponse> {
   // Map preview 是只读固定代理；它只能读上位机 /api/map/preview，不能转成任意文件或控制代理。
   const normalized = normalizeRobotApiBaseUrl(baseUrl);
@@ -4131,6 +4183,15 @@ function mapSummaryFromReadbacks(
   const pathPreviewStatus = proof.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
   const robotPoseStatus = proof.robot_pose ? "map_pose_observed" : "not_observed";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathPreviewStatus, robotPoseStatus);
+  const mapWysiwyg = mapWysiwygPlainSummary({
+    mapObserved: booleanSummaryValue(proof.map_once_observed),
+    pathStatus: pathPreviewStatus,
+    poseStatus: robotPoseStatus,
+    radarStatus: radarOverlayStatus,
+    radarHint: radarOverlayExplanation.plain_hint,
+    pathNextAction: pathNextActionPlain,
+    radarNextAction: radarOverlayExplanation.next_action_plain,
+  });
   return {
     status: mapProof?.status ?? "not_loaded",
     map_once_observed: booleanSummaryValue(proof.map_once_observed),
@@ -4146,6 +4207,8 @@ function mapSummaryFromReadbacks(
       proofText(readbacks, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       mapProofText(mapProof, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       "not_loaded",
+    map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
+    map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
     path_preview_status: pathPreviewStatus,
     path_preview_point_count: String(proof.path_preview_point_count),
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
@@ -4673,6 +4736,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         map_quality_status: "not_loaded",
         map_free_cell_count: "not_loaded",
         map_usable_for_navigation: "not_loaded",
+        map_wysiwyg_status_plain: "地图画面未读到；不能把旧图或空白图当作当前所见。",
+        map_wysiwyg_next_action_plain: "先刷新地图画面。",
         path_preview_status: "not_observed",
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
