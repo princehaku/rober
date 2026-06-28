@@ -2947,6 +2947,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   path_preview_points: RobotApiPathPreviewPoint[];
   path_preview_status: "path_preview_observed" | "not_observed";
   path_preview_next_action_plain: string;
+  next_action_plain: string;
   path_preview_point_count: number;
   path_preview_source_point_count: number | null;
   path_preview_frame_id: string;

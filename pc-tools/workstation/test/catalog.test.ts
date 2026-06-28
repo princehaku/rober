@@ -9092,6 +9092,7 @@ describe("workstation fail-closed API contracts", () => {
         path_preview_points: Array<{ x: number; y: number; frame_id: string; source_index: number | null }>;
         path_preview_status: string;
         path_preview_next_action_plain: string;
+        next_action_plain: string;
         path_preview_point_count: number;
         path_preview_source_point_count: number | null;
         path_preview_frame_id: string;
@@ -9126,6 +9127,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.robot_pose_status).toBe("map_pose_observed");
       expect(previewBody.path_preview_status).toBe("path_preview_observed");
       expect(previewBody.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(previewBody.next_action_plain).toBe(previewBody.path_preview_next_action_plain);
       expect(previewBody.path_preview_points).toEqual([
         { x: 0.1, y: 0.2, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.2, frame_id: "map", source_index: 7 },
@@ -9327,6 +9329,7 @@ describe("workstation fail-closed API contracts", () => {
         robot_pose_status: string;
         path_preview_status: string;
         path_preview_next_action_plain: string;
+        next_action_plain: string;
         robot_control_executed: boolean;
       };
 
@@ -9351,6 +9354,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.robot_pose_status).toBe("not_observed");
       expect(body.path_preview_status).toBe("not_observed");
       expect(body.path_preview_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
+      expect(body.next_action_plain).toBe(body.path_preview_next_action_plain);
       expect(body.radar_overlay.blocked_reasons).toContain("robot_pose_missing_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reason_labels).toContain("小车地图位置未读到");
       expect(body.robot_control_executed).toBe(false);

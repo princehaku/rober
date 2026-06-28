@@ -9194,6 +9194,7 @@ function makeMapPreviewFallback(reason: string): RobotControlMapPreviewResponse 
     robot_pose_status: "not_observed",
     path_preview_status: "not_observed",
     path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
+    next_action_plain: "先准备图上路线，再刷新地图画面。",
     robot_control_executed: false,
   };
 }
