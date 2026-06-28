@@ -19640,7 +19640,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：共享预览暂时没有出画面；页面会自动重试，不是浏览器独占。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：本页共享预览暂时没有出画面，页面会低频自动重试；不是页面独占");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("检查 USB、摄像头输入或供电");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("本页 MJPEG 预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。");
     await vi.advanceTimersByTimeAsync(4900);
     await wrapper.vm.$nextTick();
@@ -20367,6 +20368,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-camera-start"]').text()).toBe("重试共享画面");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，UVC 没有输出视频帧。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("不是页面独占");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("source_usage_status");

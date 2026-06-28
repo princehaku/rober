@@ -592,7 +592,10 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
     return `画面：已看到 MJPEG 实时画面${sharedPreviewCurrentFactSuffix(camera)}。`;
   }
   if (cameraMjpegRetryPending.value) {
-    return "画面：本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。";
+    const sourceHint = cameraSourceFirstFrameFailed(camera) ? cameraSourcePlainFailureHint() : "";
+    return sourceHint
+      ? `画面：本页共享预览暂时没有出画面，页面会低频自动重试；${sourceHint}`
+      : "画面：本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。";
   }
   if (cameraMjpegCachedFramePending.value && cameraMjpegStatusPending.value) {
     return "画面：共享流已有最近帧缓存，新页面会先显示最近画面；本页仍在接入实时流。";
@@ -637,18 +640,18 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
     const attempts = camera.first_frame_probe_backend_attempts && !["0", "not_loaded", "none", ""].includes(camera.first_frame_probe_backend_attempts)
       ? `OpenCV/V4L2 ${camera.first_frame_probe_backend_attempts} 种方式`
       : "OpenCV/V4L2 多种方式";
-    return `画面：${prefix}${selectedName} ${attempts}也没有取到视频帧。`;
+    return `画面：${prefix}${selectedName} ${attempts}也没有取到视频帧。检查 USB、摄像头输入、格式或供电${cameraKnownGoodUvcSuffix(camera)}。`;
   }
   if (camera.source_diagnosis_status === "uvc_no_frame_not_exclusive") {
     const notExclusiveText = prefix ? "" : "不是页面独占，";
     const deviceText = selectedName && selectedName !== "摄像头" ? `${selectedName} 的 UVC` : "UVC";
-    return `画面：${prefix}${deviceText} ${notExclusiveText}没有输出视频帧。`;
+    return `画面：${prefix}${deviceText} ${notExclusiveText}没有输出视频帧。检查 USB、摄像头输入或供电${cameraKnownGoodUvcSuffix(camera)}。`;
   }
   if (camera.source_usage_status === "not_in_use" || camera.source_usage_owner_count === "0") {
     if (camera.source_failure_reason === "first_frame_total_timeout" || camera.last_offer_failure_reason === "first_frame_total_timeout") {
-      return `画面：${prefix}${selectedName} 没人占用但读取首帧总超时。`;
+      return `画面：${prefix}${selectedName} 没人占用但读取首帧总超时。检查 USB、摄像头输入、格式或供电${cameraKnownGoodUvcSuffix(camera)}。`;
     }
-    return `画面：${prefix}${selectedName} 没人占用但没有输出视频帧。`;
+    return `画面：${prefix}${selectedName} 没人占用但没有输出视频帧。检查 USB、摄像头输入或供电${cameraKnownGoodUvcSuffix(camera)}。`;
   }
   if (camera.source_usage_status === "in_use_by_probe" || camera.source_usage_status === "in_use_by_other_process") {
     return `画面：${prefix}相机被占用，先释放占用后再看实时画面。`;

@@ -3848,3 +3848,9 @@ Robot Control summary 的 `readback_summary.map` 同步新增中文所见即所�
 “已有雷达来源点，但雷达扫描已过期/雷达未运行，所以当前不贴到地图”，普通首屏优先消费这句，不再只展示内部 token
 或把旧点画成当前 marker。该变化只读取地图、雷达和定位状态，不启动雷达，不刷新 Nav2，不发送 manual、keyboard、
 free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 21:45 起，普通首屏“当前事实”的实时画面行会在 `uvc_no_frame_not_exclusive` 或
+`source_usage_owner_count=0` 时直接显示处理动作：不是页面/浏览器独占，而是 UVC 源头没有输出视频帧，需要检查
+USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。共享预览仍保持
+`single_shared_capture_for_multiple_clients`，多个 PC 页面只复用同一条上游流；该变化只更新可见诊断文案，
+不新开相机上游、不修改相机服务、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
