@@ -51,8 +51,9 @@ EXPECTED_PACKAGES = [
     "nav2_lifecycle_manager",
 ]
 PACKAGE_CHECK_BATCH_TIMEOUT_S = 5.0
-TF_ECHO_SHELL_TIMEOUT_S = 4.0
-TF_ECHO_PROCESS_TIMEOUT_S = 5.5
+TF_ECHO_SHELL_TIMEOUT_S = 10.0
+# 板端 ros2 run/tf2_echo 退出会比 shell timeout 多耗一段启动和清理时间；外层必须留足余量。
+TF_ECHO_PROCESS_TIMEOUT_S = 14.0
 BLOCKED_COMMAND_TOKENS = [
     "T=1",
     "T=13",

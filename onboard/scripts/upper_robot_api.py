@@ -120,7 +120,9 @@ DEFAULT_RADAR_STOP_COMMAND = "bash /root/rober/onboard/scripts/o1_lidar_lifecycl
 DEFAULT_NAV2_START_COMMAND = (
     "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
     "--map-file /root/rober/onboard/runtime/maps/trashbot_map.yaml "
-    "--base-port /dev/ttyS5 --base-baudrate 115200 --command-mode ros"
+    "--base-port /dev/ttyS5 --base-baudrate 115200 --command-mode ros "
+    "--base-enabled auto --lidar-enabled auto --lidar-serial-port /dev/ttyACM0 "
+    "--lidar-serial-baudrate 150000 --static-laser-tf-enabled true"
 )
 DEFAULT_NAV2_STOP_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh stop"
 DEFAULT_NAV2_STATUS_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh status"
@@ -1397,7 +1399,7 @@ def wait_for_nav2_helper_partial_artifact(artifact_path: str, wait_s: float = 2.
     return latest
 
 
-def run_helper_bash_process_group(command: str, timeout_s: float, cwd: str) -> dict[str, Any]:
+def run_helper_bash_process_group(command: str, timeout_s: float, cwd: str, *, cleanup_residuals: bool = True) -> dict[str, Any]:
     """运行 helper shell 时单独建进程组，timeout 必须清掉 ROS2 子进程。"""
     process = subprocess.Popen(  # noqa: S603 - command 由本 API 固定生成，不能来自用户输入。
         ["bash", "-lc", command],
@@ -1444,7 +1446,15 @@ def run_helper_bash_process_group(command: str, timeout_s: float, cwd: str) -> d
             stdout = preview_text(exc.stdout, 4000)
             stderr = preview_text(exc.stderr, 4000)
             cleanup_result["error"] = compact_error(cleanup_exc)
-        cleanup_result["residual_cleanup"] = cleanup_nav2_helper_residual_processes()
+        if cleanup_residuals:
+            cleanup_result["residual_cleanup"] = cleanup_nav2_helper_residual_processes()
+        else:
+            # 复用外部 Nav2 lifecycle 时，helper 超时只能清自己的进程组，不能扫杀现场 ROS 栈。
+            cleanup_result["residual_cleanup"] = {
+                "attempted": False,
+                "ok": True,
+                "reason": "skipped_external_runtime_cleanup",
+            }
         cleanup_result["ok"] = process.poll() is not None and cleanup_result["residual_cleanup"].get("ok") is True
         return {
             "timed_out": True,
@@ -1633,7 +1643,12 @@ def run_nav2_runtime_proof_helper(
     process_timeout_s = timeout_budget["process_timeout_s"]
     started_ms = now_ms()
     try:
-        completed = run_helper_bash_process_group(helper_command, process_timeout_s, DEFAULT_ONBOARD_WORKDIR)
+        completed = run_helper_bash_process_group(
+            helper_command,
+            process_timeout_s,
+            DEFAULT_ONBOARD_WORKDIR,
+            cleanup_residuals=managed_runtime_opt_in,
+        )
         if completed.get("timed_out"):
             partial_artifact = wait_for_nav2_helper_partial_artifact(artifact_path)
             timeout_reason = (
@@ -2438,6 +2453,13 @@ def validate_nav2_lifecycle_command(command: str | None, action: str) -> tuple[l
     command_mode = _extract_flag_value(argv, "--command-mode")
     if command_mode and command_mode not in ALLOWED_NAV2_BASE_COMMAND_MODES:
         return [], {"type": "unsupported_nav2_command_mode", "message": f"unsupported Nav2 base command mode: {command_mode}"}
+    lidar_port = _extract_flag_value(argv, "--lidar-serial-port")
+    if lidar_port and not _is_lidar_serial_path(lidar_port):
+        return [], {"type": "unsafe_lidar_serial_path", "message": f"refusing unexpected LiDAR serial path: {lidar_port}"}
+    for bool_flag in ("--base-enabled", "--lidar-enabled", "--static-laser-tf-enabled"):
+        bool_value = _extract_flag_value(argv, bool_flag)
+        if bool_value and bool_value not in ("true", "false", "auto"):
+            return [], {"type": "unsupported_nav2_lifecycle_flag", "message": f"{bool_flag} must be true, false, or auto"}
     return argv, None
 
 
@@ -5473,7 +5495,12 @@ def run_nav2_goal_execution_helper(
     process_timeout_s = min(max(server_timeout_s + result_timeout_s + managed_startup_s + managed_ready_timeout_s + 15.0, 20.0), 140.0)
     started_ms = now_ms()
     try:
-        completed = run_helper_bash_process_group(helper_command, process_timeout_s, DEFAULT_ONBOARD_WORKDIR)
+        completed = run_helper_bash_process_group(
+            helper_command,
+            process_timeout_s,
+            DEFAULT_ONBOARD_WORKDIR,
+            cleanup_residuals=managed_runtime_opt_in,
+        )
         return {
             "mode": "o11_nav2_goal_execution_helper",
             "executed": True,

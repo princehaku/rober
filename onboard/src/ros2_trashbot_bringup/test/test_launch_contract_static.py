@@ -91,7 +91,7 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'fixed_route_dry_run', default_value='false'", source)
 
     def test_autonomous_nav2_stack_only_skips_business_navigation_nodes(self):
-        # 受管 Nav2 lifecycle start 只需要 ESP32 bridge 和 Nav2 bringup；
+        # 受管 Nav2 lifecycle start 只启动底盘 bridge/传感器/Nav2，不启动业务导航节点。
         # 巡逻、任务编排和固定路线节点必须显式受 nav2_stack_only gate 保护。
         source = read_launch("autonomous.launch.py")
         ast.parse(source)
@@ -110,6 +110,45 @@ class LaunchContractStaticTest(unittest.TestCase):
             self.assertIn("condition=", block)
         self.assertIn("full_stack_expression", source)
         self.assertIn("nav2_stack_only", source)
+
+    def test_autonomous_nav2_stack_only_can_start_lidar_scan_input_without_business_nodes(self):
+        # Nav2/AMCL 需要 /scan 和 base_link->laser_frame；stack-only 不能只拉 Nav2 bringup。
+        source = read_launch("autonomous.launch.py")
+        ast.parse(source)
+
+        lidar_block = node_block(source, "lidar_driver")
+        base_block = node_block(source, "esp32_bridge")
+
+        for argument in (
+            "'base_enabled'",
+            "'lidar_enabled'",
+            "'lidar_serial_port'",
+            "'lidar_serial_baudrate'",
+            "'lidar_frame_id'",
+            "'lidar_scan_topic'",
+            "'lidar_raw_packet_topic'",
+            "'lidar_publish_raw_packets'",
+            "'lidar_mock_packets'",
+            "'lidar_mock_scan'",
+            "'static_laser_tf_enabled'",
+            "'base_frame_id'",
+            "'laser_tf_x'",
+            "'laser_tf_y'",
+            "'laser_tf_z'",
+            "'laser_tf_roll'",
+            "'laser_tf_pitch'",
+            "'laser_tf_yaw'",
+        ):
+            self.assertIn(argument, source)
+
+        self.assertIn("'base_enabled', default_value='true'", source)
+        self.assertIn("'lidar_enabled', default_value='false'", source)
+        self.assertIn("condition=IfCondition(base_enabled)", base_block)
+        self.assertIn("condition=IfCondition(lidar_enabled)", lidar_block)
+        self.assertIn("'serial_port': lidar_serial_port", lidar_block)
+        self.assertIn("'scan_topic': lidar_scan_topic", lidar_block)
+        self.assertIn("name='static_laser_tf'", source)
+        self.assertIn("condition=IfCondition(static_laser_tf_enabled)", source)
 
     def test_autonomous_passes_debug_status_file_to_task_orchestrator(self):
         source = read_launch("autonomous.launch.py")

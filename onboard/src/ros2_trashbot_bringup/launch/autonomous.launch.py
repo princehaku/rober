@@ -74,6 +74,78 @@ def generate_launch_description():
         'nav2_stack_only', default_value='false',
         description='Start only ESP32 bridge and Nav2 bringup; skip patrol/task nodes')
 
+    base_enabled_arg = DeclareLaunchArgument(
+        'base_enabled', default_value='true',
+        description='Start the ESP32 bridge; disable when an existing bridge already owns the base UART')
+
+    lidar_enabled_arg = DeclareLaunchArgument(
+        'lidar_enabled', default_value='false',
+        description='Start the LiDAR driver for Nav2 /scan input when the serial device is available')
+
+    lidar_serial_port_arg = DeclareLaunchArgument(
+        'lidar_serial_port', default_value='/dev/ttyACM0',
+        description='LiDAR serial port used by ros2_trashbot_hardware/lidar_driver')
+
+    lidar_serial_baudrate_arg = DeclareLaunchArgument(
+        'lidar_serial_baudrate', default_value='150000',
+        description='LiDAR serial baudrate used by ros2_trashbot_hardware/lidar_driver')
+
+    lidar_frame_id_arg = DeclareLaunchArgument(
+        'lidar_frame_id', default_value='laser_frame',
+        description='frame_id attached to LiDAR LaserScan messages')
+
+    lidar_scan_topic_arg = DeclareLaunchArgument(
+        'lidar_scan_topic', default_value='/scan',
+        description='Topic published by the LiDAR driver and consumed by Nav2/AMCL')
+
+    lidar_raw_packet_topic_arg = DeclareLaunchArgument(
+        'lidar_raw_packet_topic', default_value='/lidar/raw_packet',
+        description='Optional LiDAR raw packet topic for packet-level debugging')
+
+    lidar_publish_raw_packets_arg = DeclareLaunchArgument(
+        'lidar_publish_raw_packets', default_value='false',
+        description='Publish raw LiDAR packets when packet-level debugging is needed')
+
+    lidar_mock_packets_arg = DeclareLaunchArgument(
+        'lidar_mock_packets', default_value='',
+        description='Optional hex packet replay input; keeps LiDAR driver in mock mode')
+
+    lidar_mock_scan_arg = DeclareLaunchArgument(
+        'lidar_mock_scan', default_value='false',
+        description='Publish deterministic mock LiDAR scans without opening a serial port')
+
+    static_laser_tf_enabled_arg = DeclareLaunchArgument(
+        'static_laser_tf_enabled', default_value='false',
+        description='Publish a smoke-only base_link -> laser_frame static TF; not a mechanical calibration')
+
+    base_frame_id_arg = DeclareLaunchArgument(
+        'base_frame_id', default_value='base_link',
+        description='Parent frame used by the smoke-only static laser TF')
+
+    laser_tf_x_arg = DeclareLaunchArgument(
+        'laser_tf_x', default_value='0.0',
+        description='Smoke-only static TF x offset from base_frame_id to lidar_frame_id')
+
+    laser_tf_y_arg = DeclareLaunchArgument(
+        'laser_tf_y', default_value='0.0',
+        description='Smoke-only static TF y offset from base_frame_id to lidar_frame_id')
+
+    laser_tf_z_arg = DeclareLaunchArgument(
+        'laser_tf_z', default_value='0.0',
+        description='Smoke-only static TF z offset from base_frame_id to lidar_frame_id')
+
+    laser_tf_roll_arg = DeclareLaunchArgument(
+        'laser_tf_roll', default_value='0.0',
+        description='Smoke-only static TF roll from base_frame_id to lidar_frame_id')
+
+    laser_tf_pitch_arg = DeclareLaunchArgument(
+        'laser_tf_pitch', default_value='0.0',
+        description='Smoke-only static TF pitch from base_frame_id to lidar_frame_id')
+
+    laser_tf_yaw_arg = DeclareLaunchArgument(
+        'laser_tf_yaw', default_value='0.0',
+        description='Smoke-only static TF yaw from base_frame_id to lidar_frame_id')
+
     debug_status_file_arg = DeclareLaunchArgument(
         'debug_status_file', default_value='/tmp/trashbot_fixed_route_status.json',
         description='Path to fixed-route debug status JSON')
@@ -206,6 +278,24 @@ def generate_launch_description():
     visual_match_threshold = LaunchConfiguration('visual_match_threshold')
     fixed_route_dry_run = LaunchConfiguration('fixed_route_dry_run')
     nav2_stack_only = LaunchConfiguration('nav2_stack_only')
+    base_enabled = LaunchConfiguration('base_enabled')
+    lidar_enabled = LaunchConfiguration('lidar_enabled')
+    lidar_serial_port = LaunchConfiguration('lidar_serial_port')
+    lidar_serial_baudrate = LaunchConfiguration('lidar_serial_baudrate')
+    lidar_frame_id = LaunchConfiguration('lidar_frame_id')
+    lidar_scan_topic = LaunchConfiguration('lidar_scan_topic')
+    lidar_raw_packet_topic = LaunchConfiguration('lidar_raw_packet_topic')
+    lidar_publish_raw_packets = LaunchConfiguration('lidar_publish_raw_packets')
+    lidar_mock_packets = LaunchConfiguration('lidar_mock_packets')
+    lidar_mock_scan = LaunchConfiguration('lidar_mock_scan')
+    static_laser_tf_enabled = LaunchConfiguration('static_laser_tf_enabled')
+    base_frame_id = LaunchConfiguration('base_frame_id')
+    laser_tf_x = LaunchConfiguration('laser_tf_x')
+    laser_tf_y = LaunchConfiguration('laser_tf_y')
+    laser_tf_z = LaunchConfiguration('laser_tf_z')
+    laser_tf_roll = LaunchConfiguration('laser_tf_roll')
+    laser_tf_pitch = LaunchConfiguration('laser_tf_pitch')
+    laser_tf_yaw = LaunchConfiguration('laser_tf_yaw')
     debug_status_file = LaunchConfiguration('debug_status_file')
     route_debug_web = LaunchConfiguration('route_debug_web')
     operator_gateway = LaunchConfiguration('operator_gateway')
@@ -275,6 +365,24 @@ def generate_launch_description():
         visual_match_threshold_arg,
         fixed_route_dry_run_arg,
         nav2_stack_only_arg,
+        base_enabled_arg,
+        lidar_enabled_arg,
+        lidar_serial_port_arg,
+        lidar_serial_baudrate_arg,
+        lidar_frame_id_arg,
+        lidar_scan_topic_arg,
+        lidar_raw_packet_topic_arg,
+        lidar_publish_raw_packets_arg,
+        lidar_mock_packets_arg,
+        lidar_mock_scan_arg,
+        static_laser_tf_enabled_arg,
+        base_frame_id_arg,
+        laser_tf_x_arg,
+        laser_tf_y_arg,
+        laser_tf_z_arg,
+        laser_tf_roll_arg,
+        laser_tf_pitch_arg,
+        laser_tf_yaw_arg,
         debug_status_file_arg,
         route_debug_web_arg,
         operator_gateway_arg,
@@ -311,6 +419,7 @@ def generate_launch_description():
             executable='esp32_bridge',
             name='esp32_bridge',
             output='screen',
+            condition=IfCondition(base_enabled),
             parameters=[{
                 'use_sim_time': use_sim_time,
                 'serial_port': serial_port,
@@ -321,6 +430,44 @@ def generate_launch_description():
                 'pwm_min_abs': pwm_min_abs,
                 'pwm_max_abs': pwm_max_abs,
             }],
+        ),
+
+        # LiDAR 是 Nav2/AMCL 的 /scan 输入；默认关闭，PC lifecycle 按现场资源自动打开或复用。
+        Node(
+            package='ros2_trashbot_hardware',
+            executable='lidar_driver',
+            name='lidar_driver',
+            output='screen',
+            condition=IfCondition(lidar_enabled),
+            parameters=[{
+                'serial_port': lidar_serial_port,
+                'serial_baudrate': lidar_serial_baudrate,
+                'frame_id': lidar_frame_id,
+                'scan_topic': lidar_scan_topic,
+                'raw_packet_topic': lidar_raw_packet_topic,
+                'publish_raw_packets': lidar_publish_raw_packets,
+                'mock_packets': lidar_mock_packets,
+                'mock_scan': lidar_mock_scan,
+            }],
+        ),
+
+        # 该 TF 只补齐 Nav2 传感器拓扑，不代表 LiDAR 机械安装已标定。
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='static_laser_tf',
+            output='screen',
+            condition=IfCondition(static_laser_tf_enabled),
+            arguments=[
+                laser_tf_x,
+                laser_tf_y,
+                laser_tf_z,
+                laser_tf_yaw,
+                laser_tf_pitch,
+                laser_tf_roll,
+                base_frame_id,
+                lidar_frame_id,
+            ],
         ),
 
         # Nav2 bringup with saved map

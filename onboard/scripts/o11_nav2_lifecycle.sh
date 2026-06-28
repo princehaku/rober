@@ -15,6 +15,11 @@ MAP_FILE="/root/rober/onboard/runtime/maps/trashbot_map.yaml"
 BASE_PORT="/dev/ttyS5"
 BASE_BAUDRATE="115200"
 COMMAND_MODE="ros"
+BASE_ENABLED="${ROBER_NAV2_BASE_ENABLED:-auto}"
+LIDAR_ENABLED="${ROBER_NAV2_LIDAR_ENABLED:-auto}"
+LIDAR_SERIAL_PORT="${ROBER_NAV2_LIDAR_SERIAL_PORT:-/dev/ttyACM0}"
+LIDAR_SERIAL_BAUDRATE="${ROBER_NAV2_LIDAR_SERIAL_BAUDRATE:-150000}"
+STATIC_LASER_TF_ENABLED="${ROBER_NAV2_STATIC_LASER_TF_ENABLED:-true}"
 RUNTIME_DIR="${ROBER_NAV2_RUNTIME_DIR:-/tmp/rober_nav2_lifecycle}"
 START_CONFIRM_TIMEOUT_S="${ROBER_NAV2_START_CONFIRM_TIMEOUT_S:-8}"
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
@@ -31,6 +36,11 @@ Options:
   --base-port PATH        WAVE ROVER UART, default /dev/ttyS5
   --base-baudrate N       WAVE ROVER UART baudrate, default 115200
   --command-mode MODE     esp32_bridge command mode, default ros
+  --base-enabled BOOL     true/false/auto; auto reuses an existing /esp32_bridge or UART holder
+  --lidar-enabled BOOL    true/false/auto; auto reuses an existing /scan publisher or LiDAR holder
+  --lidar-serial-port PATH     LiDAR serial port, default /dev/ttyACM0
+  --lidar-serial-baudrate N    LiDAR serial baudrate, default 150000
+  --static-laser-tf-enabled BOOL  publish base_link->laser_frame TF, default true
   --runtime-dir PATH      state/log root, default /tmp/rober_nav2_lifecycle
   -h, --help              show this help
 USAGE
@@ -56,6 +66,26 @@ while [[ $# -gt 0 ]]; do
       ;;
     --command-mode)
       COMMAND_MODE="$2"
+      shift 2
+      ;;
+    --base-enabled)
+      BASE_ENABLED="$2"
+      shift 2
+      ;;
+    --lidar-enabled)
+      LIDAR_ENABLED="$2"
+      shift 2
+      ;;
+    --lidar-serial-port)
+      LIDAR_SERIAL_PORT="$2"
+      shift 2
+      ;;
+    --lidar-serial-baudrate)
+      LIDAR_SERIAL_BAUDRATE="$2"
+      shift 2
+      ;;
+    --static-laser-tf-enabled)
+      STATIC_LASER_TF_ENABLED="$2"
       shift 2
       ;;
     --runtime-dir)
@@ -86,12 +116,16 @@ json_status() {
   local pid="$2"
   local state="$3"
   local message="$4"
-  python3 - "$running" "$pid" "$state" "$message" "$ONBOARD_ROOT" "$MAP_FILE" "$BASE_PORT" "$BASE_BAUDRATE" "$COMMAND_MODE" "$RUNTIME_DIR" "$LOG_DIR" <<'PY'
+  python3 - "$running" "$pid" "$state" "$message" "$ONBOARD_ROOT" "$MAP_FILE" "$BASE_PORT" "$BASE_BAUDRATE" "$COMMAND_MODE" "$BASE_ENABLED" "$LIDAR_ENABLED" "$LIDAR_SERIAL_PORT" "$LIDAR_SERIAL_BAUDRATE" "$STATIC_LASER_TF_ENABLED" "$RUNTIME_DIR" "$LOG_DIR" <<'PY'
 import json
 import sys
 import time
 
-running, pid, state, message, onboard_root, map_file, base_port, baudrate, command_mode, runtime_dir, log_dir = sys.argv[1:12]
+(
+    running, pid, state, message, onboard_root, map_file, base_port, baudrate,
+    command_mode, base_enabled, lidar_enabled, lidar_port, lidar_baudrate,
+    static_laser_tf_enabled, runtime_dir, log_dir,
+) = sys.argv[1:17]
 payload = {
     "schema": "trashbot.o11.nav2_lifecycle.v1",
     "generated_at_ms": int(time.time() * 1000),
@@ -104,6 +138,11 @@ payload = {
     "base_port": base_port,
     "base_baudrate": int(baudrate) if baudrate.isdigit() else baudrate,
     "command_mode": command_mode,
+    "base_enabled": base_enabled,
+    "lidar_enabled": lidar_enabled,
+    "lidar_serial_port": lidar_port,
+    "lidar_serial_baudrate": int(lidar_baudrate) if lidar_baudrate.isdigit() else lidar_baudrate,
+    "static_laser_tf_enabled": static_laser_tf_enabled,
     "launch": "ros2_trashbot_bringup autonomous.launch.py nav2_stack_only:=true",
     "runtime_dir": runtime_dir,
     "log_dir": log_dir,
@@ -146,6 +185,57 @@ source_ros_setups() {
   set -u
 }
 
+normalize_bool_or_auto() {
+  # launch 只接受 true/false，脚本入口额外支持 auto 用于避免现场串口重复占用。
+  case "${1,,}" in
+    true|false|auto)
+      echo "${1,,}"
+      ;;
+    *)
+      echo "invalid boolean/auto value: $1" >&2
+      exit 43
+      ;;
+  esac
+}
+
+ros_node_exists() {
+  local node_name="$1"
+  ros2 node list 2>/dev/null | grep -Fx "$node_name" >/dev/null 2>&1
+}
+
+scan_has_publisher() {
+  # 只读检查 /scan 是否已有发布者；已有雷达 runtime 时不再抢 LiDAR 串口。
+  ros2 topic info /scan 2>/dev/null | grep -E "Publisher count:[[:space:]]*[1-9]" >/dev/null 2>&1
+}
+
+port_has_holder() {
+  local port="$1"
+  [[ -e "$port" ]] && fuser "$port" >/dev/null 2>&1
+}
+
+resolve_runtime_auto_flags() {
+  BASE_ENABLED="$(normalize_bool_or_auto "$BASE_ENABLED")"
+  LIDAR_ENABLED="$(normalize_bool_or_auto "$LIDAR_ENABLED")"
+  STATIC_LASER_TF_ENABLED="$(normalize_bool_or_auto "$STATIC_LASER_TF_ENABLED")"
+  if [[ "$BASE_ENABLED" == "auto" ]]; then
+    if ros_node_exists "/esp32_bridge" || port_has_holder "$BASE_PORT"; then
+      BASE_ENABLED="false"
+    else
+      BASE_ENABLED="true"
+    fi
+  fi
+  if [[ "$LIDAR_ENABLED" == "auto" ]]; then
+    if scan_has_publisher || port_has_holder "$LIDAR_SERIAL_PORT"; then
+      LIDAR_ENABLED="false"
+    else
+      LIDAR_ENABLED="true"
+    fi
+  fi
+  if [[ "$STATIC_LASER_TF_ENABLED" == "auto" ]]; then
+    STATIC_LASER_TF_ENABLED="true"
+  fi
+}
+
 nav2_missing_packages() {
   # 先查 launch 直接依赖，避免 package 缺失时只在长日志里留下晦涩失败。
   local package
@@ -177,6 +267,14 @@ guard_runtime_inputs() {
       exit 41
       ;;
   esac
+  case "$LIDAR_SERIAL_PORT" in
+    /dev/ttyACM0|/dev/serial/by-id/*|/dev/serial/by-path/*)
+      ;;
+    *)
+      echo "refusing unexpected LiDAR serial port: $LIDAR_SERIAL_PORT" >&2
+      exit 44
+      ;;
+  esac
 }
 
 require_runtime() {
@@ -184,8 +282,14 @@ require_runtime() {
   test -f /opt/ros/humble/setup.bash
   test -f "$ONBOARD_ROOT/install/setup.bash"
   test -f "$MAP_FILE"
-  test -e "$BASE_PORT"
   source_ros_setups
+  resolve_runtime_auto_flags
+  if [[ "$BASE_ENABLED" == "true" ]]; then
+    test -e "$BASE_PORT"
+  fi
+  if [[ "$LIDAR_ENABLED" == "true" ]]; then
+    test -e "$LIDAR_SERIAL_PORT"
+  fi
   command -v ros2 >/dev/null
   local missing_packages
   missing_packages="$(nav2_missing_packages)"
@@ -237,9 +341,14 @@ run_manager() {
   ros2 launch ros2_trashbot_bringup autonomous.launch.py \
     nav2_stack_only:=true \
     map_file:="$MAP_FILE" \
+    base_enabled:="$BASE_ENABLED" \
     serial_port:="$BASE_PORT" \
     serial_baudrate:="$BASE_BAUDRATE" \
     command_mode:="$COMMAND_MODE" \
+    lidar_enabled:="$LIDAR_ENABLED" \
+    lidar_serial_port:="$LIDAR_SERIAL_PORT" \
+    lidar_serial_baudrate:="$LIDAR_SERIAL_BAUDRATE" \
+    static_laser_tf_enabled:="$STATIC_LASER_TF_ENABLED" \
     >"$LAUNCH_LOG" 2>&1
   local launch_rc=$?
   set -e

@@ -1,4 +1,12 @@
 # Nav2 parameters tuned for trashbot autonomous operation
+map_server:
+  ros__parameters:
+    use_sim_time: false
+    # Nav2 bringup 会用 launch 参数 map 重写这个占位；没有该键时 map_server 会停在 unconfigured。
+    yaml_filename: ""
+    topic_name: "map"
+    frame_id: "map"
+
 amcl:
   ros__parameters:
     use_sim_time: false
@@ -9,7 +17,12 @@ amcl:
     scan_topic: "scan"
     # NavigateToPose 执行依赖 map->odom；AMCL 收到 initialpose 后必须发布这条 TF。
     tf_broadcast: true
-    set_initial_pose: false
+    # stack-only 启动后必须先有 map->odom；现场 PC 的 initialpose 刷新仍可覆盖这个默认值。
+    set_initial_pose: true
+    initial_pose.x: 0.0
+    initial_pose.y: 0.0
+    initial_pose.z: 0.0
+    initial_pose.yaw: 0.0
     transform_tolerance: 1.0
     robot_model_type: "nav2_amcl::DifferentialMotionModel"
 

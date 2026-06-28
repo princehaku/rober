@@ -3755,3 +3755,16 @@ bridge 日志 fresh 时，`feedback_readback.schema=trashbot.upper_robot_api.v1.
 该 readback 只消费 bridge 已经收到的反馈帧，不发送 manual、keyboard、Nav2、free-roam、delivery、stop
 或 `/cmd_vel`；若 L/R 仍为 `0/0`，页面只能显示“当前反馈在线但未证明非零”，不能把 IMU 姿态变化或电压读数当作
 wheel raw L/R 非零证据。
+
+2026-06-29 05:00 起，真实上位机 Nav2 stack-only start 已恢复到可生成 no-motion 路线的状态：
+`/api/nav2/start` 会自动复用已有 `/esp32_bridge` 或 `/dev/ttyS5` holder，避免 Robot API、Nav2 和键盘手控抢同一个
+WAVE ROVER UART；同时可启动 LiDAR `/dev/ttyACM0@150000` 和 `base_link->laser_frame` static TF，给 AMCL/Nav2 提供
+`/scan`。Nav2 参数补齐 `map_server.yaml_filename` 和 AMCL 默认 initial pose 后，现场读回
+`map_server/amcl/planner_server/controller_server=active`，`/map` 与 `/scan` 均被消费，
+no-motion `ComputePathToPose` proof 生成 18 个 path points。
+该结果只证明自动驾驶服务、地图、定位和 planner 准备好了；普通首屏仍不能把它当作真实路线执行、wheel raw L/R 非零或
+delivery success。实际发车仍必须由用户勾选安全确认后显式执行路线。
+
+同轮摄像头复核显示共享预览链路不是独占问题：`shared_preview_contract=single_shared_capture_for_multiple_clients`，
+`source_usage.owner_count=0`，但 `/dev/video1` DV20 UVC 返回 `uvc_no_frame_not_exclusive`。
+因此多人页面进入时会共享同一条预览/失败诊断；当前看不到实时画面的原因是摄像头源头没有输出首帧，而不是后来打开的页面抢占了设备。

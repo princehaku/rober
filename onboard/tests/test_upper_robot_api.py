@@ -1351,6 +1351,12 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertIn("o11_nav2_lifecycle.sh", start_command["argv"][1])
         self.assertIn("/dev/ttyS5", start_command["argv"])
         self.assertIn("ros", start_command["argv"])
+        self.assertIn("--base-enabled", start_command["argv"])
+        self.assertIn("auto", start_command["argv"])
+        self.assertIn("--lidar-enabled", start_command["argv"])
+        self.assertIn("--lidar-serial-port", start_command["argv"])
+        self.assertIn("/dev/ttyACM0", start_command["argv"])
+        self.assertIn("--static-laser-tf-enabled", start_command["argv"])
         self.assertTrue(stop_command["configured"])
         self.assertEqual("command", stop_command["mode"])
         self.assertTrue(status_command["configured"])
@@ -1423,10 +1429,20 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
             "--base-port /dev/ttyACM0 --command-mode ros"
         )
+        unsafe_lidar_port = (
+            "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
+            "--base-port /dev/ttyS5 --command-mode ros --lidar-serial-port /dev/ttyS5"
+        )
+        unsafe_lidar_flag = (
+            "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
+            "--base-port /dev/ttyS5 --command-mode ros --lidar-enabled maybe"
+        )
 
         _, shell_error = upper_robot_api.validate_nav2_lifecycle_command(unsafe_shell, "start")
         _, token_error = upper_robot_api.validate_nav2_lifecycle_command(unsafe_token, "start")
         _, port_error = upper_robot_api.validate_nav2_lifecycle_command(unsafe_port, "start")
+        _, lidar_port_error = upper_robot_api.validate_nav2_lifecycle_command(unsafe_lidar_port, "start")
+        _, lidar_flag_error = upper_robot_api.validate_nav2_lifecycle_command(unsafe_lidar_flag, "start")
 
         self.assertIsNotNone(shell_error)
         self.assertEqual("unsafe_runtime_command", shell_error["type"])
@@ -1434,6 +1450,10 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("unsafe_runtime_command", token_error["type"])
         self.assertIsNotNone(port_error)
         self.assertEqual("unsafe_base_serial_path", port_error["type"])
+        self.assertIsNotNone(lidar_port_error)
+        self.assertEqual("unsafe_lidar_serial_path", lidar_port_error["type"])
+        self.assertIsNotNone(lidar_flag_error)
+        self.assertEqual("unsupported_nav2_lifecycle_flag", lidar_flag_error["type"])
 
     def test_nav2_control_rejects_unmanaged_lifecycle_command_without_execution(self) -> None:
         """API nav2 start 只能走 o11_nav2_lifecycle.sh，不能直接执行 ros2 launch 字符串。"""

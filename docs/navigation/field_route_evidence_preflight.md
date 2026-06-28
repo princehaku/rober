@@ -396,3 +396,32 @@ PC 工作站新增固定 `POST /api/robot-control/nav2/start|stop?baseUrl=...` �
 
 对应代码层收紧：`o11_nav2_lifecycle.sh` start 前新增 `nav2_bringup` 依赖 preflight。若未来又回到缺包状态，
 脚本会写 `failed_missing_dependency` 与安装建议，PC/API 不再只能从 launch log 反推根因。
+
+## 2026-06-29 Nav2 stack-only 地图/AMCL/path proof 恢复
+
+本轮继续在真实上位机 `root@192.168.1.11:37878` 上验证。硬件口径仍以
+`docs/vendor/VENDOR_INDEX.md` 及其指向的 WAVE ROVER UART/JSON 资料为准；现场沿用
+WAVE ROVER `/dev/ttyS5@115200` 与 LiDAR `/dev/ttyACM0@150000`。
+
+修复点：
+
+- `autonomous.launch.py` 的 `nav2_stack_only` 可显式启动 LiDAR driver 和 `base_link->laser_frame` static TF。
+- `o11_nav2_lifecycle.sh` 的 `--base-enabled auto` 会在已有 `/esp32_bridge` 或 `/dev/ttyS5` holder 时复用现有 bridge，
+  不开第二个底盘串口进程；`--lidar-enabled auto` 同理避免重复抢 `/dev/ttyACM0`。
+- `nav2_params.yaml` 补 `map_server.yaml_filename` 占位，让 Nav2 bringup 的 `map:=...` 真正传给 map server。
+- AMCL 默认 `set_initial_pose=true`，启动后先产生 `map->odom`；真实执行前 PC initialpose 仍可覆盖。
+- `o10_amcl_nav2_runtime_proof.py` 放宽 TF fallback 探针窗口，避免 Orange Pi 上 ROS CLI 慢启动导致假 timeout。
+
+现场 no-motion 证据：
+
+- `/map_server=active`、`/amcl=active`、`/planner_server=active`、`/controller_server=active`。
+- `/map` publisher count 为 1，`/scan` publisher count 为 1。
+- `/amcl_pose` frame 为 `map`，`tf2_echo map base_link` 可读。
+- `POST /api/nav2/proof/refresh` 返回 `latest_proof_status=nav2_no_motion_path_generation_runtime_observed`、
+  `latest_path_generation_succeeded=true`、`latest_path_point_count=18`、
+  `latest_scan_consumed=true`、`latest_map_consumed=true`。
+- 安全边界仍为 `safe_to_control=false`、`robot_control_executed=false`、`sends_base_motion_commands=false`、
+  `delivery_success=false`；本轮未执行 NavigateToPose、未发布 `/cmd_vel`、未发送 WAVE ROVER 运动 JSON。
+
+剩余缺口：这解决“自动驾驶服务为什么准备不起来/没法生成路线”的软件链路问题，但不等于完整路线执行成功。
+下一轮真实发车必须在 PC 安全确认后执行路线，并用同窗口 wheel raw L/R 非零、goal result 和 delivery result 收口。

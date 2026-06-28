@@ -701,6 +701,8 @@ __TF_STATIC_ONCE__
         text = SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("collect_amcl_rclpy_probe(timeout_s=4.0)", text)
+        self.assertIn("TF_ECHO_SHELL_TIMEOUT_S = 10.0", text)
+        self.assertIn("TF_ECHO_PROCESS_TIMEOUT_S = 14.0", text)
         self.assertEqual(4, text.count("timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo"))
         self.assertNotIn("timeout 2 ros2 run tf2_ros tf2_echo", text)
 
@@ -879,6 +881,46 @@ __TF_STATIC_ONCE__
         self.assertTrue(result["ok"])
         self.assertEqual(120.0, result["process_timeout_s"])
         self.assertEqual(120.0, run_mock.call_args.args[1])
+        self.assertTrue(run_mock.call_args.kwargs["cleanup_residuals"])
+
+    def test_upper_api_does_not_cleanup_external_nav2_runtime_when_reusing_graph(self) -> None:
+        """复用已启动 Nav2 lifecycle 时，helper 超时不能扫杀外部 ROS 栈。"""
+        spec = importlib.util.spec_from_file_location("upper_robot_api", SCRIPT.parent / "upper_robot_api.py")
+        assert spec is not None and spec.loader is not None
+        api_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(api_mod)
+
+        fake_completed = {
+            "timed_out": False,
+            "returncode": 0,
+            "stdout": "ok",
+            "stderr": "",
+            "process_group": 123,
+            "cleanup_result": {"attempted": False, "ok": True},
+        }
+        with mock.patch.object(api_mod, "run_helper_bash_process_group", return_value=fake_completed) as run_mock:
+            api_mod.run_nav2_runtime_proof_helper(
+                artifact_path="/tmp/nav2.json",
+                map_proof_path="/tmp/map.json",
+                map_artifact_dir="/tmp/maps",
+                timeout_s=30.0,
+                managed_runtime_opt_in=False,
+                managed_timeout_s=0.0,
+                managed_map_yaml="",
+                initialpose_opt_in=True,
+                initialpose_x=0.0,
+                initialpose_y=0.0,
+                initialpose_yaw=0.0,
+                initialpose_frame_id="map",
+                path_generation_opt_in=True,
+                path_generation_timeout_s=30.0,
+                path_goal_frame_id="map",
+                path_goal_x=0.8,
+                path_goal_y=0.0,
+                path_goal_yaw=0.0,
+            )
+
+        self.assertFalse(run_mock.call_args.kwargs["cleanup_residuals"])
 
     def test_upper_api_managed_path_generation_timeout_is_capped(self) -> None:
         """managed/runtime 扩展场景也要封顶，超长 helper 必须结构化 timeout。"""

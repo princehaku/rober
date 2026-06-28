@@ -31,6 +31,19 @@ class O11Nav2LifecycleScriptTests(unittest.TestCase):
         self.assertIn('"failed_missing_dependency"', source)
         self.assertIn("ros-humble-nav2-bringup", source)
 
+    def test_start_reuses_existing_bridge_and_lidar_when_auto_detected(self) -> None:
+        """Nav2 start 默认 auto 避免重复打开底盘 UART 或 LiDAR 串口。"""
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn('BASE_ENABLED="${ROBER_NAV2_BASE_ENABLED:-auto}"', source)
+        self.assertIn('LIDAR_ENABLED="${ROBER_NAV2_LIDAR_ENABLED:-auto}"', source)
+        self.assertIn('ros_node_exists "/esp32_bridge" || port_has_holder "$BASE_PORT"', source)
+        self.assertIn('scan_has_publisher || port_has_holder "$LIDAR_SERIAL_PORT"', source)
+        self.assertIn('base_enabled:="$BASE_ENABLED"', source)
+        self.assertIn('lidar_enabled:="$LIDAR_ENABLED"', source)
+        self.assertIn('lidar_serial_port:="$LIDAR_SERIAL_PORT"', source)
+        self.assertIn('static_laser_tf_enabled:="$STATIC_LASER_TF_ENABLED"', source)
+
 
 if __name__ == "__main__":
     unittest.main()
