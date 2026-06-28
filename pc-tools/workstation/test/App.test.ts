@@ -407,7 +407,7 @@ const fixtures: Record<string, unknown> = {
       blocked_reasons: ["dangerous actions locked by V1 boundary"],
       last_refresh_ms: 1781040814776,
     },
-    current_fact_plain: "画面未可见：页面会自动接入共享 MJPEG 预览；地图画面已读到，但图上路线还未显示；自动驾驶：图上路线还未准备完成；键盘：必须按住 W/A/S/D 或方向键才会连续低速移动；自由移动：自由移动未就绪；建图：建图验收未 ready。",
+    current_fact_plain: "画面未显示：页面会自动接入共享 MJPEG 预览；地图画面已读到，但图上路线还未显示；自动驾驶：图上路线还未准备完成；键盘：必须按住 W/A/S/D 或方向键才会连续低速移动；自由移动：自由移动未就绪；建图：建图验收未 ready。",
     readback_summary: {
       camera: {
         status: "camera_health_not_proven",

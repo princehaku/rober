@@ -6210,12 +6210,20 @@ function currentFactMapRadarParts(
   return { map, radar };
 }
 
+function currentFactCameraPart(cameraStatus: string): string {
+  // 顶层总事实面向普通用户和现场脚本；保留底层 readback 原文，只在这里把“可见”改成更口语的“显示/看到”。
+  return plainFactPart(cameraStatus)
+    .replace(/画面未可见/g, "画面未显示")
+    .replace(/画面已可见/g, "已经看到画面")
+    .replace(/不当作画面可见/g, "不当作已经看到画面");
+}
+
 function summaryCurrentFactPlain(
   readback: RobotControlSummaryResponse["readback_summary"],
   boundary: RobotControlSummaryResponse["safe_command_boundary"],
 ): string {
   // 这是给脚本和外部面板的一句话事实；Vue 仍保留本地 pending 态的更细实时文案。
-  const camera = plainFactPart(readback.camera.camera_wysiwyg_status_plain);
+  const camera = currentFactCameraPart(readback.camera.camera_wysiwyg_status_plain);
   const { map, radar } = currentFactMapRadarParts(
     readback.map.map_wysiwyg_status_plain,
     readback.radar.radar_overlay_wysiwyg_status_plain,

@@ -3969,6 +3969,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.read_endpoints.some((endpoint) => endpoint.endpoint === "/api/base/status")).toBe(true);
       expect(summary.o3_proof_summary.path_generated).toBe(false);
       expect(summary.o3_proof_summary.path_generation_succeeded).toBe(false);
+      expect(summary.current_fact_plain).toContain("画面未显示：页面会自动接入共享 MJPEG 预览");
+      expect(summary.current_fact_plain).toContain("未出帧前不当作已经看到画面");
+      expect(summary.current_fact_plain).not.toContain("画面未可见");
       expect(summary.current_fact_plain).toContain("地图画面已读到，但图上路线还未显示");
       expect(summary.current_fact_plain).toContain("自动驾驶：图上路线还未准备完成");
       expect(summary.current_fact_plain).toContain("键盘：必须按住 W/A/S/D 或方向键才会连续低速移动");
@@ -4243,6 +4246,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.preview_visible_plain).toBe("当前没有实时画面；不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(summary.readback_summary.camera.camera_wysiwyg_status_plain).toBe("画面未可见：不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(summary.readback_summary.camera.camera_wysiwyg_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+      expect(summary.current_fact_plain).toContain("画面未显示：不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧");
+      expect(summary.current_fact_plain).not.toContain("画面未可见");
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
       expect(summary.readback_summary.camera.viewer_count).toBe("0");
       expect(summary.readback_summary.camera.shared_preview_upstream_active).toBe("false");
