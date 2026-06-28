@@ -4338,6 +4338,16 @@ function nav2SummaryFromReadbacks(
     proof,
     effectiveCurrentBlockerLabels,
   });
+  const wheelRawPlain = nav2WheelRawLrPlainSummary({
+    goalSucceeded,
+    wheelFeedbackProven,
+    latestLeft,
+    latestRight,
+    baseCommandNonzeroObserved,
+    baseCommandNonzeroCount,
+    imuDeltaObserved,
+    nextBaseMode,
+  });
   return {
     status: summaryStatus,
     nav2_status: nav2Status?.status ?? "not_loaded",
@@ -4359,6 +4369,8 @@ function nav2SummaryFromReadbacks(
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
     execution_status_plain: readbackPlain.execution_status_plain,
     next_action_plain: readbackPlain.next_action_plain,
+    goal_execution_wheel_raw_lr_status_plain: wheelRawPlain.statusPlain,
+    goal_execution_wheel_raw_lr_next_action_plain: wheelRawPlain.nextActionPlain,
     goal_execution_status: goalExecutionStatus,
     goal_execution_proven: goalExecutionProven,
     goal_execution_hil_pass: summaryValueText(goalResultPayload, ["hil_pass"]),
@@ -4447,6 +4459,42 @@ function nav2ReadbackPlainSummary(args: {
   return {
     execution_status_plain: `图上路线还未准备完成。${blockers}`,
     next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+  };
+}
+
+function nav2WheelRawLrPlainSummary(args: {
+  goalSucceeded: boolean;
+  wheelFeedbackProven: string;
+  latestLeft: string;
+  latestRight: string;
+  baseCommandNonzeroObserved: string;
+  baseCommandNonzeroCount: string;
+  imuDeltaObserved: string;
+  nextBaseMode: string;
+}): { statusPlain: string; nextActionPlain: string } {
+  // wheel raw L/R 是完整路线执行的硬证据；单独总结，避免脚本从长句里解析。
+  if (args.wheelFeedbackProven === "true") {
+    return {
+      statusPlain: `执行窗口 wheel raw L/R 已非零：L=${args.latestLeft}，R=${args.latestRight}。`,
+      nextActionPlain: "继续送达确认；送达确认不会发车。",
+    };
+  }
+  if (args.goalSucceeded && args.wheelFeedbackProven === "false") {
+    const commandText = args.baseCommandNonzeroObserved === "true"
+      ? `已看到 ${args.baseCommandNonzeroCount} 次非零底盘命令`
+      : "未看到非零底盘命令";
+    const imuText = args.imuDeltaObserved === "true" ? "，IMU 姿态有变化" : "";
+    const modeText = args.nextBaseMode && !["not_loaded", ""].includes(args.nextBaseMode)
+      ? `${args.nextBaseMode.toUpperCase()} 模式`
+      : "当前配置模式";
+    return {
+      statusPlain: `上次路线 action 成功，但执行窗口 wheel raw L/R=${args.latestLeft}/${args.latestRight} 未非零；${commandText}${imuText}。`,
+      nextActionPlain: `勾选行程前安全确认后用 ${modeText}重跑图上路线，并在同窗口确认 wheel raw L/R 非零。`,
+    };
+  }
+  return {
+    statusPlain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
+    nextActionPlain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
   };
 }
 
@@ -4783,6 +4831,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         path_preview_frame_id: "not_loaded",
         execution_status_plain: "图上路线还未准备完成。",
         next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+        goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
+        goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
         goal_execution_status: "not_loaded",
         goal_execution_proven: "not_loaded",
         goal_execution_hil_pass: "not_loaded",

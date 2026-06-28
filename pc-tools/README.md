@@ -135,6 +135,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 02:48 CST 起，`readback_summary.keyboard` 直接返回键盘连续手控 readback：`status/start_ready/enabled/control_mode/manual_command_mode/manual_proxy_endpoint/stop_proxy_endpoint` 以及按住才移动、停止触发、脉冲节奏、下一步和最小门禁白话。外部脚本不用再从 `safe_command_boundary` 拼键盘事实，也能直接知道“启用键盘不发车，只有按住方向键/WASD 才发送 ROS 低速短脉冲”。该变化只补只读 summary 字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 
+2026-06-29 02:54 CST 起，`readback_summary.nav2` 增加 `goal_execution_wheel_raw_lr_status_plain` 和 `goal_execution_wheel_raw_lr_next_action_plain`。外部脚本只关心完整路线执行验收时，不需要从长句里解析 `execution_status_plain`；可以直接读取“上次路线 action 成功，但执行窗口 wheel raw L/R=0/0 未非零；已看到非零底盘命令，IMU 姿态有变化”以及“勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零”。该变化只补只读 Nav2 readback 字段，不执行 Nav2 goal、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

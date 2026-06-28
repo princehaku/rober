@@ -4002,6 +4002,8 @@ describe("workstation fail-closed API contracts", () => {
         path_preview_point_count: "0",
         execution_status_plain: expect.stringContaining("图上路线还未准备完成"),
         next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+        goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
+        goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
         goal_execution_status: expect.any(String),
         goal_execution_proven: expect.any(String),
         goal_execution_hil_pass: expect.any(String),
@@ -4712,6 +4714,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线 action 成功，但执行窗口 wheel raw L/R=0/0 未非零；未看到非零底盘命令，IMU 姿态有变化。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("主因不是雷达、相机或控制服务");
@@ -5992,6 +5996,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线 action 成功，但执行窗口 wheel raw L/R=0/0 未非零；已看到 49 次非零底盘命令。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.next_action_plain).toContain("用 ROS 模式重跑图上路线");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");

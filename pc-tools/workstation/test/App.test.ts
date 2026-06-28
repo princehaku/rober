@@ -524,6 +524,8 @@ const fixtures: Record<string, unknown> = {
         path_preview_frame_id: "not_loaded",
         execution_status_plain: "图上路线还未准备完成。",
         next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+        goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
+        goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
         goal_execution_status: "not_loaded",
         goal_execution_proven: "not_loaded",
         goal_execution_hil_pass: "not_loaded",

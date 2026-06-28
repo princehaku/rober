@@ -2533,6 +2533,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       path_preview_frame_id: string;
       execution_status_plain: string;
       next_action_plain: string;
+      goal_execution_wheel_raw_lr_status_plain: string;
+      goal_execution_wheel_raw_lr_next_action_plain: string;
       goal_execution_status: string;
       goal_execution_proven: string;
       goal_execution_hil_pass: string;
