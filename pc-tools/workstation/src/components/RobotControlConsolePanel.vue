@@ -3326,25 +3326,26 @@ function freeRoamRuntimeMapMarker(robotPose: ReturnType<typeof latestRobotPoseOv
 }
 
 function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
-  // 手控扫图方向来自本机按住状态；只在地图记录中显示，避免待机时误导 operator。
+  // 手控方向来自本机按住状态；自由移动也要贴回地图，但不能伪装成扫图记录。
   const direction = keyboardHeldDirection.value;
-  if (!direction || !mapRuntimeStarted.value) {
+  if (!direction) {
     return null;
   }
   const label = keyboardDirectionPlainLabel.value;
   const wheelSuffix = keyboardWheelFeedbackMapSuffix();
   const wheelAria = keyboardWheelFeedbackPlainText().replace(/^；/, "，");
   const progressText = keyboardForwardedPulseProgressText.value;
+  const modeLabel = mapRuntimeStarted.value ? "扫图" : "自由移动";
   return {
-    label: `扫图方向：${label}${wheelSuffix}`,
+    label: `${modeLabel}方向：${label}${wheelSuffix}`,
     state: direction,
     wheelState: keyboardWheelFeedbackState(),
     style: robotPose
       ? robotPose.style
       : { left: "12px", top: "48px" },
     aria: robotPose
-      ? `正在${label}扫图，${progressText}${wheelAria}，标记贴近机器人当前位置`
-      : `正在${label}扫图，${progressText}${wheelAria}，机器人地图位置未读到，标记不代表坐标`,
+      ? `正在${label}${modeLabel}，${progressText}${wheelAria}，标记贴近机器人当前位置`
+      : `正在${label}${modeLabel}，${progressText}${wheelAria}，机器人地图位置未读到，标记不代表坐标`,
   };
 }
 

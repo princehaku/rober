@@ -3719,3 +3719,9 @@ PC Node 只读共享上游，而不是单独抢占摄像头；这只强化 7001 
 优先使用 raw L/R；只有旧上位机没有 raw 字段时才回退到 `base_feedback_latest_left_speed/right_speed`。
 这样用户要求的 `wheel raw L/R 非零` 不再被旧 speed 别名遮住，完整路线执行、地图行程标签和待复验文案都能按同一个 raw 口径显示。
 该变化只消费已有执行结果和 latest 只读材料，不发送 Nav2 execute、manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
+
+2026-06-28 08:42 起，键盘连续手控的地图 marker 不再只服务扫图记录：
+用户在自由移动模式下启用键盘并按住方向键/WASD 时，地图区域显示 `自由移动方向：前进/后退/左转/右转`，
+并同步最近 wheel raw L/R 结论；只有地图记录已启动时才显示 `扫图方向` 和扫图短轨迹。
+这样“车可以先自由低速移动”和“地图所见即所得”对齐，同时不会把未启动地图记录的普通移动伪造成建图轨迹。
+该变化只显示本机键盘状态，不自动启用键盘，不新增 manual pulse、free-roam start、Nav2、delivery、stop 或 `/cmd_vel` 调用。

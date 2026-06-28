@@ -4861,6 +4861,12 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自由移动状态：正在前进，松开即停");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：松开按键停止");
+    const freeMoveDirectionMarker = wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]');
+    expect(freeMoveDirectionMarker.text()).toBe("自由移动方向：前进，轮速非零");
+    expect(freeMoveDirectionMarker.attributes("data-state")).toBe("forward");
+    expect(freeMoveDirectionMarker.attributes("data-wheel-state")).toBe("非零已读到");
+    expect(freeMoveDirectionMarker.attributes("aria-label")).toBe("正在前进自由移动，本次按住 1/2 次，轮速 L/R=0.07/0.08，非零已读到，机器人地图位置未读到，标记不代表坐标");
+    expect(wrapper.find('[data-testid="plain-map-free-roam-trail"]').exists()).toBe(false);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm + 1);
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerup");
     await flushPromises();

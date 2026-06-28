@@ -440,3 +440,13 @@ Artifacts：
 仍未闭合时，PC 继续显示待复验；raw L/R 已出现时，地图行程标签和当前事实直接显示 raw 数值。
 这只读取 Nav2 执行结果和 latest artifact，不触发 Nav2 execute、manual、keyboard、free-roam、
 delivery、stop 或 `/cmd_vel`。
+
+## 2026-06-28 PC Keyboard Free-Move Map Marker
+
+2026-06-28 08:42 CST 起，普通首屏在用户已启用键盘并按住方向键/WASD 时，即使没有启动地图记录，
+地图区域也会显示 `自由移动方向：前进/后退/左转/右转` marker，并继续带上最近 wheel raw L/R 结论。
+如果已经进入地图记录，marker 仍显示为 `扫图方向`，并保留原有扫图短轨迹；未进入地图记录时不画扫图轨迹，
+避免把普通自由移动伪造成建图材料。
+
+该变化只同步本机键盘按住状态到 PC 地图显示，不自动启用键盘，不发送新的 manual pulse、free-roam start、
+Nav2、delivery、stop 或 `/cmd_vel`。
