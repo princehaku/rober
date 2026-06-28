@@ -413,6 +413,7 @@ const fixtures: Record<string, unknown> = {
         status: "camera_health_not_proven",
         devices_status: "camera_devices_not_proven",
         preview_status: "idle_not_started",
+        plain_hint: "画面未显示：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看。下一步：打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
         shared_preview_client_count: "0",
         viewer_count: "0",
         shared_preview_upstream_active: "false",

@@ -4042,6 +4042,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.plain_hint).toContain("当前根因：planner_server_not_active、地图未被自动驾驶服务消费、路径生成服务不可用、路径生成还没真正开始。");
       expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行。");
       expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
+      expect(summary.readback_summary.camera.plain_hint).toContain("画面未显示：页面会自动接入共享 MJPEG 预览");
+      expect(summary.readback_summary.camera.plain_hint).toContain("共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看");
+      expect(summary.readback_summary.camera.plain_hint).toContain("下一步：打开页面会自动接入共享 MJPEG");
+      expect(summary.readback_summary.camera.plain_hint).not.toContain("画面未可见");
       expect(summary.readback_summary.camera.preview_plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
       expect(summary.readback_summary.camera.preview_next_action).toBe("auto_join_shared_mjpeg_preview");
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
@@ -4252,6 +4256,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.preview_visible_plain).toBe("当前没有实时画面；不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(summary.readback_summary.camera.camera_wysiwyg_status_plain).toBe("画面未可见：不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(summary.readback_summary.camera.camera_wysiwyg_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+      expect(summary.readback_summary.camera.plain_hint).toContain("画面未显示：不是页面独占");
+      expect(summary.readback_summary.camera.plain_hint).toContain("共享预览不是页面独占");
+      expect(summary.readback_summary.camera.plain_hint).toContain("下一步：检查 USB、摄像头输入或供电");
+      expect(summary.readback_summary.camera.plain_hint).not.toContain("画面未可见");
       expect(summary.current_fact_plain).toContain("画面未显示：不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧");
       expect(summary.current_fact_plain).not.toContain("画面未可见");
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
@@ -11607,6 +11615,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.preview_visible_plain).toBe("当前有共享实时画面缓存帧；新页面复用同一条上游流。");
       expect(summaryBody.readback_summary.camera.camera_wysiwyg_status_plain).toBe("画面已可见：共享实时画面已有缓存帧，多个页面复用同一条上游流。");
       expect(summaryBody.readback_summary.camera.camera_wysiwyg_next_action_plain).toBe("继续监看共享实时画面。");
+      expect(summaryBody.readback_summary.camera.plain_hint).toContain("已经看到画面：共享实时画面已有缓存帧");
+      expect(summaryBody.readback_summary.camera.plain_hint).toContain("共享预览不是页面独占");
+      expect(summaryBody.readback_summary.camera.plain_hint).toContain("下一步：继续监看共享实时画面");
       expect(Number(summaryBody.readback_summary.camera.shared_preview_client_count)).toBeGreaterThan(0);
       expect(summaryBody.readback_summary.camera.shared_preview_upstream_active).toBe("true");
       expect(summaryBody.readback_summary.camera.shared_preview_content_type_loaded).toBe("true");

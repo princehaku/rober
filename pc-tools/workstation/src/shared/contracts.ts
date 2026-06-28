@@ -2410,6 +2410,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       status: string;
       devices_status: string;
       preview_status: RobotControlPreviewStatus;
+      plain_hint: string;
       preview_plain_hint: string;
       preview_next_action: string;
       preview_next_action_plain: string;

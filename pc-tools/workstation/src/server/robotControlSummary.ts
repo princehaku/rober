@@ -1951,6 +1951,7 @@ function cameraSummaryFromReadbacks(
     devices_status: devicesReadback?.status ?? "not_loaded",
     // MJPEG relay 状态来自 PC Node 内存表；它只说明共享上游是否存在，不证明画面像素已经可见。
     preview_status: sharedPreviewStatus,
+    plain_hint: cameraPlainHint(previewVisibility.wysiwygStatusPlain, sharedPreviewPlain.accessPlain, previewVisibility.wysiwygNextActionPlain),
     preview_plain_hint: previewGuidance.plain_hint,
     preview_next_action: previewGuidance.next_action,
     preview_next_action_plain: previewGuidance.next_action_plain,
@@ -2015,6 +2016,31 @@ function cameraSummaryFromReadbacks(
     first_frame_probe_fallback_attempts_summary: firstFrameProbeOverlay?.fallback_attempts_summary ?? "none",
     first_frame_probe_checked_at_ms: firstFrameProbeOverlay ? String(firstFrameProbeOverlay.checked_at_ms) : "not_loaded",
   };
+}
+
+function cameraPlainHint(wysiwygStatusPlain: string, sharedAccessPlain: string, nextActionPlain: string): string {
+  // summary 的相机一字段事实给普通脚本读；底层 WYSIWYG 字段保持兼容原文，这里只做用户口径转换。
+  const normalize = (value: string): string => value
+    .trim()
+    .replace(/画面未可见/g, "画面未显示")
+    .replace(/画面已可见/g, "已经看到画面")
+    .replace(/不当作画面可见/g, "不当作已经看到画面")
+    .replace(/[。；\s]+$/g, "");
+  const normalizeStatus = (value: string): string => normalize(value)
+    // 上车 health 有时把动作建议拼在状态句后面；summary 顶层只保留一次下一步，避免普通用户读到重复动作。
+    .replace(/；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测$/g, "")
+    .replace(/；共享预览不是页面独占$/g, "");
+  const normalizeNext = (value: string): string => normalize(value)
+    // 非独占事实已经由 sharedAccessPlain 单独说明，下一步只保留需要执行的排查动作。
+    .replace(/；共享预览不是页面独占$/g, "");
+  const parts = [normalizeStatus(wysiwygStatusPlain), normalize(sharedAccessPlain)]
+    .filter((item) => item && !["not_loaded", "none"].includes(item));
+  const uniqueParts = Array.from(new Set(parts));
+  const next = normalizeNext(nextActionPlain);
+  if (next) {
+    uniqueParts.push(`下一步：${next}`);
+  }
+  return uniqueParts.length > 0 ? `${uniqueParts.join("。")}。` : "画面事实未读到；先刷新 Robot Control summary。";
 }
 
 export type RobotControlCameraFirstFrameProbeOverlay = {
@@ -5126,6 +5152,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         status: "not_loaded",
         devices_status: "not_loaded",
         preview_status: "idle_not_started",
+        plain_hint: "画面未显示：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看。下一步：打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
         preview_plain_hint: "页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",
         preview_next_action: "auto_join_shared_mjpeg_preview",
         preview_next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
