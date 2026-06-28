@@ -2565,6 +2565,21 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       goal_execution_generated_at_ms: string;
       goal_execution_response_generated_at_ms: string;
     };
+    keyboard: {
+      status: string;
+      control_mode: string;
+      manual_command_mode: string;
+      manual_proxy_endpoint: string;
+      stop_proxy_endpoint: string;
+      start_ready: string;
+      enabled: string;
+      hold_to_move_plain: string;
+      stop_triggers_plain: string;
+      pulse_timing_plain: string;
+      next_action_plain: string;
+      minimal_precheck_plain: string;
+      robot_control_executed: string;
+    };
     free_roam: {
       status: string;
       runtime_status: string;

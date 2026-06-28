@@ -133,6 +133,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 02:42 CST 起，`readback_summary.map` 增加 `map_wysiwyg_status_plain` 和 `map_wysiwyg_next_action_plain`。只读 summary 会把地图图片、图上路线、小车 map 位置和雷达 overlay 合成一个普通用户可读总判断：例如 live 形态“地图画面、图上路线和小车位置已显示；雷达来源点存在但当前不贴到地图：已有雷达来源点 81 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图”。这样脚本不用拼多个字段就能判定雷达 marker 是否真正所见即所得。该变化只补只读 map summary，不启动雷达、不刷新地图、不执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 02:48 CST 起，`readback_summary.keyboard` 直接返回键盘连续手控 readback：`status/start_ready/enabled/control_mode/manual_command_mode/manual_proxy_endpoint/stop_proxy_endpoint` 以及按住才移动、停止触发、脉冲节奏、下一步和最小门禁白话。外部脚本不用再从 `safe_command_boundary` 拼键盘事实，也能直接知道“启用键盘不发车，只有按住方向键/WASD 才发送 ROS 低速短脉冲”。该变化只补只读 summary 字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

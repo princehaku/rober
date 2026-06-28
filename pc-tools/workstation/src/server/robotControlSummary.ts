@@ -4815,6 +4815,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         goal_execution_generated_at_ms: "not_loaded",
         goal_execution_response_generated_at_ms: "not_loaded",
       },
+      keyboard: keyboardSummaryReadback(),
       free_roam: {
         status: "not_loaded",
         runtime_status: "not_loaded",
@@ -5637,6 +5638,25 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   };
 }
 
+function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summary"]["keyboard"] {
+  // 键盘连续手控对脚本也应是一块直接可读事实；这里不代表已启用，也不发送任何脉冲。
+  return {
+    status: "start_ready",
+    control_mode: "bounded_repeating_manual_pulse",
+    manual_command_mode: "ros",
+    manual_proxy_endpoint: "/api/robot-control/base/manual",
+    stop_proxy_endpoint: "/api/robot-control/base/stop",
+    start_ready: "true",
+    enabled: "false",
+    hold_to_move_plain: "必须按住 W/A/S/D 或方向键才会连续低速移动；只启用键盘但不按方向不会发车。",
+    stop_triggers_plain: "松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。",
+    pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
+    next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。",
+    minimal_precheck_plain: "键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
+    robot_control_executed: "false",
+  };
+}
+
 export async function buildRobotControlSummary(
   baseUrl: string,
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
@@ -5720,6 +5740,7 @@ export async function buildRobotControlSummary(
       map: mapSummaryFromReadbacks(readbacks, proofSummary, lidarSummary),
       localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
       nav2: nav2Summary,
+      keyboard: keyboardSummaryReadback(),
       free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime),
     },
     operator_hil_material_summary: operatorHilMaterialSummary,

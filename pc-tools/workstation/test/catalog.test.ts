@@ -4074,6 +4074,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_control_label).toBe("键盘手控（勾确认后可启用）");
       expect(summary.safe_command_boundary.keyboard_control_next_action).toBe("勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停");
       expect(summary.safe_command_boundary.keyboard_minimal_precheck_plain).toBe("键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。");
+      expect(summary.readback_summary.keyboard.status).toBe("start_ready");
+      expect(summary.readback_summary.keyboard.control_mode).toBe("bounded_repeating_manual_pulse");
+      expect(summary.readback_summary.keyboard.manual_command_mode).toBe("ros");
+      expect(summary.readback_summary.keyboard.start_ready).toBe("true");
+      expect(summary.readback_summary.keyboard.enabled).toBe("false");
+      expect(summary.readback_summary.keyboard.hold_to_move_plain).toBe(summary.safe_command_boundary.keyboard_hold_to_move_plain);
+      expect(summary.readback_summary.keyboard.stop_triggers_plain).toBe(summary.safe_command_boundary.keyboard_stop_triggers_plain);
+      expect(summary.readback_summary.keyboard.pulse_timing_plain).toBe(summary.safe_command_boundary.keyboard_pulse_timing_plain);
+      expect(summary.readback_summary.keyboard.minimal_precheck_plain).toBe(summary.safe_command_boundary.keyboard_minimal_precheck_plain);
+      expect(summary.readback_summary.keyboard.robot_control_executed).toBe("false");
       expect(summary.safe_command_boundary.keyboard_teleop_start_ready).toBe(true);
       expect(summary.safe_command_boundary.keyboard_teleop_status).toBe("start_ready");
       expect(summary.safe_command_boundary.keyboard_teleop_next_action_plain).toBe(summary.safe_command_boundary.keyboard_control_next_action);

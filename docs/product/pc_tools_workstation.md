@@ -3925,3 +3925,9 @@ keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 雷达 overlay 合成一个 WYSIWYG 总口径：只有这些层都来自当前读数时才说全部已显示；如果雷达 proof 里有旧来源点但
 runtime `/scan` 过期或 lifecycle stopped，则总状态会明确写“雷达来源点存在但当前不贴到地图”，下一步指向启动/刷新雷达。
 该变化只消费已有只读 summary/proof，不启动雷达、不刷新地图、不执行 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 02:48 起，Robot Control summary 新增 `readback_summary.keyboard`，把键盘连续手控的只读事实从
+`safe_command_boundary` 镜像到 readback summary：连续控制模式、ROS 手控入口、manual/stop PC 代理、start ready、
+enabled=false、按住才移动、失焦/松开/切页会停、脉冲节奏和最小门禁白话。这样普通脚本或外部面板只读
+`readback_summary` 也能理解 PC 键盘连续控制，不会误以为“启用键盘”本身会发车。该变化只补 summary readback，
+不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
