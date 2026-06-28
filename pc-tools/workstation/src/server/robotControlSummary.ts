@@ -4402,6 +4402,16 @@ function nav2SummaryFromReadbacks(
     proof,
     effectiveCurrentBlockerLabels,
   });
+  const routeExecutionPlain = nav2RouteExecutionPlainSummary({
+    goalSucceeded,
+    goalExecutionProven,
+    wheelFeedbackProven,
+    latestLeft,
+    latestRight,
+    nextBaseMode,
+    proof,
+    effectiveCurrentBlockerLabels,
+  });
   const wheelRawPlain = nav2WheelRawLrPlainSummary({
     goalSucceeded,
     wheelFeedbackProven,
@@ -4433,6 +4443,8 @@ function nav2SummaryFromReadbacks(
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
     execution_status_plain: readbackPlain.execution_status_plain,
     next_action_plain: readbackPlain.next_action_plain,
+    route_execution_readiness_plain: routeExecutionPlain.readinessPlain,
+    route_execution_precheck_plain: routeExecutionPlain.precheckPlain,
     goal_execution_wheel_raw_lr_status_plain: wheelRawPlain.statusPlain,
     goal_execution_wheel_raw_lr_next_action_plain: wheelRawPlain.nextActionPlain,
     goal_execution_status: goalExecutionStatus,
@@ -4466,6 +4478,52 @@ function nav2SummaryFromReadbacks(
     goal_execution_goal_y: summaryValueText(goalResultPayload, ["goal_y", "y"]),
     goal_execution_generated_at_ms: summaryValueText(goalResultPayload, ["generated_at_ms", "nav2_generated_at_ms"]),
     goal_execution_response_generated_at_ms: summaryValueText(goalPayload, ["response_generated_at_ms", "generated_at_ms"]),
+  };
+}
+
+function nav2RouteExecutionPlainSummary(args: {
+  goalSucceeded: boolean;
+  goalExecutionProven: string;
+  wheelFeedbackProven: string;
+  latestLeft: string;
+  latestRight: string;
+  nextBaseMode: string;
+  proof: RobotApiProofSummary;
+  effectiveCurrentBlockerLabels: string[];
+}): { readinessPlain: string; precheckPlain: string } {
+  // 这两个字段只回答普通操作员最关心的两件事：能不能按图执行、发车前还要勾什么。
+  const pathReady = args.proof.path_generated === true
+    || args.proof.path_generation_succeeded === true
+    || (args.proof.path_point_count ?? 0) > 0
+    || args.proof.path_preview_point_count > 0;
+  const modeText = ["", "not_loaded"].includes(args.nextBaseMode)
+    ? "当前模式"
+    : `${args.nextBaseMode.toUpperCase()} 模式`;
+  const minimalPrecheck = `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ${modeText}跑图上路线。`;
+  if (args.goalExecutionProven === "true" || args.wheelFeedbackProven === "true") {
+    return {
+      readinessPlain: "完整路线执行已证明；同窗口 wheel raw L/R 已非零。",
+      precheckPlain: "下一步是送达确认；送达确认不会发车。",
+    };
+  }
+  if (args.goalSucceeded && args.wheelFeedbackProven === "false") {
+    return {
+      readinessPlain: `图上路线可重跑复验；上次路线 action 成功，但同窗口 wheel raw L/R=${args.latestLeft}/${args.latestRight} 未非零。`,
+      precheckPlain: minimalPrecheck,
+    };
+  }
+  if (pathReady) {
+    return {
+      readinessPlain: "图上路线可执行；完整路线执行和同窗口 wheel raw L/R 还未证明。",
+      precheckPlain: minimalPrecheck,
+    };
+  }
+  const blockerText = args.effectiveCurrentBlockerLabels.length > 0 && args.effectiveCurrentBlockerLabels.join("、") !== "not_loaded"
+    ? `当前缺口：${args.effectiveCurrentBlockerLabels.join("、")}。`
+    : "当前缺口：图上路线还未准备完成。";
+  return {
+    readinessPlain: `图上路线还不可执行；${blockerText}`,
+    precheckPlain: "路线准备完成后，执行只需勾选行程前安全确认。",
   };
 }
 
@@ -4907,6 +4965,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         path_preview_frame_id: "not_loaded",
         execution_status_plain: "图上路线还未准备完成。",
         next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+        route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
+        route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
         goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
         goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
         goal_execution_status: "not_loaded",

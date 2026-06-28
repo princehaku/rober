@@ -2541,6 +2541,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       path_preview_frame_id: string;
       execution_status_plain: string;
       next_action_plain: string;
+      route_execution_readiness_plain: string;
+      route_execution_precheck_plain: string;
       goal_execution_wheel_raw_lr_status_plain: string;
       goal_execution_wheel_raw_lr_next_action_plain: string;
       goal_execution_status: string;
