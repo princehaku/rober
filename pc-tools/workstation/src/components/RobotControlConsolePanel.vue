@@ -2402,6 +2402,9 @@ const plainCurrentFactRows = computed(() => {
     const stopState = plainTripStopOverlayState();
     const suffix = stopState.state === "执行中" ? "人在旁边准备停止" : "人在旁边接管，等待行程结果返回";
     rows.push(targetText ? `行程：${stopState.actionText}，${targetText}；${suffix}。` : `行程：${stopState.actionText}；${suffix}。`);
+  } else if (nav2LifecyclePending.value && !nav2RefreshPending.value) {
+    const actionText = nav2LifecycleRequestedMode.value === "start" ? "启动" : "恢复";
+    rows.push(`行程：正在${actionText}自动驾驶服务，不会发车；返回前不把旧服务状态当作已恢复。`);
   } else if (nav2RefreshPending.value) {
     rows.push("行程：正在准备图上路线，不会发车；返回前不把旧路线当作当前可执行路线。");
   } else if (navGoalExecutionLatestPending.value) {
@@ -7047,15 +7050,19 @@ const canRestorePlainNav2Lifecycle = computed(() => (
 ));
 const plainTripNav2LifecycleButtonLabel = computed(() => (
   nav2LifecyclePending.value
-    ? plainNav2StackNotRunning() ? "启动自动驾驶服务中" : "恢复自动驾驶服务中"
+    ? `${plainNav2LifecyclePendingActionText()}自动驾驶服务中`
     : plainNav2StackNotRunning() ? "启动自动驾驶服务（不发车）" : "恢复自动驾驶服务（不发车）"
 ));
+function plainNav2LifecyclePendingActionText(): string {
+  // pending 阶段以本次点击时记录的模式为准，避免请求中 summary 旧状态让“启动/恢复”文案跳动。
+  return nav2LifecycleRequestedMode.value === "start" ? "启动" : "恢复";
+}
 const plainTripNav2LifecycleStatus = computed(() => {
   // 这条状态只解释服务恢复结果；路线是否可执行仍由后续图上路线 proof 决定。
   const requestedMode = nav2LifecycleRequestedMode.value;
   const stackNotRunning = requestedMode ? requestedMode === "start" : plainNav2StackNotRunning();
   if (nav2LifecyclePending.value) {
-    return stackNotRunning ? "正在启动自动驾驶服务；不会发车。" : "正在恢复自动驾驶服务；不会发车。";
+    return `正在${plainNav2LifecyclePendingActionText()}自动驾驶服务；不会发车。`;
   }
   if (nav2LifecycleResult.value) {
     if (nav2LifecycleResult.value.proxy_status === "lifecycle_forwarded") {
@@ -7179,7 +7186,8 @@ const plainTripSummary = computed(() => {
     return { state: "准备中", hint: "正在准备图上路线；不会发车。" };
   }
   if (nav2LifecyclePending.value) {
-    return { state: "恢复中", hint: "正在恢复自动驾驶服务；不会发车。" };
+    const actionText = plainNav2LifecyclePendingActionText();
+    return { state: "恢复中", hint: `正在${actionText}自动驾驶服务；不会发车。` };
   }
   if (navGoalPreflightPending.value) {
     return { state: "复查中", hint: "正在可选复查行程条件；不会发车。" };
@@ -7303,7 +7311,7 @@ const plainTripRunStatus = computed(() => {
     return "行程状态：正在准备路线，不会发车。";
   }
   if (nav2LifecyclePending.value) {
-    return "行程状态：正在恢复自动驾驶服务，不会发车。";
+    return `行程状态：正在${plainNav2LifecyclePendingActionText()}自动驾驶服务，不会发车。`;
   }
   if (navGoalPreflightPending.value) {
     return "行程状态：正在可选复查行程条件，不会发车。";
@@ -7500,7 +7508,7 @@ const plainTripExecutionButtonLabel = computed(() => {
     return "准备路线中（不发车）";
   }
   if (nav2LifecyclePending.value) {
-    return "恢复服务中";
+    return `${plainNav2LifecyclePendingActionText()}服务中`;
   }
   if (navGoalExecutionLatestPending.value) {
     return "读取行程结果中";

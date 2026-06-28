@@ -556,6 +556,11 @@ PC 下一步文案会把“旧执行主因不是雷达或相机”和“当前 c
 不会调用 `/api/nav2/goal/execute`、`NavigateToPose`、`/cmd_vel`、`/api/base/manual` 或 free-roam。这样 operator 点恢复后能直接看到
 “服务恢复成功且已重新检查图上路线”，不必在恢复服务和准备路线之间继续猜下一步。
 
+2026-06-29 02:00 起，服务启动/恢复请求本身也进入普通首屏 WYSIWYG：
+`/api/robot-control/nav2/start` 未返回时，行程卡状态、按钮和当前事实都显示正在启动或恢复自动驾驶服务，
+并明确不会发车、返回前不把旧 stopped/inactive 状态当成已恢复。pending 期间不触发 Nav2 goal execute、manual、
+free-roam 或 `/cmd_vel`；只有 start 返回成功后才继续串联 no-motion proof refresh。
+
 2026-06-28 16:10 起，点击执行图上 Nav2 路线后，普通首屏 `当前事实` 也会同步显示
 `行程：正在执行图上路线，目标 x=... y=...；人在旁边准备停止`。这与地图终点 marker、路线 polyline 和行程卡片共用同一个
 pending 状态；只改变 WYSIWYG 文案，不新增 manual、free-roam、delivery、stop 或 `/cmd_vel` 调用，也不把 pending 状态当成已到达。

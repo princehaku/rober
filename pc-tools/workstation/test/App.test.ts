@@ -17313,6 +17313,105 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("下一步：刷新地图画面确认图上路线");
   });
 
+  it("keeps Nav2 lifecycle start pending visible without executing a route", async () => {
+    // 自动驾驶服务启动请求未返回时，首屏必须显示请求中，不能继续把旧 stopped 状态当作当前结论。
+    const blockedSummaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    blockedSummaryFixture.safe_command_boundary.nav2_goal_label = "自动驾驶服务未启动";
+    blockedSummaryFixture.safe_command_boundary.nav2_goal_blockers = [
+      "nav2_stack_not_running",
+      "path_generation_not_observed",
+      "path_point_count_not_positive",
+      "robot_map_pose_not_observed",
+    ];
+    blockedSummaryFixture.readback_summary.nav2.nav2_stack_running = "false";
+    blockedSummaryFixture.readback_summary.nav2.nav2_stack_lifecycle_state = "stopped";
+    blockedSummaryFixture.readback_summary.nav2.planner_server_active = "false";
+    blockedSummaryFixture.readback_summary.nav2.controller_server_active = "false";
+    const restoredSummaryFixture = cloneFixture(blockedSummaryFixture) as Record<string, any>;
+    restoredSummaryFixture.safe_command_boundary.nav2_goal_label = "图上路线未就绪";
+    restoredSummaryFixture.safe_command_boundary.nav2_goal_blockers = ["path_generation_not_observed"];
+    restoredSummaryFixture.readback_summary.nav2.nav2_stack_running = "true";
+    restoredSummaryFixture.readback_summary.nav2.nav2_stack_lifecycle_state = "running";
+    restoredSummaryFixture.readback_summary.nav2.planner_server_active = "true";
+    restoredSummaryFixture.readback_summary.nav2.controller_server_active = "true";
+    let resolveNav2Start!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const delayedNav2Start = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveNav2Start = resolve;
+    });
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": blockedSummaryFixture,
+    });
+    const originalFetch = mockedFetch.getMockImplementation();
+    let nav2StartReturned = false;
+    mockedFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (String(url).startsWith("/api/robot-control/summary?")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => (nav2StartReturned ? restoredSummaryFixture : blockedSummaryFixture),
+        });
+      }
+      if (String(url).startsWith("/api/robot-control/nav2/start?")) {
+        return delayedNav2Start;
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    const restoreClick = wrapper.find('[data-testid="plain-trip-nav2-restore"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("恢复中");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').text()).toBe("启动自动驾驶服务中");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("启动服务中");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toBe("正在启动自动驾驶服务；不会发车。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在启动自动驾驶服务，不会发车。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：正在启动自动驾驶服务，不会发车；返回前不把旧服务状态当作已恢复。");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/start?"))).toHaveLength(1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    nav2StartReturned = true;
+    resolveNav2Start({
+      ok: true,
+      json: async () => ({
+        schema: "trashbot.pc_tools_workstation.robot_control_nav2_lifecycle_proxy.v1",
+        action: "start",
+        proxy_status: "lifecycle_forwarded",
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/nav2/start",
+        remote_method: "POST",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        command_result: { mode: "configured_command", executed: true, ok: true },
+        failure_reason: "",
+        blocked_reasons: [],
+        hard_dangerous_true_fields: [],
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      }),
+    });
+    await restoreClick;
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("启动命令已返回成功");
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("已自动重新检查图上路线（不发车）");
+  });
+
   it("shows current Nav2 blocker reasons in first-screen facts", async () => {
     // 真实上位机会给出 /scan、/amcl_pose、map->odom 等 blocker；普通首屏要直接说明根因。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
