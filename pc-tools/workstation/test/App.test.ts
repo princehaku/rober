@@ -10049,6 +10049,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("行程正在执行，暂不启动键盘手控。");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("行程中");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("行程中");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：等待行程执行返回");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("行程中");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：等待行程执行返回，必要时先停止行程。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("还差：行程正在执行");
     const executeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"));
     expect(executeCall).toBeTruthy();
     expect(JSON.parse(String((executeCall?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual(expect.objectContaining({
@@ -10065,6 +10074,14 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeBlockedKeyboard);
+    const mapStartCallsBeforeBlockedFreeRoam = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/start?")).length;
+    const freeRoamStartCallsBeforeBlockedFreeRoam = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?")).length;
+    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toHaveLength(mapStartCallsBeforeBlockedFreeRoam);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toHaveLength(freeRoamStartCallsBeforeBlockedFreeRoam);
     const stopCallsBeforeTripStop = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?")).length;
     delayNextStop = true;
     const tripStopClick = wrapper.find('[data-testid="plain-trip-stop"]').trigger("click");

@@ -3942,6 +3942,7 @@ const mapSavedThisSession = computed(() => (
 ));
 const canStartPlainFreeRoamMapping = computed(() => (
   plainManualSafetyConfirmed.value
+  && !navGoalExecutionPending.value
   && !loading.value
   && !mapLifecyclePending.value
   && !mapWysiwygRefreshPending.value
@@ -4000,6 +4001,7 @@ const plainFreeRoamRecordStartButtonText = computed(() => (
 ));
 const canStartMapLifecycle = computed(() => (
   !loading.value
+  && !navGoalExecutionPending.value
   && !mapLifecyclePending.value
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
@@ -4022,6 +4024,7 @@ const freeRoamMapWysiwygPending = computed(() => (
 ));
 const canSaveMapLifecycle = computed(() => (
   !loading.value
+  && !navGoalExecutionPending.value
   && !mapLifecyclePending.value
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
@@ -4033,12 +4036,14 @@ const canSavePlainFreeRoamMapping = computed(() => (
   && !keyboardStopFailedAfterPulse.value
   && !freeRoamAutonomySaveBlocked.value
   && !freeRoamMapWysiwygPending.value
+  && !navGoalExecutionPending.value
   && !loading.value
   && !mapLifecyclePending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
 const canStartFreeRoamAutonomy = computed(() => (
   plainManualSafetyConfirmed.value
+  && !navGoalExecutionPending.value
   && (plainFreeRoamMotionModeName.value !== "自动扫图" || mapRuntimeStarted.value || mapSavedThisSession.value)
   && (!mapRuntimeStarted.value || !freeRoamMapWysiwygPending.value)
   && canSendStop.value
@@ -4063,6 +4068,7 @@ const plainFreeRoamKeyboardRequiresMapRuntime = computed(() => (
 const canArmPlainFreeRoamKeyboard = computed(() => (
   // 自由移动快捷入口复用普通键盘安全门禁；扫图快捷入口才额外要求地图记录已启动。
   plainManualSafetyConfirmed.value
+  && !navGoalExecutionPending.value
   && (!plainFreeRoamKeyboardRequiresMapRuntime.value || mapRuntimeStarted.value)
   && canArmKeyboardControl.value
 ));
@@ -4138,6 +4144,8 @@ const plainFreeRoamMappingSummary = computed(() => {
 const plainFreeRoamMappingStartLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "start"
     ? "启动中"
+    : navGoalExecutionPending.value
+      ? "行程中"
     : mapWysiwygRefreshPending.value
       ? "等待地图刷新"
       : !plainManualSafetyConfirmed.value
@@ -4175,6 +4183,9 @@ const plainFreeRoamKeyboardLabel = computed(() => {
   if (!plainManualSafetyConfirmed.value) {
     return "先勾安全确认";
   }
+  if (navGoalExecutionPending.value) {
+    return "行程中";
+  }
   if (plainFreeRoamKeyboardRequiresMapRuntime.value && !mapRuntimeStarted.value) {
     return "先开始扫图记录";
   }
@@ -4190,6 +4201,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
   // “下一步”只做流程导航，不能替现场确认、启动建图、发送手控或保存地图。
   if (!plainManualSafetyConfirmed.value) {
     return "下一步：勾安全确认";
+  }
+  if (navGoalExecutionPending.value) {
+    return "下一步：等待行程执行返回";
   }
   if (mapLifecyclePending.value) {
     return "下一步：等待地图动作完成";
@@ -4290,6 +4304,9 @@ const plainFreeRoamAutonomyGuideButtonLabel = computed(() => {
   // 自由移动最小条件缺失时，按钮只做补证引导，不能伪装成真正 start。
   if (!plainManualSafetyConfirmed.value) {
     return "先勾安全确认";
+  }
+  if (navGoalExecutionPending.value) {
+    return "行程中";
   }
   if (plainFreeRoamMotionModeName.value === "自由移动") {
     // 自由移动不要求先启动地图记录；缺口只应指向停止兜底或低速移动条件。
@@ -4556,6 +4573,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   if (!robotApiBaseUrl.value.trim()) {
     blockers.push("默认小车未连接");
   }
+  if (navGoalExecutionPending.value) {
+    blockers.push("行程正在执行");
+  }
   if (!plainManualSafetyConfirmed.value) {
     blockers.push("现场安全确认未勾选");
   }
@@ -4734,6 +4754,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (!plainManualSafetyConfirmed.value) {
       return `${motionModeName}下一步：勾选现场安全确认。`;
     }
+    if (navGoalExecutionPending.value) {
+      return `${motionModeName}下一步：等待行程执行返回，必要时先停止行程。`;
+    }
     if (freeRoamMapWysiwygPending.value) {
       return `${motionModeName}下一步：等待扫图画面刷新。`;
     }
@@ -4795,12 +4818,13 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     state: autonomyReady && blockers.length === 0 ? "已就绪" : autonomyReady ? "待处理" : "未满足",
     buttonLabel: freeRoamAutonomyPending.value && freeRoamAutonomyPendingAction.value === "start"
       ? "请求中"
+      : navGoalExecutionPending.value ? "行程中"
       : autonomyReady && freeRoamMapWysiwygPending.value ? "等待地图刷新"
       : autonomyReady && blockers.length ? plainFreeRoamAutonomyGuideButtonLabel.value
       : autonomyReady && !canStartFreeRoamAutonomy.value ? plainFreeRoamAutonomyGuideButtonLabel.value
       : autonomyLocked ? plainFreeRoamManualGuideButtonLabel.value : motionStartButtonText,
     // 连接后即可走固定上车状态机 start；建图 readiness 只决定请求里的 mapping_active。
-    disabled: autonomyReady ? (freeRoamAutonomyPending.value || freeRoamMapWysiwygPending.value) : false,
+    disabled: autonomyReady ? (navGoalExecutionPending.value || freeRoamAutonomyPending.value || freeRoamMapWysiwygPending.value) : false,
     hint: autonomyLocked
       ? manualFallbackHint
       : freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start"
@@ -10549,7 +10573,7 @@ async function loadMapList(): Promise<void> {
 
 async function startMapRuntime(): Promise<void> {
   // 普通按钮只走固定 /api/map/start，不接受浏览器传运动、串口或 ROS 参数。
-  if (mapWysiwygRefreshPending.value) {
+  if (!canStartMapLifecycle.value) {
     return;
   }
   plainFreeRoamMapPreviewFreshForSession.value = false;
@@ -10566,7 +10590,7 @@ async function startMapRuntime(): Promise<void> {
 
 async function saveMap(options: { refreshRouteAfterSave?: boolean } = {}): Promise<void> {
   // 保存只调用固定 /api/map/save；普通入口不暴露 map_name/artifact_path 输入。
-  if (mapWysiwygRefreshPending.value) {
+  if (!canSaveMapLifecycle.value) {
     return;
   }
   await runMapLifecycleAction("save", () => postRobotControlMapSave(robotApiBaseUrl.value, mapLifecycleRequestBody()));
