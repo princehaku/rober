@@ -2612,6 +2612,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_control_status: "start_ready" | "armed" | "active" | "blocked";
     keyboard_control_label: "键盘手控（勾确认后可启用）";
     keyboard_control_next_action: string;
+    keyboard_teleop_start_ready: boolean;
+    keyboard_teleop_status: "start_ready" | "armed" | "active" | "blocked";
+    keyboard_teleop_next_action_plain: string;
     free_roam_autonomy: "locked" | "start_ready" | "ready";
     free_roam_autonomy_start_ready: boolean;
     free_roam_motion_start_ready: boolean;

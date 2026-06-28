@@ -5164,6 +5164,7 @@ function lockedBoundary(
   const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
   const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime);
+  const keyboardNextAction = "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",
@@ -5184,7 +5185,10 @@ function lockedBoundary(
     keyboard_control_start_ready: true,
     keyboard_control_status: "start_ready",
     keyboard_control_label: "键盘手控（勾确认后可启用）",
-    keyboard_control_next_action: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
+    keyboard_control_next_action: keyboardNextAction,
+    keyboard_teleop_start_ready: true,
+    keyboard_teleop_status: "start_ready",
+    keyboard_teleop_next_action_plain: keyboardNextAction,
     free_roam_autonomy: freeRoamStatus,
     free_roam_autonomy_start_ready: freeRoamStartReady,
     free_roam_motion_start_ready: freeRoamStartReady,

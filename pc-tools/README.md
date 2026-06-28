@@ -107,6 +107,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 19:30 CST 起，自由移动 readback 也带白话下一步：`readback_summary.free_roam.next_action_plain` 与 `safe_command_boundary.free_roam_autonomy_next_action` 对齐。外部脚本或普通首屏只读 `readback_summary.free_roam` 时，也能直接看到“勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面”，不会再出现 `status=start_ready` 但下一步为空。该变化只补只读 summary 字段，不启动自由移动、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 19:50 CST 起，键盘连续手控 summary 增加 teleop alias：`safe_command_boundary.keyboard_teleop_start_ready`、`keyboard_teleop_status` 和 `keyboard_teleop_next_action_plain` 镜像既有 `keyboard_control_*` 字段。普通脚本或外部面板按 teleop 叫法读取时，也能直接看到“勾安全确认后启用键盘，按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停”。该变化只补只读字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

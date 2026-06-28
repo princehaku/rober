@@ -188,6 +188,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   因此 live 出现 `status=start_ready`、`motion_ready=true`、`mapping_missing=camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview` 时，
   只读接口也会直接给出“勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面”。
   该变化只补 summary 所见即所得字段，不启动自由移动、不启动建图、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 19:50 起，键盘连续手控的安全边界增加 teleop alias：
+  `keyboard_teleop_start_ready`、`keyboard_teleop_status` 和 `keyboard_teleop_next_action_plain` 镜像既有 `keyboard_control_*` 字段。
+  外部脚本按“teleop”口径读取时，也能直接拿到“勾安全确认后启用键盘，按住才会连续低速移动，松开/失焦/切页会停”。
+  该变化只补只读 summary 字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，
