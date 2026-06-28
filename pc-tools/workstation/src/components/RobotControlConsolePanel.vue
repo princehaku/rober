@@ -1729,6 +1729,20 @@ const plainCameraSharedPreviewStatus = computed(() => {
   return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${cachedFrame}${localRetry}${autoJoinText}${failure}${sourceNoFrame}`;
 });
 
+const plainCameraSharedPreviewReadback = computed(() => {
+  // 后端 summary 已经把共享入口和实时可见性拆成两句；首屏直接显示，避免用户误以为新页面会独占摄像头。
+  const camera = robotSummary.value?.readback_summary.camera;
+  if (!camera) {
+    return "";
+  }
+  const access = (camera.shared_preview_access_plain ?? "").trim();
+  const realtime = (camera.shared_preview_realtime_plain ?? "").trim();
+  const parts = [access, realtime]
+    .filter((item) => item && !["not_loaded", "none"].includes(item))
+    .map((item) => item.replace(/[。；\s]+$/g, "").replace(/画面可见/g, "已经看到画面"));
+  return parts.length > 0 ? `共享预览事实：${parts.join("；")}。` : "";
+});
+
 const cameraFirstFrameProbeSummary = computed(() => {
   // 首帧探针是高级诊断结果：只说明底层 camera readback，不升级为实时图传成功。
   if (cameraFirstFrameProbePending.value) {
@@ -12159,6 +12173,7 @@ onBeforeUnmount(() => {
           <p v-if="cameraSummary.state !== '失败'" class="panel-note">{{ cameraSummary.hint }}</p>
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
           <p v-if="plainCameraCachedFrameStatus" class="panel-note" data-testid="robot-camera-cached-frame-status">{{ plainCameraCachedFrameStatus }}</p>
+          <p v-if="plainCameraSharedPreviewReadback" class="panel-note" data-testid="robot-camera-shared-preview-readback">{{ plainCameraSharedPreviewReadback }}</p>
           <p class="panel-note" data-testid="robot-camera-shared-preview-status">{{ plainCameraSharedPreviewStatus }}</p>
           <p v-if="plainCameraSharedPreviewGuidance" class="panel-note" data-testid="robot-camera-shared-preview-guidance">{{ plainCameraSharedPreviewGuidance }}</p>
           <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>
