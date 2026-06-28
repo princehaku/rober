@@ -9221,6 +9221,7 @@ describe("workstation fail-closed API contracts", () => {
         image_data_url: string;
         robot_control_executed: boolean;
         safe_to_control: boolean;
+        plain_hint: string;
         map_wysiwyg_status_plain: string;
         map_wysiwyg_next_action_plain: string;
         robot_pose: { x: number; y: number; yaw: number | null; frame_id: string; source: string } | null;
@@ -9271,6 +9272,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.safe_to_control).toBe(false);
       expect(previewBody.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
       expect(previewBody.robot_pose_status).toBe("map_pose_observed");
+      expect(previewBody.plain_hint).toBe(previewBody.map_wysiwyg_status_plain);
       expect(previewBody.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
       expect(previewBody.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
       expect(previewBody.path_preview_status).toBe("path_preview_observed");
@@ -9465,6 +9467,7 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         image_data_url: string;
+        plain_hint: string;
         map_wysiwyg_status_plain: string;
         map_wysiwyg_next_action_plain: string;
         radar_overlay_status: string;
@@ -9505,6 +9508,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("preview_forwarded");
       expect(body.image_data_url).toContain("data:image/png;base64,");
+      expect(body.plain_hint).toBe(body.map_wysiwyg_status_plain);
       expect(body.map_wysiwyg_status_plain).toBe("地图画面已读到，但图上路线还未显示。");
       expect(body.map_wysiwyg_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
       expect(body.radar_overlay.overlay_status).toBe("partial");
@@ -9649,6 +9653,7 @@ describe("workstation fail-closed API contracts", () => {
       const response = await fetch(`${workstation.baseUrl}/api/robot-control/map/preview?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const body = (await response.json()) as {
         proxy_status: string;
+        plain_hint: string;
         map_wysiwyg_status_plain: string;
         map_wysiwyg_next_action_plain: string;
         radar_overlay_status: string;
@@ -9694,6 +9699,7 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("preview_forwarded");
+      expect(body.plain_hint).toBe(body.map_wysiwyg_status_plain);
       expect(body.map_wysiwyg_status_plain).toBe("地图画面已读到，但图上路线还未显示。");
       expect(body.map_wysiwyg_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
       expect(body.radar_overlay.overlay_status).toBe("not_current");
