@@ -121,6 +121,12 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 21:50 CST 起，`/api/robot-control/camera/mjpeg/status` 也返回与 summary 对齐的共享预览别名：`shared_preview_client_count`、`shared_preview_upstream_active`、`shared_preview_content_type_loaded`、`shared_preview_cached_frame_loaded`、`shared_preview_cached_frame_age_ms`、`shared_preview_shared_capture`、`shared_preview_exclusive_camera_claim`、`shared_preview_contract` 和最近失败字段。独立相机状态接口现在也能直接证明“多个页面共享同一条上游流，不是浏览器独占”，不会再让只读 `shared_preview_*` 的脚本拿到 null。该变化只补本机 relay 只读状态，不新开 camera capture、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 04:30 CST 起，Robot Control summary 的 `readback_summary.camera` 与
+`/api/robot-control/camera/mjpeg/status` 同步新增更直观的共享预览别名：`viewer_count`、`upstream_connected`
+和 `has_recent_frame`。它们分别镜像 `client_count/shared_preview_client_count`、`upstream_active` 和
+`cached_frame_loaded`，方便普通脚本直接判断“几个页面在看、是否连着同一条上游、是否已有最近帧”。该变化只补只读状态，
+不创建 MJPEG client、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 22:10 CST 起，键盘连续手控 summary 增加普通用户白话字段：`keyboard_hold_to_move_plain`、`keyboard_stop_triggers_plain` 和 `keyboard_pulse_timing_plain`。外部脚本或普通面板只读 summary 时，可以直接展示“必须按住才移动；只启用键盘不发车；松开/失焦/切页/换方向/点停止都会停；按住时约每 0.26 秒发送一次 0.24 秒低速脉冲”。该变化只补只读安全边界说明，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 
 2026-06-29 22:30 CST 起，`readback_summary.nav2` 增加 `execution_status_plain` 和 `next_action_plain`。外部脚本只读 Nav2 区块时，也能直接看到“上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或控制服务；下一步勾安全确认后用 ROS 模式重跑图上路线并同窗口确认轮速 L/R 非零”。该变化只补只读 readback summary 文案，不执行 Nav2 goal、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
