@@ -3439,6 +3439,24 @@ function plainMapRadarNextActionText(): string {
   return `地图下一步：${nextAction.replace(/_/g, " ")}。`;
 }
 
+function plainRadarCardNextActionText(): string {
+  // 雷达卡也承接地图 overlay 的下一步；只提示 operator 去按固定按钮，不自动启动雷达或刷新地图。
+  const nextAction = robotSummary.value?.readback_summary.map.radar_overlay_next_action;
+  if (!nextAction || ["not_loaded", "none", "continue_monitoring_map_radar_overlay"].includes(nextAction)) {
+    return "";
+  }
+  if (nextAction === "start_radar_then_refresh_map_preview") {
+    return "雷达下一步：先点启动雷达，再刷新地图画面；旧雷达点不会贴到当前地图。";
+  }
+  if (nextAction === "refresh_localization_then_radar_scan") {
+    return "雷达下一步：先刷新定位，再刷新雷达；没有小车地图位置时只显示局部点。";
+  }
+  if (nextAction === "refresh_map_preview_after_radar_scan") {
+    return "雷达下一步：刷新地图画面，让雷达点和地图来自同一轮读数。";
+  }
+  return `雷达下一步：${nextAction.replace(/_/g, " ")}。`;
+}
+
 function plainMapImageFreshnessLabel(previewLoaded: boolean): string {
   // 地图画面和建图动作不是实时视频流；首屏必须明确当前看到的是刷新结果还是上次结果。
   if (mapPreviewPending.value && mapSavedThisSession.value) {
@@ -11993,6 +12011,7 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
           </div>
           <p class="panel-note">{{ radarSummary.hint }}</p>
+          <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
         </article>
 
         <article class="snapshot-panel plain-map-panel" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state">
