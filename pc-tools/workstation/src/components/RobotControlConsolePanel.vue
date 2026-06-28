@@ -1939,6 +1939,26 @@ const plainRadarMapMarkerReadback = computed(() => {
     ? `地图雷达事实：${cleanMarker}。下一步：${cleanNext}。`
     : `地图雷达事实：${cleanMarker}。`;
 });
+const plainFreeRoamReadbackSummary = computed(() => {
+  // 自由移动和建图验收是两层能力：首屏直接引用后端 readback，避免把相机/雷达缺口误当成移动门禁。
+  const summary = robotSummary.value;
+  const freeRoam = summary?.readback_summary.free_roam;
+  if (!freeRoam) {
+    return "";
+  }
+  const boundary = summary.safe_command_boundary;
+  const parts = [
+    freeRoam.motion_readiness_plain,
+    freeRoam.mapping_readiness_plain,
+    boundary.free_roam_motion_minimal_precheck_plain,
+    boundary.free_roam_mapping_acceptance_plain,
+  ]
+    .map((item) => (item ?? "").trim())
+    .filter((item) => item && !["not_loaded", "none"].includes(item))
+    .map((item) => item.replace(/[。；\s]+$/g, ""));
+  const uniqueParts = [...new Set(parts)];
+  return uniqueParts.length > 0 ? `自由移动事实：${uniqueParts.join("；")}。` : "";
+});
 const plainRadarReadyForFreeRoamMapping = computed(() => radarSummary.value.state === "雷达已运行");
 const plainRadarStartUnavailable = computed(() => {
   // 配置缺失时普通首屏仍展示卡点，但不让按钮发送一个注定 dry-run 的 start 请求。
@@ -12357,6 +12377,7 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note" data-testid="plain-free-roam-hint">{{ plainFreeRoamMappingSummary.hint }}</p>
           <p class="panel-note" data-testid="plain-free-roam-drive-status">{{ plainFreeRoamDriveStatus }}</p>
+          <p v-if="plainFreeRoamReadbackSummary" class="panel-note" data-testid="plain-free-roam-readback-summary">{{ plainFreeRoamReadbackSummary }}</p>
           <p class="panel-note" data-testid="plain-free-roam-sweep-plan-summary">{{ plainFreeRoamSweepPlanSummary }}</p>
           <p class="panel-note">按住方向键或 W/A/S/D 移动，松开、拖出按钮或取消都会停；保存后刷新地图画面检查效果。</p>
           <div class="keyboard-direction-pad" data-testid="plain-free-roam-direction-pad">

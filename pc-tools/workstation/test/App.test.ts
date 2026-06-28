@@ -3919,6 +3919,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("勾选现场安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-readback-summary"]').text()).toContain("自由移动事实：自由移动未就绪");
+    expect(wrapper.find('[data-testid="plain-free-roam-readback-summary"]').text()).toContain("相机、雷达、地图记录只影响建图验收");
     const freeRoamCoverage = wrapper.find('[data-testid="plain-free-roam-coverage"]');
     expect(freeRoamCoverage.exists()).toBe(true);
     expect(freeRoamCoverage.attributes("data-state")).toBe("已扫出");

@@ -3961,6 +3961,13 @@ keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 runtime `/scan` 过期或 lifecycle stopped，则总状态会明确写“雷达来源点存在但当前不贴到地图”，下一步指向启动/刷新雷达。
 该变化只消费已有只读 summary/proof，不启动雷达、不刷新地图、不执行 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 06:08 CST 起，普通首屏 `自由移动 / 建图` 卡片新增 `自由移动事实` 行，直接消费
+`readback_summary.free_roam.motion_readiness_plain`、`mapping_readiness_plain` 以及
+`safe_command_boundary.free_roam_motion_minimal_precheck_plain/free_roam_mapping_acceptance_plain`。这行明确区分
+“低速自由移动只要求现场安全确认和停止兜底”与“相机、雷达、地图记录只影响建图验收”，避免 operator 把画面或雷达缺口
+误判成小车不能先自移动。该变化只展示 summary/readback，不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或
+`/cmd_vel`。
+
 2026-06-29 04:24 CST 起，独立 `/api/robot-control/map/preview` 顶层也返回地图 WYSIWYG 总口径和路线别名：
 `map_wysiwyg_status_plain`、`map_wysiwyg_next_action_plain`、`path_wysiwyg_status_plain`、
 `path_wysiwyg_next_action_plain`、`nav2_route_overlay_status`、`nav2_route_overlay_point_count` 和
