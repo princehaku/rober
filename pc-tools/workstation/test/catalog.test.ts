@@ -9296,7 +9296,7 @@ describe("workstation fail-closed API contracts", () => {
               sample_count: 12,
               nonzero_sample_count: 1,
               wheel_feedback_lr_nonzero_proven: true,
-              latest_nonzero_pair: { left_speed: 164, right_speed: 164 },
+              latest_nonzero_pair: { left_speed: 164, right_speed: 164, raw_left: 164, raw_right: 164 },
             },
           },
         },
@@ -9326,6 +9326,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.sends_base_motion_commands).toBe("true");
       expect(body.goal_execution_key_values.uses_base_uart).toBe("true");
       expect(body.goal_execution_key_values.base_feedback_lr_nonzero_proven).toBe("true");
+      expect(body.goal_execution_key_values.base_feedback_latest_raw_left).toBe("164");
+      expect(body.goal_execution_key_values.base_feedback_latest_raw_right).toBe("164");
       expect(body.goal_execution_key_values.delivery_success).toBe("false");
       expect(body.hard_dangerous_true_fields).toEqual([]);
       expect(body.robot_control_executed).toBe(false);

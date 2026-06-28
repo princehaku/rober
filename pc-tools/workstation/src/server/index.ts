@@ -424,6 +424,18 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     baseCommandSummary?.latest_nonzero_command_mode ?? latestNonzeroCommand?.command_mode,
     "not_loaded",
   );
+  const latestFeedbackLeft = shortValue(latestNonzeroPair?.left_speed ?? latestPair?.left_speed, "not_observed");
+  const latestFeedbackRight = shortValue(latestNonzeroPair?.right_speed ?? latestPair?.right_speed, "not_observed");
+  const latestFeedbackRawLeft = shortValue(
+    latestNonzeroPair?.raw_left ?? latestNonzeroPair?.left_raw ?? latestNonzeroPair?.L ?? latestNonzeroPair?.left_speed
+      ?? latestPair?.raw_left ?? latestPair?.left_raw ?? latestPair?.L ?? latestPair?.left_speed,
+    "not_observed",
+  );
+  const latestFeedbackRawRight = shortValue(
+    latestNonzeroPair?.raw_right ?? latestNonzeroPair?.right_raw ?? latestNonzeroPair?.R ?? latestNonzeroPair?.right_speed
+      ?? latestPair?.raw_right ?? latestPair?.right_raw ?? latestPair?.R ?? latestPair?.right_speed,
+    "not_observed",
+  );
   const baseCommandModeCounts = (() => {
     // 真实上车 latest 可能只给 latest_nonzero_command.command_mode；PC 仍要把非零命令模式读成可见证据。
     const explicitCounts = baseCommandSummary?.command_mode_counts;
@@ -463,8 +475,10 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     base_feedback_imu_attitude_delta_observed: shortValue(baseFeedbackSummary?.imu_attitude_delta_observed, "false"),
     base_feedback_imu_roll_delta: shortValue(asRecord(baseFeedbackSummary?.imu_attitude_delta_summary)?.max_abs_roll_delta, "0"),
     base_feedback_imu_pitch_delta: shortValue(asRecord(baseFeedbackSummary?.imu_attitude_delta_summary)?.max_abs_pitch_delta, "0"),
-    base_feedback_latest_left_speed: shortValue(latestNonzeroPair?.left_speed ?? latestPair?.left_speed, "not_observed"),
-    base_feedback_latest_right_speed: shortValue(latestNonzeroPair?.right_speed ?? latestPair?.right_speed, "not_observed"),
+    base_feedback_latest_left_speed: latestFeedbackLeft,
+    base_feedback_latest_right_speed: latestFeedbackRight,
+    base_feedback_latest_raw_left: latestFeedbackRawLeft,
+    base_feedback_latest_raw_right: latestFeedbackRawRight,
     base_command_sample_count: shortValue(baseCommandSummary?.sample_count, "0"),
     base_command_nonzero_count: baseCommandNonzeroCount,
     base_command_nonzero_observed: shortValue(baseCommandSummary?.nonzero_command_observed, "false"),

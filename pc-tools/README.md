@@ -429,3 +429,14 @@ Artifacts：
 - `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/*.json`
 - `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/logs/http_codes.log`
 - `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/logs/cleanup.log`
+
+## 2026-06-28 PC Nav2 Wheel Raw L/R Readback
+
+2026-06-28 08:37 CST 起，Nav2 goal execution/latest 的 PC key-values 同步输出
+`base_feedback_latest_raw_left/right`。普通首屏显示行程执行窗口 L/R 时优先使用 raw 字段，
+旧上位机或旧 artifact 没有 raw 字段时才退回 `left/right_speed` 别名。
+
+该变化用于让“完整 Nav2 路线执行”和“wheel raw L/R 非零”口径对齐：路线执行返回成功但 raw L/R
+仍未闭合时，PC 继续显示待复验；raw L/R 已出现时，地图行程标签和当前事实直接显示 raw 数值。
+这只读取 Nav2 执行结果和 latest artifact，不触发 Nav2 execute、manual、keyboard、free-roam、
+delivery、stop 或 `/cmd_vel`。

@@ -11189,6 +11189,8 @@ describe("App", () => {
           base_feedback_imu_roll_delta: "4.387221",
           base_feedback_latest_left_speed: "0",
           base_feedback_latest_right_speed: "0",
+          base_feedback_latest_raw_left: "7",
+          base_feedback_latest_raw_right: "8",
           goal_frame_id: "map",
           goal_x: "0.8",
           goal_y: "0",
@@ -11208,9 +11210,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速非零未证明，但车身姿态有变化");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速 L/R=0/0 待复验");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("底盘反馈 L/R=7/8");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速非零待复验");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 PWM 结果，等待 ROS 复验");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 7/8，旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("重新执行完整行程");

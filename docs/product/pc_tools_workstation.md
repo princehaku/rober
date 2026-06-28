@@ -3713,3 +3713,9 @@ PC Node 只读共享上游，而不是单独抢占摄像头；这只强化 7001 
 旧 Nav2 action 已发非零底盘命令但 wheel raw L/R 仍为 `0/0` 时，如果 planner/controller 当前未 active，
 `当前事实` 会显示 `Nav2 planner 和 Nav2 controller 未 active，重跑前先恢复`，再引导安全确认后重跑路线并复验同窗口 L/R。
 这让普通用户看到的首屏文案和 summary API 的 blocker 完全一致。
+
+2026-06-28 08:37 起，Nav2 goal execution/latest 的 PC key-values 新增
+`base_feedback_latest_raw_left` 和 `base_feedback_latest_raw_right`。普通首屏显示行程执行窗口 L/R 时
+优先使用 raw L/R；只有旧上位机没有 raw 字段时才回退到 `base_feedback_latest_left_speed/right_speed`。
+这样用户要求的 `wheel raw L/R 非零` 不再被旧 speed 别名遮住，完整路线执行、地图行程标签和待复验文案都能按同一个 raw 口径显示。
+该变化只消费已有执行结果和 latest 只读材料，不发送 Nav2 execute、manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。

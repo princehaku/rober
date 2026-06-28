@@ -5509,6 +5509,8 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
   putSummaryNav2Value(values, "base_feedback_imu_pitch_delta", nav2.goal_execution_base_feedback_imu_pitch_delta);
   putSummaryNav2Value(values, "base_feedback_latest_left_speed", nav2.goal_execution_base_feedback_latest_left_speed);
   putSummaryNav2Value(values, "base_feedback_latest_right_speed", nav2.goal_execution_base_feedback_latest_right_speed);
+  putSummaryNav2Value(values, "base_feedback_latest_raw_left", nav2.goal_execution_base_feedback_latest_raw_left);
+  putSummaryNav2Value(values, "base_feedback_latest_raw_right", nav2.goal_execution_base_feedback_latest_raw_right);
   putSummaryNav2Value(values, "sends_base_motion_commands", nav2.goal_execution_sends_base_motion_commands);
   putSummaryNav2Value(values, "uses_base_uart", nav2.goal_execution_uses_base_uart);
   putSummaryNav2Value(values, "goal_frame_id", nav2.goal_execution_goal_frame_id);
@@ -5565,8 +5567,9 @@ function nav2BaseCommandCount(values: Record<string, string> | undefined): numbe
 }
 
 function nav2BaseFeedbackPair(values: Record<string, string> | undefined): { left: string; right: string } | null {
-  const left = values?.base_feedback_latest_left_speed;
-  const right = values?.base_feedback_latest_right_speed;
+  // 用户验收口径一直叫 wheel raw L/R；上位机旧响应没有 raw 字段时再退回 speed 别名。
+  const left = values?.base_feedback_latest_raw_left ?? values?.base_feedback_latest_left_speed;
+  const right = values?.base_feedback_latest_raw_right ?? values?.base_feedback_latest_right_speed;
   if (!left || !right || left === "not_loaded" || right === "not_loaded" || left === "not_observed" || right === "not_observed") {
     return null;
   }
@@ -6704,8 +6707,11 @@ function plainMapTripExecutionLabel(): string {
   }
   if (nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values)) {
     const mapRerunText = nav2MapControlUnprovenText(values);
+    const pair = nav2BaseFeedbackPair(values);
+    // 地图标签必须和行程事实使用同一 raw L/R 口径，避免所见即所得画面显示旧 speed=0/0。
+    const pairText = pair ? `${pair.left}/${pair.right}` : "0/0";
     return nav2BaseCommandWithoutWheelFeedback(values)
-      ? mapRerunText ? `行程执行：路线返回成功，底盘反馈 0/0，${mapRerunText}` : "行程执行：路线返回成功，底盘反馈 0/0"
+      ? mapRerunText ? `行程执行：路线返回成功，底盘反馈 ${pairText}，${mapRerunText}` : `行程执行：路线返回成功，底盘反馈 ${pairText}`
       : mapRerunText ? `行程执行：路线返回成功，${mapRerunText}` : "行程执行：路线返回成功，真车未证明";
   }
   if (nav2GoalSucceeded(values)) {
