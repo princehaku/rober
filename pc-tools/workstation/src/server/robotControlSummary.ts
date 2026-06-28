@@ -1231,10 +1231,22 @@ function cameraFormatAttemptsSummary(lastOfferError: JsonRecord | null): string 
 
 function cameraDisplayDeviceName(value: unknown): string {
   // v4l2 名称常带 `(usb-5310000...)` 这种总线尾巴，普通首屏只需要稳定设备名。
-  return asString(value)
+  const text = asString(value)
     .replace(/\s+\(usb-[^)]+\)\s*$/i, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+  return text && !["not_loaded", "none", "unknown", "null"].includes(text) ? text : "";
+}
+
+function cameraDiagnosisPlainHint(value: unknown, fallbackDeviceName = "UVC 设备"): string {
+  // 共享 relay 可能只知道“not_loaded 当前没人占用”；summary 要保留诊断事实，但不能把占位词暴露给普通 UI。
+  const hint = asString(value, "").trim();
+  if (!hint || ["not_loaded", "none", "unknown", "null"].includes(hint)) {
+    return hint;
+  }
+  const displayName = cameraDisplayDeviceName(fallbackDeviceName);
+  const deviceName = displayName && displayName !== "摄像头" ? displayName : "UVC 设备";
+  return hint.replace(/：(not_loaded|none|unknown|null)\s*当前没人占用/g, `：${deviceName}当前没人占用`);
 }
 
 function cameraDeviceCandidateRole(candidate: JsonRecord | null): string {
@@ -1631,7 +1643,7 @@ function cameraSummaryFromReadbacks(
   );
   const overlaySourceDiagnosis = {
     status: asString(mjpegRelayOverlay?.source_diagnosis_status, ""),
-    plain_hint: asString(mjpegRelayOverlay?.source_diagnosis_plain_hint, ""),
+    plain_hint: cameraDiagnosisPlainHint(mjpegRelayOverlay?.source_diagnosis_plain_hint, selectedName),
     next_action: asString(mjpegRelayOverlay?.source_diagnosis_next_action, ""),
     not_exclusive: asString(mjpegRelayOverlay?.source_diagnosis_not_exclusive, ""),
   };
@@ -1668,7 +1680,7 @@ function cameraSummaryFromReadbacks(
       }
     : {
       status: asString(sourceDiagnosis?.status, "not_loaded"),
-      plain_hint: asString(sourceDiagnosis?.plain_hint, "not_loaded"),
+      plain_hint: cameraDiagnosisPlainHint(sourceDiagnosis?.plain_hint, selectedName) || "not_loaded",
       next_action: asString(sourceDiagnosis?.next_action, "not_loaded"),
       not_exclusive: sourceDiagnosis?.not_exclusive === undefined ? "not_loaded" : compactValueText(sourceDiagnosis.not_exclusive),
     };

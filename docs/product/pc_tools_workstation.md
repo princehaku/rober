@@ -3854,3 +3854,9 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。共享预览仍保持
 `single_shared_capture_for_multiple_clients`，多个 PC 页面只复用同一条上游流；该变化只更新可见诊断文案，
 不新开相机上游、不修改相机服务、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 21:51 起，PC Node 会在 `/api/robot-control/summary` 和
+`/api/robot-control/camera/mjpeg/status` 输出前清理相机中文诊断里的占位设备名：
+`not_loaded 当前没人占用`、`none 当前没人占用` 等会被替换为稳定的“USB 摄像头”或“UVC 设备”，已有真实设备名则保留。
+这样 API、首屏和高级诊断都不会把内部占位符当成用户可见设备名。该变化只改写只读诊断文字，
+不打开第二条相机上游、不重启 camera service、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

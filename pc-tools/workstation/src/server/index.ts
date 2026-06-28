@@ -211,6 +211,22 @@ function shortText(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value.trim().slice(0, 240) : fallback;
 }
 
+function cameraSourceDisplayName(value: unknown, fallback = "UVC 设备"): string {
+  // 真实上位机偶发把 selected_name 序列化成 not_loaded；普通诊断不能把占位词当设备名展示。
+  const text = shortText(value, "");
+  return text && !["not_loaded", "none", "unknown", "null"].includes(text) ? text : fallback;
+}
+
+function cameraDiagnosisPlainHint(value: unknown, selectedName: string): string {
+  // health/relay 的中文 hint 是给用户看的；这里仅清理占位设备名，不改写“不是独占/无首帧”的结论。
+  const hint = shortText(value, "");
+  if (!hint) {
+    return "";
+  }
+  const deviceName = cameraSourceDisplayName(selectedName);
+  return hint.replace(/：(not_loaded|none|unknown|null)\s*当前没人占用/g, `：${deviceName}当前没人占用`);
+}
+
 function normalizeAnswerSdp(value: string): string {
   // 浏览器对 SDP 行结束更严格；这里不改写语义，只统一成 CRLF 并补最后一个 CRLF。
   const crlfNormalized = value.replace(/\r?\n/g, "\r\n");
@@ -1377,14 +1393,14 @@ async function cameraSourceFirstFrameFailureForStatus(
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_diagnosis);
     const sourceUsage = asRecord(payload?.source_usage)
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_usage);
-    const selectedName = shortText(
+    const selectedName = cameraSourceDisplayName(
       payload?.selected_name
         ?? asRecord(payload?.source_summary)?.selected_name
         ?? asRecord(payload?.current_selection)?.selected_name,
       "USB 摄像头",
     );
     const diagnosisStatus = shortText(sourceDiagnosis?.status, "");
-    const diagnosisPlainHint = shortText(sourceDiagnosis?.plain_hint, "");
+    const diagnosisPlainHint = cameraDiagnosisPlainHint(sourceDiagnosis?.plain_hint, selectedName);
     const diagnosisNextAction = shortText(sourceDiagnosis?.next_action, "");
     const rawDiagnosisNotExclusive = sourceDiagnosis?.not_exclusive === undefined
       ? "not_loaded"
