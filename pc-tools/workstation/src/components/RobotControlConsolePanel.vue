@@ -2367,6 +2367,15 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
   const nav2StackNotRunning = plainNav2StackNotRunning(summary);
   const routePointCount = plainNav2CountText(nav2.path_preview_point_count) || plainNav2CountText(nav2.path_point_count);
   const routeReady = (nav2.path_generated === "true" || nav2.path_generation_succeeded === "true") && routePointCount > 0;
+  const canExecuteWithManagedRuntime = summary.safe_command_boundary.nav2_goal_ready === true && routeReady;
+  if (canExecuteWithManagedRuntime && (nav2StackNotRunning || nav2.controller_server_active === "false" || nav2.planner_server_active === "false")) {
+    const serviceText = nav2StackNotRunning
+      ? "自动驾驶服务当前未启动"
+      : nav2.controller_server_active === "false"
+        ? "控制服务当前未运行"
+        : "规划服务当前未运行";
+    return `自动驾驶当前：路线已准备 ${routePointCount} 个点，${serviceText}；点击执行图上路线会自动启动 runtime 并重跑，本轮成败以返回结果和 wheel raw L/R 非零为准。相机/雷达不挡底盘试动或键盘手控。`;
+  }
   const blockers: string[] = [];
   if (!routeReady) {
     blockers.push("图上行程未准备");
@@ -7121,6 +7130,9 @@ function plainNav2StackNotRunning(summary: RobotControlSummaryResponse | null | 
 const plainTripNav2NeedsLifecycleRestore = computed(() => {
   // Nav2 stack stopped 或 planner/controller 未 active 时，继续点“准备路线”只会反复失败；先提供固定服务入口。
   const blockers = robotSummary.value?.safe_command_boundary.nav2_goal_blockers ?? [];
+  if (robotSummary.value?.safe_command_boundary.nav2_goal_ready === true && plainTripPreparedBySummary.value) {
+    return false;
+  }
   return plainNav2StackNotRunning(robotSummary.value)
     || blockers.includes("planner_server_inactive")
     || blockers.includes("controller_server_inactive");

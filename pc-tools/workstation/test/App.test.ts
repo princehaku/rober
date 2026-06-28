@@ -9890,6 +9890,61 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("lets a ready route execute through managed Nav2 runtime when lifecycle is stopped", async () => {
+    // live 形态：路径已生成、PC 代理声明 execute 会自动启动 runtime；首屏不能再要求用户先点单独 lifecycle。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.safe_command_boundary.nav2_goal_ready = true;
+    summaryFixture.safe_command_boundary.nav2_goal_label = "路线读数已准备，等待地图画面确认";
+    summaryFixture.safe_command_boundary.nav2_goal_blockers = [];
+    summaryFixture.safe_command_boundary.nav2_goal_next_action = "勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口复验 wheel raw L/R";
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+    ];
+    summaryFixture.o3_proof_summary.path_point_count = 18;
+    summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 18;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    summaryFixture.readback_summary.nav2.nav2_stack_running = "false";
+    summaryFixture.readback_summary.nav2.nav2_stack_lifecycle_state = "stopped";
+    summaryFixture.readback_summary.nav2.nav2_status = "path_ready_with_service_blockers";
+    summaryFixture.readback_summary.nav2.current_blocker_reasons = "nav2_lifecycle_not_running";
+    summaryFixture.readback_summary.nav2.current_blocker_labels = "自动驾驶 lifecycle 未运行";
+    summaryFixture.readback_summary.nav2.planner_server_active = "true";
+    summaryFixture.readback_summary.nav2.controller_server_active = "false";
+    summaryFixture.readback_summary.nav2.path_generated = "true";
+    summaryFixture.readback_summary.nav2.path_generation_succeeded = "true";
+    summaryFixture.readback_summary.nav2.path_point_count = "18";
+    summaryFixture.readback_summary.nav2.path_preview_point_count = "18";
+    summaryFixture.readback_summary.nav2.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("已准备");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("图上路线已可执行");
+    expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("路线已准备 18 个点");
+    expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("点击执行图上路线会自动启动 runtime");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("本轮成败以返回结果和 wheel raw L/R 非零为准");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("shows route map preview failure on the trip card when prepared route is not visible", async () => {
     // 路线点已准备但地图画面读取失败时，行程区也要显示失败原因，不能只让用户猜地图 caption。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;

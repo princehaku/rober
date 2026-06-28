@@ -3619,6 +3619,14 @@ Nav2 lifecycle 允许上位机声明 `starts_nav2=true` 作为服务恢复事实
 路线准备只得到同一个 planner/controller inactive 失败。恢复成功后仍必须再准备/显示图上路线，并在现场安全确认后显式执行；
 该按钮不发送 NavigateToPose goal、不调用 manual/keyboard/free-roam/delivery/stop 或浏览器直连 `/cmd_vel`。
 
+2026-06-28 20:45 CST 起，上述 lifecycle 恢复 gate 增加 managed runtime 例外：当 summary 已明确
+`nav2_goal_ready=true` 且图上路线点数已读到时，即使当前只读状态仍显示 `nav2_lifecycle_not_running`、
+`nav2_stack_lifecycle_state=stopped` 或 `controller_server_active=false`，普通首屏也不再把主按钮改成
+`先启动自动驾驶服务`。行程区会显示 `执行图上路线`，并在诊断里说明点击执行会由固定 execute 代理自动启动 runtime，
+本轮是否真正完成仍以执行返回、同窗口 wheel raw L/R 非零和后续 delivery 材料为准。该改动只同步 PC 首屏门禁与
+后端 `managed_runtime_opt_in` 合同，不自动点击执行、不调用 `/api/nav2/start`、manual、keyboard、free-roam、
+delivery、stop 或浏览器直连 `/cmd_vel`。
+
 2026-06-28 00:14 起，PC 固定 POST 控制代理进一步收紧 `baseUrl` 处理：没有 query 时仍保留普通 UI
 默认小车地址，满足“小车地址默认写死”；但显式传入空 `?baseUrl=` 时不再回退到默认地址，而是返回
 `baseUrl_not_provided` 并且不触达上位机。该 guard 覆盖 Nav2 lifecycle 和 free-roam start/stop 回归测试，
