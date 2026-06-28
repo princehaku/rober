@@ -11097,6 +11097,8 @@ describe("workstation fail-closed API contracts", () => {
         proxy_status: string;
         remote_endpoint: string;
         remote_method: string;
+        plain_hint: string;
+        next_action_plain: string;
         runtime_status: string;
         decision_state: string;
         decision_reason: string;
@@ -11123,6 +11125,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.proxy_status).toBe("latest_loaded");
       expect(body.remote_endpoint).toBe("/api/free-roam/autonomy/latest");
       expect(body.remote_method).toBe("GET");
+      expect(body.plain_hint).toBe("自由移动已启动；继续保持现场可接管，必要时点击停止。建图验收未 ready；还差：画面首帧、地图记录、地图画面；这不阻止先低速自由移动。");
+      expect(body.next_action_plain).toBe("继续低速监看；需要停下时点停止。建图验收还差：画面首帧、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.runtime_status).toBe("loaded");
       expect(body.decision_state).toBe("running");
       expect(body.decision_reason).toBe("门禁满足，低速直行");
@@ -11197,6 +11201,8 @@ describe("workstation fail-closed API contracts", () => {
       const response = await fetch(`${workstation.baseUrl}/api/robot-control/free-roam/autonomy/latest?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const body = (await response.json()) as {
         proxy_status: string;
+        plain_hint: string;
+        next_action_plain: string;
         free_move_start_ready: boolean;
         motion_start_ready: boolean;
         motion_ready: boolean;
@@ -11211,6 +11217,8 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("latest_loaded");
+      expect(body.plain_hint).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。");
+      expect(body.next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.free_move_start_ready).toBe(true);
       expect(body.motion_start_ready).toBe(true);
       expect(body.motion_ready).toBe(false);

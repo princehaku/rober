@@ -1467,6 +1467,11 @@ function freeRoamLatestMappingNextAction(startReady: boolean, mappingReady: bool
     : "继续读取建图验收材料；不影响先低速自由移动。";
 }
 
+function joinChinesePlainParts(...parts: string[]): string {
+  // 中文白话字段直接顺接完整句，避免多余空格出现在普通首屏或现场脚本输出里。
+  return parts.map((part) => part.trim()).filter(Boolean).join("");
+}
+
 function freeRoamLatestReadinessFromKeyValues(
   latestKeyValues: Record<string, string>,
   loaded: boolean,
@@ -1475,6 +1480,8 @@ function freeRoamLatestReadinessFromKeyValues(
   | "runtime_status"
   | "decision_state"
   | "decision_reason"
+  | "plain_hint"
+  | "next_action_plain"
   | "free_move_start_ready"
   | "motion_start_ready"
   | "motion_ready"
@@ -1499,22 +1506,29 @@ function freeRoamLatestReadinessFromKeyValues(
     .filter((item) => item && item !== "none" && item !== "not_loaded");
   const mappingReady = startReady && (latestKeyValues.mapping_ready === "true" || mappingMissing.length === 0);
   const externalStopRequested = decisionState === "stopping" && /现场请求停止|external_stop/i.test(decisionReason);
+  const startStatusPlain = freeRoamLatestStartStatusPlain(startReady, motionReady, externalStopRequested);
+  const mappingAcceptancePlain = freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingReady, mappingMissing);
+  const motionNextActionPlain = freeRoamLatestMotionNextAction(startReady, motionReady, externalStopRequested);
+  const mappingNextActionPlain = freeRoamLatestMappingNextAction(startReady, mappingReady, mappingMissing);
   return {
     runtime_status: runtimeStatus,
     decision_state: decisionState,
     decision_reason: decisionReason,
+    // 顶层白话给现场脚本直接消费；细分字段仍保留给页面分区展示。
+    plain_hint: joinChinesePlainParts(startStatusPlain, mappingAcceptancePlain),
+    next_action_plain: joinChinesePlainParts(motionNextActionPlain, mappingNextActionPlain),
     free_move_start_ready: startReady,
     motion_start_ready: startReady,
     motion_ready: motionReady,
     mapping_readiness_ready: mappingReady,
     mapping_blocked_reasons: mappingMissing,
     motion_readiness_plain: freeRoamLatestMotionReadinessPlain(startReady, motionReady, externalStopRequested),
-    free_move_start_status_plain: freeRoamLatestStartStatusPlain(startReady, motionReady, externalStopRequested),
+    free_move_start_status_plain: startStatusPlain,
     motion_runtime_status_plain: freeRoamLatestMotionRuntimeStatusPlain(startReady, motionReady),
-    mapping_acceptance_status_plain: freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingReady, mappingMissing),
+    mapping_acceptance_status_plain: mappingAcceptancePlain,
     mapping_readiness_plain: freeRoamLatestMappingReadinessPlain(startReady, mappingReady, mappingMissing),
-    motion_next_action_plain: freeRoamLatestMotionNextAction(startReady, motionReady, externalStopRequested),
-    mapping_next_action_plain: freeRoamLatestMappingNextAction(startReady, mappingReady, mappingMissing),
+    motion_next_action_plain: motionNextActionPlain,
+    mapping_next_action_plain: mappingNextActionPlain,
   };
 }
 
@@ -3325,6 +3339,8 @@ export function createWorkstationApp(): express.Express {
       remote_method: "GET",
       remote_http_status: null,
       status: "blocked",
+      plain_hint: "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。建图验收未 ready；还在等待自由移动状态机和建图材料。",
+      next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。先连接上车自由移动状态机，并继续读取建图验收材料。",
       runtime_status: "not_loaded",
       decision_state: "not_loaded",
       decision_reason: normalized.ok ? "not_loaded" : normalized.reason,
