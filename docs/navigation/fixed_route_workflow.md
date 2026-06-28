@@ -174,6 +174,32 @@ workflow that wording is only a product/source-boundary assumption until real
 pass, and delivery result evidence are all present on the same safe evidence
 chain.
 
+## 3. Fixed-Route Autonomous Run
+
+2026-06-29 起，`autonomous.launch.py navigation_mode:=fixed_route` 的默认行为是创建
+Nav2 `BasicNavigator` 并执行固定路线：`fixed_route_dry_run` 默认 `false`，
+`enable_visual_gate` 默认 `false`。这让自动驾驶是否能动主要由 Nav2 服务、地图、
+定位和底盘 `/cmd_vel` 链路决定，不再被相机 keyframe gate 或 dry-run 默认值挡住。
+
+需要只做软件演练时显式打开 dry-run：
+
+```bash
+ros2 launch ros2_trashbot_bringup autonomous.launch.py \
+  navigation_mode:=fixed_route \
+  fixed_route_dry_run:=true
+```
+
+需要把相机 keyframe 作为路线 checkpoint gate 时显式打开视觉 gate：
+
+```bash
+ros2 launch ros2_trashbot_bringup autonomous.launch.py \
+  navigation_mode:=fixed_route \
+  enable_visual_gate:=true
+```
+
+真实发车前仍必须确认现场安全、停止兜底、地图和定位状态；上述默认值只移除
+“默认不动”和“相机无帧就卡住固定路线”的软件阻塞，不等于 Nav2 HIL 或送达成功。
+
 The upstream `pr5_mandatory_sensor_source_alignment` summary is allowed here
 only as source-boundary input for PR #5 thread `PRRT_kwDOSWB9286CJ3tX`. It may
 show `hardware_material_pending`, `not_proven`, `safe_to_control=false`,

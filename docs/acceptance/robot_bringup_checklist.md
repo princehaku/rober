@@ -92,7 +92,8 @@ SKIP_COLCON=1 bash scripts/docker_humble_build.sh
 
 - Confirm saved map path exists.
 - Confirm localization starts.
-- Run fixed-route dry-run.
+- Run fixed-route dry-run with `fixed_route_dry_run:=true` when you only want software rehearsal.
+- For `autonomous.launch.py navigation_mode:=fixed_route`, the default is now real Nav2 execution (`fixed_route_dry_run:=false`) and visual keyframe gate is opt-in (`enable_visual_gate:=true`).
 - Verify debug status JSON updates.
 - Verify emergency stop path before autonomous movement.
 

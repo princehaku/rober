@@ -87,6 +87,8 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("waypoint_condition", source)
         self.assertIn("condition=waypoint_condition", source)
         self.assertIn("condition=fixed_route_condition", source)
+        self.assertIn("'enable_visual_gate', default_value='false'", source)
+        self.assertIn("'fixed_route_dry_run', default_value='false'", source)
 
     def test_autonomous_nav2_stack_only_skips_business_navigation_nodes(self):
         # 受管 Nav2 lifecycle start 只需要 ESP32 bridge 和 Nav2 bringup；

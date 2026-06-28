@@ -41,6 +41,12 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 起，普通首屏行程卡也会显示 `自动驾驶诊断`：Nav2 stack、规划/控制服务、定位、`/scan`/AMCL/TF 等缺口会直接落在行程操作区，并明确相机/雷达不挡底盘试动或键盘手控。摄像头共享预览继续走 PC 单上游 MJPEG relay，多页面共享同一条流；无首帧时按 UVC/输入/供电排查，不按“页面独占”处理。
 
+同日起，固定路线 autonomous launch 默认按真实 Nav2 路线执行：`navigation_mode:=fixed_route` 时
+`fixed_route_dry_run=false`，`enable_visual_gate=false`。这修掉“默认 dry-run / 相机 keyframe gate
+导致自动驾驶看起来启动但不动”的配置阻塞；需要软件演练或相机 checkpoint gate 时再显式传
+`fixed_route_dry_run:=true` 或 `enable_visual_gate:=true`。PC 侧仍只按 operator 点击固定代理执行，
+不会因为刷新页面自动发 Nav2、manual、free-roam、delivery、stop 或 `/cmd_vel`。
+
 同日起，共享 MJPEG status 请求尚未返回时，首屏会保留 summary 里已有的共享流事实，例如观看页面数、上游是否已连接、是否已有视频边界和最近缓存帧；但仍明确 status 返回前不证明本页已经出图。
 
 2026-06-28 07:35 CST 起，地图画面或地图 proof 刷新中时，行程前确认继续保持最小化：勾选安全确认后只提示等待地图画面/状态刷新，并明确这不是额外预检，而是避免按旧地图发车的所见即所得保护。

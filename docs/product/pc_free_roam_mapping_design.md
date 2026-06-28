@@ -655,3 +655,10 @@ planner/controller inactive 仍保留“恢复规划/控制服务”的文案。
 `nav2_stack_not_running`，普通行程卡状态优先显示“需恢复 / 先启动自动驾驶服务（不发车）”，
 自动驾驶诊断也写成“自动驾驶服务未运行，重跑前先启动”。旧 PWM/ROS 复验建议仍保留为下一步说明，
 但不会盖过当前服务未启动这一前置卡点，也不会触发 goal execute、manual 或 `/cmd_vel`。
+
+2026-06-29 起，固定路线 autonomous launch 的默认运动边界也对齐普通用户预期：
+`navigation_mode:=fixed_route` 默认 `fixed_route_dry_run:=false`，并且 `enable_visual_gate:=false`。
+因此自动驾驶实跑不再被 dry-run 默认值或相机 keyframe gate 卡住；相机无首帧仍影响视觉验收和共享预览，
+但不会成为固定路线发车的默认前置门禁。需要软件演练或视觉 gate 时，现场分别显式传
+`fixed_route_dry_run:=true` 或 `enable_visual_gate:=true`。该变更只调整 launch 默认参数；
+真实发车仍依赖现场安全确认、停止兜底、Nav2 服务、地图、定位和底盘 `/cmd_vel` 链路。

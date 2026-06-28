@@ -59,7 +59,7 @@ def generate_launch_description():
         description='Fixed-route visual keyframe directory')
 
     enable_visual_gate_arg = DeclareLaunchArgument(
-        'enable_visual_gate', default_value='true',
+        'enable_visual_gate', default_value='false',
         description='Enable keyframe visual gate for fixed-route checkpoints')
 
     visual_match_threshold_arg = DeclareLaunchArgument(
@@ -67,7 +67,7 @@ def generate_launch_description():
         description='Minimum ORB matches required by the fixed-route visual gate')
 
     fixed_route_dry_run_arg = DeclareLaunchArgument(
-        'fixed_route_dry_run', default_value='true',
+        'fixed_route_dry_run', default_value='false',
         description='Run fixed-route checkpoints without creating Nav2 BasicNavigator')
 
     nav2_stack_only_arg = DeclareLaunchArgument(
