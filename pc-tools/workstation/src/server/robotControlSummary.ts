@@ -4789,6 +4789,42 @@ function joinChineseList(items: string[]): string {
   return items.join("和");
 }
 
+function freeRoamMissingPlainLabels(missingReasons: string[]): string[] {
+  // summary 顶层下一步不暴露内部 gate token，避免普通页面还要自己维护翻译表。
+  const labels: Record<string, string> = {
+    camera_first_frame: "画面首帧",
+    lidar_fresh: "雷达新鲜",
+    mapping_active: "地图记录",
+    fresh_map_preview: "地图画面",
+  };
+  return missingReasons.map((reason) => labels[reason] ?? reason).filter(Boolean);
+}
+
+function freeRoamAutonomyNextAction(
+  status: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy"],
+  mappingReady: boolean,
+  mappingMissingReasons: string[],
+): string {
+  // 自由移动和建图验收分层：能动不等于可验收建图，下一步必须把这两件事讲清楚。
+  const missingText = freeRoamMissingPlainLabels(mappingMissingReasons).join("、");
+  if (status === "ready" && mappingReady) {
+    return "已进入自动扫图条件；继续低速监看地图、雷达和画面";
+  }
+  if (status === "ready") {
+    return missingText
+      ? `自由移动运行中；建图验收还差：${missingText}`
+      : "自由移动运行中；继续监看建图验收材料";
+  }
+  if (status === "start_ready") {
+    return mappingReady
+      ? "勾选现场安全确认后可开始自动扫图（低速）"
+      : missingText
+        ? `勾选现场安全确认后可先自由移动；建图验收还差：${missingText}`
+        : "勾选现场安全确认后可先自由移动；继续读取建图验收材料";
+  }
+  return "先连接上车自由移动状态机，并确认停止兜底可用";
+}
+
 function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
   "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_execution_mode_label"
@@ -4981,6 +5017,7 @@ function lockedBoundary(
   const freeRoamMappingMissingReasons = freeRoamMappingMissingIds(freeRoamRuntimeGates);
   const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
+  const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons);
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",
@@ -5012,6 +5049,7 @@ function lockedBoundary(
       : freeRoamStartReady
         ? "自由移动（勾确认后可启动）"
         : "自动扫图（未开放）",
+    free_roam_autonomy_next_action: freeRoamNextAction,
     free_roam_autonomy_policy: {
       // 自由移动与建图验收分层：低速移动只看安全确认和停止兜底，建图才要求画面/雷达材料。
       mode: "free_move_requires_safety_confirm_stop_fallback",

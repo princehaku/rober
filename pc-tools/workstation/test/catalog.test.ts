@@ -6323,6 +6323,7 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面");
       expect(summary.readback_summary.free_roam.status).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates.map((gate) => gate.id)).toEqual([
         "stop_available",
@@ -6498,6 +6499,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(true);
       expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toEqual([]);
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("已进入自动扫图条件；继续低速监看地图、雷达和画面");
       expect(summary.readback_summary.free_roam.status).toBe("mapping_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_runtime).toEqual(expect.objectContaining({
         status: "loaded",

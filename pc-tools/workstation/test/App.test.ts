@@ -608,6 +608,7 @@ const fixtures: Record<string, unknown> = {
       free_roam_mapping_ready: false,
       free_roam_mapping_missing_reasons: ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"],
       free_roam_autonomy_label: "自动扫图（未开放）",
+      free_roam_autonomy_next_action: "先连接上车自由移动状态机，并确认停止兜底可用",
       free_roam_autonomy_policy: {
         mode: "free_move_requires_safety_confirm_stop_fallback",
         mapping_mode: "mapping_acceptance_requires_camera_and_fresh_radar",

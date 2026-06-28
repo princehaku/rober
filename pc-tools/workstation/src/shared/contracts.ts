@@ -2612,6 +2612,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     free_roam_mapping_ready: boolean;
     free_roam_mapping_missing_reasons: string[];
     free_roam_autonomy_label: "自动扫图（未开放）" | "自由移动（勾确认后可启动）" | "自由移动（运行中）" | "自动扫图";
+    free_roam_autonomy_next_action: string;
     free_roam_autonomy_policy: {
       mode: "free_move_requires_safety_confirm_stop_fallback";
       mapping_mode: "mapping_acceptance_requires_camera_and_fresh_radar";
