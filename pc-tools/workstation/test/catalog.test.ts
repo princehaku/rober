@@ -4048,6 +4048,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.manual_control_enabled).toBe(false);
       expect(summary.safe_command_boundary.keyboard_control).toBe("bounded repeating manual pulse gated");
       expect(summary.safe_command_boundary.keyboard_control_mode).toBe("bounded_repeating_manual_pulse");
+      expect(summary.safe_command_boundary.keyboard_manual_command_mode).toBe("ros");
       expect(summary.safe_command_boundary.keyboard_manual_proxy_endpoint).toBe("/api/robot-control/base/manual");
       expect(summary.safe_command_boundary.keyboard_stop_proxy_endpoint).toBe("/api/robot-control/base/stop");
       expect(summary.safe_command_boundary.keyboard_jog_interval_ms).toBe(260);

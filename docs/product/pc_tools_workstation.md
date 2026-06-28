@@ -3833,3 +3833,9 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 这样即使 `/api/camera/health` 在 summary 短读取窗口内超时，普通首屏仍显示“不是页面独占，UVC 源头无首帧”，
 不会退回成 `fetch_failed/not_loaded`。该变化只消费 PC Node 已有 relay/status 只读材料，不新开第二条相机上游，
 不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 21:38 起，Robot Control summary 的键盘连续手控合同新增
+`safe_command_boundary.keyboard_manual_command_mode=ros`。普通首屏和高级诊断会直接显示“ROS 桥接低速入口”
+和 `command_mode=ros`，与 PC Node 实际转发 `/api/base/manual` 时写入的 `command_mode=ros` 保持一致。
+这样现场能确认 PC 键盘连续控制没有回到旧 PWM/UART 默认；该变化只暴露既有只读合同和 UI 文案，不自动启用键盘，
+不发送 manual、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。

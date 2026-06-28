@@ -2323,8 +2323,8 @@ function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): str
   const duration = boundary.keyboard_jog_duration_ms;
   const interval = boundary.keyboard_jog_interval_ms;
   const pulseText = Number.isFinite(duration) && Number.isFinite(interval) && duration > 0 && interval > 0
-    ? `；走 ROS/T=13 低速入口；按住连续低速脉冲 ${duration}ms/每 ${interval}ms`
-    : "；走 ROS/T=13 低速入口；按住连续低速脉冲";
+    ? `；走 ${keyboardManualCommandModeLabel.value}；按住连续低速脉冲 ${duration}ms/每 ${interval}ms`
+    : `；走 ${keyboardManualCommandModeLabel.value}；按住连续低速脉冲`;
   const stopText = "，松开/失焦/切页会停";
   if (keyboardHeldDirection.value) {
     if (keyboardControlStatus.value === "sending_keyboard_pulse") {
@@ -3948,6 +3948,9 @@ const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ??
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
 const keyboardJogDurationMs = computed(() => manualBoundary.value?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS);
+const keyboardManualCommandModeLabel = computed(() => (
+  manualBoundary.value?.keyboard_manual_command_mode === "ros" ? "ROS 桥接低速入口" : "后端声明的低速入口"
+));
 const plainManualSafetyConfirmed = computed(() => plainTripSafetyConfirmed.value || plainFreeRoamMappingConfirmed.value);
 const plainUnifiedSafetyConfirmed = computed({
   // 普通首屏只有一个真实安全确认语义；两个可见复选框同步显示，避免现场重复确认。
@@ -5217,7 +5220,7 @@ const plainKeyboardControlGuide = computed(() => {
   // 普通首屏需要说明所有自动停止触发和后端边界，避免把连续手控误解成无限时长发车。
   const intervalSeconds = (keyboardJogIntervalMs.value / 1000).toFixed(2).replace(/0$/, "");
   const pulseSeconds = (keyboardJogDurationMs.value / 1000).toFixed(2).replace(/0$/, "");
-  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会通过 ROS/T=13 低速入口持续移动，约每 ${intervalSeconds} 秒发送 ${pulseSeconds} 秒低速脉冲，最高 ${manualSpeedLimit.value} m/s、单次上限 ${manualDurationLimit.value} ms；松开、拖出按钮、窗口失焦或切页面都会停。`;
+  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会通过 ${keyboardManualCommandModeLabel.value}持续移动，约每 ${intervalSeconds} 秒发送 ${pulseSeconds} 秒低速脉冲，最高 ${manualSpeedLimit.value} m/s、单次上限 ${manualDurationLimit.value} ms；松开、拖出按钮、窗口失焦或切页面都会停。`;
 });
 
 function claimWithRefReady(value: string | undefined): boolean {
@@ -13260,6 +13263,7 @@ onBeforeUnmount(() => {
               armed={{ keyboardControlArmed }},
               held={{ keyboardHeldDirection ?? "none" }},
               mode={{ robotSummary?.safe_command_boundary.keyboard_control_mode ?? "bounded_repeating_manual_pulse" }},
+              command_mode={{ robotSummary?.safe_command_boundary.keyboard_manual_command_mode ?? "not_loaded" }},
               last_direction={{ keyboardLastDirection }},
               pulse_ms={{ keyboardJogDurationMs }},
               interval_ms={{ keyboardJogIntervalMs }},
