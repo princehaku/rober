@@ -4786,8 +4786,8 @@ function nav2SummaryFromReadbacks(
 
 function nav2PlainHint(executionStatusPlain: string, nextActionPlain: string): string {
   // 外部脚本常只读一个字段；这里把“当前证明状态”和“下一步”压成一句，但不改变任何发车门禁。
-  const status = executionStatusPlain.trim().replace(/[。；\s]+$/g, "");
-  const next = nextActionPlain.trim().replace(/^下一步[:：]?\s*/, "").replace(/[。；\s]+$/g, "");
+  const status = nav2PlainUserFacingText(executionStatusPlain).trim().replace(/[。；\s]+$/g, "");
+  const next = nav2PlainUserFacingText(nextActionPlain).trim().replace(/^下一步[:：]?\s*/, "").replace(/[。；\s]+$/g, "");
   if (!status && !next) {
     return "自动驾驶事实未读到；先刷新 Robot Control summary。";
   }
@@ -4798,6 +4798,22 @@ function nav2PlainHint(executionStatusPlain: string, nextActionPlain: string): s
     return `下一步：${next}。`;
   }
   return `${status}。下一步：${next}。`;
+}
+
+function nav2PlainUserFacingText(text: string): string {
+  // summary 的 plain_hint 面向普通脚本和首屏；高级 wheel raw 名称仍保留在拆分字段里。
+  return text
+    .replace(/Nav2 planner 和 Nav2 controller/g, "规划服务和控制服务")
+    .replace(/Nav2 planner/g, "规划服务")
+    .replace(/Nav2 controller/g, "控制服务")
+    .replace(/或 controller/g, "或控制服务")
+    .replace(/\bcontroller\b/g, "控制服务")
+    .replace(/执行窗口 wheel raw L\/R/g, "执行窗口轮速 L/R")
+    .replace(/同窗口 wheel raw L\/R/g, "同窗口轮速 L/R")
+    .replace(/但 wheel raw L\/R/g, "但执行窗口轮速 L/R")
+    .replace(/wheel raw L\/R/g, "执行窗口轮速 L/R")
+    .replace(/路线 action 成功/g, "路线结果成功")
+    .replace(/未 active/g, "未运行");
 }
 
 function nav2RouteExecutionPlainSummary(args: {
