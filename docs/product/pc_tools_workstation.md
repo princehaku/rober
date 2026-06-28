@@ -314,6 +314,11 @@ pc-tools/workstation/
   该改动只修正文案透出，不创建额外 camera client、不触发首帧 probe、不发送 manual/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
 - 2026-06-27 13:20 起，`readback_summary.free_roam` 新增 `motion_start_ready`，专门表示“上车 runtime 与停止兜底已满足，勾安全确认后可发起自由移动”；原 `motion_ready` 继续表示“当前上车端已经打开运动发布”。因此 live 里 `motion_start_ready=true` 且 `motion_ready=false` 表示“可启动但当前还没有自己跑”，不再把未启动状态误读成不能自由移动。该字段只修正只读 summary 语义，不启动 free-roam、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 - 2026-06-27 13:55 起，`safe_command_boundary.free_roam_autonomy` 同步采用三态：`locked` 表示基础启动条件未读到，`start_ready` 表示上车 runtime 与停止兜底已满足、勾安全确认即可发起自由移动，`ready` 只表示上车端已经打开运动发布。这样 live summary 不再出现 `free_roam_autonomy_start_ready=true` 但主状态仍叫 `locked` 的矛盾口径；相机/雷达仍只影响建图验收，不阻塞低速自由移动。
+- 2026-06-28 22:18 起，`readback_summary.free_roam.status` 也按 PC 可执行语义派生为 `start_ready`、`motion_ready` 或 `mapping_ready`：
+  `start_ready` 表示勾安全确认后可启动自由移动但当前没有运动发布，`motion_ready` 表示上车端已打开运动发布但建图材料未齐，
+  `mapping_ready` 表示画面、雷达、地图记录和地图画面已满足建图验收。上车端原始 artifact 仍保留在
+  `runtime_status/decision_state/artifact_only/cmd_vel_publish_enabled`，避免普通首屏继续看到 `status=not_proven`
+  而误以为自由移动没开放。该变化只修正只读 summary 语义，不自动启动 free-roam、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 14:01 起，普通首屏事实条会把自由移动 start-ready 和本地安全确认合并成人话：未勾确认时显示“勾安全确认后可启动”，勾上后才显示“可启动”。这保持发车前预检最小化为单个安全确认，同时避免把 `start_ready` 误读成已经允许立即动作；仍不自动启动 free-roam、manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 16:09 起，普通首屏自由移动/建图卡片把本地地图记录和上车自由移动分成两个明确按钮：
   `开始记录（不发车）` 只启动地图记录，`开始自由移动（低速）` 才请求上车 free-roam runtime。勾选安全确认后，

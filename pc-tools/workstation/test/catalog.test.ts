@@ -5587,7 +5587,7 @@ describe("workstation fail-closed API contracts", () => {
         }),
       ]));
       expect(summary.readback_summary.free_roam).toEqual({
-        status: "loaded",
+        status: "start_ready",
         runtime_status: "loaded",
         decision_state: "turning_for_coverage",
         decision_reason: "地图覆盖暂未增长，原地扫描寻找新方向",
@@ -6307,6 +6307,7 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
+      expect(summary.readback_summary.free_roam.status).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates.map((gate) => gate.id)).toEqual([
         "stop_available",
         "motion_hil_unlock",
@@ -6481,6 +6482,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(true);
       expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toEqual([]);
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图");
+      expect(summary.readback_summary.free_roam.status).toBe("mapping_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_runtime).toEqual(expect.objectContaining({
         status: "loaded",
         state: "running",
@@ -6568,6 +6570,7 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（运行中）");
+      expect(summary.readback_summary.free_roam.status).toBe("motion_ready");
       expect(summary.readback_summary.free_roam.motion_ready).toBe("true");
       expect(summary.readback_summary.free_roam.mapping_ready).toBe("false");
       expect(summary.readback_summary.free_roam.mapping_missing).toBe("camera_first_frame,fresh_map_preview");

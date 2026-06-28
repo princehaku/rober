@@ -4229,8 +4229,15 @@ function freeRoamSummaryFromReadbacks(
     .map((gate) => [gate.id, gate]));
   const mappingMissing = mappingRequiredIds.filter((id) => mappingGateById.get(id)?.state !== "ready");
   const mappingReady = startReady && mappingMissing.length === 0;
+  const derivedStatus = mappingReady
+    ? "mapping_ready"
+    : motionReady
+      ? "motion_ready"
+      : startReady
+        ? "start_ready"
+        : readback?.status ?? "not_loaded";
   return {
-    status: readback?.status ?? "not_loaded",
+    status: derivedStatus,
     runtime_status: asString(payload?.runtime_status, latest ? "loaded" : "not_loaded"),
     decision_state: asString(decision?.state, asString(payload?.decision_state, "not_loaded")),
     decision_reason: asString(decision?.reason, asString(payload?.decision_reason, "not_loaded")),
