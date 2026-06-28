@@ -2298,7 +2298,8 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
     ) {
       return "建图：画面和雷达已 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。";
     }
-    return `建图：当前缺口：${missing.join("、")}；自由移动不受影响。`;
+    const nextActionSuffix = plainFreeRoamMappingReadinessNextActionSuffix(missing);
+    return `建图：当前缺口：${missing.join("、")}；自由移动不受影响${nextActionSuffix}。`;
   }
   return "建图：等待上车端建图 readiness；自由移动可按单独条件判断。";
 }

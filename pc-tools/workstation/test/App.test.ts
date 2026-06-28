@@ -16911,6 +16911,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：雷达未运行；已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个；已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出、雷达未刷新（已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图）、地图记录未启动");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动不受影响；建图下一步：先启动雷达，再刷新地图画面。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("建图下一步：先启动雷达，再刷新地图画面");
     expect(firstScreenText).not.toContain("最近记录 2 个点");
     expect(firstScreenText).not.toContain("雷达局部点 2 个");
