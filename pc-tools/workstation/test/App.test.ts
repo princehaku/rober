@@ -639,6 +639,8 @@ const fixtures: Record<string, unknown> = {
       nav2_goal_next_action: "先生成图上路线并读到小车地图位置",
       nav2_goal_next_action_plain: "先生成图上路线并读到小车地图位置",
       nav2_goal_minimal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。",
+      nav2_goal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。",
+      navigation_preflight_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。",
       nav2_goal_execution_mode_label: "not_loaded",
       map_start: "map start locked",
       radar_start: "radar start locked",

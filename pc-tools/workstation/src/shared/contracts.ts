@@ -2655,6 +2655,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     nav2_goal_next_action: string;
     nav2_goal_next_action_plain: string;
     nav2_goal_minimal_precheck_plain: string;
+    nav2_goal_precheck_plain: string;
+    navigation_preflight_plain: string;
     nav2_goal_execution_mode_label: string;
     map_start: "map start locked";
     radar_start: "radar start locked";

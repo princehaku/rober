@@ -5733,13 +5733,16 @@ function lockedBoundary(
   const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime);
   const keyboardNextAction = "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
   const keyboardStopTriggers = ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"];
+  const nav2MinimalPrecheckPlain = "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。";
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",
     cmd_vel_topic: "/cmd_vel",
     nav2_goal: "Nav2 NavigateToPose locked",
     ...nav2GoalBoundaryGuidance(proof, nav2),
-    nav2_goal_minimal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。",
+    nav2_goal_minimal_precheck_plain: nav2MinimalPrecheckPlain,
+    nav2_goal_precheck_plain: nav2MinimalPrecheckPlain,
+    navigation_preflight_plain: nav2MinimalPrecheckPlain,
     map_start: "map start locked",
     radar_start: "radar start locked",
     keyboard_control: "bounded repeating manual pulse gated",

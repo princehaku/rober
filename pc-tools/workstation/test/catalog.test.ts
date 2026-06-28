@@ -4052,6 +4052,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线");
       expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("nav2_map_not_consumed");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_service_unavailable");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_not_attempted");
@@ -6028,6 +6030,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线 action 成功，但同窗口 wheel raw L/R=0/0 未非零。");
       expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
+      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 pwm，下次 ros");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线");
       expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_ros_rerun_after_pwm");
