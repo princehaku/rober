@@ -2310,6 +2310,9 @@ function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string
   if (baseFeedbackSamplesPending.value) {
     return "轮速：正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。";
   }
+  if (summary.robot_api_connection.blocked_reasons.some((reason) => reason.startsWith("base_status:") || reason.startsWith("base_feedback_samples_latest:"))) {
+    return "轮速：当前底盘反馈读取超时；旧 L/R 不能当当前轮速结论，先刷新当前轮速（只读），或检查串口占用、底盘供电和模式。";
+  }
   const base = summary.readback_summary.base;
   if (base.current_feedback_read_status === "read_error") {
     const reason = base.current_feedback_failure_reason && !["", "not_loaded"].includes(base.current_feedback_failure_reason)
