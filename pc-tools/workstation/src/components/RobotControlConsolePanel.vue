@@ -1743,6 +1743,32 @@ const plainCameraSharedPreviewReadback = computed(() => {
   return parts.length > 0 ? `共享预览事实：${parts.join("；")}。` : "";
 });
 
+const plainCameraWysiwygReadback = computed(() => {
+  // 后端 camera_wysiwyg 是“当前画面到底有没有可见帧”的权威口径；和浏览器本页绘制状态分开展示。
+  const camera = robotSummary.value?.readback_summary.camera;
+  if (!camera) {
+    return "";
+  }
+  const status = (camera.camera_wysiwyg_status_plain ?? "").trim();
+  if (!status || ["not_loaded", "none"].includes(status)) {
+    return "";
+  }
+  const nextAction = (camera.camera_wysiwyg_next_action_plain ?? "").trim();
+  const cleanStatus = status
+    .replace(/[。；\s]+$/g, "")
+    .replace(/画面已可见/g, "已经看到画面")
+    .replace(/画面未可见/g, "画面未显示")
+    .replace(/画面可见/g, "已经看到画面");
+  const cleanNext = nextAction
+    .replace(/[。；\s]+$/g, "")
+    .replace(/画面已可见/g, "已经看到画面")
+    .replace(/画面未可见/g, "画面未显示")
+    .replace(/画面可见/g, "已经看到画面");
+  return cleanNext && !["not_loaded", "none"].includes(cleanNext)
+    ? `画面事实：${cleanStatus}。下一步：${cleanNext}。`
+    : `画面事实：${cleanStatus}。`;
+});
+
 const cameraFirstFrameProbeSummary = computed(() => {
   // 首帧探针是高级诊断结果：只说明底层 camera readback，不升级为实时图传成功。
   if (cameraFirstFrameProbePending.value) {
@@ -12246,6 +12272,7 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="cameraSummary.state !== '失败'" class="panel-note">{{ cameraSummary.hint }}</p>
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
+          <p v-if="plainCameraWysiwygReadback" class="panel-note" data-testid="robot-camera-wysiwyg-readback">{{ plainCameraWysiwygReadback }}</p>
           <p v-if="plainCameraCachedFrameStatus" class="panel-note" data-testid="robot-camera-cached-frame-status">{{ plainCameraCachedFrameStatus }}</p>
           <p v-if="plainCameraSharedPreviewReadback" class="panel-note" data-testid="robot-camera-shared-preview-readback">{{ plainCameraSharedPreviewReadback }}</p>
           <p class="panel-note" data-testid="robot-camera-shared-preview-status">{{ plainCameraSharedPreviewStatus }}</p>

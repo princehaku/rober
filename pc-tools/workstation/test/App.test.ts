@@ -4031,6 +4031,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("还没有打开实时画面。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-readback"]').text()).toBe("画面事实：画面未显示：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。下一步：打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-readback"]').text()).toBe("共享预览事实：共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看；当前没有实时画面；页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。");
     const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
     expect(mapPanel.exists()).toBe(true);

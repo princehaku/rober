@@ -3947,6 +3947,13 @@ USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。�
 summary/status/readback 也同步说明“多个页面复用同一条上游流，未出帧前不当作画面可见”。该变化只修正
 只读共享预览口径，不新开独占采集、不重启相机、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 06:30 CST 起，普通首屏实时画面卡片新增 `画面事实` 行，直接消费
+`readback_summary.camera.camera_wysiwyg_status_plain/camera_wysiwyg_next_action_plain`。它和已有
+`画面状态`、`共享预览事实` 分层显示：`画面状态` 说明本页浏览器是否绘制帧，`共享预览事实` 说明多页面共用同一条上游流，
+`画面事实` 说明后端 readback 对当前可见帧的 WYSIWYG 结论；展示层会把 `画面未可见/画面可见` 转成
+`画面未显示/已经看到画面`，避免普通首屏误读。该变化只展示 summary，不新开相机上游、不重启 camera
+service、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 02:35 起，Robot Control summary 的 `safe_command_boundary` 新增最小门禁白话字段：
 `nav2_goal_minimal_precheck_plain`、`keyboard_minimal_precheck_plain`、
 `free_roam_motion_minimal_precheck_plain` 和 `free_roam_mapping_acceptance_plain`。
