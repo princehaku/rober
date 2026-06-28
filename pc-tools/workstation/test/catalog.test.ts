@@ -7325,6 +7325,109 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary treats relay first-frame total timeout as source failure when camera health times out", async () => {
+    // live 7001 形态：共享预览最近失败保留原始 first_frame_total_timeout；summary 不能退回 fetch_failed。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.status", "loaded"),
+      },
+      "/api/map/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed"),
+      },
+      "/api/localize/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "blocked_with_root_cause"),
+      },
+      "/api/nav2/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven"),
+      },
+      "/api/nav2/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven"),
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_goal_execution_latest", "not_proven"),
+      },
+      "/api/operator/report": {
+        payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded"),
+      },
+      "/api/free-roam/autonomy/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+      },
+      "/api/camera/health": {
+        delay_ms: 300,
+        payload: safePayload("trashbot.upper_robot_api.v1.camera_health", "ready"),
+      },
+      "/api/camera/devices": {
+        payload: safePayload("trashbot.upper_robot_api.v1.camera_devices", "devices_ready"),
+      },
+      "/api/radar/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "loaded"),
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_scan_proof_latest", "scan_stale"),
+      },
+      "/api/radar/raw-packet-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_raw_packet_proof_latest", "raw_packet_not_proven"),
+      },
+      "/api/base/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded"),
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples", "loaded"),
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl, null, {
+        client_count: 0,
+        upstream_active: false,
+        content_type_loaded: false,
+        cached_frame_loaded: false,
+        cached_frame_age_ms: null,
+        shared_capture: true,
+        exclusive_camera_claim: false,
+        last_failure_reason: "first_frame_total_timeout",
+        last_remote_http_status: 502,
+        last_failure_at_ms: 1782652235202,
+        last_error_payload: {
+          failure_reason: "first_frame_total_timeout",
+          first_frame_format_attempts: [
+            { label: "MJPG@640x480@30", status: "first_frame_unreadable" },
+            { label: "YUYV@640x480@22", status: "first_frame_unreadable" },
+            { label: "default@current", status: "first_frame_unreadable" },
+          ],
+        },
+        source_diagnosis_status: "uvc_no_frame_not_exclusive",
+        source_diagnosis_plain_hint: "不是页面独占：not_loaded 当前没人占用，但 UVC 设备没有输出视频帧。",
+        source_diagnosis_next_action: "check_usb_camera_input_power_or_known_good_uvc",
+        source_diagnosis_not_exclusive: "true",
+      }, { readbackTimeoutMs: 50 });
+
+      expect(summary.read_endpoints.find((item) => item.id === "camera_health")).toEqual(expect.objectContaining({
+        request_status: "fetch_failed",
+        blocked_reasons: ["fetch_timeout_50ms"],
+      }));
+      expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+      expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
+      expect(summary.readback_summary.camera.source_failure_reason).toBe("first_frame_total_timeout");
+      expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("first_frame_total_timeout");
+      expect(summary.readback_summary.camera.shared_preview_last_remote_http_status).toBe("502");
+      expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("first_frame_total_timeout");
+      expect(summary.readback_summary.camera.last_offer_format_attempts_summary).toBe("MJPG@640x480@30 无首帧；YUYV@640x480@22 无首帧；default@current 无首帧");
+      expect(summary.safe_to_control).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary exposes partial map radar overlay when scan points exist but map pose is missing", async () => {
     // 当前 live 形态会读到局部 scan 点，但没有机器人 map pose；summary 必须把“局部点，不贴地图”结构化暴露。
     const safePayload = (schema: string, status = "loaded") => ({

@@ -3825,3 +3825,11 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 `source_diagnosis_not_exclusive`。这让 PC、curl 和后进浏览器不用解析深层 JSON，也能直接看到
 “共享预览不是浏览器独占；当前 `/dev/video1` DV20 UVC 无首帧”的事实。该 health alias 只复制只读诊断，
 不打开摄像头、不重启 camera service、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 21:17 起，Robot Control summary 也会把共享 MJPEG relay 最近失败里的原始
+`first_frame_total_timeout`、`capture_read_returned_false` 等首帧失败 token 归一到
+`readback_summary.camera.status=source_first_frame_failed`，并补齐
+`source_readiness=first_frame_failed` 与 `source_failure_reason=first_frame_total_timeout`。
+这样即使 `/api/camera/health` 在 summary 短读取窗口内超时，普通首屏仍显示“不是页面独占，UVC 源头无首帧”，
+不会退回成 `fetch_failed/not_loaded`。该变化只消费 PC Node 已有 relay/status 只读材料，不新开第二条相机上游，
+不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

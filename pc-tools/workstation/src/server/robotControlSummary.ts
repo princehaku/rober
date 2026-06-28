@@ -1582,8 +1582,20 @@ function cameraSummaryFromReadbacks(
       : "starting_local_peer"
     : "idle_not_started";
   const rawHealthStatus = healthReadback?.status ?? "not_loaded";
+  const relayLastFailureReason = asString(mjpegRelayOverlay?.last_failure_reason, "");
+  const lastOfferFailureReason = asString(lastOfferError?.failure_reason, "");
+  const relayFirstFrameFailureReason = CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(relayLastFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number])
+    ? relayLastFailureReason
+    : CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(lastOfferFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number])
+      ? lastOfferFailureReason
+      : "";
+  const relayHasCameraFirstFrameFact = Boolean(
+    mjpegRelayOverlay?.last_failure_reason === "camera_source_first_frame_failed"
+    || relayFirstFrameFailureReason
+    || mjpegRelayOverlay?.source_diagnosis_status === "uvc_no_frame_not_exclusive",
+  );
   const healthReadFailedButRelayHasCameraFact = ["fetch_failed", "bad_json", "not_object"].includes(healthReadback?.request_status ?? "")
-    && mjpegRelayOverlay?.last_failure_reason === "camera_source_first_frame_failed";
+    && relayHasCameraFirstFrameFact;
   const cameraStatus = probeVisibleContentObserved && ["", "not_loaded", "source_not_probed", "source_first_frame_failed"].includes(rawHealthStatus)
     ? "ready"
     : healthReadFailedButRelayHasCameraFact
@@ -1596,11 +1608,17 @@ function cameraSummaryFromReadbacks(
   const resolvedSourceReadiness = cameraStatus === "source_first_frame_failed" && sourceReadiness !== "first_frame_observed"
     ? "first_frame_failed"
     : sourceReadiness;
+  const resolvedSourceFailureReason = cameraStatus === "source_first_frame_failed"
+    && ["", "none", "not_loaded"].includes(sourceFailureReason)
+    && relayFirstFrameFailureReason
+    ? relayFirstFrameFailureReason
+    : sourceFailureReason;
   const sourceFirstFrameFailedForSharedPreview = Boolean(
     cameraStatus === "source_first_frame_failed"
     || resolvedSourceReadiness === "first_frame_failed"
-    || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(sourceFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number])
-    || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(asString(lastOfferError?.failure_reason, "") as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number]),
+    || relayHasCameraFirstFrameFact
+    || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(resolvedSourceFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number])
+    || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(lastOfferFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number]),
   );
   const selectedName = cameraDisplayDeviceName(selectedCandidate.selected_name) || "摄像头";
   const sourceUsageLooksFree = ["not_in_use", ""].includes(asString(sourceUsage?.status, ""))
@@ -1696,7 +1714,7 @@ function cameraSummaryFromReadbacks(
       : compactValueText(selectedCandidate.selected_sibling_video_node_count),
     // 最终 status 若已由 health/relay 判定为无首帧，readiness 也必须同口径，避免首屏和高级诊断互相矛盾。
     source_readiness: resolvedSourceReadiness,
-    source_failure_reason: sourceFailureReason,
+    source_failure_reason: resolvedSourceFailureReason,
     source_diagnosis_status: derivedSourceDiagnosis.status,
     source_diagnosis_plain_hint: derivedSourceDiagnosis.plain_hint,
     source_diagnosis_next_action: derivedSourceDiagnosis.next_action,
