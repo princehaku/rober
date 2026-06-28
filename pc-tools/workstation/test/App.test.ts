@@ -3795,7 +3795,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("去键盘");
     expect(firstScreenText).toContain("轮速记录");
     expect(firstScreenText).toContain("试动按钮已锁定：先勾选安全确认。");
-    expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。");
+    expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时可让雷达看到前后变化；这只影响运动/建图材料，不阻塞键盘手控。");
+    expect(firstScreenText).not.toContain("之后键盘手控才会解锁");
     expect(firstScreenText).toContain("行程操作");
     expect(firstScreenText).toContain("先勾选现场安全确认，再用主按钮准备或执行行程。");
     expect(firstScreenText).toContain("先勾选确认");

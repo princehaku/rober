@@ -8190,10 +8190,10 @@ const plainWheelReadbackSummary = computed(() => {
 });
 
 const plainLidarMotionRecordSummary = computed(() => {
-  // LiDAR delta 是试动后的运动证据；普通首屏只说明下一步，不展示后端字段名。
+  // LiDAR delta 是试动后的材料证据；键盘/底盘能否低速移动只看安全确认和手控 gate。
   if (plainFirstJogLidarDeltaReady.value) {
     return plainWheelEvidenceSaveResult.value?.proxy_status === "report_forwarded" && plainWheelEvidenceSaveResult.value.status !== "blocked"
-      ? "雷达移动记录已随轮速记录保存；后续键盘手控可复用。"
+      ? "雷达移动记录已随轮速记录保存；可作为运动/建图材料复用。"
       : "雷达移动记录已拿到：保存轮速记录时会一起保存。";
   }
   if (!operatorMaterialMissingFields.value.includes("physical_motion_lidar_delta_proven")) {
@@ -8201,12 +8201,12 @@ const plainLidarMotionRecordSummary = computed(() => {
   }
   const gaps = plainFirstJogResult.value?.motion_evidence_gaps ?? [];
   if (gaps.includes("physical_motion_lidar_delta_not_proven")) {
-    return "雷达移动记录还没拿到：已试动但雷达前后变化未通过，确认雷达已运行、现场空间足够后重试。";
+    return "雷达移动记录还没拿到：已试动但雷达前后变化未通过；这不阻塞键盘手控，只影响运动/建图材料，确认雷达已运行、现场空间足够后可重试。";
   }
   if (effectiveLidarReadback.value?.lifecycle_running === "true") {
-    return "雷达移动记录还没拿到：试动时需要雷达看到前后变化，之后键盘手控才会解锁。";
+    return "雷达移动记录还没拿到：试动时可让雷达看到前后变化；这只影响运动/建图材料，不阻塞键盘手控。";
   }
-  return "雷达移动记录还没拿到：先确认雷达已运行，再试动读取移动变化。";
+  return "雷达移动记录还没拿到：需要时先确认雷达已运行，再试动读取移动变化；这不阻塞底盘试动或键盘手控。";
 });
 
 const plainFirstJogWheelEvidenceReady = computed(() => {
