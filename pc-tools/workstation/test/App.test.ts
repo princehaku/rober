@@ -1443,6 +1443,7 @@ const fixtures: Record<string, unknown> = {
     source_diagnosis_not_exclusive: "not_loaded",
     preview_status: "streaming",
     preview_plain_hint: "共享实时画面已有缓存帧，多个页面复用同一条上游流。",
+    next_action_plain: "继续监看共享实时画面。",
     preview_next_action: "continue_monitoring_shared_preview",
     preview_next_action_plain: "继续监看共享实时画面。",
     preview_visible_status: "visible_cached_frame",

@@ -11562,6 +11562,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.has_recent_frame).toBe(statusBody.cached_frame_loaded);
       expect(statusBody.status).toBe(statusBody.preview_status);
       expect(statusBody.plain_hint).toBe(statusBody.preview_plain_hint);
+      expect(statusBody.next_action_plain).toBe(statusBody.preview_next_action_plain);
       expect(statusBody.preview_visible_status).toBe("visible_cached_frame");
       expect(statusBody.preview_visible_plain).toBe("当前有共享实时画面缓存帧；新页面复用同一条上游流。");
       expect(statusBody.camera_wysiwyg_status_plain).toBe("画面已可见：共享实时画面已有缓存帧，多个页面复用同一条上游流。");
@@ -11645,6 +11646,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_not_exclusive).toBe("not_loaded");
       expect(statusBody.status).toBe("idle_not_started");
       expect(statusBody.plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
+      expect(statusBody.next_action_plain).toBe("打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
       expect(statusBody.preview_status).toBe("idle_not_started");
       expect(statusBody.preview_plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
       expect(statusBody.preview_next_action).toBe("auto_join_shared_mjpeg_preview");
@@ -11740,6 +11742,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.preview_status).toBe("source_first_frame_failed");
       expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(statusBody.next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.preview_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.preview_visible_status).toBe("not_visible_source_first_frame_failed");
       expect(statusBody.preview_visible_plain).toBe("当前没有实时画面；不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");

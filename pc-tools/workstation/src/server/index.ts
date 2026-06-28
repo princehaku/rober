@@ -1760,6 +1760,7 @@ function cameraMjpegStatusResponse(
     // status/plain_hint 是 preview_* 的顶层别名，方便现场脚本直接读共享画面是否可见。
     status: previewStatus,
     plain_hint: previewGuidance.plain_hint,
+    next_action_plain: previewGuidance.next_action_plain,
     preview_status: previewStatus,
     preview_plain_hint: previewGuidance.plain_hint,
     preview_next_action: previewGuidance.next_action,
