@@ -2383,6 +2383,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       status: string;
       devices_status: string;
       preview_status: RobotControlPreviewStatus;
+      preview_plain_hint: string;
+      preview_next_action: string;
       shared_preview_client_count: string;
       shared_preview_upstream_active: string;
       shared_preview_content_type_loaded: string;

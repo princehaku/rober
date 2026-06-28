@@ -1266,6 +1266,45 @@ function cameraOwnerFreeText(selectedName: string): string {
   return /[A-Za-z0-9]$/.test(selectedName) ? `${selectedName} 当前没人占用` : `${selectedName}当前没人占用`;
 }
 
+function cameraSummaryPreviewGuidance(
+  previewStatus: RobotControlSummaryResponse["readback_summary"]["camera"]["preview_status"],
+  sourceFirstFrameFailed: boolean,
+  sourceDiagnosis: { plain_hint: string; next_action: string },
+): { plain_hint: string; next_action: string } {
+  // summary 是普通首屏的主入口；这里把高级诊断压成“现在有没有画面”和“下一步”。
+  if (previewStatus === "streaming") {
+    return {
+      plain_hint: "共享实时画面已有缓存帧，多个页面复用同一条上游流。",
+      next_action: "continue_monitoring_shared_preview",
+    };
+  }
+  if (sourceFirstFrameFailed) {
+    const plainHint = sourceDiagnosis.plain_hint && !["not_loaded", "none"].includes(sourceDiagnosis.plain_hint)
+      ? sourceDiagnosis.plain_hint
+      : "不是页面独占：UVC 设备没有输出视频帧。";
+    const nextAction = sourceDiagnosis.next_action && !["not_loaded", "none"].includes(sourceDiagnosis.next_action)
+      ? sourceDiagnosis.next_action
+      : "check_usb_camera_input_power_or_known_good_uvc";
+    return { plain_hint: plainHint, next_action: nextAction };
+  }
+  if (["starting_local_peer", "connecting_offer_posted"].includes(previewStatus)) {
+    return {
+      plain_hint: "共享实时画面正在等待首帧；返回前不能把黑框当作画面可见。",
+      next_action: "wait_or_run_first_frame_probe",
+    };
+  }
+  if (previewStatus === "start_failed" || previewStatus === "peer_cleanup_failed") {
+    return {
+      plain_hint: "共享实时画面打开或清理失败；先看失败原因，再重试共享预览。",
+      next_action: "inspect_shared_preview_failure_and_retry",
+    };
+  }
+  return {
+    plain_hint: "实时画面未打开；点击打开后才会接入共享预览。",
+    next_action: "open_shared_preview_when_needed",
+  };
+}
+
 function cameraDeviceCandidateRole(candidate: JsonRecord | null): string {
   // devices 端点只有布尔能力字段时，PC 也要给普通用户稳定的“这是画面节点还是元数据节点”。
   const explicitRole = asString(candidate?.selected_role ?? candidate?.role, "");
@@ -1708,11 +1747,14 @@ function cameraSummaryFromReadbacks(
       ? compactValueText(healthReadback.http_status)
       : "none"
     : compactValueText(mjpegRelayOverlay.last_remote_http_status);
+  const previewGuidance = cameraSummaryPreviewGuidance(sharedPreviewStatus, sourceFirstFrameFailedForSharedPreview, derivedSourceDiagnosis);
   return {
     status: cameraStatus,
     devices_status: devicesReadback?.status ?? "not_loaded",
     // MJPEG relay 状态来自 PC Node 内存表；它只说明共享上游是否存在，不证明画面像素已经可见。
     preview_status: sharedPreviewStatus,
+    preview_plain_hint: previewGuidance.plain_hint,
+    preview_next_action: previewGuidance.next_action,
     shared_preview_client_count: compactValueText(mjpegRelayOverlay?.client_count ?? 0),
     shared_preview_upstream_active: compactValueText(mjpegRelayOverlay?.upstream_active === true),
     shared_preview_content_type_loaded: compactValueText(mjpegRelayOverlay?.content_type_loaded === true),
@@ -4316,6 +4358,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         status: "not_loaded",
         devices_status: "not_loaded",
         preview_status: "idle_not_started",
+        preview_plain_hint: "实时画面未打开；点击打开后才会接入共享预览。",
+        preview_next_action: "open_shared_preview_when_needed",
         shared_preview_client_count: "0",
         shared_preview_upstream_active: "false",
         shared_preview_content_type_loaded: "false",

@@ -4007,6 +4007,8 @@ describe("workstation fail-closed API contracts", () => {
         goal_execution_response_generated_at_ms: expect.any(String),
       });
       expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
+      expect(summary.readback_summary.camera.preview_plain_hint).toBe("实时画面未打开；点击打开后才会接入共享预览。");
+      expect(summary.readback_summary.camera.preview_next_action).toBe("open_shared_preview_when_needed");
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
       expect(summary.readback_summary.camera.shared_preview_upstream_active).toBe("false");
       expect(summary.readback_summary.camera.shared_preview_content_type_loaded).toBe("false");
@@ -4178,6 +4180,8 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
       expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
+      expect(summary.readback_summary.camera.preview_plain_hint).toBe("不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(summary.readback_summary.camera.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
       expect(summary.readback_summary.camera.shared_preview_upstream_active).toBe("false");
       expect(summary.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
@@ -4228,6 +4232,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
       expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
       expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(summary.readback_summary.camera.preview_plain_hint).toBe("不是页面独占：共享 relay 已证明 UVC 没有输出首帧。");
+      expect(summary.readback_summary.camera.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
@@ -10951,6 +10957,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(Number(summaryBody.readback_summary.camera.shared_preview_last_failure_at_ms)).toBeGreaterThan(0);
       expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
       expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summaryBody.readback_summary.camera.preview_plain_hint).toBe(summaryBody.readback_summary.camera.source_diagnosis_plain_hint);
+      expect(summaryBody.readback_summary.camera.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(3);
       expect(mjpegRequestCount).toBe(0);
@@ -11042,6 +11050,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("不是页面独占");
       expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("UVC 设备没有输出视频帧");
       expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summaryBody.readback_summary.camera.preview_plain_hint).toBe(summaryBody.readback_summary.camera.source_diagnosis_plain_hint);
+      expect(summaryBody.readback_summary.camera.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBeGreaterThanOrEqual(2);
       expect(mjpegRequestCount).toBe(0);
