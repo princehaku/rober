@@ -5116,7 +5116,7 @@ const plainKeyboardControlGuide = computed(() => {
   // 普通首屏需要说明所有自动停止触发和后端边界，避免把连续手控误解成无限时长发车。
   const intervalSeconds = (keyboardJogIntervalMs.value / 1000).toFixed(2).replace(/0$/, "");
   const pulseSeconds = (keyboardJogDurationMs.value / 1000).toFixed(2).replace(/0$/, "");
-  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会通过 ROS/T=13 低速入口持续移动，约每 ${intervalSeconds} 秒发送 ${pulseSeconds} 秒低速脉冲，最高 ${manualSpeedLimit.value} m/s、单次上限 ${manualDurationLimit.value} ms；松开、窗口失焦或切页面都会停。`;
+  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会通过 ROS/T=13 低速入口持续移动，约每 ${intervalSeconds} 秒发送 ${pulseSeconds} 秒低速脉冲，最高 ${manualSpeedLimit.value} m/s、单次上限 ${manualDurationLimit.value} ms；松开、拖出按钮、窗口失焦或切页面都会停。`;
 });
 
 function claimWithRefReady(value: string | undefined): boolean {
@@ -11804,7 +11804,7 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="plain-free-roam-hint">{{ plainFreeRoamMappingSummary.hint }}</p>
           <p class="panel-note" data-testid="plain-free-roam-drive-status">{{ plainFreeRoamDriveStatus }}</p>
           <p class="panel-note" data-testid="plain-free-roam-sweep-plan-summary">{{ plainFreeRoamSweepPlanSummary }}</p>
-          <p class="panel-note">按住方向键或 W/A/S/D 移动，松开即停；保存后刷新地图画面检查效果。</p>
+          <p class="panel-note">按住方向键或 W/A/S/D 移动，松开、拖出按钮或取消都会停；保存后刷新地图画面检查效果。</p>
           <div class="keyboard-direction-pad" data-testid="plain-free-roam-direction-pad">
             <button
               type="button"
