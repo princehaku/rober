@@ -7309,6 +7309,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_status).toBe("loaded");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toBe("雷达点已按当前扫描和小车地图位置贴到地图。");
       expect(summary.readback_summary.map.radar_overlay_next_action).toBe("continue_monitoring_map_radar_overlay");
+      expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("继续观察地图雷达层。");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("none");
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toBe("none");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("3");
@@ -7815,6 +7816,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toContain("已有雷达来源点 65 个");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toContain("当前不贴到地图");
       expect(summary.readback_summary.map.radar_overlay_next_action).toBe("start_radar_then_refresh_map_preview");
+      expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toContain("雷达扫描已过期");
@@ -9288,6 +9290,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_status: string;
         radar_overlay_plain_hint: string;
         radar_overlay_next_action: string;
+        radar_overlay_next_action_plain: string;
         radar_overlay_count: number;
         radar_overlay_source_count: number | null;
         radar_overlay_frame_id: string;
@@ -9296,6 +9299,7 @@ describe("workstation fail-closed API contracts", () => {
           overlay_status: string;
           plain_hint: string;
           next_action: string;
+          next_action_plain: string;
           scan_preview_point_count: number;
           scan_preview_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
           robot_pose: null | { frame_id: string };
@@ -9311,11 +9315,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.overlay_status).toBe("partial");
       expect(body.radar_overlay.plain_hint).toContain("小车地图位置未读到");
       expect(body.radar_overlay.next_action).toBe("refresh_localization_then_radar_scan");
+      expect(body.radar_overlay.next_action_plain).toBe("先刷新定位，再刷新雷达扫描和地图画面。");
       expect(body.radar_overlay.scan_preview_point_count).toBe(1);
       expect(body.radar_overlay.scan_preview_points[0]).toEqual(expect.objectContaining({ x_m: 0.8, y_m: 0.1, frame_id: "laser_frame" }));
       expect(body.radar_overlay_status).toBe(body.radar_overlay.overlay_status);
       expect(body.radar_overlay_plain_hint).toBe(body.radar_overlay.plain_hint);
       expect(body.radar_overlay_next_action).toBe(body.radar_overlay.next_action);
+      expect(body.radar_overlay_next_action_plain).toBe(body.radar_overlay.next_action_plain);
       expect(body.radar_overlay_count).toBe(body.radar_overlay.scan_preview_point_count);
       expect(body.radar_overlay_points[0]).toEqual(expect.objectContaining({ x_m: 0.8, y_m: 0.1, frame_id: "laser_frame" }));
       expect(body.radar_overlay_source_count).toBe(65);
@@ -9438,6 +9444,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_status: string;
         radar_overlay_plain_hint: string;
         radar_overlay_next_action: string;
+        radar_overlay_next_action_plain: string;
         radar_overlay_count: number;
         radar_overlay_source_count: number | null;
         radar_overlay_frame_id: string;
@@ -9447,6 +9454,7 @@ describe("workstation fail-closed API contracts", () => {
           status: string;
           plain_hint: string;
           next_action: string;
+          next_action_plain: string;
           scan_preview_point_count: number;
           scan_preview_source_point_count: number | null;
           scan_preview_frame_id: string;
@@ -9468,6 +9476,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.plain_hint).toContain("已有雷达来源点 65 个");
       expect(body.radar_overlay.plain_hint).toContain("当前不贴到地图");
       expect(body.radar_overlay.next_action).toBe("start_radar_then_refresh_map_preview");
+      expect(body.radar_overlay.next_action_plain).toBe("先启动雷达，再刷新地图画面。");
       expect(body.radar_overlay.scan_preview_point_count).toBe(0);
       expect(body.radar_overlay.scan_preview_points).toEqual([]);
       expect(body.radar_overlay.scan_preview_source_point_count).toBe(65);
@@ -9479,6 +9488,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay_status).toBe(body.radar_overlay.overlay_status);
       expect(body.radar_overlay_plain_hint).toBe(body.radar_overlay.plain_hint);
       expect(body.radar_overlay_next_action).toBe(body.radar_overlay.next_action);
+      expect(body.radar_overlay_next_action_plain).toBe(body.radar_overlay.next_action_plain);
       expect(body.radar_overlay_count).toBe(0);
       expect(body.radar_overlay_points).toEqual([]);
       expect(body.radar_overlay_source_count).toBe(65);

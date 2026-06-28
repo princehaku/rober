@@ -2014,6 +2014,7 @@ export interface RobotControlMapPreviewRadarOverlay {
   status: "loaded" | "partial" | "blocked" | "not_current" | "not_loaded";
   plain_hint: string;
   next_action: string;
+  next_action_plain: string;
   scan_preview_points: RobotApiScanPreviewPoint[];
   scan_preview_point_count: number;
   scan_preview_source_point_count: number | null;
@@ -2486,6 +2487,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       radar_overlay_status: string;
       radar_overlay_plain_hint: string;
       radar_overlay_next_action: string;
+      radar_overlay_next_action_plain: string;
       radar_overlay_blocked_reasons: string;
       radar_overlay_blocked_reason_labels: string;
       radar_overlay_scan_preview_point_count: string;
@@ -2928,6 +2930,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   radar_overlay_status: RobotControlMapPreviewRadarOverlay["overlay_status"];
   radar_overlay_plain_hint: string;
   radar_overlay_next_action: string;
+  radar_overlay_next_action_plain: string;
   radar_overlay_points: RobotApiScanPreviewPoint[];
   radar_overlay_count: number;
   radar_overlay_source_count: number | null;

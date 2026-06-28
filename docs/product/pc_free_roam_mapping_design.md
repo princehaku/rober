@@ -87,6 +87,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-28 04:55 起，`当前事实` 的雷达行在雷达未运行时也会显示旧 `/scan` 距离过期说明：
   例如“雷达未运行，旧 /scan 距离 0.04m，约 N 小时前，已过期，不贴到地图；旧雷达点 N 个已判定为不当前，未贴到地图”。
   这样雷达行、建图缺口和地图 marker 都能解释“有旧距离/旧点，但不是当前雷达”。
+- 2026-06-29 18:30 起，地图雷达 overlay 的下一步新增白话字段：
+  `radar_overlay_next_action_plain` / `next_action_plain` 会把启动雷达、刷新雷达扫描、刷新定位和刷新地图画面翻译成现场可执行短句。
+  普通首屏优先显示该字段，旧响应才 fallback 到本地 token 翻译；这样地图、雷达卡和直连 map preview 不再把内部
+  `start_radar_then_refresh_map_preview` 或 `refresh_radar_scan_for_map_overlay` 暴露给普通用户。
+  该变化只影响只读展示，不启动雷达、不刷新定位、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-26 12:15 起，如果自动扫图 start 成功后的只读雷达 proof refresh 失败，普通首屏扫图状态和地图扫图 marker
   会显示 `自动扫图已启动，雷达刷新失败：<原因>`，不再继续写成“地图和雷达监看中”。该状态只消费固定
   `/api/robot-control/radar/scan-proof/refresh` 回包，不自动重试、不停止自动扫图、不发送 manual、Nav2、delivery 或 `/cmd_vel`。

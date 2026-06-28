@@ -2808,6 +2808,7 @@ function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRa
     status: "not_loaded",
     plain_hint: explanation.plain_hint,
     next_action: explanation.next_action,
+    next_action_plain: explanation.next_action_plain,
     scan_preview_points: [],
     scan_preview_point_count: 0,
     scan_preview_source_point_count: null,
@@ -2830,6 +2831,7 @@ function mapPreviewRadarOverlayAliases(
   | "radar_overlay_status"
   | "radar_overlay_plain_hint"
   | "radar_overlay_next_action"
+  | "radar_overlay_next_action_plain"
   | "radar_overlay_points"
   | "radar_overlay_count"
   | "radar_overlay_source_count"
@@ -2840,6 +2842,7 @@ function mapPreviewRadarOverlayAliases(
     radar_overlay_status: radarOverlay.overlay_status,
     radar_overlay_plain_hint: radarOverlay.plain_hint,
     radar_overlay_next_action: radarOverlay.next_action,
+    radar_overlay_next_action_plain: radarOverlay.next_action_plain,
     radar_overlay_points: radarOverlay.points,
     radar_overlay_count: radarOverlay.count,
     radar_overlay_source_count: radarOverlay.source_count,
@@ -2868,13 +2871,14 @@ function mapRadarOverlayExplanation(
   blockedReasons: string[],
   sourcePointCount: number | null,
   robotPose: RobotApiMapPose | null,
-): Pick<RobotControlMapPreviewRadarOverlay, "plain_hint" | "next_action" | "blocked_reason_labels"> {
+): Pick<RobotControlMapPreviewRadarOverlay, "plain_hint" | "next_action" | "next_action_plain" | "blocked_reason_labels"> {
   const labels = [...new Set(blockedReasons.map(mapRadarOverlayReasonLabel).filter(Boolean))];
   const pointText = sourcePointCount !== null && sourcePointCount > 0 ? `已有雷达来源点 ${sourcePointCount} 个` : "未读到可用雷达点";
   if (status === "loaded") {
     return {
       plain_hint: "雷达点已按当前扫描和小车地图位置贴到地图。",
       next_action: "continue_monitoring_map_radar_overlay",
+      next_action_plain: "继续观察地图雷达层。",
       blocked_reason_labels: [],
     };
   }
@@ -2882,31 +2886,46 @@ function mapRadarOverlayExplanation(
     const hint = robotPose
       ? `${pointText}，但雷达点不完整；地图保留小车位置并等待新点。`
       : `${pointText}，但小车地图位置未读到；当前不能把雷达点贴到地图坐标。`;
+    const nextAction = robotPose ? "refresh_radar_scan_for_map_overlay" : "refresh_localization_then_radar_scan";
     return {
       plain_hint: hint,
-      next_action: robotPose ? "refresh_radar_scan_for_map_overlay" : "refresh_localization_then_radar_scan",
+      next_action: nextAction,
+      next_action_plain: robotPose
+        ? "刷新雷达扫描，再刷新地图画面。"
+        : "先刷新定位，再刷新雷达扫描和地图画面。",
       blocked_reason_labels: labels,
     };
   }
   if (status === "not_current") {
     const hasLifecycleStop = blockedReasons.some((reason) => reason.includes("radar_lifecycle_not_running_for_map_radar_overlay"));
     const hasStaleScan = blockedReasons.some((reason) => reason.includes("runtime_scan_stale_for_map_radar_overlay"));
+    const nextAction = hasLifecycleStop ? "start_radar_then_refresh_map_preview" : hasStaleScan ? "refresh_radar_scan_for_map_overlay" : "refresh_map_radar_overlay";
     return {
       plain_hint: `${pointText}，但${labels.join("、") || "雷达状态不是当前"}，所以当前不贴到地图。`,
-      next_action: hasLifecycleStop ? "start_radar_then_refresh_map_preview" : hasStaleScan ? "refresh_radar_scan_for_map_overlay" : "refresh_map_radar_overlay",
+      next_action: nextAction,
+      next_action_plain: hasLifecycleStop
+        ? "先启动雷达，再刷新地图画面。"
+        : hasStaleScan
+          ? "刷新雷达扫描，再刷新地图画面。"
+          : "刷新地图画面，让雷达点和地图来自同一轮读数。",
       blocked_reason_labels: labels,
     };
   }
   if (status === "blocked") {
+    const nextAction = blockedReasons.some((reason) => reason.includes("robot_pose_missing")) ? "refresh_localization_then_radar_scan" : "start_or_refresh_radar";
     return {
       plain_hint: `地图雷达层材料不足：${labels.join("、") || "未读到雷达或定位材料"}。`,
-      next_action: blockedReasons.some((reason) => reason.includes("robot_pose_missing")) ? "refresh_localization_then_radar_scan" : "start_or_refresh_radar",
+      next_action: nextAction,
+      next_action_plain: nextAction === "refresh_localization_then_radar_scan"
+        ? "先刷新定位，再刷新雷达扫描和地图画面。"
+        : "启动或刷新雷达后，再刷新地图画面。",
       blocked_reason_labels: labels,
     };
   }
   return {
     plain_hint: blockedReasons.length ? `地图雷达层未加载：${labels.join("、")}。` : "地图雷达层未加载。",
     next_action: "connect_robot_and_refresh_map_preview",
+    next_action_plain: "确认小车地址可访问后刷新地图画面。",
     blocked_reason_labels: labels,
   };
 }
@@ -2952,6 +2971,7 @@ async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOver
     status: overlayStatus,
     plain_hint: explanation.plain_hint,
     next_action: explanation.next_action,
+    next_action_plain: explanation.next_action_plain,
     scan_preview_points: visibleRadarPoints,
     scan_preview_point_count: visibleRadarPointCount,
     scan_preview_source_point_count: proofSummary.scan_preview_source_point_count,
@@ -4055,6 +4075,7 @@ function mapSummaryFromReadbacks(
     radar_overlay_status: radarOverlayStatus,
     radar_overlay_plain_hint: radarOverlayExplanation.plain_hint,
     radar_overlay_next_action: radarOverlayExplanation.next_action,
+    radar_overlay_next_action_plain: radarOverlayExplanation.next_action_plain,
     radar_overlay_blocked_reasons: radarOverlayBlockedReasons.join(",") || "none",
     radar_overlay_blocked_reason_labels: radarOverlayExplanation.blocked_reason_labels.join(",") || "none",
     radar_overlay_scan_preview_point_count: String(radarOverlayCurrent ? proof.scan_preview_point_count : 0),
@@ -4494,6 +4515,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         radar_overlay_status: "not_loaded",
         radar_overlay_plain_hint: "地图雷达层未加载。",
         radar_overlay_next_action: "connect_robot_and_refresh_map_preview",
+        radar_overlay_next_action_plain: "确认小车地址可访问后刷新地图画面。",
         radar_overlay_blocked_reasons: "not_loaded",
         radar_overlay_blocked_reason_labels: "not_loaded",
         radar_overlay_scan_preview_point_count: "0",

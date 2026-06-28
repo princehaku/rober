@@ -3437,17 +3437,27 @@ function plainRadarFreshnessLabel(
 function plainMapRadarNextActionText(): string {
   // 后端已经给出 overlay 下一步；这里转成普通用户能执行的地图提示，不触发任何雷达/运动请求。
   const nextAction = robotSummary.value?.readback_summary.map.radar_overlay_next_action;
+  const nextActionPlain = robotSummary.value?.readback_summary.map.radar_overlay_next_action_plain?.trim() ?? "";
   if (!nextAction || ["not_loaded", "none", "continue_monitoring_map_radar_overlay"].includes(nextAction)) {
     return "";
+  }
+  if (nextActionPlain) {
+    return `地图下一步：${nextActionPlain}`;
   }
   if (nextAction === "start_radar_then_refresh_map_preview") {
     return "地图下一步：先启动雷达，再刷新地图画面；旧雷达点不会贴到当前地图。";
   }
+  if (nextAction === "refresh_radar_scan_for_map_overlay") {
+    return "地图下一步：刷新雷达扫描，再刷新地图画面。";
+  }
   if (nextAction === "refresh_localization_then_radar_scan") {
     return "地图下一步：先刷新定位，再刷新雷达；没有小车地图位置时只显示局部点，不贴地图。";
   }
-  if (nextAction === "refresh_map_preview_after_radar_scan") {
+  if (nextAction === "refresh_map_preview_after_radar_scan" || nextAction === "refresh_map_radar_overlay") {
     return "地图下一步：刷新地图画面，让雷达点和地图来自同一轮读数。";
+  }
+  if (nextAction === "start_or_refresh_radar") {
+    return "地图下一步：启动或刷新雷达后，再刷新地图画面。";
   }
   return `地图下一步：${nextAction.replace(/_/g, " ")}。`;
 }
@@ -3455,17 +3465,27 @@ function plainMapRadarNextActionText(): string {
 function plainRadarCardNextActionText(): string {
   // 雷达卡也承接地图 overlay 的下一步；只提示 operator 去按固定按钮，不自动启动雷达或刷新地图。
   const nextAction = robotSummary.value?.readback_summary.map.radar_overlay_next_action;
+  const nextActionPlain = robotSummary.value?.readback_summary.map.radar_overlay_next_action_plain?.trim() ?? "";
   if (!nextAction || ["not_loaded", "none", "continue_monitoring_map_radar_overlay"].includes(nextAction)) {
     return "";
+  }
+  if (nextActionPlain) {
+    return `雷达下一步：${nextActionPlain}`;
   }
   if (nextAction === "start_radar_then_refresh_map_preview") {
     return "雷达下一步：先点启动雷达，再刷新地图画面；旧雷达点不会贴到当前地图。";
   }
+  if (nextAction === "refresh_radar_scan_for_map_overlay") {
+    return "雷达下一步：刷新雷达扫描，再刷新地图画面。";
+  }
   if (nextAction === "refresh_localization_then_radar_scan") {
     return "雷达下一步：先刷新定位，再刷新雷达；没有小车地图位置时只显示局部点。";
   }
-  if (nextAction === "refresh_map_preview_after_radar_scan") {
+  if (nextAction === "refresh_map_preview_after_radar_scan" || nextAction === "refresh_map_radar_overlay") {
     return "雷达下一步：刷新地图画面，让雷达点和地图来自同一轮读数。";
+  }
+  if (nextAction === "start_or_refresh_radar") {
+    return "雷达下一步：启动或刷新雷达后，再刷新地图画面。";
   }
   return `雷达下一步：${nextAction.replace(/_/g, " ")}。`;
 }

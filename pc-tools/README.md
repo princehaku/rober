@@ -99,6 +99,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 18:10 CST 起，`/api/camera/devices` 也使用 camera 慢读预算。该端点只做 v4l2/UVC 枚举，不创建 preview、offer 或 capture；并发 summary 刷新时即使设备枚举慢一拍，也不能把已经有 `camera_health.source_diagnosis=uvc_no_frame_not_exclusive` 的页面写成整车连接 degraded。普通用户仍看到“不是页面独占，检查 USB/输入/供电或换 known-good UVC”，不会因此发 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 18:30 CST 起，地图雷达 overlay 的下一步同时返回机器 token 和普通用户白话：`radar_overlay_next_action_plain` / `next_action_plain` 会把启动雷达、刷新雷达扫描、刷新定位、刷新地图画面等动作写成可执行短句。普通首屏优先显示白话字段，旧响应缺字段时才本地翻译 token，避免 live 的 `start_radar_then_refresh_map_preview`、`refresh_radar_scan_for_map_overlay` 等内部名字回到用户界面。该变化只修正只读 summary/map preview 和 UI 文案，不自动启动雷达、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、
