@@ -4456,19 +4456,19 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   RobotControlSummaryResponse["safe_command_boundary"],
   "nav2_goal_ready" | "nav2_goal_label" | "nav2_goal_blockers" | "nav2_goal_wheel_feedback_status" | "nav2_goal_next_action" | "nav2_goal_execution_mode_label"
 > {
-  // summary 只能证明路线读数和 map-frame 位姿，地图画面是否已渲染交给前端 WYSIWYG gate 判断。
+  // summary 只把路线读数作为硬条件；小车 map 位姿是 WYSIWYG 建议，不再阻塞最小发车确认。
   const blockers = [
     proof?.path_generated === true || proof?.path_generation_succeeded === true ? "" : "path_generation_not_observed",
     (proof?.path_point_count ?? 0) > 0 || (proof?.path_preview_point_count ?? 0) > 0 ? "" : "path_point_count_not_positive",
-    proof?.robot_pose ? "" : "robot_map_pose_not_observed",
   ].filter(Boolean);
   const ready = blockers.length === 0;
+  const poseHint = proof?.robot_pose ? "" : "；小车位置未显示时建议先重新定位或刷新地图";
   return {
     nav2_goal_ready: ready,
     nav2_goal_label: ready ? "路线读数已准备，等待地图画面确认" : "图上路线未就绪",
     nav2_goal_blockers: blockers,
     nav2_goal_wheel_feedback_status: "not_loaded",
-    nav2_goal_next_action: ready ? "勾选行程前安全确认后执行图上路线" : "先生成图上路线并读到小车地图位置",
+    nav2_goal_next_action: ready ? `勾选行程前安全确认后执行图上路线${poseHint}` : "先生成图上路线",
     nav2_goal_execution_mode_label: "not_loaded",
   };
 }
@@ -4549,7 +4549,7 @@ function nav2GoalBoundaryGuidance(
     const serviceRestoreActions = inactiveServiceNames.length
       ? [`${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}`]
       : [];
-    const routeReadinessActions = base.nav2_goal_ready ? [] : ["生成图上路线并读到小车地图位置"];
+    const routeReadinessActions = base.nav2_goal_ready ? [] : ["生成图上路线"];
     const routePrepActions = [
       ...serviceRestoreActions,
       ...routeReadinessActions,
@@ -4595,10 +4595,11 @@ function nav2GoalBoundaryGuidance(
     };
   }
   if (base.nav2_goal_ready) {
+    const poseHint = proof?.robot_pose ? "" : "；小车位置未显示时建议先重新定位或刷新地图";
     return {
       ...base,
       nav2_goal_wheel_feedback_status: "awaiting_route_execution",
-      nav2_goal_next_action: "勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R",
+      nav2_goal_next_action: `勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R${poseHint}`,
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
@@ -4607,7 +4608,7 @@ function nav2GoalBoundaryGuidance(
     nav2_goal_label: nav2StackNotRunning ? "自动驾驶服务未启动" : base.nav2_goal_label,
     nav2_goal_blockers: nav2ServiceBlockers,
     nav2_goal_next_action: inactiveServiceNames.length
-      ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再生成图上路线并读到小车地图位置`
+      ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再生成图上路线`
       : base.nav2_goal_next_action,
     nav2_goal_execution_mode_label: modeLabel,
   };

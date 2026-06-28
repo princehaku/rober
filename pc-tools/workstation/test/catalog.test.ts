@@ -4019,10 +4019,9 @@ describe("workstation fail-closed API contracts", () => {
         "planner_server_inactive",
         "path_generation_not_observed",
         "path_point_count_not_positive",
-        "robot_map_pose_not_observed",
       ]);
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线并读到小车地图位置");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("not_loaded");
       expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_safety_confirmation_only");
       expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);
@@ -4131,9 +4130,8 @@ describe("workstation fail-closed API contracts", () => {
         "nav2_stack_not_running",
         "path_generation_not_observed",
         "path_point_count_not_positive",
-        "robot_map_pose_not_observed",
       ]);
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先启动自动驾驶服务（不发车），再生成图上路线并读到小车地图位置");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先启动自动驾驶服务（不发车），再生成图上路线");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("雷达");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("相机");
     } finally {
@@ -4445,9 +4443,8 @@ describe("workstation fail-closed API contracts", () => {
         "controller_server_inactive",
         "path_generation_not_observed",
         "path_point_count_not_positive",
-        "robot_map_pose_not_observed",
       ]);
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复规划服务和控制服务，再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复规划服务和控制服务，再生成图上路线，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
       await robotApi.close();
@@ -4660,7 +4657,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复控制服务，再生成图上路线并读到小车地图位置，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行的非零底盘命令和 IMU 姿态变化，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复控制服务，再生成图上路线，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
       await robotApi.close();
@@ -7502,6 +7499,77 @@ describe("workstation fail-closed API contracts", () => {
       await robotApi.close();
     }
   }, 10_000);
+
+  it("keeps Nav2 route ready when only the robot map pose is missing", async () => {
+    // 小车地图位置是所见即所得提示；路线点已生成时，summary 不应再把它当作发车硬 blocker。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "ready_for_route",
+          map_once_observed: true,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 24,
+          path_preview_point_count: 24,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_proof_latest",
+          status: "not_proven",
+          amcl_pose_observed: false,
+          localization_tf_observed: false,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          status: "path_generated",
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 24,
+          path_preview_point_count: 24,
+          path_preview_frame_id: "map",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "active",
+          lifecycle_running: true,
+          lifecycle_state: "active",
+          latest_planner_active: true,
+          latest_controller_active: true,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.o3_proof_summary.robot_pose).toBeNull();
+      expect(summary.readback_summary.localization.robot_pose_status).toBe("not_observed");
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R；小车位置未显示时建议先重新定位或刷新地图");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("读到小车地图位置");
+    } finally {
+      await robotApi.close();
+    }
+  });
 
   it("Robot Control summary blocks ready Nav2 route when controller is inactive", async () => {
     // 路线、点数和 map pose 都 ready 时，controller inactive 仍必须是结构化 blocker，不能只藏在下一步文案里。

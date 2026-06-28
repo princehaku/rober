@@ -73,6 +73,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-28 09:03 CST 起，Nav2 图上路线执行请求未返回时，普通首屏会把自由移动、扫图记录、自动扫图和自由移动键盘入口统一锁成 `行程中`，下一步提示等待行程返回或先停止行程；即使按钮事件被强行触发，也不会调用 map start 或 free-roam autonomy start。
 
+2026-06-28 09:26 CST 起，PC summary 与普通首屏的行程口径对齐：只要路线已生成且点数大于 0，`nav2_goal_ready` 不再因为小车地图位置未显示而变成 false；页面仍会建议先重新定位或刷新地图，但这不再是发车前硬挡。真正执行仍必须勾现场安全确认，并走固定 `/api/robot-control/nav2/goal/execute`。
+
 2026-06-28 08:24 CST 起，轮速卡的 `试动读轮速` 普通入口不再因为缺现场画面材料而卡住：first-jog 材料足够时仍走固定 first-jog；材料不足但已勾现场安全确认时，退到已有固定底盘试动入口读取 wheel raw L/R。画面只影响旧 first-jog 材料和建图验收，不再作为底盘试动或轮速读取前置；该入口仍走 workstation `/api/robot-control/base/manual` 固定代理，不直连 `/cmd_vel`。
 
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机

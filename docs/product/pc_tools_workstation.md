@@ -132,8 +132,9 @@ pc-tools/workstation/
 - 2026-06-25 18:40 起，普通首屏地图 caption 会在路线存在时显示路线叠图状态：最新 no-motion planner path preview 已按真实地图 `origin/resolution/width/height` 转成蓝色 polyline 时显示 `路线已显示 N/M 个点`；路线已生成但地图画面未加载时显示 `路线已准备，刷新地图画面查看`；没有路线时不额外显示路线文案，保持默认首屏简洁。该 caption 只消费 `GET /api/robot-control/summary` 里的 `path_preview_points` 和只读 map preview，不调用 Nav2 execute、manual、keyboard、delivery、stop 或 `/cmd_vel`。
 - 2026-06-25 18:50 起，同一条 no-motion planner path preview 还会在地图上显示路线端点：有真实执行目标 marker 时只补 `起点`，没有执行目标时显示 `起点/终点`。端点 marker 来自 path 首尾点，只说明规划路线首尾，不代表机器人当前位置，也不会放开发车门禁或调用 Nav2 execute/manual/keyboard/delivery/`/cmd_vel`。
 - 2026-06-25 22:00 起，普通首屏“行程操作”在地图已显示路线点时，把可执行提示和红色按钮从泛化 `执行行程` 收敛为 `执行图上路线`，并在提示里写明“地图上已显示路线 N 个点”。这只让 operator 知道即将执行的是地图里看到的路线；实际执行仍走原固定 Nav2 execute 代理和后端定位/路线复查 gate，不自动发车、不调用 manual、keyboard、delivery、stop 或 `/cmd_vel`。
-- 2026-06-26 21:55 起，Robot Control summary 的 `safe_command_boundary` 增加 `nav2_goal_ready/nav2_goal_label/nav2_goal_blockers`，用当前只读 Nav2 proof 中的 path generated、path point count 和 map-frame robot pose 判断“路线读数已准备/未就绪”。该字段不证明浏览器地图画面已经显示当前路线；普通首屏仍必须由地图 overlay gate 决定是否显示 `执行图上路线`。该字段只改善 PC 首屏和高级诊断的可解释性，不把 `safe_to_control`、`primary_actions_enabled` 或 `robot_control_executed` 置 true；真正点击执行仍走固定 Nav2 execute 代理，并在发车前重新跑定位与路线 preflight。
-- 2026-06-27 12:56 起，普通首屏“当前事实”的行程行按最小发车前确认收敛：只读到路线点数时仍显示“路线读数已准备，先刷新地图画面”。2026-06-28 起地图已画出当前路线但没有小车 map 位姿时不再允许直接执行，改为显示“小车位置未显示，先重新定位或刷新地图后再执行”；只有当前路线和小车位置都可见时显示“图上路线可执行”。该事实条只翻译 readback 和地图 overlay，不自动执行 Nav2、不发送 manual/keyboard、delivery、stop 或 `/cmd_vel`。
+- 2026-06-26 21:55 起，Robot Control summary 的 `safe_command_boundary` 增加 `nav2_goal_ready/nav2_goal_label/nav2_goal_blockers`，用当前只读 Nav2 proof 中的 path generated 和 path point count 判断“路线读数已准备/未就绪”。该字段不证明浏览器地图画面已经显示当前路线；普通首屏仍必须由地图 overlay gate 决定是否显示 `执行图上路线`。该字段只改善 PC 首屏和高级诊断的可解释性，不把 `safe_to_control`、`primary_actions_enabled` 或 `robot_control_executed` 置 true；真正点击执行仍走固定 Nav2 execute 代理，并在发车前复核安全确认与固定白名单。
+- 2026-06-27 12:56 起，普通首屏“当前事实”的行程行按最小发车前确认收敛：只读到路线点数时仍显示“路线读数已准备，先刷新地图画面”。2026-06-28 起地图已画出当前路线但没有小车 map 位姿时，显示“小车位置未显示，建议先重新定位或刷新地图，但可执行当前图上路线”；只有当前路线和小车位置都可见时显示“图上路线可执行”。该事实条只翻译 readback 和地图 overlay，不自动执行 Nav2、不发送 manual/keyboard、delivery、stop 或 `/cmd_vel`。
+- 2026-06-28 09:26 CST 起，summary 的 `nav2_goal_ready` 与普通首屏保持一致：路线已生成且点数大于 0 时，小车 map 位姿未显示不再进入 `nav2_goal_blockers`，只在 `nav2_goal_next_action` 里提示建议重新定位或刷新地图。这样“自动驾驶为什么不能动”的主因不会再被误写成相机/雷达或 pose 硬挡；真正执行仍必须勾选现场安全确认，并走固定 `/api/robot-control/nav2/goal/execute`。
 - 2026-06-26 05:50 起，如果地图画面或地图 proof 正在刷新，即使旧画面上还显示路线，普通首屏也会把 `执行图上路线` 临时切成 `等待地图刷新` 并禁用按钮；行程状态和本轮进度同步提示“刷新完成后再执行”。该状态只等待只读 `/api/robot-control/map/preview` 或 `/api/robot-control/map/proof/refresh` 返回，避免按旧图发车，不自动执行 Nav2、不发送 manual、keyboard、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 07:35 CST 起，地图画面或地图 proof 刷新中时，普通首屏的行程前确认文案会明确写成“安全确认已完成；等待地图画面/状态刷新后再执行。这不是额外预检，是避免按旧地图发车。”这样现场仍只需要勾选一次安全确认；地图等待只属于所见即所得保护，不会恢复繁琐预检，也不会自动执行 Nav2、manual、keyboard、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 08:50 CST 起，普通首屏进一步把地图刷新等待从“行程前确认”语义里拆出来：勾选安全确认后只显示“地图画面同步完成后即可执行（当前等待地图画面/状态刷新）”。这保持发车前确认最小化，地图等待只作为所见即所得同步条件，不新增预检，也不自动执行 Nav2、manual、keyboard、delivery、stop 或 `/cmd_vel`。
@@ -3711,7 +3712,7 @@ PC Node 只读共享上游，而不是单独抢占摄像头；这只强化 7001 
 2026-06-27 23:35 起，Robot Control summary 的 `safe_command_boundary.nav2_goal_blockers`
 会把 `planner_server_active=false` 结构化为 `planner_server_inactive`。因此 live 同时出现路线未生成、robot map pose
 未读到、planner/controller inactive 时，普通 PC 和自动化脚本不再只能从中文 `当前事实` 推断 planner 缺口；
-`nav2_goal_next_action` 也会提示先生成图上路线、读到小车地图位置，并同时恢复 Nav2 planner/controller。
+`nav2_goal_next_action` 也会提示先生成图上路线，并同时恢复 Nav2 planner/controller；小车地图位置未显示只作为建议重新定位/刷新地图，不再作为路线 ready 硬 blocker。
 
 2026-06-27 23:39 起，普通首屏的自动驾驶诊断也消费同一 service blocker：
 旧 Nav2 action 已发非零底盘命令但 wheel raw L/R 仍为 `0/0` 时，如果 planner/controller 当前未 active，
