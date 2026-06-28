@@ -64,6 +64,10 @@ pc-tools/workstation/
 - 2026-06-26 发车前预检合同同步收敛为一个 `operator_safety_confirmed` 项，文案为“现场安全确认（人在旁边、周围安全、停止手段就绪）”。旧的 `operator_ready/clearance_confirmed/low_speed_only/not_autonomy_mode` 四项不再从 `safe_command_boundary.hil_checklist` 外露，普通 manual/键盘 pulse 仍只看 `confirm_hil_checklist=true`；更细的现场材料项继续留在默认关闭的高级 operator report 表单里，作为证据提交，不恢复成普通发车前置门禁。
 - 2026-06-26 13:55 起，普通首屏键盘区直接显示同一安全确认的效果：未勾时提示“勾选安全确认后即可启用；按住方向键才会动”，勾上后提示“安全确认已完成；现在可启用键盘，按住方向键才会动”。该提示只解释当前 gate，不自动启用键盘、不发送 manual/stop、Nav2、delivery 或 `/cmd_vel`。
 - 2026-06-26 23:59 起，Robot Control summary 的 `safe_command_boundary` 明确新增 `keyboard_control_start_ready=true` 与 `keyboard_control_label=键盘手控（勾确认后可启用）`。`keyboard_control_enabled=false` 仍表示 summary 本身没有武装键盘、没有发送 manual/stop；普通首屏必须继续要求本地安全确认和用户显式点击启用键盘，按住方向键/WASD 时才发 bounded repeating manual pulse。
+- 2026-06-28 22:42 起，Robot Control summary 的键盘合同进一步新增 `keyboard_control_status=start_ready` 与
+  `keyboard_control_next_action=勾选现场安全确认后点击启用键盘...`。这样 API 调试和普通界面不用把
+  `keyboard_control_enabled=false` 误读成键盘入口不可用；`enabled=false` 仍只表示本次 summary 没有武装本机键盘、没有发送
+  manual/stop，真实移动仍必须由 operator 勾安全确认、点击启用键盘并按住方向键触发。
 - 2026-06-27 13:16 起，普通首屏键盘区在安全确认后新增 `键盘轮速目标` 行：当前 wheel raw L/R 为 `0/0` 时直接显示“启用后按住方向键读取非零 L/R / 还不是非零证据”，启用键盘后切换为“按住方向键读取非零 L/R”。该行只消费 summary/base readback 和本地 armed 状态，不自动启用键盘、不发送 manual、stop、Nav2、delivery、free-roam 或 `/cmd_vel`。
 - 2026-06-27 17:59 起，普通首屏轮速卡片会把 `latest_feedback_status=stale` 或 `latest_t1001_observed_count=0` 翻译成“当前没有新鲜底盘反馈帧”，不再显示“已读到 0 帧”或隐藏轮速摘要。下一步明确为先点 `刷新当前轮速（只读）`，再低速试动或键盘按住读取非零 L/R。该判断只消费 summary/base readback，不调用 manual、keyboard pulse、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-28 05:31 CST 起，普通首屏 `当前事实` 会同步显示 `刷新当前轮速（只读）` 的 pending 状态：轮速只读样本请求未返回前显示“正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论”。该事实条只消费 PC 本地 pending 状态和固定 base feedback samples 只读代理，不调用 manual、keyboard pulse、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
