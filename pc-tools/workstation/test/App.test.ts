@@ -7668,6 +7668,9 @@ describe("App", () => {
           generated_at_ms: "1782150441201",
           response_generated_at_ms: "1782150442201",
           result_status: "succeeded",
+          nav2_goal_execution_proven: "false",
+          execution_proof_gap: "wheel_lr_nonzero_not_proven",
+          base_feedback_lr_nonzero_proven: "false",
           feedback_sample_count: "8",
           goal_frame_id: "map",
           goal_x: "0.8",
@@ -7704,13 +7707,13 @@ describe("App", () => {
     expect(startMarker.attributes("style")).toContain("left: 10%");
     expect(startMarker.attributes("style")).toContain("top: 90%");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；最近路线 3/15 个点仍按地图坐标显示。");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，真车未证明");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：路线返回成功并读到 8 次反馈，但真车执行未证明，刚刚；修复后重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-map-route-end-marker"]').exists()).toBe(false);
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
-    expect(marker.text()).toBe("已到达");
-    expect(marker.attributes("data-state")).toBe("已到达");
+    expect(marker.text()).toBe("到达未证明");
+    expect(marker.attributes("data-state")).toBe("到达未证明");
     expect(marker.attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
     expect(marker.attributes("style")).toContain("left: 80%");
     expect(marker.attributes("style")).toContain("top: 98%");
@@ -7733,11 +7736,12 @@ describe("App", () => {
     summaryFixture.o3_proof_summary.path_generated = true;
     summaryFixture.o3_proof_summary.path_generation_succeeded = true;
     summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
-    summaryFixture.readback_summary.nav2.goal_execution_proven = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_proven = "false";
     summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
     summaryFixture.readback_summary.nav2.goal_execution_evidence_ref = "o11-nav2-goal-execution-summary-fixture";
     summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
     summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "8";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
     summaryFixture.readback_summary.nav2.goal_execution_goal_frame_id = "map";
     summaryFixture.readback_summary.nav2.goal_execution_goal_x = "0.8";
     summaryFixture.readback_summary.nav2.goal_execution_goal_y = "0";
@@ -7772,13 +7776,13 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toBe("最近行程成功，反馈 8 次，刚刚；送达仍需现场确认。");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，真车未证明");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：路线返回成功并读到 8 次反馈，但真车执行未证明，刚刚；修复后重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toBe("最近行程成功，反馈 8 次，刚刚；真车执行未证明，需修复后重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("行程执行");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("已完成");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程未证明真车执行");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

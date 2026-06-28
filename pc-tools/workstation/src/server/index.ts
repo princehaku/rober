@@ -436,6 +436,14 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
       ?? latestPair?.raw_right ?? latestPair?.right_raw ?? latestPair?.R ?? latestPair?.right_speed,
     "not_observed",
   );
+  const executionStatus = shortValue(latestResult?.status ?? payload?.status);
+  const executionResultStatus = shortValue(payload?.result_status ?? latestResult?.result_status);
+  const executionSucceeded = executionStatus === "goal_succeeded" || executionResultStatus === "succeeded";
+  const executionProven = navGoalExecutionProvenValue(payload, latestResult);
+  const wheelProof = shortValue(baseFeedbackSummary?.wheel_feedback_lr_nonzero_proven, "false");
+  const executionProofGap = executionSucceeded && !executionProven
+    ? wheelProof === "true" ? "execution_proof_not_proven" : "wheel_lr_nonzero_not_proven"
+    : "none";
   const baseCommandModeCounts = (() => {
     // 真实上车 latest 可能只给 latest_nonzero_command.command_mode；PC 仍要把非零命令模式读成可见证据。
     const explicitCounts = baseCommandSummary?.command_mode_counts;
@@ -450,16 +458,17 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     return "{}";
   })();
   return {
-    status: shortValue(latestResult?.status ?? payload?.status),
+    status: executionStatus,
     evidence_ref: shortValue(payload?.evidence_ref ?? latestResult?.evidence_ref),
     generated_at_ms: shortValue(latestResult?.generated_at_ms ?? payload?.generated_at_ms),
     response_generated_at_ms: shortValue(payload?.generated_at_ms),
     completed_at_ms: shortValue(latestResult?.completed_at_ms ?? payload?.completed_at_ms),
-    nav2_goal_execution_proven: String(navGoalExecutionProvenValue(payload, latestResult)),
+    nav2_goal_execution_proven: String(executionProven),
+    execution_proof_gap: executionProofGap,
     hil_pass: shortValue(latestResult?.hil_pass ?? payload?.hil_pass),
     goal_accepted: shortValue(payload?.goal_accepted ?? latestResult?.goal_accepted),
     result_received: shortValue(payload?.result_received ?? latestResult?.result_received),
-    result_status: shortValue(payload?.result_status ?? latestResult?.result_status),
+    result_status: executionResultStatus,
     goal_frame_id: shortValue(goalRequest?.frame_id ?? goalRequest?.goal_frame_id, "map"),
     goal_x: shortValue(goalRequest?.x ?? goalRequest?.goal_x),
     goal_y: shortValue(goalRequest?.y ?? goalRequest?.goal_y),

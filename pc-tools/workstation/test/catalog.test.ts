@@ -9555,6 +9555,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.goal_y).toBe("-0.2");
       expect(body.goal_execution_key_values.goal_yaw).toBe("0.1");
       expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("true");
+      expect(body.goal_execution_key_values.execution_proof_gap).toBe("none");
       expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
       expect(body.goal_execution_key_values.sends_base_motion_commands).toBe("true");
       expect(body.goal_execution_key_values.uses_base_uart).toBe("true");
@@ -9625,6 +9626,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.proxy_status).toBe("latest_loaded");
       expect(body.goal_execution_key_values.status).toBe("goal_succeeded");
       expect(body.goal_execution_key_values.nav2_goal_execution_proven).toBe("false");
+      expect(body.goal_execution_key_values.execution_proof_gap).toBe("wheel_lr_nonzero_not_proven");
       expect(body.goal_execution_key_values.robot_control_executed).toBe("true");
       expect(body.goal_execution_key_values.sends_base_motion_commands).toBe("true");
       expect(body.goal_execution_key_values.uses_base_uart).toBe("true");

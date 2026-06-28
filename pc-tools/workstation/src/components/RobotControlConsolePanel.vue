@@ -5586,6 +5586,11 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
     nav2_status: status,
   };
   putSummaryNav2Value(values, "nav2_goal_execution_proven", nav2.goal_execution_proven);
+  if ((status === "goal_succeeded" || nav2.goal_execution_result_status === "succeeded") && nav2.goal_execution_proven !== "true") {
+    values.execution_proof_gap = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
+      ? "execution_proof_not_proven"
+      : "wheel_lr_nonzero_not_proven";
+  }
   putSummaryNav2Value(values, "hil_pass", nav2.goal_execution_hil_pass);
   putSummaryNav2Value(values, "result_status", nav2.goal_execution_result_status);
   putSummaryNav2Value(values, "evidence_ref", nav2.goal_execution_evidence_ref);
@@ -5642,6 +5647,9 @@ function nav2WheelLrNonzeroProven(values: Record<string, string> | undefined): b
 
 function nav2ExecutionControlProven(values: Record<string, string> | undefined): boolean {
   // goal_succeeded 只说明 action 返回成功；完整路线还必须看到同窗口 wheel raw L/R 非零。
+  if (nav2ExecutionProofGapText(values)) {
+    return false;
+  }
   if (explicitFalseKeyValue(values?.robot_control_executed)) {
     return false;
   }
@@ -5655,6 +5663,25 @@ function nav2ExecutionControlProven(values: Record<string, string> | undefined):
     return false;
   }
   return !explicitFalseKeyValue(values?.nav2_goal_execution_proven) && !explicitFalseKeyValue(values?.hil_pass);
+}
+
+function nav2ExecutionProofGapText(values: Record<string, string> | undefined): string {
+  // action 成功但 proof gap 存在时，要把“为什么不算完整路线”直接写到普通首屏。
+  const gap = values?.execution_proof_gap;
+  if (gap === "wheel_lr_nonzero_not_proven") {
+    return "旧路线结果成功，但执行窗口轮速 L/R 非零未证明，不等于完整路线执行";
+  }
+  if (gap && !["none", "not_loaded", ""].includes(gap)) {
+    return `旧路线结果成功，但执行闭环未证明（${gap}）`;
+  }
+  if (nav2GoalSucceeded(values) && (
+    explicitFalseKeyValue(values?.nav2_goal_execution_proven)
+    || explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven)
+    || explicitFalseKeyValue(values?.wheel_feedback_lr_nonzero_proven)
+  )) {
+    return "旧路线结果成功，但缺少执行窗口轮速 L/R 非零证明，不等于完整路线执行";
+  }
+  return "";
 }
 
 function nav2BaseCommandCount(values: Record<string, string> | undefined): number {
@@ -7616,7 +7643,10 @@ const plainTripLatestButtonLabel = computed(() => {
   if (navGoalExecutionLatestPending.value) {
     return "读取行程结果中";
   }
-  return deliveryNav2GoalReady.value ? "重新读取行程（只读）" : "读取行程结果（只读）";
+  // 已经读到过行程事实时，即使结论是未证明，也要显示“重新读取”，避免用户误以为还没读取。
+  return (deliveryNav2GoalReady.value || Boolean(navGoalExecutionLatestResult.value) || Boolean(directNav2ExecutionValues()))
+    ? "重新读取行程（只读）"
+    : "读取行程结果（只读）";
 });
 const plainTripStopButtonLabel = computed(() => (
   // 行程执行时把 stop 放在行程区就近呈现；底层仍复用统一 base stop 兜底，不新增 Nav2 cancel 接口。

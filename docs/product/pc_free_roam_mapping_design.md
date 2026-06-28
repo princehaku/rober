@@ -698,3 +698,9 @@ overlay 同轮读取 `/api/free-roam/autonomy/latest`、`/api/radar/status` 和 
 `overlay_status=not_current`，可绘制 `scan_preview_point_count=0`、`scan_preview_points=[]`，同时保留
 `scan_preview_source_point_count` 和 `scan_preview_frame_id` 作为诊断。这样刷新地图画面时不会把旧雷达点冒充成当前地图标记；
 该变更只做只读 GET，不启动雷达、不刷新 proof、不发送 manual/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 03:40 起，PC 普通首屏和 latest 代理再次收紧 Nav2 完整路线口径：
+`/api/robot-control/nav2/goal/execution/latest` 即使读到 `goal_succeeded`，只要同窗口 wheel L/R 非零未证明，
+`goal_execution_key_values.nav2_goal_execution_proven=false` 并新增 `execution_proof_gap=wheel_lr_nonzero_not_proven`。
+普通地图目标 marker 从“已到达”降级为“到达未证明”，行程卡显示“路线返回成功，真车未证明”，总进度提示重新执行完整行程并确认执行窗口轮速 L/R 非零。
+该变更只读取和翻译历史/latest 证据，不执行 Nav2 goal、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。
