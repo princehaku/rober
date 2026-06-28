@@ -7866,6 +7866,27 @@ const plainTripMinimalPrecheckSummary = computed(() => {
   }
   return "行程前确认：安全确认已完成；点主按钮准备图上路线。";
 });
+
+const plainTripRouteExecutionReadback = computed(() => {
+  // 后端 readback 是完整路线复验的权威口径：前端只翻译展示，不额外创造预检或执行动作。
+  const nav2 = robotSummary.value?.readback_summary.nav2;
+  if (!nav2) {
+    return "";
+  }
+  const parts = [
+    nav2.route_execution_precheck_plain,
+    nav2.route_execution_readiness_plain,
+    nav2.goal_execution_wheel_raw_lr_status_plain,
+    nav2.goal_execution_wheel_raw_lr_next_action_plain || nav2.next_action_plain,
+  ]
+    .map((item) => (item ?? "").trim())
+    .filter((item) => item && !["not_loaded", "none"].includes(item))
+    .map((item) => plainNav2UserFacingText(item.replace(/[。；\s]+$/g, ""))
+      .replace(/图上路线/g, "图上行程")
+      .replace(/路线/g, "行程"));
+  const uniqueParts = [...new Set(parts)];
+  return uniqueParts.length > 0 ? `行程复验事实：${uniqueParts.join("；")}。` : "";
+});
 const plainTripCurrentRouteVisible = computed(() => {
   // 只有当前路线真正画到地图上，普通首屏才允许执行“图上路线”；最近路线不能作为执行依据。
   const routePath = latestNavPathOverlay();
@@ -12621,6 +12642,7 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
             <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
             <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
+            <p v-if="plainTripRouteExecutionReadback" class="panel-note" data-testid="plain-trip-route-execution-readback">{{ plainTripRouteExecutionReadback }}</p>
             <p v-if="plainTripExecutionProgress" class="panel-note" data-testid="plain-trip-execution-progress">{{ plainTripExecutionProgress }}</p>
             <p v-if="plainTripRouteWysiwygSummary" class="panel-note" data-testid="plain-trip-route-wysiwyg">
               {{ plainTripRouteWysiwygSummary }}
