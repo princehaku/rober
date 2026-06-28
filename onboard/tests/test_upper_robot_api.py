@@ -875,6 +875,44 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["sends_motion_commands"])
 
+    def test_delivery_latest_lifts_missing_material_to_top_level(self) -> None:
+        """8787 delivery latest 要直观看到缺哪些送达材料，不要求 UI 深挖 latest_result。"""
+        latest_result = {
+            "status": "blocked_missing_delivery_material",
+            "delivery_success": False,
+            "missing_required_material": [
+                "operator_observed_motion",
+                "operator_observed_stop",
+                "structured_hil_claims.delivery_success",
+            ],
+            "required_material": ["nav2_goal_succeeded", "operator_observed_motion"],
+            "nav2_goal_execution": {
+                "status": "goal_succeeded",
+                "result_status": "succeeded",
+                "feedback_sample_count": 8,
+            },
+            "operator_report": {
+                "operator_report_status": "unsafe_or_incomplete",
+                "observed_motion": False,
+                "observed_stop": False,
+            },
+        }
+
+        payload = upper_robot_api.build_delivery_completion_latest_payload(
+            {"path": "/tmp/delivery.json", "ok": True, "status": "loaded"},
+            latest_result,
+        )
+
+        self.assertEqual("blocked_missing_delivery_material", payload["status"])
+        self.assertEqual("not_proven", payload["proof_state"])
+        self.assertEqual(latest_result["missing_required_material"], payload["missing_required_material"])
+        self.assertEqual(latest_result["required_material"], payload["required_material"])
+        self.assertEqual("goal_succeeded", payload["nav2_goal_execution"]["status"])
+        self.assertEqual("unsafe_or_incomplete", payload["operator_report"]["operator_report_status"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+
     def test_camera_probe_request_is_whitelisted(self) -> None:
         """camera probe HTTP body 只能影响白名单参数，不能注入任意 argv。"""
         request = upper_robot_api.safe_camera_probe_request(

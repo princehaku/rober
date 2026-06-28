@@ -4813,12 +4813,39 @@ def build_delivery_completion_payload(
 def build_delivery_completion_latest_payload(artifact_status: dict[str, Any], latest_result: dict[str, Any] | None) -> dict[str, Any]:
     """送达完成 latest 只读 artifact；缺失时显式 fail closed。"""
     delivery_success = bool(isinstance(latest_result, dict) and latest_result.get("delivery_success") is True)
+    status = latest_result.get("status") if isinstance(latest_result, dict) else None
+    missing_required_material = (
+        latest_result.get("missing_required_material")
+        if isinstance(latest_result, dict) and isinstance(latest_result.get("missing_required_material"), list)
+        else []
+    )
+    nav2_goal_execution = (
+        latest_result.get("nav2_goal_execution")
+        if isinstance(latest_result, dict) and isinstance(latest_result.get("nav2_goal_execution"), dict)
+        else {}
+    )
+    operator_report = (
+        latest_result.get("operator_report")
+        if isinstance(latest_result, dict) and isinstance(latest_result.get("operator_report"), dict)
+        else {}
+    )
+    required_material = (
+        latest_result.get("required_material")
+        if isinstance(latest_result, dict) and isinstance(latest_result.get("required_material"), list)
+        else []
+    )
     return {
         "schema": f"{SCHEMA}.delivery_completion_latest_result",
         "generated_at_ms": now_ms(),
         "endpoint": ROUTE_PATHS["delivery_latest"],
         "artifact": artifact_status,
         "latest_result": latest_result,
+        "status": status or ("delivery_success_confirmed" if delivery_success else "not_loaded"),
+        "proof_state": "delivery_success_confirmed" if delivery_success else "not_proven",
+        "missing_required_material": missing_required_material,
+        "required_material": required_material,
+        "nav2_goal_execution": nav2_goal_execution,
+        "operator_report": operator_report,
         "delivery_success": delivery_success,
         "safe_to_control": False,
         "primary_actions_enabled": False,
