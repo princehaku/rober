@@ -9239,6 +9239,11 @@ describe("workstation fail-closed API contracts", () => {
           blocked_reasons: string[];
           blocked_reason_labels: string[];
         };
+        radar_overlay_point_count: number;
+        radar_overlay_source_point_count: number | null;
+        radar_overlay_scan_preview_point_count: number;
+        radar_overlay_scan_preview_source_point_count: number | null;
+        radar_overlay_frame_id: string;
       };
       expect(previewResponse.status).toBe(200);
       expect(previewBody.proxy_status).toBe("preview_forwarded");
@@ -9278,6 +9283,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.radar_overlay.count).toBe(1);
       expect(previewBody.radar_overlay.source_count).toBe(65);
       expect(previewBody.radar_overlay.frame_id).toBe("laser_frame");
+      expect(previewBody.radar_overlay_point_count).toBe(1);
+      expect(previewBody.radar_overlay_source_point_count).toBe(65);
+      expect(previewBody.radar_overlay_scan_preview_point_count).toBe(1);
+      expect(previewBody.radar_overlay_scan_preview_source_point_count).toBe(65);
+      expect(previewBody.radar_overlay_frame_id).toBe("laser_frame");
       expect(previewBody.radar_overlay.points).toEqual(previewBody.radar_overlay.scan_preview_points);
       expect(previewBody.radar_overlay.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
       expect(previewBody.robot_pose).toEqual(previewBody.radar_overlay.robot_pose);

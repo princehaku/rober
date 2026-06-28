@@ -147,6 +147,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 03:36 CST 起，`/api/robot-control/map/preview` 的 `radar_overlay` 嵌套对象和顶层 alias 也返回同一组 WYSIWYG 白话：`wysiwyg_status_plain`、`wysiwyg_next_action_plain`、`radar_overlay_wysiwyg_status_plain`、`radar_overlay_wysiwyg_next_action_plain`。外部脚本只看地图预览响应时，也能直接确认“地图上实际画了几个雷达 marker”和“旧来源点是否只作诊断”。该变化只补只读 map preview 合同，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 03:58 CST 起，`/api/robot-control/map/preview` 顶层同步返回与 summary 同名的雷达数值 alias：`radar_overlay_point_count`、`radar_overlay_source_point_count`、`radar_overlay_scan_preview_point_count` 和 `radar_overlay_scan_preview_source_point_count`。外部脚本不用再把 `radar_overlay.count/source_count/scan_preview_*` 自己转换成 summary 口径；当前地图真正显示几个 marker 和旧来源点数量都能直接读取。该变化只补只读 map preview 字段，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 03:15 CST 起，`readback_summary.camera` 增加 `preview_visible_status`、`preview_visible_plain`、`camera_wysiwyg_status_plain` 和 `camera_wysiwyg_next_action_plain`。脚本不用再从 `preview_status=idle_not_started` 和 `source_diagnosis_status=uvc_no_frame_not_exclusive` 拼判断；可以直接看到“当前没有实时画面；不是页面独占，UVC 设备没有输出视频帧”或“画面已可见：共享实时画面已有缓存帧”。该变化只补只读 summary 字段，不新开独占采集、不重启相机、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:41 CST 起，`/api/robot-control/camera/mjpeg/status` 也返回同一组画面 WYSIWYG 字段：`preview_visible_status`、`preview_visible_plain`、`camera_wysiwyg_status_plain` 和 `camera_wysiwyg_next_action_plain`。只读 camera status 现在能直接说明“当前有共享缓存帧可见”或“当前没有实时画面；不是页面独占而是 UVC 无首帧”，不必再旁路读取 summary。该变化只消费本机 MJPEG relay 状态和只读 camera health，不创建 MJPEG client、不打开额外 camera stream、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。

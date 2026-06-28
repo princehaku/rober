@@ -2947,6 +2947,10 @@ function mapPreviewRadarOverlayAliases(
   | "radar_overlay_points"
   | "radar_overlay_count"
   | "radar_overlay_source_count"
+  | "radar_overlay_point_count"
+  | "radar_overlay_source_point_count"
+  | "radar_overlay_scan_preview_point_count"
+  | "radar_overlay_scan_preview_source_point_count"
   | "radar_overlay_frame_id"
 > {
   // 顶层 alias 与嵌套 overlay 同源，方便现场 curl/jq 一眼确认“地图上到底贴了几个当前雷达点”。
@@ -2960,6 +2964,10 @@ function mapPreviewRadarOverlayAliases(
     radar_overlay_points: radarOverlay.points,
     radar_overlay_count: radarOverlay.count,
     radar_overlay_source_count: radarOverlay.source_count,
+    radar_overlay_point_count: radarOverlay.count,
+    radar_overlay_source_point_count: radarOverlay.source_count,
+    radar_overlay_scan_preview_point_count: radarOverlay.scan_preview_point_count,
+    radar_overlay_scan_preview_source_point_count: radarOverlay.scan_preview_source_point_count,
     radar_overlay_frame_id: radarOverlay.frame_id,
   };
 }

@@ -3011,6 +3011,10 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   radar_overlay_points: RobotApiScanPreviewPoint[];
   radar_overlay_count: number;
   radar_overlay_source_count: number | null;
+  radar_overlay_point_count: number;
+  radar_overlay_source_point_count: number | null;
+  radar_overlay_scan_preview_point_count: number;
+  radar_overlay_scan_preview_source_point_count: number | null;
   radar_overlay_frame_id: string;
   robot_pose: RobotApiMapPose | null;
   robot_pose_status: "map_pose_observed" | "not_observed";
