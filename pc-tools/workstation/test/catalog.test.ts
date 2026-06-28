@@ -5683,6 +5683,68 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary keeps slow camera devices readback within camera budget", async () => {
+    // 板端 camera devices 会做 v4l2 只读枚举；慢一拍时不应让普通首屏连接状态变成 degraded。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": { payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded") },
+      "/api/camera/health": {
+        payload: {
+          ...safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed"),
+          source_diagnosis: {
+            status: "uvc_no_frame_not_exclusive",
+            not_exclusive: true,
+            next_action: "check_usb_camera_input_power_or_known_good_uvc",
+          },
+        },
+      },
+      "/api/camera/devices": {
+        delay_ms: 5200,
+        payload: {
+          ...safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded"),
+          source_candidates: {
+            candidates: [
+              { path: "/dev/video1", is_video_capture: true, is_uvc_or_usb: true, role: "video_capture" },
+            ],
+          },
+        },
+      },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "loaded") },
+      "/api/radar/scan-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "loaded") },
+      "/api/radar/raw-packet-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result", "loaded") },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const cameraDevices = summary.read_endpoints.find((item) => item.id === "camera_devices");
+
+      expect(cameraDevices).toEqual(expect.objectContaining({
+        request_status: "loaded",
+        status: "loaded",
+        blocked_reasons: [],
+      }));
+      expect(summary.readback_summary.camera.devices_status).toBe("loaded");
+      expect(summary.robot_api_connection.status).toBe("readable");
+      expect(summary.robot_api_connection.blocked_reasons).not.toContain("camera_devices:fetch_timeout_4000ms");
+    } finally {
+      await robotApi.close();
+    }
+  }, 10000);
+
   it("Robot Control summary separates free-roam stop request from lidar mapping readiness", async () => {
     // live 形状：上次 stop 会把 runtime 留在 stopping；PC 仍要说明 start 可在确认后清 stop，不能误说雷达挡住移动。
     const safePayload = (schema: string, status = "loaded") => ({

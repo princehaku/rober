@@ -97,6 +97,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 17:50 CST 起，`GET /api/robot-control/summary` HTTP route 不再用全局 2.4s 覆盖相机/底盘慢读窗口；`/api/base/status`、`/api/base/feedback-samples/latest` 和 `/api/camera/health` 继续使用各自端点级预算，避免直连上位机合法 JSON 在 PC 汇总层被误报为 timeout/bad readback。free-roam summary 同时把 `external_stop_requested=true` 单独显示成停止请求，不再让雷达 stale 看起来像“车不能动”；雷达和相机只影响建图验收，低速自由移动仍看现场安全确认和停止兜底。Nav2 行程仍按上次执行窗口拆开显示：PWM/ROS/speed 模式、非零底盘命令、wheel raw L/R 和 IMU 姿态变化分开呈现，当前 live 形态应归因到“PWM 已发命令但 T=1001 L/R 未非零，下一次按 ROS 重跑复验”，不是相机或雷达阻塞。
 
+2026-06-29 18:10 CST 起，`/api/camera/devices` 也使用 camera 慢读预算。该端点只做 v4l2/UVC 枚举，不创建 preview、offer 或 capture；并发 summary 刷新时即使设备枚举慢一拍，也不能把已经有 `camera_health.source_diagnosis=uvc_no_frame_not_exclusive` 的页面写成整车连接 degraded。普通用户仍看到“不是页面独占，检查 USB/输入/供电或换 known-good UVC”，不会因此发 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、
