@@ -1343,6 +1343,53 @@ function cameraActionPlainText(action: string): string {
   return `${value.replace(/_/g, " ")}。`;
 }
 
+function cameraPreviewVisibilityPlainSummary(args: {
+  previewStatus: RobotControlSummaryResponse["readback_summary"]["camera"]["preview_status"];
+  sourceFirstFrameFailed: boolean;
+  previewPlainHint: string;
+  previewNextActionPlain: string;
+}): { visibleStatus: string; visiblePlain: string; wysiwygStatusPlain: string; wysiwygNextActionPlain: string } {
+  // 共享 relay 的连接状态不等于画面已经可见；这里给脚本一个直接的所见即所得结论。
+  if (args.previewStatus === "streaming") {
+    return {
+      visibleStatus: "visible_cached_frame",
+      visiblePlain: "当前有共享实时画面缓存帧；新页面复用同一条上游流。",
+      wysiwygStatusPlain: "画面已可见：共享实时画面已有缓存帧，多个页面复用同一条上游流。",
+      wysiwygNextActionPlain: "继续监看共享实时画面。",
+    };
+  }
+  if (args.sourceFirstFrameFailed) {
+    return {
+      visibleStatus: "not_visible_source_first_frame_failed",
+      visiblePlain: `当前没有实时画面；${args.previewPlainHint}`,
+      wysiwygStatusPlain: `画面未可见：${args.previewPlainHint}`,
+      wysiwygNextActionPlain: args.previewNextActionPlain,
+    };
+  }
+  if (args.previewStatus === "starting_local_peer" || args.previewStatus === "connecting_offer_posted") {
+    return {
+      visibleStatus: "waiting_for_first_frame",
+      visiblePlain: "正在等待共享实时画面首帧；返回前不能把黑框当作画面可见。",
+      wysiwygStatusPlain: "画面未证明可见：共享实时画面正在等待首帧。",
+      wysiwygNextActionPlain: args.previewNextActionPlain,
+    };
+  }
+  if (args.previewStatus === "start_failed" || args.previewStatus === "peer_cleanup_failed") {
+    return {
+      visibleStatus: "not_visible_preview_failed",
+      visiblePlain: `当前没有实时画面；${args.previewPlainHint}`,
+      wysiwygStatusPlain: `画面未可见：${args.previewPlainHint}`,
+      wysiwygNextActionPlain: args.previewNextActionPlain,
+    };
+  }
+  return {
+    visibleStatus: "not_visible_idle",
+    visiblePlain: `当前没有实时画面；${args.previewPlainHint}`,
+    wysiwygStatusPlain: `画面未可见：${args.previewPlainHint}`,
+    wysiwygNextActionPlain: args.previewNextActionPlain,
+  };
+}
+
 function cameraDeviceCandidateRole(candidate: JsonRecord | null): string {
   // devices 端点只有布尔能力字段时，PC 也要给普通用户稳定的“这是画面节点还是元数据节点”。
   const explicitRole = asString(candidate?.selected_role ?? candidate?.role, "");
@@ -1790,6 +1837,12 @@ function cameraSummaryFromReadbacks(
       : "none"
     : compactValueText(mjpegRelayOverlay.last_remote_http_status);
   const previewGuidance = cameraSummaryPreviewGuidance(sharedPreviewStatus, sourceFirstFrameFailedForSharedPreview, derivedSourceDiagnosis);
+  const previewVisibility = cameraPreviewVisibilityPlainSummary({
+    previewStatus: sharedPreviewStatus,
+    sourceFirstFrameFailed: sourceFirstFrameFailedForSharedPreview,
+    previewPlainHint: previewGuidance.plain_hint,
+    previewNextActionPlain: previewGuidance.next_action_plain,
+  });
   return {
     status: cameraStatus,
     devices_status: devicesReadback?.status ?? "not_loaded",
@@ -1798,6 +1851,10 @@ function cameraSummaryFromReadbacks(
     preview_plain_hint: previewGuidance.plain_hint,
     preview_next_action: previewGuidance.next_action,
     preview_next_action_plain: previewGuidance.next_action_plain,
+    preview_visible_status: previewVisibility.visibleStatus,
+    preview_visible_plain: previewVisibility.visiblePlain,
+    camera_wysiwyg_status_plain: previewVisibility.wysiwygStatusPlain,
+    camera_wysiwyg_next_action_plain: previewVisibility.wysiwygNextActionPlain,
     shared_preview_client_count: compactValueText(mjpegRelayOverlay?.client_count ?? 0),
     shared_preview_upstream_active: compactValueText(mjpegRelayOverlay?.upstream_active === true),
     shared_preview_content_type_loaded: compactValueText(mjpegRelayOverlay?.content_type_loaded === true),
@@ -4703,6 +4760,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         preview_plain_hint: "页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",
         preview_next_action: "auto_join_shared_mjpeg_preview",
         preview_next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
+        preview_visible_status: "not_visible_idle",
+        preview_visible_plain: "当前没有实时画面；页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",
+        camera_wysiwyg_status_plain: "画面未可见：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",
+        camera_wysiwyg_next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
         shared_preview_client_count: "0",
         shared_preview_upstream_active: "false",
         shared_preview_content_type_loaded: "false",

@@ -2392,6 +2392,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       preview_plain_hint: string;
       preview_next_action: string;
       preview_next_action_plain: string;
+      preview_visible_status: string;
+      preview_visible_plain: string;
+      camera_wysiwyg_status_plain: string;
+      camera_wysiwyg_next_action_plain: string;
       shared_preview_client_count: string;
       shared_preview_upstream_active: string;
       shared_preview_content_type_loaded: string;

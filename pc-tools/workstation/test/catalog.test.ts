@@ -4213,6 +4213,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.preview_plain_hint).toBe("不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(summary.readback_summary.camera.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(summary.readback_summary.camera.preview_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+      expect(summary.readback_summary.camera.preview_visible_status).toBe("not_visible_source_first_frame_failed");
+      expect(summary.readback_summary.camera.preview_visible_plain).toBe("当前没有实时画面；不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(summary.readback_summary.camera.camera_wysiwyg_status_plain).toBe("画面未可见：不是页面独占：UVC 设备当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(summary.readback_summary.camera.camera_wysiwyg_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
       expect(summary.readback_summary.camera.shared_preview_upstream_active).toBe("false");
       expect(summary.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
@@ -11182,6 +11186,10 @@ describe("workstation fail-closed API contracts", () => {
       const summaryBody = (await summaryResponse.json()) as RobotControlSummaryResponse;
       expect(summaryResponse.status).toBe(200);
       expect(summaryBody.readback_summary.camera.preview_status).toBe("streaming");
+      expect(summaryBody.readback_summary.camera.preview_visible_status).toBe("visible_cached_frame");
+      expect(summaryBody.readback_summary.camera.preview_visible_plain).toBe("当前有共享实时画面缓存帧；新页面复用同一条上游流。");
+      expect(summaryBody.readback_summary.camera.camera_wysiwyg_status_plain).toBe("画面已可见：共享实时画面已有缓存帧，多个页面复用同一条上游流。");
+      expect(summaryBody.readback_summary.camera.camera_wysiwyg_next_action_plain).toBe("继续监看共享实时画面。");
       expect(Number(summaryBody.readback_summary.camera.shared_preview_client_count)).toBeGreaterThan(0);
       expect(summaryBody.readback_summary.camera.shared_preview_upstream_active).toBe("true");
       expect(summaryBody.readback_summary.camera.shared_preview_content_type_loaded).toBe("true");
