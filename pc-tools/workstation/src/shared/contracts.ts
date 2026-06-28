@@ -2541,6 +2541,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       map_quality_status: string;
       map_free_cell_count: string;
       map_usable_for_navigation: string;
+      plain_hint: string;
       map_wysiwyg_status_plain: string;
       map_wysiwyg_next_action_plain: string;
       path_preview_status: string;

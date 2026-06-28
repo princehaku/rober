@@ -3979,6 +3979,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map).toMatchObject({
         status: expect.any(String),
         map_once_observed: "true",
+        plain_hint: expect.stringContaining("地图画面已读到，但图上路线还未显示"),
         map_wysiwyg_status_plain: "地图画面已读到，但图上路线还未显示。",
         map_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
         path_preview_status: "not_observed",
@@ -3988,6 +3989,8 @@ describe("workstation fail-closed API contracts", () => {
         path_wysiwyg_status_plain: "图上路线未显示；不能把旧路线或空路线当作当前所见。",
         path_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
       });
+      expect(summary.readback_summary.map.plain_hint).toContain("图上路线未显示；不能把旧路线或空路线当作当前所见");
+      expect(summary.readback_summary.map.plain_hint).toContain("下一步：先准备图上路线，再刷新地图画面。");
       expect(summary.readback_summary.radar).toMatchObject({
         status: expect.any(String),
         radar_status_plain: expect.any(String),
@@ -7461,6 +7464,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.robot_pose_status).toBe("map_pose_observed");
       expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
       expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
+      expect(summary.readback_summary.map.plain_hint).toContain("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示");
+      expect(summary.readback_summary.map.plain_hint).toContain("雷达 marker 已贴到当前地图：当前显示 3 个点，frame=laser");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
       expect(summary.readback_summary.map.path_preview_point_count).toBe("3");
@@ -8001,6 +8006,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser_frame");
       expect(summary.readback_summary.map.robot_pose_status).toBe("map_pose_observed");
       expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线和小车位置已显示；雷达来源点存在但当前不贴到地图：已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
+      expect(summary.readback_summary.map.plain_hint).toContain("地图画面、图上路线和小车位置已显示");
+      expect(summary.readback_summary.map.plain_hint).toContain("雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
       expect(summary.current_fact_plain).toContain("地图画面、图上路线和小车位置已显示；雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断。");
       expect(summary.current_fact_plain.match(/已有雷达来源点 65 个/g)?.length).toBe(1);

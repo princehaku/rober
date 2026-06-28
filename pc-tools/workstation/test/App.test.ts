@@ -528,6 +528,7 @@ const fixtures: Record<string, unknown> = {
         map_quality_status: "not_loaded",
         map_free_cell_count: "not_loaded",
         map_usable_for_navigation: "not_loaded",
+        plain_hint: "地图画面未读到；不能把旧图或空白图当作当前所见。图上路线未显示；不能把旧路线或空路线当作当前所见。雷达 marker 未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。下一步：先刷新地图画面。",
         map_wysiwyg_status_plain: "地图画面未读到；不能把旧图或空白图当作当前所见。",
         map_wysiwyg_next_action_plain: "先刷新地图画面。",
         path_preview_status: "not_observed",

@@ -4522,6 +4522,7 @@ function mapSummaryFromReadbacks(
       proofText(readbacks, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       mapProofText(mapProof, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       "not_loaded",
+    plain_hint: mapSummaryPlainHint(mapWysiwyg.statusPlain, pathWysiwygStatusPlain, radarOverlayWysiwyg.statusPlain, mapWysiwyg.nextActionPlain),
     map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
     map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
     path_preview_status: pathPreviewStatus,
@@ -4570,6 +4571,22 @@ function localizationSummaryFromReadbacks(
     robot_pose_x: pose ? String(pose.x) : "not_loaded",
     robot_pose_y: pose ? String(pose.y) : "not_loaded",
   };
+}
+
+function mapSummaryPlainHint(mapStatusPlain: string, pathStatusPlain: string, radarStatusPlain: string, nextActionPlain: string): string {
+  // summary 的地图一字段事实要同时覆盖地图画面、路线和雷达 marker；旧雷达点不能冒充当前贴图。
+  const mapMain = mapStatusPlain.includes("；雷达")
+    ? mapStatusPlain.split("；雷达")[0] ?? mapStatusPlain
+    : mapStatusPlain;
+  const parts = [mapMain, pathStatusPlain, radarStatusPlain]
+    .map((item) => item.trim().replace(/[。；\s]+$/g, ""))
+    .filter((item) => item && !["not_loaded", "none"].includes(item));
+  const uniqueParts = Array.from(new Set(parts));
+  const next = nextActionPlain.trim().replace(/[。；\s]+$/g, "");
+  if (next) {
+    uniqueParts.push(`下一步：${next}`);
+  }
+  return uniqueParts.length > 0 ? `${uniqueParts.join("。")}。` : "地图事实未读到；先刷新 Robot Control summary。";
 }
 
 function nav2SummaryFromReadbacks(
@@ -5238,6 +5255,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         map_quality_status: "not_loaded",
         map_free_cell_count: "not_loaded",
         map_usable_for_navigation: "not_loaded",
+        plain_hint: "地图画面未读到；不能把旧图或空白图当作当前所见。图上路线未显示；不能把旧路线或空路线当作当前所见。雷达 marker 未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。下一步：先刷新地图画面。",
         map_wysiwyg_status_plain: "地图画面未读到；不能把旧图或空白图当作当前所见。",
         map_wysiwyg_next_action_plain: "先刷新地图画面。",
         path_preview_status: "not_observed",
