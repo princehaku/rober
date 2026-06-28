@@ -4773,6 +4773,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   };
   const runtime = boundary?.free_roam_autonomy_runtime;
   const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
+  const boundaryNextAction = boundary?.free_roam_autonomy_next_action?.trim() || "";
   const mappingReadinessText = (() => {
     // 自由低速移动和可验收建图是两层能力：相机/雷达只决定建图验收，不阻塞低速自由移动入口。
     if (
@@ -4843,9 +4844,6 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (!robotApiBaseUrl.value.trim()) {
       return `${motionModeName}下一步：连接默认小车。`;
     }
-    if (!plainManualSafetyConfirmed.value) {
-      return `${motionModeName}下一步：勾选现场安全确认。`;
-    }
     if (navGoalExecutionPending.value) {
       return `${motionModeName}下一步：等待行程执行返回，必要时先停止行程。`;
     }
@@ -4854,6 +4852,14 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     }
     if (!canSendStop.value) {
       return `${motionModeName}下一步：补齐停止兜底。`;
+    }
+    const boundaryNextActionUsable = Boolean(boundaryNextAction && boundary?.free_roam_autonomy !== "locked");
+    if (boundaryNextActionUsable) {
+      const suffix = /[。！？.!?]$/.test(boundaryNextAction) ? "" : "。";
+      return `${motionModeName}下一步：${boundaryNextAction}${suffix}`;
+    }
+    if (!plainManualSafetyConfirmed.value) {
+      return `${motionModeName}下一步：勾选现场安全确认。`;
     }
     return autonomyReady && blockers.length === 0
       ? `${motionModeName}下一步：点击${motionStartButtonText}。`

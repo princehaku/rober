@@ -4276,6 +4276,7 @@ describe("App", () => {
     summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
     summaryFixture.safe_command_boundary.free_roam_autonomy = "ready";
     summaryFixture.safe_command_boundary.free_roam_autonomy_label = "自动扫图";
+    summaryFixture.safe_command_boundary.free_roam_autonomy_next_action = "已进入自动扫图条件；继续低速监看地图、雷达和画面";
     summaryFixture.safe_command_boundary.free_roam_autonomy_gates = [
       { id: "operator_confirmed", label: "现场安全确认", state: "ready", evidence: "已勾选现场安全确认", next_action: "继续保持现场可接管" },
       { id: "mapping_active", label: "地图记录", state: "ready", evidence: "地图记录已启动", next_action: "继续保持现场可接管" },
@@ -4338,7 +4339,7 @@ describe("App", () => {
     expect(readiness.text()).toContain("只读状态：运动发布状态");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自动扫图（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：点击开始自动扫图（低速）。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自动扫图下一步：已进入自动扫图条件；继续低速监看地图、雷达和画面。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：低速直行判断：门禁满足，低速直行；自由移动运动发布已打开，PC 仍只读监看真车 HIL 记录。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：运动发布已解锁，不依赖雷达新鲜度；现场继续监看。");
 
@@ -4713,6 +4714,7 @@ describe("App", () => {
     summaryFixture.safe_command_boundary.free_roam_motion_start_ready = true;
     summaryFixture.safe_command_boundary.free_roam_mapping_ready = false;
     summaryFixture.safe_command_boundary.free_roam_mapping_missing_reasons = ["mapping_active"];
+    summaryFixture.safe_command_boundary.free_roam_autonomy_next_action = "勾选现场安全确认后可先自由移动；建图验收还差：地图记录";
     summaryFixture.safe_command_boundary.free_roam_autonomy_gates = summaryFixture.safe_command_boundary.free_roam_autonomy_gates.map((gate) => (
       gate.id === "mapping_active"
         ? { ...gate, state: "not_proven", evidence: "地图记录未启动", next_action: "启动扫地式建图记录" }
