@@ -2804,12 +2804,17 @@ function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRa
   const explanation = mapRadarOverlayExplanation("not_loaded", reason ? [reason] : [], 0, null);
   return {
     overlay_status: "not_loaded",
+    status: "not_loaded",
     plain_hint: explanation.plain_hint,
     next_action: explanation.next_action,
     scan_preview_points: [],
     scan_preview_point_count: 0,
     scan_preview_source_point_count: null,
     scan_preview_frame_id: "",
+    points: [],
+    count: 0,
+    source_count: null,
+    frame_id: "",
     robot_pose: null,
     source_endpoint_ids: [],
     blocked_reasons: reason ? [reason] : [],
@@ -2914,14 +2919,22 @@ async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOver
     proofSummary.scan_preview_source_point_count,
     proofSummary.robot_pose,
   );
+  const visibleRadarPoints = radarOverlayCurrent ? proofSummary.scan_preview_points : [];
+  const visibleRadarPointCount = radarOverlayCurrent ? proofSummary.scan_preview_point_count : 0;
   const radarOverlay: RobotControlMapPreviewRadarOverlay = {
     overlay_status: overlayStatus,
+    // 兼容普通调试脚本的一眼读法；旧字段仍保留为完整 contract。
+    status: overlayStatus,
     plain_hint: explanation.plain_hint,
     next_action: explanation.next_action,
-    scan_preview_points: radarOverlayCurrent ? proofSummary.scan_preview_points : [],
-    scan_preview_point_count: radarOverlayCurrent ? proofSummary.scan_preview_point_count : 0,
+    scan_preview_points: visibleRadarPoints,
+    scan_preview_point_count: visibleRadarPointCount,
     scan_preview_source_point_count: proofSummary.scan_preview_source_point_count,
     scan_preview_frame_id: proofSummary.scan_preview_frame_id,
+    points: visibleRadarPoints,
+    count: visibleRadarPointCount,
+    source_count: proofSummary.scan_preview_source_point_count,
+    frame_id: proofSummary.scan_preview_frame_id,
     robot_pose: proofSummary.robot_pose,
     source_endpoint_ids: endpoints.map((endpoint) => endpoint.id),
     blocked_reasons: overlayBlockedReasons,

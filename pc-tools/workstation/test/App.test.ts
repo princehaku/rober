@@ -6873,17 +6873,23 @@ describe("App", () => {
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
     summaryFixture.readback_summary.lidar.scan_preview_point_count = "0";
     const previewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
+    const loadedRadarOverlayPoints = [
+      { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
+      { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
+    ];
     previewFixture.radar_overlay = {
       overlay_status: "loaded",
+      status: "loaded",
       plain_hint: "雷达点已按当前扫描和小车地图位置贴到地图。",
       next_action: "continue_monitoring_map_radar_overlay",
-      scan_preview_points: [
-        { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
-        { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
-      ],
+      scan_preview_points: loadedRadarOverlayPoints,
       scan_preview_point_count: 2,
       scan_preview_source_point_count: 2,
       scan_preview_frame_id: "laser_frame",
+      points: loadedRadarOverlayPoints,
+      count: 2,
+      source_count: 2,
+      frame_id: "laser_frame",
       robot_pose: {
         x: 0.5,
         y: 0.5,
@@ -6946,17 +6952,23 @@ describe("App", () => {
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
     summaryFixture.readback_summary.lidar.scan_preview_point_count = "0";
     const previewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
+    const partialRadarOverlayPoints = [
+      { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
+      { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
+    ];
     previewFixture.radar_overlay = {
       overlay_status: "partial",
+      status: "partial",
       plain_hint: "已有雷达来源点 2 个，但小车地图位置未读到；当前不能把雷达点贴到地图坐标。",
       next_action: "refresh_localization_then_radar_scan",
-      scan_preview_points: [
-        { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
-        { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
-      ],
+      scan_preview_points: partialRadarOverlayPoints,
       scan_preview_point_count: 2,
       scan_preview_source_point_count: 2,
       scan_preview_frame_id: "laser_frame",
+      points: partialRadarOverlayPoints,
+      count: 2,
+      source_count: 2,
+      frame_id: "laser_frame",
       robot_pose: null,
       source_endpoint_ids: ["localize_proof_latest", "radar_scan_proof_latest"],
       blocked_reasons: ["robot_pose_missing_for_map_radar_overlay"],

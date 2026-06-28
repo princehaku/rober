@@ -2011,12 +2011,17 @@ export interface RobotApiFrameTransform {
 
 export interface RobotControlMapPreviewRadarOverlay {
   overlay_status: "loaded" | "partial" | "blocked" | "not_current" | "not_loaded";
+  status: "loaded" | "partial" | "blocked" | "not_current" | "not_loaded";
   plain_hint: string;
   next_action: string;
   scan_preview_points: RobotApiScanPreviewPoint[];
   scan_preview_point_count: number;
   scan_preview_source_point_count: number | null;
   scan_preview_frame_id: string;
+  points: RobotApiScanPreviewPoint[];
+  count: number;
+  source_count: number | null;
+  frame_id: string;
   robot_pose: RobotApiMapPose | null;
   source_endpoint_ids: RobotApiReadEndpointId[];
   blocked_reasons: string[];

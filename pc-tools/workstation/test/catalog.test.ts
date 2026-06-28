@@ -8849,12 +8849,17 @@ describe("workstation fail-closed API contracts", () => {
         path_preview_source_endpoint_ids: string[];
         radar_overlay: {
           overlay_status: string;
+          status: string;
           plain_hint: string;
           next_action: string;
           scan_preview_point_count: number;
           scan_preview_source_point_count: number | null;
           scan_preview_frame_id: string;
           scan_preview_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
+          count: number;
+          source_count: number | null;
+          frame_id: string;
+          points: Array<{ x_m: number; y_m: number; frame_id: string }>;
           robot_pose: { x: number; y: number; yaw: number | null; frame_id: string; source: string } | null;
           source_endpoint_ids: string[];
           blocked_reasons: string[];
@@ -8885,12 +8890,17 @@ describe("workstation fail-closed API contracts", () => {
         "radar_scan_proof_latest",
       ]);
       expect(previewBody.radar_overlay.overlay_status).toBe("loaded");
+      expect(previewBody.radar_overlay.status).toBe("loaded");
       expect(previewBody.radar_overlay.plain_hint).toBe("雷达点已按当前扫描和小车地图位置贴到地图。");
       expect(previewBody.radar_overlay.next_action).toBe("continue_monitoring_map_radar_overlay");
       expect(previewBody.radar_overlay.scan_preview_point_count).toBe(1);
       expect(previewBody.radar_overlay.scan_preview_source_point_count).toBe(65);
       expect(previewBody.radar_overlay.scan_preview_frame_id).toBe("laser_frame");
       expect(previewBody.radar_overlay.scan_preview_points[0]).toEqual(expect.objectContaining({ x_m: 1.2, y_m: 0.3, frame_id: "laser_frame" }));
+      expect(previewBody.radar_overlay.count).toBe(1);
+      expect(previewBody.radar_overlay.source_count).toBe(65);
+      expect(previewBody.radar_overlay.frame_id).toBe("laser_frame");
+      expect(previewBody.radar_overlay.points).toEqual(previewBody.radar_overlay.scan_preview_points);
       expect(previewBody.radar_overlay.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
       expect(previewBody.robot_pose).toEqual(previewBody.radar_overlay.robot_pose);
       expect(previewBody.radar_overlay.source_endpoint_ids).toEqual([
@@ -9181,12 +9191,17 @@ describe("workstation fail-closed API contracts", () => {
         proxy_status: string;
         radar_overlay: {
           overlay_status: string;
+          status: string;
           plain_hint: string;
           next_action: string;
           scan_preview_point_count: number;
           scan_preview_source_point_count: number | null;
           scan_preview_frame_id: string;
           scan_preview_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
+          count: number;
+          source_count: number | null;
+          frame_id: string;
+          points: Array<{ x_m: number; y_m: number; frame_id: string }>;
           blocked_reasons: string[];
           blocked_reason_labels: string[];
         };
@@ -9196,6 +9211,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("preview_forwarded");
       expect(body.radar_overlay.overlay_status).toBe("not_current");
+      expect(body.radar_overlay.status).toBe("not_current");
       expect(body.radar_overlay.plain_hint).toContain("已有雷达来源点 65 个");
       expect(body.radar_overlay.plain_hint).toContain("当前不贴到地图");
       expect(body.radar_overlay.next_action).toBe("start_radar_then_refresh_map_preview");
@@ -9203,6 +9219,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.scan_preview_points).toEqual([]);
       expect(body.radar_overlay.scan_preview_source_point_count).toBe(65);
       expect(body.radar_overlay.scan_preview_frame_id).toBe("laser_frame");
+      expect(body.radar_overlay.count).toBe(0);
+      expect(body.radar_overlay.points).toEqual([]);
+      expect(body.radar_overlay.source_count).toBe(65);
+      expect(body.radar_overlay.frame_id).toBe("laser_frame");
       expect(body.radar_overlay.blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reason_labels).toContain("雷达扫描已过期");

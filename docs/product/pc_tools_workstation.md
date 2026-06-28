@@ -3861,6 +3861,13 @@ Robot Control summary 的 `readback_summary.map` 同步新增中文所见即所�
 或把旧点画成当前 marker。该变化只读取地图、雷达和定位状态，不启动雷达，不刷新 Nav2，不发送 manual、keyboard、
 free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 10:10 CST 起，`/api/robot-control/map/preview.radar_overlay` 保留
+`overlay_status/scan_preview_point_count/scan_preview_source_point_count/scan_preview_frame_id/scan_preview_points`
+的同时，新增等价短字段 `status/count/source_count/frame_id/points`。这样外部脚本直接查
+`radar_overlay.status`、`radar_overlay.count` 就能得到地图上实际会画的雷达 marker 状态和数量；当雷达旧点过期或
+lifecycle stopped 时，`status=not_current`、`count=0`，`source_count` 仍保留来源点数量用于诊断。该别名只来自同一份
+只读 overlay 材料，不启动雷达、不刷新 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-28 22:05 起，`/api/robot-control/map/preview` 也会随地图图片返回只读 Nav2 路线字段：
 `path_preview_points`、`path_preview_point_count`、`path_preview_source_point_count`、`path_preview_frame_id`
 和 `path_preview_source_endpoint_ids`。这些字段来自同一轮固定只读 overlay readback（`/api/nav2/status`、
