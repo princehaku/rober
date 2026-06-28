@@ -3025,6 +3025,8 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   remote_http_status: number | null;
   status: "blocked" | "loaded_fail_closed_summary";
   plain_hint: string;
+  map_plain_hint: string;
+  map_next_action_plain: string;
   map_name: string;
   map_yaml_name: string;
   map_image_name: string;

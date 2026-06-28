@@ -3132,6 +3132,22 @@ async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOver
   };
 }
 
+function mapPreviewPlainSummary(
+  mapStatusPlain: string,
+  radarStatusPlain: string,
+  mapNextActionPlain: string,
+): { plainHint: string; mapPlainHint: string; nextActionPlain: string } {
+  // map preview 顶层口径按“地图/路线/小车”和“雷达 marker”分层，避免把旧雷达来源点重复说成当前贴图。
+  const { map, radar } = currentFactMapRadarParts(mapStatusPlain, radarStatusPlain);
+  const plainParts = [map, radar].filter(Boolean);
+  const mapPlainHint = map ? `${map}。` : "地图画面未读到；不能把旧图或空白图当作当前所见。";
+  return {
+    plainHint: plainParts.length ? `${plainParts.join("；")}。` : mapPlainHint,
+    mapPlainHint,
+    nextActionPlain: mapNextActionPlain,
+  };
+}
+
 function blockedMapPreviewResponse(
   sourceBaseUrl: string,
   reason: string,
@@ -3160,6 +3176,11 @@ function blockedMapPreviewResponse(
   const pathWysiwygStatusPlain = pathStatus === "path_preview_observed"
     ? "图上路线已显示在当前地图画面。"
     : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
+  const previewPlain = mapPreviewPlainSummary(
+    mapWysiwyg.statusPlain,
+    radarOverlay.wysiwyg_status_plain,
+    mapWysiwyg.nextActionPlain,
+  );
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
     ...PROOF_FLAGS,
@@ -3169,7 +3190,9 @@ function blockedMapPreviewResponse(
     remote_endpoint: "/api/map/preview",
     remote_http_status: null,
     status: "blocked",
-    plain_hint: mapWysiwyg.statusPlain,
+    plain_hint: previewPlain.plainHint,
+    map_plain_hint: previewPlain.mapPlainHint,
+    map_next_action_plain: previewPlain.nextActionPlain,
     map_name: "",
     map_yaml_name: "",
     map_image_name: "",
@@ -3195,7 +3218,7 @@ function blockedMapPreviewResponse(
     path_preview_points: pathPreview.path_preview_points,
     path_preview_status: pathStatus,
     path_preview_next_action_plain: pathNextActionPlain,
-    next_action_plain: pathNextActionPlain,
+    next_action_plain: previewPlain.nextActionPlain,
     path_wysiwyg_status_plain: pathWysiwygStatusPlain,
     path_wysiwyg_next_action_plain: pathNextActionPlain,
     nav2_route_overlay_status: pathStatus,
@@ -3418,6 +3441,11 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   const pathWysiwygStatusPlain = pathStatus === "path_preview_observed"
     ? "图上路线已显示在当前地图画面。"
     : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
+  const previewPlain = mapPreviewPlainSummary(
+    mapWysiwyg.statusPlain,
+    overlayReadback.radarOverlay.wysiwyg_status_plain,
+    mapWysiwyg.nextActionPlain,
+  );
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
     ...PROOF_FLAGS,
@@ -3427,7 +3455,9 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     remote_endpoint: "/api/map/preview",
     remote_http_status: response.status,
     status: forwarded ? "loaded_fail_closed_summary" : "blocked",
-    plain_hint: mapWysiwyg.statusPlain,
+    plain_hint: previewPlain.plainHint,
+    map_plain_hint: previewPlain.mapPlainHint,
+    map_next_action_plain: previewPlain.nextActionPlain,
     map_name: asString(findFirstKey(payload, ["map_name"]), ""),
     map_yaml_name: asString(findFirstKey(payload, ["map_yaml_name"]), ""),
     map_image_name: asString(findFirstKey(payload, ["map_image_name"]), ""),
@@ -3456,7 +3486,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     path_preview_points: overlayReadback.pathPreview.path_preview_points,
     path_preview_status: pathStatus,
     path_preview_next_action_plain: pathNextActionPlain,
-    next_action_plain: pathNextActionPlain,
+    next_action_plain: previewPlain.nextActionPlain,
     path_wysiwyg_status_plain: pathWysiwygStatusPlain,
     path_wysiwyg_next_action_plain: pathNextActionPlain,
     nav2_route_overlay_status: pathStatus,

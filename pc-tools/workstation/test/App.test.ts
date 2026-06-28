@@ -1158,6 +1158,9 @@ const fixtures: Record<string, unknown> = {
     failure_reason: "",
     blocked_reasons: [],
     hard_dangerous_true_fields: [],
+    plain_hint: "地图画面已读到，但图上路线还未显示；雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 0 个只作诊断。",
+    map_plain_hint: "地图画面已读到，但图上路线还未显示。",
+    map_next_action_plain: "先准备图上路线，再刷新地图画面。",
     map_wysiwyg_status_plain: "地图画面已读到，但图上路线还未显示。",
     map_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
     radar_overlay: {
