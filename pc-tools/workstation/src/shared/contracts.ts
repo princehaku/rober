@@ -2585,6 +2585,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       stop_proxy_endpoint: string;
       start_ready: string;
       enabled: string;
+      readiness_plain: string;
+      continuous_control_contract_plain: string;
       hold_to_move_plain: string;
       stop_triggers_plain: string;
       pulse_timing_plain: string;

@@ -4083,6 +4083,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.keyboard.manual_command_mode).toBe("ros");
       expect(summary.readback_summary.keyboard.start_ready).toBe("true");
       expect(summary.readback_summary.keyboard.enabled).toBe("false");
+      expect(summary.readback_summary.keyboard.readiness_plain).toBe("可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动。");
+      expect(summary.readback_summary.keyboard.continuous_control_contract_plain).toBe("按住时约每 0.26 秒发送一次 0.24 秒 ROS 低速脉冲；松开、失焦、切页、换方向或点击停止都会停。");
       expect(summary.readback_summary.keyboard.hold_to_move_plain).toBe(summary.safe_command_boundary.keyboard_hold_to_move_plain);
       expect(summary.readback_summary.keyboard.stop_triggers_plain).toBe(summary.safe_command_boundary.keyboard_stop_triggers_plain);
       expect(summary.readback_summary.keyboard.pulse_timing_plain).toBe(summary.safe_command_boundary.keyboard_pulse_timing_plain);

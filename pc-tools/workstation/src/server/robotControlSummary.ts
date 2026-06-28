@@ -5865,6 +5865,8 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
     stop_proxy_endpoint: "/api/robot-control/base/stop",
     start_ready: "true",
     enabled: "false",
+    readiness_plain: "可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动。",
+    continuous_control_contract_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒 ROS 低速脉冲；松开、失焦、切页、换方向或点击停止都会停。`,
     hold_to_move_plain: "必须按住 W/A/S/D 或方向键才会连续低速移动；只启用键盘但不按方向不会发车。",
     stop_triggers_plain: "松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。",
     pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
