@@ -534,6 +534,8 @@ const fixtures: Record<string, unknown> = {
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
         path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
+        path_wysiwyg_status_plain: "图上路线未显示；不能把旧路线或空路线当作当前所见。",
+        path_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
       },
       localization: {
         status: "localization_not_proven",

@@ -3976,6 +3976,13 @@ runtime `/scan` 过期或 lifecycle stopped，则总状态会明确写“雷达�
 不需要解析中文长句。该变化只读取 latest artifact，不执行 Nav2、不启动 runtime、不发送 manual、keyboard、free-roam、
 delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 06:18 CST 起，Robot Control summary 的 `readback_summary.map` 也同步返回
+`path_wysiwyg_status_plain` 和 `path_wysiwyg_next_action_plain`。此前独立 map preview 已有这两个字段，但 summary
+只给 `path_preview_*`，外部面板读取 summary 时无法直接区分“路线点已读到”和“图上路线已经贴到当前地图画面”。
+补齐后，只读 summary、普通首屏和外部脚本都可以直接验证图上路线 WYSIWYG 口径：有当前路线点时返回
+“图上路线已显示在当前地图画面”，没有时明确“不能把旧路线或空路线当作当前所见”。该变化只补 summary readback，
+不刷新地图、不准备或执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 04:24 CST 起，独立 `/api/robot-control/map/preview` 顶层也返回地图 WYSIWYG 总口径和路线别名：
 `map_wysiwyg_status_plain`、`map_wysiwyg_next_action_plain`、`path_wysiwyg_status_plain`、
 `path_wysiwyg_next_action_plain`、`nav2_route_overlay_status`、`nav2_route_overlay_point_count` 和

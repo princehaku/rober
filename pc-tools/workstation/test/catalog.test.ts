@@ -3982,6 +3982,8 @@ describe("workstation fail-closed API contracts", () => {
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
         path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
+        path_wysiwyg_status_plain: "图上路线未显示；不能把旧路线或空路线当作当前所见。",
+        path_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
       });
       expect(summary.readback_summary.radar).toMatchObject({
         status: expect.any(String),
@@ -7448,6 +7450,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.path_preview_point_count).toBe("3");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");
       expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.path_wysiwyg_status_plain).toBe("图上路线已显示在当前地图画面。");
+      expect(summary.readback_summary.map.path_wysiwyg_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
       expect(summary.o3_proof_summary.path_preview_points).toEqual([
         { x: 0, y: 0, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.1, frame_id: "map", source_index: 12 },
@@ -7988,6 +7992,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.path_preview_point_count).toBe("2");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");
       expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.path_wysiwyg_status_plain).toBe("图上路线已显示在当前地图画面。");
+      expect(summary.readback_summary.map.path_wysiwyg_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
     } finally {
       await robotApi.close();
     }
