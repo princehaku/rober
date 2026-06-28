@@ -18828,6 +18828,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面可见");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示 MJPEG 实时画面。MJPEG 实时流已显示。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：已看到 MJPEG 实时画面；2 个页面共享同一条上游流，不是浏览器独占。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：2 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。 已有最近帧缓存（约0.1秒前），后进页面会先显示最近帧。");
 
     const previewVideoElement = wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement;

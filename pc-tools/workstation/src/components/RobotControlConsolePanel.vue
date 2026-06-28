@@ -553,6 +553,23 @@ function cameraSourcePlainFailureDetailHint(): string {
   return `${baseHint}${formatAttempts}`;
 }
 
+function sharedPreviewCurrentFactSuffix(camera: RobotControlSummaryResponse["readback_summary"]["camera"]): string {
+  // MJPEG 已绘制时，顶部事实直接说明它是共享上游流；这回应“谁进来都能看”，但不把缓存帧冒充成本页实时帧。
+  const status = cameraMjpegStatusResult.value;
+  const rawClientCount = status?.proxy_status === "status_loaded"
+    ? String(status.client_count)
+    : camera.shared_preview_client_count;
+  const countText = rawClientCount && !["", "not_loaded", "none"].includes(rawClientCount)
+    ? `${rawClientCount} 个页面共享`
+    : "多个页面共享";
+  const exclusive = status?.proxy_status === "status_loaded"
+    ? status.exclusive_camera_claim
+    : camera.shared_preview_exclusive_camera_claim === "true";
+  return exclusive
+    ? `；${countText}，但检测到可能的独占请求`
+    : `；${countText}同一条上游流，不是浏览器独占`;
+}
+
 function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readback_summary"]["camera"]): string {
   // 当前事实条要短而准：把共享预览事实放在前面，避免用户误判成浏览器独占。
   const visualSaveFailureHint = plainVisualMaterialSaveFailureHint();
@@ -569,7 +586,7 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
     return "画面：上位机样张已读到，但画面太暗，先检查镜头/光线。";
   }
   if (cameraMjpegFrameObserved.value) {
-    return "画面：已看到 MJPEG 实时画面。";
+    return `画面：已看到 MJPEG 实时画面${sharedPreviewCurrentFactSuffix(camera)}。`;
   }
   if (cameraMjpegRetryPending.value) {
     return "画面：本页共享预览暂时没有出画面，页面会低频自动重试；不是浏览器独占。";

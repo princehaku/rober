@@ -61,6 +61,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-28 08:13 CST 起，Nav2/行程执行失败原因里若带 `wheel`、`base_feedback`、`lr_zero`、`L/R=0` 或 `nonzero` 等 wheel raw L/R 线索，普通首屏地图 marker、行程状态和进度会显示 `轮速未响应`，不再泛化为 `执行失败`。这只翻译已有执行回包，不重放 Nav2、不调用 manual/delivery/free-roam/stop 或 `/cmd_vel`。
 
+2026-06-28 08:16 CST 起，本页 MJPEG 共享预览真正出图后，首屏 `当前事实` 会同步显示 `N 个页面共享同一条上游流，不是浏览器独占`。这只消费 PC 共享流 status 和本页 `<img>` load 结果，不新建额外 camera capture、不重启相机、不发送 manual、Nav2、delivery、free-roam、stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、
