@@ -3279,7 +3279,7 @@ function mapPreviewPlainSummary(
   radarStatusPlain: string,
   mapNextActionPlain: string,
 ): { plainHint: string; mapPlainHint: string; nextActionPlain: string } {
-  // map preview 顶层口径按“地图/路线/小车”和“雷达 marker”分层，避免把旧雷达来源点重复说成当前贴图。
+  // map preview 顶层口径按“地图/路线/小车”和“地图雷达点”分层，避免把旧雷达来源点重复说成当前贴图。
   const { map, radar } = currentFactMapRadarParts(mapStatusPlain, radarStatusPlain);
   const plainParts = [map, radar].filter(Boolean);
   const mapPlainHint = map ? `${map}。` : "地图画面未读到；不能把旧图或空白图当作当前所见。";
@@ -3320,7 +3320,7 @@ function blockedMapPreviewResponse(
     : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
   const previewPlain = mapPreviewPlainSummary(
     mapWysiwyg.statusPlain,
-    radarOverlay.wysiwyg_status_plain,
+    mapRadarUserFacingStatusPlainFromOverlay(radarOverlay),
     mapWysiwyg.nextActionPlain,
   );
   return {
@@ -3476,6 +3476,44 @@ function radarOverlayWysiwygPlainSummary(args: {
   };
 }
 
+function mapRadarUserFacingStatusPlain(args: {
+  radarStatus: string;
+  pointCount: string;
+  sourcePointCount: string;
+  frameId: string;
+  blockedReasonLabels: string[];
+}): string {
+  // 普通入口只说“地图雷达点”，marker/overlay 细节留在拆分诊断字段里。
+  const displayedCount = args.pointCount && args.pointCount !== "not_loaded" ? args.pointCount : "0";
+  const sourceCount = args.sourcePointCount && args.sourcePointCount !== "not_loaded" ? args.sourcePointCount : "0";
+  const frameText = args.frameId && args.frameId !== "not_loaded" ? `，frame=${args.frameId}` : "";
+  const reasonText = args.blockedReasonLabels.filter((label) => label && label !== "none").join("、");
+  const reasonSuffix = reasonText ? `；原因：${reasonText}` : "";
+  if (args.radarStatus === "loaded") {
+    return `地图雷达点已按当前读数显示：当前显示 ${displayedCount} 个点${frameText}。`;
+  }
+  if (args.radarStatus === "partial") {
+    return `地图雷达点未完整显示：当前显示 ${displayedCount} 个点，来源点 ${sourceCount} 个${reasonSuffix}。`;
+  }
+  if (args.radarStatus === "not_current") {
+    return `地图雷达点当前显示 ${displayedCount} 个，旧来源点 ${sourceCount} 个只作诊断${reasonSuffix}。`;
+  }
+  if (args.radarStatus === "blocked") {
+    return `地图雷达点未显示：当前显示 ${displayedCount} 个点，来源点 ${sourceCount} 个${reasonSuffix}。`;
+  }
+  return `地图雷达点未加载：当前显示 ${displayedCount} 个点，来源点 ${sourceCount} 个${reasonSuffix}。`;
+}
+
+function mapRadarUserFacingStatusPlainFromOverlay(radarOverlay: RobotControlMapPreviewRadarOverlay): string {
+  return mapRadarUserFacingStatusPlain({
+    radarStatus: radarOverlay.overlay_status,
+    pointCount: String(radarOverlay.count),
+    sourcePointCount: radarOverlay.source_count === null ? "not_loaded" : String(radarOverlay.source_count),
+    frameId: radarOverlay.frame_id || "not_loaded",
+    blockedReasonLabels: radarOverlay.blocked_reason_labels,
+  });
+}
+
 export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotControlMapPreviewResponse> {
   // Map preview 是只读固定代理；它只能读上位机 /api/map/preview，不能转成任意文件或控制代理。
   const normalized = normalizeRobotApiBaseUrl(baseUrl);
@@ -3585,7 +3623,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
   const previewPlain = mapPreviewPlainSummary(
     mapWysiwyg.statusPlain,
-    overlayReadback.radarOverlay.wysiwyg_status_plain,
+    mapRadarUserFacingStatusPlainFromOverlay(overlayReadback.radarOverlay),
     mapWysiwyg.nextActionPlain,
   );
   return {
@@ -4561,7 +4599,18 @@ function mapSummaryFromReadbacks(
       proofText(readbacks, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       mapProofText(mapProof, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       "not_loaded",
-    plain_hint: mapSummaryPlainHint(mapWysiwyg.statusPlain, pathWysiwygStatusPlain, radarOverlayWysiwyg.statusPlain, mapWysiwyg.nextActionPlain),
+    plain_hint: mapSummaryPlainHint(
+      mapWysiwyg.statusPlain,
+      pathWysiwygStatusPlain,
+      mapRadarUserFacingStatusPlain({
+        radarStatus: radarOverlayStatus,
+        pointCount: radarOverlayPointCount,
+        sourcePointCount: radarOverlaySourcePointCount,
+        frameId: radarOverlayFrameId,
+        blockedReasonLabels: radarOverlayExplanation.blocked_reason_labels,
+      }),
+      mapWysiwyg.nextActionPlain,
+    ),
     map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
     map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
     path_preview_status: pathPreviewStatus,
@@ -4613,11 +4662,9 @@ function localizationSummaryFromReadbacks(
 }
 
 function mapSummaryPlainHint(mapStatusPlain: string, pathStatusPlain: string, radarStatusPlain: string, nextActionPlain: string): string {
-  // summary 的地图一字段事实要同时覆盖地图画面、路线和雷达 marker；旧雷达点不能冒充当前贴图。
-  const mapMain = mapStatusPlain.includes("；雷达")
-    ? mapStatusPlain.split("；雷达")[0] ?? mapStatusPlain
-    : mapStatusPlain;
-  const parts = [mapMain, pathStatusPlain, radarStatusPlain]
+  // summary 的地图一字段事实要同时覆盖地图画面、路线和地图雷达点；旧雷达点不能冒充当前贴图。
+  const { map, radar } = currentFactMapRadarParts(mapStatusPlain, radarStatusPlain);
+  const parts = [map, pathStatusPlain, radar]
     .map((item) => item.trim().replace(/[。；\s]+$/g, ""))
     .filter((item) => item && !["not_loaded", "none"].includes(item));
   const uniqueParts = Array.from(new Set(parts));
@@ -6344,7 +6391,7 @@ function currentFactMapRadarParts(
     return { map: map.split("；雷达")[0] ?? map, radar };
   }
   if (map.includes("雷达标记都已按当前读数显示")) {
-    return { map, radar: "" };
+    return { map: map.replace(/和雷达标记都已按当前读数显示/g, "都已按当前读数显示"), radar };
   }
   return { map, radar };
 }
