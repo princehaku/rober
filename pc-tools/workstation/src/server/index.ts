@@ -568,6 +568,66 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
   };
 }
 
+function navGoalLatestNextMode(keyValues: Record<string, string>): string {
+  // 旧 PWM action 成功但 wheel L/R 未非零时，PC 下一次要按 ROS 模式重跑复验。
+  if (
+    (keyValues.status === "goal_succeeded" || keyValues.result_status === "succeeded")
+    && keyValues.base_feedback_lr_nonzero_proven === "false"
+    && keyValues.base_command_mode === "pwm"
+  ) {
+    return "ros";
+  }
+  return keyValues.base_command_mode && keyValues.base_command_mode !== "not_loaded"
+    ? keyValues.base_command_mode
+    : "ros";
+}
+
+function navGoalLatestPlainFields(
+  keyValues: Record<string, string>,
+): Pick<
+  RobotControlNavGoalExecutionLatestResponse,
+  | "route_execution_readiness_plain"
+  | "route_execution_precheck_plain"
+  | "goal_execution_wheel_raw_lr_status_plain"
+  | "goal_execution_wheel_raw_lr_next_action_plain"
+> {
+  // latest 是只读 artifact；这些字段只解释最近路线证据和下一步，不会重放 Nav2。
+  const goalSucceeded = keyValues.status === "goal_succeeded" || keyValues.result_status === "succeeded";
+  const wheelProven = keyValues.base_feedback_lr_nonzero_proven === "true";
+  const wheelExplicitFalse = keyValues.base_feedback_lr_nonzero_proven === "false";
+  const executionProven = keyValues.nav2_goal_execution_proven === "true";
+  const left = keyValues.base_feedback_latest_raw_left || keyValues.base_feedback_latest_left_speed || "not_loaded";
+  const right = keyValues.base_feedback_latest_raw_right || keyValues.base_feedback_latest_right_speed || "not_loaded";
+  const nextMode = navGoalLatestNextMode(keyValues).toUpperCase();
+  const commandCount = Number(keyValues.base_command_nonzero_count ?? "0");
+  const commandText = keyValues.base_command_nonzero_observed === "true" || (Number.isFinite(commandCount) && commandCount > 0)
+    ? `已看到 ${Number.isFinite(commandCount) ? commandCount : 0} 次非零底盘命令`
+    : "未看到非零底盘命令";
+  const imuText = keyValues.base_feedback_imu_attitude_delta_observed === "true" ? "，IMU 姿态有变化" : "";
+  if (executionProven || wheelProven) {
+    return {
+      route_execution_readiness_plain: "完整路线执行已证明；同窗口 wheel raw L/R 已非零。",
+      route_execution_precheck_plain: "下一步是送达确认；送达确认不会发车。",
+      goal_execution_wheel_raw_lr_status_plain: `执行窗口 wheel raw L/R 已非零：L=${left}，R=${right}。`,
+      goal_execution_wheel_raw_lr_next_action_plain: "继续送达确认；送达确认不会发车。",
+    };
+  }
+  if (goalSucceeded && wheelExplicitFalse) {
+    return {
+      route_execution_readiness_plain: `图上路线可重跑复验；上次路线 action 成功，但同窗口 wheel raw L/R=${left}/${right} 未非零。`,
+      route_execution_precheck_plain: `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ${nextMode} 模式跑图上路线。`,
+      goal_execution_wheel_raw_lr_status_plain: `上次路线 action 成功，但执行窗口 wheel raw L/R=${left}/${right} 未非零；${commandText}${imuText}。`,
+      goal_execution_wheel_raw_lr_next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。`,
+    };
+  }
+  return {
+    route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
+    route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
+    goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
+    goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
+  };
+}
+
 function deliveryCompleteKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
   // delivery completion 是 Nav2 latest + operator report latest 的合成 gate，UI 只展示短摘要。
   const result = asRecord(payload?.latest_result) ?? payload;
@@ -2803,6 +2863,10 @@ export function createWorkstationApp(): express.Express {
       remote_http_status: null,
       status: "blocked",
       goal_execution_key_values: {},
+      route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
+      route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
+      goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
+      goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
@@ -2820,12 +2884,14 @@ export function createWorkstationApp(): express.Express {
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
         (field) => !nav2GoalExecutionAllowedTrueField(field),
       );
+      const goalExecutionKeyValues = navGoalExecutionKeyValues(remotePayload);
       const responseBody: RobotControlNavGoalExecutionLatestResponse = {
         ...fallbackBase,
         proxy_status: remote.ok && dangerous.length === 0 ? "latest_loaded" : "latest_failed",
         remote_http_status: remote.status,
         status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
-        goal_execution_key_values: navGoalExecutionKeyValues(remotePayload),
+        goal_execution_key_values: goalExecutionKeyValues,
+        ...navGoalLatestPlainFields(goalExecutionKeyValues),
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `latest_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`latest_http_status_${remote.status}`]),
