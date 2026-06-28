@@ -12419,6 +12419,12 @@ describe("App", () => {
         failure_reason: "",
         blocked_reasons: [],
         hard_dangerous_true_fields: [],
+        wheel_raw_left: "0",
+        wheel_raw_right: "0",
+        wheel_feedback_lr_nonzero_proven: "false",
+        wheel_feedback_source: "vendor_t1001_L_R",
+        wheel_feedback_plain_hint: "只读反馈采样读到 wheel raw L/R=0/0，非零未证明，T1001 帧 3；这不是运动命令。",
+        wheel_feedback_next_action: "勾选现场安全确认后低速试动或按住键盘方向键，再复验 wheel raw L/R 非零。",
         sends_motion_commands: false,
         robot_control_executed: false,
       },
@@ -12445,13 +12451,14 @@ describe("App", () => {
     expect(diagnosticsText).toContain("nonzero_frames=0");
     expect(diagnosticsText).toContain("proven=false");
     expect(diagnosticsText).toContain("source=vendor_t1001_L_R");
+    expect(diagnosticsText).toContain("hint=只读反馈采样读到 wheel raw L/R=0/0");
     expect(diagnosticsText).toContain("wheel raw L/R progress");
     expect(diagnosticsText).toContain("static T1001 feedback only");
     expect(diagnosticsText).toContain("next=restore first-jog materials then run wheel nonzero trial");
-    expect(visiblePlainHomeText(wrapper)).toContain("已读到底盘反馈，但当前轮速是 L/R=0/0；反馈电压约 12.43V；这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。");
+    expect(visiblePlainHomeText(wrapper)).toContain("只读反馈采样读到 wheel raw L/R=0/0，非零未证明，T1001 帧 3；这不是运动命令；反馈电压约 12.43V。");
     expect(visiblePlainHomeText(wrapper)).not.toContain("12.43049049V");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，反馈电压约 12.43V，仍需底盘试动读到非零。");
-    expect(wrapper.find('[data-testid="plain-wheel-next-action"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 3 帧，反馈电压约 12.43V，下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。");
+    expect(wrapper.find('[data-testid="plain-wheel-next-action"]').text()).toContain("下一步：勾选现场安全确认后低速试动或按住键盘方向键，再复验 wheel raw L/R 非零。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/feedback-samples?"))).toBe(true);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/first-jog?"),

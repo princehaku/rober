@@ -1818,6 +1818,39 @@ const baseFeedbackSamplesSummary = computed(() => {
   const values = result.sample_key_values;
   return `${result.proxy_status}; status=${result.status}; t1001=${values.t1001_observed_count}/${values.completed_sample_count}; L/R=${values.wheel_feedback_latest_left_speed}/${values.wheel_feedback_latest_right_speed}; nonzero=${values.wheel_feedback_lr_nonzero_proven}; motion=${values.sends_motion_commands}; reason=${result.failure_reason || "none"}`;
 });
+
+function loadedAliasText(value: string | undefined): string {
+  // 后端 alias 已经把现场诊断压成短字段；这里过滤占位值，避免普通首屏显示“not_loaded”。
+  const text = value?.trim() ?? "";
+  return text && !["not_loaded", "none", "unknown"].includes(text) ? text : "";
+}
+
+function baseFeedbackSampleLeftText(): string {
+  // 顶层 wheel_raw_left 是普通界面的首选来源；旧响应仍回退到 sample_key_values。
+  return loadedAliasText(baseFeedbackSamplesResult.value?.wheel_raw_left)
+    || loadedAliasText(baseFeedbackSamplesResult.value?.sample_key_values.wheel_feedback_latest_left_speed);
+}
+
+function baseFeedbackSampleRightText(): string {
+  // 顶层 wheel_raw_right 与 left 同源，保持新旧 PC Node 响应都能解释当前 L/R。
+  return loadedAliasText(baseFeedbackSamplesResult.value?.wheel_raw_right)
+    || loadedAliasText(baseFeedbackSamplesResult.value?.sample_key_values.wheel_feedback_latest_right_speed);
+}
+
+function baseFeedbackSamplePlainHint(): string {
+  // plain hint 由 PC Node 统一说明“这是只读，不是运动命令”，前端不要重新猜原因。
+  return loadedAliasText(baseFeedbackSamplesResult.value?.wheel_feedback_plain_hint);
+}
+
+function baseFeedbackSampleNextAction(): string {
+  // next_action 给普通用户下一步动作；展示时统一补“下一步”前缀。
+  const action = loadedAliasText(baseFeedbackSamplesResult.value?.wheel_feedback_next_action);
+  if (!action) {
+    return "";
+  }
+  return action.startsWith("下一步") ? action : `下一步：${action}`;
+}
+
 const wheelRawLrProgressSummary = computed(() => {
   // 轮速非零只能由运动窗口 during-motion T1001 证明；静态采样和草稿材料只能给下一步提示。
   if (manualCommandPending.value) {
@@ -1837,11 +1870,13 @@ const wheelRawLrProgressSummary = computed(() => {
   }
   const sampleValues = baseFeedbackSamplesResult.value?.sample_key_values;
   if (sampleValues) {
+    const left = baseFeedbackSampleLeftText() || sampleValues.wheel_feedback_latest_left_speed;
+    const right = baseFeedbackSampleRightText() || sampleValues.wheel_feedback_latest_right_speed;
     if (sampleValues.wheel_feedback_lr_nonzero_proven === "true") {
-      return `feedback sample reported nonzero; L/R=${sampleValues.wheel_feedback_latest_left_speed}/${sampleValues.wheel_feedback_latest_right_speed}; still prefer motion window proof`;
+      return `feedback sample reported nonzero; L/R=${left}/${right}; still prefer motion window proof`;
     }
     if (sampleValues.sends_motion_commands === "false") {
-      return `static T1001 feedback only; L/R=${sampleValues.wheel_feedback_latest_left_speed}/${sampleValues.wheel_feedback_latest_right_speed}; t1001=${sampleValues.t1001_observed_count}; next=restore first-jog materials then run wheel nonzero trial`;
+      return `static T1001 feedback only; L/R=${left}/${right}; t1001=${sampleValues.t1001_observed_count}; next=restore first-jog materials then run wheel nonzero trial`;
     }
   }
   const firstJog = robotSummary.value?.first_jog_readiness_summary;
@@ -7997,6 +8032,10 @@ const plainWheelNextActionSummary = computed(() => {
     && isZeroWheelPair(firstJogValues?.wheel_feedback_latest_raw_left, firstJogValues?.wheel_feedback_latest_raw_right)) {
     return WHEEL_ZERO_NEXT_ACTION_SUMMARY;
   }
+  const readbackNextAction = baseFeedbackSampleNextAction();
+  if (readbackNextAction) {
+    return readbackNextAction;
+  }
   return "";
 });
 
@@ -8027,8 +8066,14 @@ const plainWheelReadbackSummary = computed(() => {
   const zeroReadbackNextStep = "这还不是非零证据；若试动后仍为 0/0，检查电机使能、供电、模式和现场空间。";
   const sample = baseFeedbackSamplesResult.value?.sample_key_values;
   if (sample?.t1001_observed_count && sample.t1001_observed_count !== "not_loaded") {
-    const left = sample.wheel_feedback_latest_left_speed;
-    const right = sample.wheel_feedback_latest_right_speed;
+    const left = baseFeedbackSampleLeftText() || sample.wheel_feedback_latest_left_speed;
+    const right = baseFeedbackSampleRightText() || sample.wheel_feedback_latest_right_speed;
+    const plainHint = baseFeedbackSamplePlainHint();
+    if (plainHint) {
+      return plainVoltage && isZeroWheelPair(left, right)
+        ? `${plainHint.replace(/。$/, "")}；反馈电压约 ${plainVoltage}V。`
+        : plainHint;
+    }
     if (sample.wheel_feedback_lr_nonzero_proven === "true" || sample.wheel_feedback_nonzero_observed === "true") {
       if (isZeroWheelPair(left, right)) {
         return `只读采样有历史非零材料，但当前轮速是 L/R=${left}/${right}${voltage}；本轮仍需底盘试动读非零。`;
@@ -13272,11 +13317,12 @@ onBeforeUnmount(() => {
             </dd>
             <dt>base feedback raw L/R</dt>
             <dd>
-              latest_L={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_latest_left_speed ?? "not_loaded" }},
-              latest_R={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_latest_right_speed ?? "not_loaded" }},
+              latest_L={{ baseFeedbackSampleLeftText() || "not_loaded" }},
+              latest_R={{ baseFeedbackSampleRightText() || "not_loaded" }},
               nonzero_frames={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_nonzero_frame_count ?? "0" }},
-              proven={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_lr_nonzero_proven ?? "false" }},
-              source={{ baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_source ?? "not_loaded" }}
+              proven={{ baseFeedbackSamplesResult?.wheel_feedback_lr_nonzero_proven || baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_lr_nonzero_proven || "false" }},
+              source={{ baseFeedbackSamplesResult?.wheel_feedback_source || baseFeedbackSamplesResult?.sample_key_values.wheel_feedback_source || "not_loaded" }},
+              hint={{ baseFeedbackSamplePlainHint() || "not_loaded" }}
             </dd>
             <dt>wheel raw L/R progress</dt>
             <dd>{{ wheelRawLrProgressSummary }}</dd>
