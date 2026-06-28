@@ -47,7 +47,6 @@ import {
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
   ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS,
-  ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
   notRequiredConfirmedManualOperatorReportPreflight,
   notRequiredOperatorReportPreflight,
   scanDangerousTrueFields,
@@ -1976,9 +1975,8 @@ export function createWorkstationApp(): express.Express {
           last_error_payload: lastFailureForOverlay.last_error_payload ?? null,
         }
         : null;
-    res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay, {
-      readbackTimeoutMs: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
-    }));
+    // 普通 PC 首屏需要保留各端点自己的慢读预算；全局短超时只留给测试注入，避免相机/底盘慢读被误判为离线。
+    res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay));
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {

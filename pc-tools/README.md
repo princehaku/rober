@@ -95,6 +95,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 17:10 CST 起，当主体状态已读到但 `base_status` 或 `base_feedback_samples_latest` 只读端点超时、返回格式异常或读取失败时，普通首屏 `当前事实` 会把它显示成轮速分项问题：“当前底盘反馈读取超时 / 返回格式异常 / 读取失败；旧 L/R 不能当当前轮速结论”。这不会暴露 `fetch_timeout_*`、`response_json_parse_failed` 等内部 token，也不会自动发送 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 17:50 CST 起，`GET /api/robot-control/summary` HTTP route 不再用全局 2.4s 覆盖相机/底盘慢读窗口；`/api/base/status`、`/api/base/feedback-samples/latest` 和 `/api/camera/health` 继续使用各自端点级预算，避免直连上位机合法 JSON 在 PC 汇总层被误报为 timeout/bad readback。free-roam summary 同时把 `external_stop_requested=true` 单独显示成停止请求，不再让雷达 stale 看起来像“车不能动”；雷达和相机只影响建图验收，低速自由移动仍看现场安全确认和停止兜底。Nav2 行程仍按上次执行窗口拆开显示：PWM/ROS/speed 模式、非零底盘命令、wheel raw L/R 和 IMU 姿态变化分开呈现，当前 live 形态应归因到“PWM 已发命令但 T=1001 L/R 未非零，下一次按 ROS 重跑复验”，不是相机或雷达阻塞。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

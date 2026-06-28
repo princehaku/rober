@@ -35,6 +35,7 @@ class FreeRoamAutonomyTest(unittest.TestCase):
         self.assertEqual(decision["angular_z_radps"], 0.0)
         self.assertTrue(decision["stop_required"])
         self.assertIn("地图记录未启动", {gate["evidence"] for gate in decision["gates"]})
+        self.assertTrue(any("不影响现场监看的低速自由移动" in gate["next_action"] for gate in decision["gates"]))
 
     def test_clear_gates_drive_forward_at_bounded_speed(self) -> None:
         """所有门禁通过时只允许保守低速直行，给建图覆盖创造真实运动。"""

@@ -136,6 +136,7 @@ const NAV2_GOAL_BLOCKER_ORDER = [
 const FREE_ROAM_GATE_ORDER = [
   "operator_confirmed",
   "stop_available",
+  "external_stop_request",
   "motion_hil_unlock",
   "camera_first_frame",
   "lidar_fresh",
@@ -4597,6 +4598,7 @@ function freeRoamRuntimeGatesFromReadbacks(
   }
   const decision = asRecord(latest.decision);
   const snapshot = asRecord(latest.snapshot);
+  const externalStopRequested = snapshot?.external_stop_requested === true;
   const runtimeLidarAgeS = finitePathCoordinate(snapshot?.lidar_age_s);
   const runtimeLidarMinDistanceM = finitePathCoordinate(snapshot?.lidar_min_distance_m);
   const runtimeLidarFreshFromSnapshot = Boolean(
@@ -4637,6 +4639,11 @@ function freeRoamRuntimeGatesFromReadbacks(
       };
     });
   const hasGate = (id: string): boolean => gateRows.some((gate) => gate.id === id);
+  const mappingActiveGate = gateRows.find((gate) => gate.id === "mapping_active");
+  if (mappingActiveGate && mappingActiveGate.state !== "ready" && !/低速自由移动|现场监看/.test(mappingActiveGate.next_action)) {
+    // 旧上车 artifact 的 mapping gate 文案只说启动建图；PC 要补上“这不是低速移动前置”的产品口径。
+    mappingActiveGate.next_action = "先启动扫地式建图记录；这不影响现场监看的低速自由移动";
+  }
   const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
   const radarScanProofPayload = readbackById(readbacks, "radar_scan_proof_latest")?.payload ?? null;
   const radarFreshValues = [
@@ -4683,7 +4690,18 @@ function freeRoamRuntimeGatesFromReadbacks(
       scope: "mapping_acceptance",
       state: active ? "ready" : "not_proven",
       evidence: active ? "当前读回已证明地图记录 runtime 已启动" : "free-roam runtime 显示地图记录未启动",
-      next_action: active ? "继续保持地图记录并监看画面" : "先启动扫地式建图记录；仍可按自由移动记录低速移动",
+      next_action: active ? "继续保持地图记录并监看画面" : "先启动扫地式建图记录；这不影响现场监看的低速自由移动",
+    });
+  }
+  if (externalStopRequested && !hasGate("external_stop_request")) {
+    // stop 是上一次会话留下的安全状态；它不是雷达问题，下一次 start 会在现场确认后显式清掉。
+    gateRows.push({
+      id: "external_stop_request",
+      label: "停止请求",
+      scope: "runtime_diagnostic",
+      state: "not_proven",
+      evidence: "上车自由移动状态机仍处于停止请求",
+      next_action: "勾选现场安全确认后点击开始自由移动；start 会清除停止请求并打开低速运动双锁",
     });
   }
   if (!hasGate("camera_first_frame")) {
@@ -4830,9 +4848,11 @@ function freeRoamAutonomyNextAction(
   status: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy"],
   mappingReady: boolean,
   mappingMissingReasons: string[],
+  freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
 ): string {
   // 自由移动和建图验收分层：能动不等于可验收建图，下一步必须把这两件事讲清楚。
   const missingText = freeRoamMissingPlainLabels(mappingMissingReasons).join("、");
+  const externalStopRequested = freeRoamRuntime?.state === "stopping" && /现场请求停止|external_stop/i.test(freeRoamRuntime.reason);
   if (status === "ready" && mappingReady) {
     return "已进入自动扫图条件；继续低速监看地图、雷达和画面";
   }
@@ -4842,11 +4862,14 @@ function freeRoamAutonomyNextAction(
       : "自由移动运行中；继续监看建图验收材料";
   }
   if (status === "start_ready") {
+    const stopPrefix = externalStopRequested
+      ? "当前处于停止请求；勾选现场安全确认后点击开始自由移动会先解除停止请求。"
+      : "";
     return mappingReady
-      ? "勾选现场安全确认后可开始自动扫图（低速）"
+      ? `${stopPrefix}勾选现场安全确认后可开始自动扫图（低速）`
       : missingText
-        ? `勾选现场安全确认后可先自由移动；建图验收还差：${missingText}`
-        : "勾选现场安全确认后可先自由移动；继续读取建图验收材料";
+        ? `${stopPrefix}勾选现场安全确认后可先自由移动；建图验收还差：${missingText}`
+        : `${stopPrefix}勾选现场安全确认后可先自由移动；继续读取建图验收材料`;
   }
   return "先连接上车自由移动状态机，并确认停止兜底可用";
 }
@@ -5043,7 +5066,7 @@ function lockedBoundary(
   const freeRoamMappingMissingReasons = freeRoamMappingMissingIds(freeRoamRuntimeGates);
   const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
-  const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons);
+  const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime);
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",

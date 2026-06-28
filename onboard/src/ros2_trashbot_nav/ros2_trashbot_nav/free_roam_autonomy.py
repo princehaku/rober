@@ -179,7 +179,7 @@ class FreeRoamAutonomyController:
                 snapshot.mapping_active,
                 "地图记录已启动",
                 "地图记录未启动",
-                "先启动扫地式建图记录",
+                "先启动扫地式建图记录；这不影响现场监看的低速自由移动",
                 blocking=False,
             ),
             self._gate(

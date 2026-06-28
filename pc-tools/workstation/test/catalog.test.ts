@@ -5627,6 +5627,166 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation summary route keeps slow base readback budget instead of the old 2.4s cap", async () => {
+    // 真实上位机底盘/相机只读端点可能超过普通 summary 短预算；HTTP route 不能再把合法慢读误判成 timeout。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": { payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded") },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "ready") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "loaded") },
+      "/api/radar/scan-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "loaded") },
+      "/api/radar/raw-packet-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result", "loaded") },
+      "/api/base/status": {
+        delay_ms: 2600,
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.base_status", "loaded"),
+          feedback_readback: {
+            wheel_feedback_summary: {
+              latest_pair: { left_speed: 0.03, right_speed: 0.04 },
+              lr_nonzero_observed: true,
+            },
+          },
+        },
+      },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(robotApi.baseUrl)}`);
+      const summary = await response.json() as RobotControlSummaryResponse;
+
+      expect(response.status).toBe(200);
+      expect(summary.read_endpoints.find((item) => item.id === "base_status")).toEqual(expect.objectContaining({
+        request_status: "loaded",
+        status: "loaded",
+        blocked_reasons: [],
+      }));
+      expect(summary.readback_summary.base.wheel_feedback_latest_raw_left).toBe("0.03");
+      expect(summary.robot_api_connection.blocked_reasons).not.toContain("base_status:fetch_timeout_2400ms");
+    } finally {
+      await workstation.close();
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary separates free-roam stop request from lidar mapping readiness", async () => {
+    // live 形状：上次 stop 会把 runtime 留在 stopping；PC 仍要说明 start 可在确认后清 stop，不能误说雷达挡住移动。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            snapshot: {
+              external_stop_requested: true,
+              lidar_age_s: 45136.66,
+              lidar_min_distance_m: 0.04,
+              mapping_active: false,
+              operator_confirmed: false,
+              stop_available: true,
+            },
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "stopping",
+              reason: "现场请求停止",
+              stop_required: true,
+              gates: [
+                {
+                  id: "operator_confirmed",
+                  label: "现场安全确认",
+                  state: "blocked",
+                  evidence: "还未勾选现场安全确认",
+                  next_action: "勾选人在旁边、周围安全、停止手段就绪",
+                },
+                {
+                  id: "stop_available",
+                  label: "停止兜底",
+                  state: "ready",
+                  evidence: "停止按钮或上车停止服务可用",
+                  next_action: "继续保持现场可接管",
+                },
+                {
+                  id: "lidar_fresh",
+                  label: "雷达新鲜",
+                  state: "not_proven",
+                  evidence: "雷达距离已过期，按无雷达低速自由移动",
+                  next_action: "刷新雷达状态；刷新前仅允许现场监看的低速自由移动",
+                },
+              ],
+            },
+          },
+        },
+      },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "stopped") },
+      "/api/radar/scan-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "stale") },
+      "/api/radar/raw-packet-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result", "loaded") },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("当前处于停止请求");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("可先自由移动");
+      expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toContain("lidar_fresh");
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: "external_stop_request",
+          scope: "runtime_diagnostic",
+          state: "not_proven",
+          evidence: "上车自由移动状态机仍处于停止请求",
+        }),
+        expect.objectContaining({
+          id: "lidar_fresh",
+          scope: "mapping_acceptance",
+          state: "not_proven",
+          evidence: "雷达距离已过期，按无雷达低速自由移动",
+        }),
+        expect.objectContaining({
+          id: "mapping_active",
+          scope: "mapping_acceptance",
+          state: "not_proven",
+          next_action: "先启动扫地式建图记录；这不影响现场监看的低速自由移动",
+        }),
+      ]));
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary tells the operator to rerun ROS Nav2 when PWM success lacks wheel raw L/R", async () => {
     // live 形状：旧 pwm NavigateToPose succeeded，但 wheel raw L/R 同窗口仍是 0/0；PC 要明确下次用 ROS 重跑。
     const robotApi = await listenRobotApiReadbackByPath({
@@ -6180,7 +6340,7 @@ describe("workstation fail-closed API contracts", () => {
         id: "mapping_active",
         state: "blocked",
         evidence: "地图记录未启动",
-        next_action: "先启动扫地式建图记录",
+        next_action: "先启动扫地式建图记录；这不影响现场监看的低速自由移动",
       }));
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
