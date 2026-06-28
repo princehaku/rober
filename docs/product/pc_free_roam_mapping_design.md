@@ -714,3 +714,10 @@ overlay 同轮读取 `/api/free-roam/autonomy/latest`、`/api/radar/status` 和 
 `goal_execution_key_values.nav2_goal_execution_proven=false` 并新增 `execution_proof_gap=wheel_lr_nonzero_not_proven`。
 普通地图目标 marker 从“已到达”降级为“到达未证明”，行程卡显示“路线返回成功，真车未证明”，总进度提示重新执行完整行程并确认执行窗口轮速 L/R 非零。
 该变更只读取和翻译历史/latest 证据，不执行 Nav2 goal、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 04:40 起，自由移动、键盘手控和 Nav2 重跑共享同一个 bridge-owned UART 反馈读回口径：
+`/esp32_bridge` 持有 `/dev/ttyS5` 并持续写
+`/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl`，上位机只读该日志汇总 wheel raw L/R。
+这让“小车能不能低速动”的排查不再依赖雷达，也不需要 PC 或 API 为了看轮速抢底盘串口；雷达和相机仍只影响
+“能否按建图验收收口”。日志 fresh 时上位机 `base_status` 会跳过 direct `T=130` 串口读；
+该日志读回不能把静止 `0/0`、IMU 姿态变化或电压读数升级为 wheel raw L/R 非零证明。

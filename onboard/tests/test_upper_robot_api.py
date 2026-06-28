@@ -183,6 +183,55 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["hil_pass"])
         self.assertFalse(payload["sends_motion_commands"])
 
+    def test_bridge_feedback_debug_log_summarizes_latest_wheel_raw(self) -> None:
+        """bridge 已持有 UART 时，API 必须能从 debug JSONL 只读恢复 wheel raw。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "wave_rover_feedback_debug.jsonl"
+            log_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps(
+                            {
+                                "schema": "trashbot.wave_rover.feedback_debug.v1",
+                                "source": "wave_rover_uart_t1001",
+                                "left_speed": 0,
+                                "right_speed": 0,
+                                "roll": 0.0,
+                                "pitch": 0.0,
+                                "yaw": None,
+                                "yaw_available": False,
+                                "voltage": 12.2,
+                            }
+                        ),
+                        json.dumps(
+                            {
+                                "schema": "trashbot.wave_rover.feedback_debug.v1",
+                                "source": "wave_rover_uart_t1001",
+                                "left_speed": 0.08,
+                                "right_speed": 0.07,
+                                "roll": 1.2,
+                                "pitch": 0.4,
+                                "yaw": 3.0,
+                                "yaw_available": True,
+                                "voltage": 12.1,
+                            }
+                        ),
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            summary = upper_robot_api.summarize_bridge_feedback_debug_log(str(log_path))
+
+        self.assertEqual("loaded", summary["artifact"]["status"])
+        self.assertEqual("fresh", summary["freshness"]["status"])
+        self.assertEqual(2, summary["t1001_observed_count"])
+        self.assertTrue(summary["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(0.08, summary["wheel_feedback_summary"]["latest_pair"]["left_speed"])
+        self.assertEqual(0.07, summary["wheel_feedback_summary"]["latest_pair"]["right_speed"])
+        self.assertFalse(summary["sends_motion_commands"])
+        self.assertFalse(summary["safe_to_control"])
+
     def test_feedback_latest_readback_lifts_wheel_summary_without_commands(self) -> None:
         """latest GET 必须把 wheel material 提到顶层，且保持只读回放边界。"""
         latest = {
@@ -238,8 +287,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["safe_to_control"])
 
     def test_base_status_reports_non_motion_readback_without_control_enable(self) -> None:
-        """status 可以做只读反馈探测，但不能开启 safe_to_control。"""
-        # /api/base/status 允许发送 T=130，但不得打开运动控制或交付成功标志。
+        """bridge feedback 不新鲜时，status fallback 可做 T=130 探测但不能开启控制。"""
+        # 只有 bridge JSONL 不 fresh 时才允许旧 T=130 fallback，避免正常刷新抢 bridge UART。
         with tempfile.TemporaryDirectory() as temp_dir:
             api = upper_robot_api.UpperRobotApi(
                 camera_base_url="http://127.0.0.1:8088",
@@ -256,10 +305,15 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
             # mock readback 可以验证 status 汇总，不需要在单元测试中打开串口。
             with mock.patch.object(upper_robot_api, "request_base_feedback_once", return_value=fake_readback):
-                # 设备存在性和 pyserial 可用性也 mock，避免本地开发机依赖 `/dev/ttyS5`。
-                with mock.patch.object(upper_robot_api, "describe_path", return_value={"exists": True}):
-                    with mock.patch.object(upper_robot_api, "load_serial_module", return_value=(object(), None)):
-                        status = api.base_status()
+                with mock.patch.object(
+                    upper_robot_api,
+                    "summarize_bridge_feedback_debug_log",
+                    return_value={"freshness": {"status": "missing"}},
+                ):
+                    # 设备存在性和 pyserial 可用性也 mock，避免本地开发机依赖 `/dev/ttyS5`。
+                    with mock.patch.object(upper_robot_api, "describe_path", return_value={"exists": True}):
+                        with mock.patch.object(upper_robot_api, "load_serial_module", return_value=(object(), None)):
+                            status = api.base_status()
 
         # ACK 为 true 不能外溢成任何运动许可或任务完成结论。
         self.assertTrue(status["feedback_ack"]["t1001_observed"])
@@ -296,14 +350,60 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         with mock.patch.object(upper_robot_api, "request_base_feedback_once", return_value=zero_readback):
             with mock.patch.object(upper_robot_api, "summarize_feedback_samples_latest_artifact", return_value=stale_nonzero_artifact):
-                with mock.patch.object(upper_robot_api, "describe_path", return_value={"exists": True}):
-                    with mock.patch.object(upper_robot_api, "load_serial_module", return_value=(object(), None)):
-                        status = api.base_status()
+                with mock.patch.object(
+                    upper_robot_api,
+                    "summarize_bridge_feedback_debug_log",
+                    return_value={"freshness": {"status": "missing"}},
+                ):
+                    with mock.patch.object(upper_robot_api, "describe_path", return_value={"exists": True}):
+                        with mock.patch.object(upper_robot_api, "load_serial_module", return_value=(object(), None)):
+                            status = api.base_status()
 
         self.assertFalse(status["wheel_feedback_nonzero_observed"])
         self.assertFalse(status["wheel_feedback_lr_nonzero_proven"])
         self.assertTrue(status["feedback_samples_latest"]["wheel_feedback_lr_nonzero_proven"])
         self.assertEqual("stale", status["feedback_samples_latest"]["freshness"]["status"])
+        self.assertFalse(status["safe_to_control"])
+
+    def test_base_status_lifts_fresh_bridge_feedback_without_uart_claim(self) -> None:
+        """bridge debug log fresh 时，base status 只读日志，不再打开 UART。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        bridge_summary = {
+            "freshness": {"status": "fresh"},
+            "t1001_observed_count": 3,
+            "wheel_feedback_lr_nonzero_proven": True,
+            "wheel_feedback_nonzero_observed": True,
+            "wheel_feedback_summary": {
+                "latest_pair": {"source": "vendor_t1001_L_R", "left_speed": 0.08, "right_speed": 0.07},
+                "lr_nonzero_observed": True,
+            },
+            "motion_signal_observed": True,
+            "motion_signal_source": "wheel_feedback_lr",
+            "sends_motion_commands": False,
+            "safe_to_control": False,
+        }
+
+        with mock.patch.object(upper_robot_api, "request_base_feedback_once") as request_feedback:
+            with mock.patch.object(upper_robot_api, "summarize_feedback_samples_latest_artifact", return_value={"freshness": {"status": "missing"}}):
+                with mock.patch.object(upper_robot_api, "summarize_bridge_feedback_debug_log", return_value=bridge_summary):
+                    with mock.patch.object(upper_robot_api, "describe_path", return_value={"exists": True}):
+                        with mock.patch.object(upper_robot_api, "load_serial_module", return_value=(object(), None)):
+                            status = api.base_status()
+
+        request_feedback.assert_not_called()
+        self.assertEqual("fresh_bridge_feedback_debug_log", status["feedback_ack"]["source"])
+        self.assertFalse(status["readback_sends_commands"])
+        self.assertFalse(status["sends_commands"])
+        self.assertFalse(status["feedback_readback"]["request"]["attempted"])
+        self.assertTrue(status["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(0.08, status["wheel_feedback_summary"]["latest_pair"]["left_speed"])
+        self.assertEqual(bridge_summary, status["bridge_feedback_debug"])
+        self.assertEqual("wheel_feedback_lr", status["motion_signal_source"])
         self.assertFalse(status["safe_to_control"])
 
     def test_manual_control_pwm_diagnostic_samples_wheel_feedback_during_motion_window(self) -> None:

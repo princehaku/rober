@@ -3743,3 +3743,15 @@ PC Node 只读共享上游，而不是单独抢占摄像头；这只强化 7001 
 `base_feedback_latest_raw_left/right` 优先，旧 artifact 缺 raw 时才回退到 `base_feedback_latest_left_speed/right_speed`。
 这样地图行程标签、行程卡和当前事实对同一轮 Nav2 证据显示同一组 L/R；wheel 已复验时也直接显示 `轮速已复验 L/R=...`。
 该变化只消费已有 summary/latest 字段，不发送 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 04:40 起，底盘 wheel raw L/R 的当前读回优先走 `/esp32_bridge` 持有串口后的只读反馈日志：
+bridge 默认把解析到的 WAVE ROVER `T=1001` 紧凑反馈写入
+`/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl`，上位机 `GET /api/base/status`
+再读取这份 JSONL 生成 `bridge_feedback_debug`、`wheel_feedback_summary`、
+`motion_signal_observed` 和 `imu_attitude_delta_observed`。这样 PC、上位机和 Nav2/键盘手控都能复用
+同一个 bridge-owned UART 入口，避免 Robot API 为了刷新轮速另开 `/dev/ttyS5` 与 bridge 抢串口。
+bridge 日志 fresh 时，`feedback_readback.schema=trashbot.upper_robot_api.v1.base_status_feedback_skipped`
+且 `request.attempted=false`，旧的 direct `T=130` 只在 bridge 日志缺失或不新鲜时作为 fallback。
+该 readback 只消费 bridge 已经收到的反馈帧，不发送 manual、keyboard、Nav2、free-roam、delivery、stop
+或 `/cmd_vel`；若 L/R 仍为 `0/0`，页面只能显示“当前反馈在线但未证明非零”，不能把 IMU 姿态变化或电压读数当作
+wheel raw L/R 非零证据。

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import math
+from pathlib import Path
 import threading
 import time
 from typing import Any
@@ -175,6 +176,11 @@ class ESP32Bridge(Node):
     def _append_feedback_debug_line(self, feedback: dict[str, float | None]) -> None:
         """按需追加 vendor T=1001 原始反馈证据，不参与控制闭环。"""
         log_path = getattr(self, "feedback_debug_log_path", "")
+        try:
+            # 允许运行中 ros2 param set 打开/切换日志，不需要重启 bridge 或抢占 UART。
+            log_path = str(self.get_parameter("feedback_debug_log_path").value)
+        except Exception:
+            pass
         if not log_path:
             return
 
@@ -194,7 +200,9 @@ class ESP32Bridge(Node):
 
         try:
             # 串口 reader 已拥有同一帧的解析结果；这里只做追加落盘，失败不能影响 topic 或停车服务。
-            with open(log_path, "a", encoding="utf-8") as log_file:
+            log_file_path = Path(log_path)
+            log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            with log_file_path.open("a", encoding="utf-8") as log_file:
                 log_file.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
         except OSError as exc:
             self.get_logger().warn(f"Failed to append WAVE ROVER feedback debug log: {exc}")

@@ -17,6 +17,9 @@ from typing import Any
 from ros2_trashbot_hardware.wave_rover_protocol import VALID_COMMAND_MODES
 
 
+DEFAULT_FEEDBACK_DEBUG_LOG_PATH = "/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl"
+
+
 @dataclass(frozen=True)
 class BridgeConfig:
     """运行时配置快照，方便 ROS glue 与离线 proof 共用同一套校验语义。"""
@@ -78,8 +81,8 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("odom_publish_hz", 20.0)
     # 动态 odom TF 默认开启，便于下一轮 smoke 直接复用；但它仍只代表命令积分，不是实测编码器。
     node.declare_parameter("publish_odom_tf", True)
-    # 默认关闭 raw feedback 证据落盘，避免常规 bringup 产生额外 IO 或误把调试文件当作导航里程计。
-    node.declare_parameter("feedback_debug_log_path", "")
+    # 默认落盘 bridge 已解析的 T1001 精简反馈，让 PC 不必和 bridge 抢 UART 也能看到 wheel raw。
+    node.declare_parameter("feedback_debug_log_path", DEFAULT_FEEDBACK_DEBUG_LOG_PATH)
     # 默认关闭命令调试落盘；O11 执行 proof 可显式打开，用于确认 /cmd_vel 是否真的转成非零 UART JSON。
     node.declare_parameter("command_debug_log_path", "")
 

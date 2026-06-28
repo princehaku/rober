@@ -484,6 +484,13 @@ Nav2、delivery、stop 或 `/cmd_vel`。
 `/cmd_vel` 给 `/esp32_bridge`，不再与 bridge 抢 `/dev/ttyS5`。PC 工作站仍只调用固定
 `/api/robot-control/base/manual`，浏览器不直连 `/cmd_vel`；PWM/speed 只保留为显式诊断模式。
 
+2026-06-29 04:40 CST 起，PC 轮速 readback 不再要求上位机临时打开底盘串口：`/esp32_bridge`
+作为 `/dev/ttyS5` 的唯一 owner，会把解析到的 `T=1001` wheel raw L/R 反馈写入
+`/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl`；上位机 `/api/base/status`
+只读该日志并把 fresh `bridge_feedback_debug` 汇总给 PC。这样多人刷新 PC、键盘手控和 Nav2 重跑都不会因为
+轮速刷新再抢 UART；日志 fresh 时 `feedback_readback` 明确返回 skipped/attempted=false，旧 direct `T=130`
+只作为日志不 fresh 时的 fallback。该路径只读反馈，不发送 manual、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ## 2026-06-28 PC Nav2 Current Fact Raw L/R
 
 2026-06-28 08:46 CST 起，普通首屏 `当前事实` 的 Nav2 行程成功/待复验文案也统一使用

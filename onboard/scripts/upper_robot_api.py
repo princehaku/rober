@@ -47,6 +47,8 @@ DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
 DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
 DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
+DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH = "/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl"
+DEFAULT_BRIDGE_FEEDBACK_DEBUG_STALE_AFTER_MS = 15 * 1000
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 5.0
 DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
@@ -4259,6 +4261,112 @@ def summarize_feedback_samples_latest_artifact(
     return base_summary
 
 
+def summarize_bridge_feedback_debug_log(
+    path: str,
+    stale_after_ms: int = DEFAULT_BRIDGE_FEEDBACK_DEBUG_STALE_AFTER_MS,
+    max_lines: int = 80,
+) -> dict[str, Any]:
+    """读取 esp32_bridge 已解析 T1001 JSONL，避免上位机 API 抢占底盘 UART。"""
+    generated_at_ms = now_ms()
+    artifact = {
+        **artifact_path_info(path),
+        "ok": False,
+        "status": "unknown",
+    }
+    summary: dict[str, Any] = {
+        "schema": f"{SCHEMA}.bridge_feedback_debug_summary",
+        "generated_at_ms": generated_at_ms,
+        "source": "esp32_bridge_feedback_debug_log",
+        "artifact": artifact,
+        "freshness": {
+            "status": "unknown",
+            "stale_after_ms": stale_after_ms,
+            "basis": "artifact_mtime_only_bridge_feedback_not_hil_or_safe_to_control",
+        },
+        "t1001_observed_count": 0,
+        "wheel_feedback_summary": {},
+        "wheel_feedback_nonzero_observed": False,
+        "wheel_feedback_lr_nonzero_proven": False,
+        "imu_attitude_delta_summary": {},
+        "imu_attitude_delta_observed": False,
+        "motion_signal_observed": False,
+        "motion_signal_source": "not_observed",
+        "latest_frame": None,
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+    }
+    try:
+        stat_result = Path(path).stat()
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing"})
+        summary["freshness"]["status"] = "missing"
+        return summary
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        summary["freshness"]["status"] = "read_failed"
+        return summary
+
+    mtime_ms = int(stat_result.st_mtime_ns / 1_000_000)
+    age_ms = max(0, generated_at_ms - mtime_ms)
+    artifact.update({"mtime_ms": mtime_ms, "age_ms": age_ms})
+    try:
+        lines = Path(path).read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        summary["freshness"]["status"] = "read_failed"
+        return summary
+
+    frames: list[dict[str, Any]] = []
+    bad_line_count = 0
+    for line in lines[-max(1, max_lines):]:
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            bad_line_count += 1
+            continue
+        if not isinstance(record, dict) or record.get("source") != "wave_rover_uart_t1001":
+            continue
+        frame = {
+            "T": BASE_FEEDBACK_ID,
+            "L": record.get("left_speed"),
+            "R": record.get("right_speed"),
+            "r": record.get("roll"),
+            "p": record.get("pitch"),
+            "y": record.get("yaw") if record.get("yaw_available") is not False else "null",
+            "v": record.get("voltage"),
+        }
+        if compact_t1001_feedback_frame(frame) is not None:
+            frames.append(frame)
+
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": stat_result.st_size})
+    summary["freshness"]["status"] = freshness_from_age(age_ms, stale_after_ms)
+    wheel_summary = wheel_feedback_summary_from_frames(frames)
+    imu_summary = imu_attitude_delta_summary_from_frames(frames)
+    wheel_nonzero = bool(wheel_summary["lr_nonzero_observed"])
+    imu_delta = bool(imu_summary["imu_attitude_delta_observed"])
+    summary.update(
+        {
+            "bad_line_count": bad_line_count,
+            "t1001_observed_count": len(frames),
+            "latest_frame": frames[-1] if frames else None,
+            "wheel_feedback_summary": wheel_summary,
+            "wheel_feedback_nonzero_observed": wheel_nonzero,
+            "wheel_feedback_lr_nonzero_proven": wheel_nonzero,
+            "imu_attitude_delta_summary": imu_summary,
+            "imu_attitude_delta_observed": imu_delta,
+            "motion_signal_observed": bool(wheel_nonzero or imu_delta),
+            "motion_signal_source": "wheel_feedback_lr" if wheel_nonzero else "imu_attitude_delta" if imu_delta else "not_observed",
+        }
+    )
+    return summary
+
+
 def atomic_write_json_artifact(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     """用同目录临时文件 + replace，避免运营侧读到半截 JSON。"""
     destination = Path(path)
@@ -4832,6 +4940,24 @@ def feedback_ack_from_fresh_evidence(
         "robot_ack_connected": False,
         "source": "fresh_readback_or_fresh_artifact",
         "reason": str(readback_ack.get("reason") or "T=1001 not observed in fresh /api/base/status evidence"),
+    }
+
+
+def feedback_ack_from_bridge_debug(bridge_summary: dict[str, Any]) -> dict[str, Any]:
+    """bridge 已持有 UART 时，status ACK 优先来自 fresh JSONL，避免 API 再开串口。"""
+    count = bridge_summary.get("t1001_observed_count")
+    if isinstance(count, int) and count > 0:
+        return {
+            "t1001_observed": True,
+            "robot_ack_connected": False,
+            "source": "fresh_bridge_feedback_debug_log",
+            "reason": "T=1001 observed in fresh esp32_bridge feedback debug log; /api/base/status skipped direct T=130 UART read",
+        }
+    return {
+        "t1001_observed": False,
+        "robot_ack_connected": False,
+        "source": "fresh_bridge_feedback_debug_log",
+        "reason": "fresh esp32_bridge feedback debug log available but no T=1001 frame observed",
     }
 
 
@@ -5561,6 +5687,48 @@ def build_base_feedback_samples_payload(
     }
 
 
+def skipped_base_status_feedback_payload(port: str, baudrate: int, reason: str) -> dict[str, Any]:
+    """bridge 反馈 fresh 时不再发送 T=130，避免 status 页面刷新抢底盘串口。"""
+    return {
+        "schema": f"{SCHEMA}.base_status_feedback_skipped",
+        "generated_at_ms": now_ms(),
+        "vendor_sources": VENDOR_SOURCES,
+        "port": port,
+        "baudrate": baudrate,
+        "request": {
+            "method": "GET",
+            "endpoint": "/api/base/status",
+            "command": BASE_FEEDBACK_REQUEST_COMMAND,
+            "attempted": False,
+            "reason": reason,
+        },
+        "serial_open": None,
+        "serial_write": None,
+        "serial_read": None,
+        "read_line_count": 0,
+        "parsed_json_count": 0,
+        "invalid_json_count": 0,
+        "observed_feedback_types": [],
+        "t1001_feedback_frames": [],
+        "t1001_feedback_status": reason,
+        "feedback_ack": {
+            "t1001_observed": False,
+            "robot_ack_connected": False,
+            "reason": "direct T=130 feedback request skipped because esp32_bridge feedback debug log is fresh",
+        },
+        "wheel_feedback_summary": {},
+        "wheel_feedback_nonzero_observed": False,
+        "wheel_feedback_lr_nonzero_proven": False,
+        "safe_to_control": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "primary_actions_enabled": False,
+    }
+
+
 def skipped_manual_feedback_payload(port: str, baudrate: int, reason: str) -> dict[str, Any]:
     """manual 写入失败时不追加 T=130，避免反馈读取挤占停车兜底后的故障定位。"""
     return {
@@ -5919,18 +6087,47 @@ class UpperRobotApi:
             self.feedback_samples_artifact_path,
             DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS,
         )
-        # status 的 ACK 只来自本次短窗口 T=130 或 fresh artifact，旧材料继续标 stale。
-        feedback_readback = request_base_feedback_once(
-            self.base_port,
-            self.base_baudrate,
-            read_timeout_s=DEFAULT_FEEDBACK_READ_TIMEOUT_S,
-            read_window_s=DEFAULT_FEEDBACK_READ_WINDOW_S,
-        )
-        feedback_ack = feedback_ack_from_fresh_evidence(feedback_readback, feedback_samples_latest)
+        bridge_feedback_debug = summarize_bridge_feedback_debug_log(DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH)
         feedback_samples_freshness = feedback_samples_latest.get("freshness")
         feedback_samples_is_fresh = isinstance(feedback_samples_freshness, dict) and feedback_samples_freshness.get("status") == "fresh"
+        bridge_feedback_freshness = bridge_feedback_debug.get("freshness")
+        bridge_feedback_is_fresh = isinstance(bridge_feedback_freshness, dict) and bridge_feedback_freshness.get("status") == "fresh"
+        if bridge_feedback_is_fresh:
+            # bridge 已经独占 UART 并持续写 fresh T1001 日志时，status 不能再为了只读轮速抢串口。
+            feedback_readback = skipped_base_status_feedback_payload(
+                self.base_port,
+                self.base_baudrate,
+                "fresh_bridge_feedback_debug_log_available",
+            )
+            feedback_ack = feedback_ack_from_bridge_debug(bridge_feedback_debug)
+        else:
+            # 没有 fresh bridge 反馈时才保留旧的非运动 T=130 fallback，且仍不授予运动控制权限。
+            feedback_readback = request_base_feedback_once(
+                self.base_port,
+                self.base_baudrate,
+                read_timeout_s=DEFAULT_FEEDBACK_READ_TIMEOUT_S,
+                read_window_s=DEFAULT_FEEDBACK_READ_WINDOW_S,
+            )
+            feedback_ack = feedback_ack_from_fresh_evidence(feedback_readback, feedback_samples_latest)
+        best_wheel_summary = (
+            bridge_feedback_debug.get("wheel_feedback_summary")
+            if bridge_feedback_is_fresh and isinstance(bridge_feedback_debug.get("wheel_feedback_summary"), dict)
+            else feedback_readback.get("wheel_feedback_summary")
+            if isinstance(feedback_readback.get("wheel_feedback_summary"), dict)
+            else feedback_samples_latest.get("wheel_feedback_summary")
+            if feedback_samples_is_fresh and isinstance(feedback_samples_latest.get("wheel_feedback_summary"), dict)
+            else {}
+        )
+        best_motion_signal = (
+            bridge_feedback_debug
+            if bridge_feedback_is_fresh
+            else feedback_samples_latest
+            if feedback_samples_is_fresh
+            else {}
+        )
         wheel_feedback_nonzero = bool(
             feedback_readback.get("wheel_feedback_lr_nonzero_proven")
+            or (bridge_feedback_is_fresh and bridge_feedback_debug.get("wheel_feedback_lr_nonzero_proven"))
             or (feedback_samples_is_fresh and feedback_samples_latest.get("wheel_feedback_lr_nonzero_proven"))
         )
         return {
@@ -5946,8 +6143,15 @@ class UpperRobotApi:
             "feedback_ack": feedback_ack,
             "feedback_readback": feedback_readback,
             "feedback_samples_latest": feedback_samples_latest,
+            "bridge_feedback_debug": bridge_feedback_debug,
+            "wheel_feedback_summary": best_wheel_summary,
             "wheel_feedback_nonzero_observed": wheel_feedback_nonzero,
             "wheel_feedback_lr_nonzero_proven": wheel_feedback_nonzero,
+            "imu_attitude_delta_observed": bool(best_motion_signal.get("imu_attitude_delta_observed")),
+            "motion_signal_observed": bool(wheel_feedback_nonzero or best_motion_signal.get("motion_signal_observed")),
+            "motion_signal_source": best_motion_signal.get("motion_signal_source") or (
+                "wheel_feedback_lr" if wheel_feedback_nonzero else "not_observed"
+            ),
             "control_policy": {
                 "mode": "low_speed_pulse_with_auto_stop",
                 "base_command_mode": self.base_command_mode,

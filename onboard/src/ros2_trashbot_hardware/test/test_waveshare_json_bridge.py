@@ -530,6 +530,35 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertTrue(record["yaw_available"])
             self.assertEqual(record["voltage"], 11.7)
 
+    def test_publish_feedback_reads_dynamic_debug_log_parameter(self):
+        bridge = _bridge_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "dynamic_feedback.jsonl"
+            node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+            node.imu_pub = _FakePublisher()
+            node.battery_pub = _FakePublisher()
+            node.get_clock = lambda: _FakeClock()
+            node.get_logger = lambda: _FakeLogger()
+            node.feedback_debug_log_path = ""
+            node.get_parameter = lambda name: _FakeParameter(str(log_path) if name == "feedback_debug_log_path" else "")
+
+            node._publish_feedback(
+                {
+                    "left_speed": 0.4,
+                    "right_speed": 0.5,
+                    "roll": 1.0,
+                    "pitch": 2.0,
+                    "yaw": None,
+                    "voltage": 11.9,
+                }
+            )
+
+            record = json.loads(log_path.read_text(encoding="utf-8").strip())
+            self.assertEqual(record["left_speed"], 0.4)
+            self.assertEqual(record["right_speed"], 0.5)
+            self.assertFalse(record["yaw_available"])
+
     def test_publish_feedback_warns_but_keeps_topics_when_debug_log_fails(self):
         bridge = _bridge_module()
 
@@ -610,7 +639,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
 
         self.assertEqual(config.command_mode, "ros")
         self.assertTrue(config.publish_odom_tf)
-        self.assertEqual(config.feedback_debug_log_path, "")
+        self.assertEqual(config.feedback_debug_log_path, "/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl")
         self.assertEqual(config.command_debug_log_path, "")
 
     def test_publish_odom_sends_matching_tf_when_enabled(self):
