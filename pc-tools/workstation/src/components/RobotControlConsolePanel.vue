@@ -1608,6 +1608,42 @@ function sharedPreviewLocalRetryText(): string {
     : "";
 }
 
+function plainCameraPreviewActionText(action: string | undefined): string {
+  // 后端 action 是给接口对齐用的短 token；普通首屏要翻译成现场能直接执行的下一步。
+  const value = action?.trim() ?? "";
+  if (!value || value === "not_loaded" || value === "none") {
+    return "";
+  }
+  if (value === "check_usb_camera_input_power_or_known_good_uvc") {
+    return "下一步：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。";
+  }
+  if (value === "continue_monitoring_shared_preview") {
+    return "下一步：继续监看共享预览。";
+  }
+  if (value === "open_shared_preview_when_needed" || value === "open_shared_preview_or_run_first_frame_probe") {
+    return "下一步：需要看画面时打开共享预览，或点只读检查复测首帧。";
+  }
+  return `下一步：${value.replace(/[。；\s]+$/g, "")}。`;
+}
+
+const plainCameraSharedPreviewGuidance = computed(() => {
+  // live summary/status 已经给出“是否独占”和“下一步”；这里单独露出，避免普通用户只看到工程态。
+  const status = cameraMjpegStatusResult.value;
+  const summaryCamera = robotSummary.value?.readback_summary.camera;
+  const hintSource = status?.proxy_status === "status_loaded" ? status.preview_plain_hint : summaryCamera?.preview_plain_hint;
+  const actionSource = status?.proxy_status === "status_loaded" ? status.preview_next_action : summaryCamera?.preview_next_action;
+  const hint = hintSource?.trim();
+  const action = plainCameraPreviewActionText(actionSource);
+  if (!hint || hint === "not_loaded" || hint === "none") {
+    return action ? `共享预览结论：${action}` : "";
+  }
+  const hintText = hint.replace(/[。；\s]+$/g, "");
+  if (actionSource?.trim() === "check_usb_camera_input_power_or_known_good_uvc" && /检查.*USB|known-good|UVC/.test(hintText)) {
+    return `共享预览结论：${hintText}。下一步：按这个方向排查相机输入、USB 和供电。`;
+  }
+  return action ? `共享预览结论：${hintText}。${action}` : `共享预览结论：${hintText}。`;
+});
+
 const plainCameraCachedFrameStatus = computed(() => {
   // 这行只服务普通首屏：告诉后来进入的页面“已有最近帧可先看”，但仍等待本页 img/load 或 video 像素后才写成画面可见。
   if (!cameraMjpegCachedFramePending.value) {
@@ -11809,6 +11845,7 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
           <p v-if="plainCameraCachedFrameStatus" class="panel-note" data-testid="robot-camera-cached-frame-status">{{ plainCameraCachedFrameStatus }}</p>
           <p class="panel-note" data-testid="robot-camera-shared-preview-status">{{ plainCameraSharedPreviewStatus }}</p>
+          <p v-if="plainCameraSharedPreviewGuidance" class="panel-note" data-testid="robot-camera-shared-preview-guidance">{{ plainCameraSharedPreviewGuidance }}</p>
           <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>
         </article>
 

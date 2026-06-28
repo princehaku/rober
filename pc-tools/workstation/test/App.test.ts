@@ -20386,6 +20386,10 @@ describe("App", () => {
     mjpegStatusFixture.exclusive_camera_claim = false;
     mjpegStatusFixture.last_failure_reason = "camera_mjpeg_http_status_503";
     mjpegStatusFixture.last_remote_http_status = 503;
+    mjpegStatusFixture.source_diagnosis_plain_hint = "不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。";
+    mjpegStatusFixture.preview_status = "source_first_frame_failed";
+    mjpegStatusFixture.preview_plain_hint = "不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。";
+    mjpegStatusFixture.preview_next_action = "check_usb_camera_input_power_or_known_good_uvc";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/camera/mjpeg/status": mjpegStatusFixture,
@@ -20407,6 +20411,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：正在接入共享 MJPEG 实时画面；多个页面共用同一条上游流。视频元素还没绑定实时流。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).not.toContain("采集尝试");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。 页面会低频自动重试。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-guidance"]').text()).toBe("共享预览结论：不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。下一步：按这个方向排查相机输入、USB 和供电。");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("只读检查：上位机 health 已确认相机源没有首帧");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("不是页面独占");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).not.toContain("还没做首帧检查");
@@ -20448,6 +20453,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，UVC 没有输出视频帧。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-guidance"]').text()).not.toContain("uvc_no_frame_not_exclusive");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("不是页面独占");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("source_usage_status");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("uvc_no_frame_not_exclusive");
