@@ -75,6 +75,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-28 09:26 CST 起，PC summary 与普通首屏的行程口径对齐：只要路线已生成且点数大于 0，`nav2_goal_ready` 不再因为小车地图位置未显示而变成 false；页面仍会建议先重新定位或刷新地图，但这不再是发车前硬挡。真正执行仍必须勾现场安全确认，并走固定 `/api/robot-control/nav2/goal/execute`。
 
+2026-06-28 09:38 CST 起，普通首屏 `连接/刷新` 会同时刷新共享 MJPEG 画面状态、地图画面和雷达只读状态；画面卡里的观看人数、上游连接、最近失败和缓存帧不再停留在旧读数。该刷新只调用只读 `/api/robot-control/camera/mjpeg/status`，不会新建 camera offer，不发送 manual、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-28 08:24 CST 起，轮速卡的 `试动读轮速` 普通入口不再因为缺现场画面材料而卡住：first-jog 材料足够时仍走固定 first-jog；材料不足但已勾现场安全确认时，退到已有固定底盘试动入口读取 wheel raw L/R。画面只影响旧 first-jog 材料和建图验收，不再作为底盘试动或轮速读取前置；该入口仍走 workstation `/api/robot-control/base/manual` 固定代理，不直连 `/cmd_vel`。
 
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机

@@ -9543,9 +9543,12 @@ async function refreshConsole(): Promise<void> {
 }
 
 async function refreshPlainConsole(): Promise<void> {
-  // 普通首屏的“连接/刷新”必须刷新用户正在看的真实画面；只读地图和雷达状态，不触发运动。
+  // 普通首屏的“连接/刷新”必须刷新用户正在看的真实画面；只读地图、雷达和共享画面状态，不触发运动。
   await refreshConsole();
-  await refreshMapPreview({ radarStatusRefresh: true });
+  await Promise.all([
+    refreshMapPreview({ radarStatusRefresh: true }),
+    refreshCameraMjpegStatus(),
+  ]);
 }
 
 async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean; radarStatusRefresh?: boolean } = {}): Promise<void> {

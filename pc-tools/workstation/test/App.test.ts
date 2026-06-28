@@ -4021,8 +4021,8 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
-  it("refreshes visible map and radar readback from the plain connection refresh", async () => {
-    // 普通用户点连接/刷新时，需要同步刷新真实地图画面和雷达只读状态，避免 summary 新了但地图仍是旧画面。
+  it("refreshes visible map, radar, and shared camera readback from the plain connection refresh", async () => {
+    // 普通用户点连接/刷新时，需要同步刷新真实地图、雷达和共享画面状态，避免 summary 新了但画面仍是旧事实。
     const mockedFetch = stubWorkstationFetch();
 
     const wrapper = mount(App);
@@ -4032,6 +4032,7 @@ describe("App", () => {
     const summaryCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary?")).length;
     const mapPreviewCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     const radarStatusCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length;
+    const cameraMjpegStatusCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?")).length;
     await wrapper.find('[data-testid="robot-api-refresh"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -4039,7 +4040,10 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary?")).length).toBe(summaryCallsBefore + 1);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBefore + 1);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length).toBe(radarStatusCallsBefore + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?")).length).toBe(cameraMjpegStatusCallsBefore + 1);
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：显示最近读取的真实地图画面");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("共享画面：");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer?") && options?.method === "POST")).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
