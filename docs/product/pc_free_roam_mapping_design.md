@@ -647,6 +647,16 @@ ROS2、不发送 `NavigateToPose`、不发布 `/cmd_vel`、不碰底盘串口。
 安装依赖不等于发车或 Nav2 HIL 通过；没有现场安全确认前，PC 仍只显示 `自动驾驶服务未启动` 和恢复顺序，不自动调用
 `/api/nav2/start`、`NavigateToPose` 或 `/cmd_vel`。
 
+2026-06-29 04:00 现场复核把旧依赖失败和当前自动驾驶失败拆清：
+`/api/nav2/start` 只启动 stack-only manager，不发送 `NavigateToPose`、`/cmd_vel`、manual、free-roam 或 delivery；
+启动回包和脚本 status 均保留 `motion_requires_explicit_goal_execute=true`、`sends_base_motion_commands=false`。
+当前车上 `nav2_bringup` 已存在，Nav2 bringup 可以加载 planner/controller/BT 等组件；但路线仍不能执行，
+因为现场日志显示 local costmap 等待 `map -> base_link` 失败，`/api/nav2/status` 仍未证明
+`map_to_base_link`、AMCL pose、当前 `/scan` 和 fresh route proof。同期 ESP32 bridge 还出现
+`Serial read error ... device disconnected or multiple access on port?`，所以 start 后已立即 stop 释放串口。
+本轮同步让 `o11_nav2_lifecycle.sh` 在 start 前显式 preflight `nav2_bringup`，如果依赖再次缺失会写
+`failed_missing_dependency` 和安装建议，而不是只把根因埋在 launch log 里。
+
 2026-06-28 15:50 起，普通 PC 行程入口也直接消费 `nav2_stack_not_running`：
 当 summary 明确 `nav2_stack_running=false/lifecycle_state=stopped` 时，主执行按钮显示“先启动自动驾驶服务”，
 可操作入口显示“启动自动驾驶服务（不发车）”，当前事实条写“自动驾驶服务未启动；先启动自动驾驶服务，再准备图上行程并按地图画面确认”。

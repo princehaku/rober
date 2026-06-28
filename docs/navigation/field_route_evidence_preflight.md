@@ -374,3 +374,25 @@ PC 工作站新增固定 `POST /api/robot-control/nav2/start|stop?baseUrl=...` �
 
 这条入口解决的是 planner/controller runtime 未运行导致的“自动驾驶无法准备/无法动”，不是摄像头问题，也不要求雷达作为
 低速底盘能动的前置条件；真实完整路线执行、wheel raw L/R 非零和 delivery success 仍要后续独立证明。
+
+## 2026-06-29 Nav2 现场失败分层
+
+2026-06-29 04:00 对 `root@192.168.1.11:37878` 做了一次受控复核：
+
+- `GET /api/camera/health` 返回 `source_first_frame_failed`、`source_readiness=first_frame_failed`、
+  `source_usage.status=not_in_use` 和 `uvc_no_frame_not_exclusive`。当前摄像头问题不是后进入页面独占，
+  而是 `/dev/video1` UVC 设备没有输出首帧；共享 MJPEG 仍可以让多人看到同一个真实失败原因。
+- `GET /api/free-roam/autonomy/latest` 显示 runtime 已加载但 `cmd_vel_publish_enabled=false`、
+  `operator_confirmed=false`。自由移动的 start gate 仍是现场安全确认和停止兜底；相机首帧、
+  雷达 fresh 和地图画面属于建图验收 gate，不是低速能否移动的前置。
+- `POST /api/nav2/start` 只启动 stack-only manager，没有发送 goal、`/cmd_vel`、manual、free-roam、
+  delivery 或底盘 JSON 运动命令。当前车上 `nav2_bringup` 已可解析，旧的缺包 blocker 已消失。
+- Nav2 bringup 能加载 planner/controller/BT 等节点，但 local costmap 日志仍报
+  `Timed out waiting for transform from base_link to map`，`/api/nav2/status` 仍未证明
+  `map -> base_link`、AMCL pose、当前 `/scan` 和 fresh route proof。因此自动驾驶“没法动”的当前层级是
+  定位/TF/scan/路线证据未成立，不是相机首帧，也不是雷达作为底盘运动前置。
+- ESP32 bridge 同时出现 `Serial read error ... device disconnected or multiple access on port?`，
+  本轮 start 后立即执行 stop，释放受管 Nav2 进程组和底盘串口，避免影响手控/free-roam 后续验证。
+
+对应代码层收紧：`o11_nav2_lifecycle.sh` start 前新增 `nav2_bringup` 依赖 preflight。若未来又回到缺包状态，
+脚本会写 `failed_missing_dependency` 与安装建议，PC/API 不再只能从 launch log 反推根因。

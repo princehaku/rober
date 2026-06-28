@@ -22,6 +22,15 @@ class O11Nav2LifecycleScriptTests(unittest.TestCase):
         self.assertIn('write_status_file false "" "stopped" "Nav2 lifecycle not running"', source)
         self.assertIn('emit_status_file_or_fallback false "" "stopped" "Nav2 lifecycle not running"', source)
 
+    def test_start_preflights_nav2_bringup_dependency(self) -> None:
+        """Nav2 bringup 缺失要写结构化根因，不能只把错误埋进 launch log。"""
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn('NAV2_REQUIRED_PACKAGES=("nav2_bringup")', source)
+        self.assertIn('ros2 pkg prefix "$package"', source)
+        self.assertIn('"failed_missing_dependency"', source)
+        self.assertIn("ros-humble-nav2-bringup", source)
+
 
 if __name__ == "__main__":
     unittest.main()

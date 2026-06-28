@@ -18,6 +18,8 @@ COMMAND_MODE="ros"
 RUNTIME_DIR="${ROBER_NAV2_RUNTIME_DIR:-/tmp/rober_nav2_lifecycle}"
 START_CONFIRM_TIMEOUT_S="${ROBER_NAV2_START_CONFIRM_TIMEOUT_S:-8}"
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+NAV2_REQUIRED_PACKAGES=("nav2_bringup")
+NAV2_PACKAGE_INSTALL_HINT="sudo apt-get install ros-humble-navigation2 ros-humble-nav2-bringup"
 
 usage() {
   cat <<'USAGE'
@@ -144,6 +146,19 @@ source_ros_setups() {
   set -u
 }
 
+nav2_missing_packages() {
+  # 先查 launch 直接依赖，避免 package 缺失时只在长日志里留下晦涩失败。
+  local package
+  local missing=()
+  for package in "${NAV2_REQUIRED_PACKAGES[@]}"; do
+    if ! ros2 pkg prefix "$package" >/dev/null 2>&1; then
+      missing+=("$package")
+    fi
+  done
+  local IFS=","
+  echo "${missing[*]}"
+}
+
 guard_runtime_inputs() {
   # Vendor 来源：WAVE ROVER 上/下位机用 115200 UART newline JSON；本车现场 base UART 为 /dev/ttyS5。
   case "$BASE_PORT" in
@@ -172,6 +187,15 @@ require_runtime() {
   test -e "$BASE_PORT"
   source_ros_setups
   command -v ros2 >/dev/null
+  local missing_packages
+  missing_packages="$(nav2_missing_packages)"
+  if [[ -n "$missing_packages" ]]; then
+    local message
+    message="Missing ROS package(s): $missing_packages; install with: $NAV2_PACKAGE_INSTALL_HINT"
+    write_status_file false "" "failed_missing_dependency" "$message"
+    echo "$message" >&2
+    exit 42
+  fi
 }
 
 pid_is_ours() {
