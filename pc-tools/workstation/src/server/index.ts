@@ -1224,6 +1224,118 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
   };
 }
 
+function freeRoamLatestMissingPlainLabels(missingReasons: string[]): string[] {
+  // latest endpoint 不依赖 summary，也要把建图缺口翻译成普通用户能理解的短词。
+  const labels: Record<string, string> = {
+    camera_first_frame: "画面首帧",
+    lidar_fresh: "雷达新鲜",
+    mapping_active: "地图记录",
+    fresh_map_preview: "地图画面",
+  };
+  return missingReasons.map((reason) => labels[reason] ?? reason).filter(Boolean);
+}
+
+function freeRoamLatestMotionReadinessPlain(startReady: boolean, motionReady: boolean, externalStopRequested: boolean): string {
+  // 低速自由移动和建图验收分层；相机/雷达缺口不能再被解释成车不能先动。
+  if (!startReady) {
+    return "自由移动未就绪；先连接上车状态机并确认停止兜底。";
+  }
+  if (motionReady) {
+    return "自由移动正在运行；相机和雷达不作为继续移动的前置。";
+  }
+  if (externalStopRequested) {
+    return "可先自由移动；当前有停止请求，开始自由移动会先清除停止请求。";
+  }
+  return "可先自由移动；只需要现场安全确认和停止兜底。";
+}
+
+function freeRoamLatestMappingReadinessPlain(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
+  if (mappingReady) {
+    return "建图验收已 ready；雷达和摄像头材料满足，可以继续低速建图。";
+  }
+  const missingText = freeRoamLatestMissingPlainLabels(mappingMissingReasons).join("、");
+  if (!startReady) {
+    return missingText
+      ? `建图验收未 ready；还差：${missingText}；先连接上车状态机。`
+      : "建图验收未 ready；还在等待上车状态机。";
+  }
+  return missingText
+    ? `建图验收未 ready；还差：${missingText}；不影响先低速自由移动。`
+    : "建图验收材料还在读取；不影响先低速自由移动。";
+}
+
+function freeRoamLatestMotionNextAction(startReady: boolean, motionReady: boolean, externalStopRequested: boolean): string {
+  if (motionReady) {
+    return "继续低速监看；需要停下时点停止。";
+  }
+  if (startReady) {
+    return externalStopRequested
+      ? "勾选现场安全确认后可先自由移动；开始时会先清除停止请求。"
+      : "勾选现场安全确认后可先自由移动。";
+  }
+  return "先连接上车自由移动状态机，并确认停止兜底可用。";
+}
+
+function freeRoamLatestMappingNextAction(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
+  if (mappingReady) {
+    return "建图验收已 ready；继续低速监看地图、雷达和画面。";
+  }
+  const missingText = freeRoamLatestMissingPlainLabels(mappingMissingReasons).join("、");
+  if (!startReady) {
+    return missingText
+      ? `先连接上车自由移动状态机；建图验收还差：${missingText}。`
+      : "先连接上车自由移动状态机，并继续读取建图验收材料。";
+  }
+  return missingText
+    ? `建图验收还差：${missingText}；不影响先低速自由移动。`
+    : "继续读取建图验收材料；不影响先低速自由移动。";
+}
+
+function freeRoamLatestReadinessFromKeyValues(
+  latestKeyValues: Record<string, string>,
+  loaded: boolean,
+): Pick<
+  RobotControlFreeRoamAutonomyLatestResponse,
+  | "runtime_status"
+  | "decision_state"
+  | "decision_reason"
+  | "free_move_start_ready"
+  | "motion_start_ready"
+  | "motion_ready"
+  | "mapping_readiness_ready"
+  | "mapping_blocked_reasons"
+  | "motion_readiness_plain"
+  | "mapping_readiness_plain"
+  | "motion_next_action_plain"
+  | "mapping_next_action_plain"
+> {
+  const runtimeStatus = latestKeyValues.runtime_status ?? "not_loaded";
+  const decisionState = latestKeyValues.decision_state ?? "not_loaded";
+  const decisionReason = latestKeyValues.decision_reason ?? "not_loaded";
+  const startReady = loaded && runtimeStatus === "loaded";
+  const motionReady = startReady && latestKeyValues.cmd_vel_publish_enabled === "true";
+  const mappingMissing = (latestKeyValues.mapping_missing ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item && item !== "none" && item !== "not_loaded");
+  const mappingReady = startReady && (latestKeyValues.mapping_ready === "true" || mappingMissing.length === 0);
+  const externalStopRequested = decisionState === "stopping" && /现场请求停止|external_stop/i.test(decisionReason);
+  return {
+    runtime_status: runtimeStatus,
+    decision_state: decisionState,
+    decision_reason: decisionReason,
+    free_move_start_ready: startReady,
+    motion_start_ready: startReady,
+    motion_ready: motionReady,
+    mapping_readiness_ready: mappingReady,
+    mapping_blocked_reasons: mappingMissing,
+    motion_readiness_plain: freeRoamLatestMotionReadinessPlain(startReady, motionReady, externalStopRequested),
+    mapping_readiness_plain: freeRoamLatestMappingReadinessPlain(startReady, mappingReady, mappingMissing),
+    motion_next_action_plain: freeRoamLatestMotionNextAction(startReady, motionReady, externalStopRequested),
+    mapping_next_action_plain: freeRoamLatestMappingNextAction(startReady, mappingReady, mappingMissing),
+  };
+}
+
 function unsafeProxyFailure(
   sourceBaseUrl: string,
   reason: string,
@@ -3012,6 +3124,18 @@ export function createWorkstationApp(): express.Express {
       remote_method: "GET",
       remote_http_status: null,
       status: "blocked",
+      runtime_status: "not_loaded",
+      decision_state: "not_loaded",
+      decision_reason: normalized.ok ? "not_loaded" : normalized.reason,
+      free_move_start_ready: false,
+      motion_start_ready: false,
+      motion_ready: false,
+      mapping_readiness_ready: false,
+      mapping_blocked_reasons: ["not_checked"],
+      motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
+      mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
+      motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
+      mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
       latest_key_values: {},
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
@@ -3030,12 +3154,16 @@ export function createWorkstationApp(): express.Express {
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
         (field) => field !== "cmd_vel_publish_enabled" && !field.endsWith(".cmd_vel_publish_enabled"),
       );
+      const latestKeyValues = freeRoamAutonomyLatestKeyValues(remotePayload);
+      const latestLoaded = remote.ok && dangerous.length === 0;
+      const latestReadiness = freeRoamLatestReadinessFromKeyValues(latestKeyValues, latestLoaded);
       const responseBody: RobotControlFreeRoamAutonomyLatestResponse = {
         ...fallbackBase,
-        proxy_status: remote.ok && dangerous.length === 0 ? "latest_loaded" : "latest_failed",
+        proxy_status: latestLoaded ? "latest_loaded" : "latest_failed",
         remote_http_status: remote.status,
         status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
-        latest_key_values: freeRoamAutonomyLatestKeyValues(remotePayload),
+        ...latestReadiness,
+        latest_key_values: latestKeyValues,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `free_roam_autonomy_latest_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`free_roam_autonomy_latest_http_status_${remote.status}`]),

@@ -2954,6 +2954,18 @@ export interface RobotControlFreeRoamAutonomyLatestResponse extends ProofFlags {
   remote_method: "GET";
   remote_http_status: number | null;
   status: "blocked" | "loaded_fail_closed_summary";
+  runtime_status: string;
+  decision_state: string;
+  decision_reason: string;
+  free_move_start_ready: boolean;
+  motion_start_ready: boolean;
+  motion_ready: boolean;
+  mapping_readiness_ready: boolean;
+  mapping_blocked_reasons: string[];
+  motion_readiness_plain: string;
+  mapping_readiness_plain: string;
+  motion_next_action_plain: string;
+  mapping_next_action_plain: string;
   latest_key_values: Record<string, string>;
   failure_reason: string;
   blocked_reasons: string[];
