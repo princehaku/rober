@@ -2982,7 +2982,9 @@ function latestNavGoalOverlay() {
 function latestNavPathOverlay() {
   const preview = mapPreviewResult.value;
   const proof = robotSummary.value?.o3_proof_summary;
-  const points = proof?.path_preview_points ?? [];
+  const previewPoints = preview?.path_preview_points ?? [];
+  // 地图画面已经随响应带回路线点时，以同一轮 map preview 为画线依据；summary 只作为旧上车端兜底。
+  const points = previewPoints.length >= 2 ? previewPoints : proof?.path_preview_points ?? [];
   if (!preview || preview.proxy_status !== "preview_forwarded" || points.length < 2) {
     return null;
   }
@@ -2998,9 +3000,14 @@ function latestNavPathOverlay() {
   }
   const firstPoint = projectedPoints[0];
   const lastPoint = projectedPoints[projectedPoints.length - 1];
-  const sourceCount = Number(proof?.path_preview_source_point_count ?? proof?.path_point_count ?? svgPoints.length);
+  const sourceCount = Number(preview.path_preview_source_point_count ?? proof?.path_preview_source_point_count ?? proof?.path_point_count ?? svgPoints.length);
   const totalCount = Number.isFinite(sourceCount) && sourceCount > 0 ? sourceCount : svgPoints.length;
-  const currentRoute = proof?.path_generated === true || proof?.path_generation_succeeded === true;
+  const readbackNav2 = robotSummary.value?.readback_summary.nav2;
+  const readbackRouteReady = readbackNav2?.path_generated === "true" || readbackNav2?.path_generation_succeeded === "true";
+  const currentRoute = proof?.path_generated === true
+    || proof?.path_generation_succeeded === true
+    || readbackRouteReady
+    || preview.path_preview_point_count > 0;
   const routeExecuting = currentRoute && navGoalExecutionPending.value && Boolean(navGoalExecutionPendingGoal.value);
   const routeStopState = routeExecuting ? plainTripStopOverlayState() : null;
   const routePrefix = currentRoute ? "路线" : "最近路线";

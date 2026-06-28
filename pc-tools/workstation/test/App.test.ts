@@ -9906,6 +9906,56 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("draws the current route from map preview points when summary route coordinates are missing", async () => {
+    // 地图预览响应本身已经是用户正在看的画面；summary 缺坐标时不能让图上路线消失。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.o3_proof_summary.path_generated = true;
+    summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+    summaryFixture.o3_proof_summary.path_preview_points = [];
+    summaryFixture.o3_proof_summary.path_point_count = 18;
+    summaryFixture.o3_proof_summary.path_preview_point_count = 18;
+    summaryFixture.o3_proof_summary.path_preview_source_point_count = 18;
+    summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+    summaryFixture.readback_summary.nav2.path_generated = "true";
+    summaryFixture.readback_summary.nav2.path_generation_succeeded = "true";
+    summaryFixture.readback_summary.nav2.path_point_count = "18";
+    summaryFixture.readback_summary.nav2.path_preview_point_count = "18";
+    summaryFixture.readback_summary.nav2.path_preview_frame_id = "map";
+    markRobotPoseVisible(summaryFixture);
+    const mapPreviewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as Record<string, any>);
+    mapPreviewFixture.path_preview_points = [
+      { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+      { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 17 },
+    ];
+    mapPreviewFixture.path_preview_point_count = 3;
+    mapPreviewFixture.path_preview_source_point_count = 18;
+    mapPreviewFixture.path_preview_frame_id = "map";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/preview": mapPreviewFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/18 个点");
+    expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toContain("图上行程已画在地图上，18 个点（map）");
+    expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toContain("按钮会执行这条图上路线（路线 3/18 个点");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：图上路线可执行。");
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("lets a ready route execute through managed Nav2 runtime when lifecycle is stopped", async () => {
     // live 形态：路径已生成、PC 代理声明 execute 会自动启动 runtime；首屏不能再要求用户先点单独 lifecycle。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
