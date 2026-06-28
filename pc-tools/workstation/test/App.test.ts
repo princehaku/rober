@@ -7924,6 +7924,8 @@ describe("App", () => {
     refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "true";
     refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "164";
     refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "164";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left = "166";
+    refreshedSummary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right = "167";
     refreshedSummary.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
     refreshedSummary.readback_summary.nav2.goal_execution_uses_base_uart = "true";
     refreshedSummary.readback_summary.nav2.goal_execution_goal_frame_id = "map";
@@ -7973,6 +7975,8 @@ describe("App", () => {
           base_feedback_lr_nonzero_proven: "true",
           base_feedback_latest_left_speed: "164",
           base_feedback_latest_right_speed: "164",
+          base_feedback_latest_raw_left: "166",
+          base_feedback_latest_raw_right: "167",
           goal_frame_id: "map",
           goal_x: "0.8",
           goal_y: "0",
@@ -8016,6 +8020,8 @@ describe("App", () => {
               base_feedback_lr_nonzero_proven: "true",
               base_feedback_latest_left_speed: "164",
               base_feedback_latest_right_speed: "164",
+              base_feedback_latest_raw_left: "166",
+              base_feedback_latest_raw_right: "167",
               goal_frame_id: "map",
               goal_x: "0.8",
               goal_y: "0",
@@ -8073,7 +8079,7 @@ describe("App", () => {
     expect(executeIndex).toBeGreaterThan(-1);
     expect(latestIndex).toBeGreaterThan(executeIndex);
     expect(summaryAfterLatestIndex).toBeGreaterThan(latestIndex);
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，轮速已复验。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，轮速已复验 L/R=166/167。");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 19 次");
     const executeBody = JSON.parse(String((mockedFetch.mock.calls[executeIndex]?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
     expect(executeBody).toEqual(expect.objectContaining({

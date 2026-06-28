@@ -2421,9 +2421,13 @@ const plainCurrentFactRows = computed(() => {
           ? `下次将用 ${nav2.next_execution_base_command_mode} 复验`
           : "");
       const modeSuffix = modeText ? `；${modeText}` : "";
+      const nav2Pair = nav2BaseFeedbackPair(nav2Values);
+      const nav2PairText = nav2Pair
+        ? `${nav2Pair.left}/${nav2Pair.right}`
+        : `${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}`;
       const wheelText = nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
-        ? "轮速已复验"
-        : `当前轮速 L/R=${nav2.goal_execution_base_feedback_latest_left_speed}/${nav2.goal_execution_base_feedback_latest_right_speed}${baseReadbackText ? `；${baseReadbackText}` : ""}${modeSuffix}`;
+        ? `轮速已复验${nav2Pair ? ` L/R=${nav2PairText}` : ""}`
+        : `当前轮速 L/R=${nav2PairText}${baseReadbackText ? `；${baseReadbackText}` : ""}${modeSuffix}`;
       rows.push(nav2.goal_execution_base_feedback_lr_nonzero_proven === "true"
         ? `行程：路线返回成功，${wheelText}。`
         : nav2BaseCommandWithoutWheelFeedback(nav2Values)

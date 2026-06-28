@@ -450,3 +450,13 @@ delivery、stop 或 `/cmd_vel`。
 
 该变化只同步本机键盘按住状态到 PC 地图显示，不自动启用键盘，不发送新的 manual pulse、free-roam start、
 Nav2、delivery、stop 或 `/cmd_vel`。
+
+## 2026-06-28 PC Nav2 Current Fact Raw L/R
+
+2026-06-28 08:46 CST 起，普通首屏 `当前事实` 的 Nav2 行程成功/待复验文案也统一使用
+`base_feedback_latest_raw_left/right` 优先口径；旧 artifact 没有 raw 字段时才回退到
+`base_feedback_latest_left_speed/right_speed`。因此行程卡、地图行程标签和当前事实不会再出现同一轮 Nav2
+证据一个地方显示 raw、另一个地方显示旧 speed 的分裂。
+
+该变化只修正 PC 只读文案，不触发 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或
+`/cmd_vel`。

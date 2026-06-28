@@ -3725,3 +3725,8 @@ PC Node 只读共享上游，而不是单独抢占摄像头；这只强化 7001 
 并同步最近 wheel raw L/R 结论；只有地图记录已启动时才显示 `扫图方向` 和扫图短轨迹。
 这样“车可以先自由低速移动”和“地图所见即所得”对齐，同时不会把未启动地图记录的普通移动伪造成建图轨迹。
 该变化只显示本机键盘状态，不自动启用键盘，不新增 manual pulse、free-roam start、Nav2、delivery、stop 或 `/cmd_vel` 调用。
+
+2026-06-28 08:46 起，普通首屏 `当前事实` 的 Nav2 行程成功/待复验文案也复用同一 raw L/R helper：
+`base_feedback_latest_raw_left/right` 优先，旧 artifact 缺 raw 时才回退到 `base_feedback_latest_left_speed/right_speed`。
+这样地图行程标签、行程卡和当前事实对同一轮 Nav2 证据显示同一组 L/R；wheel 已复验时也直接显示 `轮速已复验 L/R=...`。
+该变化只消费已有 summary/latest 字段，不发送 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
