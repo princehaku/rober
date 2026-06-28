@@ -3144,7 +3144,7 @@ function plainMapCoordinateTruthLabel(
       : "机器人位置未读到";
   if (radarLocalScanOverlay.dots.length > 0) {
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
-    const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中";
+    const liveRadar = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中";
     const scanText = liveRadar
       ? `雷达只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点`
       : `最近雷达记录只显示车身局部轮廓 ${radarLocalScanOverlay.dots.length} 个点，当前${radarState}`;
@@ -3161,7 +3161,7 @@ function plainMapCoordinateTruthLabel(
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
     return `坐标口径：${poseText}，${notCurrentSourceText}；${routeText}。`;
   }
-  if (obstacleDistanceLabel && (radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中")) {
+  if (obstacleDistanceLabel && (radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达启动中" || radarState === "刷新中")) {
     const routeText = routePath ? `${routePath.coordinateLabel}仍按地图坐标显示` : "目标线未显示";
     return `坐标口径：${poseText}，雷达只显示${obstacleDistanceLabel}，不贴到地图；${routeText}。`;
   }
@@ -3694,7 +3694,7 @@ const plainMapVisualSummary = computed(() => {
     : radarState === "雷达无新点"
       ? "当前暂无地图雷达点"
       : "";
-  const radarCanShowObstacleDistance = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达停止中" || radarState === "刷新中";
+  const radarCanShowObstacleDistance = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "刷新中";
   const radarStructuredRuntimeDistanceVisible = robotSummary.value?.readback_summary?.lidar?.runtime_scan_status === "fresh"
     && finitePlainNumber(robotSummary.value?.readback_summary?.lidar?.runtime_lidar_min_distance_m) !== null
     && radarPreviewReadbackPointCount() <= 0
@@ -3745,7 +3745,7 @@ const plainMapVisualSummary = computed(() => {
       : radarNeedsMapPose
       ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerWithObstacleLabel ? `${radarState}，${radarCountOnlyMarkerWithObstacleLabel}` : showRadarObstacleDistance ? (radarStructuredRuntimeDistanceVisible ? `雷达距离：${radarObstacleDistanceLabel}（非地图点）` : `${radarState}，${radarObstacleDistanceLabel}`) : radarNoVisiblePointLabel ? `${radarState}，${radarNoVisiblePointLabel}` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarStoppedWithNotCurrentPoints ? `${radarState}，旧点未贴图` : radarStoppedWithZeroPoints ? `${radarState}，地图0点` : radarState;
-  const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "雷达停止中" || radarState === "刷新中";
+  const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "刷新中";
   const radarSweepAria = poseObserved
     ? radarStartAwaitingRefresh
       ? "雷达已启动扫描范围，跟随机器人位置，返回前不把旧点当作新点"

@@ -16179,6 +16179,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达停止请求中，位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达停止中");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达停止请求已发送，地图位置未读到，返回前未证明已停止");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达停止请求已发送，返回前不把旧点位当作已停止后的地图点。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：停止请求已发送，等待上位机返回；返回前未证明雷达已停止");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
