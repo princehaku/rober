@@ -743,6 +743,7 @@ const fixtures: Record<string, unknown> = {
     blocked_reasons: [],
     hard_dangerous_true_fields: [],
     robot_pose_status: "not_observed",
+    path_preview_status: "not_observed",
     robot_control_executed: false,
     ...PROOF_FLAGS,
   },

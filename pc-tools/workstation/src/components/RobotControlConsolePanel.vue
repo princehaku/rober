@@ -9191,6 +9191,8 @@ function makeMapPreviewFallback(reason: string): RobotControlMapPreviewResponse 
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
+    robot_pose_status: "not_observed",
+    path_preview_status: "not_observed",
     robot_control_executed: false,
   };
 }

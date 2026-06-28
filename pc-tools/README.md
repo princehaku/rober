@@ -111,6 +111,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 20:10 CST 起，地图预览响应也在顶层返回 `robot_pose_status`。`/api/robot-control/map/preview` 如果同轮 overlay 读到 map-frame 小车位置，会返回 `map_pose_observed`；否则返回 `not_observed`。外部脚本不用再自行判断 `robot_pose` 是否为 null，就能一眼知道图上小车位置是否可见。该变化只补只读 map preview 字段，不刷新定位、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 20:30 CST 起，地图预览响应顶层也返回 `path_preview_status`。`/api/robot-control/map/preview` 同轮读到当前路线点时返回 `path_preview_observed`，否则返回 `not_observed`。这样外部脚本可以直接判断“图上路线是否可见”，再结合 `robot_pose_status` 和 `radar_overlay_status` 做 WYSIWYG 验收。该变化只补只读 map preview 字段，不准备路线、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、
