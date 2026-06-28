@@ -64,6 +64,13 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             self.assertIn(required, result.stdout)
         self.assertNotIn("ros2 launch", result.stdout)
 
+    def test_ros2_preflight_timeout_allows_board_setup_latency(self) -> None:
+        """真实 API 子进程 source ROS/workspace 会抖动，`command -v ros2` 不能只给 3 秒。"""
+        self.assertEqual(6.0, HELPER.ROS2_PREFLIGHT_TIMEOUT_S)
+        text = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("timeout_s=ROS2_PREFLIGHT_TIMEOUT_S", text)
+        self.assertNotIn("run_ros(args, ROS2_PREFLIGHT_COMMAND, timeout_s=3.0)", text)
+
     def test_parse_args_defaults_keep_read_only(self) -> None:
         """默认参数必须保持旧 collector 语义，不因新增 managed flag 产生副作用。"""
         args = HELPER.parse_args([])
@@ -148,6 +155,14 @@ pose:
         self.assertAlmostEqual(-0.5, request["y"])
         self.assertAlmostEqual(0.7, request["yaw"])
         self.assertFalse(args.path_generation_opt_in)
+
+    def test_initialpose_payload_uses_latest_tf_stamp(self) -> None:
+        """initialpose 显式 stamp=0，避免 AMCL 在现场 TF 刚启动时按旧时间戳外推失败。"""
+        args = HELPER.parse_args(["--initialpose-opt-in"])
+        payload = json.loads(HELPER.initialpose_payload(HELPER.initialpose_request(args)))
+
+        self.assertEqual({"sec": 0, "nanosec": 0}, payload["header"]["stamp"])
+        self.assertEqual("map", payload["header"]["frame_id"])
 
     def test_package_checks_use_single_sourced_pkg_list_command(self) -> None:
         """包可用性是诊断信息，必须一次 pkg list 检查，不能逐包 prefix 阻塞主路径。"""
@@ -664,6 +679,44 @@ __TF_STATIC_ONCE__
         self.assertEqual("true", source["amcl_tf_broadcast_param"])
         self.assertEqual("odom", source["amcl_frame_params"]["odom_frame_id"])
         self.assertEqual("/amcl_pose", source["amcl_node_publishers"][0]["topic"])
+
+    def test_tf_source_diagnostics_accepts_dynamic_odom_base_link(self) -> None:
+        """真实桥接节点会在 /tf 动态发布 odom->base_link，不能被误判为缺 static TF。"""
+        args = HELPER.parse_args([])
+        amcl_probe = {
+            "param_probe_ok": True,
+            "node_info_observed": True,
+            "params": {
+                "tf_broadcast": True,
+                "global_frame_id": "map",
+                "odom_frame_id": "odom",
+                "base_frame_id": "base_link",
+            },
+            "publishers": [{"topic": "/tf", "type": "tf2_msgs/msg/TFMessage"}],
+            "subscribers": [{"topic": "/scan", "type": "sensor_msgs/msg/LaserScan"}],
+            "topic_types": {"/tf": "tf2_msgs/msg/TFMessage", "/tf_static": "tf2_msgs/msg/TFMessage"},
+            "dynamic_edges": [
+                {"parent": "map", "child": "odom", "topic": "/tf"},
+                {"parent": "odom", "child": "base_link", "topic": "/tf"},
+            ],
+            "static_edges": [{"parent": "base_link", "child": "laser_frame", "topic": "/tf_static"}],
+            "command_statuses": {"rclpy_graph": 0, "tf": 0, "tf_static": 0},
+            "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+        }
+
+        source = HELPER.build_tf_source_diagnostics(
+            args,
+            {"stdout": "", "ok": True},
+            amcl_pose_result={"stdout": "header:\n  frame_id: map\n"},
+            amcl_probe=amcl_probe,
+        )
+
+        self.assertTrue(source["map_to_odom_source_observed"])
+        self.assertTrue(source["odom_to_base_link_source_observed"])
+        self.assertTrue(source["odom_to_base_link_dynamic_source_observed"])
+        self.assertFalse(source["odom_to_base_link_static_source_observed"])
+        self.assertTrue(source["base_link_to_laser_frame_source_observed"])
+        self.assertEqual("source_inventory_observed", source["amcl_tf_root_cause"])
 
     def test_tf_source_diagnostics_keeps_static_tf_when_amcl_params_lag(self) -> None:
         """AMCL 参数服务晚到时，source probe 仍必须保留 /tf_static 采样结果。"""

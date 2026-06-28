@@ -3784,3 +3784,10 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 该变化只合并只读 evidence，不调用 `/api/nav2/goal/execute`、manual、keyboard、free-roam、delivery、stop
 或 `/cmd_vel`。如果 status 当前也显示 `blocked_with_root_cause`、路线 0 点或服务 inactive，普通首屏仍保持
 `图上路线未就绪`，并按真实 blocker 引导恢复服务、重新定位和生成路线。
+
+2026-06-28 12:07 起，真实上位机 Nav2 no-motion proof 已能重新生成图上路线：
+`POST /api/nav2/proof/refresh` 在不发送 `/cmd_vel`、manual 或底盘 UART 运动命令的前提下返回
+`nav2_no_motion_path_generation_runtime_observed`、18 个 path points 和完整
+`map->odom->base_link->laser_frame` TF chain。PC 普通首屏因此可以把“自动驾驶路线已准备”与
+“还没完成真实路线执行 / wheel raw L/R 仍待复验”分开显示；下一步只能由现场勾选安全确认后显式执行路线，
+不能把 no-motion path proof 自动升级为送达成功。

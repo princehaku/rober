@@ -39,6 +39,8 @@ TF_CHAIN_KEYS = (
     "map_to_base_link",
 )
 ROS2_PREFLIGHT_COMMAND = "command -v ros2"
+# 板端 API 子进程首次 source ROS/workspace 可能超过 3 秒；preflight 只查可执行文件，允许稍宽窗口。
+ROS2_PREFLIGHT_TIMEOUT_S = 6.0
 LOCALIZATION_LIFECYCLE_NODES = {
     "map_server": "/map_server",
     "amcl": "/amcl",
@@ -503,7 +505,8 @@ def initialpose_payload(request: dict[str, Any]) -> str:
     covariance[7] = 0.25
     covariance[35] = 0.06853891945200942
     payload = {
-        "header": {"frame_id": request["frame_id"]},
+        # stamp=0 让 AMCL/TF 使用最新 transform，避免现场 TF buffer 刚启动时把 initialpose 判成 past extrapolation。
+        "header": {"frame_id": request["frame_id"], "stamp": {"sec": 0, "nanosec": 0}},
         "pose": {
             "pose": {
                 "position": {"x": request["x"], "y": request["y"], "z": 0.0},
@@ -1871,7 +1874,10 @@ def build_tf_source_diagnostics(
     frames = sorted({value for edge in edges for value in (edge.get("parent"), edge.get("child")) if value})
     frame_ids = tf_chain_frame_contract(args)["actual"]
     map_to_odom_source_observed = edge_observed(dynamic_edges, "map", frame_ids["odom"])
-    odom_to_base_source_observed = edge_observed(static_edges, frame_ids["odom"], frame_ids["base"])
+    # 真实底盘里程计通常在 /tf 动态发布 odom->base_link；no-motion smoke 才可能使用 /tf_static 兜底。
+    odom_to_base_dynamic_observed = edge_observed(dynamic_edges, frame_ids["odom"], frame_ids["base"])
+    odom_to_base_static_observed = edge_observed(static_edges, frame_ids["odom"], frame_ids["base"])
+    odom_to_base_source_observed = bool(odom_to_base_dynamic_observed or odom_to_base_static_observed)
     base_to_laser_source_observed = edge_observed(static_edges, frame_ids["base"], frame_ids["laser"])
     base_to_laser_source_transform = find_tf_topic_transform(
         static_transforms,
@@ -1911,7 +1917,7 @@ def build_tf_source_diagnostics(
     elif not map_to_odom_source_observed:
         root_cause = "amcl_map_to_odom_tf_not_observed_on_tf"
     elif not odom_to_base_source_observed:
-        root_cause = "odom_to_base_link_static_tf_not_observed"
+        root_cause = "odom_to_base_link_tf_not_observed"
     elif not base_to_laser_source_observed:
         root_cause = "base_link_to_laser_frame_static_tf_not_observed"
     detail = {
@@ -1936,6 +1942,8 @@ def build_tf_source_diagnostics(
         "amcl_pose_frame_id": amcl_pose_frame_id,
         "map_to_odom_source_observed": map_to_odom_source_observed,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
+        "odom_to_base_link_dynamic_source_observed": odom_to_base_dynamic_observed,
+        "odom_to_base_link_static_source_observed": odom_to_base_static_observed,
         "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
         "base_link_to_laser_frame_source_transform": base_to_laser_source_transform,
     }
@@ -1951,6 +1959,8 @@ def build_tf_source_diagnostics(
         ),
         "map_to_odom_source_observed": map_to_odom_source_observed,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
+        "odom_to_base_link_dynamic_source_observed": odom_to_base_dynamic_observed,
+        "odom_to_base_link_static_source_observed": odom_to_base_static_observed,
         "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
         "scan_once_observed": None,
         "map_once_observed": None,
@@ -1986,6 +1996,8 @@ def build_tf_source_diagnostics(
         "laser_frame_observed": frame_ids["laser"] in frames,
         "map_to_odom_source_observed": map_to_odom_source_observed,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
+        "odom_to_base_link_dynamic_source_observed": odom_to_base_dynamic_observed,
+        "odom_to_base_link_static_source_observed": odom_to_base_static_observed,
         "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
         "base_link_to_laser_frame_source_transform": base_to_laser_source_transform,
         "amcl_tf_root_cause": root_cause,
@@ -2921,7 +2933,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         phase_writer.record_phase("managed_runtime", ok=True, detail={"requested": False})
 
     phase_writer.record_phase("ros2_preflight")
-    ros2_check = run_ros(args, ROS2_PREFLIGHT_COMMAND, timeout_s=3.0)
+    ros2_check = run_ros(args, ROS2_PREFLIGHT_COMMAND, timeout_s=ROS2_PREFLIGHT_TIMEOUT_S)
     # 这里故意只检查 ros2 可执行文件，避免 `ros2 --help` 在现场服务环境中消耗定位窗口。
     ros2_ok = bool(ros2_check.get("ok") or str(ros2_check.get("stdout") or "").strip())
     phase_writer.record_phase("ros2_preflight", ok=ros2_ok)

@@ -2312,6 +2312,22 @@ IMU 姿态变化事实：
 wheel raw L/R 非零、完整路线执行或 delivery success。现场发车仍必须在普通首屏勾选安全确认后显式执行路线，
 并用同一执行窗口的 goal result、wheel raw L/R 和送达材料收口。
 
+2026-06-28 12:07 起，`o10_amcl_nav2_runtime_proof.py` 修正真实上位机 Nav2 proof 的三类误判：
+`command -v ros2` preflight 从 3 秒放宽到 6 秒，避免 API 子进程首次 source ROS/workspace 时被误判为
+`ros2_command_unavailable_after_bash_source`；AMCL `/initialpose` 显式使用 `stamp=0`，让 TF 使用 latest
+transform，避免 managed runtime 刚启动时出现 `extrapolation into the past`；`odom->base_link`
+既接受 no-motion `/tf_static`，也接受真实桥接节点在 `/tf` 动态发布的里程计 TF，避免把动态 odom
+误报为缺 static TF。真实上位机同步脚本后，固定 no-motion body 的
+`POST /api/nav2/proof/refresh` 返回 `proof_state=nav2_no_motion_path_generation_runtime_observed`、
+`path_generated=true`、`path_point_count=18`，`tf_chain_observed.map_to_odom/odom_to_base_link/base_link_to_laser_frame/map_to_base_link`
+均为 true，`blocked_commands_not_sent` 仍包含 `T=1/T=13/T=130/T=131`、`/cmd_vel` 和
+`/api/base/manual`。这证明自动驾驶服务、定位 TF 和 planner 路线生成的 no-motion blocker 已解除；
+仍不等于真实 NavigateToPose 执行、wheel raw L/R 非零、完整路线通过或 delivery success。
+
+发车验收的下一步是：普通 PC 首屏勾选安全确认后显式执行图上路线，用同一执行窗口的 Nav2 goal result、
+wheel raw L/R 非零和送达材料收口；如果 wheel raw L/R 仍为 `0/0`，问题就不再是 planner/TF 路线准备，
+而要继续查底盘命令模式、bridge feedback 或 WAVE ROVER 反馈链路。
+
 2026-06-27 14:47 起，PC summary 额外暴露机器可读字段
 `readback_summary.nav2.goal_execution_mode_rerun_status`。当前 live 形态会被标成
 `pending_ros_rerun_after_pwm`：最近 artifact 来自旧 PWM 执行，下一次执行模式已经是 ROS/T=13。
