@@ -1398,6 +1398,14 @@ function cameraMjpegStatusResponse(
   const diagnosisSource = sourceFailure ?? relayFailure;
   const previewStatus = cameraMjpegPreviewStatus(relay, failureReason, lastFailure, diagnosisSource);
   const previewGuidance = cameraMjpegPreviewGuidance(previewStatus, diagnosisSource);
+  const clientCount = relay?.clients.size ?? 0;
+  const upstreamActive = relay?.upstreamActive ?? false;
+  const contentTypeLoaded = Boolean(relay?.contentType);
+  const cachedFrameLoaded = Boolean(relay?.latestFrameChunk);
+  const cachedFrameAgeMs = relay?.latestFrameUpdatedAtMs ? Math.max(0, Date.now() - relay.latestFrameUpdatedAtMs) : null;
+  const lastFailureReason = lastFailure?.failure_reason ?? "";
+  const lastRemoteHttpStatus = lastFailure?.remote_http_status ?? null;
+  const lastFailureAtMs = lastFailure?.failed_at_ms ?? null;
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -1406,17 +1414,28 @@ function cameraMjpegStatusResponse(
     workstation_endpoint: "/api/robot-control/camera/mjpeg/status",
     remote_endpoint: "/api/camera/mjpeg",
     relay_key: relayKey,
-    client_count: relay?.clients.size ?? 0,
-    upstream_active: relay?.upstreamActive ?? false,
-    content_type_loaded: Boolean(relay?.contentType),
+    client_count: clientCount,
+    shared_preview_client_count: clientCount,
+    upstream_active: upstreamActive,
+    shared_preview_upstream_active: upstreamActive,
+    content_type_loaded: contentTypeLoaded,
+    shared_preview_content_type_loaded: contentTypeLoaded,
     content_type: relay?.contentType ?? "",
-    cached_frame_loaded: Boolean(relay?.latestFrameChunk),
-    cached_frame_age_ms: relay?.latestFrameUpdatedAtMs ? Math.max(0, Date.now() - relay.latestFrameUpdatedAtMs) : null,
+    cached_frame_loaded: cachedFrameLoaded,
+    shared_preview_cached_frame_loaded: cachedFrameLoaded,
+    cached_frame_age_ms: cachedFrameAgeMs,
+    shared_preview_cached_frame_age_ms: cachedFrameAgeMs,
     shared_capture: true,
+    shared_preview_shared_capture: true,
     exclusive_camera_claim: false,
-    last_failure_reason: lastFailure?.failure_reason ?? "",
-    last_remote_http_status: lastFailure?.remote_http_status ?? null,
-    last_failure_at_ms: lastFailure?.failed_at_ms ?? null,
+    shared_preview_exclusive_camera_claim: false,
+    shared_preview_contract: "single_shared_capture_for_multiple_clients",
+    last_failure_reason: lastFailureReason,
+    shared_preview_last_failure_reason: lastFailureReason,
+    last_remote_http_status: lastRemoteHttpStatus,
+    shared_preview_last_remote_http_status: lastRemoteHttpStatus,
+    last_failure_at_ms: lastFailureAtMs,
+    shared_preview_last_failure_at_ms: lastFailureAtMs,
     source_diagnosis_status: diagnosisSource?.source_diagnosis_status ?? "not_loaded",
     source_diagnosis_plain_hint: diagnosisSource?.source_diagnosis_plain_hint ?? "not_loaded",
     source_diagnosis_next_action: diagnosisSource?.source_diagnosis_next_action ?? "not_loaded",

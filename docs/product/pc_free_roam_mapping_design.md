@@ -209,6 +209,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-29 21:30 起，`/api/robot-control/summary` 的 `readback_summary.map` 也增加路线 WYSIWYG 字段：
   `path_preview_status`、`path_preview_point_count`、`path_preview_frame_id` 和 `path_preview_next_action_plain`。summary 主链路现在能在同一个 map 区块里同时表达地图质量、图上路线、雷达贴图和小车 map 位姿状态，不再要求外部脚本从 nav2 区块手动拼路线点数。
   该变化只补只读 summary 字段，不准备路线、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 21:50 起，`/api/robot-control/camera/mjpeg/status` 顶层补齐与 summary 对齐的共享预览 alias：
+  `shared_preview_client_count`、`shared_preview_upstream_active`、`shared_preview_content_type_loaded`、`shared_preview_cached_frame_loaded`、`shared_preview_cached_frame_age_ms`、`shared_preview_shared_capture`、`shared_preview_exclusive_camera_claim`、`shared_preview_contract` 和最近失败字段。只接相机状态接口的脚本也能直接确认多个页面共享同一条上游流、不是浏览器独占。
+  该变化只补本机 relay 只读状态，不新开 camera capture、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，
