@@ -1511,9 +1511,9 @@ function cameraMjpegPreviewGuidance(
     };
   }
   return {
-    plain_hint: "实时画面未打开；点击打开后才会接入共享预览。",
-    next_action: "open_shared_preview_when_needed",
-    next_action_plain: "需要看画面时打开共享预览。",
+    plain_hint: "页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",
+    next_action: "auto_join_shared_mjpeg_preview",
+    next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
   };
 }
 
@@ -1528,6 +1528,9 @@ function cameraMjpegActionPlainText(action: string): string {
   }
   if (value === "continue_monitoring_shared_preview") {
     return "继续监看共享实时画面。";
+  }
+  if (value === "auto_join_shared_mjpeg_preview") {
+    return "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。";
   }
   if (value === "open_shared_preview_when_needed" || value === "open_shared_preview_or_run_first_frame_probe") {
     return "需要看画面时打开共享预览，或点只读检查复测首帧。";

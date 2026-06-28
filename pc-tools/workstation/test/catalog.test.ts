@@ -4013,8 +4013,8 @@ describe("workstation fail-closed API contracts", () => {
         goal_execution_response_generated_at_ms: expect.any(String),
       });
       expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
-      expect(summary.readback_summary.camera.preview_plain_hint).toBe("实时画面未打开；点击打开后才会接入共享预览。");
-      expect(summary.readback_summary.camera.preview_next_action).toBe("open_shared_preview_when_needed");
+      expect(summary.readback_summary.camera.preview_plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
+      expect(summary.readback_summary.camera.preview_next_action).toBe("auto_join_shared_mjpeg_preview");
       expect(summary.readback_summary.camera.shared_preview_client_count).toBe("0");
       expect(summary.readback_summary.camera.shared_preview_upstream_active).toBe("false");
       expect(summary.readback_summary.camera.shared_preview_content_type_loaded).toBe("false");
@@ -11252,9 +11252,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_next_action_plain).toBe("");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("not_loaded");
       expect(statusBody.preview_status).toBe("idle_not_started");
-      expect(statusBody.preview_plain_hint).toBe("实时画面未打开；点击打开后才会接入共享预览。");
-      expect(statusBody.preview_next_action).toBe("open_shared_preview_when_needed");
-      expect(statusBody.preview_next_action_plain).toBe("需要看画面时打开共享预览。");
+      expect(statusBody.preview_plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
+      expect(statusBody.preview_next_action).toBe("auto_join_shared_mjpeg_preview");
+      expect(statusBody.preview_next_action_plain).toBe("打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);

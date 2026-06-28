@@ -3904,3 +3904,10 @@ USB、摄像头输入、格式或供电，必要时换 known-good UVC 复测。�
 普通首屏自己的 MJPEG retry 派生文案也采用同一 subject 规则，设备名缺失时写成 `UVC 设备当前没人占用`，
 不再退化成“不是页面独占：没人占用”。
 该变化仍只清理只读诊断文字，不触发相机、底盘、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 23:10 起，PC 相机共享预览的 idle 合同不再写成“点击打开后才会接入共享预览”，而是统一返回
+`preview_next_action=auto_join_shared_mjpeg_preview` 和中文下一步：
+“打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧”。普通首屏已有的 `<img>` MJPEG
+兜底会默认请求 `/api/robot-control/camera/mjpeg`，因此后进页面会复用同一条 PC Node 上游流；
+summary/status/readback 也同步说明“多个页面复用同一条上游流，未出帧前不当作画面可见”。该变化只修正
+只读共享预览口径，不新开独占采集、不重启相机、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
