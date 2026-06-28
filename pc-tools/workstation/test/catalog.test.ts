@@ -7394,9 +7394,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("继续观察地图雷达层。");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("none");
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toBe("none");
+      expect(summary.readback_summary.map.radar_overlay_point_count).toBe("3");
+      expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("5");
+      expect(summary.readback_summary.map.radar_overlay_frame_id).toBe("laser");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("3");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("5");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser");
+      expect(summary.readback_summary.map.robot_pose_status).toBe("map_pose_observed");
       expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
       expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
@@ -7818,9 +7822,13 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.readback_summary.map.radar_overlay_status).toBe("partial");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("robot_pose_missing_for_map_radar_overlay");
+      expect(summary.readback_summary.map.radar_overlay_point_count).toBe("2");
+      expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("80");
+      expect(summary.readback_summary.map.radar_overlay_frame_id).toBe("laser_frame");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("2");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("80");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser_frame");
+      expect(summary.readback_summary.map.robot_pose_status).toBe("not_observed");
       expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("not_observed");
       expect(summary.o3_proof_summary.scan_preview_point_count).toBe(2);
       expect(summary.o3_proof_summary.robot_pose).toBeNull();
@@ -7921,9 +7929,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toContain("雷达扫描已过期");
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toContain("雷达未运行");
+      expect(summary.readback_summary.map.radar_overlay_point_count).toBe("0");
+      expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("65");
+      expect(summary.readback_summary.map.radar_overlay_frame_id).toBe("laser_frame");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("0");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("65");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser_frame");
+      expect(summary.readback_summary.map.robot_pose_status).toBe("map_pose_observed");
       expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线和小车位置已显示；雷达来源点存在但当前不贴到地图：已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");

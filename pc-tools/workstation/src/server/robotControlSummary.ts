@@ -4182,6 +4182,9 @@ function mapSummaryFromReadbacks(
   );
   const pathPreviewStatus = proof.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
   const robotPoseStatus = proof.robot_pose ? "map_pose_observed" : "not_observed";
+  const radarOverlayPointCount = String(radarOverlayCurrent ? proof.scan_preview_point_count : 0);
+  const radarOverlaySourcePointCount = proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count);
+  const radarOverlayFrameId = proof.scan_preview_frame_id || "not_loaded";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathPreviewStatus, robotPoseStatus);
   const mapWysiwyg = mapWysiwygPlainSummary({
     mapObserved: booleanSummaryValue(proof.map_once_observed),
@@ -4213,16 +4216,20 @@ function mapSummaryFromReadbacks(
     path_preview_point_count: String(proof.path_preview_point_count),
     path_preview_frame_id: proof.path_preview_frame_id || "not_loaded",
     path_preview_next_action_plain: pathNextActionPlain,
+    robot_pose_status: robotPoseStatus,
     radar_overlay_status: radarOverlayStatus,
     radar_overlay_plain_hint: radarOverlayExplanation.plain_hint,
     radar_overlay_next_action: radarOverlayExplanation.next_action,
     radar_overlay_next_action_plain: radarOverlayExplanation.next_action_plain,
+    radar_overlay_point_count: radarOverlayPointCount,
+    radar_overlay_source_point_count: radarOverlaySourcePointCount,
+    radar_overlay_frame_id: radarOverlayFrameId,
     radar_overlay_blocked_reasons: radarOverlayBlockedReasons.join(",") || "none",
     radar_overlay_blocked_reason_labels: radarOverlayExplanation.blocked_reason_labels.join(",") || "none",
-    radar_overlay_scan_preview_point_count: String(radarOverlayCurrent ? proof.scan_preview_point_count : 0),
-    radar_overlay_scan_preview_source_point_count: proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count),
-    radar_overlay_scan_preview_frame_id: proof.scan_preview_frame_id || "not_loaded",
-    radar_overlay_robot_pose_status: proof.robot_pose ? "map_pose_observed" : "not_observed",
+    radar_overlay_scan_preview_point_count: radarOverlayPointCount,
+    radar_overlay_scan_preview_source_point_count: radarOverlaySourcePointCount,
+    radar_overlay_scan_preview_frame_id: radarOverlayFrameId,
+    radar_overlay_robot_pose_status: robotPoseStatus,
   };
 }
 
@@ -4794,10 +4801,14 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
         path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
+        robot_pose_status: "not_loaded",
         radar_overlay_status: "not_loaded",
         radar_overlay_plain_hint: "地图雷达层未加载。",
         radar_overlay_next_action: "connect_robot_and_refresh_map_preview",
         radar_overlay_next_action_plain: "确认小车地址可访问后刷新地图画面。",
+        radar_overlay_point_count: "0",
+        radar_overlay_source_point_count: "0",
+        radar_overlay_frame_id: "not_loaded",
         radar_overlay_blocked_reasons: "not_loaded",
         radar_overlay_blocked_reason_labels: "not_loaded",
         radar_overlay_scan_preview_point_count: "0",

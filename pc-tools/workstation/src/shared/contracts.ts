@@ -2492,10 +2492,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       path_preview_point_count: string;
       path_preview_frame_id: string;
       path_preview_next_action_plain: string;
+      robot_pose_status: string;
       radar_overlay_status: string;
       radar_overlay_plain_hint: string;
       radar_overlay_next_action: string;
       radar_overlay_next_action_plain: string;
+      radar_overlay_point_count: string;
+      radar_overlay_source_point_count: string;
+      radar_overlay_frame_id: string;
       radar_overlay_blocked_reasons: string;
       radar_overlay_blocked_reason_labels: string;
       radar_overlay_scan_preview_point_count: string;
