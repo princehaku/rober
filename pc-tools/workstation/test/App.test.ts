@@ -4010,6 +4010,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：安全确认。");
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
+    expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("键盘事实：可启用键盘；启用本身不发车");
+    expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("必须按住 W/A/S/D 或方向键才会连续低速移动");
+    expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求");
     expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toBe("下一步：勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：安全确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选现场安全确认后点击启用键盘");

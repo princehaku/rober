@@ -8652,6 +8652,26 @@ const plainKeyboardSafetySummary = computed(() => {
     : "键盘手控：安全确认已完成，等待手控入口复查。";
 });
 
+const plainKeyboardReadbackSummary = computed(() => {
+  // 后端 summary 是连续手控合同的权威来源；首屏直接展示，避免把“启用键盘”误解成小车会自己动。
+  const keyboard = robotSummary.value?.readback_summary?.keyboard;
+  if (!keyboard) {
+    return "";
+  }
+  const rawParts = [
+    keyboard.plain_hint,
+    keyboard.hold_to_move_plain,
+    keyboard.continuous_control_contract_plain,
+    keyboard.stop_triggers_plain,
+  ];
+  const parts = rawParts
+    // 每个字段都来自只读 readback，清理尾部标点后再拼接，避免一行里出现重复句号。
+    .map((item) => String(item ?? "").trim().replace(/[。；\s]+$/g, ""))
+    .filter((item) => item && !["not_loaded", "none"].includes(item));
+  const uniqueParts = Array.from(new Set(parts));
+  return uniqueParts.length > 0 ? `键盘事实：${uniqueParts.join("；")}。` : "";
+});
+
 const plainKeyboardWheelReadbackGoal = computed(() => {
   // 键盘连续手控也是补 wheel raw L/R 的现场路径；启用前就把当前 L/R 和目标说清楚，避免用户盲按。
   if (!canUseKeyboardControl.value && !keyboardControlArmed.value) {
@@ -12589,6 +12609,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
             <p class="panel-note" data-testid="plain-keyboard-safety-summary">{{ plainKeyboardSafetySummary }}</p>
+            <p v-if="plainKeyboardReadbackSummary" class="panel-note" data-testid="plain-keyboard-readback-summary">{{ plainKeyboardReadbackSummary }}</p>
             <p v-if="plainKeyboardWheelReadbackGoal" class="panel-note" data-testid="keyboard-wheel-readback-goal">{{ plainKeyboardWheelReadbackGoal }}</p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
             <p v-if="plainKeyboardWheelFeedbackSummary" class="panel-note" data-testid="keyboard-wheel-feedback-summary">{{ plainKeyboardWheelFeedbackSummary }}</p>
