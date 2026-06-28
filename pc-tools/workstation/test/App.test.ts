@@ -4372,7 +4372,7 @@ describe("App", () => {
     const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/latest?"))).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-latest-summary"]').text()).toBe(
-      "最新读取：locked：还未勾选现场安全确认，要求停止兜底；当前只是记录模式，不会自己跑；建图缺口：画面首帧未出、地图记录未启动；runtime 地图指标：可通行 421 格，未知 98.2%。",
+      "最新读取：自由移动可启动；只需现场安全确认和停止兜底；当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞；建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动；runtime 地图指标：可通行 421 格，未知 98.2%。",
     );
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?"))).toBe(false);

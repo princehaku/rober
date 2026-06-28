@@ -2096,6 +2096,12 @@ const plainFreeRoamLatestSummary = computed(() => {
     : mappingMissing.length > 0
       ? `；建图缺口：${mappingMissing.join("、")}`
       : "";
+  const startPlain = latest.free_move_start_status_plain?.trim();
+  const runtimePlain = latest.motion_runtime_status_plain?.trim();
+  const mappingPlain = latest.mapping_acceptance_status_plain?.trim();
+  if (startPlain && runtimePlain && mappingPlain) {
+    return `最新读取：${startPlain.replace(/[。.!?]+$/, "")}；${runtimePlain.replace(/[。.!?]+$/, "")}；${mappingPlain.replace(/[。.!?]+$/, "")}${plainFreeRoamLatestMapMetricsText()}。`;
+  }
   return `最新读取：${state}${reason}${stop}；${mode}${mappingText}${plainFreeRoamLatestMapMetricsText()}。`;
 });
 function freeRoamMappingMissingPlainLabels(missing: string[] | string | undefined): string[] {

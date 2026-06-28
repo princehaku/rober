@@ -143,6 +143,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 04:12 CST 起，`/api/robot-control/free-roam/autonomy/latest` 额外返回 `free_move_start_status_plain`、`motion_runtime_status_plain` 和 `mapping_acceptance_status_plain`。这三个字段把“能不能启动自由移动”“当前是否已经在发布低速运动”和“建图是否可验收”拆开；当 `free_move_start_ready=true` 但 `motion_ready=false` 时，接口会明确说明 `motion_ready=false` 只表示尚未开始发布运动，不是启动阻塞。该变化只补只读 latest 响应，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 04:18 CST 起，普通 PC 首屏的 `刷新自由移动状态（只读）` 摘要优先展示 `free_move_start_status_plain`、`motion_runtime_status_plain` 和 `mapping_acceptance_status_plain`。现场点击只读刷新后，不用打开高级 JSON 也能看到“自由移动可启动”“当前未发布运动不是启动阻塞”“建图验收不 ready 但不阻止低速自由移动”。该变化只改前端只读展示，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 03:08 CST 起，`readback_summary.map` 增加所见即所得短别名：`robot_pose_status`、`radar_overlay_point_count`、`radar_overlay_source_point_count` 和 `radar_overlay_frame_id`。这些字段完全复用既有 `radar_overlay_robot_pose_status` / `radar_overlay_scan_preview_*` 事实，方便外部脚本直接判断“图上小车是否可见、当前雷达 marker 真正画了几个点、旧雷达来源点是否只作诊断”。该变化只补只读 summary alias，不刷新地图、不启动雷达、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:31 CST 起，`readback_summary.map` 增加 `radar_overlay_wysiwyg_status_plain` 和 `radar_overlay_wysiwyg_next_action_plain`。脚本和普通首屏不用再把 `radar_overlay_point_count=0` 与 `radar_overlay_source_point_count=81` 自己拼起来；live 形态会直接显示“雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 81 个只作诊断”，下一步仍是“先启动雷达，再刷新地图画面”。该变化只补只读地图/雷达贴图诊断，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
