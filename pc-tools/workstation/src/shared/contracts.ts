@@ -2390,6 +2390,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     blocked_reasons: string[];
     last_refresh_ms: number;
   };
+  current_fact_plain: string;
   readback_summary: {
     camera: {
       status: string;

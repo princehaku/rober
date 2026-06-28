@@ -4929,6 +4929,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       blocked_reasons: [reason],
       last_refresh_ms: observedAt,
     },
+    current_fact_plain: sourceBaseUrl.trim()
+      ? "当前事实未读到；上位机这次没有回应，先检查小车电源、网络和 Robot API 服务。"
+      : "当前事实未读到；先填写或确认小车地址。",
     readback_summary: {
       camera: {
         status: "not_loaded",
@@ -6000,6 +6003,43 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
   };
 }
 
+function plainFactPart(value: string | undefined, fallback = ""): string {
+  // 顶层当前事实只拼后端已验证的只读短句；空值和 not_loaded 不进入汇总，避免误导现场。
+  const text = asString(value, fallback).trim();
+  if (!text || text === "not_loaded" || text === "none") {
+    return "";
+  }
+  return text.replace(/[。.!?]+$/, "");
+}
+
+function summaryCurrentFactPlain(
+  readback: RobotControlSummaryResponse["readback_summary"],
+  boundary: RobotControlSummaryResponse["safe_command_boundary"],
+): string {
+  // 这是给脚本和外部面板的一句话事实；Vue 仍保留本地 pending 态的更细实时文案。
+  const camera = plainFactPart(readback.camera.camera_wysiwyg_status_plain);
+  const map = plainFactPart(readback.map.map_wysiwyg_status_plain);
+  const radar = plainFactPart(readback.map.radar_overlay_wysiwyg_status_plain);
+  const nav2 = plainFactPart(readback.nav2.execution_status_plain || readback.nav2.route_execution_readiness_plain);
+  const keyboard = plainFactPart(readback.keyboard.hold_to_move_plain || readback.keyboard.readiness_plain);
+  const freeMove = plainFactPart(readback.free_roam.motion_readiness_plain);
+  const mapping = plainFactPart(readback.free_roam.mapping_readiness_plain);
+  const minimal = plainFactPart(boundary.nav2_goal_minimal_precheck_plain);
+  const parts = [
+    camera,
+    map,
+    radar,
+    nav2 ? `自动驾驶：${nav2}` : "",
+    keyboard ? `键盘：${keyboard}` : "",
+    freeMove ? `自由移动：${freeMove}` : "",
+    mapping ? `建图：${mapping}` : "",
+    minimal ? `发车前：${minimal}` : "",
+  ].filter(Boolean);
+  return parts.length > 0
+    ? `${parts.join("；")}。`
+    : "当前事实未读到；先确认小车地址和上位机 Robot API。";
+}
+
 export async function buildRobotControlSummary(
   baseUrl: string,
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
@@ -6050,6 +6090,17 @@ export async function buildRobotControlSummary(
   const freeRoamRuntime = freeRoamRuntimeSummaryFromReadbacks(readbacks);
   const nav2Summary = nav2SummaryFromReadbacks(readbacks, proofSummary);
   const lidarSummary = lidarSummaryFromReadbacks(readbacks, proofSummary);
+  const readbackSummary: RobotControlSummaryResponse["readback_summary"] = {
+    camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay, mjpegRelayOverlay),
+    lidar: lidarSummary,
+    base: baseSummaryFromReadbacks(readbacks),
+    map: mapSummaryFromReadbacks(readbacks, proofSummary, lidarSummary),
+    localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
+    nav2: nav2Summary,
+    keyboard: keyboardSummaryReadback(),
+    free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime),
+  };
+  const safeCommandBoundary = lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -6076,19 +6127,11 @@ export async function buildRobotControlSummary(
       blocked_reasons: blockedReasons,
       last_refresh_ms: observedAt,
     },
-    readback_summary: {
-      camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay, mjpegRelayOverlay),
-      lidar: lidarSummary,
-      base: baseSummaryFromReadbacks(readbacks),
-      map: mapSummaryFromReadbacks(readbacks, proofSummary, lidarSummary),
-      localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
-      nav2: nav2Summary,
-      keyboard: keyboardSummaryReadback(),
-      free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime),
-    },
+    current_fact_plain: summaryCurrentFactPlain(readbackSummary, safeCommandBoundary),
+    readback_summary: readbackSummary,
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),
-    safe_command_boundary: lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary),
+    safe_command_boundary: safeCommandBoundary,
     blocked_reasons: blockedReasons.length ? blockedReasons : ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success", "safe_to_control_true", "real_robot_ack"],
     ...PROOF_FLAGS,

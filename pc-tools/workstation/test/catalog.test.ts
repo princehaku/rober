@@ -3969,6 +3969,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.read_endpoints.some((endpoint) => endpoint.endpoint === "/api/base/status")).toBe(true);
       expect(summary.o3_proof_summary.path_generated).toBe(false);
       expect(summary.o3_proof_summary.path_generation_succeeded).toBe(false);
+      expect(summary.current_fact_plain).toContain("地图画面已读到，但图上路线还未显示");
+      expect(summary.current_fact_plain).toContain("自动驾驶：图上路线还未准备完成");
+      expect(summary.current_fact_plain).toContain("键盘：必须按住 W/A/S/D 或方向键才会连续低速移动");
+      expect(summary.current_fact_plain).toContain("发车前：执行图上路线只复核现场安全确认和固定白名单");
       expect(summary.readback_summary.map).toMatchObject({
         status: expect.any(String),
         map_once_observed: "true",
@@ -11269,10 +11273,12 @@ describe("workstation fail-closed API contracts", () => {
     const missing = await buildRobotControlSummary("");
     expect(missing.console_status).toBe("blocked");
     expect(missing.blocked_reasons).toContain("baseUrl_not_provided");
+    expect(missing.current_fact_plain).toBe("当前事实未读到；先填写或确认小车地址。");
 
     const unsafeUrl = await buildRobotControlSummary("https://127.0.0.1:8787?token=secret");
     expect(unsafeUrl.console_status).toBe("blocked");
     expect(unsafeUrl.blocked_reasons).toContain("baseUrl_protocol_not_allowed");
+    expect(unsafeUrl.current_fact_plain).toContain("当前事实未读到");
 
     const robotApi = await listenRobotApiReadback({
       schema: "trashbot.upper_robot_api.v1.status",

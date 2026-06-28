@@ -127,6 +127,11 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 `cached_frame_loaded`，方便普通脚本直接判断“几个页面在看、是否连着同一条上游、是否已有最近帧”。该变化只补只读状态，
 不创建 MJPEG client、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 04:37 CST 起，`GET /api/robot-control/summary` 顶层新增 `current_fact_plain`。该字段把本轮只读
+readback 中的画面、地图、雷达 marker、Nav2 路线复验、键盘连续手控、自由移动和建图 readiness 合成一段普通话事实；
+连接失败时也会直接说明未读到当前事实。它只消费同一轮 summary 内部字段，不额外请求上位机、不准备或执行 Nav2、
+不启用键盘、不启动 free-roam、不发送 manual、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 22:10 CST 起，键盘连续手控 summary 增加普通用户白话字段：`keyboard_hold_to_move_plain`、`keyboard_stop_triggers_plain` 和 `keyboard_pulse_timing_plain`。外部脚本或普通面板只读 summary 时，可以直接展示“必须按住才移动；只启用键盘不发车；松开/失焦/切页/换方向/点停止都会停；按住时约每 0.26 秒发送一次 0.24 秒低速脉冲”。该变化只补只读安全边界说明，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 
 2026-06-29 22:30 CST 起，`readback_summary.nav2` 增加 `execution_status_plain` 和 `next_action_plain`。外部脚本只读 Nav2 区块时，也能直接看到“上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或控制服务；下一步勾安全确认后用 ROS 模式重跑图上路线并同窗口确认轮速 L/R 非零”。该变化只补只读 readback summary 文案，不执行 Nav2 goal、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
