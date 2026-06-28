@@ -590,6 +590,14 @@ function navGoalLatestPlainFields(
   | "route_execution_precheck_plain"
   | "goal_execution_wheel_raw_lr_status_plain"
   | "goal_execution_wheel_raw_lr_next_action_plain"
+  | "base_command_mode"
+  | "goal_execution_base_command_mode"
+  | "next_execution_base_command_mode"
+  | "goal_execution_base_command_nonzero_observed"
+  | "goal_execution_base_command_nonzero_count"
+  | "goal_execution_base_command_mode_counts"
+  | "goal_execution_base_feedback_lr_nonzero_proven"
+  | "goal_execution_base_feedback_imu_attitude_delta_observed"
   | "execution_status_plain"
   | "next_action_plain"
   | "goal_execution_base_feedback_latest_raw_left"
@@ -614,6 +622,14 @@ function navGoalLatestPlainFields(
       ? "已看到非零底盘命令，下一步重点复验执行窗口轮速 L/R。"
       : "还没有读到足够的底盘运动材料。";
   const baseFeedbackAliases = {
+    base_command_mode: keyValues.base_command_mode || "not_loaded",
+    goal_execution_base_command_mode: keyValues.base_command_mode || "not_loaded",
+    next_execution_base_command_mode: navGoalLatestNextMode(keyValues),
+    goal_execution_base_command_nonzero_observed: keyValues.base_command_nonzero_observed || "not_loaded",
+    goal_execution_base_command_nonzero_count: keyValues.base_command_nonzero_count || "0",
+    goal_execution_base_command_mode_counts: keyValues.base_command_mode_counts || "{}",
+    goal_execution_base_feedback_lr_nonzero_proven: keyValues.base_feedback_lr_nonzero_proven || "not_loaded",
+    goal_execution_base_feedback_imu_attitude_delta_observed: keyValues.base_feedback_imu_attitude_delta_observed || "not_loaded",
     goal_execution_base_feedback_latest_raw_left: left,
     goal_execution_base_feedback_latest_raw_right: right,
   };
@@ -3013,12 +3029,21 @@ export function createWorkstationApp(): express.Express {
       remote_http_status: null,
       status: "blocked",
       goal_execution_key_values: {},
+      plain_hint: "图上路线还未准备完成。",
       execution_status_plain: "图上路线还未准备完成。",
       next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
       route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
       route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
       goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
       goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
+      base_command_mode: "not_loaded",
+      goal_execution_base_command_mode: "not_loaded",
+      next_execution_base_command_mode: "ros",
+      goal_execution_base_command_nonzero_observed: "not_loaded",
+      goal_execution_base_command_nonzero_count: "0",
+      goal_execution_base_command_mode_counts: "{}",
+      goal_execution_base_feedback_lr_nonzero_proven: "not_loaded",
+      goal_execution_base_feedback_imu_attitude_delta_observed: "not_loaded",
       goal_execution_base_feedback_latest_raw_left: "not_loaded",
       goal_execution_base_feedback_latest_raw_right: "not_loaded",
       failure_reason: normalized.ok ? "" : normalized.reason,
@@ -3039,13 +3064,15 @@ export function createWorkstationApp(): express.Express {
         (field) => !nav2GoalExecutionAllowedTrueField(field),
       );
       const goalExecutionKeyValues = navGoalExecutionKeyValues(remotePayload);
+      const latestPlainFields = navGoalLatestPlainFields(goalExecutionKeyValues);
       const responseBody: RobotControlNavGoalExecutionLatestResponse = {
         ...fallbackBase,
         proxy_status: remote.ok && dangerous.length === 0 ? "latest_loaded" : "latest_failed",
         remote_http_status: remote.status,
         status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
         goal_execution_key_values: goalExecutionKeyValues,
-        ...navGoalLatestPlainFields(goalExecutionKeyValues),
+        ...latestPlainFields,
+        plain_hint: latestPlainFields.execution_status_plain,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `latest_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`latest_http_status_${remote.status}`]),
