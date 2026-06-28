@@ -218,6 +218,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-29 22:30 起，`/api/robot-control/summary` 的 `readback_summary.nav2` 增加
   `execution_status_plain` 和 `next_action_plain`。只读 Nav2 区块现在能直接解释最近路线执行证明到哪一步：例如 live 上是路线结果成功但执行窗口轮速 L/R 未非零，已看到非零底盘命令和 IMU 姿态变化，下一步是勾安全确认后按 ROS 模式重跑图上路线并在同窗口确认轮速 L/R 非零。
   该变化只补只读 readback summary 文案，不执行 Nav2 goal、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 22:50 起，`readback_summary.free_roam` 新增 `motion_next_action_plain` 和
+  `mapping_next_action_plain`：自由移动 readback 自己就能把“可先低速自由移动”和“本轮能否按建图验收”分开说清。
+  live 形态下前者提示勾安全确认后可先自由移动，相机和雷达只影响建图验收；后者提示建图验收还差画面首帧、雷达新鲜、地图记录、地图画面。
+  该变化只补只读 summary 文案，不启动自由移动、不启动建图、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，

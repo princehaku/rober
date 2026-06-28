@@ -4486,6 +4486,7 @@ function freeRoamSummaryFromReadbacks(
   const mappingMissing = mappingRequiredIds.filter((id) => mappingGateById.get(id)?.state !== "ready");
   const mappingReady = startReady && mappingMissing.length === 0;
   const nextActionStatus = mappingReady ? "ready" : startReady ? "start_ready" : "locked";
+  const externalStopRequested = freeRoamRuntime?.state === "stopping" && /现场请求停止|external_stop/i.test(freeRoamRuntime.reason);
   const derivedStatus = mappingReady
     ? "mapping_ready"
     : motionReady
@@ -4507,6 +4508,8 @@ function freeRoamSummaryFromReadbacks(
     mapping_ready: booleanSummaryValue(mappingReady),
     mapping_missing: mappingMissing.length ? mappingMissing.join(",") : "none",
     next_action_plain: freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime),
+    motion_next_action_plain: freeRoamMotionNextAction(startReady, motionReady, externalStopRequested),
+    mapping_next_action_plain: freeRoamMappingNextAction(startReady, mappingReady, mappingMissing),
     runtime_artifact_proven: summaryValueText(payload, ["free_roam_runtime_artifact_proven"]) ?? "not_loaded",
     state_machine_observed: summaryValueText(payload, ["free_roam_state_machine_observed"]) ?? "not_loaded",
     ros2_runtime_proven: summaryValueText(payload, ["ros2_runtime_proven"]) ?? "not_loaded",
@@ -4758,6 +4761,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         mapping_ready: "false",
         mapping_missing: "not_loaded",
         next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
+        motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
+        mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
         runtime_artifact_proven: "not_loaded",
         state_machine_observed: "not_loaded",
         ros2_runtime_proven: "not_loaded",
@@ -5056,6 +5061,36 @@ function freeRoamAutonomyNextAction(
         : `${stopPrefix}勾选现场安全确认后可先自由移动；继续读取建图验收材料`;
   }
   return "先连接上车自由移动状态机，并确认停止兜底可用";
+}
+
+function freeRoamMotionNextAction(startReady: boolean, motionReady: boolean, externalStopRequested: boolean): string {
+  // 自由移动只看安全确认和停止兜底；相机/雷达/地图记录只影响建图验收，不该写成不能动。
+  if (motionReady) {
+    return "自由移动运行中；需要收口时点击停止自由移动或红色停止。";
+  }
+  if (startReady) {
+    const stopPrefix = externalStopRequested
+      ? "当前处于停止请求；开始自由移动会先解除停止请求。"
+      : "";
+    return `${stopPrefix}勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。`;
+  }
+  return "先连接上车自由移动状态机，并确认停止兜底可用。";
+}
+
+function freeRoamMappingNextAction(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
+  // 建图验收单独解释缺口，让脚本不用从“能动”的下一步里反推传感器条件。
+  if (mappingReady) {
+    return "建图验收已 ready；继续低速监看地图、雷达和画面。";
+  }
+  const missingText = freeRoamMissingPlainLabels(mappingMissingReasons).join("、");
+  if (!startReady) {
+    return missingText
+      ? `先连接上车自由移动状态机；建图验收还差：${missingText}。`
+      : "先连接上车自由移动状态机，并继续读取建图验收材料。";
+  }
+  return missingText
+    ? `建图验收还差：${missingText}；不影响先低速自由移动。`
+    : "继续读取建图验收材料；不影响先低速自由移动。";
 }
 
 function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<

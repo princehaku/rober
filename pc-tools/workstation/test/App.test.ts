@@ -561,6 +561,8 @@ const fixtures: Record<string, unknown> = {
         mapping_ready: "false",
         mapping_missing: "not_loaded",
         next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
+        motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
+        mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
         runtime_artifact_proven: "not_loaded",
         state_machine_observed: "not_loaded",
         ros2_runtime_proven: "not_loaded",
