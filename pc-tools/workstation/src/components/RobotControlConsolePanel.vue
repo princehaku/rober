@@ -9243,10 +9243,17 @@ function makeMapPreviewFallback(reason: string): RobotControlMapPreviewResponse 
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
+    map_wysiwyg_status_plain: "地图画面未读到；不能把旧图或空白图当作当前所见。",
+    map_wysiwyg_next_action_plain: "先刷新地图画面。",
     robot_pose_status: "not_observed",
     path_preview_status: "not_observed",
     path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
     next_action_plain: "先准备图上路线，再刷新地图画面。",
+    path_wysiwyg_status_plain: "图上路线未显示；不能把旧路线或空路线当作当前所见。",
+    path_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
+    nav2_route_overlay_status: "not_observed",
+    nav2_route_overlay_point_count: 0,
+    nav2_route_overlay_next_action_plain: "先准备图上路线，再刷新地图画面。",
     robot_control_executed: false,
   };
 }

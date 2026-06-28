@@ -3941,6 +3941,13 @@ keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 runtime `/scan` 过期或 lifecycle stopped，则总状态会明确写“雷达来源点存在但当前不贴到地图”，下一步指向启动/刷新雷达。
 该变化只消费已有只读 summary/proof，不启动雷达、不刷新地图、不执行 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 04:24 CST 起，独立 `/api/robot-control/map/preview` 顶层也返回地图 WYSIWYG 总口径和路线别名：
+`map_wysiwyg_status_plain`、`map_wysiwyg_next_action_plain`、`path_wysiwyg_status_plain`、
+`path_wysiwyg_next_action_plain`、`nav2_route_overlay_status`、`nav2_route_overlay_point_count` 和
+`nav2_route_overlay_next_action_plain`。外部脚本或普通页面直接读取 map preview 时，不再需要旁路读取 summary 才知道
+当前地图画面、图上路线、小车位置和雷达 marker 是否来自当前读数。该变化只补只读地图预览合同，不启动雷达、不准备或执行
+Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 02:48 起，Robot Control summary 新增 `readback_summary.keyboard`，把键盘连续手控的只读事实从
 `safe_command_boundary` 镜像到 readback summary：连续控制模式、ROS 手控入口、manual/stop PC 代理、start ready、
 enabled=false、按住才移动、失焦/松开/切页会停、脉冲节奏和最小门禁白话。这样普通脚本或外部面板只读

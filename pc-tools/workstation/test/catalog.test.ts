@@ -9211,12 +9211,19 @@ describe("workstation fail-closed API contracts", () => {
         image_data_url: string;
         robot_control_executed: boolean;
         safe_to_control: boolean;
+        map_wysiwyg_status_plain: string;
+        map_wysiwyg_next_action_plain: string;
         robot_pose: { x: number; y: number; yaw: number | null; frame_id: string; source: string } | null;
         robot_pose_status: string;
         path_preview_points: Array<{ x: number; y: number; frame_id: string; source_index: number | null }>;
         path_preview_status: string;
         path_preview_next_action_plain: string;
         next_action_plain: string;
+        path_wysiwyg_status_plain: string;
+        path_wysiwyg_next_action_plain: string;
+        nav2_route_overlay_status: string;
+        nav2_route_overlay_point_count: number;
+        nav2_route_overlay_next_action_plain: string;
         path_preview_point_count: number;
         path_preview_source_point_count: number | null;
         path_preview_frame_id: string;
@@ -9254,9 +9261,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.safe_to_control).toBe(false);
       expect(previewBody.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
       expect(previewBody.robot_pose_status).toBe("map_pose_observed");
+      expect(previewBody.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
+      expect(previewBody.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
       expect(previewBody.path_preview_status).toBe("path_preview_observed");
       expect(previewBody.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
       expect(previewBody.next_action_plain).toBe(previewBody.path_preview_next_action_plain);
+      expect(previewBody.path_wysiwyg_status_plain).toBe("图上路线已显示在当前地图画面。");
+      expect(previewBody.path_wysiwyg_next_action_plain).toBe(previewBody.path_preview_next_action_plain);
+      expect(previewBody.nav2_route_overlay_status).toBe(previewBody.path_preview_status);
+      expect(previewBody.nav2_route_overlay_point_count).toBe(previewBody.path_preview_point_count);
+      expect(previewBody.nav2_route_overlay_next_action_plain).toBe(previewBody.path_preview_next_action_plain);
       expect(previewBody.path_preview_points).toEqual([
         { x: 0.1, y: 0.2, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.2, frame_id: "map", source_index: 7 },
@@ -9441,6 +9455,8 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         image_data_url: string;
+        map_wysiwyg_status_plain: string;
+        map_wysiwyg_next_action_plain: string;
         radar_overlay_status: string;
         radar_overlay_plain_hint: string;
         radar_overlay_wysiwyg_status_plain: string;
@@ -9468,12 +9484,19 @@ describe("workstation fail-closed API contracts", () => {
         path_preview_status: string;
         path_preview_next_action_plain: string;
         next_action_plain: string;
+        path_wysiwyg_status_plain: string;
+        path_wysiwyg_next_action_plain: string;
+        nav2_route_overlay_status: string;
+        nav2_route_overlay_point_count: number;
+        nav2_route_overlay_next_action_plain: string;
         robot_control_executed: boolean;
       };
 
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("preview_forwarded");
       expect(body.image_data_url).toContain("data:image/png;base64,");
+      expect(body.map_wysiwyg_status_plain).toBe("地图画面已读到，但图上路线还未显示。");
+      expect(body.map_wysiwyg_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
       expect(body.radar_overlay.overlay_status).toBe("partial");
       expect(body.radar_overlay.plain_hint).toContain("小车地图位置未读到");
       expect(body.radar_overlay.wysiwyg_status_plain).toBe("雷达材料已读到 65 个来源点，当前可用雷达点 1 个，但地图贴图未完整确认；已有雷达来源点 65 个，但小车地图位置未读到；当前不能把雷达点贴到地图坐标。");
@@ -9497,6 +9520,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.path_preview_status).toBe("not_observed");
       expect(body.path_preview_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
       expect(body.next_action_plain).toBe(body.path_preview_next_action_plain);
+      expect(body.path_wysiwyg_status_plain).toBe("图上路线未显示；不能把旧路线或空路线当作当前所见。");
+      expect(body.path_wysiwyg_next_action_plain).toBe(body.path_preview_next_action_plain);
+      expect(body.nav2_route_overlay_status).toBe(body.path_preview_status);
+      expect(body.nav2_route_overlay_point_count).toBe(0);
+      expect(body.nav2_route_overlay_next_action_plain).toBe(body.path_preview_next_action_plain);
       expect(body.radar_overlay.blocked_reasons).toContain("robot_pose_missing_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reason_labels).toContain("小车地图位置未读到");
       expect(body.robot_control_executed).toBe(false);
@@ -9611,6 +9639,8 @@ describe("workstation fail-closed API contracts", () => {
       const response = await fetch(`${workstation.baseUrl}/api/robot-control/map/preview?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const body = (await response.json()) as {
         proxy_status: string;
+        map_wysiwyg_status_plain: string;
+        map_wysiwyg_next_action_plain: string;
         radar_overlay_status: string;
         radar_overlay_plain_hint: string;
         radar_overlay_wysiwyg_status_plain: string;
@@ -9640,11 +9670,22 @@ describe("workstation fail-closed API contracts", () => {
           blocked_reasons: string[];
           blocked_reason_labels: string[];
         };
+        robot_pose_status: string;
+        path_preview_status: string;
+        path_preview_next_action_plain: string;
+        next_action_plain: string;
+        path_wysiwyg_status_plain: string;
+        path_wysiwyg_next_action_plain: string;
+        nav2_route_overlay_status: string;
+        nav2_route_overlay_point_count: number;
+        nav2_route_overlay_next_action_plain: string;
         robot_control_executed: boolean;
       };
 
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("preview_forwarded");
+      expect(body.map_wysiwyg_status_plain).toBe("地图画面已读到，但图上路线还未显示。");
+      expect(body.map_wysiwyg_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
       expect(body.radar_overlay.overlay_status).toBe("not_current");
       expect(body.radar_overlay.status).toBe("not_current");
       expect(body.radar_overlay.plain_hint).toContain("已有雷达来源点 65 个");
@@ -9675,6 +9716,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reason_labels).toContain("雷达扫描已过期");
       expect(body.radar_overlay.blocked_reason_labels).toContain("雷达未运行");
+      expect(body.robot_pose_status).toBe("map_pose_observed");
+      expect(body.path_preview_status).toBe("not_observed");
+      expect(body.path_preview_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
+      expect(body.next_action_plain).toBe(body.path_preview_next_action_plain);
+      expect(body.path_wysiwyg_status_plain).toBe("图上路线未显示；不能把旧路线或空路线当作当前所见。");
+      expect(body.path_wysiwyg_next_action_plain).toBe(body.path_preview_next_action_plain);
+      expect(body.nav2_route_overlay_status).toBe(body.path_preview_status);
+      expect(body.nav2_route_overlay_point_count).toBe(0);
+      expect(body.nav2_route_overlay_next_action_plain).toBe(body.path_preview_next_action_plain);
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(expect.arrayContaining([
         "/api/map/preview",

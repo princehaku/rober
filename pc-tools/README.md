@@ -549,6 +549,14 @@ delivery、stop 或 `/cmd_vel`。
 该变化只同步本机键盘按住状态到 PC 地图显示，不自动启用键盘，不发送新的 manual pulse、free-roam start、
 Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 04:24 CST 起，`/api/robot-control/map/preview` 顶层新增
+`map_wysiwyg_status_plain`、`map_wysiwyg_next_action_plain`、`path_wysiwyg_status_plain`、
+`path_wysiwyg_next_action_plain`、`nav2_route_overlay_status`、`nav2_route_overlay_point_count` 和
+`nav2_route_overlay_next_action_plain`。独立地图预览响应现在不用展开 summary 或内部 overlay，也能直接读到
+当前地图画面、图上路线、小车位置和雷达 marker 是否所见即所得；旧雷达来源点不贴图时，顶层总状态也会照实说明。
+该变化只补只读 map preview 合同，不启动雷达、不准备或执行 Nav2、不发送 manual、keyboard、free-roam、delivery、
+stop 或 `/cmd_vel`。
+
 2026-06-29 01:40 CST 起，普通首屏的统一安全确认取消后会立即撤销 PC 键盘控制权：
 如果只是点了“启用键盘”但没有按住方向，不会发送 manual 或 stop；如果正在按住方向键，则复用固定
 `/api/robot-control/base/stop` 代理先停止，并在首屏显示“安全确认取消”。这样键盘连续手控、自由移动和扫图入口

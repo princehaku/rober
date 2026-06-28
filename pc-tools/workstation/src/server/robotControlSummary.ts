@@ -3145,6 +3145,18 @@ function blockedMapPreviewResponse(
   const pathStatus = pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
   const poseStatus = radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathStatus, poseStatus);
+  const mapWysiwyg = mapWysiwygPlainSummary({
+    mapObserved: "false",
+    pathStatus,
+    poseStatus,
+    radarStatus: radarOverlay.overlay_status,
+    radarHint: radarOverlay.plain_hint,
+    pathNextAction: pathNextActionPlain,
+    radarNextAction: radarOverlay.next_action_plain,
+  });
+  const pathWysiwygStatusPlain = pathStatus === "path_preview_observed"
+    ? "图上路线已显示在当前地图画面。"
+    : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
     ...PROOF_FLAGS,
@@ -3171,6 +3183,8 @@ function blockedMapPreviewResponse(
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
     radar_overlay: radarOverlay,
+    map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
+    map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
     ...mapPreviewRadarOverlayAliases(radarOverlay),
     robot_pose: radarOverlay.robot_pose,
     robot_pose_status: poseStatus,
@@ -3178,6 +3192,11 @@ function blockedMapPreviewResponse(
     path_preview_status: pathStatus,
     path_preview_next_action_plain: pathNextActionPlain,
     next_action_plain: pathNextActionPlain,
+    path_wysiwyg_status_plain: pathWysiwygStatusPlain,
+    path_wysiwyg_next_action_plain: pathNextActionPlain,
+    nav2_route_overlay_status: pathStatus,
+    nav2_route_overlay_point_count: pathPreview.path_preview_point_count,
+    nav2_route_overlay_next_action_plain: pathNextActionPlain,
     path_preview_point_count: pathPreview.path_preview_point_count,
     path_preview_source_point_count: pathPreview.path_preview_source_point_count,
     path_preview_frame_id: pathPreview.path_preview_frame_id,
@@ -3383,6 +3402,18 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   const pathStatus = overlayReadback.pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
   const poseStatus = overlayReadback.radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathStatus, poseStatus);
+  const mapWysiwyg = mapWysiwygPlainSummary({
+    mapObserved: forwarded ? "true" : "false",
+    pathStatus,
+    poseStatus,
+    radarStatus: overlayReadback.radarOverlay.overlay_status,
+    radarHint: overlayReadback.radarOverlay.plain_hint,
+    pathNextAction: pathNextActionPlain,
+    radarNextAction: overlayReadback.radarOverlay.next_action_plain,
+  });
+  const pathWysiwygStatusPlain = pathStatus === "path_preview_observed"
+    ? "图上路线已显示在当前地图画面。"
+    : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1",
     ...PROOF_FLAGS,
@@ -3412,6 +3443,8 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     blocked_reasons: blockedReasons,
     hard_dangerous_true_fields: hardDangerous,
     radar_overlay: overlayReadback.radarOverlay,
+    map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
+    map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
     ...mapPreviewRadarOverlayAliases(overlayReadback.radarOverlay),
     robot_pose: overlayReadback.radarOverlay.robot_pose,
     robot_pose_status: poseStatus,
@@ -3419,6 +3452,11 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     path_preview_status: pathStatus,
     path_preview_next_action_plain: pathNextActionPlain,
     next_action_plain: pathNextActionPlain,
+    path_wysiwyg_status_plain: pathWysiwygStatusPlain,
+    path_wysiwyg_next_action_plain: pathNextActionPlain,
+    nav2_route_overlay_status: pathStatus,
+    nav2_route_overlay_point_count: overlayReadback.pathPreview.path_preview_point_count,
+    nav2_route_overlay_next_action_plain: pathNextActionPlain,
     path_preview_point_count: overlayReadback.pathPreview.path_preview_point_count,
     path_preview_source_point_count: overlayReadback.pathPreview.path_preview_source_point_count,
     path_preview_frame_id: overlayReadback.pathPreview.path_preview_frame_id,

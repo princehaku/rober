@@ -3017,6 +3017,8 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
   radar_overlay?: RobotControlMapPreviewRadarOverlay;
+  map_wysiwyg_status_plain: string;
+  map_wysiwyg_next_action_plain: string;
   radar_overlay_status: RobotControlMapPreviewRadarOverlay["overlay_status"];
   radar_overlay_plain_hint: string;
   radar_overlay_wysiwyg_status_plain: string;
@@ -3037,6 +3039,11 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   path_preview_status: "path_preview_observed" | "not_observed";
   path_preview_next_action_plain: string;
   next_action_plain: string;
+  path_wysiwyg_status_plain: string;
+  path_wysiwyg_next_action_plain: string;
+  nav2_route_overlay_status: "path_preview_observed" | "not_observed";
+  nav2_route_overlay_point_count: number;
+  nav2_route_overlay_next_action_plain: string;
   path_preview_point_count: number;
   path_preview_source_point_count: number | null;
   path_preview_frame_id: string;
