@@ -4899,17 +4899,22 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeDefined();
+    const autoStartFocusSpy = vi.fn();
     const keyboardFocusSpy = vi.fn();
     const cameraProbeFocusSpy = vi.fn();
+    (wrapper.find('[data-testid="plain-free-roam-auto-start"]').element as HTMLElement).focus = autoStartFocusSpy;
     (wrapper.find('[data-testid="plain-free-roam-keyboard"]').element as HTMLElement).focus = keyboardFocusSpy;
     (wrapper.find('[data-testid="plain-camera-probe"]').element as HTMLElement).focus = cameraProbeFocusSpy;
+    const freeMoveStartCallsBeforeNext = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?")).length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(keyboardFocusSpy).toHaveBeenCalledWith({ preventScroll: true });
+    expect(autoStartFocusSpy).toHaveBeenCalledWith({ preventScroll: true });
+    expect(keyboardFocusSpy).not.toHaveBeenCalled();
     expect(cameraProbeFocusSpy).not.toHaveBeenCalled();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toHaveLength(freeMoveStartCallsBeforeNext);
     const manualCallsBeforeArm = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     await wrapper.find('[data-testid="plain-free-roam-keyboard"]').trigger("click");
     await flushPromises();
@@ -5771,7 +5776,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-stop"]').text()).toBe("停止自由移动（随时可点）");
@@ -5835,7 +5840,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：启用键盘自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始自由移动（低速）");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
 

@@ -293,6 +293,7 @@ const plainFreeRoamKeyboardButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamMapRefreshButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamStopButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamSaveButton = ref<HTMLButtonElement | null>(null);
+const plainFreeRoamAutoStartButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamAutoStopButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmed = ref(false);
 const keyboardHeldDirection = ref<ManualDirection | null>(null);
@@ -4444,6 +4445,9 @@ const plainFreeRoamNextActionLabel = computed(() => {
       }
       if (keyboardControlArmed.value && canUseKeyboardControl.value) {
         return "下一步：按住方向键自由移动";
+      }
+      if (canStartFreeRoamAutonomy.value) {
+        return `下一步：${plainFreeRoamMotionStartButtonText.value}`;
       }
       if (canArmPlainFreeRoamKeyboard.value) {
         return "下一步：启用键盘自由移动";
@@ -10468,9 +10472,17 @@ function plainFreeRoamNextTarget(): HTMLElement | null {
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     if (!plainFreeRoamKeyboardRequiresMapRuntime.value) {
-      // 自由移动模式下，相机/雷达缺口只影响建图验收；下一步应先带用户到低速键盘入口。
-      return enabledButton(plainFreeRoamKeyboardButton.value)
+      // 自由移动模式下，相机/雷达缺口只影响建图验收；下一步应先带用户到上车端低速自移动入口。
+      if (keyboardHeldDirection.value) {
+        return enabledButton(plainFreeRoamStopButton.value) ?? keyboardControlPanel.value;
+      }
+      if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+        return keyboardControlPanel.value ?? enabledButton(plainFreeRoamAutoStartButton.value);
+      }
+      return enabledButton(plainFreeRoamAutoStartButton.value)
+        ?? enabledButton(plainFreeRoamKeyboardButton.value)
         ?? enabledButton(plainFreeRoamStartButton.value)
+        ?? plainFreeRoamAutoStartButton.value
         ?? plainFreeRoamKeyboardButton.value
         ?? plainFreeRoamStartButton.value;
     }
@@ -12215,7 +12227,7 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainFreeRoamAutonomyReadiness.state">{{ plainFreeRoamAutonomyReadiness.state }}</span>
             </div>
             <div class="panel-action-row wrap-actions">
-              <button type="button" class="secondary compact-stop" :disabled="plainFreeRoamAutonomyReadiness.disabled" data-testid="plain-free-roam-auto-start" @click="startFreeRoamAutonomy">
+              <button ref="plainFreeRoamAutoStartButton" type="button" class="secondary compact-stop" :disabled="plainFreeRoamAutonomyReadiness.disabled" data-testid="plain-free-roam-auto-start" @click="startFreeRoamAutonomy">
                 {{ plainFreeRoamAutonomyReadiness.buttonLabel }}
               </button>
               <button type="button" class="secondary compact-stop" :disabled="freeRoamAutonomyLatestPending || !robotApiBaseUrl.trim()" data-testid="plain-free-roam-autonomy-latest" @click="refreshFreeRoamAutonomyLatest">
