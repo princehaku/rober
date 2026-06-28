@@ -5935,6 +5935,16 @@ function nav2MapControlUnprovenText(values: Record<string, string> | undefined):
   return nav2PendingModeRerunText(values);
 }
 
+function nav2ManagedRuntimeAutostartText(): string {
+  // 后端已经把“执行时自动启动 runtime”纳入 nav2_goal_ready 时，普通界面不能再把 lifecycle stopped 说成额外预检。
+  const boundary = robotSummary.value?.safe_command_boundary;
+  const action = boundary?.nav2_goal_next_action?.trim() ?? "";
+  if (boundary?.nav2_goal_ready === true && /执行时会自动启动自动驾驶\s*runtime/i.test(action)) {
+    return "执行时会自动启动自动驾驶 runtime";
+  }
+  return "";
+}
+
 function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | undefined): string {
   // 用户问“自动驾驶为什么不动”时，首屏要把根因从行程事实里拎出来：不是摄像头/雷达，而是底盘闭环。
   if (!nav2GoalSucceeded(values) || !nav2BaseCommandWithoutWheelFeedback(values)) {
@@ -5958,7 +5968,10 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
       || summary?.safe_command_boundary.nav2_goal_blockers?.includes("controller_server_inactive")
       ? "控制服务" : ""),
   ].filter(Boolean);
-  const serviceText = inactiveServices.length
+  const runtimeAutostartText = inactiveServices.length ? nav2ManagedRuntimeAutostartText() : "";
+  const serviceText = runtimeAutostartText
+    ? `${runtimeAutostartText}；`
+    : inactiveServices.length
     ? `${inactiveServices.join("和")}未运行，重跑前先${stackNotRunning ? "启动" : "恢复"}；`
     : "";
   return plainNav2UserFacingText(`自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但${pairText}${motionSignal ? `，${motionSignal}` : ""}；${serviceText}下一步${nextText}并确认同窗口 wheel raw L/R 非零。`);
@@ -5978,7 +5991,8 @@ function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): strin
     return plainNav2UserFacingText(action);
   }
   const parts = action.split("；").map((part) => part.trim()).filter(Boolean);
-  return plainNav2UserFacingText(parts[parts.length - 1] || action);
+  const actionable = [...parts].reverse().find((part) => /重跑|执行图上路线|重新执行/.test(part));
+  return plainNav2UserFacingText(actionable || parts[parts.length - 1] || action);
 }
 
 function nav2NextExecutionRerunText(values: Record<string, string> | undefined): string {

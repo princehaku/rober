@@ -8282,6 +8282,53 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
+  it("does not turn managed Nav2 runtime autostart into an extra user precheck", async () => {
+    // live summary 放行行程执行并声明 runtime 会自动启动时，普通用户只需要勾安全确认，不应再被要求先手动启动 lifecycle。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.readback_summary.nav2.goal_execution_status = "goal_succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_result_status = "succeeded";
+    summaryFixture.readback_summary.nav2.goal_execution_robot_control_executed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_feedback_sample_count = "239";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
+    summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode = "pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_nonzero_sample_count = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_imu_attitude_delta_observed = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_imu_pitch_delta = "24.210531";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_sends_base_motion_commands = "true";
+    summaryFixture.readback_summary.nav2.goal_execution_uses_base_uart = "true";
+    summaryFixture.readback_summary.nav2.nav2_stack_running = "false";
+    summaryFixture.readback_summary.nav2.nav2_stack_lifecycle_state = "stopped";
+    summaryFixture.readback_summary.nav2.planner_server_active = "true";
+    summaryFixture.readback_summary.nav2.controller_server_active = "false";
+    summaryFixture.safe_command_boundary.nav2_goal_ready = true;
+    summaryFixture.safe_command_boundary.nav2_goal_wheel_feedback_status = "goal_succeeded_but_wheel_lr_zero";
+    summaryFixture.safe_command_boundary.nav2_goal_next_action = "上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线；执行时会自动启动自动驾驶 runtime";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const currentFacts = wrapper.find('[data-testid="plain-current-facts"]').text();
+    expect(currentFacts).toContain("自动驾驶：不是摄像头或雷达阻塞");
+    expect(currentFacts).toContain("执行时会自动启动自动驾驶 runtime；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口轮速 L/R 非零。");
+    expect(currentFacts).not.toContain("自动驾驶服务未运行，重跑前先启动");
+    expect(currentFacts).not.toContain("控制服务未运行，重跑前先恢复");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toContain("安全确认");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
   it("keeps a Nav2 success with explicit unproven execution out of the complete route gate", async () => {
     // live 上位机可能有 goal_succeeded 和反馈样本，但仍声明没有真车执行证明；PC 不能把它当本轮完整路线。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
