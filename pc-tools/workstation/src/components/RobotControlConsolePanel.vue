@@ -3406,6 +3406,24 @@ function plainRadarFreshnessLabel(
   return "雷达点口径：未读到可显示的实时雷达点。";
 }
 
+function plainMapRadarNextActionText(): string {
+  // 后端已经给出 overlay 下一步；这里转成普通用户能执行的地图提示，不触发任何雷达/运动请求。
+  const nextAction = robotSummary.value?.readback_summary.map.radar_overlay_next_action;
+  if (!nextAction || ["not_loaded", "none", "continue_monitoring_map_radar_overlay"].includes(nextAction)) {
+    return "";
+  }
+  if (nextAction === "start_radar_then_refresh_map_preview") {
+    return "地图下一步：先启动雷达，再刷新地图画面；旧雷达点不会贴到当前地图。";
+  }
+  if (nextAction === "refresh_localization_then_radar_scan") {
+    return "地图下一步：先刷新定位，再刷新雷达；没有小车地图位置时只显示局部点，不贴地图。";
+  }
+  if (nextAction === "refresh_map_preview_after_radar_scan") {
+    return "地图下一步：刷新地图画面，让雷达点和地图来自同一轮读数。";
+  }
+  return `地图下一步：${nextAction.replace(/_/g, " ")}。`;
+}
+
 function plainMapImageFreshnessLabel(previewLoaded: boolean): string {
   // 地图画面和建图动作不是实时视频流；首屏必须明确当前看到的是刷新结果还是上次结果。
   if (mapPreviewPending.value && mapSavedThisSession.value) {
@@ -3979,6 +3997,7 @@ const plainMapVisualSummary = computed(() => {
     showRadarLocalScan: radarLocalScanOverlay.dots.length > 0,
     radarLocalScanState: radarLocalScanOverlay.state,
     radarLocalScanAria: `雷达局部点位，${radarLocalScanOverlay.label}`,
+    radarNextActionText: plainMapRadarNextActionText(),
     mapImageFreshnessLabel: plainMapImageFreshnessLabel(previewLoaded),
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
     routePathLabel: plainRouteMapCaption(routePath),
@@ -11971,6 +11990,7 @@ onBeforeUnmount(() => {
               <span v-if="plainMapVisualSummary.freeRoamSweepPlanLabel" class="muted" data-testid="plain-map-free-roam-sweep-label">{{ plainMapVisualSummary.freeRoamSweepPlanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-freshness-label">{{ plainMapVisualSummary.radarFreshnessLabel }}</span>
+              <span v-if="plainMapVisualSummary.radarNextActionText" class="muted" data-testid="plain-map-radar-next-action">{{ plainMapVisualSummary.radarNextActionText }}</span>
               <span class="muted" data-testid="plain-map-image-freshness-label">{{ plainMapVisualSummary.mapImageFreshnessLabel }}</span>
               <span class="muted" data-testid="plain-map-coordinate-truth-label">{{ plainMapVisualSummary.coordinateTruthLabel }}</span>
               <span v-if="plainMapVisualSummary.tripExecutionLabel" class="muted" data-testid="plain-map-trip-execution-label">{{ plainMapVisualSummary.tripExecutionLabel }}</span>
