@@ -2979,6 +2979,9 @@ export interface RobotControlFreeRoamAutonomyLatestResponse extends ProofFlags {
   mapping_readiness_ready: boolean;
   mapping_blocked_reasons: string[];
   motion_readiness_plain: string;
+  free_move_start_status_plain: string;
+  motion_runtime_status_plain: string;
+  mapping_acceptance_status_plain: string;
   mapping_readiness_plain: string;
   motion_next_action_plain: string;
   mapping_next_action_plain: string;

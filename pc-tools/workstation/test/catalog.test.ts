@@ -11022,6 +11022,9 @@ describe("workstation fail-closed API contracts", () => {
         mapping_readiness_ready: boolean;
         mapping_blocked_reasons: string[];
         motion_readiness_plain: string;
+        free_move_start_status_plain: string;
+        motion_runtime_status_plain: string;
+        mapping_acceptance_status_plain: string;
         mapping_readiness_plain: string;
         motion_next_action_plain: string;
         mapping_next_action_plain: string;
@@ -11045,6 +11048,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.mapping_readiness_ready).toBe(false);
       expect(body.mapping_blocked_reasons).toEqual(["camera_first_frame", "mapping_active", "fresh_map_preview"]);
       expect(body.motion_readiness_plain).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。");
+      expect(body.free_move_start_status_plain).toBe("自由移动已启动；继续保持现场可接管，必要时点击停止。");
+      expect(body.motion_runtime_status_plain).toBe("自由移动正在运行并发布低速运动；继续监看现场，必要时点击停止。");
+      expect(body.mapping_acceptance_status_plain).toBe("建图验收未 ready；还差：画面首帧、地图记录、地图画面；这不阻止先低速自由移动。");
       expect(body.mapping_readiness_plain).toBe("建图验收未 ready；还差：画面首帧、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.motion_next_action_plain).toBe("继续低速监看；需要停下时点停止。");
       expect(body.mapping_next_action_plain).toBe("建图验收还差：画面首帧、地图记录、地图画面；不影响先低速自由移动。");
@@ -11068,6 +11074,71 @@ describe("workstation fail-closed API contracts", () => {
       expect(upstream.receivedBodies["/api/free-roam/autonomy/start"]).toBeUndefined();
       expect(upstream.receivedBodies["/api/free-roam/autonomy/stop"]).toBeUndefined();
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("free-roam autonomy latest explains start-ready while motion runtime is stopped", async () => {
+    // live 形态会同时出现 free_move_start_ready=true 和 motion_ready=false；后者只代表尚未运行，不是启动阻塞。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "stopping",
+              reason: "现场请求停止",
+              stop_required: true,
+              gates: [
+                { id: "operator_confirmed", state: "blocked" },
+                { id: "stop_available", state: "ready" },
+              ],
+            },
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/free-roam/autonomy/latest?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        free_move_start_ready: boolean;
+        motion_start_ready: boolean;
+        motion_ready: boolean;
+        mapping_readiness_ready: boolean;
+        motion_readiness_plain: string;
+        free_move_start_status_plain: string;
+        motion_runtime_status_plain: string;
+        mapping_acceptance_status_plain: string;
+        motion_next_action_plain: string;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("latest_loaded");
+      expect(body.free_move_start_ready).toBe(true);
+      expect(body.motion_start_ready).toBe(true);
+      expect(body.motion_ready).toBe(false);
+      expect(body.mapping_readiness_ready).toBe(false);
+      expect(body.motion_readiness_plain).toBe("可先自由移动；当前有停止请求，开始自由移动会先清除停止请求。");
+      expect(body.free_move_start_status_plain).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。");
+      expect(body.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
+      expect(body.mapping_acceptance_status_plain).toContain("这不阻止先低速自由移动");
+      expect(body.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/free-roam/autonomy/latest"]);
+      expect(Object.keys(upstream.receivedBodies)).toEqual([]);
     } finally {
       await workstation.close();
       await upstream.close();

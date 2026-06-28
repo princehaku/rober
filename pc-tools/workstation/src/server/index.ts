@@ -1393,6 +1393,43 @@ function freeRoamLatestMotionNextAction(startReady: boolean, motionReady: boolea
   return "先连接上车自由移动状态机，并确认停止兜底可用。";
 }
 
+function freeRoamLatestStartStatusPlain(startReady: boolean, motionReady: boolean, externalStopRequested: boolean): string {
+  if (motionReady) {
+    return "自由移动已启动；继续保持现场可接管，必要时点击停止。";
+  }
+  if (!startReady) {
+    return "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。";
+  }
+  return externalStopRequested
+    ? "自由移动可启动；当前有停止请求，点击开始会先清除停止请求。"
+    : "自由移动可启动；只需现场安全确认和停止兜底。";
+}
+
+function freeRoamLatestMotionRuntimeStatusPlain(startReady: boolean, motionReady: boolean): string {
+  if (motionReady) {
+    return "自由移动正在运行并发布低速运动；继续监看现场，必要时点击停止。";
+  }
+  if (startReady) {
+    return "当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。";
+  }
+  return "当前未在自由移动运行态；上车自由移动状态机还未 ready。";
+}
+
+function freeRoamLatestMappingAcceptanceStatusPlain(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
+  if (mappingReady) {
+    return "建图验收 ready；画面、雷达、地图记录和地图画面已满足验收口径。";
+  }
+  const missingText = freeRoamLatestMissingPlainLabels(mappingMissingReasons).join("、");
+  if (!startReady) {
+    return missingText
+      ? `建图验收未 ready；还差：${missingText}；同时自由移动状态机未 ready。`
+      : "建图验收未 ready；还在等待自由移动状态机和建图材料。";
+  }
+  return missingText
+    ? `建图验收未 ready；还差：${missingText}；这不阻止先低速自由移动。`
+    : "建图验收未 ready；继续读取建图材料，这不阻止先低速自由移动。";
+}
+
 function freeRoamLatestMappingNextAction(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
   if (mappingReady) {
     return "建图验收已 ready；继续低速监看地图、雷达和画面。";
@@ -1422,6 +1459,9 @@ function freeRoamLatestReadinessFromKeyValues(
   | "mapping_readiness_ready"
   | "mapping_blocked_reasons"
   | "motion_readiness_plain"
+  | "free_move_start_status_plain"
+  | "motion_runtime_status_plain"
+  | "mapping_acceptance_status_plain"
   | "mapping_readiness_plain"
   | "motion_next_action_plain"
   | "mapping_next_action_plain"
@@ -1447,6 +1487,9 @@ function freeRoamLatestReadinessFromKeyValues(
     mapping_readiness_ready: mappingReady,
     mapping_blocked_reasons: mappingMissing,
     motion_readiness_plain: freeRoamLatestMotionReadinessPlain(startReady, motionReady, externalStopRequested),
+    free_move_start_status_plain: freeRoamLatestStartStatusPlain(startReady, motionReady, externalStopRequested),
+    motion_runtime_status_plain: freeRoamLatestMotionRuntimeStatusPlain(startReady, motionReady),
+    mapping_acceptance_status_plain: freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingReady, mappingMissing),
     mapping_readiness_plain: freeRoamLatestMappingReadinessPlain(startReady, mappingReady, mappingMissing),
     motion_next_action_plain: freeRoamLatestMotionNextAction(startReady, motionReady, externalStopRequested),
     mapping_next_action_plain: freeRoamLatestMappingNextAction(startReady, mappingReady, mappingMissing),
@@ -3259,6 +3302,9 @@ export function createWorkstationApp(): express.Express {
       mapping_readiness_ready: false,
       mapping_blocked_reasons: ["not_checked"],
       motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
+      free_move_start_status_plain: "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。",
+      motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未 ready。",
+      mapping_acceptance_status_plain: "建图验收未 ready；还在等待自由移动状态机和建图材料。",
       mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
       motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
       mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
