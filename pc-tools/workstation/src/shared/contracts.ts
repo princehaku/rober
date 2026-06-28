@@ -2011,6 +2011,8 @@ export interface RobotApiFrameTransform {
 
 export interface RobotControlMapPreviewRadarOverlay {
   overlay_status: "loaded" | "partial" | "blocked" | "not_current" | "not_loaded";
+  plain_hint: string;
+  next_action: string;
   scan_preview_points: RobotApiScanPreviewPoint[];
   scan_preview_point_count: number;
   scan_preview_source_point_count: number | null;
@@ -2018,6 +2020,7 @@ export interface RobotControlMapPreviewRadarOverlay {
   robot_pose: RobotApiMapPose | null;
   source_endpoint_ids: RobotApiReadEndpointId[];
   blocked_reasons: string[];
+  blocked_reason_labels: string[];
 }
 
 export interface RobotApiProofSummary {
@@ -2470,7 +2473,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       map_free_cell_count: string;
       map_usable_for_navigation: string;
       radar_overlay_status: string;
+      radar_overlay_plain_hint: string;
+      radar_overlay_next_action: string;
       radar_overlay_blocked_reasons: string;
+      radar_overlay_blocked_reason_labels: string;
       radar_overlay_scan_preview_point_count: string;
       radar_overlay_scan_preview_source_point_count: string;
       radar_overlay_scan_preview_frame_id: string;

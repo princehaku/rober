@@ -2730,8 +2730,11 @@ function blockedMapLifecycleResponse(
 
 function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRadarOverlay {
   // 地图预览失败或 URL 不合法时也返回同形 overlay，前端不用猜测雷达层是否存在。
+  const explanation = mapRadarOverlayExplanation("not_loaded", reason ? [reason] : [], 0, null);
   return {
     overlay_status: "not_loaded",
+    plain_hint: explanation.plain_hint,
+    next_action: explanation.next_action,
     scan_preview_points: [],
     scan_preview_point_count: 0,
     scan_preview_source_point_count: null,
@@ -2739,6 +2742,71 @@ function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRa
     robot_pose: null,
     source_endpoint_ids: [],
     blocked_reasons: reason ? [reason] : [],
+    blocked_reason_labels: explanation.blocked_reason_labels,
+  };
+}
+
+function mapRadarOverlayReasonLabel(reason: string): string {
+  // overlay token 可能带 endpoint 前缀；普通接口要给现场能直接执行的短标签。
+  const normalized = reason.includes(":") ? reason.split(":").slice(1).join(":") : reason;
+  const labels: Record<string, string> = {
+    robot_pose_missing_for_map_radar_overlay: "小车地图位置未读到",
+    runtime_scan_stale_for_map_radar_overlay: "雷达扫描已过期",
+    radar_lifecycle_not_running_for_map_radar_overlay: "雷达未运行",
+    scan_preview_points_missing_for_map_radar_overlay: "没有可贴图的新雷达点",
+    scan_preview_points_missing: "没有可贴图的新雷达点",
+  };
+  if (normalized.startsWith("fetch_timeout")) {
+    return "雷达或定位读取超时";
+  }
+  return labels[normalized] ?? normalized;
+}
+
+function mapRadarOverlayExplanation(
+  status: RobotControlMapPreviewRadarOverlay["overlay_status"],
+  blockedReasons: string[],
+  sourcePointCount: number | null,
+  robotPose: RobotApiMapPose | null,
+): Pick<RobotControlMapPreviewRadarOverlay, "plain_hint" | "next_action" | "blocked_reason_labels"> {
+  const labels = [...new Set(blockedReasons.map(mapRadarOverlayReasonLabel).filter(Boolean))];
+  const pointText = sourcePointCount !== null && sourcePointCount > 0 ? `已有雷达来源点 ${sourcePointCount} 个` : "未读到可用雷达点";
+  if (status === "loaded") {
+    return {
+      plain_hint: "雷达点已按当前扫描和小车地图位置贴到地图。",
+      next_action: "continue_monitoring_map_radar_overlay",
+      blocked_reason_labels: [],
+    };
+  }
+  if (status === "partial") {
+    const hint = robotPose
+      ? `${pointText}，但雷达点不完整；地图保留小车位置并等待新点。`
+      : `${pointText}，但小车地图位置未读到；当前不能把雷达点贴到地图坐标。`;
+    return {
+      plain_hint: hint,
+      next_action: robotPose ? "refresh_radar_scan_for_map_overlay" : "refresh_localization_then_radar_scan",
+      blocked_reason_labels: labels,
+    };
+  }
+  if (status === "not_current") {
+    const hasLifecycleStop = blockedReasons.some((reason) => reason.includes("radar_lifecycle_not_running_for_map_radar_overlay"));
+    const hasStaleScan = blockedReasons.some((reason) => reason.includes("runtime_scan_stale_for_map_radar_overlay"));
+    return {
+      plain_hint: `${pointText}，但${labels.join("、") || "雷达状态不是当前"}，所以当前不贴到地图。`,
+      next_action: hasLifecycleStop ? "start_radar_then_refresh_map_preview" : hasStaleScan ? "refresh_radar_scan_for_map_overlay" : "refresh_map_radar_overlay",
+      blocked_reason_labels: labels,
+    };
+  }
+  if (status === "blocked") {
+    return {
+      plain_hint: `地图雷达层材料不足：${labels.join("、") || "未读到雷达或定位材料"}。`,
+      next_action: blockedReasons.some((reason) => reason.includes("robot_pose_missing")) ? "refresh_localization_then_radar_scan" : "start_or_refresh_radar",
+      blocked_reason_labels: labels,
+    };
+  }
+  return {
+    plain_hint: blockedReasons.length ? `地图雷达层未加载：${labels.join("、")}。` : "地图雷达层未加载。",
+    next_action: "connect_robot_and_refresh_map_preview",
+    blocked_reason_labels: labels,
   };
 }
 
@@ -2769,8 +2837,16 @@ async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPr
     : hasVisibleOverlay
       ? overlayBlockedReasons.length > 0 || !hasCompleteOverlay ? "partial" : "loaded"
       : overlayBlockedReasons.length > 0 ? "blocked" : "not_loaded";
+  const explanation = mapRadarOverlayExplanation(
+    overlayStatus,
+    overlayBlockedReasons,
+    proofSummary.scan_preview_source_point_count,
+    proofSummary.robot_pose,
+  );
   return {
     overlay_status: overlayStatus,
+    plain_hint: explanation.plain_hint,
+    next_action: explanation.next_action,
     scan_preview_points: radarOverlayCurrent ? proofSummary.scan_preview_points : [],
     scan_preview_point_count: radarOverlayCurrent ? proofSummary.scan_preview_point_count : 0,
     scan_preview_source_point_count: proofSummary.scan_preview_source_point_count,
@@ -2778,6 +2854,7 @@ async function buildMapPreviewRadarOverlay(base: URL): Promise<RobotControlMapPr
     robot_pose: proofSummary.robot_pose,
     source_endpoint_ids: endpoints.map((endpoint) => endpoint.id),
     blocked_reasons: overlayBlockedReasons,
+    blocked_reason_labels: explanation.blocked_reason_labels,
   };
 }
 
@@ -3792,7 +3869,13 @@ function mapSummaryFromReadbacks(
       ? "partial"
       : hasScanPreviewPoints
         ? "not_current"
-      : "not_loaded";
+        : "not_loaded";
+  const radarOverlayExplanation = mapRadarOverlayExplanation(
+    radarOverlayStatus,
+    radarOverlayBlockedReasons,
+    proof.scan_preview_source_point_count,
+    proof.robot_pose,
+  );
   return {
     status: mapProof?.status ?? "not_loaded",
     map_once_observed: booleanSummaryValue(proof.map_once_observed),
@@ -3809,7 +3892,10 @@ function mapSummaryFromReadbacks(
       mapProofText(mapProof, ["latest_map_usable_for_navigation", "map_usable_for_navigation"]) ??
       "not_loaded",
     radar_overlay_status: radarOverlayStatus,
+    radar_overlay_plain_hint: radarOverlayExplanation.plain_hint,
+    radar_overlay_next_action: radarOverlayExplanation.next_action,
     radar_overlay_blocked_reasons: radarOverlayBlockedReasons.join(",") || "none",
+    radar_overlay_blocked_reason_labels: radarOverlayExplanation.blocked_reason_labels.join(",") || "none",
     radar_overlay_scan_preview_point_count: String(radarOverlayCurrent ? proof.scan_preview_point_count : 0),
     radar_overlay_scan_preview_source_point_count: proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count),
     radar_overlay_scan_preview_frame_id: proof.scan_preview_frame_id || "not_loaded",
@@ -4232,7 +4318,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         map_free_cell_count: "not_loaded",
         map_usable_for_navigation: "not_loaded",
         radar_overlay_status: "not_loaded",
+        radar_overlay_plain_hint: "地图雷达层未加载。",
+        radar_overlay_next_action: "connect_robot_and_refresh_map_preview",
         radar_overlay_blocked_reasons: "not_loaded",
+        radar_overlay_blocked_reason_labels: "not_loaded",
         radar_overlay_scan_preview_point_count: "0",
         radar_overlay_scan_preview_source_point_count: "0",
         radar_overlay_scan_preview_frame_id: "not_loaded",

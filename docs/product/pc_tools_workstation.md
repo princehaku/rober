@@ -3839,3 +3839,12 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 和 `command_mode=ros`，与 PC Node 实际转发 `/api/base/manual` 时写入的 `command_mode=ros` 保持一致。
 这样现场能确认 PC 键盘连续控制没有回到旧 PWM/UART 默认；该变化只暴露既有只读合同和 UI 文案，不自动启用键盘，
 不发送 manual、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-28 21:55 起，`/api/robot-control/map/preview` 的 `radar_overlay` 与
+Robot Control summary 的 `readback_summary.map` 同步新增中文所见即所得字段：
+`plain_hint`、`next_action`、`blocked_reason_labels`，summary 对应
+`radar_overlay_plain_hint`、`radar_overlay_next_action`、`radar_overlay_blocked_reason_labels`。
+当 live 形态是“雷达有旧来源点但 lifecycle 停止或 /scan 过期”时，地图预览会明确返回
+“已有雷达来源点，但雷达扫描已过期/雷达未运行，所以当前不贴到地图”，普通首屏优先消费这句，不再只展示内部 token
+或把旧点画成当前 marker。该变化只读取地图、雷达和定位状态，不启动雷达，不刷新 Nav2，不发送 manual、keyboard、
+free-roam、delivery、stop 或 `/cmd_vel`。

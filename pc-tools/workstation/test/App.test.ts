@@ -6866,6 +6866,8 @@ describe("App", () => {
     const previewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
     previewFixture.radar_overlay = {
       overlay_status: "loaded",
+      plain_hint: "雷达点已按当前扫描和小车地图位置贴到地图。",
+      next_action: "continue_monitoring_map_radar_overlay",
       scan_preview_points: [
         { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
         { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
@@ -6882,6 +6884,7 @@ describe("App", () => {
       },
       source_endpoint_ids: ["localize_proof_latest", "radar_scan_proof_latest"],
       blocked_reasons: [],
+      blocked_reason_labels: [],
     };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -6936,6 +6939,8 @@ describe("App", () => {
     const previewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
     previewFixture.radar_overlay = {
       overlay_status: "partial",
+      plain_hint: "已有雷达来源点 2 个，但小车地图位置未读到；当前不能把雷达点贴到地图坐标。",
+      next_action: "refresh_localization_then_radar_scan",
       scan_preview_points: [
         { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
         { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
@@ -6946,6 +6951,7 @@ describe("App", () => {
       robot_pose: null,
       source_endpoint_ids: ["localize_proof_latest", "radar_scan_proof_latest"],
       blocked_reasons: ["robot_pose_missing_for_map_radar_overlay"],
+      blocked_reason_labels: ["小车地图位置未读到"],
     };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -16744,7 +16750,10 @@ describe("App", () => {
     summaryFixture.readback_summary.lidar.scan_preview_point_count = "65";
     summaryFixture.readback_summary.lidar.scan_preview_source_point_count = "65";
     summaryFixture.readback_summary.map.radar_overlay_status = "not_current";
+    summaryFixture.readback_summary.map.radar_overlay_plain_hint = "已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。";
+    summaryFixture.readback_summary.map.radar_overlay_next_action = "start_radar_then_refresh_map_preview";
     summaryFixture.readback_summary.map.radar_overlay_blocked_reasons = "runtime_scan_stale_for_map_radar_overlay,radar_lifecycle_not_running_for_map_radar_overlay";
+    summaryFixture.readback_summary.map.radar_overlay_blocked_reason_labels = "雷达扫描已过期,雷达未运行";
     summaryFixture.readback_summary.map.radar_overlay_scan_preview_point_count = "0";
     summaryFixture.readback_summary.map.radar_overlay_scan_preview_source_point_count = "65";
     summaryFixture.readback_summary.map.radar_overlay_scan_preview_frame_id = "laser_frame";
@@ -16761,11 +16770,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达未运行，旧点未贴图");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达未运行，地图位置未读到，旧雷达点 65 个已过期未贴到地图");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：旧雷达点 65 个已判定为不当前，未贴到地图；启动或刷新雷达后才显示新点位。");
-    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，旧雷达点 65 个已判定为不当前，未贴到地图；目标线未显示。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：雷达未运行；旧雷达点 65 个已判定为不当前，未贴到地图。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个；旧雷达点 65 个已判定为不当前，未贴到地图。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出、雷达未刷新（旧雷达点 65 个已判定为不当前，未贴到地图）、地图记录未启动");
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图；启动或刷新雷达后才显示新点位。");
+    expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图；目标线未显示。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：雷达未运行；已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个；已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出、雷达未刷新（已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图）、地图记录未启动");
     expect(firstScreenText).not.toContain("最近记录 2 个点");
     expect(firstScreenText).not.toContain("雷达局部点 2 个");
     expect(firstScreenText).not.toContain("雷达局部点 65 个");

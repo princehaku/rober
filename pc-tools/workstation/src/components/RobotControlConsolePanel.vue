@@ -2791,6 +2791,10 @@ function radarNotCurrentSourcePointCount(): number {
 }
 
 function radarNotCurrentSourcePointText(): string {
+  const plainHint = robotSummary.value?.readback_summary.map.radar_overlay_plain_hint;
+  if (plainHint && !["not_loaded", "none"].includes(plainHint)) {
+    return plainHint.replace(/[。.!?]+$/, "");
+  }
   const pointCount = radarNotCurrentSourcePointCount();
   return pointCount > 0 ? `旧雷达点 ${pointCount} 个已判定为不当前，未贴到地图` : "";
 }
