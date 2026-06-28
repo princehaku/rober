@@ -10844,6 +10844,9 @@ describe("workstation fail-closed API contracts", () => {
         source_diagnosis_plain_hint: string;
         source_diagnosis_next_action: string;
         source_diagnosis_not_exclusive: string;
+        preview_status: string;
+        preview_plain_hint: string;
+        preview_next_action: string;
         robot_control_executed: boolean;
       };
       expect(statusResponse.status).toBe(200);
@@ -10860,6 +10863,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_plain_hint).toBe("not_loaded");
       expect(statusBody.source_diagnosis_next_action).toBe("not_loaded");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("not_loaded");
+      expect(statusBody.preview_status).toBe("idle_not_started");
+      expect(statusBody.preview_plain_hint).toBe("实时画面未打开；点击打开后才会接入共享预览。");
+      expect(statusBody.preview_next_action).toBe("open_shared_preview_when_needed");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);
@@ -10932,6 +10938,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_plain_hint).not.toContain("not_loaded");
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.robot_control_executed).toBe(false);
       const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
@@ -11019,6 +11028,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.robot_control_executed).toBe(false);
       const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
       const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
@@ -11099,6 +11111,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);

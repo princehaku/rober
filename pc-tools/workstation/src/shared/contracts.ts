@@ -2981,6 +2981,9 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   source_diagnosis_plain_hint: string;
   source_diagnosis_next_action: string;
   source_diagnosis_not_exclusive: string;
+  preview_status: "idle_not_started" | "waiting_for_first_frame" | "streaming" | "source_first_frame_failed" | "blocked";
+  preview_plain_hint: string;
+  preview_next_action: string;
   failure_reason: string;
   blocked_reasons: string[];
   robot_control_executed: false;

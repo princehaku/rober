@@ -1346,6 +1346,8 @@ function cameraMjpegStatusResponse(
   const lastFailure = relayFailure ?? sourceFailure;
   // relay failure 说明共享 MJPEG 最近为什么失败；health 里的 source diagnosis 说明相机源为什么无帧，两者不能互相覆盖。
   const diagnosisSource = sourceFailure ?? relayFailure;
+  const previewStatus = cameraMjpegPreviewStatus(relay, failureReason, lastFailure, diagnosisSource);
+  const previewGuidance = cameraMjpegPreviewGuidance(previewStatus, diagnosisSource);
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -1369,10 +1371,72 @@ function cameraMjpegStatusResponse(
     source_diagnosis_plain_hint: diagnosisSource?.source_diagnosis_plain_hint ?? "not_loaded",
     source_diagnosis_next_action: diagnosisSource?.source_diagnosis_next_action ?? "not_loaded",
     source_diagnosis_not_exclusive: diagnosisSource?.source_diagnosis_not_exclusive ?? "not_loaded",
+    preview_status: previewStatus,
+    preview_plain_hint: previewGuidance.plain_hint,
+    preview_next_action: previewGuidance.next_action,
     failure_reason: failureReason,
     blocked_reasons: failureReason ? [failureReason] : [],
     robot_control_executed: false,
     ...PROOF_FLAGS,
+  };
+}
+
+function cameraMjpegPreviewStatus(
+  relay: CameraMjpegRelay | null,
+  failureReason: string,
+  lastFailure: CameraMjpegRelayLastFailure | null,
+  diagnosisSource: CameraMjpegRelayLastFailure | null,
+): RobotControlCameraMjpegStatusResponse["preview_status"] {
+  // 这个状态只解释 PC 共享预览现状；不能把“入口可打开”误写成“画面已经可见”。
+  if (failureReason) {
+    return "blocked";
+  }
+  if (relay?.latestFrameChunk) {
+    return "streaming";
+  }
+  const sourceFirstFrameFailed = lastFailure?.failure_reason === "camera_source_first_frame_failed"
+    || diagnosisSource?.source_diagnosis_status === "uvc_no_frame_not_exclusive";
+  if (sourceFirstFrameFailed) {
+    return "source_first_frame_failed";
+  }
+  if ((relay?.clients.size ?? 0) > 0 || relay?.upstreamActive) {
+    return "waiting_for_first_frame";
+  }
+  return "idle_not_started";
+}
+
+function cameraMjpegPreviewGuidance(
+  previewStatus: RobotControlCameraMjpegStatusResponse["preview_status"],
+  diagnosisSource: CameraMjpegRelayLastFailure | null,
+): { plain_hint: string; next_action: string } {
+  // 普通用户只需要看到“现在有没有实时画面”和下一步；完整诊断字段仍保留给高级区。
+  if (previewStatus === "streaming") {
+    return {
+      plain_hint: "共享实时画面已有缓存帧，多个页面复用同一条上游流。",
+      next_action: "continue_monitoring_shared_preview",
+    };
+  }
+  if (previewStatus === "source_first_frame_failed") {
+    return {
+      plain_hint: diagnosisSource?.source_diagnosis_plain_hint ?? "不是页面独占：UVC 设备没有输出视频帧。",
+      next_action: diagnosisSource?.source_diagnosis_next_action ?? "check_usb_camera_input_power_or_known_good_uvc",
+    };
+  }
+  if (previewStatus === "waiting_for_first_frame") {
+    return {
+      plain_hint: "共享实时画面正在等待首帧；返回前不能把黑框当作画面可见。",
+      next_action: "wait_or_run_first_frame_probe",
+    };
+  }
+  if (previewStatus === "blocked") {
+    return {
+      plain_hint: "共享实时画面状态读取被本机拒绝或失败。",
+      next_action: "check_robot_api_base_url_and_retry",
+    };
+  }
+  return {
+    plain_hint: "实时画面未打开；点击打开后才会接入共享预览。",
+    next_action: "open_shared_preview_when_needed",
   };
 }
 
