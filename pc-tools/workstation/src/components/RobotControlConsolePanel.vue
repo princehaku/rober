@@ -2230,6 +2230,7 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   // 当前事实条只回答“现在会不会自己跑”；建图 readiness 和详细 gate 留在扫地式建图卡片。
   const boundary = summary.safe_command_boundary;
   const runtime = boundary.free_roam_autonomy_runtime;
+  const freeRoam = summary.readback_summary.free_roam;
   const obstacleCaution = plainFreeRoamObstacleCautionText(summary);
   const modeName = plainFreeRoamMotionModeName.value;
   if (freeRoamAutonomyStopQueuedAfterStart.value) {
@@ -2244,6 +2245,8 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   if (freeRoamAutonomyLatestPending.value) {
     return `${modeName}：正在读取最新上车状态，返回前不把旧自由移动记录当作当前结论。`;
   }
+  const freeRoamReadbackHasMotionState = freeRoam.motion_ready === "true" || freeRoam.start_ready === "true";
+  const motionReadinessPlain = freeRoamReadbackHasMotionState ? freeRoam.motion_readiness_plain?.trim() : "";
   if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
     const failureText = freeRoamAutonomyFailureText(freeRoamAutonomyResult.value);
     const reasonSuffix = failureText ? `：${failureText}` : "";
@@ -2266,22 +2269,30 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
     return `${modeName}：停止请求已发送，继续看地图和雷达确认现场收口。`;
   }
   if (runtime?.status === "loaded" && runtime.cmd_vel_publish_enabled === true && runtime.artifact_only === false) {
-    return `自由移动：运动发布已解锁，不依赖雷达新鲜度${obstacleCaution}；现场继续监看。`;
+    return motionReadinessPlain && !["not_loaded", "none"].includes(motionReadinessPlain)
+      ? `自由移动：${motionReadinessPlain.replace(/^自由移动/, "").replace(/^[：:]/, "")}${obstacleCaution}`
+      : `自由移动：运动发布已解锁，不依赖雷达新鲜度${obstacleCaution}；现场继续监看。`;
   }
   if (runtime?.status === "loaded" && runtime.artifact_only === true && runtime.cmd_vel_publish_enabled === false) {
     const startText = plainManualSafetyConfirmed.value ? "可启动" : "勾安全确认后可启动";
     if (runtime.state === "stopping") {
       const reasonText = runtime.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
       return boundary.free_roam_autonomy_start_ready
-        ? `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，${startText}${obstacleCaution}；低速自移动不依赖雷达新鲜度。`
+        ? motionReadinessPlain && !["not_loaded", "none"].includes(motionReadinessPlain)
+          ? `自由移动：上次记录停在停止请求${reasonText}；${motionReadinessPlain}${obstacleCaution}`
+          : `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布，${startText}${obstacleCaution}；低速自移动不依赖雷达新鲜度。`
         : `自由移动：上次记录停在停止请求${reasonText}；当前没有运动发布。`;
     }
     return boundary.free_roam_autonomy_start_ready
-      ? `自由移动：${startText}，但当前没有运动发布${obstacleCaution}；低速自移动不依赖雷达新鲜度。`
+      ? motionReadinessPlain && !["not_loaded", "none"].includes(motionReadinessPlain)
+        ? `自由移动：${motionReadinessPlain}${obstacleCaution}`
+        : `自由移动：${startText}，但当前没有运动发布${obstacleCaution}；低速自移动不依赖雷达新鲜度。`
       : "自由移动：当前没有运动发布。";
   }
   if (boundary.free_roam_autonomy_start_ready) {
-    return `自由移动：勾安全确认后可启动${obstacleCaution}；低速自移动不依赖雷达新鲜度。`;
+    return motionReadinessPlain && !["not_loaded", "none"].includes(motionReadinessPlain)
+      ? `自由移动：${motionReadinessPlain}${obstacleCaution}`
+      : `自由移动：勾安全确认后可启动${obstacleCaution}；低速自移动不依赖雷达新鲜度。`;
   }
   return "自由移动：等待上车状态。";
 }
@@ -2289,6 +2300,16 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
 function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): string {
   // 建图是“可验收材料”，不是低速移动门禁；首屏要把这层差异直接讲清楚。
   const freeRoam = summary.readback_summary.free_roam;
+  const freeRoamReadbackHasMappingState = freeRoam.mapping_ready === "true"
+    || Boolean(freeRoam.mapping_missing && !["not_loaded", "none"].includes(freeRoam.mapping_missing));
+  const mappingReadinessPlain = freeRoamReadbackHasMappingState ? freeRoam.mapping_readiness_plain?.trim() : "";
+  if (
+    mappingReadinessPlain
+    && !["not_loaded", "none"].includes(mappingReadinessPlain)
+    && !mappingReadinessPlain.includes("等待上车状态机")
+  ) {
+    return `建图：${mappingReadinessPlain.replace(/^建图验收/, "").replace(/^[：:]/, "")}`;
+  }
   const missing = plainFreeRoamMappingMissingForVisibleState();
   const boundaryMappingReady = summary.safe_command_boundary.free_roam_mapping_ready;
   const boundaryMappingKnown = typeof boundaryMappingReady === "boolean";
@@ -4312,6 +4333,16 @@ const canArmPlainFreeRoamKeyboard = computed(() => (
 
 function plainFreeRoamBoundaryNextActionForHint(): string {
   // 上车端 next_action 是自由移动和建图验收分层后的结论；这里只翻译展示，不自动触发 start。
+  const readback = robotSummary.value?.readback_summary.free_roam;
+  const hasReadbackState = readback?.motion_ready === "true"
+    || readback?.start_ready === "true"
+    || readback?.mapping_ready === "true"
+    || Boolean(readback?.mapping_missing && !["not_loaded", "none"].includes(readback.mapping_missing));
+  const motionReadiness = hasReadbackState ? readback?.motion_readiness_plain?.trim() ?? "" : "";
+  const mappingReadiness = hasReadbackState ? readback?.mapping_readiness_plain?.trim() ?? "" : "";
+  if (motionReadiness && mappingReadiness && !["not_loaded", "none"].includes(motionReadiness)) {
+    return `上车建议：${motionReadiness.replace(/[。.!?]+$/, "")}。${mappingReadiness.replace(/[。.!?]+$/, "")}。`;
+  }
   const action = robotSummary.value?.safe_command_boundary.free_roam_autonomy_next_action?.trim() ?? "";
   if (!action || ["not_loaded", "none"].includes(action)) {
     return "";
