@@ -2570,6 +2570,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       motion_ready: string;
       mapping_ready: string;
       mapping_missing: string;
+      next_action_plain: string;
       runtime_artifact_proven: string;
       state_machine_observed: string;
       ros2_runtime_proven: string;

@@ -5521,6 +5521,7 @@ describe("workstation fail-closed API contracts", () => {
         motion_ready: "false",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+        next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
         runtime_artifact_proven: "not_loaded",
         state_machine_observed: "not_loaded",
         ros2_runtime_proven: "not_loaded",
@@ -5620,6 +5621,7 @@ describe("workstation fail-closed API contracts", () => {
         motion_ready: "false",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+        next_action_plain: "勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面",
         runtime_artifact_proven: "true",
         state_machine_observed: "true",
         ros2_runtime_proven: "true",
@@ -6552,6 +6554,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面");
       expect(summary.readback_summary.free_roam.status).toBe("start_ready");
+      expect(summary.readback_summary.free_roam.next_action_plain).toBe(summary.safe_command_boundary.free_roam_autonomy_next_action);
       expect(summary.safe_command_boundary.free_roam_autonomy_gates.map((gate) => gate.id)).toEqual([
         "stop_available",
         "motion_hil_unlock",
@@ -6728,6 +6731,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("已进入自动扫图条件；继续低速监看地图、雷达和画面");
       expect(summary.readback_summary.free_roam.status).toBe("mapping_ready");
+      expect(summary.readback_summary.free_roam.next_action_plain).toBe(summary.safe_command_boundary.free_roam_autonomy_next_action);
       expect(summary.safe_command_boundary.free_roam_autonomy_runtime).toEqual(expect.objectContaining({
         status: "loaded",
         state: "running",

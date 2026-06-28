@@ -183,6 +183,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   “路线结果成功但执行窗口轮速 L/R 未非零，勾安全确认后用 ROS 模式重跑并复验执行窗口轮速 L/R”。
   原始 `nav2_goal_next_action` 继续保留给工程诊断；普通首屏优先消费白话字段，避免把 `wheel raw`、`controller`
   或模式 token 当成普通用户说明。该变化只修正只读 summary 和 UI 文案，不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 19:30 起，`readback_summary.free_roam` 增加 `next_action_plain`：
+  它复用同一轮 `safe_command_boundary.free_roam_autonomy_next_action`，把“能先自由移动”和“建图验收还差什么”放进自由移动 readback 自身。
+  因此 live 出现 `status=start_ready`、`motion_ready=true`、`mapping_missing=camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview` 时，
+  只读接口也会直接给出“勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面”。
+  该变化只补 summary 所见即所得字段，不启动自由移动、不启动建图、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，

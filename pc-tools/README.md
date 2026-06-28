@@ -105,6 +105,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 19:10 CST 起，自动驾驶行程边界也新增白话下一步：`safe_command_boundary.nav2_goal_next_action_plain` 会把 `wheel raw L/R`、`ROS/PWM/SPEED` 和 `controller` 等工程词翻译成“执行窗口轮速 L/R”“ROS 模式”和“控制服务”。live 上旧行程 action 成功但 L/R 仍为 `0/0` 时，summary 会同时保留工程字段和普通字段，普通首屏优先用普通字段说明下一步是勾安全确认后重跑图上路线，并确认同窗口轮速非零；相机和雷达仍不会被写成自动驾驶阻塞。该变化只修正只读 summary/UI 文案，不执行 Nav2 goal、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 19:30 CST 起，自由移动 readback 也带白话下一步：`readback_summary.free_roam.next_action_plain` 与 `safe_command_boundary.free_roam_autonomy_next_action` 对齐。外部脚本或普通首屏只读 `readback_summary.free_roam` 时，也能直接看到“勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面”，不会再出现 `status=start_ready` 但下一步为空。该变化只补只读 summary 字段，不启动自由移动、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+
 2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
 `GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
 只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、

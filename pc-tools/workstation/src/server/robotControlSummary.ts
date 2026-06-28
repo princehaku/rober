@@ -4374,6 +4374,7 @@ function freeRoamSummaryFromReadbacks(
     .map((gate) => [gate.id, gate]));
   const mappingMissing = mappingRequiredIds.filter((id) => mappingGateById.get(id)?.state !== "ready");
   const mappingReady = startReady && mappingMissing.length === 0;
+  const nextActionStatus = mappingReady ? "ready" : startReady ? "start_ready" : "locked";
   const derivedStatus = mappingReady
     ? "mapping_ready"
     : motionReady
@@ -4394,6 +4395,7 @@ function freeRoamSummaryFromReadbacks(
     motion_ready: booleanSummaryValue(motionReady),
     mapping_ready: booleanSummaryValue(mappingReady),
     mapping_missing: mappingMissing.length ? mappingMissing.join(",") : "none",
+    next_action_plain: freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime),
     runtime_artifact_proven: summaryValueText(payload, ["free_roam_runtime_artifact_proven"]) ?? "not_loaded",
     state_machine_observed: summaryValueText(payload, ["free_roam_state_machine_observed"]) ?? "not_loaded",
     ros2_runtime_proven: summaryValueText(payload, ["ros2_runtime_proven"]) ?? "not_loaded",
@@ -4638,6 +4640,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         motion_ready: "false",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
+        next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
         runtime_artifact_proven: "not_loaded",
         state_machine_observed: "not_loaded",
         ros2_runtime_proven: "not_loaded",
