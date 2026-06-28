@@ -1652,6 +1652,68 @@ function lidarSummaryFromReadbacks(
   };
 }
 
+function radarSummaryFromReadbacks(
+  lidar: RobotControlSummaryResponse["readback_summary"]["lidar"],
+  map: RobotControlSummaryResponse["readback_summary"]["map"],
+): RobotControlSummaryResponse["readback_summary"]["radar"] {
+  // 雷达本体和地图 marker 是两层事实：本体 ready 不等于地图已经画出 marker。
+  // lifecycle 与 fresh 只说明传感器链路，本函数仍以 map overlay 作为可见 marker 的唯一口径。
+  const radarReady = lidar.lifecycle_running === "true" && lidar.latest_scan_proof_fresh === "true";
+  const radarStopped = lidar.lifecycle_running === "false"
+    || lidar.lifecycle_state === "stopped"
+    || lidar.continuous_scan_status === "lifecycle_not_running";
+  // overlayPointCount 是地图上实际画出来的点数；sourcePointCount 只用于解释为什么没有贴图。
+  const overlayPointCount = map.radar_overlay_point_count || "0";
+  const overlaySourcePointCount = map.radar_overlay_source_point_count || lidar.scan_preview_source_point_count || "not_loaded";
+  const overlayFrameId = map.radar_overlay_frame_id || lidar.scan_preview_frame_id || "not_loaded";
+  // 地图层 loaded 或点数大于 0 才能称为 marker 可见，避免把旧扫描来源点误说成所见即所得。
+  const overlayLoaded = map.radar_overlay_status === "loaded" || Number(overlayPointCount) > 0;
+  const status = radarReady ? "radar_ready" : radarStopped ? "radar_stopped" : lidar.status || "not_loaded";
+  // ready 但 marker 为 0 时仍要显式写 0 个点，方便脚本和现场人员对照地图画面。
+  const radarStatusPlain = radarReady
+    ? overlayLoaded
+      ? `雷达已运行且扫描 fresh；地图 marker 当前显示 ${overlayPointCount} 个点。`
+      : `雷达已运行且扫描 fresh；地图 marker 当前显示 ${overlayPointCount} 个点，仍需以地图预览同轮 overlay 为准。`
+    : radarStopped
+      // 雷达停了就不能把来源点当作当前地图 marker；这是本轮 WYSIWYG 的关键边界。
+      ? `雷达未运行或扫描已停；地图 marker 当前显示 ${overlayPointCount} 个点，旧来源点 ${overlaySourcePointCount} 个只作诊断。`
+      : `雷达状态未完全 ready；地图 marker 当前显示 ${overlayPointCount} 个点，需确认 lifecycle running 和最新扫描 fresh。`;
+  // 下一步只引导 operator 做显式 start/refresh，不在 summary 构建时替 operator 发命令。
+  const radarNextActionPlain = radarReady
+    ? overlayLoaded
+      ? "继续监看地图 marker；若现场变化，刷新地图画面读取同轮 overlay。"
+      : "刷新地图画面，读取同轮 radar_overlay_point_count 确认地图上实际 marker 数。"
+    : radarStopped
+      ? "先启动雷达并等待扫描 fresh，再刷新地图画面确认 marker。"
+      : "先刷新雷达状态或 scan proof，ready 后再刷新地图画面确认 marker。";
+  return {
+    status,
+    plain_hint: radarStatusPlain,
+    next_action_plain: radarNextActionPlain,
+    radar_status_plain: radarStatusPlain,
+    radar_next_action_plain: radarNextActionPlain,
+    lifecycle_running: lidar.lifecycle_running,
+    lifecycle_state: lidar.lifecycle_state,
+    continuous_scan_status: lidar.continuous_scan_status,
+    latest_scan_proof_fresh: lidar.latest_scan_proof_fresh,
+    runtime_scan_status: lidar.runtime_scan_status,
+    scan_point_count: lidar.scan_preview_point_count,
+    scan_preview_point_count: lidar.scan_preview_point_count,
+    scan_preview_source_point_count: lidar.scan_preview_source_point_count,
+    scan_preview_frame_id: lidar.scan_preview_frame_id,
+    radar_overlay_status: map.radar_overlay_status,
+    radar_overlay_point_count: overlayPointCount,
+    radar_overlay_source_point_count: overlaySourcePointCount,
+    radar_overlay_frame_id: overlayFrameId,
+    radar_overlay_wysiwyg_status_plain: map.radar_overlay_wysiwyg_status_plain,
+    radar_overlay_wysiwyg_next_action_plain: map.radar_overlay_wysiwyg_next_action_plain,
+    // map_marker_* 是给外部脚本的直观别名，值必须始终等于当前地图 overlay 读数。
+    map_marker_point_count: overlayPointCount,
+    map_marker_source_point_count: overlaySourcePointCount,
+    map_marker_frame_id: overlayFrameId,
+  };
+}
+
 function freeRoamRuntimeScanSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[]): {
   status: string;
   min_distance_m: string;
@@ -5045,6 +5107,31 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         scan_preview_frame_id: "not_loaded",
         radar_start_configured: "not_loaded",
       },
+      radar: {
+        status: "not_loaded",
+        plain_hint: "雷达状态未加载；地图 marker 当前显示 0 个点。",
+        next_action_plain: "确认小车地址可访问后刷新雷达状态和地图画面。",
+        radar_status_plain: "雷达状态未加载；地图 marker 当前显示 0 个点。",
+        radar_next_action_plain: "确认小车地址可访问后刷新雷达状态和地图画面。",
+        lifecycle_running: "not_loaded",
+        lifecycle_state: "not_loaded",
+        continuous_scan_status: "not_loaded",
+        latest_scan_proof_fresh: "not_loaded",
+        runtime_scan_status: "not_loaded",
+        scan_point_count: "0",
+        scan_preview_point_count: "0",
+        scan_preview_source_point_count: "0",
+        scan_preview_frame_id: "not_loaded",
+        radar_overlay_status: "not_loaded",
+        radar_overlay_point_count: "0",
+        radar_overlay_source_point_count: "0",
+        radar_overlay_frame_id: "not_loaded",
+        radar_overlay_wysiwyg_status_plain: "雷达 marker 未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。",
+        radar_overlay_wysiwyg_next_action_plain: "确认小车地址可访问后刷新地图画面。",
+        map_marker_point_count: "0",
+        map_marker_source_point_count: "0",
+        map_marker_frame_id: "not_loaded",
+      },
       base: {
         status: "not_loaded",
         latest_feedback_status: "not_loaded",
@@ -6081,7 +6168,7 @@ function summaryCurrentFactPlain(
   const camera = plainFactPart(readback.camera.camera_wysiwyg_status_plain);
   const { map, radar } = currentFactMapRadarParts(
     readback.map.map_wysiwyg_status_plain,
-    readback.map.radar_overlay_wysiwyg_status_plain,
+    readback.radar.radar_overlay_wysiwyg_status_plain,
   );
   const nav2 = plainFactPart(readback.nav2.execution_status_plain || readback.nav2.route_execution_readiness_plain);
   const keyboard = plainFactPart(readback.keyboard.hold_to_move_plain || readback.keyboard.readiness_plain);
@@ -6153,11 +6240,13 @@ export async function buildRobotControlSummary(
   const freeRoamRuntime = freeRoamRuntimeSummaryFromReadbacks(readbacks);
   const nav2Summary = nav2SummaryFromReadbacks(readbacks, proofSummary);
   const lidarSummary = lidarSummaryFromReadbacks(readbacks, proofSummary);
+  const mapSummary = mapSummaryFromReadbacks(readbacks, proofSummary, lidarSummary);
   const readbackSummary: RobotControlSummaryResponse["readback_summary"] = {
     camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay, mjpegRelayOverlay),
     lidar: lidarSummary,
+    radar: radarSummaryFromReadbacks(lidarSummary, mapSummary),
     base: baseSummaryFromReadbacks(readbacks),
-    map: mapSummaryFromReadbacks(readbacks, proofSummary, lidarSummary),
+    map: mapSummary,
     localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
     nav2: nav2Summary,
     keyboard: keyboardSummaryReadback(),

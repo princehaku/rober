@@ -2485,6 +2485,31 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       scan_preview_frame_id: string;
       radar_start_configured: string;
     };
+    radar: {
+      status: string;
+      plain_hint: string;
+      next_action_plain: string;
+      radar_status_plain: string;
+      radar_next_action_plain: string;
+      lifecycle_running: string;
+      lifecycle_state: string;
+      continuous_scan_status: string;
+      latest_scan_proof_fresh: string;
+      runtime_scan_status: string;
+      scan_point_count: string;
+      scan_preview_point_count: string;
+      scan_preview_source_point_count: string;
+      scan_preview_frame_id: string;
+      radar_overlay_status: string;
+      radar_overlay_point_count: string;
+      radar_overlay_source_point_count: string;
+      radar_overlay_frame_id: string;
+      radar_overlay_wysiwyg_status_plain: string;
+      radar_overlay_wysiwyg_next_action_plain: string;
+      map_marker_point_count: string;
+      map_marker_source_point_count: string;
+      map_marker_frame_id: string;
+    };
     base: {
       status: string;
       latest_feedback_status: string;

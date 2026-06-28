@@ -3983,6 +3983,14 @@ describe("workstation fail-closed API contracts", () => {
         path_preview_frame_id: "not_loaded",
         path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
       });
+      expect(summary.readback_summary.radar).toMatchObject({
+        status: expect.any(String),
+        radar_status_plain: expect.any(String),
+        radar_next_action_plain: expect.any(String),
+        radar_overlay_point_count: expect.any(String),
+        radar_overlay_wysiwyg_status_plain: expect.any(String),
+        map_marker_point_count: expect.any(String),
+      });
       expect(summary.readback_summary.localization).toMatchObject({
         status: expect.any(String),
         amcl_pose_observed: "false",
