@@ -666,6 +666,11 @@ Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 “去跑行程”按钮只聚焦到行程安全确认/执行区，不自动勾选、不执行 Nav2、不发送 manual、keyboard、free-roam、
 delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 17:06 CST 起，`GET /api/robot-control/summary` 顶层新增 `nav2_summary`，内容与
+`readback_summary.nav2` 完全一致。普通脚本、外部面板和现场排查不用再知道嵌套路径，也能直接读到完整行程状态、
+图上路线点数、当前 lifecycle blocker、下一步、下次执行模式和执行窗口 L/R 证据。该字段只是同一份只读摘要别名，
+不执行 Nav2、不启动 runtime、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 10:45 CST 起，普通首屏实时画面卡片新增“打开共享预览”直链。该链接指向 PC Node 的
 `/api/robot-control/camera/mjpeg?baseUrl=...` 只读 relay，任何浏览器打开都会复用同一条上游 MJPEG 流；
 页面同时显示“任何页面打开这个只读地址都会接入同一条上游流”和当前观看页面数。该入口只做 GET 预览，

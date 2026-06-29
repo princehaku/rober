@@ -4118,6 +4118,9 @@ describe("workstation fail-closed API contracts", () => {
         mapping_source_card_id: "mapping_start",
       });
       expect(summary.goal_summary).toEqual(summary.goal_checklist_summary);
+      expect(summary.nav2_summary).toEqual(summary.readback_summary.nav2);
+      expect(summary.nav2_summary?.status).toBe(summary.readback_summary.nav2.status);
+      expect(summary.nav2_summary?.next_action_plain).toBe(summary.readback_summary.nav2.next_action_plain);
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("现场可先收口 2 项：自由自助移动、键盘连续手控");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("先做：自由自助移动");
@@ -12103,6 +12106,8 @@ describe("workstation fail-closed API contracts", () => {
     expect(missing.blocked_reasons).toContain("baseUrl_not_provided");
     expect(missing.current_fact_plain).toBe("当前事实未读到；先填写或确认小车地址。");
     expect(missing.goal_summary).toEqual(missing.goal_checklist_summary);
+    expect(missing.nav2_summary).toEqual(missing.readback_summary.nav2);
+    expect(missing.nav2_summary?.next_action_plain).toContain("先准备图上路线");
     expect(missing.goal_summary?.progress_plain).toBe("0/0");
     expect(missing.goal_summary?.ready_action_ids).toEqual([]);
     expect(missing.goal_summary?.blocked_action_ids).toEqual([]);
@@ -12112,6 +12117,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(unsafeUrl.blocked_reasons).toContain("baseUrl_protocol_not_allowed");
     expect(unsafeUrl.current_fact_plain).toContain("当前事实未读到");
     expect(unsafeUrl.goal_summary).toEqual(unsafeUrl.goal_checklist_summary);
+    expect(unsafeUrl.nav2_summary).toEqual(unsafeUrl.readback_summary.nav2);
     expect(unsafeUrl.goal_summary?.progress_plain).toBe("0/0");
 
     const robotApi = await listenRobotApiReadback({
