@@ -2969,6 +2969,29 @@ const plainWysiwygEvidenceItems = computed<PlainWysiwygEvidenceItem[]>(() => {
     },
   ];
 });
+
+const canRefreshPlainWysiwygEvidence = computed(() => (
+  // 这只是所见即所得只读刷新：summary、地图画面、雷达状态和共享画面状态，不触发任何控制端点。
+  robotApiBaseUrl.value.trim().length > 0
+  && !loading.value
+  && !mapWysiwygRefreshPending.value
+  && !cameraMjpegStatusPending.value
+));
+
+const plainWysiwygEvidenceRefreshButtonLabel = computed(() => {
+  // pending 文案直接告诉现场正在刷新哪类“所见”，避免误以为是在启动雷达或发车。
+  if (loading.value) {
+    return "刷新总览中";
+  }
+  if (mapWysiwygRefreshPending.value) {
+    return "刷新地图画面中";
+  }
+  if (cameraMjpegStatusPending.value) {
+    return "刷新画面状态中";
+  }
+  return "刷新当前所见（只读）";
+});
+
 const plainActionStatusCards = computed(() => {
   // 后端动作卡是普通首屏的结构化摘要；旧 summary 没有该字段时继续使用上面的事实列表。
   return robotSummary.value?.action_status_cards ?? [];
@@ -12995,6 +13018,15 @@ onBeforeUnmount(() => {
         <div class="simple-status-row">
           <strong>当前所见</strong>
           <span class="muted">只按当前画面和同轮读数判断，不把旧内容当成已显示。</span>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :disabled="!canRefreshPlainWysiwygEvidence"
+            data-testid="plain-wysiwyg-evidence-refresh"
+            @click="refreshPlainConsole"
+          >
+            {{ plainWysiwygEvidenceRefreshButtonLabel }}
+          </button>
         </div>
         <div
           v-for="item in plainWysiwygEvidenceItems"

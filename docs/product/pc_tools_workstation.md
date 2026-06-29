@@ -58,6 +58,7 @@ pc-tools/workstation/
   “不是页面独占，是 UVC 没有输出视频帧/上游无画面”。页面仍自动渲染共享 MJPEG `<img>` 并保留只读共享预览链接，
   后进页面继续共用同一条上游流和低频重试；只是不能再把已知无帧状态写成“连接中”。该变化不创建独占采集、不重启相机、
   不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 17:35 CST 起，普通首屏 `当前所见` 增加 `刷新当前所见（只读）`。它复用 `refreshPlainConsole()` 一次刷新 Robot Control summary、地图预览、雷达状态和共享 MJPEG 状态，用于把画面、地图、地图雷达点和路线的 WYSIWYG 证据拉齐；该按钮不启动雷达、不打开额外相机 reader、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 15:02 CST 起，普通首屏意图快捷入口中的 `补画面/雷达` 不再解析 `camera_wysiwyg_status_plain`
   这类中文文案前缀来判断缺口，而是优先使用 `action_status_cards.camera_preview.status` 和
   `action_status_cards.radar_map_points.status`。因此画面文案可继续优化为“已经看到画面”等自然说法，快捷入口仍会按结构化
