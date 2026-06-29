@@ -7150,6 +7150,12 @@ function buildActionStatusCards(
     : actionCardText(readback.map.map_wysiwyg_next_action_plain, "刷新地图画面");
   const radarPointCount = Number(readback.radar.map_marker_point_count || readback.radar.radar_overlay_point_count || "0");
   const radarCurrent = Number.isFinite(radarPointCount) && radarPointCount > 0 && ["loaded", "partial"].includes(readback.radar.radar_overlay_status);
+  const radarSummaryPlain = radarCurrent
+    ? readback.radar.radar_overlay_wysiwyg_status_plain
+    : readback.radar.plain_hint || readback.radar.radar_status_plain;
+  const radarNextActionPlain = radarCurrent
+    ? readback.radar.radar_overlay_wysiwyg_next_action_plain || readback.radar.radar_map_overlay_next_action_plain
+    : readback.radar.radar_next_action_plain || readback.radar.radar_overlay_wysiwyg_next_action_plain;
   const nav2NeedsWheelRerun = boundary.nav2_goal_wheel_feedback_status === "goal_succeeded_but_wheel_lr_zero";
   return [
     {
@@ -7185,8 +7191,8 @@ function buildActionStatusCards(
       title: "地图雷达点",
       status: radarCurrent ? "current_on_map" : "not_current",
       status_label: radarCurrent ? "已贴图" : "未贴当前图",
-      summary_plain: actionCardText(readback.radar.plain_hint || readback.radar.radar_status_plain, "地图雷达点状态未读到"),
-      next_action_plain: actionCardText(readback.radar.radar_next_action_plain || readback.radar.radar_overlay_wysiwyg_next_action_plain, "启动雷达并刷新地图画面"),
+      summary_plain: actionCardText(radarSummaryPlain, "地图雷达点状态未读到"),
+      next_action_plain: actionCardText(radarNextActionPlain, "启动雷达并刷新地图画面"),
       wysiwyg_status: radarCurrent ? "current_points_visible" : "old_or_missing_points_not_drawn",
       requires_safety_confirmation: false,
       can_start_after_safety_confirm: false,

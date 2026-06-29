@@ -4669,6 +4669,15 @@ blocked action 里。路线执行和雷达贴图仍保留各自独立目标项�
 本轮验证：`npm run build` 通过；`npm test -- test/catalog.test.ts` 通过，168 tests OK；
 `npm test -- test/App.test.ts` 通过，218 tests OK。
 
+### 2026-06-29 22:02｜pc_radar_wysiwyg_done_next_action｜O3 雷达贴图 done 项口径修正
+
+本轮 micro sprint 修正 PC 目标总览中雷达贴图已满足时的普通下一步：`radar_map_points_wysiwyg`
+为 done 时，动作卡和目标清单优先展示地图 overlay 事实“雷达点已贴到当前地图 / 继续观察地图雷达层”，不再把
+`scan_once/scan_hz/raw_packet_once` proof 缺口放到普通用户下一步里。高级诊断仍保留 proof 缺口，方便后续工程定位。
+
+本轮验证：`npm test -- test/catalog.test.ts` 通过，168 tests OK；`npm test -- test/App.test.ts` 通过，
+218 tests OK；`npm run build` 通过。
+
 - 本日志只是 `OKR.md` 第 4.1 节迁移历史，不修改任何 Objective/KR 文字、不修改任何 Objective % 数字。
 - 每次新增 sprint 进度后，由对应 Engineer 子 agent 在结束 sprint 时把 `tech-done.md` / `final.md` 的进度摘要追加到本文件顶部对应日期段。
 - 若一个 sprint 同时影响多个 Objective，按"主受益 Objective"归档，不重复粘贴。

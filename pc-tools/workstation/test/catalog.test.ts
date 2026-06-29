@@ -8080,11 +8080,23 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.scan_preview_frame_id).toBe("laser");
       expect(summary.readback_summary.map.radar_overlay_status).toBe("loaded");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toBe("雷达点已按当前扫描和小车地图位置贴到地图。");
-      expect(summary.readback_summary.map.radar_overlay_wysiwyg_status_plain).toBe("雷达点已贴到当前地图：当前显示 3 个点，frame=laser。");
-      expect(summary.readback_summary.map.radar_overlay_wysiwyg_next_action_plain).toBe("继续观察地图雷达层。");
-      expect(summary.readback_summary.map.radar_overlay_next_action).toBe("continue_monitoring_map_radar_overlay");
-      expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("继续观察地图雷达层。");
-      expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("none");
+	      expect(summary.readback_summary.map.radar_overlay_wysiwyg_status_plain).toBe("雷达点已贴到当前地图：当前显示 3 个点，frame=laser。");
+	      expect(summary.readback_summary.map.radar_overlay_wysiwyg_next_action_plain).toBe("继续观察地图雷达层。");
+	      expect(summary.readback_summary.map.radar_overlay_next_action).toBe("continue_monitoring_map_radar_overlay");
+	      expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("继续观察地图雷达层。");
+	      expect(summary.action_status_cards?.find((card) => card.id === "radar_map_points")).toMatchObject({
+	        status: "current_on_map",
+	        status_label: "已贴图",
+	        summary_plain: "雷达点已贴到当前地图：当前显示 3 个点，frame=laser",
+	        next_action_plain: "继续观察地图雷达层",
+	      });
+	      expect(summary.goal_checklist?.find((item) => item.id === "radar_map_points_wysiwyg")).toMatchObject({
+	        status: "done",
+	        status_label: "已满足",
+	        next_action_plain: "继续观察地图雷达层",
+	        blocks_goal_completion: false,
+	      });
+	      expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toBe("none");
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toBe("none");
       expect(summary.readback_summary.map.radar_overlay_point_count).toBe("3");
       expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("5");

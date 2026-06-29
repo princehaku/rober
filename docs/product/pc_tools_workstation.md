@@ -4334,3 +4334,9 @@ keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `nav2_route_execution` 负责，雷达点是否贴到当前地图仍由 `radar_map_points_wysiwyg` 负责，避免目标总览把已经可见的地图
 继续列入 blocked。该变化只修正只读 summary 的目标清单口径，不刷新地图、不启动雷达、不执行 Nav2、不调用 manual、
 keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 22:02 CST 起，`radar_map_points_wysiwyg` 已满足时，普通目标清单和动作卡优先展示地图 overlay 事实：
+“雷达点已贴到当前地图”和“继续观察地图雷达层”。雷达扫描 proof 的 `scan_once/scan_hz/raw_packet_once`
+缺口仍保留在高级诊断字段，但不会在雷达贴图已经 WYSIWYG 时继续作为普通用户下一步，避免把 done 项说成还要先修雷达。
+该变化只修正只读 summary 文案，不启动雷达、不刷新地图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、
+stop 或 `/cmd_vel`。
