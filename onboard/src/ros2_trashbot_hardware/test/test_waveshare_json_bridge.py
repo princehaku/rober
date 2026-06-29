@@ -416,6 +416,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
                 "pitch": 2.0,
                 "yaw": 3.0,
                 "voltage": 11.7,
+                "vendor_frame": {"T": 1001, "L": 0.2, "R": 0.3, "r": 1.0, "p": 2.0, "y": 3.0, "v": 11.7},
             },
         )
 
@@ -515,6 +516,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
                     "pitch": 2.0,
                     "yaw": 3.0,
                     "voltage": 11.7,
+                    "vendor_frame": {"T": 1001, "L": 0.2, "R": 0.3, "r": 1.0, "p": 2.0, "y": 3.0, "v": 11.7},
                 }
             )
 
@@ -529,6 +531,10 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertEqual(record["yaw"], 3.0)
             self.assertTrue(record["yaw_available"])
             self.assertEqual(record["voltage"], 11.7)
+            self.assertEqual(
+                record["vendor_frame"],
+                {"T": 1001, "L": 0.2, "R": 0.3, "r": 1.0, "p": 2.0, "y": 3.0, "v": 11.7},
+            )
 
     def test_publish_feedback_reads_dynamic_debug_log_parameter(self):
         bridge = _bridge_module()
@@ -551,6 +557,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
                     "pitch": 2.0,
                     "yaw": None,
                     "voltage": 11.9,
+                    "vendor_frame": {"T": 1001, "L": 0.4, "R": 0.5, "r": 1.0, "p": 2.0, "y": None, "v": 11.9},
                 }
             )
 

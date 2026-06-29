@@ -146,7 +146,7 @@ class ESP32Bridge(Node):
                     self.get_logger().error(f"Serial read error: {exc}")
                 time.sleep(0.1)
 
-    def _publish_feedback(self, feedback: dict[str, float | None]) -> None:
+    def _publish_feedback(self, feedback: dict[str, Any]) -> None:
         now = self.get_clock().now().to_msg()
 
         imu = Imu()
@@ -173,7 +173,7 @@ class ESP32Bridge(Node):
 
         self._append_feedback_debug_line(feedback)
 
-    def _append_feedback_debug_line(self, feedback: dict[str, float | None]) -> None:
+    def _append_feedback_debug_line(self, feedback: dict[str, Any]) -> None:
         """按需追加 vendor T=1001 原始反馈证据，不参与控制闭环。"""
         log_path = getattr(self, "feedback_debug_log_path", "")
         try:
@@ -196,6 +196,7 @@ class ESP32Bridge(Node):
             "yaw": yaw,
             "yaw_available": yaw is not None,
             "voltage": feedback["voltage"],
+            "vendor_frame": feedback.get("vendor_frame"),
         }
 
         try:

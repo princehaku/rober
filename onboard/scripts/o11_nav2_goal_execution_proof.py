@@ -359,8 +359,9 @@ def summarize_feedback_debug_log(path: str) -> dict[str, Any]:
         except json.JSONDecodeError:
             summary["malformed_line_count"] += 1
             continue
-        left_speed = record.get("left_speed")
-        right_speed = record.get("right_speed")
+        vendor_frame = record.get("vendor_frame") if isinstance(record.get("vendor_frame"), dict) else {}
+        left_speed = record.get("left_speed", vendor_frame.get("L"))
+        right_speed = record.get("right_speed", vendor_frame.get("R"))
         if not isinstance(left_speed, (int, float)) or not isinstance(right_speed, (int, float)):
             summary["malformed_line_count"] += 1
             continue

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Optional
+from typing import Any, Optional
 
 from ros2_trashbot_hardware.wave_rover_protocol import FEEDBACK_BASE_INFO
 
@@ -49,7 +49,7 @@ def _parse_optional_yaw(data: dict[str, object]) -> float | None:
     return yaw
 
 
-def parse_feedback_line(line: bytes | str) -> Optional[dict[str, float | None]]:
+def parse_feedback_line(line: bytes | str) -> Optional[dict[str, Any]]:
     """解析 WAVE ROVER T=1001 底盘反馈，并忽略无关 UART 行。"""
     try:
         if isinstance(line, bytes):
@@ -74,6 +74,8 @@ def parse_feedback_line(line: bytes | str) -> Optional[dict[str, float | None]]:
             "pitch": _parse_required_finite_float(data, "p"),
             "yaw": _parse_optional_yaw(data),
             "voltage": _parse_required_finite_float(data, "v"),
+            # O11 现场复验必须能追到 vendor 原始 T=1001 字段，避免 L/R=0 时分不清是固件反馈还是解析别名问题。
+            "vendor_frame": {key: data.get(key) for key in ("T", "L", "R", "r", "p", "y", "v")},
         }
     except (TypeError, ValueError):
         return None

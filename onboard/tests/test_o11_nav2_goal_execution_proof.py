@@ -86,6 +86,28 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
         self.assertEqual(summary["latest_nonzero_pair"]["left_speed"], 90.0)
         self.assertEqual(summary["latest_nonzero_pair"]["right_speed"], 90.0)
 
+    def test_feedback_debug_log_summary_accepts_vendor_frame_lr(self) -> None:
+        """新 bridge 日志保留原始 vendor_frame；O11 要能直接用 T=1001 L/R 兜底复核。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "feedback.jsonl"
+            log_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"vendor_frame": {"T": 1001, "L": 0, "R": 0}, "observed_at_unix_s": 1.0}),
+                        json.dumps({"vendor_frame": {"T": 1001, "L": 0.08, "R": 0.07}, "observed_at_unix_s": 2.0}),
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            summary = HELPER.summarize_feedback_debug_log(str(log_path))
+
+        self.assertEqual(summary["sample_count"], 2)
+        self.assertEqual(summary["nonzero_sample_count"], 1)
+        self.assertTrue(summary["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(summary["latest_nonzero_pair"]["left_speed"], 0.08)
+        self.assertEqual(summary["latest_nonzero_pair"]["right_speed"], 0.07)
+
     def test_missing_feedback_log_does_not_claim_hil(self) -> None:
         """反馈日志缺失时保持 fail-closed，不能仅凭 action 成功推导 HIL。"""
         summary = HELPER.summarize_feedback_debug_log("/tmp/does-not-exist-o11-feedback.jsonl")
