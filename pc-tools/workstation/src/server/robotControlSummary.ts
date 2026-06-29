@@ -7359,6 +7359,17 @@ function buildActionStatusCards(
       sends_motion_when_clicked: true,
       blocks_free_motion: false,
       blocks_mapping_start: false,
+      evidence: {
+        free_move_start_ready: boundary.free_roam_motion_start_ready,
+        free_move_safety_only: true,
+        stop_fallback_required: true,
+        camera_blocks_free_motion: false,
+        radar_blocks_free_motion: false,
+        fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+        mapping_start_ready: boundary.free_roam_mapping_start_ready,
+        mapping_start_missing_reasons: boundary.free_roam_mapping_start_missing_reasons,
+        mapping_acceptance_missing_reasons: boundary.free_roam_mapping_missing_reasons,
+      },
     },
     {
       id: "mapping_start",
@@ -7373,6 +7384,18 @@ function buildActionStatusCards(
       sends_motion_when_clicked: boundary.free_roam_mapping_start_ready,
       blocks_free_motion: false,
       blocks_mapping_start: !boundary.free_roam_mapping_start_ready,
+      evidence: {
+        free_move_start_ready: boundary.free_roam_motion_start_ready,
+        free_move_safety_only: true,
+        camera_blocks_free_motion: false,
+        radar_blocks_free_motion: false,
+        mapping_start_ready: boundary.free_roam_mapping_start_ready,
+        mapping_start_requires_camera_first_frame: true,
+        mapping_start_requires_lidar_fresh: true,
+        mapping_start_missing_reasons: boundary.free_roam_mapping_start_missing_reasons,
+        mapping_acceptance_missing_reasons: boundary.free_roam_mapping_missing_reasons,
+        fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+      },
     },
   ];
 }

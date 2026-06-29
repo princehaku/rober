@@ -870,3 +870,11 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 上次/下次底盘命令模式、托管 runtime 是否会自动启动和当前 blocker 数组。普通首屏同步暴露只读 `data-*` 属性，
 方便脚本确认“发车前只需安全确认；只有路线 ready 后执行按钮才会进入运动；完整路线必须同窗口轮速 L/R 非零”。
 该变化只补只读 summary/UI 证据，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 23:54 CST 起，`action_status_cards[].id=free_move.evidence` 与
+`action_status_cards[].id=mapping_start.evidence` 拆清“先自由移动”和“启动建图”两层合同：自由移动只看
+`free_move_start_ready`、现场安全确认和停止兜底，`camera_blocks_free_motion=false`、`radar_blocks_free_motion=false`；
+建图启动单独返回 `mapping_start_ready`、`mapping_start_requires_camera_first_frame=true`、
+`mapping_start_requires_lidar_fresh=true` 和缺口数组。普通首屏同步暴露只读 `data-*` 属性，方便脚本确认
+“相机/雷达缺口不挡先动；相机首帧+雷达新鲜才允许建图启动”。该变化只补只读 summary/UI 证据，不启动
+free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。

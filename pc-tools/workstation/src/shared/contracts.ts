@@ -2443,6 +2443,17 @@ export interface RobotControlActionStatusCard {
     next_base_command_mode?: string;
     managed_runtime_autostart?: boolean;
     blockers?: string[];
+    free_move_start_ready?: boolean;
+    free_move_safety_only?: boolean;
+    stop_fallback_required?: boolean;
+    camera_blocks_free_motion?: boolean;
+    radar_blocks_free_motion?: boolean;
+    fixed_free_roam_start_endpoint?: string;
+    mapping_start_ready?: boolean;
+    mapping_start_requires_camera_first_frame?: boolean;
+    mapping_start_requires_lidar_fresh?: boolean;
+    mapping_start_missing_reasons?: string[];
+    mapping_acceptance_missing_reasons?: string[];
   };
 }
 

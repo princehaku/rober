@@ -3050,11 +3050,48 @@ function actionCardWithDerivedEvidence(
   card: NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number],
 ): NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number] {
   // 兼容旧 summary：后端还没带 evidence 时，前端用同一份安全边界补只读合同，不改变任何控制能力。
-  if (card.id !== "keyboard_control" && card.id !== "nav2_route") {
+  if (!["keyboard_control", "nav2_route", "free_move", "mapping_start"].includes(card.id)) {
     return card;
   }
   const boundary = robotSummary.value?.safe_command_boundary;
   const nav2 = robotSummary.value?.readback_summary.nav2;
+  if (card.id === "free_move" || card.id === "mapping_start") {
+    const freeRoam = robotSummary.value?.readback_summary.free_roam;
+    const toList = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        return value.map((item) => String(item).trim()).filter(Boolean);
+      }
+      if (typeof value === "string" && value && value !== "none" && value !== "not_loaded") {
+        return value.split(",").map((item) => item.trim()).filter(Boolean);
+      }
+      return [];
+    };
+    const acceptanceMissing = toList(boundary?.free_roam_mapping_missing_reasons).length
+      ? toList(boundary?.free_roam_mapping_missing_reasons)
+      : toList(freeRoam?.free_roam_mapping_missing_reasons || freeRoam?.mapping_missing_reasons || freeRoam?.mapping_missing);
+    const startMissing = toList(boundary?.free_roam_mapping_start_missing_reasons).length
+      ? toList(boundary?.free_roam_mapping_start_missing_reasons)
+      : toList(freeRoam?.free_roam_mapping_start_missing_reasons || freeRoam?.mapping_start_missing)
+        .concat(acceptanceMissing.filter((item) => ["camera_first_frame", "lidar_fresh"].includes(item)));
+    const uniqueStartMissing = [...new Set(startMissing)];
+    return {
+      ...card,
+      evidence: {
+        ...card.evidence,
+        free_move_start_ready: card.evidence?.free_move_start_ready ?? boundary?.free_roam_motion_start_ready ?? false,
+        free_move_safety_only: card.evidence?.free_move_safety_only ?? true,
+        stop_fallback_required: card.evidence?.stop_fallback_required ?? true,
+        camera_blocks_free_motion: card.evidence?.camera_blocks_free_motion ?? false,
+        radar_blocks_free_motion: card.evidence?.radar_blocks_free_motion ?? false,
+        fixed_free_roam_start_endpoint: card.evidence?.fixed_free_roam_start_endpoint ?? "/api/robot-control/free-roam/autonomy/start",
+        mapping_start_ready: card.evidence?.mapping_start_ready ?? boundary?.free_roam_mapping_start_ready ?? false,
+        mapping_start_requires_camera_first_frame: card.evidence?.mapping_start_requires_camera_first_frame ?? true,
+        mapping_start_requires_lidar_fresh: card.evidence?.mapping_start_requires_lidar_fresh ?? true,
+        mapping_start_missing_reasons: card.evidence?.mapping_start_missing_reasons ?? uniqueStartMissing,
+        mapping_acceptance_missing_reasons: card.evidence?.mapping_acceptance_missing_reasons ?? acceptanceMissing,
+      },
+    };
+  }
   if (card.id === "nav2_route") {
     return {
       ...card,
@@ -13435,6 +13472,17 @@ onBeforeUnmount(() => {
           :data-next-base-command-mode="card.evidence?.next_base_command_mode"
           :data-managed-runtime-autostart="card.evidence?.managed_runtime_autostart === undefined ? undefined : String(card.evidence.managed_runtime_autostart)"
           :data-nav2-blockers="card.evidence?.blockers?.join(',')"
+          :data-free-move-start-ready="card.evidence?.free_move_start_ready === undefined ? undefined : String(card.evidence.free_move_start_ready)"
+          :data-free-move-safety-only="card.evidence?.free_move_safety_only === undefined ? undefined : String(card.evidence.free_move_safety_only)"
+          :data-stop-fallback-required="card.evidence?.stop_fallback_required === undefined ? undefined : String(card.evidence.stop_fallback_required)"
+          :data-camera-blocks-free-motion="card.evidence?.camera_blocks_free_motion === undefined ? undefined : String(card.evidence.camera_blocks_free_motion)"
+          :data-radar-blocks-free-motion="card.evidence?.radar_blocks_free_motion === undefined ? undefined : String(card.evidence.radar_blocks_free_motion)"
+          :data-fixed-free-roam-start-endpoint="card.evidence?.fixed_free_roam_start_endpoint"
+          :data-mapping-start-ready="card.evidence?.mapping_start_ready === undefined ? undefined : String(card.evidence.mapping_start_ready)"
+          :data-mapping-start-requires-camera-first-frame="card.evidence?.mapping_start_requires_camera_first_frame === undefined ? undefined : String(card.evidence.mapping_start_requires_camera_first_frame)"
+          :data-mapping-start-requires-lidar-fresh="card.evidence?.mapping_start_requires_lidar_fresh === undefined ? undefined : String(card.evidence.mapping_start_requires_lidar_fresh)"
+          :data-mapping-start-missing-reasons="card.evidence?.mapping_start_missing_reasons?.join(',')"
+          :data-mapping-acceptance-missing-reasons="card.evidence?.mapping_acceptance_missing_reasons?.join(',')"
         >
           <div class="plain-action-card-head">
             <strong>{{ plainActionCardUserText(card.title) }}</strong>

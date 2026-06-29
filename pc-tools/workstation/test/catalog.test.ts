@@ -4081,7 +4081,17 @@ describe("workstation fail-closed API contracts", () => {
         requires_safety_confirmation: true,
         can_start_after_safety_confirm: true,
         blocks_free_motion: false,
+        evidence: {
+          free_move_start_ready: true,
+          free_move_safety_only: true,
+          stop_fallback_required: true,
+          camera_blocks_free_motion: false,
+          radar_blocks_free_motion: false,
+          fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+          mapping_start_ready: false,
+        },
       });
+      expect(actionCards.find((card) => card.id === "free_move")?.evidence?.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
       expect(actionCards.find((card) => card.id === "mapping_start")).toMatchObject({
         status_label: "未就绪",
         requires_safety_confirmation: false,
@@ -4089,7 +4099,16 @@ describe("workstation fail-closed API contracts", () => {
         sends_motion_when_clicked: false,
         blocks_free_motion: false,
         blocks_mapping_start: true,
+        evidence: {
+          free_move_start_ready: true,
+          mapping_start_ready: false,
+          mapping_start_requires_camera_first_frame: true,
+          mapping_start_requires_lidar_fresh: true,
+          camera_blocks_free_motion: false,
+          radar_blocks_free_motion: false,
+        },
       });
+      expect(actionCards.find((card) => card.id === "mapping_start")?.evidence?.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
       const goalChecklist = summary.goal_checklist ?? [];
       expect(goalChecklist.map((item) => item.id)).toEqual([
         "camera_wysiwyg",
