@@ -2429,7 +2429,10 @@ export interface RobotControlActionStatusCard {
     radar_start_configured?: boolean;
     fixed_radar_start_endpoint?: string;
     fixed_radar_refresh_endpoint?: string;
+    fixed_radar_map_preview_endpoint?: string;
     radar_refresh_after_start_required?: boolean;
+    radar_map_points_loaded_required?: boolean;
+    radar_map_point_count_gt_zero_required?: boolean;
     hold_to_move_required?: boolean;
     arm_sends_motion?: boolean;
     requires_keydown_for_motion?: boolean;

@@ -4074,7 +4074,10 @@ describe("workstation fail-closed API contracts", () => {
           radar_start_configured: true,
           fixed_radar_start_endpoint: "/api/robot-control/radar/start",
           fixed_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+          fixed_radar_map_preview_endpoint: "/api/robot-control/map/preview",
           radar_refresh_after_start_required: true,
+          radar_map_points_loaded_required: true,
+          radar_map_point_count_gt_zero_required: true,
         },
       });
       expect(Array.isArray(radarActionCard?.evidence?.blocked_reasons)).toBe(true);

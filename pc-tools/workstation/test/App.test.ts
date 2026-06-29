@@ -5213,7 +5213,10 @@ describe("App", () => {
     expect(radarActionCard.attributes("data-radar-start-configured")).toBe("true");
     expect(radarActionCard.attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
     expect(radarActionCard.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(radarActionCard.attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
     expect(radarActionCard.attributes("data-radar-refresh-after-start-required")).toBe("true");
+    expect(radarActionCard.attributes("data-radar-map-points-loaded-required")).toBe("true");
+    expect(radarActionCard.attributes("data-radar-map-point-count-gt-zero-required")).toBe("true");
     const callsBeforeSensorGuide = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-intent-shortcut-go-sensors"]').trigger("click");
     await wrapper.vm.$nextTick();

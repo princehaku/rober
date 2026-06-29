@@ -3139,7 +3139,10 @@ function actionCardWithDerivedEvidence(
         radar_start_configured: card.evidence?.radar_start_configured ?? lidar?.radar_start_configured !== "false",
         fixed_radar_start_endpoint: card.evidence?.fixed_radar_start_endpoint ?? "/api/robot-control/radar/start",
         fixed_radar_refresh_endpoint: card.evidence?.fixed_radar_refresh_endpoint ?? "/api/robot-control/radar/scan-proof/refresh",
+        fixed_radar_map_preview_endpoint: card.evidence?.fixed_radar_map_preview_endpoint ?? "/api/robot-control/map/preview",
         radar_refresh_after_start_required: card.evidence?.radar_refresh_after_start_required ?? card.status !== "current_on_map",
+        radar_map_points_loaded_required: card.evidence?.radar_map_points_loaded_required ?? true,
+        radar_map_point_count_gt_zero_required: card.evidence?.radar_map_point_count_gt_zero_required ?? true,
       },
     };
   }
@@ -13562,7 +13565,10 @@ onBeforeUnmount(() => {
           :data-radar-start-configured="card.evidence?.radar_start_configured === undefined ? undefined : String(card.evidence.radar_start_configured)"
           :data-fixed-radar-start-endpoint="card.evidence?.fixed_radar_start_endpoint"
           :data-fixed-radar-refresh-endpoint="card.evidence?.fixed_radar_refresh_endpoint"
+          :data-fixed-radar-map-preview-endpoint="card.evidence?.fixed_radar_map_preview_endpoint"
           :data-radar-refresh-after-start-required="card.evidence?.radar_refresh_after_start_required === undefined ? undefined : String(card.evidence.radar_refresh_after_start_required)"
+          :data-radar-map-points-loaded-required="card.evidence?.radar_map_points_loaded_required === undefined ? undefined : String(card.evidence.radar_map_points_loaded_required)"
+          :data-radar-map-point-count-gt-zero-required="card.evidence?.radar_map_point_count_gt_zero_required === undefined ? undefined : String(card.evidence.radar_map_point_count_gt_zero_required)"
           :data-map-current-visible="card.evidence?.map_current_visible === undefined ? undefined : String(card.evidence.map_current_visible)"
           :data-map-free-cell-count="card.evidence?.map_free_cell_count === undefined ? undefined : String(card.evidence.map_free_cell_count)"
           :data-path-visible-on-map="card.evidence?.path_visible_on_map === undefined ? undefined : String(card.evidence.path_visible_on_map)"
