@@ -1304,23 +1304,31 @@ function cameraFormatAttemptsSummary(lastOfferError: JsonRecord | null): string 
   // 相机首帧失败时，把上车端逐格式尝试压成短文本，普通首屏不用展开 raw JSON 也能看到真实失败范围。
   const attempts = Array.isArray(lastOfferError?.first_frame_format_attempts)
     ? lastOfferError.first_frame_format_attempts
+    : Array.isArray(lastOfferError?.last_first_frame_format_attempts)
+      ? lastOfferError.last_first_frame_format_attempts
     : [];
   const parts = attempts
     .map((item) => asRecord(item))
     .filter((item): item is JsonRecord => item !== null)
     .map((attempt) => {
       const fourcc = asString(attempt.label ?? attempt.fourcc, "unknown");
+      const openSource = asString(attempt.open_source, "");
+      const openBackend = asString(attempt.open_backend, "");
+      const openMethod = openSource || openBackend
+        ? `(${[openSource, openBackend].filter((item) => item && item !== "default").join("/") || "default"})`
+        : "";
+      const label = `${fourcc}${openMethod}`;
       const status = asString(attempt.status, "unknown");
       if (status === "frame_read") {
-        return `${fourcc} 已出帧`;
+        return `${label} 已出帧`;
       }
       if (status === "open_failed") {
-        return `${fourcc} 打不开`;
+        return `${label} 打不开`;
       }
       if (status === "first_frame_unreadable") {
-        return `${fourcc} 无首帧`;
+        return `${label} 无首帧`;
       }
-      return `${fourcc} ${status}`;
+      return `${label} ${status}`;
     })
     .filter(Boolean)
     .slice(0, 6);
@@ -2012,7 +2020,9 @@ function cameraSummaryFromReadbacks(
   const sourceSummary = asRecord(findFirstKey(healthPayload, ["source_summary"]));
   const sourceSummarySelection = asRecord(sourceSummary?.current_selection);
   const mediaDiagnostics = asRecord(findFirstKey(healthPayload, ["media_diagnostics"]));
-  const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error) ?? asRecord(mjpegRelayOverlay?.last_error_payload);
+  const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error)
+    ?? asRecord(findFirstKey(healthPayload, ["last_first_frame_error"]))
+    ?? asRecord(mjpegRelayOverlay?.last_error_payload);
   const overlaySelectedCandidate = {
     selected_name: asString(mjpegRelayOverlay?.selected_name, ""),
     selected_is_uvc_or_usb: mjpegRelayOverlay?.selected_is_uvc_or_usb,

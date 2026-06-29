@@ -177,6 +177,7 @@ type CameraMjpegRelayLastFailure = {
   remote_http_status: number | null;
   failed_at_ms: number | null;
   last_error_payload?: Record<string, unknown> | null;
+  last_first_frame_format_attempts_summary?: string;
   source_diagnosis_status?: string;
   source_diagnosis_plain_hint?: string;
   source_diagnosis_next_action?: string;
@@ -189,6 +190,35 @@ type CameraMjpegRelayLastFailure = {
   source_usage_status?: string;
   source_usage_owner_count?: string;
 };
+
+function cameraMjpegFormatAttemptsSummary(payload: Record<string, unknown> | null | undefined): string {
+  // health/status 里只放短摘要；raw 尝试矩阵仍留在上车端，避免普通页面被大 JSON 淹没。
+  const attempts = Array.isArray(payload?.first_frame_format_attempts)
+    ? payload.first_frame_format_attempts
+    : Array.isArray(payload?.last_first_frame_format_attempts)
+      ? payload.last_first_frame_format_attempts
+      : [];
+  const parts = attempts
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => item !== null)
+    .map((attempt) => {
+      const fourcc = shortText(attempt.label ?? attempt.fourcc, "unknown");
+      const openSource = shortText(attempt.open_source, "");
+      const openBackend = shortText(attempt.open_backend, "");
+      const openMethod = openSource || openBackend
+        ? `(${[openSource, openBackend].filter((item) => item && item !== "default").join("/") || "default"})`
+        : "";
+      const label = `${fourcc}${openMethod}`;
+      const status = shortText(attempt.status, "unknown");
+      if (status === "frame_read") return `${label} 已出帧`;
+      if (status === "open_failed") return `${label} 打不开`;
+      if (status === "first_frame_unreadable") return `${label} 无首帧`;
+      return `${label} ${status}`;
+    })
+    .filter(Boolean)
+    .slice(0, 6);
+  return parts.length > 0 ? parts.join("；") : "none";
+}
 
 let nextCameraMjpegRelayClientId = 1;
 const cameraMjpegRelays = new Map<string, CameraMjpegRelay>();
@@ -2221,6 +2251,7 @@ function cameraMjpegStatusResponse(
     source_diagnosis_not_exclusive: diagnosisSource?.source_diagnosis_not_exclusive ?? "not_loaded",
     source_readiness: sourceReadiness,
     source_failure_reason: sourceFailureReason,
+    last_first_frame_format_attempts_summary: diagnosisSource?.last_first_frame_format_attempts_summary ?? "none",
     selected_path: diagnosisSource?.selected_path ?? "not_loaded",
     selected_name: diagnosisSource?.selected_name ?? "not_loaded",
     selected_is_uvc_or_usb: diagnosisSource?.selected_is_uvc_or_usb ?? "not_loaded",
@@ -2477,6 +2508,7 @@ async function cameraSourceFirstFrameFailureForStatus(
         selected_is_uvc_or_usb: selectedIsUvcOrUsb,
         source_usage_status: sourceUsageStatus || "not_loaded",
         source_usage_owner_count: sourceUsageOwnerCount,
+        last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
       };
     }
     return {
@@ -2494,6 +2526,7 @@ async function cameraSourceFirstFrameFailureForStatus(
       selected_is_uvc_or_usb: selectedIsUvcOrUsb,
       source_usage_status: sourceUsageStatus || "not_loaded",
       source_usage_owner_count: sourceUsageOwnerCount,
+      last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
     };
   } catch {
     return null;

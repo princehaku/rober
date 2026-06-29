@@ -211,6 +211,95 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, 3.0)
         self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S, camera.MJPEG_FIRST_FRAME_TIMEOUT_S)
 
+    def test_opencv_open_candidates_can_try_index_and_v4l2_backend(self) -> None:
+        """板端 OpenCV 可能 path 能 open 但无帧，MJPEG 共享预览要能继续试 index/backend。"""
+
+        class FakeCv2:
+            CAP_V4L2 = 200
+
+        default_candidates = camera.opencv_capture_open_candidates(FakeCv2(), "/dev/video1")
+        fallback_candidates = camera.opencv_capture_open_candidates(FakeCv2(), "/dev/video1", include_backend_fallbacks=True)
+
+        self.assertEqual(
+            [("/dev/video1", "default"), ("index:1", "default")],
+            [(item["source_label"], item["backend_label"]) for item in default_candidates],
+        )
+        self.assertEqual(
+            [("/dev/video1", "default"), ("/dev/video1", "CAP_V4L2"), ("index:1", "default"), ("index:1", "CAP_V4L2")],
+            [(item["source_label"], item["backend_label"]) for item in fallback_candidates],
+        )
+
+    def test_mjpeg_first_frame_fallback_tries_numeric_index_after_path_read_false(self) -> None:
+        """`/dev/video1` 打开但读不到帧时，MJPEG 首屏要继续尝试数字索引，降低 UVC 枚举差异影响。"""
+
+        frame = object()
+
+        class FallbackCapture:
+            def __init__(self, source: str | int, backend: int | None) -> None:
+                self.source = source
+                self.backend = backend
+                self.released = False
+
+            def isOpened(self) -> bool:  # noqa: N802 - 模拟 OpenCV API。
+                return True
+
+            def set(self, _prop: int, _value: object) -> None:
+                return None
+
+            def read(self) -> tuple[bool, object | None]:
+                if self.source == 1 and self.backend is None:
+                    return True, frame
+                return False, None
+
+            def release(self) -> None:
+                self.released = True
+
+        class FakeCv2:
+            CAP_PROP_FOURCC = 6
+            CAP_PROP_FRAME_WIDTH = 3
+            CAP_PROP_FRAME_HEIGHT = 4
+            CAP_PROP_FPS = 5
+            CAP_V4L2 = 200
+
+            def __init__(self) -> None:
+                self.calls: list[tuple[str | int, int | None]] = []
+                self.captures: list[FallbackCapture] = []
+
+            def VideoWriter_fourcc(self, *_letters: str) -> int:  # noqa: N802 - 模拟 OpenCV API。
+                return 100
+
+            def VideoCapture(self, source: str | int, backend: int | None = None) -> FallbackCapture:  # noqa: N802 - 模拟 OpenCV API。
+                self.calls.append((source, backend))
+                capture = FallbackCapture(source, backend)
+                self.captures.append(capture)
+                return capture
+
+        state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
+        fake_cv2 = FakeCv2()
+
+        with mock.patch.object(camera, "FIRST_FRAME_WARMUP_INTERVAL_S", 0.001):
+            shared, observed, attempts, error = state.acquire_first_frame_capture(
+                "/dev/video1",
+                fake_cv2,
+                timeout_s=0.01,
+                total_timeout_s=0.35,
+                specs=[camera.CameraCaptureAttemptSpec("MJPG", 640, 480, 30)],
+                include_open_source_fallbacks=True,
+            )
+
+        self.assertIsNone(error)
+        self.assertIs(frame, observed)
+        self.assertIsNotNone(shared)
+        assert shared is not None
+        self.assertEqual([("/dev/video1", None), ("/dev/video1", 200), (1, None)], fake_cv2.calls)
+        self.assertEqual("index:1", shared.summary()["open_source"])
+        self.assertEqual("default", shared.summary()["open_backend"])
+        self.assertEqual(["/dev/video1", "/dev/video1", "index:1"], [item["open_source"] for item in attempts])
+        self.assertEqual(["default", "CAP_V4L2", "default"], [item["open_backend"] for item in attempts])
+        self.assertEqual("frame_read", attempts[-1]["status"])
+        self.assertTrue(all(capture.released for capture in fake_cv2.captures[:2]))
+        self.assertFalse(fake_cv2.captures[2].released)
+
     def test_missing_webrtc_dependencies_return_structured_fail_closed(self) -> None:
         """缺 aiortc/cv2/av 时 /offer 必须结构化失败，不能伪造图像。"""
         state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
@@ -738,7 +827,48 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual("source_not_probed", payload["status"])
         self.assertEqual("source_selected_not_probed", payload["source_readiness"])
         self.assertEqual("", payload["source_failure_reason"])
+        self.assertEqual([], payload["last_first_frame_format_attempts"])
         self.assertEqual("/dev/video1", payload["video_source"])
+
+    def test_health_exposes_last_first_frame_attempt_open_method(self) -> None:
+        """MJPEG 首帧失败后，health 要保留打开方式矩阵，PC 不必重新开流也能复盘。"""
+        state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
+        state.last_offer_error = {
+            "error": "first_frame_unreadable",
+            "failure_reason": "first_frame_total_timeout",
+            "video_source": "/dev/video1",
+            "first_frame_format_attempts": [
+                {
+                    "label": "MJPG@640x480@30",
+                    "open_source": "/dev/video1",
+                    "open_backend": "CAP_V4L2",
+                    "status": "first_frame_unreadable",
+                }
+            ],
+        }
+        snapshot = {
+            "candidates": [
+                {
+                    "path": "/dev/video1",
+                    "exists": True,
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                    "v4l2_name": "USB camera",
+                    "sysfs_name": "USB camera",
+                }
+            ]
+        }
+
+        with mock.patch.object(camera, "collect_video_candidates", return_value=snapshot):
+            payload = state.health()
+
+        self.assertEqual("source_first_frame_failed", payload["status"])
+        self.assertEqual("first_frame_failed", payload["source_readiness"])
+        self.assertEqual("first_frame_total_timeout", payload["source_failure_reason"])
+        self.assertEqual("CAP_V4L2", payload["last_first_frame_format_attempts"][0]["open_backend"])
+        self.assertEqual("/dev/video1", payload["last_first_frame_format_attempts"][0]["open_source"])
         self.assertEqual("auto", payload["video_source_mode"])
         self.assertEqual(0, payload["active_peer_count"])
         self.assertEqual(0, payload["active_frames_read"])
@@ -749,7 +879,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual("single_shared_capture_for_multiple_clients", payload["shared_preview_contract"])
         self.assertEqual("video_capture", payload["current_selection"]["selected_role"])
         self.assertEqual("none", payload["current_selection"]["selected_sibling_video_nodes_summary"])
-        self.assertEqual("source_selected_not_probed", payload["source_diagnosis"]["status"])
+        self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis"]["status"])
         self.assertTrue(payload["source_diagnosis"]["not_exclusive"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])

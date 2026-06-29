@@ -8,6 +8,14 @@
 
 ## 2026-06-29 系列
 
+### 2026-06-29 22-20｜pc camera mjpeg backend attempts｜共享预览非独占复核
+
+本轮 `sprints/2026.06.29_22-20_pc_camera_mjpeg_backend_attempts/` 继续收窄 PC 普通首屏“实时画面看不到”的根因。上车 8088 相机 smoke 服务在 MJPEG 首帧路径里新增 OpenCV 打开方式矩阵：`/dev/videoN` 默认 backend、`/dev/videoN` + `CAP_V4L2`、数字索引 `N`，并把 `open_source/open_backend` 写入 health 的 `last_first_frame_format_attempts`。PC 7001 `/api/robot-control/camera/mjpeg/status` 同步新增 `last_first_frame_format_attempts_summary`，不用重新开流也能看到本轮到底试过哪些打开方式。
+
+真实上位机验证显示：`8088 /health` 为 `source_first_frame_failed`、`source_failure_reason=first_frame_total_timeout`、`not_exclusive=true`、`source_usage=not_in_use`；`7001 /api/robot-control/camera/mjpeg/status` 显示 `MJPG@640x480@30(/dev/video1) 无首帧；MJPG@640x480@30(/dev/video1/CAP_V4L2) 无首帧；MJPG@640x480@30(index:1) 无首帧`，并继续说明多人页面共享同一条 relay、不是后来页面抢占摄像头。结论：当前画面不可见仍是 DV20 UVC 源头没有输出首帧，下一步是检查 USB、摄像头输入、供电或换 known-good UVC 复测。
+
+验证范围：`python3 -m unittest onboard.tests.test_local_webrtc_camera_smoke onboard.tests.test_camera_first_frame_probe` 45 tests OK；PC `npm test -- --run` 386 tests OK；PC `npm run build` OK；真实上位机 8088/PC 7001 只读验证 OK。本轮没有发送 manual、keyboard、free-roam、Nav2 goal、delivery、stop 或 `/cmd_vel`。自由移动策略仍不硬依赖雷达；当前现场 artifact 不能动的只读根因是 `external_stop_requested=true`、`cmd_vel_publish_enabled=false`，需要现场安全确认后重新 start 才能清 stop 并验证真实移动。
+
 ### 2026-06-29 21-35｜pc camera opencv index fallback｜共享预览兼容与无首帧实测
 
 本轮 `sprints/2026.06.29_21-35_pc_camera_opencv_index_fallback/` 继续推进 PC 普通首屏“画面所见即所得”和多人共享预览。相机 smoke 服务新增 OpenCV `/dev/videoN` path 打开失败后的数字索引 `N` fallback，并在 shared capture/首帧尝试矩阵里记录 `open_source`，避免部分板端 OpenCV path/index 行为不一致时直接判死。该变化仍只读取真实 UVC 帧，不发送黑帧、placeholder 或伪图像。

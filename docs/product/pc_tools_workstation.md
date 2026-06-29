@@ -3903,6 +3903,14 @@ PC 7001 summary 同步显示 `radar_status=radar_ready`、地图所见即所得�
 下一步仍是检查 USB、摄像头输入、供电或换 known-good UVC 复测。该变化不影响底盘、雷达、Nav2、manual、keyboard、
 free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 22:20 起，上车 8088 共享 MJPEG 首帧路径进一步显式尝试 OpenCV backend：`/dev/video1` 默认 backend、
+`/dev/video1` + `CAP_V4L2`、数字索引 `1` 默认 backend，并把 `open_backend` 与 `open_source` 一起写入
+`/api/camera/health.last_first_frame_format_attempts`。PC 7001 的
+`GET /api/robot-control/camera/mjpeg/status` 同步新增 `last_first_frame_format_attempts_summary`，普通脚本无需重新打开画面
+也能读到“哪些方式已尝试、仍无首帧”。真实上位机验证显示三种打开方式均为 `MJPG@640x480@30 ... 无首帧`，
+且 `source_usage=not_in_use`、`not_exclusive=true`，所以“谁进来都能看”这条共享 relay 不是当前阻塞点；阻塞点仍是
+UVC 源头没有吐真实帧。该状态读取不创建新的独占 reader，不调用 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 05:20 起，PC 普通首屏和 fixed first-jog 统一为最小安全确认门禁：
 `试动一下`、轮速卡 `低速试动读轮速`、键盘连续手控和已准备行程执行都只把“人在旁边、周围安全、停止手段就绪”
 作为前端硬门槛；相机、雷达、外部视频和旧 first-jog 恢复材料只影响建图/验收/材料说明，不再阻止小车低速自己动。

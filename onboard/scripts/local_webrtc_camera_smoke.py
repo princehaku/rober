@@ -871,6 +871,25 @@ def opencv_capture_source_candidates(source: str) -> list[str | int]:
     return candidates
 
 
+def opencv_capture_open_candidates(cv2: Any, source: str, include_backend_fallbacks: bool = False) -> list[dict[str, Any]]:
+    """生成 OpenCV 打开方式；MJPEG 首屏可显式试 V4L2 backend，避免 path 能 open 但 read 永远 false。"""
+    candidates: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    backend_options: list[tuple[str, int | None]] = [("default", None)]
+    cap_v4l2 = getattr(cv2, "CAP_V4L2", None)
+    if include_backend_fallbacks and cap_v4l2 is not None:
+        backend_options.append(("CAP_V4L2", int(cap_v4l2)))
+    for open_source in opencv_capture_source_candidates(source):
+        source_label = opencv_capture_source_label(open_source)
+        for backend_label, backend_id in backend_options:
+            key = (source_label, backend_label)
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append({"source": open_source, "source_label": source_label, "backend": backend_id, "backend_label": backend_label})
+    return candidates
+
+
 def opencv_capture_source_label(source: str | int) -> str:
     """诊断里保留打开方式，现场可区分 path 与 index fallback。"""
     return f"index:{source}" if isinstance(source, int) else str(source)
@@ -887,6 +906,7 @@ class SharedCameraCapture:
     fps: int
     fourcc: str | None = None
     open_source: str | int | None = None
+    open_backend: str = "default"
     created_ts_ms: int = field(default_factory=now_ms)
     ref_count: int = 0
     frames_read: int = 0
@@ -984,6 +1004,7 @@ class SharedCameraCapture:
         return {
             "source": self.source,
             "open_source": opencv_capture_source_label(self.open_source if self.open_source is not None else self.source),
+            "open_backend": self.open_backend,
             "fourcc": self.fourcc or "default",
             "created_ts_ms": self.created_ts_ms,
             "ref_count": self.ref_count,
@@ -1099,9 +1120,13 @@ class CameraServiceState:
         height: int | None = None,
         fps: int | None = None,
         apply_settings: bool = True,
+        open_source_override: str | int | None = None,
+        open_backend: int | None = None,
+        open_backend_label: str = "default",
     ) -> tuple[SharedCameraCapture | None, dict[str, Any] | None]:
         """获取共享摄像头句柄；已有句柄可复用，避免第二个客户端再次打开 `/dev/video1`。"""
-        shared = self.shared_captures.get(source)
+        cache_key = source if open_source_override is None and open_backend is None else f"{source}|{opencv_capture_source_label(open_source_override if open_source_override is not None else source)}|{open_backend_label}"
+        shared = self.shared_captures.get(cache_key)
         if shared and not shared.released:
             shared.add_ref()
             return shared, None
@@ -1109,12 +1134,26 @@ class CameraServiceState:
         open_attempts: list[dict[str, Any]] = []
         capture = None
         opened_source: str | int | None = None
-        for candidate_source in opencv_capture_source_candidates(source):
-            capture = cv2.VideoCapture(candidate_source)
+        open_candidates = (
+            [{"source": open_source_override, "source_label": opencv_capture_source_label(open_source_override), "backend": open_backend, "backend_label": open_backend_label}]
+            if open_source_override is not None
+            else opencv_capture_open_candidates(cv2, source)
+        )
+        for candidate in open_candidates:
+            candidate_source = candidate["source"]
+            backend_id = candidate.get("backend")
+            backend_label = str(candidate.get("backend_label") or "default")
+            try:
+                capture = cv2.VideoCapture(candidate_source, backend_id) if backend_id is not None else cv2.VideoCapture(candidate_source)
+            except TypeError:
+                # 部分测试 fake 或旧 OpenCV 只接受单参数；退回默认打开方式，并把事实写入诊断。
+                capture = cv2.VideoCapture(candidate_source)
+                backend_label = f"{backend_label}_fallback_single_arg"
             opened = bool(capture and capture.isOpened())
-            open_attempts.append({"source": opencv_capture_source_label(candidate_source), "opened": opened})
+            open_attempts.append({"source": opencv_capture_source_label(candidate_source), "backend": backend_label, "opened": opened})
             if opened:
                 opened_source = candidate_source
+                open_backend_label = backend_label
                 break
             try:
                 if capture:
@@ -1136,10 +1175,17 @@ class CameraServiceState:
             fps=fps or self.fps,
             fourcc=fourcc,
             open_source=opened_source,
+            open_backend=open_backend_label,
         )
         shared.add_ref()
-        self.shared_captures[source] = shared
+        self.shared_captures[cache_key] = shared
         return shared, None
+
+    def remove_shared_capture(self, shared_capture: SharedCameraCapture) -> None:
+        """按对象清理共享句柄；打开方式 fallback 后 cache key 不一定等于原始设备路径。"""
+        for key, value in list(self.shared_captures.items()):
+            if value is shared_capture:
+                self.shared_captures.pop(key, None)
 
     def acquire_first_frame_capture(
         self,
@@ -1148,6 +1194,7 @@ class CameraServiceState:
         timeout_s: float = FIRST_FRAME_TIMEOUT_S,
         total_timeout_s: float | None = None,
         specs: list[CameraCaptureAttemptSpec] | None = None,
+        include_open_source_fallbacks: bool = False,
     ) -> tuple[SharedCameraCapture | None, Any, list[dict[str, Any]], dict[str, Any] | None]:
         """按多组 UVC 常见模式尝试首帧；每次失败都释放，不能长期占用坏格式。"""
         attempts: list[dict[str, Any]] = []
@@ -1155,45 +1202,74 @@ class CameraServiceState:
         started = time.monotonic()
         # 调用方可为短预算共享预览传入更激进的顺序；默认 WebRTC 仍保留完整矩阵。
         for spec in specs or camera_capture_attempt_specs(self.width, self.height, self.fps):
-            remaining_total = None if total_timeout_s is None else total_timeout_s - (time.monotonic() - started)
-            if remaining_total is not None and remaining_total <= 0:
-                last_payload = error_payload(
-                    "first_frame_unreadable",
-                    "first_frame_total_timeout",
-                    video_source=source,
-                    first_frame_timeout_s=timeout_s,
-                    first_frame_total_timeout_s=total_timeout_s,
-                    first_frame_elapsed_s=round(time.monotonic() - started, 3),
-                    first_frame_format_attempts=attempts,
-                    last_read_error=(last_payload or {}).get("last_read_error", "first_frame_total_timeout"),
-                )
-                break
-            shared_capture, open_error = self.acquire_shared_capture(
-                source,
-                cv2,
-                spec.fourcc,
-                width=spec.width,
-                height=spec.height,
-                fps=spec.fps,
-                apply_settings=spec.apply_settings,
+            open_candidates = (
+                opencv_capture_open_candidates(cv2, source, include_backend_fallbacks=True)
+                if include_open_source_fallbacks
+                else [{"source": source, "source_label": opencv_capture_source_label(source), "backend": None, "backend_label": "default"}]
             )
-            label = spec.label()
-            if shared_capture is None:
-                attempts.append({
-                    "fourcc": spec.fourcc or "default",
-                    "label": label,
-                    "width": spec.width,
-                    "height": spec.height,
-                    "fps": spec.fps,
-                    "apply_settings": spec.apply_settings,
-                    "status": "open_failed",
-                    "failure_reason": open_error.get("failure_reason") if open_error else "opencv_capture_not_opened",
-                })
-                last_payload = open_error or error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
-                continue
-            attempt_timeout = timeout_s if remaining_total is None else max(0.1, min(timeout_s, remaining_total))
-            ok, frame, first_frame_attempts = shared_capture.read_frame_until_success(attempt_timeout)
-            if ok and frame is not None:
+            if not open_candidates:
+                open_candidates = [{"source": source, "source_label": opencv_capture_source_label(source), "backend": None, "backend_label": "default"}]
+            for open_candidate in open_candidates:
+                remaining_total = None if total_timeout_s is None else total_timeout_s - (time.monotonic() - started)
+                if remaining_total is not None and remaining_total <= 0:
+                    last_payload = error_payload(
+                        "first_frame_unreadable",
+                        "first_frame_total_timeout",
+                        video_source=source,
+                        first_frame_timeout_s=timeout_s,
+                        first_frame_total_timeout_s=total_timeout_s,
+                        first_frame_elapsed_s=round(time.monotonic() - started, 3),
+                        first_frame_format_attempts=attempts,
+                        last_read_error=(last_payload or {}).get("last_read_error", "first_frame_total_timeout"),
+                    )
+                    break
+                shared_capture, open_error = self.acquire_shared_capture(
+                    source,
+                    cv2,
+                    spec.fourcc,
+                    width=spec.width,
+                    height=spec.height,
+                    fps=spec.fps,
+                    apply_settings=spec.apply_settings,
+                    open_source_override=open_candidate["source"],
+                    open_backend=open_candidate.get("backend"),
+                    open_backend_label=str(open_candidate.get("backend_label") or "default"),
+                )
+                label = spec.label()
+                open_source_label = str(open_candidate.get("source_label") or opencv_capture_source_label(open_candidate["source"]))
+                open_backend_label = str(open_candidate.get("backend_label") or "default")
+                if shared_capture is None:
+                    attempts.append({
+                        "fourcc": spec.fourcc or "default",
+                        "label": label,
+                        "width": spec.width,
+                        "height": spec.height,
+                        "fps": spec.fps,
+                        "apply_settings": spec.apply_settings,
+                        "open_source": open_source_label,
+                        "open_backend": open_backend_label,
+                        "status": "open_failed",
+                        "failure_reason": open_error.get("failure_reason") if open_error else "opencv_capture_not_opened",
+                    })
+                    last_payload = open_error or error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
+                    continue
+                attempt_timeout = timeout_s if remaining_total is None else max(0.1, min(timeout_s, remaining_total))
+                ok, frame, first_frame_attempts = shared_capture.read_frame_until_success(attempt_timeout)
+                if ok and frame is not None:
+                    attempts.append({
+                        "fourcc": spec.fourcc or "default",
+                        "label": label,
+                        "width": spec.width,
+                        "height": spec.height,
+                        "fps": spec.fps,
+                        "apply_settings": spec.apply_settings,
+                        "open_source": shared_capture.summary()["open_source"],
+                        "open_backend": shared_capture.summary()["open_backend"],
+                        "status": "frame_read",
+                        "attempts": first_frame_attempts,
+                    })
+                    return shared_capture, frame, attempts, None
+                first_error = shared_capture.last_error or "capture_read_returned_false"
                 attempts.append({
                     "fourcc": spec.fourcc or "default",
                     "label": label,
@@ -1202,37 +1278,27 @@ class CameraServiceState:
                     "fps": spec.fps,
                     "apply_settings": spec.apply_settings,
                     "open_source": shared_capture.summary()["open_source"],
-                    "status": "frame_read",
+                    "open_backend": shared_capture.summary()["open_backend"],
+                    "status": "first_frame_unreadable",
                     "attempts": first_frame_attempts,
+                    "failure_reason": first_error,
                 })
-                return shared_capture, frame, attempts, None
-            first_error = shared_capture.last_error or "capture_read_returned_false"
-            attempts.append({
-                "fourcc": spec.fourcc or "default",
-                "label": label,
-                "width": spec.width,
-                "height": spec.height,
-                "fps": spec.fps,
-                "apply_settings": spec.apply_settings,
-                "open_source": shared_capture.summary()["open_source"],
-                "status": "first_frame_unreadable",
-                "attempts": first_frame_attempts,
-                "failure_reason": first_error,
-            })
-            if shared_capture.release_ref() or shared_capture.released:
-                self.shared_captures.pop(source, None)
-            last_payload = error_payload(
-                "first_frame_unreadable",
-                first_error or "first_frame_timeout",
-                video_source=source,
-                first_frame_timeout_s=timeout_s,
-                first_frame_total_timeout_s=total_timeout_s,
-                first_frame_elapsed_s=round(time.monotonic() - started, 3),
-                first_frame_attempts=first_frame_attempts,
-                first_frame_format_attempts=attempts,
-                selected_fourcc=label,
-                last_read_error=first_error,
-            )
+                if shared_capture.release_ref() or shared_capture.released:
+                    self.remove_shared_capture(shared_capture)
+                last_payload = error_payload(
+                    "first_frame_unreadable",
+                    first_error or "first_frame_timeout",
+                    video_source=source,
+                    first_frame_timeout_s=timeout_s,
+                    first_frame_total_timeout_s=total_timeout_s,
+                    first_frame_elapsed_s=round(time.monotonic() - started, 3),
+                    first_frame_attempts=first_frame_attempts,
+                    first_frame_format_attempts=attempts,
+                    selected_fourcc=label,
+                    last_read_error=first_error,
+                )
+            if last_payload and last_payload.get("failure_reason") == "first_frame_total_timeout":
+                break
         if last_payload is None:
             last_payload = error_payload("first_frame_unreadable", "no_capture_format_attempted", video_source=source)
         last_payload["first_frame_format_attempts"] = attempts
@@ -1247,7 +1313,7 @@ class CameraServiceState:
                 cleanup["shared_capture_ref_released"] = True
                 cleanup["capture_released"] = bool(shared.release_ref())
                 if getattr(shared, "released", False):
-                    self.shared_captures.pop(peer.source, None)
+                    self.remove_shared_capture(shared)
             else:
                 shared.release()
                 cleanup["capture_released"] = True
@@ -1325,6 +1391,12 @@ class CameraServiceState:
             "requested_video_source": self.video_source,
             "source_readiness": source_readiness,
             "source_failure_reason": last_offer_reason if source_failed else "",
+            "last_first_frame_error": self.last_offer_error,
+            "last_first_frame_format_attempts": (
+                last_offer_error.get("first_frame_format_attempts")
+                if isinstance(last_offer_error.get("first_frame_format_attempts"), list)
+                else []
+            ),
             "last_successful_frame": self.last_successful_frame,
             "source_usage": source_usage,
             "source_diagnosis": source_diagnosis,
@@ -1538,7 +1610,7 @@ class CameraServiceState:
                     track.stop()
                 finally:
                     if shared_capture.release_ref() or shared_capture.released:
-                        self.shared_captures.pop(source, None)
+                        self.remove_shared_capture(shared_capture)
             raise
 
         record.local_sdp_candidate_count = local_sdp.count("a=candidate")
@@ -1646,6 +1718,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
             total_timeout_s=MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S,
             specs=mjpeg_camera_capture_attempt_specs(self.state.width, self.state.height, self.state.fps),
+            include_open_source_fallbacks=True,
         )
         if shared_capture is None or first_frame is None:
             payload = first_frame_error or error_payload(
@@ -1685,7 +1758,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             pass
         finally:
             if shared_capture.release_ref() or shared_capture.released:
-                self.state.shared_captures.pop(str(selected_path), None)
+                self.state.remove_shared_capture(shared_capture)
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler 固定命名。
         """POST 仅处理 WebRTC offer 和 peer close，绝不代理运动指令。"""
