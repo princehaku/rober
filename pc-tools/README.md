@@ -619,3 +619,9 @@ summary/首屏文案，不执行 Nav2 goal、不启动 runtime、不发送 manua
 例如画面预览、地图刷新、雷达刷新、图上行程、键盘手控、自由移动或建图流程；不会自动触发这些控件，也不会替用户勾选
 安全确认。该变化只改善普通用户定位下一步的体验，不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或
 `/cmd_vel`。
+
+2026-06-29 09:50 CST 起，`GET /api/robot-control/summary` 顶层增加 `goal_checklist[]`，普通首屏同步展示
+“本轮目标检查”。它把当前 OKR 目标拆成 7 个只读检查项：画面、地图、地图雷达点、完整行程、键盘连续手控、自由移动、
+建图启动。运动相关项会显示“待安全确认/未就绪/运行中”，不会把可启动误写成完成；普通首屏展示使用中文读数，不泄露
+`raw`、`marker` 或 `overlay`。该变化只读 summary，不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或
+`/cmd_vel`。

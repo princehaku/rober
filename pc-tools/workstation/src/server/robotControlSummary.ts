@@ -5334,6 +5334,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       ? "当前事实未读到；上位机这次没有回应，先检查小车电源、网络和 Robot API 服务。"
       : "当前事实未读到；先填写或确认小车地址。",
     action_status_cards: [],
+    goal_checklist: [],
     readback_summary: {
       camera: {
         status: "not_loaded",
@@ -6596,7 +6597,7 @@ function buildActionStatusCards(
 ): RobotControlSummaryResponse["action_status_cards"] {
   // 这些卡片是首屏“现在能做什么”的结构化摘要，不新增任何控制能力或放行条件。
   const cameraVisible = readback.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
-  const mapVisible = /地图画面.*已显示/.test(readback.map.map_wysiwyg_status_plain);
+  const mapVisible = /地图画面.*(已显示|已读到)/.test(readback.map.map_wysiwyg_status_plain);
   const radarPointCount = Number(readback.radar.map_marker_point_count || readback.radar.radar_overlay_point_count || "0");
   const radarCurrent = Number.isFinite(radarPointCount) && radarPointCount > 0 && ["loaded", "partial"].includes(readback.radar.radar_overlay_status);
   const nav2NeedsWheelRerun = boundary.nav2_goal_wheel_feedback_status === "goal_succeeded_but_wheel_lr_zero";
@@ -6702,6 +6703,158 @@ function buildActionStatusCards(
   ];
 }
 
+function actionCardById(
+  cards: NonNullable<RobotControlSummaryResponse["action_status_cards"]>,
+  id: NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number]["id"],
+): NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number] {
+  // 清单复用动作卡的同轮事实，避免目标检查和首屏动作状态漂移。
+  return cards.find((card) => card.id === id) ?? {
+    id,
+    title: id,
+    status: "not_ready",
+    status_label: "未就绪",
+    summary_plain: "状态未读到",
+    next_action_plain: "先刷新小车状态",
+    wysiwyg_status: "not_loaded",
+    requires_safety_confirmation: false,
+    can_start_after_safety_confirm: false,
+    sends_motion_when_clicked: false,
+    blocks_free_motion: false,
+    blocks_mapping_start: false,
+  };
+}
+
+function actionCardWysiwygPlain(value: string): string {
+  // 普通目标检查不能泄露枚举 token；只保留现场能理解的短读数。
+  const labels: Record<string, string> = {
+    visible_frame: "当前画面已显示",
+    no_current_frame: "当前画面未显示",
+    current_map_visible: "当前地图已显示",
+    map_not_visible: "当前地图未显示",
+    current_points_visible: "当前地图雷达点已显示",
+    old_or_missing_points_not_drawn: "旧雷达点或缺点未贴到当前地图",
+    route_ready_on_map: "图上路线已准备",
+    route_not_ready: "图上路线未准备",
+    hold_to_move_contract: "按住才连续移动，松开会停",
+    motion_start_ready: "自由移动可启动",
+    motion_not_ready: "自由移动未就绪",
+    camera_and_radar_ready: "画面和雷达已 ready",
+    camera_or_radar_missing: "画面或雷达未 ready",
+  };
+  return labels[value] ?? value.replace(/_/g, " ");
+}
+
+function buildGoalChecklist(
+  cards: NonNullable<RobotControlSummaryResponse["action_status_cards"]>,
+  readback: RobotControlSummaryResponse["readback_summary"],
+  boundary: RobotControlSummaryResponse["safe_command_boundary"],
+): RobotControlSummaryResponse["goal_checklist"] {
+  // 目标检查只做只读验收口径聚合；ready 不等于 done，真实运动项仍需要现场执行证据。
+  const camera = actionCardById(cards, "camera_preview");
+  const map = actionCardById(cards, "map_preview");
+  const radar = actionCardById(cards, "radar_map_points");
+  const nav2 = actionCardById(cards, "nav2_route");
+  const keyboard = actionCardById(cards, "keyboard_control");
+  const freeMove = actionCardById(cards, "free_move");
+  const mapping = actionCardById(cards, "mapping_start");
+  const nav2Done = readback.nav2.route_execution_readiness_plain.startsWith("完整路线执行已证明");
+  const keyboardReady = boundary.keyboard_control_start_ready;
+  const freeMoveRunning = boundary.free_roam_autonomy === "ready";
+  return [
+    {
+      id: "camera_wysiwyg",
+      title: "画面所见即所得",
+      status: camera.status === "visible" ? "done" : "needs_action",
+      status_label: camera.status === "visible" ? "已满足" : "待处理",
+      summary_plain: camera.summary_plain,
+      evidence_plain: `画面读数：${actionCardWysiwygPlain(camera.wysiwyg_status)}`,
+      next_action_plain: camera.next_action_plain,
+      source_card_id: "camera_preview",
+      requires_safety_confirmation: false,
+      requires_motion: false,
+      blocks_goal_completion: camera.status !== "visible",
+    },
+    {
+      id: "map_wysiwyg",
+      title: "地图所见即所得",
+      status: map.status === "visible" ? "done" : "needs_action",
+      status_label: map.status === "visible" ? "已满足" : "待处理",
+      summary_plain: map.summary_plain,
+      evidence_plain: `地图读数：${actionCardWysiwygPlain(map.wysiwyg_status)}`,
+      next_action_plain: map.next_action_plain,
+      source_card_id: "map_preview",
+      requires_safety_confirmation: false,
+      requires_motion: false,
+      blocks_goal_completion: map.status !== "visible",
+    },
+    {
+      id: "radar_map_points_wysiwyg",
+      title: "雷达点贴到地图",
+      status: radar.status === "current_on_map" ? "done" : "needs_action",
+      status_label: radar.status === "current_on_map" ? "已满足" : "待处理",
+      summary_plain: radar.summary_plain,
+      evidence_plain: `地图雷达点读数：${actionCardWysiwygPlain(radar.wysiwyg_status)}`,
+      next_action_plain: radar.next_action_plain,
+      source_card_id: "radar_map_points",
+      requires_safety_confirmation: false,
+      requires_motion: false,
+      blocks_goal_completion: radar.status !== "current_on_map",
+    },
+    {
+      id: "nav2_route_execution",
+      title: "完整行程执行",
+      status: nav2Done ? "done" : boundary.nav2_goal_ready ? "needs_safety_confirm" : "not_ready",
+      status_label: nav2Done ? "已完成" : boundary.nav2_goal_ready ? "待安全确认" : "未就绪",
+      summary_plain: nav2.summary_plain,
+      evidence_plain: actionCardText(readback.nav2.goal_execution_wheel_raw_lr_status_plain, "完整行程执行读数未读到"),
+      next_action_plain: nav2.next_action_plain,
+      source_card_id: "nav2_route",
+      requires_safety_confirmation: !nav2Done,
+      requires_motion: !nav2Done,
+      blocks_goal_completion: !nav2Done,
+    },
+    {
+      id: "keyboard_continuous_control",
+      title: "键盘连续手控",
+      status: keyboardReady ? "needs_safety_confirm" : "not_ready",
+      status_label: keyboardReady ? "待安全确认" : "未就绪",
+      summary_plain: keyboard.summary_plain,
+      evidence_plain: actionCardText(readback.keyboard.continuous_control_contract_plain, "键盘连续控制合同未读到"),
+      next_action_plain: keyboard.next_action_plain,
+      source_card_id: "keyboard_control",
+      requires_safety_confirmation: true,
+      requires_motion: true,
+      blocks_goal_completion: true,
+    },
+    {
+      id: "free_move",
+      title: "自由自助移动",
+      status: freeMoveRunning ? "ready" : boundary.free_roam_motion_start_ready ? "needs_safety_confirm" : "not_ready",
+      status_label: freeMoveRunning ? "运行中" : boundary.free_roam_motion_start_ready ? "待安全确认" : "未就绪",
+      summary_plain: freeMove.summary_plain,
+      evidence_plain: actionCardText(readback.free_roam.motion_readiness_plain, "自由移动读数未读到"),
+      next_action_plain: freeMove.next_action_plain,
+      source_card_id: "free_move",
+      requires_safety_confirmation: !freeMoveRunning,
+      requires_motion: true,
+      blocks_goal_completion: !freeMoveRunning,
+    },
+    {
+      id: "mapping_start",
+      title: "传感器 ready 后建图",
+      status: boundary.free_roam_mapping_start_ready ? "needs_safety_confirm" : "not_ready",
+      status_label: boundary.free_roam_mapping_start_ready ? "待安全确认" : "未就绪",
+      summary_plain: mapping.summary_plain,
+      evidence_plain: actionCardText(readback.free_roam.mapping_start_readiness_plain, "建图启动读数未读到"),
+      next_action_plain: mapping.next_action_plain,
+      source_card_id: "mapping_start",
+      requires_safety_confirmation: true,
+      requires_motion: true,
+      blocks_goal_completion: true,
+    },
+  ];
+}
+
 export async function buildRobotControlSummary(
   baseUrl: string,
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
@@ -6765,6 +6918,7 @@ export async function buildRobotControlSummary(
     free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime),
   };
   const safeCommandBoundary = lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary);
+  const actionStatusCards = buildActionStatusCards(readbackSummary, safeCommandBoundary);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -6792,7 +6946,8 @@ export async function buildRobotControlSummary(
       last_refresh_ms: observedAt,
     },
     current_fact_plain: summaryCurrentFactPlain(readbackSummary, safeCommandBoundary),
-    action_status_cards: buildActionStatusCards(readbackSummary, safeCommandBoundary),
+    action_status_cards: actionStatusCards,
+    goal_checklist: buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary),
     readback_summary: readbackSummary,
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),

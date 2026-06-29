@@ -2403,6 +2403,29 @@ export interface RobotControlActionStatusCard {
   blocks_mapping_start: boolean;
 }
 
+export type RobotControlGoalChecklistItemId =
+  | "camera_wysiwyg"
+  | "map_wysiwyg"
+  | "radar_map_points_wysiwyg"
+  | "nav2_route_execution"
+  | "keyboard_continuous_control"
+  | "free_move"
+  | "mapping_start";
+
+export interface RobotControlGoalChecklistItem {
+  id: RobotControlGoalChecklistItemId;
+  title: string;
+  status: "done" | "ready" | "needs_safety_confirm" | "needs_action" | "not_ready";
+  status_label: string;
+  summary_plain: string;
+  evidence_plain: string;
+  next_action_plain: string;
+  source_card_id: RobotControlActionStatusCardId;
+  requires_safety_confirmation: boolean;
+  requires_motion: boolean;
+  blocks_goal_completion: boolean;
+}
+
 export interface RobotControlSummaryResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_summary.v1";
   console_status: "blocked" | "loaded_fail_closed_summary";
@@ -2430,6 +2453,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   };
   current_fact_plain: string;
   action_status_cards?: RobotControlActionStatusCard[];
+  goal_checklist?: RobotControlGoalChecklistItem[];
   readback_summary: {
     camera: {
       status: string;

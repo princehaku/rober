@@ -508,6 +508,99 @@ const fixtures: Record<string, unknown> = {
         blocks_mapping_start: true,
       },
     ],
+    goal_checklist: [
+      {
+        id: "camera_wysiwyg",
+        title: "画面所见即所得",
+        status: "needs_action",
+        status_label: "待处理",
+        summary_plain: "画面未可见：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见",
+        evidence_plain: "画面读数：当前画面未显示",
+        next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
+        source_card_id: "camera_preview",
+        requires_safety_confirmation: false,
+        requires_motion: false,
+        blocks_goal_completion: true,
+      },
+      {
+        id: "map_wysiwyg",
+        title: "地图所见即所得",
+        status: "done",
+        status_label: "已满足",
+        summary_plain: "地图画面已读到，但图上路线还未显示",
+        evidence_plain: "地图读数：当前地图已显示",
+        next_action_plain: "先准备图上路线，再刷新地图画面",
+        source_card_id: "map_preview",
+        requires_safety_confirmation: false,
+        requires_motion: false,
+        blocks_goal_completion: false,
+      },
+      {
+        id: "radar_map_points_wysiwyg",
+        title: "雷达点贴到地图",
+        status: "needs_action",
+        status_label: "待处理",
+        summary_plain: "雷达已运行且扫描是新的；地图雷达点当前显示 0 个，仍需以同轮地图预览为准",
+        evidence_plain: "地图雷达点读数：旧雷达点或缺点未贴到当前地图",
+        next_action_plain: "刷新地图画面，确认地图上实际显示的雷达点数",
+        source_card_id: "radar_map_points",
+        requires_safety_confirmation: false,
+        requires_motion: false,
+        blocks_goal_completion: true,
+      },
+      {
+        id: "nav2_route_execution",
+        title: "完整行程执行",
+        status: "not_ready",
+        status_label: "未就绪",
+        summary_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成",
+        evidence_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
+        next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行",
+        source_card_id: "nav2_route",
+        requires_safety_confirmation: true,
+        requires_motion: true,
+        blocks_goal_completion: true,
+      },
+      {
+        id: "keyboard_continuous_control",
+        title: "键盘连续手控",
+        status: "needs_safety_confirm",
+        status_label: "待安全确认",
+        summary_plain: "必须按住 W/A/S/D 或方向键才会连续低速移动；只启用键盘但不按方向不会发车",
+        evidence_plain: "按住时约每 0.26 秒发送一次 0.24 秒 ROS 低速脉冲；松开、失焦、切页、换方向或点击停止都会停。",
+        next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
+        source_card_id: "keyboard_control",
+        requires_safety_confirmation: true,
+        requires_motion: true,
+        blocks_goal_completion: true,
+      },
+      {
+        id: "free_move",
+        title: "自由自助移动",
+        status: "not_ready",
+        status_label: "未就绪",
+        summary_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底",
+        evidence_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
+        next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
+        source_card_id: "free_move",
+        requires_safety_confirmation: true,
+        requires_motion: true,
+        blocks_goal_completion: true,
+      },
+      {
+        id: "mapping_start",
+        title: "传感器 ready 后建图",
+        status: "not_ready",
+        status_label: "未就绪",
+        summary_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机",
+        evidence_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。",
+        next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
+        source_card_id: "mapping_start",
+        requires_safety_confirmation: true,
+        requires_motion: true,
+        blocks_goal_completion: true,
+      },
+    ],
     readback_summary: {
       camera: {
         status: "camera_health_not_proven",
@@ -4041,6 +4134,16 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-action-status-card-free_move"]').attributes("data-state")).toBe("locked");
     expect(wrapper.find('[data-testid="plain-action-status-card-keyboard_control"]').text()).toContain("按住 W/A/S/D 或方向键");
     expect(wrapper.find('[data-testid="plain-action-status-card-mapping_start"]').text()).toContain("影响建图");
+    const goalChecklist = wrapper.find('[data-testid="plain-goal-checklist"]');
+    expect(goalChecklist.exists()).toBe(true);
+    expect(goalChecklist.text()).toContain("本轮目标检查");
+    expect(goalChecklist.text()).toContain("待确认不等于已完成");
+    expect(wrapper.findAll('[data-testid^="plain-goal-checklist-"]')).toHaveLength(7);
+    expect(wrapper.find('[data-testid="plain-goal-checklist-map_wysiwyg"]').text()).toContain("已满足");
+    expect(wrapper.find('[data-testid="plain-goal-checklist-keyboard_continuous_control"]').text()).toContain("待安全确认");
+    expect(wrapper.find('[data-testid="plain-goal-checklist-free_move"]').text()).toContain("未就绪");
+    expect(goalChecklist.text()).not.toContain("marker");
+    expect(goalChecklist.text()).not.toContain("overlay");
     const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
     expect(connectionPanel.exists()).toBe(true);
     expect(connectionPanel.attributes("data-state")).toBe("已连接");

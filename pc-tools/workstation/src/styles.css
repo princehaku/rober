@@ -450,6 +450,45 @@ h3 {
   margin-top: 10px;
 }
 
+.plain-goal-checklist {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 14px;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfcfe;
+}
+
+.plain-goal-checklist-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) auto minmax(220px, 2fr);
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid #edf1f5;
+  padding-top: 7px;
+}
+
+.plain-goal-checklist-row:first-of-type {
+  border-top: 0;
+}
+
+.plain-goal-checklist-row small {
+  grid-column: 3;
+  line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+  .plain-goal-checklist-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .plain-goal-checklist-row .muted,
+  .plain-goal-checklist-row small {
+    grid-column: 1 / -1;
+  }
+}
+
 .plain-default-robot {
   min-height: 36px;
   display: flex;

@@ -4007,6 +4007,31 @@ describe("workstation fail-closed API contracts", () => {
         blocks_free_motion: false,
         blocks_mapping_start: true,
       });
+      const goalChecklist = summary.goal_checklist ?? [];
+      expect(goalChecklist.map((item) => item.id)).toEqual([
+        "camera_wysiwyg",
+        "map_wysiwyg",
+        "radar_map_points_wysiwyg",
+        "nav2_route_execution",
+        "keyboard_continuous_control",
+        "free_move",
+        "mapping_start",
+      ]);
+      expect(JSON.stringify(goalChecklist)).not.toContain("marker");
+      expect(JSON.stringify(goalChecklist)).not.toContain("overlay");
+      expect(goalChecklist.find((item) => item.id === "map_wysiwyg")).toMatchObject({
+        status: "done",
+        status_label: "已满足",
+        requires_motion: false,
+        blocks_goal_completion: false,
+      });
+      expect(goalChecklist.find((item) => item.id === "keyboard_continuous_control")).toMatchObject({
+        status: "needs_safety_confirm",
+        status_label: "待安全确认",
+        requires_safety_confirmation: true,
+        requires_motion: true,
+        blocks_goal_completion: true,
+      });
       expect(summary.readback_summary.map).toMatchObject({
         status: expect.any(String),
         map_once_observed: "true",

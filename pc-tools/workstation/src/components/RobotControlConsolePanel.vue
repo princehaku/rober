@@ -2836,6 +2836,10 @@ const plainActionStatusCards = computed(() => {
   // 后端动作卡是普通首屏的结构化摘要；旧 summary 没有该字段时继续使用上面的事实列表。
   return robotSummary.value?.action_status_cards ?? [];
 });
+const plainGoalChecklist = computed(() => {
+  // 目标检查只展示只读验收口径；ready/待确认不会被写成已完成。
+  return robotSummary.value?.goal_checklist ?? [];
+});
 function plainActionCardUserText(value: string): string {
   // API 保留“路线”等诊断口径；普通首屏统一说“行程”，避免回到工程调试风格。
   return plainNav2UserFacingText(value)
@@ -12425,6 +12429,26 @@ onBeforeUnmount(() => {
             {{ plainActionCardButtonLabel(card.id) }}
           </button>
         </article>
+      </div>
+
+      <div v-if="plainGoalChecklist.length" class="plain-goal-checklist" data-testid="plain-goal-checklist" aria-label="本轮目标检查">
+        <div class="simple-status-row">
+          <strong>本轮目标检查</strong>
+          <span class="muted">只读验收口径，待确认不等于已完成。</span>
+        </div>
+        <div
+          v-for="item in plainGoalChecklist"
+          :key="item.id"
+          class="plain-goal-checklist-row"
+          :data-testid="`plain-goal-checklist-${item.id}`"
+          :data-state="item.status"
+        >
+          <span class="plain-progress-label">{{ plainActionCardUserText(item.title) }}</span>
+          <span class="status-chip" :data-state="item.status_label">{{ item.status_label }}</span>
+          <span class="muted">{{ plainActionCardUserText(item.summary_plain) }}</span>
+          <small class="muted">{{ plainActionCardUserText(item.evidence_plain) }}</small>
+          <small class="muted">下一步：{{ plainActionCardUserText(item.next_action_plain) }}</small>
+        </div>
       </div>
 
       <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen">

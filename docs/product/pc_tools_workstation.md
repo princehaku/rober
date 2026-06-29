@@ -4048,3 +4048,10 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 图上行程卡到行程安全确认/执行区，键盘卡到键盘启用区，自由移动和建图卡到对应安全确认、自由移动或建图流程。
 这些按钮只做页面内 scroll/focus，不自动勾选安全确认、不点击被聚焦控件、不启动雷达/地图、不执行 Nav2、
 不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 09:50 CST 起，Robot Control summary 新增顶层 `goal_checklist[]`，普通首屏显示“本轮目标检查”。
+清单按当前目标拆成画面所见即所得、地图所见即所得、雷达点贴到地图、完整行程执行、键盘连续手控、自由自助移动、
+传感器 ready 后建图 7 项。每项只读显示状态、普通摘要、当前读数和下一步；`ready` 或 `待安全确认` 不会被写成已完成。
+普通首屏会把内部枚举翻成中文读数，不显示 `raw`、`marker` 或 `overlay`。该变化只聚合同一轮 readback 和
+`action_status_cards`，不启动雷达/建图/free-roam，不执行 Nav2，不发送 manual、keyboard、delivery、stop 或
+`/cmd_vel`。
