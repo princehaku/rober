@@ -4390,3 +4390,8 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 但 8088 health、PC 7001 summary、MJPG/YUYV 首帧尝试和 V4L2 直读都显示没有真实视频帧；下一步是查 USB、摄像头输入、
 供电或换 known-good UVC。自由移动 readback 同时显示可先启动低速移动，相机/雷达只影响建图启动和验收。Nav2 已通过
 非发车 `/api/nav2/start` 恢复到路线可重跑状态；未发送 goal、manual、free-roam start、stop 或 `/cmd_vel`。
+
+2026-06-29 23:32 CST 起，上车 8787 的 `/api/nav2/goal/execute` 也跟随最近一次执行的
+`next_base_command_mode`：没有显式传 `base_command_mode` 时，若上次 ROS/T=13 路线 action 成功但 wheel L/R 仍为 0/0，
+下一次默认会切到 SPEED/T=1 复验；显式传入 `ros/speed/pwm` 仍优先生效。PC 前端原本已经会传该模式，本轮补齐的是
+旧脚本或直连 8787 的默认行为，避免自动驾驶重复同一个零轮速控制链。

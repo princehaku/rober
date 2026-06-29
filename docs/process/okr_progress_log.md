@@ -8,6 +8,20 @@
 
 ## 2026-06-29 系列
 
+### 2026-06-29 23-32｜upper_nav2_default_next_mode_fallback｜上车 Nav2 默认执行跟随下一次模式
+
+本轮 `sprints/2026.06.29_23-32_upper_nav2_default_next_mode_fallback/` 修正上车 8787 的直接执行口径：
+`/api/nav2/goal/execute` 在调用方没有显式传 `base_command_mode/nav2_base_command_mode` 时，会先只读最近一次
+`/api/nav2/goal/execution/latest` 的 `next_base_command_mode`。如果上次 ROS/T=13 路线 action 成功但 wheel L/R 仍为 0/0，
+下一次默认执行会切到 `speed`，也就是 vendor `T=1` 差速速度模式；如果调用方显式传入合法模式，仍严格尊重显式值。
+这样旧 PC、脚本或直接 curl 8787 不会在 ROS/T=13 零轮速后无限重复同一条失败控制链。
+
+验证范围：本地 `python3 -m unittest onboard.tests.test_upper_robot_api` 89 tests OK / 1 skipped；
+`python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/tests/test_upper_robot_api.py` OK；`git diff --check` OK。
+真实上位机已同步 `/root/rober/onboard/scripts/upper_robot_api.py` 并重启 8787；远端纯函数验证显示 ROS 零轮速 latest 推导
+`next_base_command_mode=speed`，execute 默认也选择 `speed`。本轮没有执行 Nav2 goal、manual、keyboard、free-roam start、
+delivery、stop 或 `/cmd_vel`。
+
 ### 2026-06-29 23-24｜live_camera_nav2_free_roam_triage｜真实相机/Nav2/自由移动现场收口
 
 本轮 `sprints/2026.06.29_23-24_live_camera_nav2_free_roam_triage/` 对 CEO 现场反馈做真实上位机只读排查和非发车恢复：

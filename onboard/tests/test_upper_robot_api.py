@@ -3279,6 +3279,49 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("ros", api.base_command_mode)
         self.assertEqual("ros", api.nav2_base_command_mode)
 
+    def test_nav2_goal_execute_defaults_to_speed_after_ros_wheel_zero_latest(self) -> None:
+        """未显式传模式时，ROS/T=13 零轮速后的下一次执行应自动切到 vendor T=1 speed。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        previous_latest = {
+            "status": "goal_succeeded",
+            "goal_accepted": True,
+            "result_received": True,
+            "result_status": "succeeded",
+            "base_command_mode": "ros",
+            "base_feedback_summary": {"wheel_feedback_lr_nonzero_proven": False},
+        }
+        latest_result = {
+            "status": "goal_succeeded",
+            "goal_accepted": True,
+            "result_received": True,
+            "result_status": "succeeded",
+            "base_command_mode": "speed",
+            "robot_control_executed": True,
+            "sends_motion_commands": True,
+            "base_feedback_summary": {"wheel_feedback_lr_nonzero_proven": False},
+        }
+
+        with mock.patch.object(api, "nav2_proof_latest", return_value=(200, {"latest_result": {"proof": {"managed_runtime_map_yaml": "/tmp/map.yaml"}}})):
+            with mock.patch.object(upper_robot_api, "run_nav2_goal_execution_helper", return_value={"mode": "o11", "executed": True, "ok": True}) as helper_mock:
+                with mock.patch.object(
+                    api,
+                    "nav2_goal_execution_latest",
+                    side_effect=[
+                        (200, upper_robot_api.enrich_nav2_goal_execution_latest_payload({"latest_result": previous_latest})),
+                        (200, {"latest_result": latest_result}),
+                    ],
+                ):
+                    payload = asyncio.run(api.nav2_goal_execute({"confirm_navigation_execution": True}))
+
+        self.assertEqual("speed", helper_mock.call_args.kwargs["base_command_mode"])
+        self.assertEqual("speed", payload["goal_request"]["base_command_mode"])
+        self.assertEqual("ros", api.nav2_base_command_mode)
+
     def test_nav2_goal_execution_latest_derives_wheel_lr_gap_from_old_artifact(self) -> None:
         """旧 Nav2 artifact 被只读读取时，也必须补出 wheel raw L/R 未非零根因。"""
         latest_result = {

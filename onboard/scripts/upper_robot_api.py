@@ -1955,6 +1955,16 @@ def nav2_goal_next_base_command_mode(latest_result: dict[str, Any]) -> str:
     return mode
 
 
+def nav2_goal_execute_base_command_mode_from_latest(default_mode: str, latest_payload: dict[str, Any]) -> str:
+    """未显式指定时复用 latest 的下一次模式，避免 ROS/T=13 零轮速后无限重复同一路径。"""
+    configured = default_mode if default_mode in ALLOWED_NAV2_BASE_COMMAND_MODES else DEFAULT_NAV2_BASE_COMMAND_MODE
+    next_mode = latest_payload.get("next_base_command_mode")
+    if not isinstance(next_mode, str):
+        return configured
+    normalized = next_mode.strip().lower()
+    return normalized if normalized in ALLOWED_NAV2_BASE_COMMAND_MODES else configured
+
+
 def delivery_completion_artifact_info(path: str) -> dict[str, Any]:
     """送达完成 artifact 只由 delivery gate 写入，不能由 Nav2 或 operator report 单独替代。"""
     resolved_path = resolve_onboard_runtime_path(path)
@@ -7450,10 +7460,17 @@ class UpperRobotApi:
         managed_startup_s = clamp_float(body.get("managed_startup_s"), 2.0, 0.0, 5.0)
         # O11 只看 lifecycle manager 日志；现场慢启动时给 Nav2 执行层更宽的 active 窗口。
         managed_ready_timeout_s = clamp_float(body.get("managed_ready_timeout_s"), 90.0, 10.0, 90.0)
-        request_base_command_mode = str(body.get("base_command_mode") or body.get("nav2_base_command_mode") or self.nav2_base_command_mode).strip().lower()
-        nav2_base_command_mode = (
-            request_base_command_mode if request_base_command_mode in ALLOWED_NAV2_BASE_COMMAND_MODES else self.nav2_base_command_mode
-        )
+        raw_base_command_mode = body.get("base_command_mode") or body.get("nav2_base_command_mode")
+        request_base_command_mode = str(raw_base_command_mode or "").strip().lower()
+        if request_base_command_mode:
+            # 显式请求只接受白名单；非法值仍按配置默认，不从旧 latest 偷偷切模式。
+            nav2_base_command_mode = (
+                request_base_command_mode if request_base_command_mode in ALLOWED_NAV2_BASE_COMMAND_MODES else self.nav2_base_command_mode
+            )
+        else:
+            # PC 以外的调用方可能不传 base_command_mode；这里复用 latest next mode，保证 ROS/T=13 零轮速后可自动切 SPEED/T=1。
+            _, latest_execution = self.nav2_goal_execution_latest()
+            nav2_base_command_mode = nav2_goal_execute_base_command_mode_from_latest(self.nav2_base_command_mode, latest_execution)
         command_result = await asyncio.to_thread(
             run_nav2_goal_execution_helper,
             artifact_path=self.nav2_goal_execution_artifact_path,
