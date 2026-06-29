@@ -43,6 +43,8 @@ Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
 2026-06-30 15:05 CST 起，普通首屏 `robot-console-grid` 使用 `data-layout=visual-first`，实时画面和地图分别暴露 `data-wysiwyg-surface=primary-camera/primary-map`。地图默认仍是大图，但大图高度提升为 `clamp(560px, 78vh, 980px)`，收起态也不再退回小缩略图；相机预览框增加最小高度，桌面端优先给画面/地图更宽的栅格。该变化只改 PC Web 侧只读布局和 DOM 证据，不启动任何 ROS2 runtime、不执行 Nav2、不发送 manual/keyboard/free-roam/stop 或 `/cmd_vel`。
 
+2026-06-30 15:35 CST 起，普通首屏行程主按钮会直接说明本次点击语义，并同步暴露 DOM 证据：`data-main-action-kind`、`data-sends-motion-when-clicked`、`data-target-source`、`data-minimal-precheck-safety-only`、`data-managed-runtime-autostart`。未勾安全确认时不会发车；勾选后如果还没有当前图上路线，只会准备路线或刷新地图画面；只有当前地图路线可见时才显示并执行 `execute_current_map_route`。这让完整 Nav2 路线执行和“发车前只勾安全确认”的边界能在普通首屏直接看见，不需要展开高级诊断。
+
 ## Robot Control Console V1
 
 `workstation/` 默认直接展示 `RobotControlConsolePanel` 和 `GET /api/robot-control/summary?baseUrl=<robot-api-base-url>`，不再把普通控制台放在 tab 导航后面。Vue 不直接跨域访问上位机；Robot API base URL 只交给 Node server 代理。代理只读取 `/api/status`、O3 proof latest、Camera/LiDAR/Base status/latest/readback 类 GET endpoint，并拒绝 unsafe URL、credentials、query/hash、非回环或非 RFC1918 局域网 host、schema drift 和危险 true 字段。为避免真实上位机慢一点的状态聚合被误判成离线，`/api/status`、`/api/camera/health`、`/api/camera/devices` 采用更宽的只读超时窗口；其余 endpoint 继续保持短超时。当前首屏已经回到普通用户可读的简易风格：五个普通卡片只给短状态、少量按钮和可停止入口；前端测试会阻止默认可见首屏再次出现 `检查路径`、`现场材料`、`HIL`、`Nav2`、`proof`、`key values`、`/cmd_vel`、`/api/base/manual`、`可点动`、`task_id`、`O6`、`O7`、`Mock`、`field manifest`。定位重置、导航目标预检、O6 base URL、peer/ICE/SDP、readback table、O3 proof summary、route replay、非 stop 点动、HIL checklist、现场材料和 evidence 细节都收进 `<details>` 折叠区，工程 tabs 只在默认关闭的 `高级工具` 中出现。

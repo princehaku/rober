@@ -9090,6 +9090,99 @@ const canRunPlainTripExecution = computed(() => {
     && !plainTripMapWysiwygPending.value;
 });
 
+const plainTripManagedRuntimeWillAutostart = computed(() => plainTripManagedRuntimePrecheckText().length > 0);
+
+const plainTripMainActionKind = computed(() => {
+  // 主按钮在不同状态下会“只读准备”或“真实执行”；把这个状态结构化暴露，避免现场误点后猜测。
+  if (deliveryNav2GoalReady.value) {
+    return "completed";
+  }
+  if (!robotApiBaseUrl.value.trim()) {
+    return "connect_first";
+  }
+  if (loading.value || navGoalPreflightPending.value || navGoalExecutionPending.value) {
+    return "execution_pending";
+  }
+  if (nav2RefreshPending.value) {
+    return "prepare_route_pending";
+  }
+  if (nav2LifecyclePending.value) {
+    return "runtime_lifecycle_pending";
+  }
+  if (navGoalExecutionLatestPending.value) {
+    return "latest_read_pending";
+  }
+  if (manualMotionActiveForTrip.value) {
+    return "wait_manual_motion_stop";
+  }
+  if (!plainManualSafetyConfirmed.value) {
+    return "await_safety_confirm";
+  }
+  if (plainTripNav2NeedsLifecycleRestore.value) {
+    return plainNav2StackNotRunning() ? "start_runtime_no_motion" : "restore_runtime_no_motion";
+  }
+  if (plainTripMapWysiwygPending.value && plainTripPreparedBySummary.value) {
+    return "wait_map_wysiwyg";
+  }
+  if (plainTripRecentRouteVisible.value) {
+    return "refresh_current_route_no_motion";
+  }
+  if (!plainTripCurrentRouteVisible.value) {
+    return plainTripPreparedBySummary.value ? "refresh_route_on_map_no_motion" : "prepare_route_no_motion";
+  }
+  return "execute_current_map_route";
+});
+
+const plainTripMainActionTargetSource = computed(() => {
+  // 执行只能绑定当前地图上可见路线；其它状态都明确是 no-motion 准备或等待。
+  switch (plainTripMainActionKind.value) {
+    case "execute_current_map_route":
+      return "current_map_route";
+    case "refresh_route_on_map_no_motion":
+    case "refresh_current_route_no_motion":
+      return "map_preview_refresh";
+    case "prepare_route_no_motion":
+      return "nav2_no_motion_proof_refresh";
+    case "start_runtime_no_motion":
+    case "restore_runtime_no_motion":
+      return "nav2_lifecycle_no_motion";
+    default:
+      return "none";
+  }
+});
+
+const plainTripMainActionSendsMotion = computed(() => (
+  canRunPlainTripExecution.value && plainTripMainActionKind.value === "execute_current_map_route"
+));
+
+const plainTripMainActionSummary = computed(() => {
+  // 普通用户只需要知道“这一下会不会动车”；具体 endpoint 和 key values 仍留在高级诊断。
+  switch (plainTripMainActionKind.value) {
+    case "execute_current_map_route":
+      return plainTripManagedRuntimeWillAutostart.value
+        ? "主按钮：将执行当前地图上的路线；执行时会托管启动自动驾驶 runtime，发车前只复核安全确认和固定白名单。"
+        : "主按钮：将执行当前地图上的路线；发车前只复核安全确认和固定白名单。";
+    case "refresh_route_on_map_no_motion":
+      return "主按钮：只刷新地图上的路线显示，不发车。";
+    case "refresh_current_route_no_motion":
+      return "主按钮：只重新准备本轮图上路线，不发车。";
+    case "prepare_route_no_motion":
+      return "主按钮：只准备图上路线，不发车。";
+    case "start_runtime_no_motion":
+      return "主按钮：先启动自动驾驶服务，不发车。";
+    case "restore_runtime_no_motion":
+      return "主按钮：先恢复自动驾驶服务，不发车。";
+    case "wait_map_wysiwyg":
+      return "主按钮：等待地图画面同步完成，避免按旧地图执行。";
+    case "await_safety_confirm":
+      return "主按钮：先勾选现场安全确认；未勾选时不会发车。";
+    case "completed":
+      return "主按钮：本轮行程已完成，不会重复发车。";
+    default:
+      return "主按钮：当前不会发车。";
+  }
+});
+
 const plainTripPreparationButtonLabel = computed(() => {
   // 普通用户的主流程只看执行按钮；这个按钮只是可选只读刷新，不再表现成发车前必做预检。
   if (deliveryNav2GoalReady.value) {
@@ -14336,7 +14429,19 @@ onBeforeUnmount(() => {
               <button ref="plainTripPrepareButton" type="button" class="secondary compact-stop" :disabled="!canRefreshPlainTripPreparation" data-testid="plain-trip-prepare" @click="refreshNav2Proof">
                 {{ plainTripPreparationButtonLabel }}
               </button>
-              <button ref="plainTripExecuteButton" type="button" class="danger-button compact-stop" :disabled="!canRunPlainTripExecution" data-testid="plain-trip-execute" @click="runPlainTripExecution">
+              <button
+                ref="plainTripExecuteButton"
+                type="button"
+                class="danger-button compact-stop"
+                :disabled="!canRunPlainTripExecution"
+                data-testid="plain-trip-execute"
+                :data-main-action-kind="plainTripMainActionKind"
+                :data-sends-motion-when-clicked="String(plainTripMainActionSendsMotion)"
+                :data-target-source="plainTripMainActionTargetSource"
+                :data-minimal-precheck-safety-only="String(true)"
+                :data-managed-runtime-autostart="String(plainTripManagedRuntimeWillAutostart)"
+                @click="runPlainTripExecution"
+              >
                 {{ plainTripExecutionButtonLabel }}
               </button>
               <button v-if="plainTripNav2NeedsLifecycleRestore" ref="plainTripNav2RestoreButton" type="button" class="secondary compact-stop" :disabled="!canRestorePlainNav2Lifecycle" data-testid="plain-trip-nav2-restore" @click="restorePlainNav2Lifecycle">
@@ -14350,6 +14455,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
+            <p class="panel-note" data-testid="plain-trip-main-action-summary">{{ plainTripMainActionSummary }}</p>
             <p v-if="plainTripNav2LifecycleStatus" class="panel-note" data-testid="plain-trip-nav2-restore-status">{{ plainTripNav2LifecycleStatus }}</p>
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
             <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
