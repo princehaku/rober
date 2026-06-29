@@ -9077,6 +9077,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.first_frame_probe_open_ok).toBe("true");
       expect(summary.readback_summary.camera.first_frame_probe_read_ok).toBe("true");
       expect(summary.readback_summary.camera.first_frame_probe_visible_content_proven).toBe("true");
+      expect(summary.readback_summary.camera.preview_plain_hint).toBe("相机源首帧已读到；本页共享实时预览还没显示缓存帧。");
+      expect(summary.readback_summary.camera.preview_visible_plain).toBe("当前没有实时画面；相机源首帧已读到；本页共享实时预览还没显示缓存帧。");
+      expect(summary.readback_summary.camera.camera_wysiwyg_status_plain).toBe("画面未可见：相机源首帧已读到；本页共享实时预览还没显示缓存帧。");
+      expect(summary.readback_summary.camera.plain_hint).toContain("画面未显示：相机源首帧已读到；本页共享实时预览还没显示缓存帧");
+      expect(summary.current_fact_plain).toContain("画面未显示：相机源首帧已读到；本页共享实时预览还没显示缓存帧");
       expect(summary.action_status_cards?.find((card) => card.id === "camera_preview")).toMatchObject({
         blocks_mapping_start: false,
         evidence: {
@@ -13674,6 +13679,73 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
       expect(statusBody.source_readiness).toBe("source_selected_not_probed");
       expect(statusBody.source_failure_reason).toBe("none");
+      expect(statusBody.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBe(1);
+      expect(mjpegRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation camera MJPEG status translates open shared preview action after source first-frame is observed", async () => {
+    // 源首帧 ready 但页面尚未打开预览时，status 只读接口也要给中文下一步，且不能主动打开 MJPEG 上游。
+    let healthRequestCount = 0;
+    let mjpegRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "ready",
+          source_readiness: "first_frame_observed",
+          source_failure_reason: "none",
+          source_usage: { status: "not_in_use", owner_count: 0, owners: [] },
+          source_diagnosis: {
+            status: "first_frame_observed",
+            plain_hint: "USB Composite Device: DV20 USB 已读到真实首帧，可继续看实时预览。",
+            next_action: "open_shared_preview",
+            not_exclusive: true,
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.source_diagnosis_status).toBe("first_frame_observed");
+      expect(statusBody.source_diagnosis_next_action).toBe("open_shared_preview");
+      expect(statusBody.source_diagnosis_next_action_plain).toBe("打开共享实时预览；页面会复用同一条上游流。");
+      expect(statusBody.source_readiness).toBe("first_frame_observed");
+      expect(statusBody.preview_status).toBe("idle_not_started");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);

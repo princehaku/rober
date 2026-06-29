@@ -2460,6 +2460,9 @@ function cameraMjpegActionPlainText(action: string): string {
   if (value === "continue_monitoring_shared_preview") {
     return "继续监看共享实时画面。";
   }
+  if (value === "open_shared_preview") {
+    return "打开共享实时预览；页面会复用同一条上游流。";
+  }
   if (value === "auto_join_shared_mjpeg_preview") {
     return "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。";
   }

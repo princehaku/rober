@@ -4412,3 +4412,10 @@ free-roam runtime snapshot 只有在同轮 `/api/radar/status` 未明确停止�
 旧 snapshot 中的 `lidar_age_s/lidar_min_distance_m` 会被视为停止前遗留读数，`mapping_start_ready=false` 且
 `mapping_start_missing_reasons=["lidar_fresh"]`。这样普通首屏不会再一边显示“雷达未运行 / 地图雷达点未贴当前图”，一边显示
 “建图启动已就绪”。自由移动仍只看现场安全确认和停止兜底；本改动不调用 radar start、map start、free-roam start 或任何运动接口。
+
+2026-06-30 11:50 CST 起，Robot Control summary 的相机白话文案继续拆分“源首帧”和“本页画面”：
+当 health/probe 已证明 `source_readiness=first_frame_observed`，但共享 MJPEG relay 还没有当前页面缓存帧时，
+`preview_plain_hint`、`preview_visible_plain`、`camera_wysiwyg_status_plain` 和首屏 `current_fact_plain`
+会写成“相机源首帧已读到；本页共享实时预览还没显示缓存帧”。这保持 WYSIWYG：页面没画面仍是没画面，
+但不会误导用户以为摄像头源没有首帧。独立 MJPEG status 同步把 `open_shared_preview` 翻译为中文下一步；
+该变更不打开 MJPEG stream、不创建额外 camera reader、不发送任何控制命令。

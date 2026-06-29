@@ -916,3 +916,8 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 时，即使旧 snapshot 仍带 `lidar_age_s/lidar_min_distance_m`，`free_roam_mapping_start_ready` 也会降为 `false`，
 缺口回到 `lidar_fresh`，地图雷达点卡继续显示未贴当前图。雷达 lifecycle 仍在 running 时，runtime `/scan`
 新鲜快照仍可覆盖过期 proof artifact。该变化只修正只读 readiness，不启动雷达、不启动建图、不发送任何运动命令。
+
+2026-06-30 11:50 CST 起，相机 summary 在“相机源首帧已读到，但本页共享预览还没缓存帧”时会直接写明：
+`相机源首帧已读到；本页共享实时预览还没显示缓存帧`。`camera_current_frame_visible=false` 仍表示当前页面没有实时画面，
+但不会再让普通用户误以为相机源没有首帧。独立 `GET /api/robot-control/camera/mjpeg/status` 也会把
+`open_shared_preview` 翻译成中文下一步。该变化只修正只读文案和测试合同，不打开 MJPEG 上游、不创建独占采集、不发送运动命令。
