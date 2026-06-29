@@ -13368,6 +13368,12 @@ onBeforeUnmount(() => {
           :data-testid="`plain-action-status-card-${card.id}`"
           :data-state="card.status"
           :data-wysiwyg="card.wysiwyg_status"
+          :data-current-on-map="card.evidence?.current_on_map === undefined ? undefined : String(card.evidence.current_on_map)"
+          :data-current-point-count="card.evidence?.current_point_count === undefined ? undefined : String(card.evidence.current_point_count)"
+          :data-source-point-count="card.evidence?.source_point_count === undefined ? undefined : String(card.evidence.source_point_count)"
+          :data-frame-id="card.evidence?.frame_id"
+          :data-source-frame-id="card.evidence?.source_frame_id"
+          :data-blocked-reasons="card.evidence?.blocked_reasons?.join(',')"
         >
           <div class="plain-action-card-head">
             <strong>{{ plainActionCardUserText(card.title) }}</strong>

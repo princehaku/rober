@@ -1965,6 +1965,8 @@ function radarSummaryFromReadbacks(
     radar_overlay_source_frame_id: overlaySourceFrameId,
     radar_overlay_wysiwyg_status_plain: map.radar_overlay_wysiwyg_status_plain,
     radar_overlay_wysiwyg_next_action_plain: map.radar_overlay_wysiwyg_next_action_plain,
+    radar_overlay_blocked_reasons: map.radar_overlay_blocked_reasons,
+    radar_overlay_blocked_reason_labels: map.radar_overlay_blocked_reason_labels,
     // map_marker_* 是给外部脚本的直观别名，值必须始终等于当前地图 overlay 读数。
     map_marker_point_count: overlayPointCount,
     map_marker_source_point_count: overlaySourcePointCount,
@@ -6008,6 +6010,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         radar_overlay_source_frame_id: "not_loaded",
         radar_overlay_wysiwyg_status_plain: "地图雷达点未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。",
         radar_overlay_wysiwyg_next_action_plain: "确认小车地址可访问后刷新地图画面。",
+        radar_overlay_blocked_reasons: "not_loaded",
+        radar_overlay_blocked_reason_labels: "not_loaded",
         map_marker_point_count: "0",
         map_marker_source_point_count: "0",
         map_marker_frame_id: "not_loaded",
@@ -7193,6 +7197,24 @@ function actionCardText(value: string | undefined, fallback: string): string {
   return plainFactPart(value, fallback) || fallback;
 }
 
+function actionCardNumber(value: string | undefined): number {
+  // 结构化卡片要给脚本稳定数字；not_loaded/空值一律 fail closed 成 0。
+  const parsed = Number(value ?? "");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function actionCardReasonList(value: string | undefined): string[] {
+  // 后端 readback 用逗号字符串兼容旧接口；新卡片里拆回数组，便于验收脚本逐项判断。
+  const compact = (value ?? "").trim();
+  if (!compact || compact === "none" || compact === "not_loaded") {
+    return [];
+  }
+  return compact
+    .split(",")
+    .map((item) => item.trim().replace(/map_radar_overlay|radar_overlay/g, "map_radar_points"))
+    .filter(Boolean);
+}
+
 function mapWysiwygVisibleFromPlain(statusPlain: string): boolean {
   // 地图目标只验收地图画面本身；图上路线、车位和雷达点有独立目标项，不能把它们的缺口反算成地图不可见。
   const plain = plainFactPart(statusPlain).trim();
@@ -7214,6 +7236,8 @@ function buildActionStatusCards(
     : actionCardText(readback.map.map_wysiwyg_next_action_plain, "刷新地图画面");
   const radarPointCount = Number(readback.radar.map_marker_point_count || readback.radar.radar_overlay_point_count || "0");
   const radarCurrent = Number.isFinite(radarPointCount) && radarPointCount > 0 && ["loaded", "partial"].includes(readback.radar.radar_overlay_status);
+  const radarCurrentPointCount = actionCardNumber(readback.radar.map_marker_point_count || readback.radar.radar_overlay_point_count);
+  const radarSourcePointCount = actionCardNumber(readback.radar.map_marker_source_point_count || readback.radar.radar_overlay_source_point_count);
   const radarSummaryPlain = radarCurrent
     ? readback.radar.radar_overlay_wysiwyg_status_plain
     : readback.radar.plain_hint || readback.radar.radar_status_plain;
@@ -7263,6 +7287,14 @@ function buildActionStatusCards(
       sends_motion_when_clicked: false,
       blocks_free_motion: false,
       blocks_mapping_start: !radarCurrent,
+      evidence: {
+        current_on_map: radarCurrent,
+        current_point_count: radarCurrent ? radarCurrentPointCount : 0,
+        source_point_count: radarSourcePointCount,
+        frame_id: radarCurrent ? readback.radar.map_marker_frame_id || readback.radar.radar_overlay_frame_id || "not_loaded" : "not_loaded",
+        source_frame_id: readback.radar.map_marker_source_frame_id || readback.radar.radar_overlay_source_frame_id || "not_loaded",
+        blocked_reasons: actionCardReasonList(readback.radar.radar_overlay_blocked_reasons),
+      },
     },
     {
       id: "nav2_route",

@@ -5056,6 +5056,14 @@ describe("App", () => {
     radarCard.status = "not_current";
     radarCard.status_label = "未贴当前图";
     radarCard.wysiwyg_status = "old_or_missing_points_not_drawn";
+    radarCard.evidence = {
+      current_on_map: false,
+      current_point_count: 0,
+      source_point_count: 81,
+      frame_id: "not_loaded",
+      source_frame_id: "laser_frame",
+      blocked_reasons: ["runtime_scan_stale_for_map_radar_points"],
+    };
     summaryFixture.readback_summary.map.radar_overlay_point_count = "0";
     summaryFixture.readback_summary.radar.map_marker_point_count = "0";
     const mockedFetch = stubWorkstationFetch({
@@ -5072,6 +5080,13 @@ describe("App", () => {
     expect(sensorShortcut.text()).toContain("补画面/雷达");
     expect(sensorShortcut.text()).toContain("还差：雷达点；先处理当前所见。");
     expect(sensorShortcut.text()).not.toContain("还差：画面");
+    const radarActionCard = wrapper.find('[data-testid="plain-action-status-card-radar_map_points"]');
+    expect(radarActionCard.attributes("data-current-on-map")).toBe("false");
+    expect(radarActionCard.attributes("data-current-point-count")).toBe("0");
+    expect(radarActionCard.attributes("data-source-point-count")).toBe("81");
+    expect(radarActionCard.attributes("data-frame-id")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-source-frame-id")).toBe("laser_frame");
+    expect(radarActionCard.attributes("data-blocked-reasons")).toBe("runtime_scan_stale_for_map_radar_points");
     const callsBeforeSensorGuide = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-intent-shortcut-go-sensors"]').trigger("click");
     await wrapper.vm.$nextTick();

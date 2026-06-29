@@ -2418,6 +2418,14 @@ export interface RobotControlActionStatusCard {
   sends_motion_when_clicked: boolean;
   blocks_free_motion: boolean;
   blocks_mapping_start: boolean;
+  evidence?: {
+    current_on_map?: boolean;
+    current_point_count?: number;
+    source_point_count?: number;
+    frame_id?: string;
+    source_frame_id?: string;
+    blocked_reasons?: string[];
+  };
 }
 
 export type RobotControlGoalChecklistItemId =
@@ -2687,6 +2695,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       radar_overlay_source_frame_id: string;
       radar_overlay_wysiwyg_status_plain: string;
       radar_overlay_wysiwyg_next_action_plain: string;
+      radar_overlay_blocked_reasons: string;
+      radar_overlay_blocked_reason_labels: string;
       map_marker_point_count: string;
       map_marker_source_point_count: string;
       map_marker_frame_id: string;

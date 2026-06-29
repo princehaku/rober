@@ -4035,6 +4035,16 @@ describe("workstation fail-closed API contracts", () => {
         status_label: "已显示",
         next_action_plain: "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。",
       });
+      const radarActionCard = actionCards.find((card) => card.id === "radar_map_points");
+      expect(radarActionCard).toMatchObject({
+        status: "not_current",
+        wysiwyg_status: "old_or_missing_points_not_drawn",
+        evidence: {
+          current_on_map: false,
+          current_point_count: 0,
+        },
+      });
+      expect(Array.isArray(radarActionCard?.evidence?.blocked_reasons)).toBe(true);
       expect(actionCards.find((card) => card.id === "keyboard_control")).toMatchObject({
         status_label: "可启用",
         requires_safety_confirmation: true,

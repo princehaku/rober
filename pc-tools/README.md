@@ -849,3 +849,10 @@ readback 运动字段提升到顶层。现场若上次 PWM action 成功但轮�
 在 640x480 大帧无首帧时，PC 普通首屏会尽快尝试更容易出图的小帧模式；多人仍共用同一个上游 capture。
 8088 自己短暂持有 shared capture 且没有其他 owner 时，health 仍保持“不是页面独占”的归因。该变化只调整相机取帧尝试顺序
 和只读诊断，不新建底盘控制、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 23:59 CST 起，`action_status_cards[].id=radar_map_points` 增加 `evidence` 结构化证据：
+`current_on_map`、`current_point_count`、`source_point_count`、`frame_id`、`source_frame_id` 和
+`blocked_reasons[]`。普通首屏仍只显示“地图雷达点”，不会把 `marker/overlay` 工程词放回用户界面；DOM 上同步暴露
+`data-current-on-map`、`data-current-point-count` 等只读属性，方便现场脚本验证“地图上实际画了几个当前雷达点”和
+“旧来源点是否只作诊断”。该变化只补只读 summary/UI 证据，不启动雷达、不刷新地图、不执行 Nav2、不调用
+manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
