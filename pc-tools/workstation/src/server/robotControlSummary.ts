@@ -7458,6 +7458,8 @@ export async function buildRobotControlSummary(
     map_summary: readbackSummary.map,
     radar_summary: readbackSummary.radar,
     nav2_summary: nav2Summary,
+    keyboard_summary: readbackSummary.keyboard,
+    free_roam_summary: readbackSummary.free_roam,
     readback_summary: readbackSummary,
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),

@@ -677,6 +677,11 @@ delivery、stop 或 `/cmd_vel`。
 只读摘要别名，不启动相机、不启动雷达、不刷新地图、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或
 `/cmd_vel`。
 
+2026-06-29 17:16 CST 起，`GET /api/robot-control/summary` 顶层新增 `keyboard_summary` 和
+`free_roam_summary`，内容分别与 `readback_summary.keyboard/free_roam` 完全一致。普通脚本、外部面板和现场排查可以
+直接读到“键盘连续手控是否只差安全确认”和“自由移动是否可先启动、建图是否还差相机/雷达”。该字段只是同一份只读摘要别名，
+不替用户勾选安全确认、不启用键盘、不启动自由移动、不发送 manual、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 10:45 CST 起，普通首屏实时画面卡片新增“打开共享预览”直链。该链接指向 PC Node 的
 `/api/robot-control/camera/mjpeg?baseUrl=...` 只读 relay，任何浏览器打开都会复用同一条上游 MJPEG 流；
 页面同时显示“任何页面打开这个只读地址都会接入同一条上游流”和当前观看页面数。该入口只做 GET 预览，

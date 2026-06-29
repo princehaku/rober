@@ -2515,6 +2515,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   map_summary?: RobotControlSummaryResponse["readback_summary"]["map"];
   radar_summary?: RobotControlSummaryResponse["readback_summary"]["radar"];
   nav2_summary?: RobotControlSummaryResponse["readback_summary"]["nav2"];
+  keyboard_summary?: RobotControlSummaryResponse["readback_summary"]["keyboard"];
+  free_roam_summary?: RobotControlSummaryResponse["readback_summary"]["free_roam"];
   readback_summary: {
     camera: {
       status: string;
