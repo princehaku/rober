@@ -4192,3 +4192,9 @@ camera health 并发读取时旧窗口容易超时，进而让当前 wheel L/R�
 只有相机首帧、雷达新鲜等建图启动条件满足后，才把它标记为可在安全确认后启动。自由移动和键盘连续手控仍保持
 “勾安全确认即可处理”的独立入口，相机/雷达缺口只影响建图。该变化只修正只读 summary 语义，不启动建图、
 不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 13:09 CST 起，目标总览的第一句话不再被第一个未完成项固定抢占。如果有 `ready_action_items[]`
+或 `needs_safety_confirm` 项，`summary_plain` 会先写“现场可先收口 N 项：...”再写“先补条件：...”。这样在画面或
+雷达仍未 ready 时，operator 仍能一眼看到完整 Nav2 重跑、键盘连续手控、自由移动这些可在安全确认后推进的入口。
+该变化只修正只读 summary 文案，不自动勾选安全确认、不执行 Nav2、不启用 keyboard/free-roam、不启动建图、
+delivery、stop 或 `/cmd_vel`。

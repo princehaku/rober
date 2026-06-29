@@ -757,3 +757,8 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 `sends_motion_when_clicked=false`；只有画面首帧和雷达新鲜都 ready、建图启动可点时才会把它标成会进入运动/建图流程。
 这不会影响“自由移动”和“键盘手控”卡片，它们仍只依赖现场安全确认和停止兜底。该变化只修正只读 summary
 和测试夹具，不启动建图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 13:09 CST 起，`goal_checklist_summary.summary_plain` 会先列出现场已经可收口的项目，再提示还要补的条件。
+例如 Nav2 重跑、键盘连续手控和自由移动都只差安全确认时，总览会写“现场可先收口 3 项”，而不是只写“先处理画面”。
+相机、雷达和建图缺口仍保留在 `blocked_action_items[]`，但不会遮住已经可执行的移动入口。该变化只修正只读
+summary 文案，不自动勾选安全确认、不执行 Nav2、不启用 keyboard/free-roam、不启动建图、delivery、stop 或 `/cmd_vel`。
