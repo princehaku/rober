@@ -8,6 +8,22 @@
 
 ## 2026-06-29 系列
 
+### 2026-06-29 23-24｜live_camera_nav2_free_roam_triage｜真实相机/Nav2/自由移动现场收口
+
+本轮 `sprints/2026.06.29_23-24_live_camera_nav2_free_roam_triage/` 对 CEO 现场反馈做真实上位机只读排查和非发车恢复：
+PC 7001 summary 与上车 8088/8787 均显示摄像头不是页面独占，`/dev/video1` DV20 USB 当前没人占用，但 MJPG/YUYV 多格式
+首帧读取均失败，V4L2 直读写出 0 字节文件，内核日志存在 UVC reset/URB/freq 异常；结论是 UVC 源头没有输出视频帧，
+下一步查 USB、摄像头输入、供电或换 known-good UVC。自由移动 readback 显示 `motion_start_ready=true`、
+`motion_without_radar_allowed=true`，雷达/相机只影响建图启动和验收，不阻止先低速移动。Nav2 路线已 ready，上次
+action 成功但执行窗口 wheel L/R=0/0；本轮只调用 `/api/nav2/start` 恢复 lifecycle，返回明确未发送 `/cmd_vel`、
+NavigateToPose、manual 或 WAVE ROVER T 指令，随后 PC summary 显示 `current_blocker_reasons=none`，下一步是现场安全确认后用
+ROS 模式重跑图上路线并复验同窗口轮速 L/R 非零。
+
+验证范围：SSH 到真实上位机 `root@192.168.1.11 -p 37878`；只读 `8787 /api/status`、`8088 /api/camera/health`、
+`8787 /api/nav2/status`、`8787 /api/free-roam/autonomy/latest`、PC `7001 /api/robot-control/summary`；
+V4L2 直读 `/dev/video1`；非运动调用 `POST /api/nav2/start`。本轮没有发送 Nav2 goal、manual、keyboard、free-roam start、
+delivery、stop 或 `/cmd_vel`。
+
 ### 2026-06-29 23-14｜pc_keyboard_wheel_acceptance_plain｜O3/O5 键盘轮速验收口径前置
 
 本轮 `sprints/2026.06.29_23-14_pc_keyboard_wheel_acceptance_plain/` 推进 PC 键盘连续控制的普通用户验收口径：

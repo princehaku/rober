@@ -4385,3 +4385,8 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `wheel_feedback_acceptance_plain`。普通首屏会明确说明：键盘手控验收只看同一次按住窗口的 manual pulse 回包，
 必须读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。该变化只补 PC summary/UI 文案和测试合同，
 不启用键盘、不发送 manual、stop、Nav2、free-roam、delivery 或 `/cmd_vel`。
+
+2026-06-29 23:24 CST 现场只读排查确认：PC 共享预览不是页面独占，`/dev/video1` DV20 USB 当前没人占用，
+但 8088 health、PC 7001 summary、MJPG/YUYV 首帧尝试和 V4L2 直读都显示没有真实视频帧；下一步是查 USB、摄像头输入、
+供电或换 known-good UVC。自由移动 readback 同时显示可先启动低速移动，相机/雷达只影响建图启动和验收。Nav2 已通过
+非发车 `/api/nav2/start` 恢复到路线可重跑状态；未发送 goal、manual、free-roam start、stop 或 `/cmd_vel`。
