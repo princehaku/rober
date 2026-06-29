@@ -4026,3 +4026,11 @@ Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`�
 enabled=false、按住才移动、失焦/松开/切页会停、脉冲节奏和最小门禁白话。这样普通脚本或外部面板只读
 `readback_summary` 也能理解 PC 键盘连续控制，不会误以为“启用键盘”本身会发车。该变化只补 summary readback，
 不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
+
+2026-06-29 09:07 CST 起，Robot Control summary 的 Nav2 readback 和顶层 `current_fact_plain` 对齐
+managed execute 口径：当图上路线已经 ready，但 `/api/nav2/status` 仍显示 lifecycle stopped 或
+`nav2_lifecycle_not_running` 时，`readback_summary.nav2.next_action_plain`、
+`route_execution_precheck_plain` 和普通当前事实会明确提示“执行时会自动启动自动驾驶 runtime，并复验轮速
+L/R”。这样普通用户不再把 runtime stopped 误解成必须先跑额外预检；真正发车仍只允许在勾选现场安全确认后显式执行图上路线。
+该变化只修正只读 summary/UI 文案，不调用 Nav2 goal、不启动 runtime、不发送 manual、keyboard、free-roam、delivery、stop 或
+`/cmd_vel`。

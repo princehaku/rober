@@ -8533,6 +8533,9 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.readback_summary.nav2.current_blocker_reasons).toBe("nav2_lifecycle_not_running");
       expect(summary.readback_summary.nav2.current_blocker_labels).toBe("自动驾驶 lifecycle 未运行");
+      expect(summary.readback_summary.nav2.next_action_plain).toBe("勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口确认轮速 L/R 非零。");
+      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用当前模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
+      expect(summary.current_fact_plain).toContain("自动驾驶：图上路线已准备，但本轮完整执行和轮速 L/R 还未证明。下一步：勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);

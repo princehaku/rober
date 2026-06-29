@@ -4697,6 +4697,8 @@ function nav2SummaryFromReadbacks(
   const goalExecutionStatus = summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded");
   const nav2StatusPayload = nav2Status?.payload ?? null;
   const lifecycleManager = asRecord(nav2StatusPayload?.lifecycle_manager);
+  const nav2StackRunning = summaryValueText(nav2StatusPayload, ["lifecycle_running"], summaryValueText(lifecycleManager, ["running"]));
+  const nav2StackLifecycleState = summaryValueText(nav2StatusPayload, ["lifecycle_state"], summaryValueText(lifecycleManager, ["state"]));
   const statusBlockerReasons = nav2ProofBlockerReasons(nav2StatusPayload);
   const goalExecutionProven = nav2GoalExecutionProvenText(goalResultPayload);
   const goalExecutionResultStatus = summaryValueText(goalResultPayload, ["result_status"]);
@@ -4749,6 +4751,11 @@ function nav2SummaryFromReadbacks(
   ].filter(Boolean);
   const effectiveCurrentBlockerReasons = [...new Set([...currentBlockerReasons, ...statusBlockerReasons, ...syntheticBlockerReasons])];
   const effectiveCurrentBlockerLabels = nav2ProofBlockerLabels(effectiveCurrentBlockerReasons);
+  const managedRuntimeAutoStartReady = (
+    effectiveCurrentBlockerReasons.includes("nav2_lifecycle_not_running")
+    || nav2StackRunning === "false"
+    || ["stopped", "inactive", "unconfigured"].includes(nav2StackLifecycleState)
+  );
   const latestLeft = summaryValueText(latestNonzeroPair ?? latestPair, ["left_speed"]);
   const latestRight = summaryValueText(latestNonzeroPair ?? latestPair, ["right_speed"]);
   const imuDeltaObserved = summaryValueText(baseFeedbackSummary, ["imu_attitude_delta_observed"]);
@@ -4765,6 +4772,7 @@ function nav2SummaryFromReadbacks(
     nextBaseMode,
     proof,
     effectiveCurrentBlockerLabels,
+    managedRuntimeAutoStartReady,
   });
   const routeExecutionPlain = nav2RouteExecutionPlainSummary({
     goalSucceeded,
@@ -4775,6 +4783,7 @@ function nav2SummaryFromReadbacks(
     nextBaseMode,
     proof,
     effectiveCurrentBlockerLabels,
+    managedRuntimeAutoStartReady,
   });
   const wheelRawPlain = nav2WheelRawLrPlainSummary({
     goalSucceeded,
@@ -4785,13 +4794,15 @@ function nav2SummaryFromReadbacks(
     baseCommandNonzeroCount,
     imuDeltaObserved,
     nextBaseMode,
+    managedRuntimeAutoStartReady,
+    pathReady: readbackPathReady(proof),
   });
   return {
     status: summaryStatus,
     plain_hint: nav2PlainHint(readbackPlain.execution_status_plain, readbackPlain.next_action_plain),
     nav2_status: nav2Status?.status ?? "not_loaded",
-    nav2_stack_running: summaryValueText(nav2StatusPayload, ["lifecycle_running"], summaryValueText(lifecycleManager, ["running"])),
-    nav2_stack_lifecycle_state: summaryValueText(nav2StatusPayload, ["lifecycle_state"], summaryValueText(lifecycleManager, ["state"])),
+    nav2_stack_running: nav2StackRunning,
+    nav2_stack_lifecycle_state: nav2StackLifecycleState,
     current_blocker_reasons: effectiveCurrentBlockerReasons.join(",") || "none",
     current_blocker_labels: effectiveCurrentBlockerLabels.join("、") || "not_loaded",
     planner_server_active: proofText(readbacks, ["planner_server_active", "planner_active", "latest_planner_active"]) ?? booleanSummaryValue(proof.planner_server_active),
@@ -4878,6 +4889,19 @@ function nav2PlainUserFacingText(text: string): string {
     .replace(/未 active/g, "未运行");
 }
 
+function readbackPathReady(proof: RobotApiProofSummary): boolean {
+  // 路线是否可执行必须以同一轮 map/path preview 事实为准，避免只看 service 状态误挡 managed execute。
+  return proof.path_generated === true
+    || proof.path_generation_succeeded === true
+    || (proof.path_point_count ?? 0) > 0
+    || proof.path_preview_point_count > 0;
+}
+
+function nav2ManagedRuntimeAutoStartText(enabled: boolean, pathReady: boolean): string {
+  // Nav2 goal execute 已托管启动 runtime；在路线 ready 时要把这个事实前置给普通用户。
+  return enabled && pathReady ? "；执行时会自动启动自动驾驶 runtime" : "";
+}
+
 function nav2RouteExecutionPlainSummary(args: {
   goalSucceeded: boolean;
   goalExecutionProven: string;
@@ -4887,16 +4911,16 @@ function nav2RouteExecutionPlainSummary(args: {
   nextBaseMode: string;
   proof: RobotApiProofSummary;
   effectiveCurrentBlockerLabels: string[];
+  managedRuntimeAutoStartReady: boolean;
 }): { readinessPlain: string; precheckPlain: string } {
   // 这两个字段只回答普通操作员最关心的两件事：能不能按图执行、发车前还要勾什么。
-  const pathReady = args.proof.path_generated === true
-    || args.proof.path_generation_succeeded === true
-    || (args.proof.path_point_count ?? 0) > 0
-    || args.proof.path_preview_point_count > 0;
+  const pathReady = readbackPathReady(args.proof);
+  const runtimeAutoStartText = nav2ManagedRuntimeAutoStartText(args.managedRuntimeAutoStartReady, pathReady);
   const modeText = ["", "not_loaded"].includes(args.nextBaseMode)
     ? "当前模式"
     : `${args.nextBaseMode.toUpperCase()} 模式`;
-  const minimalPrecheck = `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ${modeText}跑图上路线。`;
+  const modeActionText = modeText === "当前模式" ? modeText : ` ${modeText}`;
+  const minimalPrecheck = `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用${modeActionText}跑图上路线${runtimeAutoStartText}。`;
   if (args.goalExecutionProven === "true" || args.wheelFeedbackProven === "true") {
     return {
       readinessPlain: "完整路线执行已证明；同窗口轮速 L/R 已非零。",
@@ -4937,12 +4961,11 @@ function nav2ReadbackPlainSummary(args: {
   nextBaseMode: string;
   proof: RobotApiProofSummary;
   effectiveCurrentBlockerLabels: string[];
+  managedRuntimeAutoStartReady: boolean;
 }): { execution_status_plain: string; next_action_plain: string } {
   // Nav2 readback 是脚本最常读的区块；这里给普通白话，避免外部再拼 wheel/raw/mode token。
-  const pathReady = args.proof.path_generated === true
-    || args.proof.path_generation_succeeded === true
-    || (args.proof.path_point_count ?? 0) > 0
-    || args.proof.path_preview_point_count > 0;
+  const pathReady = readbackPathReady(args.proof);
+  const runtimeAutoStartText = nav2ManagedRuntimeAutoStartText(args.managedRuntimeAutoStartReady, pathReady);
   const nextMode = ["", "not_loaded"].includes(args.nextBaseMode)
     ? "当前模式"
     : nav2GoalNextActionPlainText(args.nextBaseMode.toUpperCase());
@@ -4963,13 +4986,13 @@ function nav2ReadbackPlainSummary(args: {
   if (args.goalSucceeded && args.wheelFeedbackProven === "false") {
     return {
       execution_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${args.latestLeft}/${args.latestRight} 未非零；${motionMaterial}`,
-      next_action_plain: `勾选行程前安全确认后用 ${nextMode}重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
+      next_action_plain: `勾选行程前安全确认后用 ${nextMode}重跑图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
     };
   }
   if (pathReady) {
     return {
       execution_status_plain: "图上路线已准备，但本轮完整执行和轮速 L/R 还未证明。",
-      next_action_plain: "勾选行程前安全确认后执行图上路线，并在同窗口确认轮速 L/R 非零。",
+      next_action_plain: `勾选行程前安全确认后执行图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
     };
   }
   const blockers = args.effectiveCurrentBlockerLabels.length > 0 && args.effectiveCurrentBlockerLabels.join("、") !== "not_loaded"
@@ -4990,6 +5013,8 @@ function nav2WheelRawLrPlainSummary(args: {
   baseCommandNonzeroCount: string;
   imuDeltaObserved: string;
   nextBaseMode: string;
+  managedRuntimeAutoStartReady?: boolean;
+  pathReady?: boolean;
 }): { statusPlain: string; nextActionPlain: string } {
   // 字段名沿用旧接口，普通文案只讲“轮速 L/R”，避免把 raw 术语带回首屏。
   if (args.wheelFeedbackProven === "true") {
@@ -5006,9 +5031,10 @@ function nav2WheelRawLrPlainSummary(args: {
     const modeText = args.nextBaseMode && !["not_loaded", ""].includes(args.nextBaseMode)
       ? `${args.nextBaseMode.toUpperCase()} 模式`
       : "当前配置模式";
+    const runtimeAutoStartText = nav2ManagedRuntimeAutoStartText(args.managedRuntimeAutoStartReady === true, args.pathReady === true);
     return {
       statusPlain: `上次路线结果成功，但执行窗口轮速 L/R=${args.latestLeft}/${args.latestRight} 未非零；${commandText}${imuText}。`,
-      nextActionPlain: `勾选行程前安全确认后用 ${modeText}重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
+      nextActionPlain: `勾选行程前安全确认后用 ${modeText}重跑图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
     };
   }
   return {
@@ -6490,7 +6516,7 @@ function summaryCurrentFactPlain(
     readback.map.map_wysiwyg_status_plain,
     readback.radar.plain_hint || readback.radar.radar_overlay_wysiwyg_status_plain,
   );
-  const nav2 = plainFactPart(readback.nav2.execution_status_plain || readback.nav2.route_execution_readiness_plain);
+  const nav2 = plainFactPart(readback.nav2.plain_hint || readback.nav2.execution_status_plain || readback.nav2.route_execution_readiness_plain);
   const keyboard = plainFactPart(readback.keyboard.hold_to_move_plain || readback.keyboard.readiness_plain);
   const freeMove = plainFactPart(readback.free_roam.motion_readiness_plain);
   const mappingStart = plainFactPart(readback.free_roam.mapping_start_readiness_plain);

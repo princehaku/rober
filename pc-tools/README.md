@@ -599,3 +599,10 @@ stop 或 `/cmd_vel`。
 
 该变化只修正 PC 只读文案，不触发 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或
 `/cmd_vel`。
+
+2026-06-29 09:07 CST 起，Robot Control summary 的 Nav2 readback 会在“图上路线 ready 但
+Nav2 lifecycle 已停止/未运行”的场景里同步写明：勾选安全确认后执行图上路线时会自动启动自动驾驶
+runtime，并在同窗口复验轮速 L/R。`current_fact_plain` 也改为消费 Nav2 `plain_hint`，因此普通首屏和
+外部脚本不会只看到“lifecycle stopped / 轮速未证明”，而是同时看到下一步动作。该变化只补只读
+summary/首屏文案，不执行 Nav2 goal、不启动 runtime、不发送 manual、keyboard、free-roam、delivery、stop 或
+`/cmd_vel`。
