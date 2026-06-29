@@ -273,6 +273,8 @@ const plainMapPanel = ref<HTMLElement | null>(null);
 const plainMapPreviewButton = ref<HTMLButtonElement | null>(null);
 const plainMapRuntimeStartButton = ref<HTMLButtonElement | null>(null);
 const plainMapLargeView = ref(true);
+const plainMapFullscreenView = ref(false);
+const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
 const plainLocalizationResetButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
@@ -13856,14 +13858,19 @@ onBeforeUnmount(() => {
           <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
         </article>
 
-        <article ref="plainMapPanel" class="snapshot-panel plain-map-panel" tabindex="-1" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state" :data-size="plainMapLargeView ? 'large' : 'normal'">
+        <article ref="plainMapPanel" class="snapshot-panel plain-map-panel" tabindex="-1" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize" :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'">
           <div class="plain-map-heading">
             <h3>地图</h3>
-            <button type="button" class="secondary plain-map-size-toggle" data-testid="plain-map-size-toggle" :aria-pressed="plainMapLargeView ? 'true' : 'false'" @click="plainMapLargeView = !plainMapLargeView">
-              {{ plainMapLargeView ? "收起地图" : "放大地图" }}
-            </button>
+            <div class="plain-map-heading-actions">
+              <button type="button" class="secondary plain-map-size-toggle" data-testid="plain-map-size-toggle" :aria-pressed="plainMapLargeView ? 'true' : 'false'" @click="plainMapLargeView = !plainMapLargeView">
+                {{ plainMapLargeView ? "收起地图" : "放大地图" }}
+              </button>
+              <button type="button" class="secondary plain-map-fullscreen-toggle" data-testid="plain-map-fullscreen-toggle" :aria-pressed="plainMapFullscreenView ? 'true' : 'false'" @click="plainMapFullscreenView = !plainMapFullscreenView">
+                {{ plainMapFullscreenView ? "退出全屏" : "全屏地图" }}
+              </button>
+            </div>
           </div>
-          <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state" :data-size="plainMapLargeView ? 'large' : 'normal'">
+          <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize">
             <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
               <div class="plain-map-overlay-frame" :style="plainMapVisualSummary.frameStyle">
                 <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt">

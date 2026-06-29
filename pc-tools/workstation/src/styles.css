@@ -805,9 +805,38 @@ h3 {
   margin: 0;
 }
 
+.plain-map-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .plain-map-size-toggle {
   min-height: 34px;
   white-space: nowrap;
+}
+
+.plain-map-fullscreen-toggle {
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.plain-map-panel[data-fullscreen="true"] {
+  /* 全屏只放大只读画面和 marker，不改变任何控制按钮的安全门禁。 */
+  position: fixed;
+  inset: 14px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  background: #f8fafc;
+  box-shadow: 0 18px 48px rgb(31 43 55 / 26%);
+}
+
+.plain-map-panel[data-fullscreen="true"] .plain-map-viewport {
+  flex: 1;
+  min-height: 0;
 }
 
 .plain-map-panel[data-state="地图可见"] {
@@ -992,6 +1021,11 @@ h3 {
 .plain-map-viewport[data-size="large"] .plain-map-layer {
   height: clamp(420px, 68vh, 760px);
   min-height: 420px;
+}
+
+.plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
+  height: calc(100vh - 220px);
+  min-height: 520px;
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {
@@ -2530,6 +2564,24 @@ th {
   .plain-map-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .plain-map-heading-actions {
+    justify-content: stretch;
+  }
+
+  .plain-map-size-toggle,
+  .plain-map-fullscreen-toggle {
+    flex: 1 1 140px;
+  }
+
+  .plain-map-panel[data-fullscreen="true"] {
+    inset: 8px;
+  }
+
+  .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
+    height: calc(100vh - 260px);
+    min-height: 320px;
   }
 
   .plain-map-viewport[data-size="large"] .plain-map-layer,
