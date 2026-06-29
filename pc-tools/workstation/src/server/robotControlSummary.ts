@@ -5270,7 +5270,10 @@ function freeRoamSummaryFromReadbacks(
   const mappingStartReady = startReady && mappingStartMissing.length === 0;
   const mappingReady = startReady && mappingMissing.length === 0;
   const nextActionStatus = mappingReady ? "ready" : startReady ? "start_ready" : "locked";
-  const externalStopRequested = freeRoamRuntime?.state === "stopping" && /现场请求停止|external_stop/i.test(freeRoamRuntime.reason);
+  const externalStopRequested = Boolean(
+    freeRoamRuntime?.stop_required === true
+    || (freeRoamRuntime?.state === "stopping" && /现场请求停止|external_stop/i.test(freeRoamRuntime.reason)),
+  );
   const derivedStatus = mappingReady
     ? "mapping_ready"
     : motionReady
@@ -5280,6 +5283,7 @@ function freeRoamSummaryFromReadbacks(
         : readback?.status ?? "not_loaded";
   const motionReadinessPlain = freeRoamMotionReadinessPlain(startReady, motionReady, externalStopRequested, manualMotionFallbackActive);
   const mappingReadinessPlain = freeRoamMappingReadinessPlain(startReady, mappingReady, mappingMissing);
+  const mappingMissingText = mappingMissing.length ? mappingMissing.join(",") : "none";
   const nextActionPlain = freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime, manualMotionFallbackActive);
   return {
     status: derivedStatus,
@@ -5290,15 +5294,21 @@ function freeRoamSummaryFromReadbacks(
     artifact_only: latest ? booleanSummaryValue(latest.artifact_only !== false) : summaryValueText(payload, ["artifact_only"]) ?? "not_loaded",
     cmd_vel_publish_enabled: latest ? booleanSummaryValue(latest.cmd_vel_publish_enabled === true) : summaryValueText(payload, ["cmd_vel_publish_enabled"]) ?? "not_loaded",
     start_ready: booleanSummaryValue(startReady),
+    free_move_start_ready: booleanSummaryValue(startReady),
     motion_start_ready: booleanSummaryValue(motionStartReady),
     motion_ready: booleanSummaryValue(motionReady),
     mapping_start_ready: booleanSummaryValue(mappingStartReady),
     mapping_start_missing: mappingStartMissing.length ? mappingStartMissing.join(",") : "none",
+    mapping_readiness_ready: booleanSummaryValue(mappingReady),
+    mapping_blocked_reasons: mappingMissingText,
     mapping_ready: booleanSummaryValue(mappingReady),
-    mapping_missing: mappingMissing.length ? mappingMissing.join(",") : "none",
+    mapping_missing: mappingMissingText,
     plain_hint: freeRoamPlainHint(motionReadinessPlain, mappingReadinessPlain, nextActionPlain),
     next_action_plain: nextActionPlain,
     motion_readiness_plain: motionReadinessPlain,
+    free_move_start_status_plain: freeRoamStartStatusPlain(startReady, motionReady, externalStopRequested, manualMotionFallbackActive),
+    motion_runtime_status_plain: freeRoamMotionRuntimeStatusPlain(startReady, motionReady),
+    mapping_acceptance_status_plain: mappingReadinessPlain,
     mapping_start_readiness_plain: freeRoamMappingStartReadinessPlain(startReady, mappingStartReady, mappingStartMissing),
     mapping_readiness_plain: mappingReadinessPlain,
     motion_next_action_plain: freeRoamMotionNextAction(startReady, motionReady, externalStopRequested, manualMotionFallbackActive),
@@ -5692,15 +5702,21 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
         start_ready: "false",
+        free_move_start_ready: "false",
         motion_start_ready: "false",
         motion_ready: "false",
         mapping_start_ready: "false",
         mapping_start_missing: "not_loaded",
+        mapping_readiness_ready: "false",
+        mapping_blocked_reasons: "not_loaded",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
         plain_hint: "自由移动未就绪；先连接上车状态机并确认停止兜底。建图验收未就绪；还在等待上车状态机。下一步：先连接上车自由移动状态机，并确认停止兜底可用。",
         next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
         motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
+        free_move_start_status_plain: "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。",
+        motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未就绪。",
+        mapping_acceptance_status_plain: "建图验收未就绪；还在等待上车状态机。",
         mapping_start_readiness_plain: "建图启动未就绪；还在等待上车自由移动状态机。",
         mapping_readiness_plain: "建图验收未就绪；还在等待上车状态机。",
         motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
@@ -6053,6 +6069,33 @@ function freeRoamMotionReadinessPlain(startReady: boolean, motionReady: boolean,
     return "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。";
   }
   return "自由移动未就绪；先连接上车状态机并确认停止兜底。";
+}
+
+function freeRoamStartStatusPlain(startReady: boolean, motionReady: boolean, externalStopRequested: boolean, manualMotionFallbackActive = false): string {
+  // 和独立 latest endpoint 保持同一层语义：motion_ready=false 只说明未运行，不代表 start 被阻塞。
+  if (motionReady) {
+    return "自由移动已启动；继续保持现场可接管，必要时点击停止。";
+  }
+  if (startReady) {
+    return externalStopRequested
+      ? "自由移动可启动；当前有停止请求，点击开始会先清除停止请求。"
+      : "自由移动可启动；只需现场安全确认和停止兜底。";
+  }
+  if (manualMotionFallbackActive) {
+    return "上车自由移动状态机未加载；可先用键盘或低速手控移动。";
+  }
+  return "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。";
+}
+
+function freeRoamMotionRuntimeStatusPlain(startReady: boolean, motionReady: boolean): string {
+  // 运行态和启动门禁分开写，避免现场把未运行误判为不能启动。
+  if (motionReady) {
+    return "自由移动正在运行并发布低速运动；继续监看现场，必要时点击停止。";
+  }
+  if (startReady) {
+    return "当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。";
+  }
+  return "当前未在自由移动运行态；上车自由移动状态机还未就绪。";
 }
 
 function freeRoamMappingReadinessPlain(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {

@@ -4262,3 +4262,10 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `*_action_items[]` 派生，方便现场脚本直接读取“1/7、可先做哪些、还卡哪些”，不用遍历对象数组。fail-closed 响应返回
 `progress_plain=0/0` 和空 id 列表。该变化只增加只读摘要字段，不改变 ready/blocked 计算、不执行 Nav2、不调用
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 15:45 CST 起，summary 的 `readback_summary.free_roam` 补齐和独立
+`/api/robot-control/free-roam/autonomy/latest` 对齐的只读 alias：`free_move_start_ready`、
+`free_move_start_status_plain`、`motion_runtime_status_plain`、`mapping_readiness_ready`、
+`mapping_blocked_reasons`、`mapping_acceptance_status_plain`。这样现场脚本可以直接区分“自由移动可启动”和
+“当前还没开始发布运动”，不会把 `motion_ready=false` 误判为不能启动。该变化只增加只读 summary 字段，不启动
+free-roam、不发送 keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。

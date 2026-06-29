@@ -5970,12 +5970,18 @@ describe("workstation fail-closed API contracts", () => {
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
         start_ready: "false",
+        free_move_start_ready: "false",
         motion_start_ready: "true",
         motion_ready: "false",
         mapping_start_ready: "false",
         mapping_start_missing: "camera_first_frame,lidar_fresh",
+        mapping_readiness_ready: "false",
+        mapping_blocked_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+        free_move_start_status_plain: "上车自由移动状态机未加载；可先用键盘或低速手控移动。",
+        motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未就绪。",
+        mapping_acceptance_status_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。",
         plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
         next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
         motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
@@ -6079,12 +6085,18 @@ describe("workstation fail-closed API contracts", () => {
         artifact_only: "true",
         cmd_vel_publish_enabled: "false",
         start_ready: "true",
+        free_move_start_ready: "true",
         motion_start_ready: "true",
         motion_ready: "false",
         mapping_start_ready: "false",
         mapping_start_missing: "camera_first_frame,lidar_fresh",
+        mapping_readiness_ready: "false",
+        mapping_blocked_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+        free_move_start_status_plain: "自由移动可启动；只需现场安全确认和停止兜底。",
+        motion_runtime_status_plain: "当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。",
+        mapping_acceptance_status_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
         plain_hint: "可先自由移动；只需要现场安全确认和停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。",
         next_action_plain: "勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面",
         motion_readiness_plain: "可先自由移动；只需要现场安全确认和停止兜底。",
@@ -6728,7 +6740,13 @@ describe("workstation fail-closed API contracts", () => {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
       expect(summary.readback_summary.free_roam.motion_start_ready).toBe("true");
+      expect(summary.readback_summary.free_roam.free_move_start_ready).toBe("true");
       expect(summary.readback_summary.free_roam.motion_ready).toBe("false");
+      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
+      expect(summary.readback_summary.free_roam.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
+      expect(summary.readback_summary.free_roam.mapping_readiness_ready).toBe("false");
+      expect(summary.readback_summary.free_roam.mapping_blocked_reasons).toBe("lidar_fresh");
+      expect(summary.readback_summary.free_roam.mapping_acceptance_status_plain).toContain("不影响先低速自由移动");
       expect(summary.readback_summary.free_roam.mapping_ready).toBe("false");
       expect(summary.readback_summary.free_roam.mapping_missing).toBe("lidar_fresh");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
@@ -8042,6 +8060,9 @@ describe("workstation fail-closed API contracts", () => {
         blocked_reasons: ["fetch_timeout_50ms"],
       }));
       expect(summary.readback_summary.free_roam.motion_start_ready).toBe("true");
+      expect(summary.readback_summary.free_roam.free_move_start_ready).toBe("true");
+      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。");
+      expect(summary.readback_summary.free_roam.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
       expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(true);
       expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(false);
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([
