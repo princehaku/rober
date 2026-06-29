@@ -576,6 +576,34 @@ h3 {
   padding-top: 7px;
 }
 
+.plain-goal-action-groups {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.plain-goal-action-group {
+  display: grid;
+  gap: 7px;
+  border-top: 1px solid #edf1f5;
+  padding-top: 8px;
+}
+
+.plain-goal-action-group-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.7fr) auto minmax(260px, 1.5fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.plain-goal-action-group-empty {
+  padding: 2px 0 0;
+}
+
 .plain-goal-checklist-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.8fr) auto minmax(220px, 2fr);
@@ -600,6 +628,7 @@ h3 {
   .plain-safety-action-row,
   .plain-intent-shortcut-row,
   .plain-objective-overview-row,
+  .plain-goal-action-group-row,
   .plain-goal-checklist-row {
     grid-template-columns: 1fr auto;
   }
@@ -613,6 +642,7 @@ h3 {
   .plain-safety-action-row .muted,
   .plain-intent-shortcut-row .muted,
   .plain-objective-overview-row .muted,
+  .plain-goal-action-group-row .muted,
   .plain-goal-checklist-next-action .muted,
   .plain-goal-checklist-row .muted,
   .plain-goal-checklist-row small {

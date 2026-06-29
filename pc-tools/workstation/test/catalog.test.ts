@@ -4066,6 +4066,16 @@ describe("workstation fail-closed API contracts", () => {
         "free_move",
         "mapping_start",
       ]);
+      expect(summary.goal_checklist_summary?.ready_action_items.map((item) => item.id)).toEqual([
+        "keyboard_continuous_control",
+      ]);
+      expect(summary.goal_checklist_summary?.blocked_action_items.map((item) => item.id)).toEqual([
+        "camera_wysiwyg",
+        "radar_map_points_wysiwyg",
+        "nav2_route_execution",
+        "free_move",
+        "mapping_start",
+      ]);
       expect(summary.goal_checklist_summary?.next_action_items[1]).toMatchObject({
         id: "radar_map_points_wysiwyg",
         title: "雷达点贴到地图",

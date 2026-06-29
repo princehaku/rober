@@ -4120,3 +4120,8 @@ delivery、stop 或 `/cmd_vel`。
 行程/键盘/自由移动、画面/地图/雷达点、发车前确认、自由移动到建图。该条用于快速判断每个目标的当前卡点，
 每行按钮只做页面内聚焦，不自动勾选、不执行 Nav2、不启用键盘、不启动雷达/自由移动/建图，也不调用 manual、
 delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 13:05 CST 起，Robot Control summary 的 `goal_checklist_summary` 新增 `ready_action_items[]`
+和 `blocked_action_items[]`。普通首屏新增“收口分组”，把“现场可收口”和“先补条件”分开：前者只承接 ready
+或只差现场安全确认的动作，后者承接还要先补画面、雷达、路线、状态机或建图条件的项目。该条只做状态展示和页面内
+聚焦，不自动勾选、不执行 Nav2、不启用键盘、不启动雷达/自由移动/建图，也不调用 manual、delivery、stop 或 `/cmd_vel`。

@@ -5367,6 +5367,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       mapping_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
       mapping_summary_plain: "建图条件还未读到；先恢复小车连接。",
       next_action_items: [],
+      ready_action_items: [],
+      blocked_action_items: [],
     },
     readback_summary: {
       camera: {
@@ -6898,7 +6900,7 @@ function buildGoalChecklistSummary(
   const safetyConfirmNeededCount = remaining.filter((item) => item.requires_safety_confirmation).length;
   const motionNeededCount = remaining.filter((item) => item.requires_motion).length;
   const firstIncomplete = remaining[0] ?? null;
-  const nextActionItems = remaining.map((item) => ({
+  const toActionItem = (item: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]) => ({
     id: item.id,
     title: item.title,
     status_label: item.status_label,
@@ -6907,7 +6909,14 @@ function buildGoalChecklistSummary(
     requires_safety_confirmation: item.requires_safety_confirmation,
     requires_motion: item.requires_motion,
     blocks_goal_completion: item.blocks_goal_completion,
-  }));
+  });
+  const nextActionItems = remaining.map(toActionItem);
+  const readyActionItems = remaining
+    .filter((item) => item.status === "ready" || item.status === "needs_safety_confirm")
+    .map(toActionItem);
+  const blockedActionItems = remaining
+    .filter((item) => item.status === "not_ready" || item.status === "needs_action")
+    .map(toActionItem);
   const itemById = (id: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]["id"]) => checklist.find((item) => item.id === id) ?? null;
   const freeMove = itemById("free_move");
   const keyboard = itemById("keyboard_continuous_control");
@@ -7000,6 +7009,8 @@ function buildGoalChecklistSummary(
       mapping_next_action_plain: "先刷新小车状态。",
       mapping_summary_plain: "建图条件还未读到；先刷新小车状态。",
       next_action_items: [],
+      ready_action_items: [],
+      blocked_action_items: [],
     };
   }
   if (!firstIncomplete) {
@@ -7035,6 +7046,8 @@ function buildGoalChecklistSummary(
       mapping_next_action_plain: mapping?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
       mapping_summary_plain: mappingSummary,
       next_action_items: [],
+      ready_action_items: [],
+      blocked_action_items: [],
     };
   }
   const safetyText = safetyConfirmNeededCount > 0 ? `，其中 ${safetyConfirmNeededCount} 项需要现场安全确认` : "";
@@ -7071,6 +7084,8 @@ function buildGoalChecklistSummary(
     mapping_next_action_plain: mapping?.next_action_plain ?? "建图条件还未读到；先刷新小车状态。",
     mapping_summary_plain: mappingSummary,
     next_action_items: nextActionItems,
+    ready_action_items: readyActionItems,
+    blocked_action_items: blockedActionItems,
   };
 }
 

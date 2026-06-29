@@ -694,6 +694,70 @@ const fixtures: Record<string, unknown> = {
           blocks_goal_completion: true,
         },
       ],
+      ready_action_items: [
+        {
+          id: "keyboard_continuous_control",
+          title: "键盘连续手控",
+          status_label: "待安全确认",
+          next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
+          source_card_id: "keyboard_control",
+          requires_safety_confirmation: true,
+          requires_motion: true,
+          blocks_goal_completion: true,
+        },
+      ],
+      blocked_action_items: [
+        {
+          id: "camera_wysiwyg",
+          title: "画面所见即所得",
+          status_label: "未就绪",
+          next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
+          source_card_id: "camera_preview",
+          requires_safety_confirmation: false,
+          requires_motion: false,
+          blocks_goal_completion: true,
+        },
+        {
+          id: "radar_map_points_wysiwyg",
+          title: "雷达点贴到地图",
+          status_label: "待处理",
+          next_action_plain: "刷新地图画面，确认地图上实际显示的雷达点数",
+          source_card_id: "radar_map_points",
+          requires_safety_confirmation: false,
+          requires_motion: false,
+          blocks_goal_completion: true,
+        },
+        {
+          id: "nav2_route_execution",
+          title: "完整图上行程",
+          status_label: "未就绪",
+          next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行",
+          source_card_id: "nav2_route",
+          requires_safety_confirmation: true,
+          requires_motion: true,
+          blocks_goal_completion: true,
+        },
+        {
+          id: "free_move",
+          title: "先自由移动",
+          status_label: "未就绪",
+          next_action_plain: "等待上车自由移动状态机连接",
+          source_card_id: "free_move",
+          requires_safety_confirmation: true,
+          requires_motion: true,
+          blocks_goal_completion: true,
+        },
+        {
+          id: "mapping_start",
+          title: "传感器 ready 后建图",
+          status_label: "未就绪",
+          next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
+          source_card_id: "mapping_start",
+          requires_safety_confirmation: true,
+          requires_motion: true,
+          blocks_goal_completion: true,
+        },
+      ],
     },
     readback_summary: {
       camera: {
@@ -4256,6 +4320,28 @@ describe("App", () => {
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeObjectiveWysiwygGuide);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-camera-start"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeObjectiveWysiwygGuide);
+    const actionGroups = wrapper.find('[data-testid="plain-goal-action-groups"]');
+    expect(actionGroups.exists()).toBe(true);
+    expect(actionGroups.text()).toContain("收口分组");
+    expect(actionGroups.text()).toContain("现场可收口");
+    expect(actionGroups.text()).toContain("先补条件");
+    expect(wrapper.find('[data-testid="plain-goal-action-group-ready"]').text()).toContain("键盘连续手控");
+    expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("画面所见即所得");
+    expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("雷达点贴到地图");
+    expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("完整图上行程");
+    expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("先自由移动");
+    expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("传感器 ready 后建图");
+    expect(actionGroups.text()).not.toContain("Nav2");
+    expect(actionGroups.text()).not.toContain("operator report");
+    expect(actionGroups.text()).not.toContain("raw");
+    expect(actionGroups.text()).not.toContain("/cmd_vel");
+    const callsBeforeActionGroupKeyboardGuide = mockedFetch.mock.calls.length;
+    const focusCallsBeforeActionGroupKeyboardGuide = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-action-group-go-keyboard_continuous_control"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeActionGroupKeyboardGuide);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeActionGroupKeyboardGuide);
     const intentShortcuts = wrapper.find('[data-testid="plain-intent-shortcuts"]');
     expect(intentShortcuts.exists()).toBe(true);
     expect(intentShortcuts.text()).toContain("下一步选一个");

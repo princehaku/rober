@@ -64,6 +64,7 @@ import type {
   RobotApiMapPose,
   RobotApiScanPreviewPoint,
   RobotControlActionStatusCardId,
+  RobotControlGoalChecklistSummaryActionItem,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
@@ -4652,6 +4653,12 @@ type PlainObjectiveOverviewItem = {
   summary: string;
   sourceCardId: RobotControlActionStatusCardId;
 };
+type PlainGoalActionGroup = {
+  id: "ready" | "blocked";
+  title: string;
+  state: string;
+  items: RobotControlGoalChecklistSummaryActionItem[];
+};
 function goalChecklistItem(id: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]["id"]) {
   return plainGoalChecklist.value.find((item) => item.id === id) ?? null;
 }
@@ -4699,6 +4706,27 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       state: mappingReady ? "可建图" : "先自由移动",
       summary: `自由移动：${freeMove?.status_label ?? "未读到"}；建图启动：${mapping?.status_label ?? "未读到"}。`,
       sourceCardId: mappingReady ? "mapping_start" : "free_move",
+    },
+  ];
+});
+const plainGoalActionGroups = computed<PlainGoalActionGroup[]>(() => {
+  // 后端已按真实状态分组；前端只展示，避免把可发车入口和传感器缺口混成一串。
+  const summary = plainGoalChecklistSummary.value;
+  if (!summary || summary.remaining_count === 0) {
+    return [];
+  }
+  return [
+    {
+      id: "ready",
+      title: "现场可收口",
+      state: summary.ready_action_items.length ? `${summary.ready_action_items.length} 项` : "暂无",
+      items: summary.ready_action_items,
+    },
+    {
+      id: "blocked",
+      title: "先补条件",
+      state: summary.blocked_action_items.length ? `${summary.blocked_action_items.length} 项` : "暂无",
+      items: summary.blocked_action_items,
     },
   ];
 });
@@ -12767,6 +12795,43 @@ onBeforeUnmount(() => {
             去处理
           </button>
         </div>
+      </div>
+
+      <div v-if="plainGoalActionGroups.length" class="plain-goal-action-groups" data-testid="plain-goal-action-groups" aria-label="收口分组">
+        <div class="simple-status-row">
+          <strong>收口分组</strong>
+          <span class="muted">把能现场处理的动作和需要先补的条件分开。</span>
+        </div>
+        <section
+          v-for="group in plainGoalActionGroups"
+          :key="group.id"
+          class="plain-goal-action-group"
+          :data-testid="`plain-goal-action-group-${group.id}`"
+        >
+          <div class="simple-status-row">
+            <strong>{{ group.title }}</strong>
+            <span class="status-chip" :data-state="group.state">{{ group.state }}</span>
+          </div>
+          <div v-if="!group.items.length" class="plain-goal-action-group-empty muted">暂无要处理的项目。</div>
+          <div
+            v-for="item in group.items"
+            :key="item.id"
+            class="plain-goal-action-group-row"
+            :data-testid="`plain-goal-action-group-${group.id}-${item.id}`"
+          >
+            <span class="plain-progress-label">{{ plainActionCardUserText(item.title) }}</span>
+            <span class="status-chip" :data-state="item.status_label">{{ item.status_label }}</span>
+            <span class="muted">下一步：{{ plainActionCardUserText(item.next_action_plain) }}</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              :data-testid="`plain-goal-action-group-go-${item.id}`"
+              @click="focusPlainActionCardTarget(item.source_card_id)"
+            >
+              去处理
+            </button>
+          </div>
+        </section>
       </div>
 
       <div v-if="plainIntentShortcutItems.length" class="plain-intent-shortcuts" data-testid="plain-intent-shortcuts" aria-label="下一步选一个">

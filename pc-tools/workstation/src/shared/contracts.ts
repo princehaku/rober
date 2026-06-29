@@ -2469,6 +2469,8 @@ export interface RobotControlGoalChecklistSummary {
   mapping_next_action_plain: string;
   mapping_summary_plain: string;
   next_action_items: RobotControlGoalChecklistSummaryActionItem[];
+  ready_action_items: RobotControlGoalChecklistSummaryActionItem[];
+  blocked_action_items: RobotControlGoalChecklistSummaryActionItem[];
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {
