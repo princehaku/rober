@@ -1477,28 +1477,34 @@ function cameraPreviewVisibilityPlainSummary(args: {
 function cameraSharedPreviewPlainSummary(args: {
   previewStatus: RobotControlSummaryResponse["readback_summary"]["camera"]["preview_status"];
   clientCount: string;
+  relayKey: string;
   cachedFrameLoaded: boolean;
   cachedFrameAgeMs: string;
   previewVisiblePlain: string;
-}): { accessPlain: string; realtimePlain: string } {
+}): { accessPlain: string; realtimePlain: string; multiViewerPlain: string } {
   // 共享预览入口和画面可见是两件事：谁都能接入，不代表上游已经吐出可见帧。
   const viewerText = `当前 ${args.clientCount} 个页面观看`;
   const accessPlain = `共享预览不是页面独占；谁打开页面都接入同一条上游流，${viewerText}。`;
+  const relayKeyText = args.relayKey && args.relayKey !== "not_loaded" ? "同一小车地址" : "小车地址未生成";
+  const multiViewerPlain = `多人实时预览共用单条上游流；谁打开页面都接入同一个共享 relay（${relayKeyText}），${viewerText}，不会因为新页面进入而独占摄像头。`;
   if (args.previewStatus === "streaming" && args.cachedFrameLoaded) {
     const ageText = args.cachedFrameAgeMs === "none" ? "" : `，缓存帧约 ${args.cachedFrameAgeMs}ms 前更新`;
     return {
       accessPlain,
+      multiViewerPlain,
       realtimePlain: `实时预览已可见；多个页面复用同一条上游流${ageText}。`,
     };
   }
   if (args.previewStatus === "starting_local_peer" || args.previewStatus === "connecting_offer_posted") {
     return {
       accessPlain,
+      multiViewerPlain,
       realtimePlain: "共享预览正在等待首帧；首帧出现前不能把黑框当作画面可见。",
     };
   }
   return {
     accessPlain,
+    multiViewerPlain,
     realtimePlain: args.previewVisiblePlain,
   };
 }
@@ -2076,6 +2082,7 @@ function cameraSummaryFromReadbacks(
   const sharedPreviewPlain = cameraSharedPreviewPlainSummary({
     previewStatus: sharedPreviewStatus,
     clientCount: sharedPreviewClientCount,
+    relayKey: asString(mjpegRelayOverlay?.relay_key, "not_loaded"),
     cachedFrameLoaded: sharedPreviewCachedFrameLoaded,
     cachedFrameAgeMs: sharedPreviewCachedFrameAgeMs,
     previewVisiblePlain: previewVisibility.visiblePlain,
@@ -2155,6 +2162,8 @@ function cameraSummaryFromReadbacks(
     shared_preview_shared_capture: compactValueText(true),
     shared_preview_exclusive_camera_claim: compactValueText(false),
     shared_preview_contract: sharedPreviewContract,
+    shared_preview_multi_viewer_status: "single_upstream_multi_viewer",
+    shared_preview_multi_viewer_plain: sharedPreviewPlain.multiViewerPlain,
     shared_preview_last_failure_reason: sharedPreviewLastFailureReason,
     shared_preview_last_remote_http_status: sharedPreviewLastRemoteHttpStatus,
     shared_preview_last_failure_at_ms: mjpegRelayOverlay?.last_failure_at_ms === null || mjpegRelayOverlay?.last_failure_at_ms === undefined
@@ -2241,6 +2250,7 @@ export type RobotControlCameraFirstFrameProbeOverlay = {
 };
 
 export type RobotControlCameraMjpegRelayOverlay = {
+  relay_key?: string;
   client_count: number;
   upstream_active: boolean;
   content_type_loaded: boolean;
@@ -5673,6 +5683,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         shared_preview_shared_capture: "true",
         shared_preview_exclusive_camera_claim: "false",
         shared_preview_contract: "single_shared_capture_for_multiple_clients",
+        shared_preview_multi_viewer_status: "single_upstream_multi_viewer",
+        shared_preview_multi_viewer_plain: "多人实时预览共用单条上游流；谁打开页面都接入同一个共享 relay（小车地址未生成），当前 0 个页面观看，不会因为新页面进入而独占摄像头。",
         shared_preview_last_failure_reason: "none",
         shared_preview_last_remote_http_status: "none",
         shared_preview_last_failure_at_ms: "none",

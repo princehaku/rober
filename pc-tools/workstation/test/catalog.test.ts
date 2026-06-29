@@ -4296,6 +4296,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.shared_preview_realtime_plain).toBe("当前没有实时画面；页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");
       expect(summary.readback_summary.camera.shared_preview_shared_capture).toBe("true");
       expect(summary.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
+      expect(summary.readback_summary.camera.shared_preview_multi_viewer_status).toBe("single_upstream_multi_viewer");
+      expect(summary.readback_summary.camera.shared_preview_multi_viewer_plain).toContain("谁打开页面都接入同一个共享 relay");
+      expect(summary.readback_summary.camera.shared_preview_multi_viewer_plain).toContain("当前 0 个页面观看");
       expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("none");
       expect(summary.readback_summary.camera.shared_preview_last_remote_http_status).toBe("none");
       expect(summary.readback_summary.camera.shared_preview_last_failure_at_ms).toBe("none");
@@ -12382,6 +12385,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(Number(summaryBody.readback_summary.camera.shared_preview_cached_frame_age_ms)).toBeGreaterThanOrEqual(0);
       expect(summaryBody.readback_summary.camera.shared_preview_shared_capture).toBe("true");
       expect(summaryBody.readback_summary.camera.shared_preview_exclusive_camera_claim).toBe("false");
+      expect(summaryBody.readback_summary.camera.shared_preview_multi_viewer_status).toBe("single_upstream_multi_viewer");
+      expect(summaryBody.readback_summary.camera.shared_preview_multi_viewer_plain).toContain("谁打开页面都接入同一个共享 relay");
+      expect(summaryBody.readback_summary.camera.shared_preview_multi_viewer_plain).toContain(`${summaryBody.readback_summary.camera.shared_preview_client_count} 个页面观看`);
       expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("none");
       expect(summaryBody.readback_summary.camera.shared_preview_last_remote_http_status).toBe("none");
       expect(summaryBody.readback_summary.camera.shared_preview_last_failure_at_ms).toBe("none");
@@ -12414,6 +12420,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.shared_preview_shared_capture).toBe(true);
       expect(statusBody.shared_preview_exclusive_camera_claim).toBe(false);
       expect(statusBody.shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
+      expect(statusBody.shared_preview_multi_viewer_status).toBe("single_upstream_multi_viewer");
+      expect(statusBody.shared_preview_multi_viewer_plain).toContain("谁打开页面都接入同一个共享 relay");
+      expect(statusBody.shared_preview_multi_viewer_plain).toContain(`${statusBody.client_count} 个页面观看`);
       expect(statusBody.has_recent_frame).toBe(statusBody.cached_frame_loaded);
       expect(statusBody.status).toBe(statusBody.preview_status);
       expect(statusBody.plain_hint).toBe(statusBody.preview_plain_hint);
@@ -12488,6 +12497,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.exclusive_camera_claim).toBe(false);
       expect(statusBody.shared_preview_exclusive_camera_claim).toBe(false);
       expect(statusBody.shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
+      expect(statusBody.shared_preview_multi_viewer_status).toBe("single_upstream_multi_viewer");
+      expect(statusBody.shared_preview_multi_viewer_plain).toContain("当前 0 个页面观看");
       expect(statusBody.last_failure_reason).toBe("");
       expect(statusBody.shared_preview_last_failure_reason).toBe("");
       expect(statusBody.last_remote_http_status).toBe(null);
@@ -12582,6 +12593,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.shared_preview_exclusive_camera_claim).toBe(false);
       expect(statusBody.has_recent_frame).toBe(false);
       expect(statusBody.shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
+      expect(statusBody.shared_preview_multi_viewer_status).toBe("single_upstream_multi_viewer");
+      expect(statusBody.shared_preview_multi_viewer_plain).toContain("当前 0 个页面观看");
       expect(statusBody.last_failure_reason).toBe("camera_source_first_frame_failed");
       expect(statusBody.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
       expect(statusBody.last_remote_http_status).toBe(200);

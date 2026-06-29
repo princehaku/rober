@@ -1689,6 +1689,12 @@ function cameraMjpegRelayKey(normalizedBaseUrl: URL): string {
   return normalizedBaseUrl.toString().replace(/\/$/, "");
 }
 
+function cameraMjpegMultiViewerPlain(relayKey: string, clientCount: number): string {
+  // 多页面共享能力来自 PC Node relay key：同一小车地址只维护一条上游 MJPEG，后进页面复用缓存和同流。
+  const keyText = relayKey && relayKey !== "not_loaded" ? "同一小车地址" : "小车地址未生成";
+  return `多人实时预览共用单条上游流；谁打开页面都接入同一个共享 relay（${keyText}），当前 ${clientCount} 个页面观看，不会因为新页面进入而独占摄像头。`;
+}
+
 function cameraProbeOverlayFromResponse(
   response: RobotControlCameraFirstFrameProbeProxyResponse,
 ): RobotControlCameraFirstFrameProbeOverlay {
@@ -1781,6 +1787,8 @@ function cameraMjpegStatusResponse(
     exclusive_camera_claim: false,
     shared_preview_exclusive_camera_claim: false,
     shared_preview_contract: "single_shared_capture_for_multiple_clients",
+    shared_preview_multi_viewer_status: "single_upstream_multi_viewer",
+    shared_preview_multi_viewer_plain: cameraMjpegMultiViewerPlain(relayKey, clientCount),
     last_failure_reason: lastFailureReason,
     shared_preview_last_failure_reason: lastFailureReason,
     last_remote_http_status: lastRemoteHttpStatus,
@@ -2433,6 +2441,7 @@ export function createWorkstationApp(): express.Express {
     const lastFailureForOverlay = lastFailure ?? sourceFailure;
     const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
       ? {
+        relay_key: relayKey,
         client_count: relay.clients.size,
         upstream_active: relay.upstreamActive,
         content_type_loaded: Boolean(relay.contentType),
@@ -2456,6 +2465,7 @@ export function createWorkstationApp(): express.Express {
       }
       : lastFailureForOverlay
         ? {
+          relay_key: relayKey,
           client_count: 0,
           upstream_active: false,
           content_type_loaded: false,

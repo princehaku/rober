@@ -1795,6 +1795,15 @@ const plainCameraSharedPreviewReadback = computed(() => {
   return parts.length > 0 ? `共享预览事实：${parts.join("；")}。` : "";
 });
 
+const plainCameraSharedPreviewMultiViewerReadback = computed(() => {
+  // 多人预览合同单独展示：源头无首帧时也能确认“不是新页面独占导致看不到”。
+  const plain = robotSummary.value?.readback_summary.camera.shared_preview_multi_viewer_plain?.trim();
+  if (!plain || ["not_loaded", "none"].includes(plain)) {
+    return "";
+  }
+  return `多人预览：${plain.replace(/[。；\s]+$/g, "")}。`;
+});
+
 const plainCameraWysiwygReadback = computed(() => {
   // 后端 camera_wysiwyg 是“当前画面到底有没有可见帧”的权威口径；和浏览器本页绘制状态分开展示。
   const camera = robotSummary.value?.readback_summary.camera;
@@ -13445,6 +13454,7 @@ onBeforeUnmount(() => {
           <p v-if="plainCameraDeviceReadback" class="panel-note" data-testid="robot-camera-device-readback">{{ plainCameraDeviceReadback }}</p>
           <p v-if="plainCameraCachedFrameStatus" class="panel-note" data-testid="robot-camera-cached-frame-status">{{ plainCameraCachedFrameStatus }}</p>
           <p v-if="plainCameraSharedPreviewReadback" class="panel-note" data-testid="robot-camera-shared-preview-readback">{{ plainCameraSharedPreviewReadback }}</p>
+          <p v-if="plainCameraSharedPreviewMultiViewerReadback" class="panel-note" data-testid="robot-camera-shared-preview-multi-viewer">{{ plainCameraSharedPreviewMultiViewerReadback }}</p>
           <p v-if="plainCameraSharedPreviewLinkSummary" class="panel-note" data-testid="robot-camera-shared-preview-link-summary">{{ plainCameraSharedPreviewLinkSummary }}</p>
           <p class="panel-note" data-testid="robot-camera-shared-preview-status">{{ plainCameraSharedPreviewStatus }}</p>
           <p v-if="plainCameraSharedPreviewGuidance" class="panel-note" data-testid="robot-camera-shared-preview-guidance">{{ plainCameraSharedPreviewGuidance }}</p>
@@ -14293,6 +14303,10 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.selected_sibling_video_node_count ?? "not_loaded" }}</dd>
             <dt>camera_shared_preview_contract</dt>
             <dd>{{ robotSummary?.readback_summary.camera.shared_preview_contract ?? "not_loaded" }}</dd>
+            <dt>camera_shared_preview_multi_viewer</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.shared_preview_multi_viewer_status ?? "not_loaded" }}</dd>
+            <dt>camera_shared_preview_multi_viewer_plain</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.shared_preview_multi_viewer_plain ?? "not_loaded" }}</dd>
             <dt>camera_source_mode</dt>
             <dd>{{ robotSummary?.readback_summary.camera.video_source_mode ?? "not_loaded" }}</dd>
             <dt>camera_source_readiness</dt>

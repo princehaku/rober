@@ -811,6 +811,8 @@ const fixtures: Record<string, unknown> = {
         shared_preview_shared_capture: "true",
         shared_preview_exclusive_camera_claim: "false",
         shared_preview_contract: "single_shared_capture_for_multiple_clients",
+        shared_preview_multi_viewer_status: "single_upstream_multi_viewer",
+        shared_preview_multi_viewer_plain: "多人实时预览共用单条上游流；谁打开页面都接入同一个共享 relay（同一小车地址），当前 0 个页面观看，不会因为新页面进入而独占摄像头。",
         shared_preview_last_failure_reason: "none",
         shared_preview_last_remote_http_status: "none",
         shared_preview_last_failure_at_ms: "none",
@@ -1865,6 +1867,8 @@ const fixtures: Record<string, unknown> = {
     exclusive_camera_claim: false,
     shared_preview_exclusive_camera_claim: false,
     shared_preview_contract: "single_shared_capture_for_multiple_clients",
+    shared_preview_multi_viewer_status: "single_upstream_multi_viewer",
+    shared_preview_multi_viewer_plain: "多人实时预览共用单条上游流；谁打开页面都接入同一个共享 relay（同一小车地址），当前 2 个页面观看，不会因为新页面进入而独占摄像头。",
     last_failure_reason: "",
     shared_preview_last_failure_reason: "",
     last_remote_http_status: null,
@@ -4470,6 +4474,7 @@ describe("App", () => {
     expect(sharedPreviewLink.attributes("href")).toContain("/api/robot-control/camera/mjpeg?");
     expect(sharedPreviewLink.attributes("target")).toBe("_blank");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-link-summary"]').text()).toBe("共享预览入口：任何页面打开这个只读地址都会接入同一条上游流；当前 0 个页面观看。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-multi-viewer"]').text()).toBe("多人预览：多人实时预览共用单条上游流；谁打开页面都接入同一个共享 relay（同一小车地址），当前 0 个页面观看，不会因为新页面进入而独占摄像头。");
     const actionCards = wrapper.find('[data-testid="plain-action-status-cards"]');
     expect(actionCards.exists()).toBe(true);
     expect(actionCards.text()).toContain("画面");
@@ -21682,6 +21687,7 @@ describe("App", () => {
     expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-link"]').attributes("href")).toContain("/api/robot-control/camera/mjpeg?");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-link-summary"]').text()).toBe("共享预览入口：任何页面打开这个只读地址都会接入同一条上游流；当前 0 个页面观看。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-multi-viewer"]').text()).toBe("多人预览：多人实时预览共用单条上游流；谁打开页面都接入同一个共享 relay（同一小车地址），当前 0 个页面观看，不会因为新页面进入而独占摄像头。");
     expect(wrapper.find('[data-testid="plain-camera-start"]').text()).toBe("重试共享画面");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB OpenCV/V4L2 4 种方式也没有取到视频帧。");

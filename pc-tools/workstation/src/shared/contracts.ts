@@ -2554,6 +2554,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       shared_preview_shared_capture: string;
       shared_preview_exclusive_camera_claim: string;
       shared_preview_contract: string;
+      shared_preview_multi_viewer_status: string;
+      shared_preview_multi_viewer_plain: string;
       shared_preview_last_failure_reason: string;
       shared_preview_last_remote_http_status: string;
       shared_preview_last_failure_at_ms: string;
@@ -3319,6 +3321,8 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   exclusive_camera_claim: false;
   shared_preview_exclusive_camera_claim: false;
   shared_preview_contract: "single_shared_capture_for_multiple_clients";
+  shared_preview_multi_viewer_status: "single_upstream_multi_viewer";
+  shared_preview_multi_viewer_plain: string;
   last_failure_reason: string;
   shared_preview_last_failure_reason: string;
   last_remote_http_status: number | null;

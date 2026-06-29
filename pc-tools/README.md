@@ -59,6 +59,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 18:09 CST 起，`readback_summary.free_roam` 新增 `motion_sensor_dependency_status` 和 `motion_sensor_dependency_plain`，普通首屏自由移动卡同步显示“移动门禁”。当自由移动或键盘/低速手控可先执行时，页面直接说明“自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收”，避免雷达停止或画面无首帧被误读成不能先动车。该变化只补只读 summary/UI，不启动自由移动、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 18:22 CST 起，PC camera MJPEG status 和 `readback_summary.camera` 新增 `shared_preview_multi_viewer_status` 与 `shared_preview_multi_viewer_plain`，普通首屏同步显示“多人预览”。字段固定说明所有页面接入同一个 PC Node 共享 relay、单条上游 MJPEG 流和非独占摄像头口径；白话文案不暴露 raw Robot API URL。该变化只补只读状态和 UI 解释，不打开相机流、不启动探针、不发送任何运动或控制命令；若 live 仍显示 `source_first_frame_failed`，应按 USB/摄像头输入/供电或 known-good UVC 方向排查。
+
 2026-06-29 14:00 CST 起，普通首屏 `本轮目标检查` 在存在可现场收口项时，主摘要和 `next_action_plain` 优先指向可操作的运动项，例如“先做：自由自助移动”；相机、雷达和建图仍列在“未就绪项”。这避免摄像头首帧硬件缺口把自由移动、键盘连续手控和完整图上行程复验压到后面。该变化只改只读目标总览排序和文案，不自动勾选安全确认、不启用键盘、不启动自由移动、不执行 Nav2、不发送 `/cmd_vel`。
 
 2026-06-29 15:02 CST 起，普通首屏“下一步选一个”的 `补画面/雷达` 快捷入口改为优先消费 `action_status_cards` 的结构化状态。画面卡是否已显示、地图雷达点是否贴到当前图，不再靠中文文案前缀猜测；即使画面文案从“画面已可见”改成“已经看到画面”，快捷入口也只把真正未完成的雷达点指向雷达卡。该变化只改页面内聚焦和展示，不自动打开画面、不启动雷达、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
