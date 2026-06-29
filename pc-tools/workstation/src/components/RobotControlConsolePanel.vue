@@ -6398,8 +6398,13 @@ type PlainFreeRoamDomEvidence = {
   mappingAcceptanceReady: boolean;
   mappingAcceptanceMissingReasons: string;
   // 主按钮会真正触发运动入口，DOM 必须能说明点击前后语义，方便现场脚本验收。
+  primaryActionKind: string;
+  primaryActionTargetSource: string;
   primaryActionCanStartMotion: boolean;
   primaryActionRequestsMapping: boolean;
+  primaryActionMappingStartReady: boolean;
+  primaryActionCameraBlocksMappingStart: boolean;
+  primaryActionRadarBlocksMappingStart: boolean;
   // 固定代理入口暴露在主面板，避免普通验收去解析高级诊断或中文长文案。
   fixedFreeRoamStartEndpoint: string;
   fixedFreeRoamStopEndpoint: string;
@@ -6489,6 +6494,7 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     || (plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value);
   const freeMoveStartReady = boundary?.free_roam_motion_start_ready === true;
   const primaryActionCanStartMotion = canStartPlainFreeRoamPrimary.value && freeMoveStartReady;
+  const primaryActionRequestsMapping = primaryActionCanStartMotion && mappingStartReady;
   const camera = summary?.readback_summary.camera;
   const sourceFirstFrameReady = camera?.source_readiness === "first_frame_observed"
     || camera?.source_diagnosis_status === "first_frame_observed"
@@ -6518,8 +6524,13 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     radarMapPointCount: radarMapEvidence.mapPointCount,
     mappingAcceptanceReady: boundary?.free_roam_mapping_ready === true,
     mappingAcceptanceMissingReasons: [...new Set(acceptanceMissing)].join(",") || "none",
+    primaryActionKind: primaryActionRequestsMapping ? "start_mapping_record_then_free_move" : primaryActionCanStartMotion ? "start_free_move_only" : "blocked",
+    primaryActionTargetSource: primaryActionRequestsMapping ? "mapping_start_and_free_roam_autonomy" : primaryActionCanStartMotion ? "free_roam_autonomy" : "none",
     primaryActionCanStartMotion,
-    primaryActionRequestsMapping: primaryActionCanStartMotion && mappingStartReady,
+    primaryActionRequestsMapping,
+    primaryActionMappingStartReady: mappingStartReady,
+    primaryActionCameraBlocksMappingStart: !sourceFirstFrameReady,
+    primaryActionRadarBlocksMappingStart: !plainRadarReadyForFreeRoamMapping.value,
     fixedFreeRoamStartEndpoint: "/api/robot-control/free-roam/autonomy/start",
     fixedFreeRoamStopEndpoint: "/api/robot-control/free-roam/autonomy/stop",
     fixedMappingStartEndpoint: "/api/robot-control/map/start",
@@ -14783,9 +14794,16 @@ onBeforeUnmount(() => {
               ref="plainFreeRoamStartButton"
               type="button"
               :disabled="!canStartPlainFreeRoamPrimary"
+              :data-primary-action-kind="plainFreeRoamDomEvidence.primaryActionKind"
+              :data-target-source="plainFreeRoamDomEvidence.primaryActionTargetSource"
               :data-can-start-free-motion="String(plainFreeRoamDomEvidence.primaryActionCanStartMotion)"
               :data-sends-motion-when-clicked="String(plainFreeRoamDomEvidence.primaryActionCanStartMotion)"
               :data-requests-mapping-when-clicked="String(plainFreeRoamDomEvidence.primaryActionRequestsMapping)"
+              :data-primary-action-mapping-start-ready="String(plainFreeRoamDomEvidence.primaryActionMappingStartReady)"
+              :data-camera-blocks-mapping-start="String(plainFreeRoamDomEvidence.primaryActionCameraBlocksMappingStart)"
+              :data-radar-blocks-mapping-start="String(plainFreeRoamDomEvidence.primaryActionRadarBlocksMappingStart)"
+              :data-camera-blocks-free-motion="String(plainFreeRoamDomEvidence.cameraBlocksFreeMotion)"
+              :data-radar-blocks-free-motion="String(plainFreeRoamDomEvidence.radarBlocksFreeMotion)"
               :data-requires-safety-confirmation="String(true)"
               :data-minimal-precheck-safety-only="String(plainFreeRoamDomEvidence.freeMoveSafetyOnly)"
               :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"

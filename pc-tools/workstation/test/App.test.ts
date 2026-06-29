@@ -4691,9 +4691,16 @@ describe("App", () => {
     expect(freeRoamPanel.attributes("data-fixed-mapping-preview-endpoint")).toBe("/api/robot-control/map/preview");
     const freeRoamStartButton = wrapper.find('[data-testid="plain-free-roam-start"]');
     expect(freeRoamStartButton.attributes("disabled")).toBeDefined();
+    expect(freeRoamStartButton.attributes("data-primary-action-kind")).toBe("blocked");
+    expect(freeRoamStartButton.attributes("data-target-source")).toBe("none");
     expect(freeRoamStartButton.attributes("data-can-start-free-motion")).toBe("false");
     expect(freeRoamStartButton.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(freeRoamStartButton.attributes("data-requests-mapping-when-clicked")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-primary-action-mapping-start-ready")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-camera-blocks-mapping-start")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-radar-blocks-mapping-start")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-camera-blocks-free-motion")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-radar-blocks-free-motion")).toBe("false");
     expect(freeRoamStartButton.attributes("data-requires-safety-confirmation")).toBe("true");
     expect(freeRoamStartButton.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先勾安全确认");
@@ -6110,9 +6117,16 @@ describe("App", () => {
     const freeRoamStartButton = wrapper.find('[data-testid="plain-free-roam-start"]');
     expect(freeRoamStartButton.text()).toBe("开始自动扫图（低速）");
     expect(freeRoamStartButton.attributes("disabled")).toBeUndefined();
+    expect(freeRoamStartButton.attributes("data-primary-action-kind")).toBe("start_mapping_record_then_free_move");
+    expect(freeRoamStartButton.attributes("data-target-source")).toBe("mapping_start_and_free_roam_autonomy");
     expect(freeRoamStartButton.attributes("data-can-start-free-motion")).toBe("true");
     expect(freeRoamStartButton.attributes("data-sends-motion-when-clicked")).toBe("true");
     expect(freeRoamStartButton.attributes("data-requests-mapping-when-clicked")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-primary-action-mapping-start-ready")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-camera-blocks-mapping-start")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-radar-blocks-mapping-start")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-camera-blocks-free-motion")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-radar-blocks-free-motion")).toBe("false");
     expect(freeRoamStartButton.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeRoamStartButton.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始扫图记录（不发车）");
@@ -13146,8 +13160,16 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未就绪");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始自由移动（低速）");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    const freeMoveOnlyButton = wrapper.find('[data-testid="plain-free-roam-start"]');
+    expect(freeMoveOnlyButton.text()).toBe("开始自由移动（低速）");
+    expect(freeMoveOnlyButton.attributes("disabled")).toBeUndefined();
+    expect(freeMoveOnlyButton.attributes("data-primary-action-kind")).toBe("start_free_move_only");
+    expect(freeMoveOnlyButton.attributes("data-target-source")).toBe("free_roam_autonomy");
+    expect(freeMoveOnlyButton.attributes("data-can-start-free-motion")).toBe("true");
+    expect(freeMoveOnlyButton.attributes("data-requests-mapping-when-clicked")).toBe("false");
+    expect(freeMoveOnlyButton.attributes("data-camera-blocks-free-motion")).toBe("false");
+    expect(freeMoveOnlyButton.attributes("data-radar-blocks-free-motion")).toBe("false");
+    expect(freeMoveOnlyButton.attributes("data-camera-blocks-mapping-start")).toBe("true");
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
