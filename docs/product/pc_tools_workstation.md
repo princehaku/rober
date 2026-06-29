@@ -4500,3 +4500,11 @@ pulse interval/duration、当前按住 pulse 数、历史最佳连续 pulse 数�
 `data-starts-map-runtime=false`、`data-starts-nav2=false`，并同步当前 MJPEG/视频帧可见性、共享预览 single-upstream 和
 exclusive camera claim 状态。该按钮只做只读首帧探测；共享实时预览仍走 `plain-camera-start` 和固定 MJPEG relay，
 不会因为“检查画面”而保存材料、执行 Nav2、启动建图或发送底盘命令。
+
+2026-06-30 07:08 CST 起，普通首屏地图卡的 lifecycle 按钮补齐脚本可验收合同。
+`plain-map-runtime-start` 暴露 `data-map-lifecycle-action=start_mapping_runtime`、固定
+`/api/robot-control/map/start`、`data-starts-map-runtime=true`，并明确 `data-sends-motion-when-clicked=false`、
+`data-starts-nav2=false`、`data-starts-free-roam=false`；`plain-map-save` 暴露
+`data-map-lifecycle-action=save_mapping_runtime`、固定 `/api/robot-control/map/save`、
+`data-refreshes-map-preview-after-save=true`，并明确保存不启动 runtime、不执行 Nav2、不启动自由移动。
+这让“相机和雷达 ready 后可建图”的普通路径在 PC DOM 上具备完整固定入口：启动记录、刷新当前画面、保存地图。

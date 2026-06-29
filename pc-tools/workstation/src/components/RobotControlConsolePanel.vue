@@ -14825,10 +14825,35 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
               地图列表
             </button>
-            <button ref="plainMapRuntimeStartButton" type="button" :disabled="!canStartMapLifecycle" data-testid="plain-map-runtime-start" @click="startMapRuntime">
+            <button
+              ref="plainMapRuntimeStartButton"
+              type="button"
+              :disabled="!canStartMapLifecycle"
+              data-testid="plain-map-runtime-start"
+              data-map-lifecycle-action="start_mapping_runtime"
+              data-fixed-map-start-endpoint="/api/robot-control/map/start"
+              data-sends-motion-when-clicked="false"
+              data-starts-map-runtime="true"
+              data-starts-nav2="false"
+              data-starts-free-roam="false"
+              data-requires-safety-confirmation="false"
+              @click="startMapRuntime"
+            >
               重新建图
             </button>
-            <button type="button" :disabled="!canSaveMapLifecycle" @click="saveMap">
+            <button
+              type="button"
+              :disabled="!canSaveMapLifecycle"
+              data-testid="plain-map-save"
+              data-map-lifecycle-action="save_mapping_runtime"
+              data-fixed-map-save-endpoint="/api/robot-control/map/save"
+              data-refreshes-map-preview-after-save="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              data-starts-free-roam="false"
+              @click="saveMap"
+            >
               保存地图
             </button>
             <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>

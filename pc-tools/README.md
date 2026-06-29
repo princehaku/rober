@@ -1027,3 +1027,8 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `data-saves-operator-report=false`、`data-starts-map-runtime=false`、`data-starts-nav2=false`，并同步当前 MJPEG/视频帧可见性、
 共享预览 single-upstream 和非独占状态。这样脚本能区分“只读首帧检查”和“打开共享实时预览”：检查按钮不打开 WebRTC、
 不保存验收材料、不发送任何控制命令。
+
+2026-06-30 07:08 CST 起，普通首屏地图卡的 `重新建图` / `保存地图` 也暴露按钮级 lifecycle 合同：
+`重新建图` 是 `data-map-lifecycle-action=start_mapping_runtime`，固定 `/api/robot-control/map/start`，只启动地图记录 runtime，
+不会发底盘运动、不会执行 Nav2、不会启动自由移动；`保存地图` 是 `data-map-lifecycle-action=save_mapping_runtime`，固定
+`/api/robot-control/map/save`，保存后要求刷新地图画面，同样不会启动 runtime、Nav2 或自由移动。这样建图链路从记录、扫图刷新到保存都有可脚本读取的固定入口和非发车边界。
