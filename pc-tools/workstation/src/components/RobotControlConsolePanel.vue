@@ -3046,14 +3046,33 @@ const plainMappingUnlockRefreshButtonLabel = computed(() => {
   return "刷新建图条件（只读）";
 });
 
-function keyboardActionCardWithEvidence(
+function actionCardWithDerivedEvidence(
   card: NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number],
 ): NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number] {
   // 兼容旧 summary：后端还没带 evidence 时，前端用同一份安全边界补只读合同，不改变任何控制能力。
-  if (card.id !== "keyboard_control") {
+  if (card.id !== "keyboard_control" && card.id !== "nav2_route") {
     return card;
   }
   const boundary = robotSummary.value?.safe_command_boundary;
+  const nav2 = robotSummary.value?.readback_summary.nav2;
+  if (card.id === "nav2_route") {
+    return {
+      ...card,
+      evidence: {
+        ...card.evidence,
+        route_ready_on_map: card.evidence?.route_ready_on_map ?? boundary?.nav2_goal_ready ?? false,
+        minimal_precheck_safety_only: card.evidence?.minimal_precheck_safety_only ?? true,
+        fixed_execute_proxy_endpoint: card.evidence?.fixed_execute_proxy_endpoint ?? "/api/robot-control/nav2/goal/execute",
+        execute_sends_motion_when_ready: card.evidence?.execute_sends_motion_when_ready ?? boundary?.nav2_goal_ready ?? false,
+        requires_same_window_wheel_lr_nonzero: card.evidence?.requires_same_window_wheel_lr_nonzero ?? true,
+        wheel_feedback_status: card.evidence?.wheel_feedback_status ?? boundary?.nav2_goal_wheel_feedback_status ?? "not_loaded",
+        last_base_command_mode: card.evidence?.last_base_command_mode ?? nav2?.goal_execution_base_command_mode ?? "not_loaded",
+        next_base_command_mode: card.evidence?.next_base_command_mode ?? nav2?.next_execution_base_command_mode ?? "not_loaded",
+        managed_runtime_autostart: card.evidence?.managed_runtime_autostart ?? /自动启动自动驾驶\s*runtime/i.test(`${boundary?.nav2_goal_next_action_plain ?? ""} ${boundary?.nav2_goal_next_action ?? ""}`),
+        blockers: card.evidence?.blockers ?? boundary?.nav2_goal_blockers ?? [],
+      },
+    };
+  }
   return {
     ...card,
     evidence: {
@@ -3072,7 +3091,7 @@ function keyboardActionCardWithEvidence(
 
 const plainActionStatusCards = computed(() => {
   // 后端动作卡是普通首屏的结构化摘要；旧 summary 没有该字段时继续使用上面的事实列表。
-  return (robotSummary.value?.action_status_cards ?? []).map(keyboardActionCardWithEvidence);
+  return (robotSummary.value?.action_status_cards ?? []).map(actionCardWithDerivedEvidence);
 });
 const plainGoalChecklist = computed(() => {
   // 目标检查只展示只读验收口径；ready/待确认不会被写成已完成。
@@ -13406,6 +13425,16 @@ onBeforeUnmount(() => {
           :data-manual-command-mode="card.evidence?.manual_command_mode"
           :data-stop-triggers="card.evidence?.stop_triggers?.join(',')"
           :data-wheel-feedback-same-hold-window="card.evidence?.wheel_feedback_required_in_same_hold_window === undefined ? undefined : String(card.evidence.wheel_feedback_required_in_same_hold_window)"
+          :data-route-ready-on-map="card.evidence?.route_ready_on_map === undefined ? undefined : String(card.evidence.route_ready_on_map)"
+          :data-minimal-precheck-safety-only="card.evidence?.minimal_precheck_safety_only === undefined ? undefined : String(card.evidence.minimal_precheck_safety_only)"
+          :data-fixed-execute-proxy-endpoint="card.evidence?.fixed_execute_proxy_endpoint"
+          :data-execute-sends-motion-when-ready="card.evidence?.execute_sends_motion_when_ready === undefined ? undefined : String(card.evidence.execute_sends_motion_when_ready)"
+          :data-requires-same-window-wheel-lr-nonzero="card.evidence?.requires_same_window_wheel_lr_nonzero === undefined ? undefined : String(card.evidence.requires_same_window_wheel_lr_nonzero)"
+          :data-wheel-feedback-status="card.evidence?.wheel_feedback_status"
+          :data-last-base-command-mode="card.evidence?.last_base_command_mode"
+          :data-next-base-command-mode="card.evidence?.next_base_command_mode"
+          :data-managed-runtime-autostart="card.evidence?.managed_runtime_autostart === undefined ? undefined : String(card.evidence.managed_runtime_autostart)"
+          :data-nav2-blockers="card.evidence?.blockers?.join(',')"
         >
           <div class="plain-action-card-head">
             <strong>{{ plainActionCardUserText(card.title) }}</strong>

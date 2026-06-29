@@ -7309,6 +7309,18 @@ function buildActionStatusCards(
       sends_motion_when_clicked: true,
       blocks_free_motion: false,
       blocks_mapping_start: false,
+      evidence: {
+        route_ready_on_map: boundary.nav2_goal_ready,
+        minimal_precheck_safety_only: true,
+        fixed_execute_proxy_endpoint: "/api/robot-control/nav2/goal/execute",
+        execute_sends_motion_when_ready: boundary.nav2_goal_ready,
+        requires_same_window_wheel_lr_nonzero: true,
+        wheel_feedback_status: boundary.nav2_goal_wheel_feedback_status,
+        last_base_command_mode: readback.nav2.goal_execution_base_command_mode,
+        next_base_command_mode: readback.nav2.next_execution_base_command_mode,
+        managed_runtime_autostart: /自动启动自动驾驶\s*runtime/i.test(boundary.nav2_goal_next_action_plain || boundary.nav2_goal_next_action),
+        blockers: boundary.nav2_goal_blockers,
+      },
     },
     {
       id: "keyboard_control",

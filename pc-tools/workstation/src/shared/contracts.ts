@@ -2433,6 +2433,16 @@ export interface RobotControlActionStatusCard {
     manual_command_mode?: string;
     stop_triggers?: string[];
     wheel_feedback_required_in_same_hold_window?: boolean;
+    route_ready_on_map?: boolean;
+    minimal_precheck_safety_only?: boolean;
+    fixed_execute_proxy_endpoint?: string;
+    execute_sends_motion_when_ready?: boolean;
+    requires_same_window_wheel_lr_nonzero?: boolean;
+    wheel_feedback_status?: string;
+    last_base_command_mode?: string;
+    next_base_command_mode?: string;
+    managed_runtime_autostart?: boolean;
+    blockers?: string[];
   };
 }
 

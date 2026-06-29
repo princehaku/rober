@@ -4767,6 +4767,13 @@ describe("App", () => {
     expect(firstScreenText).toContain("行程操作");
     expect(firstScreenText).toContain("先勾选现场安全确认，再用主按钮准备或执行行程。");
     expect(firstScreenText).toContain("先勾选确认");
+    const nav2ActionCard = wrapper.find('[data-testid="plain-action-status-card-nav2_route"]');
+    expect(nav2ActionCard.attributes("data-route-ready-on-map")).toBe("false");
+    expect(nav2ActionCard.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(nav2ActionCard.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(nav2ActionCard.attributes("data-execute-sends-motion-when-ready")).toBe("false");
+    expect(nav2ActionCard.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(nav2ActionCard.attributes("data-wheel-feedback-status")).toBe("not_loaded");
     expect(firstScreenText).toContain("读取行程结果（只读）");
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");

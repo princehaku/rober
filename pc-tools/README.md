@@ -863,3 +863,10 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `stop_triggers[]` 和 `wheel_feedback_required_in_same_hold_window=true`。普通首屏同步把这些事实暴露为只读
 `data-*` 属性，方便脚本确认“启用键盘不发车，只有按住方向键/WASD 才发低速短脉冲，松开/失焦/切页会停”。
 该变化只补只读 summary/UI 证据，不启用键盘、不发送 manual pulse、不执行 Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 23:49 CST 起，`action_status_cards[].id=nav2_route.evidence` 返回完整行程执行的结构化合同：
+`route_ready_on_map`、`minimal_precheck_safety_only=true`、固定执行代理
+`/api/robot-control/nav2/goal/execute`、`execute_sends_motion_when_ready`、同窗口轮速 L/R 验收要求、
+上次/下次底盘命令模式、托管 runtime 是否会自动启动和当前 blocker 数组。普通首屏同步暴露只读 `data-*` 属性，
+方便脚本确认“发车前只需安全确认；只有路线 ready 后执行按钮才会进入运动；完整路线必须同窗口轮速 L/R 非零”。
+该变化只补只读 summary/UI 证据，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。

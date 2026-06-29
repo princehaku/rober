@@ -4045,6 +4045,20 @@ describe("workstation fail-closed API contracts", () => {
         },
       });
       expect(Array.isArray(radarActionCard?.evidence?.blocked_reasons)).toBe(true);
+      expect(actionCards.find((card) => card.id === "nav2_route")).toMatchObject({
+        status: "not_ready",
+        requires_safety_confirmation: true,
+        sends_motion_when_clicked: true,
+        evidence: {
+          route_ready_on_map: false,
+          minimal_precheck_safety_only: true,
+          fixed_execute_proxy_endpoint: "/api/robot-control/nav2/goal/execute",
+          execute_sends_motion_when_ready: false,
+          requires_same_window_wheel_lr_nonzero: true,
+          wheel_feedback_status: "not_loaded",
+        },
+      });
+      expect(Array.isArray(actionCards.find((card) => card.id === "nav2_route")?.evidence?.blockers)).toBe(true);
       expect(actionCards.find((card) => card.id === "keyboard_control")).toMatchObject({
         status_label: "可启用",
         requires_safety_confirmation: true,
