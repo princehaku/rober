@@ -2511,6 +2511,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   goal_checklist?: RobotControlGoalChecklistItem[];
   goal_checklist_summary?: RobotControlGoalChecklistSummary;
   goal_summary?: RobotControlGoalChecklistSummary;
+  camera_summary?: RobotControlSummaryResponse["readback_summary"]["camera"];
+  map_summary?: RobotControlSummaryResponse["readback_summary"]["map"];
+  radar_summary?: RobotControlSummaryResponse["readback_summary"]["radar"];
   nav2_summary?: RobotControlSummaryResponse["readback_summary"]["nav2"];
   readback_summary: {
     camera: {

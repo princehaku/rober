@@ -671,6 +671,12 @@ delivery、stop 或 `/cmd_vel`。
 图上路线点数、当前 lifecycle blocker、下一步、下次执行模式和执行窗口 L/R 证据。该字段只是同一份只读摘要别名，
 不执行 Nav2、不启动 runtime、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 17:11 CST 起，`GET /api/robot-control/summary` 顶层新增 `camera_summary`、`map_summary`
+和 `radar_summary`，内容分别与 `readback_summary.camera/map/radar` 完全一致。普通脚本、外部面板和现场排查可以
+直接读到画面是否可见、共享预览是否独占、地图/路线/小车位置是否所见即所得，以及雷达点是否贴到当前地图。该字段只是同一份
+只读摘要别名，不启动相机、不启动雷达、不刷新地图、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或
+`/cmd_vel`。
+
 2026-06-29 10:45 CST 起，普通首屏实时画面卡片新增“打开共享预览”直链。该链接指向 PC Node 的
 `/api/robot-control/camera/mjpeg?baseUrl=...` 只读 relay，任何浏览器打开都会复用同一条上游 MJPEG 流；
 页面同时显示“任何页面打开这个只读地址都会接入同一条上游流”和当前观看页面数。该入口只做 GET 预览，

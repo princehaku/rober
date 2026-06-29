@@ -4118,7 +4118,13 @@ describe("workstation fail-closed API contracts", () => {
         mapping_source_card_id: "mapping_start",
       });
       expect(summary.goal_summary).toEqual(summary.goal_checklist_summary);
+      expect(summary.camera_summary).toEqual(summary.readback_summary.camera);
+      expect(summary.map_summary).toEqual(summary.readback_summary.map);
+      expect(summary.radar_summary).toEqual(summary.readback_summary.radar);
       expect(summary.nav2_summary).toEqual(summary.readback_summary.nav2);
+      expect(summary.camera_summary?.preview_visible_status).toBe(summary.readback_summary.camera.preview_visible_status);
+      expect(summary.map_summary?.map_wysiwyg_status_plain).toBe(summary.readback_summary.map.map_wysiwyg_status_plain);
+      expect(summary.radar_summary?.radar_overlay_status).toBe(summary.readback_summary.radar.radar_overlay_status);
       expect(summary.nav2_summary?.status).toBe(summary.readback_summary.nav2.status);
       expect(summary.nav2_summary?.next_action_plain).toBe(summary.readback_summary.nav2.next_action_plain);
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
