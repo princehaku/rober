@@ -2632,6 +2632,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       latest_raw_packet_proof_status: string;
       latest_scan_proof_result_status?: string;
       raw_packet_once_observed?: string;
+      scan_once_observed?: string;
+      scan_hz_observed?: string;
+      radar_scan_observation_status?: string;
+      radar_scan_observation_missing_reasons?: string;
+      radar_map_overlay_readiness_status?: string;
+      radar_map_overlay_next_action_plain?: string;
       continuous_scan_status: string;
       lifecycle_running: string;
       lifecycle_state: string;
@@ -2658,6 +2664,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       continuous_scan_status: string;
       latest_scan_proof_fresh: string;
       runtime_scan_status: string;
+      radar_scan_observation_status?: string;
+      radar_scan_observation_missing_reasons?: string;
+      radar_map_overlay_readiness_status?: string;
+      radar_map_overlay_next_action_plain?: string;
       scan_point_count: string;
       scan_preview_point_count: string;
       scan_preview_source_point_count: string;

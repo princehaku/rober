@@ -1750,12 +1750,50 @@ function lidarSummaryFromReadbacks(
   const rawPacketOnceObserved = latestScanProofResultStatus === "raw_packets_parsed"
     ? "true"
     : rawPacketObservedFromScan || rawPacketObservedFromRawProof || "not_loaded";
+  const scanOnceObserved = readbackKeyValueText(
+    radarScanProofReadback,
+    ["scan_once_observed", "latest_scan_once_observed"],
+    summaryValueText(radarScanProofPayload, ["scan_once_observed", "latest_scan_once_observed"], ""),
+  ) || readbackKeyValueText(radarStatusReadback, ["scan_once_observed"], "");
+  const scanHzObserved = readbackKeyValueText(
+    radarScanProofReadback,
+    ["scan_hz_observed", "latest_scan_hz_observed"],
+    summaryValueText(radarScanProofPayload, ["scan_hz_observed", "latest_scan_hz_observed"], ""),
+  ) || readbackKeyValueText(radarStatusReadback, ["scan_hz_observed"], "");
   const radarControls = asRecord(findFirstKey(radarStatusPayload, ["controls"]));
   const radarStartControl = asRecord(radarControls?.start);
   const radarStartCommand = asRecord(radarStartControl?.command);
   const radarLifecycleRunning = summaryValueText(radarStatusPayload, ["lifecycle_running"]);
   const radarContinuousStatus = summaryValueText(radarStatusPayload, ["continuous_scan_status"]);
   const radarLifecycleState = summaryValueText(radarStatusPayload, ["lifecycle_state"]);
+  const latestScanProofFresh = summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"]);
+  const missingObservations = radarMissingScanObservations(
+    radarStatusReadback,
+    radarScanProofReadback,
+    radarStatusPayload,
+    radarScanProofPayload,
+  );
+  const missingObservationText = missingObservations.length > 0 ? missingObservations.join(",") : "none";
+  const radarStopped = radarLifecycleRunning === "false" || radarLifecycleState === "stopped" || radarContinuousStatus === "lifecycle_not_running";
+  const radarScanObservationStatus = latestScanProofFresh === "true"
+    ? "all_required_observations_observed"
+    : missingObservations.length > 0
+      ? "missing_required_observations"
+      : "latest_scan_not_fresh";
+  const radarMapOverlayReadinessStatus = radarStopped
+    ? "blocked_radar_lifecycle_not_running"
+    : latestScanProofFresh === "true"
+      ? "scan_ready_refresh_map_preview"
+      : missingObservations.length > 0
+        ? "blocked_missing_scan_observations"
+        : "blocked_latest_scan_not_fresh";
+  const radarMapOverlayNextActionPlain = radarMapOverlayReadinessStatus === "scan_ready_refresh_map_preview"
+    ? "雷达扫描材料已就绪；刷新地图画面，确认地图上实际显示的雷达点数。"
+    : radarMapOverlayReadinessStatus === "blocked_missing_scan_observations"
+      ? `先修复雷达扫描观测：${missingObservations.join("、")}；有新扫描后再刷新地图画面。`
+      : radarStopped
+        ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
+        : "先刷新雷达扫描 proof，确认最新扫描为 fresh 后再刷新地图画面。";
   const radarEndpointStatus = radarStatusReadback?.status ?? "not_loaded";
   const radarSummaryStatus =
     radarLifecycleRunning === "true" && radarContinuousStatus !== "not_loaded"
@@ -1772,12 +1810,18 @@ function lidarSummaryFromReadbacks(
     latest_raw_packet_proof_status: radarRawPacketProofReadback?.status ?? "not_loaded",
     latest_scan_proof_result_status: latestScanProofResultStatus,
     raw_packet_once_observed: rawPacketOnceObserved,
+    scan_once_observed: scanOnceObserved || "not_loaded",
+    scan_hz_observed: scanHzObserved || "not_loaded",
+    radar_scan_observation_status: radarScanObservationStatus,
+    radar_scan_observation_missing_reasons: missingObservationText,
+    radar_map_overlay_readiness_status: radarMapOverlayReadinessStatus,
+    radar_map_overlay_next_action_plain: radarMapOverlayNextActionPlain,
     continuous_scan_status: radarContinuousStatus,
     lifecycle_running: radarLifecycleRunning,
     lifecycle_state: radarLifecycleState,
     continuous_window_observed: summaryValueText(radarStatusPayload, ["continuous_window_observed"]),
     continuity_window_status: summaryValueText(radarStatusPayload, ["continuity_window_status"]),
-    latest_scan_proof_fresh: summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"]),
+    latest_scan_proof_fresh: latestScanProofFresh,
     runtime_scan_status: runtimeScan.status,
     runtime_lidar_min_distance_m: runtimeScan.min_distance_m,
     runtime_lidar_age_s: runtimeScan.age_s,
@@ -1787,6 +1831,53 @@ function lidarSummaryFromReadbacks(
     scan_preview_frame_id: proof.scan_preview_frame_id || "not_loaded",
     radar_start_configured: summaryValueText(radarStartCommand, ["configured"]),
   };
+}
+
+function radarMissingScanObservations(
+  radarStatusReadback: InternalRobotApiEndpointReadback | null,
+  radarScanProofReadback: InternalRobotApiEndpointReadback | null,
+  radarStatusPayload: JsonRecord | null,
+  radarScanProofPayload: JsonRecord | null,
+): string[] {
+  // 优先使用上车端 blocked reason，避免 PC 只按缺字段猜测雷达 proof 缺口。
+  const rawReasons = [
+    radarStatusReadback?.key_values.blocked_reasons,
+    radarStatusReadback?.key_values.continuity_blocked_reasons,
+    radarScanProofReadback?.key_values.blocked_reasons,
+    radarStatusPayload?.blocked_reasons,
+    radarStatusPayload?.continuity_blocked_reasons,
+    radarScanProofPayload?.blocked_reasons,
+  ];
+  const missing = new Set<string>();
+  for (const reason of rawReasons) {
+    const text = Array.isArray(reason) ? reason.join(",") : typeof reason === "string" ? reason : reason === undefined ? "" : JSON.stringify(reason);
+    for (const match of text.matchAll(/required_observations_missing:([^"\]\[]+)/g)) {
+      for (const item of (match[1] ?? "").split(",")) {
+        const normalized = item.trim();
+        if (["scan_once", "scan_hz", "raw_packet_once"].includes(normalized)) {
+          missing.add(normalized);
+        }
+      }
+    }
+  }
+  const explicitChecks = [
+    ["scan_once_observed", "scan_once"],
+    ["latest_scan_once_observed", "scan_once"],
+    ["scan_hz_observed", "scan_hz"],
+    ["latest_scan_hz_observed", "scan_hz"],
+    ["raw_packet_once_observed", "raw_packet_once"],
+    ["latest_raw_packet_once_observed", "raw_packet_once"],
+  ] as const;
+  for (const [key, label] of explicitChecks) {
+    const value = radarScanProofReadback?.key_values[key]
+      || radarStatusReadback?.key_values[key]
+      || summaryValueText(radarScanProofPayload, [key], "")
+      || summaryValueText(radarStatusPayload, [key], "");
+    if (value === "false") {
+      missing.add(label);
+    }
+  }
+  return ["scan_once", "scan_hz", "raw_packet_once"].filter((item) => missing.has(item));
 }
 
 function radarSummaryFromReadbacks(
@@ -1807,6 +1898,9 @@ function radarSummaryFromReadbacks(
   // 地图层 loaded 或点数大于 0 才能称为 marker 可见，避免把旧扫描来源点误说成所见即所得。
   const overlayLoaded = map.radar_overlay_status === "loaded" || Number(overlayPointCount) > 0;
   const status = radarReady ? "radar_ready" : radarStopped ? "radar_stopped" : lidar.status || "not_loaded";
+  const missingObservationText = lidar.radar_scan_observation_missing_reasons || "none";
+  const hasMissingObservations = missingObservationText !== "none" && missingObservationText !== "not_loaded";
+  const missingObservationPlain = missingObservationText.split(",").filter(Boolean).join("、");
   // ready 但 marker 为 0 时仍要显式写 0 个点，方便脚本和现场人员对照地图画面。
   const radarStatusPlain = radarReady
     ? overlayLoaded
@@ -1815,7 +1909,9 @@ function radarSummaryFromReadbacks(
     : radarStopped
       // 雷达停了就不能把来源点当作当前地图 marker；这是本轮 WYSIWYG 的关键边界。
       ? `雷达未运行或扫描已停；地图雷达点当前显示 ${overlayPointCount} 个，旧来源点 ${overlaySourcePointCount} 个只作诊断。`
-      : `雷达状态未完全就绪；地图雷达点当前显示 ${overlayPointCount} 个，需确认雷达正在运行且有新扫描。`;
+      : hasMissingObservations
+        ? `雷达已运行但扫描 proof 缺 ${missingObservationPlain}；地图雷达点当前显示 ${overlayPointCount} 个。`
+        : `雷达状态未完全就绪；地图雷达点当前显示 ${overlayPointCount} 个，需确认雷达正在运行且有新扫描。`;
   // 下一步只引导 operator 做显式 start/refresh，不在 summary 构建时替 operator 发命令。
   const radarNextActionPlain = radarReady
     ? overlayLoaded
@@ -1823,7 +1919,9 @@ function radarSummaryFromReadbacks(
       : "刷新地图画面，确认地图上实际显示的雷达点数。"
     : radarStopped
       ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
-      : "先刷新雷达状态，就绪后再刷新地图画面确认雷达点。";
+      : hasMissingObservations
+        ? lidar.radar_map_overlay_next_action_plain || `先修复雷达扫描观测：${missingObservationPlain}；有新扫描后再刷新地图画面。`
+        : "先刷新雷达状态，就绪后再刷新地图画面确认雷达点。";
   return {
     status,
     plain_hint: radarPlainHint(radarStatusPlain, radarNextActionPlain),
@@ -1835,6 +1933,10 @@ function radarSummaryFromReadbacks(
     continuous_scan_status: lidar.continuous_scan_status,
     latest_scan_proof_fresh: lidar.latest_scan_proof_fresh,
     runtime_scan_status: lidar.runtime_scan_status,
+    radar_scan_observation_status: lidar.radar_scan_observation_status || "not_loaded",
+    radar_scan_observation_missing_reasons: missingObservationText,
+    radar_map_overlay_readiness_status: lidar.radar_map_overlay_readiness_status || "not_loaded",
+    radar_map_overlay_next_action_plain: lidar.radar_map_overlay_next_action_plain || radarNextActionPlain,
     scan_point_count: lidar.scan_preview_point_count,
     scan_preview_point_count: lidar.scan_preview_point_count,
     scan_preview_source_point_count: lidar.scan_preview_source_point_count,

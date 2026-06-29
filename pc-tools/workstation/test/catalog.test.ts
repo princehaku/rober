@@ -7725,6 +7725,9 @@ describe("workstation fail-closed API contracts", () => {
           continuous_window_observed: false,
           continuity_window_status: "latest_proof_incomplete_while_lifecycle_running",
           latest_scan_proof_fresh: false,
+          blocked_reasons: [
+            "latest_scan_proof_required_observations_missing:scan_once,scan_hz,raw_packet_once,all_required_observations",
+          ],
         },
       },
       "/api/radar/scan-proof/latest": {
@@ -7749,6 +7752,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.latest_scan_proof_status).toBe("loaded");
       expect(summary.readback_summary.lidar.latest_scan_proof_result_status).toBe("raw_packets_parsed");
       expect(summary.readback_summary.lidar.raw_packet_once_observed).toBe("true");
+      expect(summary.readback_summary.lidar.radar_scan_observation_status).toBe("missing_required_observations");
+      expect(summary.readback_summary.lidar.radar_scan_observation_missing_reasons).toBe("scan_once,scan_hz,raw_packet_once");
+      expect(summary.readback_summary.radar.radar_scan_observation_missing_reasons).toBe("scan_once,scan_hz,raw_packet_once");
+      expect(summary.readback_summary.radar.radar_status_plain).toContain("扫描 proof 缺 scan_once、scan_hz、raw_packet_once");
+      expect(summary.readback_summary.radar.radar_next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面。");
+      expect(summary.action_status_cards?.find((card) => card.id === "radar_map_points")?.next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面");
+      expect(summary.goal_checklist_summary?.radar_next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面");
       expect(summary.readback_summary.lidar.scan_preview_point_count).toBe("0");
     } finally {
       await robotApi.close();
