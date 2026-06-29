@@ -4117,7 +4117,8 @@ describe("workstation fail-closed API contracts", () => {
       });
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("现场可先收口 2 项：键盘连续手控、自由自助移动");
-      expect(summary.goal_checklist_summary?.summary_plain).toContain("先补条件：画面所见即所得");
+      expect(summary.goal_checklist_summary?.summary_plain).toContain("先做：自由自助移动");
+      expect(summary.goal_checklist_summary?.summary_plain).toContain("未就绪项：画面所见即所得、雷达点贴到地图、完整行程执行、传感器就绪后建图");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("可先自由移动");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("键盘或低速手控");
       expect(summary.goal_checklist_summary?.safety_precheck_summary_plain).toContain("发车前预检已精简");

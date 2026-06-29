@@ -7162,10 +7162,17 @@ function buildGoalChecklistSummary(
   }
   const safetyText = safetyConfirmNeededCount > 0 ? `，其中 ${safetyConfirmNeededCount} 项需要现场安全确认` : "";
   const motionText = motionNeededCount > 0 ? `，${motionNeededCount} 项需要真实运动验证` : "";
+  const primaryReadyAction = firstMotion ?? remaining.find((item) => item.status === "ready" || item.status === "needs_safety_confirm") ?? null;
   const readyActionText = readyActionItems.length > 0
     // 有可现场收口项时，先告诉 operator 可以做什么；相机/雷达缺口不能把可动车入口压到后面。
     ? `现场可先收口 ${readyActionItems.length} 项：${readyActionItems.map((item) => item.title).join("、")}；`
     : "";
+  const blockedActionText = blockedActionItems.length > 0
+    ? `未就绪项：${blockedActionItems.map((item) => item.title).join("、")}。`
+    : "";
+  const primarySummaryText = primaryReadyAction
+    ? `${readyActionText}先做：${primaryReadyAction.title}；${blockedActionText}`
+    : `先补条件：${firstIncomplete.title}。`;
   return {
     status: "in_progress",
     status_label: "进行中",
@@ -7185,8 +7192,8 @@ function buildGoalChecklistSummary(
     nav2_source_card_id: nav2?.source_card_id ?? "",
     mapping_item_id: mapping?.id ?? "",
     mapping_source_card_id: mapping?.source_card_id ?? "",
-    next_action_plain: firstIncomplete.next_action_plain,
-    summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成，还差 ${remaining.length} 项${safetyText}${motionText}；${readyActionText}先补条件：${firstIncomplete.title}。`,
+    next_action_plain: primaryReadyAction?.next_action_plain ?? firstIncomplete.next_action_plain,
+    summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成，还差 ${remaining.length} 项${safetyText}${motionText}；${primarySummaryText}`,
     motion_next_action_plain: firstMotion?.next_action_plain ?? "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。",
     motion_summary_plain: motionSummary,
     safety_precheck_next_action_plain: firstSafetyPrecheck?.next_action_plain ?? "当前没有待安全确认的发车入口；继续按画面、雷达、行程和建图缺口处理。",

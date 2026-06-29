@@ -620,8 +620,8 @@ const fixtures: Record<string, unknown> = {
       nav2_source_card_id: "nav2_route",
       mapping_item_id: "mapping_start",
       mapping_source_card_id: "mapping_start",
-      next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
-      summary_plain: "本轮目标检查 1/7 项已完成，还差 6 项，其中 3 项需要现场安全确认，3 项需要真实运动验证；现场可先收口 3 项：完整行程执行、键盘连续手控、自由自助移动；先补条件：画面所见即所得。",
+      next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+      summary_plain: "本轮目标检查 1/7 项已完成，还差 6 项，其中 3 项需要现场安全确认，3 项需要真实运动验证；现场可先收口 3 项：完整行程执行、键盘连续手控、自由自助移动；先做：自由自助移动；未就绪项：画面所见即所得、雷达点贴到地图、传感器就绪后建图。",
       motion_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
       motion_summary_plain: "可先自由移动；相机和雷达只影响建图验收。下一步：上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
       safety_precheck_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
@@ -4437,7 +4437,8 @@ describe("App", () => {
     expect(goalChecklistSummary.exists()).toBe(true);
     expect(goalChecklistSummary.text()).toContain("本轮目标检查 1/7 项已完成，还差 6 项");
     expect(goalChecklistSummary.text()).toContain("现场可先收口 3 项：完整行程执行、键盘连续手控、自由自助移动");
-    expect(goalChecklistSummary.text()).toContain("先补条件：画面所见即所得");
+    expect(goalChecklistSummary.text()).toContain("先做：自由自助移动");
+    expect(goalChecklistSummary.text()).toContain("未就绪项：画面所见即所得、雷达点贴到地图、传感器就绪后建图");
     expect(goalChecklistSummary.text()).toContain("可先自由移动");
     expect(goalChecklistSummary.text()).toContain("键盘或低速手控");
     expect(goalChecklistSummary.text()).toContain("发车前预检已精简");
