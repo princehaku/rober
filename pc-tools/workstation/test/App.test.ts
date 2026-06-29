@@ -11217,6 +11217,15 @@ describe("App", () => {
     expect(tripPanel.exists()).toBe(true);
     expect(tripPanel.text()).toContain("行程操作");
     expect(tripPanel.text()).toContain("待确认");
+    expect(tripPanel.attributes("data-route-point-count")).toBe("0");
+    expect(tripPanel.attributes("data-current-route-visible")).toBe("false");
+    expect(tripPanel.attributes("data-route-wysiwyg-ready")).toBe("false");
+    expect(tripPanel.attributes("data-main-action-kind")).toBe("await_safety_confirm");
+    expect(tripPanel.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(tripPanel.attributes("data-main-action-can-run")).toBe("false");
+    expect(tripPanel.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(tripPanel.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("先勾选确认");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
@@ -11254,6 +11263,11 @@ describe("App", () => {
       String(url).startsWith("/api/robot-control/nav2/proof/refresh?") && options?.method === "POST",
     ).length).toBe(nav2RefreshCallsBeforePrepare + 1);
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程准备已刷新，路线 17 个点已准备；先刷新地图画面确认图上路线。");
+    expect(tripPanel.attributes("data-route-point-count")).toBe("17");
+    expect(tripPanel.attributes("data-current-route-visible")).toBe("false");
+    expect(tripPanel.attributes("data-main-action-kind")).toBe("refresh_route_on_map_no_motion");
+    expect(tripPanel.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(tripPanel.attributes("data-target-source")).toBe("map_preview_refresh");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：路线已准备 17 个点，但地图上还没显示；先刷新地图画面。");
     expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 17 个点；先刷新地图画面确认图上路线。");
@@ -11363,7 +11377,21 @@ describe("App", () => {
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("地图上已显示路线 3 个点；可直接执行图上路线，执行接口只复核安全确认和固定白名单。");
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.text()).toContain("地图上已显示路线 3 个点；可直接执行图上路线，执行接口只复核安全确认和固定白名单。");
+    expect(tripPanel.attributes("data-route-point-count")).toBe("3");
+    expect(tripPanel.attributes("data-route-source-point-count")).toBe("15");
+    expect(tripPanel.attributes("data-current-route-visible")).toBe("true");
+    expect(tripPanel.attributes("data-recent-route-visible")).toBe("false");
+    expect(tripPanel.attributes("data-robot-pose-visible")).toBe("true");
+    expect(tripPanel.attributes("data-route-wysiwyg-ready")).toBe("true");
+    expect(tripPanel.attributes("data-main-action-kind")).toBe("execute_current_map_route");
+    expect(tripPanel.attributes("data-target-source")).toBe("current_map_route");
+    expect(tripPanel.attributes("data-sends-motion-when-clicked")).toBe("true");
+    expect(tripPanel.attributes("data-main-action-can-run")).toBe("true");
+    expect(tripPanel.attributes("data-managed-runtime-autostart")).toBe("false");
+    expect(tripPanel.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toBe(false);
@@ -11462,11 +11490,23 @@ describe("App", () => {
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("已准备");
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.attributes("data-state")).toBe("已准备");
+    expect(tripPanel.attributes("data-route-point-count")).toBe("3");
+    expect(tripPanel.attributes("data-route-source-point-count")).toBe("18");
+    expect(tripPanel.attributes("data-current-route-visible")).toBe("true");
+    expect(tripPanel.attributes("data-route-wysiwyg-ready")).toBe("true");
+    expect(tripPanel.attributes("data-main-action-kind")).toBe("execute_current_map_route");
+    expect(tripPanel.attributes("data-sends-motion-when-clicked")).toBe("true");
+    expect(tripPanel.attributes("data-main-action-can-run")).toBe("true");
+    expect(tripPanel.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(tripPanel.attributes("data-managed-runtime-autostart")).toBe("true");
+    expect(tripPanel.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("可直接执行图上路线，执行会自动启动自动驾驶 runtime；执行接口只复核安全确认和固定白名单。");
+    expect(tripPanel.text()).toContain("可直接执行图上路线，执行会自动启动自动驾驶 runtime；执行接口只复核安全确认和固定白名单。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已可执行；执行会自动启动自动驾驶 runtime；点击执行前确认起点、终点和路径。");
     expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("路线已准备 18 个点");
     expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("点击执行图上路线会自动启动 runtime");

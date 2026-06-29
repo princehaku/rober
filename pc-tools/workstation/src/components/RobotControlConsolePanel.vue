@@ -9379,6 +9379,66 @@ const plainTripMainActionSummary = computed(() => {
       return "主按钮：当前不会发车。";
   }
 });
+type PlainTripDomEvidence = {
+  // 主面板也要能证明“图上路线”和“执行按钮”绑定的是同一件事，不能只靠长文案解释。
+  routePointCount: number;
+  routeSourcePointCount: number;
+  currentRouteVisible: boolean;
+  recentRouteVisible: boolean;
+  robotPoseVisible: boolean;
+  mapWysiwygPending: boolean;
+  routeWysiwygReady: boolean;
+  // 这里描述主按钮的真实点击语义：准备路线不发车，只有当前地图路线才发执行请求。
+  mainActionKind: string;
+  mainActionTargetSource: string;
+  mainActionSendsMotion: boolean;
+  mainActionCanRun: boolean;
+  minimalPrecheckSafetyOnly: boolean;
+  managedRuntimeAutostart: boolean;
+  // 完整行程闭环要求同窗口轮速 L/R 非零；IMU 或 goal_succeeded 都不能单独替代。
+  requiresSameWindowWheelLrNonzero: boolean;
+  wheelFeedbackStatus: string;
+  wheelLrNonzeroProven: boolean;
+  latestWheelRawLeft: string;
+  latestWheelRawRight: string;
+  lastBaseCommandMode: string;
+  nextBaseCommandMode: string;
+  fixedExecuteProxyEndpoint: string;
+};
+const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
+  // DOM 证据统一从当前 computed 和后端 readback 取值，避免测试去解析中文句子。
+  const summary = robotSummary.value;
+  const nav2 = summary?.readback_summary.nav2;
+  const values = directNav2ExecutionValues();
+  const wheelPair = nav2BaseFeedbackPair(values);
+  const routePath = latestNavPathOverlay();
+  const mainActionKind = plainTripMainActionKind.value;
+  const mainActionSendsMotion = plainTripMainActionSendsMotion.value;
+  return {
+    routePointCount: routePath?.displayedCount ?? plainTripPreparedPointCount.value,
+    routeSourcePointCount: routePath?.totalCount ?? plainTripPreparedPointCount.value,
+    currentRouteVisible: plainTripCurrentRouteVisible.value,
+    recentRouteVisible: plainTripRecentRouteVisible.value,
+    robotPoseVisible: plainTripRobotPoseVisibleForExecution.value,
+    mapWysiwygPending: plainTripMapWysiwygPending.value,
+    routeWysiwygReady: plainTripCurrentRouteVisible.value && !plainTripMapWysiwygPending.value,
+    mainActionKind,
+    mainActionTargetSource: plainTripMainActionTargetSource.value,
+    mainActionSendsMotion,
+    mainActionCanRun: canRunPlainTripExecution.value,
+    minimalPrecheckSafetyOnly: true,
+    managedRuntimeAutostart: plainTripManagedRuntimeWillAutostart.value,
+    requiresSameWindowWheelLrNonzero: true,
+    wheelFeedbackStatus: summary?.safe_command_boundary.nav2_goal_wheel_feedback_status ?? nav2?.goal_execution_wheel_raw_lr_status_plain ?? "not_loaded",
+    wheelLrNonzeroProven: explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)
+      || explicitTrueKeyValue(nav2?.goal_execution_base_feedback_lr_nonzero_proven),
+    latestWheelRawLeft: wheelPair?.left ?? nav2?.goal_execution_base_feedback_latest_raw_left ?? "not_loaded",
+    latestWheelRawRight: wheelPair?.right ?? nav2?.goal_execution_base_feedback_latest_raw_right ?? "not_loaded",
+    lastBaseCommandMode: values?.base_command_mode ?? nav2?.goal_execution_base_command_mode ?? "not_loaded",
+    nextBaseCommandMode: plainTripRequestedBaseCommandMode(),
+    fixedExecuteProxyEndpoint: "/api/robot-control/nav2/goal/execute",
+  };
+});
 
 const plainTripPreparationButtonLabel = computed(() => {
   // 普通用户的主流程只看执行按钮；这个按钮只是可选只读刷新，不再表现成发车前必做预检。
@@ -14748,7 +14808,34 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </div>
-          <div ref="plainTripRunPanel" class="plain-trip-run" tabindex="-1" :data-state="plainTripSummary.state" data-testid="plain-trip-run">
+          <div
+            ref="plainTripRunPanel"
+            class="plain-trip-run"
+            tabindex="-1"
+            :data-state="plainTripSummary.state"
+            :data-route-point-count="String(plainTripDomEvidence.routePointCount)"
+            :data-route-source-point-count="String(plainTripDomEvidence.routeSourcePointCount)"
+            :data-current-route-visible="String(plainTripDomEvidence.currentRouteVisible)"
+            :data-recent-route-visible="String(plainTripDomEvidence.recentRouteVisible)"
+            :data-robot-pose-visible="String(plainTripDomEvidence.robotPoseVisible)"
+            :data-map-wysiwyg-pending="String(plainTripDomEvidence.mapWysiwygPending)"
+            :data-route-wysiwyg-ready="String(plainTripDomEvidence.routeWysiwygReady)"
+            :data-main-action-kind="plainTripDomEvidence.mainActionKind"
+            :data-target-source="plainTripDomEvidence.mainActionTargetSource"
+            :data-sends-motion-when-clicked="String(plainTripDomEvidence.mainActionSendsMotion)"
+            :data-main-action-can-run="String(plainTripDomEvidence.mainActionCanRun)"
+            :data-minimal-precheck-safety-only="String(plainTripDomEvidence.minimalPrecheckSafetyOnly)"
+            :data-managed-runtime-autostart="String(plainTripDomEvidence.managedRuntimeAutostart)"
+            :data-requires-same-window-wheel-lr-nonzero="String(plainTripDomEvidence.requiresSameWindowWheelLrNonzero)"
+            :data-wheel-feedback-status="plainTripDomEvidence.wheelFeedbackStatus"
+            :data-wheel-lr-nonzero-proven="String(plainTripDomEvidence.wheelLrNonzeroProven)"
+            :data-latest-wheel-raw-left="plainTripDomEvidence.latestWheelRawLeft"
+            :data-latest-wheel-raw-right="plainTripDomEvidence.latestWheelRawRight"
+            :data-last-base-command-mode="plainTripDomEvidence.lastBaseCommandMode"
+            :data-next-base-command-mode="plainTripDomEvidence.nextBaseCommandMode"
+            :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
+            data-testid="plain-trip-run"
+          >
             <div class="simple-status-row">
               <strong>行程操作</strong>
               <span class="status-chip" :data-state="plainTripSummary.state">{{ plainTripSummary.state }}</span>
