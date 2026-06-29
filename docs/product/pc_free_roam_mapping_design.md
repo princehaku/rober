@@ -195,6 +195,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   只保留为历史执行材料，不再覆盖当前服务状态。这样普通首屏和直连 `/api/robot-control/nav2/status` 会一致显示当前
   controller/lifecycle 是否 active，避免把旧执行窗口的 controller active 误当成“现在仍 active”。该变化只调整只读聚合优先级，
   不启动 Nav2 lifecycle、不执行 goal、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 19:27 起，直连 `GET /api/robot-control/nav2/status` 的 `next_action_plain` 也采用最小发车确认口径：
+  当图上路线已生成但当前 controller/lifecycle 未 active 时，提示“执行图上路线只需勾现场安全确认，执行接口会托管启动自动驾驶 runtime，
+  并在同窗口复验轮速 L/R”，而不是要求普通用户先手动恢复 runtime。该变化只修正只读诊断文案，不启动 Nav2 lifecycle、不执行 goal、
+  不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 19:30 起，`readback_summary.free_roam` 增加 `next_action_plain`：
   它复用同一轮 `safe_command_boundary.free_roam_autonomy_next_action`，把“能先自由移动”和“建图验收还差什么”放进自由移动 readback 自身。
   因此 live 出现 `status=start_ready`、`motion_ready=true`、`mapping_missing=camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview` 时，

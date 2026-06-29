@@ -1039,13 +1039,16 @@ function readOnlyStatusPlainFields(
   const navStatus = keyValues.status || "not_loaded";
   const servicesReady = controllerActive === "true" && plannerActive === "true";
   const pathReady = pathGenerated === "true" && pathPointCount !== "0" && pathPointCount !== "not_loaded";
+  const lifecycleInactive = lifecycleRunning === "false" || ["stopped", "inactive", "unconfigured"].includes(lifecycleState);
   const nextAction = servicesReady && pathReady
     ? "Nav2 路线和服务已读到；勾现场安全确认后可执行图上路线。"
-    : controllerActive === "false"
-      ? "Nav2 路线已生成但 controller 未 active，先启动或恢复 Nav2 runtime。"
+    : pathReady && (controllerActive === "false" || lifecycleInactive)
+      ? "图上路线已生成；当前控制服务或 lifecycle 未 active。执行图上路线只需勾现场安全确认，执行接口会托管启动自动驾驶 runtime，并在同窗口复验轮速 L/R。"
+      : controllerActive === "false"
+        ? "控制服务未 active；先恢复 Nav2 runtime，再确认路线点。"
       : "先启动或刷新 Nav2 runtime，再确认路线点和 controller 状态。";
   return {
-    plain_hint: `Nav2 状态已读到：${navStatus}；路线点 ${pathPointCount}；controller=${controllerActive}。`,
+    plain_hint: `Nav2 状态已读到：${navStatus}；路线点 ${pathPointCount}；控制服务=${controllerActive}。`,
     next_action_plain: nextAction,
     base_command_mode: baseCommandMode,
     nav2_base_command_mode: nav2BaseCommandMode,
