@@ -8,6 +8,14 @@
 
 ## 2026-06-29 系列
 
+### 2026-06-29 21-35｜pc camera opencv index fallback｜共享预览兼容与无首帧实测
+
+本轮 `sprints/2026.06.29_21-35_pc_camera_opencv_index_fallback/` 继续推进 PC 普通首屏“画面所见即所得”和多人共享预览。相机 smoke 服务新增 OpenCV `/dev/videoN` path 打开失败后的数字索引 `N` fallback，并在 shared capture/首帧尝试矩阵里记录 `open_source`，避免部分板端 OpenCV path/index 行为不一致时直接判死。该变化仍只读取真实 UVC 帧，不发送黑帧、placeholder 或伪图像。
+
+部署到真实上位机后重启 8088 图传服务，`/api/camera/mjpeg` 仍通过共享 relay 返回上游 503，`exclusive_camera_claim=false`，PC 7001 camera status 返回 `source_diagnosis_status=uvc_no_frame_not_exclusive`、`source_usage_owner_count=0`。直接 8088 `/mjpeg` 仍为 `failure_reason=first_frame_total_timeout`，`MJPG@640x480@30`、`MJPG@480x320@30`、`YUYV@320x240@25` 均 `capture_read_returned_false`；内核日志仍有 UVC URB/USB reset 线索。本轮结论：共享预览链路和多人 relay 不是独占问题，当前 DV20 UVC 源头仍未吐首帧。
+
+验证范围：`python3 -m unittest onboard.tests.test_local_webrtc_camera_smoke onboard.tests.test_camera_first_frame_probe` 42 tests OK；`py_compile` OK；`git diff --check` OK；Docker/Humble `colcon build --symlink-install` 输出 `Summary: 6 packages finished [43.2s]`；真实上位机 8088 服务重启并完成 MJPEG/health/PC relay 只读验证。本轮没有发送 manual、keyboard、free-roam、Nav2 goal、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-06-29 21-05｜lidar stc baudrate alignment｜真实雷达 fresh 与 PC 地图雷达 WYSIWYG
 
 本轮 `sprints/2026.06.29_21-05_lidar_stc_baudrate_alignment/` 在不使用 subagent 的前提下修复真实上位机雷达链路。先按 `docs/vendor/VENDOR_INDEX.md` 追到 `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`，把 LiDAR 默认串口口径对齐为 `/dev/ttyACM0 @ 230400`，并给 `ros2_trashbot_hardware` 的 packet parser 增加 STC `0x54` 固定 47 字节帧支持，同时保留旧 `0xAA55` mock/回放路径。现场随后确认真实 raw packet 仍为 `0xAA55`，旧解析路径可继续工作；核心问题还包括 proof collector 使用 ROS daemon 时触发 `rclpy.ok()` XML-RPC 异常、5 秒窗口不足和 raw packet topic type discovery 偶发失败。

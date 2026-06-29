@@ -429,6 +429,47 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertTrue(second.release_ref())
         self.assertTrue(fake_cv2.captures[0].released)
 
+    def test_shared_capture_falls_back_to_numeric_index_for_dev_video_path(self) -> None:
+        """部分 OpenCV/V4L2 组合能用索引打开但不能用路径打开，服务应自动兜底。"""
+
+        class FakeRawCapture:
+            def __init__(self, opened: bool) -> None:
+                self.opened = opened
+                self.released = False
+
+            def isOpened(self) -> bool:  # noqa: N802 - 模拟 OpenCV API。
+                return self.opened
+
+            def set(self, _key: int, _value: object) -> None:
+                return None
+
+            def release(self) -> None:
+                self.released = True
+
+        class FakeCv2:
+            def __init__(self) -> None:
+                self.sources: list[str | int] = []
+                self.captures: list[FakeRawCapture] = []
+
+            def VideoCapture(self, source: str | int) -> FakeRawCapture:  # noqa: N802 - 模拟 OpenCV API。
+                self.sources.append(source)
+                capture = FakeRawCapture(opened=source == 1)
+                self.captures.append(capture)
+                return capture
+
+        state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
+        fake_cv2 = FakeCv2()
+
+        shared, error = state.acquire_shared_capture("/dev/video1", fake_cv2, apply_settings=False)
+
+        self.assertIsNone(error)
+        self.assertIsNotNone(shared)
+        assert shared is not None
+        self.assertEqual(["/dev/video1", 1], fake_cv2.sources)
+        self.assertTrue(fake_cv2.captures[0].released)
+        self.assertFalse(fake_cv2.captures[1].released)
+        self.assertEqual("index:1", shared.summary()["open_source"])
+
     def test_shared_capture_read_timeout_marks_source_failed_and_releases(self) -> None:
         """V4L2 read 卡住时必须快速失败，不能让 PC 画面一直显示等待。"""
 

@@ -3893,6 +3893,16 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 `fresh_scan_proof_observed=true`、`continuous_scan_status=latest_proof_fresh_while_lifecycle_running`。
 PC 7001 summary 同步显示 `radar_status=radar_ready`、地图所见即所得为“地图画面、图上路线、小车位置和雷达标记都已按当前读数显示”。
 
+2026-06-29 21:35 起，上位机 8088 相机 smoke 服务在 OpenCV 打开 `/dev/videoN` 失败时会自动再试数字索引 `N`，
+并在 shared capture summary 与首帧格式尝试矩阵里记录 `open_source`。该 fallback 只提高真实 UVC 打开兼容性，
+不发送黑帧、不生成 placeholder、不把设备存在当作画面可见。真实上位机复测后，`/api/camera/mjpeg` 仍通过共享 relay 返回
+上游 503，`exclusive_camera_claim=false`；PC 7001 camera status 仍显示
+`source_diagnosis_status=uvc_no_frame_not_exclusive`、`source_usage_owner_count=0`。直接 8088 `/mjpeg` 仍为
+`failure_reason=first_frame_total_timeout`，`MJPG@640x480@30`、`MJPG@480x320@30`、`YUYV@320x240@25`
+均 `capture_read_returned_false`。因此当前画面不可见的事实边界是 DV20 UVC 源头无首帧/USB 链路异常，不是多人页面独占；
+下一步仍是检查 USB、摄像头输入、供电或换 known-good UVC 复测。该变化不影响底盘、雷达、Nav2、manual、keyboard、
+free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 05:20 起，PC 普通首屏和 fixed first-jog 统一为最小安全确认门禁：
 `试动一下`、轮速卡 `低速试动读轮速`、键盘连续手控和已准备行程执行都只把“人在旁边、周围安全、停止手段就绪”
 作为前端硬门槛；相机、雷达、外部视频和旧 first-jog 恢复材料只影响建图/验收/材料说明，不再阻止小车低速自己动。

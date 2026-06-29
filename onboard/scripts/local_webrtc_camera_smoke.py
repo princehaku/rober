@@ -862,6 +862,20 @@ def apply_camera_capture_settings(cv2: Any, capture: Any, width: int | None, hei
         capture.set(getattr(cv2, "CAP_PROP_FPS", 5), fps)
 
 
+def opencv_capture_source_candidates(source: str) -> list[str | int]:
+    """OpenCV 在部分板端对 `/dev/videoN` 和数字索引的打开行为不同，两个都试但仍只读取真实帧。"""
+    candidates: list[str | int] = [source]
+    match = re.fullmatch(r"/dev/video(\d+)", source)
+    if match:
+        candidates.append(int(match.group(1)))
+    return candidates
+
+
+def opencv_capture_source_label(source: str | int) -> str:
+    """诊断里保留打开方式，现场可区分 path 与 index fallback。"""
+    return f"index:{source}" if isinstance(source, int) else str(source)
+
+
 @dataclass
 class SharedCameraCapture:
     """同一摄像头源的共享 OpenCV capture，避免多客户端重复独占打开设备。"""
@@ -872,6 +886,7 @@ class SharedCameraCapture:
     height: int
     fps: int
     fourcc: str | None = None
+    open_source: str | int | None = None
     created_ts_ms: int = field(default_factory=now_ms)
     ref_count: int = 0
     frames_read: int = 0
@@ -968,6 +983,7 @@ class SharedCameraCapture:
         """共享 capture 摘要只用于媒体诊断，不参与控制 gate。"""
         return {
             "source": self.source,
+            "open_source": opencv_capture_source_label(self.open_source if self.open_source is not None else self.source),
             "fourcc": self.fourcc or "default",
             "created_ts_ms": self.created_ts_ms,
             "ref_count": self.ref_count,
@@ -1089,13 +1105,27 @@ class CameraServiceState:
         if shared and not shared.released:
             shared.add_ref()
             return shared, None
-        capture = cv2.VideoCapture(source)
-        if not capture or not capture.isOpened():
+
+        open_attempts: list[dict[str, Any]] = []
+        capture = None
+        opened_source: str | int | None = None
+        for candidate_source in opencv_capture_source_candidates(source):
+            capture = cv2.VideoCapture(candidate_source)
+            opened = bool(capture and capture.isOpened())
+            open_attempts.append({"source": opencv_capture_source_label(candidate_source), "opened": opened})
+            if opened:
+                opened_source = candidate_source
+                break
             try:
-                capture.release()
+                if capture:
+                    capture.release()
             except Exception:  # noqa: BLE001 - release 失败不改变打开失败根因。
                 pass
-            return None, error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
+            capture = None
+        if not capture or opened_source is None:
+            payload = error_payload("camera_open_failed", "opencv_capture_not_opened", video_source=source)
+            payload["opencv_open_attempts"] = open_attempts
+            return None, payload
         if apply_settings:
             apply_camera_capture_settings(cv2, capture, width or self.width, height or self.height, fps or self.fps, fourcc)
         shared = SharedCameraCapture(
@@ -1105,6 +1135,7 @@ class CameraServiceState:
             height=height or self.height,
             fps=fps or self.fps,
             fourcc=fourcc,
+            open_source=opened_source,
         )
         shared.add_ref()
         self.shared_captures[source] = shared
@@ -1170,6 +1201,7 @@ class CameraServiceState:
                     "height": spec.height,
                     "fps": spec.fps,
                     "apply_settings": spec.apply_settings,
+                    "open_source": shared_capture.summary()["open_source"],
                     "status": "frame_read",
                     "attempts": first_frame_attempts,
                 })
@@ -1182,6 +1214,7 @@ class CameraServiceState:
                 "height": spec.height,
                 "fps": spec.fps,
                 "apply_settings": spec.apply_settings,
+                "open_source": shared_capture.summary()["open_source"],
                 "status": "first_frame_unreadable",
                 "attempts": first_frame_attempts,
                 "failure_reason": first_error,
