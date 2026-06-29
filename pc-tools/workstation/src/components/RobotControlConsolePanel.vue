@@ -4587,6 +4587,64 @@ const plainSafetyActionItems = computed<PlainSafetyActionItem[]>(() => {
     },
   ];
 });
+type PlainIntentShortcutItem = {
+  id: "move" | "trip" | "mapping" | "sensors";
+  title: string;
+  state: string;
+  summary: string;
+  sourceCardId: RobotControlActionStatusCardId;
+};
+const plainIntentShortcutItems = computed<PlainIntentShortcutItem[]>(() => {
+  // 这是普通用户的“我现在想做什么”分流；只聚焦入口，不替现场点击任何动作按钮。
+  const summary = robotSummary.value;
+  const boundary = manualBoundary.value;
+  if (!summary || !boundary) {
+    return [];
+  }
+  const cameraVisible = summary.readback_summary.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
+  const radarOnMap = (finitePlainNumber(summary.readback_summary.radar.map_marker_point_count) ?? 0) > 0;
+  const sensorSource: RobotControlActionStatusCardId = cameraVisible ? "radar_map_points" : "camera_preview";
+  const sensorMissing = [
+    cameraVisible ? "" : "画面",
+    radarOnMap ? "" : "雷达点",
+  ].filter(Boolean).join("、");
+  return [
+    {
+      id: "move",
+      title: "先动车",
+      state: boundary.free_roam_motion_start_ready || boundary.keyboard_control_start_ready ? "可先处理" : "未就绪",
+      summary: boundary.free_roam_motion_start_ready
+        ? "勾安全确认后可先自由移动；相机和雷达只影响建图。"
+        : "先确认自由移动或键盘入口是否就绪。",
+      sourceCardId: boundary.free_roam_motion_start_ready ? "free_move" : "keyboard_control",
+    },
+    {
+      id: "trip",
+      title: "跑行程",
+      state: boundary.nav2_goal_ready ? "可复验" : "先准备",
+      summary: boundary.nav2_goal_ready
+        ? "图上行程和小车位置已显示；勾安全确认后复验轮速 L/R。"
+        : "先让图上行程和小车位置显示出来。",
+      sourceCardId: "nav2_route",
+    },
+    {
+      id: "mapping",
+      title: "去建图",
+      state: boundary.free_roam_mapping_start_ready ? "可启动" : "等画面和雷达",
+      summary: boundary.free_roam_mapping_start_ready
+        ? "画面和雷达已到位；勾安全确认后进入建图启动区。"
+        : "先补齐画面首帧和雷达新鲜；低速自由移动不受影响。",
+      sourceCardId: "mapping_start",
+    },
+    {
+      id: "sensors",
+      title: "补画面/雷达",
+      state: sensorMissing ? "待处理" : "已显示",
+      summary: sensorMissing ? `还差：${sensorMissing}；先处理当前所见。` : "画面和雷达点已在当前页面显示。",
+      sourceCardId: sensorSource,
+    },
+  ];
+});
 const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ?? 0.12);
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
@@ -12622,6 +12680,31 @@ onBeforeUnmount(() => {
             type="button"
             class="secondary compact-stop"
             :data-testid="`plain-safety-action-go-${item.id}`"
+            @click="focusPlainActionCardTarget(item.sourceCardId)"
+          >
+            去处理
+          </button>
+        </div>
+      </div>
+
+      <div v-if="plainIntentShortcutItems.length" class="plain-intent-shortcuts" data-testid="plain-intent-shortcuts" aria-label="下一步选一个">
+        <div class="simple-status-row">
+          <strong>下一步选一个</strong>
+          <span class="muted">按你现在想做的事跳转到对应入口；这里只带路，不自动操作。</span>
+        </div>
+        <div
+          v-for="item in plainIntentShortcutItems"
+          :key="item.id"
+          class="plain-intent-shortcut-row"
+          :data-testid="`plain-intent-shortcut-${item.id}`"
+        >
+          <span class="plain-progress-label">{{ item.title }}</span>
+          <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+          <span class="muted">{{ plainActionCardUserText(item.summary) }}</span>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :data-testid="`plain-intent-shortcut-go-${item.id}`"
             @click="focusPlainActionCardTarget(item.sourceCardId)"
           >
             去处理
