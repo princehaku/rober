@@ -6369,6 +6369,16 @@ type PlainFreeRoamDomEvidence = {
   mappingStartMissingReasons: string;
   mappingStartRequiresCameraFirstFrame: boolean;
   mappingStartRequiresLidarFresh: boolean;
+  cameraCurrentFrameVisible: boolean;
+  cameraCurrentMjpegFrameVisible: boolean;
+  cameraCurrentVideoFrameVisible: boolean;
+  cameraSourceFirstFrameReady: boolean;
+  cameraSourceReadiness: string;
+  cameraSharedPreviewSingleUpstream: boolean;
+  cameraSharedPreviewClientCount: number;
+  radarFreshForMapping: boolean;
+  radarMapPointsVisible: boolean;
+  radarMapPointCount: number;
   mappingAcceptanceReady: boolean;
   mappingAcceptanceMissingReasons: string;
   // 主按钮会真正触发运动入口，DOM 必须能说明点击前后语义，方便现场脚本验收。
@@ -6463,6 +6473,14 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     || (plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value);
   const freeMoveStartReady = boundary?.free_roam_motion_start_ready === true;
   const primaryActionCanStartMotion = canStartPlainFreeRoamPrimary.value && freeMoveStartReady;
+  const camera = summary?.readback_summary.camera;
+  const sourceFirstFrameReady = camera?.source_readiness === "first_frame_observed"
+    || camera?.source_diagnosis_status === "first_frame_observed"
+    || camera?.first_frame_probe_read_ok === "true"
+    || camera?.first_frame_probe_visible_content_proven === "true"
+    || plainCameraReadyForFreeRoamAutonomy.value;
+  const sharedPreviewEvidence = plainCameraSharedPreviewDomEvidence.value;
+  const radarMapEvidence = plainRadarMapDomEvidence.value;
   return {
     freeMoveStartReady,
     freeMoveSafetyOnly: true,
@@ -6472,6 +6490,16 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     mappingStartMissingReasons: [...new Set(startMissing)].join(",") || "none",
     mappingStartRequiresCameraFirstFrame: true,
     mappingStartRequiresLidarFresh: true,
+    cameraCurrentFrameVisible: sharedPreviewEvidence.currentFrameVisible,
+    cameraCurrentMjpegFrameVisible: sharedPreviewEvidence.currentMjpegFrameVisible,
+    cameraCurrentVideoFrameVisible: sharedPreviewEvidence.currentVideoFrameVisible,
+    cameraSourceFirstFrameReady: sourceFirstFrameReady,
+    cameraSourceReadiness: camera?.source_readiness || "not_loaded",
+    cameraSharedPreviewSingleUpstream: sharedPreviewEvidence.singleUpstream,
+    cameraSharedPreviewClientCount: sharedPreviewEvidence.clientCount,
+    radarFreshForMapping: plainRadarReadyForFreeRoamMapping.value,
+    radarMapPointsVisible: radarMapEvidence.mapPointsVisible,
+    radarMapPointCount: radarMapEvidence.mapPointCount,
     mappingAcceptanceReady: boundary?.free_roam_mapping_ready === true,
     mappingAcceptanceMissingReasons: [...new Set(acceptanceMissing)].join(",") || "none",
     primaryActionCanStartMotion,
@@ -14656,6 +14684,16 @@ onBeforeUnmount(() => {
           :data-mapping-start-missing-reasons="plainFreeRoamDomEvidence.mappingStartMissingReasons"
           :data-mapping-start-requires-camera-first-frame="String(plainFreeRoamDomEvidence.mappingStartRequiresCameraFirstFrame)"
           :data-mapping-start-requires-lidar-fresh="String(plainFreeRoamDomEvidence.mappingStartRequiresLidarFresh)"
+          :data-camera-current-frame-visible="String(plainFreeRoamDomEvidence.cameraCurrentFrameVisible)"
+          :data-camera-current-mjpeg-frame-visible="String(plainFreeRoamDomEvidence.cameraCurrentMjpegFrameVisible)"
+          :data-camera-current-video-frame-visible="String(plainFreeRoamDomEvidence.cameraCurrentVideoFrameVisible)"
+          :data-camera-source-first-frame-ready="String(plainFreeRoamDomEvidence.cameraSourceFirstFrameReady)"
+          :data-camera-source-readiness="plainFreeRoamDomEvidence.cameraSourceReadiness"
+          :data-camera-shared-preview-single-upstream="String(plainFreeRoamDomEvidence.cameraSharedPreviewSingleUpstream)"
+          :data-camera-shared-preview-client-count="String(plainFreeRoamDomEvidence.cameraSharedPreviewClientCount)"
+          :data-radar-fresh-for-mapping="String(plainFreeRoamDomEvidence.radarFreshForMapping)"
+          :data-radar-map-points-visible="String(plainFreeRoamDomEvidence.radarMapPointsVisible)"
+          :data-radar-map-point-count="String(plainFreeRoamDomEvidence.radarMapPointCount)"
           :data-mapping-acceptance-ready="String(plainFreeRoamDomEvidence.mappingAcceptanceReady)"
           :data-mapping-acceptance-missing-reasons="plainFreeRoamDomEvidence.mappingAcceptanceMissingReasons"
           :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"
