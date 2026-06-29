@@ -4827,6 +4827,112 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary prefers O11 managed execution lifecycle over planner-only controller facts", async () => {
+    // O10 planner-only proof 会清理 controller；O11 latest 才是完整路线执行时 controller 是否请求/active 的事实来源。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          path_generated: true,
+          path_point_count: 18,
+          base: {
+            control_policy: {
+              nav2_base_command_mode: "ros",
+            },
+          },
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          status: "nav2_no_motion_path_generation_runtime_observed",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          planner_server_active: true,
+          controller_server_active: false,
+          controller_server_requested: false,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 18,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "not_proven",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_planner_active: true,
+          latest_controller_active: false,
+          latest_controller_requested: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "not_proven",
+          latest_result: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            hil_pass: false,
+            feedback_sample_count: 8,
+            robot_control_executed: true,
+            sends_base_motion_commands: true,
+            uses_base_uart: true,
+            base_command_mode: "pwm",
+            managed_runtime: {
+              requested: true,
+              started: true,
+              lifecycle_ready: {
+                ok: true,
+                states: {
+                  planner_server: "active [3] (observed_in_lifecycle_manager_log)",
+                  controller_server: "active [3] (observed_in_lifecycle_manager_log)",
+                  bt_navigator: "active [3] (observed_in_lifecycle_manager_log)",
+                  behavior_server: "active [3] (observed_in_lifecycle_manager_log)",
+                },
+              },
+            },
+            base_command_summary: {
+              sample_count: 49,
+              nonzero_command_count: 49,
+              nonzero_command_observed: true,
+            },
+            base_feedback_summary: {
+              sample_count: 239,
+              nonzero_sample_count: 0,
+              wheel_feedback_lr_nonzero_proven: false,
+              latest_pair: { left_speed: 0, right_speed: 0 },
+            },
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.nav2.planner_server_active).toBe("true");
+      expect(summary.readback_summary.nav2.controller_server_requested).toBe("true");
+      expect(summary.readback_summary.nav2.controller_server_active).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
+      expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).not.toContain("controller_server_inactive");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toContain("ROS");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toContain("执行窗口轮速 L/R");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary infers latest Nav2 command mode for older execution artifacts", async () => {
     // 旧 O11 artifact 已有 base_command_mode 和非零命令数，但没有 latest_nonzero_command_mode；PC 仍要让首屏显示 PWM/T=11。
     const robotApi = await listenRobotApiReadbackByPath({

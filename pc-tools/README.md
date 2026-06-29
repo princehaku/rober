@@ -148,6 +148,8 @@ readback 中的画面、地图、地图雷达点、Nav2 路线复验、键盘连
 连接失败时也会直接说明未读到当前事实。它只消费同一轮 summary 内部字段，不额外请求上位机、不准备或执行 Nav2、
 不启用键盘、不启动 free-roam、不发送 manual、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 16:40 CST 起，`GET /api/robot-control/summary` 的 `readback_summary.nav2.planner_server_active`、`controller_server_requested` 和 `controller_server_active` 会优先消费 O11 `nav2_goal_execution_latest.latest_result.managed_runtime.lifecycle_ready`。这样完整 NavigateToPose 执行 artifact 已证明 controller 在本轮托管 runtime 中被请求并 active 时，不会再被 O10 planner-only proof 或旧 lifecycle 读数误写成“控制服务未运行”。这只修正只读证据合并和下一步判断；仍然要求下一次勾选行程前安全确认后用 ROS 模式重跑，并用同窗口执行窗口轮速 L/R 非零证明自动驾驶真正带动车。
+
 2026-06-30 09:30 CST 起，`GET /api/robot-control/summary` 顶层新增 `action_status_cards[]`，把画面、地图、地图雷达点、图上路线、键盘手控、自由移动和建图启动拆成结构化状态卡。普通首屏在当前事实下方直接展示“已显示/未显示/可启用/可启动/未就绪”、下一步、是否需要安全确认、是否影响建图以及是否不挡自由移动；前端仍把“路线”翻译成“行程”，不把 `marker/overlay` 放回普通首屏。该字段只派生同一轮只读 summary，不新增按钮，不启动雷达/建图/自由移动，不执行 Nav2，不发送 manual、keyboard、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 22:10 CST 起，键盘连续手控 summary 增加普通用户白话字段：`keyboard_hold_to_move_plain`、`keyboard_stop_triggers_plain` 和 `keyboard_pulse_timing_plain`。外部脚本或普通面板只读 summary 时，可以直接展示“必须按住才移动；只启用键盘不发车；松开/失焦/切页/换方向/点停止都会停；按住时约每 0.26 秒发送一次 0.24 秒低速脉冲”。该变化只补只读安全边界说明，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。

@@ -1161,6 +1161,7 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
   appendWheelFeedbackSummaryKeyValues(payload, result, keys);
   appendBaseFeedbackVoltageKeyValue(payload, result, keys);
   appendFeedbackSamplesFreshnessKeyValues(payload, result, keys);
+  appendNav2GoalExecutionLifecycleKeyValues(payload, result, keys);
   return result;
 }
 
@@ -1249,6 +1250,53 @@ function summaryValueText(payload: JsonRecord | null, keys: string[], fallback =
   // summary 既要保留字符串状态，也要保留布尔 continuity/lifecycle 结论，因此统一转成短文本。
   const found = findFirstKey(payload, keys);
   return found === undefined ? fallback : compactValueText(found);
+}
+
+function lifecycleStateIsActive(value: unknown): boolean | null {
+  // Nav2 lifecycle 文本常是 "active [3] (...)"；不能用 includes("active")，否则 inactive 会误判。
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (/^active\b/.test(normalized)) {
+    return true;
+  }
+  if (/^(inactive|unconfigured|finalized|waiting|not_observed|not_loaded)\b/.test(normalized)) {
+    return false;
+  }
+  return null;
+}
+
+function appendNav2GoalExecutionLifecycleKeyValues(payload: JsonRecord | null, result: Record<string, string>, keys: readonly string[]): void {
+  // O11 是完整 NavigateToPose 执行证据；它的 managed runtime 比 O10 planner-only proof 更适合回答 controller 是否已请求。
+  const latestResult = asRecord(payload?.latest_result);
+  const runtime = asRecord(latestResult?.managed_runtime) ?? asRecord(payload?.managed_runtime);
+  const lifecycleReady = asRecord(runtime?.lifecycle_ready);
+  const states = asRecord(lifecycleReady?.states);
+  const requested = runtime?.requested === true || runtime?.requested === "true" || runtime?.started === true || runtime?.started === "true";
+  const lifecycleAllActive = lifecycleReady?.ok === true || lifecycleReady?.ok === "true";
+  const fill = (key: string, value: unknown): void => {
+    if (!keys.includes(key) || result[key] !== undefined || value === undefined || value === null) {
+      return;
+    }
+    result[key] = compactValueText(value);
+  };
+  const fillService = (service: "planner_server" | "controller_server"): void => {
+    const stateActive = lifecycleStateIsActive(states?.[service]);
+    fill(`${service}_requested`, requested || states?.[service] !== undefined ? "true" : undefined);
+    if (lifecycleAllActive) {
+      fill(`${service}_active`, "true");
+      return;
+    }
+    if (stateActive !== null) {
+      fill(`${service}_active`, String(stateActive));
+    }
+  };
+  fillService("planner_server");
+  fillService("controller_server");
 }
 
 function cameraFormatAttemptsSummary(lastOfferError: JsonRecord | null): string {
