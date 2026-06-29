@@ -6195,7 +6195,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.path_generation_service_available).toBe("true");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线");
     } finally {
@@ -6273,7 +6273,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.path_point_count).toBe(18);
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线和小车位置已显示，等待安全确认");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("awaiting_route_execution");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
     } finally {
@@ -8270,7 +8270,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.path_generated).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal).toBe("Nav2 NavigateToPose locked");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线和小车位置已显示，等待安全确认");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
       expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
@@ -8351,7 +8351,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.robot_pose).toBeNull();
       expect(summary.readback_summary.localization.robot_pose_status).toBe("not_observed");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R；小车位置未显示时建议先重新定位或刷新地图");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("读到小车地图位置");
@@ -8497,7 +8497,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.current_blocker_reasons).toBe("nav2_lifecycle_not_running");
       expect(summary.readback_summary.nav2.current_blocker_labels).toBe("自动驾驶 lifecycle 未运行");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("路线读数已准备，等待地图画面确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口复验 wheel raw L/R；小车位置未显示时建议先重新定位或刷新地图");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);

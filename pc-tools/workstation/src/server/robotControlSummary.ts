@@ -5874,10 +5874,17 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
     (proof?.path_point_count ?? 0) > 0 || (proof?.path_preview_point_count ?? 0) > 0 ? "" : "path_point_count_not_positive",
   ].filter(Boolean);
   const ready = blockers.length === 0;
+  const pathVisibleOnMap = (proof?.path_preview_point_count ?? 0) > 0;
+  const robotPoseVisibleOnMap = Boolean(proof?.robot_pose);
+  const readyLabel = pathVisibleOnMap && robotPoseVisibleOnMap
+    ? "图上路线和小车位置已显示，等待安全确认"
+    : pathVisibleOnMap
+      ? "图上路线已显示，等待安全确认"
+      : "路线读数已准备，等待地图画面确认";
   const poseHint = proof?.robot_pose ? "" : "；小车位置未显示时建议先重新定位或刷新地图";
   return {
     nav2_goal_ready: ready,
-    nav2_goal_label: ready ? "路线读数已准备，等待地图画面确认" : "图上路线未就绪",
+    nav2_goal_label: ready ? readyLabel : "图上路线未就绪",
     nav2_goal_blockers: blockers,
     nav2_goal_wheel_feedback_status: "not_loaded",
     nav2_goal_next_action: ready ? `勾选行程前安全确认后执行图上路线${poseHint}` : "先生成图上路线",

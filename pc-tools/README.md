@@ -119,6 +119,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 21:30 CST 起，Robot Control summary 的 `readback_summary.map` 也返回 `path_preview_status`、`path_preview_point_count`、`path_preview_frame_id` 和 `path_preview_next_action_plain`。这样普通首屏或外部脚本只读 summary，就能同时看到地图质量、图上路线、雷达贴图和小车 map 位姿状态；不必从 `readback_summary.nav2` 手动拼路线点数，也不必额外调用 map preview 才知道路线是否所见即所得。该变化只补只读 summary 字段，不准备路线、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 08:36 CST 起，`safe_command_boundary.nav2_goal_label` 也消费同一份所见即所得路线事实：只有路线读数 ready 但地图还没显示路线时保留“路线读数已准备，等待地图画面确认”；地图上已显示路线时显示“图上路线已显示，等待安全确认”；路线和小车位置都可见时显示“图上路线和小车位置已显示，等待安全确认”。该变化只修正只读 summary label，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 21:50 CST 起，`/api/robot-control/camera/mjpeg/status` 也返回与 summary 对齐的共享预览别名：`shared_preview_client_count`、`shared_preview_upstream_active`、`shared_preview_content_type_loaded`、`shared_preview_cached_frame_loaded`、`shared_preview_cached_frame_age_ms`、`shared_preview_shared_capture`、`shared_preview_exclusive_camera_claim`、`shared_preview_contract` 和最近失败字段。独立相机状态接口现在也能直接证明“多个页面共享同一条上游流，不是浏览器独占”，不会再让只读 `shared_preview_*` 的脚本拿到 null。该变化只补本机 relay 只读状态，不新开 camera capture、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 04:30 CST 起，Robot Control summary 的 `readback_summary.camera` 与
