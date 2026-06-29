@@ -14439,7 +14439,28 @@ onBeforeUnmount(() => {
               :data-fixed-shared-preview-status-endpoint="plainCameraPrimaryActionEvidence.fixedSharedPreviewStatusEndpoint"
               @click="startPreview"
             >{{ plainCameraStartButtonLabel }}</button>
-            <button ref="plainCameraProbeButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainCameraProbe" data-testid="plain-camera-probe" @click="runCameraFirstFrameProbe">
+            <button
+              ref="plainCameraProbeButton"
+              type="button"
+              class="secondary compact-stop"
+              :disabled="!canRunPlainCameraProbe"
+              data-testid="plain-camera-probe"
+              data-camera-wysiwyg-action="probe_first_frame_readonly"
+              data-fixed-first-frame-probe-endpoint="/api/robot-control/camera/first-frame/probe"
+              data-probe-requests-backend-smoke="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-webrtc-preview="false"
+              data-saves-operator-report="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              :data-current-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentFrameVisible)"
+              :data-current-mjpeg-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentMjpegFrameVisible)"
+              :data-current-video-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentVideoFrameVisible)"
+              :data-shared-preview-single-upstream="String(plainCameraSharedPreviewDomEvidence.singleUpstream)"
+              :data-shared-preview-exclusive-camera-claim="String(plainCameraSharedPreviewDomEvidence.exclusiveCameraClaim)"
+              :data-fixed-shared-preview-status-endpoint="plainCameraSharedPreviewDomEvidence.fixedSharedPreviewStatusEndpoint"
+              @click="runCameraFirstFrameProbe"
+            >
               {{ plainCameraProbeButtonLabel }}
             </button>
             <a

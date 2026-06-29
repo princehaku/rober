@@ -1020,3 +1020,10 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `刷新地图画面` 标记为 `data-map-wysiwyg-action=refresh_preview`，固定 `/api/robot-control/map/preview` 并同步雷达状态。
 两个按钮都声明 `data-refresh-affects=map-image-route-robot-radar`、`data-sends-motion-when-clicked=false`、
 `data-starts-map-runtime=false`、`data-starts-nav2=false`。该变化只补只读 DOM 合同和测试，不启动建图、不执行 Nav2、不发送任何运动命令。
+
+2026-06-30 07:03 CST 起，普通首屏实时画面的 `检查画面（只读）` 按钮也暴露按钮级 WYSIWYG 合同：
+`data-camera-wysiwyg-action=probe_first_frame_readonly`、固定 `/api/robot-control/camera/first-frame/probe`、
+`data-probe-requests-backend-smoke=true`、`data-sends-motion-when-clicked=false`、`data-starts-webrtc-preview=false`、
+`data-saves-operator-report=false`、`data-starts-map-runtime=false`、`data-starts-nav2=false`，并同步当前 MJPEG/视频帧可见性、
+共享预览 single-upstream 和非独占状态。这样脚本能区分“只读首帧检查”和“打开共享实时预览”：检查按钮不打开 WebRTC、
+不保存验收材料、不发送任何控制命令。

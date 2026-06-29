@@ -15000,6 +15000,20 @@ describe("App", () => {
     expect(button.exists()).toBe(true);
     expect(button.text()).toBe("检查画面（只读）");
     expect(button.attributes("disabled")).toBeUndefined();
+    expect(button.attributes("data-camera-wysiwyg-action")).toBe("probe_first_frame_readonly");
+    expect(button.attributes("data-fixed-first-frame-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(button.attributes("data-probe-requests-backend-smoke")).toBe("true");
+    expect(button.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(button.attributes("data-starts-webrtc-preview")).toBe("false");
+    expect(button.attributes("data-saves-operator-report")).toBe("false");
+    expect(button.attributes("data-starts-map-runtime")).toBe("false");
+    expect(button.attributes("data-starts-nav2")).toBe("false");
+    expect(button.attributes("data-current-frame-visible")).toBe("false");
+    expect(button.attributes("data-current-mjpeg-frame-visible")).toBe("false");
+    expect(button.attributes("data-current-video-frame-visible")).toBe("false");
+    expect(button.attributes("data-shared-preview-single-upstream")).toBe("true");
+    expect(button.attributes("data-shared-preview-exclusive-camera-claim")).toBe("false");
+    expect(button.attributes("data-fixed-shared-preview-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     const callsBeforeClick = mockedFetch.mock.calls.length;
 
     await button.trigger("click");

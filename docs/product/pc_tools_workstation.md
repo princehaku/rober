@@ -4492,3 +4492,11 @@ pulse interval/duration、当前按住 pulse 数、历史最佳连续 pulse 数�
 `data-refreshes-radar-status=true`。两个按钮共同声明 `data-refresh-affects=map-image-route-robot-radar`、
 `data-sends-motion-when-clicked=false`、`data-starts-map-runtime=false`、`data-starts-nav2=false`。
 这让验收脚本能直接确认：地图刷新只更新当前画面、路线、小车位置和雷达层的显示材料，不会启动建图 runtime、不会执行 Nav2，也不会发任何底盘命令。
+
+2026-06-30 07:03 CST 起，普通首屏实时画面卡的 `plain-camera-probe` 补齐按钮级 WYSIWYG 证据。
+按钮暴露 `data-camera-wysiwyg-action=probe_first_frame_readonly`、固定
+`/api/robot-control/camera/first-frame/probe`、`data-probe-requests-backend-smoke=true`、
+`data-sends-motion-when-clicked=false`、`data-starts-webrtc-preview=false`、`data-saves-operator-report=false`、
+`data-starts-map-runtime=false`、`data-starts-nav2=false`，并同步当前 MJPEG/视频帧可见性、共享预览 single-upstream 和
+exclusive camera claim 状态。该按钮只做只读首帧探测；共享实时预览仍走 `plain-camera-start` 和固定 MJPEG relay，
+不会因为“检查画面”而保存材料、执行 Nav2、启动建图或发送底盘命令。
