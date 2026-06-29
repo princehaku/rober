@@ -7453,6 +7453,8 @@ function buildActionStatusCards(
         camera_blocks_free_motion: false,
         radar_blocks_free_motion: false,
         fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+        fixed_mapping_start_endpoint: "/api/robot-control/map/start",
+        fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
         mapping_start_ready: boundary.free_roam_mapping_start_ready,
         mapping_start_missing_reasons: boundary.free_roam_mapping_start_missing_reasons,
         mapping_acceptance_missing_reasons: boundary.free_roam_mapping_missing_reasons,
@@ -7482,6 +7484,8 @@ function buildActionStatusCards(
         mapping_start_missing_reasons: boundary.free_roam_mapping_start_missing_reasons,
         mapping_acceptance_missing_reasons: boundary.free_roam_mapping_missing_reasons,
         fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+        fixed_mapping_start_endpoint: "/api/robot-control/map/start",
+        fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
       },
     },
   ];

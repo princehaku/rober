@@ -4123,6 +4123,8 @@ describe("workstation fail-closed API contracts", () => {
           camera_blocks_free_motion: false,
           radar_blocks_free_motion: false,
           fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+          fixed_mapping_start_endpoint: "/api/robot-control/map/start",
+          fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
           mapping_start_ready: false,
         },
       });
@@ -4136,6 +4138,8 @@ describe("workstation fail-closed API contracts", () => {
         blocks_mapping_start: true,
         evidence: {
           free_move_start_ready: true,
+          fixed_mapping_start_endpoint: "/api/robot-control/map/start",
+          fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
           mapping_start_ready: false,
           mapping_start_requires_camera_first_frame: true,
           mapping_start_requires_lidar_fresh: true,

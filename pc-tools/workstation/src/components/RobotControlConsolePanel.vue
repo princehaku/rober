@@ -3172,6 +3172,8 @@ function actionCardWithDerivedEvidence(
         camera_blocks_free_motion: card.evidence?.camera_blocks_free_motion ?? false,
         radar_blocks_free_motion: card.evidence?.radar_blocks_free_motion ?? false,
         fixed_free_roam_start_endpoint: card.evidence?.fixed_free_roam_start_endpoint ?? "/api/robot-control/free-roam/autonomy/start",
+        fixed_mapping_start_endpoint: card.evidence?.fixed_mapping_start_endpoint ?? "/api/robot-control/map/start",
+        fixed_mapping_preview_endpoint: card.evidence?.fixed_mapping_preview_endpoint ?? "/api/robot-control/map/preview",
         mapping_start_ready: card.evidence?.mapping_start_ready ?? boundary?.free_roam_mapping_start_ready ?? false,
         mapping_start_requires_camera_first_frame: card.evidence?.mapping_start_requires_camera_first_frame ?? true,
         mapping_start_requires_lidar_fresh: card.evidence?.mapping_start_requires_lidar_fresh ?? true,
@@ -13599,6 +13601,8 @@ onBeforeUnmount(() => {
           :data-camera-blocks-free-motion="card.evidence?.camera_blocks_free_motion === undefined ? undefined : String(card.evidence.camera_blocks_free_motion)"
           :data-radar-blocks-free-motion="card.evidence?.radar_blocks_free_motion === undefined ? undefined : String(card.evidence.radar_blocks_free_motion)"
           :data-fixed-free-roam-start-endpoint="card.evidence?.fixed_free_roam_start_endpoint"
+          :data-fixed-mapping-start-endpoint="card.evidence?.fixed_mapping_start_endpoint"
+          :data-fixed-mapping-preview-endpoint="card.evidence?.fixed_mapping_preview_endpoint"
           :data-mapping-start-ready="card.evidence?.mapping_start_ready === undefined ? undefined : String(card.evidence.mapping_start_ready)"
           :data-mapping-start-requires-camera-first-frame="card.evidence?.mapping_start_requires_camera_first_frame === undefined ? undefined : String(card.evidence.mapping_start_requires_camera_first_frame)"
           :data-mapping-start-requires-lidar-fresh="card.evidence?.mapping_start_requires_lidar_fresh === undefined ? undefined : String(card.evidence.mapping_start_requires_lidar_fresh)"
