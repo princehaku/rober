@@ -265,7 +265,10 @@ h3 {
 .status-chip[data-state="已启用"],
 .status-chip[data-state="已完成"],
 .status-chip[data-state="已保存"],
+.status-chip[data-state="已显示"],
+.status-chip[data-state="已贴图"],
 .status-chip[data-state="可建图"],
+.status-chip[data-state="可启动"],
 .status-chip[data-state="路径可生成"] {
   border-color: #bfd4c6;
   background: #eff8f1;
@@ -293,6 +296,9 @@ h3 {
 .status-chip[data-state="未检查"],
 .status-chip[data-state="未确认"],
 .status-chip[data-state="未满足"],
+.status-chip[data-state="未显示"],
+.status-chip[data-state="未就绪"],
+.status-chip[data-state="未贴当前图"],
 .status-chip[data-state="待材料"],
 .status-chip[data-state="待勾选"],
 .status-chip[data-state="待完成"],
@@ -312,6 +318,7 @@ h3 {
 .status-chip[data-state="可保存"],
 .status-chip[data-state="可检查"],
 .status-chip[data-state="可执行"],
+.status-chip[data-state="可重跑复验"],
 .status-chip[data-state="可移动"],
 .status-chip[data-state="手控中"] {
   border-color: #d5d2a9;
@@ -376,6 +383,66 @@ h3 {
   font-size: 13px;
   line-height: 1.35;
   padding: 6px 8px;
+}
+
+.plain-action-status-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.plain-action-status-card {
+  min-height: 150px;
+  border: 1px solid #d7dee6;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.plain-action-status-card[data-state="visible"],
+.plain-action-status-card[data-state="current_on_map"],
+.plain-action-status-card[data-state="ready"] {
+  border-color: #bfd4c6;
+  background: #f8fbf8;
+}
+
+.plain-action-status-card[data-state="not_visible"],
+.plain-action-status-card[data-state="not_current"],
+.plain-action-status-card[data-state="not_ready"] {
+  background: #f8fafc;
+}
+
+.plain-action-status-card p {
+  margin: 8px 0 0;
+  color: #29394a;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.plain-action-card-head,
+.plain-action-card-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.plain-action-card-head {
+  justify-content: space-between;
+}
+
+.plain-action-card-flags {
+  margin-top: 10px;
+}
+
+.plain-action-card-flags span {
+  border: 1px solid #d8dee6;
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: #f6f8fa;
+  color: #405061;
+  font-size: 12px;
 }
 
 .plain-default-robot {

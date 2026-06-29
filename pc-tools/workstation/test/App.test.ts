@@ -408,6 +408,106 @@ const fixtures: Record<string, unknown> = {
       last_refresh_ms: 1781040814776,
     },
     current_fact_plain: "画面未显示：页面会自动接入共享 MJPEG 预览；地图画面已读到，但图上路线还未显示；自动驾驶：图上路线还未准备完成；键盘：必须按住 W/A/S/D 或方向键才会连续低速移动；自由移动：自由移动未就绪；建图：建图验收未 ready。",
+    action_status_cards: [
+      {
+        id: "camera_preview",
+        title: "画面",
+        status: "not_visible",
+        status_label: "未显示",
+        summary_plain: "画面未可见：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见",
+        next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
+        wysiwyg_status: "no_current_frame",
+        requires_safety_confirmation: false,
+        can_start_after_safety_confirm: false,
+        sends_motion_when_clicked: false,
+        blocks_free_motion: false,
+        blocks_mapping_start: true,
+      },
+      {
+        id: "map_preview",
+        title: "地图",
+        status: "visible",
+        status_label: "已显示",
+        summary_plain: "地图画面已读到，但图上路线还未显示",
+        next_action_plain: "先准备图上路线，再刷新地图画面",
+        wysiwyg_status: "current_map_visible",
+        requires_safety_confirmation: false,
+        can_start_after_safety_confirm: false,
+        sends_motion_when_clicked: false,
+        blocks_free_motion: false,
+        blocks_mapping_start: false,
+      },
+      {
+        id: "radar_map_points",
+        title: "地图雷达点",
+        status: "not_current",
+        status_label: "未贴当前图",
+        summary_plain: "雷达已运行且扫描是新的；地图雷达点当前显示 0 个，仍需以同轮地图预览为准",
+        next_action_plain: "刷新地图画面，确认地图上实际显示的雷达点数",
+        wysiwyg_status: "old_or_missing_points_not_drawn",
+        requires_safety_confirmation: false,
+        can_start_after_safety_confirm: false,
+        sends_motion_when_clicked: false,
+        blocks_free_motion: false,
+        blocks_mapping_start: true,
+      },
+      {
+        id: "nav2_route",
+        title: "图上路线",
+        status: "not_ready",
+        status_label: "未就绪",
+        summary_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成",
+        next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行",
+        wysiwyg_status: "route_not_ready",
+        requires_safety_confirmation: true,
+        can_start_after_safety_confirm: false,
+        sends_motion_when_clicked: true,
+        blocks_free_motion: false,
+        blocks_mapping_start: false,
+      },
+      {
+        id: "keyboard_control",
+        title: "键盘手控",
+        status: "start_ready",
+        status_label: "可启用",
+        summary_plain: "必须按住 W/A/S/D 或方向键才会连续低速移动；只启用键盘但不按方向不会发车",
+        next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
+        wysiwyg_status: "hold_to_move_contract",
+        requires_safety_confirmation: true,
+        can_start_after_safety_confirm: true,
+        sends_motion_when_clicked: false,
+        blocks_free_motion: false,
+        blocks_mapping_start: false,
+      },
+      {
+        id: "free_move",
+        title: "自由移动",
+        status: "locked",
+        status_label: "未就绪",
+        summary_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底",
+        next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
+        wysiwyg_status: "motion_not_ready",
+        requires_safety_confirmation: true,
+        can_start_after_safety_confirm: false,
+        sends_motion_when_clicked: true,
+        blocks_free_motion: false,
+        blocks_mapping_start: false,
+      },
+      {
+        id: "mapping_start",
+        title: "建图启动",
+        status: "not_ready",
+        status_label: "未就绪",
+        summary_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机",
+        next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
+        wysiwyg_status: "camera_or_radar_missing",
+        requires_safety_confirmation: true,
+        can_start_after_safety_confirm: false,
+        sends_motion_when_clicked: true,
+        blocks_free_motion: false,
+        blocks_mapping_start: true,
+      },
+    ],
     readback_summary: {
       camera: {
         status: "camera_health_not_proven",
@@ -3911,6 +4011,21 @@ describe("App", () => {
     expect(currentFacts.text()).toContain("行程：还没执行。");
     expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
     expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用；走 ROS 桥接低速入口；按住连续低速脉冲 240ms/每 260ms，松开/失焦/切页会停。");
+    const actionCards = wrapper.find('[data-testid="plain-action-status-cards"]');
+    expect(actionCards.exists()).toBe(true);
+    expect(actionCards.text()).toContain("画面");
+    expect(actionCards.text()).toContain("地图");
+    expect(actionCards.text()).toContain("图上行程");
+    expect(actionCards.text()).toContain("键盘手控");
+    expect(actionCards.text()).toContain("自由移动");
+    expect(actionCards.text()).toContain("建图启动");
+    expect(actionCards.text()).toContain("确认后可启动");
+    expect(actionCards.text()).toContain("不挡自由移动");
+    expect(actionCards.text()).not.toContain("marker");
+    expect(actionCards.text()).not.toContain("overlay");
+    expect(wrapper.find('[data-testid="plain-action-status-card-free_move"]').attributes("data-state")).toBe("locked");
+    expect(wrapper.find('[data-testid="plain-action-status-card-keyboard_control"]').text()).toContain("按住 W/A/S/D 或方向键");
+    expect(wrapper.find('[data-testid="plain-action-status-card-mapping_start"]').text()).toContain("影响建图");
     const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
     expect(connectionPanel.exists()).toBe(true);
     expect(connectionPanel.attributes("data-state")).toBe("已连接");

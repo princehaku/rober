@@ -2379,6 +2379,30 @@ export type RobotControlPreviewStatus =
   | "stopped_by_user"
   | "peer_cleanup_failed";
 
+export type RobotControlActionStatusCardId =
+  | "camera_preview"
+  | "map_preview"
+  | "radar_map_points"
+  | "nav2_route"
+  | "keyboard_control"
+  | "free_move"
+  | "mapping_start";
+
+export interface RobotControlActionStatusCard {
+  id: RobotControlActionStatusCardId;
+  title: string;
+  status: string;
+  status_label: string;
+  summary_plain: string;
+  next_action_plain: string;
+  wysiwyg_status: string;
+  requires_safety_confirmation: boolean;
+  can_start_after_safety_confirm: boolean;
+  sends_motion_when_clicked: boolean;
+  blocks_free_motion: boolean;
+  blocks_mapping_start: boolean;
+}
+
 export interface RobotControlSummaryResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_summary.v1";
   console_status: "blocked" | "loaded_fail_closed_summary";
@@ -2405,6 +2429,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     last_refresh_ms: number;
   };
   current_fact_plain: string;
+  action_status_cards?: RobotControlActionStatusCard[];
   readback_summary: {
     camera: {
       status: string;

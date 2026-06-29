@@ -5333,6 +5333,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     current_fact_plain: sourceBaseUrl.trim()
       ? "当前事实未读到；上位机这次没有回应，先检查小车电源、网络和 Robot API 服务。"
       : "当前事实未读到；先填写或确认小车地址。",
+    action_status_cards: [],
     readback_summary: {
       camera: {
         status: "not_loaded",
@@ -6584,6 +6585,123 @@ function summaryCurrentFactPlain(
     : "当前事实未读到；先确认小车地址和上位机 Robot API。";
 }
 
+function actionCardText(value: string | undefined, fallback: string): string {
+  // 动作卡只吃后端已清洗的 plain 字段；占位 token 不进入普通用户首屏。
+  return plainFactPart(value, fallback) || fallback;
+}
+
+function buildActionStatusCards(
+  readback: RobotControlSummaryResponse["readback_summary"],
+  boundary: RobotControlSummaryResponse["safe_command_boundary"],
+): RobotControlSummaryResponse["action_status_cards"] {
+  // 这些卡片是首屏“现在能做什么”的结构化摘要，不新增任何控制能力或放行条件。
+  const cameraVisible = readback.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
+  const mapVisible = /地图画面.*已显示/.test(readback.map.map_wysiwyg_status_plain);
+  const radarPointCount = Number(readback.radar.map_marker_point_count || readback.radar.radar_overlay_point_count || "0");
+  const radarCurrent = Number.isFinite(radarPointCount) && radarPointCount > 0 && ["loaded", "partial"].includes(readback.radar.radar_overlay_status);
+  const nav2NeedsWheelRerun = boundary.nav2_goal_wheel_feedback_status === "goal_succeeded_but_wheel_lr_zero";
+  return [
+    {
+      id: "camera_preview",
+      title: "画面",
+      status: cameraVisible ? "visible" : "not_visible",
+      status_label: cameraVisible ? "已显示" : "未显示",
+      summary_plain: actionCardText(currentFactCameraPart(readback.camera.camera_wysiwyg_status_plain), "画面状态未读到"),
+      next_action_plain: actionCardText(readback.camera.camera_wysiwyg_next_action_plain, "打开共享预览或复测首帧"),
+      wysiwyg_status: cameraVisible ? "visible_frame" : "no_current_frame",
+      requires_safety_confirmation: false,
+      can_start_after_safety_confirm: false,
+      sends_motion_when_clicked: false,
+      blocks_free_motion: false,
+      blocks_mapping_start: !cameraVisible,
+    },
+    {
+      id: "map_preview",
+      title: "地图",
+      status: mapVisible ? "visible" : "not_visible",
+      status_label: mapVisible ? "已显示" : "未显示",
+      summary_plain: actionCardText(readback.map.map_wysiwyg_status_plain, "地图画面未读到"),
+      next_action_plain: actionCardText(readback.map.map_wysiwyg_next_action_plain, "刷新地图画面"),
+      wysiwyg_status: mapVisible ? "current_map_visible" : "map_not_visible",
+      requires_safety_confirmation: false,
+      can_start_after_safety_confirm: false,
+      sends_motion_when_clicked: false,
+      blocks_free_motion: false,
+      blocks_mapping_start: false,
+    },
+    {
+      id: "radar_map_points",
+      title: "地图雷达点",
+      status: radarCurrent ? "current_on_map" : "not_current",
+      status_label: radarCurrent ? "已贴图" : "未贴当前图",
+      summary_plain: actionCardText(readback.radar.plain_hint || readback.radar.radar_status_plain, "地图雷达点状态未读到"),
+      next_action_plain: actionCardText(readback.radar.radar_next_action_plain || readback.radar.radar_overlay_wysiwyg_next_action_plain, "启动雷达并刷新地图画面"),
+      wysiwyg_status: radarCurrent ? "current_points_visible" : "old_or_missing_points_not_drawn",
+      requires_safety_confirmation: false,
+      can_start_after_safety_confirm: false,
+      sends_motion_when_clicked: false,
+      blocks_free_motion: false,
+      blocks_mapping_start: !radarCurrent,
+    },
+    {
+      id: "nav2_route",
+      title: "图上路线",
+      status: boundary.nav2_goal_ready ? (nav2NeedsWheelRerun ? "ready_needs_wheel_rerun" : "ready") : "not_ready",
+      status_label: boundary.nav2_goal_ready ? (nav2NeedsWheelRerun ? "可重跑复验" : "可执行") : "未就绪",
+      summary_plain: actionCardText(readback.nav2.route_execution_readiness_plain || readback.nav2.execution_status_plain, "图上路线状态未读到"),
+      next_action_plain: actionCardText(boundary.nav2_goal_next_action_plain || readback.nav2.next_action_plain, "准备图上路线"),
+      wysiwyg_status: boundary.nav2_goal_ready ? "route_ready_on_map" : "route_not_ready",
+      requires_safety_confirmation: true,
+      can_start_after_safety_confirm: boundary.nav2_goal_ready,
+      sends_motion_when_clicked: true,
+      blocks_free_motion: false,
+      blocks_mapping_start: false,
+    },
+    {
+      id: "keyboard_control",
+      title: "键盘手控",
+      status: boundary.keyboard_control_status,
+      status_label: boundary.keyboard_control_start_ready ? "可启用" : "未就绪",
+      summary_plain: actionCardText(readback.keyboard.hold_to_move_plain || readback.keyboard.readiness_plain, "键盘手控状态未读到"),
+      next_action_plain: actionCardText(readback.keyboard.next_action_plain || boundary.keyboard_control_next_action, "勾选安全确认后启用键盘"),
+      wysiwyg_status: "hold_to_move_contract",
+      requires_safety_confirmation: true,
+      can_start_after_safety_confirm: boundary.keyboard_control_start_ready,
+      sends_motion_when_clicked: false,
+      blocks_free_motion: false,
+      blocks_mapping_start: false,
+    },
+    {
+      id: "free_move",
+      title: "自由移动",
+      status: boundary.free_roam_autonomy,
+      status_label: boundary.free_roam_motion_start_ready ? (boundary.free_roam_autonomy === "ready" ? "运行中" : "可启动") : "未就绪",
+      summary_plain: actionCardText(readback.free_roam.motion_readiness_plain, "自由移动状态未读到"),
+      next_action_plain: actionCardText(readback.free_roam.motion_next_action_plain || boundary.free_roam_autonomy_next_action, "勾选安全确认后启动自由移动"),
+      wysiwyg_status: boundary.free_roam_motion_start_ready ? "motion_start_ready" : "motion_not_ready",
+      requires_safety_confirmation: true,
+      can_start_after_safety_confirm: boundary.free_roam_motion_start_ready,
+      sends_motion_when_clicked: true,
+      blocks_free_motion: false,
+      blocks_mapping_start: false,
+    },
+    {
+      id: "mapping_start",
+      title: "建图启动",
+      status: boundary.free_roam_mapping_start_ready ? "ready" : "not_ready",
+      status_label: boundary.free_roam_mapping_start_ready ? "可启动" : "未就绪",
+      summary_plain: actionCardText(readback.free_roam.mapping_start_readiness_plain || boundary.free_roam_mapping_start_plain, "建图启动状态未读到"),
+      next_action_plain: actionCardText(readback.free_roam.mapping_start_next_action_plain || boundary.free_roam_mapping_start_next_action, "补齐画面首帧和雷达新鲜度"),
+      wysiwyg_status: boundary.free_roam_mapping_start_ready ? "camera_and_radar_ready" : "camera_or_radar_missing",
+      requires_safety_confirmation: true,
+      can_start_after_safety_confirm: boundary.free_roam_mapping_start_ready,
+      sends_motion_when_clicked: true,
+      blocks_free_motion: false,
+      blocks_mapping_start: !boundary.free_roam_mapping_start_ready,
+    },
+  ];
+}
+
 export async function buildRobotControlSummary(
   baseUrl: string,
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
@@ -6674,6 +6792,7 @@ export async function buildRobotControlSummary(
       last_refresh_ms: observedAt,
     },
     current_fact_plain: summaryCurrentFactPlain(readbackSummary, safeCommandBoundary),
+    action_status_cards: buildActionStatusCards(readbackSummary, safeCommandBoundary),
     readback_summary: readbackSummary,
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),

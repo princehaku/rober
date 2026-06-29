@@ -2826,6 +2826,21 @@ const plainCurrentFactRows = computed(() => {
   rows.push(plainCurrentKeyboardFactText(summary));
   return rows;
 });
+const plainActionStatusCards = computed(() => {
+  // 后端动作卡是普通首屏的结构化摘要；旧 summary 没有该字段时继续使用上面的事实列表。
+  return robotSummary.value?.action_status_cards ?? [];
+});
+function plainActionCardUserText(value: string): string {
+  // API 保留“路线”等诊断口径；普通首屏统一说“行程”，避免回到工程调试风格。
+  return plainNav2UserFacingText(value)
+    .replace(/图上路线/g, "图上行程")
+    .replace(/路线/g, "行程")
+    .replace(/画面未可见/g, "画面未显示")
+    .replace(/画面已可见/g, "已经看到画面")
+    .replace(/不当作画面可见/g, "不当作已经看到画面")
+    .replace(/wheel raw L\/R/g, "轮速 L/R")
+    .replace(/\braw\b/g, "原始读数");
+}
 const showPlainRadarStart = computed(() => {
   // 雷达是建图和 LiDAR delta 的监看入口；Nav2/自由移动是否启动不再由雷达运行态前端硬挡。
   return radarLifecyclePendingAction.value === "start"
@@ -12334,6 +12349,31 @@ onBeforeUnmount(() => {
 
       <div class="plain-current-facts" data-testid="plain-current-facts" aria-label="当前事实">
         <span v-for="row in plainCurrentFactRows" :key="row">{{ row }}</span>
+      </div>
+
+      <div v-if="plainActionStatusCards.length" class="plain-action-status-cards" data-testid="plain-action-status-cards" aria-label="当前动作状态">
+        <article
+          v-for="card in plainActionStatusCards"
+          :key="card.id"
+          class="plain-action-status-card"
+          :data-testid="`plain-action-status-card-${card.id}`"
+          :data-state="card.status"
+          :data-wysiwyg="card.wysiwyg_status"
+        >
+          <div class="plain-action-card-head">
+            <strong>{{ plainActionCardUserText(card.title) }}</strong>
+            <span class="status-chip" :data-state="card.status_label">{{ card.status_label }}</span>
+          </div>
+          <p>{{ plainActionCardUserText(card.summary_plain) }}</p>
+          <p class="muted">下一步：{{ plainActionCardUserText(card.next_action_plain) }}</p>
+          <div class="plain-action-card-flags" aria-label="动作边界">
+            <span v-if="card.requires_safety_confirmation">需安全确认</span>
+            <span v-if="card.can_start_after_safety_confirm">确认后可启动</span>
+            <span v-if="card.sends_motion_when_clicked">会触发运动</span>
+            <span v-if="card.blocks_mapping_start">影响建图</span>
+            <span v-if="!card.blocks_free_motion">不挡自由移动</span>
+          </div>
+        </article>
       </div>
 
       <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen">

@@ -3978,6 +3978,35 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_fact_plain).toContain("发车前：执行图上路线只复核现场安全确认和固定白名单");
       expect(summary.current_fact_plain).not.toContain("marker");
       expect(summary.current_fact_plain).not.toContain("overlay");
+      const actionCards = summary.action_status_cards ?? [];
+      expect(actionCards.map((card) => card.id)).toEqual([
+        "camera_preview",
+        "map_preview",
+        "radar_map_points",
+        "nav2_route",
+        "keyboard_control",
+        "free_move",
+        "mapping_start",
+      ]);
+      expect(JSON.stringify(actionCards)).not.toContain("marker");
+      expect(JSON.stringify(actionCards)).not.toContain("overlay");
+      expect(actionCards.find((card) => card.id === "keyboard_control")).toMatchObject({
+        status_label: "可启用",
+        requires_safety_confirmation: true,
+        can_start_after_safety_confirm: true,
+        sends_motion_when_clicked: false,
+        blocks_free_motion: false,
+      });
+      expect(actionCards.find((card) => card.id === "free_move")).toMatchObject({
+        status_label: "未就绪",
+        requires_safety_confirmation: true,
+        blocks_free_motion: false,
+      });
+      expect(actionCards.find((card) => card.id === "mapping_start")).toMatchObject({
+        status_label: "未就绪",
+        blocks_free_motion: false,
+        blocks_mapping_start: true,
+      });
       expect(summary.readback_summary.map).toMatchObject({
         status: expect.any(String),
         map_once_observed: "true",
