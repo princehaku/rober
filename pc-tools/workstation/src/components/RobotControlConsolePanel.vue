@@ -5280,6 +5280,26 @@ const plainKeyboardTargetSource = computed(() => {
       return "none";
   }
 });
+type PlainKeyboardDirectionButtonEvidence = {
+  // 屏幕方向键是实际会触发连续 pulse 的控件，必须自己暴露按住/松开合同，不能只依赖父面板文案。
+  sendsMotionWhileHeld: boolean;
+  requiresHoldToMove: boolean;
+  stopTrigger: string;
+  fixedManualEndpoint: string;
+  fixedStopEndpoint: string;
+  pulseIntervalMs: number;
+  pulseDurationMs: number;
+};
+const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButtonEvidence>(() => ({
+  // canPressKeyboardDirection 已包含启用状态、后端键盘合同和 stop 失败 fail-closed。
+  sendsMotionWhileHeld: canPressKeyboardDirection.value,
+  requiresHoldToMove: true,
+  stopTrigger: "pointerup,pointerleave,pointercancel",
+  fixedManualEndpoint: manualBoundary.value?.keyboard_manual_proxy_endpoint ?? "/api/robot-control/base/manual",
+  fixedStopEndpoint: manualBoundary.value?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
+  pulseIntervalMs: keyboardJogIntervalMs.value,
+  pulseDurationMs: keyboardJogDurationMs.value,
+}));
 const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
@@ -14719,6 +14739,14 @@ onBeforeUnmount(() => {
                 type="button"
                 :disabled="!canPressKeyboardDirection"
                 data-testid="keyboard-screen-forward"
+                data-direction="forward"
+                :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
+                :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
+                :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
+                :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
+                :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
+                :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                 @pointerdown="handleKeyboardDirectionPointerDown('forward', $event)"
                 @pointerup="handleKeyboardDirectionPointerEnd('forward', 'screen_button_released')"
                 @pointerleave="handleKeyboardDirectionPointerEnd('forward', 'screen_button_left')"
@@ -14731,6 +14759,14 @@ onBeforeUnmount(() => {
                   type="button"
                   :disabled="!canPressKeyboardDirection"
                   data-testid="keyboard-screen-left"
+                  data-direction="left"
+                  :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
+                  :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
+                  :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
+                  :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
+                  :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                  :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
+                  :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                   @pointerdown="handleKeyboardDirectionPointerDown('left', $event)"
                   @pointerup="handleKeyboardDirectionPointerEnd('left', 'screen_button_released')"
                   @pointerleave="handleKeyboardDirectionPointerEnd('left', 'screen_button_left')"
@@ -14738,13 +14774,30 @@ onBeforeUnmount(() => {
                 >
                   左转
                 </button>
-                <button class="danger-button" type="button" :disabled="!canRequestKeyboardStop" data-testid="keyboard-screen-stop" @click="stopKeyboardControl('screen_button_stop')">
+                <button
+                  class="danger-button"
+                  type="button"
+                  :disabled="!canRequestKeyboardStop"
+                  data-testid="keyboard-screen-stop"
+                  data-sends-motion-when-clicked="false"
+                  data-stop-trigger="click"
+                  :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                  @click="stopKeyboardControl('screen_button_stop')"
+                >
                   停止
                 </button>
                 <button
                   type="button"
                   :disabled="!canPressKeyboardDirection"
                   data-testid="keyboard-screen-right"
+                  data-direction="right"
+                  :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
+                  :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
+                  :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
+                  :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
+                  :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                  :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
+                  :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                   @pointerdown="handleKeyboardDirectionPointerDown('right', $event)"
                   @pointerup="handleKeyboardDirectionPointerEnd('right', 'screen_button_released')"
                   @pointerleave="handleKeyboardDirectionPointerEnd('right', 'screen_button_left')"
@@ -14757,6 +14810,14 @@ onBeforeUnmount(() => {
                 type="button"
                 :disabled="!canPressKeyboardDirection"
                 data-testid="keyboard-screen-back"
+                data-direction="back"
+                :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
+                :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
+                :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
+                :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
+                :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
+                :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                 @pointerdown="handleKeyboardDirectionPointerDown('back', $event)"
                 @pointerup="handleKeyboardDirectionPointerEnd('back', 'screen_button_released')"
                 @pointerleave="handleKeyboardDirectionPointerEnd('back', 'screen_button_left')"

@@ -5027,6 +5027,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("data-requires-hold-to-move")).toBe("true");
     expect(wrapper.find('[data-testid="plain-keyboard-main-action-summary"]').text()).toBe("键盘主动作：先勾选现场安全确认；未勾选时启用和按键都不会发车。");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-sends-motion-while-held")).toBe("false");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-requires-hold-to-move")).toBe("true");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-stop-trigger")).toBe("pointerup,pointerleave,pointercancel");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-pulse-interval-ms")).toBe("260");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-pulse-duration-ms")).toBe("240");
+    expect(wrapper.find('[data-testid="keyboard-screen-stop"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(wrapper.find('[data-testid="keyboard-screen-stop"]').attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-sends-motion-while-held")).toBe("false");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-stop-trigger")).toBe("pointerup,pointerleave,pointercancel");
     expect(wrapper.find(".simple-user-console .motion-pad").exists()).toBe(false);
@@ -16889,7 +16898,22 @@ describe("App", () => {
     expect(keyboardPanel.text()).toContain("本页非输入区");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：已启用，按住才动");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动；按住后约每 0.26 秒发送 0.24 秒低速脉冲，松开/失焦/切页会停。");
-    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
+    const keyboardDirections = ["forward", "left", "right", "back"];
+    for (const direction of keyboardDirections) {
+      const button = wrapper.find(`[data-testid="keyboard-screen-${direction}"]`);
+      expect(button.attributes("disabled")).toBeUndefined();
+      expect(button.attributes("data-direction")).toBe(direction);
+      expect(button.attributes("data-sends-motion-while-held")).toBe("true");
+      expect(button.attributes("data-requires-hold-to-move")).toBe("true");
+      expect(button.attributes("data-stop-trigger")).toBe("pointerup,pointerleave,pointercancel");
+      expect(button.attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
+      expect(button.attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
+      expect(button.attributes("data-pulse-interval-ms")).toBe("260");
+      expect(button.attributes("data-pulse-duration-ms")).toBe("240");
+    }
+    expect(wrapper.find('[data-testid="keyboard-screen-stop"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(wrapper.find('[data-testid="keyboard-screen-stop"]').attributes("data-stop-trigger")).toBe("click");
+    expect(wrapper.find('[data-testid="keyboard-screen-stop"]').attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     const manualCallsBeforeEditableKey = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
     wrapper.find('input[name="plainExternalVideoRef"]').element.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
     await flushPromises();
