@@ -5335,6 +5335,19 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       : "当前事实未读到；先填写或确认小车地址。",
     action_status_cards: [],
     goal_checklist: [],
+    goal_checklist_summary: {
+      status: "not_started",
+      status_label: "未开始",
+      total_count: 0,
+      done_count: 0,
+      remaining_count: 0,
+      safety_confirm_needed_count: 0,
+      motion_needed_count: 0,
+      first_incomplete_item_id: "",
+      first_incomplete_source_card_id: "",
+      next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
+      summary_plain: "本轮目标检查未读到；先恢复小车连接。",
+    },
     readback_summary: {
       camera: {
         status: "not_loaded",
@@ -6855,6 +6868,63 @@ function buildGoalChecklist(
   ];
 }
 
+function buildGoalChecklistSummary(
+  checklist: NonNullable<RobotControlSummaryResponse["goal_checklist"]>,
+): RobotControlSummaryResponse["goal_checklist_summary"] {
+  // 汇总只决定“先看哪一项”，不会把 ready 状态升级成完成，也不会触发任何动作。
+  const totalCount = checklist.length;
+  const doneCount = checklist.filter((item) => item.status === "done").length;
+  const remaining = checklist.filter((item) => item.blocks_goal_completion);
+  const safetyConfirmNeededCount = remaining.filter((item) => item.requires_safety_confirmation).length;
+  const motionNeededCount = remaining.filter((item) => item.requires_motion).length;
+  const firstIncomplete = remaining[0] ?? null;
+  if (totalCount === 0) {
+    return {
+      status: "not_started",
+      status_label: "未开始",
+      total_count: 0,
+      done_count: 0,
+      remaining_count: 0,
+      safety_confirm_needed_count: 0,
+      motion_needed_count: 0,
+      first_incomplete_item_id: "",
+      first_incomplete_source_card_id: "",
+      next_action_plain: "先刷新小车状态。",
+      summary_plain: "本轮目标检查未读到；先刷新小车状态。",
+    };
+  }
+  if (!firstIncomplete) {
+    return {
+      status: "complete",
+      status_label: "已完成",
+      total_count: totalCount,
+      done_count: doneCount,
+      remaining_count: 0,
+      safety_confirm_needed_count: 0,
+      motion_needed_count: 0,
+      first_incomplete_item_id: "",
+      first_incomplete_source_card_id: "",
+      next_action_plain: "本轮目标检查已完成；继续保持现场监看。",
+      summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成。`,
+    };
+  }
+  const safetyText = safetyConfirmNeededCount > 0 ? `，其中 ${safetyConfirmNeededCount} 项需要现场安全确认` : "";
+  const motionText = motionNeededCount > 0 ? `，${motionNeededCount} 项需要真实运动验证` : "";
+  return {
+    status: "in_progress",
+    status_label: "进行中",
+    total_count: totalCount,
+    done_count: doneCount,
+    remaining_count: remaining.length,
+    safety_confirm_needed_count: safetyConfirmNeededCount,
+    motion_needed_count: motionNeededCount,
+    first_incomplete_item_id: firstIncomplete.id,
+    first_incomplete_source_card_id: firstIncomplete.source_card_id,
+    next_action_plain: firstIncomplete.next_action_plain,
+    summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成，还差 ${remaining.length} 项${safetyText}${motionText}；先处理：${firstIncomplete.title}。`,
+  };
+}
+
 export async function buildRobotControlSummary(
   baseUrl: string,
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
@@ -6919,6 +6989,7 @@ export async function buildRobotControlSummary(
   };
   const safeCommandBoundary = lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary);
   const actionStatusCards = buildActionStatusCards(readbackSummary, safeCommandBoundary);
+  const goalChecklist = buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -6947,7 +7018,8 @@ export async function buildRobotControlSummary(
     },
     current_fact_plain: summaryCurrentFactPlain(readbackSummary, safeCommandBoundary),
     action_status_cards: actionStatusCards,
-    goal_checklist: buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary),
+    goal_checklist: goalChecklist,
+    goal_checklist_summary: buildGoalChecklistSummary(goalChecklist ?? []),
     readback_summary: readbackSummary,
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),

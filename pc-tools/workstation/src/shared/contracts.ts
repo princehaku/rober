@@ -2426,6 +2426,20 @@ export interface RobotControlGoalChecklistItem {
   blocks_goal_completion: boolean;
 }
 
+export interface RobotControlGoalChecklistSummary {
+  status: "complete" | "in_progress" | "not_started";
+  status_label: string;
+  total_count: number;
+  done_count: number;
+  remaining_count: number;
+  safety_confirm_needed_count: number;
+  motion_needed_count: number;
+  first_incomplete_item_id: RobotControlGoalChecklistItemId | "";
+  first_incomplete_source_card_id: RobotControlActionStatusCardId | "";
+  next_action_plain: string;
+  summary_plain: string;
+}
+
 export interface RobotControlSummaryResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_summary.v1";
   console_status: "blocked" | "loaded_fail_closed_summary";
@@ -2454,6 +2468,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_fact_plain: string;
   action_status_cards?: RobotControlActionStatusCard[];
   goal_checklist?: RobotControlGoalChecklistItem[];
+  goal_checklist_summary?: RobotControlGoalChecklistSummary;
   readback_summary: {
     camera: {
       status: string;

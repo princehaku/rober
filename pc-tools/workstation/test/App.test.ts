@@ -601,6 +601,19 @@ const fixtures: Record<string, unknown> = {
         blocks_goal_completion: true,
       },
     ],
+    goal_checklist_summary: {
+      status: "in_progress",
+      status_label: "进行中",
+      total_count: 7,
+      done_count: 1,
+      remaining_count: 6,
+      safety_confirm_needed_count: 4,
+      motion_needed_count: 4,
+      first_incomplete_item_id: "camera_wysiwyg",
+      first_incomplete_source_card_id: "camera_preview",
+      next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
+      summary_plain: "本轮目标检查 1/7 项已完成，还差 6 项，其中 4 项需要现场安全确认，4 项需要真实运动验证；先处理：画面所见即所得。",
+    },
     readback_summary: {
       camera: {
         status: "camera_health_not_proven",
@@ -4138,12 +4151,26 @@ describe("App", () => {
     expect(goalChecklist.exists()).toBe(true);
     expect(goalChecklist.text()).toContain("本轮目标检查");
     expect(goalChecklist.text()).toContain("待确认不等于已完成");
-    expect(wrapper.findAll('[data-testid^="plain-goal-checklist-"]')).toHaveLength(7);
+    expect(wrapper.findAll('[data-testid^="plain-goal-checklist-"].plain-goal-checklist-row')).toHaveLength(7);
     expect(wrapper.find('[data-testid="plain-goal-checklist-map_wysiwyg"]').text()).toContain("已满足");
     expect(wrapper.find('[data-testid="plain-goal-checklist-keyboard_continuous_control"]').text()).toContain("待安全确认");
     expect(wrapper.find('[data-testid="plain-goal-checklist-free_move"]').text()).toContain("未就绪");
     expect(goalChecklist.text()).not.toContain("marker");
     expect(goalChecklist.text()).not.toContain("overlay");
+    const goalChecklistSummary = wrapper.find('[data-testid="plain-goal-checklist-summary"]');
+    expect(goalChecklistSummary.exists()).toBe(true);
+    expect(goalChecklistSummary.text()).toContain("本轮目标检查 1/7 项已完成，还差 6 项");
+    expect(goalChecklistSummary.text()).toContain("先处理：画面所见即所得");
+    expect(goalChecklistSummary.text()).not.toContain("raw");
+    expect(goalChecklistSummary.text()).not.toContain("marker");
+    expect(goalChecklistSummary.text()).not.toContain("overlay");
+    const callsBeforeChecklistGuide = mockedFetch.mock.calls.length;
+    const focusCallsBeforeChecklistGuide = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-checklist-summary-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeChecklistGuide);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-camera-start"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeChecklistGuide);
     const connectionPanel = wrapper.find('[data-testid="plain-connection-panel"]');
     expect(connectionPanel.exists()).toBe(true);
     expect(connectionPanel.attributes("data-state")).toBe("已连接");

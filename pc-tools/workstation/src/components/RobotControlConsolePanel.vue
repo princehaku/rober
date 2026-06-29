@@ -2840,6 +2840,10 @@ const plainGoalChecklist = computed(() => {
   // 目标检查只展示只读验收口径；ready/待确认不会被写成已完成。
   return robotSummary.value?.goal_checklist ?? [];
 });
+const plainGoalChecklistSummary = computed(() => {
+  // 汇总来自后端同一轮只读检查；前端只做普通文案翻译和聚焦跳转。
+  return robotSummary.value?.goal_checklist_summary ?? null;
+});
 function plainActionCardUserText(value: string): string {
   // API 保留“路线”等诊断口径；普通首屏统一说“行程”，避免回到工程调试风格。
   return plainNav2UserFacingText(value)
@@ -2887,6 +2891,14 @@ function focusPlainActionCardTarget(id: RobotControlActionStatusCardId): void {
   }
   target.scrollIntoView?.({ block: "center", behavior: "smooth" });
   target.focus({ preventScroll: true });
+}
+function focusPlainGoalChecklistSummaryTarget(): void {
+  // 总结按钮只跳转到首个未完成项对应的卡片，不自动执行该卡片动作。
+  const sourceCardId = plainGoalChecklistSummary.value?.first_incomplete_source_card_id;
+  if (!sourceCardId) {
+    return;
+  }
+  focusPlainActionCardTarget(sourceCardId);
 }
 const showPlainRadarStart = computed(() => {
   // 雷达是建图和 LiDAR delta 的监看入口；Nav2/自由移动是否启动不再由雷达运行态前端硬挡。
@@ -12435,6 +12447,24 @@ onBeforeUnmount(() => {
         <div class="simple-status-row">
           <strong>本轮目标检查</strong>
           <span class="muted">只读验收口径，待确认不等于已完成。</span>
+        </div>
+        <div
+          v-if="plainGoalChecklistSummary"
+          class="plain-goal-checklist-summary"
+          :data-state="plainGoalChecklistSummary.status"
+          data-testid="plain-goal-checklist-summary"
+        >
+          <span class="status-chip" :data-state="plainGoalChecklistSummary.status_label">{{ plainGoalChecklistSummary.status_label }}</span>
+          <span class="muted">{{ plainActionCardUserText(plainGoalChecklistSummary.summary_plain) }}</span>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :disabled="!plainGoalChecklistSummary.first_incomplete_source_card_id"
+            data-testid="plain-goal-checklist-summary-action"
+            @click="focusPlainGoalChecklistSummaryTarget"
+          >
+            去处理下一项
+          </button>
         </div>
         <div
           v-for="item in plainGoalChecklist"

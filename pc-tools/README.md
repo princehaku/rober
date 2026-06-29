@@ -625,3 +625,8 @@ summary/首屏文案，不执行 Nav2 goal、不启动 runtime、不发送 manua
 建图启动。运动相关项会显示“待安全确认/未就绪/运行中”，不会把可启动误写成完成；普通首屏展示使用中文读数，不泄露
 `raw`、`marker` 或 `overlay`。该变化只读 summary，不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或
 `/cmd_vel`。
+
+2026-06-29 10:00 CST 起，`GET /api/robot-control/summary` 顶层增加 `goal_checklist_summary`。普通首屏会在
+“本轮目标检查”顶部显示已完成/剩余数量、需要安全确认和真实运动验证的数量，并给出第一项未完成目标的下一步。
+“去处理下一项”只滚动并聚焦到已有控件，不自动发车、不启动服务、不勾选安全确认。该变化只读 summary，不发送
+manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

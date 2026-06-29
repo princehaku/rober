@@ -4055,3 +4055,8 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 普通首屏会把内部枚举翻成中文读数，不显示 `raw`、`marker` 或 `overlay`。该变化只聚合同一轮 readback 和
 `action_status_cards`，不启动雷达/建图/free-roam，不执行 Nav2，不发送 manual、keyboard、delivery、stop 或
 `/cmd_vel`。
+
+2026-06-29 10:00 CST 起，Robot Control summary 同步新增 `goal_checklist_summary`，普通首屏在“本轮目标检查”
+顶部显示整体完成数、剩余数、需要安全确认/真实运动验证的数量，以及第一项未完成目标和下一步。汇总按钮“去处理下一项”
+只复用已有页面内聚焦逻辑，把 operator 带到对应动作卡/控件，不自动点击、不勾选安全确认、不启动任何服务或运动。
+该变化只读 `goal_checklist[]`，不调用 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -4032,6 +4032,19 @@ describe("workstation fail-closed API contracts", () => {
         requires_motion: true,
         blocks_goal_completion: true,
       });
+      expect(summary.goal_checklist_summary).toMatchObject({
+        status: "in_progress",
+        status_label: "进行中",
+        total_count: 7,
+        done_count: 1,
+        remaining_count: 6,
+        first_incomplete_item_id: "camera_wysiwyg",
+        first_incomplete_source_card_id: "camera_preview",
+      });
+      expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
+      expect(JSON.stringify(summary.goal_checklist_summary)).not.toContain("raw");
+      expect(JSON.stringify(summary.goal_checklist_summary)).not.toContain("marker");
+      expect(JSON.stringify(summary.goal_checklist_summary)).not.toContain("overlay");
       expect(summary.readback_summary.map).toMatchObject({
         status: expect.any(String),
         map_once_observed: "true",

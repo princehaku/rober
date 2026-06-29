@@ -460,6 +460,17 @@ h3 {
   background: #fbfcfe;
 }
 
+.plain-goal-checklist-summary {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #e4e9ef;
+  border-radius: 8px;
+  padding: 8px;
+  background: #ffffff;
+}
+
 .plain-goal-checklist-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.8fr) auto minmax(220px, 2fr);
@@ -479,10 +490,12 @@ h3 {
 }
 
 @media (max-width: 760px) {
+  .plain-goal-checklist-summary,
   .plain-goal-checklist-row {
     grid-template-columns: 1fr auto;
   }
 
+  .plain-goal-checklist-summary .muted,
   .plain-goal-checklist-row .muted,
   .plain-goal-checklist-row small {
     grid-column: 1 / -1;
