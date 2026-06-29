@@ -2606,7 +2606,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("O7 field evidence consumer ingest fails closed when local fixture paths are missing", async () => {
-    // 任一层缺文件都要进入 blocked_not_proven，不能把缺口误报成 ready。
+    // 任一层缺文件都要进入 blocked_not_proven，不能把缺口误报成 就绪。
     const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-field-ingest-missing-"));
     const manifestPath = path.join(root, "missing-manifest.json");
     const routeReplayPath = path.join(root, "missing-route-replay.json");
@@ -4123,7 +4123,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.goal_checklist_summary?.safety_precheck_summary_plain).toContain("发车前预检已精简");
       expect(summary.goal_checklist_summary?.safety_precheck_summary_plain).toContain("只需要现场安全确认");
       expect(summary.goal_checklist_summary?.radar_summary_plain).toContain("雷达点还没有贴到当前地图");
-      expect(summary.goal_checklist_summary?.nav2_summary_plain).toContain("完整图上行程还未 ready");
+      expect(summary.goal_checklist_summary?.nav2_summary_plain).toContain("完整图上行程还未就绪");
       expect(summary.goal_checklist_summary?.mapping_summary_plain).toContain("建图暂不可启动");
       expect(summary.goal_checklist_summary?.next_action_items).toHaveLength(6);
       expect(summary.goal_checklist_summary?.next_action_items.map((item) => item.id)).toEqual([
@@ -4338,9 +4338,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（未开放）");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底");
       expect(summary.safe_command_boundary.free_roam_motion_minimal_precheck_plain).toBe("自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。");
-      expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。");
+      expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动未就绪；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜。");
-      expect(summary.safe_command_boundary.free_roam_mapping_acceptance_plain).toBe("建图验收要求画面首帧、雷达新鲜、地图记录和地图画面 ready；这些缺口不阻止先低速自由移动。");
+      expect(summary.safe_command_boundary.free_roam_mapping_acceptance_plain).toBe("建图验收要求画面首帧、雷达新鲜、地图记录和地图画面就绪；这些缺口不阻止先低速自由移动。");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.mode).toBe("free_move_requires_safety_confirm_stop_fallback");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.mapping_mode).toBe("mapping_acceptance_requires_camera_and_fresh_radar");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.required_gates).toEqual([
@@ -5955,11 +5955,11 @@ describe("workstation fail-closed API contracts", () => {
         mapping_start_missing: "camera_first_frame,lidar_fresh",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
-        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
+        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
         next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
         motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
-        mapping_start_readiness_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。",
-        mapping_readiness_plain: "建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面。",
+        mapping_start_readiness_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。",
+        mapping_readiness_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。",
         motion_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图。",
         mapping_start_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜。",
         mapping_next_action_plain: "先连接上车自由移动状态机；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面。",
@@ -6064,11 +6064,11 @@ describe("workstation fail-closed API contracts", () => {
         mapping_start_missing: "camera_first_frame,lidar_fresh",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
-        plain_hint: "可先自由移动；只需要现场安全确认和停止兜底。建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。",
+        plain_hint: "可先自由移动；只需要现场安全确认和停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。",
         next_action_plain: "勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面",
         motion_readiness_plain: "可先自由移动；只需要现场安全确认和停止兜底。",
-        mapping_start_readiness_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收。",
-        mapping_readiness_plain: "建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
+        mapping_start_readiness_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收。",
+        mapping_readiness_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
         motion_next_action_plain: "勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。",
         mapping_start_next_action_plain: "先补齐建图启动材料：画面首帧、雷达新鲜；低速自由移动不受影响。",
         mapping_next_action_plain: "建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
@@ -6828,7 +6828,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("keeps explicit free-roam mapping gate when map proof looks started", async () => {
-    // free-roam runtime 是自助移动状态机的当前事实；它明确说地图记录未启动时，旧 map proof 不能把 gate 改成 ready。
+    // free-roam runtime 是自助移动状态机的当前事实；它明确说地图记录未启动时，旧 map proof 不能把 gate 改成 就绪。
     const safePayload = (schema: string, status = "loaded") => ({
       schema,
       status,
@@ -6981,7 +6981,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("keeps free-roam start ready from stop fallback even when lidar freshness is blocked", async () => {
-    // 基础自助移动入口不能被雷达新鲜度硬挡；雷达仍作为避障/HIL 风险显示，不升级完整自动扫图 ready。
+    // 基础自助移动入口不能被雷达新鲜度硬挡；雷达仍作为避障/HIL 风险显示，不升级完整自动扫图就绪。
     const safePayload = (schema: string, status = "loaded") => ({
       schema,
       status,
@@ -7045,17 +7045,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面");
-      expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动未 ready；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收。");
+      expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动未就绪；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("先补齐建图启动材料：画面首帧、雷达新鲜；低速自由移动不受影响。");
       expect(summary.readback_summary.free_roam.status).toBe("start_ready");
-      expect(summary.current_fact_plain).toContain("建图启动：未 ready；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收");
-      expect(summary.current_fact_plain).toContain("建图验收：未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动");
+      expect(summary.current_fact_plain).toContain("建图启动：未就绪；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收");
+      expect(summary.current_fact_plain).toContain("建图验收：未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动");
       expect(summary.current_fact_plain).not.toContain("建图启动：建图启动");
       expect(summary.current_fact_plain).not.toContain("建图验收：建图验收");
       expect(summary.readback_summary.free_roam.next_action_plain).toBe(summary.safe_command_boundary.free_roam_autonomy_next_action);
-      expect(summary.readback_summary.free_roam.plain_hint).toBe("可先自由移动；只需要现场安全确认和停止兜底。建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。");
+      expect(summary.readback_summary.free_roam.plain_hint).toBe("可先自由移动；只需要现场安全确认和停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。");
       expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
-      expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
+      expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
       expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。");
       expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates.map((gate) => gate.id)).toEqual([
@@ -7235,15 +7235,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toEqual([]);
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("已进入自动扫图条件；继续低速监看地图、雷达和画面");
-      expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动已 ready：画面首帧和雷达新鲜都可用；地图记录和地图画面用于建图验收。");
+      expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动已就绪：画面首帧和雷达新鲜都可用；地图记录和地图画面用于建图验收。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("相机和雷达已满足建图启动；勾选现场安全确认后可启动建图记录，再看地图画面完成验收。");
       expect(summary.readback_summary.free_roam.status).toBe("mapping_ready");
       expect(summary.readback_summary.free_roam.next_action_plain).toBe(summary.safe_command_boundary.free_roam_autonomy_next_action);
-      expect(summary.readback_summary.free_roam.plain_hint).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。建图验收已 ready：画面、雷达、地图记录和地图画面都可用。下一步：已进入自动扫图条件；继续低速监看地图、雷达和画面。");
+      expect(summary.readback_summary.free_roam.plain_hint).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。建图验收已就绪：画面、雷达、地图记录和地图画面都可用。下一步：已进入自动扫图条件；继续低速监看地图、雷达和画面。");
       expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。");
-      expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收已 ready：画面、雷达、地图记录和地图画面都可用。");
+      expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收已就绪：画面、雷达、地图记录和地图画面都可用。");
       expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("自由移动运行中；需要收口时点击停止自由移动或红色停止。");
-      expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收已 ready；继续低速监看地图、雷达和画面。");
+      expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收已就绪；继续低速监看地图、雷达和画面。");
       expect(summary.action_status_cards?.find((card) => card.id === "mapping_start")).toMatchObject({
         status_label: "可启动",
         requires_safety_confirmation: true,
@@ -7344,9 +7344,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.mapping_start_missing).toBe("camera_first_frame");
       expect(summary.readback_summary.free_roam.mapping_ready).toBe("false");
       expect(summary.readback_summary.free_roam.mapping_missing).toBe("camera_first_frame,fresh_map_preview");
-      expect(summary.readback_summary.free_roam.plain_hint).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。建图验收未 ready；还差：画面首帧、地图画面；不影响先低速自由移动。");
+      expect(summary.readback_summary.free_roam.plain_hint).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。建图验收未就绪；还差：画面首帧、地图画面；不影响先低速自由移动。");
       expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。");
-      expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收未 ready；还差：画面首帧、地图画面；不影响先低速自由移动。");
+      expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收未就绪；还差：画面首帧、地图画面；不影响先低速自由移动。");
       expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("自由移动运行中；需要收口时点击停止自由移动或红色停止。");
       expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收还差：画面首帧、地图画面；不影响先低速自由移动。");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
@@ -8745,7 +8745,7 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("Robot Control summary blocks ready Nav2 route when controller is inactive", async () => {
-    // 路线、点数和 map pose 都 ready 时，controller inactive 仍必须是结构化 blocker，不能只藏在下一步文案里。
+    // 路线、点数和 map pose 都就绪时，controller inactive 仍必须是结构化 blocker，不能只藏在下一步文案里。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
         payload: {
@@ -11648,7 +11648,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.proxy_status).toBe("latest_loaded");
       expect(body.remote_endpoint).toBe("/api/free-roam/autonomy/latest");
       expect(body.remote_method).toBe("GET");
-      expect(body.plain_hint).toBe("自由移动已启动；继续保持现场可接管，必要时点击停止。建图验收未 ready；还差：画面首帧、地图记录、地图画面；这不阻止先低速自由移动。");
+      expect(body.plain_hint).toBe("自由移动已启动；继续保持现场可接管，必要时点击停止。建图验收未就绪；还差：画面首帧、地图记录、地图画面；这不阻止先低速自由移动。");
       expect(body.next_action_plain).toBe("继续低速监看；需要停下时点停止。建图验收还差：画面首帧、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.runtime_status).toBe("loaded");
       expect(body.decision_state).toBe("running");
@@ -11661,8 +11661,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.motion_readiness_plain).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。");
       expect(body.free_move_start_status_plain).toBe("自由移动已启动；继续保持现场可接管，必要时点击停止。");
       expect(body.motion_runtime_status_plain).toBe("自由移动正在运行并发布低速运动；继续监看现场，必要时点击停止。");
-      expect(body.mapping_acceptance_status_plain).toBe("建图验收未 ready；还差：画面首帧、地图记录、地图画面；这不阻止先低速自由移动。");
-      expect(body.mapping_readiness_plain).toBe("建图验收未 ready；还差：画面首帧、地图记录、地图画面；不影响先低速自由移动。");
+      expect(body.mapping_acceptance_status_plain).toBe("建图验收未就绪；还差：画面首帧、地图记录、地图画面；这不阻止先低速自由移动。");
+      expect(body.mapping_readiness_plain).toBe("建图验收未就绪；还差：画面首帧、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.motion_next_action_plain).toBe("继续低速监看；需要停下时点停止。");
       expect(body.mapping_next_action_plain).toBe("建图验收还差：画面首帧、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.latest_key_values.decision_state).toBe("running");
@@ -11740,7 +11740,7 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("latest_loaded");
-      expect(body.plain_hint).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。");
+      expect(body.plain_hint).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。");
       expect(body.next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.free_move_start_ready).toBe(true);
       expect(body.motion_start_ready).toBe(true);

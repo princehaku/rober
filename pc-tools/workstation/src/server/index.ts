@@ -898,12 +898,12 @@ function radarStatusPlainFields(
     ? "雷达已运行，最新扫描是新的；地图雷达点仍以同轮地图预览为准。"
     : radarStopped
       ? "雷达未运行或扫描已停；旧雷达来源点不能当作当前地图雷达点。"
-      : "雷达状态未完全 ready；需要确认雷达正在运行且有新扫描。";
+      : "雷达状态未完全就绪；需要确认雷达正在运行且有新扫描。";
   const radarNextActionPlain = radarReady
     ? "刷新地图画面，确认地图上实际显示的雷达点数。"
     : radarStopped
       ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
-      : "先刷新雷达状态，ready 后再刷新地图画面确认雷达点。";
+      : "先刷新雷达状态，就绪后再刷新地图画面确认雷达点。";
   return {
     continuous_scan_status: continuous,
     lifecycle_running: running,
@@ -1415,16 +1415,16 @@ function freeRoamLatestMotionReadinessPlain(startReady: boolean, motionReady: bo
 
 function freeRoamLatestMappingReadinessPlain(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
   if (mappingReady) {
-    return "建图验收已 ready；雷达和摄像头材料满足，可以继续低速建图。";
+    return "建图验收已就绪；雷达和摄像头材料满足，可以继续低速建图。";
   }
   const missingText = freeRoamLatestMissingPlainLabels(mappingMissingReasons).join("、");
   if (!startReady) {
     return missingText
-      ? `建图验收未 ready；还差：${missingText}；先连接上车状态机。`
-      : "建图验收未 ready；还在等待上车状态机。";
+      ? `建图验收未就绪；还差：${missingText}；先连接上车状态机。`
+      : "建图验收未就绪；还在等待上车状态机。";
   }
   return missingText
-    ? `建图验收未 ready；还差：${missingText}；不影响先低速自由移动。`
+    ? `建图验收未就绪；还差：${missingText}；不影响先低速自由移动。`
     : "建图验收材料还在读取；不影响先低速自由移动。";
 }
 
@@ -1459,27 +1459,27 @@ function freeRoamLatestMotionRuntimeStatusPlain(startReady: boolean, motionReady
   if (startReady) {
     return "当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。";
   }
-  return "当前未在自由移动运行态；上车自由移动状态机还未 ready。";
+  return "当前未在自由移动运行态；上车自由移动状态机还未就绪。";
 }
 
 function freeRoamLatestMappingAcceptanceStatusPlain(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
   if (mappingReady) {
-    return "建图验收 ready；画面、雷达、地图记录和地图画面已满足验收口径。";
+    return "建图验收已就绪；画面、雷达、地图记录和地图画面已满足验收口径。";
   }
   const missingText = freeRoamLatestMissingPlainLabels(mappingMissingReasons).join("、");
   if (!startReady) {
     return missingText
-      ? `建图验收未 ready；还差：${missingText}；同时自由移动状态机未 ready。`
-      : "建图验收未 ready；还在等待自由移动状态机和建图材料。";
+      ? `建图验收未就绪；还差：${missingText}；同时自由移动状态机未就绪。`
+      : "建图验收未就绪；还在等待自由移动状态机和建图材料。";
   }
   return missingText
-    ? `建图验收未 ready；还差：${missingText}；这不阻止先低速自由移动。`
-    : "建图验收未 ready；继续读取建图材料，这不阻止先低速自由移动。";
+    ? `建图验收未就绪；还差：${missingText}；这不阻止先低速自由移动。`
+    : "建图验收未就绪；继续读取建图材料，这不阻止先低速自由移动。";
 }
 
 function freeRoamLatestMappingNextAction(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
   if (mappingReady) {
-    return "建图验收已 ready；继续低速监看地图、雷达和画面。";
+    return "建图验收已就绪；继续低速监看地图、雷达和画面。";
   }
   const missingText = freeRoamLatestMissingPlainLabels(mappingMissingReasons).join("、");
   if (!startReady) {
@@ -3438,7 +3438,7 @@ export function createWorkstationApp(): express.Express {
       remote_method: "GET",
       remote_http_status: null,
       status: "blocked",
-      plain_hint: "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。建图验收未 ready；还在等待自由移动状态机和建图材料。",
+      plain_hint: "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。建图验收未就绪；还在等待自由移动状态机和建图材料。",
       next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。先连接上车自由移动状态机，并继续读取建图验收材料。",
       runtime_status: "not_loaded",
       decision_state: "not_loaded",
@@ -3450,9 +3450,9 @@ export function createWorkstationApp(): express.Express {
       mapping_blocked_reasons: ["not_checked"],
       motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
       free_move_start_status_plain: "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。",
-      motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未 ready。",
-      mapping_acceptance_status_plain: "建图验收未 ready；还在等待自由移动状态机和建图材料。",
-      mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
+      motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未就绪。",
+      mapping_acceptance_status_plain: "建图验收未就绪；还在等待自由移动状态机和建图材料。",
+      mapping_readiness_plain: "建图验收未就绪；还在等待上车状态机。",
       motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
       mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
       latest_key_values: {},

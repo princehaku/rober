@@ -218,7 +218,7 @@ function defaultFreeRoamGateRows(): FreeRoamGateRow[] {
       scope: "mapping_acceptance",
       state: "not_proven",
       evidence: "未读到摄像头首帧",
-      next_action: "画面未 ready 时仍可自由移动，但不能按建图验收",
+      next_action: "画面未就绪时仍可自由移动，但不能按建图验收",
     },
     {
       id: "lidar_fresh",
@@ -226,7 +226,7 @@ function defaultFreeRoamGateRows(): FreeRoamGateRow[] {
       scope: "mapping_acceptance",
       state: "not_proven",
       evidence: "未读到 fresh 雷达扫描",
-      next_action: "雷达未 ready 时仍可自由移动，但不能按建图验收",
+      next_action: "雷达未就绪时仍可自由移动，但不能按建图验收",
     },
     {
       id: "motion_hil_unlock",
@@ -1095,7 +1095,7 @@ function nav2ProofBlockerLabels(reasons: string[]): string[] {
       return "AMCL 没有发布 map->odom";
     }
     if (reason === "localization_not_ready_for_path_generation") {
-      return "定位未 ready，无法生成图上路线";
+      return "定位未就绪，无法生成图上路线";
     }
     if (reason === "planner_server_inactive") {
       return "规划服务未运行";
@@ -1758,7 +1758,7 @@ function radarSummaryFromReadbacks(
     : radarStopped
       // 雷达停了就不能把来源点当作当前地图 marker；这是本轮 WYSIWYG 的关键边界。
       ? `雷达未运行或扫描已停；地图雷达点当前显示 ${overlayPointCount} 个，旧来源点 ${overlaySourcePointCount} 个只作诊断。`
-      : `雷达状态未完全 ready；地图雷达点当前显示 ${overlayPointCount} 个，需确认雷达正在运行且有新扫描。`;
+      : `雷达状态未完全就绪；地图雷达点当前显示 ${overlayPointCount} 个，需确认雷达正在运行且有新扫描。`;
   // 下一步只引导 operator 做显式 start/refresh，不在 summary 构建时替 operator 发命令。
   const radarNextActionPlain = radarReady
     ? overlayLoaded
@@ -1766,7 +1766,7 @@ function radarSummaryFromReadbacks(
       : "刷新地图画面，确认地图上实际显示的雷达点数。"
     : radarStopped
       ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
-      : "先刷新雷达状态，ready 后再刷新地图画面确认雷达点。";
+      : "先刷新雷达状态，就绪后再刷新地图画面确认雷达点。";
   return {
     status,
     plain_hint: radarPlainHint(radarStatusPlain, radarNextActionPlain),
@@ -5007,7 +5007,7 @@ function readbackPathReady(proof: RobotApiProofSummary): boolean {
 }
 
 function nav2ManagedRuntimeAutoStartText(enabled: boolean, pathReady: boolean): string {
-  // Nav2 goal execute 已托管启动 runtime；在路线 ready 时要把这个事实前置给普通用户。
+  // Nav2 goal execute 已托管启动 runtime；在路线就绪时要把这个事实前置给普通用户。
   return enabled && pathReady ? "；执行时会自动启动自动驾驶 runtime" : "";
 }
 
@@ -5344,7 +5344,7 @@ function freeRoamPlainNextParts(nextActionPlain: string, existingParts: string[]
       if (runningAlreadyExplained && item.includes("勾选现场安全确认后可先自由移动")) {
         return false;
       }
-      if (item.startsWith("建图验收还差") && mappingText.includes("建图验收未 ready")) {
+      if (item.startsWith("建图验收还差") && mappingText.includes("建图验收未就绪")) {
         return false;
       }
       if (item.includes("不影响先低速自由移动") && mappingText.includes("不影响先低速自由移动")) {
@@ -5691,11 +5691,11 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         mapping_start_missing: "not_loaded",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
-        plain_hint: "自由移动未就绪；先连接上车状态机并确认停止兜底。建图验收未 ready；还在等待上车状态机。下一步：先连接上车自由移动状态机，并确认停止兜底可用。",
+        plain_hint: "自由移动未就绪；先连接上车状态机并确认停止兜底。建图验收未就绪；还在等待上车状态机。下一步：先连接上车自由移动状态机，并确认停止兜底可用。",
         next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
         motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
-        mapping_start_readiness_plain: "建图启动未 ready；还在等待上车自由移动状态机。",
-        mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
+        mapping_start_readiness_plain: "建图启动未就绪；还在等待上车自由移动状态机。",
+        mapping_readiness_plain: "建图验收未就绪；还在等待上车状态机。",
         motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
         mapping_start_next_action_plain: "先连接上车自由移动状态机，并继续读取相机和雷达。",
         mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
@@ -5945,7 +5945,7 @@ function freeRoamRuntimeSummaryFromReadbacks(
 function freeRoamMappingMissingIds(
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null,
 ): string[] {
-  // 自由移动不依赖相机/雷达；建图验收才需要这些材料同时 ready。
+  // 自由移动不依赖相机/雷达；建图验收才需要这些材料同时就绪。
   const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
     .filter((gate) => gate.scope === "mapping_acceptance")
     .map((gate) => [gate.id, gate]));
@@ -6049,34 +6049,34 @@ function freeRoamMotionReadinessPlain(startReady: boolean, motionReady: boolean,
 }
 
 function freeRoamMappingReadinessPlain(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
-  // 建图是验收条件；只有画面、雷达、地图记录和地图画面都 ready 时才说可按建图记录。
+  // 建图是验收条件；只有画面、雷达、地图记录和地图画面都就绪时才说可按建图记录。
   if (mappingReady) {
-    return "建图验收已 ready：画面、雷达、地图记录和地图画面都可用。";
+    return "建图验收已就绪：画面、雷达、地图记录和地图画面都可用。";
   }
   const missingText = freeRoamMissingPlainLabels(mappingMissingReasons).join("、");
   if (!startReady) {
     return missingText
-      ? `建图验收未 ready；还差：${missingText}。`
-      : "建图验收未 ready；还在等待上车状态机。";
+      ? `建图验收未就绪；还差：${missingText}。`
+      : "建图验收未就绪；还在等待上车状态机。";
   }
   return missingText
-    ? `建图验收未 ready；还差：${missingText}；不影响先低速自由移动。`
+    ? `建图验收未就绪；还差：${missingText}；不影响先低速自由移动。`
     : "建图验收材料还在读取；不影响先低速自由移动。";
 }
 
 function freeRoamMappingStartReadinessPlain(startReady: boolean, mappingStartReady: boolean, mappingStartMissingReasons: string[]): string {
-  // 启动建图和验收建图分开说：相机/雷达 ready 后就可以进建图记录，地图画面等完成后再验收。
+  // 启动建图和验收建图分开说：相机/雷达就绪后就可以进建图记录，地图画面等完成后再验收。
   if (mappingStartReady) {
-    return "建图启动已 ready：画面首帧和雷达新鲜都可用；地图记录和地图画面用于建图验收。";
+    return "建图启动已就绪：画面首帧和雷达新鲜都可用；地图记录和地图画面用于建图验收。";
   }
   const missingText = freeRoamMissingPlainLabels(mappingStartMissingReasons).join("、");
   if (!startReady) {
     return missingText
-      ? `建图启动未 ready；还差：${missingText}；同时等待上车自由移动状态机。`
-      : "建图启动未 ready；还在等待上车自由移动状态机。";
+      ? `建图启动未就绪；还差：${missingText}；同时等待上车自由移动状态机。`
+      : "建图启动未就绪；还在等待上车自由移动状态机。";
   }
   return missingText
-    ? `建图启动未 ready；还差：${missingText}；地图记录和地图画面只影响建图验收。`
+    ? `建图启动未就绪；还差：${missingText}；地图记录和地图画面只影响建图验收。`
     : "建图启动材料还在读取；地图记录和地图画面只影响建图验收。";
 }
 
@@ -6099,7 +6099,7 @@ function freeRoamMappingStartNextAction(startReady: boolean, mappingStartReady: 
 function freeRoamMappingNextAction(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
   // 建图验收单独解释缺口，让脚本不用从“能动”的下一步里反推传感器条件。
   if (mappingReady) {
-    return "建图验收已 ready；继续低速监看地图、雷达和画面。";
+    return "建图验收已就绪；继续低速监看地图、雷达和画面。";
   }
   const missingText = freeRoamMissingPlainLabels(mappingMissingReasons).join("、");
   if (!startReady) {
@@ -6414,7 +6414,7 @@ function lockedBoundary(
     free_roam_motion_minimal_precheck_plain: "自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。",
     free_roam_mapping_start_plain: freeRoamMappingStartReadinessPlain(freeRoamStartReady, freeRoamMappingStartReady, freeRoamMappingStartMissingReasons),
     free_roam_mapping_start_next_action: freeRoamMappingStartNextAction(freeRoamStartReady, freeRoamMappingStartReady, freeRoamMappingStartMissingReasons),
-    free_roam_mapping_acceptance_plain: "建图验收要求画面首帧、雷达新鲜、地图记录和地图画面 ready；这些缺口不阻止先低速自由移动。",
+    free_roam_mapping_acceptance_plain: "建图验收要求画面首帧、雷达新鲜、地图记录和地图画面就绪；这些缺口不阻止先低速自由移动。",
     free_roam_autonomy_policy: {
       // 自由移动与建图验收分层：低速移动只看安全确认和停止兜底，建图才要求画面/雷达材料。
       mode: "free_move_requires_safety_confirm_stop_fallback",
@@ -6466,7 +6466,7 @@ function lockedBoundary(
 }
 
 function materialClaimReady(value: string): boolean {
-  // operator summary 使用 "true; ref=..." 表达可追溯材料；not_loaded 不能被当成 ready。
+  // operator summary 使用 "true; ref=..." 表达可追溯材料；not_loaded 不能被当成就绪。
   return value.startsWith("true; ref=") && !value.endsWith("not_loaded");
 }
 
@@ -6663,7 +6663,7 @@ function plainFactPart(value: string | undefined, fallback = ""): string {
 }
 
 function plainFactWithoutLeadingLabel(value: string, label: string): string {
-  // 总览外层已经带了分组名；这里去掉内层重复前缀，避免“建图启动：建图启动未 ready”。
+  // 总览外层已经带了分组名；这里去掉内层重复前缀，避免“建图启动：建图启动未就绪”。
   return value
     .replace(new RegExp(`^${label}[：:]?`), "")
     .trim();
@@ -6883,8 +6883,8 @@ function actionCardWysiwygPlain(value: string): string {
     hold_to_move_contract: "按住才连续移动，松开会停",
     motion_start_ready: "自由移动可启动",
     motion_not_ready: "自由移动未就绪",
-    camera_and_radar_ready: "画面和雷达已 ready",
-    camera_or_radar_missing: "画面或雷达未 ready",
+    camera_and_radar_ready: "画面和雷达已就绪",
+    camera_or_radar_missing: "画面或雷达未就绪",
   };
   return labels[value] ?? value.replace(/_/g, " ");
 }
@@ -6986,7 +6986,7 @@ function buildGoalChecklist(
     },
     {
       id: "mapping_start",
-      title: "传感器 ready 后建图",
+      title: "传感器就绪后建图",
       status: boundary.free_roam_mapping_start_ready ? "needs_safety_confirm" : "not_ready",
       status_label: boundary.free_roam_mapping_start_ready ? "待安全确认" : "未就绪",
       summary_plain: mapping.summary_plain,
@@ -7043,7 +7043,7 @@ function buildGoalChecklistSummary(
       return `可先自由移动；相机和雷达只影响建图验收。下一步：${freeMove.next_action_plain}`;
     }
     if (keyboard?.status === "needs_safety_confirm") {
-      return `自由移动状态机未 ready 时，仍可先用键盘连续手控；相机和雷达不作为键盘发车硬门禁。下一步：${keyboard.next_action_plain}`;
+      return `自由移动状态机未就绪时，仍可先用键盘连续手控；相机和雷达不作为键盘发车硬门禁。下一步：${keyboard.next_action_plain}`;
     }
     if (nav2?.status === "needs_safety_confirm") {
       return `图上行程可执行；发车只需要现场安全确认，雷达和相机问题不应改写这个读数。下一步：${nav2.next_action_plain}`;
@@ -7073,13 +7073,13 @@ function buildGoalChecklistSummary(
       return `完整图上行程可复验；发车前只需要行程安全确认。下一步：${nav2.next_action_plain}`;
     }
     if (nav2) {
-      return `完整图上行程还未 ready；先补齐图上路线和当前位置显示。下一步：${nav2.next_action_plain}`;
+      return `完整图上行程还未就绪；先补齐图上路线和当前位置显示。下一步：${nav2.next_action_plain}`;
     }
     return "完整行程状态还未读到；先刷新小车状态。";
   })();
   const mappingSummary = (() => {
     if (mapping?.status === "needs_safety_confirm") {
-      return `相机和雷达已 ready；建图启动只等现场安全确认。下一步：${mapping.next_action_plain}`;
+      return `相机和雷达已就绪；建图启动只等现场安全确认。下一步：${mapping.next_action_plain}`;
     }
     if (mapping) {
       return `建图暂不可启动；相机和雷达只影响建图验收，不阻止已具备条件的低速移动。下一步：${mapping.next_action_plain}`;

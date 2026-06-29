@@ -47,6 +47,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 `fixed_route_dry_run:=true` 或 `enable_visual_gate:=true`。PC 侧仍只按 operator 点击固定代理执行，
 不会因为刷新页面自动发 Nav2、manual、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 13:38 CST 起，普通用户首屏和只读 Robot Control API 的建图、雷达、自由移动、目标总览文案统一使用“就绪/未就绪”，不再在普通状态句里显示 `ready`。字段名、状态枚举和高级诊断里的技术 token 仍保持兼容；该变化只修正文案，不启动雷达、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 同日起，共享 MJPEG status 请求尚未返回时，首屏会保留 summary 里已有的共享流事实，例如观看页面数、上游是否已连接、是否已有视频边界和最近缓存帧；但仍明确 status 返回前不证明本页已经出图。
 
 2026-06-28 07:35 CST 起，地图画面或地图 proof 刷新中时，行程前确认继续保持最小化：勾选安全确认后只提示等待地图画面/状态刷新，并明确这不是额外预检，而是避免按旧地图发车的所见即所得保护。
@@ -65,9 +67,9 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-28 07:55 CST 起，如果共享 MJPEG relay 已有最近帧缓存但本页还在接入，首屏“当前事实”会直接提示新页面会先显示最近画面，并继续接入实时流；这不等于本页已证明出图。
 
-2026-06-28 08:15 CST 起，如果相机首帧和雷达都 ready、建图验收只差地图记录，首屏会把下一步写成“启动扫图记录”；这只是建图流程提示，不会自动启动自由移动或发 `/cmd_vel`。
+2026-06-28 08:15 CST 起，如果相机首帧和雷达都就绪、建图验收只差地图记录，首屏会把下一步写成“启动扫图记录”；这只是建图流程提示，不会自动启动自由移动或发 `/cmd_vel`。
 
-2026-06-28 07:59 CST 起，同一 ready 场景下，建图卡主按钮、自动扫图补证按钮和下一步统一显示 `开始扫图记录（不发车）`，键盘/刷新前置提示也显示 `先开始扫图记录`；相机或雷达未 ready 时仍保留普通 `开始记录（不发车）`，自由移动入口不被传感器门禁锁死。
+2026-06-28 07:59 CST 起，同一就绪场景下，建图卡主按钮、自动扫图补证按钮和下一步统一显示 `开始扫图记录（不发车）`，键盘/刷新前置提示也显示 `先开始扫图记录`；相机或雷达未就绪时仍保留普通 `开始记录（不发车）`，自由移动入口不被传感器门禁锁死。
 
 2026-06-28 08:04 CST 起，自动扫图/自由移动状态机 stop 成功后，PC 会自动刷新一次停止后的地图画面；刷新成功则直接显示可保存，刷新失败仍保留重试刷新入口。该自动刷新只读 map preview 和 radar status，不发送 manual、Nav2、delivery、free-roam start 或 `/cmd_vel`。
 
@@ -119,7 +121,7 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 21:30 CST 起，Robot Control summary 的 `readback_summary.map` 也返回 `path_preview_status`、`path_preview_point_count`、`path_preview_frame_id` 和 `path_preview_next_action_plain`。这样普通首屏或外部脚本只读 summary，就能同时看到地图质量、图上路线、雷达贴图和小车 map 位姿状态；不必从 `readback_summary.nav2` 手动拼路线点数，也不必额外调用 map preview 才知道路线是否所见即所得。该变化只补只读 summary 字段，不准备路线、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 08:36 CST 起，`safe_command_boundary.nav2_goal_label` 也消费同一份所见即所得路线事实：只有路线读数 ready 但地图还没显示路线时保留“路线读数已准备，等待地图画面确认”；地图上已显示路线时显示“图上路线已显示，等待安全确认”；路线和小车位置都可见时显示“图上路线和小车位置已显示，等待安全确认”。该变化只修正只读 summary label，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+2026-06-29 08:36 CST 起，`safe_command_boundary.nav2_goal_label` 也消费同一份所见即所得路线事实：只有路线读数就绪 但地图还没显示路线时保留“路线读数已准备，等待地图画面确认”；地图上已显示路线时显示“图上路线已显示，等待安全确认”；路线和小车位置都可见时显示“图上路线和小车位置已显示，等待安全确认”。该变化只修正只读 summary label，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 21:50 CST 起，`/api/robot-control/camera/mjpeg/status` 也返回与 summary 对齐的共享预览别名：`shared_preview_client_count`、`shared_preview_upstream_active`、`shared_preview_content_type_loaded`、`shared_preview_cached_frame_loaded`、`shared_preview_cached_frame_age_ms`、`shared_preview_shared_capture`、`shared_preview_exclusive_camera_claim`、`shared_preview_contract` 和最近失败字段。独立相机状态接口现在也能直接证明“多个页面共享同一条上游流，不是浏览器独占”，不会再让只读 `shared_preview_*` 的脚本拿到 null。该变化只补本机 relay 只读状态，不新开 camera capture、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
@@ -152,17 +154,17 @@ readback 中的画面、地图、地图雷达点、Nav2 路线复验、键盘连
 
 2026-06-29 02:54 CST 起，`readback_summary.nav2` 增加 `goal_execution_wheel_raw_lr_status_plain` 和 `goal_execution_wheel_raw_lr_next_action_plain`。2026-06-29 08:24 CST 起，这两个 plain 字段内容统一使用“执行窗口轮速 L/R”，字段名保留旧接口以兼容脚本。外部脚本只关心完整路线执行验收时，不需要从长句里解析 `execution_status_plain`；可以直接读取“上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令，IMU 姿态有变化”以及“勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零”。该变化只补只读 Nav2 readback 字段，不执行 Nav2 goal、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 03:00 CST 起，`readback_summary.free_roam` 增加 `motion_readiness_plain` 和 `mapping_readiness_plain`。前者只回答“能否先低速自由移动”，例如“可先自由移动；只需要现场安全确认和停止兜底”；后者只回答“能否按建图验收”，例如“建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动”。普通首屏自由移动/建图事实和上车建议优先使用这两个短字段，避免把相机/雷达缺口误写成车不能动。该变化只补只读 summary/UI 文案，不启动 free-roam、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+2026-06-29 03:00 CST 起，`readback_summary.free_roam` 增加 `motion_readiness_plain` 和 `mapping_readiness_plain`。前者只回答“能否先低速自由移动”，例如“可先自由移动；只需要现场安全确认和停止兜底”；后者只回答“能否按建图验收”，例如“建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动”。普通首屏自由移动/建图事实和上车建议优先使用这两个短字段，避免把相机/雷达缺口误写成车不能动。该变化只补只读 summary/UI 文案，不启动 free-roam、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
 2026-06-30 08:36 CST 起，`readback_summary.free_roam` 与 `safe_command_boundary` 增加建图启动专用字段：`mapping_start_ready`、`mapping_start_missing`、`mapping_start_readiness_plain`、`mapping_start_next_action_plain`、`free_roam_mapping_start_ready`、`free_roam_mapping_start_missing_reasons`、`free_roam_mapping_start_plain` 和 `free_roam_mapping_start_next_action`。这些字段只回答“相机首帧和雷达新鲜是否足够启动建图记录”；旧 `mapping_ready/free_roam_mapping_ready` 仍表示“建图验收是否完成”，继续要求地图记录和地图画面。该变化只补只读 summary 字段，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
-2026-06-30 08:49 CST 起，普通首屏会把 `建图启动` 和 `建图验收` 两层同时展示在 `当前事实` 与自由移动/建图卡片：相机首帧和雷达新鲜 ready 时提示可启动扫图记录；地图记录和地图画面仍只用于建图验收。旧 7001 或旧 fixture 没有 `mapping_start_*` 时，页面按当前画面/雷达事实 fallback。该变化只改只读展示，不自动启动建图、不启动自由移动、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+2026-06-30 08:49 CST 起，普通首屏会把 `建图启动` 和 `建图验收` 两层同时展示在 `当前事实` 与自由移动/建图卡片：相机首帧和雷达新鲜 就绪时提示可启动扫图记录；地图记录和地图画面仍只用于建图验收。旧 7001 或旧 fixture 没有 `mapping_start_*` 时，页面按当前画面/雷达事实 fallback。该变化只改只读展示，不自动启动建图、不启动自由移动、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:47 CST 起，`/api/robot-control/free-roam/autonomy/latest` 顶层也返回自由移动和建图 readiness：`free_move_start_ready`、`motion_ready`、`mapping_readiness_ready`、`mapping_blocked_reasons`、`motion_readiness_plain`、`mapping_readiness_plain`、`motion_next_action_plain` 和 `mapping_next_action_plain`。外部脚本只读 latest endpoint 时即可看到“可先自由移动；相机和雷达只影响建图验收”以及“建图验收还差哪些材料”，不必解析 `latest_key_values.mapping_missing`。该变化只读 runtime artifact，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 04:12 CST 起，`/api/robot-control/free-roam/autonomy/latest` 额外返回 `free_move_start_status_plain`、`motion_runtime_status_plain` 和 `mapping_acceptance_status_plain`。这三个字段把“能不能启动自由移动”“当前是否已经在发布低速运动”和“建图是否可验收”拆开；当 `free_move_start_ready=true` 但 `motion_ready=false` 时，接口会明确说明 `motion_ready=false` 只表示尚未开始发布运动，不是启动阻塞。该变化只补只读 latest 响应，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 04:18 CST 起，普通 PC 首屏的 `刷新自由移动状态（只读）` 摘要优先展示 `free_move_start_status_plain`、`motion_runtime_status_plain` 和 `mapping_acceptance_status_plain`。现场点击只读刷新后，不用打开高级 JSON 也能看到“自由移动可启动”“当前未发布运动不是启动阻塞”“建图验收不 ready 但不阻止低速自由移动”。该变化只改前端只读展示，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+2026-06-29 04:18 CST 起，普通 PC 首屏的 `刷新自由移动状态（只读）` 摘要优先展示 `free_move_start_status_plain`、`motion_runtime_status_plain` 和 `mapping_acceptance_status_plain`。现场点击只读刷新后，不用打开高级 JSON 也能看到“自由移动可启动”“当前未发布运动不是启动阻塞”“建图验收未就绪 但不阻止低速自由移动”。该变化只改前端只读展示，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:08 CST 起，`readback_summary.map` 增加所见即所得短别名：`robot_pose_status`、`radar_overlay_point_count`、`radar_overlay_source_point_count` 和 `radar_overlay_frame_id`。这些字段完全复用既有 `radar_overlay_robot_pose_status` / `radar_overlay_scan_preview_*` 事实，方便外部脚本直接判断“图上小车是否可见、当前地图雷达点真正画了几个点、旧雷达来源点是否只作诊断”。该变化只补只读 summary alias，不刷新地图、不启动雷达、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
@@ -656,7 +658,7 @@ stop 或 `/cmd_vel`。
 
 2026-06-29 11:18 CST 起，`goal_checklist_summary` 额外返回 `mapping_item_id` 和 `mapping_source_card_id`。
 普通首屏目标汇总新增“去建图”按钮，直接聚焦到自由移动/建图流程的安全确认或下一步控件；建图仍只有在相机首帧和
-雷达新鲜 ready 后才会显示可启动。该按钮只做 scroll/focus，不自动勾选、不启动建图、不启动自由移动、不发送
+雷达新鲜 就绪后才会显示可启动。该按钮只做 scroll/focus，不自动勾选、不启动建图、不启动自由移动、不发送
 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 11:34 CST 起，`goal_checklist_summary` 新增 `safety_precheck_source_card_id`、
@@ -675,7 +677,7 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 刷新地图、启动雷达、勾选安全确认、执行 Nav2、发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 12:20 CST 起，普通首屏新增“勾确认后可做”只读条，把最小安全确认后的四类入口并排显示：
-图上行程、键盘、自由移动和建图启动。图上行程 ready 时会写成“这里只需要勾安全确认，相机和雷达不再加门槛”；
+图上行程、键盘、自由移动和建图启动。图上行程 就绪时会写成“这里只需要勾安全确认，相机和雷达不再加门槛”；
 键盘会强调“启用不发车，按住才动”；自由移动会说明当前是否可在安全确认后启动；建图启动仍单独看画面首帧和雷达新鲜。
 每行按钮只聚焦到已有控件，不自动勾选、不执行 Nav2、不启用键盘、不启动自由移动/建图、不发送 manual、delivery、stop 或 `/cmd_vel`。
 
@@ -699,7 +701,7 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 不启动雷达/自由移动/建图，也不会发送 manual、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 11:46 CST 起，普通首屏“自由移动准备”新增“建图解锁包”四行：先自由移动、画面首帧、雷达新鲜、建图启动。
-该包把“可以先低速自由移动”和“传感器 ready 后才可建图”拆开显示：画面首帧或雷达新鲜缺失时，建图启动会显示未就绪，
+该包把“可以先低速自由移动”和“传感器 就绪后才可建图”拆开显示：画面首帧或雷达新鲜缺失时，建图启动会显示未就绪，
 但自由移动行仍按现场安全确认和停止兜底判断。每行“去处理”只聚焦到已有控件，不自动勾选、不执行 Nav2、不启用键盘、
 不启动雷达/自由移动/建图，也不会发送 manual、delivery、stop 或 `/cmd_vel`。
 
@@ -754,7 +756,7 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 13:02 CST 起，`action_status_cards[].id=mapping_start` 的运动语义按建图启动 ready 状态返回。
 相机首帧或雷达新鲜度缺失时，建图卡片仍显示未就绪，`can_start_after_safety_confirm=false` 且
-`sends_motion_when_clicked=false`；只有画面首帧和雷达新鲜都 ready、建图启动可点时才会把它标成会进入运动/建图流程。
+`sends_motion_when_clicked=false`；只有画面首帧和雷达新鲜都就绪、建图启动可点时才会把它标成会进入运动/建图流程。
 这不会影响“自由移动”和“键盘手控”卡片，它们仍只依赖现场安全确认和停止兜底。该变化只修正只读 summary
 和测试夹具，不启动建图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
@@ -765,7 +767,7 @@ summary 文案，不自动勾选安全确认、不执行 Nav2、不启用 keyboa
 
 2026-06-29 13:16 CST 起，目标检查里的 `mapping_start` 安全确认和运动计数也按建图启动 ready 状态返回。
 相机首帧或雷达新鲜度缺失时，建图仍阻塞目标完成，但不会再计入“需要现场安全确认/需要真实运动验证”；只有画面和雷达
-都 ready、建图启动可点时，才把它计为需要安全确认和会进入运动/建图流程。这样首屏总览会把当前可先收口的
+都就绪、建图启动可点时，才把它计为需要安全确认和会进入运动/建图流程。这样首屏总览会把当前可先收口的
 Nav2 重跑、键盘连续手控、自由移动统计成 3 项，不把未就绪建图误导成第 4 个发车动作。该变化只修正只读
 summary 结构和测试夹具，不启动建图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 

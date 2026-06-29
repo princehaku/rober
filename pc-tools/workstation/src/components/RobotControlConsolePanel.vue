@@ -1351,7 +1351,7 @@ const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
 const cameraFrameTooDark = computed(() => cameraSummary.value.state === "画面偏暗");
 const cameraReadyForSharedPreview = computed(() => {
-  // 上车端 WebRTC 服务已共享底层 capture；每个 PC 页面只需在相机源 ready 时接入自己的 recvonly peer。
+  // 上车端 WebRTC 服务已共享底层 capture；每个 PC 页面只需在相机源 就绪时接入自己的 recvonly peer。
   const camera = robotSummary.value?.readback_summary.camera;
   const sourceFailure = cameraSourceFirstFrameFailed(camera);
   return Boolean(camera?.status === "ready" && camera?.video_source && !sourceFailure);
@@ -2214,7 +2214,7 @@ const plainFreeRoamLatestSummary = computed(() => {
     : freeRoamMappingMissingPlainLabelsForVisibleState(mappingMissingRaw);
   // latest 按钮是现场临时只读核对入口；必须直接显示建图缺口，避免 operator 还要去高级 JSON 里找。
   const mappingText = kv.mapping_ready === "true"
-    ? "；建图验收已 ready"
+    ? "；建图验收已就绪"
     : mappingMissing.length > 0
       ? `；建图缺口：${mappingMissing.join("、")}`
       : "";
@@ -2323,7 +2323,7 @@ function plainFreeRoamMappingReadinessNextActionSuffix(missingLabels: string[]):
 }
 
 function onlyMissingMapRuntimeForMapping(missing: string[]): boolean {
-  // 相机和雷达都 ready 时，地图记录未启动不是传感器 blocker；普通用户下一步应直接进入扫图记录。
+  // 相机和雷达都就绪时，地图记录未启动不是传感器 blocker；普通用户下一步应直接进入扫图记录。
   return missing.length > 0 && missing.every((label) => label === "地图记录未启动");
 }
 
@@ -2339,7 +2339,7 @@ function plainCurrentMappingStartFactText(summary: RobotControlSummaryResponse):
   const boundary = summary.safe_command_boundary;
   const localMappingStartReady = plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value;
   if (localMappingStartReady) {
-    return "建图启动：画面和雷达已 ready；可启动扫图记录，地图记录和地图画面再用于验收";
+    return "建图启动：画面和雷达已就绪；可启动扫图记录，地图记录和地图画面再用于验收";
   }
   const readbackText = usablePlainText(readback.mapping_start_readiness_plain);
   if (readbackText && !readbackText.includes("等待上车自由移动状态机")) {
@@ -2493,7 +2493,7 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
     || (!boundaryMappingKnown && freeRoam.mapping_ready === "true")
     || (mapRuntimeStarted.value && plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
   ) {
-    return withMappingStart("建图：画面、雷达和地图记录已 ready，可按建图记录监看。");
+    return withMappingStart("建图：画面、雷达和地图记录已就绪，可按建图记录监看。");
   }
   if (missing.length > 0) {
     if (
@@ -2501,7 +2501,7 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
       && plainCameraReadyForFreeRoamAutonomy.value
       && plainRadarReadyForFreeRoamMapping.value
     ) {
-      return withMappingStart("建图：画面和雷达已 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
+      return withMappingStart("建图：画面和雷达已就绪；下一步启动扫图记录，启动后本轮可按建图记录监看。");
     }
     const nextActionSuffix = plainFreeRoamMappingReadinessNextActionSuffix(missing);
     return withMappingStart(`建图：当前缺口：${missing.join("、")}；自由移动不受影响${nextActionSuffix}。`);
@@ -4799,7 +4799,7 @@ const plainFreeRoamMappingQualityReady = computed(() => (
   && plainRadarReadyForFreeRoamMapping.value
 ));
 const plainFreeRoamMappingSensorsReady = computed(() => (
-  // 相机和雷达都 ready 且上车端允许 start 时，首屏才优先进入建图流程；明确 locked 时仍按自由移动降级。
+  // 相机和雷达都就绪且上车端允许 start 时，首屏才优先进入建图流程；明确 locked 时仍按自由移动降级。
   plainCameraReadyForFreeRoamAutonomy.value
   && plainRadarReadyForFreeRoamMapping.value
   && (
@@ -4829,7 +4829,7 @@ const plainFreeRoamPanelCopy = computed(() => {
   return movementOnly
     ? {
       title: "自由移动 / 建图",
-      subtitle: "先确认安全，可低速自由移动；相机和雷达 ready 后可启动建图记录。",
+      subtitle: "先确认安全，可低速自由移动；相机和雷达就绪后可启动建图记录。",
     }
     : {
       title: "扫地式建图",
@@ -4840,7 +4840,7 @@ const plainFreeRoamMotionStartButtonText = computed(() => (
   plainFreeRoamMotionModeName.value === "自动扫图" ? "开始自动扫图（低速）" : "开始自由移动（低速）"
 ));
 const plainFreeRoamRecordStartButtonText = computed(() => (
-  // 相机和雷达已 ready 时，地图记录就是可验收建图流程的第一步；未 ready 时仍只是普通记录入口。
+  // 相机和雷达已就绪时，地图记录就是可验收建图流程的第一步；未就绪时仍只是普通记录入口。
   plainFreeRoamKeyboardRequiresMapRuntime.value ? "开始扫图记录（不发车）" : "开始记录（不发车）"
 ));
 const canStartMapLifecycle = computed(() => (
@@ -5005,16 +5005,16 @@ const plainFreeRoamMappingSummary = computed(() => {
     const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
     const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
     const missing = [
-      !plainCameraReadyForFreeRoamAutonomy.value ? "画面未 ready" : "",
-      !plainRadarReadyForFreeRoamMapping.value ? "雷达未 ready" : "",
+      !plainCameraReadyForFreeRoamAutonomy.value ? "画面未就绪" : "",
+      !plainRadarReadyForFreeRoamMapping.value ? "雷达未就绪" : "",
     ].filter(Boolean).join("、");
     const boundaryNextAction = plainFreeRoamBoundaryNextActionForHint();
     const boundarySuffix = boundaryNextAction ? `；${boundaryNextAction}` : "";
-    return { state: "可移动", hint: `可先启动地图记录（不发车）；低速自移动用“开始自由移动（低速）”；${missing}${obstacleSuffix}，本轮先按移动练习处理，ready 后再算可建图。${boundarySuffix}` };
+    return { state: "可移动", hint: `可先启动地图记录（不发车）；低速自移动用“开始自由移动（低速）”；${missing}${obstacleSuffix}，本轮先按移动练习处理，就绪后再算可建图。${boundarySuffix}` };
   }
   const obstacleCaution = robotSummary.value ? plainFreeRoamObstacleCautionPlainText(robotSummary.value) : "";
   const obstacleSuffix = obstacleCaution ? `；${obstacleCaution}` : "";
-  return { state: "可建图", hint: `摄像头和雷达已 ready；先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图${obstacleSuffix}。` };
+  return { state: "可建图", hint: `摄像头和雷达已就绪；先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图${obstacleSuffix}。` };
 });
 const plainFreeRoamMappingStartLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "start"
@@ -5465,7 +5465,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const motionModeName = plainFreeRoamMotionModeName.value;
   const motionStartButtonText = plainFreeRoamMotionStartButtonText.value;
   const hasRuntimeGateRows = Boolean(boundary?.free_roam_autonomy_gates?.length);
-  const manualFallbackHint = "连接默认小车后可低速自由移动；相机和雷达都 ready 且地图记录已启动时，本轮才按建图记录。";
+  const manualFallbackHint = "连接默认小车后可低速自由移动；相机和雷达都就绪且地图记录已启动时，本轮才按建图记录。";
   const blockers: string[] = [];
   if (!robotApiBaseUrl.value.trim()) {
     blockers.push("默认小车未连接");
@@ -5589,7 +5589,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       boundary?.free_roam_mapping_ready === true
       || (mapRuntimeStarted.value && plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
     ) {
-      return withMappingStart("建图验收：画面、雷达、地图记录和地图画面都 ready；本轮可按建图记录监看。");
+      return withMappingStart("建图验收：画面、雷达、地图记录和地图画面都就绪；本轮可按建图记录监看。");
     }
     const onboardMissing = plainFreeRoamMappingMissingForVisibleState();
     if (onboardMissing.length > 0) {
@@ -5598,7 +5598,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
         && plainCameraReadyForFreeRoamAutonomy.value
         && plainRadarReadyForFreeRoamMapping.value
       ) {
-        return withMappingStart("建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
+        return withMappingStart("建图验收：画面和雷达都就绪；下一步启动扫图记录，启动后本轮可按建图记录监看。");
       }
       const nextActionSuffix = plainFreeRoamMappingReadinessNextActionSuffix(onboardMissing);
       return withMappingStart(`建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动${nextActionSuffix}。`);
@@ -5613,7 +5613,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       gaps.push(conflict ? "雷达状态源不一致" : radarSummary.value.state);
     }
     if (gaps.length === 0) {
-      return withMappingStart("建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。");
+      return withMappingStart("建图验收：画面和雷达都就绪；启动后本轮可按建图记录监看。");
     }
     const freeMoveText = "仍可在安全确认后低速自由移动";
     return withMappingStart(`建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${gaps.join("、")}；${freeMoveText}。`);
@@ -5817,7 +5817,7 @@ const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
       state: mappingStartReady ? "可启动" : "未就绪",
       hint: mappingStartReady
         ? "画面首帧和雷达新鲜都满足；勾安全确认后可启动建图记录。"
-        : `${freeRoam?.mapping_start_readiness_plain || boundary?.free_roam_mapping_start_plain || "建图启动未 ready。"}${mappingMissingText ? ` ${mappingMissingText}` : ""}低速自由移动不受影响。`,
+        : `${freeRoam?.mapping_start_readiness_plain || boundary?.free_roam_mapping_start_plain || "建图启动未就绪。"}${mappingMissingText ? ` ${mappingMissingText}` : ""}低速自由移动不受影响。`,
       sourceCardId: "mapping_start",
     },
   ];
@@ -11848,9 +11848,9 @@ async function refreshFreeRoamAutonomyLatest(): Promise<void> {
       mapping_blocked_reasons: ["not_checked"],
       motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
       free_move_start_status_plain: "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。",
-      motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未 ready。",
-      mapping_acceptance_status_plain: "建图验收未 ready；还在等待自由移动状态机和建图材料。",
-      mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
+      motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未就绪。",
+      mapping_acceptance_status_plain: "建图验收未就绪；还在等待自由移动状态机和建图材料。",
+      mapping_readiness_plain: "建图验收未就绪；还在等待上车状态机。",
       motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
       mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
       latest_key_values: {},

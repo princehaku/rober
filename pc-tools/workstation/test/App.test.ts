@@ -407,7 +407,7 @@ const fixtures: Record<string, unknown> = {
       blocked_reasons: ["dangerous actions locked by V1 boundary"],
       last_refresh_ms: 1781040814776,
     },
-    current_fact_plain: "画面未显示：页面会自动接入共享 MJPEG 预览；地图画面已读到，但图上路线还未显示；自动驾驶：图上路线还未准备完成；键盘：必须按住 W/A/S/D 或方向键才会连续低速移动；自由移动：可先低速移动；建图：建图验收未 ready。",
+    current_fact_plain: "画面未显示：页面会自动接入共享 MJPEG 预览；地图画面已读到，但图上路线还未显示；自动驾驶：图上路线还未准备完成；键盘：必须按住 W/A/S/D 或方向键才会连续低速移动；自由移动：可先低速移动；建图：建图验收未就绪。",
     action_status_cards: [
       {
         id: "camera_preview",
@@ -498,7 +498,7 @@ const fixtures: Record<string, unknown> = {
         title: "建图启动",
         status: "not_ready",
         status_label: "未就绪",
-        summary_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机",
+        summary_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机",
         next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
         wysiwyg_status: "camera_or_radar_missing",
         requires_safety_confirmation: false,
@@ -589,11 +589,11 @@ const fixtures: Record<string, unknown> = {
       },
       {
         id: "mapping_start",
-        title: "传感器 ready 后建图",
+        title: "传感器就绪后建图",
         status: "not_ready",
         status_label: "未就绪",
-        summary_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机",
-        evidence_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。",
+        summary_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机",
+        evidence_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。",
         next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
         source_card_id: "mapping_start",
         requires_safety_confirmation: false,
@@ -629,7 +629,7 @@ const fixtures: Record<string, unknown> = {
       radar_next_action_plain: "刷新地图画面，确认地图上实际显示的雷达点数",
       radar_summary_plain: "雷达点还没有贴到当前地图；先按同轮地图画面确认，不把旧点当当前标记。下一步：刷新地图画面，确认地图上实际显示的雷达点数",
       nav2_next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行",
-      nav2_summary_plain: "完整图上行程还未 ready；先补齐图上路线和当前位置显示。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行",
+      nav2_summary_plain: "完整图上行程还未就绪；先补齐图上路线和当前位置显示。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行",
       mapping_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
       mapping_summary_plain: "建图暂不可启动；相机和雷达只影响建图验收，不阻止已具备条件的低速移动。下一步：先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
       next_action_items: [
@@ -685,7 +685,7 @@ const fixtures: Record<string, unknown> = {
         },
         {
           id: "mapping_start",
-          title: "传感器 ready 后建图",
+          title: "传感器就绪后建图",
           status_label: "未就绪",
           next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
           source_card_id: "mapping_start",
@@ -749,7 +749,7 @@ const fixtures: Record<string, unknown> = {
         },
         {
           id: "mapping_start",
-          title: "传感器 ready 后建图",
+          title: "传感器就绪后建图",
           status_label: "未就绪",
           next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
           source_card_id: "mapping_start",
@@ -975,10 +975,10 @@ const fixtures: Record<string, unknown> = {
         motion_ready: "false",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
-        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未 ready；还在等待上车状态机。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
+        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还在等待上车状态机。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
         next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
         motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
-        mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
+        mapping_readiness_plain: "建图验收未就绪；还在等待上车状态机。",
         motion_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图。",
         mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
         runtime_artifact_proven: "not_loaded",
@@ -1056,7 +1056,7 @@ const fixtures: Record<string, unknown> = {
       free_roam_autonomy_label: "自动扫图（未开放）",
       free_roam_autonomy_next_action: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
       free_roam_motion_minimal_precheck_plain: "自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。",
-      free_roam_mapping_acceptance_plain: "建图验收要求画面首帧、雷达新鲜、地图记录和地图画面 ready；这些缺口不阻止先低速自由移动。",
+      free_roam_mapping_acceptance_plain: "建图验收要求画面首帧、雷达新鲜、地图记录和地图画面就绪；这些缺口不阻止先低速自由移动。",
       free_roam_autonomy_policy: {
         mode: "free_move_requires_safety_confirm_stop_fallback",
         mapping_mode: "mapping_acceptance_requires_camera_and_fresh_radar",
@@ -1745,8 +1745,8 @@ const fixtures: Record<string, unknown> = {
     motion_readiness_plain: "可先自由移动；只需要现场安全确认和停止兜底。",
     free_move_start_status_plain: "自由移动可启动；只需现场安全确认和停止兜底。",
     motion_runtime_status_plain: "当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。",
-    mapping_acceptance_status_plain: "建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。",
-    mapping_readiness_plain: "建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
+    mapping_acceptance_status_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。",
+    mapping_readiness_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
     motion_next_action_plain: "勾选现场安全确认后可先自由移动。",
     mapping_next_action_plain: "建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
     latest_key_values: {
@@ -3948,7 +3948,7 @@ function cloneFixture<T>(value: T): T {
 }
 
 function markMappingSensorsReady(summary: RobotControlSummaryResponse | Record<string, any>): void {
-  // 建图成功路径必须显式证明相机和雷达 ready；默认 fixture 继续保留未证明状态用于 fail-closed 用例。
+  // 建图成功路径必须显式证明相机和雷达就绪；默认 fixture 继续保留未证明状态用于 fail-closed 用例。
   markCameraFrameObserved(summary);
 
   const lidar = summary.readback_summary.lidar;
@@ -4331,7 +4331,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("画面所见即所得");
     expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("雷达点贴到地图");
     expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("完整图上行程");
-    expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("传感器 ready 后建图");
+    expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("传感器就绪后建图");
     expect(actionGroups.text()).not.toContain("Nav2");
     expect(actionGroups.text()).not.toContain("operator report");
     expect(actionGroups.text()).not.toContain("raw");
@@ -4443,7 +4443,7 @@ describe("App", () => {
     expect(goalChecklistSummary.text()).toContain("发车前预检已精简");
     expect(goalChecklistSummary.text()).toContain("只需要现场安全确认");
     expect(goalChecklistSummary.text()).toContain("雷达点还没有贴到当前地图");
-    expect(goalChecklistSummary.text()).toContain("完整图上行程还未 ready");
+    expect(goalChecklistSummary.text()).toContain("完整图上行程还未就绪");
     expect(goalChecklistSummary.text()).toContain("建图暂不可启动");
     expect(goalChecklistSummary.text()).not.toContain("raw");
     expect(goalChecklistSummary.text()).not.toContain("marker");
@@ -4515,7 +4515,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("重新建图");
     expect(firstScreenText).toContain("保存地图");
     expect(firstScreenText).toContain("自由移动 / 建图");
-    expect(firstScreenText).toContain("先确认安全，可低速自由移动；相机和雷达 ready 后可启动建图记录。");
+    expect(firstScreenText).toContain("先确认安全，可低速自由移动；相机和雷达就绪后可启动建图记录。");
     const freeRoamPanel = wrapper.find('[data-testid="plain-free-roam-mapping"]');
     expect(freeRoamPanel.exists()).toBe(true);
     expect(freeRoamPanel.attributes("data-state")).toBe("待确认");
@@ -5051,7 +5051,7 @@ describe("App", () => {
     const newCalls = mockedFetch.mock.calls.slice(callsBeforeClick);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/latest?"))).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-latest-summary"]').text()).toBe(
-      "最新读取：自由移动可启动；只需现场安全确认和停止兜底；当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞；建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动；runtime 地图指标：可通行 421 格，未知 98.2%。",
+      "最新读取：自由移动可启动；只需现场安全确认和停止兜底；当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞；建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动；runtime 地图指标：可通行 421 格，未知 98.2%。",
     );
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
     expect(newCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/stop?"))).toBe(false);
@@ -5373,7 +5373,7 @@ describe("App", () => {
   });
 
   it("starts map recording before auto sweep when camera and radar are ready", async () => {
-    // 传感器 ready 后，自动扫图入口必须先补地图记录，再用 confirm_mapping_active=true 走固定 start 代理。
+    // 传感器 就绪后，自动扫图入口必须先补地图记录，再用 confirm_mapping_active=true 走固定 start 代理。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = cloneFixture(fixtures["/api/robot-control/map/start"]) as Record<string, any>;
     const autoStartFixture = cloneFixture(fixtures["/api/robot-control/free-roam/autonomy/start"]) as Record<string, any>;
@@ -5512,10 +5512,10 @@ describe("App", () => {
     const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
     expect(readiness.attributes("data-state")).toBe("已就绪");
     expect(readiness.text()).toContain("上车端自动扫图已就绪；点击后只启动上车状态机");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：画面和雷达已 ready；可启动扫图记录，地图记录和地图画面再用于验收；建图验收：画面、雷达、地图记录和地图画面都 ready；本轮可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：画面和雷达已就绪；可启动扫图记录，地图记录和地图画面再用于验收；建图验收：画面、雷达、地图记录和地图画面都就绪；本轮可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自动扫图（低速）后才会重新启动。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：画面和雷达已 ready；可启动扫图记录");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面、雷达和地图记录已 ready，可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：画面和雷达已就绪；可启动扫图记录");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面、雷达和地图记录已就绪，可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动；低速自移动不依赖雷达新鲜度。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').attributes("aria-label")).toBe("自由移动记录 上次停止请求，当前未发布运动，机器人地图位置未读到，标记不代表坐标");
@@ -5536,7 +5536,7 @@ describe("App", () => {
   });
 
   it("points mapping-ready users to start the map recording when only mapping runtime is missing", async () => {
-    // 相机和雷达都 ready 时，缺 mapping_active 应被翻译成“启动扫图记录”，不是重新排查传感器。
+    // 相机和雷达都就绪时，缺 mapping_active 应被翻译成“启动扫图记录”，不是重新排查传感器。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     const mapStartFixture = structuredClone(fixtures["/api/robot-control/map/start"] as Record<string, any>);
     markMappingSensorsReady(summaryFixture);
@@ -5573,10 +5573,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可建图");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("摄像头和雷达已 ready；先启动地图记录");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：画面和雷达已 ready；可启动扫图记录，地图记录和地图画面再用于验收；建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：画面和雷达已 ready；可启动扫图记录");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面和雷达已 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("摄像头和雷达已就绪；先启动地图记录");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：画面和雷达已就绪；可启动扫图记录，地图记录和地图画面再用于验收；建图验收：画面和雷达都就绪；下一步启动扫图记录，启动后本轮可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：画面和雷达已就绪；可启动扫图记录");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面和雷达已就绪；下一步启动扫图记录，启动后本轮可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始扫图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始扫图记录（不发车）");
@@ -5709,10 +5709,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"] h3').text()).toBe("自由移动 / 建图");
-    expect(wrapper.find('[data-testid="plain-free-roam-mode-subtitle"]').text()).toBe("先确认安全，可低速自由移动；相机和雷达 ready 后可启动建图记录。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mode-subtitle"]').text()).toBe("先确认安全，可低速自由移动；相机和雷达就绪后可启动建图记录。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：当前缺口：画面首帧未出（不是页面独占）、雷达未刷新；自由移动不受影响；建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可在安全确认后低速自由移动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).not.toContain("画面和雷达都 ready");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).not.toContain("画面和雷达都就绪");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自由移动（低速）后才会重新启动。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：当前缺口：画面首帧未出（不是页面独占）、雷达未刷新；自由移动不受影响");
@@ -5954,7 +5954,7 @@ describe("App", () => {
   });
 
   it("starts low-speed free roam through the fixed proxy even when summary marks auto-sweep locked", async () => {
-    // 自由移动不再依赖自动扫图 ready；相机/雷达 ready 只决定是否按建图记录。
+    // 自由移动不再依赖自动扫图就绪；相机/雷达就绪只决定是否按建图记录。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
     markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
@@ -6602,7 +6602,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动地图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("低速自移动用“开始自由移动（低速）”");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未 ready");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未就绪");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("上车建议：已勾安全确认，可先自由移动。 建图缺口：画面首帧。");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).not.toContain("上车建议：已勾安全确认，可先自由移动；建图验收还差");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
@@ -6668,7 +6668,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动地图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("低速自移动用“开始自由移动（低速）”");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未 ready");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未就绪");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
@@ -12427,7 +12427,7 @@ describe("App", () => {
   });
 
   it("allows free-roam recording when camera source is selected but not yet frame-proven", async () => {
-    // `/dev/video1` 被选中不等于画面 ready；可以低速移动，但本轮不能算可建图。
+    // `/dev/video1` 被选中不等于画面就绪；可以低速移动，但本轮不能算可建图。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     markMappingSensorsReady(summaryFixture);
     summaryFixture.readback_summary.camera.status = "ready";
@@ -12444,7 +12444,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未 ready");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未就绪");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
 
@@ -15051,7 +15051,7 @@ describe("App", () => {
   });
 
   it("keeps static zero wheel readback as a trial prompt even when voltage is missing", async () => {
-    // 静止 T1001 读到 L/R=0 不能直接当作故障；first-jog ready 时先带现场低速试动。
+    // 静止 T1001 读到 L/R=0 不能直接当作故障；first-jog 就绪时先带现场低速试动。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.base.latest_t1001_observed_count = "12";
     summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
@@ -18685,7 +18685,7 @@ describe("App", () => {
       "path_generation_service_unavailable",
       "path_generation_not_attempted",
     ].join(",");
-    summaryFixture.readback_summary.nav2.current_blocker_labels = "未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用、路径生成还没真正开始";
+    summaryFixture.readback_summary.nav2.current_blocker_labels = "未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未就绪，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用、路径生成还没真正开始";
     summaryFixture.readback_summary.nav2.map_consumed = "false";
     summaryFixture.readback_summary.nav2.path_generation_service_available = "false";
     summaryFixture.readback_summary.nav2.path_generation_attempted = "false";
@@ -18704,7 +18704,7 @@ describe("App", () => {
     expect(facts).toContain("自动驾驶当前：未准备好");
     expect(facts).toContain("路径生成服务不可用");
     expect(facts).toContain("地图未被自动驾驶服务消费");
-    expect(facts).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用");
+    expect(facts).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未就绪，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用");
     expect(facts).toMatch(/先.*雷达.*重新定位.*重新加载地图到自动驾驶服务.*恢复路径生成服务.*准备图上路线/);
     expect(facts).toContain("相机/雷达不挡底盘试动或键盘手控");
 
@@ -18714,7 +18714,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("待雷达/定位");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toMatch(tripNextActionPattern);
     expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("自动驾驶诊断：未准备好");
-    expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未 ready，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用");
+    expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("读回根因：未读到 /scan、未读到 /amcl_pose、未读到 map->odom TF、定位未就绪，无法生成图上路线、地图未被自动驾驶服务消费、路径生成服务不可用");
     expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("相机/雷达不挡底盘试动或键盘手控");
     expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toMatch(tripNextActionPattern);
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toMatch(tripNextActionPattern);
