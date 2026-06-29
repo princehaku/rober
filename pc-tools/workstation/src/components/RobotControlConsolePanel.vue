@@ -275,6 +275,24 @@ const plainMapRuntimeStartButton = ref<HTMLButtonElement | null>(null);
 const plainMapLargeView = ref(true);
 const plainMapFullscreenView = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.25, 1.5, 2] as const;
+const plainMapZoomIndex = ref(1);
+const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
+const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
+const plainMapZoomStyle = computed(() => ({
+  "--plain-map-zoom": String(plainMapZoomScale.value),
+}));
+const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
+const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
+function zoomPlainMap(delta: number): void {
+  // 缩放只改变本页地图视图，不改变地图数据、Nav2 目标或任何运动安全门禁。
+  const nextIndex = Math.min(PLAIN_MAP_ZOOM_LEVELS.length - 1, Math.max(0, plainMapZoomIndex.value + delta));
+  plainMapZoomIndex.value = nextIndex;
+}
+function resetPlainMapZoom(): void {
+  // “适配”回到完整地图，方便现场在放大查看细节后恢复全局路线视角。
+  plainMapZoomIndex.value = 0;
+}
 const plainLocalizationResetButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
@@ -14403,6 +14421,9 @@ onBeforeUnmount(() => {
           data-testid="plain-map-panel"
           data-wysiwyg-surface="primary-map"
           data-default-size="large"
+          :data-map-zoom-scale="String(plainMapZoomScale)"
+          :data-map-zoom-percent="plainMapZoomPercent"
+          data-map-zoom-affects="image-route-robot-radar"
           :data-state="plainMapVisualSummary.state"
           :data-size="plainMapViewSize"
           :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'"
@@ -14420,6 +14441,19 @@ onBeforeUnmount(() => {
           <div class="plain-map-heading">
             <h3>地图</h3>
             <div class="plain-map-heading-actions">
+              <div
+                class="plain-map-zoom-controls"
+                data-testid="plain-map-zoom-controls"
+                :data-map-zoom-scale="String(plainMapZoomScale)"
+                :data-map-zoom-percent="plainMapZoomPercent"
+                data-map-zoom-affects="image-route-robot-radar"
+                aria-label="地图缩放"
+              >
+                <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-out" :disabled="!canZoomPlainMapOut" @click="zoomPlainMap(-1)">-</button>
+                <span data-testid="plain-map-zoom-readout">{{ plainMapZoomPercent }}</span>
+                <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-in" :disabled="!canZoomPlainMapIn" @click="zoomPlainMap(1)">+</button>
+                <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-reset" :disabled="plainMapZoomScale === 1" @click="resetPlainMapZoom">适配</button>
+              </div>
               <button type="button" class="secondary plain-map-size-toggle" data-testid="plain-map-size-toggle" :aria-pressed="plainMapLargeView ? 'true' : 'false'" @click="plainMapLargeView = !plainMapLargeView">
                 {{ plainMapLargeView ? "收起地图" : "放大地图" }}
               </button>
@@ -14430,7 +14464,13 @@ onBeforeUnmount(() => {
           </div>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" data-wysiwyg-surface="primary-map" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize">
             <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
-              <div class="plain-map-overlay-frame" :style="plainMapVisualSummary.frameStyle">
+              <div
+                class="plain-map-overlay-frame"
+                :style="[plainMapVisualSummary.frameStyle, plainMapZoomStyle]"
+                :data-map-zoom-scale="String(plainMapZoomScale)"
+                :data-map-zoom-percent="plainMapZoomPercent"
+                data-map-zoom-affects="image-route-robot-radar"
+              >
                 <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt">
                 <template v-else>
                   <span class="plain-map-grid-line horizontal" />

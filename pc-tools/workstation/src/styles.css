@@ -837,6 +837,31 @@ h3 {
   justify-content: flex-end;
 }
 
+.plain-map-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid #c8d2dc;
+  border-radius: 6px;
+  padding: 3px;
+  background: #ffffff;
+}
+
+.plain-map-zoom-controls button {
+  min-width: 34px;
+  min-height: 28px;
+  padding: 0 9px;
+}
+
+.plain-map-zoom-controls span {
+  min-width: 48px;
+  color: #1b2a38;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .plain-map-size-toggle {
   min-height: 34px;
   white-space: nowrap;
@@ -1029,7 +1054,8 @@ h3 {
   justify-content: center;
   height: clamp(420px, 64vh, 780px);
   min-height: 420px;
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid #c8d2dc;
   border-radius: 6px;
   background:
@@ -1075,15 +1101,19 @@ h3 {
 }
 
 .plain-map-overlay-frame {
+  /* 缩放作用在同一个 overlay frame 上，保证底图、路线、车位和雷达点同步放大。 */
   position: relative;
-  width: 100%;
-  height: 100%;
+  flex: 0 0 auto;
+  width: calc(100% * var(--plain-map-zoom, 1));
+  height: calc(100% * var(--plain-map-zoom, 1));
+  min-width: 100%;
+  min-height: 100%;
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
   width: auto;
-  height: 100%;
-  max-width: 100%;
+  height: calc(100% * var(--plain-map-zoom, 1));
+  max-width: none;
   aspect-ratio: var(--map-aspect, 1);
 }
 
