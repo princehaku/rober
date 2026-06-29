@@ -4286,3 +4286,7 @@ keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。
 `ready_action_items` 派生，优先级固定为自由移动、键盘连续手控、完整图上行程、建图启动，避免脚本只读
 `next_action_items[0]` 时被相机/雷达缺口带偏。该变化只增加只读 summary 字段，不改变 `next_action_items` 兼容顺序，
 不自动启动 free-roam、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 16:35 CST 起，普通首屏“本轮进度”的 `可先动` 摘要和目标总览的“行程/键盘/自由移动”跳转也优先消费
+`goal_checklist_summary.primary_ready_action_*`。这样页面、脚本和后端使用同一个主 ready 动作，不再由前端单独猜
+“先做自由移动、键盘还是 Nav2”。该变化仍只改变页面只读展示和焦点跳转，不自动执行任何控制接口。

@@ -4758,7 +4758,7 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       title: "行程/键盘/自由移动",
       state: motionReady ? "可处理" : "未就绪",
       summary: `图上行程：${nav2?.status_label ?? "未读到"}；键盘：${keyboard?.status_label ?? "未读到"}；自由移动：${freeMove?.status_label ?? "未读到"}。`,
-      sourceCardId: summary.first_motion_source_card_id || "free_move",
+      sourceCardId: summary.primary_ready_action_source_card_id || summary.first_motion_source_card_id || "free_move",
     },
     {
       id: "wysiwyg",
@@ -7950,6 +7950,7 @@ const plainGoalProgressMoveNowSummary = computed(() => {
   if (!summary) {
     return "";
   }
+  const primaryReady = summary.goal_checklist_summary?.primary_ready_action_summary_plain?.trim();
   const boundary = summary.safe_command_boundary;
   const freeRoam = summary.readback_summary.free_roam;
   const keyboard = summary.readback_summary.keyboard;
@@ -7968,7 +7969,8 @@ const plainGoalProgressMoveNowSummary = computed(() => {
     return "";
   }
   const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾选" : "勾选现场安全确认后";
-  return `可先动：${safetyText}，${readyModes.join("、")}；画面和雷达只影响建图验收，不挡低速移动或行程重跑。`;
+  const primarySuffix = primaryReady ? `主动作：${plainActionCardUserText(primaryReady)}。` : "";
+  return `可先动：${safetyText}，${readyModes.join("、")}；${primarySuffix}画面和雷达只影响建图验收，不挡低速移动或行程重跑。`;
 });
 
 const plainGoalProgressPrimaryTarget = computed(() => {

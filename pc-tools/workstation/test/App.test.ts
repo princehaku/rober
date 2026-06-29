@@ -4628,6 +4628,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("可先动：勾选现场安全确认后");
+    expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("主动作：可先做：先自由移动");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("自由移动可启动");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("键盘可启用");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("画面和雷达只影响建图验收");
