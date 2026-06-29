@@ -99,7 +99,7 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 18:10 CST 起，`/api/camera/devices` 也使用 camera 慢读预算。该端点只做 v4l2/UVC 枚举，不创建 preview、offer 或 capture；并发 summary 刷新时即使设备枚举慢一拍，也不能把已经有 `camera_health.source_diagnosis=uvc_no_frame_not_exclusive` 的页面写成整车连接 degraded。普通用户仍看到“不是页面独占，检查 USB/输入/供电或换 known-good UVC”，不会因此发 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
-2026-06-29 18:30 CST 起，地图雷达 overlay 的下一步同时返回机器 token 和普通用户白话：`radar_overlay_next_action_plain` / `next_action_plain` 会把启动雷达、刷新雷达扫描、刷新定位、刷新地图画面等动作写成可执行短句。普通首屏优先显示白话字段，旧响应缺字段时才本地翻译 token，避免 live 的 `start_radar_then_refresh_map_preview`、`refresh_radar_scan_for_map_overlay` 等内部名字回到用户界面。该变化只修正只读 summary/map preview 和 UI 文案，不自动启动雷达、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+2026-06-29 18:30 CST 起，地图雷达点的下一步同时返回机器 token 和普通用户白话：`radar_overlay_next_action_plain` / `next_action_plain` 会把启动雷达、刷新雷达扫描、刷新定位、刷新地图画面等动作写成可执行短句。普通首屏优先显示白话字段，旧响应缺字段时才本地翻译 token，避免 live 的 `start_radar_then_refresh_map_preview`、`refresh_radar_scan_for_map_overlay` 等内部名字回到用户界面。该变化只修正只读 summary/map preview 和 UI 文案，不自动启动雷达、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 18:50 CST 起，相机共享预览的下一步也同时返回 token 和普通用户白话：Robot Control summary 与 `/api/robot-control/camera/mjpeg/status` 新增 `preview_next_action_plain` 和 `source_diagnosis_next_action_plain`。当 live 状态是 `uvc_no_frame_not_exclusive` 时，普通首屏和只读接口直接显示“检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占”，不再把 `check_usb_camera_input_power_or_known_good_uvc` 暴露给普通用户。该变化只读 camera health/relay status，不新建额外 capture、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
@@ -130,7 +130,7 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 不创建 MJPEG client、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 04:37 CST 起，`GET /api/robot-control/summary` 顶层新增 `current_fact_plain`。该字段把本轮只读
-readback 中的画面、地图、雷达 marker、Nav2 路线复验、键盘连续手控、自由移动和建图 readiness 合成一段普通话事实；
+readback 中的画面、地图、地图雷达点、Nav2 路线复验、键盘连续手控、自由移动和建图 readiness 合成一段普通话事实；
 连接失败时也会直接说明未读到当前事实。它只消费同一轮 summary 内部字段，不额外请求上位机、不准备或执行 Nav2、
 不启用键盘、不启动 free-roam、不发送 manual、delivery、stop 或 `/cmd_vel`。
 
@@ -146,7 +146,7 @@ readback 中的画面、地图、雷达 marker、Nav2 路线复验、键盘连�
 
 2026-06-29 02:35 CST 起，`safe_command_boundary` 增加最小门禁白话字段：`nav2_goal_minimal_precheck_plain`、`keyboard_minimal_precheck_plain`、`free_roam_motion_minimal_precheck_plain` 和 `free_roam_mapping_acceptance_plain`。脚本只读 summary 时可以直接知道：执行图上路线只复核现场安全确认和固定白名单；键盘启用本身不发车，只有按住方向键/WASD 才发低速短脉冲；自由移动只要求安全确认和停止兜底；画面首帧、雷达新鲜、地图记录和地图画面只影响建图验收。该变化只补只读 summary 字段，不执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
-2026-06-29 02:42 CST 起，`readback_summary.map` 增加 `map_wysiwyg_status_plain` 和 `map_wysiwyg_next_action_plain`。只读 summary 会把地图图片、图上路线、小车 map 位置和雷达 overlay 合成一个普通用户可读总判断：例如 live 形态“地图画面、图上路线和小车位置已显示；雷达来源点存在但当前不贴到地图：已有雷达来源点 81 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图”。这样脚本不用拼多个字段就能判定雷达 marker 是否真正所见即所得。该变化只补只读 map summary，不启动雷达、不刷新地图、不执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+2026-06-29 02:42 CST 起，`readback_summary.map` 增加 `map_wysiwyg_status_plain` 和 `map_wysiwyg_next_action_plain`。只读 summary 会把地图图片、图上路线、小车 map 位置和地图雷达点合成一个普通用户可读总判断：例如 live 形态“地图画面、图上路线和小车位置已显示；雷达来源点存在但当前不贴到地图：已有雷达来源点 81 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图”。这样脚本不用拼多个字段就能判定地图雷达点是否真正所见即所得。该变化只补只读 map summary，不启动雷达、不刷新地图、不执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 02:48 CST 起，`readback_summary.keyboard` 直接返回键盘连续手控 readback：`status/start_ready/enabled/control_mode/manual_command_mode/manual_proxy_endpoint/stop_proxy_endpoint` 以及按住才移动、停止触发、脉冲节奏、下一步和最小门禁白话。外部脚本不用再从 `safe_command_boundary` 拼键盘事实，也能直接知道“启用键盘不发车，只有按住方向键/WASD 才发送 ROS 低速短脉冲”。该变化只补只读 summary 字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 
@@ -164,13 +164,13 @@ readback 中的画面、地图、雷达 marker、Nav2 路线复验、键盘连�
 
 2026-06-29 04:18 CST 起，普通 PC 首屏的 `刷新自由移动状态（只读）` 摘要优先展示 `free_move_start_status_plain`、`motion_runtime_status_plain` 和 `mapping_acceptance_status_plain`。现场点击只读刷新后，不用打开高级 JSON 也能看到“自由移动可启动”“当前未发布运动不是启动阻塞”“建图验收不 ready 但不阻止低速自由移动”。该变化只改前端只读展示，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 03:08 CST 起，`readback_summary.map` 增加所见即所得短别名：`robot_pose_status`、`radar_overlay_point_count`、`radar_overlay_source_point_count` 和 `radar_overlay_frame_id`。这些字段完全复用既有 `radar_overlay_robot_pose_status` / `radar_overlay_scan_preview_*` 事实，方便外部脚本直接判断“图上小车是否可见、当前雷达 marker 真正画了几个点、旧雷达来源点是否只作诊断”。该变化只补只读 summary alias，不刷新地图、不启动雷达、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+2026-06-29 03:08 CST 起，`readback_summary.map` 增加所见即所得短别名：`robot_pose_status`、`radar_overlay_point_count`、`radar_overlay_source_point_count` 和 `radar_overlay_frame_id`。这些字段完全复用既有 `radar_overlay_robot_pose_status` / `radar_overlay_scan_preview_*` 事实，方便外部脚本直接判断“图上小车是否可见、当前地图雷达点真正画了几个点、旧雷达来源点是否只作诊断”。该变化只补只读 summary alias，不刷新地图、不启动雷达、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 03:31 CST 起，`readback_summary.map` 增加 `radar_overlay_wysiwyg_status_plain` 和 `radar_overlay_wysiwyg_next_action_plain`。脚本和普通首屏不用再把 `radar_overlay_point_count=0` 与 `radar_overlay_source_point_count=81` 自己拼起来；live 形态会直接显示“雷达 marker 未贴到当前地图：当前显示 0 个点；旧来源点 81 个只作诊断”，下一步仍是“先启动雷达，再刷新地图画面”。该变化只补只读地图/雷达贴图诊断，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+2026-06-29 03:31 CST 起，`readback_summary.map` 增加 `radar_overlay_wysiwyg_status_plain` 和 `radar_overlay_wysiwyg_next_action_plain`。脚本和普通首屏不用再把 `radar_overlay_point_count=0` 与 `radar_overlay_source_point_count=81` 自己拼起来；live 形态会直接显示“地图雷达点未贴到当前地图：当前显示 0 个点；旧来源点 81 个只作诊断”，下一步仍是“先启动雷达，再刷新地图画面”。该变化只补只读地图/雷达贴图诊断，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 04:05 CST 起，`/api/robot-control/radar/status` 顶层返回雷达本体和地图 marker 验收白话：`continuous_scan_status`、`lifecycle_running`、`lifecycle_state`、`latest_scan_proof_fresh`、`scan_point_count`、`latest_scan_age_ms`、`radar_status_plain`、`radar_next_action_plain`、`radar_overlay_point_count`、`radar_overlay_source_point_count`、`radar_overlay_wysiwyg_status_plain` 和 `radar_overlay_wysiwyg_next_action_plain`。其中 radar status 只证明雷达本体；地图 marker 是否所见即所得仍以 `/api/robot-control/map/preview` 的 `radar_overlay_point_count` 和 WYSIWYG 文案为准。该变化只补只读 radar status 字段，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+2026-06-29 04:05 CST 起，`/api/robot-control/radar/status` 顶层返回雷达本体和地图雷达点验收白话：`continuous_scan_status`、`lifecycle_running`、`lifecycle_state`、`latest_scan_proof_fresh`、`scan_point_count`、`latest_scan_age_ms`、`radar_status_plain`、`radar_next_action_plain`、`radar_overlay_point_count`、`radar_overlay_source_point_count`、`radar_overlay_wysiwyg_status_plain` 和 `radar_overlay_wysiwyg_next_action_plain`。其中 radar status 只证明雷达本体；地图雷达点是否所见即所得仍以 `/api/robot-control/map/preview` 的 `radar_overlay_point_count` 和 WYSIWYG 文案为准。该变化只补只读 radar status 字段，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 03:36 CST 起，`/api/robot-control/map/preview` 的 `radar_overlay` 嵌套对象和顶层 alias 也返回同一组 WYSIWYG 白话：`wysiwyg_status_plain`、`wysiwyg_next_action_plain`、`radar_overlay_wysiwyg_status_plain`、`radar_overlay_wysiwyg_next_action_plain`。外部脚本只看地图预览响应时，也能直接确认“地图上实际画了几个雷达 marker”和“旧来源点是否只作诊断”。该变化只补只读 map preview 合同，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+2026-06-29 03:36 CST 起，`/api/robot-control/map/preview` 的 `radar_overlay` 嵌套对象和顶层 alias 也返回同一组 WYSIWYG 白话：`wysiwyg_status_plain`、`wysiwyg_next_action_plain`、`radar_overlay_wysiwyg_status_plain`、`radar_overlay_wysiwyg_next_action_plain`。外部脚本只看地图预览响应时，也能直接确认“地图上实际画了几个地图雷达点”和“旧来源点是否只作诊断”。该变化只补只读 map preview 合同，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:58 CST 起，`/api/robot-control/map/preview` 顶层同步返回与 summary 同名的雷达数值 alias：`radar_overlay_point_count`、`radar_overlay_source_point_count`、`radar_overlay_scan_preview_point_count` 和 `radar_overlay_scan_preview_source_point_count`。外部脚本不用再把 `radar_overlay.count/source_count/scan_preview_*` 自己转换成 summary 口径；当前地图真正显示几个 marker 和旧来源点数量都能直接读取。该变化只补只读 map preview 字段，不启动雷达、不刷新地图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
@@ -255,7 +255,7 @@ O7 Previews 还新增了 `Field evidence consumer ingest` 主入口。它从 `tr
 
 O7 Previews 的 `Cloud Archive Tasks` 区块仍保留 PC-only 本地 route replay player 作为次路径 / debug fallback。operator 加载本地 archive fixture 后，可以用 `Previous frame`、`Next frame`、`Reset cursor` 和本地 range cursor 检查 `route_replay_inspector.sample_frames` 的 timestamp、pose、velocity、state 和 evidence ref。该 cursor 与 consumer-detail 主路径 cursor 隔离，只改变浏览器内存，不调用 API、不写后端、不发送机器人命令；未加载 archive、无 selected task、无 sample frames、inspector blocked 或显式 `playback_available=false` 时显示 `blocked_not_proven` 并禁用 navigation。它不等于真实云历史路线回放、真实地图叠加、真实机器人运动或真实控制。
 
-同一区块还提供只读 `Route replay trajectory minimap`。它只读取 `route_replay_inspector.sample_frames` 中有效数值型 `x_m/y_m`，用固定 SVG viewBox 归一化轨迹并把当前 marker 绑定到本地 route replay cursor；少于 2 个有效点或当前帧坐标无效时显示 blocked/unknown，不画成可用地图或确定机器人位置。面板持续显示 `trajectory_points=<n>`、`map_frame=<...>`、`current_marker=<...>`、`safe_to_control=false`、`playback_available=false` 和 `robot_control_executed=false`，不接真实地图、不发送控制命令、不声明机器人已运动。
+同一区块还提供只读 `Route replay trajectory minimap`。它只读取 `route_replay_inspector.sample_frames` 中有效数值型 `x_m/y_m`，用固定 SVG viewBox 归一化轨迹并把当前地图标记绑定到本地 route replay cursor；少于 2 个有效点或当前帧坐标无效时显示 blocked/unknown，不画成可用地图或确定机器人位置。面板持续显示 `trajectory_points=<n>`、`map_frame=<...>`、`current_marker=<...>`、`safe_to_control=false`、`playback_available=false` 和 `robot_control_executed=false`，不接真实地图、不发送控制命令、不声明机器人已运动。
 
 O7 Previews 的 `Cloud Archive Tasks` 区块还提供 PC-only 本地 labeling review panel 作为 debug fallback。operator 加载本地 archive fixture 后，panel 默认聚焦第一条 `labeling_queue_inspector.sample_review_items`，可以用 `Previous item`、`Next item` 和 `Reset item` 只在浏览器内切换当前 item，查看 item/frame/media/evidence、current label sample、draft label sample、allowed label types 和 schema 摘要。该 cursor 不调用 API、不提交标注、不回滚、不写后端、不导出数据集、不发送机器人命令；未加载 archive、无 selected task、无 review items 或 inspector blocked 时显示 `blocked_not_proven` 并禁用 navigation。它不等于真实 annotation API、真实标注提交/回滚、真实 draft autosave 或真实训练集导出，而且与 consumer-detail labeling primary path 的 cursor/state 隔离。
 
@@ -572,7 +572,7 @@ Nav2、delivery、stop 或 `/cmd_vel`。
 `map_wysiwyg_status_plain`、`map_wysiwyg_next_action_plain`、`path_wysiwyg_status_plain`、
 `path_wysiwyg_next_action_plain`、`nav2_route_overlay_status`、`nav2_route_overlay_point_count` 和
 `nav2_route_overlay_next_action_plain`。独立地图预览响应现在不用展开 summary 或内部 overlay，也能直接读到
-当前地图画面、图上路线、小车位置和雷达 marker 是否所见即所得；旧雷达来源点不贴图时，顶层总状态也会照实说明。
+当前地图画面、图上路线、小车位置和地图雷达点是否所见即所得；旧雷达来源点不贴图时，顶层总状态也会照实说明。
 该变化只补只读 map preview 合同，不启动雷达、不准备或执行 Nav2、不发送 manual、keyboard、free-roam、delivery、
 stop 或 `/cmd_vel`。
 
@@ -650,7 +650,7 @@ delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 11:02 CST 起，`goal_checklist_summary` 额外拆出雷达贴图提示：
 `radar_item_id`、`radar_source_card_id`、`radar_next_action_plain` 和 `radar_summary_plain`。普通首屏会在
-目标汇总顶部直接说明雷达点是否已经贴到当前地图；旧来源点只作诊断，不会被写成当前 marker。“去看雷达点”
+目标汇总顶部直接说明雷达点是否已经贴到当前地图；旧来源点只作诊断，不会被写成当前地图标记。“去看雷达点”
 按钮只聚焦到雷达启动/刷新入口，不自动启动雷达、不刷新地图、不发送 manual、Nav2、keyboard、free-roam、delivery、
 stop 或 `/cmd_vel`。
 
@@ -768,3 +768,8 @@ summary 文案，不自动勾选安全确认、不执行 Nav2、不启用 keyboa
 都 ready、建图启动可点时，才把它计为需要安全确认和会进入运动/建图流程。这样首屏总览会把当前可先收口的
 Nav2 重跑、键盘连续手控、自由移动统计成 3 项，不把未就绪建图误导成第 4 个发车动作。该变化只修正只读
 summary 结构和测试夹具，不启动建图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 13:22 CST 起，地图雷达 WYSIWYG 的白话字段不再输出英文 marker 叫法。`radar_overlay_wysiwyg_status_plain`
+和地图/雷达 readback 会统一写成“雷达点已贴到当前地图 / 雷达点未贴到当前地图 / 地图雷达点未加载”，继续保留
+`map_marker_*` 兼容字段给脚本读取。该变化只修正只读文案和 fixture，不启动雷达、不刷新地图、不执行 Nav2、
+不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

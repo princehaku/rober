@@ -3530,13 +3530,13 @@ function radarOverlayWysiwygPlainSummary(args: {
   radarHint: string;
   radarNextAction: string;
 }): { statusPlain: string; nextActionPlain: string } {
-  // 雷达 WYSIWYG 单独说明“地图上实际画了几个 marker”，避免把旧来源点误当成当前贴图。
+  // 雷达 WYSIWYG 单独说明“地图上实际画了几个雷达点”，避免把旧来源点误当成当前贴图。
   const displayedCount = args.pointCount && args.pointCount !== "not_loaded" ? args.pointCount : "0";
   const sourceCount = args.sourcePointCount && args.sourcePointCount !== "not_loaded" ? args.sourcePointCount : "0";
   const frameText = args.frameId && args.frameId !== "not_loaded" ? `，frame=${args.frameId}` : "";
   if (args.radarStatus === "loaded") {
     return {
-      statusPlain: `雷达 marker 已贴到当前地图：当前显示 ${displayedCount} 个点${frameText}。`,
+      statusPlain: `雷达点已贴到当前地图：当前显示 ${displayedCount} 个点${frameText}。`,
       nextActionPlain: "继续观察地图雷达层。",
     };
   }
@@ -3548,12 +3548,12 @@ function radarOverlayWysiwygPlainSummary(args: {
   }
   if (args.radarStatus === "not_current") {
     return {
-      statusPlain: `雷达 marker 未贴到当前地图：当前显示 ${displayedCount} 个点；旧来源点 ${sourceCount} 个只作诊断。${args.radarHint}`,
+      statusPlain: `雷达点未贴到当前地图：当前显示 ${displayedCount} 个点；旧来源点 ${sourceCount} 个只作诊断。${args.radarHint}`,
       nextActionPlain: args.radarNextAction,
     };
   }
   return {
-    statusPlain: `雷达 marker 未加载：当前显示 ${displayedCount} 个点；来源点 ${sourceCount} 个。${args.radarHint}`,
+    statusPlain: `地图雷达点未加载：当前显示 ${displayedCount} 个点；来源点 ${sourceCount} 个。${args.radarHint}`,
     nextActionPlain: args.radarNextAction,
   };
 }
@@ -5550,7 +5550,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         radar_overlay_point_count: "0",
         radar_overlay_source_point_count: "0",
         radar_overlay_frame_id: "not_loaded",
-        radar_overlay_wysiwyg_status_plain: "雷达 marker 未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。",
+        radar_overlay_wysiwyg_status_plain: "地图雷达点未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。",
         radar_overlay_wysiwyg_next_action_plain: "确认小车地址可访问后刷新地图画面。",
         map_marker_point_count: "0",
         map_marker_source_point_count: "0",
@@ -5582,7 +5582,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         map_quality_status: "not_loaded",
         map_free_cell_count: "not_loaded",
         map_usable_for_navigation: "not_loaded",
-        plain_hint: "地图画面未读到；不能把旧图或空白图当作当前所见。图上路线未显示；不能把旧路线或空路线当作当前所见。雷达 marker 未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。下一步：先刷新地图画面。",
+        plain_hint: "地图画面未读到；不能把旧图或空白图当作当前所见。图上路线未显示；不能把旧路线或空路线当作当前所见。地图雷达点未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。下一步：先刷新地图画面。",
         map_wysiwyg_status_plain: "地图画面未读到；不能把旧图或空白图当作当前所见。",
         map_wysiwyg_next_action_plain: "先刷新地图画面。",
         path_preview_status: "not_observed",
@@ -5594,7 +5594,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         robot_pose_status: "not_loaded",
         radar_overlay_status: "not_loaded",
         radar_overlay_plain_hint: "地图雷达层未加载。",
-        radar_overlay_wysiwyg_status_plain: "雷达 marker 未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。",
+        radar_overlay_wysiwyg_status_plain: "地图雷达点未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。",
         radar_overlay_wysiwyg_next_action_plain: "确认小车地址可访问后刷新地图画面。",
         radar_overlay_next_action: "connect_robot_and_refresh_map_preview",
         radar_overlay_next_action_plain: "确认小车地址可访问后刷新地图画面。",
