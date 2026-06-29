@@ -2215,6 +2215,28 @@ h3 {
   background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), transparent 42%);
 }
 
+.plain-mapping-readiness-gauge {
+  border-left: 3px solid #8c959f;
+  padding: 8px 10px;
+  background: #f7f9fb;
+}
+
+.plain-mapping-readiness-gauge[data-state="可先移动"] {
+  border-left-color: #0969da;
+  background: linear-gradient(90deg, rgba(9, 105, 218, 0.09), transparent 48%);
+}
+
+.plain-mapping-readiness-gauge[data-state="可启动建图"],
+.plain-mapping-readiness-gauge[data-state="可验收建图"] {
+  border-left-color: #238636;
+  background: linear-gradient(90deg, rgba(35, 134, 54, 0.09), transparent 48%);
+}
+
+.plain-mapping-readiness-gauge[data-state="待安全确认"] {
+  border-left-color: #bf8700;
+  background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 48%);
+}
+
 .plain-mapping-unlock-plan {
   display: grid;
   gap: 7px;

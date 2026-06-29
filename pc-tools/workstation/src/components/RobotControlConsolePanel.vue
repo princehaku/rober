@@ -6433,6 +6433,18 @@ type PlainFreeRoamDomEvidence = {
   fixedMappingStartEndpoint: string;
   fixedMappingPreviewEndpoint: string;
 };
+type PlainMappingReadinessGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  canFreeMoveNow: boolean;
+  cameraReadyForMapping: boolean;
+  radarReadyForMapping: boolean;
+  mapRuntimeStarted: boolean;
+  mapPreviewFresh: boolean;
+  mappingEvidenceReady: boolean;
+  missingReasons: string;
+};
 const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
   // 建图解锁包按“先能动、再补传感器、最后启动建图”排序；这里只读展示，不代替任何安全确认或启动动作。
   const summary = robotSummary.value;
@@ -6557,6 +6569,75 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     fixedFreeRoamStopEndpoint: "/api/robot-control/free-roam/autonomy/stop",
     fixedMappingStartEndpoint: "/api/robot-control/map/start",
     fixedMappingPreviewEndpoint: "/api/robot-control/map/preview",
+  };
+});
+const plainMappingReadinessGauge = computed<PlainMappingReadinessGauge>(() => {
+  // 这个仪表把“能不能先动”和“能不能按建图收口”拆开，避免相机/雷达缺口误挡低速自由移动。
+  const evidence = plainFreeRoamDomEvidence.value;
+  const safetyConfirmed = plainManualSafetyConfirmed.value;
+  const canFreeMoveNow = evidence.freeMoveStartReady && safetyConfirmed;
+  const cameraReadyForMapping = evidence.cameraSourceFirstFrameReady;
+  const radarReadyForMapping = evidence.radarFreshForMapping;
+  const runtimeStarted = mapRuntimeStarted.value;
+  const previewFresh = plainMapPreviewImageLoaded() || plainFreeRoamMapPreviewFreshForSession.value;
+  const mappingEvidenceReady = evidence.mappingAcceptanceReady
+    || (cameraReadyForMapping && radarReadyForMapping && runtimeStarted && previewFresh);
+  const missing: string[] = [];
+  if (!cameraReadyForMapping) {
+    missing.push(cameraFirstFrameMissingPlainLabel());
+  }
+  if (!radarReadyForMapping) {
+    missing.push("雷达未刷新");
+  }
+  if (cameraReadyForMapping && radarReadyForMapping && !runtimeStarted) {
+    missing.push("地图记录未启动");
+  }
+  if (cameraReadyForMapping && radarReadyForMapping && runtimeStarted && !previewFresh) {
+    missing.push("地图画面未刷新");
+  }
+  const state = mappingEvidenceReady
+    ? "可验收建图"
+    : evidence.mappingStartReady && canFreeMoveNow
+      ? "可启动建图"
+      : canFreeMoveNow
+        ? "可先移动"
+        : evidence.freeMoveStartReady
+          ? "待安全确认"
+          : "待连接";
+  const moveText = canFreeMoveNow ? "移动可启动" : evidence.freeMoveStartReady ? "移动待安全确认" : "移动待连接";
+  const cameraText = cameraReadyForMapping ? "画面已出帧" : "画面未出帧";
+  const radarText = radarReadyForMapping ? "雷达已刷新" : "雷达未刷新";
+  const runtimeText = runtimeStarted ? "记录已启动" : "记录未启动";
+  const previewText = previewFresh ? "地图画面已刷新" : "地图画面未刷新";
+  const nextAction = (() => {
+    if (!evidence.freeMoveStartReady) {
+      return "连接默认小车后再开始。";
+    }
+    if (!safetyConfirmed) {
+      return "先勾安全确认；勾后可先低速移动。";
+    }
+    if (!cameraReadyForMapping || !radarReadyForMapping) {
+      return "可先低速移动；补齐画面首帧和雷达刷新后再建图。";
+    }
+    if (!runtimeStarted) {
+      return "画面和雷达已就绪；现在可启动建图记录。";
+    }
+    if (!previewFresh) {
+      return "建图记录已启动；刷新地图画面后按本轮建图收口。";
+    }
+    return "画面、雷达、记录和地图画面都就绪；可按建图记录收口。";
+  })();
+  return {
+    state,
+    text: `建图仪表：${moveText}；${cameraText}；${radarText}；${runtimeText}；${previewText}。下一步：${nextAction}`,
+    nextAction,
+    canFreeMoveNow,
+    cameraReadyForMapping,
+    radarReadyForMapping,
+    mapRuntimeStarted: runtimeStarted,
+    mapPreviewFresh: previewFresh,
+    mappingEvidenceReady,
+    missingReasons: missing.length ? missing.join("、") : "none",
   };
 });
 const plainFreeRoamMappingSteps = computed(() => {
@@ -15049,6 +15130,28 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="plainFreeRoamMappingSummary.state">{{ plainFreeRoamMappingSummary.state }}</span>
             <span class="muted" data-testid="plain-free-roam-mode-subtitle">{{ plainFreeRoamPanelCopy.subtitle }}</span>
           </div>
+          <p
+            class="panel-note plain-mapping-readiness-gauge"
+            data-testid="plain-mapping-readiness-gauge"
+            :data-state="plainMappingReadinessGauge.state"
+            :data-free-move-start-ready="String(plainFreeRoamDomEvidence.freeMoveStartReady)"
+            :data-safety-confirmed="String(plainManualSafetyConfirmed)"
+            :data-can-free-move-now="String(plainMappingReadinessGauge.canFreeMoveNow)"
+            :data-camera-ready-for-mapping="String(plainMappingReadinessGauge.cameraReadyForMapping)"
+            :data-radar-ready-for-mapping="String(plainMappingReadinessGauge.radarReadyForMapping)"
+            :data-map-runtime-started="String(plainMappingReadinessGauge.mapRuntimeStarted)"
+            :data-map-preview-fresh="String(plainMappingReadinessGauge.mapPreviewFresh)"
+            :data-mapping-start-ready="String(plainFreeRoamDomEvidence.mappingStartReady)"
+            :data-mapping-evidence-ready="String(plainMappingReadinessGauge.mappingEvidenceReady)"
+            :data-mapping-missing-reasons="plainMappingReadinessGauge.missingReasons"
+            :data-next-action="plainMappingReadinessGauge.nextAction"
+            :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"
+            :data-fixed-mapping-start-endpoint="plainFreeRoamDomEvidence.fixedMappingStartEndpoint"
+            :data-fixed-mapping-preview-endpoint="plainFreeRoamDomEvidence.fixedMappingPreviewEndpoint"
+            data-sends-motion-when-clicked="false"
+          >
+            {{ plainMappingReadinessGauge.text }}
+          </p>
           <label class="plain-trip-confirm">
             <input ref="plainFreeRoamConfirmCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
             <span>人在旁边、周围安全、可以随时按停止（勾一次，全页面生效）</span>
@@ -15273,7 +15376,7 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="plain-free-roam-mapping-readiness">{{ plainFreeRoamAutonomyReadiness.mappingReadinessText }}</p>
             <div class="plain-mapping-unlock-plan" data-testid="plain-mapping-unlock-plan" aria-label="建图解锁包">
               <div class="simple-status-row">
-                <strong>传感器 ready 后建图</strong>
+                <strong>传感器就绪后建图</strong>
                 <span class="muted">只刷新画面首帧、雷达新鲜度和地图画面，不启动任何设备或动作。</span>
                 <button
                   type="button"
