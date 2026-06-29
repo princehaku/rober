@@ -392,6 +392,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                                 "yaw": None,
                                 "yaw_available": False,
                                 "voltage": 12.2,
+                                "vendor_frame": {"T": 1001, "L": 0, "R": 0, "r": 0.0, "p": 0.0, "y": "null", "v": 12.2},
                             }
                         ),
                         json.dumps(
@@ -405,6 +406,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                                 "yaw": 3.0,
                                 "yaw_available": True,
                                 "voltage": 12.1,
+                                "vendor_frame": {"T": 1001, "L": 0.08, "R": 0.07, "r": 1.2, "p": 0.4, "y": 3.0, "v": 12.1},
                             }
                         ),
                     ]
@@ -420,6 +422,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(summary["wheel_feedback_lr_nonzero_proven"])
         self.assertEqual(0.08, summary["wheel_feedback_summary"]["latest_pair"]["left_speed"])
         self.assertEqual(0.07, summary["wheel_feedback_summary"]["latest_pair"]["right_speed"])
+        self.assertEqual(2, len(summary["t1001_feedback_frames"]))
+        self.assertEqual({"T": 1001, "L": 0.08, "R": 0.07, "r": 1.2, "p": 0.4, "y": 3.0, "v": 12.1}, summary["latest_frame"])
         self.assertFalse(summary["sends_motion_commands"])
         self.assertFalse(summary["safe_to_control"])
 
@@ -677,7 +681,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction") as mocked_serial_transaction:
             with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_transaction", return_value=transaction) as mocked_transaction:
-                payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 500}))
+                with mock.patch.object(upper_robot_api, "summarize_bridge_feedback_debug_log", return_value={"freshness": {"status": "missing"}, "t1001_observed_count": 0}):
+                    payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 500}))
 
         kwargs = mocked_transaction.call_args.kwargs
         mocked_serial_transaction.assert_not_called()
@@ -687,6 +692,50 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertIsNone(payload["serial_motion_transaction"])
         self.assertIsNone(payload["manual_feedback_samples_latest"])
         self.assertTrue(payload["manual_command_executed"])
+
+    def test_manual_control_ros_persists_fresh_bridge_feedback_without_opening_uart(self) -> None:
+        """ROS 手控后只读 bridge debug log 回灌 L/R，不为了证明轮速再抢 UART。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        transaction = {
+            "mode": "ros_cmd_vel_bridge",
+            "command_result": {"ok": True, "mode": "ros_cmd_vel_once", "linear_x": 0.08, "angular_z": 0.0},
+            "stop_result": {"ok": True, "mode": "ros_cmd_vel_once", "linear_x": 0.0, "angular_z": 0.0},
+            "feedback_during_motion": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart"),
+            "feedback_after_stop": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart"),
+            "serial_session_error": None,
+        }
+        bridge_summary = {
+            "freshness": {"status": "fresh"},
+            "t1001_observed_count": 2,
+            "bad_line_count": 0,
+            "t1001_feedback_frames": [
+                {"T": 1001, "L": 0, "R": 0, "r": 0, "p": 0, "y": "null", "v": 12.2},
+                {"T": 1001, "L": 0.08, "R": 0.07, "r": 1.2, "p": 0.4, "y": "null", "v": 12.1},
+            ],
+            "wheel_feedback_summary": {
+                "lr_nonzero_observed": True,
+                "latest_pair": {"source": "vendor_t1001_L_R", "left_speed": 0.08, "right_speed": 0.07},
+            },
+        }
+
+        with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction") as mocked_serial_transaction:
+            with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_transaction", return_value=transaction):
+                with mock.patch.object(upper_robot_api, "summarize_bridge_feedback_debug_log", return_value=bridge_summary):
+                    with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact", side_effect=lambda _path, payload: {**payload, "artifact": {"write": {"ok": True}}}):
+                        payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 500}))
+
+        mocked_serial_transaction.assert_not_called()
+        self.assertIsNotNone(payload["manual_feedback_samples_latest"])
+        self.assertEqual("ros", payload["base_command_mode"])
+        self.assertTrue(payload["manual_feedback_samples_latest"]["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(0.08, payload["manual_feedback_samples_latest"]["wheel_feedback_summary"]["latest_nonzero_pair"]["left_speed"])
+        self.assertTrue(payload["manual_command_executed"])
+        self.assertFalse(payload["safe_to_control"])
 
     def test_manual_control_keyboard_pulse_keeps_short_motion_window(self) -> None:
         """键盘连续手控 240ms pulse 走短 /cmd_vel 事务，避免串口读阻塞续发。"""
@@ -707,7 +756,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction") as mocked_serial_transaction:
             with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_transaction", return_value=transaction) as mocked_transaction:
-                payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 240}))
+                with mock.patch.object(upper_robot_api, "summarize_bridge_feedback_debug_log", return_value={"freshness": {"status": "missing"}, "t1001_observed_count": 0}):
+                    payload = asyncio.run(api.manual_control({"direction": "forward", "speed": 0.08, "duration_ms": 240}))
 
         kwargs = mocked_transaction.call_args.kwargs
         mocked_serial_transaction.assert_not_called()

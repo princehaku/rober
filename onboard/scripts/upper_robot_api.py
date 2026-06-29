@@ -4540,6 +4540,7 @@ def summarize_bridge_feedback_debug_log(
         "motion_signal_observed": False,
         "motion_signal_source": "not_observed",
         "latest_frame": None,
+        "t1001_feedback_frames": [],
         "readback_sends_commands": False,
         "sends_commands": False,
         "sends_motion_commands": False,
@@ -4580,14 +4581,15 @@ def summarize_bridge_feedback_debug_log(
             continue
         if not isinstance(record, dict) or record.get("source") != "wave_rover_uart_t1001":
             continue
+        vendor_frame = record.get("vendor_frame") if isinstance(record.get("vendor_frame"), dict) else {}
         frame = {
             "T": BASE_FEEDBACK_ID,
-            "L": record.get("left_speed"),
-            "R": record.get("right_speed"),
-            "r": record.get("roll"),
-            "p": record.get("pitch"),
-            "y": record.get("yaw") if record.get("yaw_available") is not False else "null",
-            "v": record.get("voltage"),
+            "L": vendor_frame.get("L", record.get("left_speed")),
+            "R": vendor_frame.get("R", record.get("right_speed")),
+            "r": vendor_frame.get("r", record.get("roll")),
+            "p": vendor_frame.get("p", record.get("pitch")),
+            "y": vendor_frame.get("y", record.get("yaw") if record.get("yaw_available") is not False else "null"),
+            "v": vendor_frame.get("v", record.get("voltage")),
         }
         if compact_t1001_feedback_frame(frame) is not None:
             frames.append(frame)
@@ -4603,6 +4605,7 @@ def summarize_bridge_feedback_debug_log(
             "bad_line_count": bad_line_count,
             "t1001_observed_count": len(frames),
             "latest_frame": frames[-1] if frames else None,
+            "t1001_feedback_frames": frames,
             "wheel_feedback_summary": wheel_summary,
             "wheel_feedback_nonzero_observed": wheel_nonzero,
             "wheel_feedback_lr_nonzero_proven": wheel_nonzero,
@@ -5233,6 +5236,31 @@ def feedback_ack_from_bridge_debug(bridge_summary: dict[str, Any]) -> dict[str, 
         "robot_ack_connected": False,
         "source": "fresh_bridge_feedback_debug_log",
         "reason": "fresh esp32_bridge feedback debug log available but no T=1001 frame observed",
+    }
+
+
+def bridge_debug_summary_as_feedback_sample(bridge_summary: dict[str, Any]) -> dict[str, Any]:
+    """把 bridge JSONL 摘要包装成 samples payload 的单个 sample，不重新打开 UART。"""
+    frames = bridge_summary.get("t1001_feedback_frames")
+    frames = [frame for frame in frames if isinstance(frame, dict)] if isinstance(frames, list) else []
+    return {
+        "schema": f"{SCHEMA}.bridge_feedback_debug_sample",
+        "serial_open": {"ok": False, "source": "esp32_bridge_feedback_debug_log", "reason": "bridge_already_owns_uart"},
+        "serial_write": {"ok": False, "command": None, "reason": "no_direct_t130_request_for_ros_manual_pulse"},
+        "serial_read": {"ok": True, "source": "esp32_bridge_feedback_debug_log"},
+        "read_line_count": len(frames),
+        "parsed_json_count": len(frames),
+        "invalid_json_count": int(bridge_summary.get("bad_line_count") or 0),
+        "observed_feedback_types": [BASE_FEEDBACK_ID] if frames else [],
+        "t1001_feedback_frames": frames,
+        "t1001_feedback_status": "observed" if frames else "not_observed",
+        "feedback_ack": feedback_ack_from_bridge_debug(bridge_summary),
+        "wheel_feedback_summary": bridge_summary.get("wheel_feedback_summary"),
+        "safe_to_control": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
     }
 
 
@@ -8345,6 +8373,14 @@ class UpperRobotApi:
             else "not_observed"
         )
         manual_feedback_samples_latest = None
+        bridge_feedback_sample = None
+        if feedback_during_motion_attempted and command_mode == "ros" and bool(first.get("ok")):
+            # ROS 手控不抢 esp32_bridge 持有的 UART；短脉冲后只读 bridge 已写出的 fresh T1001 debug log。
+            bridge_feedback_debug = summarize_bridge_feedback_debug_log(DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH)
+            bridge_freshness = bridge_feedback_debug.get("freshness")
+            bridge_is_fresh = isinstance(bridge_freshness, dict) and bridge_freshness.get("status") == "fresh"
+            if bridge_is_fresh and int(bridge_feedback_debug.get("t1001_observed_count") or 0) > 0:
+                bridge_feedback_sample = bridge_debug_summary_as_feedback_sample(bridge_feedback_debug)
         if feedback_during_motion_attempted and (wheel_feedback_frames or command_mode != "ros"):
             # first-jog/键盘手控的非零 T1001 必须落到 latest artifact，
             # 否则 PC 刷新 summary 会被停车后的 0/0 读回覆盖成“看似丢证据”。
@@ -8358,6 +8394,20 @@ class UpperRobotApi:
                     read_timeout_s=max(motion_read_timeout_s, read_timeout_s),
                     read_window_s=max(motion_read_window_s, read_window_s),
                     samples=[feedback_during_motion, feedback_evidence],
+                ),
+            )
+        elif bridge_feedback_sample is not None:
+            # ROS 路径只复用 bridge JSONL 材料，不直接读串口；PC summary 由 latest artifact 回放 wheel L/R。
+            manual_feedback_samples_latest = persist_feedback_samples_artifact(
+                self.feedback_samples_artifact_path,
+                build_base_feedback_samples_payload(
+                    port=self.base_port,
+                    baudrate=self.base_baudrate,
+                    sample_count=1,
+                    sample_interval_s=0.0,
+                    read_timeout_s=0.0,
+                    read_window_s=0.0,
+                    samples=[bridge_feedback_sample],
                 ),
             )
         return {

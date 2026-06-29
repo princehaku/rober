@@ -56,6 +56,7 @@
 - 当 `feedback_debug_log_path` 非空时，`esp32_bridge` 在每个已解析有效的 vendor `T=1001` 帧后追加一行 JSONL，用于上车 bounded motion evidence。
 - 单行 schema 为 `trashbot.wave_rover.feedback_debug.v1`，字段包含 `observed_at_unix_s`、`source=wave_rover_uart_t1001`、`left_speed`、`right_speed`、`roll`、`pitch`、`yaw`、`yaw_available`、`voltage`。
 - 2026-06-29 16:55 CST 起，debug 行同时保留 `vendor_frame={"T":1001,"L":...,"R":...,"r":...,"p":...,"y":...,"v":...}`。这是 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `FEEDBACK_BASE_INFO` 原始字段快照，用于 Nav2/O11 复验时判断 `L/R=0` 是厂商帧真实返回还是项目别名解析问题；它不能替代同窗口 `left_speed/right_speed` 非零验收。
+- 2026-06-29 17:05 CST 起，ROS 手控和 PC 键盘短 pulse 不再为了证明轮速另开 UART；若 `wave_rover_feedback_debug.jsonl` 仍 fresh 且包含 `T=1001`，上位机只把这些 bridge-owned 帧包装为 `base_feedback_samples_latest`。这样多人 PC 页面和 summary 能看到同一组 wheel raw `L/R`，但 `safe_to_control=false`、`delivery_success=false`、`hil_pass=false` 必须保持不变；`L/R=0/0` 也必须原样显示为“未证明非零”。
 - 该日志复用 bridge 已拥有的串口 owner 和解析结果，避免 direct raw UART 抢读造成 corrupted/incomplete JSON。
 - 写入失败只记录 runtime warning；不得阻塞 `/imu/data`、`/battery` 或 `/trashbot/stop`。路径目录、权限和磁盘空间需在上车 run 前由 operator 确认。
 - `left_speed/right_speed` 采用 vendor `T=1001.L/R` 原始反馈口径，只能作为 evidence/debug 材料；在缺少 HIL 对齐前，不代表导航级实测轮速里程计。
