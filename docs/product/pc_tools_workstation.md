@@ -4319,3 +4319,12 @@ keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。
 2026-06-29 16:50 CST 起，普通地图/雷达卡在 `radar_overlay_next_action=start_radar_then_refresh_map_preview` 时，即使后端已经返回
 简短的 `radar_overlay_*_next_action_plain`，前端也会补上“旧雷达点不会贴到当前地图”。这条保护语只影响展示，避免现场把旧来源点误当成
 当前地图标记；不会自动启动雷达、刷新地图或发送任何运动命令。
+
+2026-06-29 21:48 CST 起，Robot Control 的 Nav2 完整路线 readback 补齐执行链路证据字段：
+`goal_execution_readback_publishes_cmd_vel`、`goal_execution_managed_runtime_requested`、
+`goal_execution_managed_runtime_started`、`goal_execution_managed_runtime_lifecycle_ready_ok`、
+`goal_execution_managed_runtime_cleanup_ok`。这些字段来自最近一次 `/api/nav2/goal/execution/latest`
+只读 artifact，用来区分“Nav2 是否真的进入 ROS `/cmd_vel` 链路”“托管 autonomous runtime 是否已启动/ready/清理”
+和“底盘 wheel raw L/R 是否仍未闭合”。前端 Nav2 证据表同步展示这些字段，方便现场在重跑图上路线后直接定位：
+是 Nav2 没发、bridge 没转、还是底盘反馈仍为 0/0。该变化不改变发车门禁，不自动执行 Nav2、不调用 manual、
+keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

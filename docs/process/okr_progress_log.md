@@ -4650,6 +4650,16 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-29 21:48｜pc_nav2_execution_runtime_readback｜O3 完整路线执行证据提升
+
+本轮 micro sprint 面向 Objective 3 的“完整 Nav2 路线执行”闭环，把 PC `/api/robot-control/summary`
+和 `/api/robot-control/nav2/goal/execution/latest` 中最近一次路线执行的托管 runtime 和 `/cmd_vel`
+readback 字段提升为稳定合同。现场重跑图上路线后，普通首屏/接口能直接看到：下一次推荐执行模式、
+上次 Nav2 执行是否读到 `/cmd_vel` 发布、managed runtime 是否 requested/started/lifecycle ready/cleanup ok，
+以及 wheel raw L/R 是否仍为 0/0。该轮不发送任何运动命令，仅补齐自动驾驶“为什么还没证明车动”的证据定位。
+
+本轮验证：`npm run build` 通过；`npm test -- test/catalog.test.ts` 通过，168 tests OK。
+
 - 本日志只是 `OKR.md` 第 4.1 节迁移历史，不修改任何 Objective/KR 文字、不修改任何 Objective % 数字。
 - 每次新增 sprint 进度后，由对应 Engineer 子 agent 在结束 sprint 时把 `tech-done.md` / `final.md` 的进度摘要追加到本文件顶部对应日期段。
 - 若一个 sprint 同时影响多个 Objective，按"主受益 Objective"归档，不重复粘贴。

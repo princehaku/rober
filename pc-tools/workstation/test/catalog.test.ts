@@ -6596,7 +6596,14 @@ describe("workstation fail-closed API contracts", () => {
             sends_motion_commands: true,
             sends_base_motion_commands: true,
             uses_base_uart: true,
+            publishes_cmd_vel: "nav2_controller_may_publish_cmd_vel_when_goal_is_active",
             base_command_mode: "pwm",
+            managed_runtime: {
+              requested: true,
+              started: true,
+              lifecycle_ready: { ok: true },
+              cleanup: { ok: true },
+            },
             goal_request: { frame_id: "map", x: 0.8, y: 0 },
             base_feedback_summary: {
               sample_count: 239,
@@ -6626,6 +6633,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到 49 次非零底盘命令。");
       expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口确认轮速 L/R 非零。");
+      expect(summary.readback_summary.nav2.goal_execution_readback_publishes_cmd_vel).toBe("nav2_controller_may_publish_cmd_vel_when_goal_is_active");
+      expect(summary.readback_summary.nav2.goal_execution_managed_runtime_requested).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_managed_runtime_started).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_managed_runtime_lifecycle_ready_ok).toBe("true");
+      expect(summary.readback_summary.nav2.goal_execution_managed_runtime_cleanup_ok).toBe("true");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.next_action_plain).toContain("用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.plain_hint).toContain("执行窗口轮速 L/R=0/0 未非零");

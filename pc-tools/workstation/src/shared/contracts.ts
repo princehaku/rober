@@ -2286,6 +2286,11 @@ export interface RobotControlNavGoalExecutionLatestResponse extends ProofFlags {
   goal_execution_base_command_mode_counts: string;
   goal_execution_base_feedback_lr_nonzero_proven: string;
   goal_execution_base_feedback_imu_attitude_delta_observed: string;
+  goal_execution_readback_publishes_cmd_vel: string;
+  goal_execution_managed_runtime_requested: string;
+  goal_execution_managed_runtime_started: string;
+  goal_execution_managed_runtime_lifecycle_ready_ok: string;
+  goal_execution_managed_runtime_cleanup_ok: string;
   goal_execution_base_feedback_latest_raw_left: string;
   goal_execution_base_feedback_latest_raw_right: string;
   failure_reason: string;
@@ -2800,6 +2805,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       goal_execution_base_feedback_latest_right_speed: string;
       goal_execution_base_feedback_latest_raw_left: string;
       goal_execution_base_feedback_latest_raw_right: string;
+      goal_execution_readback_publishes_cmd_vel: string;
+      goal_execution_managed_runtime_requested: string;
+      goal_execution_managed_runtime_started: string;
+      goal_execution_managed_runtime_lifecycle_ready_ok: string;
+      goal_execution_managed_runtime_cleanup_ok: string;
       goal_execution_sends_base_motion_commands: string;
       goal_execution_uses_base_uart: string;
       goal_execution_goal_frame_id: string;

@@ -506,6 +506,9 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
   const cancelResponse = asRecord(latestResult?.cancel_response);
   const baseFeedbackSummary = asRecord(latestResult?.base_feedback_summary) ?? asRecord(payload?.base_feedback_summary);
   const baseCommandSummary = asRecord(latestResult?.base_command_summary) ?? asRecord(payload?.base_command_summary);
+  const managedRuntime = asRecord(latestResult?.managed_runtime) ?? asRecord(payload?.managed_runtime);
+  const managedRuntimeCleanup = asRecord(managedRuntime?.cleanup);
+  const managedRuntimeLifecycleReady = asRecord(managedRuntime?.lifecycle_ready);
   const latestNonzeroPair = asRecord(baseFeedbackSummary?.latest_nonzero_pair);
   const latestPair = asRecord(baseFeedbackSummary?.latest_pair);
   const latestNonzeroCommand = asRecord(baseCommandSummary?.latest_nonzero_command);
@@ -584,6 +587,11 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     base_command_nonzero_observed: shortValue(baseCommandSummary?.nonzero_command_observed, "false"),
     base_command_latest_nonzero_mode: baseCommandLatestNonzeroMode,
     base_command_mode_counts: baseCommandModeCounts,
+    readback_publishes_cmd_vel: shortValue(payload?.readback_publishes_cmd_vel ?? latestResult?.publishes_cmd_vel, "not_loaded"),
+    managed_runtime_requested: shortValue(managedRuntime?.requested, "not_loaded"),
+    managed_runtime_started: shortValue(managedRuntime?.started, "not_loaded"),
+    managed_runtime_lifecycle_ready_ok: shortValue(managedRuntimeLifecycleReady?.ok, "not_loaded"),
+    managed_runtime_cleanup_ok: shortValue(managedRuntimeCleanup?.ok, "not_loaded"),
     robot_control_executed: shortValue(latestResult?.robot_control_executed ?? payload?.robot_control_executed, "false"),
     sends_base_motion_commands: shortValue(latestResult?.sends_base_motion_commands ?? payload?.sends_base_motion_commands, "not_loaded"),
     uses_base_uart: shortValue(latestResult?.uses_base_uart ?? payload?.uses_base_uart, "not_loaded"),
@@ -646,6 +654,11 @@ function navGoalLatestPlainFields(
   | "goal_execution_base_command_mode_counts"
   | "goal_execution_base_feedback_lr_nonzero_proven"
   | "goal_execution_base_feedback_imu_attitude_delta_observed"
+  | "goal_execution_readback_publishes_cmd_vel"
+  | "goal_execution_managed_runtime_requested"
+  | "goal_execution_managed_runtime_started"
+  | "goal_execution_managed_runtime_lifecycle_ready_ok"
+  | "goal_execution_managed_runtime_cleanup_ok"
   | "execution_status_plain"
   | "next_action_plain"
   | "goal_execution_base_feedback_latest_raw_left"
@@ -678,6 +691,11 @@ function navGoalLatestPlainFields(
     goal_execution_base_command_mode_counts: keyValues.base_command_mode_counts || "{}",
     goal_execution_base_feedback_lr_nonzero_proven: keyValues.base_feedback_lr_nonzero_proven || "not_loaded",
     goal_execution_base_feedback_imu_attitude_delta_observed: keyValues.base_feedback_imu_attitude_delta_observed || "not_loaded",
+    goal_execution_readback_publishes_cmd_vel: keyValues.readback_publishes_cmd_vel || "not_loaded",
+    goal_execution_managed_runtime_requested: keyValues.managed_runtime_requested || "not_loaded",
+    goal_execution_managed_runtime_started: keyValues.managed_runtime_started || "not_loaded",
+    goal_execution_managed_runtime_lifecycle_ready_ok: keyValues.managed_runtime_lifecycle_ready_ok || "not_loaded",
+    goal_execution_managed_runtime_cleanup_ok: keyValues.managed_runtime_cleanup_ok || "not_loaded",
     goal_execution_base_feedback_latest_raw_left: left,
     goal_execution_base_feedback_latest_raw_right: right,
   };
@@ -3559,6 +3577,11 @@ export function createWorkstationApp(): express.Express {
       goal_execution_base_command_mode_counts: "{}",
       goal_execution_base_feedback_lr_nonzero_proven: "not_loaded",
       goal_execution_base_feedback_imu_attitude_delta_observed: "not_loaded",
+      goal_execution_readback_publishes_cmd_vel: "not_loaded",
+      goal_execution_managed_runtime_requested: "not_loaded",
+      goal_execution_managed_runtime_started: "not_loaded",
+      goal_execution_managed_runtime_lifecycle_ready_ok: "not_loaded",
+      goal_execution_managed_runtime_cleanup_ok: "not_loaded",
       goal_execution_base_feedback_latest_raw_left: "not_loaded",
       goal_execution_base_feedback_latest_raw_right: "not_loaded",
       failure_reason: normalized.ok ? "" : normalized.reason,

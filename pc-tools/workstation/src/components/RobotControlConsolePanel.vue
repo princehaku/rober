@@ -6722,6 +6722,11 @@ function summaryNav2ExecutionValues(): Record<string, string> | undefined {
   putSummaryNav2Value(values, "base_feedback_latest_right_speed", nav2.goal_execution_base_feedback_latest_right_speed);
   putSummaryNav2Value(values, "base_feedback_latest_raw_left", nav2.goal_execution_base_feedback_latest_raw_left);
   putSummaryNav2Value(values, "base_feedback_latest_raw_right", nav2.goal_execution_base_feedback_latest_raw_right);
+  putSummaryNav2Value(values, "readback_publishes_cmd_vel", nav2.goal_execution_readback_publishes_cmd_vel);
+  putSummaryNav2Value(values, "managed_runtime_requested", nav2.goal_execution_managed_runtime_requested);
+  putSummaryNav2Value(values, "managed_runtime_started", nav2.goal_execution_managed_runtime_started);
+  putSummaryNav2Value(values, "managed_runtime_lifecycle_ready_ok", nav2.goal_execution_managed_runtime_lifecycle_ready_ok);
+  putSummaryNav2Value(values, "managed_runtime_cleanup_ok", nav2.goal_execution_managed_runtime_cleanup_ok);
   putSummaryNav2Value(values, "sends_base_motion_commands", nav2.goal_execution_sends_base_motion_commands);
   putSummaryNav2Value(values, "uses_base_uart", nav2.goal_execution_uses_base_uart);
   putSummaryNav2Value(values, "goal_frame_id", nav2.goal_execution_goal_frame_id);

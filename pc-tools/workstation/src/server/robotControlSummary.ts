@@ -5057,6 +5057,9 @@ function nav2SummaryFromReadbacks(
   const goalResultPayload = asRecord(goalPayload?.latest_result) ?? goalPayload;
   const baseCommandSummary = asRecord(goalResultPayload?.base_command_summary);
   const baseFeedbackSummary = asRecord(goalResultPayload?.base_feedback_summary);
+  const managedRuntime = asRecord(goalResultPayload?.managed_runtime);
+  const managedRuntimeCleanup = asRecord(managedRuntime?.cleanup);
+  const managedRuntimeLifecycleReady = asRecord(managedRuntime?.lifecycle_ready);
   const latestNonzeroPair = asRecord(baseFeedbackSummary?.latest_nonzero_pair);
   const latestPair = asRecord(baseFeedbackSummary?.latest_pair);
   const goalExecutionStatus = summaryValueText(goalResultPayload, ["status"], goalExecution?.status ?? "not_loaded");
@@ -5226,6 +5229,11 @@ function nav2SummaryFromReadbacks(
     goal_execution_base_feedback_latest_right_speed: latestRight,
     goal_execution_base_feedback_latest_raw_left: latestLeft,
     goal_execution_base_feedback_latest_raw_right: latestRight,
+    goal_execution_readback_publishes_cmd_vel: summaryValueText(goalPayload, ["readback_publishes_cmd_vel"], summaryValueText(goalResultPayload, ["publishes_cmd_vel"])),
+    goal_execution_managed_runtime_requested: summaryValueText(managedRuntime, ["requested"]),
+    goal_execution_managed_runtime_started: summaryValueText(managedRuntime, ["started"]),
+    goal_execution_managed_runtime_lifecycle_ready_ok: summaryValueText(managedRuntimeLifecycleReady, ["ok"]),
+    goal_execution_managed_runtime_cleanup_ok: summaryValueText(managedRuntimeCleanup, ["ok"]),
     goal_execution_sends_base_motion_commands: summaryValueText(goalResultPayload, ["sends_base_motion_commands"]),
     goal_execution_uses_base_uart: summaryValueText(goalResultPayload, ["uses_base_uart"]),
     goal_execution_goal_frame_id: summaryValueText(goalResultPayload, ["goal_frame_id", "frame_id"]),
@@ -5753,6 +5761,11 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     goal_execution_base_feedback_latest_right_speed: "not_loaded",
     goal_execution_base_feedback_latest_raw_left: "not_loaded",
     goal_execution_base_feedback_latest_raw_right: "not_loaded",
+    goal_execution_readback_publishes_cmd_vel: "not_loaded",
+    goal_execution_managed_runtime_requested: "not_loaded",
+    goal_execution_managed_runtime_started: "not_loaded",
+    goal_execution_managed_runtime_lifecycle_ready_ok: "not_loaded",
+    goal_execution_managed_runtime_cleanup_ok: "not_loaded",
     goal_execution_sends_base_motion_commands: "not_loaded",
     goal_execution_uses_base_uart: "not_loaded",
     goal_execution_goal_frame_id: "not_loaded",
