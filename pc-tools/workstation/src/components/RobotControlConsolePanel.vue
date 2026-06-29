@@ -2446,7 +2446,7 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
 function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string {
   // 轮速刷新挂起时优先讲“正在等当前读数”，避免旧 L/R 被误当成实时结论。
   if (baseFeedbackSamplesPending.value) {
-    return "轮速：正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。";
+    return "轮速：正在刷新当前轮速 L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。";
   }
   const baseReadbackConnectionIssues = summary.robot_api_connection.blocked_reasons.filter((reason) => (
     reason.startsWith("base_status:") || reason.startsWith("base_feedback_samples_latest:")

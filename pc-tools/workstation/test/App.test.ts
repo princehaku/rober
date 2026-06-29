@@ -12946,8 +12946,9 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-wheel-readback-refresh"]').text()).toBe("刷新中");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain(
-      "轮速：正在刷新当前 wheel raw L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。",
+      "轮速：正在刷新当前轮速 L/R（只读），不会发车；返回前不把旧 L/R 当作当前轮速结论。",
     );
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("wheel raw L/R（只读）");
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/feedback-samples?"),
     ).length).toBe(feedbackCallsBefore + 1);
