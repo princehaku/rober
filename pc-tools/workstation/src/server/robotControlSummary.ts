@@ -6841,7 +6841,7 @@ function buildActionStatusCards(
       wysiwyg_status: boundary.free_roam_mapping_start_ready ? "camera_and_radar_ready" : "camera_or_radar_missing",
       requires_safety_confirmation: true,
       can_start_after_safety_confirm: boundary.free_roam_mapping_start_ready,
-      sends_motion_when_clicked: true,
+      sends_motion_when_clicked: boundary.free_roam_mapping_start_ready,
       blocks_free_motion: false,
       blocks_mapping_start: !boundary.free_roam_mapping_start_ready,
     },

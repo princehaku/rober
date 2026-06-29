@@ -4050,6 +4050,8 @@ describe("workstation fail-closed API contracts", () => {
       });
       expect(actionCards.find((card) => card.id === "mapping_start")).toMatchObject({
         status_label: "未就绪",
+        can_start_after_safety_confirm: false,
+        sends_motion_when_clicked: false,
         blocks_free_motion: false,
         blocks_mapping_start: true,
       });
@@ -7225,6 +7227,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收已 ready：画面、雷达、地图记录和地图画面都可用。");
       expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("自由移动运行中；需要收口时点击停止自由移动或红色停止。");
       expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收已 ready；继续低速监看地图、雷达和画面。");
+      expect(summary.action_status_cards?.find((card) => card.id === "mapping_start")).toMatchObject({
+        status_label: "可启动",
+        can_start_after_safety_confirm: true,
+        sends_motion_when_clicked: true,
+        blocks_mapping_start: false,
+      });
       expect(summary.safe_command_boundary.free_roam_autonomy_runtime).toEqual(expect.objectContaining({
         status: "loaded",
         state: "running",

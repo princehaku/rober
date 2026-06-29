@@ -4186,3 +4186,9 @@ camera health 并发读取时旧窗口容易超时，进而让当前 wheel L/R�
 旧来源点不贴图等动作仍集中在 `radar_map_points` 卡片和 `readback_summary.map.radar_overlay_*` 字段里。
 这样用户不会把“地图已所见即所得”和“雷达点未贴当前图”混成同一个问题；该变化只修正只读 summary 文案，
 不启动雷达、不刷新地图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 13:02 CST 起，首屏建图动作卡的结构化运动标记不再过早为 true。`mapping_start` 未就绪时，
+即使它未来会进入建图/运动流程，也会返回 `can_start_after_safety_confirm=false` 和 `sends_motion_when_clicked=false`；
+只有相机首帧、雷达新鲜等建图启动条件满足后，才把它标记为可在安全确认后启动。自由移动和键盘连续手控仍保持
+“勾安全确认即可处理”的独立入口，相机/雷达缺口只影响建图。该变化只修正只读 summary 语义，不启动建图、
+不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

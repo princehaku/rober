@@ -751,3 +751,9 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 新扫描和贴图仍由 `radar_map_points` 卡片承接。底层 `readback_summary.map.radar_overlay_*` 诊断不变，旧雷达点仍不会
 冒充当前地图标记。该变化只修正普通首屏只读文案，不启动雷达、不刷新地图、不执行 Nav2、不调用 manual、keyboard、
 free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 13:02 CST 起，`action_status_cards[].id=mapping_start` 的运动语义按建图启动 ready 状态返回。
+相机首帧或雷达新鲜度缺失时，建图卡片仍显示未就绪，`can_start_after_safety_confirm=false` 且
+`sends_motion_when_clicked=false`；只有画面首帧和雷达新鲜都 ready、建图启动可点时才会把它标成会进入运动/建图流程。
+这不会影响“自由移动”和“键盘手控”卡片，它们仍只依赖现场安全确认和停止兜底。该变化只修正只读 summary
+和测试夹具，不启动建图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

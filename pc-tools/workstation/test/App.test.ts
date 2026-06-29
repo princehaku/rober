@@ -503,7 +503,7 @@ const fixtures: Record<string, unknown> = {
         wysiwyg_status: "camera_or_radar_missing",
         requires_safety_confirmation: true,
         can_start_after_safety_confirm: false,
-        sends_motion_when_clicked: true,
+        sends_motion_when_clicked: false,
         blocks_free_motion: false,
         blocks_mapping_start: true,
       },
