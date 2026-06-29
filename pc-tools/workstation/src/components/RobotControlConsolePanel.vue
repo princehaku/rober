@@ -2010,6 +2010,28 @@ const plainCameraStartButtonLabel = computed(() => {
   }
   return "打开画面";
 });
+const plainCameraPrimaryActionEvidence = computed(() => {
+  // 按钮级证据让现场脚本直接验“打开画面”只接入共享预览，不会误发任何底盘运动。
+  const camera = robotSummary.value?.readback_summary.camera;
+  const sharedPreviewEvidence = plainCameraSharedPreviewDomEvidence.value;
+  const sourceFirstFrameFailed = cameraSourceFirstFrameFailed(camera);
+  const notExclusiveNoFrame = camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+    || camera?.source_usage_status === "not_in_use"
+    || camera?.source_usage_owner_count === "0"
+    || camera?.shared_preview_exclusive_camera_claim === "false";
+  return {
+    actionKind: sourceFirstFrameFailed
+      ? notExclusiveNoFrame ? "retry_shared_preview" : "retry_camera_preview"
+      : "open_shared_preview",
+    targetSource: "shared_camera_preview",
+    sendsMotionWhenClicked: false,
+    sharedPreviewSingleUpstream: sharedPreviewEvidence.singleUpstream,
+    autoJoinsSharedPreview: sharedPreviewEvidence.autoJoinsSharedPreview,
+    currentFrameVisible: sharedPreviewEvidence.currentFrameVisible,
+    fixedSharedPreviewEndpoint: sharedPreviewEvidence.fixedSharedPreviewEndpoint,
+    fixedSharedPreviewStatusEndpoint: sharedPreviewEvidence.fixedSharedPreviewStatusEndpoint,
+  };
+});
 const plainCameraProbeSummary = computed(() => {
   // 首屏只说明样张是否读到；样张成功不等于实时视频窗口已经打开。
   if (cameraFirstFrameProbePending.value) {
@@ -14392,7 +14414,21 @@ onBeforeUnmount(() => {
         >
           <h3>实时画面</h3>
           <div class="panel-action-row">
-            <button ref="plainCameraStartButton" type="button" :disabled="!canStartPreview" data-testid="plain-camera-start" @click="startPreview">{{ plainCameraStartButtonLabel }}</button>
+            <button
+              ref="plainCameraStartButton"
+              type="button"
+              :disabled="!canStartPreview"
+              data-testid="plain-camera-start"
+              :data-primary-action-kind="plainCameraPrimaryActionEvidence.actionKind"
+              :data-target-source="plainCameraPrimaryActionEvidence.targetSource"
+              :data-sends-motion-when-clicked="String(plainCameraPrimaryActionEvidence.sendsMotionWhenClicked)"
+              :data-shared-preview-single-upstream="String(plainCameraPrimaryActionEvidence.sharedPreviewSingleUpstream)"
+              :data-auto-joins-shared-preview="String(plainCameraPrimaryActionEvidence.autoJoinsSharedPreview)"
+              :data-current-frame-visible="String(plainCameraPrimaryActionEvidence.currentFrameVisible)"
+              :data-fixed-shared-preview-endpoint="plainCameraPrimaryActionEvidence.fixedSharedPreviewEndpoint"
+              :data-fixed-shared-preview-status-endpoint="plainCameraPrimaryActionEvidence.fixedSharedPreviewStatusEndpoint"
+              @click="startPreview"
+            >{{ plainCameraStartButtonLabel }}</button>
             <button ref="plainCameraProbeButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainCameraProbe" data-testid="plain-camera-probe" @click="runCameraFirstFrameProbe">
               {{ plainCameraProbeButtonLabel }}
             </button>

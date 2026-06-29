@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 06:33 CST 起，普通首屏实时画面主按钮也暴露按钮级所见即所得合同：`data-primary-action-kind=open_shared_preview/retry_shared_preview/retry_camera_preview`、`data-target-source=shared_camera_preview`、`data-sends-motion-when-clicked=false`、`data-shared-preview-single-upstream`、`data-auto-joins-shared-preview`、`data-current-frame-visible` 和固定 MJPEG/status 入口。这样现场脚本可以直接确认“打开画面/重试共享画面”只接入共享实时预览，不会发送 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`；当前页面是否已经真的显示帧也落在按钮本身。
+
 2026-06-30 06:26 CST 起，普通首屏地图默认进一步面向 PC 大屏：默认缩放从 `150%` 提升到 `200%`，最高缩放扩展到 `400%`，大图高度提升到 `clamp(900px, calc(100vh - 96px), 1500px)`，全屏地图高度提升到 `calc(100vh - 72px)`。地图卡本体同步暴露 `data-ros2-companion-tool=rviz2`、`data-ros2-remote-companion-tool=foxglove` 和 `data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"`：RViz2 是 ROS2 工程调试配套，Foxglove 适合浏览器远程观察，普通用户仍优先用本页大地图。该变化只改 PC Web 只读显示和提示，不启动 RViz2/Foxglove、不启动 ROS2 runtime、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-30 05:54 CST 起，普通首屏地图新增 `观测模式`。点击后会自动进入全屏地图，并收起地图卡下方普通操作行和说明，让地图、路线、小车位置和雷达 overlay 使用更多浏览器高度；退出观测后恢复普通大地图。地图卡同步暴露 `data-observer-mode` 和 `data-ros2-companion-style=rviz2-map-focus`，表示这是 PC 内置的 RViz-like 只读观察模式。ROS2 工程配套仍使用 `ros2 launch ros2_trashbot_bringup rviz.launch.py` 打开 RViz2；普通用户继续留在 PC 简易控制台。该变化只改 Web 显示，不启动 RViz2、不启动 ROS2 runtime、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
