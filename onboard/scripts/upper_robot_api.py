@@ -189,6 +189,7 @@ ROUTE_PATHS = {
     "radar_scan_proof_refresh": "/api/radar/scan-proof/refresh",
     "radar_scan_proof_latest": "/api/radar/scan-proof/latest",
     "radar_raw_packet_proof_latest": "/api/radar/raw-packet-proof/latest",
+    "map_status": "/api/map/status",
     "map_start": "/api/map/start",
     "map_reset": "/api/map/reset",
     "map_save": "/api/map/save",
@@ -6763,6 +6764,7 @@ class UpperRobotApi:
             "artifact": map_artifact_info(self.map_artifact_dir),
             "proof_latest": proof_latest,
             "routes": {
+                "status": ROUTE_PATHS["map_status"],
                 "start": ROUTE_PATHS["map_start"],
                 "reset": ROUTE_PATHS["map_reset"],
                 "save": ROUTE_PATHS["map_save"],
@@ -6789,6 +6791,7 @@ class UpperRobotApi:
             "status": proof_latest.get("status", "not_proven"),
             "software_guard": proof_latest.get("software_guard", True),
             "not_proven": proof_latest.get("not_proven", True),
+            "sends_motion_commands": False,
             "sends_base_motion_commands": False,
             "uses_base_uart": False,
             "sends_commands": False,
@@ -8733,6 +8736,10 @@ def create_app(api: UpperRobotApi) -> Any:
     async def map_list(_: web.Request) -> Any:
         return json_response(api.map_list())
 
+    async def map_status(_: web.Request) -> Any:
+        # 只读地图状态入口，方便现场脚本直接 GET，不触发建图、保存或 ROS 查询。
+        return json_response(api.map_status())
+
     async def map_preview(request: web.Request) -> Any:
         # 地图预览只读本地 YAML/PGM，不触发 SLAM、Nav2、底盘或串口。
         return json_response(api.map_preview(request.query.get("map_name")))
@@ -8866,6 +8873,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["map_reset"], map_reset)
     app.router.add_post(ROUTE_PATHS["map_save"], map_save)
     app.router.add_post(ROUTE_PATHS["map_load"], map_load)
+    app.router.add_get(ROUTE_PATHS["map_status"], map_status)
     app.router.add_get(ROUTE_PATHS["map_list"], map_list)
     app.router.add_get(ROUTE_PATHS["map_preview"], map_preview)
     app.router.add_post(ROUTE_PATHS["map_proof_refresh"], map_proof_refresh)

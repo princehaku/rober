@@ -1293,6 +1293,26 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(proof_latest["latest_map_once_observed"])
         self.assertTrue(proof_latest["latest_map_file_observed"])
         self.assertTrue(proof_latest["latest_map_metadata_observed"])
+        self.assertEqual("/api/map/status", status["routes"]["status"])
+        self.assertFalse(status["sends_commands"])
+        self.assertFalse(status["sends_motion_commands"])
+
+    def test_create_app_exposes_get_map_status_route(self) -> None:
+        """现场脚本要能直接 GET /api/map/status 读取地图事实，不必猜 POST action。"""
+        if importlib.util.find_spec("aiohttp") is None:
+            self.skipTest("aiohttp not installed in lightweight unit-test environment")
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        app = upper_robot_api.create_app(api)
+
+        registered = {(route.method, route.resource.canonical) for route in app.router.routes()}
+
+        self.assertIn(("GET", "/api/map/status"), registered)
+        self.assertNotIn(("POST", "/api/map/status"), registered)
 
     def test_map_proof_latest_fails_closed_on_bad_json(self) -> None:
         """坏 JSON 仍必须 fail closed，不能把地图材料误判成已证明。"""

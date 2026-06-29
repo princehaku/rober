@@ -342,6 +342,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `fresh_map_preview`，界面也不再提示“地图画面未刷新”。这只移除已经被 PC 画面证明满足的缺口；
   `camera_first_frame`、`mapping_active`、`lidar_fresh` 仍按各自事实保留，且不自动启动地图记录、
   free-roam、manual、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 18:47 起，上位机新增只读 `GET /api/map/status`，返回既有 map lifecycle/material
+  摘要，并在 `map_status.routes.status` 中自描述该入口。现场脚本不必再从 `/api/status` 聚合或
+  POST action 猜地图状态；误用 GET 读地图事实也不会得到 405。该入口不启动建图、不保存地图、
+  不刷新 proof、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 15:18 起，O11 Nav2 执行 artifact 的 `proof_status` 也按真实
   `base_command_mode` 标记缺口：ROS 重跑若仍只看到非零命令、但同窗口 `T1001 L/R=0/0`，
   会写成 `nav2_goal_succeeded_with_ros_commands_but_wheel_lr_zero`。这样自动驾驶排障会指向
