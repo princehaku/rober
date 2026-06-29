@@ -70,6 +70,8 @@ DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_go
 DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH = "/root/rober/onboard/runtime/delivery_completion_latest.json"
 DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH = "/root/rober/onboard/runtime/free_roam_autonomy_latest.json"
 FREE_ROAM_PARAM_LOAD_TIMEOUT_S = 10.0
+FREE_ROAM_START_ARTIFACT_WAIT_TIMEOUT_S = 1.8
+FREE_ROAM_START_ARTIFACT_WAIT_INTERVAL_S = 0.2
 DEFAULT_ROS_SETUP_PATH = "/opt/ros/humble/setup.bash"
 DEFAULT_ONBOARD_SETUP_PATH = "/root/rober/onboard/install/setup.bash"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
@@ -2357,6 +2359,21 @@ def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False, ma
         "touched_parameters": touched,
         "blocked_parameters_not_touched": blocked_not_touched,
     }
+
+
+def free_roam_param_sequence_used_ros2_param_load(command_result: dict[str, Any]) -> bool:
+    """只在真实 ros2 param load 成功后等待 artifact；mock 响应不拖慢单元测试。"""
+    if not bool(command_result.get("ok")):
+        return False
+    results = command_result.get("results")
+    if not isinstance(results, list):
+        return False
+    return any(
+        isinstance(item, dict)
+        and item.get("write_strategy") == "ros2_param_load"
+        and bool(item.get("ok"))
+        for item in results
+    )
 
 
 def _extract_flag_value(argv: list[str], flag: str) -> str | None:
@@ -7817,6 +7834,48 @@ class UpperRobotApi:
             },
         }
 
+    def wait_for_free_roam_start_runtime(self, command_result: dict[str, Any]) -> dict[str, Any]:
+        """start 写参后短等一次状态机 tick，避免 PC 立刻读到旧 stopping artifact。"""
+        if not free_roam_param_sequence_used_ros2_param_load(command_result):
+            return {
+                "waited": False,
+                "reason": "not_real_ros2_param_load_result",
+                "ok": False,
+            }
+        deadline = time.monotonic() + FREE_ROAM_START_ARTIFACT_WAIT_TIMEOUT_S
+        attempts = 0
+        last_http_status = 0
+        last_latest: dict[str, Any] = {}
+        while True:
+            attempts += 1
+            http_status, latest = self.free_roam_autonomy_latest()
+            last_http_status = http_status
+            last_latest = latest if isinstance(latest, dict) else {}
+            decision_state = str(last_latest.get("decision_state") or "")
+            cmd_vel_publish_enabled = bool(last_latest.get("cmd_vel_publish_enabled"))
+            # 运行态可能是直行、避障或覆盖换向；这些都说明 stop 请求已被 start 参数清掉。
+            runtime_started = cmd_vel_publish_enabled and decision_state in {"running", "avoiding", "turning_for_coverage"}
+            if runtime_started:
+                return {
+                    "waited": True,
+                    "ok": True,
+                    "attempts": attempts,
+                    "http_status": http_status,
+                    "decision_state": decision_state,
+                    "cmd_vel_publish_enabled": cmd_vel_publish_enabled,
+                }
+            if time.monotonic() >= deadline:
+                return {
+                    "waited": True,
+                    "ok": False,
+                    "attempts": attempts,
+                    "http_status": last_http_status,
+                    "decision_state": decision_state or "not_loaded",
+                    "cmd_vel_publish_enabled": cmd_vel_publish_enabled,
+                    "failure_reason": "free_roam_start_runtime_not_observed_before_timeout",
+                }
+            time.sleep(FREE_ROAM_START_ARTIFACT_WAIT_INTERVAL_S)
+
     def free_roam_autonomy_control(self, action: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """固定 start/stop 入口只设置 free_roam_autonomy_node 参数，不直接发布速度。"""
         request = body if isinstance(body, dict) else {}
@@ -7911,6 +7970,11 @@ class UpperRobotApi:
             command_result = run_free_roam_param_sequence(action, enable_motion=True, mapping_active=mapping_active_applied)
         else:
             command_result = run_free_roam_param_sequence(action, enable_motion=False)
+        start_runtime_wait = self.wait_for_free_roam_start_runtime(command_result) if action == "start" else {
+            "waited": False,
+            "reason": "stop_does_not_wait_for_motion_runtime",
+            "ok": False,
+        }
         http_status, latest = self.free_roam_autonomy_latest()
         motion_unlock_requested = bool(command_result.get("motion_unlock_requested"))
         return software_guard_payload(
@@ -7938,11 +8002,17 @@ class UpperRobotApi:
                 else [],
                 "mapping_readiness_ready": mapping_ready,
                 "mapping_blocked_reasons": mapping_blocked_reasons,
+                "start_runtime_wait": start_runtime_wait,
                 "latest_http_status": http_status,
                 "latest_decision_state": (
                     latest.get("decision_state")
                     if isinstance(latest, dict)
                     else "not_loaded"
+                ),
+                "latest_cmd_vel_publish_enabled": (
+                    bool(latest.get("cmd_vel_publish_enabled"))
+                    if isinstance(latest, dict)
+                    else False
                 ),
                 "sets_state_machine_parameters": True,
                 "direct_cmd_vel_publish": False,

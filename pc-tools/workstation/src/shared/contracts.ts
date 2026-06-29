@@ -3247,6 +3247,17 @@ export interface RobotControlFreeRoamAutonomyResponse extends ProofFlags {
     stdout_preview?: string;
   };
   latest_decision_state: string;
+  latest_cmd_vel_publish_enabled: boolean;
+  start_runtime_wait: {
+    waited: boolean;
+    ok: boolean;
+    attempts?: number;
+    http_status?: number | null;
+    decision_state?: string;
+    cmd_vel_publish_enabled?: boolean;
+    failure_reason?: string;
+    reason?: string;
+  };
   sets_state_machine_parameters: boolean;
   mapping_active_requested?: boolean;
   mapping_active_applied?: boolean;

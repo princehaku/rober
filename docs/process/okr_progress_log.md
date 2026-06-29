@@ -8,6 +8,14 @@
 
 ## 2026-06-29 系列
 
+### 2026-06-29 22-45｜free roam start runtime wait｜自由移动启动闭环
+
+本轮 `sprints/2026.06.29_22-45_free_roam_start_runtime_wait/` 推进“车可以自由自助移动，且移动不依赖雷达/摄像头”的启动闭环。上车 `POST /api/free-roam/autonomy/start` 在真实 `ros2 param load` 成功后，会短等 `free_roam_autonomy_latest` artifact 刷新到 `running/avoiding/turning_for_coverage` 且 `cmd_vel_publish_enabled=true`，并把 `start_runtime_wait` 返回给 PC。PC 代理和普通首屏状态机写入提示同步显示“运行态已看到”或“运行态还未回读”，避免现场点击开始后立刻读到旧 `stopping` artifact，被误判为无法移动。
+
+真实上位机已同步并重启 8787；只读验证显示当前仍为 `decision_state=stopping`、`cmd_vel_publish_enabled=false`、`free_move_start_ready=true`、`motion_without_radar_allowed=true`、`robot_control_executed=false`。这说明本轮没有发车，也没有清掉现场 stop；新逻辑会在下一次现场勾选安全确认并显式点击自由移动 start 后生效。相机和雷达仍只影响建图验收，不作为自由移动启动硬门禁。
+
+验证范围：`python3 -m unittest onboard.scripts.test_upper_robot_api_free_roam` 4 tests OK；`python3 -m unittest onboard.tests.test_upper_robot_api` 88 tests OK / 1 skipped；camera 回归 45 tests OK；PC `npm run build` OK；PC `npm test -- --run` 386 tests OK；真实 8787/7001 只读验证 OK。本轮没有发送 manual、keyboard、free-roam start、Nav2 goal、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-06-29 22-20｜pc camera mjpeg backend attempts｜共享预览非独占复核
 
 本轮 `sprints/2026.06.29_22-20_pc_camera_mjpeg_backend_attempts/` 继续收窄 PC 普通首屏“实时画面看不到”的根因。上车 8088 相机 smoke 服务在 MJPEG 首帧路径里新增 OpenCV 打开方式矩阵：`/dev/videoN` 默认 backend、`/dev/videoN` + `CAP_V4L2`、数字索引 `N`，并把 `open_source/open_backend` 写入 health 的 `last_first_frame_format_attempts`。PC 7001 `/api/robot-control/camera/mjpeg/status` 同步新增 `last_first_frame_format_attempts_summary`，不用重新开流也能看到本轮到底试过哪些打开方式。

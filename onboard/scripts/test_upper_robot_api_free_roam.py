@@ -168,6 +168,90 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         finally:
             module.run_free_roam_param_sequence = original_param_sequence
 
+    def test_start_waits_for_runtime_artifact_after_real_param_load(self) -> None:
+        """真实 ros2 param load 成功后，start 响应要短等状态机进入运行态，避免读到旧 stopping。"""
+        module = load_upper_robot_api_module()
+        calls: list[dict[str, object]] = []
+        latest_calls: list[str] = []
+
+        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True):
+            calls.append({
+                "action": action,
+                "enable_motion": enable_motion,
+                "mapping_active": mapping_active,
+            })
+            return {
+                "mode": "free_roam_param_sequence",
+                "action": action,
+                "motion_unlock_requested": bool(action == "start" and enable_motion),
+                "executed": True,
+                "ok": True,
+                "results": [
+                    {
+                        "write_strategy": "ros2_param_load",
+                        "executed": True,
+                        "ok": True,
+                    }
+                ],
+                "touched_parameters": [
+                    "operator_confirmed",
+                    "mapping_active",
+                    "stop_available",
+                    "external_stop_requested",
+                    "motion_hil_unlocked",
+                    "enable_cmd_vel_publish",
+                ],
+                "blocked_parameters_not_touched": ["cmd_vel_topic"],
+            }
+
+        original_param_sequence = module.run_free_roam_param_sequence
+        module.run_free_roam_param_sequence = fake_param_sequence
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                api = module.UpperRobotApi(
+                    camera_base_url="http://127.0.0.1:8088",
+                    base_port="/dev/null",
+                    base_baudrate=115200,
+                    max_speed=0.12,
+                    free_roam_autonomy_artifact_path=str(Path(td) / "free_roam.json"),
+                )
+                api.free_roam_motion_readiness = lambda: {
+                    "ready": True,
+                    "missing": [],
+                    "free_move_ready": True,
+                    "mapping_readiness": {"ready": False, "missing": ["camera_first_frame_not_observed"]},
+                }
+
+                def fake_latest():
+                    latest_calls.append("latest")
+                    return 200, {
+                        "decision_state": "running",
+                        "cmd_vel_publish_enabled": True,
+                    }
+
+                api.free_roam_autonomy_latest = fake_latest
+
+                payload = api.free_roam_autonomy_control(
+                    "start",
+                    {"confirm_operator_safety": True, "confirm_mapping_active": False},
+                )
+
+            self.assertEqual(calls, [{
+                "action": "start",
+                "enable_motion": True,
+                "mapping_active": False,
+            }])
+            self.assertGreaterEqual(len(latest_calls), 2)
+            self.assertEqual(payload["status"], "requested")
+            self.assertTrue(payload["start_runtime_wait"]["waited"])
+            self.assertTrue(payload["start_runtime_wait"]["ok"])
+            self.assertEqual(payload["start_runtime_wait"]["decision_state"], "running")
+            self.assertTrue(payload["latest_cmd_vel_publish_enabled"])
+            self.assertEqual(payload["latest_decision_state"], "running")
+            self.assertTrue(payload["publishes_cmd_vel"])
+        finally:
+            module.run_free_roam_param_sequence = original_param_sequence
+
     def test_runtime_lidar_snapshot_allows_mapping_when_scan_proof_is_stale(self) -> None:
         """雷达 proof 旧时，free-roam runtime 的实时 /scan 快照仍可作为建图 readiness。"""
         module = load_upper_robot_api_module()

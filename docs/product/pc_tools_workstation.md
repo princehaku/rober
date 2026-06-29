@@ -3919,6 +3919,12 @@ UVC 源头没有吐真实帧。该状态读取不创建新的独占 reader，不
 `command_mode=ros` 和 stop 兜底口径。恢复试动确认按钮仍可用于补 operator report 材料，但它是可选补材料动作，不再改变试动按钮是否可点。
 该变化不直连 `/cmd_vel`，不自动执行 Nav2，不确认 delivery success，也不把相机/雷达缺口误解释成底盘不能移动。
 
+2026-06-29 22:45 起，自由移动 start 链路在上车端真实 `ros2 param load` 成功后，会短等
+`free_roam_autonomy_latest` artifact 进入运行态，再把 `start_runtime_wait` 返回给 PC。PC 普通首屏的状态机写入提示会显示
+“运行态已看到：running/avoiding/turning_for_coverage”或“运行态还未回读”，避免点击开始后马上读到旧
+`stopping` artifact 被误解成没启动。这个等待只发生在用户已勾选现场安全确认并调用固定
+`/api/free-roam/autonomy/start` 后；只读 summary/latest 不会触发运动。相机和雷达仍只影响建图验收，不作为自由移动启动硬门禁。
+
 2026-06-28 11:55 起，Robot Control summary 的 Nav2 路线读数会同时消费直接
 `/api/nav2/proof/latest` 和 `/api/nav2/status.proof_latest`。真实上位机在服务刚恢复或 proof latest
 被较新 blocked artifact 覆盖时，仍可能把当前可用路线点、`latest_path_point_count`、planner/controller active

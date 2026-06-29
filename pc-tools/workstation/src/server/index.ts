@@ -1601,6 +1601,12 @@ function freeRoamAutonomyProxyFailure(
     request_body: requestBody,
     command_result: { mode: "not_sent", executed: false, ok: false },
     latest_decision_state: "not_loaded",
+    latest_cmd_vel_publish_enabled: false,
+    start_runtime_wait: {
+      waited: false,
+      ok: false,
+      reason: "not_sent",
+    },
     sets_state_machine_parameters: false,
     direct_cmd_vel_publish: false,
     motion_unlock_requested: false,
@@ -1647,6 +1653,7 @@ function freeRoamAutonomyProxyResponse(
       : [];
   const sensorReadiness = asRecord(remote.payload.sensor_readiness);
   const mappingReadiness = asRecord(sensorReadiness?.mapping_readiness);
+  const startRuntimeWait = asRecord(remote.payload.start_runtime_wait);
   const motionUnlockRequested = remote.payload.motion_unlock_requested === true;
   const freeMoveStartReady = remote.payload.free_move_start_ready === true
     || sensorReadiness?.free_move_ready === true
@@ -1689,6 +1696,17 @@ function freeRoamAutonomyProxyResponse(
       stdout_preview: shortValue(firstCommandResult?.stdout_preview, ""),
     },
     latest_decision_state: shortValue(remote.payload.latest_decision_state, "not_loaded"),
+    latest_cmd_vel_publish_enabled: remote.payload.latest_cmd_vel_publish_enabled === true,
+    start_runtime_wait: {
+      waited: startRuntimeWait?.waited === true,
+      ok: startRuntimeWait?.ok === true,
+      attempts: typeof startRuntimeWait?.attempts === "number" ? startRuntimeWait.attempts : undefined,
+      http_status: typeof startRuntimeWait?.http_status === "number" ? startRuntimeWait.http_status : null,
+      decision_state: shortValue(startRuntimeWait?.decision_state, ""),
+      cmd_vel_publish_enabled: startRuntimeWait?.cmd_vel_publish_enabled === true,
+      failure_reason: shortValue(startRuntimeWait?.failure_reason, ""),
+      reason: shortValue(startRuntimeWait?.reason, ""),
+    },
     sets_state_machine_parameters: remote.payload.sets_state_machine_parameters === true,
     mapping_active_requested: remote.payload.mapping_active_requested === true,
     mapping_active_applied: remote.payload.mapping_active_applied === true,

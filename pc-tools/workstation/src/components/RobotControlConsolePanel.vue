@@ -2492,7 +2492,13 @@ const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
     ? result.mapping_active_applied === true ? "，本轮可按建图记录" : `，本轮只按自由移动记录${mappingMissingText}`
     : "，本轮只按自由移动记录";
   const motionText = result.motion_unlock_requested ? "，运动双锁已请求" : "";
-  return `状态机写入：启动参数已${strategy} ${countText}${motionText}${mappingText}${topicText}。`;
+  const wait = result.start_runtime_wait;
+  const runtimeText = wait?.waited
+    ? wait.ok
+      ? `，运行态已看到：${wait.decision_state || result.latest_decision_state || "running"}`
+      : `，运行态还未回读：${wait.failure_reason || wait.decision_state || "等待状态机 tick"}`
+    : "";
+  return `状态机写入：启动参数已${strategy} ${countText}${motionText}${mappingText}${runtimeText}${topicText}。`;
 });
 
 function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): string {
@@ -12095,6 +12101,12 @@ function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string):
     request_body: action === "start" ? { confirm_operator_safety: true, confirm_mapping_active: plainFreeRoamMappingQualityReady.value } : {},
     command_result: { mode: "not_sent", executed: false, ok: false },
     latest_decision_state: "not_loaded",
+    latest_cmd_vel_publish_enabled: false,
+    start_runtime_wait: {
+      waited: false,
+      ok: false,
+      reason,
+    },
     sets_state_machine_parameters: false,
     direct_cmd_vel_publish: false,
     does_not_set_motion_unlock: true,
