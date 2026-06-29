@@ -4198,3 +4198,9 @@ camera health 并发读取时旧窗口容易超时，进而让当前 wheel L/R�
 雷达仍未 ready 时，operator 仍能一眼看到完整 Nav2 重跑、键盘连续手控、自由移动这些可在安全确认后推进的入口。
 该变化只修正只读 summary 文案，不自动勾选安全确认、不执行 Nav2、不启用 keyboard/free-roam、不启动建图、
 delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 13:16 CST 起，目标总览的 `mapping_start` 也复用建图启动 ready gate。建图启动未 ready 时，
+`goal_checklist[].id=mapping_start` 和 blocked action item 仍保留为阻塞项，但 `requires_safety_confirmation=false`
+且 `requires_motion=false`；只有相机首帧和雷达新鲜都满足后才切到 true。对应的 `safety_confirm_needed_count`
+和 `motion_needed_count` 不再把“传感器未 ready 的建图”算成可发车动作，避免普通用户把建图缺传感器理解成还要先勾安全确认。
+该变化只修正只读 summary 结构，不启动建图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

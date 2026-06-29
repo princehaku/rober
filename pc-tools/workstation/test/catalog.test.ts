@@ -4050,6 +4050,7 @@ describe("workstation fail-closed API contracts", () => {
       });
       expect(actionCards.find((card) => card.id === "mapping_start")).toMatchObject({
         status_label: "未就绪",
+        requires_safety_confirmation: false,
         can_start_after_safety_confirm: false,
         sends_motion_when_clicked: false,
         blocks_free_motion: false,
@@ -4087,12 +4088,21 @@ describe("workstation fail-closed API contracts", () => {
         requires_motion: true,
         blocks_goal_completion: true,
       });
+      expect(goalChecklist.find((item) => item.id === "mapping_start")).toMatchObject({
+        status: "not_ready",
+        status_label: "未就绪",
+        requires_safety_confirmation: false,
+        requires_motion: false,
+        blocks_goal_completion: true,
+      });
       expect(summary.goal_checklist_summary).toMatchObject({
         status: "in_progress",
         status_label: "进行中",
         total_count: 7,
         done_count: 1,
         remaining_count: 6,
+        safety_confirm_needed_count: 3,
+        motion_needed_count: 3,
         first_incomplete_item_id: "camera_wysiwyg",
         first_incomplete_source_card_id: "camera_preview",
         first_motion_item_id: "free_move",
@@ -4139,6 +4149,11 @@ describe("workstation fail-closed API contracts", () => {
         title: "雷达点贴到地图",
         status_label: "待处理",
         source_card_id: "radar_map_points",
+        requires_safety_confirmation: false,
+        requires_motion: false,
+        blocks_goal_completion: true,
+      });
+      expect(summary.goal_checklist_summary?.blocked_action_items.find((item) => item.id === "mapping_start")).toMatchObject({
         requires_safety_confirmation: false,
         requires_motion: false,
         blocks_goal_completion: true,
@@ -7231,6 +7246,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收已 ready；继续低速监看地图、雷达和画面。");
       expect(summary.action_status_cards?.find((card) => card.id === "mapping_start")).toMatchObject({
         status_label: "可启动",
+        requires_safety_confirmation: true,
         can_start_after_safety_confirm: true,
         sends_motion_when_clicked: true,
         blocks_mapping_start: false,
