@@ -4706,7 +4706,11 @@ const plainMapVisualSummary = computed(() => {
       : "stopped";
   const radarScanOverlay = latestRadarScanOverlay(robotPose, radarState);
   const radarLocalScanOverlay = latestRadarLocalScanOverlay(robotPose, radarState);
+  const radarReadback = effectivePlainMapRadarReadback();
   const radarLocalPointCount = radarLocalScanOverlay.dots.length;
+  const radarMapPointCount = radarScanOverlay.dots.length;
+  const radarOverlayStatus = robotSummary.value?.readback_summary.map.radar_overlay_status || "not_loaded";
+  const radarSourcePointCount = radarReadback.sourcePointCount ?? 0;
   const radarCountOnlyMarkerLabel = radarPreviewCountOnlyMarkerLabel(radarState);
   const radarObstacleDistanceLabel = latestRadarObstacleDistanceLabel();
   const radarCountOnlyMarkerWithObstacleLabel = radarCountOnlyMarkerLabel && radarObstacleDistanceLabel
@@ -4776,6 +4780,7 @@ const plainMapVisualSummary = computed(() => {
       ? radarLocalPointCount > 0 ? `${radarState}，局部点 ${radarLocalPointCount} 个` : radarCountOnlyMarkerWithObstacleLabel ? `${radarState}，${radarCountOnlyMarkerWithObstacleLabel}` : showRadarObstacleDistance ? (radarStructuredRuntimeDistanceVisible ? `雷达距离：${radarObstacleDistanceLabel}（非地图点）` : `${radarState}，${radarObstacleDistanceLabel}`) : radarNoVisiblePointLabel ? `${radarState}，${radarNoVisiblePointLabel}` : `${radarState}，位置未读到`
       : hasRecentLocalScan ? `${radarState}，显示最近点` : radarStoppedWithNotCurrentPoints ? `${radarState}，旧点未贴图` : radarStoppedWithZeroPoints ? `${radarState}，地图0点` : radarState;
   const showRadarSweep = radarState === "雷达已运行" || radarState === "雷达待刷新" || radarState === "雷达无新点" || radarState === "雷达启动中" || radarState === "刷新中";
+  const radarMapPointsVisible = showRadarSweep && radarMapPointCount > 0;
   const radarSweepAria = poseObserved
     ? radarStartAwaitingRefresh
       ? "雷达已启动扫描范围，跟随机器人位置，返回前不把旧点当作新点"
@@ -4855,6 +4860,16 @@ const plainMapVisualSummary = computed(() => {
     radarOverlayMode,
     radarOverlayAria,
     radarOverlayStyle: poseObserved ? (robotPose?.style ?? {}) : {},
+    radarMapPointsVisible,
+    radarMapPointCount,
+    radarMapSourcePointCount: radarSourcePointCount,
+    radarMapFrameId: radarMapPointsVisible && radarReadback.frameId ? radarReadback.frameId : "not_loaded",
+    radarMapSource: radarReadback.source,
+    radarMapOverlayStatus: radarOverlayStatus,
+    radarMapLocalPointCount: radarLocalPointCount,
+    radarMapNotCurrentSourcePointCount: radarNotCurrentCount,
+    radarMapCountOnlyPointCount: radarPreviewReadbackPointCount(),
+    fixedRadarMapPreviewEndpoint: "/api/robot-control/map/preview",
     showRadarSweep,
     radarSweepAria,
     radarScanDots: radarScanOverlay.dots,
@@ -14131,7 +14146,27 @@ onBeforeUnmount(() => {
           <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
         </article>
 
-        <article ref="plainMapPanel" class="snapshot-panel plain-map-panel" tabindex="-1" data-testid="plain-map-panel" data-wysiwyg-surface="primary-map" data-default-size="large" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize" :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'">
+        <article
+          ref="plainMapPanel"
+          class="snapshot-panel plain-map-panel"
+          tabindex="-1"
+          data-testid="plain-map-panel"
+          data-wysiwyg-surface="primary-map"
+          data-default-size="large"
+          :data-state="plainMapVisualSummary.state"
+          :data-size="plainMapViewSize"
+          :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'"
+          :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
+          :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
+          :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
+          :data-radar-map-frame-id="plainMapVisualSummary.radarMapFrameId"
+          :data-radar-map-source="plainMapVisualSummary.radarMapSource"
+          :data-radar-map-overlay-status="plainMapVisualSummary.radarMapOverlayStatus"
+          :data-radar-local-point-count="String(plainMapVisualSummary.radarMapLocalPointCount)"
+          :data-radar-not-current-source-point-count="String(plainMapVisualSummary.radarMapNotCurrentSourcePointCount)"
+          :data-radar-count-only-point-count="String(plainMapVisualSummary.radarMapCountOnlyPointCount)"
+          :data-fixed-radar-map-preview-endpoint="plainMapVisualSummary.fixedRadarMapPreviewEndpoint"
+        >
           <div class="plain-map-heading">
             <h3>地图</h3>
             <div class="plain-map-heading-actions">
@@ -14179,10 +14214,32 @@ onBeforeUnmount(() => {
                 <span v-if="plainMapVisualSummary.showFreeRoamActionMarker" class="plain-map-free-roam-action-marker" data-testid="plain-map-free-roam-action-marker" :data-state="plainMapVisualSummary.freeRoamActionMarkerState" :style="plainMapVisualSummary.freeRoamActionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamActionMarkerAria">{{ plainMapVisualSummary.freeRoamActionMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamDirectionMarker" class="plain-map-free-roam-direction-marker" data-testid="plain-map-free-roam-direction-marker" :data-state="plainMapVisualSummary.freeRoamDirectionMarkerState" :data-wheel-state="plainMapVisualSummary.freeRoamDirectionMarkerWheelState" :style="plainMapVisualSummary.freeRoamDirectionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamDirectionMarkerAria">{{ plainMapVisualSummary.freeRoamDirectionMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
-                <svg v-if="plainMapVisualSummary.showRadarScanPoints" class="plain-map-radar-scan-points" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-scan-points" :aria-label="plainMapVisualSummary.radarScanAria">
+                <svg
+                  v-if="plainMapVisualSummary.showRadarScanPoints"
+                  class="plain-map-radar-scan-points"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  data-testid="plain-map-radar-scan-points"
+                  :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
+                  :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
+                  :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
+                  :data-radar-map-frame-id="plainMapVisualSummary.radarMapFrameId"
+                  :data-radar-map-source="plainMapVisualSummary.radarMapSource"
+                  :aria-label="plainMapVisualSummary.radarScanAria"
+                >
                   <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.15" />
                 </svg>
-                <svg v-if="plainMapVisualSummary.showRadarLocalScan" class="plain-map-radar-local-scan" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-radar-local-scan" :data-state="plainMapVisualSummary.radarLocalScanState" :aria-label="plainMapVisualSummary.radarLocalScanAria">
+                <svg
+                  v-if="plainMapVisualSummary.showRadarLocalScan"
+                  class="plain-map-radar-local-scan"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  data-testid="plain-map-radar-local-scan"
+                  :data-state="plainMapVisualSummary.radarLocalScanState"
+                  :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
+                  :data-radar-local-point-count="String(plainMapVisualSummary.radarMapLocalPointCount)"
+                  :aria-label="plainMapVisualSummary.radarLocalScanAria"
+                >
                   <line x1="50" y1="44" x2="50" y2="56" />
                   <line x1="44" y1="50" x2="56" y2="50" />
                   <circle v-for="point in plainMapVisualSummary.radarLocalScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.6" />
@@ -14190,7 +14247,20 @@ onBeforeUnmount(() => {
                 <span v-if="plainMapVisualSummary.showRadarPulse" class="plain-map-radar-pulse" data-testid="plain-map-radar-pulse" :style="plainMapVisualSummary.radarOverlayStyle" aria-hidden="true" />
                 <span v-if="plainMapVisualSummary.showRobotPose" class="plain-map-robot-marker" data-testid="plain-map-robot-marker" :style="plainMapVisualSummary.robotPoseStyle" :aria-label="plainMapVisualSummary.robotPoseAria" />
                 <span v-else class="plain-map-unknown-pose" data-testid="plain-map-pose-missing" :data-state="plainMapVisualSummary.poseMissingState" :aria-label="plainMapVisualSummary.poseMissingAria">{{ plainMapVisualSummary.poseLabel }}</span>
-                <span class="plain-map-radar-marker" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-marker" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarOverlayAria">{{ plainMapVisualSummary.radarOverlayLabel }}</span>
+                <span
+                  class="plain-map-radar-marker"
+                  :class="`mode-${plainMapVisualSummary.radarOverlayMode}`"
+                  data-testid="plain-map-radar-marker"
+                  :data-state="plainMapVisualSummary.radarLabel"
+                  :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
+                  :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
+                  :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
+                  :data-radar-map-frame-id="plainMapVisualSummary.radarMapFrameId"
+                  :data-radar-map-overlay-status="plainMapVisualSummary.radarMapOverlayStatus"
+                  :data-radar-not-current-source-point-count="String(plainMapVisualSummary.radarMapNotCurrentSourcePointCount)"
+                  :style="plainMapVisualSummary.radarOverlayStyle"
+                  :aria-label="plainMapVisualSummary.radarOverlayAria"
+                >{{ plainMapVisualSummary.radarOverlayLabel }}</span>
               </div>
             </div>
             <div class="plain-map-caption">
