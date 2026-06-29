@@ -4836,6 +4836,8 @@ describe("App", () => {
     expect(keyboardActionCard.attributes("data-manual-command-mode")).toBe("ros");
     expect(keyboardActionCard.attributes("data-stop-triggers")).toContain("window_blur");
     expect(keyboardActionCard.attributes("data-wheel-feedback-same-hold-window")).toBe("true");
+    expect(keyboardActionCard.attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(keyboardActionCard.attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：安全确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选现场安全确认后点击启用键盘");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("已完成。");

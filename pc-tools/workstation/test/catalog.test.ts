@@ -4106,6 +4106,8 @@ describe("workstation fail-closed API contracts", () => {
           pulse_duration_ms: 240,
           manual_command_mode: "ros",
           wheel_feedback_required_in_same_hold_window: true,
+          fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",
+          fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop",
         },
       });
       expect(actionCards.find((card) => card.id === "keyboard_control")?.evidence?.stop_triggers).toContain("window_blur");

@@ -2438,6 +2438,8 @@ export interface RobotControlActionStatusCard {
     manual_command_mode?: string;
     stop_triggers?: string[];
     wheel_feedback_required_in_same_hold_window?: boolean;
+    fixed_keyboard_manual_endpoint?: string;
+    fixed_keyboard_stop_endpoint?: string;
     route_ready_on_map?: boolean;
     minimal_precheck_safety_only?: boolean;
     fixed_execute_proxy_endpoint?: string;

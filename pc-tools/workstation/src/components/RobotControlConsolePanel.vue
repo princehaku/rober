@@ -3222,6 +3222,8 @@ function actionCardWithDerivedEvidence(
       manual_command_mode: card.evidence?.manual_command_mode ?? boundary?.keyboard_manual_command_mode ?? "ros",
       stop_triggers: card.evidence?.stop_triggers ?? boundary?.keyboard_stop_triggers ?? ["key_released", "window_blur", "page_hidden"],
       wheel_feedback_required_in_same_hold_window: card.evidence?.wheel_feedback_required_in_same_hold_window ?? true,
+      fixed_keyboard_manual_endpoint: card.evidence?.fixed_keyboard_manual_endpoint ?? boundary?.keyboard_manual_proxy_endpoint ?? "/api/robot-control/base/manual",
+      fixed_keyboard_stop_endpoint: card.evidence?.fixed_keyboard_stop_endpoint ?? boundary?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
     },
   };
 }
@@ -13575,6 +13577,8 @@ onBeforeUnmount(() => {
           :data-manual-command-mode="card.evidence?.manual_command_mode"
           :data-stop-triggers="card.evidence?.stop_triggers?.join(',')"
           :data-wheel-feedback-same-hold-window="card.evidence?.wheel_feedback_required_in_same_hold_window === undefined ? undefined : String(card.evidence.wheel_feedback_required_in_same_hold_window)"
+          :data-fixed-keyboard-manual-endpoint="card.evidence?.fixed_keyboard_manual_endpoint"
+          :data-fixed-keyboard-stop-endpoint="card.evidence?.fixed_keyboard_stop_endpoint"
           :data-route-ready-on-map="card.evidence?.route_ready_on_map === undefined ? undefined : String(card.evidence.route_ready_on_map)"
           :data-minimal-precheck-safety-only="card.evidence?.minimal_precheck_safety_only === undefined ? undefined : String(card.evidence.minimal_precheck_safety_only)"
           :data-fixed-execute-proxy-endpoint="card.evidence?.fixed_execute_proxy_endpoint"

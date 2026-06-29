@@ -7429,6 +7429,8 @@ function buildActionStatusCards(
         manual_command_mode: readback.keyboard.manual_command_mode || "ros",
         stop_triggers: boundary.keyboard_stop_triggers,
         wheel_feedback_required_in_same_hold_window: true,
+        fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",
+        fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop",
       },
     },
     {
