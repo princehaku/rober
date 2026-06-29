@@ -49,6 +49,7 @@ pc-tools/workstation/
 - `src/client/workstationApi.ts` 集中封装 `/api/*` 路径、fetch 和 route debug query 参数拼接。
 - `src/components/` 只做展示与本地交互，不直接拼 API URL，不发明机器人状态。`RobotControlConsolePanel.vue` 通过 client 层调用 Node `GET /api/robot-control/summary` 和 O6 consumer detail adapter；Vue 不直接跨域访问上位机 Robot API。它的默认首屏必须保持 `Rober 小车控制台` + `.simple-user-console` 五卡片的普通用户视图，短状态、少量按钮和可停止入口留在首屏，`task_id`、`O6`、`O7`、`HIL`、`proof`、`/cmd_vel`、`/api/base/manual`、`field manifest` 等工程字段都必须折叠到默认关闭的 `高级诊断`。`O7FixturePreviewPanel.vue` 通过 client 层调用 fixture preview、probe、archive fixture 和 O6 consumer read adapter；route replay 主路径消费 consumer detail，旧 archive fixture player 只作为次路径 / debug fallback；页面不自动读取本地路径。
 - 2026-06-29 13:38 CST 起，普通首屏、`current_fact_plain`、`action_status_cards[]`、`goal_checklist_summary`、`/api/robot-control/radar/status` 和 `/api/robot-control/free-roam/autonomy/latest` 的用户可见状态句统一用“就绪/未就绪”表达 readiness，不再把 `ready` 混进普通中文文案。接口字段名和状态枚举保持旧合同，便于脚本兼容；该变化只影响只读文案和测试断言，不自动执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 13:48 CST 起，上位机 `GET /api/status` 采用分区并发读取和每区软超时。相机、雷达、地图、Nav2、自由移动、电梯或底盘任一区块卡住时，聚合响应仍返回，慢区块以 `status_section_unavailable` 和 `failure_reason=status_section_timeout_*` 标记。PC 工作站继续优先消费独立只读端点，但 `/api/status` 不再因单个 ROS2 CLI/status 读卡住而拖死整车摘要；该变化不发送任何运动命令。
 
 后端分层约束：
 - `index.ts` 只挂载本地 PC API 和构建后的静态 UI，不挂载 ROS2、串口、控制或云端生产客户端。

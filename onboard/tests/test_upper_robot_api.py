@@ -14,6 +14,7 @@ import importlib.util
 import asyncio
 import json
 import shlex
+import time
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,6 +32,43 @@ SPEC.loader.exec_module(upper_robot_api)
 
 class UpperRobotApiFeedbackAckTests(unittest.TestCase):
     """锁定 `/api/base/status.feedback_ack` 的新鲜证据和安全字段。"""
+
+    def test_unified_status_returns_partial_payload_when_nav2_section_times_out(self) -> None:
+        """单个 ROS2/status 区块卡住时，聚合 status 仍要返回给 PC 首屏。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        async def fake_camera_health():
+            return 200, {"status": "source_first_frame_failed", "video_source": "/dev/video1"}
+
+        def slow_nav2_status():
+            time.sleep(0.08)
+            return {"status": "late_nav2_status"}
+
+        with mock.patch.object(upper_robot_api, "STATUS_SECTION_TIMEOUT_S", 0.01):
+            with mock.patch.object(api, "camera_health", side_effect=fake_camera_health):
+                with mock.patch.object(api, "radar_status", return_value={"status": "radar_loaded"}):
+                    with mock.patch.object(api, "map_status", return_value={"status": "map_loaded"}):
+                        with mock.patch.object(api, "nav2_status", side_effect=slow_nav2_status):
+                            with mock.patch.object(api, "free_roam_autonomy_status", return_value={"status": "free_roam_loaded"}):
+                                with mock.patch.object(api, "elevator_status", return_value={"status": "elevator_loaded"}):
+                                    with mock.patch.object(api, "base_status", return_value={"status": "base_loaded"}):
+                                        payload = asyncio.run(api.unified_status())
+
+        self.assertEqual("source_first_frame_failed", payload["camera"]["status"])
+        self.assertEqual("radar_loaded", payload["radar"]["status"])
+        self.assertEqual("map_loaded", payload["map"]["status"])
+        self.assertEqual("base_loaded", payload["base"]["status"])
+        self.assertEqual("status_section_unavailable", payload["nav2"]["status"])
+        self.assertEqual("nav2", payload["nav2"]["section"])
+        self.assertEqual("status_section_timeout_0.01s", payload["nav2"]["failure_reason"])
+        self.assertFalse(payload["nav2"]["sends_motion_commands"])
+        self.assertFalse(payload["nav2"]["robot_control_executed"])
+        self.assertFalse(payload["nav2"]["safe_to_control"])
 
     def test_camera_health_flattens_not_exclusive_source_diagnosis(self) -> None:
         """8787 camera health 要直接暴露不是独占，避免 curl/PC 入口误判成浏览器占用。"""

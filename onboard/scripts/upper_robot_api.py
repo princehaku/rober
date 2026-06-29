@@ -38,6 +38,7 @@ DEFAULT_NAV2_BASE_COMMAND_MODE = "ros"
 DEFAULT_MANUAL_PWM_MIN_ABS = 164
 DEFAULT_MANUAL_PWM_MAX_ABS = 164
 DEFAULT_PULSE_MS = 260
+STATUS_SECTION_TIMEOUT_S = 5.0
 MAX_PULSE_MS = 800
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
 ALLOWED_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
@@ -2508,6 +2509,56 @@ def parse_nav2_lifecycle_status_result(command_result: dict[str, Any]) -> dict[s
         "safe_to_control": False,
         "delivery_success": False,
     }
+
+
+def status_section_unavailable_payload(section: str, reason: str, error: Any = None) -> dict[str, Any]:
+    """聚合 status 的单区块失败必须结构化返回，避免一个慢端点拖死 PC 首屏。"""
+    payload: dict[str, Any] = {
+        "schema": f"{SCHEMA}.{section}_status_unavailable",
+        "generated_at_ms": now_ms(),
+        "status": "status_section_unavailable",
+        "section": section,
+        "failure_reason": reason,
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "robot_control_executed": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+    if error is not None:
+        payload["error"] = compact_error(error)
+    return payload
+
+
+async def read_status_section(name: str, loader: Any) -> dict[str, Any]:
+    """用线程隔离同步只读区块；超时后让 /api/status 先返回可用部分。"""
+    try:
+        result = await asyncio.wait_for(asyncio.to_thread(loader), timeout=STATUS_SECTION_TIMEOUT_S)
+    except asyncio.TimeoutError as exc:
+        return status_section_unavailable_payload(name, f"status_section_timeout_{STATUS_SECTION_TIMEOUT_S:g}s", exc)
+    except Exception as exc:  # noqa: BLE001 - status 聚合不能因单区块异常整体 500。
+        return status_section_unavailable_payload(name, "status_section_exception", exc)
+    if isinstance(result, dict):
+        return result
+    return status_section_unavailable_payload(name, "status_section_non_object")
+
+
+async def read_camera_status_section(api: Any) -> tuple[int, dict[str, Any]]:
+    """camera health 是 async HTTP 代理，也要纳入 status 聚合软超时。"""
+    try:
+        status, payload = await asyncio.wait_for(api.camera_health(), timeout=STATUS_SECTION_TIMEOUT_S)
+    except asyncio.TimeoutError as exc:
+        return 504, status_section_unavailable_payload("camera", f"status_section_timeout_{STATUS_SECTION_TIMEOUT_S:g}s", exc)
+    except Exception as exc:  # noqa: BLE001 - 相机状态慢/异常时不拖死整车 status。
+        return 502, status_section_unavailable_payload("camera", "status_section_exception", exc)
+    if isinstance(payload, dict):
+        return int(status), payload
+    return 502, status_section_unavailable_payload("camera", "status_section_non_object")
 
 
 def start_lidar_scan_proof_runtime(command: str | None, warmup_s: float) -> dict[str, Any]:
@@ -7915,7 +7966,24 @@ class UpperRobotApi:
 
     async def unified_status(self) -> dict[str, Any]:
         """PC 首屏只拉一个状态接口即可获得 camera/radar/base 总览。"""
-        camera_http_status, camera = await self.camera_health()
+        (
+            camera_result,
+            radar,
+            map_status,
+            nav2,
+            free_roam_autonomy,
+            elevator,
+            base,
+        ) = await asyncio.gather(
+            read_camera_status_section(self),
+            read_status_section("radar", self.radar_status),
+            read_status_section("map", self.map_status),
+            read_status_section("nav2", self.nav2_status),
+            read_status_section("free_roam_autonomy", self.free_roam_autonomy_status),
+            read_status_section("elevator", self.elevator_status),
+            read_status_section("base", self.base_status),
+        )
+        camera_http_status, camera = camera_result
         return {
             "schema": f"{SCHEMA}.status",
             "generated_at_ms": now_ms(),
@@ -7926,8 +7994,8 @@ class UpperRobotApi:
                 "base_url": self.camera_base_url,
                 "offer_path": "/api/camera/offer",
             },
-            "radar": self.radar_status(),
-            "map": self.map_status(),
+            "radar": radar,
+            "map": map_status,
             "localization": {
                 "schema": f"{SCHEMA}.localization_status",
                 "generated_at_ms": now_ms(),
@@ -7942,11 +8010,11 @@ class UpperRobotApi:
                 "sends_commands": False,
                 **proof_flags(),
             },
-            "nav2": self.nav2_status(),
-            "free_roam_autonomy": self.free_roam_autonomy_status(),
-            "elevator": self.elevator_status(),
+            "nav2": nav2,
+            "free_roam_autonomy": free_roam_autonomy,
+            "elevator": elevator,
             "operator_report": summarize_operator_report_latest_artifact(self.operator_report_artifact_path),
-            "base": self.base_status(),
+            "base": base,
             "routes": dict(ROUTE_PATHS),
             "base_feedback_samples_latest_artifact": artifact_path_info(self.feedback_samples_artifact_path),
             "lidar_scan_proof_latest_artifact": lidar_scan_proof_artifact_info(self.lidar_scan_proof_artifact_path),
