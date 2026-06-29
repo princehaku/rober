@@ -838,6 +838,9 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
       if (sourceFailureHint && !cameraSourceFailureCanAutoJoinSharedPreview(camera)) {
         return { state: "失败", hint: sourceFailureHint };
       }
+      if (sourceFailureHint && cameraSharedPreviewKnownUnavailable(camera)) {
+        return { state: "失败", hint: sourceFailureHint };
+      }
       if (cameraOnline && cameraMjpegFallbackVisible.value && !mjpegPreviewLoaded.value && !mjpegPreviewFailed.value) {
         return { state: "连接中", hint: "正在接入共享实时画面；新页面会共用同一条上游流。" };
       }
@@ -1400,6 +1403,29 @@ const cameraMjpegRetryPending = computed(() => (
   // 本页 img error 后会等 5 秒再换 URL；这段时间必须说成“待重试”，不能说成已恢复或已出图。
   cameraMjpegSharedPreviewVisible.value && mjpegPreviewFailed.value && !mjpegPreviewLoaded.value
 ));
+function cameraSharedPreviewKnownUnavailable(camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined): boolean {
+  // 页面仍会自动接入共享 MJPEG；但后端已明确无首帧/上游失败时，首屏状态应直接归因为无画面而不是“还在连接”。
+  const status = cameraMjpegStatusResult.value;
+  const statusFailure = Boolean(
+    status?.proxy_status === "status_loaded"
+    && (
+      status.preview_status === "source_first_frame_failed"
+      || status.last_failure_reason === "camera_source_first_frame_failed"
+      || status.last_failure_reason === "camera_mjpeg_upstream_timeout"
+      || status.last_failure_reason.startsWith("camera_mjpeg_http_status_")
+      || status.last_remote_http_status === 502
+      || status.last_remote_http_status === 503
+    ),
+  );
+  const summaryFailure = Boolean(
+    camera?.shared_preview_last_failure_reason === "camera_source_first_frame_failed"
+    || camera?.shared_preview_last_failure_reason === "camera_mjpeg_upstream_timeout"
+    || camera?.shared_preview_last_failure_reason?.startsWith("camera_mjpeg_http_status_")
+    || camera?.shared_preview_last_remote_http_status === "502"
+    || camera?.shared_preview_last_remote_http_status === "503",
+  );
+  return Boolean(cameraSourceFirstFrameFailed(camera) && (statusFailure || summaryFailure || camera?.source_diagnosis_status === "uvc_no_frame_not_exclusive"));
+}
 const cameraMjpegCachedFramePending = computed(() => {
   // 共享 relay 已有最近帧时，后来打开的页面会先收到缓存帧；这只说明首屏有可复用画面证据，不等于本页已完成实时绘制。
   const status = cameraMjpegStatusResult.value;

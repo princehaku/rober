@@ -51,6 +51,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 13:48 CST 起，上位机 `GET /api/status` 改为按相机、雷达、地图、Nav2、自由移动和电梯分区并发读取，并给每个区块设置软超时。某个 ROS2/status 区块卡住时，聚合 status 会先返回其他可用事实，并把慢区块标成 `status_section_unavailable/status_section_timeout_*`；顶层聚合也有 fail-closed 超时兜底。完整底盘读数不再阻塞聚合 status，而是显示 `base.status=deferred_to_base_status_endpoint` 并指向独立只读 `/api/base/status`。PC 首屏不会再因为一个只读诊断命令或底盘慢读卡住而把整车状态误判为不可读。该变化只改只读状态聚合，不启动 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 14:55 CST 起，普通首屏实时画面卡在已知 `source_first_frame_failed` / `uvc_no_frame_not_exclusive` 或共享 MJPEG 上游 502/503 时，业务状态直接显示失败原因：不是页面独占，而是 UVC 没有输出视频帧或上游无画面。页面仍保留自动共享 MJPEG `<img>` 和只读共享预览链接，后进页面继续复用同一条上游流并低频重试；该变化只修正 WYSIWYG 状态文案，不新建独占采集、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 14:00 CST 起，普通首屏 `本轮目标检查` 在存在可现场收口项时，主摘要和 `next_action_plain` 优先指向可操作的运动项，例如“先做：自由自助移动”；相机、雷达和建图仍列在“未就绪项”。这避免摄像头首帧硬件缺口把自由移动、键盘连续手控和完整图上行程复验压到后面。该变化只改只读目标总览排序和文案，不自动勾选安全确认、不启用键盘、不启动自由移动、不执行 Nav2、不发送 `/cmd_vel`。
 
 同日起，共享 MJPEG status 请求尚未返回时，首屏会保留 summary 里已有的共享流事实，例如观看页面数、上游是否已连接、是否已有视频边界和最近缓存帧；但仍明确 status 返回前不证明本页已经出图。
