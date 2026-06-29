@@ -2347,7 +2347,7 @@ function plainFreeRoamMappingReadinessNextActionSuffix(missingLabels: string[]):
     && mapReadback?.radar_overlay_status === "not_current"
     && mapReadback.radar_overlay_next_action === "start_radar_then_refresh_map_preview"
   ) {
-    return "；建图下一步：先启动雷达，再刷新地图画面";
+    return "；建图下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点";
   }
   return "";
 }
@@ -2927,7 +2927,7 @@ const plainWysiwygEvidenceItems = computed<PlainWysiwygEvidenceItem[]>(() => {
       title: "雷达点",
       state: radarPointCount > 0 ? "雷达点已贴图" : "当前图上 0 点",
       summary: `地图雷达点当前显示 ${radarPointCount} 个；旧来源点 ${radarSourcePointCount} 个只作诊断${radarReasonText}。`,
-      nextAction: radar.radar_overlay_wysiwyg_next_action_plain || map.radar_overlay_next_action_plain || radar.radar_next_action_plain || "先启动雷达，再刷新地图画面。",
+      nextAction: radar.radar_overlay_wysiwyg_next_action_plain || map.radar_overlay_next_action_plain || radar.radar_next_action_plain || "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
       sourceCardId: "radar_map_points",
     },
   ];
@@ -3885,7 +3885,7 @@ function plainMapRadarNextActionText(): string {
     return `地图下一步：${nextActionPlain}`;
   }
   if (nextAction === "start_radar_then_refresh_map_preview") {
-    return "地图下一步：先启动雷达，再刷新地图画面；旧雷达点不会贴到当前地图。";
+    return "地图下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。";
   }
   if (nextAction === "refresh_radar_scan_for_map_overlay") {
     return "地图下一步：刷新雷达扫描，再刷新地图画面。";
@@ -3917,7 +3917,7 @@ function plainRadarCardNextActionText(): string {
     return `雷达下一步：${nextActionPlain}`;
   }
   if (nextAction === "start_radar_then_refresh_map_preview") {
-    return "雷达下一步：先点启动雷达，再刷新地图画面；旧雷达点不会贴到当前地图。";
+    return "雷达下一步：先点启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。";
   }
   if (nextAction === "refresh_radar_scan_for_map_overlay") {
     return "雷达下一步：刷新雷达扫描，再刷新地图画面。";

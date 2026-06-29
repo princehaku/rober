@@ -3253,7 +3253,7 @@ function mapRadarOverlayExplanation(
       plain_hint: `${pointText}，但${labels.join("、") || "雷达状态不是当前"}，所以当前不贴到地图。`,
       next_action: nextAction,
       next_action_plain: hasLifecycleStop
-        ? "先启动雷达，再刷新地图画面。"
+        ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
         : hasStaleScan
           ? "刷新雷达扫描，再刷新地图画面。"
           : "刷新地图画面，让雷达点和地图来自同一轮读数。",

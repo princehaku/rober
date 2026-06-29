@@ -1552,9 +1552,9 @@ const fixtures: Record<string, unknown> = {
       status: "not_loaded",
       plain_hint: "雷达点还没有贴到地图。",
       wysiwyg_status_plain: "雷达点未贴到当前地图：当前显示 0 个点；旧来源点 0 个只作诊断。",
-      wysiwyg_next_action_plain: "先启动雷达，再刷新地图画面。",
+      wysiwyg_next_action_plain: "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
       next_action: "start_radar_then_refresh_map_preview",
-      next_action_plain: "先启动雷达，再刷新地图画面。",
+      next_action_plain: "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
       scan_preview_points: [],
       scan_preview_point_count: 0,
       scan_preview_source_point_count: 0,
@@ -1571,9 +1571,9 @@ const fixtures: Record<string, unknown> = {
     radar_overlay_status: "not_loaded",
     radar_overlay_plain_hint: "雷达点还没有贴到地图。",
     radar_overlay_wysiwyg_status_plain: "雷达点未贴到当前地图：当前显示 0 个点；旧来源点 0 个只作诊断。",
-    radar_overlay_wysiwyg_next_action_plain: "先启动雷达，再刷新地图画面。",
+    radar_overlay_wysiwyg_next_action_plain: "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
     radar_overlay_next_action: "start_radar_then_refresh_map_preview",
-    radar_overlay_next_action_plain: "先启动雷达，再刷新地图画面。",
+    radar_overlay_next_action_plain: "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
     radar_overlay_points: [],
     radar_overlay_count: 0,
     radar_overlay_source_count: 0,
@@ -17906,14 +17906,14 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达未运行，旧点未贴图");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达未运行，地图位置未读到，旧雷达点 65 个已过期未贴到地图");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图；启动或刷新雷达后才显示新点位。");
-    expect(wrapper.find('[data-testid="plain-map-radar-next-action"]').text()).toBe("地图下一步：先启动雷达，再刷新地图画面；旧雷达点不会贴到当前地图。");
-    expect(wrapper.find('[data-testid="plain-radar-next-action"]').text()).toBe("雷达下一步：先点启动雷达，再刷新地图画面；旧雷达点不会贴到当前地图。");
+    expect(wrapper.find('[data-testid="plain-map-radar-next-action"]').text()).toBe("地图下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。");
+    expect(wrapper.find('[data-testid="plain-radar-next-action"]').text()).toBe("雷达下一步：先点启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图；目标线未显示。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("雷达：雷达未运行；已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个；已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出、雷达未刷新（已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图）、地图记录未启动");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动不受影响；建图下一步：先启动雷达，再刷新地图画面。");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("建图下一步：先启动雷达，再刷新地图画面");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动不受影响；建图下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("建图下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点");
     expect(firstScreenText).not.toContain("最近记录 2 个点");
     expect(firstScreenText).not.toContain("雷达局部点 2 个");
     expect(firstScreenText).not.toContain("雷达局部点 65 个");

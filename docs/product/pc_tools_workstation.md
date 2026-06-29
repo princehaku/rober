@@ -4243,3 +4243,10 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 若这些模式仍全部无首帧，PC 会继续明确显示“不是页面独占，UVC 没有输出视频帧”。该变化只调整相机取帧尝试顺序，
 并且 8088 自己短暂持有 shared capture 且没有其他 owner 时也不会被误写成页面独占；不影响底盘、雷达、Nav2、
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-30 09:55 CST 起，地图雷达 overlay 在雷达 stopped/stale 且旧来源点不能贴到当前地图时，所有普通用户下一步统一写成
+“先启动雷达并等待新扫描，再刷新地图画面确认雷达点”。`readback_summary.map.radar_overlay_*`、map preview 顶层 alias、
+普通地图卡、雷达卡和建图 readiness suffix 使用同一口径，避免 operator 误以为启动雷达后立即刷新地图就能证明新点。
+同轮还移除了 Node API 启动前的端口 probe，`npm run api` 现在直接让 Express 绑定 `0.0.0.0:7001`，避免实际已监听时日志残留
+`address already in use` 误报。该变化只修正只读 summary/map preview/UI 文案、测试合同和 7001 启动日志，不启动雷达、
+不刷新地图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

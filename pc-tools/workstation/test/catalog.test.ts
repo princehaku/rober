@@ -8388,9 +8388,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toContain("已有雷达来源点 65 个");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toContain("当前不贴到地图");
       expect(summary.readback_summary.map.radar_overlay_wysiwyg_status_plain).toBe("雷达点未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断。已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
-      expect(summary.readback_summary.map.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
+      expect(summary.readback_summary.map.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(summary.readback_summary.map.radar_overlay_next_action).toBe("start_radar_then_refresh_map_preview");
-      expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
+      expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toContain("雷达扫描已过期");
@@ -8408,7 +8408,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.plain_hint).toContain("原因：雷达扫描已过期、雷达未运行");
       expect(summary.readback_summary.map.plain_hint).not.toContain("雷达 marker");
       expect(summary.readback_summary.map.plain_hint).not.toContain("overlay");
-      expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
+      expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(summary.action_status_cards?.find((card) => card.id === "map_preview")).toMatchObject({
         status_label: "已显示",
         next_action_plain: "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。",
@@ -10188,9 +10188,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.plain_hint).toContain("已有雷达来源点 65 个");
       expect(body.radar_overlay.plain_hint).toContain("当前不贴到地图");
       expect(body.radar_overlay.wysiwyg_status_plain).toBe("雷达点未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断。已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
-      expect(body.radar_overlay.wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
+      expect(body.radar_overlay.wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(body.radar_overlay.next_action).toBe("start_radar_then_refresh_map_preview");
-      expect(body.radar_overlay.next_action_plain).toBe("先启动雷达，再刷新地图画面。");
+      expect(body.radar_overlay.next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(body.radar_overlay.scan_preview_point_count).toBe(0);
       expect(body.radar_overlay.scan_preview_points).toEqual([]);
       expect(body.radar_overlay.scan_preview_source_point_count).toBe(65);

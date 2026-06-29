@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -122,18 +121,6 @@ export function listenFailureHint(error: NodeJS.ErrnoException, host = HOST, por
     `检查占用进程: lsof -nP -iTCP:${port} -sTCP:LISTEN || netstat -anv | rg '[.:]${port} .*LISTEN'`,
     "停掉占用进程后重试，或临时改用 PORT=<free-port> npm run api。",
   ].join("\n");
-}
-
-function preflightListenAddress(host: string, port: number): Promise<void> {
-  // 先用一次短生命周期 socket 探测端口；失败时不启动 Express，日志更像操作提示。
-  return new Promise((resolve, reject) => {
-    const probe = createServer();
-    probe.once("error", reject);
-    probe.once("listening", () => {
-      probe.close((error) => (error ? reject(error) : resolve()));
-    });
-    probe.listen(port, host);
-  });
 }
 
 function queryString(value: unknown): string {
@@ -3821,17 +3808,17 @@ export const app = createWorkstationApp();
 let cliServer: ReturnType<typeof app.listen> | null = null;
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  // 启动前先探测端口，避免 7001 被其他服务占用时出现“已监听又失败”的误导日志。
-  void preflightListenAddress(HOST, PORT).then(() => {
-    // 显式在模块级保留 server 引用，确保 public API 后台启动后不会被回收退出。
-    cliServer = app.listen(PORT, HOST, () => {
-      console.log(`pc-tools workstation API listening on ${workstationListenAddress()}`);
-    });
-    cliServer.on("error", (error: NodeJS.ErrnoException) => {
-      console.error(listenFailureHint(error));
-      process.exitCode = 1;
-    });
-  }).catch((error: NodeJS.ErrnoException) => {
+  // 直接让 Express 绑定最终端口；额外 probe 在 tsx 启动链路下会制造已监听却报占用的误导日志。
+  let cliServerListening = false;
+  cliServer = app.listen(PORT, HOST, () => {
+    cliServerListening = true;
+    console.log(`pc-tools workstation API listening on ${workstationListenAddress()}`);
+  });
+  cliServer.on("error", (error: NodeJS.ErrnoException) => {
+    if (cliServerListening && error.code === "EADDRINUSE") {
+      // tsx/macOS 偶发在 listening 后再抛 duplicate EADDRINUSE；端口已可用时直接静默，避免现场误判启动失败。
+      return;
+    }
     console.error(listenFailureHint(error));
     process.exitCode = 1;
   });
