@@ -4529,6 +4529,64 @@ const plainMapVisualSummary = computed(() => {
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
+type PlainSafetyActionItem = {
+  id: "trip" | "keyboard" | "free_move" | "mapping";
+  title: string;
+  state: string;
+  summary: string;
+  nextAction: string;
+  sourceCardId: RobotControlActionStatusCardId;
+};
+const plainSafetyActionItems = computed<PlainSafetyActionItem[]>(() => {
+  // 这里把“发车前最小确认”落成可扫读的四行；按钮只聚焦，不自动勾选或发车。
+  const summary = robotSummary.value;
+  const boundary = manualBoundary.value;
+  if (!summary || !boundary) {
+    return [];
+  }
+  const nav2 = summary.readback_summary.nav2;
+  const freeRoam = summary.readback_summary.free_roam;
+  const tripReady = boundary.nav2_goal_ready;
+  const keyboardReady = boundary.keyboard_control_start_ready;
+  const freeMoveReady = boundary.free_roam_motion_start_ready;
+  const mappingReady = boundary.free_roam_mapping_start_ready;
+  return [
+    {
+      id: "trip",
+      title: "图上行程",
+      state: tripReady ? "勾确认后可执行" : "未就绪",
+      summary: tripReady
+        ? "图上行程和小车位置已显示；这里只需要勾安全确认，相机和雷达不再加门槛。"
+        : nav2.route_execution_readiness_plain || boundary.nav2_goal_label,
+      nextAction: boundary.nav2_goal_next_action_plain || nav2.next_action_plain || "先准备图上行程。",
+      sourceCardId: "nav2_route",
+    },
+    {
+      id: "keyboard",
+      title: "键盘",
+      state: keyboardReady ? "勾确认后可启用" : "未就绪",
+      summary: boundary.keyboard_minimal_precheck_plain || "键盘只复用安全确认；启用后按住方向键才会移动。",
+      nextAction: boundary.keyboard_control_next_action || "勾选安全确认后启用键盘；按住方向键或 W/A/S/D 才会移动。",
+      sourceCardId: "keyboard_control",
+    },
+    {
+      id: "free_move",
+      title: "自由移动",
+      state: freeMoveReady ? "勾确认后可启动" : "未就绪",
+      summary: freeRoam.motion_readiness_plain || boundary.free_roam_motion_minimal_precheck_plain,
+      nextAction: freeRoam.motion_next_action_plain || boundary.free_roam_autonomy_next_action || "勾选安全确认后处理自由移动入口。",
+      sourceCardId: "free_move",
+    },
+    {
+      id: "mapping",
+      title: "建图启动",
+      state: mappingReady ? "勾确认后可启动" : "等画面和雷达",
+      summary: freeRoam.mapping_start_readiness_plain || boundary.free_roam_mapping_start_plain || freeRoam.mapping_readiness_plain || "建图启动还要先确认画面和雷达。",
+      nextAction: freeRoam.mapping_start_next_action_plain || boundary.free_roam_mapping_start_next_action || freeRoam.mapping_next_action_plain || "先补齐画面和雷达；低速自由移动不受影响。",
+      sourceCardId: "mapping_start",
+    },
+  ];
+});
 const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ?? 0.12);
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
@@ -12538,6 +12596,32 @@ onBeforeUnmount(() => {
             type="button"
             class="secondary compact-stop"
             :data-testid="`plain-wysiwyg-evidence-go-${item.id}`"
+            @click="focusPlainActionCardTarget(item.sourceCardId)"
+          >
+            去处理
+          </button>
+        </div>
+      </div>
+
+      <div v-if="plainSafetyActionItems.length" class="plain-safety-actions" data-testid="plain-safety-actions" aria-label="安全确认后可做">
+        <div class="simple-status-row">
+          <strong>勾确认后可做</strong>
+          <span class="muted">同一个安全确认用于行程、键盘和自由移动；建图另看画面和雷达是否到位。</span>
+        </div>
+        <div
+          v-for="item in plainSafetyActionItems"
+          :key="item.id"
+          class="plain-safety-action-row"
+          :data-testid="`plain-safety-action-${item.id}`"
+        >
+          <span class="plain-progress-label">{{ item.title }}</span>
+          <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+          <span class="muted">{{ plainActionCardUserText(item.summary) }}</span>
+          <span class="muted">下一步：{{ plainActionCardUserText(item.nextAction) }}</span>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :data-testid="`plain-safety-action-go-${item.id}`"
             @click="focusPlainActionCardTarget(item.sourceCardId)"
           >
             去处理
