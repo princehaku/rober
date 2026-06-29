@@ -4116,7 +4116,7 @@ describe("workstation fail-closed API contracts", () => {
         mapping_source_card_id: "mapping_start",
       });
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
-      expect(summary.goal_checklist_summary?.summary_plain).toContain("现场可先收口 2 项：键盘连续手控、自由自助移动");
+      expect(summary.goal_checklist_summary?.summary_plain).toContain("现场可先收口 2 项：自由自助移动、键盘连续手控");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("先做：自由自助移动");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("未就绪项：画面所见即所得、雷达点贴到地图、完整行程执行、传感器就绪后建图");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("可先自由移动");
@@ -4136,8 +4136,8 @@ describe("workstation fail-closed API contracts", () => {
         "mapping_start",
       ]);
       expect(summary.goal_checklist_summary?.ready_action_items.map((item) => item.id)).toEqual([
-        "keyboard_continuous_control",
         "free_move",
+        "keyboard_continuous_control",
       ]);
       expect(summary.goal_checklist_summary?.blocked_action_items.map((item) => item.id)).toEqual([
         "camera_wysiwyg",

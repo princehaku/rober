@@ -698,6 +698,11 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 画面、雷达、路线、状态机或建图条件的未完成项。分组按钮仍只做页面内聚焦，不自动勾选、不执行 Nav2、不启用键盘、
 不启动雷达/自由移动/建图，也不会发送 manual、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 14:03 CST 起，`goal_checklist_summary.ready_action_items[]` 和“现场可先收口”摘要按现场低速运动优先级排序：
+自由自助移动、键盘连续手控、完整行程执行、建图启动。这样摘要里的列表顺序和“先做：自由自助移动”保持一致，
+不会让 operator 误以为必须先复验 Nav2 或键盘才能让车低速自助移动。该变化只改只读 summary 与首屏展示顺序，不自动勾选、
+不执行 Nav2、不启用键盘、不启动自由移动/建图，也不会发送 manual、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 11:38 CST 起，普通首屏“行程操作”新增“行程执行包”三行只读提示：执行模式、自动驾驶 runtime、
 轮速验收。执行模式直接显示本次请求会用 ROS/SPEED/PWM 中哪一种；旧 PWM 成功但轮速 L/R 未证明时会明确写成
 “上次 PWM，本次请求 ROS”。runtime 行说明自动驾驶服务停着时由执行接口托管启动，不再被误当成额外预检；轮速行说明

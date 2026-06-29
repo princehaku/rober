@@ -7021,9 +7021,18 @@ function buildGoalChecklistSummary(
     blocks_goal_completion: item.blocks_goal_completion,
   });
   const nextActionItems = remaining.map(toActionItem);
+  const readyActionPriority: Record<string, number> = {
+    free_move: 0,
+    keyboard_continuous_control: 1,
+    nav2_route_execution: 2,
+    mapping_start: 3,
+  };
+  const sortReadyActionItems = (items: ReturnType<typeof toActionItem>[]): ReturnType<typeof toActionItem>[] =>
+    [...items].sort((left, right) => (readyActionPriority[left.id] ?? 50) - (readyActionPriority[right.id] ?? 50));
   const readyActionItems = remaining
     .filter((item) => item.status === "ready" || item.status === "needs_safety_confirm")
     .map(toActionItem);
+  const orderedReadyActionItems = sortReadyActionItems(readyActionItems);
   const blockedActionItems = remaining
     .filter((item) => item.status === "not_ready" || item.status === "needs_action")
     .map(toActionItem);
@@ -7163,9 +7172,9 @@ function buildGoalChecklistSummary(
   const safetyText = safetyConfirmNeededCount > 0 ? `，其中 ${safetyConfirmNeededCount} 项需要现场安全确认` : "";
   const motionText = motionNeededCount > 0 ? `，${motionNeededCount} 项需要真实运动验证` : "";
   const primaryReadyAction = firstMotion ?? remaining.find((item) => item.status === "ready" || item.status === "needs_safety_confirm") ?? null;
-  const readyActionText = readyActionItems.length > 0
+  const readyActionText = orderedReadyActionItems.length > 0
     // 有可现场收口项时，先告诉 operator 可以做什么；相机/雷达缺口不能把可动车入口压到后面。
-    ? `现场可先收口 ${readyActionItems.length} 项：${readyActionItems.map((item) => item.title).join("、")}；`
+    ? `现场可先收口 ${orderedReadyActionItems.length} 项：${orderedReadyActionItems.map((item) => item.title).join("、")}；`
     : "";
   const blockedActionText = blockedActionItems.length > 0
     ? `未就绪项：${blockedActionItems.map((item) => item.title).join("、")}。`
@@ -7205,7 +7214,7 @@ function buildGoalChecklistSummary(
     mapping_next_action_plain: mapping?.next_action_plain ?? "建图条件还未读到；先刷新小车状态。",
     mapping_summary_plain: mappingSummary,
     next_action_items: nextActionItems,
-    ready_action_items: readyActionItems,
+    ready_action_items: orderedReadyActionItems,
     blocked_action_items: blockedActionItems,
   };
 }
