@@ -8586,6 +8586,20 @@ function plainTripManagedRuntimePrecheckText(): string {
   return managedReady && serviceNotRunning ? "执行会自动启动自动驾驶 runtime；" : "";
 }
 
+function plainTripManagedRuntimeStatusPrefix(): string {
+  // 执行计划要说清“现在停在哪里”，但不能把托管启动误写成新的人工预检。
+  const summary = robotSummary.value;
+  const nav2 = summary?.readback_summary.nav2;
+  if (plainNav2StackNotRunning(summary)) {
+    return "当前自动驾驶服务未运行，";
+  }
+  const services = [
+    nav2?.planner_server_active === "false" ? "规划服务" : "",
+    nav2?.controller_server_active === "false" ? "控制服务" : "",
+  ].filter(Boolean);
+  return services.length ? `当前${services.join("和")}未运行，` : "";
+}
+
 const plainTripMinimalPrecheckSummary = computed(() => {
   // 普通首屏只保留一个现场安全确认；路线画面是所见即所得约束，不再作为隐藏预检步骤。
   if (!robotApiBaseUrl.value.trim()) {
@@ -8672,7 +8686,7 @@ const plainTripExecutionPlanItems = computed<PlainTripExecutionPlanItem[]>(() =>
       label: "自动驾驶",
       state: runtimeManaged ? "执行时启动" : "按当前状态",
       hint: runtimeManaged
-        ? "自动驾驶服务停着时，执行会托管启动；这不是额外预检。"
+        ? `${plainTripManagedRuntimeStatusPrefix()}执行会托管启动；这不是额外预检，点击前仍只复核安全确认。`
         : "执行接口只复核现场安全确认和固定白名单。",
     },
     {
