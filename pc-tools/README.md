@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 07:49 CST 起，普通首屏 `目标总览` 每一行都补齐结构化 DOM 证据：`data-objective-id`、`data-state`、`data-completed`、`data-actionable`、`data-missing-count`、`data-item-ids`、`data-source-card-id`、`data-next-action` 和 `data-sends-motion-when-clicked=false`。四行分别对应“行程/键盘/自由移动”“画面/地图/雷达点”“发车前确认”“自由移动到建图”，现场脚本不用解析中文即可判断哪组目标完成、哪组可处理、还差几项，以及点击“去处理”会聚焦到哪张普通卡。该变化只补只读验收合同，不自动勾选安全确认、不执行 Nav2、不启用键盘、不启动自由移动/建图、不发送 manual、delivery、stop 或 `/cmd_vel`。
+
 2026-06-30 07:43 CST 起，普通首屏自由移动 / 建图卡新增 `建图仪表`。它把自由移动、安全确认、相机首帧、雷达刷新、地图记录和地图画面刷新合成一行普通状态，同时暴露 `data-testid=plain-mapping-readiness-gauge`、`data-can-free-move-now`、`data-camera-ready-for-mapping`、`data-radar-ready-for-mapping`、`data-map-runtime-started`、`data-map-preview-fresh`、`data-mapping-start-ready`、`data-mapping-evidence-ready`、`data-mapping-missing-reasons` 和固定自由移动/建图/地图预览入口。这样现场不用读长段落也能判断：未勾安全确认时只是待确认；摄像头或雷达缺口不挡低速自由移动；画面和雷达就绪后可启动建图记录；记录和地图画面也就绪后才按建图收口。该仪表本身固定 `data-sends-motion-when-clicked=false`，不自动启动建图、不启动自由移动、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
 
 2026-06-30 06:44 CST 起，普通首屏 `启用键盘` 按钮也暴露按钮级连续手控合同：`data-main-action-kind`、`data-target-source`、`data-sends-motion-when-clicked=false`、`data-sends-motion-when-holding`、固定 `/api/robot-control/base/manual` / `/api/robot-control/base/stop`、`data-pulse-interval-ms=260`、`data-pulse-duration-ms=240`、当前/最佳连续 pulse 数、`data-verified-min-forwarded-pulses=2`、同窗口按住要求和松开后 stop 收口要求。这样现场脚本能直接从启用按钮确认：点击只是拿键盘窗口，不发车；只有按住方向键/WASD 才连续发送低速 pulse，且必须同一次按住达到 2 次并完成 stop 才算验证。

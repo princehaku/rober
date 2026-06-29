@@ -5151,6 +5151,11 @@ type PlainObjectiveOverviewItem = {
   title: string;
   state: string;
   summary: string;
+  nextAction: string;
+  itemIds: string[];
+  completed: boolean;
+  actionable: boolean;
+  missingCount: number;
   sourceCardId: RobotControlActionStatusCardId;
 };
 type PlainMoveNowSnapshotItem = {
@@ -5215,15 +5220,24 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
   const keyboard = goalChecklistItem("keyboard_continuous_control");
   const freeMove = goalChecklistItem("free_move");
   const mapping = goalChecklistItem("mapping_start");
+  const motionItems = [nav2, keyboard, freeMove].filter((item): item is NonNullable<typeof nav2> => Boolean(item));
+  const wysiwygItems = [camera, map, radar].filter((item): item is NonNullable<typeof camera> => Boolean(item));
   const wysiwygDone = [camera, map, radar].every((item) => item?.status === "done");
   const motionReady = [nav2, keyboard, freeMove].some((item) => item?.status === "needs_safety_confirm" || item?.status === "ready");
   const mappingReady = mapping?.status === "needs_safety_confirm" || mapping?.status === "ready";
+  const itemIds = (items: Array<NonNullable<typeof nav2>>): string[] => items.map((item) => item.id);
+  const missingCount = (items: Array<NonNullable<typeof nav2>>): number => items.filter((item) => item.status !== "done").length;
   return [
     {
       id: "motion",
       title: "行程/键盘/自由移动",
       state: motionReady ? "可处理" : "未就绪",
       summary: `图上行程：${nav2?.status_label ?? "未读到"}；键盘：${keyboard?.status_label ?? "未读到"}；自由移动：${freeMove?.status_label ?? "未读到"}。`,
+      nextAction: summary.primary_ready_action_next_action_plain || summary.motion_next_action_plain || "先刷新小车状态。",
+      itemIds: itemIds(motionItems),
+      completed: motionItems.length > 0 && motionItems.every((item) => item.status === "done"),
+      actionable: motionReady,
+      missingCount: missingCount(motionItems),
       sourceCardId: summary.primary_ready_action_source_card_id || summary.first_motion_source_card_id || "free_move",
     },
     {
@@ -5231,6 +5245,17 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       title: "画面/地图/雷达点",
       state: wysiwygDone ? "已完成" : "待处理",
       summary: `画面：${camera?.status_label ?? "未读到"}；地图：${map?.status_label ?? "未读到"}；雷达点：${radar?.status_label ?? "未读到"}。`,
+      nextAction: radar?.status !== "done"
+        ? radar?.next_action_plain ?? summary.radar_next_action_plain
+        : camera?.status !== "done"
+          ? camera?.next_action_plain ?? "处理画面所见即所得。"
+          : map?.status !== "done"
+            ? map?.next_action_plain ?? "处理地图所见即所得。"
+            : "当前画面、地图和雷达点已按同轮读数显示。",
+      itemIds: itemIds(wysiwygItems),
+      completed: wysiwygDone,
+      actionable: !wysiwygDone,
+      missingCount: missingCount(wysiwygItems),
       sourceCardId: summary.first_incomplete_source_card_id || "camera_preview",
     },
     {
@@ -5238,6 +5263,11 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       title: "发车前确认",
       state: summary.safety_precheck_source_card_id ? "只需勾确认" : "无需处理",
       summary: summary.safety_precheck_summary_plain || "当前没有待安全确认的入口。",
+      nextAction: summary.safety_precheck_next_action_plain || "当前没有待安全确认的入口。",
+      itemIds: summary.safety_precheck_source_card_id ? [summary.first_incomplete_item_id || "safety_confirmation"] : [],
+      completed: true,
+      actionable: Boolean(summary.safety_precheck_source_card_id),
+      missingCount: 0,
       sourceCardId: summary.safety_precheck_source_card_id || "nav2_route",
     },
     {
@@ -5245,6 +5275,11 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       title: "自由移动到建图",
       state: mappingReady ? "可建图" : "先自由移动",
       summary: `自由移动：${freeMove?.status_label ?? "未读到"}；建图启动：${mapping?.status_label ?? "未读到"}。`,
+      nextAction: summary.mapping_next_action_plain || mapping?.next_action_plain || "先刷新建图条件。",
+      itemIds: [freeMove?.id, mapping?.id].filter((id): id is string => Boolean(id)),
+      completed: Boolean(mappingReady),
+      actionable: Boolean(mappingReady || freeMove?.status === "needs_safety_confirm" || freeMove?.status === "ready"),
+      missingCount: [freeMove, mapping].filter((item) => item && item.status !== "done" && item.status !== "ready" && item.status !== "needs_safety_confirm").length,
       sourceCardId: mappingReady ? "mapping_start" : "free_move",
     },
   ];
@@ -14288,6 +14323,15 @@ onBeforeUnmount(() => {
           :key="item.id"
           class="plain-objective-overview-row"
           :data-testid="`plain-objective-overview-${item.id}`"
+          :data-objective-id="item.id"
+          :data-state="item.state"
+          :data-completed="String(item.completed)"
+          :data-actionable="String(item.actionable)"
+          :data-missing-count="String(item.missingCount)"
+          :data-item-ids="item.itemIds.join(',') || 'none'"
+          :data-source-card-id="item.sourceCardId"
+          :data-next-action="item.nextAction"
+          data-sends-motion-when-clicked="false"
         >
           <span class="plain-progress-label">{{ item.title }}</span>
           <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
