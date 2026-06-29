@@ -1095,13 +1095,13 @@ h3 {
 }
 
 .plain-map-viewport[data-size="large"] .plain-map-layer {
-  height: clamp(840px, calc(100vh - 132px), 1400px);
-  min-height: 840px;
+  height: clamp(900px, calc(100vh - 96px), 1500px);
+  min-height: 900px;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  height: calc(100vh - 96px);
-  min-height: 840px;
+  height: calc(100vh - 72px);
+  min-height: 900px;
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {

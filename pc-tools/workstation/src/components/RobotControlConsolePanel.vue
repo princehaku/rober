@@ -276,7 +276,7 @@ const plainMapLargeView = ref(true);
 const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.25, 1.5, 2, 3] as const;
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4] as const;
 const plainMapZoomIndex = ref(2);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
@@ -14566,7 +14566,7 @@ onBeforeUnmount(() => {
           data-testid="plain-map-panel"
           data-wysiwyg-surface="primary-map"
           data-default-size="large"
-          data-default-map-zoom-percent="150%"
+          data-default-map-zoom-percent="200%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -14575,6 +14575,9 @@ onBeforeUnmount(() => {
           :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'"
           :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
           data-ros2-companion-style="rviz2-map-focus"
+          data-ros2-companion-tool="rviz2"
+          data-ros2-remote-companion-tool="foxglove"
+          data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
           :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
           :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
