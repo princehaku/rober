@@ -4863,8 +4863,17 @@ describe("App", () => {
     expect(cameraPanel.attributes("data-state")).toBe("未打开");
     expect(cameraPanel.attributes("data-frame-state")).toBe("未绑定");
     expect(cameraPanel.attributes("data-wysiwyg-surface")).toBe("primary-camera");
+    expect(cameraPanel.attributes("data-shared-preview-status-source")).toBe("mjpeg_status");
+    expect(cameraPanel.attributes("data-shared-preview-exclusive-camera-claim")).toBe("false");
+    expect(cameraPanel.attributes("data-shared-preview-single-upstream")).toBe("true");
+    expect(cameraPanel.attributes("data-current-frame-visible")).toBe("false");
+    expect(cameraPanel.attributes("data-current-mjpeg-frame-visible")).toBe("false");
+    expect(cameraPanel.attributes("data-current-video-frame-visible")).toBe("false");
+    expect(cameraPanel.attributes("data-fixed-shared-preview-endpoint")).toBe("/api/robot-control/camera/mjpeg");
+    expect(cameraPanel.attributes("data-fixed-shared-preview-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-current-frame-visible")).toBe("false");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("还没有打开实时画面。");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
@@ -20981,6 +20990,12 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面可见");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-current-frame-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-current-mjpeg-frame-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-current-video-frame-visible")).toBe("false");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-current-frame-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').attributes("data-current-mjpeg-frame-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').attributes("data-shared-preview-single-upstream")).toBe("true");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示 MJPEG 实时画面。MJPEG 实时流已显示。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：已看到 MJPEG 实时画面；2 个页面共享同一条上游流，不是浏览器独占。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：2 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。 已有最近帧缓存（约0.1秒前），后进页面会先显示最近帧。");
@@ -20996,6 +21011,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("画面可见");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-current-frame-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-current-video-frame-visible")).toBe("true");
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').attributes("data-frame-state")).toBe("已绘制帧");
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示真实视频帧。浏览器已绘制视频帧 640x480。");
     expect(wrapper.find("details").text()).toContain("peer-preview-001");

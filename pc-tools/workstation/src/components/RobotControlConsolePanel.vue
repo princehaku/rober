@@ -1782,6 +1782,51 @@ const plainCameraSharedPreviewStatus = computed(() => {
   return `共享画面：${status.client_count} 个页面观看，${upstream}，${content}；${exclusive}。${cachedFrame}${localRetry}${autoJoinText}${failure}${sourceNoFrame}`;
 });
 
+const plainCameraSharedPreviewDomEvidence = computed(() => {
+  // 现场脚本需要读结构化事实；中文文案继续服务普通用户，data-* 服务所见即所得验收。
+  const camera = robotSummary.value?.readback_summary.camera;
+  const status = cameraMjpegStatusResult.value;
+  const statusLoaded = status?.proxy_status === "status_loaded";
+  const boolFromText = (value: string | undefined, fallback = false): boolean => {
+    if (value === "true") return true;
+    if (value === "false") return false;
+    return fallback;
+  };
+  const numberFromText = (value: string | undefined, fallback = 0): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+  const statusSource = cameraMjpegStatusPending.value
+    ? "mjpeg_status_pending_summary"
+    : cameraMjpegStatusFailure.value
+      ? "mjpeg_status_failed_summary"
+      : statusLoaded
+        ? "mjpeg_status"
+        : camera
+          ? "summary"
+          : "not_loaded";
+  const upstreamActive = statusLoaded ? status.upstream_active : boolFromText(camera?.shared_preview_upstream_active);
+  const contentTypeLoaded = statusLoaded ? status.content_type_loaded : boolFromText(camera?.shared_preview_content_type_loaded);
+  const cachedFrameLoaded = statusLoaded ? status.cached_frame_loaded : boolFromText(camera?.shared_preview_cached_frame_loaded);
+  const exclusiveCameraClaim = statusLoaded ? status.exclusive_camera_claim : boolFromText(camera?.shared_preview_exclusive_camera_claim);
+  return {
+    statusSource,
+    clientCount: statusLoaded ? status.client_count : numberFromText(camera?.shared_preview_client_count),
+    upstreamActive,
+    contentTypeLoaded,
+    cachedFrameLoaded,
+    exclusiveCameraClaim,
+    sharedCapture: boolFromText(camera?.shared_preview_shared_capture, true),
+    singleUpstream: camera?.shared_preview_multi_viewer_status === "single_upstream_multi_viewer" || boolFromText(camera?.shared_preview_single_upstream, true),
+    autoJoinsSharedPreview: Boolean(cameraMjpegPreviewUrl.value),
+    currentFrameVisible: cameraMjpegFrameObserved.value || browserVideoFrameDrawn(),
+    currentMjpegFrameVisible: cameraMjpegFrameObserved.value,
+    currentVideoFrameVisible: browserVideoFrameDrawn(),
+    fixedSharedPreviewEndpoint: "/api/robot-control/camera/mjpeg",
+    fixedSharedPreviewStatusEndpoint: "/api/robot-control/camera/mjpeg/status",
+  };
+});
+
 const plainCameraSharedPreviewReadback = computed(() => {
   // 后端 summary 已经把共享入口和实时可见性拆成两句；首屏直接显示，避免用户误以为新页面会独占摄像头。
   const camera = robotSummary.value?.readback_summary.camera;
@@ -13973,7 +14018,29 @@ onBeforeUnmount(() => {
           <p class="panel-note">{{ plainEvidenceSweepSummary.hint }}</p>
         </article>
 
-        <article ref="plainCameraPanel" class="snapshot-panel plain-camera-panel" tabindex="-1" data-testid="plain-camera-panel" data-wysiwyg-surface="primary-camera" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
+        <article
+          ref="plainCameraPanel"
+          class="snapshot-panel plain-camera-panel"
+          tabindex="-1"
+          data-testid="plain-camera-panel"
+          data-wysiwyg-surface="primary-camera"
+          :data-state="cameraSummary.state"
+          :data-frame-state="plainCameraFrameEvidenceState"
+          :data-shared-preview-status-source="plainCameraSharedPreviewDomEvidence.statusSource"
+          :data-shared-preview-client-count="String(plainCameraSharedPreviewDomEvidence.clientCount)"
+          :data-shared-preview-upstream-active="String(plainCameraSharedPreviewDomEvidence.upstreamActive)"
+          :data-shared-preview-content-type-loaded="String(plainCameraSharedPreviewDomEvidence.contentTypeLoaded)"
+          :data-shared-preview-cached-frame-loaded="String(plainCameraSharedPreviewDomEvidence.cachedFrameLoaded)"
+          :data-shared-preview-exclusive-camera-claim="String(plainCameraSharedPreviewDomEvidence.exclusiveCameraClaim)"
+          :data-shared-preview-shared-capture="String(plainCameraSharedPreviewDomEvidence.sharedCapture)"
+          :data-shared-preview-single-upstream="String(plainCameraSharedPreviewDomEvidence.singleUpstream)"
+          :data-shared-preview-auto-joins="String(plainCameraSharedPreviewDomEvidence.autoJoinsSharedPreview)"
+          :data-current-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentFrameVisible)"
+          :data-current-mjpeg-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentMjpegFrameVisible)"
+          :data-current-video-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentVideoFrameVisible)"
+          :data-fixed-shared-preview-endpoint="plainCameraSharedPreviewDomEvidence.fixedSharedPreviewEndpoint"
+          :data-fixed-shared-preview-status-endpoint="plainCameraSharedPreviewDomEvidence.fixedSharedPreviewStatusEndpoint"
+        >
           <h3>实时画面</h3>
           <div class="panel-action-row">
             <button ref="plainCameraStartButton" type="button" :disabled="!canStartPreview" data-testid="plain-camera-start" @click="startPreview">{{ plainCameraStartButtonLabel }}</button>
@@ -13993,12 +14060,24 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
             <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
           </div>
-          <div class="camera-preview-frame" data-testid="robot-camera-preview-frame" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
+          <div
+            class="camera-preview-frame"
+            data-testid="robot-camera-preview-frame"
+            :data-state="cameraSummary.state"
+            :data-frame-state="plainCameraFrameEvidenceState"
+            :data-current-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentFrameVisible)"
+            :data-current-mjpeg-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentMjpegFrameVisible)"
+            :data-current-video-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentVideoFrameVisible)"
+            :data-shared-preview-status-source="plainCameraSharedPreviewDomEvidence.statusSource"
+          >
             <img
               v-if="cameraMjpegSharedPreviewVisible && cameraMjpegPreviewUrl"
               class="camera-mjpeg-preview"
               data-testid="robot-camera-mjpeg-preview"
               :src="cameraMjpegPreviewUrl"
+              :data-current-mjpeg-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentMjpegFrameVisible)"
+              :data-shared-preview-client-count="String(plainCameraSharedPreviewDomEvidence.clientCount)"
+              :data-shared-preview-single-upstream="String(plainCameraSharedPreviewDomEvidence.singleUpstream)"
               alt=""
               @load="handleMjpegPreviewLoaded"
               @error="handleMjpegPreviewError"
