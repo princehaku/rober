@@ -10045,6 +10045,14 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-delivery-status[data-state="已送达"]');
     expect(workstationStyles).toContain('.plain-delivery-final[data-state="已完成"]');
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已送达，反馈 8 次，delivery gate 已确认");
+    const deliveredTripRun = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(deliveredTripRun.attributes("data-current-nav2-route-map-ref")).toBe("o11-nav2-goal-execution-delivered-fixture");
+    expect(deliveredTripRun.attributes("data-delivery-route-map-ref")).toBe("o11-nav2-goal-execution-delivered-fixture");
+    expect(deliveredTripRun.attributes("data-delivery-route-map-matches-current-nav2")).toBe("true");
+    expect(deliveredTripRun.attributes("data-delivery-success-ready")).toBe("true");
+    expect(deliveredTripRun.attributes("data-delivery-success-matches-current-nav2")).toBe("true");
+    expect(deliveredTripRun.attributes("data-delivery-success-evidence-route-mismatch")).toBe("false");
+    expect(deliveredTripRun.attributes("data-delivery-success-evidence-stale")).toBe("false");
     const marker = wrapper.find('[data-testid="plain-map-route-goal-marker"]');
     expect(marker.exists()).toBe(true);
     expect(marker.text()).toBe("已送达");
@@ -21025,6 +21033,12 @@ describe("App", () => {
     expect((wrapper.find('input[name="deliveryOperatorEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-draft-smoke-1782102952");
     expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe("/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-1782099547218");
+    const matchedTripRun = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(matchedTripRun.attributes("data-current-nav2-route-map-ref")).toBe("not_loaded");
+    expect(matchedTripRun.attributes("data-delivery-route-map-ref")).toBe("o11-nav2-goal-execution-1782099547218");
+    expect(matchedTripRun.attributes("data-delivery-route-map-matches-current-nav2")).toBe("true");
+    expect(matchedTripRun.attributes("data-delivery-success-ready")).toBe("false");
+    expect(matchedTripRun.attributes("data-delivery-success-matches-current-nav2")).toBe("false");
     expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-o11-nav2-goal-execution-1782099547218");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("本轮行程");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
@@ -21234,6 +21248,11 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-old-fixture");
+    const mismatchedTripRun = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(mismatchedTripRun.attributes("data-current-nav2-route-map-ref")).toBe("o11-nav2-goal-execution-fresh-fixture");
+    expect(mismatchedTripRun.attributes("data-delivery-route-map-ref")).toBe("o11-nav2-goal-execution-old-fixture");
+    expect(mismatchedTripRun.attributes("data-delivery-route-map-matches-current-nav2")).toBe("false");
+    expect(mismatchedTripRun.attributes("data-delivery-success-ready")).toBe("false");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：更新行程材料。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("本轮行程材料");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先更新行程材料）");
@@ -21254,6 +21273,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-fresh-fixture");
+    const refreshedTripRun = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(refreshedTripRun.attributes("data-current-nav2-route-map-ref")).toBe("o11-nav2-goal-execution-fresh-fixture");
+    expect(refreshedTripRun.attributes("data-delivery-route-map-ref")).toBe("o11-nav2-goal-execution-fresh-fixture");
+    expect(refreshedTripRun.attributes("data-delivery-route-map-matches-current-nav2")).toBe("true");
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("重新准备材料");
     expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-o11-nav2-goal-execution-fresh-fixture");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");

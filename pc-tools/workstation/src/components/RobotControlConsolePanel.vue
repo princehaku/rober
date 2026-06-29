@@ -9537,6 +9537,12 @@ type PlainTripDomEvidence = {
   deliveryMaterialReady: boolean;
   deliveryConfirmReady: boolean;
   deliverySuccessReady: boolean;
+  deliveryRouteMapMatchesCurrentNav2: boolean;
+  deliverySuccessMatchesCurrentNav2: boolean;
+  deliverySuccessEvidenceRouteMismatch: boolean;
+  deliverySuccessEvidenceStale: boolean;
+  currentNav2RouteMapRef: string;
+  deliveryRouteMapRef: string;
   lastBaseCommandMode: string;
   nextBaseCommandMode: string;
   fixedExecuteProxyEndpoint: string;
@@ -9585,6 +9591,12 @@ const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
     deliveryMaterialReady: currentRunDeliveryMaterialReady.value,
     deliveryConfirmReady: plainDeliveryConfirmReady.value,
     deliverySuccessReady: deliverySuccessReady.value,
+    deliveryRouteMapMatchesCurrentNav2: deliveryRouteMapMatchesFreshNav2.value,
+    deliverySuccessMatchesCurrentNav2: deliverySuccessReady.value,
+    deliverySuccessEvidenceRouteMismatch: deliverySuccessEvidenceRouteMismatch.value,
+    deliverySuccessEvidenceStale: deliverySuccessEvidenceIsStale.value,
+    currentNav2RouteMapRef: freshNav2RouteMapRef.value || "not_loaded",
+    deliveryRouteMapRef: deliveryOperatorRouteMapRef.value.trim() || "not_loaded",
     lastBaseCommandMode: values?.base_command_mode ?? nav2?.goal_execution_base_command_mode ?? "not_loaded",
     nextBaseCommandMode: plainTripRequestedBaseCommandMode(),
     fixedExecuteProxyEndpoint: "/api/robot-control/nav2/goal/execute",
@@ -15275,6 +15287,12 @@ onBeforeUnmount(() => {
             :data-delivery-material-ready="String(plainTripDomEvidence.deliveryMaterialReady)"
             :data-delivery-confirm-ready="String(plainTripDomEvidence.deliveryConfirmReady)"
             :data-delivery-success-ready="String(plainTripDomEvidence.deliverySuccessReady)"
+            :data-delivery-route-map-matches-current-nav2="String(plainTripDomEvidence.deliveryRouteMapMatchesCurrentNav2)"
+            :data-delivery-success-matches-current-nav2="String(plainTripDomEvidence.deliverySuccessMatchesCurrentNav2)"
+            :data-delivery-success-evidence-route-mismatch="String(plainTripDomEvidence.deliverySuccessEvidenceRouteMismatch)"
+            :data-delivery-success-evidence-stale="String(plainTripDomEvidence.deliverySuccessEvidenceStale)"
+            :data-current-nav2-route-map-ref="plainTripDomEvidence.currentNav2RouteMapRef"
+            :data-delivery-route-map-ref="plainTripDomEvidence.deliveryRouteMapRef"
             :data-last-base-command-mode="plainTripDomEvidence.lastBaseCommandMode"
             :data-next-base-command-mode="plainTripDomEvidence.nextBaseCommandMode"
             :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
