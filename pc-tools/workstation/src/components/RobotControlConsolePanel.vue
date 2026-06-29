@@ -2992,6 +2992,22 @@ const plainWysiwygEvidenceRefreshButtonLabel = computed(() => {
   return "刷新当前所见（只读）";
 });
 
+const canRefreshPlainMappingUnlockEvidence = computed(() => canRefreshPlainWysiwygEvidence.value);
+
+const plainMappingUnlockRefreshButtonLabel = computed(() => {
+  // 建图解锁刷新复用同一条只读链路，但按钮文案必须落在“画面/雷达条件”上，避免误读成启动建图。
+  if (loading.value) {
+    return "刷新总览中";
+  }
+  if (mapWysiwygRefreshPending.value) {
+    return "刷新地图和雷达中";
+  }
+  if (cameraMjpegStatusPending.value) {
+    return "刷新画面条件中";
+  }
+  return "刷新建图条件（只读）";
+});
+
 const plainActionStatusCards = computed(() => {
   // 后端动作卡是普通首屏的结构化摘要；旧 summary 没有该字段时继续使用上面的事实列表。
   return robotSummary.value?.action_status_cards ?? [];
@@ -13619,6 +13635,19 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
             <p class="panel-note" data-testid="plain-free-roam-mapping-readiness">{{ plainFreeRoamAutonomyReadiness.mappingReadinessText }}</p>
             <div class="plain-mapping-unlock-plan" data-testid="plain-mapping-unlock-plan" aria-label="建图解锁包">
+              <div class="simple-status-row">
+                <strong>传感器 ready 后建图</strong>
+                <span class="muted">只刷新画面首帧、雷达新鲜度和地图画面，不启动任何设备或动作。</span>
+                <button
+                  type="button"
+                  class="secondary compact-stop"
+                  :disabled="!canRefreshPlainMappingUnlockEvidence"
+                  data-testid="plain-mapping-unlock-refresh"
+                  @click="refreshPlainConsole"
+                >
+                  {{ plainMappingUnlockRefreshButtonLabel }}
+                </button>
+              </div>
               <div
                 v-for="item in plainMappingUnlockItems"
                 :key="item.id"
