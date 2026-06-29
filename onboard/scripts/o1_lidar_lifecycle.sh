@@ -12,7 +12,7 @@ fi
 
 ONBOARD_ROOT="/root/rober/onboard"
 SERIAL_PORT="/dev/ttyACM0"
-SERIAL_BAUDRATE="150000"
+SERIAL_BAUDRATE="230400"
 FRAME_ID="laser_frame"
 RUNTIME_DIR="${ROBER_LIDAR_RUNTIME_DIR:-/tmp/rober_lidar_lifecycle}"
 LOG_DIR=""
@@ -27,7 +27,7 @@ Usage: o1_lidar_lifecycle.sh start|stop|status [options]
 Options:
   --onboard-root PATH    onboard workspace path, default /root/rober/onboard
   --serial-port PATH     LiDAR serial path, default /dev/ttyACM0
-  --serial-baudrate N    LiDAR baudrate, default 150000
+  --serial-baudrate N    LiDAR baudrate, default 230400
   --frame-id NAME        LiDAR frame id, default laser_frame
   --runtime-dir PATH     state/log root, default /tmp/rober_lidar_lifecycle
   -h, --help             show this help

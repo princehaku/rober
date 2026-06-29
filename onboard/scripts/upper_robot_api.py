@@ -52,7 +52,7 @@ DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.j
 DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH = "/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl"
 DEFAULT_BRIDGE_FEEDBACK_DEBUG_STALE_AFTER_MS = 15 * 1000
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
-DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 5.0
+DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 12.0
 DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
 DEFAULT_RADAR_LIFECYCLE_STATUS_TIMEOUT_S = 3.0
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
@@ -116,7 +116,7 @@ SAFE_NAV2_LIFECYCLE_SCRIPT = "o11_nav2_lifecycle.sh"
 SAFE_LIDAR_RUNTIME_SHELLS = ("bash", "sh")
 DEFAULT_RADAR_START_COMMAND = (
     "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
-    "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+    "--serial-port /dev/ttyACM0 --serial-baudrate 230400 --frame-id laser_frame"
 )
 DEFAULT_RADAR_STOP_COMMAND = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
 DEFAULT_NAV2_START_COMMAND = (
@@ -124,7 +124,7 @@ DEFAULT_NAV2_START_COMMAND = (
     "--map-file /root/rober/onboard/runtime/maps/trashbot_map.yaml "
     "--base-port /dev/ttyS5 --base-baudrate 115200 --command-mode ros "
     "--base-enabled auto --lidar-enabled auto --lidar-serial-port /dev/ttyACM0 "
-    "--lidar-serial-baudrate 150000 --static-laser-tf-enabled true"
+    "--lidar-serial-baudrate 230400 --static-laser-tf-enabled true"
 )
 DEFAULT_NAV2_STOP_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh stop"
 DEFAULT_NAV2_STATUS_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh status"
@@ -6605,13 +6605,13 @@ class UpperRobotApi:
             "dev_lidar": describe_path("/dev/lidar"),
             "observed_lidar_port": "/dev/ttyACM0" if lidar_observed else None,
             "observed_lidar_port_info": tty_acm0,
-            "baudrate": 150000,
+            "baudrate": 230400,
             "start_command_hex": "a5 60",
             "stop_command_hex": "a5 00 a5 65 a5 65",
             "candidates": candidates,
             "ros2": {
                 "driver": "ros2_trashbot_hardware lidar_driver",
-                "launch": "ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_publish_raw_packets:=true",
+                "launch": "ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=230400 lidar_publish_raw_packets:=true",
                 "scan_topic": "/scan",
                 "raw_packet_topic": "/lidar/raw_packet",
                 "frame_id": "laser_frame",

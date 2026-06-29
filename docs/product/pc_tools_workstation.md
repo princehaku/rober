@@ -353,7 +353,7 @@ pc-tools/workstation/
   Nav2 行程是否发过底盘命令，继续保留在 `goal_execution_key_values.robot_control_executed`、
   `sends_base_motion_commands` 和 wheel raw L/R 证据里。这样刷新 latest、页面初载和送达材料预填都不会被误读成重新发车。
 - 2026-06-25 起，Nav2 目标预检按普通发车前最小确认口径收敛：PC 后端只要求 `confirm_navigation_preflight=true` 与固定只读定位/路径 readback，不再读取或要求 `/api/operator/report` 现场材料；普通首屏执行行程仍要求先勾“行程前安全确认”，后端执行代理仍只接受固定 `/api/nav2/goal/execute` 且需要 `confirm_navigation_execution=true`。
-- 2026-06-23 13:45 起，上位机 `upper_robot_api.py` 不再依赖手工设置 `ROBER_RADAR_START_COMMAND` / `ROBER_RADAR_STOP_COMMAND` 才能启动雷达；默认命令使用受管 `o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame` 与 `o1_lidar_lifecycle.sh stop`，并继续通过白名单校验拒绝 `/dev/ttyS5`、`T=1/T=13/T=130/T=131`、`/cmd_vel` 和 `/api/base/manual`。部署该上位机版本后，PC summary 应读到 `radar_start_configured=true`，普通首屏才会恢复可点击 `启动雷达`；这仍只启动 LiDAR lifecycle，不开放底盘、Nav2 execute、delivery complete、keyboard pulse 或 `/cmd_vel`。
+- 2026-06-23 13:45 起，上位机 `upper_robot_api.py` 不再依赖手工设置 `ROBER_RADAR_START_COMMAND` / `ROBER_RADAR_STOP_COMMAND` 才能启动雷达；默认命令使用受管 `o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 230400 --frame-id laser_frame` 与 `o1_lidar_lifecycle.sh stop`，并继续通过白名单校验拒绝 `/dev/ttyS5`、`T=1/T=13/T=130/T=131`、`/cmd_vel` 和 `/api/base/manual`。部署该上位机版本后，PC summary 应读到 `radar_start_configured=true`，普通首屏才会恢复可点击 `启动雷达`；这仍只启动 LiDAR lifecycle，不开放底盘、Nav2 execute、delivery complete、keyboard pulse 或 `/cmd_vel`。
 - 2026-06-23 12:30 起，普通首屏 `本轮进度` 的 `去键盘` 复用键盘 gate 的下一步聚焦规则：键盘条件满足时聚焦 `启用键盘（按键才动）`，仍缺恢复确认、轮速记录或雷达移动记录时聚焦对应补证动作，其它缺项时聚焦 `复查手控条件`。该聚焦不启用键盘、不发送 keyboard pulse、manual、stop、Nav2、delivery complete 或 `/cmd_vel`。
 - 2026-06-23 12:45 起，普通首屏 `本轮进度` 四个目标行各自显示短 `下一步`：轮速、行程、送达和键盘都能在同一块里看到当前动作提示。总主按钮仍只指向第一处未完成卡点；每行下一步只展示文字，不自动刷新、不自动提交、不执行 Nav2、manual、delivery complete、keyboard pulse、stop 或 `/cmd_vel`。
 - 2026-06-26 09:05 起，普通首屏 `本轮进度` 外层也暴露总状态 chip 和 `data-state`：读取中显示 `刷新中`，行程执行中显示 `执行中`，送达确认提交中显示 `确认中`，仍有任一收口缺口显示 `待处理`，四项全部完成/验证后才显示 `已完成`。该状态只汇总页面已有轮速、行程、送达和键盘只读状态，不自动刷新、不执行 Nav2、不确认送达、不发送 manual、keyboard pulse、stop 或 `/cmd_vel`。
@@ -3870,7 +3870,7 @@ wheel raw L/R 非零证据。
 
 2026-06-29 05:00 起，真实上位机 Nav2 stack-only start 已恢复到可生成 no-motion 路线的状态：
 `/api/nav2/start` 会自动复用已有 `/esp32_bridge` 或 `/dev/ttyS5` holder，避免 Robot API、Nav2 和键盘手控抢同一个
-WAVE ROVER UART；同时可启动 LiDAR `/dev/ttyACM0@150000` 和 `base_link->laser_frame` static TF，给 AMCL/Nav2 提供
+WAVE ROVER UART；同时可启动 LiDAR `/dev/ttyACM0@230400` 和 `base_link->laser_frame` static TF，给 AMCL/Nav2 提供
 `/scan`。Nav2 参数补齐 `map_server.yaml_filename` 和 AMCL 默认 initial pose 后，现场读回
 `map_server/amcl/planner_server/controller_server=active`，`/map` 与 `/scan` 均被消费，
 no-motion `ComputePathToPose` proof 生成 18 个 path points。
@@ -3880,6 +3880,18 @@ delivery success。实际发车仍必须由用户勾选安全确认后显式执�
 同轮摄像头复核显示共享预览链路不是独占问题：`shared_preview_contract=single_shared_capture_for_multiple_clients`，
 `source_usage.owner_count=0`，但 `/dev/video1` DV20 UVC 返回 `uvc_no_frame_not_exclusive`。
 因此多人页面进入时会共享同一条预览/失败诊断；当前看不到实时画面的原因是摄像头源头没有输出首帧，而不是后来打开的页面抢占了设备。
+
+2026-06-29 21:05 起，LiDAR runtime 参数按 vendor 资料重新对齐：`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+使用 `/dev/ttyACM* @ 230400`，并解析 STC `0x54` 固定 47 字节、每帧 12 点数据。
+上车 LiDAR driver 现在同时保留旧 `0xAA55` mock/回放协议和真实 STC `0x54` 协议；`o1_lidar_lifecycle.sh`、
+`learn.launch.py`、`bringup.launch.py`、`autonomous.launch.py`、上位机雷达默认启动命令和状态展示均改为 230400。
+这次只修传感器 `/scan` 链路，不触发底盘 manual、keyboard、free-roam、Nav2 goal、delivery、stop 或 `/cmd_vel`；
+真实自动驾驶是否可动仍要在雷达 fresh 后，用现场安全确认后的路线执行窗口复验 wheel raw L/R 非零。
+同轮上位机部署后，`/api/radar/scan-proof/refresh` 默认进入只读 topic 观察，12 秒窗口内读到
+`scan_once_hz_raw_packet_tf_observed`，`scan_hz_average_rate_hz=17.355`，且 `blocked_commands_not_sent`
+继续覆盖 `T=1/T=13/T=130/T=131//cmd_vel//api/base/manual`；`GET /api/radar/status` 返回
+`fresh_scan_proof_observed=true`、`continuous_scan_status=latest_proof_fresh_while_lifecycle_running`。
+PC 7001 summary 同步显示 `radar_status=radar_ready`、地图所见即所得为“地图画面、图上路线、小车位置和雷达标记都已按当前读数显示”。
 
 2026-06-29 05:20 起，PC 普通首屏和 fixed first-jog 统一为最小安全确认门禁：
 `试动一下`、轮速卡 `低速试动读轮速`、键盘连续手控和已准备行程执行都只把“人在旁边、周围安全、停止手段就绪”

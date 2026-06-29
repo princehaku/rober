@@ -152,14 +152,14 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-06-22。
+更新时间：2026-06-29。
 
 | Objective | 进度 | 主要缺口 |
 | --- | --- | --- |
 | O1：硬件协议可信底盘 | ~85% | 已有真实上位机 first-jog 转发、T1001 L/R 反馈采样字段和 LiDAR delta 过阈值；当前真实 L/R 仍为 0，仍缺轮速非零原始反馈、轮速方向、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
 | O5：云中转控制面 | ~80% | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收 |
 | O6：云端核心后端 | ~30% | archive、tunnel online、event/evidence、labeling、model inference、consumer read API 已有 local/mock software proof；仍缺真实隧道、生产 DB/queue、OSS、TLS/4G、真实机器人数据 |
-| O7：PC 端运营调试平台 | ~13% | PC 普通首屏已能连接真实上位机、提交 first-jog 视觉材料并转发受控试动；仍缺真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流和上车验证 |
+| O7：PC 端运营调试平台 | ~18% | PC 普通首屏已能连接真实上位机；真实 LiDAR `/scan`、`/lidar/raw_packet`、TF 已 fresh，PC 地图 summary 已显示地图画面、图上路线、小车位置和雷达标记按当前读数显示；仍缺真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、历史回放、标注数据流和完整路线执行 |
 
 **已归档 Objective（软件侧完成，等待真实现场验证）：**
 

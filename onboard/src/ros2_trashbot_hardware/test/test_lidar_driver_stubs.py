@@ -17,7 +17,7 @@ from ros2_trashbot_hardware.lidar_driver import (
     scan_dict_from_packet,
     uses_real_serial,
 )
-from ros2_trashbot_hardware.lidar_packets import make_mock_packet
+from ros2_trashbot_hardware.lidar_packets import find_packets, make_mock_packet, make_stc_mock_packet
 
 
 class FakeSerial:
@@ -73,6 +73,14 @@ class FakeSplitSerial(FakeSerial):
         self.read_chunks = [b"noise" + packet[:1], packet[1:5], packet[5:]]
 
 
+class FakeStcSerial(FakeSerial):
+    def __init__(self, *, port, baudrate, timeout):
+        super().__init__(port=port, baudrate=baudrate, timeout=timeout)
+        packet = make_stc_mock_packet()
+        # 真实 STC 帧头只有 0x54，单测覆盖噪声后按固定 47 字节重同步。
+        self.read_chunks = [b"noise" + packet]
+
+
 class LidarDriverStubsTest(unittest.TestCase):
     def setUp(self):
         FakeSerial.instances = []
@@ -88,6 +96,22 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertEqual(scan["frame_id"], "laser_frame")
         self.assertEqual(len(scan["ranges"]), 3)
         self.assertGreater(scan["angle_increment"], 0.0)
+
+    def test_stc_vendor_packet_parses_wave_rover_frame(self):
+        scan = scan_dict_from_packet(make_stc_mock_packet(start_angle_deg=0.0), frame_id="laser_frame")
+
+        self.assertEqual(scan["frame_id"], "laser_frame")
+        self.assertEqual(len(scan["ranges"]), 12)
+        self.assertAlmostEqual(scan["ranges"][0], 1.0)
+        self.assertAlmostEqual(scan["angle_min"], math.radians(180.0))
+
+    def test_find_packets_ignores_invalid_stc_header_before_ydlidar_packet(self):
+        packet = make_mock_packet()
+
+        packets, remainder = find_packets(b"noise\x54\x00payload" + packet)
+
+        self.assertEqual(packets, [packet])
+        self.assertEqual(remainder, b"")
 
     def test_scan_aggregator_waits_for_more_than_one_narrow_packet(self):
         aggregator = LidarScanAggregator(max_packets=4, min_points=9)
@@ -123,7 +147,7 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertEqual(len(scan["ranges"]), 6)
 
     def test_real_serial_session_sends_start_and_stop_commands(self):
-        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)
         session = LidarSerialSession(config, serial_factory=FakeSerial)
 
         session.open()
@@ -132,14 +156,14 @@ class LidarDriverStubsTest(unittest.TestCase):
 
         fake = FakeSerial.instances[0]
         self.assertEqual(fake.port, "/dev/ttyACM0")
-        self.assertEqual(fake.baudrate, 150000)
+        self.assertEqual(fake.baudrate, 230400)
         self.assertEqual(fake.writes[0], LIDAR_START_COMMAND)
         self.assertEqual(fake.writes[-1], LIDAR_STOP_COMMAND)
         self.assertEqual(len(packets), 1)
         self.assertTrue(fake.closed)
 
     def test_start_write_failure_closes_serial_handle(self):
-        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)
         session = LidarSerialSession(config, serial_factory=FakeStartWriteFailure)
 
         with self.assertRaises(OSError):
@@ -151,7 +175,7 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertEqual(session.read_packets(), [])
 
     def test_stop_write_failure_still_closes_serial_handle(self):
-        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)
         session = LidarSerialSession(config, serial_factory=FakeStopWriteFailure)
 
         session.open()
@@ -163,7 +187,7 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertEqual(session.read_packets(), [])
 
     def test_serial_session_resyncs_split_packet_reads(self):
-        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)
         session = LidarSerialSession(config, serial_factory=FakeSplitSerial)
 
         session.open()
@@ -173,6 +197,16 @@ class LidarDriverStubsTest(unittest.TestCase):
         session.close()
 
         self.assertEqual(packets, [make_mock_packet()])
+
+    def test_serial_session_reads_stc_vendor_packet(self):
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)
+        session = LidarSerialSession(config, serial_factory=FakeStcSerial)
+
+        session.open()
+        packets = session.read_packets()
+        session.close()
+
+        self.assertEqual(packets, [make_stc_mock_packet()])
 
     def test_mock_scan_does_not_open_serial(self):
         config = LidarRuntimeConfig(mock_scan=True)

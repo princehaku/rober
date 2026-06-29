@@ -6,6 +6,24 @@
 
 ---
 
+## 2026-06-29 系列
+
+### 2026-06-29 21-05｜lidar stc baudrate alignment｜真实雷达 fresh 与 PC 地图雷达 WYSIWYG
+
+本轮 `sprints/2026.06.29_21-05_lidar_stc_baudrate_alignment/` 在不使用 subagent 的前提下修复真实上位机雷达链路。先按 `docs/vendor/VENDOR_INDEX.md` 追到 `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`，把 LiDAR 默认串口口径对齐为 `/dev/ttyACM0 @ 230400`，并给 `ros2_trashbot_hardware` 的 packet parser 增加 STC `0x54` 固定 47 字节帧支持，同时保留旧 `0xAA55` mock/回放路径。现场随后确认真实 raw packet 仍为 `0xAA55`，旧解析路径可继续工作；核心问题还包括 proof collector 使用 ROS daemon 时触发 `rclpy.ok()` XML-RPC 异常、5 秒窗口不足和 raw packet topic type discovery 偶发失败。
+
+本轮将 `o1_lidar_scan_proof_collector.py` 纳入仓库并改为 `scan/raw_packet` echo 使用 `--no-daemon` 加显式消息类型，默认只读观察窗口提升到 12 秒；同时把 `o1_lidar_lifecycle.sh`、`o1_lidar_ros2_scan_smoke.sh`、learn/bringup/autonomous launch、上位机默认 radar/nav2 LiDAR 参数统一到 230400。部署到真实上位机后，显式清掉旧 `ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND=...150000` 进程环境，默认 `/api/radar/scan-proof/refresh` 不再启动旧 smoke，只读读取已有 lifecycle。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 7：PC 端运营调试平台 | 从约 13% 提升到约 18% | PC 7001 summary 已读到真实上位机 `radar_status=radar_ready`、`latest_scan_proof_fresh=true`、`radar_overlay_status=loaded`，地图 WYSIWYG 文案为“地图画面、图上路线、小车位置和雷达标记都已按当前读数显示”。仍缺真实 RTC/视频、ASR/TTS、云端手控/寻路、历史回放、标注和完整路线执行。 |
+| Objective 1：硬件协议可信底盘 | 保持约 85% | 本轮证明真实 LiDAR `/scan`、`/lidar/raw_packet` 与 TF fresh，但没有触发底盘运动，没有证明 wheel raw L/R 非零、轮速方向或 HIL pass。 |
+| Objective 3：可验证导航与固定路线 | 归档软件约 99%，现场雷达依赖已解除一项 | 真实 `/scan` fresh 可供 Nav2/地图消费，但本轮未执行 Nav2 goal，没有证明路线执行、delivery success 或同窗口 wheel raw L/R 非零。 |
+
+验证范围：`python3 -m unittest ...` 107 tests OK；`py_compile` OK；`bash -n` OK；Docker/Humble `colcon build --symlink-install` 输出 `Summary: 6 packages finished [43.2s]`；真实上位机 `/api/radar/status` 返回 `scan_status=fresh_scan_proof_observed`、`continuous_scan_status=latest_proof_fresh_while_lifecycle_running`、`latest_scan_hz_average_rate_hz=17.355`、`blocked_reasons=[]`、`baudrate=230400`。本轮没有发送 manual、keyboard、free-roam、Nav2 goal、delivery、stop 或 `/cmd_vel`。
+
+更新时间：2026-06-29 21:05 Asia/Shanghai。
+
 ## 2026-06-22 系列
 
 ### 2026-06-22 01-34｜goal completion audit｜建图/移动/PC 连接控制目标收口

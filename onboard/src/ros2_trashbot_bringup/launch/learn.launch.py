@@ -103,7 +103,7 @@ def generate_launch_description():
         description='LiDAR serial port used by ros2_trashbot_hardware/lidar_driver')
 
     lidar_serial_baudrate_arg = DeclareLaunchArgument(
-        'lidar_serial_baudrate', default_value='150000',
+        'lidar_serial_baudrate', default_value='230400',
         description='LiDAR serial baudrate used by ros2_trashbot_hardware/lidar_driver')
 
     lidar_frame_id_arg = DeclareLaunchArgument(
@@ -471,7 +471,7 @@ def generate_launch_description():
             }],
         ),
 
-        # LiDAR 默认关闭，现场显式传入 /dev/ttyACM0 @ 150000 时才打开，避免把无设备开发机误判成回归。
+        # LiDAR 默认关闭；WAVE ROVER/STC 资料指向 /dev/ttyACM0 @ 230400，避免真机按旧波特率空转。
         Node(
             package='ros2_trashbot_hardware',
             executable='lidar_driver',

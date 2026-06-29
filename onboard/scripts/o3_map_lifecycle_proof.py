@@ -567,7 +567,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--map-dir", default=DEFAULT_MAP_DIR)
     parser.add_argument("--map-name", default="trashbot_map")
     parser.add_argument("--serial-port", default="/dev/ttyACM0")
-    parser.add_argument("--serial-baudrate", type=int, default=150000)
+    parser.add_argument("--serial-baudrate", type=int, default=230400)
     parser.add_argument("--frame-id", default="laser_frame")
     parser.add_argument("--startup-s", type=float, default=8.0)
     parser.add_argument("--timeout-s", type=float, default=45.0)

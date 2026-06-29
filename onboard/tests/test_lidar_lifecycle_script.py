@@ -35,7 +35,7 @@ class LidarLifecycleScriptTests(unittest.TestCase):
         self.assertFalse(payload["running"])
         self.assertIsNone(payload["pid"])
         self.assertEqual("/dev/ttyACM0", payload["serial_port"])
-        self.assertEqual(150000, payload["baudrate"])
+        self.assertEqual(230400, payload["baudrate"])
         self.assertFalse(payload["uses_base_uart"])
         self.assertFalse(payload["publishes_cmd_vel"])
         self.assertIn("/dev/ttyS5", payload["blocked_base_uart"])

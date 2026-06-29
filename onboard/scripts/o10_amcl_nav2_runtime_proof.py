@@ -26,7 +26,7 @@ DEFAULT_MAP_PROOF = "/root/rober/onboard/runtime/map_lifecycle_latest.json"
 DEFAULT_MAP_DIR = "/root/rober/onboard/runtime/maps"
 DEFAULT_MANAGED_MAP_YAML = "/root/rober/onboard/runtime/maps/trashbot_map.yaml"
 DEFAULT_MANAGED_LIDAR_SERIAL_PORT = "/dev/ttyACM0"
-DEFAULT_MANAGED_LIDAR_SERIAL_BAUDRATE = 150000
+DEFAULT_MANAGED_LIDAR_SERIAL_BAUDRATE = 230400
 DEFAULT_MANAGED_TIMEOUT_S = 20.0
 DEFAULT_MANAGED_LIFECYCLE_START_DELAY_S = 3.0
 DEFAULT_MANAGED_BASE_FRAME_ID = "base_link"
@@ -2418,7 +2418,7 @@ def build_managed_runtime_shell(
     log = shlex.quote(log_path)
     laser_frame = shlex.quote(args.managed_laser_frame_id)
     commands = [
-        # 这里单独记录 vendor 事实边界：LiDAR 只允许 /dev/ttyACM0@150000；不允许触碰 /dev/ttyS5。
+        # 这里单独记录 vendor 事实边界：LiDAR 只允许 /dev/ttyACM0@230400；不允许触碰 /dev/ttyS5。
         (
             "lidar_driver",
             "ros2 run ros2_trashbot_hardware lidar_driver --ros-args "

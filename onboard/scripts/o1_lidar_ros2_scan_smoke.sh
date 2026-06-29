@@ -7,7 +7,7 @@ set -Eeuo pipefail
 
 ONBOARD_ROOT="/root/rober/onboard"
 SERIAL_PORT="/dev/ttyACM0"
-SERIAL_BAUDRATE="150000"
+SERIAL_BAUDRATE="230400"
 FRAME_ID="laser_frame"
 OUTPUT_DIR="/tmp/o1_lidar_ros2_scan_smoke"
 DRIVER_PID=""
@@ -20,7 +20,7 @@ Usage: o1_lidar_ros2_scan_smoke.sh [options]
 Options:
   --onboard-root PATH    onboard workspace path, default /root/rober/onboard
   --serial-port PATH     LiDAR serial path, default /dev/ttyACM0
-  --serial-baudrate N    LiDAR baudrate, default 150000
+  --serial-baudrate N    LiDAR baudrate, default 230400
   --frame-id NAME        LiDAR frame id, default laser_frame
   --output-dir PATH      evidence output dir, default /tmp/o1_lidar_ros2_scan_smoke
   -h, --help             show this help

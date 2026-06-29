@@ -1502,7 +1502,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         """start/stop 只接受受管 LiDAR lifecycle 脚本和 LiDAR 串口。"""
         start = (
             "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
-            "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+            "--serial-port /dev/ttyACM0 --serial-baudrate 230400 --frame-id laser_frame"
         )
         stop = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
 
@@ -1531,7 +1531,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("command", start_command["mode"])
         self.assertIn("o1_lidar_lifecycle.sh", start_command["argv"][1])
         self.assertIn("/dev/ttyACM0", start_command["argv"])
-        self.assertEqual("150000", start_command["argv"][start_command["argv"].index("--serial-baudrate") + 1])
+        self.assertEqual("230400", start_command["argv"][start_command["argv"].index("--serial-baudrate") + 1])
         self.assertTrue(stop_command["configured"])
         self.assertEqual("command", stop_command["mode"])
         self.assertFalse(status["sends_motion_commands"])
@@ -1569,7 +1569,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         """雷达命令不能指向 WAVE ROVER UART，也不能夹带底盘控制 token。"""
         unsafe_port = (
             "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
-            "--serial-port /dev/ttyS5 --serial-baudrate 150000"
+            "--serial-port /dev/ttyS5 --serial-baudrate 230400"
         )
         unsafe_token = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 T=1"
 
@@ -1585,7 +1585,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         """API radar start 成功只代表 lifecycle 命令执行，不打开运动许可。"""
         command = (
             "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
-            "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+            "--serial-port /dev/ttyACM0 --serial-baudrate 230400 --frame-id laser_frame"
         )
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
@@ -1616,7 +1616,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         """危险 radar 命令必须在 subprocess 前失败。"""
         command = (
             "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
-            "--serial-port /dev/ttyS5 --serial-baudrate 150000"
+            "--serial-port /dev/ttyS5 --serial-baudrate 230400"
         )
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",

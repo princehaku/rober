@@ -54,7 +54,7 @@ def generate_launch_description():
         description='LiDAR serial port used by ros2_trashbot_hardware/lidar_driver')
 
     lidar_serial_baudrate_arg = DeclareLaunchArgument(
-        'lidar_serial_baudrate', default_value='150000',
+        'lidar_serial_baudrate', default_value='230400',
         description='LiDAR serial baudrate used by ros2_trashbot_hardware/lidar_driver')
 
     lidar_frame_id_arg = DeclareLaunchArgument(

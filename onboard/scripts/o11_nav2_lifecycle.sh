@@ -18,7 +18,7 @@ COMMAND_MODE="ros"
 BASE_ENABLED="${ROBER_NAV2_BASE_ENABLED:-auto}"
 LIDAR_ENABLED="${ROBER_NAV2_LIDAR_ENABLED:-auto}"
 LIDAR_SERIAL_PORT="${ROBER_NAV2_LIDAR_SERIAL_PORT:-/dev/ttyACM0}"
-LIDAR_SERIAL_BAUDRATE="${ROBER_NAV2_LIDAR_SERIAL_BAUDRATE:-150000}"
+LIDAR_SERIAL_BAUDRATE="${ROBER_NAV2_LIDAR_SERIAL_BAUDRATE:-230400}"
 STATIC_LASER_TF_ENABLED="${ROBER_NAV2_STATIC_LASER_TF_ENABLED:-true}"
 RUNTIME_DIR="${ROBER_NAV2_RUNTIME_DIR:-/tmp/rober_nav2_lifecycle}"
 START_CONFIRM_TIMEOUT_S="${ROBER_NAV2_START_CONFIRM_TIMEOUT_S:-8}"
@@ -39,7 +39,7 @@ Options:
   --base-enabled BOOL     true/false/auto; auto reuses an existing /esp32_bridge or UART holder
   --lidar-enabled BOOL    true/false/auto; auto reuses an existing /scan publisher or LiDAR holder
   --lidar-serial-port PATH     LiDAR serial port, default /dev/ttyACM0
-  --lidar-serial-baudrate N    LiDAR serial baudrate, default 150000
+  --lidar-serial-baudrate N    LiDAR serial baudrate, default 230400
   --static-laser-tf-enabled BOOL  publish base_link->laser_frame TF, default true
   --runtime-dir PATH      state/log root, default /tmp/rober_nav2_lifecycle
   -h, --help              show this help

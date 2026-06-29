@@ -17,7 +17,7 @@ class LidarRuntimeConfig:
     """运行参数独立于 rclpy，便于 fake serial 单测锁定硬件边界。"""
 
     serial_port: str = "/dev/ttyACM0"
-    serial_baudrate: int = 150000
+    serial_baudrate: int = 230400
     frame_id: str = "laser_frame"
     scan_topic: str = "/scan"
     raw_packet_topic: str = "/lidar/raw_packet"
@@ -89,7 +89,7 @@ class LidarSerialSession:
             timeout=0.02,
         )
         try:
-            # 用户已用手动 Python 证明 A5 60 可让 STC USB Serial LiDAR 电机启动。
+            # WAVE ROVER vendor base_ctrl.py 使用 /dev/ttyACM* @ 230400，并用 A5 60 启动电机。
             serial_obj.write(LIDAR_START_COMMAND)
         except Exception:
             # 启动写入失败时立即释放句柄，避免半开串口阻塞下一轮排查。
@@ -315,7 +315,7 @@ def main() -> None:
         def _declare_parameters(self) -> None:
             # 参数名与 bringup/learn launch 对齐，避免两套入口产生漂移。
             self.declare_parameter("serial_port", "/dev/ttyACM0")
-            self.declare_parameter("serial_baudrate", 150000)
+            self.declare_parameter("serial_baudrate", 230400)
             self.declare_parameter("frame_id", "laser_frame")
             self.declare_parameter("scan_topic", "/scan")
             self.declare_parameter("raw_packet_topic", "/lidar/raw_packet")
