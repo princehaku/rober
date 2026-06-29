@@ -3116,6 +3116,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "goal_accepted": True,
             "result_received": True,
             "result_status": "succeeded",
+            "base_command_mode": "pwm",
             "robot_control_executed": True,
             "sends_motion_commands": True,
         }
@@ -3138,6 +3139,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "goal_accepted": True,
             "result_received": True,
             "result_status": "succeeded",
+            "base_command_mode": "pwm",
             "robot_control_executed": True,
             "sends_motion_commands": True,
             "sends_base_motion_commands": True,
@@ -3163,12 +3165,63 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(200, http_status)
         self.assertFalse(payload["nav2_goal_execution_proven"])
         self.assertFalse(payload["hil_pass"])
+        self.assertEqual("goal_succeeded", payload["status"])
+        self.assertEqual("pwm", payload["base_command_mode"])
+        self.assertEqual("ros", payload["next_base_command_mode"])
+        self.assertFalse(payload["wheel_feedback_lr_nonzero_proven"])
         self.assertIn("wheel_feedback_lr_nonzero", payload["nav2_goal_execution_not_proven"])
         self.assertFalse(payload["latest_result"]["nav2_goal_execution_proven"])
         self.assertFalse(payload["latest_result"]["hil_pass"])
         self.assertIn("wheel_feedback_lr_nonzero", payload["latest_result"]["not_proven"])
         self.assertFalse(payload["delivery_success"])
         self.assertFalse(payload["robot_control_executed"])
+        self.assertTrue(payload["readback_robot_control_executed"])
+
+    def test_nav2_goal_execution_latest_returns_enriched_payload_for_speed_retry(self) -> None:
+        """ROS 模式 action 成功但 wheel L/R 仍为零时，latest 要建议下一轮切 speed。"""
+        latest_result = {
+            "schema": "trashbot.upper_robot_api.v1.nav2_goal_execution_proof",
+            "status": "goal_succeeded",
+            "goal_accepted": True,
+            "result_received": True,
+            "result_status": "succeeded",
+            "base_command_mode": "ros",
+            "robot_control_executed": True,
+            "sends_motion_commands": True,
+            "sends_base_motion_commands": True,
+            "publishes_cmd_vel": "nav2_controller_may_publish_cmd_vel_when_goal_is_active",
+            "nav2_goal_execution_proven": True,
+            "hil_pass": True,
+            "base_feedback_summary": {"wheel_feedback_lr_nonzero_proven": False},
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            latest_path = Path(temp_dir) / "nav2_goal_execution_latest.json"
+            latest_path.write_text(json.dumps(latest_result), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                nav2_goal_execution_artifact_path=str(latest_path),
+            )
+
+            http_status, payload = api.nav2_goal_execution_latest()
+
+        self.assertEqual(200, http_status)
+        self.assertEqual("goal_succeeded", payload["status"])
+        self.assertEqual("ros", payload["base_command_mode"])
+        self.assertEqual("speed", payload["next_base_command_mode"])
+        self.assertFalse(payload["nav2_goal_execution_proven"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertFalse(payload["wheel_feedback_lr_nonzero_proven"])
+        self.assertIn("wheel_feedback_lr_nonzero", payload["not_proven"])
+        self.assertEqual("nav2_controller_may_publish_cmd_vel_when_goal_is_active", payload["readback_publishes_cmd_vel"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+        self.assertFalse(payload["robot_control_executed"])
+        self.assertTrue(payload["readback_robot_control_executed"])
+        self.assertTrue(payload["readback_sends_motion_commands"])
+        self.assertTrue(payload["readback_sends_base_motion_commands"])
+        self.assertFalse(payload["safe_to_control"])
 
     def test_nav2_proof_refresh_managed_path_generation_stays_no_motion(self) -> None:
         """PC 检查路径使用 managed runtime，但不能被包装成 Nav2 start 或底盘控制。"""

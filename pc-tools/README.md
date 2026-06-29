@@ -793,3 +793,10 @@ summary 结构和测试夹具，不启动建图、不执行 Nav2、不调用 man
 和地图/雷达 readback 会统一写成“雷达点已贴到当前地图 / 雷达点未贴到当前地图 / 地图雷达点未加载”，继续保留
 `map_marker_*` 兼容字段给脚本读取。该变化只修正只读文案和 fixture，不启动雷达、不刷新地图、不执行 Nav2、
 不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 14:35 CST 起，上位机 `/api/nav2/goal/execution/latest` 修复 latest artifact 有内容时丢失 payload 的
+只读包装问题，并把 `status`、`base_command_mode`、`next_base_command_mode`、执行窗口轮速 L/R 是否非零、
+readback 运动字段提升到顶层。现场若上次 PWM action 成功但轮速未证明，latest 会直接给出下一轮建议 `ros`；
+若上次 ROS 仍未证明，则建议 `speed`。顶层仍保持 `robot_control_executed=false`、`sends_motion_commands=false`、
+`publishes_cmd_vel=false` 和 `safe_to_control=false`，只用于 PC 诊断和下一次显式安全确认后的执行模式选择，
+不自动执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -4213,3 +4213,11 @@ delivery、stop 或 `/cmd_vel`。
 `radar_overlay_*` 与 `map_marker_*` 字段名给已有脚本兼容，但普通 readback 字符串不再把英文 marker 带给用户。
 该变化只修正只读 summary/map preview/radar status 文案，不启动雷达、不刷新地图、不执行 Nav2、不调用 manual、keyboard、
 free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 14:35 CST 起，上位机 Nav2 latest readback 修复 artifact 已存在但 HTTP 响应丢成空 `not_proven` 的问题。
+`/api/nav2/goal/execution/latest` 现在会保持只读边界，同时把最近一次执行的 `status`、`base_command_mode`、
+`next_base_command_mode`、`wheel_feedback_lr_nonzero_proven` 和 readback 运动字段提升给 PC。这样 PC 能区分：
+上次 PWM 成功但执行窗口轮速 L/R 未闭合时，下次显式执行建议 ROS；上次 ROS 仍未闭合时，下次建议 SPEED。
+该修复只读已有 `/root/rober/onboard/runtime/nav2_goal_execution_latest.json`，不重写 artifact、不启动自动驾驶、
+不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。轮速/反馈底层事实仍采用
+`docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER UART JSON/T1001 资料。

@@ -1907,10 +1907,49 @@ def enrich_nav2_goal_execution_latest_payload(payload: dict[str, Any]) -> dict[s
     enriched_latest["hil_pass"] = hil_pass
     enriched_latest["not_proven"] = reasons
     payload["latest_result"] = enriched_latest
+    payload["status"] = enriched_latest.get("status") or payload.get("status")
+    payload["result_status"] = enriched_latest.get("result_status")
+    payload["goal_accepted"] = bool_field_true(enriched_latest.get("goal_accepted"))
+    payload["result_received"] = bool_field_true(enriched_latest.get("result_received"))
+    payload["base_command_mode"] = enriched_latest.get("base_command_mode")
+    payload["next_base_command_mode"] = nav2_goal_next_base_command_mode(enriched_latest)
     payload["nav2_goal_execution_proven"] = proven
     payload["nav2_goal_execution_not_proven"] = reasons
     payload["hil_pass"] = hil_pass
+    payload["not_proven"] = reasons
+    base_feedback = enriched_latest.get("base_feedback_summary") if isinstance(enriched_latest.get("base_feedback_summary"), dict) else {}
+    payload["wheel_feedback_lr_nonzero_proven"] = bool_field_true(base_feedback.get("wheel_feedback_lr_nonzero_proven"))
+    payload["wheel_feedback_summary"] = base_feedback
+    base_command = enriched_latest.get("base_command_summary") if isinstance(enriched_latest.get("base_command_summary"), dict) else {}
+    payload["base_command_summary"] = base_command
+    payload["robot_control_executed"] = False
+    payload["readback_robot_control_executed"] = bool_field_true(enriched_latest.get("robot_control_executed"))
+    payload["sends_motion_commands"] = False
+    payload["readback_sends_motion_commands"] = bool_field_true(enriched_latest.get("sends_motion_commands"))
+    payload["sends_base_motion_commands"] = False
+    payload["readback_sends_base_motion_commands"] = bool_field_true(enriched_latest.get("sends_base_motion_commands"))
+    payload["publishes_cmd_vel"] = False
+    payload["readback_publishes_cmd_vel"] = enriched_latest.get("publishes_cmd_vel")
+    payload["delivery_success"] = False
+    payload["safe_to_control"] = False
+    payload["primary_actions_enabled"] = False
     return payload
+
+
+def nav2_goal_next_base_command_mode(latest_result: dict[str, Any]) -> str:
+    """基于上次执行证据给下一次建议模式；只读建议不自动发车。"""
+    raw_mode = latest_result.get("base_command_mode")
+    mode = raw_mode.strip().lower() if isinstance(raw_mode, str) else DEFAULT_NAV2_BASE_COMMAND_MODE
+    if mode not in ALLOWED_NAV2_BASE_COMMAND_MODES:
+        mode = DEFAULT_NAV2_BASE_COMMAND_MODE
+    base_feedback = latest_result.get("base_feedback_summary") if isinstance(latest_result.get("base_feedback_summary"), dict) else {}
+    if bool_field_true(base_feedback.get("wheel_feedback_lr_nonzero_proven")):
+        return mode
+    if mode == "pwm":
+        return "ros"
+    if mode == "ros":
+        return "speed"
+    return mode
 
 
 def delivery_completion_artifact_info(path: str) -> dict[str, Any]:
