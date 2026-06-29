@@ -7291,6 +7291,7 @@ function buildActionStatusCards(
     || nav2ManagedRuntimeStarted
     || nav2ManagedRuntimeLifecycleReadyOk
     || boundary.nav2_goal_ready;
+  const freeRoamStopRequestPending = readback.free_roam.stop_required === "true" || readback.free_roam.decision_state === "stopping";
   return [
     {
       id: "camera_preview",
@@ -7456,6 +7457,10 @@ function buildActionStatusCards(
         camera_blocks_free_motion: false,
         radar_blocks_free_motion: false,
         fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+        fixed_free_roam_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+        free_roam_stop_request_pending: freeRoamStopRequestPending,
+        start_will_clear_stop_request: freeRoamStopRequestPending && boundary.free_roam_motion_start_ready,
+        motion_start_blocked_by_stop_request: false,
         fixed_mapping_start_endpoint: "/api/robot-control/map/start",
         fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
         mapping_start_ready: boundary.free_roam_mapping_start_ready,

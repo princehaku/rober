@@ -2463,6 +2463,10 @@ export interface RobotControlActionStatusCard {
     camera_blocks_free_motion?: boolean;
     radar_blocks_free_motion?: boolean;
     fixed_free_roam_start_endpoint?: string;
+    fixed_free_roam_stop_endpoint?: string;
+    free_roam_stop_request_pending?: boolean;
+    start_will_clear_stop_request?: boolean;
+    motion_start_blocked_by_stop_request?: boolean;
     fixed_mapping_start_endpoint?: string;
     fixed_mapping_preview_endpoint?: string;
     mapping_start_ready?: boolean;

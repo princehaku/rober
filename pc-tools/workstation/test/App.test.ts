@@ -4776,6 +4776,10 @@ describe("App", () => {
     expect(freeMoveActionCard.attributes("data-camera-blocks-free-motion")).toBe("false");
     expect(freeMoveActionCard.attributes("data-radar-blocks-free-motion")).toBe("false");
     expect(freeMoveActionCard.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
+    expect(freeMoveActionCard.attributes("data-fixed-free-roam-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(freeMoveActionCard.attributes("data-free-roam-stop-request-pending")).toBe("false");
+    expect(freeMoveActionCard.attributes("data-start-will-clear-stop-request")).toBe("false");
+    expect(freeMoveActionCard.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     expect(freeMoveActionCard.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
     expect(freeMoveActionCard.attributes("data-fixed-mapping-preview-endpoint")).toBe("/api/robot-control/map/preview");
     const mappingActionCard = wrapper.find('[data-testid="plain-action-status-card-mapping_start"]');
