@@ -6324,6 +6324,24 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
         },
       },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          status: "path_ready_with_service_blockers",
+          proof_state: "path_ready_with_service_blockers",
+          path_generated: true,
+          path_point_count: 36,
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          planner_server_active: true,
+          controller_server_active: false,
+          controller_server_requested: false,
+          blocked_reasons: ["nav2_lifecycle_not_running"],
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
       "/api/localize/proof/latest": {
         payload: {
           schema: "trashbot.upper_robot_api.v1.localize_proof_latest",
@@ -6377,20 +6395,21 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到 49 次非零底盘命令。");
-      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口确认轮速 L/R 非零。");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.next_action_plain).toContain("用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.plain_hint).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：勾选行程前安全确认后用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.plain_hint).not.toContain("wheel raw");
       expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=0/0 未非零。");
-      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
+      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
       expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
       expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 pwm，下次 ros");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线，并复验 wheel raw L/R");
-      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或控制服务；勾选行程前安全确认后用 ROS 模式重跑图上路线，并复验执行窗口轮速 L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或控制服务；勾选行程前安全确认后用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验执行窗口轮速 L/R");
       expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_ros_rerun_after_pwm");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {

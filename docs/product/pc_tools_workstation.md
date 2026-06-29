@@ -4174,3 +4174,9 @@ camera health 并发读取时旧窗口容易超时，进而让当前 wheel L/R�
 服务接近单 worker 时，慢 status 不会把快端点一起排队到 4s 超时；UI 仍按原来的 `read_endpoints[]` 顺序显示。
 浏览器侧 summary 等待窗口同步改为 12s，用于承接底盘/status 真实读数。该变化只改变只读 GET 调度和等待窗口，
 不自动刷新 proof、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:48 CST 起，PC summary 把“Nav2 lifecycle stopped 但执行接口会托管启动 runtime”的状态从发车 blocker
+中拆出去：图上路线 ready 时，`nav2_lifecycle_not_running` 仍保留在 `readback_summary.nav2.current_blocker_reasons`
+供诊断，但不会继续出现在 `safe_command_boundary.nav2_goal_blockers`。普通用户看到的是“图上路线已显示，等待安全确认”
+或“可重跑复验”，下一步会说明执行时自动启动自动驾驶 runtime；真正的 planner/controller 未就绪仍会阻止执行。
+该变化只修正只读 summary 与首屏口径，不自动执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

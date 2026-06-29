@@ -6196,11 +6196,19 @@ function nav2GoalBoundaryGuidance(
     .filter((reason) => reason && reason !== "none" && reason !== "not_loaded");
   // no-motion planner proof 会在生成路线后清理 managed runtime；execute endpoint 会托管启动 runtime，不能因此挡住已读到的路线。
   const nav2StackBlocksGoal = nav2StackNotRunning && !base.nav2_goal_ready;
+  const managedRuntimeAutostarts = nav2LifecycleBlocked && base.nav2_goal_ready && !nav2StackBlocksGoal;
+  const safeBoundaryCurrentBlockers = nav2CurrentBlockers.filter((reason) => {
+    // 可执行路线由 execute 端托管启动 runtime；这时 lifecycle stopped 只应作为提示，不能继续出现在发车 blocker 里。
+    if (managedRuntimeAutostarts && reason === "nav2_lifecycle_not_running") {
+      return false;
+    }
+    return true;
+  });
   const plannerBlocksGoal = !nav2StackBlocksGoal && plannerInactive && (!base.nav2_goal_ready || !nav2StackNotRunning);
   const controllerBlocksGoal = !nav2StackBlocksGoal && controllerInactive && controllerRequested;
   const serviceAwareBlockers = [
     ...base.nav2_goal_blockers,
-    ...nav2CurrentBlockers,
+    ...safeBoundaryCurrentBlockers,
     nav2StackBlocksGoal ? (nav2LifecycleBlocked ? "nav2_lifecycle_not_running" : "nav2_stack_not_running") : "",
     plannerBlocksGoal ? "planner_server_inactive" : "",
     controllerBlocksGoal ? "controller_server_inactive" : "",
@@ -6220,7 +6228,7 @@ function nav2GoalBoundaryGuidance(
     ? `；${serviceInactiveText.join("，")}，重跑前需先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}`
     : "";
   const nav2ServiceInactive = nav2StackBlocksGoal || plannerBlocksGoal || controllerBlocksGoal;
-  const managedRuntimeHint = nav2LifecycleBlocked && base.nav2_goal_ready
+  const managedRuntimeHint = managedRuntimeAutostarts
     ? "；执行时会自动启动自动驾驶 runtime"
     : "";
   const executionMotionText = nav2.goal_execution_base_feedback_imu_attitude_delta_observed === "true"

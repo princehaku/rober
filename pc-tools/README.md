@@ -739,3 +739,9 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 `/api/status` 串行放到最后；返回给 UI 的 `read_endpoints[]` 顺序仍保持原契约。浏览器等待 summary 的窗口同步提升到
 12s，避免真实上位机接近单 worker 时把所有端点误报成 `fetch_timeout_*`。该变化只调整 GET readback 调度和等待窗口，
 不调用 manual、不执行 Nav2、不启用 keyboard/free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:48 CST 起，Nav2 图上路线已经 ready 且 execute 端会托管启动自动驾驶 runtime 时，
+`safe_command_boundary.nav2_goal_blockers` 不再残留 `nav2_lifecycle_not_running`。普通首屏会继续保留
+`readback_summary.nav2.current_blocker_reasons` 作为只读诊断，但发车边界只显示“等待安全确认/可重跑复验”，并在下一步里提示
+“执行时会自动启动自动驾驶 runtime”。planner/controller 真实未就绪时仍会进入 blocker。该变化只修正只读 summary
+和发车口径，不自动执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
