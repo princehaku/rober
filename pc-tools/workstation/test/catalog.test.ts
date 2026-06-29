@@ -4146,7 +4146,7 @@ describe("workstation fail-closed API contracts", () => {
         path_point_count: "0",
         path_preview_point_count: "0",
         execution_status_plain: expect.stringContaining("图上路线还未准备完成"),
-        next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+        next_action_plain: "先按当前根因处理，再准备图上路线并刷新地图画面。",
         route_execution_readiness_plain: expect.stringContaining("图上路线还不可执行"),
         route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
         goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
@@ -4164,7 +4164,7 @@ describe("workstation fail-closed API contracts", () => {
         goal_execution_response_generated_at_ms: expect.any(String),
       });
       expect(summary.readback_summary.nav2.plain_hint).toContain("当前根因：planner_server_not_active、地图未被自动驾驶服务消费、路径生成服务不可用、路径生成还没真正开始。");
-      expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行。");
+      expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：先按当前根因处理，再准备图上路线并刷新地图画面。");
       expect(summary.readback_summary.camera.preview_status).toBe("idle_not_started");
       expect(summary.readback_summary.camera.plain_hint).toContain("画面未显示：页面会自动接入共享 MJPEG 预览");
       expect(summary.readback_summary.camera.plain_hint).toContain("共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看");
@@ -4193,11 +4193,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal).toBe("Nav2 NavigateToPose locked");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线未就绪");
-      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(expect.arrayContaining([
         "planner_server_inactive",
+        "nav2_map_not_consumed",
+        "path_generation_service_unavailable",
+        "path_generation_not_attempted",
         "path_generation_not_observed",
         "path_point_count_not_positive",
-      ]);
+      ]));
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线");
       expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
@@ -4300,6 +4303,51 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
       expect(summary.primary_actions_enabled).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary tells users to fix API readback before generating Nav2 route", async () => {
+    // 复现 live 7001 场景：小车 base URL 可访问，但 Nav2/地图/定位只读端点读不到。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      robot_control_executed: false,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "loaded") },
+      "/api/map/proof/latest": { statusCode: 500, payload: { error: "map_read_failed" } },
+      "/api/localize/proof/latest": { statusCode: 500, payload: { error: "localize_read_failed" } },
+      "/api/nav2/status": { statusCode: 500, payload: { error: "nav2_status_failed" } },
+      "/api/nav2/proof/latest": { statusCode: 500, payload: { error: "nav2_proof_failed" } },
+      "/api/nav2/goal/execution/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report", "loaded") },
+      "/api/free-roam/autonomy/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "loaded") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "loaded") },
+      "/api/radar/scan-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/radar/raw-packet-proof/latest": { statusCode: 404, payload: { error: "not_found" } },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.safe_command_boundary.nav2_goal_ready).toBe(false);
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toContain("robot_api_nav2_read_failed");
+      expect(summary.safe_command_boundary.nav2_goal_blockers).toContain("robot_api_map_localize_read_failed");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toContain("先确认小车地址和上位机 API 可读");
+      expect(summary.readback_summary.nav2.current_blocker_labels).toContain("自动驾驶状态读取失败");
+      expect(summary.readback_summary.nav2.current_blocker_labels).toContain("地图/定位读取失败");
+      expect(summary.readback_summary.nav2.next_action_plain).toContain("先确认小车地址和上位机 API 可读");
+      expect(summary.readback_summary.nav2.route_execution_readiness_plain).toContain("自动驾驶状态读取失败");
+      expect(summary.readback_summary.nav2.route_execution_readiness_plain).toContain("地图/定位读取失败");
+      expect(summary.current_fact_plain).toContain("先确认小车地址和上位机 API 可读");
     } finally {
       await robotApi.close();
     }

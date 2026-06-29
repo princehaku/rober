@@ -124,6 +124,8 @@ const ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES = [
   "trashbot.local_webrtc_camera_",
 ] as const;
 const NAV2_GOAL_BLOCKER_ORDER = [
+  "robot_api_nav2_read_failed",
+  "robot_api_map_localize_read_failed",
   "nav2_lifecycle_not_running",
   "nav2_stack_not_running",
   "planner_server_inactive",
@@ -1051,6 +1053,12 @@ function nav2ProofBlockerReasons(value: unknown, limit = 8): string[] {
 function nav2ProofBlockerLabels(reasons: string[]): string[] {
   // 普通首屏不显示 raw proof 对象，但保留 ROS topic/TF 名称，方便现场按真实根因排查。
   const labels = reasons.map((reason) => {
+    if (reason === "robot_api_nav2_read_failed") {
+      return "自动驾驶状态读取失败";
+    }
+    if (reason === "robot_api_map_localize_read_failed") {
+      return "地图/定位读取失败";
+    }
     if (reason === "/scan_once_not_observed" || reason === "scan_once_not_observed") {
       return "未读到 /scan";
     }
@@ -1133,6 +1141,11 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
   appendBaseFeedbackVoltageKeyValue(payload, result, keys);
   appendFeedbackSamplesFreshnessKeyValues(payload, result, keys);
   return result;
+}
+
+function robotReadbackUnavailable(readback: InternalRobotApiEndpointReadback | null | undefined): boolean {
+  // 只读端点读不到时不能继续把问题说成“还没生成路线”；普通用户需要先处理地址/API 可读性。
+  return ["fetch_failed", "bad_json", "not_object", "blocked"].includes(readback?.request_status ?? "");
 }
 
 function appendFreshBaseFeedbackFrameCount(payload: JsonRecord | null, result: Record<string, string>, keys: readonly string[]): void {
@@ -4730,6 +4743,8 @@ function nav2SummaryFromReadbacks(
   // Nav2 摘要优先呈现最近完整路线执行结果；路线规划状态仍由 path_* 和 nav2_status 字段单独解释。
   const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
   const nav2Status = readbackById(readbacks, "nav2_status");
+  const mapProof = readbackById(readbacks, "map_proof_latest");
+  const localizeProof = readbackById(readbacks, "localize_proof_latest");
   const statusReadback = readbackById(readbacks, "status");
   const baseStatusReadback = readbackById(readbacks, "base_status");
   const goalExecution = readbackById(readbacks, "nav2_goal_execution_latest");
@@ -4790,7 +4805,12 @@ function nav2SummaryFromReadbacks(
   const latestPathGenerationAttempted = proofText(readbacks, ["latest_path_generation_attempted", "path_generation_attempted"]) ?? "not_loaded";
   const latestPathGenerationServiceAvailable = proofText(readbacks, ["latest_path_generation_service_available", "path_generation_service_available"]) ?? "not_loaded";
   const latestPathGenerationServiceName = proofText(readbacks, ["latest_path_generation_service_name", "path_generation_service_name"]) ?? "not_loaded";
+  const routeAlreadyReady = readbackPathReady(proof);
+  const nav2ReadbackUnavailable = robotReadbackUnavailable(nav2Proof) && robotReadbackUnavailable(nav2Status);
+  const mapLocalizeReadbackUnavailable = robotReadbackUnavailable(mapProof) && robotReadbackUnavailable(localizeProof);
   const syntheticBlockerReasons = [
+    nav2ReadbackUnavailable ? "robot_api_nav2_read_failed" : "",
+    !routeAlreadyReady && nav2ReadbackUnavailable && mapLocalizeReadbackUnavailable ? "robot_api_map_localize_read_failed" : "",
     latestMapConsumed === "false" ? "nav2_map_not_consumed" : "",
     latestPathGenerationServiceAvailable === "false" ? "path_generation_service_unavailable" : "",
     latestPathGenerationAttempted === "false" && proof.path_generation_requested === true ? "path_generation_not_attempted" : "",
@@ -4948,6 +4968,17 @@ function nav2ManagedRuntimeAutoStartText(enabled: boolean, pathReady: boolean): 
   return enabled && pathReady ? "；执行时会自动启动自动驾驶 runtime" : "";
 }
 
+function nav2BlockedNextActionPlain(labels: string[]): string {
+  // 读取失败优先于路线生成提示；否则用户会反复点“准备路线”却没看到小车地址/API 根因。
+  if (labels.includes("自动驾驶状态读取失败") || labels.includes("地图/定位读取失败")) {
+    return "先确认小车地址和上位机 API 可读，再刷新地图/自动驾驶状态并准备图上路线。";
+  }
+  if (labels.length > 0 && labels.join("、") !== "not_loaded") {
+    return "先按当前根因处理，再准备图上路线并刷新地图画面。";
+  }
+  return "先准备图上路线并刷新地图画面，再勾选安全确认执行。";
+}
+
 function nav2RouteExecutionPlainSummary(args: {
   goalSucceeded: boolean;
   goalExecutionProven: string;
@@ -5046,7 +5077,7 @@ function nav2ReadbackPlainSummary(args: {
     : "";
   return {
     execution_status_plain: `图上路线还未准备完成。${blockers}`,
-    next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+    next_action_plain: nav2BlockedNextActionPlain(args.effectiveCurrentBlockerLabels),
   };
 }
 
@@ -6116,12 +6147,17 @@ function nav2GoalBoundaryGuidance(
   const nav2StackNotRunning = nav2.nav2_stack_running === "false";
   const controllerRequested = nav2.controller_server_requested === "true";
   const nav2LifecycleBlocked = nav2.current_blocker_reasons.split(",").includes("nav2_lifecycle_not_running");
+  const nav2CurrentBlockers = nav2.current_blocker_reasons
+    .split(",")
+    .map((reason) => reason.trim())
+    .filter((reason) => reason && reason !== "none" && reason !== "not_loaded");
   // no-motion planner proof 会在生成路线后清理 managed runtime；execute endpoint 会托管启动 runtime，不能因此挡住已读到的路线。
   const nav2StackBlocksGoal = nav2StackNotRunning && !base.nav2_goal_ready;
   const plannerBlocksGoal = !nav2StackBlocksGoal && plannerInactive && (!base.nav2_goal_ready || !nav2StackNotRunning);
   const controllerBlocksGoal = !nav2StackBlocksGoal && controllerInactive && controllerRequested;
   const serviceAwareBlockers = [
     ...base.nav2_goal_blockers,
+    ...nav2CurrentBlockers,
     nav2StackBlocksGoal ? (nav2LifecycleBlocked ? "nav2_lifecycle_not_running" : "nav2_stack_not_running") : "",
     plannerBlocksGoal ? "planner_server_inactive" : "",
     controllerBlocksGoal ? "controller_server_inactive" : "",
@@ -6233,9 +6269,13 @@ function nav2GoalBoundaryGuidance(
       nav2_goal_execution_mode_label: modeLabel,
     };
   }
+  const boundaryBlockerLabels = nav2.current_blocker_labels && nav2.current_blocker_labels !== "not_loaded"
+    ? nav2.current_blocker_labels.split("、").map((label) => label.trim()).filter(Boolean)
+    : [];
+  const blockedNextAction = nav2BlockedNextActionPlain(boundaryBlockerLabels);
   const fallbackNextAction = inactiveServiceNames.length
     ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再生成图上路线`
-    : base.nav2_goal_next_action;
+    : blockedNextAction || base.nav2_goal_next_action;
   return {
     ...base,
     nav2_goal_label: nav2StackBlocksGoal ? "自动驾驶服务未启动" : base.nav2_goal_label,

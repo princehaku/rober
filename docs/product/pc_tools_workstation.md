@@ -4143,3 +4143,9 @@ manual、delivery、stop 或 `/cmd_vel`。
 自由移动事实更新为“可先低速移动”。画面首帧和雷达新鲜仍只影响建图启动/验收，不会成为低速移动或行程发车前置。
 该变化只修正只读 summary 和首屏展示，不自动勾选、不执行 Nav2、不启用键盘、不启动雷达/自由移动/建图，也不调用
 manual、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:10 CST 起，Nav2 行程 summary 不再把自动驾驶、地图或定位只读端点读取失败压缩成“先生成图上路线”。
+如果 `/api/nav2/status`、`/api/nav2/proof/latest`、`/api/map/proof/latest` 或 `/api/localize/proof/latest`
+不可读，普通首屏/API 会显示“自动驾驶状态读取失败”或“地图/定位读取失败”，并把下一步写成先确认小车地址和上位机 API 可读。
+路线生成、执行图上路线和同窗口轮速 L/R 复验仍保留原有显式按钮与安全确认流程；该变化只修正只读 summary 文案，
+不自动刷新 proof、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

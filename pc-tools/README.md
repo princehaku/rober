@@ -708,3 +708,9 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 但 PC 已有安全确认 + 键盘/低速手控 fallback 时，低速移动事实显示为可先处理；相机、雷达只继续影响建图启动和验收。
 该变化只修正只读 summary、首屏分组和测试夹具，不自动勾选、不执行 Nav2、不启用键盘、不启动雷达/自由移动/建图，
 也不会发送 manual、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:10 CST 起，Nav2 行程 summary 会把自动驾驶、地图或定位只读端点读取失败作为普通用户可见根因。
+当 `/api/nav2/status`、`/api/nav2/proof/latest`、`/api/map/proof/latest` 或 `/api/localize/proof/latest`
+读不到时，`nav2_goal_next_action_plain` 和 `readback_summary.nav2.next_action_plain` 会先提示确认小车地址和上位机 API 可读，
+再刷新地图/自动驾驶状态并准备图上路线；不再只写“先生成图上路线”。该变化只修正只读 summary 文案，不自动刷新 proof、
+不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
