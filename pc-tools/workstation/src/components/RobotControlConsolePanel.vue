@@ -14291,21 +14291,69 @@ onBeforeUnmount(() => {
           <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>
         </article>
 
-        <article ref="plainRadarPanel" class="snapshot-panel plain-radar-panel" tabindex="-1" data-testid="plain-radar-panel" :data-state="radarSummary.state">
+        <article
+          ref="plainRadarPanel"
+          class="snapshot-panel plain-radar-panel"
+          tabindex="-1"
+          data-testid="plain-radar-panel"
+          :data-state="radarSummary.state"
+          data-radar-start-refreshes-proof="true"
+          data-radar-start-refreshes-map-preview="true"
+          data-radar-restart-refreshes-map-preview="true"
+          data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+          data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+        >
           <h3>雷达</h3>
           <div class="panel-action-row">
-            <button ref="plainRadarRefreshButton" type="button" :disabled="!canRefreshRadarProof" data-testid="plain-radar-refresh" @click="refreshRadarProof">
+            <button
+              ref="plainRadarRefreshButton"
+              type="button"
+              :disabled="!canRefreshRadarProof"
+              data-testid="plain-radar-refresh"
+              data-refreshes-map-preview-after-proof="true"
+              data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+              data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+              @click="refreshRadarProof"
+            >
               {{ radarProofRefreshButtonLabel }}
             </button>
-            <button v-if="showPlainRadarRestart" ref="plainRadarRestartButton" type="button" class="secondary compact-stop" :disabled="!canRestartRadarLifecycle" data-testid="plain-radar-restart" @click="restartPlainRadarLifecycle">
+            <button
+              v-if="showPlainRadarRestart"
+              ref="plainRadarRestartButton"
+              type="button"
+              class="secondary compact-stop"
+              :disabled="!canRestartRadarLifecycle"
+              data-testid="plain-radar-restart"
+              data-refreshes-proof-after-restart="true"
+              data-refreshes-map-preview-after-restart="true"
+              data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+              data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+              @click="restartPlainRadarLifecycle"
+            >
               {{ plainRadarRestartButtonLabel }}
             </button>
-            <button v-if="showPlainRadarStart" ref="plainRadarStartButton" type="button" class="secondary compact-stop" :disabled="!canStartRadarLifecycle || plainRadarStartUnavailable" data-testid="plain-radar-start" @click="startPlainRadarLifecycle">
+            <button
+              v-if="showPlainRadarStart"
+              ref="plainRadarStartButton"
+              type="button"
+              class="secondary compact-stop"
+              :disabled="!canStartRadarLifecycle || plainRadarStartUnavailable"
+              data-testid="plain-radar-start"
+              data-refreshes-proof-after-start="true"
+              data-refreshes-map-preview-after-start="true"
+              data-fixed-radar-start-endpoint="/api/robot-control/radar/start"
+              data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+              data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+              @click="startPlainRadarLifecycle"
+            >
               {{ plainRadarStartButtonLabel }}
             </button>
             <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
           </div>
           <p class="panel-note">{{ radarSummary.hint }}</p>
+          <p v-if="showPlainRadarStart || showPlainRadarRestart" class="panel-note" data-testid="plain-radar-map-refresh-contract">
+            启动或重启雷达后会自动刷新雷达读数和地图画面；返回前不把旧点当作当前地图标记。
+          </p>
           <p v-if="plainRadarMapMarkerReadback" class="panel-note" data-testid="plain-radar-map-marker-readback">{{ plainRadarMapMarkerReadback }}</p>
           <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
         </article>

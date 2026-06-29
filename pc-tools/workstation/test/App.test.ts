@@ -18150,8 +18150,20 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("雷达未运行");
-    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-state")).toBe("雷达未运行");
+    const radarPanel = wrapper.find('[data-testid="plain-radar-panel"]');
+    expect(radarPanel.attributes("data-state")).toBe("雷达未运行");
+    expect(radarPanel.attributes("data-radar-start-refreshes-proof")).toBe("true");
+    expect(radarPanel.attributes("data-radar-start-refreshes-map-preview")).toBe("true");
+    expect(radarPanel.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(radarPanel.attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
     expect(firstScreenText).toContain("启动雷达");
+    expect(wrapper.find('[data-testid="plain-radar-map-refresh-contract"]').text()).toBe("启动或重启雷达后会自动刷新雷达读数和地图画面；返回前不把旧点当作当前地图标记。");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-refreshes-proof-after-start")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-refreshes-map-preview-after-start")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(wrapper.find('[data-testid="plain-radar-refresh"]').attributes("data-refreshes-map-preview-after-proof")).toBe("true");
     expect(firstScreenText).not.toContain("停止雷达");
     expect(firstScreenText).not.toContain("/api/radar/start");
     expect(firstScreenText).not.toContain("lifecycle_not_running");
@@ -19498,6 +19510,12 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    const radarPanel = wrapper.find('[data-testid="plain-radar-panel"]');
+    expect(radarPanel.attributes("data-radar-start-refreshes-proof")).toBe("true");
+    expect(radarPanel.attributes("data-radar-start-refreshes-map-preview")).toBe("true");
+    expect(radarPanel.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(radarPanel.attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+
     delayNextMapProofRefresh = true;
     const mapProofButton = wrapper.findAll("button").find((button) => button.text() === "刷新地图");
     if (!mapProofButton) {
@@ -19541,6 +19559,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-refresh"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("启动雷达");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-radar-map-refresh-contract"]').text()).toBe("启动或重启雷达后会自动刷新雷达读数和地图画面；返回前不把旧点当作当前地图标记。");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-refreshes-proof-after-start")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-refreshes-map-preview-after-start")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(wrapper.find('[data-testid="plain-radar-refresh"]').attributes("data-refreshes-map-preview-after-proof")).toBe("true");
 
     const mapPreviewCallsBeforeStart = mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/map/preview?"),
