@@ -617,6 +617,8 @@ const fixtures: Record<string, unknown> = {
       radar_source_card_id: "radar_map_points",
       nav2_item_id: "nav2_route_execution",
       nav2_source_card_id: "nav2_route",
+      mapping_item_id: "mapping_start",
+      mapping_source_card_id: "mapping_start",
       next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
       summary_plain: "本轮目标检查 1/7 项已完成，还差 6 项，其中 4 项需要现场安全确认，4 项需要真实运动验证；先处理：画面所见即所得。",
       motion_next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
@@ -4209,6 +4211,13 @@ describe("App", () => {
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeNav2Guide);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeNav2Guide);
+    const callsBeforeMappingGuide = mockedFetch.mock.calls.length;
+    const focusCallsBeforeMappingGuide = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-checklist-mapping-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeMappingGuide);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeMappingGuide);
     const callsBeforeChecklistGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeChecklistGuide = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-checklist-summary-action"]').trigger("click");

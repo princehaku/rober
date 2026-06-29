@@ -2442,6 +2442,8 @@ export interface RobotControlGoalChecklistSummary {
   radar_source_card_id: RobotControlActionStatusCardId | "";
   nav2_item_id: RobotControlGoalChecklistItemId | "";
   nav2_source_card_id: RobotControlActionStatusCardId | "";
+  mapping_item_id: RobotControlGoalChecklistItemId | "";
+  mapping_source_card_id: RobotControlActionStatusCardId | "";
   next_action_plain: string;
   summary_plain: string;
   motion_next_action_plain: string;

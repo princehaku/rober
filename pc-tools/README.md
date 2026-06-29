@@ -653,3 +653,8 @@ delivery、stop 或 `/cmd_vel`。
 目标汇总顶部直接说明雷达点是否已经贴到当前地图；旧来源点只作诊断，不会被写成当前 marker。“去看雷达点”
 按钮只聚焦到雷达启动/刷新入口，不自动启动雷达、不刷新地图、不发送 manual、Nav2、keyboard、free-roam、delivery、
 stop 或 `/cmd_vel`。
+
+2026-06-29 11:18 CST 起，`goal_checklist_summary` 额外返回 `mapping_item_id` 和 `mapping_source_card_id`。
+普通首屏目标汇总新增“去建图”按钮，直接聚焦到自由移动/建图流程的安全确认或下一步控件；建图仍只有在相机首帧和
+雷达新鲜 ready 后才会显示可启动。该按钮只做 scroll/focus，不自动勾选、不启动建图、不启动自由移动、不发送
+manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

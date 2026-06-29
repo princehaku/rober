@@ -4083,3 +4083,8 @@ keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 会直接说明雷达点是否贴到当前地图、旧点是否只作诊断，以及下一步是启动雷达还是刷新同轮地图画面。
 `去看雷达点` 只做页面内聚焦，不自动启动雷达、不刷新地图、不调用 manual、Nav2、keyboard、free-roam、delivery、
 stop 或 `/cmd_vel`。
+
+2026-06-29 11:18 CST 起，`goal_checklist_summary` 新增 `mapping_item_id` 和 `mapping_source_card_id`。
+普通首屏目标汇总新增 `去建图` 按钮，带用户到自由移动/建图流程的安全确认或下一步控件；相机首帧和雷达新鲜仍是
+建图启动条件，缺口会继续显示在 `mapping_summary_plain`。按钮只做 scroll/focus，不自动勾选、不启动建图、
+不启动自由移动、不发送 manual、Nav2、keyboard、delivery、stop 或 `/cmd_vel`。

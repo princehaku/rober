@@ -2936,6 +2936,14 @@ function focusPlainGoalChecklistNav2Target(): void {
   }
   focusPlainActionCardTarget(sourceCardId);
 }
+function focusPlainGoalChecklistMappingTarget(): void {
+  // 建图按钮只聚焦到建图/自由移动流程；是否启动建图仍由现场安全确认和显式点击决定。
+  const sourceCardId = plainGoalChecklistSummary.value?.mapping_source_card_id;
+  if (!sourceCardId) {
+    return;
+  }
+  focusPlainActionCardTarget(sourceCardId);
+}
 const showPlainRadarStart = computed(() => {
   // 雷达是建图和 LiDAR delta 的监看入口；Nav2/自由移动是否启动不再由雷达运行态前端硬挡。
   return radarLifecyclePendingAction.value === "start"
@@ -12532,6 +12540,15 @@ onBeforeUnmount(() => {
             @click="focusPlainGoalChecklistNav2Target"
           >
             去跑行程
+          </button>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :disabled="!plainGoalChecklistSummary.mapping_source_card_id"
+            data-testid="plain-goal-checklist-mapping-action"
+            @click="focusPlainGoalChecklistMappingTarget"
+          >
+            去建图
           </button>
           <button
             type="button"
