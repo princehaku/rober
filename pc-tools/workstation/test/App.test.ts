@@ -9879,6 +9879,13 @@ describe("App", () => {
           response_generated_at_ms: "1782150442201",
           result_status: "succeeded",
           feedback_sample_count: "8",
+          nav2_goal_execution_proven: "true",
+          robot_control_executed: "true",
+          sends_base_motion_commands: "true",
+          uses_base_uart: "true",
+          base_feedback_lr_nonzero_proven: "true",
+          base_feedback_latest_raw_left: "164",
+          base_feedback_latest_raw_right: "164",
           goal_frame_id: "map",
           goal_x: "0.8",
           goal_y: "0",
@@ -10454,6 +10461,13 @@ describe("App", () => {
           response_generated_at_ms: "1782150442201",
           result_status: "succeeded",
           feedback_sample_count: "8",
+          nav2_goal_execution_proven: "true",
+          robot_control_executed: "true",
+          sends_base_motion_commands: "true",
+          uses_base_uart: "true",
+          base_feedback_lr_nonzero_proven: "true",
+          base_feedback_latest_raw_left: "164",
+          base_feedback_latest_raw_right: "164",
           goal_frame_id: "map",
           goal_x: "0.8",
           goal_y: "0",
@@ -10569,6 +10583,18 @@ describe("App", () => {
     ).length).toBe(mapPreviewCallsBeforeExecute + 1);
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，可以准备送达材料。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：已到达，读到 8 次执行反馈，刚刚；下一步准备送达材料。");
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.attributes("data-execution-feedback-sample-count")).toBe("8");
+    expect(tripPanel.attributes("data-execution-control-proven")).toBe("true");
+    expect(tripPanel.attributes("data-execution-wheel-lr-nonzero-proven")).toBe("true");
+    expect(tripPanel.attributes("data-execution-complete")).toBe("true");
+    expect(tripPanel.attributes("data-execution-post-map-refresh-required")).toBe("true");
+    expect(tripPanel.attributes("data-execution-post-map-refresh-complete")).toBe("true");
+    expect(tripPanel.attributes("data-latest-wheel-raw-left")).toBe("164");
+    expect(tripPanel.attributes("data-latest-wheel-raw-right")).toBe("164");
+    expect(tripPanel.attributes("data-delivery-material-ready")).toBe("false");
+    expect(tripPanel.attributes("data-delivery-confirm-ready")).toBe("false");
+    expect(tripPanel.attributes("data-delivery-success-ready")).toBe("false");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-visible-route-fixture");
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("检查画面并补送达画面");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：准备送达材料。");
@@ -11749,6 +11775,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程请求已发送，等待结果返回；返回前未证明已执行或已到达 3/15 个点");
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.attributes("data-state")).toBe("执行中");
+    expect(tripPanel.attributes("data-execution-complete")).toBe("false");
+    expect(tripPanel.attributes("data-execution-stop-requested")).toBe("false");
+    expect(tripPanel.attributes("data-execution-stop-settled")).toBe("false");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-trip-run[data-state="执行中"]');
     expect(workstationStyles).toContain('.plain-map-route-path[data-state="执行中"] polyline');
@@ -11815,6 +11844,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在发送行程停止请求（目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS）");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-stop-requested")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-stop-settled")).toBe("false");
     expect(mockedFetch.mock.calls.filter(([url, options]) =>
       String(url).startsWith("/api/robot-control/base/stop?") && options?.method === "POST",
     )).toHaveLength(stopCallsBeforeTripStop + 1);
@@ -11848,6 +11879,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("aria-label")).toBe("行程停止请求已发送 3/15 个点");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程停止请求已发送 3/15 个点");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程停止请求已发送，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-stop-requested")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-stop-settled")).toBe("true");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
@@ -11860,6 +11893,13 @@ describe("App", () => {
           evidence_ref: "plain-trip-execution-fixture",
           result_status: "succeeded",
           feedback_sample_count: "8",
+          nav2_goal_execution_proven: "true",
+          robot_control_executed: "true",
+          sends_base_motion_commands: "true",
+          uses_base_uart: "true",
+          base_feedback_lr_nonzero_proven: "true",
+          base_feedback_latest_raw_left: "164",
+          base_feedback_latest_raw_right: "164",
           goal_frame_id: "map",
           goal_x: "0.8",
           goal_y: "0",
@@ -11876,6 +11916,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，可以准备送达材料。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("下一步准备送达材料");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-feedback-sample-count")).toBe("8");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-control-proven")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-wheel-lr-nonzero-proven")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-complete")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-post-map-refresh-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-post-map-refresh-complete")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("已完成。");
   });
@@ -11962,6 +12008,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，地图刷新失败（map_preview_timeout）");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，但执行后地图画面刷新失败：map_preview_timeout；先刷新地图画面。");
     expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("执行后地图画面刷新失败：map_preview_timeout");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-feedback-sample-count")).toBe("8");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-complete")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-post-map-refresh-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-post-map-refresh-complete")).toBe("false");
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toHaveLength(2);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -12958,6 +13008,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 7/8，旧 PWM 结果，等待 ROS 复验");
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
+    const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
+    expect(tripPanel.attributes("data-execution-feedback-sample-count")).toBe("8");
+    expect(tripPanel.attributes("data-execution-wheel-lr-nonzero-proven")).toBe("false");
+    expect(tripPanel.attributes("data-execution-control-proven")).toBe("false");
+    expect(tripPanel.attributes("data-execution-complete")).toBe("false");
+    expect(tripPanel.attributes("data-latest-wheel-raw-left")).toBe("7");
+    expect(tripPanel.attributes("data-latest-wheel-raw-right")).toBe("8");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("重新执行完整行程");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");

@@ -9431,6 +9431,19 @@ type PlainTripDomEvidence = {
   wheelLrNonzeroProven: boolean;
   latestWheelRawLeft: string;
   latestWheelRawRight: string;
+  // 执行后验收要能直接从普通首屏读到，不再让测试或现场脚本解析中文状态句子。
+  executionFeedbackSampleCount: number;
+  executionControlProven: boolean;
+  executionWheelLrNonzeroProven: boolean;
+  executionComplete: boolean;
+  executionPostMapRefreshRequired: boolean;
+  executionPostMapRefreshComplete: boolean;
+  executionStopRequested: boolean;
+  executionStopSettled: boolean;
+  // 送达 readiness 只是材料/确认状态，不会触发提交；放在行程卡是为了把完整路线后的下一步闭环。
+  deliveryMaterialReady: boolean;
+  deliveryConfirmReady: boolean;
+  deliverySuccessReady: boolean;
   lastBaseCommandMode: string;
   nextBaseCommandMode: string;
   fixedExecuteProxyEndpoint: string;
@@ -9444,6 +9457,8 @@ const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
   const routePath = latestNavPathOverlay();
   const mainActionKind = plainTripMainActionKind.value;
   const mainActionSendsMotion = plainTripMainActionSendsMotion.value;
+  const executionComplete = nav2ExecutionComplete(values) && !evidenceIsStale(values);
+  const postExecutionMapRefreshRequired = executionComplete || plainTripPostExecutionMapPreviewRefreshFailed.value;
   return {
     routePointCount: routePath?.displayedCount ?? plainTripPreparedPointCount.value,
     routeSourcePointCount: routePath?.totalCount ?? plainTripPreparedPointCount.value,
@@ -9460,10 +9475,23 @@ const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
     managedRuntimeAutostart: plainTripManagedRuntimeWillAutostart.value,
     requiresSameWindowWheelLrNonzero: true,
     wheelFeedbackStatus: summary?.safe_command_boundary.nav2_goal_wheel_feedback_status ?? nav2?.goal_execution_wheel_raw_lr_status_plain ?? "not_loaded",
-    wheelLrNonzeroProven: explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)
+    wheelLrNonzeroProven: nav2WheelLrNonzeroProven(values)
       || explicitTrueKeyValue(nav2?.goal_execution_base_feedback_lr_nonzero_proven),
     latestWheelRawLeft: wheelPair?.left ?? nav2?.goal_execution_base_feedback_latest_raw_left ?? "not_loaded",
     latestWheelRawRight: wheelPair?.right ?? nav2?.goal_execution_base_feedback_latest_raw_right ?? "not_loaded",
+    executionFeedbackSampleCount: nav2FeedbackSampleCount(values),
+    executionControlProven: nav2ExecutionControlProven(values),
+    executionWheelLrNonzeroProven: nav2WheelLrNonzeroProven(values),
+    executionComplete,
+    executionPostMapRefreshRequired: postExecutionMapRefreshRequired,
+    executionPostMapRefreshComplete: postExecutionMapRefreshRequired
+      && !plainTripMapWysiwygPending.value
+      && !plainTripPostExecutionMapPreviewRefreshFailed.value,
+    executionStopRequested: plainTripStopRequestedDuringExecution.value,
+    executionStopSettled: plainTripStopSettledDuringExecution.value,
+    deliveryMaterialReady: currentRunDeliveryMaterialReady.value,
+    deliveryConfirmReady: plainDeliveryConfirmReady.value,
+    deliverySuccessReady: deliverySuccessReady.value,
     lastBaseCommandMode: values?.base_command_mode ?? nav2?.goal_execution_base_command_mode ?? "not_loaded",
     nextBaseCommandMode: plainTripRequestedBaseCommandMode(),
     fixedExecuteProxyEndpoint: "/api/robot-control/nav2/goal/execute",
@@ -15000,6 +15028,17 @@ onBeforeUnmount(() => {
             :data-wheel-lr-nonzero-proven="String(plainTripDomEvidence.wheelLrNonzeroProven)"
             :data-latest-wheel-raw-left="plainTripDomEvidence.latestWheelRawLeft"
             :data-latest-wheel-raw-right="plainTripDomEvidence.latestWheelRawRight"
+            :data-execution-feedback-sample-count="String(plainTripDomEvidence.executionFeedbackSampleCount)"
+            :data-execution-control-proven="String(plainTripDomEvidence.executionControlProven)"
+            :data-execution-wheel-lr-nonzero-proven="String(plainTripDomEvidence.executionWheelLrNonzeroProven)"
+            :data-execution-complete="String(plainTripDomEvidence.executionComplete)"
+            :data-execution-post-map-refresh-required="String(plainTripDomEvidence.executionPostMapRefreshRequired)"
+            :data-execution-post-map-refresh-complete="String(plainTripDomEvidence.executionPostMapRefreshComplete)"
+            :data-execution-stop-requested="String(plainTripDomEvidence.executionStopRequested)"
+            :data-execution-stop-settled="String(plainTripDomEvidence.executionStopSettled)"
+            :data-delivery-material-ready="String(plainTripDomEvidence.deliveryMaterialReady)"
+            :data-delivery-confirm-ready="String(plainTripDomEvidence.deliveryConfirmReady)"
+            :data-delivery-success-ready="String(plainTripDomEvidence.deliverySuccessReady)"
             :data-last-base-command-mode="plainTripDomEvidence.lastBaseCommandMode"
             :data-next-base-command-mode="plainTripDomEvidence.nextBaseCommandMode"
             :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"

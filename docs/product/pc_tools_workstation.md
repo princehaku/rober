@@ -4446,3 +4446,12 @@ free-roam runtime snapshot 只有在同轮 `/api/radar/status` 未明确停止�
 `fixed_radar_refresh_endpoint=/api/robot-control/radar/scan-proof/refresh` 固定住普通首屏入口，
 `radar_refresh_after_start_required` 明确启动雷达后仍要刷新/读取同轮地图雷达点，才算地图标记所见即所得。
 这些字段同步暴露为普通首屏 `data-*`，只用于读数和脚本验收；本改动不调用 radar start、map refresh 或任何运动接口。
+
+2026-06-30 05:14 CST 起，普通首屏行程卡把“完整 Nav2 路线执行”拆成可验收的 DOM 合同：
+`data-execution-feedback-sample-count` 表示执行反馈样本数，
+`data-execution-control-proven` 和 `data-execution-wheel-lr-nonzero-proven` 表示同窗口控制闭环和 wheel raw L/R 非零是否证明，
+`data-execution-complete` 只在新鲜 goal success、反馈样本和同窗口控制证明同时满足时为 true。
+执行后地图所见即所得通过 `data-execution-post-map-refresh-required/complete` 单独表达；行程中 stop 兜底通过
+`data-execution-stop-requested/settled` 表达。送达材料、最终确认和送达成功分别暴露为
+`data-delivery-material-ready`、`data-delivery-confirm-ready`、`data-delivery-success-ready`，避免把“行程完成”
+误当成“送达已确认”。这些字段只读现有状态，不触发任何控制命令。

@@ -967,3 +967,10 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 固定 `/api/robot-control/radar/scan-proof/refresh` 和 `radar_refresh_after_start_required`。普通首屏同步暴露
 `data-radar-*` 与固定 endpoint 属性，方便脚本确认“启动雷达不等于地图已贴点；启动后仍要刷新/读取同轮地图雷达点才算所见即所得”。
 该变化只补只读 summary/UI 证据，不启动雷达、不刷新地图、不发送任何运动命令。
+
+2026-06-30 05:14 CST 起，普通首屏 `plain-trip-run` 补齐 Nav2 完整执行后的 DOM 验收合同：
+`data-execution-feedback-sample-count`、`data-execution-control-proven`、
+`data-execution-wheel-lr-nonzero-proven`、`data-execution-complete`、
+`data-execution-post-map-refresh-required/complete`、`data-execution-stop-requested/settled`，
+并同步暴露 `data-delivery-material-ready`、`data-delivery-confirm-ready`、`data-delivery-success-ready`。
+这些字段只反映已有 execute/latest/地图刷新/送达状态，不自动确认送达、不发送 manual/keyboard/free-roam/stop 或 `/cmd_vel`。
