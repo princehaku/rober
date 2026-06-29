@@ -174,6 +174,26 @@ class FreeRoamAutonomyTest(unittest.TestCase):
         self.assertEqual("not_proven", lidar_gate["state"])
         self.assertIn("雷达距离已过期", lidar_gate["evidence"])
 
+    def test_stale_close_lidar_does_not_force_avoidance_turn(self) -> None:
+        """旧的近障碍距离不能冒充当前障碍，否则无雷达自由移动会被旧值锁住。"""
+        decision = build_free_roam_decision(
+            {
+                "operator_confirmed": True,
+                "mapping_active": False,
+                "stop_available": True,
+                "lidar_min_distance_m": 0.04,
+                "lidar_age_s": 120.0,
+            }
+        )
+
+        self.assertEqual(decision["state"], STATE_RUNNING)
+        self.assertGreater(decision["linear_x_mps"], 0.0)
+        self.assertEqual(decision["angular_z_radps"], 0.0)
+        self.assertFalse(decision["stop_required"])
+        obstacle_gate = next(gate for gate in decision["gates"] if gate["id"] == "obstacle_clear")
+        self.assertEqual("not_proven", obstacle_gate["state"])
+        self.assertIn("不拿旧障碍值", obstacle_gate["evidence"])
+
     def test_missing_lidar_degrades_without_blocking_low_speed_motion(self) -> None:
         """完全没有雷达读数时仍允许低速自由移动，并把障碍判断标成 not_proven。"""
         decision = build_free_roam_decision(

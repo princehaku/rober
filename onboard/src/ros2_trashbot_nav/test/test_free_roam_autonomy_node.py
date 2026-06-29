@@ -172,6 +172,34 @@ class FreeRoamAutonomyNodeTest(unittest.TestCase):
             self.assertEqual(node.client.calls, 0)
             self.assertEqual(node.publisher.messages, [])
 
+    def test_stale_close_lidar_does_not_force_avoidance_in_artifact(self) -> None:
+        """旧近障碍值只能作为过期证据展示，不能把策略改成原地避让。"""
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "free_roam.json"
+            node = self.module.FreeRoamAutonomyNode()
+            node._parameters.update(
+                {
+                    "artifact_path": str(artifact_path),
+                    "operator_confirmed": True,
+                    "mapping_active": False,
+                    "stop_available": True,
+                    "lidar_fresh_timeout_s": 1.0,
+                }
+            )
+            node.latest_scan_min_distance_m = 0.04
+            node.latest_scan_seen_at_s = 0.0
+
+            node._tick()
+
+            payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["decision"]["state"], "running")
+            self.assertGreater(payload["decision"]["linear_x_mps"], 0.0)
+            self.assertEqual(payload["decision"]["angular_z_radps"], 0.0)
+            obstacle_gate = next(gate for gate in payload["decision"]["gates"] if gate["id"] == "obstacle_clear")
+            self.assertIn("不拿旧障碍值", obstacle_gate["evidence"])
+            self.assertEqual(node.client.calls, 0)
+            self.assertEqual(node.publisher.messages, [])
+
     def test_unlocked_motion_publishes_bounded_twist_from_scan_and_map(self) -> None:
         """双参数解锁后才会发布策略给出的受限 Twist。"""
         with tempfile.TemporaryDirectory() as td:

@@ -250,6 +250,14 @@ class FreeRoamAutonomyController:
                 "缺少雷达距离，依赖现场接管和停止兜底",
                 "继续低速监看；雷达 ready 后再启用障碍距离判断",
             )
+        if not self._lidar_fresh(snapshot):
+            return FreeRoamGate(
+                "obstacle_clear",
+                "前方障碍",
+                "not_proven",
+                "雷达距离已过期，不拿旧障碍值阻止低速自由移动",
+                "继续低速监看；刷新雷达后再启用障碍距离判断",
+            )
         clear = snapshot.lidar_min_distance_m >= self.config.obstacle_stop_distance_m
         return FreeRoamGate(
             "obstacle_clear",
@@ -277,7 +285,15 @@ class FreeRoamAutonomyController:
         """障碍门禁为 not_proven 时只能原地换向，不能继续给正线速度。"""
         return (
             snapshot.lidar_min_distance_m is not None
+            and self._lidar_fresh(snapshot)
             and snapshot.lidar_min_distance_m < self.config.obstacle_stop_distance_m
+        )
+
+    def _lidar_fresh(self, snapshot: FreeRoamSnapshot) -> bool:
+        """只有新鲜雷达才可参与近障碍避让，旧距离不能阻止无雷达低速移动。"""
+        return (
+            snapshot.lidar_age_s is not None
+            and snapshot.lidar_age_s <= self.config.lidar_fresh_timeout_s
         )
 
     def _stop(

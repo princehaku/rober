@@ -168,7 +168,7 @@ class FreeRoamAutonomyNode(Node):
         self._write_artifact(snapshot, decision, now_s)
 
     def _build_snapshot(self, now_s: float) -> FreeRoamSnapshot:
-        """把 ROS2 读数转换成策略输入，缺实时雷达时让策略锁住。"""
+        """把 ROS2 读数转换成策略输入；缺实时雷达只降级建图和避障证据。"""
         lidar_age_s = None
         if self.latest_scan_seen_at_s is not None:
             lidar_age_s = max(0.0, now_s - self.latest_scan_seen_at_s)

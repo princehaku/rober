@@ -783,3 +783,10 @@ overlay 同轮读取 `/api/free-roam/autonomy/latest`、`/api/radar/status` 和 
 这让“小车能不能低速动”的排查不再依赖雷达，也不需要 PC 或 API 为了看轮速抢底盘串口；雷达和相机仍只影响
 “能否按建图验收收口”。日志 fresh 时上位机 `base_status` 会跳过 direct `T=130` 串口读；
 该日志读回不能把静止 `0/0`、IMU 姿态变化或电压读数升级为 wheel raw L/R 非零证明。
+
+2026-06-29 18:35 起，free-roam 策略进一步收紧“无雷达也能低速自由移动”的执行口径：
+近障碍避让只接受新鲜雷达距离；如果 `lidar_age_s` 已超过 `lidar_fresh_timeout_s`，即便旧快照里残留
+`lidar_min_distance_m=0.04` 这类近距离值，也只把 `obstacle_clear` 标成 `not_proven`，
+不再把策略切到原地避让。这样雷达停止或过期后，旧障碍值不会继续劫持低速自由移动；建图验收仍要求
+相机首帧和雷达 fresh，真实运动发布仍要求现场安全确认、停止兜底和 `motion_hil_unlocked + enable_cmd_vel_publish`
+双锁。
