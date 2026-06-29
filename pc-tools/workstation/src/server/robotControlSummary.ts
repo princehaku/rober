@@ -5347,10 +5347,14 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       first_incomplete_source_card_id: "",
       first_motion_item_id: "",
       first_motion_source_card_id: "",
+      nav2_item_id: "",
+      nav2_source_card_id: "",
       next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
       summary_plain: "本轮目标检查未读到；先恢复小车连接。",
       motion_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
       motion_summary_plain: "车能不能先动还未读到；先恢复小车连接。",
+      nav2_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
+      nav2_summary_plain: "完整行程状态还未读到；先恢复小车连接。",
       mapping_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
       mapping_summary_plain: "建图条件还未读到；先恢复小车连接。",
     },
@@ -6905,6 +6909,18 @@ function buildGoalChecklistSummary(
     }
     return "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。";
   })();
+  const nav2Summary = (() => {
+    if (nav2?.status === "done") {
+      return "完整图上行程已证明；同窗口轮速 L/R 已闭环。";
+    }
+    if (nav2?.status === "needs_safety_confirm") {
+      return `完整图上行程可复验；发车前只需要行程安全确认。下一步：${nav2.next_action_plain}`;
+    }
+    if (nav2) {
+      return `完整图上行程还未 ready；先补齐图上路线和当前位置显示。下一步：${nav2.next_action_plain}`;
+    }
+    return "完整行程状态还未读到；先刷新小车状态。";
+  })();
   const mappingSummary = (() => {
     if (mapping?.status === "needs_safety_confirm") {
       return `相机和雷达已 ready；建图启动只等现场安全确认。下一步：${mapping.next_action_plain}`;
@@ -6927,10 +6943,14 @@ function buildGoalChecklistSummary(
       first_incomplete_source_card_id: "",
       first_motion_item_id: "",
       first_motion_source_card_id: "",
+      nav2_item_id: "",
+      nav2_source_card_id: "",
       next_action_plain: "先刷新小车状态。",
       summary_plain: "本轮目标检查未读到；先刷新小车状态。",
       motion_next_action_plain: "先刷新小车状态。",
       motion_summary_plain: "车能不能先动还未读到；先刷新小车状态。",
+      nav2_next_action_plain: "先刷新小车状态。",
+      nav2_summary_plain: "完整行程状态还未读到；先刷新小车状态。",
       mapping_next_action_plain: "先刷新小车状态。",
       mapping_summary_plain: "建图条件还未读到；先刷新小车状态。",
     };
@@ -6948,10 +6968,14 @@ function buildGoalChecklistSummary(
       first_incomplete_source_card_id: "",
       first_motion_item_id: firstMotion?.id ?? "",
       first_motion_source_card_id: firstMotion?.source_card_id ?? "",
+      nav2_item_id: nav2?.id ?? "",
+      nav2_source_card_id: nav2?.source_card_id ?? "",
       next_action_plain: "本轮目标检查已完成；继续保持现场监看。",
       summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成。`,
       motion_next_action_plain: firstMotion?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
       motion_summary_plain: motionSummary,
+      nav2_next_action_plain: nav2?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
+      nav2_summary_plain: nav2Summary,
       mapping_next_action_plain: mapping?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
       mapping_summary_plain: mappingSummary,
     };
@@ -6970,10 +6994,14 @@ function buildGoalChecklistSummary(
     first_incomplete_source_card_id: firstIncomplete.source_card_id,
     first_motion_item_id: firstMotion?.id ?? "",
     first_motion_source_card_id: firstMotion?.source_card_id ?? "",
+    nav2_item_id: nav2?.id ?? "",
+    nav2_source_card_id: nav2?.source_card_id ?? "",
     next_action_plain: firstIncomplete.next_action_plain,
     summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成，还差 ${remaining.length} 项${safetyText}${motionText}；先处理：${firstIncomplete.title}。`,
     motion_next_action_plain: firstMotion?.next_action_plain ?? "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。",
     motion_summary_plain: motionSummary,
+    nav2_next_action_plain: nav2?.next_action_plain ?? "完整行程状态还未读到；先刷新小车状态。",
+    nav2_summary_plain: nav2Summary,
     mapping_next_action_plain: mapping?.next_action_plain ?? "建图条件还未读到；先刷新小车状态。",
     mapping_summary_plain: mappingSummary,
   };

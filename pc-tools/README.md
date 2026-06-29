@@ -636,3 +636,9 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `mapping_next_action_plain` 和 `mapping_summary_plain`。普通首屏会同时显示“车可以先怎么动”和“建图还差什么”，
 避免摄像头/雷达建图缺口遮住键盘连续手控或自由移动入口。“先动车”按钮只聚焦到已有运动控件，不发送 manual、
 Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 10:28 CST 起，`goal_checklist_summary` 额外拆出 Nav2 行程提示：
+`nav2_item_id`、`nav2_source_card_id`、`nav2_next_action_plain` 和 `nav2_summary_plain`。普通首屏在总目标、
+移动优先和建图摘要之间直接显示完整图上行程是否已证明、是否只差安全确认复验，以及轮速 L/R 闭环下一步。
+“去跑行程”按钮只聚焦到行程安全确认/执行区，不自动勾选、不执行 Nav2、不发送 manual、keyboard、free-roam、
+delivery、stop 或 `/cmd_vel`。

@@ -2438,10 +2438,14 @@ export interface RobotControlGoalChecklistSummary {
   first_incomplete_source_card_id: RobotControlActionStatusCardId | "";
   first_motion_item_id: RobotControlGoalChecklistItemId | "";
   first_motion_source_card_id: RobotControlActionStatusCardId | "";
+  nav2_item_id: RobotControlGoalChecklistItemId | "";
+  nav2_source_card_id: RobotControlActionStatusCardId | "";
   next_action_plain: string;
   summary_plain: string;
   motion_next_action_plain: string;
   motion_summary_plain: string;
+  nav2_next_action_plain: string;
+  nav2_summary_plain: string;
   mapping_next_action_plain: string;
   mapping_summary_plain: string;
 }
