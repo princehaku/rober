@@ -4645,6 +4645,63 @@ const plainIntentShortcutItems = computed<PlainIntentShortcutItem[]>(() => {
     },
   ];
 });
+type PlainObjectiveOverviewItem = {
+  id: "motion" | "wysiwyg" | "precheck" | "mapping";
+  title: string;
+  state: string;
+  summary: string;
+  sourceCardId: RobotControlActionStatusCardId;
+};
+function goalChecklistItem(id: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]["id"]) {
+  return plainGoalChecklist.value.find((item) => item.id === id) ?? null;
+}
+const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() => {
+  // 直接按 CEO 的四条目标归并当前状态，避免现场只能看到零散卡片。
+  const summary = plainGoalChecklistSummary.value;
+  if (!summary) {
+    return [];
+  }
+  const camera = goalChecklistItem("camera_wysiwyg");
+  const map = goalChecklistItem("map_wysiwyg");
+  const radar = goalChecklistItem("radar_map_points_wysiwyg");
+  const nav2 = goalChecklistItem("nav2_route_execution");
+  const keyboard = goalChecklistItem("keyboard_continuous_control");
+  const freeMove = goalChecklistItem("free_move");
+  const mapping = goalChecklistItem("mapping_start");
+  const wysiwygDone = [camera, map, radar].every((item) => item?.status === "done");
+  const motionReady = [nav2, keyboard, freeMove].some((item) => item?.status === "needs_safety_confirm" || item?.status === "ready");
+  const mappingReady = mapping?.status === "needs_safety_confirm" || mapping?.status === "ready";
+  return [
+    {
+      id: "motion",
+      title: "行程/键盘/自由移动",
+      state: motionReady ? "可处理" : "未就绪",
+      summary: `图上行程：${nav2?.status_label ?? "未读到"}；键盘：${keyboard?.status_label ?? "未读到"}；自由移动：${freeMove?.status_label ?? "未读到"}。`,
+      sourceCardId: summary.first_motion_source_card_id || "free_move",
+    },
+    {
+      id: "wysiwyg",
+      title: "画面/地图/雷达点",
+      state: wysiwygDone ? "已完成" : "待处理",
+      summary: `画面：${camera?.status_label ?? "未读到"}；地图：${map?.status_label ?? "未读到"}；雷达点：${radar?.status_label ?? "未读到"}。`,
+      sourceCardId: summary.first_incomplete_source_card_id || "camera_preview",
+    },
+    {
+      id: "precheck",
+      title: "发车前确认",
+      state: summary.safety_precheck_source_card_id ? "只需勾确认" : "无需处理",
+      summary: summary.safety_precheck_summary_plain || "当前没有待安全确认的入口。",
+      sourceCardId: summary.safety_precheck_source_card_id || "nav2_route",
+    },
+    {
+      id: "mapping",
+      title: "自由移动到建图",
+      state: mappingReady ? "可建图" : "先自由移动",
+      summary: `自由移动：${freeMove?.status_label ?? "未读到"}；建图启动：${mapping?.status_label ?? "未读到"}。`,
+      sourceCardId: mappingReady ? "mapping_start" : "free_move",
+    },
+  ];
+});
 const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ?? 0.12);
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
@@ -12680,6 +12737,31 @@ onBeforeUnmount(() => {
             type="button"
             class="secondary compact-stop"
             :data-testid="`plain-safety-action-go-${item.id}`"
+            @click="focusPlainActionCardTarget(item.sourceCardId)"
+          >
+            去处理
+          </button>
+        </div>
+      </div>
+
+      <div v-if="plainObjectiveOverviewItems.length" class="plain-objective-overview" data-testid="plain-objective-overview" aria-label="目标总览">
+        <div class="simple-status-row">
+          <strong>目标总览</strong>
+          <span class="muted">按本轮四个目标归并，只显示当前卡点。</span>
+        </div>
+        <div
+          v-for="item in plainObjectiveOverviewItems"
+          :key="item.id"
+          class="plain-objective-overview-row"
+          :data-testid="`plain-objective-overview-${item.id}`"
+        >
+          <span class="plain-progress-label">{{ item.title }}</span>
+          <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+          <span class="muted">{{ plainActionCardUserText(item.summary) }}</span>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :data-testid="`plain-objective-overview-go-${item.id}`"
             @click="focusPlainActionCardTarget(item.sourceCardId)"
           >
             去处理
