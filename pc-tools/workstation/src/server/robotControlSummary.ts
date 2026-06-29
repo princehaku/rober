@@ -2974,6 +2974,15 @@ function blockedRadarLifecycleResponse(
     remote_http_status: null,
     status: "blocked",
     command_result: { mode: "not_loaded", executed: false, ok: null },
+    sensor_lifecycle_only: true,
+    map_preview_endpoint: "/api/robot-control/map/preview",
+    post_start_map_preview_required: config.action === "start",
+    radar_overlay_wysiwyg_status_plain: config.action === "start"
+      ? "雷达启动未完成；地图雷达点仍以地图预览 radar_overlay 为准，不能把启动请求当作已贴图。"
+      : "雷达停止未完成；地图雷达点仍以地图预览 radar_overlay 为准。",
+    radar_overlay_wysiwyg_next_action_plain: config.action === "start"
+      ? "先修复雷达启动失败，再刷新地图画面确认 radar_overlay_status 和点数。"
+      : "先修复雷达停止失败，再刷新雷达状态和地图画面。",
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -3104,6 +3113,15 @@ export async function buildRadarLifecycleProxy(
     remote_http_status: response.status,
     status: forwarded ? "loaded_fail_closed_summary" : "blocked",
     command_result: commandResult,
+    sensor_lifecycle_only: true,
+    map_preview_endpoint: "/api/robot-control/map/preview",
+    post_start_map_preview_required: config.action === "start",
+    radar_overlay_wysiwyg_status_plain: config.action === "start"
+      ? "雷达启动请求已转发；地图上是否显示雷达点必须以后续地图预览的 radar_overlay_status 和点数为准。"
+      : "雷达停止请求已转发；旧雷达点不能当作当前地图标记，后续地图预览应显示 0 个当前雷达点或 not_current/not_loaded。",
+    radar_overlay_wysiwyg_next_action_plain: config.action === "start"
+      ? "等待新扫描后刷新地图画面，确认 radar_overlay_status=loaded 且 radar_overlay_point_count 大于 0。"
+      : "刷新地图画面，确认旧雷达点不再贴到当前地图。",
     failure_reason:
       hardDangerous.length > 0
         ? `hard_dangerous_true_field:${hardDangerous[0]}`

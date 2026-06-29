@@ -3007,6 +3007,11 @@ export interface RobotControlRadarLifecycleResponse extends ProofFlags {
     executed: boolean;
     ok: boolean | null;
   };
+  sensor_lifecycle_only: true;
+  map_preview_endpoint: "/api/robot-control/map/preview";
+  post_start_map_preview_required: boolean;
+  radar_overlay_wysiwyg_status_plain: string;
+  radar_overlay_wysiwyg_next_action_plain: string;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

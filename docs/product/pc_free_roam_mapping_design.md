@@ -517,6 +517,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `scan_preview_point_count=72`，且机器人 map pose 已读到。该证据证明雷达可以从 stopped 拉到 running/fresh，
 地图雷达 marker 可以使用本轮真实点位；仍不等于 camera 首帧、Nav2 完整路线 HIL 或 delivery success 已完成。
 
+2026-06-29 20:45 起，PC radar lifecycle 响应也显式带出地图贴图验收口径：
+`sensor_lifecycle_only=true`、`map_preview_endpoint=/api/robot-control/map/preview`、
+`post_start_map_preview_required=true` 和 `radar_overlay_wysiwyg_*`。`POST /api/robot-control/radar/start`
+只证明雷达 lifecycle 请求已转发，不能直接等同“地图上已有雷达点”；启动后仍必须刷新 map preview，并以
+`radar_overlay_status`、`radar_overlay_point_count` 和 `radar_overlay_wysiwyg_status_plain` 作为地图标记所见即所得证据。
+该变化只补响应合同，不发送底盘、Nav2、free-roam、delivery、manual、keyboard、stop 或 `/cmd_vel`。
+
 2026-06-27 08:51 起，PC summary 在 `/api/radar/status` 已显示 `lifecycle_running=true` 时，优先把
 `continuous_scan_status` 作为普通首屏雷达主状态；如果独立 latest proof endpoint 仍是 404/missing，地图和雷达卡片显示
 `雷达无新点`，并说明“雷达驱动在运行，但当前没有读到新的雷达点”。这样现场点击启动雷达后不会把“驱动已运行但 proof

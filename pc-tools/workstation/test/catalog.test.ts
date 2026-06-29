@@ -9517,6 +9517,11 @@ describe("workstation fail-closed API contracts", () => {
         remote_endpoint: string;
         remote_http_status: number;
         command_result: { mode: string; executed: boolean; ok: boolean };
+        sensor_lifecycle_only: boolean;
+        map_preview_endpoint: string;
+        post_start_map_preview_required: boolean;
+        radar_overlay_wysiwyg_status_plain: string;
+        radar_overlay_wysiwyg_next_action_plain: string;
         failure_reason: string;
         blocked_reasons: string[];
         hard_dangerous_true_fields: string[];
@@ -9529,6 +9534,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(startBody.remote_endpoint).toBe("/api/radar/start");
       expect(startBody.remote_http_status).toBe(200);
       expect(startBody.command_result).toEqual({ mode: "dry_run_stub", executed: false, ok: false });
+      expect(startBody.sensor_lifecycle_only).toBe(true);
+      expect(startBody.map_preview_endpoint).toBe("/api/robot-control/map/preview");
+      expect(startBody.post_start_map_preview_required).toBe(true);
+      expect(startBody.radar_overlay_wysiwyg_status_plain).toBe("雷达启动请求已转发；地图上是否显示雷达点必须以后续地图预览的 radar_overlay_status 和点数为准。");
+      expect(startBody.radar_overlay_wysiwyg_next_action_plain).toBe("等待新扫描后刷新地图画面，确认 radar_overlay_status=loaded 且 radar_overlay_point_count 大于 0。");
       expect(startBody.failure_reason).toBe("command_not_configured");
       expect(startBody.blocked_reasons).toContain("command_not_configured");
       expect(startBody.hard_dangerous_true_fields).toEqual([]);
@@ -9540,12 +9550,24 @@ describe("workstation fail-closed API contracts", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ arbitrary_endpoint: "/api/radar/status" }),
       });
-      const stopBody = (await stopResponse.json()) as { action: string; remote_endpoint: string; command_result: { mode: string; executed: boolean } };
+      const stopBody = (await stopResponse.json()) as {
+        action: string;
+        remote_endpoint: string;
+        command_result: { mode: string; executed: boolean };
+        sensor_lifecycle_only: boolean;
+        map_preview_endpoint: string;
+        post_start_map_preview_required: boolean;
+        radar_overlay_wysiwyg_next_action_plain: string;
+      };
       expect(stopResponse.status).toBe(200);
       expect(stopBody.action).toBe("stop");
       expect(stopBody.remote_endpoint).toBe("/api/radar/stop");
       expect(stopBody.command_result.mode).toBe("dry_run_stub");
       expect(stopBody.command_result.executed).toBe(false);
+      expect(stopBody.sensor_lifecycle_only).toBe(true);
+      expect(stopBody.map_preview_endpoint).toBe("/api/robot-control/map/preview");
+      expect(stopBody.post_start_map_preview_required).toBe(false);
+      expect(stopBody.radar_overlay_wysiwyg_next_action_plain).toBe("刷新地图画面，确认旧雷达点不再贴到当前地图。");
       expect(upstream.receivedBodies["/api/radar/start"]).toEqual([{}]);
       expect(upstream.receivedBodies["/api/radar/stop"]).toEqual([{}]);
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
