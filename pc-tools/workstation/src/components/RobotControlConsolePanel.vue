@@ -1975,13 +1975,13 @@ const evidenceSweepSummary = computed(() => {
 });
 const radarSummary = computed(() => summarizeRadarState());
 const plainRadarMapMarkerReadback = computed(() => {
-  // 地图上的雷达 marker 必须以 summary 的 overlay 事实为准，旧来源点只能做诊断，不能冒充当前贴图。
+  // 普通首屏优先展示后端清洗过的雷达总事实，marker/overlay 细节只留给高级诊断字段。
   const radar = robotSummary.value?.readback_summary.radar;
   if (!radar) {
     return "";
   }
-  const marker = (radar.radar_overlay_wysiwyg_status_plain ?? "").trim();
-  const nextAction = (radar.radar_overlay_wysiwyg_next_action_plain ?? radar.radar_next_action_plain ?? "").trim();
+  const marker = (radar.plain_hint || radar.radar_overlay_wysiwyg_status_plain || "").trim();
+  const nextAction = radar.plain_hint ? "" : (radar.radar_overlay_wysiwyg_next_action_plain ?? radar.radar_next_action_plain ?? "").trim();
   const cleanMarker = marker.replace(/[。；\s]+$/g, "");
   const cleanNext = nextAction.replace(/[。；\s]+$/g, "");
   if (!cleanMarker || ["not_loaded", "none"].includes(cleanMarker)) {
