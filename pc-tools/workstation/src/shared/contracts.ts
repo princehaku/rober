@@ -2025,6 +2025,7 @@ export interface RobotControlMapPreviewRadarOverlay {
   count: number;
   source_count: number | null;
   frame_id: string;
+  source_frame_id: string;
   robot_pose: RobotApiMapPose | null;
   source_endpoint_ids: RobotApiReadEndpointId[];
   blocked_reasons: string[];
@@ -2626,11 +2627,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       radar_overlay_point_count: string;
       radar_overlay_source_point_count: string;
       radar_overlay_frame_id: string;
+      radar_overlay_source_frame_id: string;
       radar_overlay_wysiwyg_status_plain: string;
       radar_overlay_wysiwyg_next_action_plain: string;
       map_marker_point_count: string;
       map_marker_source_point_count: string;
       map_marker_frame_id: string;
+      map_marker_source_frame_id: string;
     };
     base: {
       status: string;
@@ -2679,6 +2682,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       radar_overlay_point_count: string;
       radar_overlay_source_point_count: string;
       radar_overlay_frame_id: string;
+      radar_overlay_source_frame_id: string;
       radar_overlay_blocked_reasons: string;
       radar_overlay_blocked_reason_labels: string;
       radar_overlay_scan_preview_point_count: string;
@@ -3227,6 +3231,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   radar_overlay_scan_preview_point_count: number;
   radar_overlay_scan_preview_source_point_count: number | null;
   radar_overlay_frame_id: string;
+  radar_overlay_source_frame_id: string;
   robot_pose: RobotApiMapPose | null;
   robot_pose_status: "map_pose_observed" | "not_observed";
   path_preview_points: RobotApiPathPreviewPoint[];

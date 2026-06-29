@@ -1795,7 +1795,8 @@ function radarSummaryFromReadbacks(
   // overlayPointCount 是地图上实际画出来的点数；sourcePointCount 只用于解释为什么没有贴图。
   const overlayPointCount = map.radar_overlay_point_count || "0";
   const overlaySourcePointCount = map.radar_overlay_source_point_count || lidar.scan_preview_source_point_count || "not_loaded";
-  const overlayFrameId = map.radar_overlay_frame_id || lidar.scan_preview_frame_id || "not_loaded";
+  const overlayFrameId = map.radar_overlay_frame_id || "not_loaded";
+  const overlaySourceFrameId = map.radar_overlay_source_frame_id || lidar.scan_preview_frame_id || "not_loaded";
   // 地图层 loaded 或点数大于 0 才能称为 marker 可见，避免把旧扫描来源点误说成所见即所得。
   const overlayLoaded = map.radar_overlay_status === "loaded" || Number(overlayPointCount) > 0;
   const status = radarReady ? "radar_ready" : radarStopped ? "radar_stopped" : lidar.status || "not_loaded";
@@ -1835,12 +1836,14 @@ function radarSummaryFromReadbacks(
     radar_overlay_point_count: overlayPointCount,
     radar_overlay_source_point_count: overlaySourcePointCount,
     radar_overlay_frame_id: overlayFrameId,
+    radar_overlay_source_frame_id: overlaySourceFrameId,
     radar_overlay_wysiwyg_status_plain: map.radar_overlay_wysiwyg_status_plain,
     radar_overlay_wysiwyg_next_action_plain: map.radar_overlay_wysiwyg_next_action_plain,
     // map_marker_* 是给外部脚本的直观别名，值必须始终等于当前地图 overlay 读数。
     map_marker_point_count: overlayPointCount,
     map_marker_source_point_count: overlaySourcePointCount,
     map_marker_frame_id: overlayFrameId,
+    map_marker_source_frame_id: overlaySourceFrameId,
   };
 }
 
@@ -3222,6 +3225,7 @@ function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRa
     count: 0,
     source_count: null,
     frame_id: "",
+    source_frame_id: "",
     robot_pose: null,
     source_endpoint_ids: [],
     blocked_reasons: reason ? [reason] : [],
@@ -3247,6 +3251,7 @@ function mapPreviewRadarOverlayAliases(
   | "radar_overlay_scan_preview_point_count"
   | "radar_overlay_scan_preview_source_point_count"
   | "radar_overlay_frame_id"
+  | "radar_overlay_source_frame_id"
 > {
   // 顶层 alias 与嵌套 overlay 同源，方便现场 curl/jq 一眼确认“地图上到底贴了几个当前雷达点”。
   return {
@@ -3264,6 +3269,7 @@ function mapPreviewRadarOverlayAliases(
     radar_overlay_scan_preview_point_count: radarOverlay.scan_preview_point_count,
     radar_overlay_scan_preview_source_point_count: radarOverlay.scan_preview_source_point_count,
     radar_overlay_frame_id: radarOverlay.frame_id,
+    radar_overlay_source_frame_id: radarOverlay.source_frame_id,
   };
 }
 
@@ -3382,11 +3388,12 @@ async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOver
   );
   const visibleRadarPoints = radarOverlayCurrent ? proofSummary.scan_preview_points : [];
   const visibleRadarPointCount = radarOverlayCurrent ? proofSummary.scan_preview_point_count : 0;
+  const visibleRadarFrameId = radarOverlayCurrent ? proofSummary.scan_preview_frame_id : "";
   const wysiwyg = radarOverlayWysiwygPlainSummary({
     radarStatus: overlayStatus,
     pointCount: String(visibleRadarPointCount),
     sourcePointCount: proofSummary.scan_preview_source_point_count === null ? "not_loaded" : String(proofSummary.scan_preview_source_point_count),
-    frameId: proofSummary.scan_preview_frame_id || "not_loaded",
+    frameId: visibleRadarFrameId || "not_loaded",
     radarHint: explanation.plain_hint,
     radarNextAction: explanation.next_action_plain,
   });
@@ -3406,7 +3413,9 @@ async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOver
     points: visibleRadarPoints,
     count: visibleRadarPointCount,
     source_count: proofSummary.scan_preview_source_point_count,
-    frame_id: proofSummary.scan_preview_frame_id,
+    // frame_id 只描述当前实际贴到地图上的雷达点；旧来源 frame 放到 source_frame_id。
+    frame_id: visibleRadarFrameId,
+    source_frame_id: proofSummary.scan_preview_frame_id,
     robot_pose: proofSummary.robot_pose,
     source_endpoint_ids: endpoints.map((endpoint) => endpoint.id),
     blocked_reasons: overlayBlockedReasons,
@@ -4734,7 +4743,8 @@ function mapSummaryFromReadbacks(
   const robotPoseStatus = proof.robot_pose ? "map_pose_observed" : "not_observed";
   const radarOverlayPointCount = String(radarOverlayCurrent ? proof.scan_preview_point_count : 0);
   const radarOverlaySourcePointCount = proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count);
-  const radarOverlayFrameId = proof.scan_preview_frame_id || "not_loaded";
+  const radarOverlaySourceFrameId = proof.scan_preview_frame_id || "not_loaded";
+  const radarOverlayFrameId = radarOverlayCurrent ? radarOverlaySourceFrameId : "not_loaded";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathPreviewStatus, robotPoseStatus);
   const pathWysiwygStatusPlain = pathPreviewStatus === "path_preview_observed"
     ? "图上路线已显示在当前地图画面。"
@@ -4801,11 +4811,12 @@ function mapSummaryFromReadbacks(
     radar_overlay_point_count: radarOverlayPointCount,
     radar_overlay_source_point_count: radarOverlaySourcePointCount,
     radar_overlay_frame_id: radarOverlayFrameId,
+    radar_overlay_source_frame_id: radarOverlaySourceFrameId,
     radar_overlay_blocked_reasons: radarOverlayBlockedReasons.join(",") || "none",
     radar_overlay_blocked_reason_labels: radarOverlayExplanation.blocked_reason_labels.join(",") || "none",
     radar_overlay_scan_preview_point_count: radarOverlayPointCount,
     radar_overlay_scan_preview_source_point_count: radarOverlaySourcePointCount,
-    radar_overlay_scan_preview_frame_id: radarOverlayFrameId,
+    radar_overlay_scan_preview_frame_id: radarOverlaySourceFrameId,
     radar_overlay_robot_pose_status: robotPoseStatus,
   };
 }
@@ -5703,11 +5714,13 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         radar_overlay_point_count: "0",
         radar_overlay_source_point_count: "0",
         radar_overlay_frame_id: "not_loaded",
+        radar_overlay_source_frame_id: "not_loaded",
         radar_overlay_wysiwyg_status_plain: "地图雷达点未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。",
         radar_overlay_wysiwyg_next_action_plain: "确认小车地址可访问后刷新地图画面。",
         map_marker_point_count: "0",
         map_marker_source_point_count: "0",
         map_marker_frame_id: "not_loaded",
+        map_marker_source_frame_id: "not_loaded",
       },
       base: {
         status: "not_loaded",
@@ -5754,6 +5767,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         radar_overlay_point_count: "0",
         radar_overlay_source_point_count: "0",
         radar_overlay_frame_id: "not_loaded",
+        radar_overlay_source_frame_id: "not_loaded",
         radar_overlay_blocked_reasons: "not_loaded",
         radar_overlay_blocked_reason_labels: "not_loaded",
         radar_overlay_scan_preview_point_count: "0",

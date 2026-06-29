@@ -8029,6 +8029,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_point_count).toBe("3");
       expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("5");
       expect(summary.readback_summary.map.radar_overlay_frame_id).toBe("laser");
+      expect(summary.readback_summary.map.radar_overlay_source_frame_id).toBe("laser");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("3");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("5");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser");
@@ -8474,6 +8475,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_point_count).toBe("2");
       expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("80");
       expect(summary.readback_summary.map.radar_overlay_frame_id).toBe("laser_frame");
+      expect(summary.readback_summary.map.radar_overlay_source_frame_id).toBe("laser_frame");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("2");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("80");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser_frame");
@@ -8582,7 +8584,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toContain("雷达未运行");
       expect(summary.readback_summary.map.radar_overlay_point_count).toBe("0");
       expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("65");
-      expect(summary.readback_summary.map.radar_overlay_frame_id).toBe("laser_frame");
+      expect(summary.readback_summary.map.radar_overlay_frame_id).toBe("not_loaded");
+      expect(summary.readback_summary.map.radar_overlay_source_frame_id).toBe("laser_frame");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_point_count).toBe("0");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("65");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser_frame");
@@ -9895,6 +9898,7 @@ describe("workstation fail-closed API contracts", () => {
           count: number;
           source_count: number | null;
           frame_id: string;
+          source_frame_id: string;
           points: Array<{ x_m: number; y_m: number; frame_id: string }>;
           robot_pose: { x: number; y: number; yaw: number | null; frame_id: string; source: string } | null;
           source_endpoint_ids: string[];
@@ -9906,6 +9910,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_scan_preview_point_count: number;
         radar_overlay_scan_preview_source_point_count: number | null;
         radar_overlay_frame_id: string;
+        radar_overlay_source_frame_id: string;
       };
       expect(previewResponse.status).toBe(200);
       expect(previewBody.proxy_status).toBe("preview_forwarded");
@@ -9959,11 +9964,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.radar_overlay.count).toBe(1);
       expect(previewBody.radar_overlay.source_count).toBe(65);
       expect(previewBody.radar_overlay.frame_id).toBe("laser_frame");
+      expect(previewBody.radar_overlay.source_frame_id).toBe("laser_frame");
       expect(previewBody.radar_overlay_point_count).toBe(1);
       expect(previewBody.radar_overlay_source_point_count).toBe(65);
       expect(previewBody.radar_overlay_scan_preview_point_count).toBe(1);
       expect(previewBody.radar_overlay_scan_preview_source_point_count).toBe(65);
       expect(previewBody.radar_overlay_frame_id).toBe("laser_frame");
+      expect(previewBody.radar_overlay_source_frame_id).toBe("laser_frame");
       expect(previewBody.radar_overlay.points).toEqual(previewBody.radar_overlay.scan_preview_points);
       expect(previewBody.radar_overlay.robot_pose).toEqual(expect.objectContaining({ x: 0.4, y: -0.2, frame_id: "map", source: "/amcl_pose" }));
       expect(previewBody.robot_pose).toEqual(previewBody.radar_overlay.robot_pose);
@@ -10131,6 +10138,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_count: number;
         radar_overlay_source_count: number | null;
         radar_overlay_frame_id: string;
+        radar_overlay_source_frame_id: string;
         radar_overlay_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
         radar_overlay: {
           overlay_status: string;
@@ -10325,6 +10333,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_count: number;
         radar_overlay_source_count: number | null;
         radar_overlay_frame_id: string;
+        radar_overlay_source_frame_id: string;
         radar_overlay_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
         radar_overlay: {
           overlay_status: string;
@@ -10341,6 +10350,7 @@ describe("workstation fail-closed API contracts", () => {
           count: number;
           source_count: number | null;
           frame_id: string;
+          source_frame_id: string;
           points: Array<{ x_m: number; y_m: number; frame_id: string }>;
           blocked_reasons: string[];
           blocked_reason_labels: string[];
@@ -10383,7 +10393,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.count).toBe(0);
       expect(body.radar_overlay.points).toEqual([]);
       expect(body.radar_overlay.source_count).toBe(65);
-      expect(body.radar_overlay.frame_id).toBe("laser_frame");
+      expect(body.radar_overlay.frame_id).toBe("");
+      expect(body.radar_overlay.source_frame_id).toBe("laser_frame");
       expect(body.radar_overlay_status).toBe(body.radar_overlay.overlay_status);
       expect(body.radar_overlay_plain_hint).toBe(body.radar_overlay.plain_hint);
       expect(body.radar_overlay_wysiwyg_status_plain).toBe(body.radar_overlay.wysiwyg_status_plain);
@@ -10393,7 +10404,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay_count).toBe(0);
       expect(body.radar_overlay_points).toEqual([]);
       expect(body.radar_overlay_source_count).toBe(65);
-      expect(body.radar_overlay_frame_id).toBe("laser_frame");
+      expect(body.radar_overlay_frame_id).toBe("");
+      expect(body.radar_overlay_source_frame_id).toBe("laser_frame");
       expect(body.radar_overlay.blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(body.radar_overlay.blocked_reason_labels).toContain("雷达扫描已过期");
