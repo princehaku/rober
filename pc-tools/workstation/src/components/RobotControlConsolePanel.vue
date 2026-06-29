@@ -1881,6 +1881,10 @@ function cameraSummaryFirstFrameProbePlainHint(camera: RobotControlSummaryRespon
       : "OpenCV/V4L2 后端";
     return `只读检查：最近一次检查显示不是页面独占；${attempts}也没有取到视频帧，检查 USB、摄像头输入、格式或供电。`;
   }
+  if (status === "source_first_frame_failed") {
+    // 没有手动点探针时，也可能已由共享预览/health 得到同等只读结论，避免首屏误写“还没检查”。
+    return "只读检查：共享预览已经确认不是页面独占；UVC 没有输出首帧，检查 USB、摄像头输入或供电。";
+  }
   if (camera.first_frame_probe_failure_reason === "capture_read_call_timeout" || status === "first_frame_timeout") {
     return "只读检查：最近一次检查显示摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";
   }

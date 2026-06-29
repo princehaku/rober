@@ -21668,6 +21668,10 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.source_diagnosis_status = "uvc_no_frame_not_exclusive";
     summaryFixture.readback_summary.camera.source_diagnosis_plain_hint = "不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。";
     summaryFixture.readback_summary.camera.source_diagnosis_next_action = "check_usb_camera_input_power_or_known_good_uvc";
+    summaryFixture.readback_summary.camera.first_frame_probe_status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.first_frame_probe_failure_reason = "camera_source_first_frame_failed";
+    summaryFixture.readback_summary.camera.first_frame_probe_read_ok = "false";
+    summaryFixture.readback_summary.camera.first_frame_probe_visible_content_proven = "false";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
     });
@@ -21682,7 +21686,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-guidance"]').text()).not.toContain("uvc_no_frame_not_exclusive");
-    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("不是页面独占");
+    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：共享预览已经确认不是页面独占；UVC 没有输出首帧，检查 USB、摄像头输入或供电。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("source_usage_status");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("uvc_no_frame_not_exclusive");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(false);

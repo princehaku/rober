@@ -2076,6 +2076,25 @@ function cameraSummaryFromReadbacks(
     previewVisiblePlain: previewVisibility.visiblePlain,
   });
   const sourceDiagnosisNextActionPlain = derivedSourceDiagnosis.next_action_plain || previewGuidance.next_action_plain;
+  const lastOfferFormatAttemptsSummary = cameraFormatAttemptsSummary(lastOfferError);
+  const inferredProbeFailureReason = ["", "none", "not_loaded"].includes(resolvedSourceFailureReason)
+    ? relayFirstFrameFailureReason || lastOfferFailureReason || sharedPreviewLastFailureReason
+    : resolvedSourceFailureReason;
+  const firstFrameProbeStatus = firstFrameProbeOverlay?.status
+    ?? (sourceFirstFrameFailedForSharedPreview ? "source_first_frame_failed" : "not_loaded");
+  const firstFrameProbeFailureReason = firstFrameProbeOverlay?.failure_reason
+    || (sourceFirstFrameFailedForSharedPreview ? inferredProbeFailureReason || "camera_source_first_frame_failed" : "none");
+  const firstFrameProbeReadOk = firstFrameProbeOverlay?.read_ok
+    ?? (sourceFirstFrameFailedForSharedPreview ? "false" : "not_loaded");
+  const firstFrameProbeVisibleContentProven = firstFrameProbeOverlay?.visible_content_proven
+    ?? (sourceFirstFrameFailedForSharedPreview ? "false" : "not_loaded");
+  const firstFrameProbeFallbackAttemptsSummary = firstFrameProbeOverlay?.fallback_attempts_summary
+    ?? (sourceFirstFrameFailedForSharedPreview ? lastOfferFormatAttemptsSummary : "none");
+  const firstFrameProbeCheckedAtMs = firstFrameProbeOverlay
+    ? String(firstFrameProbeOverlay.checked_at_ms)
+    : sourceFirstFrameFailedForSharedPreview && mjpegRelayOverlay?.last_failure_at_ms !== null && mjpegRelayOverlay?.last_failure_at_ms !== undefined
+      ? compactValueText(mjpegRelayOverlay.last_failure_at_ms)
+      : "not_loaded";
   return {
     status: cameraStatus,
     devices_status: devicesReadback?.status ?? "not_loaded",
@@ -2143,17 +2162,17 @@ function cameraSummaryFromReadbacks(
     active_peer_count: summaryValueText(healthPayload, ["active_peer_count", "active_peer_connections"]),
     last_offer_error: asString(lastOfferError?.error, "none"),
     last_offer_failure_reason: asString(lastOfferError?.failure_reason, "none"),
-    last_offer_format_attempts_summary: cameraFormatAttemptsSummary(lastOfferError),
-    first_frame_probe_status: firstFrameProbeOverlay?.status ?? "not_loaded",
-    first_frame_probe_failure_reason: firstFrameProbeOverlay?.failure_reason || "none",
+    last_offer_format_attempts_summary: lastOfferFormatAttemptsSummary,
+    first_frame_probe_status: firstFrameProbeStatus,
+    first_frame_probe_failure_reason: firstFrameProbeFailureReason,
     first_frame_probe_open_ok: firstFrameProbeOverlay?.open_ok ?? "not_loaded",
-    first_frame_probe_read_ok: firstFrameProbeOverlay?.read_ok ?? "not_loaded",
-    first_frame_probe_visible_content_proven: firstFrameProbeOverlay?.visible_content_proven ?? "not_loaded",
+    first_frame_probe_read_ok: firstFrameProbeReadOk,
+    first_frame_probe_visible_content_proven: firstFrameProbeVisibleContentProven,
     first_frame_probe_backend_smoke_status: firstFrameProbeOverlay?.backend_smoke_status ?? "not_requested",
     first_frame_probe_backend_frame_observed: firstFrameProbeOverlay?.backend_frame_observed ?? "not_loaded",
     first_frame_probe_backend_attempts: firstFrameProbeOverlay?.backend_attempts ?? "0",
-    first_frame_probe_fallback_attempts_summary: firstFrameProbeOverlay?.fallback_attempts_summary ?? "none",
-    first_frame_probe_checked_at_ms: firstFrameProbeOverlay ? String(firstFrameProbeOverlay.checked_at_ms) : "not_loaded",
+    first_frame_probe_fallback_attempts_summary: firstFrameProbeFallbackAttemptsSummary,
+    first_frame_probe_checked_at_ms: firstFrameProbeCheckedAtMs,
   };
 }
 

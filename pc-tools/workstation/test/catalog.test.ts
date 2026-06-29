@@ -4689,6 +4689,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.preview_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
       expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+      expect(summary.readback_summary.camera.first_frame_probe_status).toBe("source_first_frame_failed");
+      expect(summary.readback_summary.camera.first_frame_probe_read_ok).toBe("false");
+      expect(summary.readback_summary.camera.first_frame_probe_visible_content_proven).toBe("false");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();
@@ -4745,6 +4748,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
       expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
       expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summary.readback_summary.camera.first_frame_probe_status).toBe("source_first_frame_failed");
+      expect(summary.readback_summary.camera.first_frame_probe_read_ok).toBe("false");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();
@@ -8394,6 +8399,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
       expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("first_frame_total_timeout");
       expect(summary.readback_summary.camera.last_offer_format_attempts_summary).toBe("MJPG@640x480@30 无首帧；YUYV@640x480@22 无首帧；default@current 无首帧");
+      expect(summary.readback_summary.camera.first_frame_probe_status).toBe("source_first_frame_failed");
+      expect(summary.readback_summary.camera.first_frame_probe_failure_reason).toBe("first_frame_total_timeout");
+      expect(summary.readback_summary.camera.first_frame_probe_read_ok).toBe("false");
+      expect(summary.readback_summary.camera.first_frame_probe_visible_content_proven).toBe("false");
+      expect(summary.readback_summary.camera.first_frame_probe_fallback_attempts_summary).toBe("MJPG@640x480@30 无首帧；YUYV@640x480@22 无首帧；default@current 无首帧");
+      expect(summary.readback_summary.camera.first_frame_probe_checked_at_ms).toBe("1782652235202");
       expect(summary.safe_to_control).toBe(false);
     } finally {
       await robotApi.close();
