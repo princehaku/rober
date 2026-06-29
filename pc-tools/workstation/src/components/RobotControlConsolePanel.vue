@@ -8717,7 +8717,7 @@ const plainKeyboardReadbackSummary = computed(() => {
 });
 
 const plainKeyboardWheelReadbackGoal = computed(() => {
-  // 键盘连续手控也是补 wheel raw L/R 的现场路径；启用前就把当前 L/R 和目标说清楚，避免用户盲按。
+  // 键盘连续手控也是补轮速 L/R 的现场路径；启用前就把当前 L/R 和目标说清楚，避免用户盲按。
   if (!canUseKeyboardControl.value && !keyboardControlArmed.value) {
     return "";
   }
@@ -8729,9 +8729,9 @@ const plainKeyboardWheelReadbackGoal = computed(() => {
   }
   const { left, right } = currentWheelReadback.value;
   if (isZeroWheelPair(left, right)) {
-    return `键盘轮速目标：${actionText}；当前 wheel raw L/R=${left}/${right}，还不是非零证据。`;
+    return `键盘轮速目标：${actionText}；当前轮速 L/R=${left}/${right}，还不是非零证据。`;
   }
-  return `键盘轮速目标：当前 wheel raw L/R=${left}/${right} 已非零；继续按住方向键完成连续验证。`;
+  return `键盘轮速目标：当前轮速 L/R=${left}/${right} 已非零；继续按住方向键完成连续验证。`;
 });
 
 const plainKeyboardControlSummary = computed(() => {
@@ -8818,7 +8818,7 @@ const plainChassisTrialSummary = computed(() => {
   const result = plainChassisTrialResult.value;
   if (!result) {
     return plainManualSafetyConfirmed.value
-      ? "底盘试动：可直接低速前进一下；不依赖相机或雷达，结果看 wheel raw L/R。"
+      ? "底盘试动：可直接低速前进一下；不依赖相机或雷达，结果看轮速 L/R。"
       : "底盘试动：勾选安全确认后可低速前进一下；不依赖相机或雷达。";
   }
   if (result.command_kind === "stop") {
@@ -8835,7 +8835,7 @@ const plainChassisTrialSummary = computed(() => {
   const frames = values?.feedback_during_motion_t1001_frame_count ?? values?.wheel_feedback_nonzero_frame_count ?? "0";
   const nonzero = values?.wheel_feedback_lr_nonzero_proven === "true" || values?.wheel_feedback_nonzero_observed === "true";
   if (nonzero) {
-    return `底盘试动：已读到 wheel raw L/R 非零，L/R=${left}/${right}，运动帧=${frames}。`;
+    return `底盘试动：已读到轮速 L/R 非零，L/R=${left}/${right}，运动帧=${frames}。`;
   }
   return `底盘试动：指令已发并收口，但 L/R=${left}/${right} 仍未非零；检查电机使能、供电、底盘模式和现场空间。`;
 });

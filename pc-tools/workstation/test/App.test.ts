@@ -9905,7 +9905,8 @@ describe("App", () => {
     expect(focusSpy).toHaveBeenCalled();
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFocus);
-    expect(visiblePlainHomeText(wrapper)).toContain("wheel raw L/R=0/0");
+    expect(visiblePlainHomeText(wrapper)).toContain("当前轮速 L/R=0/0");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("wheel raw L/R=0/0");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
@@ -12543,11 +12544,13 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：启用后按住方向键读取非零 L/R；当前 wheel raw L/R=0/0，还不是非零证据。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：启用后按住方向键读取非零 L/R；当前轮速 L/R=0/0，还不是非零证据。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).not.toContain("wheel raw L/R=");
     await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：按住方向键读取非零 L/R；当前 wheel raw L/R=0/0，还不是非零证据。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：按住方向键读取非零 L/R；当前轮速 L/R=0/0，还不是非零证据。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).not.toContain("wheel raw L/R=");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -15661,7 +15664,7 @@ describe("App", () => {
     expect(plainChassisTrial.exists()).toBe(true);
     expect(plainChassisTrial.text()).toBe("底盘试动");
     expect(plainChassisTrial.attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-chassis-trial-summary"]').text()).toBe("底盘试动：可直接低速前进一下；不依赖相机或雷达，结果看 wheel raw L/R。");
+    expect(wrapper.find('[data-testid="plain-chassis-trial-summary"]').text()).toBe("底盘试动：可直接低速前进一下；不依赖相机或雷达，结果看轮速 L/R。");
     expect(wrapper.find(".robot-console .advanced-details").text().replace(/\s+/g, "")).toContain("materialmissingfieldsnone");
 
     await plainChassisTrial.trigger("click");
@@ -15681,7 +15684,7 @@ describe("App", () => {
     }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("NavigateToPose"))).toBe(false);
-    expect(wrapper.find('[data-testid="plain-chassis-trial-summary"]').text()).toBe("底盘试动：已读到 wheel raw L/R 非零，L/R=0.08/0.07，运动帧=3。");
+    expect(wrapper.find('[data-testid="plain-chassis-trial-summary"]').text()).toBe("底盘试动：已读到轮速 L/R 非零，L/R=0.08/0.07，运动帧=3。");
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("待命");
