@@ -1815,8 +1815,11 @@ function freeRoamLatestReadinessFromKeyValues(
   | "decision_reason"
   | "plain_hint"
   | "next_action_plain"
+  | "free_move_ready"
   | "free_move_start_ready"
+  | "free_roam_motion_start_ready"
   | "motion_start_ready"
+  | "free_roam_motion_ready"
   | "motion_ready"
   | "motion_without_radar_allowed"
   | "free_move_without_camera_allowed"
@@ -1824,6 +1827,10 @@ function freeRoamLatestReadinessFromKeyValues(
   | "free_roam_mapping_start_missing_reasons"
   | "free_roam_mapping_start_plain"
   | "free_roam_mapping_start_next_action"
+  | "free_roam_mapping_ready"
+  | "free_roam_mapping_missing_reasons"
+  | "mapping_ready"
+  | "mapping_missing_reasons"
   | "mapping_readiness_ready"
   | "mapping_blocked_reasons"
   | "motion_readiness_plain"
@@ -1861,8 +1868,11 @@ function freeRoamLatestReadinessFromKeyValues(
     // 顶层白话给现场脚本直接消费；细分字段仍保留给页面分区展示。
     plain_hint: joinChinesePlainParts(startStatusPlain, mappingAcceptancePlain),
     next_action_plain: joinChinesePlainParts(motionNextActionPlain, mappingNextActionPlain),
+    free_move_ready: startReady,
     free_move_start_ready: startReady,
+    free_roam_motion_start_ready: startReady,
     motion_start_ready: startReady,
+    free_roam_motion_ready: motionReady,
     motion_ready: motionReady,
     motion_without_radar_allowed: latestKeyValues.motion_without_radar_allowed === "true" || startReady,
     free_move_without_camera_allowed: latestKeyValues.free_move_without_camera_allowed === "true" || startReady,
@@ -1870,6 +1880,10 @@ function freeRoamLatestReadinessFromKeyValues(
     free_roam_mapping_start_missing_reasons: mappingStartMissing,
     free_roam_mapping_start_plain: latestKeyValues.free_roam_mapping_start_plain || freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingStartReady, mappingStartMissing),
     free_roam_mapping_start_next_action: latestKeyValues.free_roam_mapping_start_next_action || freeRoamLatestMappingNextAction(startReady, mappingStartReady, mappingStartMissing),
+    free_roam_mapping_ready: mappingReady,
+    free_roam_mapping_missing_reasons: mappingMissing,
+    mapping_ready: mappingReady,
+    mapping_missing_reasons: mappingMissing,
     mapping_readiness_ready: mappingReady,
     mapping_blocked_reasons: mappingMissing,
     motion_readiness_plain: freeRoamLatestMotionReadinessPlain(startReady, motionReady, externalStopRequested),
@@ -3803,8 +3817,11 @@ export function createWorkstationApp(): express.Express {
       runtime_status: "not_loaded",
       decision_state: "not_loaded",
       decision_reason: normalized.ok ? "not_loaded" : normalized.reason,
+      free_move_ready: false,
       free_move_start_ready: false,
+      free_roam_motion_start_ready: false,
       motion_start_ready: false,
+      free_roam_motion_ready: false,
       motion_ready: false,
       motion_without_radar_allowed: false,
       free_move_without_camera_allowed: false,
@@ -3812,6 +3829,10 @@ export function createWorkstationApp(): express.Express {
       free_roam_mapping_start_missing_reasons: ["not_checked"],
       free_roam_mapping_start_plain: "建图启动未就绪；还在等待上车自由移动状态机。",
       free_roam_mapping_start_next_action: "先连接上车自由移动状态机，并继续读取相机和雷达。",
+      free_roam_mapping_ready: false,
+      free_roam_mapping_missing_reasons: ["not_checked"],
+      mapping_ready: false,
+      mapping_missing_reasons: ["not_checked"],
       mapping_readiness_ready: false,
       mapping_blocked_reasons: ["not_checked"],
       motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",

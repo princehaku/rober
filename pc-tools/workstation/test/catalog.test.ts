@@ -6111,13 +6111,20 @@ describe("workstation fail-closed API contracts", () => {
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
         start_ready: "false",
+        free_move_ready: "false",
         free_move_start_ready: "false",
         motion_start_ready: "true",
+        free_roam_motion_start_ready: "true",
         motion_ready: "false",
+        free_roam_motion_ready: "false",
         mapping_start_ready: "false",
+        free_roam_mapping_start_ready: "false",
         mapping_start_missing: "camera_first_frame,lidar_fresh",
         mapping_readiness_ready: "false",
         mapping_blocked_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+        mapping_missing_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+        free_roam_mapping_ready: "false",
+        free_roam_mapping_missing_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
         free_move_start_status_plain: "上车自由移动状态机未加载；可先用键盘或低速手控移动。",
@@ -6228,13 +6235,20 @@ describe("workstation fail-closed API contracts", () => {
         artifact_only: "true",
         cmd_vel_publish_enabled: "false",
         start_ready: "true",
+        free_move_ready: "true",
         free_move_start_ready: "true",
         motion_start_ready: "true",
+        free_roam_motion_start_ready: "true",
         motion_ready: "false",
+        free_roam_motion_ready: "false",
         mapping_start_ready: "false",
+        free_roam_mapping_start_ready: "false",
         mapping_start_missing: "camera_first_frame,lidar_fresh",
         mapping_readiness_ready: "false",
         mapping_blocked_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+        mapping_missing_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
+        free_roam_mapping_ready: "false",
+        free_roam_mapping_missing_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
         free_move_start_status_plain: "自由移动可启动；只需现场安全确认和停止兜底。",
@@ -11929,9 +11943,16 @@ describe("workstation fail-closed API contracts", () => {
         runtime_status: string;
         decision_state: string;
         decision_reason: string;
+        free_move_ready: boolean;
         free_move_start_ready: boolean;
+        free_roam_motion_start_ready: boolean;
         motion_start_ready: boolean;
+        free_roam_motion_ready: boolean;
         motion_ready: boolean;
+        free_roam_mapping_ready: boolean;
+        free_roam_mapping_missing_reasons: string[];
+        mapping_ready: boolean;
+        mapping_missing_reasons: string[];
         mapping_readiness_ready: boolean;
         mapping_blocked_reasons: string[];
         motion_readiness_plain: string;
@@ -11957,9 +11978,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.runtime_status).toBe("loaded");
       expect(body.decision_state).toBe("running");
       expect(body.decision_reason).toBe("门禁满足，低速直行");
+      expect(body.free_move_ready).toBe(true);
       expect(body.free_move_start_ready).toBe(true);
+      expect(body.free_roam_motion_start_ready).toBe(true);
       expect(body.motion_start_ready).toBe(true);
+      expect(body.free_roam_motion_ready).toBe(true);
       expect(body.motion_ready).toBe(true);
+      expect(body.free_roam_mapping_ready).toBe(false);
+      expect(body.free_roam_mapping_missing_reasons).toEqual(["camera_first_frame", "mapping_active", "fresh_map_preview"]);
+      expect(body.mapping_ready).toBe(false);
+      expect(body.mapping_missing_reasons).toEqual(["camera_first_frame", "mapping_active", "fresh_map_preview"]);
       expect(body.mapping_readiness_ready).toBe(false);
       expect(body.mapping_blocked_reasons).toEqual(["camera_first_frame", "mapping_active", "fresh_map_preview"]);
       expect(body.motion_readiness_plain).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。");
@@ -12030,9 +12058,16 @@ describe("workstation fail-closed API contracts", () => {
         proxy_status: string;
         plain_hint: string;
         next_action_plain: string;
+        free_move_ready: boolean;
         free_move_start_ready: boolean;
+        free_roam_motion_start_ready: boolean;
         motion_start_ready: boolean;
+        free_roam_motion_ready: boolean;
         motion_ready: boolean;
+        free_roam_mapping_ready: boolean;
+        free_roam_mapping_missing_reasons: string[];
+        mapping_ready: boolean;
+        mapping_missing_reasons: string[];
         mapping_readiness_ready: boolean;
         motion_readiness_plain: string;
         free_move_start_status_plain: string;
@@ -12046,9 +12081,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.proxy_status).toBe("latest_loaded");
       expect(body.plain_hint).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。");
       expect(body.next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
+      expect(body.free_move_ready).toBe(true);
       expect(body.free_move_start_ready).toBe(true);
+      expect(body.free_roam_motion_start_ready).toBe(true);
       expect(body.motion_start_ready).toBe(true);
+      expect(body.free_roam_motion_ready).toBe(false);
       expect(body.motion_ready).toBe(false);
+      expect(body.free_roam_mapping_ready).toBe(false);
+      expect(body.free_roam_mapping_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"]);
+      expect(body.mapping_ready).toBe(false);
+      expect(body.mapping_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"]);
       expect(body.mapping_readiness_ready).toBe(false);
       expect(body.motion_readiness_plain).toBe("可先自由移动；当前有停止请求，开始自由移动会先清除停止请求。");
       expect(body.free_move_start_status_plain).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。");
