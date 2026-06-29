@@ -17,10 +17,10 @@ button {
 }
 
 .shell {
-  /* 现场 PC 大屏优先服务地图观察，避免整行地图仍被旧工作台窄外壳压小。 */
-  width: min(1560px, calc(100% - 32px));
+  /* 现场 PC 大屏优先服务地图观察，普通控制台应接近占满浏览器宽度。 */
+  width: min(1920px, calc(100% - 12px));
   margin: 0 auto;
-  padding: 18px 0 32px;
+  padding: 10px 0 24px;
 }
 
 .topbar {
@@ -1045,13 +1045,13 @@ h3 {
 }
 
 .plain-map-viewport[data-size="large"] .plain-map-layer {
-  height: clamp(680px, 84vh, 1180px);
-  min-height: 680px;
+  height: clamp(760px, calc(100vh - 180px), 1280px);
+  min-height: 760px;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  height: calc(100vh - 160px);
-  min-height: 720px;
+  height: calc(100vh - 120px);
+  min-height: 780px;
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {

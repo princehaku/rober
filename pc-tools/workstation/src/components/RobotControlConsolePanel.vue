@@ -14463,6 +14463,14 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note">{{ mapSummary.hint }}</p>
           <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
+          <p
+            class="panel-note plain-map-ros2-tool-note"
+            data-testid="plain-map-ros2-tool-note"
+            data-ros2-companion-tool="rviz2"
+            data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
+          >
+            专业调试：ROS2 配套用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；普通操作仍在本页完成。
+          </p>
         </article>
 
         <article

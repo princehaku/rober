@@ -4917,6 +4917,14 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("large");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-wysiwyg-surface")).toBe("primary-map");
+    const mapRos2ToolNote = wrapper.find('[data-testid="plain-map-ros2-tool-note"]');
+    expect(mapRos2ToolNote.exists()).toBe(true);
+    expect(mapRos2ToolNote.attributes("data-ros2-companion-tool")).toBe("rviz2");
+    expect(mapRos2ToolNote.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(mapRos2ToolNote.text()).toContain("RViz2");
+    expect(mapRos2ToolNote.text()).toContain("地图");
+    expect(mapRos2ToolNote.text()).toContain("规划轨迹");
+    expect(mapRos2ToolNote.text()).not.toContain("Nav2");
     await wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("fullscreen");
@@ -4931,7 +4939,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("normal");
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').text()).toBe("放大地图");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
-    expect(workstationStyles).toContain("width: min(1560px, calc(100% - 32px));");
+    expect(workstationStyles).toContain("width: min(1920px, calc(100% - 12px));");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="large"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
@@ -4940,8 +4948,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
     expect(workstationStyles).toContain("grid-column: 1 / -1;");
-    expect(workstationStyles).toContain("height: clamp(680px, 84vh, 1180px);");
-    expect(workstationStyles).toContain("height: calc(100vh - 160px);");
+    expect(workstationStyles).toContain("height: clamp(760px, calc(100vh - 180px), 1280px);");
+    expect(workstationStyles).toContain("height: calc(100vh - 120px);");
     expect(workstationStyles).toContain("min-height: 260px;");
     expect(workstationStyles).toContain(".plain-map-size-toggle");
     expect(workstationStyles).toContain(".plain-map-fullscreen-toggle");
