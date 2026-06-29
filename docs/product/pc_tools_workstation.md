@@ -4328,3 +4328,9 @@ keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。
 和“底盘 wheel raw L/R 是否仍未闭合”。前端 Nav2 证据表同步展示这些字段，方便现场在重跑图上路线后直接定位：
 是 Nav2 没发、bridge 没转、还是底盘反馈仍为 0/0。该变化不改变发车门禁，不自动执行 Nav2、不调用 manual、
 keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 21:56 CST 起，目标总览里的 `map_wysiwyg` 改为按“地图画面本身是否可见”判定：`地图画面已读到`
+或 `地图画面、图上路线、小车位置和雷达标记都已按当前读数显示` 都会把地图项标为已满足。图上路线是否可执行仍由
+`nav2_route_execution` 负责，雷达点是否贴到当前地图仍由 `radar_map_points_wysiwyg` 负责，避免目标总览把已经可见的地图
+继续列入 blocked。该变化只修正只读 summary 的目标清单口径，不刷新地图、不启动雷达、不执行 Nav2、不调用 manual、
+keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

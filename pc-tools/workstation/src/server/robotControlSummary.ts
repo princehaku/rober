@@ -7129,13 +7129,22 @@ function actionCardText(value: string | undefined, fallback: string): string {
   return plainFactPart(value, fallback) || fallback;
 }
 
+function mapWysiwygVisibleFromPlain(statusPlain: string): boolean {
+  // 地图目标只验收地图画面本身；图上路线、车位和雷达点有独立目标项，不能把它们的缺口反算成地图不可见。
+  const plain = plainFactPart(statusPlain).trim();
+  if (!plain || /^(当前)?地图画面未(读到|显示|加载)/.test(plain) || /^当前地图未显示/.test(plain)) {
+    return false;
+  }
+  return /地图画面.*(已显示|已读到|已按当前读数显示)/.test(plain);
+}
+
 function buildActionStatusCards(
   readback: RobotControlSummaryResponse["readback_summary"],
   boundary: RobotControlSummaryResponse["safe_command_boundary"],
 ): RobotControlSummaryResponse["action_status_cards"] {
   // 这些卡片是首屏“现在能做什么”的结构化摘要，不新增任何控制能力或放行条件。
   const cameraVisible = readback.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
-  const mapVisible = /地图画面.*(已显示|已读到)/.test(readback.map.map_wysiwyg_status_plain);
+  const mapVisible = mapWysiwygVisibleFromPlain(readback.map.map_wysiwyg_status_plain);
   const mapNextActionPlain = mapVisible
     ? "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。"
     : actionCardText(readback.map.map_wysiwyg_next_action_plain, "刷新地图画面");

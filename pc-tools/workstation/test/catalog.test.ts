@@ -8094,9 +8094,19 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_scan_preview_source_point_count).toBe("5");
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser");
       expect(summary.readback_summary.map.robot_pose_status).toBe("map_pose_observed");
-      expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
-      expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
-      expect(summary.readback_summary.map.plain_hint).toContain("地图画面、图上路线、小车位置都已按当前读数显示");
+	      expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
+	      expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
+	      expect(summary.action_status_cards?.find((card) => card.id === "map_preview")).toMatchObject({
+	        status: "visible",
+	        status_label: "已显示",
+	        wysiwyg_status: "current_map_visible",
+	      });
+	      expect(summary.goal_checklist?.find((item) => item.id === "map_wysiwyg")).toMatchObject({
+	        status: "done",
+	        status_label: "已满足",
+	        blocks_goal_completion: false,
+	      });
+	      expect(summary.readback_summary.map.plain_hint).toContain("地图画面、图上路线、小车位置都已按当前读数显示");
       expect(summary.readback_summary.map.plain_hint).toContain("地图雷达点已按当前读数显示：当前显示 3 个点，frame=laser");
       expect(summary.readback_summary.map.plain_hint).not.toContain("雷达 marker");
       expect(summary.readback_summary.map.plain_hint).not.toContain("overlay");

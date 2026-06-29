@@ -4660,6 +4660,15 @@ readback 字段提升为稳定合同。现场重跑图上路线后，普通首�
 
 本轮验证：`npm run build` 通过；`npm test -- test/catalog.test.ts` 通过，168 tests OK。
 
+### 2026-06-29 21:56｜pc_map_wysiwyg_goal_done｜O3 地图目标总览口径修正
+
+本轮 micro sprint 修正 PC 目标总览里的地图 WYSIWYG 判定：地图画面 readback 已经显示“地图画面、图上路线、
+小车位置和雷达标记都已按当前读数显示”时，`goal_checklist[].id=map_wysiwyg` 会标为 done，不再继续出现在
+blocked action 里。路线执行和雷达贴图仍保留各自独立目标项，避免把导航/雷达缺口反算成“地图不可见”。
+
+本轮验证：`npm run build` 通过；`npm test -- test/catalog.test.ts` 通过，168 tests OK；
+`npm test -- test/App.test.ts` 通过，218 tests OK。
+
 - 本日志只是 `OKR.md` 第 4.1 节迁移历史，不修改任何 Objective/KR 文字、不修改任何 Objective % 数字。
 - 每次新增 sprint 进度后，由对应 Engineer 子 agent 在结束 sprint 时把 `tech-done.md` / `final.md` 的进度摘要追加到本文件顶部对应日期段。
 - 若一个 sprint 同时影响多个 Objective，按"主受益 Objective"归档，不重复粘贴。
