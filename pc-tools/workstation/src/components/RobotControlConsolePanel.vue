@@ -5173,6 +5173,53 @@ const canPressKeyboardDirection = computed(() => (
   && canUseKeyboardControl.value
   && !keyboardStopFailedAfterPulse.value
 ));
+const plainKeyboardMainActionKind = computed(() => {
+  // 键盘入口分两段：启用键盘只拿按键窗口，不发车；真正运动只发生在按住方向键/WASD 后。
+  if (!robotApiBaseUrl.value.trim()) {
+    return "connect_first";
+  }
+  if (navGoalExecutionPending.value) {
+    return "wait_trip_execution";
+  }
+  if (!keyboardContractReady.value) {
+    return "refresh_keyboard_gate_no_motion";
+  }
+  if (!plainManualSafetyConfirmed.value) {
+    return "await_safety_confirm";
+  }
+  if (keyboardStopFailedAfterPulse.value) {
+    return "stop_failed_recheck_required";
+  }
+  if (keyboardHeldDirection.value) {
+    return "holding_direction_sends_pulses";
+  }
+  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+    return "armed_waiting_for_keydown";
+  }
+  if (canUseKeyboardControl.value) {
+    return "arm_keyboard_no_motion";
+  }
+  return "blocked";
+});
+const plainKeyboardMainActionSendsMotion = computed(() => (
+  plainKeyboardMainActionKind.value === "holding_direction_sends_pulses"
+));
+const plainKeyboardArmSendsMotion = computed(() => false);
+const plainKeyboardRequiresHold = computed(() => true);
+const plainKeyboardTargetSource = computed(() => {
+  switch (plainKeyboardMainActionKind.value) {
+    case "holding_direction_sends_pulses":
+      return "held_direction_manual_pulse";
+    case "armed_waiting_for_keydown":
+      return "keyboard_keydown";
+    case "arm_keyboard_no_motion":
+      return "keyboard_arm_only";
+    case "refresh_keyboard_gate_no_motion":
+      return "keyboard_gate_refresh";
+    default:
+      return "none";
+  }
+});
 const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
@@ -6524,6 +6571,28 @@ const plainKeyboardLiveStatus = computed(() => {
     return `未启用，先点启用键盘；${keyboardPulseContractShortText()}。`;
   }
   return plainKeyboardMissingSummary.value || "键盘手控暂未满足。";
+});
+
+const plainKeyboardMainActionSummary = computed(() => {
+  // 首屏必须直接说明“启用键盘”和“按住方向键”不是同一个动作，避免误以为启用就会自己动。
+  switch (plainKeyboardMainActionKind.value) {
+    case "holding_direction_sends_pulses":
+      return `键盘主动作：正在按住${keyboardDirectionPlainLabel.value}，会按固定节奏发送低速短脉冲；松开/失焦/切页会走停止。`;
+    case "armed_waiting_for_keydown":
+      return `键盘主动作：已启用但不会发车；只有按住 W/A/S/D 或方向键才发送连续低速脉冲，${keyboardPulseContractShortText()}。`;
+    case "arm_keyboard_no_motion":
+      return "键盘主动作：点击启用只拿本页按键控制权，不发车；启用后必须按住方向键才会动。";
+    case "await_safety_confirm":
+      return "键盘主动作：先勾选现场安全确认；未勾选时启用和按键都不会发车。";
+    case "refresh_keyboard_gate_no_motion":
+      return "键盘主动作：先只读复查键盘入口，不发车。";
+    case "wait_trip_execution":
+      return "键盘主动作：行程执行中，暂不启用新的键盘手控。";
+    case "stop_failed_recheck_required":
+      return "键盘主动作：上次停止未成功收口，先确认小车已停并复查。";
+    default:
+      return "键盘主动作：当前不会发车。";
+  }
 });
 
 const plainKeyboardControlGuide = computed(() => {
@@ -14123,6 +14192,8 @@ onBeforeUnmount(() => {
               type="button"
               :disabled="!canPressKeyboardDirection"
               data-testid="plain-free-roam-screen-forward"
+              :data-sends-motion-while-held="String(canPressKeyboardDirection)"
+              data-stop-trigger="pointerup,pointerleave,pointercancel"
               @pointerdown="handleKeyboardDirectionPointerDown('forward', $event)"
               @pointerup="handleKeyboardDirectionPointerEnd('forward', 'free_roam_screen_button_released')"
               @pointerleave="handleKeyboardDirectionPointerEnd('forward', 'free_roam_screen_button_left')"
@@ -14135,6 +14206,8 @@ onBeforeUnmount(() => {
                 type="button"
                 :disabled="!canPressKeyboardDirection"
                 data-testid="plain-free-roam-screen-left"
+                :data-sends-motion-while-held="String(canPressKeyboardDirection)"
+                data-stop-trigger="pointerup,pointerleave,pointercancel"
                 @pointerdown="handleKeyboardDirectionPointerDown('left', $event)"
                 @pointerup="handleKeyboardDirectionPointerEnd('left', 'free_roam_screen_button_released')"
                 @pointerleave="handleKeyboardDirectionPointerEnd('left', 'free_roam_screen_button_left')"
@@ -14149,6 +14222,8 @@ onBeforeUnmount(() => {
                 type="button"
                 :disabled="!canPressKeyboardDirection"
                 data-testid="plain-free-roam-screen-right"
+                :data-sends-motion-while-held="String(canPressKeyboardDirection)"
+                data-stop-trigger="pointerup,pointerleave,pointercancel"
                 @pointerdown="handleKeyboardDirectionPointerDown('right', $event)"
                 @pointerup="handleKeyboardDirectionPointerEnd('right', 'free_roam_screen_button_released')"
                 @pointerleave="handleKeyboardDirectionPointerEnd('right', 'free_roam_screen_button_left')"
@@ -14161,6 +14236,8 @@ onBeforeUnmount(() => {
               type="button"
               :disabled="!canPressKeyboardDirection"
               data-testid="plain-free-roam-screen-back"
+              :data-sends-motion-while-held="String(canPressKeyboardDirection)"
+              data-stop-trigger="pointerup,pointerleave,pointercancel"
               @pointerdown="handleKeyboardDirectionPointerDown('back', $event)"
               @pointerup="handleKeyboardDirectionPointerEnd('back', 'free_roam_screen_button_released')"
               @pointerleave="handleKeyboardDirectionPointerEnd('back', 'free_roam_screen_button_left')"
@@ -14303,6 +14380,12 @@ onBeforeUnmount(() => {
             class="keyboard-control-box plain-keyboard-control"
             tabindex="0"
             :data-state="plainKeyboardControlSummary.state"
+            :data-main-action-kind="plainKeyboardMainActionKind"
+            :data-sends-motion-when-holding="String(plainKeyboardMainActionSendsMotion)"
+            :data-arm-sends-motion="String(plainKeyboardArmSendsMotion)"
+            :data-requires-hold-to-move="String(plainKeyboardRequiresHold)"
+            :data-target-source="plainKeyboardTargetSource"
+            :data-stop-triggers="manualBoundary?.keyboard_stop_triggers?.join(',') ?? 'key_released,window_blur,page_hidden,direction_changed,button_stop'"
             data-testid="keyboard-control-panel"
             @keydown="handleGlobalKeyDown"
             @keyup="handleGlobalKeyUp"
@@ -14312,10 +14395,11 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
               <button ref="keyboardControlRecheckButton" class="secondary compact-stop" type="button" :disabled="!canRefreshPlainKeyboardGate" data-testid="keyboard-control-recheck" @click="refreshPlainKeyboardGate">{{ plainKeyboardRecheckButtonLabel }}</button>
-              <button ref="keyboardControlArmButton" class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
+              <button ref="keyboardControlArmButton" class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" :data-sends-motion-when-clicked="String(false)" :data-requires-hold-to-move="String(true)" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canRequestKeyboardStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
+            <p class="panel-note" data-testid="plain-keyboard-main-action-summary">{{ plainKeyboardMainActionSummary }}</p>
             <p class="panel-note" data-testid="plain-keyboard-safety-summary">{{ plainKeyboardSafetySummary }}</p>
             <p v-if="plainKeyboardReadbackSummary" class="panel-note" data-testid="plain-keyboard-readback-summary">{{ plainKeyboardReadbackSummary }}</p>
             <p v-if="plainKeyboardWheelReadbackGoal" class="panel-note" data-testid="keyboard-wheel-readback-goal">{{ plainKeyboardWheelReadbackGoal }}</p>

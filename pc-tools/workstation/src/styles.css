@@ -377,6 +377,11 @@ h3 {
   grid-column: span 5;
 }
 
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel {
+  /* 地图是现场判断路线和雷达贴图的主视图，桌面端默认独占整行。 */
+  grid-column: 1 / -1;
+}
+
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
 .robot-console-grid[data-layout="visual-first"] .plain-free-roam-map,
 .robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
@@ -1039,13 +1044,13 @@ h3 {
 }
 
 .plain-map-viewport[data-size="large"] .plain-map-layer {
-  height: clamp(560px, 78vh, 980px);
-  min-height: 560px;
+  height: clamp(680px, 84vh, 1180px);
+  min-height: 680px;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  height: calc(100vh - 190px);
-  min-height: 620px;
+  height: calc(100vh - 160px);
+  min-height: 720px;
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {
