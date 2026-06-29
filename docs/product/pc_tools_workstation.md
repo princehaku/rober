@@ -4077,3 +4077,9 @@ keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 链接使用 PC Node `/api/robot-control/camera/mjpeg?baseUrl=...` 只读 relay，任何后进页面都会接入同一条上游流；
 旁边说明当前观看页面数，避免用户把无画面误判为页面独占。该链接只访问只读 MJPEG GET，不创建 WebRTC offer、
 不新开独占采集、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 11:02 CST 起，`goal_checklist_summary` 同步拆出雷达贴图摘要。
+新增 `radar_item_id`、`radar_source_card_id`、`radar_next_action_plain` 和 `radar_summary_plain`；普通首屏目标汇总
+会直接说明雷达点是否贴到当前地图、旧点是否只作诊断，以及下一步是启动雷达还是刷新同轮地图画面。
+`去看雷达点` 只做页面内聚焦，不自动启动雷达、不刷新地图、不调用 manual、Nav2、keyboard、free-roam、delivery、
+stop 或 `/cmd_vel`。

@@ -613,12 +613,16 @@ const fixtures: Record<string, unknown> = {
       first_incomplete_source_card_id: "camera_preview",
       first_motion_item_id: "keyboard_continuous_control",
       first_motion_source_card_id: "keyboard_control",
+      radar_item_id: "radar_map_points_wysiwyg",
+      radar_source_card_id: "radar_map_points",
       nav2_item_id: "nav2_route_execution",
       nav2_source_card_id: "nav2_route",
       next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
       summary_plain: "本轮目标检查 1/7 项已完成，还差 6 项，其中 4 项需要现场安全确认，4 项需要真实运动验证；先处理：画面所见即所得。",
       motion_next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
       motion_summary_plain: "自由移动状态机未 ready 时，仍可先用键盘连续手控；相机和雷达不作为键盘发车硬门禁。下一步：勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
+      radar_next_action_plain: "刷新地图画面，确认地图上实际显示的雷达点数",
+      radar_summary_plain: "雷达点还没有贴到当前地图；先按同轮地图画面确认，不把旧点当当前标记。下一步：刷新地图画面，确认地图上实际显示的雷达点数",
       nav2_next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行",
       nav2_summary_plain: "完整图上行程还未 ready；先补齐图上路线和当前位置显示。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行",
       mapping_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
@@ -4178,6 +4182,7 @@ describe("App", () => {
     expect(goalChecklistSummary.text()).toContain("本轮目标检查 1/7 项已完成，还差 6 项");
     expect(goalChecklistSummary.text()).toContain("先处理：画面所见即所得");
     expect(goalChecklistSummary.text()).toContain("仍可先用键盘连续手控");
+    expect(goalChecklistSummary.text()).toContain("雷达点还没有贴到当前地图");
     expect(goalChecklistSummary.text()).toContain("完整图上行程还未 ready");
     expect(goalChecklistSummary.text()).toContain("建图暂不可启动");
     expect(goalChecklistSummary.text()).not.toContain("raw");
@@ -4190,6 +4195,13 @@ describe("App", () => {
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeMotionGuide);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeMotionGuide);
+    const callsBeforeRadarGuide = mockedFetch.mock.calls.length;
+    const focusCallsBeforeRadarGuide = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-checklist-radar-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeRadarGuide);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeRadarGuide);
     const callsBeforeNav2Guide = mockedFetch.mock.calls.length;
     const focusCallsBeforeNav2Guide = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-checklist-nav2-action"]').trigger("click");

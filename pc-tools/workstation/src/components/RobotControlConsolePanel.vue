@@ -2920,6 +2920,14 @@ function focusPlainGoalChecklistMotionTarget(): void {
   }
   focusPlainActionCardTarget(sourceCardId);
 }
+function focusPlainGoalChecklistRadarTarget(): void {
+  // 雷达贴图按钮只聚焦到雷达卡片或刷新/启动按钮，不自动启动雷达或刷新地图。
+  const sourceCardId = plainGoalChecklistSummary.value?.radar_source_card_id;
+  if (!sourceCardId) {
+    return;
+  }
+  focusPlainActionCardTarget(sourceCardId);
+}
 function focusPlainGoalChecklistNav2Target(): void {
   // 行程按钮只聚焦到图上行程执行区；真正执行仍必须现场勾选安全确认并显式点击。
   const sourceCardId = plainGoalChecklistSummary.value?.nav2_source_card_id;
@@ -12488,6 +12496,9 @@ onBeforeUnmount(() => {
             <span v-if="plainGoalChecklistSummary.motion_summary_plain" class="muted">
               {{ plainActionCardUserText(plainGoalChecklistSummary.motion_summary_plain) }}
             </span>
+            <span v-if="plainGoalChecklistSummary.radar_summary_plain" class="muted">
+              {{ plainActionCardUserText(plainGoalChecklistSummary.radar_summary_plain) }}
+            </span>
             <span v-if="plainGoalChecklistSummary.nav2_summary_plain" class="muted">
               {{ plainActionCardUserText(plainGoalChecklistSummary.nav2_summary_plain) }}
             </span>
@@ -12503,6 +12514,15 @@ onBeforeUnmount(() => {
             @click="focusPlainGoalChecklistMotionTarget"
           >
             先动车
+          </button>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :disabled="!plainGoalChecklistSummary.radar_source_card_id"
+            data-testid="plain-goal-checklist-radar-action"
+            @click="focusPlainGoalChecklistRadarTarget"
+          >
+            去看雷达点
           </button>
           <button
             type="button"

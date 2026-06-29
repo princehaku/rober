@@ -4042,11 +4042,14 @@ describe("workstation fail-closed API contracts", () => {
         first_incomplete_source_card_id: "camera_preview",
         first_motion_item_id: "keyboard_continuous_control",
         first_motion_source_card_id: "keyboard_control",
+        radar_item_id: "radar_map_points_wysiwyg",
+        radar_source_card_id: "radar_map_points",
         nav2_item_id: "nav2_route_execution",
         nav2_source_card_id: "nav2_route",
       });
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("仍可先用键盘连续手控");
+      expect(summary.goal_checklist_summary?.radar_summary_plain).toContain("雷达点还没有贴到当前地图");
       expect(summary.goal_checklist_summary?.nav2_summary_plain).toContain("完整图上行程还未 ready");
       expect(summary.goal_checklist_summary?.mapping_summary_plain).toContain("建图暂不可启动");
       expect(JSON.stringify(summary.goal_checklist_summary)).not.toContain("raw");

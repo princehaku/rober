@@ -647,3 +647,9 @@ delivery、stop 或 `/cmd_vel`。
 `/api/robot-control/camera/mjpeg?baseUrl=...` 只读 relay，任何浏览器打开都会复用同一条上游 MJPEG 流；
 页面同时显示“任何页面打开这个只读地址都会接入同一条上游流”和当前观看页面数。该入口只做 GET 预览，
 不创建 WebRTC offer、不新开独占采集、不调用 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 11:02 CST 起，`goal_checklist_summary` 额外拆出雷达贴图提示：
+`radar_item_id`、`radar_source_card_id`、`radar_next_action_plain` 和 `radar_summary_plain`。普通首屏会在
+目标汇总顶部直接说明雷达点是否已经贴到当前地图；旧来源点只作诊断，不会被写成当前 marker。“去看雷达点”
+按钮只聚焦到雷达启动/刷新入口，不自动启动雷达、不刷新地图、不发送 manual、Nav2、keyboard、free-roam、delivery、
+stop 或 `/cmd_vel`。

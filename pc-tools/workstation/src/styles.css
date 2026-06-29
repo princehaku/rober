@@ -470,7 +470,7 @@ h3 {
 
 .plain-goal-checklist-summary {
   display: grid;
-  grid-template-columns: auto minmax(220px, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(220px, 1fr) auto auto auto auto;
   gap: 8px;
   align-items: center;
   border: 1px solid #e4e9ef;
