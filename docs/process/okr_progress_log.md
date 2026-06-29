@@ -4666,6 +4666,17 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-29 22:58｜camera_mjpeg_format_diversity｜O3/O5 共享画面首帧格式覆盖
+
+本轮 micro sprint 修正上车 8088 共享 MJPEG 首帧短预算策略：首屏预览不再把 9 秒预算连续花在
+`MJPG@640x480@30` 的 path/CAP_V4L2/index fallback，而是优先跨格式尝试 `MJPG@640x480@30`、
+`MJPG@480x320@30`、`YUYV@320x240@25` 等低带宽/不同像素格式。已部署并重启
+`trashbot-local-webrtc-camera.service`；live 结果仍无首帧，但 PC summary 已能显示三种格式均无帧，
+因此当前画面缺口更明确是 UVC 输入/供电/摄像头硬件问题，不是页面独占或只试单一格式。
+
+本轮验证：`python3 -m unittest onboard.tests.test_local_webrtc_camera_smoke -v` 通过，33 tests OK；
+本地和远端 `py_compile` 通过；上车 8088 `/api/camera/mjpeg` attempts 已覆盖三种格式；PC 7001 只读 summary 已读回新 attempts。
+
 ### 2026-06-29 22:50｜pc_radar_current_fact_wysiwyg｜O3 雷达当前事实贴图口径修正
 
 本轮 micro sprint 修正 PC `current_fact_plain` 的雷达段：当地图 overlay 已经 `loaded/partial` 且地图上实际显示雷达点时，

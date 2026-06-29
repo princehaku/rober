@@ -1718,7 +1718,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
             total_timeout_s=MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S,
             specs=mjpeg_camera_capture_attempt_specs(self.state.width, self.state.height, self.state.fps),
-            include_open_source_fallbacks=True,
+            # 共享首屏预算有限：先跨 MJPG/YUYV/小分辨率格式找真实画面，再把 path/index/backend 差异留给 WebRTC/高级探针。
+            include_open_source_fallbacks=False,
         )
         if shared_capture is None or first_frame is None:
             payload = first_frame_error or error_payload(

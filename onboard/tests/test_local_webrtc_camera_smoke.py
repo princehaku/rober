@@ -762,6 +762,63 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         )
         self.assertEqual(len(specs), len({(spec.fourcc, spec.width, spec.height, spec.fps, spec.apply_settings) for spec in specs}))
 
+    def test_mjpeg_short_budget_tries_formats_before_open_source_fallbacks(self) -> None:
+        """共享预览不能把 9 秒预算全花在同一格式的 path/index/backend fallback 上。"""
+
+        class NoFrameCapture:
+            def __init__(self) -> None:
+                self.released = False
+
+            def isOpened(self) -> bool:  # noqa: N802 - 模拟 OpenCV API。
+                return True
+
+            def set(self, _prop: int, _value: object) -> None:
+                return None
+
+            def read(self) -> tuple[bool, None]:
+                return False, None
+
+            def release(self) -> None:
+                self.released = True
+
+        class FakeCv2:
+            CAP_PROP_FOURCC = 6
+            CAP_PROP_FRAME_WIDTH = 3
+            CAP_PROP_FRAME_HEIGHT = 4
+            CAP_PROP_FPS = 5
+            CAP_V4L2 = 200
+
+            def __init__(self) -> None:
+                self.captures: list[NoFrameCapture] = []
+
+            def VideoWriter_fourcc(self, *_letters: str) -> int:  # noqa: N802 - 模拟 OpenCV API。
+                return 100
+
+            def VideoCapture(self, _source: str | int, _backend: int | None = None) -> NoFrameCapture:  # noqa: N802 - 模拟 OpenCV API。
+                capture = NoFrameCapture()
+                self.captures.append(capture)
+                return capture
+
+        state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
+        fake_cv2 = FakeCv2()
+
+        with mock.patch.object(camera, "FIRST_FRAME_WARMUP_INTERVAL_S", 0.001):
+            _shared, _observed, attempts, error = state.acquire_first_frame_capture(
+                "/dev/video1",
+                fake_cv2,
+                timeout_s=0.01,
+                total_timeout_s=1.0,
+                specs=camera.mjpeg_camera_capture_attempt_specs(640, 480, 15),
+                include_open_source_fallbacks=False,
+            )
+
+        self.assertIsNotNone(error)
+        self.assertGreaterEqual(len(attempts), 3)
+        self.assertEqual(["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25"], [item["label"] for item in attempts[:3]])
+        self.assertEqual(["/dev/video1", "/dev/video1", "/dev/video1"], [item["open_source"] for item in attempts[:3]])
+        self.assertEqual(["default", "default", "default"], [item["open_backend"] for item in attempts[:3]])
+        self.assertTrue(all(capture.released for capture in fake_cv2.captures))
+
     def test_stale_no_frame_peer_is_closed_before_new_offer(self) -> None:
         """卡在 new/0 帧的旧 peer 必须自动释放，避免长期占用 `/dev/video1`。"""
 

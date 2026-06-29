@@ -4366,3 +4366,10 @@ stop 或 `/cmd_vel`。
 `raw_packet_once`、`scan_once`、`scan_hz` 等 proof 缺口仍保留在 `radar_scan_observation_missing_reasons` 等高级诊断字段，
 但不再压过已显示的地图雷达点，避免普通用户在看到地图点时还被引导去先修 proof。该变化只修正只读 summary 文案，
 不启动雷达、不刷新地图、不执行 Nav2、不调用 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 22:58 CST 起，上车 8088 共享 MJPEG 首帧短预算不再对同一个 `MJPG@640x480@30` 连续消耗 path、
+CAP_V4L2 和 index fallback。首屏共享预览会优先跨格式尝试 `MJPG@640x480@30`、`MJPG@480x320@30`、
+`YUYV@320x240@25` 等低带宽/不同像素格式，让 PC 能更快判断“是否有任一真实画面格式可读”。WebRTC offer 和高级探针仍保留
+path/index/backend fallback 能力。该脚本已部署并重启到上车 `trashbot-local-webrtc-camera.service`；live 仍无首帧，
+但 health/summary 已显示三种格式均无帧，因此当前缺口更明确是 UVC 没输出视频帧/输入/供电/摄像头硬件问题，而不是页面独占或只试了单一格式。
+该变化只打开摄像头读帧用于预览诊断，不调用 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
