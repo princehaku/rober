@@ -101,6 +101,10 @@ const FREE_ROAM_MAPPING_REQUIRED_GATE_IDS = [
   "mapping_active",
   "fresh_map_preview",
 ] as const;
+const FREE_ROAM_MAPPING_START_REQUIRED_GATE_IDS = [
+  "camera_first_frame",
+  "lidar_fresh",
+] as const;
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -265,6 +269,28 @@ function shortValue(value: unknown, fallback = "not_loaded"): string {
     return String(value);
   }
   return JSON.stringify(value).slice(0, 180);
+}
+
+function shortStringList(value: unknown): string[] {
+  // 远端可能用数组或逗号字符串表达缺口；PC 统一成短 token 数组，避免 UI 自己解析。
+  if (Array.isArray(value)) {
+    return value.map((item) => shortValue(item, "")).map((item) => item.trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function normalizeFreeRoamMappingMissingId(value: string): string {
+  // 上车端直接说“未观测”，PC summary 使用 gate id；这里合并同义词，保证三处读回口径一致。
+  const normalized: Record<string, string> = {
+    camera_first_frame_not_observed: "camera_first_frame",
+    camera_health_unreachable: "camera_first_frame",
+    radar_scan_proof_not_fresh: "lidar_fresh",
+    fresh_radar_scan_missing: "lidar_fresh",
+  };
+  return normalized[value] ?? value;
 }
 
 function booleanTrueValue(value: unknown): boolean {
@@ -1380,7 +1406,14 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
     .filter((gate): gate is Record<string, unknown> => gate !== null)
     .map((gate) => [shortValue(gate.id), shortValue(gate.state)]));
   // 自由移动只看 runtime 启停门禁；建图验收必须把四个材料缺口补齐，避免 latest 和 summary 口径打架。
+  const remoteMappingStartMissing = shortStringList(latest?.free_roam_mapping_start_missing_reasons ?? payload?.free_roam_mapping_start_missing_reasons)
+    .map(normalizeFreeRoamMappingMissingId);
+  const remoteMappingStartReady = booleanTrueValue(latest?.free_roam_mapping_start_ready ?? payload?.free_roam_mapping_start_ready);
   const mappingMissing = FREE_ROAM_MAPPING_REQUIRED_GATE_IDS.filter((id) => gateStateById.get(id) !== "ready");
+  const mappingStartMissing = remoteMappingStartMissing.length > 0
+    ? Array.from(new Set(remoteMappingStartMissing))
+    : FREE_ROAM_MAPPING_START_REQUIRED_GATE_IDS.filter((id) => gateStateById.get(id) !== "ready");
+  const mappingStartReady = remoteMappingStartReady || mappingStartMissing.length === 0;
   return {
     status: shortValue(payload?.status),
     runtime_status: shortValue(latest?.status, "loaded"),
@@ -1389,12 +1422,24 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
     stop_required: shortValue(decision?.stop_required ?? latest?.stop_required),
     artifact_only: shortValue(latest?.artifact_only),
     cmd_vel_publish_enabled: shortValue(latest?.cmd_vel_publish_enabled),
+    free_roam_motion_start_ready: shortValue(latest?.free_roam_motion_start_ready ?? payload?.free_roam_motion_start_ready, "false"),
+    free_move_start_ready: shortValue(latest?.free_move_start_ready ?? payload?.free_move_start_ready, "false"),
+    motion_start_ready: shortValue(latest?.motion_start_ready ?? payload?.motion_start_ready, "false"),
+    motion_without_radar_allowed: shortValue(latest?.motion_without_radar_allowed ?? payload?.motion_without_radar_allowed, "false"),
+    free_move_without_camera_allowed: shortValue(latest?.free_move_without_camera_allowed ?? payload?.free_move_without_camera_allowed, "false"),
     gate_count: String(gates.length),
     runtime_gate_count: String(gates.length),
     mapping_gate_count: String(FREE_ROAM_MAPPING_REQUIRED_GATE_IDS.length),
     mapping_required_ids: FREE_ROAM_MAPPING_REQUIRED_GATE_IDS.join(","),
     mapping_missing: mappingMissing.length > 0 ? mappingMissing.join(",") : "none",
     mapping_ready: mappingMissing.length === 0 ? "true" : "false",
+    mapping_start_required_ids: FREE_ROAM_MAPPING_START_REQUIRED_GATE_IDS.join(","),
+    mapping_start_missing: mappingStartMissing.length > 0 ? mappingStartMissing.join(",") : "none",
+    mapping_start_ready: mappingStartReady ? "true" : "false",
+    free_roam_mapping_start_ready: mappingStartReady ? "true" : "false",
+    free_roam_mapping_start_missing_reasons: mappingStartMissing.length > 0 ? mappingStartMissing.join(",") : "none",
+    free_roam_mapping_start_plain: shortValue(latest?.free_roam_mapping_start_plain ?? payload?.free_roam_mapping_start_plain, ""),
+    free_roam_mapping_start_next_action: shortValue(latest?.free_roam_mapping_start_next_action ?? payload?.free_roam_mapping_start_next_action, ""),
     map_free_cells: mapFreeCells,
     map_unknown_ratio: mapUnknownRatio,
   };
@@ -1522,6 +1567,12 @@ function freeRoamLatestReadinessFromKeyValues(
   | "free_move_start_ready"
   | "motion_start_ready"
   | "motion_ready"
+  | "motion_without_radar_allowed"
+  | "free_move_without_camera_allowed"
+  | "free_roam_mapping_start_ready"
+  | "free_roam_mapping_start_missing_reasons"
+  | "free_roam_mapping_start_plain"
+  | "free_roam_mapping_start_next_action"
   | "mapping_readiness_ready"
   | "mapping_blocked_reasons"
   | "motion_readiness_plain"
@@ -1535,13 +1586,18 @@ function freeRoamLatestReadinessFromKeyValues(
   const runtimeStatus = latestKeyValues.runtime_status ?? "not_loaded";
   const decisionState = latestKeyValues.decision_state ?? "not_loaded";
   const decisionReason = latestKeyValues.decision_reason ?? "not_loaded";
-  const startReady = loaded && runtimeStatus === "loaded";
+  const startReady = loaded && (latestKeyValues.free_roam_motion_start_ready === "true" || runtimeStatus === "loaded");
   const motionReady = startReady && latestKeyValues.cmd_vel_publish_enabled === "true";
   const mappingMissing = (latestKeyValues.mapping_missing ?? "")
     .split(",")
     .map((item) => item.trim())
     .filter((item) => item && item !== "none" && item !== "not_loaded");
+  const mappingStartMissing = (latestKeyValues.mapping_start_missing ?? latestKeyValues.free_roam_mapping_start_missing_reasons ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item && item !== "none" && item !== "not_loaded");
   const mappingReady = startReady && (latestKeyValues.mapping_ready === "true" || mappingMissing.length === 0);
+  const mappingStartReady = startReady && (latestKeyValues.mapping_start_ready === "true" || latestKeyValues.free_roam_mapping_start_ready === "true" || mappingStartMissing.length === 0);
   const externalStopRequested = decisionState === "stopping" && /现场请求停止|external_stop/i.test(decisionReason);
   const startStatusPlain = freeRoamLatestStartStatusPlain(startReady, motionReady, externalStopRequested);
   const mappingAcceptancePlain = freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingReady, mappingMissing);
@@ -1557,6 +1613,12 @@ function freeRoamLatestReadinessFromKeyValues(
     free_move_start_ready: startReady,
     motion_start_ready: startReady,
     motion_ready: motionReady,
+    motion_without_radar_allowed: latestKeyValues.motion_without_radar_allowed === "true" || startReady,
+    free_move_without_camera_allowed: latestKeyValues.free_move_without_camera_allowed === "true" || startReady,
+    free_roam_mapping_start_ready: mappingStartReady,
+    free_roam_mapping_start_missing_reasons: mappingStartMissing,
+    free_roam_mapping_start_plain: latestKeyValues.free_roam_mapping_start_plain || freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingStartReady, mappingStartMissing),
+    free_roam_mapping_start_next_action: latestKeyValues.free_roam_mapping_start_next_action || freeRoamLatestMappingNextAction(startReady, mappingStartReady, mappingStartMissing),
     mapping_readiness_ready: mappingReady,
     mapping_blocked_reasons: mappingMissing,
     motion_readiness_plain: freeRoamLatestMotionReadinessPlain(startReady, motionReady, externalStopRequested),
@@ -3473,6 +3535,12 @@ export function createWorkstationApp(): express.Express {
       free_move_start_ready: false,
       motion_start_ready: false,
       motion_ready: false,
+      motion_without_radar_allowed: false,
+      free_move_without_camera_allowed: false,
+      free_roam_mapping_start_ready: false,
+      free_roam_mapping_start_missing_reasons: ["not_checked"],
+      free_roam_mapping_start_plain: "建图启动未就绪；还在等待上车自由移动状态机。",
+      free_roam_mapping_start_next_action: "先连接上车自由移动状态机，并继续读取相机和雷达。",
       mapping_readiness_ready: false,
       mapping_blocked_reasons: ["not_checked"],
       motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
@@ -3509,6 +3577,8 @@ export function createWorkstationApp(): express.Express {
         remote_http_status: remote.status,
         status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
         ...latestReadiness,
+        sends_commands: false,
+        sends_motion_commands: false,
         latest_key_values: latestKeyValues,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `free_roam_autonomy_latest_http_status_${remote.status}`,
         blocked_reasons: [

@@ -261,6 +261,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   因此直连 latest、`/api/status.free_roam_autonomy`、PC summary 三者都能看到同一事实：低速自由移动不依赖摄像头或雷达；
   只有建图启动才要求画面首帧和雷达新鲜扫描。该变化只做只读 camera/radar readiness 聚合，不启动自由移动、
   不启动建图、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 19:04 起，PC 代理 `GET /api/robot-control/free-roam/autonomy/latest` 也提升同一组字段，并把上车
+  `camera_first_frame_not_observed/radar_scan_proof_not_fresh` 归一成 PC summary 使用的
+  `camera_first_frame/lidar_fresh`。因此 PC 普通首屏、PC 只读刷新按钮、外部脚本和上车直连 latest
+  都能看到同一判断：`motion_start_ready=true`，`mapping_start_ready=false`，建图启动缺口是画面首帧和雷达新鲜。
+  该代理继续固定 `sends_motion_commands=false`，不启动 free-roam、不发送 stop/manual/Nav2/delivery 或 `/cmd_vel`。
 - 2026-06-28 13:25 起，若上车端 free-roam runtime 没有返回完整建图验收 gates，PC summary 会补齐
   `camera_first_frame`、`mapping_active`、`lidar_fresh` 和 `fresh_map_preview` 的只读兜底 gate。这样
   `free_roam_mapping_missing_reasons` 里的每个必需缺口都能在 `free_roam_autonomy_gates` 中看到对应 evidence 和 next action；

@@ -3179,6 +3179,12 @@ export interface RobotControlFreeRoamAutonomyLatestResponse extends ProofFlags {
   free_move_start_ready: boolean;
   motion_start_ready: boolean;
   motion_ready: boolean;
+  motion_without_radar_allowed: boolean;
+  free_move_without_camera_allowed: boolean;
+  free_roam_mapping_start_ready: boolean;
+  free_roam_mapping_start_missing_reasons: string[];
+  free_roam_mapping_start_plain: string;
+  free_roam_mapping_start_next_action: string;
   mapping_readiness_ready: boolean;
   mapping_blocked_reasons: string[];
   motion_readiness_plain: string;
@@ -3192,6 +3198,8 @@ export interface RobotControlFreeRoamAutonomyLatestResponse extends ProofFlags {
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
+  sends_commands?: false;
+  sends_motion_commands?: false;
   robot_control_executed: false;
 }
 
