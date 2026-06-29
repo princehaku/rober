@@ -6279,6 +6279,28 @@ type PlainMappingUnlockItem = {
   hint: string;
   sourceCardId: RobotControlActionStatusCardId;
 };
+type PlainFreeRoamDomEvidence = {
+  // 移动门禁和建图门禁必须拆开，否则摄像头/雷达缺口会被误读成小车不能先低速移动。
+  freeMoveStartReady: boolean;
+  freeMoveSafetyOnly: boolean;
+  cameraBlocksFreeMotion: boolean;
+  radarBlocksFreeMotion: boolean;
+  // 建图启动只证明可以开记录；验收还要看 mapping_active 和同轮地图预览。
+  mappingStartReady: boolean;
+  mappingStartMissingReasons: string;
+  mappingStartRequiresCameraFirstFrame: boolean;
+  mappingStartRequiresLidarFresh: boolean;
+  mappingAcceptanceReady: boolean;
+  mappingAcceptanceMissingReasons: string;
+  // 主按钮会真正触发运动入口，DOM 必须能说明点击前后语义，方便现场脚本验收。
+  primaryActionCanStartMotion: boolean;
+  primaryActionRequestsMapping: boolean;
+  // 固定代理入口暴露在主面板，避免普通验收去解析高级诊断或中文长文案。
+  fixedFreeRoamStartEndpoint: string;
+  fixedFreeRoamStopEndpoint: string;
+  fixedMappingStartEndpoint: string;
+  fixedMappingPreviewEndpoint: string;
+};
 const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
   // 建图解锁包按“先能动、再补传感器、最后启动建图”排序；这里只读展示，不代替任何安全确认或启动动作。
   const summary = robotSummary.value;
@@ -6334,6 +6356,52 @@ const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
       sourceCardId: "mapping_start",
     },
   ];
+});
+const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
+  // 主面板直接暴露同一份门禁事实：移动只看安全确认和停止兜底，建图启动才看画面首帧和雷达新鲜。
+  const summary = robotSummary.value;
+  const boundary = summary?.safe_command_boundary;
+  const freeRoam = summary?.readback_summary.free_roam;
+  const listFrom = (value: unknown): string[] => {
+    // 后端可能返回数组或逗号串；DOM 证据统一成逗号串，避免测试依赖响应形状。
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item).trim()).filter(Boolean);
+    }
+    if (typeof value === "string" && value && !["none", "not_loaded"].includes(value)) {
+      return value.split(",").map((item) => item.trim()).filter(Boolean);
+    }
+    return [];
+  };
+  const acceptanceMissing = listFrom(boundary?.free_roam_mapping_missing_reasons).length
+    ? listFrom(boundary?.free_roam_mapping_missing_reasons)
+    : listFrom(freeRoam?.mapping_missing);
+  const startMissing = listFrom(boundary?.free_roam_mapping_start_missing_reasons).length
+    ? listFrom(boundary?.free_roam_mapping_start_missing_reasons)
+    : listFrom(freeRoam?.mapping_start_missing)
+      .concat(acceptanceMissing.filter((item) => ["camera_first_frame", "lidar_fresh"].includes(item)));
+  // PC 已经看到相机和雷达 ready 时，summary 上一拍缺口不能继续挡住“启动建图记录”的入口。
+  const mappingStartReady = boundary?.free_roam_mapping_start_ready === true
+    || (plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value);
+  const freeMoveStartReady = boundary?.free_roam_motion_start_ready === true;
+  const primaryActionCanStartMotion = canStartPlainFreeRoamPrimary.value && freeMoveStartReady;
+  return {
+    freeMoveStartReady,
+    freeMoveSafetyOnly: true,
+    cameraBlocksFreeMotion: false,
+    radarBlocksFreeMotion: false,
+    mappingStartReady,
+    mappingStartMissingReasons: [...new Set(startMissing)].join(",") || "none",
+    mappingStartRequiresCameraFirstFrame: true,
+    mappingStartRequiresLidarFresh: true,
+    mappingAcceptanceReady: boundary?.free_roam_mapping_ready === true,
+    mappingAcceptanceMissingReasons: [...new Set(acceptanceMissing)].join(",") || "none",
+    primaryActionCanStartMotion,
+    primaryActionRequestsMapping: primaryActionCanStartMotion && mappingStartReady,
+    fixedFreeRoamStartEndpoint: "/api/robot-control/free-roam/autonomy/start",
+    fixedFreeRoamStopEndpoint: "/api/robot-control/free-roam/autonomy/stop",
+    fixedMappingStartEndpoint: "/api/robot-control/map/start",
+    fixedMappingPreviewEndpoint: "/api/robot-control/map/preview",
+  };
 });
 const plainFreeRoamMappingSteps = computed(() => {
   // 步骤条只表达本地向导状态；真正动作仍由每个固定按钮和后端 gate 执行。
@@ -14301,7 +14369,25 @@ onBeforeUnmount(() => {
           <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
         </article>
 
-        <article class="snapshot-panel plain-free-roam-map" :data-state="plainFreeRoamMappingSummary.state" data-testid="plain-free-roam-mapping">
+        <article
+          class="snapshot-panel plain-free-roam-map"
+          :data-state="plainFreeRoamMappingSummary.state"
+          :data-free-move-start-ready="String(plainFreeRoamDomEvidence.freeMoveStartReady)"
+          :data-free-move-safety-only="String(plainFreeRoamDomEvidence.freeMoveSafetyOnly)"
+          :data-camera-blocks-free-motion="String(plainFreeRoamDomEvidence.cameraBlocksFreeMotion)"
+          :data-radar-blocks-free-motion="String(plainFreeRoamDomEvidence.radarBlocksFreeMotion)"
+          :data-mapping-start-ready="String(plainFreeRoamDomEvidence.mappingStartReady)"
+          :data-mapping-start-missing-reasons="plainFreeRoamDomEvidence.mappingStartMissingReasons"
+          :data-mapping-start-requires-camera-first-frame="String(plainFreeRoamDomEvidence.mappingStartRequiresCameraFirstFrame)"
+          :data-mapping-start-requires-lidar-fresh="String(plainFreeRoamDomEvidence.mappingStartRequiresLidarFresh)"
+          :data-mapping-acceptance-ready="String(plainFreeRoamDomEvidence.mappingAcceptanceReady)"
+          :data-mapping-acceptance-missing-reasons="plainFreeRoamDomEvidence.mappingAcceptanceMissingReasons"
+          :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"
+          :data-fixed-free-roam-stop-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStopEndpoint"
+          :data-fixed-mapping-start-endpoint="plainFreeRoamDomEvidence.fixedMappingStartEndpoint"
+          :data-fixed-mapping-preview-endpoint="plainFreeRoamDomEvidence.fixedMappingPreviewEndpoint"
+          data-testid="plain-free-roam-mapping"
+        >
           <h3>{{ plainFreeRoamPanelCopy.title }}</h3>
           <div class="simple-status-row">
             <span class="status-chip" :data-state="plainFreeRoamMappingSummary.state">{{ plainFreeRoamMappingSummary.state }}</span>
@@ -14312,7 +14398,20 @@ onBeforeUnmount(() => {
             <span>人在旁边、周围安全、可以随时按停止（勾一次，全页面生效）</span>
           </label>
           <div class="panel-action-row wrap-actions">
-            <button ref="plainFreeRoamStartButton" type="button" :disabled="!canStartPlainFreeRoamPrimary" data-testid="plain-free-roam-start" @click="startPlainFreeRoamPrimary">
+            <button
+              ref="plainFreeRoamStartButton"
+              type="button"
+              :disabled="!canStartPlainFreeRoamPrimary"
+              :data-can-start-free-motion="String(plainFreeRoamDomEvidence.primaryActionCanStartMotion)"
+              :data-sends-motion-when-clicked="String(plainFreeRoamDomEvidence.primaryActionCanStartMotion)"
+              :data-requests-mapping-when-clicked="String(plainFreeRoamDomEvidence.primaryActionRequestsMapping)"
+              :data-requires-safety-confirmation="String(true)"
+              :data-minimal-precheck-safety-only="String(plainFreeRoamDomEvidence.freeMoveSafetyOnly)"
+              :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"
+              :data-fixed-mapping-start-endpoint="plainFreeRoamDomEvidence.fixedMappingStartEndpoint"
+              data-testid="plain-free-roam-start"
+              @click="startPlainFreeRoamPrimary"
+            >
               {{ plainFreeRoamMappingStartLabel }}
             </button>
             <button ref="plainFreeRoamKeyboardButton" type="button" class="secondary compact-stop" :disabled="!canArmPlainFreeRoamKeyboard" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
