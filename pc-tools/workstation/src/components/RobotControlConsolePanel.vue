@@ -4806,6 +4806,13 @@ type PlainObjectiveOverviewItem = {
   summary: string;
   sourceCardId: RobotControlActionStatusCardId;
 };
+type PlainMoveNowSnapshotItem = {
+  id: "move" | "precheck" | "mapping";
+  title: string;
+  state: string;
+  summary: string;
+  sourceCardId: RobotControlActionStatusCardId;
+};
 type PlainGoalActionGroup = {
   id: "ready" | "blocked";
   title: string;
@@ -4815,6 +4822,39 @@ type PlainGoalActionGroup = {
 function goalChecklistItem(id: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]["id"]) {
   return plainGoalChecklist.value.find((item) => item.id === id) ?? null;
 }
+const plainMoveNowSnapshotItems = computed<PlainMoveNowSnapshotItem[]>(() => {
+  // 这三行放在普通首屏最前面，只展示后端同轮只读结论；按钮只聚焦，不自动勾选或执行。
+  const summary = plainGoalChecklistSummary.value;
+  if (!summary) {
+    return [];
+  }
+  const firstMotionSource = summary.first_motion_source_card_id || summary.primary_ready_action_source_card_id || "free_move";
+  const safetySource = summary.safety_precheck_source_card_id || firstMotionSource;
+  const mappingSource = summary.mapping_source_card_id || "mapping_start";
+  return [
+    {
+      id: "move",
+      title: "现在可先动",
+      state: summary.motion_ready_count > 0 ? "可先动" : "未就绪",
+      summary: summary.move_now_status_plain || summary.motion_summary_plain || "当前还没有可直接发车的入口；先刷新小车状态。",
+      sourceCardId: firstMotionSource,
+    },
+    {
+      id: "precheck",
+      title: "发车前确认",
+      state: summary.safety_confirm_needed_count > 0 ? "只需安全确认" : "无需确认",
+      summary: summary.safety_precheck_summary_plain || "当前没有待安全确认的发车入口。",
+      sourceCardId: safetySource,
+    },
+    {
+      id: "mapping",
+      title: "建图条件",
+      state: summary.sensor_blocker_count > 0 ? "先补传感器" : "可建图",
+      summary: summary.mapping_blockers_plain || summary.mapping_summary_plain || "建图条件还未读到；先刷新小车状态。",
+      sourceCardId: mappingSource,
+    },
+  ];
+});
 const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() => {
   // 直接按 CEO 的四条目标归并当前状态，避免现场只能看到零散卡片。
   const summary = plainGoalChecklistSummary.value;
@@ -13083,6 +13123,32 @@ onBeforeUnmount(() => {
 
       <div class="plain-current-facts" data-testid="plain-current-facts" aria-label="当前事实">
         <span v-for="row in plainCurrentFactRows" :key="row">{{ row }}</span>
+      </div>
+
+      <div v-if="plainMoveNowSnapshotItems.length" class="plain-move-now-snapshot" data-testid="plain-move-now-snapshot" aria-label="现在可以做什么">
+        <div class="simple-status-row">
+          <strong>现在可以做什么</strong>
+          <span class="muted">先看能不能动、发车前要不要多做检查、建图还差什么。</span>
+        </div>
+        <div
+          v-for="item in plainMoveNowSnapshotItems"
+          :key="item.id"
+          class="plain-move-now-snapshot-row"
+          :data-testid="`plain-move-now-snapshot-${item.id}`"
+          :data-state="item.state"
+        >
+          <span class="plain-progress-label">{{ item.title }}</span>
+          <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+          <span class="muted">{{ plainActionCardUserText(item.summary) }}</span>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :data-testid="`plain-move-now-snapshot-go-${item.id}`"
+            @click="focusPlainActionCardTarget(item.sourceCardId)"
+          >
+            去处理
+          </button>
+        </div>
       </div>
 
       <div v-if="plainWysiwygEvidenceItems.length" class="plain-wysiwyg-evidence" data-testid="plain-wysiwyg-evidence" aria-label="所见即所得证据">

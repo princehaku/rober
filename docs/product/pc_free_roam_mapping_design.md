@@ -273,6 +273,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `mapping_next_action_plain`：自由移动 readback 自己就能把“可先低速自由移动”和“本轮能否按建图验收”分开说清。
   live 形态下前者提示勾安全确认后可先自由移动，相机和雷达只影响建图验收；后者提示建图验收还差画面首帧、雷达新鲜、地图记录、地图画面。
   该变化只补只读 summary 文案，不启动自由移动、不启动建图、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 21:55 起，PC 普通首屏在“当前事实”下方新增“现在可以做什么”摘要条，直接展示
+  `goal_checklist_summary.move_now_status_plain`、`safety_precheck_summary_plain` 和
+  `mapping_blockers_plain` 三行：现在是否可先动、发车前是否只需安全确认、建图还差哪些传感器条件。
+  摘要条按钮只滚动/聚焦到既有自由移动、安全确认或建图卡片，不自动勾选、不启动自由移动、不执行 Nav2、
+  不发送 keyboard/manual/delivery/stop 或 `/cmd_vel`。
 - 2026-06-28 04:31 起，上述部分读取 timeout 口径也同步到 `当前事实` 第一行：
   已读到多项状态但剩余全是 timeout 时显示“少数读取较慢，下面各项按已读事实显示”；相机 health timeout
   已被无首帧诊断解释时显示“画面健康读取较慢，画面行显示真实无帧诊断”。这样用户不用先打开连接卡片，
