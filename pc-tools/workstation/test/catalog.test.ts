@@ -9963,7 +9963,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
       expect(previewBody.path_preview_status).toBe("path_preview_observed");
       expect(previewBody.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
-      expect(previewBody.next_action_plain).toBe(previewBody.map_wysiwyg_next_action_plain);
+      expect(previewBody.next_action_plain).toBe(previewBody.path_preview_next_action_plain);
       expect(previewBody.path_wysiwyg_status_plain).toBe("图上路线已显示在当前地图画面。");
       expect(previewBody.path_wysiwyg_next_action_plain).toBe(previewBody.path_preview_next_action_plain);
       expect(previewBody.nav2_route_overlay_status).toBe(previewBody.path_preview_status);
@@ -10230,7 +10230,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.robot_pose_status).toBe("not_observed");
       expect(body.path_preview_status).toBe("not_observed");
       expect(body.path_preview_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
-      expect(body.next_action_plain).toBe(body.map_wysiwyg_next_action_plain);
+      expect(body.next_action_plain).toBe(body.path_preview_next_action_plain);
       expect(body.path_wysiwyg_status_plain).toBe("图上路线未显示；不能把旧路线或空路线当作当前所见。");
       expect(body.path_wysiwyg_next_action_plain).toBe(body.path_preview_next_action_plain);
       expect(body.nav2_route_overlay_status).toBe(body.path_preview_status);
@@ -10444,7 +10444,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.robot_pose_status).toBe("map_pose_observed");
       expect(body.path_preview_status).toBe("not_observed");
       expect(body.path_preview_next_action_plain).toBe("先准备图上路线，再刷新地图画面。");
-      expect(body.next_action_plain).toBe(body.map_wysiwyg_next_action_plain);
+      expect(body.next_action_plain).toBe(body.path_preview_next_action_plain);
       expect(body.path_wysiwyg_status_plain).toBe("图上路线未显示；不能把旧路线或空路线当作当前所见。");
       expect(body.path_wysiwyg_next_action_plain).toBe(body.path_preview_next_action_plain);
       expect(body.nav2_route_overlay_status).toBe(body.path_preview_status);

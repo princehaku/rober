@@ -218,6 +218,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   顶层也增加 `keyboard_control_summary` 和 `keyboard_teleop_summary`。外部脚本无论按 keyboard、keyboard_control 还是 teleop 命名读取，
   都能拿到同一份连续手控只读事实：可启用、必须按住才动、松开/失焦/切页/换方向/点停止都会停。
   该变化只补字段别名，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
+- 2026-06-29 20:00 起，`/api/robot-control/map/preview` 顶层 `next_action_plain` 明确等于 `path_preview_next_action_plain`：
+  图上路线和小车位置已显示时，顶层下一步提示勾安全确认执行路线；雷达贴图缺口只保留在
+  `radar_overlay_next_action_plain` / `radar_overlay_wysiwyg_next_action_plain`。这样外部脚本只读顶层下一步时，不会把“先启动雷达”误解成 Nav2 发车前置。
+  该变化只修正只读字段别名，不准备路线、不执行 Nav2、不启动雷达、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 20:10 起，`/api/robot-control/map/preview` 顶层增加 `robot_pose_status`：
   同轮 overlay 读到 map-frame 小车位置时返回 `map_pose_observed`，没有读到时返回 `not_observed`。
   这样地图画面、路线点、小车位置和雷达贴图状态都能用顶层字段一眼判断，外部脚本不必自己解析 `robot_pose=null`。
