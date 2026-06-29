@@ -3094,6 +3094,10 @@ function actionCardWithDerivedEvidence(
         visible_content_proven: card.evidence?.visible_content_proven ?? boolText(camera?.first_frame_probe_visible_content_proven, currentFrameVisible),
         shared_preview_client_count: card.evidence?.shared_preview_client_count ?? Number(camera?.shared_preview_client_count || "0"),
         shared_preview_cached_frame_loaded: card.evidence?.shared_preview_cached_frame_loaded ?? boolText(camera?.shared_preview_cached_frame_loaded, false),
+        fixed_shared_preview_endpoint: card.evidence?.fixed_shared_preview_endpoint ?? "/api/robot-control/camera/mjpeg",
+        fixed_shared_preview_status_endpoint: card.evidence?.fixed_shared_preview_status_endpoint ?? "/api/robot-control/camera/mjpeg/status",
+        auto_joins_shared_preview: card.evidence?.auto_joins_shared_preview ?? true,
+        shared_preview_single_upstream: card.evidence?.shared_preview_single_upstream ?? camera?.shared_preview_multi_viewer_status === "single_upstream_multi_viewer",
       },
     };
   }
@@ -13610,6 +13614,10 @@ onBeforeUnmount(() => {
           :data-visible-content-proven="card.evidence?.visible_content_proven === undefined ? undefined : String(card.evidence.visible_content_proven)"
           :data-shared-preview-client-count="card.evidence?.shared_preview_client_count === undefined ? undefined : String(card.evidence.shared_preview_client_count)"
           :data-shared-preview-cached-frame-loaded="card.evidence?.shared_preview_cached_frame_loaded === undefined ? undefined : String(card.evidence.shared_preview_cached_frame_loaded)"
+          :data-fixed-shared-preview-endpoint="card.evidence?.fixed_shared_preview_endpoint"
+          :data-fixed-shared-preview-status-endpoint="card.evidence?.fixed_shared_preview_status_endpoint"
+          :data-auto-joins-shared-preview="card.evidence?.auto_joins_shared_preview === undefined ? undefined : String(card.evidence.auto_joins_shared_preview)"
+          :data-shared-preview-single-upstream="card.evidence?.shared_preview_single_upstream === undefined ? undefined : String(card.evidence.shared_preview_single_upstream)"
         >
           <div class="plain-action-card-head">
             <strong>{{ plainActionCardUserText(card.title) }}</strong>

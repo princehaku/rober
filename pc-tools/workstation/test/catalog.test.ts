@@ -4044,6 +4044,10 @@ describe("workstation fail-closed API contracts", () => {
           visible_content_proven: false,
           shared_preview_client_count: 0,
           shared_preview_cached_frame_loaded: false,
+          fixed_shared_preview_endpoint: "/api/robot-control/camera/mjpeg",
+          fixed_shared_preview_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+          auto_joins_shared_preview: true,
+          shared_preview_single_upstream: true,
         },
       });
       expect(actionCards.find((card) => card.id === "map_preview")).toMatchObject({
@@ -4763,6 +4767,10 @@ describe("workstation fail-closed API contracts", () => {
           visible_content_proven: false,
           shared_preview_client_count: 0,
           shared_preview_cached_frame_loaded: false,
+          fixed_shared_preview_endpoint: "/api/robot-control/camera/mjpeg",
+          fixed_shared_preview_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+          auto_joins_shared_preview: true,
+          shared_preview_single_upstream: true,
         },
       });
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);

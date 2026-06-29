@@ -7320,6 +7320,10 @@ function buildActionStatusCards(
         visible_content_proven: actionCardBoolean(readback.camera.first_frame_probe_visible_content_proven, cameraVisible),
         shared_preview_client_count: actionCardNumber(readback.camera.shared_preview_client_count),
         shared_preview_cached_frame_loaded: actionCardBoolean(readback.camera.shared_preview_cached_frame_loaded, false),
+        fixed_shared_preview_endpoint: "/api/robot-control/camera/mjpeg",
+        fixed_shared_preview_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+        auto_joins_shared_preview: true,
+        shared_preview_single_upstream: readback.camera.shared_preview_multi_viewer_status === "single_upstream_multi_viewer",
       },
     },
     {

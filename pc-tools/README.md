@@ -31,6 +31,8 @@ Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
 2026-06-30 12:45 CST 起，普通首屏地图默认继续使用放大视图，并新增 `全屏地图`/`退出全屏` 切换。它只放大现有只读地图画面、图上路线、小车位置和雷达 overlay，不启动 RViz2、不调用 Nav2 goal、不发送 manual/keyboard/free-roam/stop 或 `/cmd_vel`。ROS2 原生配套方面，工程调试优先使用 `ros2 launch ros2_trashbot_bringup rviz.launch.py` 打开 RViz2 观察 `/map`、`/scan`、TF、Nav2 path 和 AMCL pose；普通用户现场操作仍以 PC 工作站全屏地图和安全确认按钮为主入口。
 
+2026-06-30 13:10 CST 起，`action_status_cards[].id=camera_preview` 的 evidence 补齐共享实时预览固定合同：`fixed_shared_preview_endpoint=/api/robot-control/camera/mjpeg`、`fixed_shared_preview_status_endpoint=/api/robot-control/camera/mjpeg/status`、`auto_joins_shared_preview=true`、`shared_preview_single_upstream=true`。普通首屏 DOM 同步暴露这些 `data-*` 字段，现场脚本可以区分“本页还没显示缓存帧”和“相机源首帧失败”。该变化只补只读合同和展示，不重启相机、不独占摄像头、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ## Robot Control Console V1
 
 `workstation/` 默认直接展示 `RobotControlConsolePanel` 和 `GET /api/robot-control/summary?baseUrl=<robot-api-base-url>`，不再把普通控制台放在 tab 导航后面。Vue 不直接跨域访问上位机；Robot API base URL 只交给 Node server 代理。代理只读取 `/api/status`、O3 proof latest、Camera/LiDAR/Base status/latest/readback 类 GET endpoint，并拒绝 unsafe URL、credentials、query/hash、非回环或非 RFC1918 局域网 host、schema drift 和危险 true 字段。为避免真实上位机慢一点的状态聚合被误判成离线，`/api/status`、`/api/camera/health`、`/api/camera/devices` 采用更宽的只读超时窗口；其余 endpoint 继续保持短超时。当前首屏已经回到普通用户可读的简易风格：五个普通卡片只给短状态、少量按钮和可停止入口；前端测试会阻止默认可见首屏再次出现 `检查路径`、`现场材料`、`HIL`、`Nav2`、`proof`、`key values`、`/cmd_vel`、`/api/base/manual`、`可点动`、`task_id`、`O6`、`O7`、`Mock`、`field manifest`。定位重置、导航目标预检、O6 base URL、peer/ICE/SDP、readback table、O3 proof summary、route replay、非 stop 点动、HIL checklist、现场材料和 evidence 细节都收进 `<details>` 折叠区，工程 tabs 只在默认关闭的 `高级工具` 中出现。

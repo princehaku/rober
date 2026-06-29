@@ -4740,6 +4740,10 @@ describe("App", () => {
     expect(cameraActionCard.attributes("data-first-frame-probe-read-ok")).toBe("false");
     expect(cameraActionCard.attributes("data-visible-content-proven")).toBe("false");
     expect(cameraActionCard.attributes("data-shared-preview-client-count")).toBe("0");
+    expect(cameraActionCard.attributes("data-fixed-shared-preview-endpoint")).toBe("/api/robot-control/camera/mjpeg");
+    expect(cameraActionCard.attributes("data-fixed-shared-preview-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(cameraActionCard.attributes("data-auto-joins-shared-preview")).toBe("true");
+    expect(cameraActionCard.attributes("data-shared-preview-single-upstream")).toBe("true");
     const mapActionCard = wrapper.find('[data-testid="plain-action-status-card-map_preview"]');
     expect(mapActionCard.attributes("data-map-current-visible")).toBe("false");
     expect(mapActionCard.attributes("data-map-free-cell-count")).toBe("0");
