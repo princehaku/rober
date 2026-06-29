@@ -527,6 +527,11 @@ v4l2/ffmpeg 后端矩阵单次 timeout 压短，避免 PC deep probe 超时后�
 不显示地图坐标雷达点 SVG，也不显示小车 marker；坐标口径必须写明雷达只显示车身局部轮廓、不贴到地图。
 该规则对应当前 live 的 `robot_pose_missing_for_map_radar_overlay` 形态，仍不触发任何运动或定位命令。
 
+2026-06-29 19:09 起，PC summary 的地图雷达 overlay 下一步也按真实缺口分流：当地图雷达点为 0 且
+`radar_lifecycle_not_running_for_map_radar_overlay` 或 stale scan 存在时，`radar_overlay_next_action_plain`
+显示“先启动雷达并等待新扫描，再刷新地图画面确认雷达点”或“刷新雷达扫描，再刷新地图画面”，不再 fallback 成
+“确认小车地址可访问”。该变化只修正所见即所得文案，不启动雷达、不刷新地图、不发送 manual/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-27 21:47 起，Robot Control summary 的 `readback_summary.map` 也暴露同一雷达 overlay 口径：
 `radar_overlay_status`、`radar_overlay_blocked_reasons`、`radar_overlay_scan_preview_*` 和
 `radar_overlay_robot_pose_status`。因此只读 summary、普通首屏和 `/api/robot-control/map/preview`

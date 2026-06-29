@@ -3378,10 +3378,25 @@ function mapRadarOverlayExplanation(
       blocked_reason_labels: labels,
     };
   }
+  const hasLifecycleStop = blockedReasons.some((reason) => reason.includes("radar_lifecycle_not_running_for_map_radar_overlay"));
+  const hasStaleScan = blockedReasons.some((reason) => reason.includes("runtime_scan_stale_for_map_radar_overlay"));
+  const hasMissingPoints = blockedReasons.some((reason) => reason.includes("scan_preview_points_missing"));
+  const nextAction = hasLifecycleStop
+    ? "start_radar_then_refresh_map_preview"
+    : hasStaleScan || hasMissingPoints
+      ? "refresh_radar_scan_for_map_overlay"
+      : "connect_robot_and_refresh_map_preview";
+  const nextActionPlain = hasLifecycleStop
+    ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
+    : hasStaleScan
+      ? "刷新雷达扫描，再刷新地图画面。"
+      : hasMissingPoints
+        ? "先刷新雷达扫描；有新点后再刷新地图画面确认雷达点。"
+        : "确认小车地址可访问后刷新地图画面。";
   return {
     plain_hint: blockedReasons.length ? `地图雷达层未加载：${labels.join("、")}。` : "地图雷达层未加载。",
-    next_action: "connect_robot_and_refresh_map_preview",
-    next_action_plain: "确认小车地址可访问后刷新地图画面。",
+    next_action: nextAction,
+    next_action_plain: nextActionPlain,
     blocked_reason_labels: labels,
   };
 }
