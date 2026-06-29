@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 06:44 CST 起，普通首屏 `启用键盘` 按钮也暴露按钮级连续手控合同：`data-main-action-kind`、`data-target-source`、`data-sends-motion-when-clicked=false`、`data-sends-motion-when-holding`、固定 `/api/robot-control/base/manual` / `/api/robot-control/base/stop`、`data-pulse-interval-ms=260`、`data-pulse-duration-ms=240`、当前/最佳连续 pulse 数、`data-verified-min-forwarded-pulses=2`、同窗口按住要求和松开后 stop 收口要求。这样现场脚本能直接从启用按钮确认：点击只是拿键盘窗口，不发车；只有按住方向键/WASD 才连续发送低速 pulse，且必须同一次按住达到 2 次并完成 stop 才算验证。
+
 2026-06-30 06:39 CST 起，普通首屏行程主按钮也暴露按钮级完整路线执行合同：`data-route-point-count`、`data-route-source-point-count`、`data-route-preview-complete`、`data-route-preview-partial`、`data-execution-route-point-count`、`data-executes-current-route-goal`、`data-current-route-visible`、`data-route-wysiwyg-ready`、固定执行代理 `/api/robot-control/nav2/goal/execute` 和 `data-requires-same-window-wheel-lr-nonzero=true`。这样现场脚本不用解析行程卡中文文案，也能直接区分“图上只显示部分路线采样”和“执行按钮绑定当前图上终点并以后端完整源路线/轮速闭环验收为准”。该变化只补 PC Web DOM 合同和测试，不自动执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-30 06:33 CST 起，普通首屏实时画面主按钮也暴露按钮级所见即所得合同：`data-primary-action-kind=open_shared_preview/retry_shared_preview/retry_camera_preview`、`data-target-source=shared_camera_preview`、`data-sends-motion-when-clicked=false`、`data-shared-preview-single-upstream`、`data-auto-joins-shared-preview`、`data-current-frame-visible` 和固定 MJPEG/status 入口。这样现场脚本可以直接确认“打开画面/重试共享画面”只接入共享实时预览，不会发送 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`；当前页面是否已经真的显示帧也落在按钮本身。

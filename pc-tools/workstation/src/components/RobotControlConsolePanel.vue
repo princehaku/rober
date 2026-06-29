@@ -15154,7 +15154,29 @@ onBeforeUnmount(() => {
               <span class="status-chip" :data-state="plainKeyboardControlSummary.state">{{ plainKeyboardControlSummary.state }}</span>
               <span class="plain-keyboard-direction" data-testid="keyboard-current-direction">当前方向：{{ keyboardDirectionPlainLabel }}</span>
               <button ref="keyboardControlRecheckButton" class="secondary compact-stop" type="button" :disabled="!canRefreshPlainKeyboardGate" data-testid="keyboard-control-recheck" @click="refreshPlainKeyboardGate">{{ plainKeyboardRecheckButtonLabel }}</button>
-              <button ref="keyboardControlArmButton" class="secondary compact-stop" type="button" :disabled="!canArmKeyboardControl" data-testid="keyboard-control-arm" :data-sends-motion-when-clicked="String(false)" :data-requires-hold-to-move="String(true)" @click="activateKeyboardControl">{{ plainKeyboardArmButtonLabel }}</button>
+              <button
+                ref="keyboardControlArmButton"
+                class="secondary compact-stop"
+                type="button"
+                :disabled="!canArmKeyboardControl"
+                data-testid="keyboard-control-arm"
+                :data-main-action-kind="plainKeyboardMainActionKind"
+                :data-target-source="plainKeyboardTargetSource"
+                :data-sends-motion-when-clicked="String(false)"
+                :data-sends-motion-when-holding="String(plainKeyboardMainActionSendsMotion)"
+                :data-requires-hold-to-move="String(true)"
+                :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
+                :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
+                :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
+                :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
+                :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
+                :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
+                :data-same-hold-window-required="String(plainKeyboardDirectionButtonEvidence.sameHoldWindowRequired)"
+                :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
+                :data-stop-settled-after-pulse="String(keyboardStopSettledAfterPulse)"
+                @click="activateKeyboardControl"
+              >{{ plainKeyboardArmButtonLabel }}</button>
               <button class="danger-button compact-stop" type="button" :disabled="!canRequestKeyboardStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
