@@ -4632,6 +4632,14 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("自由移动可启动");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("键盘可启用");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("画面和雷达只影响建图验收");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-ready-action"]').text()).toBe("去先自由移动");
+    const callsBeforePrimaryReadyAction = mockedFetch.mock.calls.length;
+    const focusCallsBeforePrimaryReadyAction = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-progress-primary-ready-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforePrimaryReadyAction);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforePrimaryReadyAction);
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toBe("当前状态：轮速记录已完成；行程执行待完成；送达确认待完成；键盘手控未满足。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toBe("当前读数：轮速已完成；行程未完成；送达未完成；键盘未满足。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");

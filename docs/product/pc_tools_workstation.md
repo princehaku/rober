@@ -52,6 +52,7 @@ pc-tools/workstation/
 - 2026-06-29 13:48 CST 起，上位机 `GET /api/status` 采用分区并发读取、每区软超时和顶层 fail-closed 超时。相机、雷达、地图、Nav2、自由移动或电梯任一区块卡住时，聚合响应仍返回，慢区块以 `status_section_unavailable` 和 `failure_reason=status_section_timeout_*` 标记；完整底盘读数改由独立 `/api/base/status` 提供，聚合 status 只返回 `base.status=deferred_to_base_status_endpoint`。PC 工作站继续优先消费独立只读端点，但 `/api/status` 不再因单个 ROS2 CLI/status 读或底盘慢读拖死整车摘要；该变化不发送任何运动命令。
 - 2026-06-29 14:00 CST 起，普通首屏目标总览在 `ready_action_items` 非空时，`summary_plain` 和 `next_action_plain` 优先引导 operator 去做可现场收口项，当前 live 形态会显示“先做：自由自助移动”；相机、雷达和建图缺口仍作为“未就绪项”列出。这样“车可以先动”和“传感器就绪后才能建图”在同一摘要里分层表达，不把相机首帧失败误写成自由移动/键盘/Nav2 复验的前置阻塞。
 - 2026-06-29 14:03 CST 起，`goal_checklist_summary.ready_action_items[]` 和“现场可先收口”摘要统一按自由自助移动、键盘连续手控、完整行程执行、建图启动排序，保证可收口列表和主下一步一致。该变化只改只读排序与展示，不自动勾选安全确认、不执行 Nav2、不启用键盘、不启动自由移动/建图、不发送 manual、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 17:05 CST 起，普通首屏“本轮进度”的“可先动”提示下方新增主 ready 动作按钮。按钮消费 `goal_checklist_summary.primary_ready_action_source_card_id`，当前 live 形态会显示“去先自由移动”，只滚动并聚焦到对应安全确认/动作区；它不自动勾选安全确认、不启动自由移动、不启用键盘、不执行 Nav2、不启动建图、不发送 manual、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 14:55 CST 起，实时画面卡对共享 MJPEG 的状态判断进一步收紧：当 summary 或 `/api/robot-control/camera/mjpeg/status`
   已明确 `source_first_frame_failed`、`uvc_no_frame_not_exclusive`、上游 timeout 或 HTTP 502/503 时，首屏业务状态显示为失败并直接说明
   “不是页面独占，是 UVC 没有输出视频帧/上游无画面”。页面仍自动渲染共享 MJPEG `<img>` 并保留只读共享预览链接，

@@ -7982,6 +7982,38 @@ const plainGoalProgressMoveNowSummary = computed(() => {
   return `可先动：${safetyText}，${readyModes.join("、")}；${primarySuffix}画面和雷达只影响建图验收，不挡低速移动或行程重跑。`;
 });
 
+const plainPrimaryReadyActionSourceCardId = computed<RobotControlActionStatusCardId | "">(() => {
+  // 后端已经按自由移动、键盘、行程、建图排好“可先做”的主动作；前端只用它做聚焦导航。
+  return plainGoalChecklistSummary.value?.primary_ready_action_source_card_id ?? "";
+});
+
+const plainPrimaryReadyActionButtonLabel = computed(() => {
+  // 标签直接说要去哪里，避免现场从“本轮进度”的验收卡点误判为当前不能先动。
+  const itemId = plainGoalChecklistSummary.value?.primary_ready_action_item_id ?? "";
+  if (itemId === "free_move") {
+    return "去先自由移动";
+  }
+  if (itemId === "keyboard_continuous_control") {
+    return "去键盘手控";
+  }
+  if (itemId === "nav2_route_execution") {
+    return "去图上行程";
+  }
+  if (itemId === "mapping_start") {
+    return "去建图";
+  }
+  return "去先动";
+});
+
+function focusPlainPrimaryReadyActionTarget(): void {
+  // 这里只滚动并聚焦已有控件，不勾安全确认、不点击启动、不发送任何运动请求。
+  const sourceCardId = plainPrimaryReadyActionSourceCardId.value;
+  if (!sourceCardId) {
+    return;
+  }
+  focusPlainActionCardTarget(sourceCardId);
+}
+
 const plainGoalProgressPrimaryTarget = computed(() => {
   // 主按钮只指向当前第一项缺口；没有缺口时禁用，不能触发任何自动动作。
   return plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "已验证")?.id ?? "";
@@ -13718,6 +13750,16 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note" data-testid="plain-goal-progress-next-action">{{ plainGoalProgressNextAction }}</p>
             <p v-if="plainGoalProgressMoveNowSummary" class="panel-note" data-testid="plain-goal-progress-move-now">{{ plainGoalProgressMoveNowSummary }}</p>
+            <div v-if="plainPrimaryReadyActionSourceCardId" class="panel-action-row wrap-actions">
+              <button
+                type="button"
+                class="secondary compact-stop"
+                data-testid="plain-goal-progress-primary-ready-action"
+                @click="focusPlainPrimaryReadyActionTarget"
+              >
+                {{ plainPrimaryReadyActionButtonLabel }}
+              </button>
+            </div>
             <p class="panel-note" data-testid="plain-goal-progress-state-summary">{{ plainGoalProgressStateSummary }}</p>
             <p class="panel-note" data-testid="plain-goal-progress-evidence-summary">{{ plainGoalProgressEvidenceSummary }}</p>
             <p class="panel-note" data-testid="plain-goal-progress-blocker-summary">{{ plainGoalProgressBlockerSummary }}</p>
