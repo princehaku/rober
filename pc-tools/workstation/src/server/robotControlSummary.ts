@@ -6446,6 +6446,13 @@ function plainFactPart(value: string | undefined, fallback = ""): string {
   return text.replace(/[。.!?]+$/, "");
 }
 
+function plainFactWithoutLeadingLabel(value: string, label: string): string {
+  // 总览外层已经带了分组名；这里去掉内层重复前缀，避免“建图启动：建图启动未 ready”。
+  return value
+    .replace(new RegExp(`^${label}[：:]?`), "")
+    .trim();
+}
+
 function currentFactMapRadarParts(
   mapStatus: string,
   radarStatus: string,
@@ -6496,8 +6503,8 @@ function summaryCurrentFactPlain(
     nav2 ? `自动驾驶：${nav2}` : "",
     keyboard ? `键盘：${keyboard}` : "",
     freeMove ? `自由移动：${freeMove}` : "",
-    mappingStart ? `建图启动：${mappingStart}` : "",
-    mapping ? `建图验收：${mapping}` : "",
+    mappingStart ? `建图启动：${plainFactWithoutLeadingLabel(mappingStart, "建图启动")}` : "",
+    mapping ? `建图验收：${plainFactWithoutLeadingLabel(mapping, "建图验收")}` : "",
     minimal ? `发车前：${minimal}` : "",
   ].filter(Boolean);
   return parts.length > 0

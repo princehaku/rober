@@ -6712,6 +6712,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动未 ready；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("先补齐建图启动材料：画面首帧、雷达新鲜；低速自由移动不受影响。");
       expect(summary.readback_summary.free_roam.status).toBe("start_ready");
+      expect(summary.current_fact_plain).toContain("建图启动：未 ready；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收");
+      expect(summary.current_fact_plain).toContain("建图验收：未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动");
+      expect(summary.current_fact_plain).not.toContain("建图启动：建图启动");
+      expect(summary.current_fact_plain).not.toContain("建图验收：建图验收");
       expect(summary.readback_summary.free_roam.next_action_plain).toBe(summary.safe_command_boundary.free_roam_autonomy_next_action);
       expect(summary.readback_summary.free_roam.plain_hint).toBe("可先自由移动；只需要现场安全确认和停止兜底。建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。");
       expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
