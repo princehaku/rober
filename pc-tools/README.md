@@ -55,6 +55,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 17:54 CST 起，Robot Control summary 在 `/api/camera/devices` 返回空 `devices` 但 `camera_health.source_summary.candidates` 已读到候选时，会新增 `devices_effective_status=loaded_from_health_source_summary`、候选计数和普通话 `devices_plain_hint`；普通首屏实时画面卡同步显示“设备事实”。这样 live 形态下能直接看到“devices 端点为空，但 health 已选中 USB 摄像头且不是页面独占”，不会误判成没有摄像头。该变化只消费只读 camera health/devices，不新开 camera capture、不重启相机、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-06-29 18:04 CST 起，普通首屏行程操作区新增 `行程卡点` 只读诊断行。当最近 Nav2 路线结果成功、底盘非零命令已发、IMU 有变化但执行窗口轮速 L/R 仍未非零时，页面会直接显示“不是相机或雷达阻塞，下一步重跑并复验同窗口轮速 L/R”。这只消费既有 summary/latest 字段，不启动自动驾驶服务、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 14:00 CST 起，普通首屏 `本轮目标检查` 在存在可现场收口项时，主摘要和 `next_action_plain` 优先指向可操作的运动项，例如“先做：自由自助移动”；相机、雷达和建图仍列在“未就绪项”。这避免摄像头首帧硬件缺口把自由移动、键盘连续手控和完整图上行程复验压到后面。该变化只改只读目标总览排序和文案，不自动勾选安全确认、不启用键盘、不启动自由移动、不执行 Nav2、不发送 `/cmd_vel`。
 
 2026-06-29 15:02 CST 起，普通首屏“下一步选一个”的 `补画面/雷达` 快捷入口改为优先消费 `action_status_cards` 的结构化状态。画面卡是否已显示、地图雷达点是否贴到当前图，不再靠中文文案前缀猜测；即使画面文案从“画面已可见”改成“已经看到画面”，快捷入口也只把真正未完成的雷达点指向雷达卡。该变化只改页面内聚焦和展示，不自动打开画面、不启动雷达、不发送 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -18947,6 +18947,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶服务未运行，重跑前先启动");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("当前图上路线未就绪，先启动自动驾驶服务");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶当前：未准备好，图上行程未准备，自动驾驶服务未启动");
+    const motionClosure = wrapper.find('[data-testid="plain-trip-motion-closure"]').text();
+    expect(motionClosure).toContain("行程卡点：路线结果已返回成功");
+    expect(motionClosure).toContain("已发 PWM/T=11 非零底盘命令 49 条");
+    expect(motionClosure).toContain("车身姿态有变化");
+    expect(motionClosure).toContain("轮速 L/R=0/0 未非零");
+    expect(motionClosure).toContain("不是相机或雷达阻塞");
+    expect(motionClosure).toContain("用 ROS");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);

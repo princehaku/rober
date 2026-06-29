@@ -7195,6 +7195,21 @@ function plainTripFreshUnprovenHintText(): string {
   return `最近行程未证明真车执行；${plainTripFreshUnprovenRerunActionText()}。`;
 }
 
+const plainTripMotionClosureSummary = computed(() => {
+  // 用户问“自动驾驶为什么没法动”时，这一行把 success、底盘命令、IMU 和轮速闭环放在同一处。
+  const values = freshUnprovenNav2ExecutionValues() ?? directNav2ExecutionValues();
+  if (!nav2GoalSucceeded(values) || !nav2BaseCommandWithoutWheelFeedback(values)) {
+    return "";
+  }
+  const count = nav2BaseCommandCount(values);
+  const commandCountText = count > 0 ? ` ${count} 条` : "";
+  const pair = nav2BaseFeedbackPair(values);
+  const pairText = pair ? `轮速 L/R=${pair.left}/${pair.right}` : "轮速 L/R 未非零";
+  const motionSignal = nav2BaseMotionSignalText(values);
+  const motionSignalText = motionSignal ? `；${motionSignal}` : "";
+  return `行程卡点：路线结果已返回成功，${nav2BaseCommandPhrase(values)}${commandCountText}${motionSignalText}；但${pairText} 未非零，所以还不能算完整行程。不是相机或雷达阻塞。下一步：${plainTripFreshUnprovenRerunActionText()}。`;
+});
+
 const plainTripLatestNotProvenEvidence = computed(() => {
   // 直接执行或 latest 已经读到失败时，要告诉普通用户“未通过”，不能继续显示成“没读到”。
   const values = directNav2ExecutionValues();
@@ -13899,6 +13914,7 @@ onBeforeUnmount(() => {
             <p v-if="plainTripNav2LifecycleStatus" class="panel-note" data-testid="plain-trip-nav2-restore-status">{{ plainTripNav2LifecycleStatus }}</p>
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
             <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
+            <p v-if="plainTripMotionClosureSummary" class="panel-note" data-testid="plain-trip-motion-closure">{{ plainTripMotionClosureSummary }}</p>
             <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
             <div class="plain-trip-execution-plan" data-testid="plain-trip-execution-plan" aria-label="行程执行包">
               <div
