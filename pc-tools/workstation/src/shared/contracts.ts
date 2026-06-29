@@ -2502,6 +2502,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   action_status_cards?: RobotControlActionStatusCard[];
   goal_checklist?: RobotControlGoalChecklistItem[];
   goal_checklist_summary?: RobotControlGoalChecklistSummary;
+  goal_summary?: RobotControlGoalChecklistSummary;
   readback_summary: {
     camera: {
       status: string;

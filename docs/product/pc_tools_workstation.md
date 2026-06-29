@@ -4250,3 +4250,9 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 同轮还移除了 Node API 启动前的端口 probe，`npm run api` 现在直接让 Express 绑定 `0.0.0.0:7001`，避免实际已监听时日志残留
 `address already in use` 误报。该变化只修正只读 summary/map preview/UI 文案、测试合同和 7001 启动日志，不启动雷达、
 不刷新地图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 15:25 CST 起，`GET /api/robot-control/summary` 顶层新增 `goal_summary`，作为
+`goal_checklist_summary` 的兼容 alias。普通页面仍继续使用原字段；外部脚本和现场只读巡检如果按“目标总览”直觉读取
+`goal_summary`，也能拿到同一份 `summary_plain`、`ready_action_items[]`、`blocked_action_items[]` 和下一步字段，
+不会读成空对象。fail-closed 响应同样返回该 alias。该变化只增加只读字段兼容，不改变目标清单计算、不执行 Nav2、
+不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

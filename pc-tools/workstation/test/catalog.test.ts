@@ -4115,6 +4115,7 @@ describe("workstation fail-closed API contracts", () => {
         mapping_item_id: "mapping_start",
         mapping_source_card_id: "mapping_start",
       });
+      expect(summary.goal_summary).toEqual(summary.goal_checklist_summary);
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("现场可先收口 2 项：自由自助移动、键盘连续手控");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("先做：自由自助移动");
@@ -11951,11 +11952,13 @@ describe("workstation fail-closed API contracts", () => {
     expect(missing.console_status).toBe("blocked");
     expect(missing.blocked_reasons).toContain("baseUrl_not_provided");
     expect(missing.current_fact_plain).toBe("当前事实未读到；先填写或确认小车地址。");
+    expect(missing.goal_summary).toEqual(missing.goal_checklist_summary);
 
     const unsafeUrl = await buildRobotControlSummary("https://127.0.0.1:8787?token=secret");
     expect(unsafeUrl.console_status).toBe("blocked");
     expect(unsafeUrl.blocked_reasons).toContain("baseUrl_protocol_not_allowed");
     expect(unsafeUrl.current_fact_plain).toContain("当前事实未读到");
+    expect(unsafeUrl.goal_summary).toEqual(unsafeUrl.goal_checklist_summary);
 
     const robotApi = await listenRobotApiReadback({
       schema: "trashbot.upper_robot_api.v1.status",
