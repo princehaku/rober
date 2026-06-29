@@ -13797,7 +13797,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen">
+      <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen" data-layout="visual-first">
         <article class="snapshot-panel plain-connection-panel" data-testid="plain-connection-panel" :data-state="robotConnectionSummary.state">
           <h3>小车连接</h3>
           <div class="simple-status-row">
@@ -13811,7 +13811,7 @@ onBeforeUnmount(() => {
           <p class="panel-note">{{ plainEvidenceSweepSummary.hint }}</p>
         </article>
 
-        <article ref="plainCameraPanel" class="snapshot-panel plain-camera-panel" tabindex="-1" data-testid="plain-camera-panel" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
+        <article ref="plainCameraPanel" class="snapshot-panel plain-camera-panel" tabindex="-1" data-testid="plain-camera-panel" data-wysiwyg-surface="primary-camera" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
           <h3>实时画面</h3>
           <div class="panel-action-row">
             <button ref="plainCameraStartButton" type="button" :disabled="!canStartPreview" data-testid="plain-camera-start" @click="startPreview">{{ plainCameraStartButtonLabel }}</button>
@@ -13890,7 +13890,7 @@ onBeforeUnmount(() => {
           <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
         </article>
 
-        <article ref="plainMapPanel" class="snapshot-panel plain-map-panel" tabindex="-1" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize" :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'">
+        <article ref="plainMapPanel" class="snapshot-panel plain-map-panel" tabindex="-1" data-testid="plain-map-panel" data-wysiwyg-surface="primary-map" data-default-size="large" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize" :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'">
           <div class="plain-map-heading">
             <h3>地图</h3>
             <div class="plain-map-heading-actions">
@@ -13902,7 +13902,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </div>
-          <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize">
+          <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" data-wysiwyg-surface="primary-map" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize">
             <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
               <div class="plain-map-overlay-frame" :style="plainMapVisualSummary.frameStyle">
                 <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt">
@@ -14105,9 +14105,9 @@ onBeforeUnmount(() => {
               </button>
               <span class="muted">{{ plainFreeRoamAutonomyReadiness.policyText }}</span>
             </div>
-	            <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
-	            <p v-if="plainFreeRoamMotionDependencySummary" class="panel-note" data-testid="plain-free-roam-motion-dependency">{{ plainFreeRoamMotionDependencySummary }}</p>
-	            <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
+            <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
+            <p v-if="plainFreeRoamMotionDependencySummary" class="panel-note" data-testid="plain-free-roam-motion-dependency">{{ plainFreeRoamMotionDependencySummary }}</p>
+            <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
             <p class="panel-note" data-testid="plain-free-roam-mapping-readiness">{{ plainFreeRoamAutonomyReadiness.mappingReadinessText }}</p>
             <div class="plain-mapping-unlock-plan" data-testid="plain-mapping-unlock-plan" aria-label="建图解锁包">
               <div class="simple-status-row">

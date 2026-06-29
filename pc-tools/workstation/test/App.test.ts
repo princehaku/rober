@@ -4859,8 +4859,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
     const cameraPanel = wrapper.find('[data-testid="plain-camera-panel"]');
     expect(cameraPanel.exists()).toBe(true);
+    expect(wrapper.find(".robot-console-grid").attributes("data-layout")).toBe("visual-first");
     expect(cameraPanel.attributes("data-state")).toBe("未打开");
     expect(cameraPanel.attributes("data-frame-state")).toBe("未绑定");
+    expect(cameraPanel.attributes("data-wysiwyg-surface")).toBe("primary-camera");
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
     expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("未打开");
@@ -4872,7 +4874,9 @@ describe("App", () => {
     expect(mapPanel.exists()).toBe(true);
     expect(mapPanel.attributes("data-state")).toBe("地图可见");
     expect(mapPanel.attributes("data-size")).toBe("large");
+    expect(mapPanel.attributes("data-default-size")).toBe("large");
     expect(mapPanel.attributes("data-fullscreen")).toBe("false");
+    expect(mapPanel.attributes("data-wysiwyg-surface")).toBe("primary-map");
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').text()).toBe("收起地图");
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').attributes("aria-pressed")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').text()).toBe("全屏地图");
@@ -4880,6 +4884,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("large");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-wysiwyg-surface")).toBe("primary-map");
     await wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("fullscreen");
@@ -4898,8 +4903,11 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="large"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-panel[data-fullscreen="true"]');
-    expect(workstationStyles).toContain("height: clamp(420px, 68vh, 760px);");
-    expect(workstationStyles).toContain("height: calc(100vh - 220px);");
+    expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
+    expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
+    expect(workstationStyles).toContain("height: clamp(560px, 78vh, 980px);");
+    expect(workstationStyles).toContain("height: calc(100vh - 190px);");
+    expect(workstationStyles).toContain("min-height: 260px;");
     expect(workstationStyles).toContain(".plain-map-size-toggle");
     expect(workstationStyles).toContain(".plain-map-fullscreen-toggle");
     expect(workstationStyles).toContain('.plain-map-panel[data-state="地图可见"]');
