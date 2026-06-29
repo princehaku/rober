@@ -878,3 +878,9 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `mapping_start_requires_lidar_fresh=true` 和缺口数组。普通首屏同步暴露只读 `data-*` 属性，方便脚本确认
 “相机/雷达缺口不挡先动；相机首帧+雷达新鲜才允许建图启动”。该变化只补只读 summary/UI 证据，不启动
 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+
+2026-06-30 00:01 CST 起，`action_status_cards[].id=camera_preview.evidence` 返回画面所见即所得的结构化合同：
+`camera_current_frame_visible`、共享多页面预览、单上游 shared capture、是否独占摄像头、是否首帧失败、
+`source_diagnosis_status`、首帧探针是否读到帧、可见内容是否已证明、观看人数和缓存帧状态。普通首屏同步暴露只读
+`data-*` 属性，方便脚本确认“谁进来都接同一条共享预览；不是页面独占；当前缺口是不是 UVC 无首帧”。
+该变化只补只读 summary/UI 证据，不打开相机、不新建独占采集、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。

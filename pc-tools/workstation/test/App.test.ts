@@ -4730,6 +4730,14 @@ describe("App", () => {
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).not.toContain("移动前检查");
     expect(firstScreenText).toContain("启用键盘");
+    const cameraActionCard = wrapper.find('[data-testid="plain-action-status-card-camera_preview"]');
+    expect(cameraActionCard.attributes("data-camera-current-frame-visible")).toBe("false");
+    expect(cameraActionCard.attributes("data-shared-preview-multi-viewer")).toBe("true");
+    expect(cameraActionCard.attributes("data-shared-capture")).toBe("true");
+    expect(cameraActionCard.attributes("data-exclusive-camera-claim")).toBe("false");
+    expect(cameraActionCard.attributes("data-first-frame-probe-read-ok")).toBe("false");
+    expect(cameraActionCard.attributes("data-visible-content-proven")).toBe("false");
+    expect(cameraActionCard.attributes("data-shared-preview-client-count")).toBe("0");
     expect(wrapper.find('[data-testid="keyboard-control-stop"]').text()).toBe("键盘停止（随时可点）");
     expect(firstScreenText).toContain("W/A/S/D 或方向键");
     expect(firstScreenText).toContain("当前方向：未按键");

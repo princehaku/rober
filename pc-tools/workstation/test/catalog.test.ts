@@ -4031,6 +4031,19 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(JSON.stringify(actionCards)).not.toContain("marker");
       expect(JSON.stringify(actionCards)).not.toContain("overlay");
+      expect(actionCards.find((card) => card.id === "camera_preview")).toMatchObject({
+        status: "not_visible",
+        evidence: {
+          camera_current_frame_visible: false,
+          shared_preview_multi_viewer: true,
+          shared_capture: true,
+          exclusive_camera_claim: false,
+          first_frame_probe_read_ok: false,
+          visible_content_proven: false,
+          shared_preview_client_count: 0,
+          shared_preview_cached_frame_loaded: false,
+        },
+      });
       expect(actionCards.find((card) => card.id === "map_preview")).toMatchObject({
         status_label: "已显示",
         next_action_plain: "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。",
@@ -4719,6 +4732,21 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
       expect(summary.readback_summary.camera.shared_preview_last_remote_http_status).toBe("200");
       expect(summary.readback_summary.camera.shared_preview_last_failure_at_ms).toBe("none");
+      expect(summary.action_status_cards?.find((card) => card.id === "camera_preview")).toMatchObject({
+        evidence: {
+          camera_current_frame_visible: false,
+          shared_preview_multi_viewer: true,
+          shared_capture: true,
+          exclusive_camera_claim: false,
+          source_first_frame_failed: true,
+          source_diagnosis_status: "uvc_no_frame_not_exclusive",
+          source_diagnosis_not_exclusive: true,
+          first_frame_probe_read_ok: false,
+          visible_content_proven: false,
+          shared_preview_client_count: 0,
+          shared_preview_cached_frame_loaded: false,
+        },
+      });
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();

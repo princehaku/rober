@@ -2454,6 +2454,17 @@ export interface RobotControlActionStatusCard {
     mapping_start_requires_lidar_fresh?: boolean;
     mapping_start_missing_reasons?: string[];
     mapping_acceptance_missing_reasons?: string[];
+    camera_current_frame_visible?: boolean;
+    shared_preview_multi_viewer?: boolean;
+    shared_capture?: boolean;
+    exclusive_camera_claim?: boolean;
+    source_first_frame_failed?: boolean;
+    source_diagnosis_status?: string;
+    source_diagnosis_not_exclusive?: boolean;
+    first_frame_probe_read_ok?: boolean;
+    visible_content_proven?: boolean;
+    shared_preview_client_count?: number;
+    shared_preview_cached_frame_loaded?: boolean;
   };
 }
 

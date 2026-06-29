@@ -7215,6 +7215,13 @@ function actionCardReasonList(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function actionCardBoolean(value: string | undefined, fallback = false): boolean {
+  // readback_summary 为兼容脚本使用字符串；动作卡 evidence 要给 DOM/脚本稳定布尔值。
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return fallback;
+}
+
 function mapWysiwygVisibleFromPlain(statusPlain: string): boolean {
   // 地图目标只验收地图画面本身；图上路线、车位和雷达点有独立目标项，不能把它们的缺口反算成地图不可见。
   const plain = plainFactPart(statusPlain).trim();
@@ -7259,6 +7266,19 @@ function buildActionStatusCards(
       sends_motion_when_clicked: false,
       blocks_free_motion: false,
       blocks_mapping_start: !cameraVisible,
+      evidence: {
+        camera_current_frame_visible: cameraVisible,
+        shared_preview_multi_viewer: readback.camera.shared_preview_multi_viewer_status === "single_upstream_multi_viewer",
+        shared_capture: actionCardBoolean(readback.camera.shared_preview_shared_capture, true),
+        exclusive_camera_claim: actionCardBoolean(readback.camera.shared_preview_exclusive_camera_claim, false),
+        source_first_frame_failed: readback.camera.status === "source_first_frame_failed" || readback.camera.source_readiness === "first_frame_failed",
+        source_diagnosis_status: readback.camera.source_diagnosis_status,
+        source_diagnosis_not_exclusive: actionCardBoolean(readback.camera.source_diagnosis_not_exclusive, false),
+        first_frame_probe_read_ok: actionCardBoolean(readback.camera.first_frame_probe_read_ok, false),
+        visible_content_proven: actionCardBoolean(readback.camera.first_frame_probe_visible_content_proven, cameraVisible),
+        shared_preview_client_count: actionCardNumber(readback.camera.shared_preview_client_count),
+        shared_preview_cached_frame_loaded: actionCardBoolean(readback.camera.shared_preview_cached_frame_loaded, false),
+      },
     },
     {
       id: "map_preview",

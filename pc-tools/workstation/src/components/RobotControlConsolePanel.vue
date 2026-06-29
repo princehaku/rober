@@ -3050,11 +3050,37 @@ function actionCardWithDerivedEvidence(
   card: NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number],
 ): NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number] {
   // 兼容旧 summary：后端还没带 evidence 时，前端用同一份安全边界补只读合同，不改变任何控制能力。
-  if (!["keyboard_control", "nav2_route", "free_move", "mapping_start"].includes(card.id)) {
+  if (!["camera_preview", "keyboard_control", "nav2_route", "free_move", "mapping_start"].includes(card.id)) {
     return card;
   }
   const boundary = robotSummary.value?.safe_command_boundary;
   const nav2 = robotSummary.value?.readback_summary.nav2;
+  const boolText = (value: string | undefined, fallback = false): boolean => {
+    if (value === "true") return true;
+    if (value === "false") return false;
+    return fallback;
+  };
+  if (card.id === "camera_preview") {
+    const camera = robotSummary.value?.readback_summary.camera;
+    const currentFrameVisible = camera?.preview_visible_status === "visible" || camera?.camera_wysiwyg_status_plain?.startsWith("画面已可见") === true;
+    return {
+      ...card,
+      evidence: {
+        ...card.evidence,
+        camera_current_frame_visible: card.evidence?.camera_current_frame_visible ?? currentFrameVisible,
+        shared_preview_multi_viewer: card.evidence?.shared_preview_multi_viewer ?? camera?.shared_preview_multi_viewer_status === "single_upstream_multi_viewer",
+        shared_capture: card.evidence?.shared_capture ?? boolText(camera?.shared_preview_shared_capture, true),
+        exclusive_camera_claim: card.evidence?.exclusive_camera_claim ?? boolText(camera?.shared_preview_exclusive_camera_claim, false),
+        source_first_frame_failed: card.evidence?.source_first_frame_failed ?? (camera?.status === "source_first_frame_failed" || camera?.source_readiness === "first_frame_failed"),
+        source_diagnosis_status: card.evidence?.source_diagnosis_status ?? camera?.source_diagnosis_status ?? "not_loaded",
+        source_diagnosis_not_exclusive: card.evidence?.source_diagnosis_not_exclusive ?? boolText(camera?.source_diagnosis_not_exclusive, false),
+        first_frame_probe_read_ok: card.evidence?.first_frame_probe_read_ok ?? boolText(camera?.first_frame_probe_read_ok, false),
+        visible_content_proven: card.evidence?.visible_content_proven ?? boolText(camera?.first_frame_probe_visible_content_proven, currentFrameVisible),
+        shared_preview_client_count: card.evidence?.shared_preview_client_count ?? Number(camera?.shared_preview_client_count || "0"),
+        shared_preview_cached_frame_loaded: card.evidence?.shared_preview_cached_frame_loaded ?? boolText(camera?.shared_preview_cached_frame_loaded, false),
+      },
+    };
+  }
   if (card.id === "free_move" || card.id === "mapping_start") {
     const freeRoam = robotSummary.value?.readback_summary.free_roam;
     const toList = (value: unknown): string[] => {
@@ -13483,6 +13509,17 @@ onBeforeUnmount(() => {
           :data-mapping-start-requires-lidar-fresh="card.evidence?.mapping_start_requires_lidar_fresh === undefined ? undefined : String(card.evidence.mapping_start_requires_lidar_fresh)"
           :data-mapping-start-missing-reasons="card.evidence?.mapping_start_missing_reasons?.join(',')"
           :data-mapping-acceptance-missing-reasons="card.evidence?.mapping_acceptance_missing_reasons?.join(',')"
+          :data-camera-current-frame-visible="card.evidence?.camera_current_frame_visible === undefined ? undefined : String(card.evidence.camera_current_frame_visible)"
+          :data-shared-preview-multi-viewer="card.evidence?.shared_preview_multi_viewer === undefined ? undefined : String(card.evidence.shared_preview_multi_viewer)"
+          :data-shared-capture="card.evidence?.shared_capture === undefined ? undefined : String(card.evidence.shared_capture)"
+          :data-exclusive-camera-claim="card.evidence?.exclusive_camera_claim === undefined ? undefined : String(card.evidence.exclusive_camera_claim)"
+          :data-source-first-frame-failed="card.evidence?.source_first_frame_failed === undefined ? undefined : String(card.evidence.source_first_frame_failed)"
+          :data-source-diagnosis-status="card.evidence?.source_diagnosis_status"
+          :data-source-diagnosis-not-exclusive="card.evidence?.source_diagnosis_not_exclusive === undefined ? undefined : String(card.evidence.source_diagnosis_not_exclusive)"
+          :data-first-frame-probe-read-ok="card.evidence?.first_frame_probe_read_ok === undefined ? undefined : String(card.evidence.first_frame_probe_read_ok)"
+          :data-visible-content-proven="card.evidence?.visible_content_proven === undefined ? undefined : String(card.evidence.visible_content_proven)"
+          :data-shared-preview-client-count="card.evidence?.shared_preview_client_count === undefined ? undefined : String(card.evidence.shared_preview_client_count)"
+          :data-shared-preview-cached-frame-loaded="card.evidence?.shared_preview_cached_frame_loaded === undefined ? undefined : String(card.evidence.shared_preview_cached_frame_loaded)"
         >
           <div class="plain-action-card-head">
             <strong>{{ plainActionCardUserText(card.title) }}</strong>
