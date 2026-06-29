@@ -4103,6 +4103,10 @@ describe("workstation fail-closed API contracts", () => {
         remaining_count: 6,
         safety_confirm_needed_count: 3,
         motion_needed_count: 3,
+        ready_action_count: 2,
+        blocked_action_count: 4,
+        motion_ready_count: 2,
+        sensor_blocker_count: 3,
         first_incomplete_item_id: "camera_wysiwyg",
         first_incomplete_source_card_id: "camera_preview",
         first_motion_item_id: "free_move",
@@ -4140,6 +4144,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.goal_checklist_summary?.summary_plain).toContain("先做：自由自助移动");
       expect(summary.goal_checklist_summary?.primary_ready_action_next_action_plain).toContain("可先勾选现场安全确认");
       expect(summary.goal_checklist_summary?.primary_ready_action_summary_plain).toContain("可先做：自由自助移动");
+      expect(summary.goal_checklist_summary?.move_now_status_plain).toBe("可先动：自由自助移动、键盘连续手控；发车前只需现场安全确认；相机和雷达只影响建图验收。");
+      expect(summary.goal_checklist_summary?.mapping_blockers_plain).toBe("建图缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图；这些缺口不阻止先低速自由移动。");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("未就绪项：画面所见即所得、雷达点贴到地图、完整行程执行、传感器就绪后建图");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("可先自由移动");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("键盘或低速手控");

@@ -194,6 +194,8 @@ readback 中的画面、地图、地图雷达点、Nav2 路线复验、键盘连
 
 2026-06-29 17:32 CST 起，`readback_summary.camera.first_frame_probe_*` 会在没有手动首帧探针缓存时消费共享 MJPEG/health 已有的无首帧诊断：`first_frame_probe_status=source_first_frame_failed`、`first_frame_probe_read_ok=false`、`first_frame_probe_visible_content_proven=false`，并把 `last_offer_format_attempts_summary` 同步到 `first_frame_probe_fallback_attempts_summary`。这样现场脚本不用误判“还没检查过”；若 status 同时是 `uvc_no_frame_not_exclusive`，结论就是共享预览不是独占，UVC 设备当前没有吐首帧。该变化只补只读 summary 字段，不新开 camera client、不启动额外采集、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-29 17:38 CST 起，`goal_summary` / `goal_checklist_summary` 增加可先动和建图缺口的结构化字段：`ready_action_count`、`blocked_action_count`、`motion_ready_count`、`sensor_blocker_count`、`move_now_status_plain`、`mapping_blockers_plain`。普通首屏“本轮目标检查”也会直接显示“可先动：自由移动、键盘连续手控/图上行程；发车前只需现场安全确认；相机和雷达只影响建图验收”和“建图缺口：画面/雷达/建图启动；不阻止先低速自由移动”。该变化只补只读 summary 和展示，不自动勾选安全确认、不启动 free-roam、不执行 Nav2、不发送 manual/keyboard/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 03:41 CST 起，`/api/robot-control/camera/mjpeg/status` 也返回同一组画面 WYSIWYG 字段：`preview_visible_status`、`preview_visible_plain`、`camera_wysiwyg_status_plain` 和 `camera_wysiwyg_next_action_plain`。只读 camera status 现在能直接说明“当前有共享缓存帧可见”或“当前没有实时画面；不是页面独占而是 UVC 无首帧”，不必再旁路读取 summary。该变化只消费本机 MJPEG relay 状态和只读 camera health，不创建 MJPEG client、不打开额外 camera stream、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:19 CST 起，`readback_summary.nav2` 增加 `route_execution_readiness_plain` 和 `route_execution_precheck_plain`。外部脚本只读 Nav2 区块时，可以直接看到“图上路线可重跑复验；上次路线结果成功但同窗口轮速 L/R=0/0 未非零”和“只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线”。该变化只补只读 summary 字段，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。

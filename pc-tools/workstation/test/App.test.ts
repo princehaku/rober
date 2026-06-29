@@ -609,6 +609,10 @@ const fixtures: Record<string, unknown> = {
       remaining_count: 6,
       safety_confirm_needed_count: 3,
       motion_needed_count: 3,
+      ready_action_count: 2,
+      blocked_action_count: 4,
+      motion_ready_count: 2,
+      sensor_blocker_count: 3,
       first_incomplete_item_id: "camera_wysiwyg",
       first_incomplete_source_card_id: "camera_preview",
       first_motion_item_id: "free_move",
@@ -636,6 +640,8 @@ const fixtures: Record<string, unknown> = {
       nav2_summary_plain: "完整图上行程还未就绪；先补齐图上路线和当前位置显示。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行",
       mapping_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
       mapping_summary_plain: "建图暂不可启动；相机和雷达只影响建图验收，不阻止已具备条件的低速移动。下一步：先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
+      move_now_status_plain: "可先动：先自由移动、键盘连续手控；发车前只需现场安全确认；相机和雷达只影响建图验收。",
+      mapping_blockers_plain: "建图缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图；这些缺口不阻止先低速自由移动。",
       progress_plain: "1/7",
       next_action_item_ids: [
         "camera_wysiwyg",
@@ -4506,6 +4512,10 @@ describe("App", () => {
     expect(goalChecklistSummary.text()).toContain("键盘或低速手控");
     expect(goalChecklistSummary.text()).toContain("发车前预检已精简");
     expect(goalChecklistSummary.text()).toContain("只需要现场安全确认");
+    expect(wrapper.find('[data-testid="plain-goal-move-now-status"]').text()).toContain("可先动：先自由移动、键盘连续手控");
+    expect(wrapper.find('[data-testid="plain-goal-move-now-status"]').text()).toContain("相机和雷达只影响建图验收");
+    expect(wrapper.find('[data-testid="plain-goal-mapping-blockers"]').text()).toContain("建图缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图");
+    expect(wrapper.find('[data-testid="plain-goal-mapping-blockers"]').text()).toContain("不阻止先低速自由移动");
     expect(goalChecklistSummary.text()).toContain("雷达点还没有贴到当前地图");
     expect(goalChecklistSummary.text()).toContain("完整图上行程还未就绪");
     expect(goalChecklistSummary.text()).toContain("建图暂不可启动");

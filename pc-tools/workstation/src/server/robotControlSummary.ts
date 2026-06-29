@@ -5443,6 +5443,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     remaining_count: 0,
     safety_confirm_needed_count: 0,
     motion_needed_count: 0,
+    ready_action_count: 0,
+    blocked_action_count: 0,
+    motion_ready_count: 0,
+    sensor_blocker_count: 0,
     first_incomplete_item_id: "",
     first_incomplete_source_card_id: "",
     first_motion_item_id: "",
@@ -5470,6 +5474,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     nav2_summary_plain: "完整行程状态还未读到；先恢复小车连接。",
     mapping_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
     mapping_summary_plain: "建图条件还未读到；先恢复小车连接。",
+    move_now_status_plain: "当前还不能判断能否先动；先恢复小车连接并刷新状态。",
+    mapping_blockers_plain: "建图缺口未读到；先恢复小车连接。",
     progress_plain: "0/0",
     next_action_item_ids: [],
     ready_action_ids: [],
@@ -7167,6 +7173,16 @@ function buildGoalChecklistSummary(
   const blockedActionItems = remaining
     .filter((item) => item.status === "not_ready" || item.status === "needs_action")
     .map(toActionItem);
+  const motionReadyItems = orderedReadyActionItems.filter((item) => item.requires_motion);
+  const sensorBlockerItems = blockedActionItems.filter((item) =>
+    ["camera_wysiwyg", "radar_map_points_wysiwyg", "mapping_start"].includes(item.id)
+  );
+  const moveNowStatusPlain = motionReadyItems.length > 0
+    ? `可先动：${motionReadyItems.map((item) => item.title).join("、")}；发车前只需现场安全确认；相机和雷达只影响建图验收。`
+    : "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。";
+  const mappingBlockersPlain = sensorBlockerItems.length > 0
+    ? `建图缺口：${sensorBlockerItems.map((item) => item.title).join("、")}；这些缺口不阻止先低速自由移动。`
+    : "建图启动条件已满足；勾选现场安全确认后可启动建图。";
   const progressPlain = `${doneCount}/${totalCount}`;
   const actionIds = (items: ReturnType<typeof toActionItem>[]) => items.map((item) => item.id);
   const itemById = (id: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]["id"]) => checklist.find((item) => item.id === id) ?? null;
@@ -7237,6 +7253,10 @@ function buildGoalChecklistSummary(
       remaining_count: 0,
       safety_confirm_needed_count: 0,
       motion_needed_count: 0,
+      ready_action_count: 0,
+      blocked_action_count: 0,
+      motion_ready_count: 0,
+      sensor_blocker_count: 0,
       first_incomplete_item_id: "",
       first_incomplete_source_card_id: "",
       first_motion_item_id: "",
@@ -7264,6 +7284,8 @@ function buildGoalChecklistSummary(
       nav2_summary_plain: "完整行程状态还未读到；先刷新小车状态。",
       mapping_next_action_plain: "先刷新小车状态。",
       mapping_summary_plain: "建图条件还未读到；先刷新小车状态。",
+      move_now_status_plain: "当前还不能判断能否先动；先刷新小车状态。",
+      mapping_blockers_plain: "建图缺口未读到；先刷新小车状态。",
       progress_plain: progressPlain,
       next_action_item_ids: [],
       ready_action_ids: [],
@@ -7282,6 +7304,10 @@ function buildGoalChecklistSummary(
       remaining_count: 0,
       safety_confirm_needed_count: 0,
       motion_needed_count: 0,
+      ready_action_count: 0,
+      blocked_action_count: 0,
+      motion_ready_count: motionReadyItems.length,
+      sensor_blocker_count: 0,
       first_incomplete_item_id: "",
       first_incomplete_source_card_id: "",
       first_motion_item_id: firstMotion?.id ?? "",
@@ -7309,6 +7335,8 @@ function buildGoalChecklistSummary(
       nav2_summary_plain: nav2Summary,
       mapping_next_action_plain: mapping?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
       mapping_summary_plain: mappingSummary,
+      move_now_status_plain: motionReadyItems.length > 0 ? moveNowStatusPlain : "本轮目标检查已完成；当前没有待执行动作。",
+      mapping_blockers_plain: "建图缺口已清零。",
       progress_plain: progressPlain,
       next_action_item_ids: [],
       ready_action_ids: [],
@@ -7338,6 +7366,10 @@ function buildGoalChecklistSummary(
     remaining_count: remaining.length,
     safety_confirm_needed_count: safetyConfirmNeededCount,
     motion_needed_count: motionNeededCount,
+    ready_action_count: orderedReadyActionItems.length,
+    blocked_action_count: blockedActionItems.length,
+    motion_ready_count: motionReadyItems.length,
+    sensor_blocker_count: sensorBlockerItems.length,
     first_incomplete_item_id: firstIncomplete.id,
     first_incomplete_source_card_id: firstIncomplete.source_card_id,
     first_motion_item_id: firstMotion?.id ?? "",
@@ -7367,6 +7399,8 @@ function buildGoalChecklistSummary(
     nav2_summary_plain: nav2Summary,
     mapping_next_action_plain: mapping?.next_action_plain ?? "建图条件还未读到；先刷新小车状态。",
     mapping_summary_plain: mappingSummary,
+    move_now_status_plain: moveNowStatusPlain,
+    mapping_blockers_plain: mappingBlockersPlain,
     progress_plain: progressPlain,
     next_action_item_ids: actionIds(nextActionItems),
     ready_action_ids: actionIds(orderedReadyActionItems),

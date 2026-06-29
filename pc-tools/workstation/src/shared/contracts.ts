@@ -2445,6 +2445,10 @@ export interface RobotControlGoalChecklistSummary {
   remaining_count: number;
   safety_confirm_needed_count: number;
   motion_needed_count: number;
+  ready_action_count: number;
+  blocked_action_count: number;
+  motion_ready_count: number;
+  sensor_blocker_count: number;
   first_incomplete_item_id: RobotControlGoalChecklistItemId | "";
   first_incomplete_source_card_id: RobotControlActionStatusCardId | "";
   first_motion_item_id: RobotControlGoalChecklistItemId | "";
@@ -2472,6 +2476,8 @@ export interface RobotControlGoalChecklistSummary {
   nav2_summary_plain: string;
   mapping_next_action_plain: string;
   mapping_summary_plain: string;
+  move_now_status_plain: string;
+  mapping_blockers_plain: string;
   progress_plain: string;
   next_action_item_ids: RobotControlGoalChecklistItemId[];
   ready_action_ids: RobotControlGoalChecklistItemId[];

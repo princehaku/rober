@@ -13235,6 +13235,12 @@ onBeforeUnmount(() => {
             <span v-if="plainGoalChecklistSummary.safety_precheck_summary_plain" class="muted">
               {{ plainActionCardUserText(plainGoalChecklistSummary.safety_precheck_summary_plain) }}
             </span>
+            <span v-if="plainGoalChecklistSummary.move_now_status_plain" class="muted" data-testid="plain-goal-move-now-status">
+              {{ plainActionCardUserText(plainGoalChecklistSummary.move_now_status_plain) }}
+            </span>
+            <span v-if="plainGoalChecklistSummary.mapping_blockers_plain" class="muted" data-testid="plain-goal-mapping-blockers">
+              {{ plainActionCardUserText(plainGoalChecklistSummary.mapping_blockers_plain) }}
+            </span>
             <span v-if="plainGoalChecklistSummary.radar_summary_plain" class="muted">
               {{ plainActionCardUserText(plainGoalChecklistSummary.radar_summary_plain) }}
             </span>
