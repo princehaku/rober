@@ -884,3 +884,9 @@ free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `
 `source_diagnosis_status`、首帧探针是否读到帧、可见内容是否已证明、观看人数和缓存帧状态。普通首屏同步暴露只读
 `data-*` 属性，方便脚本确认“谁进来都接同一条共享预览；不是页面独占；当前缺口是不是 UVC 无首帧”。
 该变化只补只读 summary/UI 证据，不打开相机、不新建独占采集、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-30 10:15 CST 起，`action_status_cards[].id=nav2_route.evidence` 不再从中文 next action 猜
+`managed_runtime_autostart`，而是读取 `goal_execution_managed_runtime_requested/started/lifecycle_ready_ok/cleanup_ok`
+等结构化 readback；首屏同步暴露 `data-managed-runtime-*`。这样“图上路线可重跑复验”会明确显示下次通过固定
+`/api/robot-control/nav2/goal/execute` 走 ROS 模式并自动托管 Nav2 runtime，剩余缺口聚焦在同窗口 wheel raw L/R 非零。
+该变化只修正只读 summary/UI 证据，不执行 NavigateToPose、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。

@@ -4796,6 +4796,11 @@ describe("App", () => {
     expect(nav2ActionCard.attributes("data-execute-sends-motion-when-ready")).toBe("false");
     expect(nav2ActionCard.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(nav2ActionCard.attributes("data-wheel-feedback-status")).toBe("not_loaded");
+    expect(nav2ActionCard.attributes("data-managed-runtime-autostart")).toBe("false");
+    expect(nav2ActionCard.attributes("data-managed-runtime-requested")).toBe("false");
+    expect(nav2ActionCard.attributes("data-managed-runtime-started")).toBe("false");
+    expect(nav2ActionCard.attributes("data-managed-runtime-lifecycle-ready-ok")).toBe("false");
+    expect(nav2ActionCard.attributes("data-managed-runtime-cleanup-ok")).toBe("false");
     expect(firstScreenText).toContain("读取行程结果（只读）");
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");

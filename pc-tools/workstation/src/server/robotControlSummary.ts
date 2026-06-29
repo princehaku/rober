@@ -7252,6 +7252,14 @@ function buildActionStatusCards(
     ? readback.radar.radar_overlay_wysiwyg_next_action_plain || readback.radar.radar_map_overlay_next_action_plain
     : readback.radar.radar_next_action_plain || readback.radar.radar_overlay_wysiwyg_next_action_plain;
   const nav2NeedsWheelRerun = boundary.nav2_goal_wheel_feedback_status === "goal_succeeded_but_wheel_lr_zero";
+  const nav2ManagedRuntimeRequested = actionCardBoolean(readback.nav2.goal_execution_managed_runtime_requested, false);
+  const nav2ManagedRuntimeStarted = actionCardBoolean(readback.nav2.goal_execution_managed_runtime_started, false);
+  const nav2ManagedRuntimeLifecycleReadyOk = actionCardBoolean(readback.nav2.goal_execution_managed_runtime_lifecycle_ready_ok, false);
+  const nav2ManagedRuntimeCleanupOk = actionCardBoolean(readback.nav2.goal_execution_managed_runtime_cleanup_ok, false);
+  const nav2ManagedRuntimeAutostart = nav2ManagedRuntimeRequested
+    || nav2ManagedRuntimeStarted
+    || nav2ManagedRuntimeLifecycleReadyOk
+    || boundary.nav2_goal_ready;
   return [
     {
       id: "camera_preview",
@@ -7338,7 +7346,11 @@ function buildActionStatusCards(
         wheel_feedback_status: boundary.nav2_goal_wheel_feedback_status,
         last_base_command_mode: readback.nav2.goal_execution_base_command_mode,
         next_base_command_mode: readback.nav2.next_execution_base_command_mode,
-        managed_runtime_autostart: /自动启动自动驾驶\s*runtime/i.test(boundary.nav2_goal_next_action_plain || boundary.nav2_goal_next_action),
+        managed_runtime_autostart: nav2ManagedRuntimeAutostart,
+        managed_runtime_requested: nav2ManagedRuntimeRequested,
+        managed_runtime_started: nav2ManagedRuntimeStarted,
+        managed_runtime_lifecycle_ready_ok: nav2ManagedRuntimeLifecycleReadyOk,
+        managed_runtime_cleanup_ok: nav2ManagedRuntimeCleanupOk,
         blockers: boundary.nav2_goal_blockers,
       },
     },

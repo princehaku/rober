@@ -3119,6 +3119,14 @@ function actionCardWithDerivedEvidence(
     };
   }
   if (card.id === "nav2_route") {
+    const managedRuntimeRequested = boolText(nav2?.goal_execution_managed_runtime_requested, false);
+    const managedRuntimeStarted = boolText(nav2?.goal_execution_managed_runtime_started, false);
+    const managedRuntimeLifecycleReadyOk = boolText(nav2?.goal_execution_managed_runtime_lifecycle_ready_ok, false);
+    const managedRuntimeCleanupOk = boolText(nav2?.goal_execution_managed_runtime_cleanup_ok, false);
+    const managedRuntimeAutostart = managedRuntimeRequested
+      || managedRuntimeStarted
+      || managedRuntimeLifecycleReadyOk
+      || boundary?.nav2_goal_ready === true;
     return {
       ...card,
       evidence: {
@@ -3131,7 +3139,11 @@ function actionCardWithDerivedEvidence(
         wheel_feedback_status: card.evidence?.wheel_feedback_status ?? boundary?.nav2_goal_wheel_feedback_status ?? "not_loaded",
         last_base_command_mode: card.evidence?.last_base_command_mode ?? nav2?.goal_execution_base_command_mode ?? "not_loaded",
         next_base_command_mode: card.evidence?.next_base_command_mode ?? nav2?.next_execution_base_command_mode ?? "not_loaded",
-        managed_runtime_autostart: card.evidence?.managed_runtime_autostart ?? /自动启动自动驾驶\s*runtime/i.test(`${boundary?.nav2_goal_next_action_plain ?? ""} ${boundary?.nav2_goal_next_action ?? ""}`),
+        managed_runtime_autostart: card.evidence?.managed_runtime_autostart ?? managedRuntimeAutostart,
+        managed_runtime_requested: card.evidence?.managed_runtime_requested ?? managedRuntimeRequested,
+        managed_runtime_started: card.evidence?.managed_runtime_started ?? managedRuntimeStarted,
+        managed_runtime_lifecycle_ready_ok: card.evidence?.managed_runtime_lifecycle_ready_ok ?? managedRuntimeLifecycleReadyOk,
+        managed_runtime_cleanup_ok: card.evidence?.managed_runtime_cleanup_ok ?? managedRuntimeCleanupOk,
         blockers: card.evidence?.blockers ?? boundary?.nav2_goal_blockers ?? [],
       },
     };
@@ -13497,6 +13509,10 @@ onBeforeUnmount(() => {
           :data-last-base-command-mode="card.evidence?.last_base_command_mode"
           :data-next-base-command-mode="card.evidence?.next_base_command_mode"
           :data-managed-runtime-autostart="card.evidence?.managed_runtime_autostart === undefined ? undefined : String(card.evidence.managed_runtime_autostart)"
+          :data-managed-runtime-requested="card.evidence?.managed_runtime_requested === undefined ? undefined : String(card.evidence.managed_runtime_requested)"
+          :data-managed-runtime-started="card.evidence?.managed_runtime_started === undefined ? undefined : String(card.evidence.managed_runtime_started)"
+          :data-managed-runtime-lifecycle-ready-ok="card.evidence?.managed_runtime_lifecycle_ready_ok === undefined ? undefined : String(card.evidence.managed_runtime_lifecycle_ready_ok)"
+          :data-managed-runtime-cleanup-ok="card.evidence?.managed_runtime_cleanup_ok === undefined ? undefined : String(card.evidence.managed_runtime_cleanup_ok)"
           :data-nav2-blockers="card.evidence?.blockers?.join(',')"
           :data-free-move-start-ready="card.evidence?.free_move_start_ready === undefined ? undefined : String(card.evidence.free_move_start_ready)"
           :data-free-move-safety-only="card.evidence?.free_move_safety_only === undefined ? undefined : String(card.evidence.free_move_safety_only)"

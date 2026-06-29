@@ -6740,6 +6740,25 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或控制服务；勾选行程前安全确认后用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验执行窗口轮速 L/R");
       expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_ros_rerun_after_pwm");
+      expect(summary.action_status_cards?.find((card) => card.id === "nav2_route")).toMatchObject({
+        status: "ready_needs_wheel_rerun",
+        evidence: {
+          route_ready_on_map: true,
+          minimal_precheck_safety_only: true,
+          fixed_execute_proxy_endpoint: "/api/robot-control/nav2/goal/execute",
+          execute_sends_motion_when_ready: true,
+          requires_same_window_wheel_lr_nonzero: true,
+          wheel_feedback_status: "goal_succeeded_but_wheel_lr_zero",
+          last_base_command_mode: "pwm",
+          next_base_command_mode: "ros",
+          managed_runtime_autostart: true,
+          managed_runtime_requested: true,
+          managed_runtime_started: true,
+          managed_runtime_lifecycle_ready_ok: true,
+          managed_runtime_cleanup_ok: true,
+          blockers: [],
+        },
+      });
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();

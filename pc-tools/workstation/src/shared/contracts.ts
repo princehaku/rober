@@ -2442,6 +2442,10 @@ export interface RobotControlActionStatusCard {
     last_base_command_mode?: string;
     next_base_command_mode?: string;
     managed_runtime_autostart?: boolean;
+    managed_runtime_requested?: boolean;
+    managed_runtime_started?: boolean;
+    managed_runtime_lifecycle_ready_ok?: boolean;
+    managed_runtime_cleanup_ok?: boolean;
     blockers?: string[];
     free_move_start_ready?: boolean;
     free_move_safety_only?: boolean;
