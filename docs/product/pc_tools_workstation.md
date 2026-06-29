@@ -4279,3 +4279,10 @@ free-roam、不发送 keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。
 `free_move_start_ready=true`、键盘可启用或图上行程可重跑时，直接告诉现场“勾选安全确认后可先动”，并明确画面和雷达只影响建图验收，
 不作为低速自由移动、键盘手控或图上行程重跑的发车前置。该摘要只读取 summary，不自动勾选、不启动自由移动、不发送
 keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 16:20 CST 起，`goal_checklist_summary` 补齐脚本友好的
+`primary_ready_action_item_id`、`primary_ready_action_source_card_id`、
+`primary_ready_action_next_action_plain`、`primary_ready_action_summary_plain`。这些字段从
+`ready_action_items` 派生，优先级固定为自由移动、键盘连续手控、完整图上行程、建图启动，避免脚本只读
+`next_action_items[0]` 时被相机/雷达缺口带偏。该变化只增加只读 summary 字段，不改变 `next_action_items` 兼容顺序，
+不自动启动 free-roam、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。

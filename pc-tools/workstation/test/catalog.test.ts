@@ -4107,6 +4107,8 @@ describe("workstation fail-closed API contracts", () => {
         first_incomplete_source_card_id: "camera_preview",
         first_motion_item_id: "free_move",
         first_motion_source_card_id: "free_move",
+        primary_ready_action_item_id: "free_move",
+        primary_ready_action_source_card_id: "free_move",
         safety_precheck_source_card_id: "free_move",
         radar_item_id: "radar_map_points_wysiwyg",
         radar_source_card_id: "radar_map_points",
@@ -4119,6 +4121,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("现场可先收口 2 项：自由自助移动、键盘连续手控");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("先做：自由自助移动");
+      expect(summary.goal_checklist_summary?.primary_ready_action_next_action_plain).toContain("可先勾选现场安全确认");
+      expect(summary.goal_checklist_summary?.primary_ready_action_summary_plain).toContain("可先做：自由自助移动");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("未就绪项：画面所见即所得、雷达点贴到地图、完整行程执行、传感器就绪后建图");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("可先自由移动");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("键盘或低速手控");

@@ -5380,6 +5380,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     first_incomplete_source_card_id: "",
     first_motion_item_id: "",
     first_motion_source_card_id: "",
+    primary_ready_action_item_id: "",
+    primary_ready_action_source_card_id: "",
+    primary_ready_action_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
+    primary_ready_action_summary_plain: "未读到可先执行动作；先恢复小车连接。",
     safety_precheck_source_card_id: "",
     radar_item_id: "",
     radar_source_card_id: "",
@@ -7083,6 +7087,7 @@ function buildGoalChecklistSummary(
     .filter((item) => item.status === "ready" || item.status === "needs_safety_confirm")
     .map(toActionItem);
   const orderedReadyActionItems = sortReadyActionItems(readyActionItems);
+  const primaryReadyAction = orderedReadyActionItems[0] ?? null;
   const blockedActionItems = remaining
     .filter((item) => item.status === "not_ready" || item.status === "needs_action")
     .map(toActionItem);
@@ -7160,6 +7165,10 @@ function buildGoalChecklistSummary(
       first_incomplete_source_card_id: "",
       first_motion_item_id: "",
       first_motion_source_card_id: "",
+      primary_ready_action_item_id: "",
+      primary_ready_action_source_card_id: "",
+      primary_ready_action_next_action_plain: "先刷新小车状态。",
+      primary_ready_action_summary_plain: "未读到可先执行动作；先刷新小车状态。",
       safety_precheck_source_card_id: "",
       radar_item_id: "",
       radar_source_card_id: "",
@@ -7201,6 +7210,10 @@ function buildGoalChecklistSummary(
       first_incomplete_source_card_id: "",
       first_motion_item_id: firstMotion?.id ?? "",
       first_motion_source_card_id: firstMotion?.source_card_id ?? "",
+      primary_ready_action_item_id: "",
+      primary_ready_action_source_card_id: "",
+      primary_ready_action_next_action_plain: "本轮目标检查已完成；继续保持现场监看。",
+      primary_ready_action_summary_plain: "本轮目标检查已完成；当前没有待执行的 ready 动作。",
       safety_precheck_source_card_id: firstSafetyPrecheck?.source_card_id ?? "",
       radar_item_id: radar?.id ?? "",
       radar_source_card_id: radar?.source_card_id ?? "",
@@ -7231,7 +7244,6 @@ function buildGoalChecklistSummary(
   }
   const safetyText = safetyConfirmNeededCount > 0 ? `，其中 ${safetyConfirmNeededCount} 项需要现场安全确认` : "";
   const motionText = motionNeededCount > 0 ? `，${motionNeededCount} 项需要真实运动验证` : "";
-  const primaryReadyAction = firstMotion ?? remaining.find((item) => item.status === "ready" || item.status === "needs_safety_confirm") ?? null;
   const readyActionText = orderedReadyActionItems.length > 0
     // 有可现场收口项时，先告诉 operator 可以做什么；相机/雷达缺口不能把可动车入口压到后面。
     ? `现场可先收口 ${orderedReadyActionItems.length} 项：${orderedReadyActionItems.map((item) => item.title).join("、")}；`
@@ -7254,6 +7266,12 @@ function buildGoalChecklistSummary(
     first_incomplete_source_card_id: firstIncomplete.source_card_id,
     first_motion_item_id: firstMotion?.id ?? "",
     first_motion_source_card_id: firstMotion?.source_card_id ?? "",
+    primary_ready_action_item_id: primaryReadyAction?.id ?? "",
+    primary_ready_action_source_card_id: primaryReadyAction?.source_card_id ?? "",
+    primary_ready_action_next_action_plain: primaryReadyAction?.next_action_plain ?? firstIncomplete.next_action_plain,
+    primary_ready_action_summary_plain: primaryReadyAction
+      ? `可先做：${primaryReadyAction.title}；${primaryReadyAction.next_action_plain}`
+      : `暂时没有可先执行动作；先处理：${firstIncomplete.title}。`,
     safety_precheck_source_card_id: firstSafetyPrecheck?.source_card_id ?? "",
     radar_item_id: radar?.id ?? "",
     radar_source_card_id: radar?.source_card_id ?? "",
