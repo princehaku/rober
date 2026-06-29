@@ -2468,6 +2468,10 @@ export interface RobotControlGoalChecklistSummary {
   nav2_summary_plain: string;
   mapping_next_action_plain: string;
   mapping_summary_plain: string;
+  progress_plain: string;
+  next_action_item_ids: RobotControlGoalChecklistItemId[];
+  ready_action_ids: RobotControlGoalChecklistItemId[];
+  blocked_action_ids: RobotControlGoalChecklistItemId[];
   next_action_items: RobotControlGoalChecklistSummaryActionItem[];
   ready_action_items: RobotControlGoalChecklistSummaryActionItem[];
   blocked_action_items: RobotControlGoalChecklistSummaryActionItem[];

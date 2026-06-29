@@ -5389,6 +5389,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     nav2_summary_plain: "完整行程状态还未读到；先恢复小车连接。",
     mapping_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
     mapping_summary_plain: "建图条件还未读到；先恢复小车连接。",
+    progress_plain: "0/0",
+    next_action_item_ids: [],
+    ready_action_ids: [],
+    blocked_action_ids: [],
     next_action_items: [],
     ready_action_items: [],
     blocked_action_items: [],
@@ -7039,6 +7043,8 @@ function buildGoalChecklistSummary(
   const blockedActionItems = remaining
     .filter((item) => item.status === "not_ready" || item.status === "needs_action")
     .map(toActionItem);
+  const progressPlain = `${doneCount}/${totalCount}`;
+  const actionIds = (items: ReturnType<typeof toActionItem>[]) => items.map((item) => item.id);
   const itemById = (id: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]["id"]) => checklist.find((item) => item.id === id) ?? null;
   const freeMove = itemById("free_move");
   const keyboard = itemById("keyboard_continuous_control");
@@ -7130,6 +7136,10 @@ function buildGoalChecklistSummary(
       nav2_summary_plain: "完整行程状态还未读到；先刷新小车状态。",
       mapping_next_action_plain: "先刷新小车状态。",
       mapping_summary_plain: "建图条件还未读到；先刷新小车状态。",
+      progress_plain: progressPlain,
+      next_action_item_ids: [],
+      ready_action_ids: [],
+      blocked_action_ids: [],
       next_action_items: [],
       ready_action_items: [],
       blocked_action_items: [],
@@ -7167,6 +7177,10 @@ function buildGoalChecklistSummary(
       nav2_summary_plain: nav2Summary,
       mapping_next_action_plain: mapping?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
       mapping_summary_plain: mappingSummary,
+      progress_plain: progressPlain,
+      next_action_item_ids: [],
+      ready_action_ids: [],
+      blocked_action_ids: [],
       next_action_items: [],
       ready_action_items: [],
       blocked_action_items: [],
@@ -7216,6 +7230,10 @@ function buildGoalChecklistSummary(
     nav2_summary_plain: nav2Summary,
     mapping_next_action_plain: mapping?.next_action_plain ?? "建图条件还未读到；先刷新小车状态。",
     mapping_summary_plain: mappingSummary,
+    progress_plain: progressPlain,
+    next_action_item_ids: actionIds(nextActionItems),
+    ready_action_ids: actionIds(orderedReadyActionItems),
+    blocked_action_ids: actionIds(blockedActionItems),
     next_action_items: nextActionItems,
     ready_action_items: orderedReadyActionItems,
     blocked_action_items: blockedActionItems,

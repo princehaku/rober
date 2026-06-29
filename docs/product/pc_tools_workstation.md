@@ -4256,3 +4256,9 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `goal_summary`，也能拿到同一份 `summary_plain`、`ready_action_items[]`、`blocked_action_items[]` 和下一步字段，
 不会读成空对象。fail-closed 响应同样返回该 alias。该变化只增加只读字段兼容，不改变目标清单计算、不执行 Nav2、
 不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 15:35 CST 起，`goal_checklist_summary` 和 `goal_summary` 同步新增脚本友好字段：
+`progress_plain`、`next_action_item_ids[]`、`ready_action_ids[]`、`blocked_action_ids[]`。这些字段完全由既有
+`*_action_items[]` 派生，方便现场脚本直接读取“1/7、可先做哪些、还卡哪些”，不用遍历对象数组。fail-closed 响应返回
+`progress_plain=0/0` 和空 id 列表。该变化只增加只读摘要字段，不改变 ready/blocked 计算、不执行 Nav2、不调用
+manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

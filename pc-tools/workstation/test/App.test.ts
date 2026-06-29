@@ -632,6 +632,25 @@ const fixtures: Record<string, unknown> = {
       nav2_summary_plain: "完整图上行程还未就绪；先补齐图上路线和当前位置显示。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行",
       mapping_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
       mapping_summary_plain: "建图暂不可启动；相机和雷达只影响建图验收，不阻止已具备条件的低速移动。下一步：先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
+      progress_plain: "1/7",
+      next_action_item_ids: [
+        "camera_wysiwyg",
+        "radar_map_points_wysiwyg",
+        "nav2_route_execution",
+        "keyboard_continuous_control",
+        "free_move",
+        "mapping_start",
+      ],
+      ready_action_ids: [
+        "free_move",
+        "keyboard_continuous_control",
+      ],
+      blocked_action_ids: [
+        "camera_wysiwyg",
+        "radar_map_points_wysiwyg",
+        "nav2_route_execution",
+        "mapping_start",
+      ],
       next_action_items: [
         {
           id: "camera_wysiwyg",

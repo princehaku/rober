@@ -4127,6 +4127,25 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.goal_checklist_summary?.radar_summary_plain).toContain("雷达点还没有贴到当前地图");
       expect(summary.goal_checklist_summary?.nav2_summary_plain).toContain("完整图上行程还未就绪");
       expect(summary.goal_checklist_summary?.mapping_summary_plain).toContain("建图暂不可启动");
+      expect(summary.goal_checklist_summary?.progress_plain).toBe("1/7");
+      expect(summary.goal_checklist_summary?.next_action_item_ids).toEqual([
+        "camera_wysiwyg",
+        "radar_map_points_wysiwyg",
+        "nav2_route_execution",
+        "keyboard_continuous_control",
+        "free_move",
+        "mapping_start",
+      ]);
+      expect(summary.goal_checklist_summary?.ready_action_ids).toEqual([
+        "free_move",
+        "keyboard_continuous_control",
+      ]);
+      expect(summary.goal_checklist_summary?.blocked_action_ids).toEqual([
+        "camera_wysiwyg",
+        "radar_map_points_wysiwyg",
+        "nav2_route_execution",
+        "mapping_start",
+      ]);
       expect(summary.goal_checklist_summary?.next_action_items).toHaveLength(6);
       expect(summary.goal_checklist_summary?.next_action_items.map((item) => item.id)).toEqual([
         "camera_wysiwyg",
@@ -11953,12 +11972,16 @@ describe("workstation fail-closed API contracts", () => {
     expect(missing.blocked_reasons).toContain("baseUrl_not_provided");
     expect(missing.current_fact_plain).toBe("当前事实未读到；先填写或确认小车地址。");
     expect(missing.goal_summary).toEqual(missing.goal_checklist_summary);
+    expect(missing.goal_summary?.progress_plain).toBe("0/0");
+    expect(missing.goal_summary?.ready_action_ids).toEqual([]);
+    expect(missing.goal_summary?.blocked_action_ids).toEqual([]);
 
     const unsafeUrl = await buildRobotControlSummary("https://127.0.0.1:8787?token=secret");
     expect(unsafeUrl.console_status).toBe("blocked");
     expect(unsafeUrl.blocked_reasons).toContain("baseUrl_protocol_not_allowed");
     expect(unsafeUrl.current_fact_plain).toContain("当前事实未读到");
     expect(unsafeUrl.goal_summary).toEqual(unsafeUrl.goal_checklist_summary);
+    expect(unsafeUrl.goal_summary?.progress_plain).toBe("0/0");
 
     const robotApi = await listenRobotApiReadback({
       schema: "trashbot.upper_robot_api.v1.status",
