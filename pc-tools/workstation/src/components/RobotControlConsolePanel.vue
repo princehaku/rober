@@ -3919,7 +3919,10 @@ function plainMapRadarNextActionText(): string {
     return "";
   }
   if (nextActionPlain) {
-    return `地图下一步：${nextActionPlain}`;
+    const stalePointGuard = nextAction === "start_radar_then_refresh_map_preview" && !nextActionPlain.includes("旧雷达点")
+      ? "；旧雷达点不会贴到当前地图"
+      : "";
+    return `地图下一步：${nextActionPlain}${stalePointGuard}。`;
   }
   if (nextAction === "start_radar_then_refresh_map_preview") {
     return "地图下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。";
@@ -3951,7 +3954,13 @@ function plainRadarCardNextActionText(): string {
     return "";
   }
   if (nextActionPlain) {
-    return `雷达下一步：${nextActionPlain}`;
+    const radarButtonPlain = nextAction === "start_radar_then_refresh_map_preview"
+      ? nextActionPlain.replace(/^先启动雷达/, "先点启动雷达")
+      : nextActionPlain;
+    const stalePointGuard = nextAction === "start_radar_then_refresh_map_preview" && !nextActionPlain.includes("旧雷达点")
+      ? "；旧雷达点不会贴到当前地图"
+      : "";
+    return `雷达下一步：${radarButtonPlain}${stalePointGuard}。`;
   }
   if (nextAction === "start_radar_then_refresh_map_preview") {
     return "雷达下一步：先点启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。";

@@ -4290,3 +4290,7 @@ keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。
 2026-06-29 16:35 CST 起，普通首屏“本轮进度”的 `可先动` 摘要和目标总览的“行程/键盘/自由移动”跳转也优先消费
 `goal_checklist_summary.primary_ready_action_*`。这样页面、脚本和后端使用同一个主 ready 动作，不再由前端单独猜
 “先做自由移动、键盘还是 Nav2”。该变化仍只改变页面只读展示和焦点跳转，不自动执行任何控制接口。
+
+2026-06-29 16:50 CST 起，普通地图/雷达卡在 `radar_overlay_next_action=start_radar_then_refresh_map_preview` 时，即使后端已经返回
+简短的 `radar_overlay_*_next_action_plain`，前端也会补上“旧雷达点不会贴到当前地图”。这条保护语只影响展示，避免现场把旧来源点误当成
+当前地图标记；不会自动启动雷达、刷新地图或发送任何运动命令。
