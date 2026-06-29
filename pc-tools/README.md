@@ -745,3 +745,9 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 `readback_summary.nav2.current_blocker_reasons` 作为只读诊断，但发车边界只显示“等待安全确认/可重跑复验”，并在下一步里提示
 “执行时会自动启动自动驾驶 runtime”。planner/controller 真实未就绪时仍会进入 blocker。该变化只修正只读 summary
 和发车口径，不自动执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:56 CST 起，普通首屏的“地图”动作卡不再把雷达点缺口当成地图下一步。只要地图画面已经显示，
+`action_status_cards[].id=map_preview` 会提示“继续确认图上路线和小车位置，雷达点另看地图雷达点”；雷达启动、
+新扫描和贴图仍由 `radar_map_points` 卡片承接。底层 `readback_summary.map.radar_overlay_*` 诊断不变，旧雷达点仍不会
+冒充当前地图标记。该变化只修正普通首屏只读文案，不启动雷达、不刷新地图、不执行 Nav2、不调用 manual、keyboard、
+free-roam、delivery、stop 或 `/cmd_vel`。

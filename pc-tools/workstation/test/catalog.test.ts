@@ -4031,6 +4031,10 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(JSON.stringify(actionCards)).not.toContain("marker");
       expect(JSON.stringify(actionCards)).not.toContain("overlay");
+      expect(actionCards.find((card) => card.id === "map_preview")).toMatchObject({
+        status_label: "已显示",
+        next_action_plain: "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。",
+      });
       expect(actionCards.find((card) => card.id === "keyboard_control")).toMatchObject({
         status_label: "可启用",
         requires_safety_confirmation: true,
@@ -8378,6 +8382,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.plain_hint).not.toContain("雷达 marker");
       expect(summary.readback_summary.map.plain_hint).not.toContain("overlay");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达，再刷新地图画面。");
+      expect(summary.action_status_cards?.find((card) => card.id === "map_preview")).toMatchObject({
+        status_label: "已显示",
+        next_action_plain: "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。",
+      });
+      expect(summary.action_status_cards?.find((card) => card.id === "radar_map_points")?.next_action_plain).toContain("先启动雷达");
       expect(summary.current_fact_plain).toContain("地图画面、图上路线和小车位置已显示");
       expect(summary.current_fact_plain).toContain("雷达未运行或扫描已停；地图雷达点当前显示 0 个，旧来源点 65 个只作诊断");
       expect(summary.current_fact_plain).not.toContain("雷达 marker");

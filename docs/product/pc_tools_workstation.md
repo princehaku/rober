@@ -4180,3 +4180,9 @@ camera health 并发读取时旧窗口容易超时，进而让当前 wheel L/R�
 供诊断，但不会继续出现在 `safe_command_boundary.nav2_goal_blockers`。普通用户看到的是“图上路线已显示，等待安全确认”
 或“可重跑复验”，下一步会说明执行时自动启动自动驾驶 runtime；真正的 planner/controller 未就绪仍会阻止执行。
 该变化只修正只读 summary 与首屏口径，不自动执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:56 CST 起，首屏 `action_status_cards` 将地图画面和雷达贴图动作拆开：地图画面已显示时，
+`map_preview.next_action_plain` 只提示继续确认图上路线和小车位置，不再写“先启动雷达”。雷达未运行、扫描过期、
+旧来源点不贴图等动作仍集中在 `radar_map_points` 卡片和 `readback_summary.map.radar_overlay_*` 字段里。
+这样用户不会把“地图已所见即所得”和“雷达点未贴当前图”混成同一个问题；该变化只修正只读 summary 文案，
+不启动雷达、不刷新地图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

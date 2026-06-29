@@ -6740,6 +6740,9 @@ function buildActionStatusCards(
   // 这些卡片是首屏“现在能做什么”的结构化摘要，不新增任何控制能力或放行条件。
   const cameraVisible = readback.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
   const mapVisible = /地图画面.*(已显示|已读到)/.test(readback.map.map_wysiwyg_status_plain);
+  const mapNextActionPlain = mapVisible
+    ? "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。"
+    : actionCardText(readback.map.map_wysiwyg_next_action_plain, "刷新地图画面");
   const radarPointCount = Number(readback.radar.map_marker_point_count || readback.radar.radar_overlay_point_count || "0");
   const radarCurrent = Number.isFinite(radarPointCount) && radarPointCount > 0 && ["loaded", "partial"].includes(readback.radar.radar_overlay_status);
   const nav2NeedsWheelRerun = boundary.nav2_goal_wheel_feedback_status === "goal_succeeded_but_wheel_lr_zero";
@@ -6764,7 +6767,7 @@ function buildActionStatusCards(
       status: mapVisible ? "visible" : "not_visible",
       status_label: mapVisible ? "已显示" : "未显示",
       summary_plain: actionCardText(readback.map.map_wysiwyg_status_plain, "地图画面未读到"),
-      next_action_plain: actionCardText(readback.map.map_wysiwyg_next_action_plain, "刷新地图画面"),
+      next_action_plain: mapNextActionPlain,
       wysiwyg_status: mapVisible ? "current_map_visible" : "map_not_visible",
       requires_safety_confirmation: false,
       can_start_after_safety_confirm: false,
