@@ -1558,6 +1558,7 @@ function baseCommandFailure(
     requested_duration_ms: requestedDurationMs,
     clamped_duration_ms: isStop ? 0 : clamp(requestedDurationMs ?? 0, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS),
     confirm_hil_checklist: confirmHilChecklist,
+    ...baseCommandMinimalPrecheckFields(confirmHilChecklist),
     non_stop_requires_confirm_hil_checklist: true,
     hil_checklist_gate_status: isStop
       ? "stop_allowed_without_checklist"
@@ -1575,6 +1576,20 @@ function baseCommandFailure(
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
+  };
+}
+
+function baseCommandMinimalPrecheckFields(confirmHilChecklist: boolean) {
+  // 旧字段名保持 confirm_hil_checklist 兼容上位机；这些别名明确 PC 侧实际只要求现场安全确认。
+  return {
+    minimal_precheck_safety_only: true as const,
+    safety_confirmation_field: "confirm_hil_checklist" as const,
+    safety_confirmation_received: confirmHilChecklist,
+    operator_report_preflight_required: false as const,
+    camera_or_radar_required_for_motion: false as const,
+    minimal_precheck_plain: confirmHilChecklist
+      ? "最小预检已通过：只复核现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。"
+      : "最小预检未通过：还需要现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
   };
 }
 
@@ -3098,6 +3113,7 @@ export function createWorkstationApp(): express.Express {
       requested_duration_ms: durationMs,
       clamped_duration_ms: clampedDurationMs,
       confirm_hil_checklist: true,
+      ...baseCommandMinimalPrecheckFields(true),
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: "manual_allowed",
       checklist_missing: [],
@@ -3205,6 +3221,7 @@ export function createWorkstationApp(): express.Express {
       requested_duration_ms: durationMs,
       clamped_duration_ms: clampedDurationMs,
       confirm_hil_checklist: true,
+      ...baseCommandMinimalPrecheckFields(true),
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: "manual_allowed",
       checklist_missing: [],
@@ -3272,6 +3289,7 @@ export function createWorkstationApp(): express.Express {
       requested_duration_ms: 0,
       clamped_duration_ms: 0,
       confirm_hil_checklist: false,
+      ...baseCommandMinimalPrecheckFields(false),
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: "stop_allowed_without_checklist",
       checklist_missing: [],

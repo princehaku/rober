@@ -3721,6 +3721,12 @@ export interface RobotControlBaseCommandProxyResponse extends ProofFlags {
   requested_duration_ms: number | null;
   clamped_duration_ms: number;
   confirm_hil_checklist: boolean;
+  minimal_precheck_safety_only: true;
+  safety_confirmation_field: "confirm_hil_checklist";
+  safety_confirmation_received: boolean;
+  operator_report_preflight_required: false;
+  camera_or_radar_required_for_motion: false;
+  minimal_precheck_plain: string;
   non_stop_requires_confirm_hil_checklist: true;
   hil_checklist_gate_status: "stop_allowed_without_checklist" | "manual_allowed" | "manual_blocked_missing_checklist";
   checklist_missing: string[];

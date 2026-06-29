@@ -276,8 +276,8 @@ const plainMapLargeView = ref(true);
 const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.25, 1.5, 2] as const;
-const plainMapZoomIndex = ref(1);
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.25, 1.5, 2, 3] as const;
+const plainMapZoomIndex = ref(2);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const plainMapZoomStyle = computed(() => ({
@@ -10318,10 +10318,10 @@ const plainKeyboardControlSummary = computed(() => {
 });
 
 const operatorMaterialGateSummary = computed(() => {
-  // 首页只给“现场材料”普通结论；具体字段名和引用全部留在高级诊断。
+  // 现场材料是事后证据和送达/验收材料，不再作为低速手控或键盘的发车前置。
   return operatorMaterialReady.value
-    ? { state: "已满足", hint: "现场材料已满足；仍只允许一次低速短时点动。" }
-    : { state: "未满足", hint: "需要补齐现场材料后，才允许低速点动。" };
+    ? { state: "已满足", hint: "现场材料已满足；低速手控仍只要求安全确认和固定限速限时。" }
+    : { state: "非前置", hint: "现场材料未补齐也不阻塞低速手控；它只影响轮速、雷达位移和送达验收收口。" };
 });
 const manualBlockedReason = computed(() => {
   if (!robotApiBaseUrl.value.trim()) {
@@ -10554,6 +10554,35 @@ function commandEvidenceFallback(commandKind: "manual" | "stop", reason: string)
       : ["motion_command_not_forwarded", "wheel_feedback_lr_nonzero_not_proven", "physical_motion_lidar_delta_not_proven"],
   };
 }
+
+function baseCommandMinimalPrecheckFallback(confirmHilChecklist: boolean) {
+  // 旧请求字段仍叫 confirm_hil_checklist；普通语义按“只勾安全确认”暴露给 UI 和脚本。
+  return {
+    minimal_precheck_safety_only: true as const,
+    safety_confirmation_field: "confirm_hil_checklist" as const,
+    safety_confirmation_received: confirmHilChecklist,
+    operator_report_preflight_required: false as const,
+    camera_or_radar_required_for_motion: false as const,
+    minimal_precheck_plain: confirmHilChecklist
+      ? "最小预检已通过：只复核现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。"
+      : "最小预检未通过：还需要现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
+  };
+}
+
+const manualCommandMinimalPrecheckView = computed(() => {
+  const result = manualCommandResult.value;
+  if (!result) {
+    return null;
+  }
+  const fallback = baseCommandMinimalPrecheckFallback(Boolean(result.confirm_hil_checklist));
+  // 兼容旧代理响应：显示层不能再把缺字段误报成 operator report 或传感器仍是发车前置。
+  return {
+    minimal_precheck_safety_only: result.minimal_precheck_safety_only ?? fallback.minimal_precheck_safety_only,
+    safety_confirmation_received: result.safety_confirmation_received ?? fallback.safety_confirmation_received,
+    operator_report_preflight_required: result.operator_report_preflight_required ?? fallback.operator_report_preflight_required,
+    camera_or_radar_required_for_motion: result.camera_or_radar_required_for_motion ?? fallback.camera_or_radar_required_for_motion,
+  };
+});
 
 function commandOperatorReportPreflightFallback(commandKind: "manual" | "stop", reason: string) {
   // 前端本地异常不会绕过后端 preflight；这里只补齐响应形状用于错误展示。
@@ -13094,6 +13123,7 @@ async function sendPlainFirstJog(): Promise<void> {
       requested_duration_ms: 500,
       clamped_duration_ms: 500,
       confirm_hil_checklist: true,
+      ...baseCommandMinimalPrecheckFallback(true),
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: "manual_allowed",
       checklist_missing: [],
@@ -13287,6 +13317,7 @@ async function sendManualMotion(direction: ManualDirection): Promise<void> {
       requested_duration_ms: jogDurationMs.value,
       clamped_duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
       confirm_hil_checklist: plainManualSafetyConfirmed.value,
+      ...baseCommandMinimalPrecheckFallback(plainManualSafetyConfirmed.value),
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: plainManualSafetyConfirmed.value ? "manual_allowed" : "manual_blocked_missing_checklist",
       checklist_missing: plainManualSafetyConfirmed.value ? [] : ["安全确认"],
@@ -13632,6 +13663,7 @@ async function sendStop(): Promise<RobotControlBaseCommandProxyResponse | null> 
       requested_duration_ms: 0,
       clamped_duration_ms: 0,
       confirm_hil_checklist: false,
+      ...baseCommandMinimalPrecheckFallback(false),
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: "stop_allowed_without_checklist",
       checklist_missing: [],
@@ -14511,6 +14543,7 @@ onBeforeUnmount(() => {
           data-testid="plain-map-panel"
           data-wysiwyg-surface="primary-map"
           data-default-size="large"
+          data-default-map-zoom-percent="150%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -14688,9 +14721,10 @@ onBeforeUnmount(() => {
             class="panel-note plain-map-ros2-tool-note"
             data-testid="plain-map-ros2-tool-note"
             data-ros2-companion-tool="rviz2"
+            data-ros2-remote-companion-tool="foxglove"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            专业调试：ROS2 配套用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；普通操作仍在本页完成。
+            专业调试：ROS2 配套用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
           </p>
         </article>
 
@@ -16295,7 +16329,7 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note">{{ manualMotionSummary.hint }}</p>
           <p v-if="operatorMaterialMissingFields.length" class="panel-note">
-            材料未满足，本机不会发送点动。缺项：{{ operatorMaterialMissingFields.join("、") }}
+            材料未满足但不阻塞低速点动；缺项只影响验收收口：{{ operatorMaterialMissingFields.join("、") }}
           </p>
           <p class="panel-note">非 stop 方向只要求默认地址、一个安全确认、当前无 pending；stop 可在安全确认缺失时单独发送。</p>
           <button class="secondary" type="button" :disabled="manualCommandPending || loading || !robotApiBaseUrl.trim()" @click="sendPlainFirstJog">
@@ -16343,6 +16377,13 @@ onBeforeUnmount(() => {
             <dd>
               {{ manualCommandResult?.operator_report_preflight?.status ?? "not_loaded" }} /
               {{ manualCommandResult?.operator_report_preflight?.failure_reason || "none" }}
+            </dd>
+            <dt>manual minimal precheck</dt>
+            <dd>
+              safety_only={{ manualCommandMinimalPrecheckView?.minimal_precheck_safety_only ?? "not_loaded" }},
+              safety_confirmed={{ manualCommandMinimalPrecheckView?.safety_confirmation_received ?? "not_loaded" }},
+              operator_report_required={{ manualCommandMinimalPrecheckView?.operator_report_preflight_required ?? "not_loaded" }},
+              camera_or_radar_required={{ manualCommandMinimalPrecheckView?.camera_or_radar_required_for_motion ?? "not_loaded" }}
             </dd>
             <dt>operator report preflight missing</dt>
             <dd>{{ listText(manualCommandResult?.operator_report_preflight?.missing_fields, "none") }}</dd>

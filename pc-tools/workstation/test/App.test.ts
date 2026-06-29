@@ -4913,8 +4913,9 @@ describe("App", () => {
     expect(mapPanel.attributes("data-state")).toBe("地图可见");
     expect(mapPanel.attributes("data-size")).toBe("large");
     expect(mapPanel.attributes("data-default-size")).toBe("large");
-    expect(mapPanel.attributes("data-map-zoom-scale")).toBe("1.25");
-    expect(mapPanel.attributes("data-map-zoom-percent")).toBe("125%");
+    expect(mapPanel.attributes("data-default-map-zoom-percent")).toBe("150%");
+    expect(mapPanel.attributes("data-map-zoom-scale")).toBe("1.5");
+    expect(mapPanel.attributes("data-map-zoom-percent")).toBe("150%");
     expect(mapPanel.attributes("data-map-zoom-affects")).toBe("image-route-robot-radar");
     expect(mapPanel.attributes("data-fullscreen")).toBe("false");
     expect(mapPanel.attributes("data-observer-mode")).toBe("false");
@@ -4936,19 +4937,19 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-wysiwyg-surface")).toBe("primary-map");
     const mapZoomControls = wrapper.find('[data-testid="plain-map-zoom-controls"]');
     expect(mapZoomControls.exists()).toBe(true);
-    expect(mapZoomControls.attributes("data-map-zoom-scale")).toBe("1.25");
-    expect(mapZoomControls.attributes("data-map-zoom-percent")).toBe("125%");
+    expect(mapZoomControls.attributes("data-map-zoom-scale")).toBe("1.5");
+    expect(mapZoomControls.attributes("data-map-zoom-percent")).toBe("150%");
     expect(mapZoomControls.attributes("data-map-zoom-affects")).toBe("image-route-robot-radar");
-    expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("125%");
+    expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("150%");
     expect(wrapper.find('[data-testid="plain-map-zoom-out"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-map-zoom-in"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-map-zoom-reset"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find(".plain-map-overlay-frame").attributes("data-map-zoom-scale")).toBe("1.25");
+    expect(wrapper.find(".plain-map-overlay-frame").attributes("data-map-zoom-scale")).toBe("1.5");
     expect(wrapper.find(".plain-map-overlay-frame").attributes("data-map-zoom-affects")).toBe("image-route-robot-radar");
     await wrapper.find('[data-testid="plain-map-zoom-in"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-scale")).toBe("1.5");
-    expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("150%");
+    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-scale")).toBe("2");
+    expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("200%");
     await wrapper.find('[data-testid="plain-map-zoom-reset"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-scale")).toBe("1");
@@ -4958,8 +4959,10 @@ describe("App", () => {
     const mapRos2ToolNote = wrapper.find('[data-testid="plain-map-ros2-tool-note"]');
     expect(mapRos2ToolNote.exists()).toBe(true);
     expect(mapRos2ToolNote.attributes("data-ros2-companion-tool")).toBe("rviz2");
+    expect(mapRos2ToolNote.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
     expect(mapRos2ToolNote.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapRos2ToolNote.text()).toContain("RViz2");
+    expect(mapRos2ToolNote.text()).toContain("Foxglove");
     expect(mapRos2ToolNote.text()).toContain("地图");
     expect(mapRos2ToolNote.text()).toContain("规划轨迹");
     expect(mapRos2ToolNote.text()).not.toContain("Nav2");
@@ -5000,8 +5003,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
     expect(workstationStyles).toContain("grid-column: 1 / -1;");
-    expect(workstationStyles).toContain("height: clamp(760px, calc(100vh - 180px), 1280px);");
-    expect(workstationStyles).toContain("height: calc(100vh - 120px);");
+    expect(workstationStyles).toContain("height: clamp(840px, calc(100vh - 132px), 1400px);");
+    expect(workstationStyles).toContain("height: calc(100vh - 96px);");
     expect(workstationStyles).toContain(".plain-map-zoom-controls");
     expect(workstationStyles).toContain("width: calc(100% * var(--plain-map-zoom, 1));");
     expect(workstationStyles).toContain("height: calc(100% * var(--plain-map-zoom, 1));");
@@ -13561,6 +13564,8 @@ describe("App", () => {
 
     const diagnostics = wrapper.find(".robot-console .advanced-details");
     expect(diagnostics.text()).toContain("材料未满足");
+    expect(diagnostics.text()).toContain("材料未满足但不阻塞低速点动");
+    expect(diagnostics.text()).not.toContain("材料未满足，本机不会发送点动");
     expect(diagnostics.text()).toContain("external_video_recorded");
     expect(diagnostics.text()).toContain("visible_content_proven");
     expect(diagnostics.text()).toContain("wheel_feedback_lr_nonzero_proven");
@@ -15182,6 +15187,12 @@ describe("App", () => {
         requested_duration_ms: 500,
         clamped_duration_ms: 500,
         confirm_hil_checklist: true,
+        minimal_precheck_safety_only: true,
+        safety_confirmation_field: "confirm_hil_checklist",
+        safety_confirmation_received: true,
+        operator_report_preflight_required: false,
+        camera_or_radar_required_for_motion: false,
+        minimal_precheck_plain: "最小预检已通过：只复核现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
         non_stop_requires_confirm_hil_checklist: true,
         hil_checklist_gate_status: "manual_allowed",
         checklist_missing: [],
@@ -15327,6 +15338,12 @@ describe("App", () => {
         requested_duration_ms: 500,
         clamped_duration_ms: 500,
         confirm_hil_checklist: true,
+        minimal_precheck_safety_only: true,
+        safety_confirmation_field: "confirm_hil_checklist",
+        safety_confirmation_received: true,
+        operator_report_preflight_required: false,
+        camera_or_radar_required_for_motion: false,
+        minimal_precheck_plain: "最小预检已通过：只复核现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
         non_stop_requires_confirm_hil_checklist: true,
         hil_checklist_gate_status: "manual_allowed",
         checklist_missing: [],
@@ -16940,6 +16957,12 @@ describe("App", () => {
         requested_duration_ms: 0,
         clamped_duration_ms: 0,
         confirm_hil_checklist: false,
+        minimal_precheck_safety_only: true,
+        safety_confirmation_field: "confirm_hil_checklist",
+        safety_confirmation_received: false,
+        operator_report_preflight_required: false,
+        camera_or_radar_required_for_motion: false,
+        minimal_precheck_plain: "最小预检未通过：还需要现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
         non_stop_requires_confirm_hil_checklist: true,
         hil_checklist_gate_status: "stop_allowed_without_checklist",
         checklist_missing: [],
@@ -17013,6 +17036,11 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("NavigateToPose"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-chassis-trial-summary"]').text()).toBe("底盘试动：已读到轮速 L/R 非零，L/R=0.08/0.07，运动帧=3。");
+    const advancedTextAfterManual = wrapper.find(".robot-console .advanced-details").text();
+    expect(advancedTextAfterManual).toContain("manual minimal precheck");
+    expect(advancedTextAfterManual).toContain("safety_only=true");
+    expect(advancedTextAfterManual).toContain("operator_report_required=false");
+    expect(advancedTextAfterManual).toContain("camera_or_radar_required=false");
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("待命");
