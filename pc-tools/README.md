@@ -898,3 +898,8 @@ free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `
 PC 普通首屏地图默认使用大图模式，并提供“收起地图/放大地图”切换；ROS2 工程调试仍建议用 RViz2 查看 `/map`、
 `/scan`、TF、robot pose 和 Nav2 path。该变化只补只读 summary/UI 证据和前端显示尺寸，不刷新地图、不启动雷达、
 不执行 Nav2 或任何运动命令。
+
+2026-06-30 10:55 CST 起，上车 bringup 包新增只读 RViz2 配套：
+`ros2 launch ros2_trashbot_bringup rviz.launch.py` 会加载 `rviz/trashbot_nav.rviz`，默认显示 `/map`、`/scan`、
+TF、`/plan` 和 `/amcl_pose`。该配置不包含 2D Goal/SetGoal 工具，避免绕过 PC 工作站的安全确认链路；真实
+Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场安全确认和同窗口 wheel raw L/R 非零复验。

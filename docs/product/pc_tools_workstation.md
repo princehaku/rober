@@ -64,6 +64,9 @@ pc-tools/workstation/
   `action_status_cards.radar_map_points.status`。因此画面文案可继续优化为“已经看到画面”等自然说法，快捷入口仍会按结构化
   WYSIWYG 事实聚焦真正缺的画面或雷达点。该入口只 scroll/focus，不自动打开画面、不启动雷达、不执行 Nav2、不调用
   manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-30 10:55 CST 起，上车 bringup 包提供 `ros2 launch ros2_trashbot_bringup rviz.launch.py` 作为 ROS2 工程观察视图。
+  RViz 默认显示 `/map`、`/scan`、TF、`/plan` 和 `/amcl_pose`，用于排查地图太小、雷达点、路线和定位；配置不包含
+  2D Goal/SetGoal 工具，真实发车仍必须回到 PC 普通首屏的安全确认和固定 Nav2 执行代理。PC 普通首屏的大图模式继续作为普通用户主入口。
 
 后端分层约束：
 - `index.ts` 只挂载本地 PC API 和构建后的静态 UI，不挂载 ROS2、串口、控制或云端生产客户端。

@@ -19,6 +19,17 @@ bash onboard/scripts/run_smoke_tests.sh
 bash onboard/scripts/docker_humble_dev.sh
 ```
 
+## RViz2 调试视图
+
+工程调试地图、雷达、TF、小车位置和 Nav2 路线时，可在已 source 上车工作区后启动只读观察视图：
+
+```bash
+ros2 launch ros2_trashbot_bringup rviz.launch.py
+```
+
+默认配置安装在 `ros2_trashbot_bringup/rviz/trashbot_nav.rviz`，显示 `/map`、`/scan`、TF、`/plan` 和 `/amcl_pose`。
+该 RViz 配置不包含 2D Goal 工具；真实发车仍必须走 PC 工作站安全确认后的固定执行入口。
+
 Compose 需在 `onboard/` 下执行，使挂载上下文为上车目录：
 
 ```bash

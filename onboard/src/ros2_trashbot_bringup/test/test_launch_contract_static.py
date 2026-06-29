@@ -5,6 +5,7 @@ import unittest
 
 BRINGUP_ROOT = Path(__file__).resolve().parents[1]
 LAUNCH_ROOT = BRINGUP_ROOT / "launch"
+RVIZ_ROOT = BRINGUP_ROOT / "rviz"
 
 
 def read_launch(name):
@@ -216,6 +217,22 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertNotIn("trash_detector", source)
                 self.assertNotIn("vision_detection_confidence", source)
                 self.assertNotIn("save_detection_samples", source)
+
+    def test_rviz_launch_is_read_only_observation_view(self):
+        # RViz 入口只帮助现场看 /map、/scan、TF、路线和定位；目标下发仍必须走 PC 安全确认链路。
+        launch_source = read_launch("rviz.launch.py")
+        ast.parse(launch_source)
+        rviz_source = (RVIZ_ROOT / "trashbot_nav.rviz").read_text(encoding="utf-8")
+        cmake_source = (BRINGUP_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+
+        self.assertIn("package=\"rviz2\"", launch_source)
+        self.assertIn("trashbot_nav.rviz", launch_source)
+        self.assertIn("install(DIRECTORY launch rviz", cmake_source)
+        for token in ("Fixed Frame: map", "Value: /map", "Value: /scan", "Value: /plan", "Value: /amcl_pose"):
+            self.assertIn(token, rviz_source)
+        self.assertNotIn("SetInitialPose", rviz_source)
+        self.assertNotIn("SetGoal", rviz_source)
+        self.assertNotIn("Nav Goal", rviz_source)
 
     def test_field_camera_default_uses_verified_capture_device(self):
         # 实板上 /dev/video0 是 Cedrus decoder；默认指向 /dev/video1，避免相机启用后误绑非采集节点。
