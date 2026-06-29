@@ -12120,7 +12120,12 @@ describe("workstation fail-closed API contracts", () => {
     expect(missing.blocked_reasons).toContain("baseUrl_not_provided");
     expect(missing.current_fact_plain).toBe("当前事实未读到；先填写或确认小车地址。");
     expect(missing.goal_summary).toEqual(missing.goal_checklist_summary);
+    expect(missing.camera_summary).toEqual(missing.readback_summary.camera);
+    expect(missing.map_summary).toEqual(missing.readback_summary.map);
+    expect(missing.radar_summary).toEqual(missing.readback_summary.radar);
     expect(missing.nav2_summary).toEqual(missing.readback_summary.nav2);
+    expect(missing.keyboard_summary).toEqual(missing.readback_summary.keyboard);
+    expect(missing.free_roam_summary).toEqual(missing.readback_summary.free_roam);
     expect(missing.nav2_summary?.next_action_plain).toContain("先准备图上路线");
     expect(missing.goal_summary?.progress_plain).toBe("0/0");
     expect(missing.goal_summary?.ready_action_ids).toEqual([]);
@@ -12131,7 +12136,12 @@ describe("workstation fail-closed API contracts", () => {
     expect(unsafeUrl.blocked_reasons).toContain("baseUrl_protocol_not_allowed");
     expect(unsafeUrl.current_fact_plain).toContain("当前事实未读到");
     expect(unsafeUrl.goal_summary).toEqual(unsafeUrl.goal_checklist_summary);
+    expect(unsafeUrl.camera_summary).toEqual(unsafeUrl.readback_summary.camera);
+    expect(unsafeUrl.map_summary).toEqual(unsafeUrl.readback_summary.map);
+    expect(unsafeUrl.radar_summary).toEqual(unsafeUrl.readback_summary.radar);
     expect(unsafeUrl.nav2_summary).toEqual(unsafeUrl.readback_summary.nav2);
+    expect(unsafeUrl.keyboard_summary).toEqual(unsafeUrl.readback_summary.keyboard);
+    expect(unsafeUrl.free_roam_summary).toEqual(unsafeUrl.readback_summary.free_roam);
     expect(unsafeUrl.goal_summary?.progress_plain).toBe("0/0");
 
     const robotApi = await listenRobotApiReadback({

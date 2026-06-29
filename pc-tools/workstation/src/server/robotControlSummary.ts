@@ -5517,7 +5517,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     goal_execution_generated_at_ms: "not_loaded",
     goal_execution_response_generated_at_ms: "not_loaded",
   };
-  return {
+  const payload: RobotControlSummaryResponse = {
     schema: ROBOT_CONTROL_SCHEMA,
     console_status: "blocked",
     source_base_url: sourceBaseUrl,
@@ -5789,6 +5789,13 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     not_proven: ["robot_api_readback", "O7", "path_generated", "delivery_success"],
     ...PROOF_FLAGS,
   };
+  payload.camera_summary = payload.readback_summary.camera;
+  payload.map_summary = payload.readback_summary.map;
+  payload.radar_summary = payload.readback_summary.radar;
+  payload.nav2_summary = payload.readback_summary.nav2;
+  payload.keyboard_summary = payload.readback_summary.keyboard;
+  payload.free_roam_summary = payload.readback_summary.free_roam;
+  return payload;
 }
 
 function freeRoamRuntimeGatesFromReadbacks(
