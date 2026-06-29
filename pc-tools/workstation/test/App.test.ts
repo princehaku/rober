@@ -5369,7 +5369,7 @@ describe("App", () => {
     expect(readiness.attributes("data-state")).toBe("已就绪");
     expect(readiness.text()).not.toContain("还差：地图记录未启动");
 
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -5546,7 +5546,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -5717,7 +5717,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -5792,17 +5792,25 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：画面和雷达已就绪；可启动扫图记录，地图记录和地图画面再用于验收；建图验收：画面和雷达都就绪；下一步启动扫图记录，启动后本轮可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：画面和雷达已就绪；可启动扫图记录");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面和雷达已就绪；下一步启动扫图记录，启动后本轮可按建图记录监看。");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始扫图记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始自动扫图（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始扫图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
 
+    const callsBeforePrimaryClick = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST")).toBe(true);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    const primaryCalls = mockedFetch.mock.calls.slice(callsBeforePrimaryClick);
+    const mapStartIndex = primaryCalls.findIndex(([url, options]) => String(url).startsWith("/api/robot-control/map/start?") && options?.method === "POST");
+    const autonomyStartIndex = primaryCalls.findIndex(([url, options]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?") && options?.method === "POST");
+    expect(mapStartIndex).toBeGreaterThanOrEqual(0);
+    expect(autonomyStartIndex).toBeGreaterThan(mapStartIndex);
+    expect(JSON.parse(String((primaryCalls[autonomyStartIndex]?.[1] as RequestInit | undefined)?.body ?? "{}"))).toEqual({
+      confirm_operator_safety: true,
+      confirm_mapping_active: true,
+    });
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -6143,7 +6151,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -6260,7 +6268,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
@@ -6331,7 +6339,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -6425,7 +6433,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -6502,7 +6510,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -6621,7 +6629,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -6709,7 +6717,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -6820,7 +6828,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未就绪");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("上车建议：已勾安全确认，可先自由移动。 建图缺口：画面首帧。");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).not.toContain("上车建议：已勾安全确认，可先自由移动；建图验收还差");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
@@ -6838,13 +6846,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeStart);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
-
-    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
-    await flushPromises();
-    await wrapper.vm.$nextTick();
 
     const newCalls = mockedFetch.mock.calls.slice(callsBeforeStart);
     const freeMoveStartCall = newCalls.find(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"));
@@ -6885,7 +6890,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("低速自移动用“开始自由移动（低速）”");
 	    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未就绪");
 	    expect(wrapper.find('[data-testid="plain-free-roam-motion-dependency"]').text()).toBe("移动门禁：自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。");
-	    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
+	    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
@@ -6900,7 +6905,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeStart);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
@@ -6951,7 +6957,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -7026,7 +7032,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -7217,13 +7223,13 @@ describe("App", () => {
     const callsBeforeStartNext = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-start"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-map-runtime-start"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeStartNext);
     await wrapper.find('[data-testid="plain-free-roam-keyboard"]').trigger("click");
     await flushPromises();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
 
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -7554,7 +7560,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -7670,7 +7676,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerdown");
@@ -7804,7 +7810,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
     await flushPromises();
     await wrapper.vm.$nextTick();
-    await wrapper.find('[data-testid="plain-free-roam-start"]').trigger("click");
+    await wrapper.find('[data-testid="plain-map-runtime-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     await wrapper.find('[data-testid="plain-free-roam-map-refresh"]').trigger("click");
@@ -12665,7 +12671,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未就绪");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
 
     const callsBeforeStart = mockedFetch.mock.calls.length;
@@ -12674,8 +12680,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeStart);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(true);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 

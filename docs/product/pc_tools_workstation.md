@@ -4354,3 +4354,9 @@ keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 缺口仍保留在高级诊断字段，但不会在雷达贴图已经 WYSIWYG 时继续作为普通用户下一步，避免把 done 项说成还要先修雷达。
 该变化只修正只读 summary 文案，不启动雷达、不刷新地图、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、
 stop 或 `/cmd_vel`。
+
+2026-06-29 22:45 CST 起，普通首屏“自由移动 / 建图”的主按钮不再只是“开始记录（不发车）”：相机/雷达尚未满足建图验收时，
+主按钮直接走固定 `/api/robot-control/free-roam/autonomy/start` 代理启动低速自由移动状态机；相机和雷达 ready、可建图时，
+主按钮会先通过固定地图 lifecycle 代理启动地图记录，再启动自由移动/自动扫图状态机，让同一次低速移动可作为建图材料。
+地图卡里的“重新建图”仍保留纯地图记录入口，测试和键盘扫图流程通过该入口覆盖“只启动地图记录、不启动状态机”的合同。
+该变化只调整 PC 前端按钮编排和状态文案，本轮编码验证没有点击真实页面 start、没有发 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。

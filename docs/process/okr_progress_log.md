@@ -4666,6 +4666,16 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-29 22:45｜pc_free_roam_primary_start｜O3/O5 自由移动主入口纠偏
+
+本轮 micro sprint 把普通 PC 首屏“自由移动 / 建图”的主按钮从“只启动地图记录”纠偏为普通用户直觉的一键启动自由移动：
+相机/雷达未 ready 时，主按钮在安全确认后直接走固定 free-roam autonomy start 代理；相机/雷达 ready 且可建图时，
+主按钮先启动地图记录，再启动 free-roam/自动扫图状态机。地图卡“重新建图”保留纯地图记录入口，用于键盘扫图和地图 lifecycle 测试。
+这推进 Objective 3 的“车可先动、建图再验收”和 Objective 5 的普通用户易用性。
+
+本轮验证：`npm test -- --run` 通过，386 tests OK；`npm run build` 通过。本轮未点击真实发车入口，未发送
+manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+
 ### 2026-06-29 21:48｜pc_nav2_execution_runtime_readback｜O3 完整路线执行证据提升
 
 本轮 micro sprint 面向 Objective 3 的“完整 Nav2 路线执行”闭环，把 PC `/api/robot-control/summary`

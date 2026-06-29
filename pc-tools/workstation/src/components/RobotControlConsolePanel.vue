@@ -271,6 +271,7 @@ const plainRadarStartButton = ref<HTMLButtonElement | null>(null);
 const plainRadarRestartButton = ref<HTMLButtonElement | null>(null);
 const plainMapPanel = ref<HTMLElement | null>(null);
 const plainMapPreviewButton = ref<HTMLButtonElement | null>(null);
+const plainMapRuntimeStartButton = ref<HTMLButtonElement | null>(null);
 const plainLocalizationResetButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
@@ -4991,6 +4992,17 @@ const canStartPlainFreeRoamMapping = computed(() => (
   && !mapWysiwygRefreshPending.value
   && robotApiBaseUrl.value.trim().length > 0
 ));
+const canStartPlainFreeRoamPrimary = computed(() => (
+  // 首屏主按钮是“让车开始低速自由移动”；建图 ready 时会先开记录，再启动自由移动状态机。
+  plainManualSafetyConfirmed.value
+  && !navGoalExecutionPending.value
+  && !loading.value
+  && !mapLifecyclePending.value
+  && !mapWysiwygRefreshPending.value
+  && !freeRoamAutonomyPending.value
+  && canSendStop.value
+  && robotApiBaseUrl.value.trim().length > 0
+));
 const plainFreeRoamMappingQualityReady = computed(() => (
   // 这不是移动门禁；只决定自动扫图 start 能否声明“本轮可按建图验收”。
   mapRuntimeStarted.value
@@ -5216,7 +5228,9 @@ const plainFreeRoamMappingSummary = computed(() => {
   return { state: "可建图", hint: `摄像头和雷达已就绪；先启动地图记录，再按住方向键让小车低速走一圈，最后保存地图${obstacleSuffix}。` };
 });
 const plainFreeRoamMappingStartLabel = computed(() => (
-  mapLifecyclePending.value && mapLifecyclePendingAction.value === "start"
+  freeRoamAutonomyPendingAction.value === "start"
+    ? "启动中"
+    : mapLifecyclePending.value && mapLifecyclePendingAction.value === "start"
     ? "启动中"
     : navGoalExecutionPending.value
       ? "行程中"
@@ -5224,7 +5238,7 @@ const plainFreeRoamMappingStartLabel = computed(() => (
       ? "等待地图刷新"
       : !plainManualSafetyConfirmed.value
         ? "先勾安全确认"
-        : mapRuntimeStarted.value ? "重新启动扫图记录" : plainFreeRoamRecordStartButtonText.value
+        : plainFreeRoamMotionStartButtonText.value
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
@@ -5288,6 +5302,26 @@ const plainFreeRoamNextActionLabel = computed(() => {
   if (mapSavedThisSession.value && plainFreeRoamSavedMapPreviewRefreshFailed.value) {
     return "下一步：重新刷新扫图画面";
   }
+  if (freeRoamAutonomyStopQueuedAfterStart.value) {
+    return "下一步：等待启动返回后自动停止";
+  }
+  if (freeRoamAutonomyPendingAction.value === "start") {
+    return `下一步：等待${plainFreeRoamMotionModeName.value}启动`;
+  }
+  if (freeRoamAutonomyPendingAction.value === "stop") {
+    return `下一步：等待${plainFreeRoamMotionModeName.value}停止`;
+  }
+  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
+    return freeRoamAutonomyResult.value.action === "stop"
+      ? "下一步：点红色停止"
+      : `下一步：人工扫图或重试${plainFreeRoamMotionModeName.value}`;
+  }
+  if (freeRoamAutonomyStartedThisSession.value) {
+    return `下一步：监看或停止${plainFreeRoamMotionModeName.value}`;
+  }
+  if (freeRoamAutonomyStoppedThisSession.value) {
+    return plainFreeRoamMapPreviewFreshForSession.value ? "下一步：保存地图" : "下一步：刷新扫图画面";
+  }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     if (mapWysiwygRefreshPending.value) {
       return "下一步：等待地图刷新";
@@ -5310,26 +5344,6 @@ const plainFreeRoamNextActionLabel = computed(() => {
       }
     }
     return canStartPlainFreeRoamMapping.value ? `下一步：${plainFreeRoamRecordStartButtonText.value}` : "下一步：等待连接";
-  }
-  if (freeRoamAutonomyStopQueuedAfterStart.value) {
-    return "下一步：等待启动返回后自动停止";
-  }
-  if (freeRoamAutonomyPendingAction.value === "start") {
-    return `下一步：等待${plainFreeRoamMotionModeName.value}启动`;
-  }
-  if (freeRoamAutonomyPendingAction.value === "stop") {
-    return `下一步：等待${plainFreeRoamMotionModeName.value}停止`;
-  }
-  if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_failed") {
-    return freeRoamAutonomyResult.value.action === "stop"
-      ? "下一步：点红色停止"
-      : `下一步：人工扫图或重试${plainFreeRoamMotionModeName.value}`;
-  }
-  if (freeRoamAutonomyStartedThisSession.value) {
-    return `下一步：监看或停止${plainFreeRoamMotionModeName.value}`;
-  }
-  if (freeRoamAutonomyStoppedThisSession.value) {
-    return plainFreeRoamMapPreviewFreshForSession.value ? "下一步：保存地图" : "下一步：刷新扫图画面";
   }
   if (mapRuntimeStarted.value && mapPreviewFailureText(mapPreviewResult.value) && !keyboardHeldDirection.value) {
     return "下一步：重新刷新扫图画面";
@@ -11655,7 +11669,7 @@ function plainFreeRoamNextTarget(): HTMLElement | null {
     if (!plainRadarReadyForFreeRoamMapping.value) {
       return plainRadarNextTarget();
     }
-    return enabledButton(plainFreeRoamStartButton.value) ?? plainFreeRoamStartButton.value;
+    return enabledButton(plainMapRuntimeStartButton.value) ?? plainMapRuntimeStartButton.value;
   }
   if (freeRoamAutonomyPendingAction.value) {
     return plainFreeRoamAutoStopButton.value
@@ -11709,7 +11723,7 @@ function plainFreeRoamAutonomyNextTarget(): HTMLElement | null {
       ?? plainFreeRoamKeyboardButton.value;
   }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
-    return enabledButton(plainFreeRoamStartButton.value) ?? plainFreeRoamStartButton.value;
+    return enabledButton(plainMapRuntimeStartButton.value) ?? plainMapRuntimeStartButton.value;
   }
   if (freeRoamMapWysiwygPending.value || !plainFreeRoamMapPreviewFreshForSession.value) {
     return enabledButton(plainFreeRoamMapRefreshButton.value) ?? plainFreeRoamMapRefreshButton.value;
@@ -12067,6 +12081,30 @@ async function startMapRuntime(): Promise<void> {
     // 启动建图后只打开键盘窗口，不发送方向脉冲；真正移动仍要 operator 按住方向键。
     activateKeyboardControl();
   }
+}
+
+async function startPlainFreeRoamPrimary(): Promise<void> {
+  // 自由移动主按钮优先启动状态机；传感器齐备时先打开地图记录，让同一次低速移动可作为建图材料。
+  if (!canStartPlainFreeRoamPrimary.value) {
+    await focusPlainFreeRoamAutonomyNextTarget();
+    return;
+  }
+  const shouldRecordMap = plainFreeRoamMotionModeName.value === "自动扫图" && !mapRuntimeStarted.value && !mapSavedThisSession.value;
+  if (shouldRecordMap) {
+    await startMapRuntime();
+    if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+      await focusPlainFreeRoamAutonomyNextTarget();
+      return;
+    }
+    if (canRefreshPlainFreeRoamMapPreview.value) {
+      await refreshMapPreview({ countForFreeRoamSession: true, radarStatusRefresh: true });
+    }
+  }
+  if (canStartFreeRoamAutonomy.value) {
+    await startFreeRoamAutonomy();
+    return;
+  }
+  await focusPlainFreeRoamAutonomyNextTarget();
 }
 
 async function saveMap(options: { refreshRouteAfterSave?: boolean } = {}): Promise<void> {
@@ -13649,7 +13687,7 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
               地图列表
             </button>
-            <button type="button" :disabled="!canStartMapLifecycle" @click="startMapRuntime">
+            <button ref="plainMapRuntimeStartButton" type="button" :disabled="!canStartMapLifecycle" data-testid="plain-map-runtime-start" @click="startMapRuntime">
               重新建图
             </button>
             <button type="button" :disabled="!canSaveMapLifecycle" @click="saveMap">
@@ -13673,7 +13711,7 @@ onBeforeUnmount(() => {
             <span>人在旁边、周围安全、可以随时按停止（勾一次，全页面生效）</span>
           </label>
           <div class="panel-action-row wrap-actions">
-            <button ref="plainFreeRoamStartButton" type="button" :disabled="!canStartPlainFreeRoamMapping" data-testid="plain-free-roam-start" @click="startMapRuntime">
+            <button ref="plainFreeRoamStartButton" type="button" :disabled="!canStartPlainFreeRoamPrimary" data-testid="plain-free-roam-start" @click="startPlainFreeRoamPrimary">
               {{ plainFreeRoamMappingStartLabel }}
             </button>
             <button ref="plainFreeRoamKeyboardButton" type="button" class="secondary compact-stop" :disabled="!canArmPlainFreeRoamKeyboard" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
