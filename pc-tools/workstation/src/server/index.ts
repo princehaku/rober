@@ -1671,6 +1671,7 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
     decision_state: shortValue(decision?.state ?? latest?.decision_state),
     decision_reason: shortValue(decision?.reason ?? latest?.decision_reason),
     stop_required: shortValue(decision?.stop_required ?? latest?.stop_required),
+    operator_confirmed: gateStateById.get("operator_confirmed") === "ready" ? "true" : gateStateById.has("operator_confirmed") ? "false" : "not_loaded",
     artifact_only: shortValue(latest?.artifact_only),
     cmd_vel_publish_enabled: shortValue(latest?.cmd_vel_publish_enabled),
     free_roam_motion_start_ready: shortValue(latest?.free_roam_motion_start_ready ?? payload?.free_roam_motion_start_ready, "false"),
@@ -1813,6 +1814,12 @@ function freeRoamLatestReadinessFromKeyValues(
   | "runtime_status"
   | "decision_state"
   | "decision_reason"
+  | "stop_request_pending"
+  | "free_roam_stop_request_pending"
+  | "start_will_clear_stop_request"
+  | "motion_start_blocked_by_stop_request"
+  | "stop_request_status_plain"
+  | "safety_confirmed"
   | "plain_hint"
   | "next_action_plain"
   | "free_move_ready"
@@ -1824,13 +1831,16 @@ function freeRoamLatestReadinessFromKeyValues(
   | "motion_without_radar_allowed"
   | "free_move_without_camera_allowed"
   | "free_roam_mapping_start_ready"
+  | "mapping_start_ready"
   | "free_roam_mapping_start_missing_reasons"
+  | "mapping_start_missing_reasons"
   | "free_roam_mapping_start_plain"
   | "free_roam_mapping_start_next_action"
   | "free_roam_mapping_ready"
   | "free_roam_mapping_missing_reasons"
   | "mapping_ready"
   | "mapping_missing_reasons"
+  | "missing_capabilities"
   | "mapping_readiness_ready"
   | "mapping_blocked_reasons"
   | "motion_readiness_plain"
@@ -1856,15 +1866,25 @@ function freeRoamLatestReadinessFromKeyValues(
     .filter((item) => item && item !== "none" && item !== "not_loaded");
   const mappingReady = startReady && (latestKeyValues.mapping_ready === "true" || mappingMissing.length === 0);
   const mappingStartReady = startReady && (latestKeyValues.mapping_start_ready === "true" || latestKeyValues.free_roam_mapping_start_ready === "true" || mappingStartMissing.length === 0);
-  const externalStopRequested = decisionState === "stopping" && /现场请求停止|external_stop/i.test(decisionReason);
+  const externalStopRequested = latestKeyValues.stop_required === "true" || (decisionState === "stopping" && /现场请求停止|external_stop/i.test(decisionReason));
+  const safetyConfirmed = latestKeyValues.operator_confirmed === "true";
   const startStatusPlain = freeRoamLatestStartStatusPlain(startReady, motionReady, externalStopRequested);
   const mappingAcceptancePlain = freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingReady, mappingMissing);
   const motionNextActionPlain = freeRoamLatestMotionNextAction(startReady, motionReady, externalStopRequested);
   const mappingNextActionPlain = freeRoamLatestMappingNextAction(startReady, mappingReady, mappingMissing);
+  const stopRequestStatusPlain = externalStopRequested
+    ? "当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。"
+    : "当前没有停止请求。";
   return {
     runtime_status: runtimeStatus,
     decision_state: decisionState,
     decision_reason: decisionReason,
+    stop_request_pending: externalStopRequested,
+    free_roam_stop_request_pending: externalStopRequested,
+    start_will_clear_stop_request: startReady && externalStopRequested,
+    motion_start_blocked_by_stop_request: false,
+    stop_request_status_plain: stopRequestStatusPlain,
+    safety_confirmed: safetyConfirmed,
     // 顶层白话给现场脚本直接消费；细分字段仍保留给页面分区展示。
     plain_hint: joinChinesePlainParts(startStatusPlain, mappingAcceptancePlain),
     next_action_plain: joinChinesePlainParts(motionNextActionPlain, mappingNextActionPlain),
@@ -1877,13 +1897,16 @@ function freeRoamLatestReadinessFromKeyValues(
     motion_without_radar_allowed: latestKeyValues.motion_without_radar_allowed === "true" || startReady,
     free_move_without_camera_allowed: latestKeyValues.free_move_without_camera_allowed === "true" || startReady,
     free_roam_mapping_start_ready: mappingStartReady,
+    mapping_start_ready: mappingStartReady,
     free_roam_mapping_start_missing_reasons: mappingStartMissing,
+    mapping_start_missing_reasons: mappingStartMissing,
     free_roam_mapping_start_plain: latestKeyValues.free_roam_mapping_start_plain || freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingStartReady, mappingStartMissing),
     free_roam_mapping_start_next_action: latestKeyValues.free_roam_mapping_start_next_action || freeRoamLatestMappingNextAction(startReady, mappingStartReady, mappingStartMissing),
     free_roam_mapping_ready: mappingReady,
     free_roam_mapping_missing_reasons: mappingMissing,
     mapping_ready: mappingReady,
     mapping_missing_reasons: mappingMissing,
+    missing_capabilities: mappingMissing,
     mapping_readiness_ready: mappingReady,
     mapping_blocked_reasons: mappingMissing,
     motion_readiness_plain: freeRoamLatestMotionReadinessPlain(startReady, motionReady, externalStopRequested),
@@ -3817,6 +3840,12 @@ export function createWorkstationApp(): express.Express {
       runtime_status: "not_loaded",
       decision_state: "not_loaded",
       decision_reason: normalized.ok ? "not_loaded" : normalized.reason,
+      stop_request_pending: false,
+      free_roam_stop_request_pending: false,
+      start_will_clear_stop_request: false,
+      motion_start_blocked_by_stop_request: false,
+      stop_request_status_plain: "停止请求状态未读到；先恢复上车连接。",
+      safety_confirmed: false,
       free_move_ready: false,
       free_move_start_ready: false,
       free_roam_motion_start_ready: false,
@@ -3826,13 +3855,16 @@ export function createWorkstationApp(): express.Express {
       motion_without_radar_allowed: false,
       free_move_without_camera_allowed: false,
       free_roam_mapping_start_ready: false,
+      mapping_start_ready: false,
       free_roam_mapping_start_missing_reasons: ["not_checked"],
+      mapping_start_missing_reasons: ["not_checked"],
       free_roam_mapping_start_plain: "建图启动未就绪；还在等待上车自由移动状态机。",
       free_roam_mapping_start_next_action: "先连接上车自由移动状态机，并继续读取相机和雷达。",
       free_roam_mapping_ready: false,
       free_roam_mapping_missing_reasons: ["not_checked"],
       mapping_ready: false,
       mapping_missing_reasons: ["not_checked"],
+      missing_capabilities: ["not_checked"],
       mapping_readiness_ready: false,
       mapping_blocked_reasons: ["not_checked"],
       motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",

@@ -829,6 +829,13 @@ planner/controller inactive 仍保留“恢复规划/控制服务”的文案。
 刷新扫图画面后才按图片验收。该变更只执行 GET latest，不启动/停止 free-roam、不发送 manual/Nav2/delivery/stop
 或 `/cmd_vel`。
 
+2026-06-29 20:07 起，PC free-roam latest 代理补齐 summary 同口径的结构化字段：
+`stop_request_pending`、`start_will_clear_stop_request`、`motion_start_blocked_by_stop_request=false`、
+`safety_confirmed`、`mapping_start_ready`、`mapping_start_missing_reasons` 和 `missing_capabilities`。
+现场脚本读取 `/api/robot-control/free-roam/autonomy/latest` 时，即使 runtime 当前处于 `stopping/stop_required=true`，
+也能明确看到“停止请求会由开始动作先清除，不是自由移动启动阻塞”；相机/雷达缺口继续只影响建图启动或验收。
+该变更仍是只读 GET，不启动/停止 free-roam、不发送 manual/Nav2/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 03:20 起，`/api/robot-control/map/preview` 随图返回的 `radar_overlay` 也执行实时性门禁：
 overlay 同轮读取 `/api/free-roam/autonomy/latest`、`/api/radar/status` 和 `/api/radar/scan-proof/latest`。
 如果旧 scan proof 有点，但 free-roam runtime `/scan` 已 stale 或 radar lifecycle 是 stopped，overlay 返回
