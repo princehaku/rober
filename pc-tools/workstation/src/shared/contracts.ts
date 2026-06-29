@@ -2262,6 +2262,15 @@ export interface RobotControlNavGoalExecutionLatestResponse extends ProofFlags {
   status: "blocked" | "loaded_fail_closed_summary";
   goal_execution_key_values: Record<string, string>;
   latest_key_values: Record<string, string>;
+  goal_execution_status: string;
+  result_status: string;
+  nav2_goal_execution_proven: string;
+  execution_proof_gap: string;
+  goal_execution_hil_pass: string;
+  goal_execution_robot_control_executed: string;
+  goal_execution_feedback_sample_count: string;
+  goal_execution_base_feedback_sample_count: string;
+  goal_execution_base_feedback_nonzero_sample_count: string;
   plain_hint: string;
   execution_status_plain: string;
   next_action_plain: string;
@@ -2495,6 +2504,9 @@ export interface RobotControlKeyboardReadbackSummary {
   manual_proxy_endpoint: string;
   stop_proxy_endpoint: string;
   start_ready: string;
+  continuous_control_ready: string;
+  keyboard_control_start_ready: string;
+  hold_to_move_required: string;
   enabled: string;
   plain_hint: string;
   readiness_plain: string;

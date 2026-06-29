@@ -218,6 +218,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   顶层也增加 `keyboard_control_summary` 和 `keyboard_teleop_summary`。外部脚本无论按 keyboard、keyboard_control 还是 teleop 命名读取，
   都能拿到同一份连续手控只读事实：可启用、必须按住才动、松开/失焦/切页/换方向/点停止都会停。
   该变化只补字段别名，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
+- 2026-06-29 20:18 起，键盘 readback 继续补齐脚本友好的 `continuous_control_ready=true`、
+  `keyboard_control_start_ready=true` 和 `hold_to_move_required=true`。这三个字段只说明“勾安全确认后可启用，
+  且必须按住才连续低速移动”，不代表键盘已经启用，也不发送 manual pulse、stop 或 `/cmd_vel`。
 - 2026-06-29 20:00 起，`/api/robot-control/map/preview` 顶层 `next_action_plain` 明确等于 `path_preview_next_action_plain`：
   图上路线和小车位置已显示时，顶层下一步提示勾安全确认执行路线；雷达贴图缺口只保留在
   `radar_overlay_next_action_plain` / `radar_overlay_wysiwyg_next_action_plain`。这样外部脚本只读顶层下一步时，不会把“先启动雷达”误解成 Nav2 发车前置。
@@ -847,6 +850,13 @@ overlay 同轮读取 `/api/free-roam/autonomy/latest`、`/api/radar/status` 和 
 `/api/robot-control/nav2/goal/execution/latest` 即使读到 `goal_succeeded`，只要同窗口 wheel L/R 非零未证明，
 `goal_execution_key_values.nav2_goal_execution_proven=false` 并新增 `execution_proof_gap=wheel_lr_nonzero_not_proven`。
 普通地图目标 marker 从“已到达”降级为“到达未证明”，行程卡显示“路线返回成功，真车未证明”，总进度提示重新执行完整行程并确认执行窗口轮速 L/R 非零。
+该变更只读取和翻译历史/latest 证据，不执行 Nav2 goal、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 20:18 起，PC 直连 `GET /api/robot-control/nav2/goal/execution/latest` 也把同一组关键执行事实提升到顶层：
+`goal_execution_status`、`result_status`、`nav2_goal_execution_proven`、`execution_proof_gap`、
+`goal_execution_robot_control_executed`、`goal_execution_feedback_sample_count` 和
+`goal_execution_base_feedback_sample_count`。外部脚本不再需要只读 `goal_execution_key_values` 才能判断
+“路线 action 成功但 wheel raw L/R 未证明”；顶层 `robot_control_executed` 仍固定表示 PC latest 本次只读请求没有发车。
 该变更只读取和翻译历史/latest 证据，不执行 Nav2 goal、不发送 manual/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 04:40 起，自由移动、键盘手控和 Nav2 重跑共享同一个 bridge-owned UART 反馈读回口径：
