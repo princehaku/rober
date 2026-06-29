@@ -7,6 +7,7 @@ import argparse
 import importlib
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -28,6 +29,8 @@ BACKEND_SMOKE_TIMEOUT_S = 8.0
 BACKEND_INFO_TIMEOUT_S = 4.0
 BACKEND_V4L2_STREAM_TIMEOUT_S = 4.0
 BACKEND_FFMPEG_STREAM_TIMEOUT_S = 5.0
+BACKEND_DEVICE_MODE_LIMIT = 2
+BACKEND_FFMPEG_INPUT_FORMATS = {"MJPG": "mjpeg", "YUYV": "yuyv422"}
 
 
 def now_ms() -> int:
@@ -134,6 +137,7 @@ def run_info_command(name: str, command: list[str]) -> dict[str, Any]:
         "timed_out": timed_out,
         "returncode": completed.returncode,
         "elapsed_ms": int((time.monotonic() - started) * 1000),
+        "stdout_text": str(completed.stdout or ""),
         "stdout_preview": preview_text(completed.stdout),
         "stderr_preview": preview_text(completed.stderr),
     }
@@ -184,6 +188,120 @@ def run_backend_command(name: str, command: list[str], timeout_s: float = BACKEN
     }
 
 
+def parse_v4l2_format_modes(v4l2_text: str) -> list[dict[str, Any]]:
+    """从 v4l2-ctl 输出提取设备自报格式，避免只按固定 640x480 猜测。"""
+    modes: list[dict[str, Any]] = []
+    seen: set[tuple[str, int, int, float | None]] = set()
+    current_fourcc: str | None = None
+    pending_size: tuple[int, int] | None = None
+    pending_has_interval = False
+
+    def append_mode(fourcc: str, width: int, height: int, fps: float | None) -> None:
+        """去重保留格式矩阵；fps 缺失时仍可用于 v4l2 set-fmt 低负载尝试。"""
+        key = (fourcc, width, height, fps)
+        if key in seen:
+            return
+        seen.add(key)
+        modes.append({"fourcc": fourcc, "width": width, "height": height, "fps": fps})
+
+    def flush_pending_size() -> None:
+        """部分驱动不打印 interval，遇到下一段前也要保留尺寸本身。"""
+        nonlocal pending_size, pending_has_interval
+        if current_fourcc and pending_size and not pending_has_interval:
+            append_mode(current_fourcc, pending_size[0], pending_size[1], None)
+        pending_size = None
+        pending_has_interval = False
+
+    for raw_line in v4l2_text.splitlines():
+        line = raw_line.strip()
+        format_match = re.search(r"'([A-Za-z0-9]{4})'", line)
+        if format_match and ("Pixel Format" in line or line.startswith("[")):
+            flush_pending_size()
+            current_fourcc = format_match.group(1).upper()
+            continue
+
+        size_match = re.search(r"Size:\s+Discrete\s+(\d+)x(\d+)", line)
+        if size_match:
+            flush_pending_size()
+            pending_size = (int(size_match.group(1)), int(size_match.group(2)))
+            pending_has_interval = False
+            continue
+
+        interval_match = re.search(r"\(([\d.]+)\s+fps\)", line)
+        if interval_match and current_fourcc and pending_size:
+            pending_has_interval = True
+            append_mode(current_fourcc, pending_size[0], pending_size[1], float(interval_match.group(1)))
+
+    flush_pending_size()
+    return modes
+
+
+def select_backend_device_modes(
+    v4l2_text: str,
+    requested_width: int,
+    requested_height: int,
+    limit: int = BACKEND_DEVICE_MODE_LIMIT,
+) -> list[dict[str, Any]]:
+    """优先选设备支持的低分辨率 MJPG/YUYV，降低 USB 摄像头首帧压力。"""
+    requested_area = requested_width * requested_height
+    candidates: list[dict[str, Any]] = []
+    for mode in parse_v4l2_format_modes(v4l2_text):
+        fourcc = str(mode.get("fourcc", "")).upper()
+        width = int(mode.get("width") or 0)
+        height = int(mode.get("height") or 0)
+        if fourcc not in BACKEND_FFMPEG_INPUT_FORMATS or width <= 0 or height <= 0:
+            continue
+        # 固定矩阵已经覆盖请求尺寸；这里专门补更轻的设备原生尺寸。
+        if width == requested_width and height == requested_height:
+            continue
+        if width * height > requested_area:
+            continue
+        candidates.append({**mode, "fourcc": fourcc, "width": width, "height": height})
+
+    selected: list[dict[str, Any]] = []
+    selected_keys: set[tuple[str, int, int]] = set()
+    for fourcc in ("MJPG", "YUYV"):
+        same_format = [item for item in candidates if item["fourcc"] == fourcc]
+        same_format.sort(key=lambda item: (item["width"] * item["height"], -(item.get("fps") or 0.0)))
+        if same_format:
+            item = same_format[0]
+            key = (item["fourcc"], item["width"], item["height"])
+            selected.append(item)
+            selected_keys.add(key)
+
+    candidates.sort(key=lambda item: (item["width"] * item["height"], item["fourcc"], -(item.get("fps") or 0.0)))
+    for item in candidates:
+        if len(selected) >= limit:
+            break
+        key = (item["fourcc"], item["width"], item["height"])
+        if key in selected_keys:
+            continue
+        selected.append(item)
+        selected_keys.add(key)
+
+    return selected[:limit]
+
+
+def ffmpeg_command_for_mode(device: str, mode: dict[str, Any], output_path: Path) -> list[str]:
+    """生成 ffmpeg 单帧命令；参数全部来自设备枚举，不引入猜测格式。"""
+    command = [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "info",
+        "-f",
+        "v4l2",
+        "-input_format",
+        BACKEND_FFMPEG_INPUT_FORMATS[str(mode["fourcc"])],
+        "-video_size",
+        f"{mode['width']}x{mode['height']}",
+    ]
+    if mode.get("fps"):
+        command.extend(["-framerate", str(mode["fps"])])
+    command.extend(["-i", device, "-frames:v", "1", "-y", str(output_path)])
+    return command
+
+
 def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
     """用 v4l2-ctl/ffmpeg 各取一帧；只读 camera，不写 controls，不碰底盘。"""
     output_dir = Path("/tmp/rober_camera_backend_smoke")
@@ -195,6 +313,14 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
         run_info_command("v4l2_all", ["v4l2-ctl", "-d", device, "--all"]),
         run_info_command("v4l2_formats", ["v4l2-ctl", "-d", device, "--list-formats-ext"]),
     ]
+    formats_text = next(
+        (
+            str(item.get("stdout_text") or item.get("stdout_preview") or "")
+            for item in v4l2_info
+            if item.get("name") == "v4l2_formats"
+        ),
+        "",
+    )
     attempts = [
         run_backend_command(
             "v4l2_mjpg_mmap",
@@ -268,7 +394,45 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
             ],
             timeout_s=BACKEND_FFMPEG_STREAM_TIMEOUT_S,
         ),
+        run_backend_command(
+            "v4l2_current_mmap",
+            [
+                "v4l2-ctl",
+                "-d",
+                device,
+                "--stream-mmap=3",
+                "--stream-count=1",
+                "--stream-to",
+                str(output_dir / "v4l2_current.raw"),
+            ],
+            timeout_s=BACKEND_V4L2_STREAM_TIMEOUT_S,
+        ),
     ]
+    for mode in select_backend_device_modes(formats_text, args.width, args.height):
+        slug = f"{mode['fourcc'].lower()}_{mode['width']}x{mode['height']}"
+        attempts.append(
+            run_backend_command(
+                f"v4l2_device_{slug}_mmap",
+                [
+                    "v4l2-ctl",
+                    "-d",
+                    device,
+                    f"--set-fmt-video=width={mode['width']},height={mode['height']},pixelformat={mode['fourcc']}",
+                    "--stream-mmap=3",
+                    "--stream-count=1",
+                    "--stream-to",
+                    str(output_dir / f"v4l2_device_{slug}.raw"),
+                ],
+                timeout_s=BACKEND_V4L2_STREAM_TIMEOUT_S,
+            )
+        )
+        attempts.append(
+            run_backend_command(
+                f"ffmpeg_device_{slug}",
+                ffmpeg_command_for_mode(device, mode, output_dir / f"ffmpeg_device_{slug}.jpg"),
+                timeout_s=BACKEND_FFMPEG_STREAM_TIMEOUT_S,
+            )
+        )
     frame_observed = any(item.get("status") == "frame_observed" for item in attempts)
     primary_failure = next((item.get("failure_reason") for item in attempts if item.get("failure_reason")), None)
     no_frame_timeouts = [item for item in attempts if item.get("status") == "no_frame_timeout"]

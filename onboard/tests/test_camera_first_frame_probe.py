@@ -254,11 +254,82 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
         self.assertFalse(result["frame_observed"])
         self.assertEqual("no_kernel_frame_observed", result["overall_status"])
         self.assertEqual("v4l2_stream_timeout_no_bytes", result["failure_reason"])
-        self.assertEqual(4, result["no_frame_timeout_count"])
+        self.assertEqual(5, result["no_frame_timeout_count"])
         self.assertEqual([info, info], result["v4l2_info"])
         self.assertFalse(result["safe_to_control"])
         self.assertFalse(result["robot_control_executed"])
         self.assertFalse(result["sends_motion_commands"])
+
+    def test_parse_v4l2_format_modes_extracts_supported_low_load_modes(self) -> None:
+        """真实设备格式要能解析出低分辨率模式，供现场无首帧时降负载复测。"""
+        text = """
+            [0]: 'MJPG' (Motion-JPEG, compressed)
+                Size: Discrete 640x480
+                    Interval: Discrete 0.033s (30.000 fps)
+                Size: Discrete 480x320
+                    Interval: Discrete 0.033s (30.000 fps)
+            [1]: 'YUYV' (YUYV 4:2:2)
+                Size: Discrete 640x480
+                    Interval: Discrete 0.045s (22.000 fps)
+                Size: Discrete 320x240
+                    Interval: Discrete 0.040s (25.000 fps)
+        """
+
+        modes = probe.parse_v4l2_format_modes(text)
+        selected = probe.select_backend_device_modes(text, requested_width=640, requested_height=480)
+
+        self.assertIn({"fourcc": "MJPG", "width": 480, "height": 320, "fps": 30.0}, modes)
+        self.assertIn({"fourcc": "YUYV", "width": 320, "height": 240, "fps": 25.0}, modes)
+        self.assertEqual(
+            [
+                {"fourcc": "MJPG", "width": 480, "height": 320, "fps": 30.0},
+                {"fourcc": "YUYV", "width": 320, "height": 240, "fps": 25.0},
+            ],
+            selected,
+        )
+
+    def test_backend_smoke_adds_current_and_device_supported_modes(self) -> None:
+        """后端 smoke 应包含当前格式和设备自报低负载格式，避免只撞固定尺寸。"""
+        formats_info = {
+            "name": "v4l2_formats",
+            "ok": True,
+            "stdout_text": """
+                [0]: 'MJPG' (Motion-JPEG, compressed)
+                    Size: Discrete 640x480
+                        Interval: Discrete 0.033s (30.000 fps)
+                    Size: Discrete 480x320
+                        Interval: Discrete 0.033s (30.000 fps)
+                [1]: 'YUYV' (YUYV 4:2:2)
+                    Size: Discrete 640x480
+                        Interval: Discrete 0.045s (22.000 fps)
+                    Size: Discrete 320x240
+                        Interval: Discrete 0.040s (25.000 fps)
+            """,
+        }
+        v4l2_all_info = {"name": "v4l2_all", "ok": True, "stdout_text": ""}
+        executed_names: list[str] = []
+
+        def fake_backend(name: str, _command: list[str], timeout_s: float = 0.0) -> dict[str, object]:
+            executed_names.append(name)
+            return {
+                "name": name,
+                "status": "no_frame_timeout",
+                "failure_reason": "v4l2_stream_timeout_no_bytes",
+                "output_bytes": 0,
+                "timeout_s": timeout_s,
+            }
+
+        with mock.patch.object(probe, "run_info_command", side_effect=[v4l2_all_info, formats_info]):
+            with mock.patch.object(probe, "run_backend_command", side_effect=fake_backend):
+                result = probe.backend_smoke_probe(self.make_args())
+
+        self.assertIn("v4l2_current_mmap", executed_names)
+        self.assertIn("v4l2_device_mjpg_480x320_mmap", executed_names)
+        self.assertIn("ffmpeg_device_mjpg_480x320", executed_names)
+        self.assertIn("v4l2_device_yuyv_320x240_mmap", executed_names)
+        self.assertIn("ffmpeg_device_yuyv_320x240", executed_names)
+        self.assertEqual(len(executed_names), result["no_frame_timeout_count"])
+        self.assertFalse(result["robot_control_executed"])
 
     def test_frame_read_with_visible_sample_proves_visual_material(self) -> None:
         """读到可见帧且写出样张后，才升级为可追溯视觉材料。"""

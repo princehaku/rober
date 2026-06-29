@@ -1121,6 +1121,41 @@ PC Node 现在会在 camera health 没有显式 `source_diagnosis`、但读到�
 manual/free-roam/keyboard/delivery/stop 或 `/cmd_vel`。真实摄像头仍需检查 USB、摄像头输入、
 格式、供电或替换 known-good UVC 后复测。
 
+## 2026-06-29 18:29 backend low-load first-frame matrix
+
+当前真实上位机读回仍显示 `/dev/video1` 是 DV20 UVC capture，`/dev/video2` 是 metadata，
+且 `source_usage.status=not_in_use`，因此“看不到画面”不是 PC 页面独占，也不是多用户共享预览
+设计导致的独占占用。阻塞仍是 UVC 能枚举、能被选中，但首帧没有从驱动/设备侧出来。
+
+`onboard/scripts/camera_first_frame_probe.py` 的 `--include-backend-smoke` 现在除了固定
+`MJPG/YUYV@请求尺寸` 外，还会：
+
+- 读取 `v4l2-ctl --list-formats-ext` 的完整输出并解析设备自报格式；
+- 额外尝试一次不改格式的 `v4l2_current_mmap`，用于验证当前默认格式是否能直接吐帧；
+- 从设备支持列表中选择最多 2 个低分辨率 `MJPG/YUYV` 模式，例如现场 DV20 暴露的
+  `MJPG@480x320` 与 `YUYV@320x240`，分别用 `v4l2-ctl` 和 `ffmpeg` 取一帧。
+
+该矩阵仍然只读摄像头，不写 V4L2 controls，不执行 USB reset，不发布 `/cmd_vel`，
+也不会把 `safe_to_control` 或 `robot_control_executed` 升级为 true。它的目标是：
+如果低负载模式能读到帧，就形成更直接的可见画面恢复证据；如果仍然 0 字节或超时，
+就把故障进一步收敛到 DV20/USB/输入源/供电或摄像头本体，而不是 PC 页面或 MJPEG 多用户共享。
+
+部署到 `root@192.168.1.11:37878` 后，通过 8787 API 只读执行
+`/api/camera/first-frame/probe`，请求 `include_backend_smoke=true`。结果：
+
+- OpenCV probe：`open_ok=true`、`read_ok=false`、`status=first_frame_timeout`、
+  `failure_reason=capture_read_call_timeout`。
+- backend smoke：共 9 个尝试，包含原固定 `v4l2_mjpg_mmap`、`v4l2_yuyv_mmap`、
+  `ffmpeg_mjpg`、`ffmpeg_yuyv`，新增 `v4l2_current_mmap`、
+  `v4l2_device_mjpg_480x320_mmap`、`ffmpeg_device_mjpg_480x320`、
+  `v4l2_device_yuyv_320x240_mmap`、`ffmpeg_device_yuyv_320x240`。
+- 9 个尝试全部为 `no_frame_timeout`，`output_bytes=0`，`jpeg_soi_observed=false`。
+- 复核 `/api/camera/health`：`source_usage.status=not_in_use`、`owner_count=0`、
+  `source_diagnosis.status=uvc_no_frame_not_exclusive`。
+
+因此本轮现场结论是：共享预览入口可以多人共用，但当前 DV20 仍没有输出任何可读视频帧；
+自动驾驶/建图仍不能依赖摄像头画面，下一步应检查或更换摄像头/USB/供电/输入源。
+
 ## 2026-06-27 15:05 camera health ready 收紧
 
 本轮继续只读复核真实上位机 camera 链路：
