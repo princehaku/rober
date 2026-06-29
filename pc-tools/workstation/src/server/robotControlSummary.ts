@@ -5637,6 +5637,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     goal_execution_generated_at_ms: "not_loaded",
     goal_execution_response_generated_at_ms: "not_loaded",
   };
+  const keyboardReadback = keyboardSummaryReadback();
   const payload: RobotControlSummaryResponse = {
     schema: ROBOT_CONTROL_SCHEMA,
     console_status: "blocked",
@@ -5875,7 +5876,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         robot_pose_y: "not_loaded",
       },
       nav2: notLoadedNav2Summary,
-      keyboard: keyboardSummaryReadback(),
+      keyboard: keyboardReadback,
+      keyboard_control: keyboardReadback,
+      keyboard_teleop: keyboardReadback,
       free_roam: {
         status: "not_loaded",
         runtime_status: "not_loaded",
@@ -5932,6 +5935,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
   payload.radar_summary = payload.readback_summary.radar;
   payload.nav2_summary = payload.readback_summary.nav2;
   payload.keyboard_summary = payload.readback_summary.keyboard;
+  payload.keyboard_control_summary = payload.readback_summary.keyboard_control;
+  payload.keyboard_teleop_summary = payload.readback_summary.keyboard_teleop;
   payload.free_roam_summary = payload.readback_summary.free_roam;
   return payload;
 }
@@ -7579,6 +7584,7 @@ export async function buildRobotControlSummary(
   const nav2Summary = nav2SummaryFromReadbacks(readbacks, proofSummary);
   const lidarSummary = lidarSummaryFromReadbacks(readbacks, proofSummary);
   const mapSummary = mapSummaryFromReadbacks(readbacks, proofSummary, lidarSummary);
+  const keyboardReadback = keyboardSummaryReadback();
   const readbackSummary: RobotControlSummaryResponse["readback_summary"] = {
     camera: cameraSummaryFromReadbacks(readbacks, firstFrameProbeOverlay, mjpegRelayOverlay),
     lidar: lidarSummary,
@@ -7587,7 +7593,9 @@ export async function buildRobotControlSummary(
     map: mapSummary,
     localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
     nav2: nav2Summary,
-    keyboard: keyboardSummaryReadback(),
+    keyboard: keyboardReadback,
+    keyboard_control: keyboardReadback,
+    keyboard_teleop: keyboardReadback,
     free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime, true),
   };
   const safeCommandBoundary = lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary, true);
@@ -7632,6 +7640,8 @@ export async function buildRobotControlSummary(
     radar_summary: readbackSummary.radar,
     nav2_summary: nav2Summary,
     keyboard_summary: readbackSummary.keyboard,
+    keyboard_control_summary: readbackSummary.keyboard_control,
+    keyboard_teleop_summary: readbackSummary.keyboard_teleop,
     free_roam_summary: readbackSummary.free_roam,
     readback_summary: readbackSummary,
     operator_hil_material_summary: operatorHilMaterialSummary,

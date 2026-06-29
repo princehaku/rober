@@ -214,6 +214,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `keyboard_teleop_start_ready`、`keyboard_teleop_status` 和 `keyboard_teleop_next_action_plain` 镜像既有 `keyboard_control_*` 字段。
   外部脚本按“teleop”口径读取时，也能直接拿到“勾安全确认后启用键盘，按住才会连续低速移动，松开/失焦/切页会停”。
   该变化只补只读 summary 字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
+- 2026-06-29 19:55 起，`readback_summary.keyboard_control` 和 `readback_summary.keyboard_teleop` 镜像 `readback_summary.keyboard`，
+  顶层也增加 `keyboard_control_summary` 和 `keyboard_teleop_summary`。外部脚本无论按 keyboard、keyboard_control 还是 teleop 命名读取，
+  都能拿到同一份连续手控只读事实：可启用、必须按住才动、松开/失焦/切页/换方向/点停止都会停。
+  该变化只补字段别名，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 - 2026-06-29 20:10 起，`/api/robot-control/map/preview` 顶层增加 `robot_pose_status`：
   同轮 overlay 读到 map-frame 小车位置时返回 `map_pose_observed`，没有读到时返回 `not_observed`。
   这样地图画面、路线点、小车位置和雷达贴图状态都能用顶层字段一眼判断，外部脚本不必自己解析 `robot_pose=null`。

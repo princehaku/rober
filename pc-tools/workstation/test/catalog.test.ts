@@ -4127,6 +4127,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.radar_summary).toEqual(summary.readback_summary.radar);
       expect(summary.nav2_summary).toEqual(summary.readback_summary.nav2);
       expect(summary.keyboard_summary).toEqual(summary.readback_summary.keyboard);
+      expect(summary.readback_summary.keyboard_control).toEqual(summary.readback_summary.keyboard);
+      expect(summary.readback_summary.keyboard_teleop).toEqual(summary.readback_summary.keyboard);
+      expect(summary.keyboard_control_summary).toEqual(summary.readback_summary.keyboard_control);
+      expect(summary.keyboard_teleop_summary).toEqual(summary.readback_summary.keyboard_teleop);
       expect(summary.free_roam_summary).toEqual(summary.readback_summary.free_roam);
       expect(summary.camera_summary?.preview_visible_status).toBe(summary.readback_summary.camera.preview_visible_status);
       expect(summary.map_summary?.map_wysiwyg_status_plain).toBe(summary.readback_summary.map.map_wysiwyg_status_plain);
@@ -4134,7 +4138,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.nav2_summary?.status).toBe(summary.readback_summary.nav2.status);
       expect(summary.nav2_summary?.next_action_plain).toBe(summary.readback_summary.nav2.next_action_plain);
       expect(summary.keyboard_summary?.start_ready).toBe("true");
+      expect(summary.keyboard_control_summary?.start_ready).toBe("true");
+      expect(summary.keyboard_teleop_summary?.start_ready).toBe("true");
       expect(summary.keyboard_summary?.next_action_plain).toContain("按住 W/A/S/D");
+      expect(summary.keyboard_control_summary?.next_action_plain).toContain("按住 W/A/S/D");
+      expect(summary.keyboard_teleop_summary?.next_action_plain).toContain("按住 W/A/S/D");
       expect(summary.free_roam_summary?.motion_start_ready).toBe("true");
       expect(summary.free_roam_summary?.mapping_start_ready).toBe("false");
       expect(summary.free_roam_summary?.motion_next_action_plain).toContain("现场安全确认");
@@ -12317,6 +12325,10 @@ describe("workstation fail-closed API contracts", () => {
     expect(missing.radar_summary).toEqual(missing.readback_summary.radar);
     expect(missing.nav2_summary).toEqual(missing.readback_summary.nav2);
     expect(missing.keyboard_summary).toEqual(missing.readback_summary.keyboard);
+    expect(missing.readback_summary.keyboard_control).toEqual(missing.readback_summary.keyboard);
+    expect(missing.readback_summary.keyboard_teleop).toEqual(missing.readback_summary.keyboard);
+    expect(missing.keyboard_control_summary).toEqual(missing.readback_summary.keyboard_control);
+    expect(missing.keyboard_teleop_summary).toEqual(missing.readback_summary.keyboard_teleop);
     expect(missing.free_roam_summary).toEqual(missing.readback_summary.free_roam);
     expect(missing.nav2_summary?.next_action_plain).toContain("先准备图上路线");
     expect(missing.goal_summary?.progress_plain).toBe("0/0");
@@ -12333,6 +12345,10 @@ describe("workstation fail-closed API contracts", () => {
     expect(unsafeUrl.radar_summary).toEqual(unsafeUrl.readback_summary.radar);
     expect(unsafeUrl.nav2_summary).toEqual(unsafeUrl.readback_summary.nav2);
     expect(unsafeUrl.keyboard_summary).toEqual(unsafeUrl.readback_summary.keyboard);
+    expect(unsafeUrl.readback_summary.keyboard_control).toEqual(unsafeUrl.readback_summary.keyboard);
+    expect(unsafeUrl.readback_summary.keyboard_teleop).toEqual(unsafeUrl.readback_summary.keyboard);
+    expect(unsafeUrl.keyboard_control_summary).toEqual(unsafeUrl.readback_summary.keyboard_control);
+    expect(unsafeUrl.keyboard_teleop_summary).toEqual(unsafeUrl.readback_summary.keyboard_teleop);
     expect(unsafeUrl.free_roam_summary).toEqual(unsafeUrl.readback_summary.free_roam);
     expect(unsafeUrl.goal_summary?.progress_plain).toBe("0/0");
 

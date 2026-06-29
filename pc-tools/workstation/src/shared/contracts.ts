@@ -2488,6 +2488,25 @@ export interface RobotControlGoalChecklistSummary {
   blocked_action_items: RobotControlGoalChecklistSummaryActionItem[];
 }
 
+export interface RobotControlKeyboardReadbackSummary {
+  status: string;
+  control_mode: string;
+  manual_command_mode: string;
+  manual_proxy_endpoint: string;
+  stop_proxy_endpoint: string;
+  start_ready: string;
+  enabled: string;
+  plain_hint: string;
+  readiness_plain: string;
+  continuous_control_contract_plain: string;
+  hold_to_move_plain: string;
+  stop_triggers_plain: string;
+  pulse_timing_plain: string;
+  next_action_plain: string;
+  minimal_precheck_plain: string;
+  robot_control_executed: string;
+}
+
 export interface RobotControlSummaryResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_summary.v1";
   console_status: "blocked" | "loaded_fail_closed_summary";
@@ -2523,6 +2542,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   radar_summary?: RobotControlSummaryResponse["readback_summary"]["radar"];
   nav2_summary?: RobotControlSummaryResponse["readback_summary"]["nav2"];
   keyboard_summary?: RobotControlSummaryResponse["readback_summary"]["keyboard"];
+  keyboard_control_summary?: RobotControlSummaryResponse["readback_summary"]["keyboard_control"];
+  keyboard_teleop_summary?: RobotControlSummaryResponse["readback_summary"]["keyboard_teleop"];
   free_roam_summary?: RobotControlSummaryResponse["readback_summary"]["free_roam"];
   readback_summary: {
     camera: {
@@ -2763,24 +2784,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       goal_execution_generated_at_ms: string;
       goal_execution_response_generated_at_ms: string;
     };
-    keyboard: {
-      status: string;
-      control_mode: string;
-      manual_command_mode: string;
-      manual_proxy_endpoint: string;
-      stop_proxy_endpoint: string;
-      start_ready: string;
-      enabled: string;
-      plain_hint: string;
-      readiness_plain: string;
-      continuous_control_contract_plain: string;
-      hold_to_move_plain: string;
-      stop_triggers_plain: string;
-      pulse_timing_plain: string;
-      next_action_plain: string;
-      minimal_precheck_plain: string;
-      robot_control_executed: string;
-    };
+    keyboard: RobotControlKeyboardReadbackSummary;
+    keyboard_control: RobotControlKeyboardReadbackSummary;
+    keyboard_teleop: RobotControlKeyboardReadbackSummary;
     free_roam: {
       status: string;
       runtime_status: string;
