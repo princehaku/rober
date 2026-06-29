@@ -733,3 +733,9 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 读取时旧 4s 窗口会偶发误报 `fetch_timeout_4000ms`，导致当前轮速和 T=1001 反馈不能进入首屏。该变化只延长
 底盘反馈 GET readback 预算，帮助判断完整 Nav2 路线的 wheel L/R 证据，不发送 manual、Nav2、keyboard、
 free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:39 CST 起，Robot Control summary 不再一次性并发请求全部 15 个上位机只读端点。PC Node 会先读取
+地图、定位、Nav2、相机、雷达、free-roam 和底盘 feedback latest 等快端点，再把慢聚合 `/api/base/status` 与
+`/api/status` 串行放到最后；返回给 UI 的 `read_endpoints[]` 顺序仍保持原契约。浏览器等待 summary 的窗口同步提升到
+12s，避免真实上位机接近单 worker 时把所有端点误报成 `fetch_timeout_*`。该变化只调整 GET readback 调度和等待窗口，
+不调用 manual、不执行 Nav2、不启用 keyboard/free-roam、delivery、stop 或 `/cmd_vel`。

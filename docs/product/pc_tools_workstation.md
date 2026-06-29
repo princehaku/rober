@@ -4168,3 +4168,9 @@ PC Node 继续固定 `0.0.0.0:7001` 供局域网访问，小车上位机 Robot A
 camera health 并发读取时旧窗口容易超时，进而让当前 wheel L/R、T=1001 或 feedback ack 从首屏消失。
 该变化只扩大固定 GET readback 的等待时间，保留危险字段扫描和 fail-closed 控制边界；它不调用 manual、不执行 Nav2、
 不启用 keyboard/free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:39 CST 起，PC summary 改为分阶段读取上位机只读状态：地图、定位、Nav2、相机、雷达、free-roam
+和底盘 feedback latest 先并发读取，慢聚合 `/api/base/status` 与 `/api/status` 再串行收尾。这样真实上位机 HTTP
+服务接近单 worker 时，慢 status 不会把快端点一起排队到 4s 超时；UI 仍按原来的 `read_endpoints[]` 顺序显示。
+浏览器侧 summary 等待窗口同步改为 12s，用于承接底盘/status 真实读数。该变化只改变只读 GET 调度和等待窗口，
+不自动刷新 proof、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

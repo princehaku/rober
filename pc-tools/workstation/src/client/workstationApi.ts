@@ -51,7 +51,7 @@ import type {
   TrainingLabelingResponse,
 } from "../shared/contracts";
 
-const ROBOT_CONTROL_SUMMARY_CLIENT_TIMEOUT_MS = 3500;
+const ROBOT_CONTROL_SUMMARY_CLIENT_TIMEOUT_MS = 12000;
 
 export interface RouteDebugInputs {
   statusJson: string;

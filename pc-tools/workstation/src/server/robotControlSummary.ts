@@ -119,6 +119,10 @@ const MAP_PREVIEW_OVERLAY_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = ne
   "radar_status",
   "radar_scan_proof_latest",
 ]);
+const SUMMARY_SERIAL_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([
+  "status",
+  "base_status",
+]);
 const ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES = [
   "trashbot.upper_robot_api.v1",
   "trashbot.local_webrtc_camera_",
@@ -3989,6 +3993,28 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig, timeoutO
   };
 }
 
+async function readSummaryEndpoints(
+  base: URL,
+  options: RobotControlSummaryBuildOptions,
+): Promise<InternalRobotApiEndpointReadback[]> {
+  // 真实上位机 HTTP 服务接近单 worker；先读快端点，再串行收尾慢聚合和底盘窗口，避免互相排队超时。
+  const fastConfigs = READ_ENDPOINTS.filter((item) => !SUMMARY_SERIAL_READ_ENDPOINT_IDS.has(item.id));
+  const fastReadbacks = await Promise.all(
+    fastConfigs.map((item) => readEndpoint(base, item, options.readbackTimeoutMs)),
+  );
+  const serialReadbacks: InternalRobotApiEndpointReadback[] = [];
+  for (const id of ["base_status", "status"] as const) {
+    const config = READ_ENDPOINTS.find((item) => item.id === id);
+    if (config) {
+      serialReadbacks.push(await readEndpoint(base, config, options.readbackTimeoutMs));
+    }
+  }
+  const byId = new Map([...fastReadbacks, ...serialReadbacks].map((item) => [item.id, item]));
+  return READ_ENDPOINTS
+    .map((item) => byId.get(item.id))
+    .filter((item): item is InternalRobotApiEndpointReadback => Boolean(item));
+}
+
 function blockedRefreshResponse(
   sourceBaseUrl: string,
   reason: string,
@@ -7175,9 +7201,7 @@ export async function buildRobotControlSummary(
   }
 
   const observedAt = Date.now();
-  const readbacks = await Promise.all(
-    READ_ENDPOINTS.map((item) => readEndpoint(normalized.normalized, item, options.readbackTimeoutMs)),
-  );
+  const readbacks = await readSummaryEndpoints(normalized.normalized, options);
   const readEndpoints: RobotApiEndpointReadback[] = readbacks.map((item) => ({
     // summary 对外只暴露压缩 readback；完整 payload 只在本函数内用于现场材料摘要。
     id: item.id,

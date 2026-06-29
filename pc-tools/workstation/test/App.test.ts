@@ -10338,14 +10338,14 @@ describe("App", () => {
     });
 
     const wrapper = mount(App);
-    await vi.advanceTimersByTimeAsync(3500);
+    await vi.advanceTimersByTimeAsync(12000);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
     expect(summarySignalObserved).toBe(true);
-    expect(wrapper.find('[role="alert"]').text()).toContain("client_timeout_3500ms");
+    expect(wrapper.find('[role="alert"]').text()).toContain("client_timeout_12000ms");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("小车：连接/刷新失败；先检查小车电源、网络和上位机服务。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("client_timeout_3500ms");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("client_timeout_12000ms");
     expect(wrapper.find('[data-testid="robot-api-refresh"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

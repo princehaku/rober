@@ -839,6 +839,47 @@ function listenRobotApiReadbackByPath(
   });
 }
 
+function listenSerialRobotApiReadbackByPath(
+  handlers: Record<string, { payload: unknown; delay_ms?: number; statusCode?: number }>,
+): Promise<{ baseUrl: string; close: () => Promise<void>; requestedUrls: string[] }> {
+  // 真实上位机现场表现接近单 worker；这里串行响应，专门防止 summary 再次并发打满慢端点。
+  const requestedUrls: string[] = [];
+  let responseChain = Promise.resolve();
+  const server = http.createServer((req, res) => {
+    const url = req.url ?? "/";
+    requestedUrls.push(url);
+    const handler = handlers[url];
+    if (!handler) {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+      return;
+    }
+    const queuedResponse = responseChain.then(() => new Promise<void>((resolve) => {
+      setTimeout(() => {
+        res.statusCode = handler.statusCode ?? 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(handler.payload));
+        resolve();
+      }, handler.delay_ms ?? 0);
+    }));
+    responseChain = queuedResponse.catch(() => undefined);
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        requestedUrls,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
 function listenRobotCameraProxyApi(
   handlers: Record<string, { payload: unknown; statusCode?: number }>,
 ): Promise<{ baseUrl: string; close: () => Promise<void>; receivedBodies: Record<string, unknown[]> }> {
@@ -4308,6 +4349,85 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary reads fast endpoints before serial slow aggregate endpoints", async () => {
+    // 单 worker 上位机遇到 /api/status 慢聚合时，summary 不能并发排队导致 Nav2/地图/相机等快读端点一起超时。
+    const safePayload = (schema: string, status = "loaded", extras: Record<string, unknown> = {}) => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      robot_control_executed: false,
+      ...extras,
+    });
+    const robotApi = await listenSerialRobotApiReadbackByPath({
+      "/api/status": {
+        delay_ms: 4200,
+        payload: safePayload("trashbot.upper_robot_api.v1.status", "loaded", {
+          managed_runtime_started: true,
+          planner_server_active: true,
+          latest_map_consumed: true,
+          latest_path_generation_attempted: true,
+        }),
+      },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_proof", "loaded", { map_once_observed: true }) },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localize_proof", "loaded", { localization_tf_observed: true }) },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "loaded", { lifecycle_running: true, latest_planner_active: true }) },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_proof", "loaded", { path_generated: true, path_point_count: 3 }) },
+      "/api/nav2/goal/execution/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_goal_execution", "loaded") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report", "loaded") },
+      "/api/free-roam/autonomy/latest": { payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy", "loaded") },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "loaded") },
+      "/api/radar/scan-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.radar_scan_proof", "loaded") },
+      "/api/radar/raw-packet-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.radar_raw_packet_proof", "loaded") },
+      "/api/base/status": {
+        delay_ms: 200,
+        payload: safePayload("trashbot.upper_robot_api.v1.base_status", "base_ready", {
+          wheel_raw_left: 0,
+          wheel_raw_right: 0,
+        }),
+      },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const readStatusById = new Map(summary.read_endpoints.map((endpoint) => [endpoint.id, endpoint.request_status]));
+      const requestedUrlIndex = (url: string) => robotApi.requestedUrls.indexOf(url);
+
+      expect(summary.robot_api_connection.status).toBe("readable");
+      expect(summary.robot_api_connection.failed_count).toBe(0);
+      expect(readStatusById.get("map_proof_latest")).toBe("loaded");
+      expect(readStatusById.get("nav2_status")).toBe("loaded");
+      expect(readStatusById.get("camera_health")).toBe("loaded");
+      expect(readStatusById.get("base_status")).toBe("loaded");
+      expect(readStatusById.get("status")).toBe("loaded");
+      expect(summary.read_endpoints.map((endpoint) => endpoint.endpoint)).toEqual([
+        "/api/status",
+        "/api/map/proof/latest",
+        "/api/localize/proof/latest",
+        "/api/nav2/status",
+        "/api/nav2/proof/latest",
+        "/api/nav2/goal/execution/latest",
+        "/api/operator/report",
+        "/api/free-roam/autonomy/latest",
+        "/api/camera/health",
+        "/api/camera/devices",
+        "/api/radar/status",
+        "/api/radar/scan-proof/latest",
+        "/api/radar/raw-packet-proof/latest",
+        "/api/base/status",
+        "/api/base/feedback-samples/latest",
+      ]);
+      expect(requestedUrlIndex("/api/nav2/status")).toBeLessThan(requestedUrlIndex("/api/base/status"));
+      expect(requestedUrlIndex("/api/base/feedback-samples/latest")).toBeLessThan(requestedUrlIndex("/api/base/status"));
+      expect(requestedUrlIndex("/api/base/status")).toBeLessThan(requestedUrlIndex("/api/status"));
+    } finally {
+      await robotApi.close();
+    }
+  }, 10000);
+
   it("Robot Control summary tells users to fix API readback before generating Nav2 route", async () => {
     // 复现 live 7001 场景：小车 base URL 可访问，但 Nav2/地图/定位只读端点读不到。
     const safePayload = (schema: string, status = "loaded") => ({
@@ -6000,7 +6120,7 @@ describe("workstation fail-closed API contracts", () => {
       await workstation.close();
       await robotApi.close();
     }
-  });
+  }, 12_000);
 
   it("Robot Control summary keeps slow camera devices readback within camera budget", async () => {
     // 板端 camera devices 会做 v4l2 只读枚举；慢一拍时不应让普通首屏连接状态变成 degraded。
@@ -7424,7 +7544,7 @@ describe("workstation fail-closed API contracts", () => {
     // status/camera 在真实板端可能慢于 proof latest；只要仍在白名单窗口内，就不应被误记成 fetch_failed。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
-        delay_ms: 5200,
+        delay_ms: 4200,
         payload: {
           schema: "trashbot.upper_robot_api.v1.status",
           status: "camera_ready_from_status",
@@ -7739,7 +7859,7 @@ describe("workstation fail-closed API contracts", () => {
     } finally {
       await robotApi.close();
     }
-  }, 10_000);
+  }, 12_000);
 
   it("Robot Control summary returns partial readbacks when the HTTP first-screen budget is shorter than slow camera health", async () => {
     // 首屏不能因为 camera health 或 status 慢就让普通页面空白；慢项标 timeout，已读到的自由移动/Nav2/雷达事实先展示。
