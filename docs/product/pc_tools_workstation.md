@@ -4274,3 +4274,8 @@ free-roam、不发送 keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。
 `first_frame_probe_*` 结果：如果另一个页面或上一次操作已经点击过“检查画面（只读）”，刷新后的普通页面也会显示
 “最近一次检查”的首帧/后端诊断，不再只依赖当前 Vue 页面内存。该结果仍来自 PC Node 的只读 overlay；页面不会自动抢占
 摄像头反复探测，也不会发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 16:05 CST 起，普通首屏“本轮进度”新增只读 `可先动` 摘要：当 summary 显示
+`free_move_start_ready=true`、键盘可启用或图上行程可重跑时，直接告诉现场“勾选安全确认后可先动”，并明确画面和雷达只影响建图验收，
+不作为低速自由移动、键盘手控或图上行程重跑的发车前置。该摘要只读取 summary，不自动勾选、不启动自由移动、不发送
+keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。

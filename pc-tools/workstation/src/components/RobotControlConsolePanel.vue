@@ -7944,6 +7944,33 @@ const plainGoalProgressNextAction = computed(() => {
   return nextItem ? `下一步：先处理${nextItem.label}。${nextItem.hint}` : "下一步：四项都已完成，保持待命。";
 });
 
+const plainGoalProgressMoveNowSummary = computed(() => {
+  // “能不能先动”和“能不能建图验收”分开写，避免相机/雷达缺口把自由移动和行程重跑挡住。
+  const summary = robotSummary.value;
+  if (!summary) {
+    return "";
+  }
+  const boundary = summary.safe_command_boundary;
+  const freeRoam = summary.readback_summary.free_roam;
+  const keyboard = summary.readback_summary.keyboard;
+  const nav2 = summary.readback_summary.nav2;
+  const readyModes: string[] = [];
+  if (freeRoam.free_move_start_ready === "true" || boundary.free_roam_motion_start_ready === true) {
+    readyModes.push("自由移动可启动");
+  }
+  if (keyboard.start_ready === "true" || boundary.keyboard_control_start_ready === true) {
+    readyModes.push("键盘可启用");
+  }
+  if (boundary.nav2_goal_ready === true || nav2.route_execution_readiness_plain.includes("可重跑")) {
+    readyModes.push("图上行程可重跑");
+  }
+  if (!readyModes.length) {
+    return "";
+  }
+  const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾选" : "勾选现场安全确认后";
+  return `可先动：${safetyText}，${readyModes.join("、")}；画面和雷达只影响建图验收，不挡低速移动或行程重跑。`;
+});
+
 const plainGoalProgressPrimaryTarget = computed(() => {
   // 主按钮只指向当前第一项缺口；没有缺口时禁用，不能触发任何自动动作。
   return plainGoalProgressItems.value.find((item) => item.state !== "已完成" && item.state !== "已验证")?.id ?? "";
@@ -13679,6 +13706,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note" data-testid="plain-goal-progress-next-action">{{ plainGoalProgressNextAction }}</p>
+            <p v-if="plainGoalProgressMoveNowSummary" class="panel-note" data-testid="plain-goal-progress-move-now">{{ plainGoalProgressMoveNowSummary }}</p>
             <p class="panel-note" data-testid="plain-goal-progress-state-summary">{{ plainGoalProgressStateSummary }}</p>
             <p class="panel-note" data-testid="plain-goal-progress-evidence-summary">{{ plainGoalProgressEvidenceSummary }}</p>
             <p class="panel-note" data-testid="plain-goal-progress-blocker-summary">{{ plainGoalProgressBlockerSummary }}</p>
