@@ -63,6 +63,7 @@ import type {
   RobotApiFrameTransform,
   RobotApiMapPose,
   RobotApiScanPreviewPoint,
+  RobotControlActionStatusCardId,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
@@ -260,10 +261,15 @@ const evidenceSweepPending = ref(false);
 const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
 const evidenceSweepLines = ref<string[]>([]);
+const plainCameraPanel = ref<HTMLElement | null>(null);
+const plainCameraStartButton = ref<HTMLButtonElement | null>(null);
 const plainCameraProbeButton = ref<HTMLButtonElement | null>(null);
+const plainRadarPanel = ref<HTMLElement | null>(null);
 const plainRadarRefreshButton = ref<HTMLButtonElement | null>(null);
 const plainRadarStartButton = ref<HTMLButtonElement | null>(null);
 const plainRadarRestartButton = ref<HTMLButtonElement | null>(null);
+const plainMapPanel = ref<HTMLElement | null>(null);
+const plainMapPreviewButton = ref<HTMLButtonElement | null>(null);
 const plainLocalizationResetButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
@@ -2840,6 +2846,43 @@ function plainActionCardUserText(value: string): string {
     .replace(/不当作画面可见/g, "不当作已经看到画面")
     .replace(/wheel raw L\/R/g, "轮速 L/R")
     .replace(/\braw\b/g, "原始读数");
+}
+function plainActionCardButtonLabel(id: RobotControlActionStatusCardId): string {
+  // 状态卡按钮只把 operator 带到本页已有控件；标签避免暗示“一键自动执行”。
+  const labels: Record<RobotControlActionStatusCardId, string> = {
+    camera_preview: "去看画面",
+    map_preview: "去看地图",
+    radar_map_points: "去处理雷达",
+    nav2_route: "去处理行程",
+    keyboard_control: "去启用键盘",
+    free_move: "去自由移动",
+    mapping_start: "去建图",
+  };
+  return labels[id];
+}
+function plainActionCardTarget(id: RobotControlActionStatusCardId): HTMLElement | null {
+  // 这里不触发任何 endpoint；运动类卡片也只是落到安全确认或对应按钮，由现场再显式点击。
+  const targetMap: Record<RobotControlActionStatusCardId, HTMLElement | null> = {
+    camera_preview: enabledButton(plainCameraStartButton.value)
+      ?? enabledButton(plainCameraProbeButton.value)
+      ?? plainCameraPanel.value,
+    map_preview: enabledButton(plainMapPreviewButton.value) ?? plainMapPanel.value,
+    radar_map_points: plainRadarNextTarget() ?? plainRadarPanel.value,
+    nav2_route: plainTripGoalTarget(),
+    keyboard_control: plainKeyboardNextTarget(),
+    free_move: plainFreeRoamAutonomyNextTarget(),
+    mapping_start: plainFreeRoamNextTarget(),
+  };
+  return targetMap[id];
+}
+function focusPlainActionCardTarget(id: RobotControlActionStatusCardId): void {
+  // 首屏卡片是导航辅助，不代替安全确认、不自动发车、不启动雷达或建图。
+  const target = plainActionCardTarget(id);
+  if (!target) {
+    return;
+  }
+  target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
 }
 const showPlainRadarStart = computed(() => {
   // 雷达是建图和 LiDAR delta 的监看入口；Nav2/自由移动是否启动不再由雷达运行态前端硬挡。
@@ -12373,6 +12416,14 @@ onBeforeUnmount(() => {
             <span v-if="card.blocks_mapping_start">影响建图</span>
             <span v-if="!card.blocks_free_motion">不挡自由移动</span>
           </div>
+          <button
+            type="button"
+            class="secondary compact-stop plain-action-card-button"
+            :data-testid="`plain-action-status-card-go-${card.id}`"
+            @click="focusPlainActionCardTarget(card.id)"
+          >
+            {{ plainActionCardButtonLabel(card.id) }}
+          </button>
         </article>
       </div>
 
@@ -12390,10 +12441,10 @@ onBeforeUnmount(() => {
           <p class="panel-note">{{ plainEvidenceSweepSummary.hint }}</p>
         </article>
 
-        <article class="snapshot-panel plain-camera-panel" data-testid="plain-camera-panel" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
+        <article ref="plainCameraPanel" class="snapshot-panel plain-camera-panel" tabindex="-1" data-testid="plain-camera-panel" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
           <h3>实时画面</h3>
           <div class="panel-action-row">
-            <button type="button" :disabled="!canStartPreview" data-testid="plain-camera-start" @click="startPreview">{{ plainCameraStartButtonLabel }}</button>
+            <button ref="plainCameraStartButton" type="button" :disabled="!canStartPreview" data-testid="plain-camera-start" @click="startPreview">{{ plainCameraStartButtonLabel }}</button>
             <button ref="plainCameraProbeButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainCameraProbe" data-testid="plain-camera-probe" @click="runCameraFirstFrameProbe">
               {{ plainCameraProbeButtonLabel }}
             </button>
@@ -12437,7 +12488,7 @@ onBeforeUnmount(() => {
           <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>
         </article>
 
-        <article class="snapshot-panel plain-radar-panel" data-testid="plain-radar-panel" :data-state="radarSummary.state">
+        <article ref="plainRadarPanel" class="snapshot-panel plain-radar-panel" tabindex="-1" data-testid="plain-radar-panel" :data-state="radarSummary.state">
           <h3>雷达</h3>
           <div class="panel-action-row">
             <button ref="plainRadarRefreshButton" type="button" :disabled="!canRefreshRadarProof" data-testid="plain-radar-refresh" @click="refreshRadarProof">
@@ -12456,7 +12507,7 @@ onBeforeUnmount(() => {
           <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
         </article>
 
-        <article class="snapshot-panel plain-map-panel" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state">
+        <article ref="plainMapPanel" class="snapshot-panel plain-map-panel" tabindex="-1" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state">
           <h3>地图</h3>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state">
             <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
@@ -12527,7 +12578,7 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="!canRefreshMapProof" data-testid="plain-map-proof-refresh" @click="refreshMapProof">
               {{ mapProofRefreshButtonLabel }}
             </button>
-            <button type="button" :disabled="!canRefreshMapPreview" data-testid="plain-map-preview-refresh" @click="refreshMapPreview({ radarStatusRefresh: true })">
+            <button ref="plainMapPreviewButton" type="button" :disabled="!canRefreshMapPreview" data-testid="plain-map-preview-refresh" @click="refreshMapPreview({ radarStatusRefresh: true })">
               {{ mapPreviewRefreshButtonLabel }}
             </button>
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">

@@ -614,3 +614,8 @@ summary/首屏文案，不执行 Nav2 goal、不启动 runtime、不发送 manua
 即使 `/api/camera/devices` 枚举为空，普通脚本也能直接读到当前 UVC 源是 `/dev/video1` 和对应设备名，
 不再需要从“不是页面独占……”中文长句里解析。该变化只消费只读 health/devices/status，不打开第二条相机上游、
 不重启 camera service、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 09:41 CST 起，普通首屏的动作状态卡带“去处理”按钮。按钮只在页面内滚动并聚焦到已有控件，
+例如画面预览、地图刷新、雷达刷新、图上行程、键盘手控、自由移动或建图流程；不会自动触发这些控件，也不会替用户勾选
+安全确认。该变化只改善普通用户定位下一步的体验，不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或
+`/cmd_vel`。

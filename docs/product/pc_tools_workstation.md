@@ -4042,3 +4042,9 @@ L/R”。这样普通用户不再把 runtime stopped 误解成必须先跑额外
 PC 仍能显示并输出当前 UVC 源和设备名，避免外部脚本只能靠解析中文无帧诊断来判断是不是同一只摄像头。
 该变化只读取 camera health/devices 与 PC MJPEG relay 状态，不新建 camera capture、不重启 camera service、不发送
 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 09:41 CST 起，普通首屏 `action_status_cards` 增加“去处理”前端引导按钮。每张状态卡会把 operator
+滚动并聚焦到本页已有的真实下一步控件：画面卡到共享预览/首帧复测，地图卡到地图画面刷新，雷达卡到雷达启动或刷新，
+图上行程卡到行程安全确认/执行区，键盘卡到键盘启用区，自由移动和建图卡到对应安全确认、自由移动或建图流程。
+这些按钮只做页面内 scroll/focus，不自动勾选安全确认、不点击被聚焦控件、不启动雷达/地图、不执行 Nav2、
+不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
