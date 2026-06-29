@@ -4405,3 +4405,10 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 建图卡仍以 `mapping_start_ready` 为最终放行事实；当 PC Node 已通过 health/probe 证明 `first_frame_observed`、
 但本页共享预览 `<img>` 还未绘制时，画面卡不再显示“影响建图”。该变化只更新只读 summary、前端 DOM 属性和测试合同，
 不创建额外 camera reader、不执行 free-roam/map/Nav2/manual/keyboard/delivery/stop 或 `/cmd_vel`。
+
+2026-06-30 11:35 CST 起，Robot Control summary 对建图启动的雷达新鲜度增加 lifecycle 围栏：
+free-roam runtime snapshot 只有在同轮 `/api/radar/status` 未明确停止时，才能作为 `lidar_fresh` 证据覆盖 stale proof。
+如果 radar status 返回 `lifecycle_running=false`、`lifecycle_state=stopped` 或 `continuous_scan_status=lifecycle_not_running`，
+旧 snapshot 中的 `lidar_age_s/lidar_min_distance_m` 会被视为停止前遗留读数，`mapping_start_ready=false` 且
+`mapping_start_missing_reasons=["lidar_fresh"]`。这样普通首屏不会再一边显示“雷达未运行 / 地图雷达点未贴当前图”，一边显示
+“建图启动已就绪”。自由移动仍只看现场安全确认和停止兜底；本改动不调用 radar start、map start、free-roam start 或任何运动接口。

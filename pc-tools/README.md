@@ -910,3 +910,9 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 因此现场出现“相机源已首帧 ready，但本页预览暂未渲染”时，画面卡不会再误报“影响建图”；建图启动仍由
 `mapping_start_ready` 和缺口数组统一收口。该变化只修正只读 summary/UI/DOM 证据，不打开独占相机、不启动建图、
 不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-30 11:35 CST 起，建图启动的 `lidar_fresh` gate 不再接受雷达停止前遗留的 free-roam runtime snapshot。
+当 `/api/radar/status` 明确 `lifecycle_running=false`、`lifecycle_state=stopped` 或 `continuous_scan_status=lifecycle_not_running`
+时，即使旧 snapshot 仍带 `lidar_age_s/lidar_min_distance_m`，`free_roam_mapping_start_ready` 也会降为 `false`，
+缺口回到 `lidar_fresh`，地图雷达点卡继续显示未贴当前图。雷达 lifecycle 仍在 running 时，runtime `/scan`
+新鲜快照仍可覆盖过期 proof artifact。该变化只修正只读 readiness，不启动雷达、不启动建图、不发送任何运动命令。

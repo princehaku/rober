@@ -6164,6 +6164,13 @@ function freeRoamRuntimeGatesFromReadbacks(
     && runtimeLidarAgeS <= 1.5
     && runtimeLidarMinDistanceM !== null,
   );
+  const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
+  const radarScanProofPayload = readbackById(readbacks, "radar_scan_proof_latest")?.payload ?? null;
+  const radarLifecycleStopped = summaryValueText(radarStatusPayload, ["lifecycle_running"], "") === "false"
+    || summaryValueText(radarStatusPayload, ["lifecycle_state"], "") === "stopped"
+    || summaryValueText(radarStatusPayload, ["continuous_scan_status"], "") === "lifecycle_not_running"
+    || ["lifecycle_not_running", "radar_stopped"].includes(summaryValueText(radarStatusPayload, ["status"], ""));
+  const runtimeLidarFreshForMapping = runtimeLidarFreshFromSnapshot && !radarLifecycleStopped;
   const rawGates = Array.isArray(decision?.gates) ? decision.gates : [];
   const hasRuntimeMappingGate = rawGates
     .map((item) => asRecord(item))
@@ -6202,8 +6209,6 @@ function freeRoamRuntimeGatesFromReadbacks(
     // 旧上车 artifact 的 mapping gate 文案只说启动建图；PC 要补上“这不是低速移动前置”的产品口径。
     mappingActiveGate.next_action = "先启动扫地式建图记录；这不影响现场监看的低速自由移动";
   }
-  const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
-  const radarScanProofPayload = readbackById(readbacks, "radar_scan_proof_latest")?.payload ?? null;
   const radarFreshValues = [
     summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"], ""),
     summaryValueText(radarScanProofPayload, ["latest_scan_proof_fresh"], ""),
@@ -6211,7 +6216,12 @@ function freeRoamRuntimeGatesFromReadbacks(
   const radarFreshReadbackLoaded = radarFreshValues.length > 0;
   const radarFreshProven = radarFreshValues.some((value) => value === "true");
   const runtimeLidarFreshGate = gateRows.find((gate) => gate.id === "lidar_fresh");
-  if (runtimeLidarFreshGate && runtimeLidarFreshFromSnapshot) {
+  if (runtimeLidarFreshGate && radarLifecycleStopped) {
+    // runtime snapshot 可能是停止前留下的旧距离；雷达 lifecycle 已停时不能再作为建图启动 fresh 证据。
+    runtimeLidarFreshGate.state = "not_proven";
+    runtimeLidarFreshGate.evidence = "雷达未运行，旧 runtime scan 不能作为建图新鲜扫描";
+    runtimeLidarFreshGate.next_action = "先启动雷达并等待新扫描，再刷新地图画面确认雷达点";
+  } else if (runtimeLidarFreshGate && runtimeLidarFreshForMapping) {
     // free-roam runtime 直接消费实时 /scan；它比过期 proof artifact 更贴近当前地图雷达所见即所得。
     runtimeLidarFreshGate.state = "ready";
     runtimeLidarFreshGate.evidence = `free-roam runtime /scan 新鲜：距离 ${runtimeLidarMinDistanceM?.toFixed(2)}m，延迟 ${runtimeLidarAgeS?.toFixed(2)}s`;
@@ -6295,7 +6305,7 @@ function freeRoamRuntimeGatesFromReadbacks(
     });
   }
   if (!hasGate("lidar_fresh")) {
-    const lidarFreshReady = runtimeLidarFreshFromSnapshot || radarFreshProven;
+    const lidarFreshReady = !radarLifecycleStopped && (runtimeLidarFreshForMapping || radarFreshProven);
     gateRows.push({
       id: "lidar_fresh",
       label: "雷达新鲜",
