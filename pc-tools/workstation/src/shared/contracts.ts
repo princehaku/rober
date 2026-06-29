@@ -2425,6 +2425,11 @@ export interface RobotControlActionStatusCard {
     frame_id?: string;
     source_frame_id?: string;
     blocked_reasons?: string[];
+    radar_lifecycle_running?: boolean;
+    radar_start_configured?: boolean;
+    fixed_radar_start_endpoint?: string;
+    fixed_radar_refresh_endpoint?: string;
+    radar_refresh_after_start_required?: boolean;
     hold_to_move_required?: boolean;
     arm_sends_motion?: boolean;
     requires_keydown_for_motion?: boolean;

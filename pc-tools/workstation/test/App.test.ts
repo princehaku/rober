@@ -5183,6 +5183,11 @@ describe("App", () => {
     expect(radarActionCard.attributes("data-frame-id")).toBe("not_loaded");
     expect(radarActionCard.attributes("data-source-frame-id")).toBe("laser_frame");
     expect(radarActionCard.attributes("data-blocked-reasons")).toBe("runtime_scan_stale_for_map_radar_points");
+    expect(radarActionCard.attributes("data-radar-lifecycle-running")).toBe("true");
+    expect(radarActionCard.attributes("data-radar-start-configured")).toBe("true");
+    expect(radarActionCard.attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
+    expect(radarActionCard.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(radarActionCard.attributes("data-radar-refresh-after-start-required")).toBe("true");
     const callsBeforeSensorGuide = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-intent-shortcut-go-sensors"]').trigger("click");
     await wrapper.vm.$nextTick();

@@ -3051,7 +3051,7 @@ function actionCardWithDerivedEvidence(
   card: NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number],
 ): NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number] {
   // 兼容旧 summary：后端还没带 evidence 时，前端用同一份安全边界补只读合同，不改变任何控制能力。
-  if (!["camera_preview", "map_preview", "keyboard_control", "nav2_route", "free_move", "mapping_start"].includes(card.id)) {
+  if (!["camera_preview", "map_preview", "radar_map_points", "keyboard_control", "nav2_route", "free_move", "mapping_start"].includes(card.id)) {
     return card;
   }
   const boundary = robotSummary.value?.safe_command_boundary;
@@ -3119,6 +3119,21 @@ function actionCardWithDerivedEvidence(
         robot_pose_visible: card.evidence?.robot_pose_visible ?? (map?.robot_pose_status === "map_pose_observed" || localization?.robot_pose_status === "map_pose_observed"),
         radar_points_visible_on_map: card.evidence?.radar_points_visible_on_map ?? radarPointsVisible,
         radar_point_count_on_map: card.evidence?.radar_point_count_on_map ?? (radarPointsVisible ? radarPointCount : 0),
+      },
+    };
+  }
+  if (card.id === "radar_map_points") {
+    const radar = robotSummary.value?.readback_summary.radar;
+    const lidar = robotSummary.value?.readback_summary.lidar;
+    return {
+      ...card,
+      evidence: {
+        ...card.evidence,
+        radar_lifecycle_running: card.evidence?.radar_lifecycle_running ?? radar?.lifecycle_running === "true",
+        radar_start_configured: card.evidence?.radar_start_configured ?? lidar?.radar_start_configured !== "false",
+        fixed_radar_start_endpoint: card.evidence?.fixed_radar_start_endpoint ?? "/api/robot-control/radar/start",
+        fixed_radar_refresh_endpoint: card.evidence?.fixed_radar_refresh_endpoint ?? "/api/robot-control/radar/scan-proof/refresh",
+        radar_refresh_after_start_required: card.evidence?.radar_refresh_after_start_required ?? card.status !== "current_on_map",
       },
     };
   }
@@ -13533,6 +13548,11 @@ onBeforeUnmount(() => {
           :data-frame-id="card.evidence?.frame_id"
           :data-source-frame-id="card.evidence?.source_frame_id"
           :data-blocked-reasons="card.evidence?.blocked_reasons?.join(',')"
+          :data-radar-lifecycle-running="card.evidence?.radar_lifecycle_running === undefined ? undefined : String(card.evidence.radar_lifecycle_running)"
+          :data-radar-start-configured="card.evidence?.radar_start_configured === undefined ? undefined : String(card.evidence.radar_start_configured)"
+          :data-fixed-radar-start-endpoint="card.evidence?.fixed_radar_start_endpoint"
+          :data-fixed-radar-refresh-endpoint="card.evidence?.fixed_radar_refresh_endpoint"
+          :data-radar-refresh-after-start-required="card.evidence?.radar_refresh_after_start_required === undefined ? undefined : String(card.evidence.radar_refresh_after_start_required)"
           :data-map-current-visible="card.evidence?.map_current_visible === undefined ? undefined : String(card.evidence.map_current_visible)"
           :data-map-free-cell-count="card.evidence?.map_free_cell_count === undefined ? undefined : String(card.evidence.map_free_cell_count)"
           :data-path-visible-on-map="card.evidence?.path_visible_on_map === undefined ? undefined : String(card.evidence.path_visible_on_map)"

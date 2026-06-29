@@ -4419,3 +4419,10 @@ free-roam runtime snapshot 只有在同轮 `/api/radar/status` 未明确停止�
 会写成“相机源首帧已读到；本页共享实时预览还没显示缓存帧”。这保持 WYSIWYG：页面没画面仍是没画面，
 但不会误导用户以为摄像头源没有首帧。独立 MJPEG status 同步把 `open_shared_preview` 翻译为中文下一步；
 该变更不打开 MJPEG stream、不创建额外 camera reader、不发送任何控制命令。
+
+2026-06-30 12:05 CST 起，Robot Control 的 `radar_map_points` action card 增加结构化雷达贴图操作证据：
+`radar_lifecycle_running` 表示雷达 lifecycle 是否运行，`radar_start_configured` 表示 PC 是否能展示启动入口，
+`fixed_radar_start_endpoint=/api/robot-control/radar/start` 和
+`fixed_radar_refresh_endpoint=/api/robot-control/radar/scan-proof/refresh` 固定住普通首屏入口，
+`radar_refresh_after_start_required` 明确启动雷达后仍要刷新/读取同轮地图雷达点，才算地图标记所见即所得。
+这些字段同步暴露为普通首屏 `data-*`，只用于读数和脚本验收；本改动不调用 radar start、map refresh 或任何运动接口。

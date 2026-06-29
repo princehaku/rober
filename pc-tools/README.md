@@ -921,3 +921,9 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `相机源首帧已读到；本页共享实时预览还没显示缓存帧`。`camera_current_frame_visible=false` 仍表示当前页面没有实时画面，
 但不会再让普通用户误以为相机源没有首帧。独立 `GET /api/robot-control/camera/mjpeg/status` 也会把
 `open_shared_preview` 翻译成中文下一步。该变化只修正只读文案和测试合同，不打开 MJPEG 上游、不创建独占采集、不发送运动命令。
+
+2026-06-30 12:05 CST 起，`action_status_cards[].id=radar_map_points.evidence` 补齐雷达贴图操作合同：
+`radar_lifecycle_running`、`radar_start_configured`、固定 `/api/robot-control/radar/start`、
+固定 `/api/robot-control/radar/scan-proof/refresh` 和 `radar_refresh_after_start_required`。普通首屏同步暴露
+`data-radar-*` 与固定 endpoint 属性，方便脚本确认“启动雷达不等于地图已贴点；启动后仍要刷新/读取同轮地图雷达点才算所见即所得”。
+该变化只补只读 summary/UI 证据，不启动雷达、不刷新地图、不发送任何运动命令。

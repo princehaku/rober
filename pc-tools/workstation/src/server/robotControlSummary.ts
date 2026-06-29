@@ -7366,6 +7366,11 @@ function buildActionStatusCards(
         frame_id: radarCurrent ? readback.radar.map_marker_frame_id || readback.radar.radar_overlay_frame_id || "not_loaded" : "not_loaded",
         source_frame_id: readback.radar.map_marker_source_frame_id || readback.radar.radar_overlay_source_frame_id || "not_loaded",
         blocked_reasons: actionCardReasonList(readback.radar.radar_overlay_blocked_reasons),
+        radar_lifecycle_running: readback.radar.lifecycle_running === "true",
+        radar_start_configured: readback.lidar.radar_start_configured !== "false",
+        fixed_radar_start_endpoint: "/api/robot-control/radar/start",
+        fixed_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+        radar_refresh_after_start_required: !radarCurrent,
       },
     },
     {
