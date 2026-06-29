@@ -4858,8 +4858,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Robot Control summary prefers O11 managed execution lifecycle over planner-only controller facts", async () => {
-    // O10 planner-only proof 会清理 controller；O11 latest 才是完整路线执行时 controller 是否请求/active 的事实来源。
+  it("Robot Control summary keeps current Nav2 service state separate from O11 managed execution history", async () => {
+    // O11 latest 仍证明上次完整路线执行材料；当前 controller/requested 状态必须优先来自 /api/nav2/status。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
         payload: {
@@ -4952,8 +4952,8 @@ describe("workstation fail-closed API contracts", () => {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
       expect(summary.readback_summary.nav2.planner_server_active).toBe("true");
-      expect(summary.readback_summary.nav2.controller_server_requested).toBe("true");
-      expect(summary.readback_summary.nav2.controller_server_active).toBe("true");
+      expect(summary.readback_summary.nav2.controller_server_requested).toBe("false");
+      expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
       expect(summary.safe_command_boundary.nav2_goal_blockers).not.toContain("controller_server_inactive");

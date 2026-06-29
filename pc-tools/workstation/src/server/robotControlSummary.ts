@@ -4480,6 +4480,17 @@ function proofText(readbacks: RobotApiEndpointReadback[], keys: string[]): strin
   return latest;
 }
 
+function readbackText(readback: RobotApiEndpointReadback | null | undefined, keys: string[]): string | null {
+  // 单个端点内按 key 优先级取值；用于“当前状态优先”的字段，避免历史 artifact 覆盖 live 状态。
+  for (const key of keys) {
+    const value = readback?.key_values[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
 function finitePathCoordinate(value: unknown): number | null {
   // 路线点来自上位机 artifact；只接受有限数字，防止异常字符串进入 SVG 坐标。
   const numberValue = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
@@ -4975,6 +4986,15 @@ function nav2SummaryFromReadbacks(
   const latestPathGenerationAttempted = proofText(readbacks, ["latest_path_generation_attempted", "path_generation_attempted"]) ?? "not_loaded";
   const latestPathGenerationServiceAvailable = proofText(readbacks, ["latest_path_generation_service_available", "path_generation_service_available"]) ?? "not_loaded";
   const latestPathGenerationServiceName = proofText(readbacks, ["latest_path_generation_service_name", "path_generation_service_name"]) ?? "not_loaded";
+  const currentPlannerServerActive = readbackText(nav2Status, ["planner_server_active", "latest_planner_active"])
+    ?? readbackText(nav2Proof, ["planner_server_active", "planner_active", "latest_planner_active"])
+    ?? booleanSummaryValue(proof.planner_server_active);
+  const currentControllerServerActive = readbackText(nav2Status, ["controller_server_active", "latest_controller_active"])
+    ?? readbackText(nav2Proof, ["controller_server_active", "latest_controller_active"])
+    ?? "not_loaded";
+  const currentControllerServerRequested = readbackText(nav2Status, ["controller_server_requested", "latest_controller_requested"])
+    ?? readbackText(nav2Proof, ["controller_server_requested", "latest_controller_requested"])
+    ?? "not_loaded";
   const routeAlreadyReady = readbackPathReady(proof);
   const nav2ReadbackUnavailable = robotReadbackUnavailable(nav2Proof) && robotReadbackUnavailable(nav2Status);
   const mapLocalizeReadbackUnavailable = robotReadbackUnavailable(mapProof) && robotReadbackUnavailable(localizeProof);
@@ -5041,9 +5061,9 @@ function nav2SummaryFromReadbacks(
     nav2_stack_lifecycle_state: nav2StackLifecycleState,
     current_blocker_reasons: effectiveCurrentBlockerReasons.join(",") || "none",
     current_blocker_labels: effectiveCurrentBlockerLabels.join("、") || "not_loaded",
-    planner_server_active: proofText(readbacks, ["planner_server_active", "planner_active", "latest_planner_active"]) ?? booleanSummaryValue(proof.planner_server_active),
-    controller_server_active: proofText(readbacks, ["controller_server_active", "latest_controller_active"]) ?? "not_loaded",
-    controller_server_requested: proofText(readbacks, ["controller_server_requested", "latest_controller_requested"]) ?? "not_loaded",
+    planner_server_active: currentPlannerServerActive,
+    controller_server_active: currentControllerServerActive,
+    controller_server_requested: currentControllerServerRequested,
     map_consumed: latestMapConsumed,
     path_generation_attempted: latestPathGenerationAttempted,
     path_generation_service_available: latestPathGenerationServiceAvailable,

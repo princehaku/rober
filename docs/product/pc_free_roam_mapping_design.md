@@ -190,6 +190,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `path_point_count/path_generated/planner_server_active/controller_server_active`。这样现场脚本不用再从 summary 间接拼状态，就能判断
   “底盘是否有 wheel raw L/R 证据”和“自动驾驶卡在 controller/lifecycle 还是路线生成”。该变化只读状态，不启动雷达、不执行 Nav2 goal、
   不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 19:24 起，PC summary 的 `readback_summary.nav2.planner_server_active/controller_server_active/controller_server_requested`
+  优先来自当前 `/api/nav2/status` 和 `/api/nav2/proof/latest`，最近一次 `/api/nav2/goal/execution/latest` 的 managed runtime
+  只保留为历史执行材料，不再覆盖当前服务状态。这样普通首屏和直连 `/api/robot-control/nav2/status` 会一致显示当前
+  controller/lifecycle 是否 active，避免把旧执行窗口的 controller active 误当成“现在仍 active”。该变化只调整只读聚合优先级，
+  不启动 Nav2 lifecycle、不执行 goal、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 19:30 起，`readback_summary.free_roam` 增加 `next_action_plain`：
   它复用同一轮 `safe_command_boundary.free_roam_autonomy_next_action`，把“能先自由移动”和“建图验收还差什么”放进自由移动 readback 自身。
   因此 live 出现 `status=start_ready`、`motion_ready=true`、`mapping_missing=camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview` 时，
