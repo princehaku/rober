@@ -272,6 +272,7 @@ const plainRadarRestartButton = ref<HTMLButtonElement | null>(null);
 const plainMapPanel = ref<HTMLElement | null>(null);
 const plainMapPreviewButton = ref<HTMLButtonElement | null>(null);
 const plainMapRuntimeStartButton = ref<HTMLButtonElement | null>(null);
+const plainMapLargeView = ref(true);
 const plainLocalizationResetButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
@@ -3050,7 +3051,7 @@ function actionCardWithDerivedEvidence(
   card: NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number],
 ): NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number] {
   // 兼容旧 summary：后端还没带 evidence 时，前端用同一份安全边界补只读合同，不改变任何控制能力。
-  if (!["camera_preview", "keyboard_control", "nav2_route", "free_move", "mapping_start"].includes(card.id)) {
+  if (!["camera_preview", "map_preview", "keyboard_control", "nav2_route", "free_move", "mapping_start"].includes(card.id)) {
     return card;
   }
   const boundary = robotSummary.value?.safe_command_boundary;
@@ -3059,6 +3060,10 @@ function actionCardWithDerivedEvidence(
     if (value === "true") return true;
     if (value === "false") return false;
     return fallback;
+  };
+  const numberText = (value: string | undefined, fallback = 0): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
   };
   if (card.id === "camera_preview") {
     const camera = robotSummary.value?.readback_summary.camera;
@@ -3078,6 +3083,33 @@ function actionCardWithDerivedEvidence(
         visible_content_proven: card.evidence?.visible_content_proven ?? boolText(camera?.first_frame_probe_visible_content_proven, currentFrameVisible),
         shared_preview_client_count: card.evidence?.shared_preview_client_count ?? Number(camera?.shared_preview_client_count || "0"),
         shared_preview_cached_frame_loaded: card.evidence?.shared_preview_cached_frame_loaded ?? boolText(camera?.shared_preview_cached_frame_loaded, false),
+      },
+    };
+  }
+  if (card.id === "map_preview") {
+    const map = robotSummary.value?.readback_summary.map;
+    const radar = robotSummary.value?.readback_summary.radar;
+    const localization = robotSummary.value?.readback_summary.localization;
+    const mapPlain = map?.map_wysiwyg_status_plain?.trim() ?? "";
+    const mapVisible = mapPlain
+      ? !/^(当前)?地图画面未(读到|显示|加载)/.test(mapPlain)
+        && !/^当前地图未显示/.test(mapPlain)
+        && /地图画面.*(已显示|已读到|已按当前读数显示)/.test(mapPlain)
+      : card.status === "visible";
+    const radarPointCount = Number(radar?.map_marker_point_count || radar?.radar_overlay_point_count || "0");
+    const radarPointsVisible = Number.isFinite(radarPointCount) && radarPointCount > 0 && ["loaded", "partial"].includes(radar?.radar_overlay_status ?? "");
+    return {
+      ...card,
+      evidence: {
+        ...card.evidence,
+        map_current_visible: card.evidence?.map_current_visible ?? mapVisible,
+        map_free_cell_count: card.evidence?.map_free_cell_count ?? numberText(map?.map_free_cell_count),
+        path_visible_on_map: card.evidence?.path_visible_on_map ?? map?.path_preview_status === "path_preview_observed",
+        path_point_count: card.evidence?.path_point_count ?? numberText(map?.path_preview_point_count),
+        path_frame_id: card.evidence?.path_frame_id ?? map?.path_preview_frame_id ?? "not_loaded",
+        robot_pose_visible: card.evidence?.robot_pose_visible ?? (map?.robot_pose_status === "map_pose_observed" || localization?.robot_pose_status === "map_pose_observed"),
+        radar_points_visible_on_map: card.evidence?.radar_points_visible_on_map ?? radarPointsVisible,
+        radar_point_count_on_map: card.evidence?.radar_point_count_on_map ?? (radarPointsVisible ? radarPointCount : 0),
       },
     };
   }
@@ -13492,6 +13524,14 @@ onBeforeUnmount(() => {
           :data-frame-id="card.evidence?.frame_id"
           :data-source-frame-id="card.evidence?.source_frame_id"
           :data-blocked-reasons="card.evidence?.blocked_reasons?.join(',')"
+          :data-map-current-visible="card.evidence?.map_current_visible === undefined ? undefined : String(card.evidence.map_current_visible)"
+          :data-map-free-cell-count="card.evidence?.map_free_cell_count === undefined ? undefined : String(card.evidence.map_free_cell_count)"
+          :data-path-visible-on-map="card.evidence?.path_visible_on_map === undefined ? undefined : String(card.evidence.path_visible_on_map)"
+          :data-path-point-count="card.evidence?.path_point_count === undefined ? undefined : String(card.evidence.path_point_count)"
+          :data-path-frame-id="card.evidence?.path_frame_id"
+          :data-robot-pose-visible="card.evidence?.robot_pose_visible === undefined ? undefined : String(card.evidence.robot_pose_visible)"
+          :data-radar-points-visible-on-map="card.evidence?.radar_points_visible_on_map === undefined ? undefined : String(card.evidence.radar_points_visible_on_map)"
+          :data-radar-point-count-on-map="card.evidence?.radar_point_count_on_map === undefined ? undefined : String(card.evidence.radar_point_count_on_map)"
           :data-hold-to-move-required="card.evidence?.hold_to_move_required === undefined ? undefined : String(card.evidence.hold_to_move_required)"
           :data-arm-sends-motion="card.evidence?.arm_sends_motion === undefined ? undefined : String(card.evidence.arm_sends_motion)"
           :data-requires-keydown-for-motion="card.evidence?.requires_keydown_for_motion === undefined ? undefined : String(card.evidence.requires_keydown_for_motion)"
@@ -13784,9 +13824,14 @@ onBeforeUnmount(() => {
           <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
         </article>
 
-        <article ref="plainMapPanel" class="snapshot-panel plain-map-panel" tabindex="-1" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state">
-          <h3>地图</h3>
-          <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state">
+        <article ref="plainMapPanel" class="snapshot-panel plain-map-panel" tabindex="-1" data-testid="plain-map-panel" :data-state="plainMapVisualSummary.state" :data-size="plainMapLargeView ? 'large' : 'normal'">
+          <div class="plain-map-heading">
+            <h3>地图</h3>
+            <button type="button" class="secondary plain-map-size-toggle" data-testid="plain-map-size-toggle" :aria-pressed="plainMapLargeView ? 'true' : 'false'" @click="plainMapLargeView = !plainMapLargeView">
+              {{ plainMapLargeView ? "收起地图" : "放大地图" }}
+            </button>
+          </div>
+          <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" :data-state="plainMapVisualSummary.state" :data-size="plainMapLargeView ? 'large' : 'normal'">
             <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
               <div class="plain-map-overlay-frame" :style="plainMapVisualSummary.frameStyle">
                 <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt">

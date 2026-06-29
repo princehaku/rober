@@ -4047,6 +4047,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(actionCards.find((card) => card.id === "map_preview")).toMatchObject({
         status_label: "已显示",
         next_action_plain: "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。",
+        evidence: {
+          map_current_visible: true,
+          path_visible_on_map: false,
+          path_point_count: 0,
+          path_frame_id: "not_loaded",
+          robot_pose_visible: false,
+          radar_points_visible_on_map: false,
+          radar_point_count_on_map: 0,
+        },
       });
       const radarActionCard = actionCards.find((card) => card.id === "radar_map_points");
       expect(radarActionCard).toMatchObject({

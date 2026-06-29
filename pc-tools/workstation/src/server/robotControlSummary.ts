@@ -7238,6 +7238,8 @@ function buildActionStatusCards(
   // 这些卡片是首屏“现在能做什么”的结构化摘要，不新增任何控制能力或放行条件。
   const cameraVisible = readback.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
   const mapVisible = mapWysiwygVisibleFromPlain(readback.map.map_wysiwyg_status_plain);
+  const mapPathVisible = readback.map.path_preview_status === "path_preview_observed";
+  const mapRobotPoseVisible = readback.map.robot_pose_status === "map_pose_observed";
   const mapNextActionPlain = mapVisible
     ? "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。"
     : actionCardText(readback.map.map_wysiwyg_next_action_plain, "刷新地图画面");
@@ -7301,6 +7303,16 @@ function buildActionStatusCards(
       sends_motion_when_clicked: false,
       blocks_free_motion: false,
       blocks_mapping_start: false,
+      evidence: {
+        map_current_visible: mapVisible,
+        map_free_cell_count: actionCardNumber(readback.map.map_free_cell_count),
+        path_visible_on_map: mapPathVisible,
+        path_point_count: actionCardNumber(readback.map.path_preview_point_count),
+        path_frame_id: readback.map.path_preview_frame_id || "not_loaded",
+        robot_pose_visible: mapRobotPoseVisible,
+        radar_points_visible_on_map: radarCurrent,
+        radar_point_count_on_map: radarCurrent ? radarCurrentPointCount : 0,
+      },
     },
     {
       id: "radar_map_points",

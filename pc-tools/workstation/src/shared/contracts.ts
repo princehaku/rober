@@ -2469,6 +2469,14 @@ export interface RobotControlActionStatusCard {
     visible_content_proven?: boolean;
     shared_preview_client_count?: number;
     shared_preview_cached_frame_loaded?: boolean;
+    map_current_visible?: boolean;
+    map_free_cell_count?: number;
+    path_visible_on_map?: boolean;
+    path_point_count?: number;
+    path_frame_id?: string;
+    robot_pose_visible?: boolean;
+    radar_points_visible_on_map?: boolean;
+    radar_point_count_on_map?: number;
   };
 }
 
