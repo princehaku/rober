@@ -4155,3 +4155,10 @@ manual、delivery、stop 或 `/cmd_vel`。
 点只读检查复测首帧；当诊断已证明 `uvc_no_frame_not_exclusive` 时，仍优先提示检查 USB、摄像头输入或供电、换
 known-good UVC 复测。该变化只修正只读 summary 和 camera MJPEG status 文案，不新建额外 capture、不执行 Nav2、
 不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:24 CST 起，PC 工作站把“PC Node 端口”和“小车 Robot API 端口”在只读诊断里分开说明：
+PC Node 继续固定 `0.0.0.0:7001` 供局域网访问，小车上位机 Robot API 使用 `192.168.1.11:8787`。
+如果旧链接或高级输入显式传入 `http://192.168.1.11:7071`，且所有上车只读端点都 fetch failed，summary 会在
+`robot_api_connection.blocked_reasons` 和 `current_fact_plain` 首位提示
+`robot_api_port_7071_mismatch_use_8787`。这样现场不会把端口写错误判为摄像头独占、雷达未 ready 或 Nav2 不能动；
+该诊断仍然只读，不自动重写 baseUrl、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

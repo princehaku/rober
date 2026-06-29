@@ -11644,6 +11644,30 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary explains 7071 is not the robot API port", async () => {
+    // 现场旧链接或手填 7071 会让所有只读端点 fetch failed；要直说端口漂移，而不是误导成雷达/相机/Nav2 坏了。
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("ECONNREFUSED"));
+    try {
+      const summary = await buildRobotControlSummary("http://192.168.1.11:7071");
+
+      expect(fetchMock).toHaveBeenCalled();
+      expect(summary.robot_api_connection.status).toBe("degraded");
+      expect(summary.robot_api_connection.loaded_count).toBe(0);
+      expect(summary.robot_api_connection.blocked_reasons[0]).toBe("robot_api_port_7071_mismatch_use_8787");
+      expect(summary.blocked_reasons[0]).toBe("robot_api_port_7071_mismatch_use_8787");
+      expect(summary.current_fact_plain).toContain("小车地址端口写错");
+      expect(summary.current_fact_plain).toContain("PC 页面是 0.0.0.0:7001");
+      expect(summary.current_fact_plain).toContain("Robot API 是 192.168.1.11:8787");
+      expect(summary.current_fact_plain).toContain("不要把 Robot API 填成 7071");
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.primary_actions_enabled).toBe(false);
+      expect(summary.safe_command_boundary.command_dispatch_enabled).toBe(false);
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   it("Robot Control summary rejects unsafe URLs and dangerous true fields", async () => {
     // URL 和 payload 任一层不安全都必须 fail-closed，防止控制台被误用为控制代理。
     const missing = await buildRobotControlSummary("");

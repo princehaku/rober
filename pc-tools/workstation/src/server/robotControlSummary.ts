@@ -679,6 +679,22 @@ export function endpointUrl(base: URL, endpoint: string): string {
   return next.toString();
 }
 
+function robotApiPortDriftReason(base: URL): string {
+  // 现场 PC Node 固定跑在 7001，小车上位机 Robot API 固定跑在 8787；7071 常被 Clash 占用或根本无服务。
+  const port = base.port || (base.protocol === "http:" ? "80" : "");
+  if (base.hostname === "192.168.1.11" && port === "7071") {
+    return "robot_api_port_7071_mismatch_use_8787";
+  }
+  return "";
+}
+
+function robotApiPortDriftPlain(reason: string): string {
+  // 这句必须出现在普通首屏和脚本读数里，避免把端口写错误判成 Nav2、摄像头或雷达坏了。
+  return reason === "robot_api_port_7071_mismatch_use_8787"
+    ? "小车地址端口写错：PC 页面是 0.0.0.0:7001，小车上位机 Robot API 是 192.168.1.11:8787；不要把 Robot API 填成 7071"
+    : "";
+}
+
 export function scanDangerousTrueFields(
   value: unknown,
   path = "",
@@ -7184,6 +7200,12 @@ export async function buildRobotControlSummary(
     ...readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`)),
     ...dangerous.map((field) => `dangerous_true_field:${field}`),
   ];
+  const portDriftReason = failedCount > 0 && loadedCount === 0 ? robotApiPortDriftReason(normalized.normalized) : "";
+  const portDriftPlain = robotApiPortDriftPlain(portDriftReason);
+  const connectionBlockedReasons = [
+    ...(portDriftReason ? [portDriftReason] : []),
+    ...blockedReasons,
+  ];
   const hardBlockedReasons = [
     ...readbacks
       .filter((item) => item.request_status === "blocked")
@@ -7234,10 +7256,12 @@ export async function buildRobotControlSummary(
       failed_count: failedCount,
       schema_mismatch_count: schemaMismatchCount,
       dangerous_true_fields: dangerous,
-      blocked_reasons: blockedReasons,
+      blocked_reasons: connectionBlockedReasons,
       last_refresh_ms: observedAt,
     },
-    current_fact_plain: summaryCurrentFactPlain(readbackSummary, safeCommandBoundary),
+    current_fact_plain: [portDriftPlain, summaryCurrentFactPlain(readbackSummary, safeCommandBoundary)]
+      .filter(Boolean)
+      .join("；"),
     action_status_cards: actionStatusCards,
     goal_checklist: goalChecklist,
     goal_checklist_summary: buildGoalChecklistSummary(goalChecklist ?? []),
@@ -7245,7 +7269,7 @@ export async function buildRobotControlSummary(
     operator_hil_material_summary: operatorHilMaterialSummary,
     first_jog_readiness_summary: buildFirstJogReadinessSummary(operatorHilMaterialSummary),
     safe_command_boundary: safeCommandBoundary,
-    blocked_reasons: blockedReasons.length ? blockedReasons : ["dangerous actions locked by V1 boundary"],
+    blocked_reasons: connectionBlockedReasons.length ? connectionBlockedReasons : ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success", "safe_to_control_true", "real_robot_ack"],
     ...PROOF_FLAGS,
   };
