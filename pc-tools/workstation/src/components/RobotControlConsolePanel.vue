@@ -9539,6 +9539,9 @@ type PlainTripDomEvidence = {
   // 主面板也要能证明“图上路线”和“执行按钮”绑定的是同一件事，不能只靠长文案解释。
   routePointCount: number;
   routeSourcePointCount: number;
+  routePreviewComplete: boolean;
+  routePreviewPartial: boolean;
+  executionRoutePointCount: number;
   currentRouteVisible: boolean;
   recentRouteVisible: boolean;
   robotPoseVisible: boolean;
@@ -9549,6 +9552,7 @@ type PlainTripDomEvidence = {
   mainActionTargetSource: string;
   mainActionSendsMotion: boolean;
   mainActionCanRun: boolean;
+  executesCurrentRouteGoal: boolean;
   minimalPrecheckSafetyOnly: boolean;
   managedRuntimeAutostart: boolean;
   // 完整行程闭环要求同窗口轮速 L/R 非零；IMU 或 goal_succeeded 都不能单独替代。
@@ -9587,13 +9591,18 @@ const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
   const values = directNav2ExecutionValues();
   const wheelPair = nav2BaseFeedbackPair(values);
   const routePath = latestNavPathOverlay();
+  const routePointCount = routePath?.displayedCount ?? plainTripPreparedPointCount.value;
+  const routeSourcePointCount = routePath?.totalCount ?? plainTripPreparedPointCount.value;
   const mainActionKind = plainTripMainActionKind.value;
   const mainActionSendsMotion = plainTripMainActionSendsMotion.value;
   const executionComplete = nav2ExecutionComplete(values) && !evidenceIsStale(values);
   const postExecutionMapRefreshRequired = executionComplete || plainTripPostExecutionMapPreviewRefreshFailed.value;
   return {
-    routePointCount: routePath?.displayedCount ?? plainTripPreparedPointCount.value,
-    routeSourcePointCount: routePath?.totalCount ?? plainTripPreparedPointCount.value,
+    routePointCount,
+    routeSourcePointCount,
+    routePreviewComplete: routePointCount > 0 && routePointCount === routeSourcePointCount,
+    routePreviewPartial: routePointCount > 0 && routeSourcePointCount > routePointCount,
+    executionRoutePointCount: routeSourcePointCount,
     currentRouteVisible: plainTripCurrentRouteVisible.value,
     recentRouteVisible: plainTripRecentRouteVisible.value,
     robotPoseVisible: plainTripRobotPoseVisibleForExecution.value,
@@ -9603,6 +9612,7 @@ const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
     mainActionTargetSource: plainTripMainActionTargetSource.value,
     mainActionSendsMotion,
     mainActionCanRun: canRunPlainTripExecution.value,
+    executesCurrentRouteGoal: mainActionKind === "execute_current_map_route" && plainTripCurrentRouteVisible.value,
     minimalPrecheckSafetyOnly: true,
     managedRuntimeAutostart: plainTripManagedRuntimeWillAutostart.value,
     requiresSameWindowWheelLrNonzero: true,
@@ -15376,8 +15386,18 @@ onBeforeUnmount(() => {
                 :data-main-action-kind="plainTripMainActionKind"
                 :data-sends-motion-when-clicked="String(plainTripMainActionSendsMotion)"
                 :data-target-source="plainTripMainActionTargetSource"
+                :data-route-point-count="String(plainTripDomEvidence.routePointCount)"
+                :data-route-source-point-count="String(plainTripDomEvidence.routeSourcePointCount)"
+                :data-route-preview-complete="String(plainTripDomEvidence.routePreviewComplete)"
+                :data-route-preview-partial="String(plainTripDomEvidence.routePreviewPartial)"
+                :data-current-route-visible="String(plainTripDomEvidence.currentRouteVisible)"
+                :data-route-wysiwyg-ready="String(plainTripDomEvidence.routeWysiwygReady)"
+                :data-execution-route-point-count="String(plainTripDomEvidence.executionRoutePointCount)"
+                :data-executes-current-route-goal="String(plainTripDomEvidence.executesCurrentRouteGoal)"
                 :data-minimal-precheck-safety-only="String(true)"
                 :data-managed-runtime-autostart="String(plainTripManagedRuntimeWillAutostart)"
+                :data-requires-same-window-wheel-lr-nonzero="String(plainTripDomEvidence.requiresSameWindowWheelLrNonzero)"
+                :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
                 @click="runPlainTripExecution"
               >
                 {{ plainTripExecutionButtonLabel }}
