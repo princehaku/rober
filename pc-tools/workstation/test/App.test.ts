@@ -3920,7 +3920,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("重新建图");
     expect(firstScreenText).toContain("保存地图");
     expect(firstScreenText).toContain("自由移动 / 建图");
-    expect(firstScreenText).toContain("先确认安全，可低速自由移动；相机和雷达 ready 后再按建图验收。");
+    expect(firstScreenText).toContain("先确认安全，可低速自由移动；相机和雷达 ready 后可启动建图记录。");
     const freeRoamPanel = wrapper.find('[data-testid="plain-free-roam-mapping"]');
     expect(freeRoamPanel.exists()).toBe(true);
     expect(freeRoamPanel.attributes("data-state")).toBe("待确认");
@@ -4909,8 +4909,9 @@ describe("App", () => {
     const readiness = wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]');
     expect(readiness.attributes("data-state")).toBe("已就绪");
     expect(readiness.text()).toContain("上车端自动扫图已就绪；点击后只启动上车状态机");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：画面和雷达已 ready；可启动扫图记录，地图记录和地图画面再用于验收；建图验收：画面、雷达、地图记录和地图画面都 ready；本轮可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自动扫图状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自动扫图（低速）后才会重新启动。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：画面和雷达已 ready；可启动扫图记录");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面、雷达和地图记录已 ready，可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动；低速自移动不依赖雷达新鲜度。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
@@ -4970,7 +4971,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可建图");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("摄像头和雷达已 ready；先启动地图记录");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：画面和雷达已 ready；可启动扫图记录，地图记录和地图画面再用于验收；建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：画面和雷达已 ready；可启动扫图记录");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面和雷达已 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始扫图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
@@ -5104,12 +5106,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"] h3').text()).toBe("自由移动 / 建图");
-    expect(wrapper.find('[data-testid="plain-free-roam-mode-subtitle"]').text()).toBe("先确认安全，可低速自由移动；相机和雷达 ready 后再按建图验收。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mode-subtitle"]').text()).toBe("先确认安全，可低速自由移动；相机和雷达 ready 后可启动建图记录。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可在安全确认后低速自由移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：当前缺口：画面首帧未出（不是页面独占）、雷达未刷新；自由移动不受影响；建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可在安全确认后低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).not.toContain("画面和雷达都 ready");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自由移动（低速）后才会重新启动。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：当前缺口：画面首帧未出（不是页面独占）、雷达未刷新；自由移动不受影响");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出（不是页面独占）、地图记录未启动；自由移动不受影响。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，勾安全确认后可启动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动；低速自移动不依赖雷达新鲜度。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
@@ -5272,7 +5275,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：显示最近读取的真实地图。");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可在安全确认后低速自由移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：当前缺口：画面首帧未出（不是页面独占）；自由移动不受影响；建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可在安全确认后低速自由移动。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：当前缺口：画面首帧未出（不是页面独占）；自由移动不受影响");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出（不是页面独占）、地图记录未启动；自由移动不受影响。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).not.toContain("地图画面未刷新");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("地图画面未刷新");

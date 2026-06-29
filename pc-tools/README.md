@@ -154,6 +154,8 @@ readback 中的画面、地图、雷达 marker、Nav2 路线复验、键盘连�
 
 2026-06-30 08:36 CST 起，`readback_summary.free_roam` 与 `safe_command_boundary` 增加建图启动专用字段：`mapping_start_ready`、`mapping_start_missing`、`mapping_start_readiness_plain`、`mapping_start_next_action_plain`、`free_roam_mapping_start_ready`、`free_roam_mapping_start_missing_reasons`、`free_roam_mapping_start_plain` 和 `free_roam_mapping_start_next_action`。这些字段只回答“相机首帧和雷达新鲜是否足够启动建图记录”；旧 `mapping_ready/free_roam_mapping_ready` 仍表示“建图验收是否完成”，继续要求地图记录和地图画面。该变化只补只读 summary 字段，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
+2026-06-30 08:49 CST 起，普通首屏会把 `建图启动` 和 `建图验收` 两层同时展示在 `当前事实` 与自由移动/建图卡片：相机首帧和雷达新鲜 ready 时提示可启动扫图记录；地图记录和地图画面仍只用于建图验收。旧 7001 或旧 fixture 没有 `mapping_start_*` 时，页面按当前画面/雷达事实 fallback。该变化只改只读展示，不自动启动建图、不启动自由移动、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+
 2026-06-29 03:47 CST 起，`/api/robot-control/free-roam/autonomy/latest` 顶层也返回自由移动和建图 readiness：`free_move_start_ready`、`motion_ready`、`mapping_readiness_ready`、`mapping_blocked_reasons`、`motion_readiness_plain`、`mapping_readiness_plain`、`motion_next_action_plain` 和 `mapping_next_action_plain`。外部脚本只读 latest endpoint 时即可看到“可先自由移动；相机和雷达只影响建图验收”以及“建图验收还差哪些材料”，不必解析 `latest_key_values.mapping_missing`。该变化只读 runtime artifact，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 04:12 CST 起，`/api/robot-control/free-roam/autonomy/latest` 额外返回 `free_move_start_status_plain`、`motion_runtime_status_plain` 和 `mapping_acceptance_status_plain`。这三个字段把“能不能启动自由移动”“当前是否已经在发布低速运动”和“建图是否可验收”拆开；当 `free_move_start_ready=true` 但 `motion_ready=false` 时，接口会明确说明 `motion_ready=false` 只表示尚未开始发布运动，不是启动阻塞。该变化只补只读 latest 响应，不启动 free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。

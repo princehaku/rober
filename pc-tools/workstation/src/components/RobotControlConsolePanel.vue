@@ -2308,6 +2308,49 @@ function onlyMissingMapRuntimeForMapping(missing: string[]): boolean {
   return missing.length > 0 && missing.every((label) => label === "地图记录未启动");
 }
 
+function usablePlainText(value: string | undefined): string {
+  // 后端 plain 字段是首屏优先来源；空值和占位 token 不进入普通界面。
+  const text = value?.trim().replace(/[。；\s]+$/g, "") ?? "";
+  return text && !["not_loaded", "none", "unknown"].includes(text) ? text : "";
+}
+
+function plainCurrentMappingStartFactText(summary: RobotControlSummaryResponse): string {
+  // “能启动建图记录”和“能验收建图”分开展示；启动只要求画面首帧和雷达 fresh。
+  const readback = summary.readback_summary.free_roam;
+  const boundary = summary.safe_command_boundary;
+  const localMappingStartReady = plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value;
+  if (localMappingStartReady) {
+    return "建图启动：画面和雷达已 ready；可启动扫图记录，地图记录和地图画面再用于验收";
+  }
+  const readbackText = usablePlainText(readback.mapping_start_readiness_plain);
+  if (readbackText && !readbackText.includes("等待上车自由移动状态机")) {
+    return `建图启动：${readbackText.replace(/^建图启动/, "").replace(/^[：:]/, "")}`;
+  }
+  const boundaryText = usablePlainText(boundary.free_roam_mapping_start_plain);
+  if (boundaryText && !boundaryText.includes("等待上车自由移动状态机")) {
+    return `建图启动：${boundaryText.replace(/^建图启动/, "").replace(/^[：:]/, "")}`;
+  }
+  const startMissing = Array.isArray(boundary.free_roam_mapping_start_missing_reasons)
+    ? freeRoamMappingMissingPlainLabelsForVisibleState(boundary.free_roam_mapping_start_missing_reasons)
+    : freeRoamMappingMissingPlainLabelsForVisibleState(readback.mapping_start_missing);
+  if (startMissing.length > 0) {
+    return `建图启动：当前缺口：${startMissing.join("、")}；自由移动不受影响`;
+  }
+  const fallbackMissing: string[] = [];
+  if (!plainCameraReadyForFreeRoamAutonomy.value) {
+    fallbackMissing.push(cameraSourceFirstFrameFailed(summary.readback_summary.camera) ? cameraFirstFrameMissingPlainLabel() : "画面未确认");
+  }
+  if (!plainRadarReadyForFreeRoamMapping.value) {
+    const staleRuntimeLabel = latestRadarRuntimeScanStaleLabel();
+    const notCurrentRadarText = radarNotCurrentSourcePointText();
+    fallbackMissing.push(staleRuntimeLabel ? `雷达未刷新（${staleRuntimeLabel}）` : notCurrentRadarText ? `雷达未刷新（${notCurrentRadarText}）` : "雷达未刷新");
+  }
+  if (fallbackMissing.length > 0) {
+    return `建图启动：当前缺口：${[...new Set(fallbackMissing)].join("、")}；自由移动不受影响`;
+  }
+  return "";
+}
+
 const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
   const result = freeRoamAutonomyResult.value;
   if (!result || !result.command_result.executed) {
@@ -2409,6 +2452,10 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
 function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): string {
   // 建图是“可验收材料”，不是低速移动门禁；首屏要把这层差异直接讲清楚。
   const freeRoam = summary.readback_summary.free_roam;
+  const mappingStartFact = plainCurrentMappingStartFactText(summary);
+  const withMappingStart = (acceptanceFact: string): string => (
+    mappingStartFact ? `${mappingStartFact}；${acceptanceFact}` : acceptanceFact
+  );
   const freeRoamReadbackHasMappingState = freeRoam.mapping_ready === "true"
     || Boolean(freeRoam.mapping_missing && !["not_loaded", "none"].includes(freeRoam.mapping_missing));
   const mappingReadinessPlain = freeRoamReadbackHasMappingState ? freeRoam.mapping_readiness_plain?.trim() : "";
@@ -2417,7 +2464,7 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
     && !["not_loaded", "none"].includes(mappingReadinessPlain)
     && !mappingReadinessPlain.includes("等待上车状态机")
   ) {
-    return `建图：${mappingReadinessPlain.replace(/^建图验收/, "").replace(/^[：:]/, "")}`;
+    return withMappingStart(`建图：${mappingReadinessPlain.replace(/^建图验收/, "").replace(/^[：:]/, "")}`);
   }
   const missing = plainFreeRoamMappingMissingForVisibleState();
   const boundaryMappingReady = summary.safe_command_boundary.free_roam_mapping_ready;
@@ -2427,7 +2474,7 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
     || (!boundaryMappingKnown && freeRoam.mapping_ready === "true")
     || (mapRuntimeStarted.value && plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
   ) {
-    return "建图：画面、雷达和地图记录已 ready，可按建图记录监看。";
+    return withMappingStart("建图：画面、雷达和地图记录已 ready，可按建图记录监看。");
   }
   if (missing.length > 0) {
     if (
@@ -2435,12 +2482,12 @@ function plainCurrentMappingFactText(summary: RobotControlSummaryResponse): stri
       && plainCameraReadyForFreeRoamAutonomy.value
       && plainRadarReadyForFreeRoamMapping.value
     ) {
-      return "建图：画面和雷达已 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。";
+      return withMappingStart("建图：画面和雷达已 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
     }
     const nextActionSuffix = plainFreeRoamMappingReadinessNextActionSuffix(missing);
-    return `建图：当前缺口：${missing.join("、")}；自由移动不受影响${nextActionSuffix}。`;
+    return withMappingStart(`建图：当前缺口：${missing.join("、")}；自由移动不受影响${nextActionSuffix}。`);
   }
-  return "建图：等待上车端建图 readiness；自由移动可按单独条件判断。";
+  return withMappingStart("建图：等待上车端建图 readiness；自由移动可按单独条件判断。");
 }
 
 function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string {
@@ -4398,7 +4445,7 @@ const plainFreeRoamPanelCopy = computed(() => {
   return movementOnly
     ? {
       title: "自由移动 / 建图",
-      subtitle: "先确认安全，可低速自由移动；相机和雷达 ready 后再按建图验收。",
+      subtitle: "先确认安全，可低速自由移动；相机和雷达 ready 后可启动建图记录。",
     }
     : {
       title: "扫地式建图",
@@ -5150,11 +5197,15 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const boundaryNextAction = boundary?.free_roam_autonomy_next_action?.trim() || "";
   const mappingReadinessText = (() => {
     // 自由低速移动和可验收建图是两层能力：相机/雷达只决定建图验收，不阻塞低速自由移动入口。
+    const mappingStartText = robotSummary.value ? plainCurrentMappingStartFactText(robotSummary.value) : "";
+    const withMappingStart = (acceptanceText: string): string => (
+      mappingStartText ? `${mappingStartText}；${acceptanceText}` : acceptanceText
+    );
     if (
       boundary?.free_roam_mapping_ready === true
       || (mapRuntimeStarted.value && plainCameraReadyForFreeRoamAutonomy.value && plainRadarReadyForFreeRoamMapping.value)
     ) {
-      return "建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。";
+      return withMappingStart("建图验收：画面、雷达、地图记录和地图画面都 ready；本轮可按建图记录监看。");
     }
     const onboardMissing = plainFreeRoamMappingMissingForVisibleState();
     if (onboardMissing.length > 0) {
@@ -5163,10 +5214,10 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
         && plainCameraReadyForFreeRoamAutonomy.value
         && plainRadarReadyForFreeRoamMapping.value
       ) {
-        return "建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。";
+        return withMappingStart("建图验收：画面和雷达都 ready；下一步启动扫图记录，启动后本轮可按建图记录监看。");
       }
       const nextActionSuffix = plainFreeRoamMappingReadinessNextActionSuffix(onboardMissing);
-      return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动${nextActionSuffix}。`;
+      return withMappingStart(`建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动${nextActionSuffix}。`);
     }
     const gaps: string[] = [];
     const camera = robotSummary.value?.readback_summary.camera;
@@ -5178,10 +5229,10 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       gaps.push(conflict ? "雷达状态源不一致" : radarSummary.value.state);
     }
     if (gaps.length === 0) {
-      return "建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。";
+      return withMappingStart("建图验收：画面和雷达都 ready；启动后本轮可按建图记录监看。");
     }
     const freeMoveText = "仍可在安全确认后低速自由移动";
-    return `建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${gaps.join("、")}；${freeMoveText}。`;
+    return withMappingStart(`建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${gaps.join("、")}；${freeMoveText}。`);
   })();
   const runtimeModeText = (() => {
     // runtime state 来自上车端 artifact；这里只做翻译，不把任何状态外推成 PC 自动发车。

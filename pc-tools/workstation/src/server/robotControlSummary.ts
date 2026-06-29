@@ -6486,6 +6486,7 @@ function summaryCurrentFactPlain(
   const nav2 = plainFactPart(readback.nav2.execution_status_plain || readback.nav2.route_execution_readiness_plain);
   const keyboard = plainFactPart(readback.keyboard.hold_to_move_plain || readback.keyboard.readiness_plain);
   const freeMove = plainFactPart(readback.free_roam.motion_readiness_plain);
+  const mappingStart = plainFactPart(readback.free_roam.mapping_start_readiness_plain);
   const mapping = plainFactPart(readback.free_roam.mapping_readiness_plain);
   const minimal = plainFactPart(boundary.nav2_goal_minimal_precheck_plain);
   const parts = [
@@ -6495,7 +6496,8 @@ function summaryCurrentFactPlain(
     nav2 ? `自动驾驶：${nav2}` : "",
     keyboard ? `键盘：${keyboard}` : "",
     freeMove ? `自由移动：${freeMove}` : "",
-    mapping ? `建图：${mapping}` : "",
+    mappingStart ? `建图启动：${mappingStart}` : "",
+    mapping ? `建图验收：${mapping}` : "",
     minimal ? `发车前：${minimal}` : "",
   ].filter(Boolean);
   return parts.length > 0
