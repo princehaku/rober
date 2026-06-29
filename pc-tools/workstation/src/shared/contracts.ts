@@ -2436,8 +2436,14 @@ export interface RobotControlGoalChecklistSummary {
   motion_needed_count: number;
   first_incomplete_item_id: RobotControlGoalChecklistItemId | "";
   first_incomplete_source_card_id: RobotControlActionStatusCardId | "";
+  first_motion_item_id: RobotControlGoalChecklistItemId | "";
+  first_motion_source_card_id: RobotControlActionStatusCardId | "";
   next_action_plain: string;
   summary_plain: string;
+  motion_next_action_plain: string;
+  motion_summary_plain: string;
+  mapping_next_action_plain: string;
+  mapping_summary_plain: string;
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {

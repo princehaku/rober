@@ -630,3 +630,9 @@ summary/首屏文案，不执行 Nav2 goal、不启动 runtime、不发送 manua
 “本轮目标检查”顶部显示已完成/剩余数量、需要安全确认和真实运动验证的数量，并给出第一项未完成目标的下一步。
 “去处理下一项”只滚动并聚焦到已有控件，不自动发车、不启动服务、不勾选安全确认。该变化只读 summary，不发送
 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 10:12 CST 起，`goal_checklist_summary` 额外拆出移动优先提示：
+`first_motion_item_id`、`first_motion_source_card_id`、`motion_next_action_plain`、`motion_summary_plain`、
+`mapping_next_action_plain` 和 `mapping_summary_plain`。普通首屏会同时显示“车可以先怎么动”和“建图还差什么”，
+避免摄像头/雷达建图缺口遮住键盘连续手控或自由移动入口。“先动车”按钮只聚焦到已有运动控件，不发送 manual、
+Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -5345,8 +5345,14 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       motion_needed_count: 0,
       first_incomplete_item_id: "",
       first_incomplete_source_card_id: "",
+      first_motion_item_id: "",
+      first_motion_source_card_id: "",
       next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
       summary_plain: "本轮目标检查未读到；先恢复小车连接。",
+      motion_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
+      motion_summary_plain: "车能不能先动还未读到；先恢复小车连接。",
+      mapping_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
+      mapping_summary_plain: "建图条件还未读到；先恢复小车连接。",
     },
     readback_summary: {
       camera: {
@@ -6878,6 +6884,36 @@ function buildGoalChecklistSummary(
   const safetyConfirmNeededCount = remaining.filter((item) => item.requires_safety_confirmation).length;
   const motionNeededCount = remaining.filter((item) => item.requires_motion).length;
   const firstIncomplete = remaining[0] ?? null;
+  const itemById = (id: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]["id"]) => checklist.find((item) => item.id === id) ?? null;
+  const freeMove = itemById("free_move");
+  const keyboard = itemById("keyboard_continuous_control");
+  const nav2 = itemById("nav2_route_execution");
+  const mapping = itemById("mapping_start");
+  const firstMotion = [freeMove, keyboard, nav2].find((item) => item && (item.status === "ready" || item.status === "needs_safety_confirm")) ?? null;
+  const motionSummary = (() => {
+    if (freeMove?.status === "ready") {
+      return "自由移动已运行；相机和雷达只影响建图验收，不影响继续现场监看。";
+    }
+    if (freeMove?.status === "needs_safety_confirm") {
+      return `可先自由移动；相机和雷达只影响建图验收。下一步：${freeMove.next_action_plain}`;
+    }
+    if (keyboard?.status === "needs_safety_confirm") {
+      return `自由移动状态机未 ready 时，仍可先用键盘连续手控；相机和雷达不作为键盘发车硬门禁。下一步：${keyboard.next_action_plain}`;
+    }
+    if (nav2?.status === "needs_safety_confirm") {
+      return `图上行程可执行；发车只需要现场安全确认，雷达和相机问题不应改写这个读数。下一步：${nav2.next_action_plain}`;
+    }
+    return "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。";
+  })();
+  const mappingSummary = (() => {
+    if (mapping?.status === "needs_safety_confirm") {
+      return `相机和雷达已 ready；建图启动只等现场安全确认。下一步：${mapping.next_action_plain}`;
+    }
+    if (mapping) {
+      return `建图暂不可启动；相机和雷达只影响建图验收，不阻止已具备条件的低速移动。下一步：${mapping.next_action_plain}`;
+    }
+    return "建图条件还未读到；先刷新小车状态。";
+  })();
   if (totalCount === 0) {
     return {
       status: "not_started",
@@ -6889,8 +6925,14 @@ function buildGoalChecklistSummary(
       motion_needed_count: 0,
       first_incomplete_item_id: "",
       first_incomplete_source_card_id: "",
+      first_motion_item_id: "",
+      first_motion_source_card_id: "",
       next_action_plain: "先刷新小车状态。",
       summary_plain: "本轮目标检查未读到；先刷新小车状态。",
+      motion_next_action_plain: "先刷新小车状态。",
+      motion_summary_plain: "车能不能先动还未读到；先刷新小车状态。",
+      mapping_next_action_plain: "先刷新小车状态。",
+      mapping_summary_plain: "建图条件还未读到；先刷新小车状态。",
     };
   }
   if (!firstIncomplete) {
@@ -6904,8 +6946,14 @@ function buildGoalChecklistSummary(
       motion_needed_count: 0,
       first_incomplete_item_id: "",
       first_incomplete_source_card_id: "",
+      first_motion_item_id: firstMotion?.id ?? "",
+      first_motion_source_card_id: firstMotion?.source_card_id ?? "",
       next_action_plain: "本轮目标检查已完成；继续保持现场监看。",
       summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成。`,
+      motion_next_action_plain: firstMotion?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
+      motion_summary_plain: motionSummary,
+      mapping_next_action_plain: mapping?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
+      mapping_summary_plain: mappingSummary,
     };
   }
   const safetyText = safetyConfirmNeededCount > 0 ? `，其中 ${safetyConfirmNeededCount} 项需要现场安全确认` : "";
@@ -6920,8 +6968,14 @@ function buildGoalChecklistSummary(
     motion_needed_count: motionNeededCount,
     first_incomplete_item_id: firstIncomplete.id,
     first_incomplete_source_card_id: firstIncomplete.source_card_id,
+    first_motion_item_id: firstMotion?.id ?? "",
+    first_motion_source_card_id: firstMotion?.source_card_id ?? "",
     next_action_plain: firstIncomplete.next_action_plain,
     summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成，还差 ${remaining.length} 项${safetyText}${motionText}；先处理：${firstIncomplete.title}。`,
+    motion_next_action_plain: firstMotion?.next_action_plain ?? "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。",
+    motion_summary_plain: motionSummary,
+    mapping_next_action_plain: mapping?.next_action_plain ?? "建图条件还未读到；先刷新小车状态。",
+    mapping_summary_plain: mappingSummary,
   };
 }
 

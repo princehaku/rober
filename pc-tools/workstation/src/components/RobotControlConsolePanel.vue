@@ -2900,6 +2900,14 @@ function focusPlainGoalChecklistSummaryTarget(): void {
   }
   focusPlainActionCardTarget(sourceCardId);
 }
+function focusPlainGoalChecklistMotionTarget(): void {
+  // 移动优先按钮只跳转到已具备条件的运动入口；现场仍需再次确认安全后才会发车。
+  const sourceCardId = plainGoalChecklistSummary.value?.first_motion_source_card_id;
+  if (!sourceCardId) {
+    return;
+  }
+  focusPlainActionCardTarget(sourceCardId);
+}
 const showPlainRadarStart = computed(() => {
   // 雷达是建图和 LiDAR delta 的监看入口；Nav2/自由移动是否启动不再由雷达运行态前端硬挡。
   return radarLifecyclePendingAction.value === "start"
@@ -12455,7 +12463,24 @@ onBeforeUnmount(() => {
           data-testid="plain-goal-checklist-summary"
         >
           <span class="status-chip" :data-state="plainGoalChecklistSummary.status_label">{{ plainGoalChecklistSummary.status_label }}</span>
-          <span class="muted">{{ plainActionCardUserText(plainGoalChecklistSummary.summary_plain) }}</span>
+          <div class="plain-goal-checklist-summary-copy">
+            <span class="muted">{{ plainActionCardUserText(plainGoalChecklistSummary.summary_plain) }}</span>
+            <span v-if="plainGoalChecklistSummary.motion_summary_plain" class="muted">
+              {{ plainActionCardUserText(plainGoalChecklistSummary.motion_summary_plain) }}
+            </span>
+            <span v-if="plainGoalChecklistSummary.mapping_summary_plain" class="muted">
+              {{ plainActionCardUserText(plainGoalChecklistSummary.mapping_summary_plain) }}
+            </span>
+          </div>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :disabled="!plainGoalChecklistSummary.first_motion_source_card_id"
+            data-testid="plain-goal-checklist-motion-action"
+            @click="focusPlainGoalChecklistMotionTarget"
+          >
+            先动车
+          </button>
           <button
             type="button"
             class="secondary compact-stop"

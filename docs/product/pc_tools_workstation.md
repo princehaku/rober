@@ -4060,3 +4060,9 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 顶部显示整体完成数、剩余数、需要安全确认/真实运动验证的数量，以及第一项未完成目标和下一步。汇总按钮“去处理下一项”
 只复用已有页面内聚焦逻辑，把 operator 带到对应动作卡/控件，不自动点击、不勾选安全确认、不启动任何服务或运动。
 该变化只读 `goal_checklist[]`，不调用 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 10:12 CST 起，`goal_checklist_summary` 把“总目标第一缺口”和“车能不能先动”拆成两条只读提示。
+新增 `first_motion_item_id`、`first_motion_source_card_id`、`motion_next_action_plain`、`motion_summary_plain`、
+`mapping_next_action_plain` 和 `mapping_summary_plain`；普通首屏会显示移动优先摘要和建图摘要，并提供“先动车”
+聚焦按钮。当相机/雷达还阻塞建图验收时，键盘连续手控或自由移动仍可作为独立移动入口显示出来。
+该变化只做页面说明和 scroll/focus，不调用 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

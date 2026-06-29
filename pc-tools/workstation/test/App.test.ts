@@ -611,8 +611,14 @@ const fixtures: Record<string, unknown> = {
       motion_needed_count: 4,
       first_incomplete_item_id: "camera_wysiwyg",
       first_incomplete_source_card_id: "camera_preview",
+      first_motion_item_id: "keyboard_continuous_control",
+      first_motion_source_card_id: "keyboard_control",
       next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
       summary_plain: "本轮目标检查 1/7 项已完成，还差 6 项，其中 4 项需要现场安全确认，4 项需要真实运动验证；先处理：画面所见即所得。",
+      motion_next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
+      motion_summary_plain: "自由移动状态机未 ready 时，仍可先用键盘连续手控；相机和雷达不作为键盘发车硬门禁。下一步：勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
+      mapping_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
+      mapping_summary_plain: "建图暂不可启动；相机和雷达只影响建图验收，不阻止已具备条件的低速移动。下一步：先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜",
     },
     readback_summary: {
       camera: {
@@ -4161,9 +4167,18 @@ describe("App", () => {
     expect(goalChecklistSummary.exists()).toBe(true);
     expect(goalChecklistSummary.text()).toContain("本轮目标检查 1/7 项已完成，还差 6 项");
     expect(goalChecklistSummary.text()).toContain("先处理：画面所见即所得");
+    expect(goalChecklistSummary.text()).toContain("仍可先用键盘连续手控");
+    expect(goalChecklistSummary.text()).toContain("建图暂不可启动");
     expect(goalChecklistSummary.text()).not.toContain("raw");
     expect(goalChecklistSummary.text()).not.toContain("marker");
     expect(goalChecklistSummary.text()).not.toContain("overlay");
+    const callsBeforeMotionGuide = mockedFetch.mock.calls.length;
+    const focusCallsBeforeMotionGuide = focusSpy.mock.calls.length;
+    await wrapper.find('[data-testid="plain-goal-checklist-motion-action"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeMotionGuide);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeMotionGuide);
     const callsBeforeChecklistGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeChecklistGuide = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-checklist-summary-action"]').trigger("click");
