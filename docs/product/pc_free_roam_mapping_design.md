@@ -356,6 +356,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `nav2_goal_execution_proven=false` 与 `nav2_goal_execution_not_proven=wheel_feedback_lr_nonzero,...`。
   这修正“旧 action succeeded 但 wheel raw L/R=0/0”被误读为自动驾驶完成的问题；它不重写 artifact、
   不启动 Nav2、不发送底盘命令，只让所有新打开 PC 页面的人看到同一根因。
+- 2026-06-29 18:42 起，上位机 `/api/base/status` 和 `/api/nav2/status` 顶层直接暴露
+  `base_command_mode`、`nav2_base_command_mode`，Nav2 status 额外暴露
+  `nav2_goal_execute_default_base_command_mode`。PC summary 的 key-values 也收录
+  `base_command_mode`，因此普通首屏和诊断脚本不用再从旧执行 artifact 反推下一次路线执行模式。
+  协议口径仍采用 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`T=13` 为 ROS 控制，
+  `T=1` 为左右速度控制，`T=11` 为 PWM 输入。该变化只补只读状态字段，不执行 Nav2、不发送
+  manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-27 18:12 起，普通首屏执行图上 Nav2 路线后，会按固定顺序完成 `execute -> map preview -> execution latest -> summary`
   只读刷新。`execute` 请求体的 `base_command_mode` 会优先跟随 summary/latest 的 `next_execution_base_command_mode`，
   当前 live 的 `pending_ros_rerun_after_pwm` 因此会显式发送 `base_command_mode=ros` 和现场安全确认；如果 latest 和本次 execute 的

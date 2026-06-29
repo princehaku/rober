@@ -589,6 +589,7 @@ const STATUS_KEYS = [
   "latest_path_preview_frame_id",
   "latest_proof_status",
   "feedback_ack_status",
+  "base_command_mode",
   "nav2_base_command_mode",
   "latest_t1001_observed_count",
   "t1001_observed_count",
