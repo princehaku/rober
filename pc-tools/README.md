@@ -1032,3 +1032,9 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `重新建图` 是 `data-map-lifecycle-action=start_mapping_runtime`，固定 `/api/robot-control/map/start`，只启动地图记录 runtime，
 不会发底盘运动、不会执行 Nav2、不会启动自由移动；`保存地图` 是 `data-map-lifecycle-action=save_mapping_runtime`，固定
 `/api/robot-control/map/save`，保存后要求刷新地图画面，同样不会启动 runtime、Nav2 或自由移动。这样建图链路从记录、扫图刷新到保存都有可脚本读取的固定入口和非发车边界。
+
+2026-06-30 19:15 CST 起，普通首屏行程卡新增 `plain-trip-route-binding` 短行。
+它把地图上当前路线与主执行按钮绑定成可见、可测的状态：显示当前/最近/未绑定路线、路线点数、终点 `goal_frame_id/x/y`、
+`data-route-wysiwyg-ready`、`data-executes-current-route-goal` 和 `data-target-source`。
+当地图上没有当前路线时，短行明确主按钮只会准备或刷新路线、不发车；当当前地图路线可执行时，短行显示主按钮将执行这条地图路线。
+该变化只增强 PC Web 显示和 DOM 验收，不启动 ROS2 runtime、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。

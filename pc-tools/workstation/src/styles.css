@@ -930,6 +930,30 @@ h3 {
   border-left-color: #cf222e;
 }
 
+.plain-trip-route-binding {
+  /* 行程绑定短行用于现场确认“按钮执行的就是地图上这条线”，所以给它轻量边框而不是藏在长说明里。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-trip-route-binding[data-state="当前图上行程"] {
+  border-left-color: #238636;
+}
+
+.plain-trip-route-binding[data-state="最近图上行程"],
+.plain-trip-route-binding[data-state="地图同步中"],
+.plain-trip-route-binding[data-state="待贴图"] {
+  border-left-color: #9a6700;
+}
+
+.plain-trip-route-binding[data-state="未绑定"] {
+  border-left-color: #8c959f;
+}
+
 .plain-motion-panel {
   border-left: 3px solid transparent;
 }

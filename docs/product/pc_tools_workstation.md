@@ -4508,3 +4508,9 @@ exclusive camera claim 状态。该按钮只做只读首帧探测；共享实时
 `data-map-lifecycle-action=save_mapping_runtime`、固定 `/api/robot-control/map/save`、
 `data-refreshes-map-preview-after-save=true`，并明确保存不启动 runtime、不执行 Nav2、不启动自由移动。
 这让“相机和雷达 ready 后可建图”的普通路径在 PC DOM 上具备完整固定入口：启动记录、刷新当前画面、保存地图。
+
+2026-06-30 19:15 CST 起，普通首屏行程卡新增 `plain-trip-route-binding`。
+该短行用普通话直接说明主按钮绑定的是哪条地图路线，并同步 DOM 暴露当前/最近/未绑定状态、路线点数、
+终点 `goal_frame_id/x/y`、`data-route-wysiwyg-ready`、`data-executes-current-route-goal` 和 `data-target-source`。
+没有当前路线时，主按钮只准备或刷新路线，不发车；当前地图路线可执行时，短行显示“主按钮会执行这条地图路线”。
+该变化只更新 PC Web 所见即所得展示和验收合同，不启动 ROS2 runtime、不执行 Nav2、不发送任何运动命令。

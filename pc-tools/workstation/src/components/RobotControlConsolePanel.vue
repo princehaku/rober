@@ -9646,6 +9646,71 @@ const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
   };
 });
 
+const plainTripRouteBindingSummary = computed(() => {
+  // 行程按钮必须和地图上当前可见路线绑定，短行说明比长段状态更适合现场扫一眼确认。
+  const routePath = latestNavPathOverlay();
+  if (routePath) {
+    const currentRoute = !routePath.caption.startsWith("最近");
+    const actionText = currentRoute && plainTripMainActionKind.value === "execute_current_map_route"
+      ? "主按钮会执行这条地图行程"
+      : currentRoute
+        ? "主按钮会按当前状态处理这条图上行程"
+        : "这是最近图上行程，主按钮会重新准备本轮行程，不发车";
+    return {
+      state: currentRoute ? "当前图上行程" : "最近图上行程",
+      text: `执行绑定：${currentRoute ? "当前地图行程" : "最近地图行程"} ${routePath.displayedCount}/${routePath.totalCount} 个点，${routePath.endpointSummary}；${actionText}。`,
+      pointCount: routePath.displayedCount,
+      sourcePointCount: routePath.totalCount,
+      routeWysiwygReady: currentRoute && !plainTripMapWysiwygPending.value,
+      executesCurrentRouteGoal: currentRoute && plainTripMainActionKind.value === "execute_current_map_route",
+      goalFrameId: routePath.executionGoal.frame_id,
+      goalX: routePath.executionGoal.x.toFixed(2),
+      goalY: routePath.executionGoal.y.toFixed(2),
+      targetSource: plainTripMainActionTargetSource.value,
+    };
+  }
+  if (plainTripMapWysiwygPending.value && plainTripPreparedBySummary.value) {
+    return {
+      state: "地图同步中",
+      text: `执行绑定：图上行程已准备 ${plainTripPreparedPointCount.value} 个点，正在等待${plainTripMapWysiwygWaitText()}；主按钮不会按旧地图发车。`,
+      pointCount: plainTripPreparedPointCount.value,
+      sourcePointCount: plainTripPreparedPointCount.value,
+      routeWysiwygReady: false,
+      executesCurrentRouteGoal: false,
+      goalFrameId: "not_loaded",
+      goalX: "not_loaded",
+      goalY: "not_loaded",
+      targetSource: plainTripMainActionTargetSource.value,
+    };
+  }
+  if (plainTripPreparedBySummary.value) {
+    return {
+      state: "待贴图",
+      text: `执行绑定：图上行程已准备 ${plainTripPreparedPointCount.value} 个点，但地图上还没显示；主按钮只会刷新图上行程，不发车。`,
+      pointCount: plainTripPreparedPointCount.value,
+      sourcePointCount: plainTripPreparedPointCount.value,
+      routeWysiwygReady: false,
+      executesCurrentRouteGoal: false,
+      goalFrameId: "not_loaded",
+      goalX: "not_loaded",
+      goalY: "not_loaded",
+      targetSource: plainTripMainActionTargetSource.value,
+    };
+  }
+  return {
+    state: "未绑定",
+    text: "执行绑定：地图上还没有当前图上行程；主按钮只会准备或刷新行程，不发车。",
+    pointCount: 0,
+    sourcePointCount: 0,
+    routeWysiwygReady: false,
+    executesCurrentRouteGoal: false,
+    goalFrameId: "not_loaded",
+    goalX: "not_loaded",
+    goalY: "not_loaded",
+    targetSource: plainTripMainActionTargetSource.value,
+  };
+});
+
 const plainTripPreparationButtonLabel = computed(() => {
   // 普通用户的主流程只看执行按钮；这个按钮只是可选只读刷新，不再表现成发车前必做预检。
   if (deliveryNav2GoalReady.value) {
@@ -15537,6 +15602,21 @@ onBeforeUnmount(() => {
             <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
             <p v-if="plainTripMotionClosureSummary" class="panel-note" data-testid="plain-trip-motion-closure">{{ plainTripMotionClosureSummary }}</p>
             <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
+            <p
+              class="panel-note plain-trip-route-binding"
+              data-testid="plain-trip-route-binding"
+              :data-state="plainTripRouteBindingSummary.state"
+              :data-route-point-count="String(plainTripRouteBindingSummary.pointCount)"
+              :data-route-source-point-count="String(plainTripRouteBindingSummary.sourcePointCount)"
+              :data-route-wysiwyg-ready="String(plainTripRouteBindingSummary.routeWysiwygReady)"
+              :data-executes-current-route-goal="String(plainTripRouteBindingSummary.executesCurrentRouteGoal)"
+              :data-goal-frame-id="plainTripRouteBindingSummary.goalFrameId"
+              :data-goal-x="plainTripRouteBindingSummary.goalX"
+              :data-goal-y="plainTripRouteBindingSummary.goalY"
+              :data-target-source="plainTripRouteBindingSummary.targetSource"
+            >
+              {{ plainTripRouteBindingSummary.text }}
+            </p>
             <div class="plain-trip-execution-plan" data-testid="plain-trip-execution-plan" aria-label="行程执行包">
               <div
                 v-for="item in plainTripExecutionPlanItems"
