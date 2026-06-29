@@ -1045,3 +1045,10 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `data-wheel-state`、`data-wheel-left/right`、`data-stop-state`、`data-stop-settled-after-pulse`、
 `data-sends-motion-while-held` 以及固定 manual/stop endpoint。
 该变化只增强 PC Web 可视状态和 DOM 验收，不改变键盘手控 gate，不自动启用键盘，也不额外发送 manual/stop 或 `/cmd_vel`。
+
+2026-06-30 20:05 CST 起，普通首屏“任务收口”新增 `plain-delivery-closure-summary`。
+它把本轮行程是否完成、送达材料是否和当前行程对齐、现场确认是否齐全、最终送达 gate 是否已成功合并成一行，
+并暴露 `data-nav2-ready`、`data-material-ready`、`data-route-map-matches-current-nav2`、
+`data-confirmation-ready`、`data-delivery-success-ready`、`data-confirm-ready`、`data-missing-count`
+和固定 `/api/robot-control/delivery/complete` endpoint。该短行只读状态和解释下一步，不提交送达、不发车、不调用
+manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。

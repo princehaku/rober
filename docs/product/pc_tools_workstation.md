@@ -4521,3 +4521,10 @@ DOM 同步暴露 `data-current-direction`、`data-current-hold-pulse-count`、`d
 `data-wheel-state`、`data-wheel-left/right`、`data-stop-state`、`data-stop-settled-after-pulse`、
 `data-sends-motion-while-held` 和固定 manual/stop endpoint。
 该变化只让 PC 键盘连续手控更容易现场确认，不改变安全确认、按住才动、松开/失焦/切页停止等控制门禁。
+
+2026-06-30 20:05 CST 起，普通首屏“任务收口”新增 `plain-delivery-closure-summary`。
+该短行把本轮行程、送达材料、现场确认和最终送达 gate 合并成一个闭环读数；
+DOM 同步暴露 `data-nav2-ready`、`data-material-ready`、`data-route-map-matches-current-nav2`、
+`data-confirmation-ready`、`data-delivery-success-ready`、`data-confirm-ready`、`data-missing-count`
+和固定 `/api/robot-control/delivery/complete` endpoint。
+该变化只提升完整行程后的送达收口可读性，不自动提交送达、不发车、不调用任何运动接口。

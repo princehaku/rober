@@ -8137,6 +8137,46 @@ const plainDeliveryConfirmSummary = computed(() => {
   return { state: "可提交", hint: "已满足最终确认条件；提交后只做送达收口，不发车。" };
 });
 
+const plainDeliveryClosureSummary = computed(() => {
+  // 完整行程到送达确认的关键门槛压成一行，避免现场在行程、材料和最终确认三块之间来回找状态。
+  const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim());
+  const routeMapMatches = deliveryRouteMapMatchesFreshNav2.value;
+  const missingLabels = plainDeliveryConfirmMissingLabels.value;
+  const state = deliverySuccessReady.value
+    ? "已送达"
+    : deliveryCompletionPending.value
+      ? "确认中"
+      : !deliveryNav2GoalReady.value
+        ? "待行程"
+        : plainDeliveryMapWysiwygPending.value
+          ? "地图同步中"
+          : !routeMapMatches
+            ? "待材料"
+            : !materialReady
+              ? "待材料"
+              : !deliveryOperatorConfirmationReady.value
+                ? "待确认"
+                : "可确认";
+  const nextAction = deliverySuccessReady.value
+    ? "送达已完成"
+    : missingLabels.length === 0
+      ? "可以点击确认送达，不发车"
+      : plainDeliveryConfirmBlockedLabel(missingLabels).replace(/^确认送达（/, "").replace(/）$/, "");
+  return {
+    state,
+    text: `送达闭环：行程${deliveryNav2GoalReady.value ? "已完成" : "未完成"}；材料${materialReady ? (routeMapMatches ? "已对齐" : "需更新") : "未准备"}；确认项${deliveryOperatorConfirmationReady.value ? "已齐" : `还差 ${missingLabels.length} 项`}；${deliverySuccessReady.value ? "已送达" : `下一步：${nextAction}`}。`,
+    nav2Ready: deliveryNav2GoalReady.value,
+    materialReady,
+    routeMapMatches,
+    confirmationReady: deliveryOperatorConfirmationReady.value,
+    deliverySuccessReady: deliverySuccessReady.value,
+    confirmReady: plainDeliveryConfirmReady.value,
+    missingCount: missingLabels.length,
+    currentNav2RouteMapRef: freshNav2RouteMapRef.value || "not_loaded",
+    deliveryRouteMapRef: deliveryOperatorRouteMapRef.value.trim() || "not_loaded",
+  };
+});
+
 const plainDeliverySubmitResultSummary = computed(() => {
   // 红色确认按钮的后端 gate 结果必须回到普通首屏；这里只读结果，不自动重试。
   const result = deliveryCompletionResult.value;
@@ -15745,6 +15785,24 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <p class="panel-note">{{ plainDeliverySummary.hint }}</p>
+            <p
+              class="panel-note plain-delivery-closure"
+              data-testid="plain-delivery-closure-summary"
+              :data-state="plainDeliveryClosureSummary.state"
+              :data-nav2-ready="String(plainDeliveryClosureSummary.nav2Ready)"
+              :data-material-ready="String(plainDeliveryClosureSummary.materialReady)"
+              :data-route-map-matches-current-nav2="String(plainDeliveryClosureSummary.routeMapMatches)"
+              :data-confirmation-ready="String(plainDeliveryClosureSummary.confirmationReady)"
+              :data-delivery-success-ready="String(plainDeliveryClosureSummary.deliverySuccessReady)"
+              :data-confirm-ready="String(plainDeliveryClosureSummary.confirmReady)"
+              :data-missing-count="String(plainDeliveryClosureSummary.missingCount)"
+              :data-current-nav2-route-map-ref="plainDeliveryClosureSummary.currentNav2RouteMapRef"
+              :data-delivery-route-map-ref="plainDeliveryClosureSummary.deliveryRouteMapRef"
+              data-fixed-delivery-complete-endpoint="/api/robot-control/delivery/complete"
+              data-sends-motion-when-clicked="false"
+            >
+              {{ plainDeliveryClosureSummary.text }}
+            </p>
             <p v-if="plainDeliveryGateMissingSummary" class="panel-note" data-testid="plain-delivery-gate-missing">
               {{ plainDeliveryGateMissingSummary }}
             </p>

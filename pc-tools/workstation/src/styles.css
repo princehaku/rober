@@ -2279,6 +2279,32 @@ h3 {
   font-size: 14px;
 }
 
+.plain-delivery-closure {
+  /* 送达闭环短行把行程、材料、现场确认和最终 gate 放到一起，现场不再需要在三块区域来回找状态。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #8c959f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-delivery-closure[data-state="已送达"],
+.plain-delivery-closure[data-state="可确认"] {
+  border-left-color: #238636;
+}
+
+.plain-delivery-closure[data-state="确认中"],
+.plain-delivery-closure[data-state="待确认"],
+.plain-delivery-closure[data-state="地图同步中"] {
+  border-left-color: #9a6700;
+}
+
+.plain-delivery-closure[data-state="待行程"],
+.plain-delivery-closure[data-state="待材料"] {
+  border-left-color: #cf222e;
+}
+
 .plain-delivery-status[data-state="已送达"] {
   border-left-color: #238636;
   background: linear-gradient(90deg, rgba(35, 134, 54, 0.08), transparent 42%);
