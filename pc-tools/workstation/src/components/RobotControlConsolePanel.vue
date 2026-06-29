@@ -2844,6 +2844,63 @@ const plainCurrentFactRows = computed(() => {
   rows.push(plainCurrentKeyboardFactText(summary));
   return rows;
 });
+type PlainWysiwygEvidenceItem = {
+  id: "camera" | "map" | "radar";
+  title: string;
+  state: string;
+  summary: string;
+  nextAction: string;
+  sourceCardId: RobotControlActionStatusCardId;
+};
+const plainWysiwygEvidenceItems = computed<PlainWysiwygEvidenceItem[]>(() => {
+  // 这组证据只回答“当前屏幕实际看到了什么”，不把旧来源点或未出帧设备包装成已可见。
+  const summary = robotSummary.value;
+  if (!summary) {
+    return [];
+  }
+  const camera = summary.readback_summary.camera;
+  const map = summary.readback_summary.map;
+  const radar = summary.readback_summary.radar;
+  const cameraVisible = camera.camera_wysiwyg_status_plain.startsWith("画面已可见")
+    || camera.preview_visible_status.includes("visible_cached_frame")
+    || camera.preview_visible_status.includes("visible_live_frame");
+  const mapPreviewVisible = mapPreviewResult.value?.proxy_status === "preview_forwarded" && Boolean(mapPreviewResult.value.image_data_url);
+  const mapObserved = mapPreviewVisible || map.map_once_observed === "true";
+  const pathPointCount = finitePlainNumber(map.path_preview_point_count) ?? 0;
+  const routeObserved = pathPointCount > 0 || Boolean(latestNavPathOverlay());
+  const poseObserved = map.robot_pose_status === "map_pose_observed" || Boolean(latestRobotPoseOverlay());
+  const radarPointCount = finitePlainNumber(map.radar_overlay_point_count || radar.map_marker_point_count) ?? 0;
+  const radarSourcePointCount = finitePlainNumber(map.radar_overlay_source_point_count || radar.map_marker_source_point_count) ?? 0;
+  const radarReasonText = map.radar_overlay_blocked_reason_labels && map.radar_overlay_blocked_reason_labels !== "none"
+    ? `；原因：${map.radar_overlay_blocked_reason_labels}`
+    : "";
+  return [
+    {
+      id: "camera",
+      title: "画面",
+      state: cameraVisible ? "已经看到画面" : "画面未显示",
+      summary: camera.plain_hint || camera.camera_wysiwyg_status_plain,
+      nextAction: camera.camera_wysiwyg_next_action_plain || camera.preview_next_action_plain || "打开共享预览或复测首帧。",
+      sourceCardId: "camera_preview",
+    },
+    {
+      id: "map",
+      title: "地图",
+      state: mapObserved ? "地图可见" : "地图未读取",
+      summary: `地图画面${mapObserved ? "已显示" : "未显示"}；图上行程${routeObserved ? "已显示" : "未显示"}；小车位置${poseObserved ? "已显示" : "未显示"}。`,
+      nextAction: map.path_preview_next_action_plain || map.map_wysiwyg_next_action_plain || "刷新地图画面。",
+      sourceCardId: "map_preview",
+    },
+    {
+      id: "radar",
+      title: "雷达点",
+      state: radarPointCount > 0 ? "雷达点已贴图" : "当前图上 0 点",
+      summary: `地图雷达点当前显示 ${radarPointCount} 个；旧来源点 ${radarSourcePointCount} 个只作诊断${radarReasonText}。`,
+      nextAction: radar.radar_overlay_wysiwyg_next_action_plain || map.radar_overlay_next_action_plain || radar.radar_next_action_plain || "先启动雷达，再刷新地图画面。",
+      sourceCardId: "radar_map_points",
+    },
+  ];
+});
 const plainActionStatusCards = computed(() => {
   // 后端动作卡是普通首屏的结构化摘要；旧 summary 没有该字段时继续使用上面的事实列表。
   return robotSummary.value?.action_status_cards ?? [];
@@ -12460,6 +12517,32 @@ onBeforeUnmount(() => {
 
       <div class="plain-current-facts" data-testid="plain-current-facts" aria-label="当前事实">
         <span v-for="row in plainCurrentFactRows" :key="row">{{ row }}</span>
+      </div>
+
+      <div v-if="plainWysiwygEvidenceItems.length" class="plain-wysiwyg-evidence" data-testid="plain-wysiwyg-evidence" aria-label="所见即所得证据">
+        <div class="simple-status-row">
+          <strong>当前所见</strong>
+          <span class="muted">只按当前画面和同轮读数判断，不把旧内容当成已显示。</span>
+        </div>
+        <div
+          v-for="item in plainWysiwygEvidenceItems"
+          :key="item.id"
+          class="plain-wysiwyg-evidence-row"
+          :data-testid="`plain-wysiwyg-evidence-${item.id}`"
+        >
+          <span class="plain-progress-label">{{ item.title }}</span>
+          <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+          <span class="muted">{{ plainActionCardUserText(item.summary) }}</span>
+          <span class="muted">下一步：{{ plainActionCardUserText(item.nextAction) }}</span>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :data-testid="`plain-wysiwyg-evidence-go-${item.id}`"
+            @click="focusPlainActionCardTarget(item.sourceCardId)"
+          >
+            去处理
+          </button>
+        </div>
       </div>
 
       <div v-if="plainActionStatusCards.length" class="plain-action-status-cards" data-testid="plain-action-status-cards" aria-label="当前动作状态">
