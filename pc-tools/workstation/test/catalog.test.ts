@@ -5941,8 +5941,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("workstation summary route keeps slow base readback budget instead of the old 2.4s cap", async () => {
-    // 真实上位机底盘/相机只读端点可能超过普通 summary 短预算；HTTP route 不能再把合法慢读误判成 timeout。
+  it("workstation summary route keeps slow base readback budget instead of the old short cap", async () => {
+    // 真实上位机底盘/相机只读端点可能超过 4s；HTTP route 不能把合法慢读误判成轮速不可读。
     const safePayload = (schema: string, status = "loaded") => ({
       schema,
       status,
@@ -5965,7 +5965,7 @@ describe("workstation fail-closed API contracts", () => {
       "/api/radar/scan-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "loaded") },
       "/api/radar/raw-packet-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result", "loaded") },
       "/api/base/status": {
-        delay_ms: 2600,
+        delay_ms: 4500,
         payload: {
           ...safePayload("trashbot.upper_robot_api.v1.base_status", "loaded"),
           feedback_readback: {
@@ -5976,7 +5976,10 @@ describe("workstation fail-closed API contracts", () => {
           },
         },
       },
-      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+      "/api/base/feedback-samples/latest": {
+        delay_ms: 4500,
+        payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded"),
+      },
     });
     const workstation = await listen(createWorkstationApp());
     try {
@@ -5991,6 +5994,8 @@ describe("workstation fail-closed API contracts", () => {
       }));
       expect(summary.readback_summary.base.wheel_feedback_latest_raw_left).toBe("0.03");
       expect(summary.robot_api_connection.blocked_reasons).not.toContain("base_status:fetch_timeout_2400ms");
+      expect(summary.robot_api_connection.blocked_reasons).not.toContain("base_status:fetch_timeout_4000ms");
+      expect(summary.robot_api_connection.blocked_reasons).not.toContain("base_feedback_samples_latest:fetch_timeout_4000ms");
     } finally {
       await workstation.close();
       await robotApi.close();

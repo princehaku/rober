@@ -4162,3 +4162,9 @@ PC Node 继续固定 `0.0.0.0:7001` 供局域网访问，小车上位机 Robot A
 `robot_api_connection.blocked_reasons` 和 `current_fact_plain` 首位提示
 `robot_api_port_7071_mismatch_use_8787`。这样现场不会把端口写错误判为摄像头独占、雷达未 ready 或 Nav2 不能动；
 该诊断仍然只读，不自动重写 baseUrl、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:32 CST 起，PC summary 对底盘反馈只读端点使用 8s heavy 预算：`/api/base/status` 和
+`/api/base/feedback-samples/latest` 不再沿用 4s 短窗口。现场直连两个端点约 3.6s 返回，和 `/api/status`、
+camera health 并发读取时旧窗口容易超时，进而让当前 wheel L/R、T=1001 或 feedback ack 从首屏消失。
+该变化只扩大固定 GET readback 的等待时间，保留危险字段扫描和 fail-closed 控制边界；它不调用 manual、不执行 Nav2、
+不启用 keyboard/free-roam、delivery、stop 或 `/cmd_vel`。

@@ -99,9 +99,9 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "radar_status", endpoint: "/api/radar/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "radar_raw_packet_proof_latest", endpoint: "/api/radar/raw-packet-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
-  // base status 可能触发 T=130 只读反馈窗口；用较宽读取预算，但危险字段扫描仍保持 fail-closed。
-  { id: "base_status", endpoint: "/api/base/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
-  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  // base status 可能触发 T=130 只读反馈窗口；真实串口读数常接近 4s，使用 heavy 预算避免误报轮速不可读。
+  { id: "base_status", endpoint: "/api/base/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
+  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
 ];
 
 const OPTIONAL_MISSING_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([

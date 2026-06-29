@@ -727,3 +727,9 @@ keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `current_fact_plain` 会把 `robot_api_port_7071_mismatch_use_8787` 放在最前面，直接提示不要把 Robot API 填成
 7071。该变化只修正只读诊断，不自动改写用户输入、不重启上位机、不执行 Nav2、不发送 manual、keyboard、
 free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:32 CST 起，Robot Control summary 的 `/api/base/status` 和
+`/api/base/feedback-samples/latest` 只读窗口从 4s 提升到 8s。现场直连这两个端点约 3.6s 返回，并发 summary
+读取时旧 4s 窗口会偶发误报 `fetch_timeout_4000ms`，导致当前轮速和 T=1001 反馈不能进入首屏。该变化只延长
+底盘反馈 GET readback 预算，帮助判断完整 Nav2 路线的 wheel L/R 证据，不发送 manual、Nav2、keyboard、
+free-roam、delivery、stop 或 `/cmd_vel`。
