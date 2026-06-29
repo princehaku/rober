@@ -8108,6 +8108,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.robot_pose_status).toBe("map_pose_observed");
 	      expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
 	      expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
+	      expect(summary.readback_summary.radar.radar_status_plain).toBe("雷达点已贴到当前地图：当前显示 3 个点，frame=laser");
+	      expect(summary.readback_summary.radar.radar_next_action_plain).toBe("继续观察地图雷达层");
+	      expect(summary.readback_summary.radar.plain_hint).toBe("雷达点已贴到当前地图：当前显示 3 个点，frame=laser。下一步：继续观察地图雷达层。");
+	      expect(summary.current_fact_plain).toContain("雷达点已贴到当前地图：当前显示 3 个点，frame=laser");
+	      expect(summary.current_fact_plain).not.toContain("先修复雷达扫描观测");
 	      expect(summary.action_status_cards?.find((card) => card.id === "map_preview")).toMatchObject({
 	        status: "visible",
 	        status_label: "已显示",

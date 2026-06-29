@@ -4360,3 +4360,9 @@ stop 或 `/cmd_vel`。
 主按钮会先通过固定地图 lifecycle 代理启动地图记录，再启动自由移动/自动扫图状态机，让同一次低速移动可作为建图材料。
 地图卡里的“重新建图”仍保留纯地图记录入口，测试和键盘扫图流程通过该入口覆盖“只启动地图记录、不启动状态机”的合同。
 该变化只调整 PC 前端按钮编排和状态文案，本轮编码验证没有点击真实页面 start、没有发 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 22:50 CST 起，普通首屏 `current_fact_plain` 的雷达段也严格跟随地图 overlay WYSIWYG：当
+`radar_overlay_status=loaded/partial` 且地图上实际显示点数大于 0 时，普通事实优先说“雷达点已贴到当前地图”和“继续观察地图雷达层”。
+`raw_packet_once`、`scan_once`、`scan_hz` 等 proof 缺口仍保留在 `radar_scan_observation_missing_reasons` 等高级诊断字段，
+但不再压过已显示的地图雷达点，避免普通用户在看到地图点时还被引导去先修 proof。该变化只修正只读 summary 文案，
+不启动雷达、不刷新地图、不执行 Nav2、不调用 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。

@@ -4666,6 +4666,15 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-29 22:50｜pc_radar_current_fact_wysiwyg｜O3 雷达当前事实贴图口径修正
+
+本轮 micro sprint 修正 PC `current_fact_plain` 的雷达段：当地图 overlay 已经 `loaded/partial` 且地图上实际显示雷达点时，
+普通事实优先展示“雷达点已贴到当前地图 / 继续观察地图雷达层”，不再让 `raw_packet_once` 等 proof 缺口压过已经 WYSIWYG 的地图标记。
+proof 缺口仍保留在高级诊断字段，方便工程继续排查，但普通用户看到地图点时不会再被引导去先修扫描 proof。
+
+本轮验证：`npm test -- catalog.test.ts -t "running radar lifecycle"` 通过；`npm test -- --run` 通过，386 tests OK；
+`npm run build` 通过；7001 只读 live summary 显示 `radar_overlay_point_count=72` 且 current fact 已改为继续观察地图雷达层。
+
 ### 2026-06-29 22:45｜pc_free_roam_primary_start｜O3/O5 自由移动主入口纠偏
 
 本轮 micro sprint 把普通 PC 首屏“自由移动 / 建图”的主按钮从“只启动地图记录”纠偏为普通用户直觉的一键启动自由移动：

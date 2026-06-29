@@ -1904,13 +1904,20 @@ function radarSummaryFromReadbacks(
   const overlayFrameId = map.radar_overlay_frame_id || "not_loaded";
   const overlaySourceFrameId = map.radar_overlay_source_frame_id || lidar.scan_preview_frame_id || "not_loaded";
   // 地图层 loaded 或点数大于 0 才能称为 marker 可见，避免把旧扫描来源点误说成所见即所得。
-  const overlayLoaded = map.radar_overlay_status === "loaded" || Number(overlayPointCount) > 0;
+  const overlayPointCountNumber = Number(overlayPointCount);
+  const overlayLoaded = map.radar_overlay_status === "loaded" || overlayPointCountNumber > 0;
+  const overlayVisibleOnMap = ["loaded", "partial"].includes(map.radar_overlay_status)
+    && Number.isFinite(overlayPointCountNumber)
+    && overlayPointCountNumber > 0;
   const status = radarReady ? "radar_ready" : radarStopped ? "radar_stopped" : lidar.status || "not_loaded";
   const missingObservationText = lidar.radar_scan_observation_missing_reasons || "none";
   const hasMissingObservations = missingObservationText !== "none" && missingObservationText !== "not_loaded";
   const missingObservationPlain = missingObservationText.split(",").filter(Boolean).join("、");
   // ready 但 marker 为 0 时仍要显式写 0 个点，方便脚本和现场人员对照地图画面。
-  const radarStatusPlain = radarReady
+  const radarStatusPlain = overlayVisibleOnMap
+    // 地图上已经画出的雷达点必须优先作为普通用户事实；scan proof 缺口保留在拆分诊断字段中。
+    ? plainFactPart(map.radar_overlay_wysiwyg_status_plain) || `地图雷达点当前显示 ${overlayPointCount} 个。`
+    : radarReady
     ? overlayLoaded
       ? `雷达已运行且扫描是新的；地图雷达点当前显示 ${overlayPointCount} 个。`
       : `雷达已运行且扫描是新的；地图雷达点当前显示 ${overlayPointCount} 个，仍需以同轮地图预览为准。`
@@ -1921,7 +1928,9 @@ function radarSummaryFromReadbacks(
         ? `雷达已运行但扫描 proof 缺 ${missingObservationPlain}；地图雷达点当前显示 ${overlayPointCount} 个。`
         : `雷达状态未完全就绪；地图雷达点当前显示 ${overlayPointCount} 个，需确认雷达正在运行且有新扫描。`;
   // 下一步只引导 operator 做显式 start/refresh，不在 summary 构建时替 operator 发命令。
-  const radarNextActionPlain = radarReady
+  const radarNextActionPlain = overlayVisibleOnMap
+    ? plainFactPart(map.radar_overlay_wysiwyg_next_action_plain) || "继续观察地图雷达层。"
+    : radarReady
     ? overlayLoaded
       ? "继续监看地图雷达点；若现场变化，刷新地图画面读取同轮贴图。"
       : "刷新地图画面，确认地图上实际显示的雷达点数。"
