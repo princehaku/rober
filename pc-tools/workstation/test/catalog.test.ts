@@ -11028,6 +11028,103 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("defaults omitted Nav2 goal execution mode from latest rerun recommendation", async () => {
+    // 外部脚本可能不带 base_command_mode；如果最近 ROS action 成功但 L/R 仍为 0/0，代理要切到下一推荐模式复验。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/nav2/goal/execute": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result",
+          status: "goal_forwarded_by_default_speed_mode",
+          robot_control_executed: true,
+        },
+      },
+    }, {
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "localization_reset_observed",
+          robot_control_executed: false,
+          localization_tf_observed: { map_to_base_link: true },
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "path_generated",
+          robot_control_executed: false,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 36,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "active",
+          robot_control_executed: false,
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+          status: "goal_succeeded",
+          result_status: "succeeded",
+          robot_control_executed: true,
+          base_command_mode: "ros",
+          base_command_summary: {
+            nonzero_command_count: 20,
+            nonzero_command_observed: true,
+            latest_nonzero_command_mode: "ros",
+          },
+          base_feedback_summary: {
+            sample_count: 20,
+            nonzero_sample_count: 0,
+            wheel_feedback_lr_nonzero_proven: false,
+            latest_pair: { left_speed: 0, right_speed: 0 },
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/goal/execute?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          goal_x: 0.8,
+          goal_y: 0,
+          goal_yaw: 0,
+          confirm_navigation_execution: true,
+        }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        goal_request: { base_command_mode?: string };
+        goal_execution_key_values: Record<string, string>;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("execution_forwarded");
+      expect(body.goal_request.base_command_mode).toBe("speed");
+      expect(body.goal_execution_key_values.status).toBe("goal_forwarded_by_default_speed_mode");
+      expect(upstream.receivedGets).toEqual(expect.arrayContaining([
+        "/api/localize/proof/latest",
+        "/api/nav2/proof/latest",
+        "/api/nav2/status",
+        "/api/nav2/goal/execution/latest",
+      ]));
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toContainEqual(expect.objectContaining({
+        base_command_mode: "speed",
+        managed_runtime_opt_in: true,
+        confirm_navigation_execution: true,
+      }));
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("Nav2 latest execution proxy reads fixed GET artifact without replaying navigation", async () => {
     // latest 入口只帮 PC 页面找回最近 NavigateToPose artifact ref，不重新发送 Nav2 goal。
     const upstream = await listenRobotBaseCommandApi({}, {

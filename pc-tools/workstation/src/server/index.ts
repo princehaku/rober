@@ -574,7 +574,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
 }
 
 function navGoalLatestNextMode(keyValues: Record<string, string>): string {
-  // 旧 PWM action 成功但 wheel L/R 未非零时，PC 下一次要按 ROS 模式重跑复验。
+  // action 成功但 wheel L/R 未非零时，下一轮切换控制面做 A/B 复验，避免一直重复同一条无效链路。
   if (
     (keyValues.status === "goal_succeeded" || keyValues.result_status === "succeeded")
     && keyValues.base_feedback_lr_nonzero_proven === "false"
@@ -582,9 +582,34 @@ function navGoalLatestNextMode(keyValues: Record<string, string>): string {
   ) {
     return "ros";
   }
+  if (
+    (keyValues.status === "goal_succeeded" || keyValues.result_status === "succeeded")
+    && keyValues.base_feedback_lr_nonzero_proven === "false"
+    && keyValues.base_command_mode === "ros"
+  ) {
+    return "speed";
+  }
   return keyValues.base_command_mode && keyValues.base_command_mode !== "not_loaded"
     ? keyValues.base_command_mode
     : "ros";
+}
+
+async function resolveNavGoalExecutionDefaultBaseCommandMode(base: URL): Promise<"ros" | "speed" | "pwm"> {
+  // 外部脚本可能不传 base_command_mode；发车前只读 latest，沿用 summary 同一套“下次模式”策略。
+  try {
+    const latest = await fetch(endpointUrl(base, "/api/nav2/goal/execution/latest"), {
+      method: "GET",
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!latest.ok) {
+      return "ros";
+    }
+    const payload = asRecord(await latest.json().catch(() => null));
+    const nextMode = navGoalLatestNextMode(navGoalExecutionKeyValues(payload));
+    return ["ros", "speed", "pwm"].includes(nextMode) ? nextMode as "ros" | "speed" | "pwm" : "ros";
+  } catch {
+    return "ros";
+  }
 }
 
 function navGoalLatestPlainFields(
@@ -2939,8 +2964,9 @@ export function createWorkstationApp(): express.Express {
     const managedStartupS = clamp(Number(payload?.managed_startup_s ?? 2), 0, 5);
     const managedReadyTimeoutS = clamp(Number(payload?.managed_ready_timeout_s ?? 90), 10, 90);
     const requestedBaseCommandMode = String(payload?.base_command_mode ?? payload?.nav2_base_command_mode ?? "").trim().toLowerCase();
+    const requestedBaseCommandModeValid = ["ros", "speed", "pwm"].includes(requestedBaseCommandMode);
     // Nav2 普通执行默认走 ROS /cmd_vel 到 bridge，避免旧 PWM 诊断模式继续混入真实路线复验。
-    const baseCommandMode = ["ros", "speed", "pwm"].includes(requestedBaseCommandMode)
+    let baseCommandMode: "ros" | "speed" | "pwm" = requestedBaseCommandModeValid
       ? requestedBaseCommandMode as "ros" | "speed" | "pwm"
       : "ros";
     const fallbackBase: RobotControlNavGoalExecutionResponse = {
@@ -3009,6 +3035,10 @@ export function createWorkstationApp(): express.Express {
         hard_dangerous_true_fields: preflight.hard_dangerous_true_fields,
       });
       return;
+    }
+    if (!requestedBaseCommandModeValid) {
+      baseCommandMode = await resolveNavGoalExecutionDefaultBaseCommandMode(normalized.normalized);
+      fallbackBase.goal_request.base_command_mode = baseCommandMode;
     }
     try {
       const remote = await fetch(endpointUrl(normalized.normalized, "/api/nav2/goal/execute"), {

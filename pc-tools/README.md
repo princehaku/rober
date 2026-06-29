@@ -615,6 +615,13 @@ runtime，并在同窗口复验轮速 L/R。`current_fact_plain` 也改为消费
 summary/首屏文案，不执行 Nav2 goal、不启动 runtime、不发送 manual、keyboard、free-roam、delivery、stop 或
 `/cmd_vel`。
 
+2026-06-29 14:11 CST 起，`POST /api/robot-control/nav2/goal/execute` 在请求体没有显式
+`base_command_mode` / `nav2_base_command_mode` 时，会在本机最小 preflight 通过后先只读
+`/api/nav2/goal/execution/latest`，并复用 latest 的 `next_execution_base_command_mode` 策略选择本次
+执行模式。默认仍是 ROS；如果最近一次 ROS action 成功但执行窗口轮速 L/R 仍为 0/0，则下一次省略模式的
+执行请求会自动转成 SPEED 复验。显式传入 `ros/speed/pwm` 时继续尊重请求体。该变化不放宽现场安全确认、
+固定白名单或危险字段扫描，不自动执行 Nav2、不启用键盘、不发送 manual、free-roam、delivery、stop 或额外 `/cmd_vel`。
+
 2026-06-29 09:14 CST 起，Robot Control summary 会从 camera health 的顶层字段、`source_diagnosis` 和
 `source_usage` 回填结构化相机设备身份：`selected_path`、`selected_name`、`selected_is_uvc_or_usb`。
 即使 `/api/camera/devices` 枚举为空，普通脚本也能直接读到当前 UVC 源是 `/dev/video1` 和对应设备名，
