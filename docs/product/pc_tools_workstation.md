@@ -4269,3 +4269,8 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `mapping_blocked_reasons`、`mapping_acceptance_status_plain`。这样现场脚本可以直接区分“自由移动可启动”和
 “当前还没开始发布运动”，不会把 `motion_ready=false` 误判为不能启动。该变化只增加只读 summary 字段，不启动
 free-roam、不发送 keyboard/manual/Nav2/delivery/stop 或 `/cmd_vel`。
+
+2026-06-29 15:50 CST 起，普通相机卡片会消费 summary 中缓存的最近一次
+`first_frame_probe_*` 结果：如果另一个页面或上一次操作已经点击过“检查画面（只读）”，刷新后的普通页面也会显示
+“最近一次检查”的首帧/后端诊断，不再只依赖当前 Vue 页面内存。该结果仍来自 PC Node 的只读 overlay；页面不会自动抢占
+摄像头反复探测，也不会发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。

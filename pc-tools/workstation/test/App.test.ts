@@ -21542,6 +21542,11 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
     summaryFixture.readback_summary.camera.last_offer_failure_reason = "capture_read_returned_false";
     summaryFixture.readback_summary.camera.last_offer_format_attempts_summary = "MJPG 无首帧；YUYV 无首帧；default 无首帧";
+    summaryFixture.readback_summary.camera.first_frame_probe_status = "first_frame_timeout";
+    summaryFixture.readback_summary.camera.first_frame_probe_failure_reason = "first_frame_timeout";
+    summaryFixture.readback_summary.camera.first_frame_probe_open_ok = "true";
+    summaryFixture.readback_summary.camera.first_frame_probe_read_ok = "false";
+    summaryFixture.readback_summary.camera.first_frame_probe_visible_content_proven = "false";
     summaryFixture.readback_summary.camera.first_frame_probe_backend_smoke_status = "backend_no_frame_observed";
     summaryFixture.readback_summary.camera.first_frame_probe_backend_frame_observed = "false";
     summaryFixture.readback_summary.camera.first_frame_probe_backend_attempts = "4";
@@ -21584,8 +21589,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).not.toContain("采集尝试");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 最近失败：共享预览上游没有返回可用画面 HTTP 503；通常是相机无帧或相机后端不可用，不是浏览器独占。 页面会低频自动重试。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-guidance"]').text()).toBe("共享预览结论：不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。下一步：按这个方向排查相机输入、USB 和供电。");
-    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("只读检查：上位机 health 已确认相机源没有首帧");
-    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toContain("不是页面独占");
+    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：最近一次检查显示不是页面独占；OpenCV/V4L2 后端尝试 4 种方式也没有取到视频帧，检查 USB、摄像头输入、格式或供电。");
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).not.toContain("还没做首帧检查");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("capture_read_returned_false");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_mjpeg_proxy_failed");

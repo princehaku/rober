@@ -1859,6 +1859,39 @@ const cameraFirstFrameProbeSummary = computed(() => {
 const plainCameraProbeButtonLabel = computed(() => (
   cameraFirstFrameProbePending.value ? "检查中" : "检查画面（只读）"
 ));
+function cameraSummaryFirstFrameProbePlainHint(camera: RobotControlSummaryResponse["readback_summary"]["camera"] | undefined): string {
+  // PC Node 会缓存最近一次首帧探针；刷新页面或多人打开时，普通首屏也要消费这份共享诊断。
+  if (!camera || !camera.first_frame_probe_status || camera.first_frame_probe_status === "not_loaded") {
+    return "";
+  }
+  const status = camera.first_frame_probe_status;
+  const failureReason = camera.first_frame_probe_failure_reason && camera.first_frame_probe_failure_reason !== "none"
+    ? camera.first_frame_probe_failure_reason
+    : status;
+  if (
+    camera.first_frame_probe_open_ok === "true"
+    && camera.first_frame_probe_read_ok === "true"
+    && camera.first_frame_probe_visible_content_proven === "true"
+  ) {
+    return "只读检查：最近一次上位机样张已读到；多个页面刷新后都会看到这个结果。";
+  }
+  if (camera.first_frame_probe_backend_smoke_status === "backend_no_frame_observed") {
+    const attempts = camera.first_frame_probe_backend_attempts && !["0", "not_loaded", "none", ""].includes(camera.first_frame_probe_backend_attempts)
+      ? `OpenCV/V4L2 后端尝试 ${camera.first_frame_probe_backend_attempts} 种方式`
+      : "OpenCV/V4L2 后端";
+    return `只读检查：最近一次检查显示不是页面独占；${attempts}也没有取到视频帧，检查 USB、摄像头输入、格式或供电。`;
+  }
+  if (camera.first_frame_probe_failure_reason === "capture_read_call_timeout" || status === "first_frame_timeout") {
+    return "只读检查：最近一次检查显示摄像头能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";
+  }
+  if (camera.first_frame_probe_open_ok === "false") {
+    return "只读检查：最近一次检查显示相机没有打开；检查摄像头/视频线或占用后重试。";
+  }
+  if (camera.first_frame_probe_read_ok === "false") {
+    return `只读检查：最近一次检查没有读到画面：${failureReason}。`;
+  }
+  return `只读检查：最近一次检查结果：${failureReason}。`;
+}
 const plainCameraStartButtonLabel = computed(() => {
   // 相机源已证明“非独占但无帧”时，主按钮必须表达为重试共享预览，避免用户误判成某个页面抢占摄像头。
   const camera = robotSummary.value?.readback_summary.camera;
@@ -1878,6 +1911,10 @@ const plainCameraProbeSummary = computed(() => {
   }
   const result = cameraFirstFrameProbeResult.value;
   if (!result) {
+    const cachedProbeHint = cameraSummaryFirstFrameProbePlainHint(robotSummary.value?.readback_summary.camera);
+    if (cachedProbeHint) {
+      return cachedProbeHint;
+    }
     if (cameraSourceFirstFrameFailed(robotSummary.value?.readback_summary.camera)) {
       const healthFailureHint = cameraSourcePlainFailureDetailHint();
       return healthFailureHint
