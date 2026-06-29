@@ -12621,6 +12621,16 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(false);
   });
 
+  it("keeps shared MJPEG image independent from WebRTC auto-connect suppression", () => {
+    // 关闭 WebRTC peer 不能隐藏只读共享 MJPEG；任何新页面仍应能接入同一条 PC Node 上游流。
+    const source = readFileSync(resolve(process.cwd(), "src/components/RobotControlConsolePanel.vue"), "utf8");
+
+    expect(source).toContain("const cameraMjpegSharedPreviewVisible = computed");
+    expect(source).toContain("cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value");
+    expect(source).toContain("cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn()");
+    expect(source).toContain('v-if="cameraMjpegSharedPreviewVisible && cameraMjpegPreviewUrl"');
+  });
+
   it("shows camera open failure from readback instead of plain online copy", async () => {
     // live 上位机会保留 last_offer_failure_reason；普通首屏要显示“打不开”，不能继续只说相机在线。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;

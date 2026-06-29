@@ -1391,10 +1391,14 @@ const plainCameraSharedPreviewLinkSummary = computed(() => {
 const cameraMjpegFallbackVisible = computed(() => (
   cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
 ));
-const cameraMjpegFrameObserved = computed(() => cameraMjpegFallbackVisible.value && mjpegPreviewLoaded.value && !mjpegPreviewFailed.value);
+const cameraMjpegSharedPreviewVisible = computed(() => (
+  // 关闭 WebRTC peer 只表示不再保留本页 peer；共享 MJPEG 是只读公共预览，仍应让后来打开的页面自动接入同一条上游流。
+  cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn()
+));
+const cameraMjpegFrameObserved = computed(() => cameraMjpegSharedPreviewVisible.value && mjpegPreviewLoaded.value && !mjpegPreviewFailed.value);
 const cameraMjpegRetryPending = computed(() => (
   // 本页 img error 后会等 5 秒再换 URL；这段时间必须说成“待重试”，不能说成已恢复或已出图。
-  cameraMjpegFallbackVisible.value && mjpegPreviewFailed.value && !mjpegPreviewLoaded.value
+  cameraMjpegSharedPreviewVisible.value && mjpegPreviewFailed.value && !mjpegPreviewLoaded.value
 ));
 const cameraMjpegCachedFramePending = computed(() => {
   // 共享 relay 已有最近帧时，后来打开的页面会先收到缓存帧；这只说明首屏有可复用画面证据，不等于本页已完成实时绘制。
@@ -1406,7 +1410,7 @@ const cameraMjpegCachedFramePending = computed(() => {
     && summaryCamera.shared_preview_cached_frame_loaded === "true",
   );
   return Boolean(
-    cameraMjpegFallbackVisible.value
+    cameraMjpegSharedPreviewVisible.value
     && !cameraMjpegFrameObserved.value
     && !mjpegPreviewFailed.value
     && (
@@ -10565,12 +10569,12 @@ function clearMjpegPreviewRetryTimer(): void {
 function scheduleMjpegPreviewRetry(): void {
   // 相机服务可能在页面停留期间恢复首帧；失败后低频换 URL，保证后来恢复时页面能重新接上共享流。
   clearMjpegPreviewRetryTimer();
-  if (!cameraMjpegFallbackVisible.value || !cameraMjpegPreviewUrl.value) {
+  if (!cameraMjpegSharedPreviewVisible.value || !cameraMjpegPreviewUrl.value) {
     return;
   }
   mjpegPreviewRetryTimer = window.setTimeout(() => {
     mjpegPreviewRetryTimer = null;
-    if (!cameraMjpegFallbackVisible.value || !mjpegPreviewFailed.value || mjpegPreviewLoaded.value) {
+    if (!cameraMjpegSharedPreviewVisible.value || !mjpegPreviewFailed.value || mjpegPreviewLoaded.value) {
       return;
     }
     mjpegPreviewLoaded.value = false;
@@ -13163,7 +13167,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="camera-preview-frame" data-testid="robot-camera-preview-frame" :data-state="cameraSummary.state" :data-frame-state="plainCameraFrameEvidenceState">
             <img
-              v-if="cameraMjpegFallbackVisible && cameraMjpegPreviewUrl"
+              v-if="cameraMjpegSharedPreviewVisible && cameraMjpegPreviewUrl"
               class="camera-mjpeg-preview"
               data-testid="robot-camera-mjpeg-preview"
               :src="cameraMjpegPreviewUrl"
