@@ -12858,6 +12858,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.source_readiness).toBe("first_frame_failed");
+      expect(statusBody.source_failure_reason).toBe("capture_read_returned_false");
       expect(statusBody.preview_status).toBe("source_first_frame_failed");
       expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
@@ -12957,6 +12959,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.source_readiness).toBe("first_frame_failed");
+      expect(statusBody.source_failure_reason).toBe("first_frame_total_timeout");
       expect(statusBody.selected_path).toBe("/dev/video1");
       expect(statusBody.selected_name).toBe("USB Composite Device: DV20 USB");
       expect(statusBody.source_usage_status).toBe("not_in_use");
@@ -13130,6 +13134,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.source_readiness).toBe("first_frame_failed");
+      expect(statusBody.source_failure_reason).toBe("first_frame_total_timeout");
       expect(statusBody.preview_status).toBe("source_first_frame_failed");
       expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
@@ -13277,6 +13283,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_plain_hint).toBe("USB Composite Device: DV20 USB 已选中但还没读过首帧；打开共享预览或运行首帧检查。");
       expect(statusBody.source_diagnosis_next_action).toBe("open_shared_preview_or_run_first_frame_probe");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.source_readiness).toBe("source_selected_not_probed");
+      expect(statusBody.source_failure_reason).toBe("none");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);

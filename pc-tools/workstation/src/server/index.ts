@@ -181,6 +181,8 @@ type CameraMjpegRelayLastFailure = {
   source_diagnosis_plain_hint?: string;
   source_diagnosis_next_action?: string;
   source_diagnosis_not_exclusive?: string;
+  source_readiness?: string;
+  source_failure_reason?: string;
   selected_path?: string;
   selected_name?: string;
   selected_is_uvc_or_usb?: string;
@@ -2110,6 +2112,10 @@ function cameraMjpegStatusResponse(
   const lastFailureAtMs = lastFailure?.failed_at_ms ?? null;
   const sourceDiagnosisNextActionPlain = cameraMjpegActionPlainText(diagnosisSource?.source_diagnosis_next_action ?? "not_loaded")
     || previewGuidance.next_action_plain;
+  const sourceReadiness = diagnosisSource?.source_readiness
+    ?? (previewStatus === "source_first_frame_failed" ? "first_frame_failed" : "not_loaded");
+  const sourceFailureReason = diagnosisSource?.source_failure_reason
+    ?? (previewStatus === "source_first_frame_failed" ? lastFailureReason || "first_frame_failed" : "not_loaded");
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -2150,6 +2156,8 @@ function cameraMjpegStatusResponse(
     source_diagnosis_next_action: diagnosisSource?.source_diagnosis_next_action ?? "not_loaded",
     source_diagnosis_next_action_plain: sourceDiagnosisNextActionPlain,
     source_diagnosis_not_exclusive: diagnosisSource?.source_diagnosis_not_exclusive ?? "not_loaded",
+    source_readiness: sourceReadiness,
+    source_failure_reason: sourceFailureReason,
     selected_path: diagnosisSource?.selected_path ?? "not_loaded",
     selected_name: diagnosisSource?.selected_name ?? "not_loaded",
     selected_is_uvc_or_usb: diagnosisSource?.selected_is_uvc_or_usb ?? "not_loaded",
@@ -2399,6 +2407,8 @@ async function cameraSourceFirstFrameFailureForStatus(
         source_diagnosis_plain_hint: resolvedDiagnosisPlainHint || "相机源已选中但还没读过首帧；打开共享预览或运行首帧检查。",
         source_diagnosis_next_action: resolvedDiagnosisNextAction || "open_shared_preview_or_run_first_frame_probe",
         source_diagnosis_not_exclusive: resolvedDiagnosisNotExclusive,
+        source_readiness: readiness || (sourceSelectedNotProbed ? "source_selected_not_probed" : "not_loaded"),
+        source_failure_reason: reason || "none",
         selected_path: selectedPath,
         selected_name: selectedName,
         selected_is_uvc_or_usb: selectedIsUvcOrUsb,
@@ -2414,6 +2424,8 @@ async function cameraSourceFirstFrameFailureForStatus(
       source_diagnosis_plain_hint: resolvedDiagnosisPlainHint || "not_loaded",
       source_diagnosis_next_action: resolvedDiagnosisNextAction || "not_loaded",
       source_diagnosis_not_exclusive: resolvedDiagnosisNotExclusive,
+      source_readiness: "first_frame_failed",
+      source_failure_reason: reason || lastOfferReason || "first_frame_failed",
       selected_path: selectedPath,
       selected_name: selectedName,
       selected_is_uvc_or_usb: selectedIsUvcOrUsb,
@@ -2806,6 +2818,8 @@ export function createWorkstationApp(): express.Express {
         source_diagnosis_plain_hint: lastFailureForOverlay?.source_diagnosis_plain_hint,
         source_diagnosis_next_action: lastFailureForOverlay?.source_diagnosis_next_action,
         source_diagnosis_not_exclusive: lastFailureForOverlay?.source_diagnosis_not_exclusive,
+        source_readiness: lastFailureForOverlay?.source_readiness,
+        source_failure_reason: lastFailureForOverlay?.source_failure_reason,
         selected_path: lastFailureForOverlay?.selected_path,
         selected_name: lastFailureForOverlay?.selected_name,
         selected_is_uvc_or_usb: lastFailureForOverlay?.selected_is_uvc_or_usb,
@@ -2830,6 +2844,8 @@ export function createWorkstationApp(): express.Express {
           source_diagnosis_plain_hint: lastFailureForOverlay.source_diagnosis_plain_hint,
           source_diagnosis_next_action: lastFailureForOverlay.source_diagnosis_next_action,
           source_diagnosis_not_exclusive: lastFailureForOverlay.source_diagnosis_not_exclusive,
+          source_readiness: lastFailureForOverlay.source_readiness,
+          source_failure_reason: lastFailureForOverlay.source_failure_reason,
           selected_path: lastFailureForOverlay.selected_path,
           selected_name: lastFailureForOverlay.selected_name,
           selected_is_uvc_or_usb: lastFailureForOverlay.selected_is_uvc_or_usb,

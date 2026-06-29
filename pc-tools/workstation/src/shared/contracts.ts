@@ -3430,6 +3430,8 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   source_diagnosis_next_action: string;
   source_diagnosis_next_action_plain: string;
   source_diagnosis_not_exclusive: string;
+  source_readiness: string;
+  source_failure_reason: string;
   selected_path: string;
   selected_name: string;
   selected_is_uvc_or_usb: string;

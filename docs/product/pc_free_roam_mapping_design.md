@@ -145,6 +145,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-06-28 02:28 起，PC summary 的相机字段会把最终 `status` 与 `source_readiness` 对齐：
   如果 health 超时但共享 relay 或最近失败已经证明 `source_first_frame_failed`，返回给首屏和高级诊断的
   `source_readiness` 也会同步为 `first_frame_failed`，不再出现“状态无首帧、readiness 仍 not_loaded”的矛盾口径。
+- 2026-06-29 20:38 起，`/api/robot-control/camera/mjpeg/status` 顶层也补齐
+  `source_readiness` 和 `source_failure_reason`，并与 summary 的相机诊断同源。现场脚本只读共享预览 status 时，
+  如果 health 已确认 `source_first_frame_failed`，会直接看到 `source_readiness=first_frame_failed` 和具体失败原因，
+  不再出现 status 已说无首帧但 readiness 为空的分裂口径。该入口仍只读 health/relay 内存，不创建 MJPEG client、
+  不打开额外 camera stream、不发送 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-28 12:25 起，上述对齐也覆盖 camera health 返回 `bad_json/not_object` 的情况：只要 PC 共享 MJPEG relay
   已明确 `camera_source_first_frame_failed` 并带出 `uvc_no_frame_not_exclusive` 诊断，summary 就显示
   `status=source_first_frame_failed`、`source_readiness=first_frame_failed`。单纯坏 JSON 仍保留读取异常；
