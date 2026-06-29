@@ -2920,6 +2920,14 @@ function focusPlainGoalChecklistMotionTarget(): void {
   }
   focusPlainActionCardTarget(sourceCardId);
 }
+function focusPlainGoalChecklistSafetyTarget(): void {
+  // 最小预检按钮只聚焦到共享安全确认或对应动作区，不自动勾选、不启动运动。
+  const sourceCardId = plainGoalChecklistSummary.value?.safety_precheck_source_card_id;
+  if (!sourceCardId) {
+    return;
+  }
+  focusPlainActionCardTarget(sourceCardId);
+}
 function focusPlainGoalChecklistRadarTarget(): void {
   // 雷达贴图按钮只聚焦到雷达卡片或刷新/启动按钮，不自动启动雷达或刷新地图。
   const sourceCardId = plainGoalChecklistSummary.value?.radar_source_card_id;
@@ -12504,6 +12512,9 @@ onBeforeUnmount(() => {
             <span v-if="plainGoalChecklistSummary.motion_summary_plain" class="muted">
               {{ plainActionCardUserText(plainGoalChecklistSummary.motion_summary_plain) }}
             </span>
+            <span v-if="plainGoalChecklistSummary.safety_precheck_summary_plain" class="muted">
+              {{ plainActionCardUserText(plainGoalChecklistSummary.safety_precheck_summary_plain) }}
+            </span>
             <span v-if="plainGoalChecklistSummary.radar_summary_plain" class="muted">
               {{ plainActionCardUserText(plainGoalChecklistSummary.radar_summary_plain) }}
             </span>
@@ -12522,6 +12533,15 @@ onBeforeUnmount(() => {
             @click="focusPlainGoalChecklistMotionTarget"
           >
             先动车
+          </button>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :disabled="!plainGoalChecklistSummary.safety_precheck_source_card_id"
+            data-testid="plain-goal-checklist-safety-action"
+            @click="focusPlainGoalChecklistSafetyTarget"
+          >
+            去勾确认
           </button>
           <button
             type="button"

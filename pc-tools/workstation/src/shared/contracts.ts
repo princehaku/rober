@@ -2438,6 +2438,7 @@ export interface RobotControlGoalChecklistSummary {
   first_incomplete_source_card_id: RobotControlActionStatusCardId | "";
   first_motion_item_id: RobotControlGoalChecklistItemId | "";
   first_motion_source_card_id: RobotControlActionStatusCardId | "";
+  safety_precheck_source_card_id: RobotControlActionStatusCardId | "";
   radar_item_id: RobotControlGoalChecklistItemId | "";
   radar_source_card_id: RobotControlActionStatusCardId | "";
   nav2_item_id: RobotControlGoalChecklistItemId | "";
@@ -2448,6 +2449,8 @@ export interface RobotControlGoalChecklistSummary {
   summary_plain: string;
   motion_next_action_plain: string;
   motion_summary_plain: string;
+  safety_precheck_next_action_plain: string;
+  safety_precheck_summary_plain: string;
   radar_next_action_plain: string;
   radar_summary_plain: string;
   nav2_next_action_plain: string;

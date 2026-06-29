@@ -5347,6 +5347,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       first_incomplete_source_card_id: "",
       first_motion_item_id: "",
       first_motion_source_card_id: "",
+      safety_precheck_source_card_id: "",
       radar_item_id: "",
       radar_source_card_id: "",
       nav2_item_id: "",
@@ -5357,6 +5358,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       summary_plain: "本轮目标检查未读到；先恢复小车连接。",
       motion_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
       motion_summary_plain: "车能不能先动还未读到；先恢复小车连接。",
+      safety_precheck_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
+      safety_precheck_summary_plain: "发车前最小确认还未读到；先恢复小车连接。",
       radar_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
       radar_summary_plain: "雷达贴图状态还未读到；先恢复小车连接。",
       nav2_next_action_plain: sourceBaseUrl.trim() ? "先恢复小车连接并刷新状态。" : "先确认小车地址。",
@@ -6901,6 +6904,7 @@ function buildGoalChecklistSummary(
   const nav2 = itemById("nav2_route_execution");
   const mapping = itemById("mapping_start");
   const firstMotion = [freeMove, keyboard, nav2].find((item) => item && (item.status === "ready" || item.status === "needs_safety_confirm")) ?? null;
+  const firstSafetyPrecheck = [freeMove, nav2, keyboard, mapping].find((item) => item?.status === "needs_safety_confirm") ?? null;
   const motionSummary = (() => {
     if (freeMove?.status === "ready") {
       return "自由移动已运行；相机和雷达只影响建图验收，不影响继续现场监看。";
@@ -6915,6 +6919,12 @@ function buildGoalChecklistSummary(
       return `图上行程可执行；发车只需要现场安全确认，雷达和相机问题不应改写这个读数。下一步：${nav2.next_action_plain}`;
     }
     return "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。";
+  })();
+  const safetyPrecheckSummary = (() => {
+    if (firstSafetyPrecheck) {
+      return `发车前预检已精简：只需要现场安全确认；相机和雷达不作为移动或行程发车前额外预检。下一步：${firstSafetyPrecheck.next_action_plain}`;
+    }
+    return "当前没有待安全确认的发车入口；继续按画面、雷达、行程和建图缺口处理。";
   })();
   const radarSummary = (() => {
     if (radar?.status === "done") {
@@ -6959,6 +6969,7 @@ function buildGoalChecklistSummary(
       first_incomplete_source_card_id: "",
       first_motion_item_id: "",
       first_motion_source_card_id: "",
+      safety_precheck_source_card_id: "",
       radar_item_id: "",
       radar_source_card_id: "",
       nav2_item_id: "",
@@ -6969,6 +6980,8 @@ function buildGoalChecklistSummary(
       summary_plain: "本轮目标检查未读到；先刷新小车状态。",
       motion_next_action_plain: "先刷新小车状态。",
       motion_summary_plain: "车能不能先动还未读到；先刷新小车状态。",
+      safety_precheck_next_action_plain: "先刷新小车状态。",
+      safety_precheck_summary_plain: "发车前最小确认还未读到；先刷新小车状态。",
       radar_next_action_plain: "先刷新小车状态。",
       radar_summary_plain: "雷达贴图状态还未读到；先刷新小车状态。",
       nav2_next_action_plain: "先刷新小车状态。",
@@ -6990,6 +7003,7 @@ function buildGoalChecklistSummary(
       first_incomplete_source_card_id: "",
       first_motion_item_id: firstMotion?.id ?? "",
       first_motion_source_card_id: firstMotion?.source_card_id ?? "",
+      safety_precheck_source_card_id: firstSafetyPrecheck?.source_card_id ?? "",
       radar_item_id: radar?.id ?? "",
       radar_source_card_id: radar?.source_card_id ?? "",
       nav2_item_id: nav2?.id ?? "",
@@ -7000,6 +7014,8 @@ function buildGoalChecklistSummary(
       summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成。`,
       motion_next_action_plain: firstMotion?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
       motion_summary_plain: motionSummary,
+      safety_precheck_next_action_plain: firstSafetyPrecheck?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
+      safety_precheck_summary_plain: safetyPrecheckSummary,
       radar_next_action_plain: radar?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
       radar_summary_plain: radarSummary,
       nav2_next_action_plain: nav2?.next_action_plain ?? "本轮目标检查已完成；继续保持现场监看。",
@@ -7022,6 +7038,7 @@ function buildGoalChecklistSummary(
     first_incomplete_source_card_id: firstIncomplete.source_card_id,
     first_motion_item_id: firstMotion?.id ?? "",
     first_motion_source_card_id: firstMotion?.source_card_id ?? "",
+    safety_precheck_source_card_id: firstSafetyPrecheck?.source_card_id ?? "",
     radar_item_id: radar?.id ?? "",
     radar_source_card_id: radar?.source_card_id ?? "",
     nav2_item_id: nav2?.id ?? "",
@@ -7032,6 +7049,8 @@ function buildGoalChecklistSummary(
     summary_plain: `本轮目标检查 ${doneCount}/${totalCount} 项已完成，还差 ${remaining.length} 项${safetyText}${motionText}；先处理：${firstIncomplete.title}。`,
     motion_next_action_plain: firstMotion?.next_action_plain ?? "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。",
     motion_summary_plain: motionSummary,
+    safety_precheck_next_action_plain: firstSafetyPrecheck?.next_action_plain ?? "当前没有待安全确认的发车入口；继续按画面、雷达、行程和建图缺口处理。",
+    safety_precheck_summary_plain: safetyPrecheckSummary,
     radar_next_action_plain: radar?.next_action_plain ?? "雷达贴图状态还未读到；先刷新小车状态。",
     radar_summary_plain: radarSummary,
     nav2_next_action_plain: nav2?.next_action_plain ?? "完整行程状态还未读到；先刷新小车状态。",

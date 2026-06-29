@@ -658,3 +658,8 @@ stop 或 `/cmd_vel`。
 普通首屏目标汇总新增“去建图”按钮，直接聚焦到自由移动/建图流程的安全确认或下一步控件；建图仍只有在相机首帧和
 雷达新鲜 ready 后才会显示可启动。该按钮只做 scroll/focus，不自动勾选、不启动建图、不启动自由移动、不发送
 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 11:34 CST 起，`goal_checklist_summary` 新增 `safety_precheck_source_card_id`、
+`safety_precheck_next_action_plain` 和 `safety_precheck_summary_plain`。普通首屏目标汇总会直接写明“发车前预检已精简：
+只需要现场安全确认；相机和雷达不作为移动或行程发车前额外预检”，并提供“去勾确认”聚焦按钮。按钮只把焦点带到
+共享安全确认或对应动作区，不自动勾选、不启动 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
