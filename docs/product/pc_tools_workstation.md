@@ -4136,3 +4136,10 @@ manual、delivery、stop 或 `/cmd_vel`。
 建图启动四行。该包把“车可以先自由自助移动”和“画面、雷达 ready 后才可以建图”分开表达：传感器缺口只影响建图启动和验收，
 不会回头变成自由移动或行程发车前置。每行只做状态展示和页面内聚焦，不自动勾选、不执行 Nav2、不启用键盘、
 不启动雷达/自由移动/建图，也不调用 manual、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:01 CST 起，普通首屏和 Robot Control summary 明确区分“上车自由移动状态机可启动”和“PC 低速运动可先处理”。
+当上车自由移动 runtime 尚未加载时，`free_roam_autonomy_start_ready` 仍保持 false、runtime 仍显示 `not_loaded`；
+但已有 PC 安全确认 + 键盘/低速手控 fallback 时，`free_roam_motion_start_ready` 会显示 true，并把目标检查、收口分组和
+自由移动事实更新为“可先低速移动”。画面首帧和雷达新鲜仍只影响建图启动/验收，不会成为低速移动或行程发车前置。
+该变化只修正只读 summary 和首屏展示，不自动勾选、不执行 Nav2、不启用键盘、不启动雷达/自由移动/建图，也不调用
+manual、delivery、stop 或 `/cmd_vel`。

@@ -407,7 +407,7 @@ const fixtures: Record<string, unknown> = {
       blocked_reasons: ["dangerous actions locked by V1 boundary"],
       last_refresh_ms: 1781040814776,
     },
-    current_fact_plain: "画面未显示：页面会自动接入共享 MJPEG 预览；地图画面已读到，但图上路线还未显示；自动驾驶：图上路线还未准备完成；键盘：必须按住 W/A/S/D 或方向键才会连续低速移动；自由移动：自由移动未就绪；建图：建图验收未 ready。",
+    current_fact_plain: "画面未显示：页面会自动接入共享 MJPEG 预览；地图画面已读到，但图上路线还未显示；自动驾驶：图上路线还未准备完成；键盘：必须按住 W/A/S/D 或方向键才会连续低速移动；自由移动：可先低速移动；建图：建图验收未 ready。",
     action_status_cards: [
       {
         id: "camera_preview",
@@ -483,12 +483,12 @@ const fixtures: Record<string, unknown> = {
         id: "free_move",
         title: "自由移动",
         status: "locked",
-        status_label: "未就绪",
-        summary_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底",
-        next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
-        wysiwyg_status: "motion_not_ready",
+        status_label: "可启动",
+        summary_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图",
+        next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+        wysiwyg_status: "motion_start_ready",
         requires_safety_confirmation: true,
-        can_start_after_safety_confirm: false,
+        can_start_after_safety_confirm: true,
         sends_motion_when_clicked: true,
         blocks_free_motion: false,
         blocks_mapping_start: false,
@@ -577,11 +577,11 @@ const fixtures: Record<string, unknown> = {
       {
         id: "free_move",
         title: "自由自助移动",
-        status: "not_ready",
-        status_label: "未就绪",
-        summary_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底",
-        evidence_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
-        next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
+        status: "needs_safety_confirm",
+        status_label: "待安全确认",
+        summary_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图",
+        evidence_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
+        next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
         source_card_id: "free_move",
         requires_safety_confirmation: true,
         requires_motion: true,
@@ -611,9 +611,9 @@ const fixtures: Record<string, unknown> = {
       motion_needed_count: 4,
       first_incomplete_item_id: "camera_wysiwyg",
       first_incomplete_source_card_id: "camera_preview",
-      first_motion_item_id: "keyboard_continuous_control",
-      first_motion_source_card_id: "keyboard_control",
-      safety_precheck_source_card_id: "keyboard_control",
+      first_motion_item_id: "free_move",
+      first_motion_source_card_id: "free_move",
+      safety_precheck_source_card_id: "free_move",
       radar_item_id: "radar_map_points_wysiwyg",
       radar_source_card_id: "radar_map_points",
       nav2_item_id: "nav2_route_execution",
@@ -622,10 +622,10 @@ const fixtures: Record<string, unknown> = {
       mapping_source_card_id: "mapping_start",
       next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
       summary_plain: "本轮目标检查 1/7 项已完成，还差 6 项，其中 4 项需要现场安全确认，4 项需要真实运动验证；先处理：画面所见即所得。",
-      motion_next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
-      motion_summary_plain: "自由移动状态机未 ready 时，仍可先用键盘连续手控；相机和雷达不作为键盘发车硬门禁。下一步：勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
-      safety_precheck_next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
-      safety_precheck_summary_plain: "发车前预检已精简：只需要现场安全确认；相机和雷达不作为移动或行程发车前额外预检。下一步：勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
+      motion_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+      motion_summary_plain: "可先自由移动；相机和雷达只影响建图验收。下一步：上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+      safety_precheck_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+      safety_precheck_summary_plain: "发车前预检已精简：只需要现场安全确认；相机和雷达不作为移动或行程发车前额外预检。下一步：上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
       radar_next_action_plain: "刷新地图画面，确认地图上实际显示的雷达点数",
       radar_summary_plain: "雷达点还没有贴到当前地图；先按同轮地图画面确认，不把旧点当当前标记。下一步：刷新地图画面，确认地图上实际显示的雷达点数",
       nav2_next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行",
@@ -676,8 +676,8 @@ const fixtures: Record<string, unknown> = {
         {
           id: "free_move",
           title: "先自由移动",
-          status_label: "未就绪",
-          next_action_plain: "等待上车自由移动状态机连接",
+          status_label: "待安全确认",
+          next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
           source_card_id: "free_move",
           requires_safety_confirmation: true,
           requires_motion: true,
@@ -701,6 +701,16 @@ const fixtures: Record<string, unknown> = {
           status_label: "待安全确认",
           next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
           source_card_id: "keyboard_control",
+          requires_safety_confirmation: true,
+          requires_motion: true,
+          blocks_goal_completion: true,
+        },
+        {
+          id: "free_move",
+          title: "先自由移动",
+          status_label: "待安全确认",
+          next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+          source_card_id: "free_move",
           requires_safety_confirmation: true,
           requires_motion: true,
           blocks_goal_completion: true,
@@ -733,16 +743,6 @@ const fixtures: Record<string, unknown> = {
           status_label: "未就绪",
           next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行",
           source_card_id: "nav2_route",
-          requires_safety_confirmation: true,
-          requires_motion: true,
-          blocks_goal_completion: true,
-        },
-        {
-          id: "free_move",
-          title: "先自由移动",
-          status_label: "未就绪",
-          next_action_plain: "等待上车自由移动状态机连接",
-          source_card_id: "free_move",
           requires_safety_confirmation: true,
           requires_motion: true,
           blocks_goal_completion: true,
@@ -971,15 +971,15 @@ const fixtures: Record<string, unknown> = {
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
         start_ready: "false",
-        motion_start_ready: "false",
+        motion_start_ready: "true",
         motion_ready: "false",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
-        plain_hint: "自由移动未就绪；先连接上车状态机并确认停止兜底。建图验收未 ready；还在等待上车状态机。下一步：先连接上车自由移动状态机，并确认停止兜底可用。",
-        next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
-        motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
+        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未 ready；还在等待上车状态机。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
+        next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
+        motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
         mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
-        motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
+        motion_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图。",
         mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
         runtime_artifact_proven: "not_loaded",
         state_machine_observed: "not_loaded",
@@ -1050,11 +1050,11 @@ const fixtures: Record<string, unknown> = {
       keyboard_teleop_next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停",
       free_roam_autonomy: "locked",
       free_roam_autonomy_start_ready: false,
-      free_roam_motion_start_ready: false,
+      free_roam_motion_start_ready: true,
       free_roam_mapping_ready: false,
       free_roam_mapping_missing_reasons: ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"],
       free_roam_autonomy_label: "自动扫图（未开放）",
-      free_roam_autonomy_next_action: "先连接上车自由移动状态机，并确认停止兜底可用",
+      free_roam_autonomy_next_action: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
       free_roam_motion_minimal_precheck_plain: "自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。",
       free_roam_mapping_acceptance_plain: "建图验收要求画面首帧、雷达新鲜、地图记录和地图画面 ready；这些缺口不阻止先低速自由移动。",
       free_roam_autonomy_policy: {
@@ -4290,7 +4290,8 @@ describe("App", () => {
     expect(safetyActions.text()).toContain("自由移动");
     expect(safetyActions.text()).toContain("建图启动");
     expect(wrapper.find('[data-testid="plain-safety-action-keyboard"]').text()).toContain("勾确认后可启用");
-    expect(wrapper.find('[data-testid="plain-safety-action-free_move"]').text()).toContain("未就绪");
+    expect(wrapper.find('[data-testid="plain-safety-action-free_move"]').text()).toContain("勾确认后可启动");
+    expect(wrapper.find('[data-testid="plain-safety-action-free_move"]').text()).toContain("画面和雷达只影响建图");
     expect(safetyActions.text()).not.toContain("Nav2");
     expect(safetyActions.text()).not.toContain("operator report");
     expect(safetyActions.text()).not.toContain("raw");
@@ -4326,10 +4327,10 @@ describe("App", () => {
     expect(actionGroups.text()).toContain("现场可收口");
     expect(actionGroups.text()).toContain("先补条件");
     expect(wrapper.find('[data-testid="plain-goal-action-group-ready"]').text()).toContain("键盘连续手控");
+    expect(wrapper.find('[data-testid="plain-goal-action-group-ready"]').text()).toContain("先自由移动");
     expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("画面所见即所得");
     expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("雷达点贴到地图");
     expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("完整图上行程");
-    expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("先自由移动");
     expect(wrapper.find('[data-testid="plain-goal-action-group-blocked"]').text()).toContain("传感器 ready 后建图");
     expect(actionGroups.text()).not.toContain("Nav2");
     expect(actionGroups.text()).not.toContain("operator report");
@@ -4428,14 +4429,16 @@ describe("App", () => {
     expect(wrapper.findAll('[data-testid^="plain-goal-checklist-"].plain-goal-checklist-row')).toHaveLength(7);
     expect(wrapper.find('[data-testid="plain-goal-checklist-map_wysiwyg"]').text()).toContain("已满足");
     expect(wrapper.find('[data-testid="plain-goal-checklist-keyboard_continuous_control"]').text()).toContain("待安全确认");
-    expect(wrapper.find('[data-testid="plain-goal-checklist-free_move"]').text()).toContain("未就绪");
+    expect(wrapper.find('[data-testid="plain-goal-checklist-free_move"]').text()).toContain("待安全确认");
+    expect(wrapper.find('[data-testid="plain-goal-checklist-free_move"]').text()).toContain("画面和雷达只影响建图");
     expect(goalChecklist.text()).not.toContain("marker");
     expect(goalChecklist.text()).not.toContain("overlay");
     const goalChecklistSummary = wrapper.find('[data-testid="plain-goal-checklist-summary"]');
     expect(goalChecklistSummary.exists()).toBe(true);
     expect(goalChecklistSummary.text()).toContain("本轮目标检查 1/7 项已完成，还差 6 项");
     expect(goalChecklistSummary.text()).toContain("先处理：画面所见即所得");
-    expect(goalChecklistSummary.text()).toContain("仍可先用键盘连续手控");
+    expect(goalChecklistSummary.text()).toContain("可先自由移动");
+    expect(goalChecklistSummary.text()).toContain("键盘或低速手控");
     expect(goalChecklistSummary.text()).toContain("发车前预检已精简");
     expect(goalChecklistSummary.text()).toContain("只需要现场安全确认");
     expect(goalChecklistSummary.text()).toContain("雷达点还没有贴到当前地图");
@@ -4465,14 +4468,14 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-goal-checklist-motion-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeMotionGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeMotionGuide);
     const callsBeforeSafetyGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeSafetyGuide = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-checklist-safety-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeSafetyGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyGuide);
     const callsBeforeRadarGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeRadarGuide = focusSpy.mock.calls.length;
@@ -4521,7 +4524,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("勾选现场安全确认");
-    expect(wrapper.find('[data-testid="plain-free-roam-readback-summary"]').text()).toContain("自由移动事实：自由移动未就绪");
+    expect(wrapper.find('[data-testid="plain-free-roam-readback-summary"]').text()).toContain("自由移动事实：可先低速移动");
     expect(wrapper.find('[data-testid="plain-free-roam-readback-summary"]').text()).toContain("相机、雷达、地图记录只影响建图验收");
     const freeRoamCoverage = wrapper.find('[data-testid="plain-free-roam-coverage"]');
     expect(freeRoamCoverage.exists()).toBe(true);

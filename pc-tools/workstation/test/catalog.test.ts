@@ -3998,8 +3998,9 @@ describe("workstation fail-closed API contracts", () => {
         blocks_free_motion: false,
       });
       expect(actionCards.find((card) => card.id === "free_move")).toMatchObject({
-        status_label: "未就绪",
+        status_label: "可启动",
         requires_safety_confirmation: true,
+        can_start_after_safety_confirm: true,
         blocks_free_motion: false,
       });
       expect(actionCards.find((card) => card.id === "mapping_start")).toMatchObject({
@@ -4032,6 +4033,13 @@ describe("workstation fail-closed API contracts", () => {
         requires_motion: true,
         blocks_goal_completion: true,
       });
+      expect(goalChecklist.find((item) => item.id === "free_move")).toMatchObject({
+        status: "needs_safety_confirm",
+        status_label: "待安全确认",
+        requires_safety_confirmation: true,
+        requires_motion: true,
+        blocks_goal_completion: true,
+      });
       expect(summary.goal_checklist_summary).toMatchObject({
         status: "in_progress",
         status_label: "进行中",
@@ -4040,9 +4048,9 @@ describe("workstation fail-closed API contracts", () => {
         remaining_count: 6,
         first_incomplete_item_id: "camera_wysiwyg",
         first_incomplete_source_card_id: "camera_preview",
-        first_motion_item_id: "keyboard_continuous_control",
-        first_motion_source_card_id: "keyboard_control",
-        safety_precheck_source_card_id: "keyboard_control",
+        first_motion_item_id: "free_move",
+        first_motion_source_card_id: "free_move",
+        safety_precheck_source_card_id: "free_move",
         radar_item_id: "radar_map_points_wysiwyg",
         radar_source_card_id: "radar_map_points",
         nav2_item_id: "nav2_route_execution",
@@ -4051,7 +4059,8 @@ describe("workstation fail-closed API contracts", () => {
         mapping_source_card_id: "mapping_start",
       });
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
-      expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("仍可先用键盘连续手控");
+      expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("可先自由移动");
+      expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("键盘或低速手控");
       expect(summary.goal_checklist_summary?.safety_precheck_summary_plain).toContain("发车前预检已精简");
       expect(summary.goal_checklist_summary?.safety_precheck_summary_plain).toContain("只需要现场安全确认");
       expect(summary.goal_checklist_summary?.radar_summary_plain).toContain("雷达点还没有贴到当前地图");
@@ -4068,12 +4077,12 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(summary.goal_checklist_summary?.ready_action_items.map((item) => item.id)).toEqual([
         "keyboard_continuous_control",
+        "free_move",
       ]);
       expect(summary.goal_checklist_summary?.blocked_action_items.map((item) => item.id)).toEqual([
         "camera_wysiwyg",
         "radar_map_points_wysiwyg",
         "nav2_route_execution",
-        "free_move",
         "mapping_start",
       ]);
       expect(summary.goal_checklist_summary?.next_action_items[1]).toMatchObject({
@@ -4246,7 +4255,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_control_enabled).toBe(false);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("locked");
       expect(summary.safe_command_boundary.free_roam_autonomy_start_ready).toBe(false);
-      expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(false);
+      expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(true);
       expect(summary.safe_command_boundary.free_roam_mapping_start_ready).toBe(false);
       expect(summary.safe_command_boundary.free_roam_mapping_start_missing_reasons).toEqual([
         "camera_first_frame",
@@ -4260,6 +4269,7 @@ describe("workstation fail-closed API contracts", () => {
         "fresh_map_preview",
       ]);
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（未开放）");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底");
       expect(summary.safe_command_boundary.free_roam_motion_minimal_precheck_plain).toBe("自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜。");
@@ -5748,18 +5758,18 @@ describe("workstation fail-closed API contracts", () => {
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
         start_ready: "false",
-        motion_start_ready: "false",
+        motion_start_ready: "true",
         motion_ready: "false",
         mapping_start_ready: "false",
         mapping_start_missing: "camera_first_frame,lidar_fresh",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
-        plain_hint: "自由移动未就绪；先连接上车状态机并确认停止兜底。建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面。下一步：先连接上车自由移动状态机，并确认停止兜底可用。",
-        next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
-        motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
+        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
+        next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
+        motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
         mapping_start_readiness_plain: "建图启动未 ready；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。",
         mapping_readiness_plain: "建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面。",
-        motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
+        motion_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图。",
         mapping_start_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜。",
         mapping_next_action_plain: "先连接上车自由移动状态机；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面。",
         runtime_artifact_proven: "not_loaded",

@@ -5171,6 +5171,7 @@ function freeRoamSummaryFromReadbacks(
   readbacks: InternalRobotApiEndpointReadback[],
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null = null,
   freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
+  manualMotionFallbackReady = false,
 ): RobotControlSummaryResponse["readback_summary"]["free_roam"] {
   // free-roam 摘要把自动扫图 artifact 的最近状态提升给首屏；它只解释状态，不代表 PC 可以直接发车。
   const readback = readbackById(readbacks, "free_roam_autonomy_latest");
@@ -5183,6 +5184,8 @@ function freeRoamSummaryFromReadbacks(
   const stopGates = (freeRoamRuntimeGates ?? []).filter((gate) => gate.id === "stop_available");
   const stopFallbackReady = stopGates.length === 0 || stopGates.every((gate) => gate.state === "ready");
   const startReady = Boolean(freeRoamRuntime?.status === "loaded" && stopFallbackReady);
+  const motionStartReady = startReady || manualMotionFallbackReady;
+  const manualMotionFallbackActive = !startReady && manualMotionFallbackReady;
   const motionReady = Boolean(startReady && freeRoamRuntime?.cmd_vel_publish_enabled === true);
   const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
     .filter((gate) => gate.scope === "mapping_acceptance")
@@ -5200,9 +5203,9 @@ function freeRoamSummaryFromReadbacks(
       : startReady
         ? "start_ready"
         : readback?.status ?? "not_loaded";
-  const motionReadinessPlain = freeRoamMotionReadinessPlain(startReady, motionReady, externalStopRequested);
+  const motionReadinessPlain = freeRoamMotionReadinessPlain(startReady, motionReady, externalStopRequested, manualMotionFallbackActive);
   const mappingReadinessPlain = freeRoamMappingReadinessPlain(startReady, mappingReady, mappingMissing);
-  const nextActionPlain = freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime);
+  const nextActionPlain = freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime, manualMotionFallbackActive);
   return {
     status: derivedStatus,
     runtime_status: asString(payload?.runtime_status, latest ? "loaded" : "not_loaded"),
@@ -5212,7 +5215,7 @@ function freeRoamSummaryFromReadbacks(
     artifact_only: latest ? booleanSummaryValue(latest.artifact_only !== false) : summaryValueText(payload, ["artifact_only"]) ?? "not_loaded",
     cmd_vel_publish_enabled: latest ? booleanSummaryValue(latest.cmd_vel_publish_enabled === true) : summaryValueText(payload, ["cmd_vel_publish_enabled"]) ?? "not_loaded",
     start_ready: booleanSummaryValue(startReady),
-    motion_start_ready: booleanSummaryValue(startReady),
+    motion_start_ready: booleanSummaryValue(motionStartReady),
     motion_ready: booleanSummaryValue(motionReady),
     mapping_start_ready: booleanSummaryValue(mappingStartReady),
     mapping_start_missing: mappingStartMissing.length ? mappingStartMissing.join(",") : "none",
@@ -5223,7 +5226,7 @@ function freeRoamSummaryFromReadbacks(
     motion_readiness_plain: motionReadinessPlain,
     mapping_start_readiness_plain: freeRoamMappingStartReadinessPlain(startReady, mappingStartReady, mappingStartMissing),
     mapping_readiness_plain: mappingReadinessPlain,
-    motion_next_action_plain: freeRoamMotionNextAction(startReady, motionReady, externalStopRequested),
+    motion_next_action_plain: freeRoamMotionNextAction(startReady, motionReady, externalStopRequested, manualMotionFallbackActive),
     mapping_start_next_action_plain: freeRoamMappingStartNextAction(startReady, mappingStartReady, mappingStartMissing),
     mapping_next_action_plain: freeRoamMappingNextAction(startReady, mappingReady, mappingMissing),
     runtime_artifact_proven: summaryValueText(payload, ["free_roam_runtime_artifact_proven"]) ?? "not_loaded",
@@ -5906,6 +5909,7 @@ function freeRoamAutonomyNextAction(
   mappingReady: boolean,
   mappingMissingReasons: string[],
   freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
+  manualMotionFallbackActive = false,
 ): string {
   // 自由移动和建图验收分层：能动不等于可验收建图，下一步必须把这两件事讲清楚。
   const missingText = freeRoamMissingPlainLabels(mappingMissingReasons).join("、");
@@ -5931,10 +5935,13 @@ function freeRoamAutonomyNextAction(
       ? `${motionAction}；建图验收还差：${missingText}`
       : `${motionAction}；继续读取建图验收材料`;
   }
+  if (manualMotionFallbackActive) {
+    return "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底";
+  }
   return "先连接上车自由移动状态机，并确认停止兜底可用";
 }
 
-function freeRoamMotionNextAction(startReady: boolean, motionReady: boolean, externalStopRequested: boolean): string {
+function freeRoamMotionNextAction(startReady: boolean, motionReady: boolean, externalStopRequested: boolean, manualMotionFallbackActive = false): string {
   // 自由移动只看安全确认和停止兜底；相机/雷达/地图记录只影响建图验收，不该写成不能动。
   if (motionReady) {
     return "自由移动运行中；需要收口时点击停止自由移动或红色停止。";
@@ -5945,10 +5952,13 @@ function freeRoamMotionNextAction(startReady: boolean, motionReady: boolean, ext
       : "";
     return `${stopPrefix}勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。`;
   }
+  if (manualMotionFallbackActive) {
+    return "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图。";
+  }
   return "先连接上车自由移动状态机，并确认停止兜底可用。";
 }
 
-function freeRoamMotionReadinessPlain(startReady: boolean, motionReady: boolean, externalStopRequested: boolean): string {
+function freeRoamMotionReadinessPlain(startReady: boolean, motionReady: boolean, externalStopRequested: boolean, manualMotionFallbackActive = false): string {
   // 这句只回答“能不能先自己低速移动”，不夹带建图传感器缺口，方便首屏和脚本直接展示。
   if (motionReady) {
     return "自由移动正在运行；相机和雷达不作为继续移动的前置。";
@@ -5957,6 +5967,9 @@ function freeRoamMotionReadinessPlain(startReady: boolean, motionReady: boolean,
     return externalStopRequested
       ? "可先自由移动；当前有停止请求，开始自由移动会先清除停止请求。"
       : "可先自由移动；只需要现场安全确认和停止兜底。";
+  }
+  if (manualMotionFallbackActive) {
+    return "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。";
   }
   return "自由移动未就绪；先连接上车状态机并确认停止兜底。";
 }
@@ -6238,6 +6251,7 @@ function lockedBoundary(
   freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
   proof: RobotApiProofSummary | null = null,
   nav2: RobotControlSummaryResponse["readback_summary"]["nav2"] | null = null,
+  manualMotionFallbackReady = false,
 ): RobotControlSummaryResponse["safe_command_boundary"] {
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
   const startGates = (freeRoamRuntimeGates ?? []).filter((gate) => gate.id === "stop_available");
@@ -6246,6 +6260,8 @@ function lockedBoundary(
     freeRoamRuntime?.status === "loaded"
     && stopFallbackReady,
   );
+  const freeRoamMotionStartReady = freeRoamStartReady || manualMotionFallbackReady;
+  const manualMotionFallbackActive = !freeRoamStartReady && manualMotionFallbackReady;
   const freeRoamReady = Boolean(
     freeRoamRuntime?.status === "loaded"
     && freeRoamRuntime.cmd_vel_publish_enabled
@@ -6256,7 +6272,7 @@ function lockedBoundary(
   const freeRoamMappingStartReady = freeRoamStartReady && freeRoamMappingStartMissingReasons.length === 0;
   const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
-  const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime);
+  const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime, manualMotionFallbackActive);
   const keyboardNextAction = "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
   const keyboardStopTriggers = ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"];
   const nav2MinimalPrecheckPlain = "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。";
@@ -6293,7 +6309,7 @@ function lockedBoundary(
     keyboard_teleop_next_action_plain: keyboardNextAction,
     free_roam_autonomy: freeRoamStatus,
     free_roam_autonomy_start_ready: freeRoamStartReady,
-    free_roam_motion_start_ready: freeRoamStartReady,
+    free_roam_motion_start_ready: freeRoamMotionStartReady,
     free_roam_mapping_start_ready: freeRoamMappingStartReady,
     free_roam_mapping_start_missing_reasons: freeRoamMappingStartMissingReasons,
     free_roam_mapping_ready: freeRoamMappingReady,
@@ -7149,9 +7165,9 @@ export async function buildRobotControlSummary(
     localization: localizationSummaryFromReadbacks(readbacks, proofSummary),
     nav2: nav2Summary,
     keyboard: keyboardSummaryReadback(),
-    free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime),
+    free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime, true),
   };
-  const safeCommandBoundary = lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary);
+  const safeCommandBoundary = lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary, true);
   const actionStatusCards = buildActionStatusCards(readbackSummary, safeCommandBoundary);
   const goalChecklist = buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary);
 

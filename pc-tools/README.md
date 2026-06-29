@@ -702,3 +702,9 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 该包把“可以先低速自由移动”和“传感器 ready 后才可建图”拆开显示：画面首帧或雷达新鲜缺失时，建图启动会显示未就绪，
 但自由移动行仍按现场安全确认和停止兜底判断。每行“去处理”只聚焦到已有控件，不自动勾选、不执行 Nav2、不启用键盘、
 不启动雷达/自由移动/建图，也不会发送 manual、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:01 CST 起，Robot Control summary 进一步把 `free_roam_motion_start_ready` 和
+`free_roam_autonomy_start_ready` 分开：上车自由移动状态机尚未加载时，runtime 仍显示 `not_loaded`，
+但 PC 已有安全确认 + 键盘/低速手控 fallback 时，低速移动事实显示为可先处理；相机、雷达只继续影响建图启动和验收。
+该变化只修正只读 summary、首屏分组和测试夹具，不自动勾选、不执行 Nav2、不启用键盘、不启动雷达/自由移动/建图，
+也不会发送 manual、delivery、stop 或 `/cmd_vel`。
