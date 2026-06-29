@@ -1895,19 +1895,87 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 free_roam_autonomy_artifact_path=str(artifact_path),
             )
 
-            latest_status, latest = api.free_roam_autonomy_latest()
-            status = api.free_roam_autonomy_status()
+            with mock.patch.object(api, "camera_motion_readiness", return_value={"ready": False, "missing": ["camera_first_frame_not_observed"]}):
+                with mock.patch.object(
+                    api,
+                    "radar_status",
+                    return_value={
+                        "lifecycle_running": False,
+                        "lifecycle_state": "stopped",
+                        "latest_scan_proof_fresh": False,
+                    },
+                ):
+                    latest_status, latest = api.free_roam_autonomy_latest()
+                    status = api.free_roam_autonomy_status()
 
         self.assertEqual(200, latest_status)
         self.assertTrue(latest["free_roam_runtime_artifact_proven"])
         self.assertTrue(latest["free_roam_state_machine_observed"])
         self.assertTrue(latest["ros2_runtime_proven"])
+        self.assertTrue(latest["free_roam_motion_start_ready"])
+        self.assertTrue(latest["motion_without_radar_allowed"])
+        self.assertTrue(latest["free_move_without_camera_allowed"])
+        self.assertFalse(latest["mapping_readiness"]["ready"])
+        self.assertEqual(
+            ["camera_first_frame_not_observed", "radar_scan_proof_not_fresh"],
+            latest["mapping_readiness"]["missing"],
+        )
         self.assertEqual("stopping", latest["decision_state"])
+        self.assertFalse(latest["sends_motion_commands"])
         self.assertFalse(latest["safe_to_control"])
         self.assertFalse(latest["publishes_cmd_vel"])
+        self.assertTrue(status["free_roam_motion_start_ready"])
+        self.assertFalse(status["free_roam_mapping_start_ready"])
+        self.assertEqual(
+            ["camera_first_frame_not_observed", "radar_scan_proof_not_fresh"],
+            status["free_roam_mapping_start_missing_reasons"],
+        )
         self.assertTrue(status["free_roam_state_machine_observed"])
         self.assertTrue(status["ros2_runtime_proven"])
         self.assertFalse(status["safe_to_control"])
+
+    def test_free_roam_latest_exposes_mapping_ready_when_camera_and_radar_ready(self) -> None:
+        """直连 latest 也要说清：相机和雷达 ready 后才允许建图启动。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "free_roam_autonomy_latest.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.free_roam_autonomy.runtime.v1",
+                        "artifact_only": True,
+                        "cmd_vel_publish_enabled": False,
+                        "decision": {"state": "idle", "reason": "waiting", "stop_required": False, "gates": []},
+                        "snapshot": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                free_roam_autonomy_artifact_path=str(artifact_path),
+            )
+
+            with mock.patch.object(api, "camera_motion_readiness", return_value={"ready": True, "missing": []}):
+                with mock.patch.object(
+                    api,
+                    "radar_status",
+                    return_value={
+                        "lifecycle_running": True,
+                        "lifecycle_state": "active",
+                        "latest_scan_proof_fresh": True,
+                    },
+                ):
+                    latest_status, latest = api.free_roam_autonomy_latest()
+
+        self.assertEqual(200, latest_status)
+        self.assertTrue(latest["free_roam_motion_start_ready"])
+        self.assertTrue(latest["free_roam_mapping_start_ready"])
+        self.assertTrue(latest["mapping_readiness"]["ready"])
+        self.assertEqual([], latest["mapping_readiness"]["missing"])
+        self.assertIn("可以启动建图", latest["free_roam_mapping_start_plain"])
 
     def test_free_roam_param_sequence_unlocks_motion_only_when_requested(self) -> None:
         """参数序列默认不解锁；只有 readiness 通过后的 start 才写运动发布双锁。"""

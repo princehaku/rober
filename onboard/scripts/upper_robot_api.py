@@ -7548,17 +7548,77 @@ class UpperRobotApi:
         )
         latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else {}
         decision = latest.get("decision") if isinstance(latest.get("decision"), dict) else {}
+        snapshot = latest.get("snapshot") if isinstance(latest.get("snapshot"), dict) else {}
         runtime_artifact_proven = (
             http_status == 200
             and isinstance(latest, dict)
             and latest.get("schema") == "trashbot.free_roam_autonomy.runtime.v1"
         )
+        camera = self.camera_motion_readiness()
+        radar = self.radar_status()
+        lidar_age_s = finite_lidar_scan_number(snapshot.get("lidar_age_s"))
+        lidar_min_distance_m = finite_lidar_scan_number(snapshot.get("lidar_min_distance_m"))
+        # latest endpoint 不能调用 free_roam_runtime_lidar_readiness()，否则会递归回到本函数。
+        runtime_lidar_ready = (
+            runtime_artifact_proven
+            and lidar_age_s is not None
+            and lidar_age_s <= 1.5
+            and lidar_min_distance_m is not None
+        )
+        radar_proof_ready = bool(radar.get("lifecycle_running")) and bool(radar.get("latest_scan_proof_fresh"))
+        radar_ready = radar_proof_ready or runtime_lidar_ready
+        camera_missing = camera.get("missing") if isinstance(camera.get("missing"), list) else ["camera_not_ready"]
+        mapping_missing: list[str] = []
+        if not camera.get("ready"):
+            mapping_missing.extend(str(item) for item in camera_missing)
+        if not radar_ready:
+            mapping_missing.append("radar_scan_proof_not_fresh")
+        mapping_missing = list(dict.fromkeys(mapping_missing))
+        mapping_ready = not mapping_missing
         payload.update(
             {
                 "runtime_status": "loaded" if http_status == 200 else "not_loaded",
                 "free_roam_runtime_artifact_proven": runtime_artifact_proven,
                 "free_roam_state_machine_observed": runtime_artifact_proven,
                 "ros2_runtime_proven": runtime_artifact_proven,
+                "free_roam_motion_start_ready": True,
+                "free_move_start_ready": True,
+                "motion_start_ready": True,
+                "motion_without_radar_allowed": True,
+                "free_move_without_camera_allowed": True,
+                "free_roam_motion_minimal_precheck_plain": "自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。",
+                "mapping_readiness": {
+                    "ready": mapping_ready,
+                    "missing": mapping_missing,
+                    "requires_camera_first_frame": True,
+                    "requires_fresh_radar_scan": True,
+                    "free_move_allowed_when_mapping_not_ready": True,
+                },
+                "free_roam_mapping_start_ready": mapping_ready,
+                "free_roam_mapping_start_missing_reasons": mapping_missing,
+                "free_roam_mapping_ready": mapping_ready,
+                "free_roam_mapping_missing_reasons": mapping_missing,
+                "free_roam_mapping_start_plain": (
+                    "画面和雷达已 ready；勾选安全确认后可以启动建图。"
+                    if mapping_ready
+                    else f"建图启动未就绪，还差 {','.join(mapping_missing)}；低速自由移动不受影响。"
+                ),
+                "free_roam_mapping_start_next_action": (
+                    "勾选现场安全确认后启动建图。"
+                    if mapping_ready
+                    else "先补齐画面首帧和雷达新鲜扫描；需要移动时可先勾安全确认低速自由移动。"
+                ),
+                "camera_readiness": camera,
+                "radar_readiness": {
+                    "ready": radar_ready,
+                    "proof_ready": radar_proof_ready,
+                    "runtime_scan_ready": runtime_lidar_ready,
+                    "lifecycle_running": bool(radar.get("lifecycle_running")),
+                    "lifecycle_state": radar.get("lifecycle_state") or "not_loaded",
+                    "latest_scan_proof_fresh": bool(radar.get("latest_scan_proof_fresh")),
+                    "lidar_age_s": lidar_age_s,
+                    "lidar_min_distance_m": lidar_min_distance_m,
+                },
                 "decision_state": decision.get("state") or "not_loaded",
                 "decision_reason": decision.get("reason") or "not_loaded",
                 "stop_required": bool(decision.get("stop_required")) if isinstance(decision, dict) else True,
@@ -7567,6 +7627,8 @@ class UpperRobotApi:
                 "safe_to_control": False,
                 "primary_actions_enabled": False,
                 "publishes_cmd_vel": False,
+                "sends_commands": False,
+                "sends_motion_commands": False,
                 "robot_control_executed": False,
                 "delivery_success": False,
             }
@@ -7594,6 +7656,20 @@ class UpperRobotApi:
             "decision_state": decision.get("state") or "not_loaded",
             "decision_reason": decision.get("reason") or "not_loaded",
             "decision_gates": decision.get("gates") if isinstance(decision.get("gates"), list) else [],
+            "free_roam_motion_start_ready": bool(payload.get("free_roam_motion_start_ready")),
+            "free_move_start_ready": bool(payload.get("free_move_start_ready")),
+            "motion_without_radar_allowed": bool(payload.get("motion_without_radar_allowed")),
+            "free_move_without_camera_allowed": bool(payload.get("free_move_without_camera_allowed")),
+            "mapping_readiness": payload.get("mapping_readiness") if isinstance(payload.get("mapping_readiness"), dict) else {},
+            "free_roam_mapping_start_ready": bool(payload.get("free_roam_mapping_start_ready")),
+            "free_roam_mapping_start_missing_reasons": (
+                payload.get("free_roam_mapping_start_missing_reasons")
+                if isinstance(payload.get("free_roam_mapping_start_missing_reasons"), list)
+                else []
+            ),
+            "free_roam_motion_minimal_precheck_plain": payload.get("free_roam_motion_minimal_precheck_plain"),
+            "free_roam_mapping_start_plain": payload.get("free_roam_mapping_start_plain"),
+            "free_roam_mapping_start_next_action": payload.get("free_roam_mapping_start_next_action"),
             "snapshot": snapshot,
             "map_metrics": map_metrics,
             "artifact_only": bool(latest.get("artifact_only")) if isinstance(latest, dict) else True,
