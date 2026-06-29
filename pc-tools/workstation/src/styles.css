@@ -1999,6 +1999,29 @@ h3 {
   background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), transparent 42%);
 }
 
+.plain-mapping-unlock-plan {
+  display: grid;
+  gap: 7px;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.plain-mapping-unlock-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.5fr) auto minmax(240px, 1.5fr) auto;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #edf1f5;
+  padding-top: 7px;
+}
+
+.plain-mapping-unlock-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .plain-free-roam-coverage-bar {
   position: relative;
   height: 8px;
@@ -2441,6 +2464,7 @@ th {
     .motion-limits,
     .motion-middle-row,
     .plain-trip-execution-plan-row,
+    .plain-mapping-unlock-row,
     .plain-progress-row {
     grid-template-columns: 1fr;
   }

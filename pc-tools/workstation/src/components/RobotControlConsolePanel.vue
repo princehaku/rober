@@ -5759,6 +5759,69 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     policyText: gatePolicyText,
   };
 });
+type PlainMappingUnlockItem = {
+  id: "free_move" | "camera" | "radar" | "mapping_start";
+  label: string;
+  state: string;
+  hint: string;
+  sourceCardId: RobotControlActionStatusCardId;
+};
+const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
+  // 建图解锁包按“先能动、再补传感器、最后启动建图”排序；这里只读展示，不代替任何安全确认或启动动作。
+  const summary = robotSummary.value;
+  const boundary = summary?.safe_command_boundary;
+  const camera = summary?.readback_summary.camera;
+  const radar = summary?.readback_summary.radar;
+  const freeRoam = summary?.readback_summary.free_roam;
+  const cameraReady = plainCameraReadyForFreeRoamAutonomy.value;
+  const radarReady = plainRadarReadyForFreeRoamMapping.value;
+  const motionReady = boundary?.free_roam_motion_start_ready === true;
+  const mappingStartReady = boundary?.free_roam_mapping_start_ready === true;
+  const mappingMissing = boundary?.free_roam_mapping_start_missing_reasons ?? [];
+  const mappingMissingText = mappingMissing.length ? `还差：${freeRoamMappingMissingPlainLabels(mappingMissing).join("、")}。` : "";
+  return [
+    {
+      id: "free_move",
+      label: "先自由移动",
+      state: motionReady ? "可先动" : "待处理",
+      hint: freeRoam?.motion_readiness_plain
+        || boundary?.free_roam_motion_minimal_precheck_plain
+        || "自由移动只要求现场安全确认和停止兜底；相机和雷达只影响建图。",
+      sourceCardId: "free_move",
+    },
+    {
+      id: "camera",
+      label: "画面首帧",
+      state: cameraReady ? "已满足" : "待处理",
+      hint: cameraReady
+        ? "共享实时画面已有可见帧，后进页面也接入同一条上游流。"
+        : camera?.shared_preview_realtime_plain
+          || camera?.source_diagnosis_plain_hint
+          || "先让共享预览读到首帧；这只影响建图，不阻止低速自由移动。",
+      sourceCardId: "camera_preview",
+    },
+    {
+      id: "radar",
+      label: "雷达新鲜",
+      state: radarReady ? "已满足" : "待处理",
+      hint: radarReady
+        ? "雷达新扫描已可用于建图验收；地图仍以同轮预览显示为准。"
+        : radar?.next_action_plain
+          || radar?.radar_next_action_plain
+          || "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
+      sourceCardId: "radar_map_points",
+    },
+    {
+      id: "mapping_start",
+      label: "建图启动",
+      state: mappingStartReady ? "可启动" : "未就绪",
+      hint: mappingStartReady
+        ? "画面首帧和雷达新鲜都满足；勾安全确认后可启动建图记录。"
+        : `${freeRoam?.mapping_start_readiness_plain || boundary?.free_roam_mapping_start_plain || "建图启动未 ready。"}${mappingMissingText ? ` ${mappingMissingText}` : ""}低速自由移动不受影响。`,
+      sourceCardId: "mapping_start",
+    },
+  ];
+});
 const plainFreeRoamMappingSteps = computed(() => {
   // 步骤条只表达本地向导状态；真正动作仍由每个固定按钮和后端 gate 执行。
   const safetyReady = plainManualSafetyConfirmed.value;
@@ -13363,6 +13426,26 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
             <p class="panel-note" data-testid="plain-free-roam-mapping-readiness">{{ plainFreeRoamAutonomyReadiness.mappingReadinessText }}</p>
+            <div class="plain-mapping-unlock-plan" data-testid="plain-mapping-unlock-plan" aria-label="建图解锁包">
+              <div
+                v-for="item in plainMappingUnlockItems"
+                :key="item.id"
+                class="plain-mapping-unlock-row"
+                :data-testid="`plain-mapping-unlock-${item.id}`"
+              >
+                <span class="plain-progress-label">{{ item.label }}</span>
+                <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+                <span class="muted">{{ plainActionCardUserText(item.hint) }}</span>
+                <button
+                  type="button"
+                  class="secondary compact-stop"
+                  :data-testid="`plain-mapping-unlock-go-${item.id}`"
+                  @click="focusPlainActionCardTarget(item.sourceCardId)"
+                >
+                  去处理
+                </button>
+              </div>
+            </div>
             <p class="panel-note" data-testid="plain-free-roam-autonomy-runtime">{{ plainFreeRoamAutonomyReadiness.runtimeText }}</p>
             <p v-if="plainFreeRoamAutonomyParamWriteSummary" class="panel-note" data-testid="plain-free-roam-autonomy-param-write">{{ plainFreeRoamAutonomyParamWriteSummary }}</p>
             <p v-if="plainFreeRoamLatestSummary" class="panel-note" data-testid="plain-free-roam-autonomy-latest-summary">{{ plainFreeRoamLatestSummary }}</p>
