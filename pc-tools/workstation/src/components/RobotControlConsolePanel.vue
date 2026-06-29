@@ -8816,6 +8816,9 @@ const plainTripExecutionPlanItems = computed<PlainTripExecutionPlanItem[]>(() =>
   const changedModeText = previousMode && previousMode !== requestedMode
     ? `上次 ${previousMode}，本次请求 ${requestedMode}。`
     : `本次请求 ${requestedMode}。`;
+  const modeRerunPlain = nav2?.goal_execution_mode_rerun_plain && nav2.goal_execution_mode_rerun_plain !== "not_loaded"
+    ? `${plainNav2UserFacingText(nav2.goal_execution_mode_rerun_plain)}`
+    : "";
   const runtimeManaged = plainTripManagedRuntimePrecheckText().length > 0;
   const wheelPair = nav2BaseFeedbackPair(values);
   const wheelPairText = wheelPair ? `当前读回轮速 L/R=${wheelPair.left}/${wheelPair.right}。` : "";
@@ -8829,7 +8832,7 @@ const plainTripExecutionPlanItems = computed<PlainTripExecutionPlanItem[]>(() =>
       id: "mode",
       label: "执行模式",
       state: requestedMode,
-      hint: `${changedModeText}执行请求会带上这个模式，避免沿用旧诊断路径。`,
+      hint: `${changedModeText}${modeRerunPlain ? `${modeRerunPlain}。` : ""}执行请求会带上这个模式，避免沿用旧诊断路径。`,
     },
     {
       id: "runtime",

@@ -8958,6 +8958,8 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
     summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
     summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_next_mode_plain = "下次将用 ROS 模式重跑图上路线。";
+    summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_plain = "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
     summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
@@ -9364,6 +9366,8 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
     summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
     summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_next_mode_plain = "下次将用 ROS 模式重跑图上路线。";
+    summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_plain = "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode = "pwm";
@@ -18992,6 +18996,8 @@ describe("App", () => {
     summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
     summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
     summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_status = "pending_ros_rerun_after_pwm";
+    summaryFixture.readback_summary.nav2.goal_execution_next_mode_plain = "下次将用 ROS 模式重跑图上路线。";
+    summaryFixture.readback_summary.nav2.goal_execution_mode_rerun_plain = "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_observed = "true";
     summaryFixture.readback_summary.nav2.goal_execution_base_command_nonzero_count = "49";
     summaryFixture.readback_summary.nav2.goal_execution_base_feedback_sample_count = "239";
@@ -19029,6 +19035,11 @@ describe("App", () => {
     expect(motionClosure).toContain("轮速 L/R=0/0 未非零");
     expect(motionClosure).toContain("不是相机或雷达阻塞");
     expect(motionClosure).toContain("用 ROS");
+    const modePlan = wrapper.find('[data-testid="plain-trip-execution-plan-mode"]').text();
+    expect(modePlan).toContain("执行模式");
+    expect(modePlan).toContain("ROS");
+    expect(modePlan).toContain("上次 PWM 模式路线返回成功但轮速 L/R 仍未非零");
+    expect(modePlan).toContain("本次切到 ROS 模式复验控制链");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);

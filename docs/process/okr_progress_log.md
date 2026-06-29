@@ -8,6 +8,16 @@
 
 ## 2026-06-29 系列
 
+### 2026-06-29 23-06｜pc_nav2_next_mode_plain｜O3 自动驾驶复验模式白话化
+
+本轮 `sprints/2026.06.29_23-06_pc_nav2_next_mode_plain/` 推进完整 Nav2 路线执行排障可见性：
+PC summary/latest 新增 `goal_execution_next_mode_plain`、`goal_execution_mode_rerun_plain`，把旧 PWM/T=11 成功但 wheel L/R=0/0
+时的“下次 ROS 复验”，以及 ROS/T=13 仍未闭合时的“下次 SPEED/T=1 复验”直接暴露给普通首屏和脚本。前端行程卡的“执行模式”
+行会展示该原因，避免现场把旧模式的成功 action 误当成当前真车闭环。
+
+验证范围：PC 定向 catalog/App 回归和 TypeScript build；本轮不执行 Nav2、不启动 runtime、不发送 manual、keyboard、
+free-roam、delivery、stop 或 `/cmd_vel`。真实路线闭环仍需现场勾选安全确认后按该模式重跑，并在同窗口读到 wheel L/R 非零。
+
 ### 2026-06-29 22-45｜free roam start runtime wait｜自由移动启动闭环
 
 本轮 `sprints/2026.06.29_22-45_free_roam_start_runtime_wait/` 推进“车可以自由自助移动，且移动不依赖雷达/摄像头”的启动闭环。上车 `POST /api/free-roam/autonomy/start` 在真实 `ros2 param load` 成功后，会短等 `free_roam_autonomy_latest` artifact 刷新到 `running/avoiding/turning_for_coverage` 且 `cmd_vel_publish_enabled=true`，并把 `start_runtime_wait` 返回给 PC。PC 代理和普通首屏状态机写入提示同步显示“运行态已看到”或“运行态还未回读”，避免现场点击开始后立刻读到旧 `stopping` artifact，被误判为无法移动。

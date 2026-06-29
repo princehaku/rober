@@ -5122,6 +5122,12 @@ function nav2SummaryFromReadbacks(
     && lastBaseMode !== nextBaseMode
     ? `pending_${nextBaseMode}_rerun_after_${lastBaseMode}`
     : "not_required";
+  const modePlain = nav2ExecutionModePlainFields({
+    lastBaseMode,
+    nextBaseMode,
+    goalSucceeded,
+    wheelFeedbackProven,
+  });
   const summaryStatus = goalExecutionProven === "true" && goalExecutionStatus !== "not_loaded"
     ? goalExecutionStatus
     : goalSucceeded && wheelFeedbackProven === "false"
@@ -5224,6 +5230,8 @@ function nav2SummaryFromReadbacks(
     route_execution_precheck_plain: routeExecutionPlain.precheckPlain,
     goal_execution_wheel_raw_lr_status_plain: wheelRawPlain.statusPlain,
     goal_execution_wheel_raw_lr_next_action_plain: wheelRawPlain.nextActionPlain,
+    goal_execution_next_mode_plain: modePlain.nextModePlain,
+    goal_execution_mode_rerun_plain: modePlain.rerunPlain,
     goal_execution_status: goalExecutionStatus,
     goal_execution_proven: goalExecutionProven,
     goal_execution_hil_pass: summaryValueText(goalResultPayload, ["hil_pass"]),
@@ -5483,6 +5491,40 @@ function nav2NextExecutionBaseCommandMode(args: {
     return "ros";
   }
   return configured;
+}
+
+function nav2ExecutionModePlainFields(args: {
+  lastBaseMode: string;
+  nextBaseMode: string;
+  goalSucceeded: boolean;
+  wheelFeedbackProven: string;
+}): { nextModePlain: string; rerunPlain: string } {
+  // 模式字段回答“下次到底用哪条控制链”，避免普通用户把旧 PWM/ROS 结果当成本轮结论。
+  const last = args.lastBaseMode && args.lastBaseMode !== "not_loaded" ? args.lastBaseMode : "not_loaded";
+  const next = args.nextBaseMode && args.nextBaseMode !== "not_loaded" ? args.nextBaseMode : "not_loaded";
+  const wheelZero = args.goalSucceeded && args.wheelFeedbackProven === "false";
+  if (next === "not_loaded") {
+    return {
+      nextModePlain: "下次执行模式未读到；默认由执行接口按固定策略选择。",
+      rerunPlain: "还没有可用的路线执行模式复验结论。",
+    };
+  }
+  if (wheelZero && last !== "not_loaded" && last !== next) {
+    return {
+      nextModePlain: `下次将用 ${next.toUpperCase()} 模式重跑图上路线。`,
+      rerunPlain: `上次 ${last.toUpperCase()} 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ${next.toUpperCase()} 模式复验控制链。`,
+    };
+  }
+  if (wheelZero) {
+    return {
+      nextModePlain: `下次继续用 ${next.toUpperCase()} 模式重跑图上路线。`,
+      rerunPlain: "上次路线返回成功但轮速 L/R 仍未非零，本次重点复验同窗口轮速反馈。",
+    };
+  }
+  return {
+    nextModePlain: `下次执行会使用 ${next.toUpperCase()} 模式。`,
+    rerunPlain: "当前没有控制模式切换复验要求。",
+  };
 }
 
 function nav2GoalExecutionProvenText(goalResultPayload: JsonRecord | null): string {
@@ -5756,6 +5798,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
     goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
     goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
+    goal_execution_next_mode_plain: "下次执行模式未读到；默认由执行接口按固定策略选择。",
+    goal_execution_mode_rerun_plain: "还没有可用的路线执行模式复验结论。",
     goal_execution_status: "not_loaded",
     goal_execution_proven: "not_loaded",
     goal_execution_hil_pass: "not_loaded",

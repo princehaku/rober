@@ -2278,6 +2278,8 @@ export interface RobotControlNavGoalExecutionLatestResponse extends ProofFlags {
   route_execution_precheck_plain: string;
   goal_execution_wheel_raw_lr_status_plain: string;
   goal_execution_wheel_raw_lr_next_action_plain: string;
+  goal_execution_next_mode_plain: string;
+  goal_execution_mode_rerun_plain: string;
   base_command_mode: string;
   goal_execution_base_command_mode: string;
   next_execution_base_command_mode: string;
@@ -2781,6 +2783,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       route_execution_precheck_plain: string;
       goal_execution_wheel_raw_lr_status_plain: string;
       goal_execution_wheel_raw_lr_next_action_plain: string;
+      goal_execution_next_mode_plain: string;
+      goal_execution_mode_rerun_plain: string;
       goal_execution_status: string;
       goal_execution_proven: string;
       goal_execution_hil_pass: string;

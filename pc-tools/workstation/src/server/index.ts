@@ -650,6 +650,41 @@ function navGoalLatestNextMode(keyValues: Record<string, string>): string {
     : "ros";
 }
 
+function navGoalExecutionModePlainFields(keyValues: Record<string, string>): Pick<
+  RobotControlNavGoalExecutionLatestResponse,
+  "goal_execution_next_mode_plain" | "goal_execution_mode_rerun_plain"
+> {
+  // 外部脚本常只读 latest；这里把“下次用什么控制链”和“为什么要换”做成稳定白话字段。
+  const lastMode = keyValues.base_command_mode && keyValues.base_command_mode !== "not_loaded"
+    ? keyValues.base_command_mode
+    : "not_loaded";
+  const nextMode = navGoalLatestNextMode(keyValues);
+  const wheelZero = (keyValues.status === "goal_succeeded" || keyValues.result_status === "succeeded")
+    && keyValues.base_feedback_lr_nonzero_proven === "false";
+  if (!nextMode || nextMode === "not_loaded") {
+    return {
+      goal_execution_next_mode_plain: "下次执行模式未读到；默认由执行接口按固定策略选择。",
+      goal_execution_mode_rerun_plain: "还没有可用的路线执行模式复验结论。",
+    };
+  }
+  if (wheelZero && lastMode !== "not_loaded" && lastMode !== nextMode) {
+    return {
+      goal_execution_next_mode_plain: `下次将用 ${nextMode.toUpperCase()} 模式重跑图上路线。`,
+      goal_execution_mode_rerun_plain: `上次 ${lastMode.toUpperCase()} 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ${nextMode.toUpperCase()} 模式复验控制链。`,
+    };
+  }
+  if (wheelZero) {
+    return {
+      goal_execution_next_mode_plain: `下次继续用 ${nextMode.toUpperCase()} 模式重跑图上路线。`,
+      goal_execution_mode_rerun_plain: "上次路线返回成功但轮速 L/R 仍未非零，本次重点复验同窗口轮速反馈。",
+    };
+  }
+  return {
+    goal_execution_next_mode_plain: `下次执行会使用 ${nextMode.toUpperCase()} 模式。`,
+    goal_execution_mode_rerun_plain: "当前没有控制模式切换复验要求。",
+  };
+}
+
 async function resolveNavGoalExecutionDefaultBaseCommandMode(base: URL): Promise<"ros" | "speed" | "pwm"> {
   // 外部脚本可能不传 base_command_mode；发车前只读 latest，沿用 summary 同一套“下次模式”策略。
   try {
@@ -729,6 +764,7 @@ function navGoalLatestPlainFields(
     goal_execution_base_feedback_latest_raw_left: left,
     goal_execution_base_feedback_latest_raw_right: right,
   };
+  const modePlain = navGoalExecutionModePlainFields(keyValues);
   if (executionProven || wheelProven) {
     return {
       execution_status_plain: "本轮路线执行和执行窗口轮速 L/R 已证明。",
@@ -737,6 +773,7 @@ function navGoalLatestPlainFields(
       route_execution_precheck_plain: "下一步是送达确认；送达确认不会发车。",
       goal_execution_wheel_raw_lr_status_plain: `执行窗口轮速 L/R 已非零：L=${left}，R=${right}。`,
       goal_execution_wheel_raw_lr_next_action_plain: "继续送达确认；送达确认不会发车。",
+      ...modePlain,
       ...baseFeedbackAliases,
     };
   }
@@ -748,6 +785,7 @@ function navGoalLatestPlainFields(
       route_execution_precheck_plain: `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ${nextMode} 模式跑图上路线。`,
       goal_execution_wheel_raw_lr_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${left}/${right} 未非零；${commandText}${imuText}。`,
       goal_execution_wheel_raw_lr_next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
+      ...modePlain,
       ...baseFeedbackAliases,
     };
   }
@@ -758,6 +796,7 @@ function navGoalLatestPlainFields(
     route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
     goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
     goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
+    ...modePlain,
     ...baseFeedbackAliases,
   };
 }
@@ -3620,6 +3659,8 @@ export function createWorkstationApp(): express.Express {
       route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
       goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
       goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
+      goal_execution_next_mode_plain: "下次执行模式未读到；默认由执行接口按固定策略选择。",
+      goal_execution_mode_rerun_plain: "还没有可用的路线执行模式复验结论。",
       base_command_mode: "not_loaded",
       goal_execution_base_command_mode: "not_loaded",
       next_execution_base_command_mode: "ros",

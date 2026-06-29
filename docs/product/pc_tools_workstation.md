@@ -4373,3 +4373,10 @@ CAP_V4L2 和 index fallback。首屏共享预览会优先跨格式尝试 `MJPG@6
 path/index/backend fallback 能力。该脚本已部署并重启到上车 `trashbot-local-webrtc-camera.service`；live 仍无首帧，
 但 health/summary 已显示三种格式均无帧，因此当前缺口更明确是 UVC 没输出视频帧/输入/供电/摄像头硬件问题，而不是页面独占或只试了单一格式。
 该变化只打开摄像头读帧用于预览诊断，不调用 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 23:06 CST 起，Robot Control 的 Nav2 最近执行 readback 和普通首屏行程卡补齐
+`goal_execution_next_mode_plain`、`goal_execution_mode_rerun_plain` 两个白话字段。旧 PWM/T=11 路线 action 成功但
+wheel L/R 仍 0/0 时，PC 会明确显示“下次用 ROS 模式重跑”；若 ROS/T=13 仍有非零命令但 wheel L/R 仍 0/0，
+PC 会明确显示“下次切到 SPEED/T=1 模式复验控制链”。普通首屏“执行模式”行直接展示该原因，避免现场把旧 PWM/ROS
+结果误当成当前闭环。该变化只补 summary/latest/UI 展示和测试合同，不执行 Nav2、不启动 runtime、不调用
+manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

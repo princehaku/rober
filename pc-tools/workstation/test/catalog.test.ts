@@ -5047,6 +5047,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_command_mode).toBe("pwm");
       expect(summary.readback_summary.nav2.next_execution_base_command_mode).toBe("ros");
       expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_ros_rerun_after_pwm");
+      expect(summary.readback_summary.nav2.goal_execution_next_mode_plain).toBe("下次将用 ROS 模式重跑图上路线。");
+      expect(summary.readback_summary.nav2.goal_execution_mode_rerun_plain).toBe("上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。");
       expect(summary.readback_summary.nav2.goal_execution_base_command_nonzero_count).toBe("49");
       expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("pwm");
       expect(summary.readback_summary.nav2.goal_execution_base_command_mode_counts).toBe("{\"pwm\":49}");
@@ -5126,6 +5128,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_command_mode).toBe("ros");
       expect(summary.readback_summary.nav2.next_execution_base_command_mode).toBe("speed");
       expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_speed_rerun_after_ros");
+      expect(summary.readback_summary.nav2.goal_execution_next_mode_plain).toBe("下次将用 SPEED 模式重跑图上路线。");
+      expect(summary.readback_summary.nav2.goal_execution_mode_rerun_plain).toBe("上次 ROS 模式路线返回成功但轮速 L/R 仍未非零，本次切到 SPEED 模式复验控制链。");
       expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("ros");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toContain("用 SPEED 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 ros，下次 speed");
