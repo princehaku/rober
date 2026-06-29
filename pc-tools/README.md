@@ -49,7 +49,7 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-29 13:38 CST 起，普通用户首屏和只读 Robot Control API 的建图、雷达、自由移动、目标总览文案统一使用“就绪/未就绪”，不再在普通状态句里显示 `ready`。字段名、状态枚举和高级诊断里的技术 token 仍保持兼容；该变化只修正文案，不启动雷达、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
-2026-06-29 13:48 CST 起，上位机 `GET /api/status` 改为按相机、雷达、地图、Nav2、自由移动、电梯和底盘分区并发读取，并给每个区块设置软超时。某个 ROS2/status 区块卡住时，聚合 status 会先返回其他可用事实，并把慢区块标成 `status_section_unavailable/status_section_timeout_*`；PC 首屏不会再因为一个只读诊断命令卡住而把整车状态误判为不可读。该变化只改只读状态聚合，不启动 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+2026-06-29 13:48 CST 起，上位机 `GET /api/status` 改为按相机、雷达、地图、Nav2、自由移动和电梯分区并发读取，并给每个区块设置软超时。某个 ROS2/status 区块卡住时，聚合 status 会先返回其他可用事实，并把慢区块标成 `status_section_unavailable/status_section_timeout_*`；顶层聚合也有 fail-closed 超时兜底。完整底盘读数不再阻塞聚合 status，而是显示 `base.status=deferred_to_base_status_endpoint` 并指向独立只读 `/api/base/status`。PC 首屏不会再因为一个只读诊断命令或底盘慢读卡住而把整车状态误判为不可读。该变化只改只读状态聚合，不启动 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 同日起，共享 MJPEG status 请求尚未返回时，首屏会保留 summary 里已有的共享流事实，例如观看页面数、上游是否已连接、是否已有视频边界和最近缓存帧；但仍明确 status 返回前不证明本页已经出图。
 

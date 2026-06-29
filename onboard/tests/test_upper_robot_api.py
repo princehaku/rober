@@ -56,19 +56,49 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         with mock.patch.object(api, "nav2_status", side_effect=slow_nav2_status):
                             with mock.patch.object(api, "free_roam_autonomy_status", return_value={"status": "free_roam_loaded"}):
                                 with mock.patch.object(api, "elevator_status", return_value={"status": "elevator_loaded"}):
-                                    with mock.patch.object(api, "base_status", return_value={"status": "base_loaded"}):
+                                    with mock.patch.object(api, "base_status", return_value={"status": "base_should_not_be_called"}) as base_status:
                                         payload = asyncio.run(api.unified_status())
 
         self.assertEqual("source_first_frame_failed", payload["camera"]["status"])
         self.assertEqual("radar_loaded", payload["radar"]["status"])
         self.assertEqual("map_loaded", payload["map"]["status"])
-        self.assertEqual("base_loaded", payload["base"]["status"])
+        base_status.assert_not_called()
+        self.assertEqual("deferred_to_base_status_endpoint", payload["base"]["status"])
+        self.assertEqual("/api/base/status", payload["base"]["endpoint"])
         self.assertEqual("status_section_unavailable", payload["nav2"]["status"])
         self.assertEqual("nav2", payload["nav2"]["section"])
         self.assertEqual("status_section_timeout_0.01s", payload["nav2"]["failure_reason"])
         self.assertFalse(payload["nav2"]["sends_motion_commands"])
         self.assertFalse(payload["nav2"]["robot_control_executed"])
         self.assertFalse(payload["nav2"]["safe_to_control"])
+
+    def test_status_timeout_payload_is_fail_closed(self) -> None:
+        """顶层 status 超时兜底也不能暴露任何运动许可。"""
+        payload = upper_robot_api.status_timeout_payload("status_total_timeout_7s")
+
+        self.assertEqual("trashbot.upper_robot_api.v1.status", payload["schema"])
+        self.assertEqual("status_unavailable", payload["status"])
+        self.assertEqual("status_total_timeout_7s", payload["failure_reason"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+        for section in ["camera", "radar", "map", "localization", "nav2", "free_roam_autonomy", "elevator", "base"]:
+            self.assertEqual("status_section_unavailable", payload[section]["status"])
+            self.assertFalse(payload[section]["safe_to_control"])
+            self.assertFalse(payload[section]["robot_control_executed"])
+            self.assertFalse(payload[section]["sends_motion_commands"])
+
+    def test_base_status_deferred_payload_points_to_dedicated_endpoint(self) -> None:
+        """聚合 status 的底盘摘要必须快返回，完整读数留给独立只读端点。"""
+        payload = upper_robot_api.base_status_deferred_payload("/tmp/base_feedback_samples_latest.json")
+
+        self.assertEqual("deferred_to_base_status_endpoint", payload["status"])
+        self.assertEqual("/api/base/status", payload["endpoint"])
+        self.assertEqual("deferred_to_base_status_endpoint", payload["failure_reason"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+        self.assertFalse(payload["sends_motion_commands"])
 
     def test_camera_health_flattens_not_exclusive_source_diagnosis(self) -> None:
         """8787 camera health 要直接暴露不是独占，避免 curl/PC 入口误判成浏览器占用。"""

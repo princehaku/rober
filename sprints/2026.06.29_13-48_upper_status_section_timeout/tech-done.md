@@ -4,16 +4,17 @@ sprint_type: micro
 
 ## 实际改动
 
-- `onboard/scripts/upper_robot_api.py` 的 `GET /api/status` 从串行聚合改为相机、雷达、地图、Nav2、自由移动、电梯和底盘分区并发读取。
+- `onboard/scripts/upper_robot_api.py` 的 `GET /api/status` 从串行聚合改为相机、雷达、地图、Nav2、自由移动和电梯分区并发读取。
 - 每个只读区块增加软超时兜底；单区块卡住时返回 `status_section_unavailable`，并保持 `safe_to_control=false`、`robot_control_executed=false`、`sends_motion_commands=false`。
+- 顶层 status 增加 fail-closed 总超时兜底；完整底盘慢读从聚合 status 拆出，`base.status=deferred_to_base_status_endpoint` 指向独立只读 `/api/base/status`。
 - 清理上位机上一条已卡住 1 天多的旧只读 `ros2 lifecycle get /controller_server` 诊断进程。
 
 ## 验证结果
 
-- `python3 -m unittest onboard.tests.test_upper_robot_api`：通过，82 个 tests。
+- `python3 -m unittest onboard.tests.test_upper_robot_api`：通过，84 个 tests。
 - `python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/tests/test_upper_robot_api.py`：通过。
-- 已同步并重启上位机 `0.0.0.0:8787`；新进程 PID `355355`。
-- 上位机只读验证：`curl --max-time 8 http://127.0.0.1:8787/api/status` 成功返回，用时约 4.3s，`safe_to_control=false`、`robot_control_executed=false`。
+- 已同步并重启上位机 `0.0.0.0:8787`；新进程 PID `357725`。
+- 上位机只读验证：连续 5 次 `GET http://127.0.0.1:8787/api/status` 均在 8 秒窗口内返回，耗时约 4.058s、0.692s、0.328s、0.325s、0.328s；`safe_to_control=false`、`robot_control_executed=false`、`base.status=deferred_to_base_status_endpoint`。
 - PC 侧只读验证：`GET http://127.0.0.1:7001/api/robot-control/summary` 仍正常返回当前事实。
 
 ## 剩余风险

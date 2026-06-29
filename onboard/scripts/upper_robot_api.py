@@ -39,6 +39,7 @@ DEFAULT_MANUAL_PWM_MIN_ABS = 164
 DEFAULT_MANUAL_PWM_MAX_ABS = 164
 DEFAULT_PULSE_MS = 260
 STATUS_SECTION_TIMEOUT_S = 5.0
+STATUS_TOTAL_TIMEOUT_S = 7.0
 MAX_PULSE_MS = 800
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
 ALLOWED_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
@@ -2532,6 +2533,51 @@ def status_section_unavailable_payload(section: str, reason: str, error: Any = N
     }
     if error is not None:
         payload["error"] = compact_error(error)
+    return payload
+
+
+def status_timeout_payload(reason: str, error: Any = None) -> dict[str, Any]:
+    """顶层 status 超时也要 fail-closed 返回，不能让 PC 首屏一直等连接。"""
+    payload: dict[str, Any] = {
+        "schema": f"{SCHEMA}.status",
+        "generated_at_ms": now_ms(),
+        "status": "status_unavailable",
+        "failure_reason": reason,
+        "camera": status_section_unavailable_payload("camera", reason),
+        "radar": status_section_unavailable_payload("radar", reason),
+        "map": status_section_unavailable_payload("map", reason),
+        "localization": status_section_unavailable_payload("localization", reason),
+        "nav2": status_section_unavailable_payload("nav2", reason),
+        "free_roam_autonomy": status_section_unavailable_payload("free_roam_autonomy", reason),
+        "elevator": status_section_unavailable_payload("elevator", reason),
+        "base": status_section_unavailable_payload("base", reason),
+        "routes": dict(ROUTE_PATHS),
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "robot_control_executed": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+    if error is not None:
+        payload["error"] = compact_error(error)
+    return payload
+
+
+def base_status_deferred_payload(feedback_samples_artifact_path: str) -> dict[str, Any]:
+    """聚合 status 不直接做底盘慢读；完整底盘状态由独立端点提供。"""
+    payload = status_section_unavailable_payload("base", "deferred_to_base_status_endpoint")
+    payload.update(
+        {
+            "status": "deferred_to_base_status_endpoint",
+            "endpoint": ROUTE_PATHS["base_status"],
+            "next_action": "read /api/base/status for current base feedback",
+            "feedback_samples_latest_artifact": artifact_path_info(feedback_samples_artifact_path),
+        }
+    )
     return payload
 
 
@@ -7973,7 +8019,6 @@ class UpperRobotApi:
             nav2,
             free_roam_autonomy,
             elevator,
-            base,
         ) = await asyncio.gather(
             read_camera_status_section(self),
             read_status_section("radar", self.radar_status),
@@ -7981,9 +8026,9 @@ class UpperRobotApi:
             read_status_section("nav2", self.nav2_status),
             read_status_section("free_roam_autonomy", self.free_roam_autonomy_status),
             read_status_section("elevator", self.elevator_status),
-            read_status_section("base", self.base_status),
         )
         camera_http_status, camera = camera_result
+        base = base_status_deferred_payload(self.feedback_samples_artifact_path)
         return {
             "schema": f"{SCHEMA}.status",
             "generated_at_ms": now_ms(),
@@ -8462,7 +8507,15 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response({"schema": f"{SCHEMA}.health", "status": "ready", "generated_at_ms": now_ms(), **proof_flags()})
 
     async def status(_: web.Request) -> Any:
-        return json_response(await api.unified_status())
+        try:
+            return json_response(await asyncio.wait_for(api.unified_status(), timeout=STATUS_TOTAL_TIMEOUT_S))
+        except asyncio.TimeoutError as exc:
+            return json_response(
+                status_timeout_payload(f"status_total_timeout_{STATUS_TOTAL_TIMEOUT_S:g}s", exc),
+                status=504,
+            )
+        except Exception as exc:  # noqa: BLE001 - 顶层 status 也必须 fail-closed，不让 aiohttp 500 泄漏到 PC。
+            return json_response(status_timeout_payload("status_total_exception", exc), status=502)
 
     async def camera_health(_: web.Request) -> Any:
         http_status, payload = await api.camera_health()
