@@ -14862,7 +14862,31 @@ onBeforeUnmount(() => {
             >
               {{ plainFreeRoamMappingStartLabel }}
             </button>
-            <button ref="plainFreeRoamKeyboardButton" type="button" class="secondary compact-stop" :disabled="!canArmPlainFreeRoamKeyboard" data-testid="plain-free-roam-keyboard" @click="activateKeyboardControl">
+            <button
+              ref="plainFreeRoamKeyboardButton"
+              type="button"
+              class="secondary compact-stop"
+              :disabled="!canArmPlainFreeRoamKeyboard"
+              data-testid="plain-free-roam-keyboard"
+              :data-main-action-kind="plainKeyboardMainActionKind"
+              :data-target-source="plainKeyboardTargetSource"
+              data-activates-keyboard-panel="true"
+              data-free-roam-motion-source="keyboard_continuous_control"
+              :data-sends-motion-when-clicked="String(false)"
+              :data-sends-motion-when-holding="String(plainKeyboardMainActionSendsMotion)"
+              :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
+              :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
+              :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+              :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
+              :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
+              :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
+              :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
+              :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
+              :data-same-hold-window-required="String(plainKeyboardDirectionButtonEvidence.sameHoldWindowRequired)"
+              :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
+              :data-stop-settled-after-pulse="String(keyboardStopSettledAfterPulse)"
+              @click="activateKeyboardControl"
+            >
               {{ plainFreeRoamKeyboardLabel }}
             </button>
             <button type="button" class="secondary compact-stop" data-testid="plain-free-roam-next-action" @click="focusPlainFreeRoamNextTarget">

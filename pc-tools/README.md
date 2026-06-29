@@ -1006,3 +1006,10 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `data-verified-min-forwarded-pulses=2`、`data-same-hold-window-required=true`、
 `data-stop-required-after-hold=true`、`data-stop-settled-after-pulse`。这样自由移动和键盘扫图的屏幕方向键也能直接证明
 “按住才连续低速 pulse，松开后必须 stop 收口”。该变化只补前端 DOM 证据，不主动发送 manual/free-roam/map/Nav2/delivery/stop 或 `/cmd_vel`。
+
+2026-06-30 06:52 CST 起，普通首屏“自由移动 / 建图”的 `启用键盘自由移动/扫图` 按钮也暴露同一份 handoff 合同：
+`data-main-action-kind`、`data-target-source`、`data-activates-keyboard-panel=true`、
+`data-free-roam-motion-source=keyboard_continuous_control`、`data-sends-motion-when-clicked=false`、
+`data-sends-motion-when-holding`、固定 manual/stop endpoint、pulse interval/duration、当前/最佳连续 pulse 数、最小 2 次连续 pulse
+和 stop 收口状态。这样现场脚本能直接从自由移动卡片入口确认：点击按钮只启用键盘窗口，不发车；真正运动仍必须按住方向键/WASD。
+该变化只补 PC Web DOM 合同和测试，不自动启用键盘、不发送 manual/free-roam/map/Nav2/delivery/stop 或 `/cmd_vel`。

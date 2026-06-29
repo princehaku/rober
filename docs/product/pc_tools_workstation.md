@@ -4474,3 +4474,12 @@ pulse interval/duration、当前按住 pulse 数、历史最佳连续 pulse 数�
 这让自由移动与键盘扫图的验收可以直接读 DOM：未按住不发车，按住才连续低速 pulse，同一次按住达到 2 次才算连续，
 松开后 `data-current-hold-pulse-count` 归零，`data-best-continuous-pulse-count` 保留，`data-stop-settled-after-pulse`
 表达停止是否已收口。该变化只补可验收证据，不改变真实控制入口。
+
+2026-06-30 06:52 CST 起，普通首屏“自由移动 / 建图”的键盘快捷入口也补齐按钮级 handoff 证据。
+`plain-free-roam-keyboard` 会暴露 `data-main-action-kind`、`data-target-source`、`data-activates-keyboard-panel=true`、
+`data-free-roam-motion-source=keyboard_continuous_control`、`data-sends-motion-when-clicked=false`、
+`data-sends-motion-when-holding`、固定 `/api/robot-control/base/manual` 与 `/api/robot-control/base/stop`、
+260/240ms pulse 参数、当前/最佳连续 pulse 数、同窗口 2 次 pulse 验收要求和松开后 stop 收口状态。
+未勾安全确认时状态是 `await_safety_confirm`；安全确认后是 `arm_keyboard_no_motion`；点击启用后进入
+`armed_waiting_for_keydown`，仍然不会因为按钮点击发送运动。真正运动只发生在后续按住方向键/WASD 时。
+该变化只增强 PC DOM 验收合同和测试，不调用 manual、free-roam、map、Nav2、delivery、stop 或 `/cmd_vel`。
