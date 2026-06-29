@@ -32,7 +32,7 @@ sprint_type: micro
   - `npm --prefix pc-tools/workstation run build`
   - 结果：通过；仅保留既有 Vite chunk size warning。
 - 运行验证：
-  - PC API 已用新代码重启到 `HOST=0.0.0.0 PORT=7001`；实际监听 `*:7001` 的 Node PID 为 `881`。
+  - PC API 已用新代码重启到 `HOST=0.0.0.0 PORT=7001`；最终实际监听 `*:7001` 的 Node PID 为 `1001`。
   - 只读 `GET http://127.0.0.1:7001/api/health` 通过，schema 为 `trashbot.pc_tools_workstation.health.v1`。
   - 只读 `GET /api/robot-control/summary?baseUrl=http://192.168.1.11:8787` 通过，返回 7 项 `goal_checklist`：
     `camera_wysiwyg`、`map_wysiwyg`、`radar_map_points_wysiwyg`、`nav2_route_execution`、
