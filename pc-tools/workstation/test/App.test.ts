@@ -792,6 +792,10 @@ const fixtures: Record<string, unknown> = {
       camera: {
         status: "camera_health_not_proven",
         devices_status: "camera_devices_not_proven",
+        devices_effective_status: "camera_devices_not_proven",
+        devices_endpoint_count: "0",
+        devices_health_candidate_count: "0",
+        devices_plain_hint: "相机设备列表未读到；先刷新页面状态或检查上位机相机健康检查。",
         preview_status: "idle_not_started",
         plain_hint: "画面未显示：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看。下一步：打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
         shared_preview_client_count: "0",
@@ -20808,6 +20812,30 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。 页面会低频自动重试。");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("shows camera health device fallback on the plain camera panel", async () => {
+    // live 上车端可能设备列表为空，但健康检查已读到 UVC 候选；普通首屏不能把它显示成没摄像头。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.devices_status = "loaded";
+    summaryFixture.readback_summary.camera.devices_effective_status = "loaded_from_health_source_summary";
+    summaryFixture.readback_summary.camera.devices_endpoint_count = "0";
+    summaryFixture.readback_summary.camera.devices_health_candidate_count = "3";
+    summaryFixture.readback_summary.camera.devices_plain_hint = "相机设备列表返回 0 个设备，但上位机相机健康检查已读到 3 个候选；当前选择 USB Composite Device: DV20 USB (/dev/video1)，继续按无首帧诊断排查。";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": fixtures["/api/robot-control/camera/mjpeg/status"],
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const deviceReadback = wrapper.find('[data-testid="robot-camera-device-readback"]');
+    expect(deviceReadback.exists()).toBe(true);
+    expect(deviceReadback.text()).toContain("相机设备列表返回 0 个设备");
+    expect(deviceReadback.text()).toContain("相机健康检查已读到 3 个候选");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 

@@ -12730,6 +12730,20 @@ describe("workstation fail-closed API contracts", () => {
           video_source: "/dev/video1",
           source_readiness: "first_frame_failed",
           source_failure_reason: "first_frame_total_timeout",
+          source_summary: {
+            current_selection: {
+              selected_path: "/dev/video1",
+              selected_name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)",
+              selected_role: "video_capture",
+              selected_sibling_video_nodes_summary: "/dev/video2=metadata",
+              selected_sibling_video_node_count: 1,
+            },
+            candidates: [
+              { path: "/dev/video0", name: "cedrus (platform:cedrus)", selected_role: "decoder" },
+              { path: "/dev/video1", name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)", selected_role: "video_capture" },
+              { path: "/dev/video2", name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)", selected_role: "metadata" },
+            ],
+          },
           media_diagnostics: {
             source_usage: {
               status: "not_in_use",
@@ -12770,6 +12784,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.selected_path).toBe("/dev/video1");
       expect(summary.readback_summary.camera.selected_name).toBe("USB Composite Device: DV20 USB");
       expect(summary.readback_summary.camera.selected_is_uvc_or_usb).toBe("true");
+      expect(summary.readback_summary.camera.devices_status).toBe("loaded");
+      expect(summary.readback_summary.camera.devices_effective_status).toBe("loaded_from_health_source_summary");
+      expect(summary.readback_summary.camera.devices_endpoint_count).toBe("0");
+      expect(summary.readback_summary.camera.devices_health_candidate_count).toBe("3");
+      expect(summary.readback_summary.camera.devices_plain_hint).toContain("相机设备列表返回 0 个设备");
+      expect(summary.readback_summary.camera.devices_plain_hint).toContain("相机健康检查已读到 3 个候选");
       expect(summary.readback_summary.camera.source_usage_status).toBe("not_in_use");
       expect(summary.readback_summary.camera.source_usage_owner_count).toBe("0");
       expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");

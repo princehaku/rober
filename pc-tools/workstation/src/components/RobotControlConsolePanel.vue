@@ -1816,6 +1816,16 @@ const plainCameraWysiwygReadback = computed(() => {
     : `画面事实：${cleanStatus}。`;
 });
 
+const plainCameraDeviceReadback = computed(() => {
+  // devices 端点偶尔只回空列表；health 的候选和当前选择更适合普通用户判断“有没有摄像头”。
+  const camera = robotSummary.value?.readback_summary.camera;
+  const hint = camera?.devices_plain_hint?.trim();
+  if (!hint || ["not_loaded", "none"].includes(hint)) {
+    return "";
+  }
+  return `设备事实：${normalizeCameraReadbackPlain(hint)}。`;
+});
+
 function normalizeCameraReadbackPlain(value: string | undefined): string {
   // 相机 readback 给普通用户显示时统一换成“显示/看到”的口径，避免高级诊断里的“可见”混进首屏。
   return (value ?? "")
@@ -13409,6 +13419,7 @@ onBeforeUnmount(() => {
           <p v-if="cameraSummary.state !== '失败'" class="panel-note">{{ cameraSummary.hint }}</p>
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
           <p v-if="plainCameraWysiwygReadback" class="panel-note" data-testid="robot-camera-wysiwyg-readback">{{ plainCameraWysiwygReadback }}</p>
+          <p v-if="plainCameraDeviceReadback" class="panel-note" data-testid="robot-camera-device-readback">{{ plainCameraDeviceReadback }}</p>
           <p v-if="plainCameraCachedFrameStatus" class="panel-note" data-testid="robot-camera-cached-frame-status">{{ plainCameraCachedFrameStatus }}</p>
           <p v-if="plainCameraSharedPreviewReadback" class="panel-note" data-testid="robot-camera-shared-preview-readback">{{ plainCameraSharedPreviewReadback }}</p>
           <p v-if="plainCameraSharedPreviewLinkSummary" class="panel-note" data-testid="robot-camera-shared-preview-link-summary">{{ plainCameraSharedPreviewLinkSummary }}</p>
@@ -14233,6 +14244,12 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.status ?? "not_loaded" }}</dd>
             <dt>camera_devices</dt>
             <dd>{{ robotSummary?.readback_summary.camera.devices_status ?? "not_loaded" }}</dd>
+            <dt>camera_devices_effective</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.devices_effective_status ?? "not_loaded" }}</dd>
+            <dt>camera_devices_counts</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.devices_endpoint_count ?? "0" }}/{{ robotSummary?.readback_summary.camera.devices_health_candidate_count ?? "0" }}</dd>
+            <dt>camera_devices_hint</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.devices_plain_hint ?? "not_loaded" }}</dd>
             <dt>camera_video_source</dt>
             <dd>{{ robotSummary?.readback_summary.camera.video_source ?? "not_loaded" }}</dd>
             <dt>camera_selected_path</dt>

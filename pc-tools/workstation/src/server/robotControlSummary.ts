@@ -1897,6 +1897,8 @@ function cameraSummaryFromReadbacks(
   const healthReadback = readbackById(readbacks, "camera_health");
   const devicesReadback = readbackById(readbacks, "camera_devices");
   const healthPayload = healthReadback?.payload ?? null;
+  const devicesPayload = devicesReadback?.payload ?? null;
+  const devicesRecord = asRecord(devicesPayload);
   const currentSelection = asRecord(findFirstKey(healthPayload, ["current_selection"]));
   const sourceSummary = asRecord(findFirstKey(healthPayload, ["source_summary"]));
   const sourceSummarySelection = asRecord(sourceSummary?.current_selection);
@@ -1907,7 +1909,7 @@ function cameraSummaryFromReadbacks(
     selected_is_uvc_or_usb: mjpegRelayOverlay?.selected_is_uvc_or_usb,
   };
   const selectedCandidate = mergeCameraCandidateSummary(
-    cameraSelectedCandidateSummary(healthPayload, devicesReadback?.payload ?? null),
+    cameraSelectedCandidateSummary(healthPayload, devicesPayload),
     overlaySelectedCandidate,
   );
   const overlaySourceUsage: JsonRecord | null = mjpegRelayOverlay?.source_usage_status || mjpegRelayOverlay?.source_usage_owner_count
@@ -2098,9 +2100,38 @@ function cameraSummaryFromReadbacks(
     : sourceFirstFrameFailedForSharedPreview && mjpegRelayOverlay?.last_failure_at_ms !== null && mjpegRelayOverlay?.last_failure_at_ms !== undefined
       ? compactValueText(mjpegRelayOverlay.last_failure_at_ms)
       : "not_loaded";
+  const selectedPathReadback = asString(
+    currentSelection?.selected_path
+      ?? sourceSummarySelection?.selected_path
+      ?? healthPayload?.selected_path
+      ?? sourceDiagnosis?.selected_path
+      ?? mjpegRelayOverlay?.selected_path
+      ?? sourceUsage?.device
+      ?? healthPayload?.video_source,
+    "not_loaded",
+  );
+  const selectedDisplayName = cameraDisplayDeviceName(selectedCandidate.selected_name) || "not_loaded";
+  const devicesEndpointCount = Array.isArray(devicesRecord?.devices) ? devicesRecord.devices.length : 0;
+  const healthSourceCandidateCount = Array.isArray(sourceSummary?.candidates) ? sourceSummary.candidates.length : 0;
+  const devicesFromHealthFallback = Boolean(devicesReadback?.status === "loaded" && devicesEndpointCount === 0 && healthSourceCandidateCount > 0);
+  const devicesEffectiveStatus = devicesFromHealthFallback
+    ? "loaded_from_health_source_summary"
+    : devicesReadback?.status ?? "not_loaded";
+  const selectedDevicePlain = selectedDisplayName !== "not_loaded"
+    ? selectedPathReadback !== "not_loaded" ? `${selectedDisplayName} (${selectedPathReadback})` : selectedDisplayName
+    : "当前选择未读到";
+  const devicesPlainHint = devicesFromHealthFallback
+    ? `相机设备列表返回 0 个设备，但上位机相机健康检查已读到 ${healthSourceCandidateCount} 个候选；当前选择 ${selectedDevicePlain}，继续按无首帧诊断排查。`
+    : devicesReadback?.status === "loaded"
+      ? `相机设备列表已返回 ${devicesEndpointCount} 个设备；当前选择 ${selectedDevicePlain}。`
+      : "相机设备列表未读到；先刷新页面状态或检查上位机相机健康检查。";
   return {
     status: cameraStatus,
     devices_status: devicesReadback?.status ?? "not_loaded",
+    devices_effective_status: devicesEffectiveStatus,
+    devices_endpoint_count: compactValueText(devicesEndpointCount),
+    devices_health_candidate_count: compactValueText(healthSourceCandidateCount),
+    devices_plain_hint: devicesPlainHint,
     // MJPEG relay 状态来自 PC Node 内存表；它只说明共享上游是否存在，不证明画面像素已经可见。
     preview_status: sharedPreviewStatus,
     plain_hint: cameraPlainHint(previewVisibility.wysiwygStatusPlain, sharedPreviewPlain.accessPlain, previewVisibility.wysiwygNextActionPlain),
@@ -2131,17 +2162,8 @@ function cameraSummaryFromReadbacks(
       : compactValueText(mjpegRelayOverlay.last_failure_at_ms),
     video_source: summaryValueText(healthPayload, ["video_source"]),
     video_source_mode: summaryValueText(healthPayload, ["video_source_mode"]),
-    selected_path: asString(
-      currentSelection?.selected_path
-        ?? sourceSummarySelection?.selected_path
-        ?? healthPayload?.selected_path
-        ?? sourceDiagnosis?.selected_path
-        ?? mjpegRelayOverlay?.selected_path
-        ?? sourceUsage?.device
-        ?? healthPayload?.video_source,
-      "not_loaded",
-    ),
-    selected_name: cameraDisplayDeviceName(selectedCandidate.selected_name) || "not_loaded",
+    selected_path: selectedPathReadback,
+    selected_name: selectedDisplayName,
     selected_is_uvc_or_usb: selectedCandidate.selected_is_uvc_or_usb === undefined
       ? "not_loaded"
       : compactValueText(selectedCandidate.selected_is_uvc_or_usb),
@@ -5615,6 +5637,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       camera: {
         status: "not_loaded",
         devices_status: "not_loaded",
+        devices_effective_status: "not_loaded",
+        devices_endpoint_count: "0",
+        devices_health_candidate_count: "0",
+        devices_plain_hint: "相机设备列表未读到；先刷新页面状态或检查上位机相机健康检查。",
         preview_status: "idle_not_started",
         plain_hint: "画面未显示：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看。下一步：打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
         preview_plain_hint: "页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",

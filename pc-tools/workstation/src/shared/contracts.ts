@@ -2528,6 +2528,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     camera: {
       status: string;
       devices_status: string;
+      devices_effective_status?: string;
+      devices_endpoint_count?: string;
+      devices_health_candidate_count?: string;
+      devices_plain_hint?: string;
       preview_status: RobotControlPreviewStatus;
       plain_hint: string;
       preview_plain_hint: string;
