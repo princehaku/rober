@@ -606,3 +606,9 @@ runtime，并在同窗口复验轮速 L/R。`current_fact_plain` 也改为消费
 外部脚本不会只看到“lifecycle stopped / 轮速未证明”，而是同时看到下一步动作。该变化只补只读
 summary/首屏文案，不执行 Nav2 goal、不启动 runtime、不发送 manual、keyboard、free-roam、delivery、stop 或
 `/cmd_vel`。
+
+2026-06-29 09:14 CST 起，Robot Control summary 会从 camera health 的顶层字段、`source_diagnosis` 和
+`source_usage` 回填结构化相机设备身份：`selected_path`、`selected_name`、`selected_is_uvc_or_usb`。
+即使 `/api/camera/devices` 枚举为空，普通脚本也能直接读到当前 UVC 源是 `/dev/video1` 和对应设备名，
+不再需要从“不是页面独占……”中文长句里解析。该变化只消费只读 health/devices/status，不打开第二条相机上游、
+不重启 camera service、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

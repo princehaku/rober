@@ -187,6 +187,11 @@ type CameraMjpegRelayLastFailure = {
   source_diagnosis_plain_hint?: string;
   source_diagnosis_next_action?: string;
   source_diagnosis_not_exclusive?: string;
+  selected_path?: string;
+  selected_name?: string;
+  selected_is_uvc_or_usb?: string;
+  source_usage_status?: string;
+  source_usage_owner_count?: string;
 };
 
 let nextCameraMjpegRelayClientId = 1;
@@ -1773,6 +1778,11 @@ function cameraMjpegStatusResponse(
     source_diagnosis_next_action: diagnosisSource?.source_diagnosis_next_action ?? "not_loaded",
     source_diagnosis_next_action_plain: cameraMjpegActionPlainText(diagnosisSource?.source_diagnosis_next_action ?? "not_loaded"),
     source_diagnosis_not_exclusive: diagnosisSource?.source_diagnosis_not_exclusive ?? "not_loaded",
+    selected_path: diagnosisSource?.selected_path ?? "not_loaded",
+    selected_name: diagnosisSource?.selected_name ?? "not_loaded",
+    selected_is_uvc_or_usb: diagnosisSource?.selected_is_uvc_or_usb ?? "not_loaded",
+    source_usage_status: diagnosisSource?.source_usage_status ?? "not_loaded",
+    source_usage_owner_count: diagnosisSource?.source_usage_owner_count ?? "not_loaded",
     // status/plain_hint 是 preview_* 的顶层别名，方便现场脚本直接读共享画面是否可见。
     status: previewStatus,
     plain_hint: previewGuidance.plain_hint,
@@ -1956,11 +1966,26 @@ async function cameraSourceFirstFrameFailureForStatus(
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_diagnosis);
     const sourceUsage = asRecord(payload?.source_usage)
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_usage);
+    const currentSelection = asRecord(payload?.current_selection);
     const selectedName = cameraSourceDisplayName(
       payload?.selected_name
         ?? asRecord(payload?.source_summary)?.selected_name
-        ?? asRecord(payload?.current_selection)?.selected_name,
+        ?? currentSelection?.selected_name
+        ?? sourceDiagnosis?.selected_name,
       "USB 摄像头",
+    );
+    const selectedPath = shortText(
+      payload?.selected_path
+        ?? currentSelection?.selected_path
+        ?? sourceDiagnosis?.selected_path
+        ?? sourceUsage?.device
+        ?? payload?.video_source,
+      "not_loaded",
+    );
+    const selectedIsUvcOrUsb = String(
+      currentSelection?.selected_is_uvc_or_usb
+        ?? sourceDiagnosis?.selected_is_uvc_or_usb
+        ?? "not_loaded",
     );
     const diagnosisStatus = shortText(sourceDiagnosis?.status, "");
     const diagnosisPlainHint = cameraDiagnosisPlainHint(sourceDiagnosis?.plain_hint, selectedName);
@@ -2002,6 +2027,11 @@ async function cameraSourceFirstFrameFailureForStatus(
         source_diagnosis_plain_hint: resolvedDiagnosisPlainHint || "相机源已选中但还没读过首帧；打开共享预览或运行首帧检查。",
         source_diagnosis_next_action: resolvedDiagnosisNextAction || "open_shared_preview_or_run_first_frame_probe",
         source_diagnosis_not_exclusive: resolvedDiagnosisNotExclusive,
+        selected_path: selectedPath,
+        selected_name: selectedName,
+        selected_is_uvc_or_usb: selectedIsUvcOrUsb,
+        source_usage_status: sourceUsageStatus || "not_loaded",
+        source_usage_owner_count: sourceUsageOwnerCount,
       };
     }
     return {
@@ -2012,6 +2042,11 @@ async function cameraSourceFirstFrameFailureForStatus(
       source_diagnosis_plain_hint: resolvedDiagnosisPlainHint || "not_loaded",
       source_diagnosis_next_action: resolvedDiagnosisNextAction || "not_loaded",
       source_diagnosis_not_exclusive: resolvedDiagnosisNotExclusive,
+      selected_path: selectedPath,
+      selected_name: selectedName,
+      selected_is_uvc_or_usb: selectedIsUvcOrUsb,
+      source_usage_status: sourceUsageStatus || "not_loaded",
+      source_usage_owner_count: sourceUsageOwnerCount,
     };
   } catch {
     return null;
@@ -2398,6 +2433,11 @@ export function createWorkstationApp(): express.Express {
         source_diagnosis_plain_hint: lastFailureForOverlay?.source_diagnosis_plain_hint,
         source_diagnosis_next_action: lastFailureForOverlay?.source_diagnosis_next_action,
         source_diagnosis_not_exclusive: lastFailureForOverlay?.source_diagnosis_not_exclusive,
+        selected_path: lastFailureForOverlay?.selected_path,
+        selected_name: lastFailureForOverlay?.selected_name,
+        selected_is_uvc_or_usb: lastFailureForOverlay?.selected_is_uvc_or_usb,
+        source_usage_status: lastFailureForOverlay?.source_usage_status,
+        source_usage_owner_count: lastFailureForOverlay?.source_usage_owner_count,
         last_error_payload: lastFailureForOverlay?.last_error_payload ?? null,
       }
       : lastFailureForOverlay
@@ -2416,6 +2456,11 @@ export function createWorkstationApp(): express.Express {
           source_diagnosis_plain_hint: lastFailureForOverlay.source_diagnosis_plain_hint,
           source_diagnosis_next_action: lastFailureForOverlay.source_diagnosis_next_action,
           source_diagnosis_not_exclusive: lastFailureForOverlay.source_diagnosis_not_exclusive,
+          selected_path: lastFailureForOverlay.selected_path,
+          selected_name: lastFailureForOverlay.selected_name,
+          selected_is_uvc_or_usb: lastFailureForOverlay.selected_is_uvc_or_usb,
+          source_usage_status: lastFailureForOverlay.source_usage_status,
+          source_usage_owner_count: lastFailureForOverlay.source_usage_owner_count,
           last_error_payload: lastFailureForOverlay.last_error_payload ?? null,
         }
         : null;

@@ -12002,6 +12002,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.selected_path).toBe("/dev/video1");
+      expect(statusBody.selected_name).toBe("USB Composite Device: DV20 USB");
+      expect(statusBody.source_usage_status).toBe("not_in_use");
+      expect(statusBody.source_usage_owner_count).toBe("0");
       expect(statusBody.preview_status).toBe("source_first_frame_failed");
       expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
@@ -12010,6 +12014,8 @@ describe("workstation fail-closed API contracts", () => {
       const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
       expect(summaryResponse.status).toBe(200);
       expect(summaryBody.readback_summary.camera.status).toBe("source_first_frame_failed");
+      expect(summaryBody.readback_summary.camera.selected_path).toBe("/dev/video1");
+      expect(summaryBody.readback_summary.camera.selected_name).toBe("USB Composite Device: DV20 USB");
       expect(summaryBody.readback_summary.camera.source_readiness).toBe("first_frame_failed");
       expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("camera_source_first_frame_failed");
       expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
@@ -12024,6 +12030,68 @@ describe("workstation fail-closed API contracts", () => {
     } finally {
       await workstation.close();
       await upstream.close();
+    }
+  });
+
+  it("Robot Control summary promotes camera device identity from source diagnosis when devices readback is empty", async () => {
+    // live 形态：/api/camera/devices 可能只返回空列表，真实设备名在 health.source_diagnosis 里；summary 不能把结构化字段留成 not_loaded。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/camera/health": {
+        payload: {
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_first_frame_failed",
+          selected_path: "/dev/video1",
+          selected_name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)",
+          video_source: "/dev/video1",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          media_diagnostics: {
+            source_usage: {
+              status: "not_in_use",
+              owner_count: 0,
+              owners: [],
+              device: "/dev/video1",
+            },
+            source_diagnosis: {
+              status: "uvc_no_frame_not_exclusive",
+              selected_name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)",
+              selected_is_uvc_or_usb: true,
+              plain_hint: "不是页面独占：USB Composite Device: DV20 USB  (usb-5310000.usb-1) 当前没人占用，但 UVC 设备没有输出视频帧。",
+              next_action: "check_usb_camera_input_power_or_known_good_uvc",
+              not_exclusive: true,
+            },
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/camera/devices": {
+        payload: {
+          schema: "trashbot.local_webrtc_camera_devices.v1",
+          status: "loaded",
+          devices: [],
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.camera.selected_path).toBe("/dev/video1");
+      expect(summary.readback_summary.camera.selected_name).toBe("USB Composite Device: DV20 USB");
+      expect(summary.readback_summary.camera.selected_is_uvc_or_usb).toBe("true");
+      expect(summary.readback_summary.camera.source_usage_status).toBe("not_in_use");
+      expect(summary.readback_summary.camera.source_usage_owner_count).toBe("0");
+      expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summary.readback_summary.camera.camera_wysiwyg_status_plain).toContain("USB Composite Device: DV20 USB");
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
     }
   });
 

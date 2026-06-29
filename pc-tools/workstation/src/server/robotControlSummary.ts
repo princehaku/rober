@@ -1505,10 +1505,27 @@ function cameraSelectedCandidateSummary(healthPayload: JsonRecord | null, device
   const sourceSummary = asRecord(findFirstKey(healthPayload, ["source_summary", "source_candidates_summary"]));
   const currentSelection = asRecord(findFirstKey(healthPayload, ["current_selection"]));
   const summarySelection = asRecord(sourceSummary?.current_selection);
-  const selectedPath = asString(currentSelection?.selected_path ?? summarySelection?.selected_path ?? healthPayload?.video_source, "");
-  const selectedName = asString(currentSelection?.selected_name ?? summarySelection?.selected_name, "");
+  const mediaDiagnostics = asRecord(findFirstKey(healthPayload, ["media_diagnostics"]));
+  const sourceDiagnosis = asRecord(findFirstKey(healthPayload, ["source_diagnosis"]) ?? mediaDiagnostics?.source_diagnosis);
+  const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage);
+  const selectedPath = asString(
+    currentSelection?.selected_path
+      ?? summarySelection?.selected_path
+      ?? healthPayload?.selected_path
+      ?? sourceDiagnosis?.selected_path
+      ?? sourceUsage?.device
+      ?? healthPayload?.video_source,
+    "",
+  );
+  const selectedName = asString(
+    currentSelection?.selected_name
+      ?? summarySelection?.selected_name
+      ?? healthPayload?.selected_name
+      ?? sourceDiagnosis?.selected_name,
+    "",
+  );
   const selectedFormats = asString(currentSelection?.selected_formats_summary ?? summarySelection?.selected_formats_summary, "");
-  const selectedIsUvc = currentSelection?.selected_is_uvc_or_usb ?? summarySelection?.selected_is_uvc_or_usb;
+  const selectedIsUvc = currentSelection?.selected_is_uvc_or_usb ?? summarySelection?.selected_is_uvc_or_usb ?? sourceDiagnosis?.selected_is_uvc_or_usb;
   const selectedRole = asString(currentSelection?.selected_role ?? summarySelection?.selected_role, "");
   const siblingNodesSummary = asString(currentSelection?.selected_sibling_video_nodes_summary ?? summarySelection?.selected_sibling_video_nodes_summary, "");
   const siblingNodesCount = currentSelection?.selected_sibling_video_node_count ?? summarySelection?.selected_sibling_video_node_count;
@@ -1800,8 +1817,23 @@ function cameraSummaryFromReadbacks(
   const sourceSummarySelection = asRecord(sourceSummary?.current_selection);
   const mediaDiagnostics = asRecord(findFirstKey(healthPayload, ["media_diagnostics"]));
   const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error) ?? asRecord(mjpegRelayOverlay?.last_error_payload);
-  const selectedCandidate = cameraSelectedCandidateSummary(healthPayload, devicesReadback?.payload ?? null);
-  const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage);
+  const overlaySelectedCandidate = {
+    selected_name: asString(mjpegRelayOverlay?.selected_name, ""),
+    selected_is_uvc_or_usb: mjpegRelayOverlay?.selected_is_uvc_or_usb,
+  };
+  const selectedCandidate = mergeCameraCandidateSummary(
+    cameraSelectedCandidateSummary(healthPayload, devicesReadback?.payload ?? null),
+    overlaySelectedCandidate,
+  );
+  const overlaySourceUsage: JsonRecord | null = mjpegRelayOverlay?.source_usage_status || mjpegRelayOverlay?.source_usage_owner_count
+    ? {
+      status: mjpegRelayOverlay.source_usage_status,
+      owner_count: mjpegRelayOverlay.source_usage_owner_count,
+      device: mjpegRelayOverlay.selected_path,
+      owners: [],
+    }
+    : null;
+  const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage) ?? overlaySourceUsage;
   const sourceDiagnosis = asRecord(findFirstKey(healthPayload, ["source_diagnosis"]) ?? mediaDiagnostics?.source_diagnosis);
   const sharedPreviewContract = asString(findFirstKey(healthPayload, ["shared_preview_contract"]) ?? mediaDiagnostics?.shared_preview_contract, "single_shared_capture_for_multiple_clients");
   const sourceUsageOwners = Array.isArray(sourceUsage?.owners) ? sourceUsage.owners : [];
@@ -1994,7 +2026,16 @@ function cameraSummaryFromReadbacks(
       : compactValueText(mjpegRelayOverlay.last_failure_at_ms),
     video_source: summaryValueText(healthPayload, ["video_source"]),
     video_source_mode: summaryValueText(healthPayload, ["video_source_mode"]),
-    selected_path: asString(currentSelection?.selected_path ?? sourceSummarySelection?.selected_path),
+    selected_path: asString(
+      currentSelection?.selected_path
+        ?? sourceSummarySelection?.selected_path
+        ?? healthPayload?.selected_path
+        ?? sourceDiagnosis?.selected_path
+        ?? mjpegRelayOverlay?.selected_path
+        ?? sourceUsage?.device
+        ?? healthPayload?.video_source,
+      "not_loaded",
+    ),
     selected_name: cameraDisplayDeviceName(selectedCandidate.selected_name) || "not_loaded",
     selected_is_uvc_or_usb: selectedCandidate.selected_is_uvc_or_usb === undefined
       ? "not_loaded"
@@ -2088,6 +2129,11 @@ export type RobotControlCameraMjpegRelayOverlay = {
   source_diagnosis_plain_hint?: string;
   source_diagnosis_next_action?: string;
   source_diagnosis_not_exclusive?: string;
+  selected_path?: string;
+  selected_name?: string;
+  selected_is_uvc_or_usb?: boolean | string;
+  source_usage_status?: string;
+  source_usage_owner_count?: string;
 };
 
 function compactTrueFields(fields: string[]): string[] {
