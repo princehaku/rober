@@ -4483,3 +4483,12 @@ pulse interval/duration、当前按住 pulse 数、历史最佳连续 pulse 数�
 未勾安全确认时状态是 `await_safety_confirm`；安全确认后是 `arm_keyboard_no_motion`；点击启用后进入
 `armed_waiting_for_keydown`，仍然不会因为按钮点击发送运动。真正运动只发生在后续按住方向键/WASD 时。
 该变化只增强 PC DOM 验收合同和测试，不调用 manual、free-roam、map、Nav2、delivery、stop 或 `/cmd_vel`。
+
+2026-06-30 06:58 CST 起，普通首屏地图刷新按钮补齐按钮级所见即所得合同。
+`plain-map-proof-refresh` 暴露 `data-map-wysiwyg-action=refresh_proof_then_preview`、
+固定 `/api/robot-control/map/proof/refresh`、固定 `/api/robot-control/map/preview` 和
+`data-refreshes-map-preview-after-proof=true`；`plain-map-preview-refresh` 暴露
+`data-map-wysiwyg-action=refresh_preview`、固定 `/api/robot-control/map/preview` 和
+`data-refreshes-radar-status=true`。两个按钮共同声明 `data-refresh-affects=map-image-route-robot-radar`、
+`data-sends-motion-when-clicked=false`、`data-starts-map-runtime=false`、`data-starts-nav2=false`。
+这让验收脚本能直接确认：地图刷新只更新当前画面、路线、小车位置和雷达层的显示材料，不会启动建图 runtime、不会执行 Nav2，也不会发任何底盘命令。

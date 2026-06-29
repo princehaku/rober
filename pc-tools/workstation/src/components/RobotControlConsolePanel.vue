@@ -14769,10 +14769,36 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="panel-action-row wrap-actions">
-            <button type="button" :disabled="!canRefreshMapProof" data-testid="plain-map-proof-refresh" @click="refreshMapProof">
+            <button
+              type="button"
+              :disabled="!canRefreshMapProof"
+              data-testid="plain-map-proof-refresh"
+              data-map-wysiwyg-action="refresh_proof_then_preview"
+              data-fixed-map-proof-refresh-endpoint="/api/robot-control/map/proof/refresh"
+              data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
+              data-refreshes-map-preview-after-proof="true"
+              data-refresh-affects="map-image-route-robot-radar"
+              data-sends-motion-when-clicked="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              @click="refreshMapProof"
+            >
               {{ mapProofRefreshButtonLabel }}
             </button>
-            <button ref="plainMapPreviewButton" type="button" :disabled="!canRefreshMapPreview" data-testid="plain-map-preview-refresh" @click="refreshMapPreview({ radarStatusRefresh: true })">
+            <button
+              ref="plainMapPreviewButton"
+              type="button"
+              :disabled="!canRefreshMapPreview"
+              data-testid="plain-map-preview-refresh"
+              data-map-wysiwyg-action="refresh_preview"
+              data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
+              data-refreshes-radar-status="true"
+              data-refresh-affects="map-image-route-robot-radar"
+              data-sends-motion-when-clicked="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              @click="refreshMapPreview({ radarStatusRefresh: true })"
+            >
               {{ mapPreviewRefreshButtonLabel }}
             </button>
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
