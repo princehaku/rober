@@ -225,6 +225,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   图上路线和小车位置已显示时，顶层下一步提示勾安全确认执行路线；雷达贴图缺口只保留在
   `radar_overlay_next_action_plain` / `radar_overlay_wysiwyg_next_action_plain`。这样外部脚本只读顶层下一步时，不会把“先启动雷达”误解成 Nav2 发车前置。
   该变化只修正只读字段别名，不准备路线、不执行 Nav2、不启动雷达、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 20:31 起，`/api/robot-control/summary` 的 `readback_summary.map` 同步补齐
+  `next_action_plain` 和 `map_next_action_plain`：前者等于 `path_preview_next_action_plain`，用于表达“图上路线/小车位置下一步”；
+  后者等于 `map_wysiwyg_next_action_plain`，用于表达“整张地图所见即所得下一步”。summary 和直连 map preview 不再出现
+  顶层下一步一边有值、一边为空的情况。该变化只补只读 summary 字段，不准备路线、不执行 Nav2、不启动雷达、不发送
+  manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 20:10 起，`/api/robot-control/map/preview` 顶层增加 `robot_pose_status`：
   同轮 overlay 读到 map-frame 小车位置时返回 `map_pose_observed`，没有读到时返回 `not_observed`。
   这样地图画面、路线点、小车位置和雷达贴图状态都能用顶层字段一眼判断，外部脚本不必自己解析 `robot_pose=null`。

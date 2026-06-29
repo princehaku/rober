@@ -4134,6 +4134,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.free_roam_summary).toEqual(summary.readback_summary.free_roam);
       expect(summary.camera_summary?.preview_visible_status).toBe(summary.readback_summary.camera.preview_visible_status);
       expect(summary.map_summary?.map_wysiwyg_status_plain).toBe(summary.readback_summary.map.map_wysiwyg_status_plain);
+      expect(summary.map_summary?.next_action_plain).toBe(summary.readback_summary.map.path_preview_next_action_plain);
+      expect(summary.map_summary?.map_next_action_plain).toBe(summary.readback_summary.map.map_wysiwyg_next_action_plain);
       expect(summary.radar_summary?.radar_overlay_status).toBe(summary.readback_summary.radar.radar_overlay_status);
       expect(summary.nav2_summary?.status).toBe(summary.readback_summary.nav2.status);
       expect(summary.nav2_summary?.next_action_plain).toBe(summary.readback_summary.nav2.next_action_plain);
@@ -4223,6 +4225,8 @@ describe("workstation fail-closed API contracts", () => {
         plain_hint: expect.stringContaining("地图画面已读到，但图上路线还未显示"),
         map_wysiwyg_status_plain: "地图画面已读到，但图上路线还未显示。",
         map_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
+        next_action_plain: "先准备图上路线，再刷新地图画面。",
+        map_next_action_plain: "先准备图上路线，再刷新地图画面。",
         path_preview_status: "not_observed",
         path_preview_point_count: "0",
         path_preview_frame_id: "not_loaded",
@@ -8075,6 +8079,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.plain_hint).not.toContain("雷达 marker");
       expect(summary.readback_summary.map.plain_hint).not.toContain("overlay");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
+      expect(summary.readback_summary.map.next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.map_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
       expect(summary.readback_summary.map.path_preview_point_count).toBe("3");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");
@@ -8631,6 +8637,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.plain_hint).not.toContain("雷达 marker");
       expect(summary.readback_summary.map.plain_hint).not.toContain("overlay");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
+      expect(summary.readback_summary.map.next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.map_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(summary.action_status_cards?.find((card) => card.id === "map_preview")).toMatchObject({
         status_label: "已显示",
         next_action_plain: "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。",
