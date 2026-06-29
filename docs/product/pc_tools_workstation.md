@@ -57,6 +57,11 @@ pc-tools/workstation/
   “不是页面独占，是 UVC 没有输出视频帧/上游无画面”。页面仍自动渲染共享 MJPEG `<img>` 并保留只读共享预览链接，
   后进页面继续共用同一条上游流和低频重试；只是不能再把已知无帧状态写成“连接中”。该变化不创建独占采集、不重启相机、
   不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 15:02 CST 起，普通首屏意图快捷入口中的 `补画面/雷达` 不再解析 `camera_wysiwyg_status_plain`
+  这类中文文案前缀来判断缺口，而是优先使用 `action_status_cards.camera_preview.status` 和
+  `action_status_cards.radar_map_points.status`。因此画面文案可继续优化为“已经看到画面”等自然说法，快捷入口仍会按结构化
+  WYSIWYG 事实聚焦真正缺的画面或雷达点。该入口只 scroll/focus，不自动打开画面、不启动雷达、不执行 Nav2、不调用
+  manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 后端分层约束：
 - `index.ts` 只挂载本地 PC API 和构建后的静态 UI，不挂载 ROS2、串口、控制或云端生产客户端。

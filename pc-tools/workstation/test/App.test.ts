@@ -4869,6 +4869,59 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
+  it("routes the sensor shortcut from structured action cards instead of camera wording", async () => {
+    // 画面可见文案可能调整；快捷入口必须看 action_status_cards，不能靠中文前缀判断是否还缺画面。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.preview_visible_status = "visible";
+    summaryFixture.readback_summary.camera.camera_wysiwyg_status_plain = "已经看到画面：共享实时画面已有缓存帧，多个页面复用同一条上游流。";
+    summaryFixture.readback_summary.camera.camera_wysiwyg_next_action_plain = "继续监看共享实时画面。";
+    const actionCards = summaryFixture.action_status_cards;
+    if (!actionCards) {
+      throw new Error("action status cards missing from fixture");
+    }
+    const cameraCard = actionCards.find((card) => card.id === "camera_preview");
+    if (!cameraCard) {
+      throw new Error("camera action card missing from fixture");
+    }
+    cameraCard.status = "visible";
+    cameraCard.status_label = "已显示";
+    cameraCard.wysiwyg_status = "visible_frame";
+    cameraCard.summary_plain = "已经看到画面：共享实时画面已有缓存帧。";
+    cameraCard.next_action_plain = "继续监看共享实时画面。";
+    const radarCard = actionCards.find((card) => card.id === "radar_map_points");
+    if (!radarCard) {
+      throw new Error("radar action card missing from fixture");
+    }
+    radarCard.status = "not_current";
+    radarCard.status_label = "未贴当前图";
+    radarCard.wysiwyg_status = "old_or_missing_points_not_drawn";
+    summaryFixture.readback_summary.map.radar_overlay_point_count = "0";
+    summaryFixture.readback_summary.radar.map_marker_point_count = "0";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const sensorShortcut = wrapper.find('[data-testid="plain-intent-shortcut-sensors"]');
+    expect(sensorShortcut.exists()).toBe(true);
+    expect(sensorShortcut.text()).toContain("补画面/雷达");
+    expect(sensorShortcut.text()).toContain("还差：雷达点；先处理当前所见。");
+    expect(sensorShortcut.text()).not.toContain("还差：画面");
+    const callsBeforeSensorGuide = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-intent-shortcut-go-sensors"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy).toHaveBeenCalled();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-radar-refresh"]').element);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSensorGuide);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("refreshes visible map, radar, and shared camera readback from the plain connection refresh", async () => {
     // 普通用户点连接/刷新时，需要同步刷新真实地图、雷达和共享画面状态，避免 summary 新了但画面仍是旧事实。
     const mockedFetch = stubWorkstationFetch();

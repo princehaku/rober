@@ -4632,8 +4632,15 @@ const plainIntentShortcutItems = computed<PlainIntentShortcutItem[]>(() => {
   if (!summary || !boundary) {
     return [];
   }
-  const cameraVisible = summary.readback_summary.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
-  const radarOnMap = (finitePlainNumber(summary.readback_summary.radar.map_marker_point_count) ?? 0) > 0;
+  const actionCard = (id: RobotControlActionStatusCardId) => plainActionStatusCards.value.find((card) => card.id === id);
+  const cameraCard = actionCard("camera_preview");
+  const radarCard = actionCard("radar_map_points");
+  const cameraVisible = cameraCard?.status === "visible"
+    || summary.readback_summary.camera.preview_visible_status === "visible"
+    || summary.readback_summary.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
+  const radarOnMap = radarCard?.status === "current_on_map"
+    || ((finitePlainNumber(summary.readback_summary.map.radar_overlay_point_count) ?? 0) > 0)
+    || ((finitePlainNumber(summary.readback_summary.radar.map_marker_point_count) ?? 0) > 0);
   const sensorSource: RobotControlActionStatusCardId = cameraVisible ? "radar_map_points" : "camera_preview";
   const sensorMissing = [
     cameraVisible ? "" : "画面",
