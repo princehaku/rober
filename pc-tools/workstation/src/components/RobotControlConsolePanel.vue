@@ -1375,6 +1375,18 @@ const cameraMjpegPreviewUrl = computed(() => {
   const url = robotControlCameraMjpegUrl(robotApiBaseUrl.value);
   return mjpegPreviewRetryToken.value > 0 ? `${url}&retry=${mjpegPreviewRetryToken.value}` : url;
 });
+const cameraMjpegSharedPreviewLink = computed(() => (
+  cameraCanAttemptSharedMjpegPreview.value ? robotControlCameraMjpegUrl(robotApiBaseUrl.value) : ""
+));
+const plainCameraSharedPreviewLinkSummary = computed(() => {
+  // 共享预览链接是只读 MJPEG GET；任何页面打开都会复用 PC Node 的同一条上游流。
+  if (!cameraMjpegSharedPreviewLink.value) {
+    return "";
+  }
+  const camera = robotSummary.value?.readback_summary.camera;
+  const viewers = camera?.shared_preview_client_count || cameraMjpegStatusResult.value?.client_count?.toString() || "0";
+  return `共享预览入口：任何页面打开这个只读地址都会接入同一条上游流；当前 ${viewers} 个页面观看。`;
+});
 const cameraMjpegFallbackVisible = computed(() => (
   cameraCanAttemptSharedMjpegPreview.value && !browserVideoFrameDrawn() && !previewAutoConnectSuppressed.value
 ));
@@ -12547,6 +12559,16 @@ onBeforeUnmount(() => {
             <button ref="plainCameraProbeButton" type="button" class="secondary compact-stop" :disabled="!canRunPlainCameraProbe" data-testid="plain-camera-probe" @click="runCameraFirstFrameProbe">
               {{ plainCameraProbeButtonLabel }}
             </button>
+            <a
+              v-if="cameraMjpegSharedPreviewLink"
+              class="secondary compact-stop plain-link-button"
+              data-testid="robot-camera-shared-preview-link"
+              :href="cameraMjpegSharedPreviewLink"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              打开共享预览
+            </a>
             <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
             <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
           </div>
@@ -12582,6 +12604,7 @@ onBeforeUnmount(() => {
           <p v-if="plainCameraWysiwygReadback" class="panel-note" data-testid="robot-camera-wysiwyg-readback">{{ plainCameraWysiwygReadback }}</p>
           <p v-if="plainCameraCachedFrameStatus" class="panel-note" data-testid="robot-camera-cached-frame-status">{{ plainCameraCachedFrameStatus }}</p>
           <p v-if="plainCameraSharedPreviewReadback" class="panel-note" data-testid="robot-camera-shared-preview-readback">{{ plainCameraSharedPreviewReadback }}</p>
+          <p v-if="plainCameraSharedPreviewLinkSummary" class="panel-note" data-testid="robot-camera-shared-preview-link-summary">{{ plainCameraSharedPreviewLinkSummary }}</p>
           <p class="panel-note" data-testid="robot-camera-shared-preview-status">{{ plainCameraSharedPreviewStatus }}</p>
           <p v-if="plainCameraSharedPreviewGuidance" class="panel-note" data-testid="robot-camera-shared-preview-guidance">{{ plainCameraSharedPreviewGuidance }}</p>
           <p v-if="plainCameraProbeSummary" class="panel-note" data-testid="plain-camera-probe-summary">{{ plainCameraProbeSummary }}</p>

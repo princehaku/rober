@@ -4127,6 +4127,12 @@ describe("App", () => {
     expect(currentFacts.text()).toContain("行程：还没执行。");
     expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
     expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用；走 ROS 桥接低速入口；按住连续低速脉冲 240ms/每 260ms，松开/失焦/切页会停。");
+    const sharedPreviewLink = wrapper.find('[data-testid="robot-camera-shared-preview-link"]');
+    expect(sharedPreviewLink.exists()).toBe(true);
+    expect(sharedPreviewLink.text()).toBe("打开共享预览");
+    expect(sharedPreviewLink.attributes("href")).toContain("/api/robot-control/camera/mjpeg?");
+    expect(sharedPreviewLink.attributes("target")).toBe("_blank");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-link-summary"]').text()).toBe("共享预览入口：任何页面打开这个只读地址都会接入同一条上游流；当前 0 个页面观看。");
     const actionCards = wrapper.find('[data-testid="plain-action-status-cards"]');
     expect(actionCards.exists()).toBe(true);
     expect(actionCards.text()).toContain("画面");
@@ -21093,6 +21099,8 @@ describe("App", () => {
     const mjpegPreview = wrapper.find('[data-testid="robot-camera-mjpeg-preview"]');
     expect(mjpegPreview.exists()).toBe(true);
     expect(mjpegPreview.attributes("src")).toContain("/api/robot-control/camera/mjpeg?");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-link"]').attributes("href")).toContain("/api/robot-control/camera/mjpeg?");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-link-summary"]').text()).toBe("共享预览入口：任何页面打开这个只读地址都会接入同一条上游流；当前 0 个页面观看。");
     expect(wrapper.find('[data-testid="plain-camera-start"]').text()).toBe("重试共享画面");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("连接中");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB OpenCV/V4L2 4 种方式也没有取到视频帧。");

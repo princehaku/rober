@@ -4072,3 +4072,8 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 直接说明 Nav2 是否已证明、是否只差行程安全确认复验，以及轮速 L/R 的下一步。`去跑行程` 按钮只把焦点带到
 行程安全确认或执行区，继续保持最小预检口径：页面不会自动勾选确认、不会自动执行 Nav2，也不会调用 manual、
 keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 10:45 CST 起，普通首屏实时画面卡片把共享 MJPEG 入口直接暴露为“打开共享预览”链接。
+链接使用 PC Node `/api/robot-control/camera/mjpeg?baseUrl=...` 只读 relay，任何后进页面都会接入同一条上游流；
+旁边说明当前观看页面数，避免用户把无画面误判为页面独占。该链接只访问只读 MJPEG GET，不创建 WebRTC offer、
+不新开独占采集、不发送 manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -82,6 +82,14 @@ h3 {
   padding: 0 14px;
 }
 
+.plain-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1b2a38;
+  text-decoration: none;
+}
+
 .status-strip,
 .tabs,
 .metrics,
