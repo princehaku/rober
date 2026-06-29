@@ -238,6 +238,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `free_roam_mapping_missing_reasons`。前者只表示勾安全确认后可请求低速自由移动；后两者只表示能否按建图验收收口，
   缺口会列出 `camera_first_frame/lidar_fresh/mapping_active/fresh_map_preview`。这样外部脚本、PC 首屏和现场人员不再需要从
   gates 文案里反推“能动”和“能建图”的区别。
+- 2026-06-30 08:36 起，PC summary 在上述验收字段之外新增建图启动字段：
+  `free_roam_mapping_start_ready`、`free_roam_mapping_start_missing_reasons`、`free_roam_mapping_start_plain` 和
+  `free_roam_mapping_start_next_action`。启动建图只要求 `camera_first_frame/lidar_fresh`，也就是画面首帧与雷达新鲜；
+  `mapping_active/fresh_map_preview` 继续只属于建图验收。这样“相机和雷达 ready 后可以启动建图记录”与“地图记录和地图画面 ready 后才能验收建图”在合同上不再共用同一个 ready 字段。
 - 2026-06-27 20:58 起，普通首屏建图验收文案优先消费 `safe_command_boundary.free_roam_mapping_ready` 与
   `free_roam_mapping_missing_reasons`，只有旧上车端缺少该字段时才 fallback 到 `readback_summary.free_roam.mapping_missing`。
   若 PC 本地刚启动地图记录或已经显示真实地图画面，会过滤上一拍 summary 里的 `mapping_active/fresh_map_preview` 旧缺口；
@@ -396,6 +400,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `mapping_required_gates=[camera_first_frame,fresh_radar_scan,map_recording_active,fresh_map_preview]`
 才描述可验收建图门禁。这样普通 UI、Node API contract 和上车端 `sensor_readiness.mapping_readiness`
 使用同一口径：车可以先低速自由移动，只有相机和雷达 ready 时才把本轮按建图收口。
+
+2026-06-30 08:36 起，policy 同步增加
+`mapping_start_required_gates=[camera_first_frame,fresh_radar_scan]`，专门描述“能否启动建图记录”的入口条件。
+`mapping_required_gates` 不改名不收窄，继续描述验收条件，避免老脚本把地图记录和地图画面缺口误读成不能先启动建图。
 
 2026-06-27 06:19 起，PC summary 的 `free_roam_autonomy_gates[]` 增加 `scope` 分层：
 `free_move_start` 只包含现场安全确认和停止兜底，决定“能否请求低速自由移动”；

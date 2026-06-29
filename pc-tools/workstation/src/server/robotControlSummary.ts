@@ -70,6 +70,8 @@ const ROBOT_CONTROL_PATH_PREVIEW_POINT_LIMIT = 64;
 const ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT = 72;
 const ROBOT_CONTROL_SCAN_PREVIEW_MIN_RANGE_M = 0.03;
 const ROBOT_CONTROL_SCAN_PREVIEW_MAX_RANGE_M = 8;
+const FREE_ROAM_MAPPING_START_REQUIRED_IDS = ["camera_first_frame", "lidar_fresh"] as const;
+const FREE_ROAM_MAPPING_ACCEPTANCE_REQUIRED_IDS = ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"] as const;
 export const ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
 export const ROBOT_CONTROL_HIL_CHECKLIST = [
   { id: "operator_safety_confirmed", label: "现场安全确认（人在旁边、周围安全、停止手段就绪）" },
@@ -5110,11 +5112,12 @@ function freeRoamSummaryFromReadbacks(
   const stopFallbackReady = stopGates.length === 0 || stopGates.every((gate) => gate.state === "ready");
   const startReady = Boolean(freeRoamRuntime?.status === "loaded" && stopFallbackReady);
   const motionReady = Boolean(startReady && freeRoamRuntime?.cmd_vel_publish_enabled === true);
-  const mappingRequiredIds = ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"];
   const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
     .filter((gate) => gate.scope === "mapping_acceptance")
     .map((gate) => [gate.id, gate]));
-  const mappingMissing = mappingRequiredIds.filter((id) => mappingGateById.get(id)?.state !== "ready");
+  const mappingStartMissing = FREE_ROAM_MAPPING_START_REQUIRED_IDS.filter((id) => mappingGateById.get(id)?.state !== "ready");
+  const mappingMissing = FREE_ROAM_MAPPING_ACCEPTANCE_REQUIRED_IDS.filter((id) => mappingGateById.get(id)?.state !== "ready");
+  const mappingStartReady = startReady && mappingStartMissing.length === 0;
   const mappingReady = startReady && mappingMissing.length === 0;
   const nextActionStatus = mappingReady ? "ready" : startReady ? "start_ready" : "locked";
   const externalStopRequested = freeRoamRuntime?.state === "stopping" && /现场请求停止|external_stop/i.test(freeRoamRuntime.reason);
@@ -5139,13 +5142,17 @@ function freeRoamSummaryFromReadbacks(
     start_ready: booleanSummaryValue(startReady),
     motion_start_ready: booleanSummaryValue(startReady),
     motion_ready: booleanSummaryValue(motionReady),
+    mapping_start_ready: booleanSummaryValue(mappingStartReady),
+    mapping_start_missing: mappingStartMissing.length ? mappingStartMissing.join(",") : "none",
     mapping_ready: booleanSummaryValue(mappingReady),
     mapping_missing: mappingMissing.length ? mappingMissing.join(",") : "none",
     plain_hint: freeRoamPlainHint(motionReadinessPlain, mappingReadinessPlain, nextActionPlain),
     next_action_plain: nextActionPlain,
     motion_readiness_plain: motionReadinessPlain,
+    mapping_start_readiness_plain: freeRoamMappingStartReadinessPlain(startReady, mappingStartReady, mappingStartMissing),
     mapping_readiness_plain: mappingReadinessPlain,
     motion_next_action_plain: freeRoamMotionNextAction(startReady, motionReady, externalStopRequested),
+    mapping_start_next_action_plain: freeRoamMappingStartNextAction(startReady, mappingStartReady, mappingStartMissing),
     mapping_next_action_plain: freeRoamMappingNextAction(startReady, mappingReady, mappingMissing),
     runtime_artifact_proven: summaryValueText(payload, ["free_roam_runtime_artifact_proven"]) ?? "not_loaded",
     state_machine_observed: summaryValueText(payload, ["free_roam_state_machine_observed"]) ?? "not_loaded",
@@ -5494,13 +5501,17 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         start_ready: "false",
         motion_start_ready: "false",
         motion_ready: "false",
+        mapping_start_ready: "false",
+        mapping_start_missing: "not_loaded",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
         plain_hint: "自由移动未就绪；先连接上车状态机并确认停止兜底。建图验收未 ready；还在等待上车状态机。下一步：先连接上车自由移动状态机，并确认停止兜底可用。",
         next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
         motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
+        mapping_start_readiness_plain: "建图启动未 ready；还在等待上车自由移动状态机。",
         mapping_readiness_plain: "建图验收未 ready；还在等待上车状态机。",
         motion_next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用。",
+        mapping_start_next_action_plain: "先连接上车自由移动状态机，并继续读取相机和雷达。",
         mapping_next_action_plain: "先连接上车自由移动状态机，并继续读取建图验收材料。",
         runtime_artifact_proven: "not_loaded",
         state_machine_observed: "not_loaded",
@@ -5749,11 +5760,20 @@ function freeRoamMappingMissingIds(
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null,
 ): string[] {
   // 自由移动不依赖相机/雷达；建图验收才需要这些材料同时 ready。
-  const mappingRequiredIds = ["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"];
   const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
     .filter((gate) => gate.scope === "mapping_acceptance")
     .map((gate) => [gate.id, gate]));
-  return mappingRequiredIds.filter((id) => mappingGateById.get(id)?.state !== "ready");
+  return FREE_ROAM_MAPPING_ACCEPTANCE_REQUIRED_IDS.filter((id) => mappingGateById.get(id)?.state !== "ready");
+}
+
+function freeRoamMappingStartMissingIds(
+  freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null,
+): string[] {
+  // 建图启动只看传感器入口；地图记录和地图画面属于启动后的验收材料。
+  const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
+    .filter((gate) => gate.scope === "mapping_acceptance")
+    .map((gate) => [gate.id, gate]));
+  return FREE_ROAM_MAPPING_START_REQUIRED_IDS.filter((id) => mappingGateById.get(id)?.state !== "ready");
 }
 
 function joinChineseList(items: string[]): string {
@@ -5846,6 +5866,38 @@ function freeRoamMappingReadinessPlain(startReady: boolean, mappingReady: boolea
   return missingText
     ? `建图验收未 ready；还差：${missingText}；不影响先低速自由移动。`
     : "建图验收材料还在读取；不影响先低速自由移动。";
+}
+
+function freeRoamMappingStartReadinessPlain(startReady: boolean, mappingStartReady: boolean, mappingStartMissingReasons: string[]): string {
+  // 启动建图和验收建图分开说：相机/雷达 ready 后就可以进建图记录，地图画面等完成后再验收。
+  if (mappingStartReady) {
+    return "建图启动已 ready：画面首帧和雷达新鲜都可用；地图记录和地图画面用于建图验收。";
+  }
+  const missingText = freeRoamMissingPlainLabels(mappingStartMissingReasons).join("、");
+  if (!startReady) {
+    return missingText
+      ? `建图启动未 ready；还差：${missingText}；同时等待上车自由移动状态机。`
+      : "建图启动未 ready；还在等待上车自由移动状态机。";
+  }
+  return missingText
+    ? `建图启动未 ready；还差：${missingText}；地图记录和地图画面只影响建图验收。`
+    : "建图启动材料还在读取；地图记录和地图画面只影响建图验收。";
+}
+
+function freeRoamMappingStartNextAction(startReady: boolean, mappingStartReady: boolean, mappingStartMissingReasons: string[]): string {
+  // 给普通页面一个直接动作：先补齐相机/雷达，再由按钮显式启动建图记录。
+  if (mappingStartReady) {
+    return "相机和雷达已满足建图启动；勾选现场安全确认后可启动建图记录，再看地图画面完成验收。";
+  }
+  const missingText = freeRoamMissingPlainLabels(mappingStartMissingReasons).join("、");
+  if (!startReady) {
+    return missingText
+      ? `先连接上车自由移动状态机；建图启动还差：${missingText}。`
+      : "先连接上车自由移动状态机，并继续读取相机和雷达。";
+  }
+  return missingText
+    ? `先补齐建图启动材料：${missingText}；低速自由移动不受影响。`
+    : "继续读取相机和雷达；低速自由移动不受影响。";
 }
 
 function freeRoamMappingNextAction(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
@@ -6091,6 +6143,8 @@ function lockedBoundary(
     && stopFallbackReady,
   );
   const freeRoamMappingMissingReasons = freeRoamMappingMissingIds(freeRoamRuntimeGates);
+  const freeRoamMappingStartMissingReasons = freeRoamMappingStartMissingIds(freeRoamRuntimeGates);
+  const freeRoamMappingStartReady = freeRoamStartReady && freeRoamMappingStartMissingReasons.length === 0;
   const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
   const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime);
@@ -6131,6 +6185,8 @@ function lockedBoundary(
     free_roam_autonomy: freeRoamStatus,
     free_roam_autonomy_start_ready: freeRoamStartReady,
     free_roam_motion_start_ready: freeRoamStartReady,
+    free_roam_mapping_start_ready: freeRoamMappingStartReady,
+    free_roam_mapping_start_missing_reasons: freeRoamMappingStartMissingReasons,
     free_roam_mapping_ready: freeRoamMappingReady,
     free_roam_mapping_missing_reasons: freeRoamMappingMissingReasons,
     free_roam_autonomy_label: freeRoamReady
@@ -6140,6 +6196,8 @@ function lockedBoundary(
         : "自动扫图（未开放）",
     free_roam_autonomy_next_action: freeRoamNextAction,
     free_roam_motion_minimal_precheck_plain: "自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。",
+    free_roam_mapping_start_plain: freeRoamMappingStartReadinessPlain(freeRoamStartReady, freeRoamMappingStartReady, freeRoamMappingStartMissingReasons),
+    free_roam_mapping_start_next_action: freeRoamMappingStartNextAction(freeRoamStartReady, freeRoamMappingStartReady, freeRoamMappingStartMissingReasons),
     free_roam_mapping_acceptance_plain: "建图验收要求画面首帧、雷达新鲜、地图记录和地图画面 ready；这些缺口不阻止先低速自由移动。",
     free_roam_autonomy_policy: {
       // 自由移动与建图验收分层：低速移动只看安全确认和停止兜底，建图才要求画面/雷达材料。
@@ -6150,6 +6208,10 @@ function lockedBoundary(
       required_gates: [
         "operator_safety_confirmed",
         "operator_stop_fallback",
+      ],
+      mapping_start_required_gates: [
+        "camera_first_frame",
+        "fresh_radar_scan",
       ],
       mapping_required_gates: [
         "camera_first_frame",

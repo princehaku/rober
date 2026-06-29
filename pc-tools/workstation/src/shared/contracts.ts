@@ -2664,13 +2664,17 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       start_ready: string;
       motion_start_ready: string;
       motion_ready: string;
+      mapping_start_ready: string;
+      mapping_start_missing: string;
       mapping_ready: string;
       mapping_missing: string;
       plain_hint: string;
       next_action_plain: string;
       motion_readiness_plain: string;
+      mapping_start_readiness_plain: string;
       mapping_readiness_plain: string;
       motion_next_action_plain: string;
+      mapping_start_next_action_plain: string;
       mapping_next_action_plain: string;
       runtime_artifact_proven: string;
       state_machine_observed: string;
@@ -2726,11 +2730,15 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     free_roam_autonomy: "locked" | "start_ready" | "ready";
     free_roam_autonomy_start_ready: boolean;
     free_roam_motion_start_ready: boolean;
+    free_roam_mapping_start_ready: boolean;
+    free_roam_mapping_start_missing_reasons: string[];
     free_roam_mapping_ready: boolean;
     free_roam_mapping_missing_reasons: string[];
     free_roam_autonomy_label: "自动扫图（未开放）" | "自由移动（勾确认后可启动）" | "自由移动（运行中）" | "自动扫图";
     free_roam_autonomy_next_action: string;
     free_roam_motion_minimal_precheck_plain: string;
+    free_roam_mapping_start_plain: string;
+    free_roam_mapping_start_next_action: string;
     free_roam_mapping_acceptance_plain: string;
     free_roam_autonomy_policy: {
       mode: "free_move_requires_safety_confirm_stop_fallback";
@@ -2738,6 +2746,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       max_speed_mps: number;
       max_runtime_s: number;
       required_gates: string[];
+      mapping_start_required_gates: string[];
       mapping_required_gates: string[];
     };
     free_roam_autonomy_gates: Array<{
