@@ -9559,10 +9559,13 @@ const plainKeyboardReadbackSummary = computed(() => {
   if (!keyboard) {
     return "";
   }
+  const keyboardWheelAcceptancePlain = keyboard.wheel_feedback_acceptance_plain
+    || "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";
   const rawParts = [
     keyboard.plain_hint,
     keyboard.hold_to_move_plain,
     keyboard.continuous_control_contract_plain,
+    keyboardWheelAcceptancePlain,
     keyboard.stop_triggers_plain,
   ];
   const parts = rawParts

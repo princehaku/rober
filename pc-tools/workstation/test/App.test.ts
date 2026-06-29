@@ -17070,6 +17070,8 @@ describe("App", () => {
     await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("同一次按住窗口");
+    expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("wheel L/R 非零");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("等待按键，按住才会动；按住后约每 0.26 秒发送 0.24 秒低速脉冲，松开/失焦/切页会停。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");

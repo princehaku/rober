@@ -8,6 +8,16 @@
 
 ## 2026-06-29 系列
 
+### 2026-06-29 23-14｜pc_keyboard_wheel_acceptance_plain｜O3/O5 键盘轮速验收口径前置
+
+本轮 `sprints/2026.06.29_23-14_pc_keyboard_wheel_acceptance_plain/` 推进 PC 键盘连续控制的普通用户验收口径：
+`readback_summary.keyboard` 新增 `wheel_feedback_acceptance_plain`，普通首屏同步展示“键盘验收只看同一次按住窗口的
+manual pulse 回包，必须读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数”。这让键盘连续手控从
+“能启用、按住才动”继续推进到“按完以后看哪条证据算闭环”。
+
+验证范围：PC 键盘/App 定向回归、summary/catalog 定向回归、全量 PC 测试和 build。本轮不启用键盘、不发送
+manual、stop、Nav2、free-roam、delivery 或 `/cmd_vel`；真实键盘连续控制仍需现场勾选安全确认后按住方向键复验。
+
 ### 2026-06-29 23-06｜pc_nav2_next_mode_plain｜O3 自动驾驶复验模式白话化
 
 本轮 `sprints/2026.06.29_23-06_pc_nav2_next_mode_plain/` 推进完整 Nav2 路线执行排障可见性：

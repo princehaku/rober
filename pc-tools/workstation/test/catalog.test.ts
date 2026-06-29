@@ -4143,6 +4143,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.keyboard_control_summary?.start_ready).toBe("true");
       expect(summary.keyboard_teleop_summary?.start_ready).toBe("true");
       expect(summary.keyboard_summary?.next_action_plain).toContain("按住 W/A/S/D");
+      expect(summary.keyboard_summary?.wheel_feedback_acceptance_plain).toContain("同一次按住窗口");
+      expect(summary.keyboard_summary?.wheel_feedback_acceptance_plain).toContain("wheel L/R 非零");
       expect(summary.keyboard_control_summary?.next_action_plain).toContain("按住 W/A/S/D");
       expect(summary.keyboard_teleop_summary?.next_action_plain).toContain("按住 W/A/S/D");
       expect(summary.free_roam_summary?.motion_start_ready).toBe("true");

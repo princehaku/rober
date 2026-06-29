@@ -4380,3 +4380,8 @@ wheel L/R 仍 0/0 时，PC 会明确显示“下次用 ROS 模式重跑”；若
 PC 会明确显示“下次切到 SPEED/T=1 模式复验控制链”。普通首屏“执行模式”行直接展示该原因，避免现场把旧 PWM/ROS
 结果误当成当前闭环。该变化只补 summary/latest/UI 展示和测试合同，不执行 Nav2、不启动 runtime、不调用
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 23:14 CST 起，Robot Control 的键盘连续手控 readback 新增
+`wheel_feedback_acceptance_plain`。普通首屏会明确说明：键盘手控验收只看同一次按住窗口的 manual pulse 回包，
+必须读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。该变化只补 PC summary/UI 文案和测试合同，
+不启用键盘、不发送 manual、stop、Nav2、free-roam、delivery 或 `/cmd_vel`。

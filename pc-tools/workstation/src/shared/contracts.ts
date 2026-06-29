@@ -2521,6 +2521,7 @@ export interface RobotControlKeyboardReadbackSummary {
   hold_to_move_plain: string;
   stop_triggers_plain: string;
   pulse_timing_plain: string;
+  wheel_feedback_acceptance_plain: string;
   next_action_plain: string;
   minimal_precheck_plain: string;
   robot_control_executed: string;
