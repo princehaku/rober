@@ -5032,6 +5032,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-requires-hold-to-move")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-target-source")).toBe("none");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-stop-triggers")).toContain("window_blur");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-current-hold-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-best-continuous-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-verified-min-forwarded-pulses")).toBe("2");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-same-hold-window-required")).toBe("true");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-stop-required-after-hold")).toBe("true");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-stop-settled-after-pulse")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("data-requires-hold-to-move")).toBe("true");
     expect(wrapper.find('[data-testid="plain-keyboard-main-action-summary"]').text()).toBe("键盘主动作：先勾选现场安全确认；未勾选时启用和按键都不会发车。");
@@ -5042,6 +5048,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-pulse-interval-ms")).toBe("260");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-pulse-duration-ms")).toBe("240");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-verified-min-forwarded-pulses")).toBe("2");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-same-hold-window-required")).toBe("true");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-stop-required-after-hold")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-screen-stop"]').attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-screen-stop"]').attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-sends-motion-while-held")).toBe("false");
@@ -13445,6 +13456,9 @@ describe("App", () => {
     expect(keyboardPanel.attributes("data-arm-sends-motion")).toBe("false");
     expect(keyboardPanel.attributes("data-requires-hold-to-move")).toBe("true");
     expect(keyboardPanel.attributes("data-target-source")).toBe("keyboard_keydown");
+    expect(keyboardPanel.attributes("data-verified-min-forwarded-pulses")).toBe("2");
+    expect(keyboardPanel.attributes("data-same-hold-window-required")).toBe("true");
+    expect(keyboardPanel.attributes("data-stop-required-after-hold")).toBe("true");
     expect(wrapper.find('[data-testid="plain-keyboard-main-action-summary"]').text()).toContain("已启用但不会发车");
     await keyboardPanel.trigger("keydown", { key: "w" });
     await flushPromises();
@@ -13453,6 +13467,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-main-action-kind")).toBe("holding_direction_sends_pulses");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-sends-motion-when-holding")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-target-source")).toBe("held_direction_manual_pulse");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-current-hold-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-best-continuous-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-verified-min-forwarded-pulses")).toBe("2");
     expect(wrapper.find('[data-testid="plain-keyboard-main-action-summary"]').text()).toContain("正在按住前进");
     expect(wrapper.find(".robot-console .advanced-details").text()).not.toContain("blocked_keyboard_manual_gate");
     const feedbackCallsBeforeKeyboardRecheck = mockedFetch.mock.calls.filter(([url]) =>
@@ -16993,6 +17011,9 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("已验证");
     expect(keyboardPanel.attributes("data-state")).toBe("已验证");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("键盘手控已验证，已连续 2/2 次，停止已发送；需要继续移动可按住方向键。");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-current-hold-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-best-continuous-pulse-count")).toBe("2");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-stop-settled-after-pulse")).toBe("true");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("键盘：连续手控已验证，已连续 2/2 次，停止已发送；需要继续移动可再按住方向键。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：松开键盘。");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("键盘手控已验证");
@@ -17112,12 +17133,22 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(1);
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-current-hold-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-best-continuous-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-same-hold-window-required")).toBe("true");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-stop-required-after-hold")).toBe("true");
 
     await vi.advanceTimersByTimeAsync(260);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(2);
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-current-hold-pulse-count")).toBe("2");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-best-continuous-pulse-count")).toBe("2");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-verified-min-forwarded-pulses")).toBe("2");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("2");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("2");
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("已连续 2/2 次");
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
     wrapper.unmount();

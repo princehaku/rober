@@ -5289,6 +5289,11 @@ type PlainKeyboardDirectionButtonEvidence = {
   fixedStopEndpoint: string;
   pulseIntervalMs: number;
   pulseDurationMs: number;
+  verifiedMinForwardedPulses: number;
+  currentHoldPulseCount: number;
+  bestContinuousPulseCount: number;
+  sameHoldWindowRequired: boolean;
+  stopRequiredAfterHold: boolean;
 };
 const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButtonEvidence>(() => ({
   // canPressKeyboardDirection 已包含启用状态、后端键盘合同和 stop 失败 fail-closed。
@@ -5299,6 +5304,11 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   fixedStopEndpoint: manualBoundary.value?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
   pulseIntervalMs: keyboardJogIntervalMs.value,
   pulseDurationMs: keyboardJogDurationMs.value,
+  verifiedMinForwardedPulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
+  currentHoldPulseCount: keyboardHoldPulseCount.value,
+  bestContinuousPulseCount: keyboardVerifiedPulseCount.value,
+  sameHoldWindowRequired: true,
+  stopRequiredAfterHold: true,
 }));
 const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
@@ -14786,6 +14796,12 @@ onBeforeUnmount(() => {
             :data-requires-hold-to-move="String(plainKeyboardRequiresHold)"
             :data-target-source="plainKeyboardTargetSource"
             :data-stop-triggers="manualBoundary?.keyboard_stop_triggers?.join(',') ?? 'key_released,window_blur,page_hidden,direction_changed,button_stop'"
+            :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
+            :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
+            :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
+            :data-same-hold-window-required="String(plainKeyboardDirectionButtonEvidence.sameHoldWindowRequired)"
+            :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
+            :data-stop-settled-after-pulse="String(keyboardStopSettledAfterPulse)"
             data-testid="keyboard-control-panel"
             @keydown="handleGlobalKeyDown"
             @keyup="handleGlobalKeyUp"
@@ -14819,6 +14835,11 @@ onBeforeUnmount(() => {
                 :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
                 :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                 :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
+                :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
+                :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
+                :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
+                :data-same-hold-window-required="String(plainKeyboardDirectionButtonEvidence.sameHoldWindowRequired)"
+                :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
                 @pointerdown="handleKeyboardDirectionPointerDown('forward', $event)"
                 @pointerup="handleKeyboardDirectionPointerEnd('forward', 'screen_button_released')"
                 @pointerleave="handleKeyboardDirectionPointerEnd('forward', 'screen_button_left')"
@@ -14839,6 +14860,11 @@ onBeforeUnmount(() => {
                   :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
                   :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                   :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
+                  :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
+                  :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
+                  :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
+                  :data-same-hold-window-required="String(plainKeyboardDirectionButtonEvidence.sameHoldWindowRequired)"
+                  :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
                   @pointerdown="handleKeyboardDirectionPointerDown('left', $event)"
                   @pointerup="handleKeyboardDirectionPointerEnd('left', 'screen_button_released')"
                   @pointerleave="handleKeyboardDirectionPointerEnd('left', 'screen_button_left')"
@@ -14870,6 +14896,11 @@ onBeforeUnmount(() => {
                   :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
                   :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                   :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
+                  :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
+                  :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
+                  :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
+                  :data-same-hold-window-required="String(plainKeyboardDirectionButtonEvidence.sameHoldWindowRequired)"
+                  :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
                   @pointerdown="handleKeyboardDirectionPointerDown('right', $event)"
                   @pointerup="handleKeyboardDirectionPointerEnd('right', 'screen_button_released')"
                   @pointerleave="handleKeyboardDirectionPointerEnd('right', 'screen_button_left')"
@@ -14890,6 +14921,11 @@ onBeforeUnmount(() => {
                 :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
                 :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                 :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
+                :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
+                :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
+                :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
+                :data-same-hold-window-required="String(plainKeyboardDirectionButtonEvidence.sameHoldWindowRequired)"
+                :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
                 @pointerdown="handleKeyboardDirectionPointerDown('back', $event)"
                 @pointerup="handleKeyboardDirectionPointerEnd('back', 'screen_button_released')"
                 @pointerleave="handleKeyboardDirectionPointerEnd('back', 'screen_button_left')"
