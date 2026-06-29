@@ -903,3 +903,10 @@ PC 普通首屏地图默认使用大图模式，并提供“收起地图/放大�
 `ros2 launch ros2_trashbot_bringup rviz.launch.py` 会加载 `rviz/trashbot_nav.rviz`，默认显示 `/map`、`/scan`、
 TF、`/plan` 和 `/amcl_pose`。该配置不包含 2D Goal/SetGoal 工具，避免绕过 PC 工作站的安全确认链路；真实
 Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场安全确认和同窗口 wheel raw L/R 非零复验。
+
+2026-06-30 11:15 CST 起，`action_status_cards[].id=camera_preview.evidence` 继续拆清两层事实：
+`camera_current_frame_visible` 只表示当前 PC 页面是否已经绘制出共享预览，`camera_source_first_frame_ready`、
+`camera_source_readiness` 和 `camera_blocks_mapping_start` 表示相机源首帧是否已证明以及是否会影响建图启动。
+因此现场出现“相机源已首帧 ready，但本页预览暂未渲染”时，画面卡不会再误报“影响建图”；建图启动仍由
+`mapping_start_ready` 和缺口数组统一收口。该变化只修正只读 summary/UI/DOM 证据，不打开独占相机、不启动建图、
+不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。

@@ -4035,6 +4035,8 @@ describe("workstation fail-closed API contracts", () => {
         status: "not_visible",
         evidence: {
           camera_current_frame_visible: false,
+          camera_source_first_frame_ready: false,
+          camera_blocks_mapping_start: true,
           shared_preview_multi_viewer: true,
           shared_capture: true,
           exclusive_camera_claim: false,
@@ -4744,6 +4746,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.action_status_cards?.find((card) => card.id === "camera_preview")).toMatchObject({
         evidence: {
           camera_current_frame_visible: false,
+          camera_source_first_frame_ready: false,
+          camera_blocks_mapping_start: true,
           shared_preview_multi_viewer: true,
           shared_capture: true,
           exclusive_camera_claim: false,
@@ -8958,6 +8962,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.first_frame_probe_open_ok).toBe("true");
       expect(summary.readback_summary.camera.first_frame_probe_read_ok).toBe("true");
       expect(summary.readback_summary.camera.first_frame_probe_visible_content_proven).toBe("true");
+      expect(summary.action_status_cards?.find((card) => card.id === "camera_preview")).toMatchObject({
+        blocks_mapping_start: false,
+        evidence: {
+          camera_current_frame_visible: false,
+          camera_source_first_frame_ready: true,
+          camera_source_readiness: "first_frame_observed",
+          camera_blocks_mapping_start: false,
+          source_first_frame_failed: false,
+          first_frame_probe_read_ok: true,
+          visible_content_proven: true,
+        },
+      });
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
     } finally {

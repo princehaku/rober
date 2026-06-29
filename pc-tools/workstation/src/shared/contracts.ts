@@ -2459,6 +2459,9 @@ export interface RobotControlActionStatusCard {
     mapping_start_missing_reasons?: string[];
     mapping_acceptance_missing_reasons?: string[];
     camera_current_frame_visible?: boolean;
+    camera_source_first_frame_ready?: boolean;
+    camera_source_readiness?: string;
+    camera_blocks_mapping_start?: boolean;
     shared_preview_multi_viewer?: boolean;
     shared_capture?: boolean;
     exclusive_camera_claim?: boolean;

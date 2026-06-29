@@ -4398,3 +4398,10 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `next_base_command_mode`：没有显式传 `base_command_mode` 时，若上次 ROS/T=13 路线 action 成功但 wheel L/R 仍为 0/0，
 下一次默认会切到 SPEED/T=1 复验；显式传入 `ros/speed/pwm` 仍优先生效。PC 前端原本已经会传该模式，本轮补齐的是
 旧脚本或直连 8787 的默认行为，避免自动驾驶重复同一个零轮速控制链。
+
+2026-06-30 11:15 CST 起，Robot Control 的 `camera_preview` action card 把“当前页面画面是否已绘制”和
+“相机源首帧是否已证明”拆成独立证据：`camera_current_frame_visible` 保留页面 WYSIWYG 状态，
+`camera_source_first_frame_ready/camera_source_readiness/camera_blocks_mapping_start` 表示源首帧 readiness 和建图阻塞口径。
+建图卡仍以 `mapping_start_ready` 为最终放行事实；当 PC Node 已通过 health/probe 证明 `first_frame_observed`、
+但本页共享预览 `<img>` 还未绘制时，画面卡不再显示“影响建图”。该变化只更新只读 summary、前端 DOM 属性和测试合同，
+不创建额外 camera reader、不执行 free-roam/map/Nav2/manual/keyboard/delivery/stop 或 `/cmd_vel`。

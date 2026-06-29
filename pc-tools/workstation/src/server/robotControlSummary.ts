@@ -7237,6 +7237,10 @@ function buildActionStatusCards(
 ): RobotControlSummaryResponse["action_status_cards"] {
   // 这些卡片是首屏“现在能做什么”的结构化摘要，不新增任何控制能力或放行条件。
   const cameraVisible = readback.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
+  const cameraSourceFirstFrameReady = readback.camera.source_readiness === "first_frame_observed"
+    || readback.camera.source_diagnosis_status === "first_frame_observed"
+    || actionCardBoolean(readback.camera.first_frame_probe_read_ok, false)
+    || actionCardBoolean(readback.camera.first_frame_probe_visible_content_proven, false);
   const mapVisible = mapWysiwygVisibleFromPlain(readback.map.map_wysiwyg_status_plain);
   const mapPathVisible = readback.map.path_preview_status === "path_preview_observed";
   const mapRobotPoseVisible = readback.map.robot_pose_status === "map_pose_observed";
@@ -7275,9 +7279,12 @@ function buildActionStatusCards(
       can_start_after_safety_confirm: false,
       sends_motion_when_clicked: false,
       blocks_free_motion: false,
-      blocks_mapping_start: !cameraVisible,
+      blocks_mapping_start: !cameraSourceFirstFrameReady,
       evidence: {
         camera_current_frame_visible: cameraVisible,
+        camera_source_first_frame_ready: cameraSourceFirstFrameReady,
+        camera_source_readiness: readback.camera.source_readiness,
+        camera_blocks_mapping_start: !cameraSourceFirstFrameReady,
         shared_preview_multi_viewer: readback.camera.shared_preview_multi_viewer_status === "single_upstream_multi_viewer",
         shared_capture: actionCardBoolean(readback.camera.shared_preview_shared_capture, true),
         exclusive_camera_claim: actionCardBoolean(readback.camera.shared_preview_exclusive_camera_claim, false),

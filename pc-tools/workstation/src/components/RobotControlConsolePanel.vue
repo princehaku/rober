@@ -3068,11 +3068,20 @@ function actionCardWithDerivedEvidence(
   if (card.id === "camera_preview") {
     const camera = robotSummary.value?.readback_summary.camera;
     const currentFrameVisible = camera?.preview_visible_status === "visible" || camera?.camera_wysiwyg_status_plain?.startsWith("画面已可见") === true;
+    const sourceFirstFrameReady = camera?.source_readiness === "first_frame_observed"
+      || camera?.source_diagnosis_status === "first_frame_observed"
+      || boolText(camera?.first_frame_probe_read_ok, false)
+      || boolText(camera?.first_frame_probe_visible_content_proven, false);
+    const cameraBlocksMappingStart = card.evidence?.camera_blocks_mapping_start ?? (sourceFirstFrameReady ? false : card.blocks_mapping_start);
     return {
       ...card,
+      blocks_mapping_start: cameraBlocksMappingStart,
       evidence: {
         ...card.evidence,
         camera_current_frame_visible: card.evidence?.camera_current_frame_visible ?? currentFrameVisible,
+        camera_source_first_frame_ready: card.evidence?.camera_source_first_frame_ready ?? sourceFirstFrameReady,
+        camera_source_readiness: card.evidence?.camera_source_readiness ?? camera?.source_readiness ?? "not_loaded",
+        camera_blocks_mapping_start: cameraBlocksMappingStart,
         shared_preview_multi_viewer: card.evidence?.shared_preview_multi_viewer ?? camera?.shared_preview_multi_viewer_status === "single_upstream_multi_viewer",
         shared_capture: card.evidence?.shared_capture ?? boolText(camera?.shared_preview_shared_capture, true),
         exclusive_camera_claim: card.evidence?.exclusive_camera_claim ?? boolText(camera?.shared_preview_exclusive_camera_claim, false),
@@ -13566,6 +13575,9 @@ onBeforeUnmount(() => {
           :data-mapping-start-missing-reasons="card.evidence?.mapping_start_missing_reasons?.join(',')"
           :data-mapping-acceptance-missing-reasons="card.evidence?.mapping_acceptance_missing_reasons?.join(',')"
           :data-camera-current-frame-visible="card.evidence?.camera_current_frame_visible === undefined ? undefined : String(card.evidence.camera_current_frame_visible)"
+          :data-camera-source-first-frame-ready="card.evidence?.camera_source_first_frame_ready === undefined ? undefined : String(card.evidence.camera_source_first_frame_ready)"
+          :data-camera-source-readiness="card.evidence?.camera_source_readiness"
+          :data-camera-blocks-mapping-start="card.evidence?.camera_blocks_mapping_start === undefined ? undefined : String(card.evidence.camera_blocks_mapping_start)"
           :data-shared-preview-multi-viewer="card.evidence?.shared_preview_multi_viewer === undefined ? undefined : String(card.evidence.shared_preview_multi_viewer)"
           :data-shared-capture="card.evidence?.shared_capture === undefined ? undefined : String(card.evidence.shared_capture)"
           :data-exclusive-camera-claim="card.evidence?.exclusive_camera_claim === undefined ? undefined : String(card.evidence.exclusive_camera_claim)"

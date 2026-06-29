@@ -4732,6 +4732,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("启用键盘");
     const cameraActionCard = wrapper.find('[data-testid="plain-action-status-card-camera_preview"]');
     expect(cameraActionCard.attributes("data-camera-current-frame-visible")).toBe("false");
+    expect(cameraActionCard.attributes("data-camera-source-first-frame-ready")).toBe("false");
+    expect(cameraActionCard.attributes("data-camera-blocks-mapping-start")).toBe("true");
     expect(cameraActionCard.attributes("data-shared-preview-multi-viewer")).toBe("true");
     expect(cameraActionCard.attributes("data-shared-capture")).toBe("true");
     expect(cameraActionCard.attributes("data-exclusive-camera-claim")).toBe("false");
@@ -5091,6 +5093,37 @@ describe("App", () => {
     expect(diagnostics.text()).not.toContain("现场有人扶控并准备急停");
     expect(diagnostics.text()).not.toContain("本轮不是自动导航任务");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("keeps camera source first-frame readiness separate from current page preview visibility", async () => {
+    // 共享预览可能还没在本页绘制，但只要源首帧已证明，就不能让画面卡误报阻塞建图。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    const camera = summaryFixture.readback_summary.camera;
+    camera.status = "ready";
+    camera.source_readiness = "first_frame_observed";
+    camera.source_diagnosis_status = "first_frame_observed";
+    camera.preview_visible_status = "not_visible_idle";
+    camera.camera_wysiwyg_status_plain = "画面未显示：页面会自动接入共享 MJPEG 预览。";
+    camera.first_frame_probe_read_ok = "true";
+    camera.first_frame_probe_visible_content_proven = "true";
+    const cameraCard = summaryFixture.action_status_cards?.find((card) => card.id === "camera_preview");
+    if (!cameraCard) {
+      throw new Error("camera action card missing from fixture");
+    }
+    cameraCard.blocks_mapping_start = true;
+    cameraCard.evidence = undefined;
+    stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const cameraActionCard = wrapper.find('[data-testid="plain-action-status-card-camera_preview"]');
+    expect(cameraActionCard.attributes("data-camera-current-frame-visible")).toBe("false");
+    expect(cameraActionCard.attributes("data-camera-source-first-frame-ready")).toBe("true");
+    expect(cameraActionCard.attributes("data-camera-source-readiness")).toBe("first_frame_observed");
+    expect(cameraActionCard.attributes("data-camera-blocks-mapping-start")).toBe("false");
+    expect(cameraActionCard.text()).not.toContain("影响建图");
   });
 
   it("routes the sensor shortcut from structured action cards instead of camera wording", async () => {
