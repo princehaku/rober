@@ -4051,7 +4051,17 @@ describe("workstation fail-closed API contracts", () => {
         can_start_after_safety_confirm: true,
         sends_motion_when_clicked: false,
         blocks_free_motion: false,
+        evidence: {
+          hold_to_move_required: true,
+          arm_sends_motion: false,
+          requires_keydown_for_motion: true,
+          pulse_interval_ms: 260,
+          pulse_duration_ms: 240,
+          manual_command_mode: "ros",
+          wheel_feedback_required_in_same_hold_window: true,
+        },
       });
+      expect(actionCards.find((card) => card.id === "keyboard_control")?.evidence?.stop_triggers).toContain("window_blur");
       expect(actionCards.find((card) => card.id === "free_move")).toMatchObject({
         status_label: "可启动",
         requires_safety_confirmation: true,

@@ -856,3 +856,10 @@ readback 运动字段提升到顶层。现场若上次 PWM action 成功但轮�
 `data-current-on-map`、`data-current-point-count` 等只读属性，方便现场脚本验证“地图上实际画了几个当前雷达点”和
 “旧来源点是否只作诊断”。该变化只补只读 summary/UI 证据，不启动雷达、不刷新地图、不执行 Nav2、不调用
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 23:43 CST 起，`action_status_cards[].id=keyboard_control.evidence` 返回键盘连续手控的结构化合同：
+`hold_to_move_required=true`、`arm_sends_motion=false`、`requires_keydown_for_motion=true`、
+`pulse_interval_ms=260`、`pulse_duration_ms=240`、`manual_command_mode=ros`、
+`stop_triggers[]` 和 `wheel_feedback_required_in_same_hold_window=true`。普通首屏同步把这些事实暴露为只读
+`data-*` 属性，方便脚本确认“启用键盘不发车，只有按住方向键/WASD 才发低速短脉冲，松开/失焦/切页会停”。
+该变化只补只读 summary/UI 证据，不启用键盘、不发送 manual pulse、不执行 Nav2/free-roam/delivery/stop 或 `/cmd_vel`。

@@ -2425,6 +2425,14 @@ export interface RobotControlActionStatusCard {
     frame_id?: string;
     source_frame_id?: string;
     blocked_reasons?: string[];
+    hold_to_move_required?: boolean;
+    arm_sends_motion?: boolean;
+    requires_keydown_for_motion?: boolean;
+    pulse_interval_ms?: number;
+    pulse_duration_ms?: number;
+    manual_command_mode?: string;
+    stop_triggers?: string[];
+    wheel_feedback_required_in_same_hold_window?: boolean;
   };
 }
 

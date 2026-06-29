@@ -7323,6 +7323,16 @@ function buildActionStatusCards(
       sends_motion_when_clicked: false,
       blocks_free_motion: false,
       blocks_mapping_start: false,
+      evidence: {
+        hold_to_move_required: true,
+        arm_sends_motion: false,
+        requires_keydown_for_motion: true,
+        pulse_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
+        pulse_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
+        manual_command_mode: readback.keyboard.manual_command_mode || "ros",
+        stop_triggers: boundary.keyboard_stop_triggers,
+        wheel_feedback_required_in_same_hold_window: true,
+      },
     },
     {
       id: "free_move",

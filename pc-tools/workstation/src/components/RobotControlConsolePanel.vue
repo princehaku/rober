@@ -3046,9 +3046,33 @@ const plainMappingUnlockRefreshButtonLabel = computed(() => {
   return "刷新建图条件（只读）";
 });
 
+function keyboardActionCardWithEvidence(
+  card: NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number],
+): NonNullable<RobotControlSummaryResponse["action_status_cards"]>[number] {
+  // 兼容旧 summary：后端还没带 evidence 时，前端用同一份安全边界补只读合同，不改变任何控制能力。
+  if (card.id !== "keyboard_control") {
+    return card;
+  }
+  const boundary = robotSummary.value?.safe_command_boundary;
+  return {
+    ...card,
+    evidence: {
+      ...card.evidence,
+      hold_to_move_required: card.evidence?.hold_to_move_required ?? true,
+      arm_sends_motion: card.evidence?.arm_sends_motion ?? false,
+      requires_keydown_for_motion: card.evidence?.requires_keydown_for_motion ?? true,
+      pulse_interval_ms: card.evidence?.pulse_interval_ms ?? boundary?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS,
+      pulse_duration_ms: card.evidence?.pulse_duration_ms ?? boundary?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS,
+      manual_command_mode: card.evidence?.manual_command_mode ?? boundary?.keyboard_manual_command_mode ?? "ros",
+      stop_triggers: card.evidence?.stop_triggers ?? boundary?.keyboard_stop_triggers ?? ["key_released", "window_blur", "page_hidden"],
+      wheel_feedback_required_in_same_hold_window: card.evidence?.wheel_feedback_required_in_same_hold_window ?? true,
+    },
+  };
+}
+
 const plainActionStatusCards = computed(() => {
   // 后端动作卡是普通首屏的结构化摘要；旧 summary 没有该字段时继续使用上面的事实列表。
-  return robotSummary.value?.action_status_cards ?? [];
+  return (robotSummary.value?.action_status_cards ?? []).map(keyboardActionCardWithEvidence);
 });
 const plainGoalChecklist = computed(() => {
   // 目标检查只展示只读验收口径；ready/待确认不会被写成已完成。
@@ -13374,6 +13398,14 @@ onBeforeUnmount(() => {
           :data-frame-id="card.evidence?.frame_id"
           :data-source-frame-id="card.evidence?.source_frame_id"
           :data-blocked-reasons="card.evidence?.blocked_reasons?.join(',')"
+          :data-hold-to-move-required="card.evidence?.hold_to_move_required === undefined ? undefined : String(card.evidence.hold_to_move_required)"
+          :data-arm-sends-motion="card.evidence?.arm_sends_motion === undefined ? undefined : String(card.evidence.arm_sends_motion)"
+          :data-requires-keydown-for-motion="card.evidence?.requires_keydown_for_motion === undefined ? undefined : String(card.evidence.requires_keydown_for_motion)"
+          :data-pulse-interval-ms="card.evidence?.pulse_interval_ms === undefined ? undefined : String(card.evidence.pulse_interval_ms)"
+          :data-pulse-duration-ms="card.evidence?.pulse_duration_ms === undefined ? undefined : String(card.evidence.pulse_duration_ms)"
+          :data-manual-command-mode="card.evidence?.manual_command_mode"
+          :data-stop-triggers="card.evidence?.stop_triggers?.join(',')"
+          :data-wheel-feedback-same-hold-window="card.evidence?.wheel_feedback_required_in_same_hold_window === undefined ? undefined : String(card.evidence.wheel_feedback_required_in_same_hold_window)"
         >
           <div class="plain-action-card-head">
             <strong>{{ plainActionCardUserText(card.title) }}</strong>

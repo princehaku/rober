@@ -4778,6 +4778,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("必须按住 W/A/S/D 或方向键才会连续低速移动");
     expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求");
     expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toBe("下一步：勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。");
+    const keyboardActionCard = wrapper.find('[data-testid="plain-action-status-card-keyboard_control"]');
+    expect(keyboardActionCard.attributes("data-hold-to-move-required")).toBe("true");
+    expect(keyboardActionCard.attributes("data-arm-sends-motion")).toBe("false");
+    expect(keyboardActionCard.attributes("data-requires-keydown-for-motion")).toBe("true");
+    expect(keyboardActionCard.attributes("data-pulse-interval-ms")).toBe("260");
+    expect(keyboardActionCard.attributes("data-pulse-duration-ms")).toBe("240");
+    expect(keyboardActionCard.attributes("data-manual-command-mode")).toBe("ros");
+    expect(keyboardActionCard.attributes("data-stop-triggers")).toContain("window_blur");
+    expect(keyboardActionCard.attributes("data-wheel-feedback-same-hold-window")).toBe("true");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：安全确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选现场安全确认后点击启用键盘");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("已完成。");
