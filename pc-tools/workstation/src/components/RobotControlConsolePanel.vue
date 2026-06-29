@@ -4727,7 +4727,12 @@ const plainMapVisualSummary = computed(() => {
   const radarReadback = effectivePlainMapRadarReadback();
   const radarLocalPointCount = radarLocalScanOverlay.dots.length;
   const radarMapPointCount = radarScanOverlay.dots.length;
-  const radarOverlayStatus = robotSummary.value?.readback_summary.map.radar_overlay_status || "not_loaded";
+  const previewRadarOverlayStatus = mapPreviewResult.value?.proxy_status === "preview_forwarded"
+    && mapPreviewResult.value.radar_overlay?.overlay_status
+    && !["not_loaded", "none"].includes(mapPreviewResult.value.radar_overlay.overlay_status)
+    ? mapPreviewResult.value.radar_overlay.overlay_status
+    : "";
+  const radarOverlayStatus = previewRadarOverlayStatus || robotSummary.value?.readback_summary.map.radar_overlay_status || "not_loaded";
   const radarSourcePointCount = radarReadback.sourcePointCount ?? 0;
   const radarCountOnlyMarkerLabel = radarPreviewCountOnlyMarkerLabel(radarState);
   const radarObstacleDistanceLabel = latestRadarObstacleDistanceLabel();
@@ -4951,6 +4956,32 @@ const plainMapVisualSummary = computed(() => {
     freeRoamActionMarkerState: freeRoamActionMarker?.state ?? "",
     freeRoamActionMarkerStyle: freeRoamActionMarker?.style ?? {},
     freeRoamActionMarkerAria: freeRoamActionMarker?.aria ?? "",
+  };
+});
+const plainRadarMapDomEvidence = computed(() => {
+  // 雷达卡复用地图卡的贴图事实，避免一处说已贴图、另一处其实没画出来。
+  const map = plainMapVisualSummary.value;
+  const startSucceeded = radarStartSucceeded(radarLifecycleResult.value);
+  const refreshPending = mapPreviewPending.value || mapRefreshPending.value || radarRefreshPending.value;
+  const mapFailure = mapPreviewFailureText(mapPreviewResult.value);
+  const oldPointsSuppressed = summaryRadarOverlayNotCurrentForPlainMap();
+  const startOrRestartRequested = startSucceeded || radarLifecyclePendingAction.value === "start" || radarRestartPending.value;
+  return {
+    mapPointsVisible: map.radarMapPointsVisible,
+    mapPointCount: map.radarMapPointCount,
+    mapSourcePointCount: map.radarMapSourcePointCount,
+    mapFrameId: map.radarMapFrameId,
+    mapSource: map.radarMapSource,
+    mapOverlayStatus: map.radarMapOverlayStatus,
+    mapLocalPointCount: map.radarMapLocalPointCount,
+    mapNotCurrentSourcePointCount: map.radarMapNotCurrentSourcePointCount,
+    mapCountOnlyPointCount: map.radarMapCountOnlyPointCount,
+    startMapRefreshRequired: true,
+    startMapRefreshPending: startOrRestartRequested && refreshPending,
+    startMapRefreshFailed: startOrRestartRequested && Boolean(mapFailure),
+    startMapRefreshComplete: startOrRestartRequested && map.radarMapPointsVisible && !refreshPending && !mapFailure,
+    oldPointsSuppressed,
+    fixedRadarMapPreviewEndpoint: map.fixedRadarMapPreviewEndpoint,
   };
 });
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
@@ -14358,6 +14389,21 @@ onBeforeUnmount(() => {
           data-radar-restart-refreshes-map-preview="true"
           data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
           data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+          :data-radar-map-points-visible="String(plainRadarMapDomEvidence.mapPointsVisible)"
+          :data-radar-map-point-count="String(plainRadarMapDomEvidence.mapPointCount)"
+          :data-radar-map-source-point-count="String(plainRadarMapDomEvidence.mapSourcePointCount)"
+          :data-radar-map-frame-id="plainRadarMapDomEvidence.mapFrameId"
+          :data-radar-map-source="plainRadarMapDomEvidence.mapSource"
+          :data-radar-map-overlay-status="plainRadarMapDomEvidence.mapOverlayStatus"
+          :data-radar-local-point-count="String(plainRadarMapDomEvidence.mapLocalPointCount)"
+          :data-radar-not-current-source-point-count="String(plainRadarMapDomEvidence.mapNotCurrentSourcePointCount)"
+          :data-radar-count-only-point-count="String(plainRadarMapDomEvidence.mapCountOnlyPointCount)"
+          :data-radar-start-map-refresh-required="String(plainRadarMapDomEvidence.startMapRefreshRequired)"
+          :data-radar-start-map-refresh-pending="String(plainRadarMapDomEvidence.startMapRefreshPending)"
+          :data-radar-start-map-refresh-failed="String(plainRadarMapDomEvidence.startMapRefreshFailed)"
+          :data-radar-start-map-refresh-complete="String(plainRadarMapDomEvidence.startMapRefreshComplete)"
+          :data-radar-old-points-suppressed="String(plainRadarMapDomEvidence.oldPointsSuppressed)"
+          :data-radar-map-marker-wysiwyg-endpoint="plainRadarMapDomEvidence.fixedRadarMapPreviewEndpoint"
         >
           <h3>雷达</h3>
           <div class="panel-action-row">

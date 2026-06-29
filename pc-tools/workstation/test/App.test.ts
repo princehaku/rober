@@ -18565,6 +18565,16 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达未运行，旧点未贴图");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达未运行，地图位置未读到，旧雷达点 65 个已过期未贴到地图");
+    const radarPanel = wrapper.find('[data-testid="plain-radar-panel"]');
+    expect(radarPanel.attributes("data-radar-map-points-visible")).toBe("false");
+    expect(radarPanel.attributes("data-radar-map-point-count")).toBe("0");
+    expect(radarPanel.attributes("data-radar-map-source-point-count")).toBe("65");
+    expect(radarPanel.attributes("data-radar-map-overlay-status")).toBe("not_current");
+    expect(radarPanel.attributes("data-radar-not-current-source-point-count")).toBe("65");
+    expect(radarPanel.attributes("data-radar-start-map-refresh-required")).toBe("true");
+    expect(radarPanel.attributes("data-radar-start-map-refresh-complete")).toBe("false");
+    expect(radarPanel.attributes("data-radar-old-points-suppressed")).toBe("true");
+    expect(radarPanel.attributes("data-radar-map-marker-wysiwyg-endpoint")).toBe("/api/robot-control/map/preview");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图；启动或刷新雷达后才显示新点位。");
     expect(wrapper.find('[data-testid="plain-map-radar-next-action"]').text()).toBe("地图下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。");
     expect(wrapper.find('[data-testid="plain-radar-next-action"]').text()).toBe("雷达下一步：先点启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。");
@@ -19662,6 +19672,12 @@ describe("App", () => {
     expect(radarPanel.attributes("data-radar-start-refreshes-map-preview")).toBe("true");
     expect(radarPanel.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(radarPanel.attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(radarPanel.attributes("data-radar-map-points-visible")).toBe("false");
+    expect(radarPanel.attributes("data-radar-map-point-count")).toBe("0");
+    expect(radarPanel.attributes("data-radar-start-map-refresh-required")).toBe("true");
+    expect(radarPanel.attributes("data-radar-start-map-refresh-pending")).toBe("false");
+    expect(radarPanel.attributes("data-radar-start-map-refresh-complete")).toBe("false");
+    expect(radarPanel.attributes("data-radar-old-points-suppressed")).toBe("false");
 
     delayNextMapProofRefresh = true;
     const mapProofButton = wrapper.findAll("button").find((button) => button.text() === "刷新地图");
@@ -19723,6 +19739,8 @@ describe("App", () => {
 
     expect(radarProofRefreshStarted).toBe(true);
     expect(visiblePlainHomeText(wrapper)).toContain("雷达启动已返回，正在刷新新雷达点；返回前不把旧点当作新点。");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-radar-start-map-refresh-pending")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-panel"]').attributes("data-radar-start-map-refresh-complete")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已启动，位置未读到");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已启动，地图位置未读到，返回前不把旧点当作新点");
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达启动已返回，正在刷新新点位；返回前不把旧点当作新点。");
@@ -19748,6 +19766,17 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-radar-map-source-point-count")).toBe("2");
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-radar-map-frame-id")).toBe("laser_frame");
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-radar-map-source")).toBe("map_preview");
+    const refreshedRadarPanel = wrapper.find('[data-testid="plain-radar-panel"]');
+    expect(refreshedRadarPanel.attributes("data-radar-map-points-visible")).toBe("true");
+    expect(refreshedRadarPanel.attributes("data-radar-map-point-count")).toBe("2");
+    expect(refreshedRadarPanel.attributes("data-radar-map-source-point-count")).toBe("2");
+    expect(refreshedRadarPanel.attributes("data-radar-map-frame-id")).toBe("laser_frame");
+    expect(refreshedRadarPanel.attributes("data-radar-map-source")).toBe("map_preview");
+    expect(refreshedRadarPanel.attributes("data-radar-map-overlay-status")).toBe("loaded");
+    expect(refreshedRadarPanel.attributes("data-radar-start-map-refresh-pending")).toBe("false");
+    expect(refreshedRadarPanel.attributes("data-radar-start-map-refresh-failed")).toBe("false");
+    expect(refreshedRadarPanel.attributes("data-radar-start-map-refresh-complete")).toBe("true");
+    expect(refreshedRadarPanel.attributes("data-radar-old-points-suppressed")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-radar-map-points-visible")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-radar-map-point-count")).toBe("2");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
