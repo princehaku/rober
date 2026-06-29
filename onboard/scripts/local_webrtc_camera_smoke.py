@@ -727,7 +727,7 @@ def build_source_diagnosis(
     other_owner_count = int(source_usage.get("other_owner_count") or 0) if str(source_usage.get("other_owner_count") or "").isdigit() else 0
     selected_name = str((selected_candidate or {}).get("v4l2_name") or (selected_candidate or {}).get("sysfs_name") or selected_path or "camera")
     selected_is_uvc = bool((selected_candidate or {}).get("is_uvc_or_usb"))
-    not_exclusive = usage_status == "not_in_use" or (owner_count <= 0 and other_owner_count <= 0)
+    not_exclusive = usage_status in {"not_in_use", "in_use_by_camera_service"} or other_owner_count <= 0
     if not selected_path:
         status = "no_video_source"
         plain_hint = "没有选中可用摄像头源；检查 USB 摄像头枚举。"
@@ -828,7 +828,11 @@ def mjpeg_camera_capture_attempt_specs(width: int, height: int, fps: int) -> lis
     priority_specs = [
         # 现场 DV20 枚举没有 15fps MJPG；共享首屏先试真实离散 30fps，避免把 3 秒预算花在不支持组合上。
         CameraCaptureAttemptSpec("MJPG", width, height, 30),
-        # 真实 DV20 枚举里 YUYV 640x480 是 22fps；早试它可以验证“不是只卡 MJPG”。
+        # 首屏预览宁可先降分辨率出画面；低带宽模式更容易绕开 USB/带宽/格式协商问题。
+        CameraCaptureAttemptSpec("MJPG", 480, 320, 30),
+        # 真实 DV20 枚举里 320x240 YUYV 是 25/20fps；早试小帧 YUYV 可以验证“不是只卡 MJPG”。
+        CameraCaptureAttemptSpec("YUYV", 320, 240, 25),
+        # 640x480 YUYV 仍保留在 default 前，方便现场判断是不是只有低分辨率可读。
         CameraCaptureAttemptSpec("YUYV", width, height, 22),
         # 不写 V4L2 属性的原生模式可绕过部分驱动对 set(fourcc/fps) 的异常协商。
         CameraCaptureAttemptSpec(None, None, None, None, apply_settings=False),

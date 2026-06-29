@@ -800,3 +800,9 @@ readback 运动字段提升到顶层。现场若上次 PWM action 成功但轮�
 若上次 ROS 仍未证明，则建议 `speed`。顶层仍保持 `robot_control_executed=false`、`sends_motion_commands=false`、
 `publishes_cmd_vel=false` 和 `safe_to_control=false`，只用于 PC 诊断和下一次显式安全确认后的执行模式选择，
 不自动执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 14:48 CST 起，上位机 8088 共享 MJPEG 首帧短预算优先尝试低带宽真实离散模式：`MJPG@640x480@30`
+之后先试 `MJPG@480x320@30` 和 `YUYV@320x240@25`，再试 `YUYV@640x480@22` 与 default。这样现场 DV20 UVC
+在 640x480 大帧无首帧时，PC 普通首屏会尽快尝试更容易出图的小帧模式；多人仍共用同一个上游 capture。
+8088 自己短暂持有 shared capture 且没有其他 owner 时，health 仍保持“不是页面独占”的归因。该变化只调整相机取帧尝试顺序
+和只读诊断，不新建底盘控制、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

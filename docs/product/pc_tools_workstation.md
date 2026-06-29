@@ -4221,3 +4221,10 @@ free-roam、delivery、stop 或 `/cmd_vel`。
 该修复只读已有 `/root/rober/onboard/runtime/nav2_goal_execution_latest.json`，不重写 artifact、不启动自动驾驶、
 不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。轮速/反馈底层事实仍采用
 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER UART JSON/T1001 资料。
+
+2026-06-29 14:48 CST 起，上位机 8088 共享 MJPEG 的首帧尝试顺序更贴近“谁打开都尽快看到画面”的目标。
+短预算不再第三步就回到当前内核默认模式，而是在 `MJPG@640x480@30` 后优先尝试 DV20 枚举里的低带宽离散模式：
+`MJPG@480x320@30`、`YUYV@320x240@25`，再试 `YUYV@640x480@22` 和 default。多人预览仍复用同一条上游 capture；
+若这些模式仍全部无首帧，PC 会继续明确显示“不是页面独占，UVC 没有输出视频帧”。该变化只调整相机取帧尝试顺序，
+并且 8088 自己短暂持有 shared capture 且没有其他 owner 时也不会被误写成页面独占；不影响底盘、雷达、Nav2、
+manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

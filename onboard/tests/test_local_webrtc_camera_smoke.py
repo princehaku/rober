@@ -623,12 +623,12 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(attempts, error["first_frame_format_attempts"])
 
     def test_mjpeg_attempt_specs_cover_yuyv_and_default_before_extra_mjpg_modes(self) -> None:
-        """共享预览 9 秒窗口内先试真实离散 MJPG，再跨格式验证，避免被不支持 fps 耗尽。"""
+        """共享预览 9 秒窗口内优先试低带宽离散模式，避免大帧模式吃完整个首屏预算。"""
         specs = camera.mjpeg_camera_capture_attempt_specs(640, 480, 15)
 
         self.assertEqual(
-            ["MJPG@640x480@30", "YUYV@640x480@22", "default@current", "MJPG@640x480@15"],
-            [spec.label() for spec in specs[:4]],
+            ["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25", "YUYV@640x480@22", "default@current"],
+            [spec.label() for spec in specs[:5]],
         )
         self.assertEqual(len(specs), len({(spec.fourcc, spec.width, spec.height, spec.fps, spec.apply_settings) for spec in specs}))
 
@@ -747,6 +747,46 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual("check_usb_camera_input_power_or_known_good_uvc", payload["source_diagnosis"]["next_action"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
+
+    def test_health_keeps_self_owned_shared_capture_not_exclusive(self) -> None:
+        """8088 自己短暂持有 shared capture 时，不能把无首帧误写成页面独占。"""
+        state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
+        state.last_offer_error = {
+            "error": "first_frame_unreadable",
+            "failure_reason": "first_frame_total_timeout",
+            "video_source": "/dev/video1",
+        }
+        snapshot = {
+            "candidates": [
+                {
+                    "path": "/dev/video1",
+                    "exists": True,
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                    "v4l2_name": "USB camera",
+                    "sysfs_name": "USB camera",
+                }
+            ]
+        }
+        usage = {
+            "checked": True,
+            "device": "/dev/video1",
+            "status": "in_use_by_camera_service",
+            "owner_count": 1,
+            "other_owner_count": 0,
+            "owners": [{"pid": 1234, "self": True, "command": "local_webrtc_camera_smoke.py"}],
+            "opens_camera": False,
+        }
+
+        with mock.patch.object(camera, "collect_video_candidates", return_value=snapshot):
+            with mock.patch.object(camera, "collect_device_usage", return_value=usage):
+                payload = state.health()
+
+        self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis"]["status"])
+        self.assertTrue(payload["source_diagnosis"]["not_exclusive"])
+        self.assertIn("不是页面独占", payload["source_diagnosis"]["plain_hint"])
 
     def test_health_reports_selected_source_usage_without_opening_camera(self) -> None:
         """health 要能解释占用状态，但不能通过 OpenCV 或 V4L2 打开摄像头。"""
