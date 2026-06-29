@@ -2668,6 +2668,20 @@ function plainCurrentAutonomousReadinessFactText(summary: RobotControlSummaryRes
   return `自动驾驶当前：未准备好，${blockers.join("，")}${currentRootCauseText}；${nextAction}。相机/雷达不挡底盘试动或键盘手控。`;
 }
 
+function plainSummaryCurrentFactText(summary: RobotControlSummaryResponse): string {
+  // 后端总事实已经按普通用户口径去掉 marker/overlay 等高级词；首屏先给总览，再保留本地 pending 行。
+  const text = plainNav2UserFacingText(summary.current_fact_plain?.trim().replace(/[。；\s]+$/g, "") ?? "")
+    .replace(/图上路线/g, "图上行程")
+    .replace(/路线/g, "行程")
+    .replace(/行程 action/g, "行程结果")
+    .replace(/wheel raw L\/R/g, "轮速 L/R")
+    .replace(/\braw\b/g, "原始读数");
+  if (!text || ["not_loaded", "none"].includes(text)) {
+    return "";
+  }
+  return `总览：${text}。`;
+}
+
 const plainCurrentFactRows = computed(() => {
   // 首屏事实条只翻译当前 readback，不新增任何控制权限或验收结论。
   const summary = robotSummary.value;
@@ -2678,6 +2692,10 @@ const plainCurrentFactRows = computed(() => {
   const rows: string[] = [];
   if (connectionFact) {
     rows.push(connectionFact);
+  }
+  const summaryFact = plainSummaryCurrentFactText(summary);
+  if (summaryFact) {
+    rows.push(summaryFact);
   }
   const camera = summary.readback_summary.camera;
   rows.push(plainCurrentCameraFactText(camera));

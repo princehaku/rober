@@ -3902,6 +3902,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("部分项目未通过，可展开高级诊断。");
     const currentFacts = wrapper.find('[data-testid="plain-current-facts"]');
     expect(currentFacts.exists()).toBe(true);
+    expect(currentFacts.text()).toContain("总览：画面未显示：页面会自动接入共享 MJPEG 预览；地图画面已读到，但图上行程还未显示");
+    expect(currentFacts.text()).not.toContain("雷达 marker");
+    expect(currentFacts.text()).not.toContain("overlay");
     expect(currentFacts.text()).toContain("画面：还没确认真实帧。");
     expect(currentFacts.text()).toContain("雷达：已运行，最近障碍 0.30m。");
     expect(currentFacts.text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个。");
