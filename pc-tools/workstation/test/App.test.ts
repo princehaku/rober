@@ -18812,6 +18812,55 @@ describe("App", () => {
     runningSummaryFixture.readback_summary.lidar.lifecycle_state = "running";
     runningSummaryFixture.readback_summary.lidar.continuous_window_observed = "true";
     runningSummaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "true";
+    const loadedMapPreviewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
+    const loadedRadarOverlayPoints = [
+      { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
+      { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
+    ];
+    loadedMapPreviewFixture.radar_overlay = {
+      overlay_status: "loaded",
+      status: "loaded",
+      plain_hint: "雷达点已按当前扫描和小车地图位置贴到地图。",
+      wysiwyg_status_plain: "雷达点已贴到当前地图：当前显示 2 个点，frame=laser_frame。",
+      wysiwyg_next_action_plain: "继续观察地图雷达层。",
+      next_action: "continue_monitoring_map_radar_overlay",
+      next_action_plain: "继续观察地图雷达层。",
+      scan_preview_points: loadedRadarOverlayPoints,
+      scan_preview_point_count: 2,
+      scan_preview_source_point_count: 2,
+      scan_preview_frame_id: "laser_frame",
+      points: loadedRadarOverlayPoints,
+      count: 2,
+      source_count: 2,
+      frame_id: "laser_frame",
+      robot_pose: {
+        x: 0.5,
+        y: 0.5,
+        yaw: 0,
+        frame_id: "map",
+        source: "/api/map/preview.radar_overlay.robot_pose",
+      },
+      source_endpoint_ids: ["localize_proof_latest", "radar_scan_proof_latest"],
+      blocked_reasons: [],
+      blocked_reason_labels: [],
+    };
+    loadedMapPreviewFixture.radar_overlay_status = "loaded";
+    loadedMapPreviewFixture.radar_overlay_points = loadedRadarOverlayPoints;
+    loadedMapPreviewFixture.radar_overlay_count = 2;
+    loadedMapPreviewFixture.radar_overlay_point_count = 2;
+    loadedMapPreviewFixture.radar_overlay_source_count = 2;
+    loadedMapPreviewFixture.radar_overlay_source_point_count = 2;
+    loadedMapPreviewFixture.radar_overlay_scan_preview_point_count = 2;
+    loadedMapPreviewFixture.radar_overlay_scan_preview_source_point_count = 2;
+    loadedMapPreviewFixture.radar_overlay_frame_id = "laser_frame";
+    loadedMapPreviewFixture.robot_pose = {
+      x: 0.5,
+      y: 0.5,
+      yaw: 0,
+      frame_id: "map",
+      source: "/api/map/preview.radar_overlay.robot_pose",
+    };
+    loadedMapPreviewFixture.robot_pose_status = "map_pose_observed";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/radar/start": {
@@ -18849,6 +18898,12 @@ describe("App", () => {
         return Promise.resolve({
           ok: true,
           json: async () => (radarProofRefreshed ? runningSummaryFixture : summaryFixture),
+        });
+      }
+      if (String(url).startsWith("/api/robot-control/map/preview?")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => (radarProofRefreshed ? loadedMapPreviewFixture : fixtures["/api/robot-control/map/preview"]),
         });
       }
       if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextMapProofRefresh) {
@@ -18918,6 +18973,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("启动雷达");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeUndefined();
 
+    const mapPreviewCallsBeforeStart = mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length;
     const startClick = wrapper.find('[data-testid="plain-radar-start"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -18938,12 +18996,18 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达已运行");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，最近障碍 0.30m");
+    expect(mockedFetch.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/robot-control/map/preview?"),
+    ).length).toBe(mapPreviewCallsBeforeStart + 1);
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("data-state")).toBe("雷达已运行");
-    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已运行，地图位置未读到，最近障碍 0.30m，按雷达局部距离显示，未贴到地图");
+    expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已运行，已叠在机器人位置");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已运行扫描范围占位，等待机器人地图位置");
-    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：实时雷达未返回点数组，只显示最近障碍 0.30m，等点位或定位后再贴地图。");
+    expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("aria-label")).toBe("雷达已运行扫描范围，跟随机器人位置");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').attributes("aria-label")).toBe("雷达点位，地图预览雷达点 2 个");
+    expect(wrapper.find('[data-testid="plain-map-radar-scan-points"]').findAll("circle")).toHaveLength(2);
+    expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：地图预览随图返回 2 个雷达点，已贴到地图；实时性以当前地图刷新为准。");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-radar-refresh"]').exists()).toBe(true);
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(true);

@@ -87,6 +87,8 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 2026-06-28 08:53 CST 起，普通首屏地图在雷达启动请求未返回时，marker 和扫描范围说明会直接写明“旧点不当新点”；启动中、启动后自动刷新中、启动失败三段都不会把历史雷达点误标成实时地图点。
 
+2026-06-29 14:46 CST 起，普通首屏 `启动雷达` 或 `重启雷达` 成功后，会显式连续刷新 no-motion scan proof 和同轮 `/api/robot-control/map/preview`。地图 marker 只消费这次地图预览返回的 `radar_overlay`：有 map-frame 小车位置和 overlay 点时显示已贴到地图的雷达点；没有点数组或没有定位时继续显示局部点/最近距离并说明未贴图。该链路只刷新雷达 proof 和只读地图预览，不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-29 起，雷达停止请求未返回时，地图只保留“雷达停止请求中”marker，不再画实时扫描范围占位，也不显示最近距离读数；返回前不证明雷达已停止，也不把旧点当作停止后的地图点。该展示不触发 manual、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-28 08:57 CST 起，PC 屏幕方向键的普通说明明确写出拖出按钮也会停；测试锁定 `pointerleave` 会走固定 stop 代理，和松开、触控取消、窗口失焦、页面隐藏同一停止边界。

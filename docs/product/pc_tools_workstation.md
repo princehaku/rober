@@ -243,6 +243,11 @@ pc-tools/workstation/
 - 2026-06-28 07:19 CST 起，`启动雷达` 返回后自动刷新 scan proof 的 pending 窗口也统一显示
   `返回前不把旧点当作新点`。雷达卡、地图 marker aria、扫描范围 aria 和雷达点口径都不再把自动刷新中的旧雷达材料说成新点位。该状态只等待
   `/api/robot-control/radar/scan-proof/refresh` 返回，不执行 Nav2、manual、keyboard、delivery、free-roam、stop 或 `/cmd_vel`。
+- 2026-06-29 14:46 CST 起，`启动雷达` / `重启雷达` 成功后的自动刷新合同补齐到同轮地图画面：
+  scan proof 返回后必须再读一次 `/api/robot-control/map/preview`，普通地图只按该响应里的 `radar_overlay` 画雷达点。
+  如果同轮地图预览读到 map-frame 小车位置和 overlay 点，地图 marker 显示已贴到地图的雷达点；如果只读到最近距离、
+  局部点或缺定位，则继续明确写“未贴到地图”。这只刷新 proof 和只读地图预览，不执行 Nav2、manual、keyboard、
+  delivery、free-roam、stop 或 `/cmd_vel`。
 - 2026-06-26 11:15 起，普通首屏 `启动雷达` 成功返回后的自动雷达 proof 刷新失败也纳入回归：如果 start proxy 返回 `lifecycle_forwarded` 但随后 scan proof refresh 返回 `refresh_failed/fetch_failed`，雷达卡片保持 `刷新失败`，地图 marker 显示 `雷达刷新失败：<reason>`，扫描范围隐藏，freshness 明确说明未显示新点位。该失败态只表达自动刷新没有拿到新雷达点，不自动重试、不执行 Nav2、manual、keyboard pulse、delivery complete、stop 或 `/cmd_vel`。
 - 2026-06-26 05:05 起，普通首屏 `重新定位` 和高级 `定位重置（高级）` 也统一等待地图 WYSIWYG gate：地图画面或地图 proof 正在刷新时按钮显示/保持等待并禁用，定位 reset 函数入口早退。该状态不调用 `/api/localize/reset`，避免在旧地图画面/状态上更新机器人和雷达贴图位置。
 - 2026-06-28 07:23 CST 起，`重新定位` pending 时，即使上一轮 summary 仍带 map-frame 小车坐标，普通地图也隐藏旧小车 marker，改显示

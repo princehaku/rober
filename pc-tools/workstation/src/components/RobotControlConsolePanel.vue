@@ -10890,7 +10890,8 @@ async function startPlainRadarLifecycle(): Promise<void> {
   // 普通首屏启动成功后自动做一次只读刷新；失败时留在启动按钮，避免现场误以为已进入运行阶段。
   await startRadarLifecycle();
   if (radarStartSucceeded(radarLifecycleResult.value)) {
-    await refreshRadarProof();
+    // 雷达 proof 和地图预览必须连续刷新，避免地图继续展示启动前的旧雷达层。
+    await refreshRadarProof({ mapPreviewAfter: true });
     await nextTick();
     if (radarSummary.value.state !== "雷达已运行") {
       plainRadarRefreshButton.value?.focus({ preventScroll: true });
@@ -10915,7 +10916,8 @@ async function restartPlainRadarLifecycle(): Promise<void> {
   try {
     await stopRadarLifecycle();
     await startRadarLifecycle();
-    await refreshRadarProof({ focusAfterReady: false });
+    // 重启后也强制读同轮地图预览，保证雷达点是否贴图以当前画面为准。
+    await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true });
   } finally {
     radarRestartPending.value = false;
     await nextTick();
