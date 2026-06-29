@@ -146,7 +146,7 @@ readback 中的画面、地图、雷达 marker、Nav2 路线复验、键盘连�
 
 2026-06-29 02:48 CST 起，`readback_summary.keyboard` 直接返回键盘连续手控 readback：`status/start_ready/enabled/control_mode/manual_command_mode/manual_proxy_endpoint/stop_proxy_endpoint` 以及按住才移动、停止触发、脉冲节奏、下一步和最小门禁白话。外部脚本不用再从 `safe_command_boundary` 拼键盘事实，也能直接知道“启用键盘不发车，只有按住方向键/WASD 才发送 ROS 低速短脉冲”。该变化只补只读 summary 字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 
-2026-06-29 02:54 CST 起，`readback_summary.nav2` 增加 `goal_execution_wheel_raw_lr_status_plain` 和 `goal_execution_wheel_raw_lr_next_action_plain`。外部脚本只关心完整路线执行验收时，不需要从长句里解析 `execution_status_plain`；可以直接读取“上次路线 action 成功，但执行窗口 wheel raw L/R=0/0 未非零；已看到非零底盘命令，IMU 姿态有变化”以及“勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零”。该变化只补只读 Nav2 readback 字段，不执行 Nav2 goal、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+2026-06-29 02:54 CST 起，`readback_summary.nav2` 增加 `goal_execution_wheel_raw_lr_status_plain` 和 `goal_execution_wheel_raw_lr_next_action_plain`。2026-06-29 08:24 CST 起，这两个 plain 字段内容统一使用“执行窗口轮速 L/R”，字段名保留旧接口以兼容脚本。外部脚本只关心完整路线执行验收时，不需要从长句里解析 `execution_status_plain`；可以直接读取“上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令，IMU 姿态有变化”以及“勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零”。该变化只补只读 Nav2 readback 字段，不执行 Nav2 goal、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:00 CST 起，`readback_summary.free_roam` 增加 `motion_readiness_plain` 和 `mapping_readiness_plain`。前者只回答“能否先低速自由移动”，例如“可先自由移动；只需要现场安全确认和停止兜底”；后者只回答“能否按建图验收”，例如“建图验收未 ready；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动”。普通首屏自由移动/建图事实和上车建议优先使用这两个短字段，避免把相机/雷达缺口误写成车不能动。该变化只补只读 summary/UI 文案，不启动 free-roam、不发送 manual/keyboard/Nav2/delivery/stop 或 `/cmd_vel`。
 
@@ -170,9 +170,9 @@ readback 中的画面、地图、雷达 marker、Nav2 路线复验、键盘连�
 
 2026-06-29 03:41 CST 起，`/api/robot-control/camera/mjpeg/status` 也返回同一组画面 WYSIWYG 字段：`preview_visible_status`、`preview_visible_plain`、`camera_wysiwyg_status_plain` 和 `camera_wysiwyg_next_action_plain`。只读 camera status 现在能直接说明“当前有共享缓存帧可见”或“当前没有实时画面；不是页面独占而是 UVC 无首帧”，不必再旁路读取 summary。该变化只消费本机 MJPEG relay 状态和只读 camera health，不创建 MJPEG client、不打开额外 camera stream、不发送 manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 03:19 CST 起，`readback_summary.nav2` 增加 `route_execution_readiness_plain` 和 `route_execution_precheck_plain`。外部脚本只读 Nav2 区块时，可以直接看到“图上路线可重跑复验；上次路线 action 成功但同窗口 wheel raw L/R=0/0 未非零”和“只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线”。该变化只补只读 summary 字段，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+2026-06-29 03:19 CST 起，`readback_summary.nav2` 增加 `route_execution_readiness_plain` 和 `route_execution_precheck_plain`。外部脚本只读 Nav2 区块时，可以直接看到“图上路线可重跑复验；上次路线结果成功但同窗口轮速 L/R=0/0 未非零”和“只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线”。该变化只补只读 summary 字段，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
-2026-06-29 03:53 CST 起，`/api/robot-control/nav2/goal/execution/latest` 顶层也返回 `route_execution_readiness_plain`、`route_execution_precheck_plain`、`goal_execution_wheel_raw_lr_status_plain` 和 `goal_execution_wheel_raw_lr_next_action_plain`。脚本直接读取 latest endpoint 时，也能看出完整路线是否已证明、发车前只需勾选安全确认，以及 action 成功但 wheel raw L/R 仍为 `0/0` 时下一步用 ROS 模式重跑图上路线复验。该变化只补只读 latest 响应，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+2026-06-29 03:53 CST 起，`/api/robot-control/nav2/goal/execution/latest` 顶层也返回 `route_execution_readiness_plain`、`route_execution_precheck_plain`、`goal_execution_wheel_raw_lr_status_plain` 和 `goal_execution_wheel_raw_lr_next_action_plain`。脚本直接读取 latest endpoint 时，也能看出完整路线是否已证明、发车前只需勾选安全确认，以及 action 成功但执行窗口轮速 L/R 仍为 `0/0` 时下一步用 ROS 模式重跑图上路线复验。该变化只补只读 latest 响应，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
 2026-06-29 03:24 CST 起，`readback_summary.keyboard` 增加 `readiness_plain` 和 `continuous_control_contract_plain`。外部脚本不用再从 `start_ready/enabled/hold_to_move/stop_triggers/pulse_timing` 多字段拼判断，可以直接显示“可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动”和“按住时约每 0.26 秒发送一次 0.24 秒 ROS 低速脉冲；松开、失焦、切页、换方向或点击停止都会停”。该变化只补只读 summary 字段，不启用键盘、不发送 manual pulse、不调用 stop 或 `/cmd_vel`。
 

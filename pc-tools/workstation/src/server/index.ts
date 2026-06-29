@@ -637,9 +637,9 @@ function navGoalLatestPlainFields(
     return {
       execution_status_plain: "本轮路线执行和执行窗口轮速 L/R 已证明。",
       next_action_plain: "继续送达确认；送达确认不会发车。",
-      route_execution_readiness_plain: "完整路线执行已证明；同窗口 wheel raw L/R 已非零。",
+      route_execution_readiness_plain: "完整路线执行已证明；同窗口轮速 L/R 已非零。",
       route_execution_precheck_plain: "下一步是送达确认；送达确认不会发车。",
-      goal_execution_wheel_raw_lr_status_plain: `执行窗口 wheel raw L/R 已非零：L=${left}，R=${right}。`,
+      goal_execution_wheel_raw_lr_status_plain: `执行窗口轮速 L/R 已非零：L=${left}，R=${right}。`,
       goal_execution_wheel_raw_lr_next_action_plain: "继续送达确认；送达确认不会发车。",
       ...baseFeedbackAliases,
     };
@@ -648,10 +648,10 @@ function navGoalLatestPlainFields(
     return {
       execution_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${left}/${right} 未非零；${motionMaterial}`,
       next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
-      route_execution_readiness_plain: `图上路线可重跑复验；上次路线 action 成功，但同窗口 wheel raw L/R=${left}/${right} 未非零。`,
+      route_execution_readiness_plain: `图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=${left}/${right} 未非零。`,
       route_execution_precheck_plain: `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ${nextMode} 模式跑图上路线。`,
-      goal_execution_wheel_raw_lr_status_plain: `上次路线 action 成功，但执行窗口 wheel raw L/R=${left}/${right} 未非零；${commandText}${imuText}。`,
-      goal_execution_wheel_raw_lr_next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。`,
+      goal_execution_wheel_raw_lr_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${left}/${right} 未非零；${commandText}${imuText}。`,
+      goal_execution_wheel_raw_lr_next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
       ...baseFeedbackAliases,
     };
   }
@@ -660,8 +660,8 @@ function navGoalLatestPlainFields(
     next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
     route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
     route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
-    goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
-    goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
+    goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
+    goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
     ...baseFeedbackAliases,
   };
 }
@@ -3035,8 +3035,8 @@ export function createWorkstationApp(): express.Express {
       next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
       route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
       route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
-      goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
-      goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
+      goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
+      goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
       base_command_mode: "not_loaded",
       goal_execution_base_command_mode: "not_loaded",
       next_execution_base_command_mode: "ros",

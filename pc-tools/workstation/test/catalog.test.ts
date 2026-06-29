@@ -4030,8 +4030,8 @@ describe("workstation fail-closed API contracts", () => {
         next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
         route_execution_readiness_plain: expect.stringContaining("图上路线还不可执行"),
         route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
-        goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的 wheel raw L/R 还未证明。",
-        goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认 wheel raw L/R 非零。",
+        goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
+        goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
         goal_execution_status: expect.any(String),
         goal_execution_proven: expect.any(String),
         goal_execution_hil_pass: expect.any(String),
@@ -4466,7 +4466,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.next_action_plain).toBe("继续送达确认；送达确认不会发车。");
       expect(summary.readback_summary.nav2.plain_hint).toBe("本轮路线执行和执行窗口轮速 L/R 已证明。下一步：继续送达确认；送达确认不会发车。");
       expect(summary.readback_summary.nav2.plain_hint).not.toContain("wheel raw");
-      expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("完整路线执行已证明；同窗口 wheel raw L/R 已非零。");
+      expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("完整路线执行已证明；同窗口轮速 L/R 已非零。");
       expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("下一步是送达确认；送达确认不会发车。");
       expect(summary.readback_summary.nav2.goal_execution_base_command_latest_nonzero_mode).toBe("ros");
       expect(summary.readback_summary.nav2.goal_execution_base_command_mode_counts).toBe("{\"ros\":2}");
@@ -4775,8 +4775,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
-      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线 action 成功，但执行窗口 wheel raw L/R=0/0 未非零；未看到非零底盘命令，IMU 姿态有变化。");
-      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；未看到非零底盘命令，IMU 姿态有变化。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("主因不是雷达、相机或控制服务");
@@ -6064,14 +6064,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
-      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线 action 成功，但执行窗口 wheel raw L/R=0/0 未非零；已看到 49 次非零底盘命令。");
-      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到 49 次非零底盘命令。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.next_action_plain).toContain("用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.plain_hint).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：勾选行程前安全确认后用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.plain_hint).not.toContain("wheel raw");
-      expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线 action 成功，但同窗口 wheel raw L/R=0/0 未非零。");
+      expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=0/0 未非零。");
       expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
       expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
@@ -10723,12 +10723,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_key_values.delivery_success).toBe("false");
       expect(body.latest_key_values.base_feedback_lr_nonzero_proven).toBe("true");
       expect(body.latest_key_values.next_execution_base_command_mode).toBe("ros");
-      expect(body.latest_key_values.goal_execution_wheel_raw_lr_status_plain).toBe("执行窗口 wheel raw L/R 已非零：L=164，R=164。");
+      expect(body.latest_key_values.goal_execution_wheel_raw_lr_status_plain).toBe("执行窗口轮速 L/R 已非零：L=164，R=164。");
       expect(body.execution_status_plain).toBe("本轮路线执行和执行窗口轮速 L/R 已证明。");
       expect(body.next_action_plain).toBe("继续送达确认；送达确认不会发车。");
-      expect(body.route_execution_readiness_plain).toBe("完整路线执行已证明；同窗口 wheel raw L/R 已非零。");
+      expect(body.route_execution_readiness_plain).toBe("完整路线执行已证明；同窗口轮速 L/R 已非零。");
       expect(body.route_execution_precheck_plain).toBe("下一步是送达确认；送达确认不会发车。");
-      expect(body.goal_execution_wheel_raw_lr_status_plain).toBe("执行窗口 wheel raw L/R 已非零：L=164，R=164。");
+      expect(body.goal_execution_wheel_raw_lr_status_plain).toBe("执行窗口轮速 L/R 已非零：L=164，R=164。");
       expect(body.goal_execution_wheel_raw_lr_next_action_plain).toBe("继续送达确认；送达确认不会发车。");
       expect(body.plain_hint).toBe(body.execution_status_plain);
       expect(body.goal_execution_base_command_mode).toBe("not_loaded");
@@ -10901,14 +10901,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.latest_key_values.next_execution_base_command_mode).toBe("ros");
       expect(body.latest_key_values.goal_execution_base_command_nonzero_count).toBe("49");
       expect(body.latest_key_values.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
-      expect(body.latest_key_values.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。");
+      expect(body.latest_key_values.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(body.execution_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令，下一步重点复验执行窗口轮速 L/R。");
       expect(body.plain_hint).toBe(body.execution_status_plain);
       expect(body.next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
-      expect(body.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线 action 成功，但同窗口 wheel raw L/R=0/0 未非零。");
+      expect(body.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=0/0 未非零。");
       expect(body.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
-      expect(body.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线 action 成功，但执行窗口 wheel raw L/R=0/0 未非零；已看到 49 次非零底盘命令。");
-      expect(body.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认 wheel raw L/R 非零。");
+      expect(body.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到 49 次非零底盘命令。");
+      expect(body.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(body.base_command_mode).toBe("pwm");
       expect(body.goal_execution_base_command_mode).toBe("pwm");
       expect(body.next_execution_base_command_mode).toBe("ros");
