@@ -485,6 +485,21 @@ h3 {
   line-height: 1.35;
 }
 
+.plain-goal-checklist-next-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.plain-goal-checklist-next-action {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) auto minmax(180px, 1.4fr) auto;
+  gap: 6px;
+  align-items: center;
+  border-top: 1px solid #edf1f5;
+  padding-top: 6px;
+}
+
 .plain-goal-checklist-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.8fr) auto minmax(220px, 2fr);
@@ -509,7 +524,12 @@ h3 {
     grid-template-columns: 1fr auto;
   }
 
+  .plain-goal-checklist-next-action {
+    grid-template-columns: 1fr auto;
+  }
+
   .plain-goal-checklist-summary-copy,
+  .plain-goal-checklist-next-action .muted,
   .plain-goal-checklist-row .muted,
   .plain-goal-checklist-row small {
     grid-column: 1 / -1;

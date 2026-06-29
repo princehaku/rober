@@ -12524,6 +12524,30 @@ onBeforeUnmount(() => {
             <span v-if="plainGoalChecklistSummary.mapping_summary_plain" class="muted">
               {{ plainActionCardUserText(plainGoalChecklistSummary.mapping_summary_plain) }}
             </span>
+            <div
+              v-if="plainGoalChecklistSummary.next_action_items.length"
+              class="plain-goal-checklist-next-actions"
+              data-testid="plain-goal-checklist-next-actions"
+            >
+              <div
+                v-for="item in plainGoalChecklistSummary.next_action_items"
+                :key="item.id"
+                class="plain-goal-checklist-next-action"
+                :data-testid="`plain-goal-checklist-next-action-${item.id}`"
+              >
+                <span class="plain-progress-label">{{ plainActionCardUserText(item.title) }}</span>
+                <span class="status-chip" :data-state="item.status_label">{{ item.status_label }}</span>
+                <span class="muted">下一步：{{ plainActionCardUserText(item.next_action_plain) }}</span>
+                <button
+                  type="button"
+                  class="secondary compact-stop"
+                  :data-testid="`plain-goal-checklist-next-action-go-${item.id}`"
+                  @click="focusPlainActionCardTarget(item.source_card_id)"
+                >
+                  去处理
+                </button>
+              </div>
+            </div>
           </div>
           <button
             type="button"

@@ -4093,3 +4093,9 @@ stop 或 `/cmd_vel`。
 新增 `safety_precheck_source_card_id`、`safety_precheck_next_action_plain` 和 `safety_precheck_summary_plain`；
 普通首屏目标汇总会直接显示“发车前预检已精简：只需要现场安全确认；相机和雷达不作为移动或行程发车前额外预检”。
 `去勾确认` 按钮只做页面内聚焦，不自动勾选、不启动 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 11:50 CST 起，`goal_checklist_summary` 同步新增 `next_action_items[]`，把所有还阻塞本轮目标完成的项目
+按检查顺序压成“待处理动作”列表。每项包含目标标题、当前状态、下一步文案和来源卡片 id；普通首屏每行只提供
+`去处理` 聚焦按钮，让 operator 可以直接跳到摄像头首帧、雷达贴图、完整行程、安全确认、自由移动或建图入口。
+该列表仍然只读，不自动刷新地图、不启动雷达、不勾选安全确认、不执行 Nav2，也不调用 manual、keyboard、
+free-roam、delivery、stop 或 `/cmd_vel`。

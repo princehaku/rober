@@ -4057,6 +4057,24 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.goal_checklist_summary?.radar_summary_plain).toContain("雷达点还没有贴到当前地图");
       expect(summary.goal_checklist_summary?.nav2_summary_plain).toContain("完整图上行程还未 ready");
       expect(summary.goal_checklist_summary?.mapping_summary_plain).toContain("建图暂不可启动");
+      expect(summary.goal_checklist_summary?.next_action_items).toHaveLength(6);
+      expect(summary.goal_checklist_summary?.next_action_items.map((item) => item.id)).toEqual([
+        "camera_wysiwyg",
+        "radar_map_points_wysiwyg",
+        "nav2_route_execution",
+        "keyboard_continuous_control",
+        "free_move",
+        "mapping_start",
+      ]);
+      expect(summary.goal_checklist_summary?.next_action_items[1]).toMatchObject({
+        id: "radar_map_points_wysiwyg",
+        title: "雷达点贴到地图",
+        status_label: "待处理",
+        source_card_id: "radar_map_points",
+        requires_safety_confirmation: false,
+        requires_motion: false,
+        blocks_goal_completion: true,
+      });
       expect(JSON.stringify(summary.goal_checklist_summary)).not.toContain("raw");
       expect(JSON.stringify(summary.goal_checklist_summary)).not.toContain("marker");
       expect(JSON.stringify(summary.goal_checklist_summary)).not.toContain("overlay");

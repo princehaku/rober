@@ -663,3 +663,8 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `safety_precheck_next_action_plain` 和 `safety_precheck_summary_plain`。普通首屏目标汇总会直接写明“发车前预检已精简：
 只需要现场安全确认；相机和雷达不作为移动或行程发车前额外预检”，并提供“去勾确认”聚焦按钮。按钮只把焦点带到
 共享安全确认或对应动作区，不自动勾选、不启动 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 11:50 CST 起，`goal_checklist_summary` 新增 `next_action_items[]`。该列表按本轮目标未完成顺序返回
+标题、状态、下一步和来源卡片，普通首屏会直接展示“待处理动作”并提供每项“去处理”按钮。按钮只做页面内 scroll/focus，
+方便用户从摄像头、雷达贴图、完整行程、键盘连续手控、自由移动和建图缺口之间切换；不会自动刷新地图、启动雷达、
+勾选安全确认、执行 Nav2、发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

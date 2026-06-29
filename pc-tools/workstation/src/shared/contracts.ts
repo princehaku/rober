@@ -2426,6 +2426,17 @@ export interface RobotControlGoalChecklistItem {
   blocks_goal_completion: boolean;
 }
 
+export interface RobotControlGoalChecklistSummaryActionItem {
+  id: RobotControlGoalChecklistItemId;
+  title: string;
+  status_label: string;
+  next_action_plain: string;
+  source_card_id: RobotControlActionStatusCardId;
+  requires_safety_confirmation: boolean;
+  requires_motion: boolean;
+  blocks_goal_completion: boolean;
+}
+
 export interface RobotControlGoalChecklistSummary {
   status: "complete" | "in_progress" | "not_started";
   status_label: string;
@@ -2457,6 +2468,7 @@ export interface RobotControlGoalChecklistSummary {
   nav2_summary_plain: string;
   mapping_next_action_plain: string;
   mapping_summary_plain: string;
+  next_action_items: RobotControlGoalChecklistSummaryActionItem[];
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {
