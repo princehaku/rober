@@ -872,6 +872,11 @@ h3 {
   white-space: nowrap;
 }
 
+.plain-map-observer-toggle {
+  min-height: 34px;
+  white-space: nowrap;
+}
+
 .plain-map-panel[data-fullscreen="true"] {
   /* 全屏只放大只读画面和 marker，不改变任何控制按钮的安全门禁。 */
   position: fixed;
@@ -887,6 +892,25 @@ h3 {
 .plain-map-panel[data-fullscreen="true"] .plain-map-viewport {
   flex: 1;
   min-height: 0;
+}
+
+.plain-map-panel[data-observer-mode="true"] {
+  /* 观测模式近似 RViz 地图观察，只收起说明和普通操作行，不改变任何控制门禁。 */
+  padding: 10px;
+}
+
+.plain-map-panel[data-observer-mode="true"] > .panel-action-row,
+.plain-map-panel[data-observer-mode="true"] > .panel-note {
+  display: none;
+}
+
+.plain-map-panel[data-observer-mode="true"] .plain-map-heading {
+  margin-bottom: 8px;
+}
+
+.plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
+  height: calc(100vh - 92px);
+  min-height: 820px;
 }
 
 .plain-map-panel[data-state="地图可见"] {
@@ -2627,7 +2651,8 @@ th {
   }
 
   .plain-map-size-toggle,
-  .plain-map-fullscreen-toggle {
+  .plain-map-fullscreen-toggle,
+  .plain-map-observer-toggle {
     flex: 1 1 140px;
   }
 
@@ -2638,6 +2663,11 @@ th {
   .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
     height: calc(100vh - 260px);
     min-height: 320px;
+  }
+
+  .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
+    height: calc(100vh - 180px);
+    min-height: 360px;
   }
 
   .plain-map-viewport[data-size="large"] .plain-map-layer,

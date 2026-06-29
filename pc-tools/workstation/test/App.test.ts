@@ -4917,6 +4917,8 @@ describe("App", () => {
     expect(mapPanel.attributes("data-map-zoom-percent")).toBe("125%");
     expect(mapPanel.attributes("data-map-zoom-affects")).toBe("image-route-robot-radar");
     expect(mapPanel.attributes("data-fullscreen")).toBe("false");
+    expect(mapPanel.attributes("data-observer-mode")).toBe("false");
+    expect(mapPanel.attributes("data-ros2-companion-style")).toBe("rviz2-map-focus");
     expect(mapPanel.attributes("data-wysiwyg-surface")).toBe("primary-map");
     expect(mapPanel.attributes("data-radar-map-points-visible")).toBe("false");
     expect(mapPanel.attributes("data-radar-map-point-count")).toBe("0");
@@ -4926,6 +4928,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').attributes("aria-pressed")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').text()).toBe("全屏地图");
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("aria-pressed")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').text()).toBe("观测模式");
+    expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("aria-pressed")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("large");
@@ -4968,6 +4972,18 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("aria-pressed")).toBe("true");
     await wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').trigger("click");
     await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-map-observer-toggle"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("fullscreen");
+    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-fullscreen")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-observer-mode")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').text()).toBe("退出观测");
+    expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("aria-pressed")).toBe("true");
+    await wrapper.find('[data-testid="plain-map-observer-toggle"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("large");
+    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-fullscreen")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-observer-mode")).toBe("false");
     await wrapper.find('[data-testid="plain-map-size-toggle"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("normal");
@@ -4978,6 +4994,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="large"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-panel[data-fullscreen="true"]');
+    expect(workstationStyles).toContain('.plain-map-panel[data-observer-mode="true"]');
+    expect(workstationStyles).toContain('height: calc(100vh - 92px);');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');

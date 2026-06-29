@@ -274,6 +274,7 @@ const plainMapPreviewButton = ref<HTMLButtonElement | null>(null);
 const plainMapRuntimeStartButton = ref<HTMLButtonElement | null>(null);
 const plainMapLargeView = ref(true);
 const plainMapFullscreenView = ref(false);
+const plainMapObserverView = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.25, 1.5, 2] as const;
 const plainMapZoomIndex = ref(1);
@@ -292,6 +293,21 @@ function zoomPlainMap(delta: number): void {
 function resetPlainMapZoom(): void {
   // “适配”回到完整地图，方便现场在放大查看细节后恢复全局路线视角。
   plainMapZoomIndex.value = 0;
+}
+function togglePlainMapObserverView(): void {
+  // 观测模式只改变 PC 显示密度；进入时顺手拉起全屏，退出时回到普通大地图。
+  plainMapObserverView.value = !plainMapObserverView.value;
+  plainMapFullscreenView.value = plainMapObserverView.value;
+  if (!plainMapObserverView.value) {
+    plainMapLargeView.value = true;
+  }
+}
+function togglePlainMapFullscreenView(): void {
+  // 手动退出全屏时同步退出观测模式，避免界面状态和实际地图尺寸不一致。
+  plainMapFullscreenView.value = !plainMapFullscreenView.value;
+  if (!plainMapFullscreenView.value) {
+    plainMapObserverView.value = false;
+  }
 }
 const plainLocalizationResetButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlPanel = ref<HTMLElement | null>(null);
@@ -14501,6 +14517,8 @@ onBeforeUnmount(() => {
           :data-state="plainMapVisualSummary.state"
           :data-size="plainMapViewSize"
           :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'"
+          :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
+          data-ros2-companion-style="rviz2-map-focus"
           :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
           :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
           :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
@@ -14531,8 +14549,11 @@ onBeforeUnmount(() => {
               <button type="button" class="secondary plain-map-size-toggle" data-testid="plain-map-size-toggle" :aria-pressed="plainMapLargeView ? 'true' : 'false'" @click="plainMapLargeView = !plainMapLargeView">
                 {{ plainMapLargeView ? "收起地图" : "放大地图" }}
               </button>
-              <button type="button" class="secondary plain-map-fullscreen-toggle" data-testid="plain-map-fullscreen-toggle" :aria-pressed="plainMapFullscreenView ? 'true' : 'false'" @click="plainMapFullscreenView = !plainMapFullscreenView">
+              <button type="button" class="secondary plain-map-fullscreen-toggle" data-testid="plain-map-fullscreen-toggle" :aria-pressed="plainMapFullscreenView ? 'true' : 'false'" @click="togglePlainMapFullscreenView">
                 {{ plainMapFullscreenView ? "退出全屏" : "全屏地图" }}
+              </button>
+              <button type="button" class="secondary plain-map-observer-toggle" data-testid="plain-map-observer-toggle" :aria-pressed="plainMapObserverView ? 'true' : 'false'" @click="togglePlainMapObserverView">
+                {{ plainMapObserverView ? "退出观测" : "观测模式" }}
               </button>
             </div>
           </div>

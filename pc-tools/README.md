@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 05:54 CST 起，普通首屏地图新增 `观测模式`。点击后会自动进入全屏地图，并收起地图卡下方普通操作行和说明，让地图、路线、小车位置和雷达 overlay 使用更多浏览器高度；退出观测后恢复普通大地图。地图卡同步暴露 `data-observer-mode` 和 `data-ros2-companion-style=rviz2-map-focus`，表示这是 PC 内置的 RViz-like 只读观察模式。ROS2 工程配套仍使用 `ros2 launch ros2_trashbot_bringup rviz.launch.py` 打开 RViz2；普通用户继续留在 PC 简易控制台。该变化只改 Web 显示，不启动 RViz2、不启动 ROS2 runtime、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-30 12:45 CST 起，普通首屏地图默认继续使用放大视图，并新增 `全屏地图`/`退出全屏` 切换。它只放大现有只读地图画面、图上路线、小车位置和雷达 overlay，不启动 RViz2、不调用 Nav2 goal、不发送 manual/keyboard/free-roam/stop 或 `/cmd_vel`。ROS2 原生配套方面，工程调试优先使用 `ros2 launch ros2_trashbot_bringup rviz.launch.py` 打开 RViz2 观察 `/map`、`/scan`、TF、Nav2 path 和 AMCL pose；普通用户现场操作仍以 PC 工作站全屏地图和安全确认按钮为主入口。
 
 2026-06-30 13:10 CST 起，`action_status_cards[].id=camera_preview` 的 evidence 补齐共享实时预览固定合同：`fixed_shared_preview_endpoint=/api/robot-control/camera/mjpeg`、`fixed_shared_preview_status_endpoint=/api/robot-control/camera/mjpeg/status`、`auto_joins_shared_preview=true`、`shared_preview_single_upstream=true`。普通首屏 DOM 同步暴露这些 `data-*` 字段，现场脚本可以区分“本页还没显示缓存帧”和“相机源首帧失败”。该变化只补只读合同和展示，不重启相机、不独占摄像头、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
