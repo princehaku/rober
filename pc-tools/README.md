@@ -974,3 +974,11 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `data-execution-post-map-refresh-required/complete`、`data-execution-stop-requested/settled`，
 并同步暴露 `data-delivery-material-ready`、`data-delivery-confirm-ready`、`data-delivery-success-ready`。
 这些字段只反映已有 execute/latest/地图刷新/送达状态，不自动确认送达、不发送 manual/keyboard/free-roam/stop 或 `/cmd_vel`。
+
+2026-06-30 05:20 CST 起，普通首屏“自由移动 / 建图”的四个屏幕方向按钮复用键盘连续手控 DOM 合同：
+`data-requires-hold-to-move=true`、固定 `/api/robot-control/base/manual` 和 `/api/robot-control/base/stop`、
+`data-pulse-interval-ms=260`、`data-pulse-duration-ms=240`、
+`data-current-hold-pulse-count`、`data-best-continuous-pulse-count`、
+`data-verified-min-forwarded-pulses=2`、`data-same-hold-window-required=true`、
+`data-stop-required-after-hold=true`、`data-stop-settled-after-pulse`。这样自由移动和键盘扫图的屏幕方向键也能直接证明
+“按住才连续低速 pulse，松开后必须 stop 收口”。该变化只补前端 DOM 证据，不主动发送 manual/free-roam/map/Nav2/delivery/stop 或 `/cmd_vel`。

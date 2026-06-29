@@ -1020,12 +1020,12 @@ const fixtures: Record<string, unknown> = {
         mapping_blocked_reasons: "not_loaded",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
-	        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还在等待上车状态机。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
-	        next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
-	        motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
-	        motion_sensor_dependency_status: "not_required_for_motion",
-	        motion_sensor_dependency_plain: "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。",
-	        free_move_start_status_plain: "上车自由移动状态机未加载；可先用键盘或低速手控移动。",
+          plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还在等待上车状态机。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
+          next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
+          motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
+          motion_sensor_dependency_status: "not_required_for_motion",
+          motion_sensor_dependency_plain: "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。",
+          free_move_start_status_plain: "上车自由移动状态机未加载；可先用键盘或低速手控移动。",
         motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未就绪。",
         mapping_acceptance_status_plain: "建图验收未就绪；还在等待上车状态机。",
         mapping_start_readiness_plain: "建图启动未就绪；还在等待上车自由移动状态机。",
@@ -7150,9 +7150,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动地图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("低速自移动用“开始自由移动（低速）”");
-	    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未就绪");
-	    expect(wrapper.find('[data-testid="plain-free-roam-motion-dependency"]').text()).toBe("移动门禁：自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。");
-	    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始自由移动（低速）");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未就绪");
+    expect(wrapper.find('[data-testid="plain-free-roam-motion-dependency"]').text()).toBe("移动门禁：自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。");
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();
@@ -7403,29 +7403,29 @@ describe("App", () => {
         delayNextMapPreview = false;
         return delayedMapPreviewRefresh;
       }
-	      if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextMapProofRefresh) {
-	        delayNextMapProofRefresh = false;
-	        return new Promise((resolve) => {
-	          mapProofRefreshControl.finish = () => resolve({
-	            ok: true,
-	            json: async () => fixtures["/api/robot-control/map/proof/refresh"],
-	          });
-	        });
-	      }
-	      if (String(url).startsWith("/api/robot-control/nav2/proof/refresh?")) {
-	        summaryFixture.o3_proof_summary.path_generated = true;
-	        summaryFixture.o3_proof_summary.path_generation_succeeded = true;
-	        summaryFixture.o3_proof_summary.path_preview_points = [
-	          { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
-	          { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
-	          { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
-	        ];
-	        summaryFixture.o3_proof_summary.path_preview_point_count = 3;
-	        summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
-	        summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
-	      }
-	      return baseFetch(url, options);
-	    });
+        if (String(url).startsWith("/api/robot-control/map/proof/refresh?") && delayNextMapProofRefresh) {
+          delayNextMapProofRefresh = false;
+          return new Promise((resolve) => {
+            mapProofRefreshControl.finish = () => resolve({
+              ok: true,
+              json: async () => fixtures["/api/robot-control/map/proof/refresh"],
+            });
+          });
+        }
+        if (String(url).startsWith("/api/robot-control/nav2/proof/refresh?")) {
+          summaryFixture.o3_proof_summary.path_generated = true;
+          summaryFixture.o3_proof_summary.path_generation_succeeded = true;
+          summaryFixture.o3_proof_summary.path_preview_points = [
+            { x: 0.1, y: 0.1, frame_id: "map", source_index: 0 },
+            { x: 0.4, y: 0.1, frame_id: "map", source_index: 7 },
+            { x: 0.8, y: 0, frame_id: "map", source_index: 14 },
+          ];
+          summaryFixture.o3_proof_summary.path_preview_point_count = 3;
+          summaryFixture.o3_proof_summary.path_preview_source_point_count = 15;
+          summaryFixture.o3_proof_summary.path_preview_frame_id = "map";
+        }
+        return baseFetch(url, options);
+      });
     vi.stubGlobal("fetch", mockedFetch);
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     const wrapper = mount(App);
@@ -7439,6 +7439,14 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-direction-pad"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-sends-motion-while-held")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-requires-hold-to-move")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-verified-min-forwarded-pulses")).toBe("2");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-same-hold-window-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-stop-required-after-hold")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-stop-settled-after-pulse")).toBe("false");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：勾安全确认");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').exists()).toBe(false);
     const callsBeforeFirstNext = mockedFetch.mock.calls.length;
@@ -7531,6 +7539,17 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图画面刷新中；低速手控仍可继续，刷新结果只用于建图验收和保存。");
     expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：按住方向键扫图");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-direction")).toBe("forward");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-sends-motion-while-held")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-stop-trigger")).toBe("pointerup,pointerleave,pointercancel");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-pulse-interval-ms")).toBe("260");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-pulse-duration-ms")).toBe("240");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-stop"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-stop"]').attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeDefined();
     const manualCallsBeforeRefreshMove = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
@@ -7543,6 +7562,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/save?"))).toHaveLength(mapSaveCallsBeforeBlockedSave);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("正在前进");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("1");
     await wrapper.find('[data-testid="plain-free-roam-screen-forward"]').trigger("pointerup");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -7554,6 +7575,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-stop-settled-after-pulse")).toBe("false");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').text()).toBe("保存当前地图");
     expect(wrapper.find('[data-testid="plain-free-roam-save"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("扫图状态：");
@@ -7612,6 +7636,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("1");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("1");
     expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
     const directionMarker = wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]');
@@ -7642,6 +7668,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeLiveRefresh + 1);
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，地图画面已跟随刷新；已连续 2/2 次；轮速 L/R=0.07/0.08，非零已读到。");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("2");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("2");
     expect(wrapper.find('[data-testid="plain-free-roam-coverage-guidance"]').text()).toBe("扫图中地图画面已自动刷新；松开后会再刷新一次用于保存。");
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：本次按住后已刷新一次；继续移动后还要再刷新确认最新覆盖。");
     const previewCallsBeforeRelease = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
@@ -7654,6 +7682,9 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length).toBe(nav2ExecuteCallsBeforeRelease);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length).toBe(deliveryCompleteCallsBeforeRelease);
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：已停止，地图画面已刷新，可以保存当前地图。");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("0");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("2");
+    expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-stop-settled-after-pulse")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("已停可保存：前进，轮速非零");
@@ -7697,10 +7728,10 @@ describe("App", () => {
       return originalFetch(url, options);
     });
     const manualCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length;
-	    const nav2ExecuteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length;
-	    const nav2ProofRefreshCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?")).length;
-	    const deliveryCompleteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length;
-	    const previewCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
+      const nav2ExecuteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?")).length;
+      const nav2ProofRefreshCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?")).length;
+      const deliveryCompleteCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?")).length;
+      const previewCallsBeforeSave = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     const saveClick = wrapper.find('[data-testid="plain-free-roam-save"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(freeRoamPanel.attributes("data-state")).toBe("保存中");
@@ -7711,10 +7742,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("地图保存中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("saving");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("地图保存请求已发送，返回前未证明地图已保存，机器人地图位置未读到，标记不代表坐标");
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toHaveLength(nav2ProofRefreshCallsBeforeSave);
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toHaveLength(nav2ProofRefreshCallsBeforeSave);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
     const finishSave = saveControl.finish;
     if (!finishSave) {
       throw new Error("map save request was not captured");
@@ -7746,14 +7777,14 @@ describe("App", () => {
     await saveClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeSave + 2);
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toHaveLength(nav2ProofRefreshCallsBeforeSave + 1);
-	    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
-	    expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
-	    expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
-	    expect(freeRoamPanel.attributes("data-state")).toBe("已保存");
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(previewCallsBeforeSave + 2);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toHaveLength(manualCallsBeforeSave);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toHaveLength(nav2ExecuteCallsBeforeSave);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh?"))).toHaveLength(nav2ProofRefreshCallsBeforeSave + 1);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toHaveLength(deliveryCompleteCallsBeforeSave);
+      expect(wrapper.find('[data-testid="plain-map-route-path"]').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
+      expect(freeRoamPanel.attributes("data-state")).toBe("已保存");
     expect(coveragePanel.attributes("data-state")).toBe("已扫出");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toBe("地图已保存，地图画面已自动刷新；现在可以检查 free cell 和路线可用性。");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：地图已保存，地图画面已自动刷新，可以检查效果。");

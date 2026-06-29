@@ -4455,3 +4455,10 @@ free-roam runtime snapshot 只有在同轮 `/api/radar/status` 未明确停止�
 `data-execution-stop-requested/settled` 表达。送达材料、最终确认和送达成功分别暴露为
 `data-delivery-material-ready`、`data-delivery-confirm-ready`、`data-delivery-success-ready`，避免把“行程完成”
 误当成“送达已确认”。这些字段只读现有状态，不触发任何控制命令。
+
+2026-06-30 05:20 CST 起，普通首屏“自由移动 / 建图”的屏幕方向按钮和主键盘方向按钮使用同一套连续 pulse 合同。
+四个 `plain-free-roam-screen-*` 按钮新增 `data-direction`、`data-requires-hold-to-move`、固定 manual/stop endpoint、
+pulse interval/duration、当前按住 pulse 数、历史最佳连续 pulse 数、最小验收 pulse 数、同一按住窗口要求和 stop 收口状态。
+这让自由移动与键盘扫图的验收可以直接读 DOM：未按住不发车，按住才连续低速 pulse，同一次按住达到 2 次才算连续，
+松开后 `data-current-hold-pulse-count` 归零，`data-best-continuous-pulse-count` 保留，`data-stop-settled-after-pulse`
+表达停止是否已收口。该变化只补可验收证据，不改变真实控制入口。
