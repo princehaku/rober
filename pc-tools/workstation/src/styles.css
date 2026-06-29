@@ -17,7 +17,8 @@ button {
 }
 
 .shell {
-  width: min(1120px, calc(100% - 32px));
+  /* 现场 PC 大屏优先服务地图观察，避免整行地图仍被旧工作台窄外壳压小。 */
+  width: min(1560px, calc(100% - 32px));
   margin: 0 auto;
   padding: 18px 0 32px;
 }

@@ -4899,6 +4899,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("normal");
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').text()).toBe("放大地图");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(workstationStyles).toContain("width: min(1560px, calc(100% - 32px));");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="large"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
