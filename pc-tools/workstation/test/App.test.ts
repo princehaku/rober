@@ -1015,10 +1015,12 @@ const fixtures: Record<string, unknown> = {
         mapping_blocked_reasons: "not_loaded",
         mapping_ready: "false",
         mapping_missing: "not_loaded",
-        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还在等待上车状态机。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
-        next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
-        motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
-        free_move_start_status_plain: "上车自由移动状态机未加载；可先用键盘或低速手控移动。",
+	        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还在等待上车状态机。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
+	        next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
+	        motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
+	        motion_sensor_dependency_status: "not_required_for_motion",
+	        motion_sensor_dependency_plain: "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。",
+	        free_move_start_status_plain: "上车自由移动状态机未加载；可先用键盘或低速手控移动。",
         motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未就绪。",
         mapping_acceptance_status_plain: "建图验收未就绪；还在等待上车状态机。",
         mapping_start_readiness_plain: "建图启动未就绪；还在等待上车自由移动状态机。",
@@ -6815,8 +6817,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动地图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("低速自移动用“开始自由移动（低速）”");
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未就绪");
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
+	    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("雷达未就绪");
+	    expect(wrapper.find('[data-testid="plain-free-roam-motion-dependency"]').text()).toBe("移动门禁：自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。");
+	    expect(wrapper.find('[data-testid="plain-free-roam-start"]').text()).toBe("开始记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("启用键盘自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeUndefined();

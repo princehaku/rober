@@ -5383,6 +5383,7 @@ function freeRoamSummaryFromReadbacks(
         : readback?.status ?? "not_loaded";
   const motionReadinessPlain = freeRoamMotionReadinessPlain(startReady, motionReady, externalStopRequested, manualMotionFallbackActive);
   const mappingReadinessPlain = freeRoamMappingReadinessPlain(startReady, mappingReady, mappingMissing);
+  const motionSensorDependency = freeRoamMotionSensorDependencyPlain(startReady || manualMotionFallbackActive || motionReady);
   const mappingMissingText = mappingMissing.length ? mappingMissing.join(",") : "none";
   const nextActionPlain = freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime, manualMotionFallbackActive);
   return {
@@ -5406,6 +5407,8 @@ function freeRoamSummaryFromReadbacks(
     plain_hint: freeRoamPlainHint(motionReadinessPlain, mappingReadinessPlain, nextActionPlain),
     next_action_plain: nextActionPlain,
     motion_readiness_plain: motionReadinessPlain,
+    motion_sensor_dependency_status: startReady || manualMotionFallbackActive || motionReady ? "not_required_for_motion" : "unknown_until_motion_ready",
+    motion_sensor_dependency_plain: motionSensorDependency,
     free_move_start_status_plain: freeRoamStartStatusPlain(startReady, motionReady, externalStopRequested, manualMotionFallbackActive),
     motion_runtime_status_plain: freeRoamMotionRuntimeStatusPlain(startReady, motionReady),
     mapping_acceptance_status_plain: mappingReadinessPlain,
@@ -5433,6 +5436,13 @@ function freeRoamPlainHint(motionReadinessPlain: string, mappingReadinessPlain: 
     uniqueParts.push(`下一步：${nextParts.join("；")}`);
   }
   return uniqueParts.length > 0 ? `${uniqueParts.join("。")}。` : "自由移动事实未读到；先刷新 Robot Control summary。";
+}
+
+function freeRoamMotionSensorDependencyPlain(motionCanStart: boolean): string {
+  // 用户最容易把相机/雷达缺口误读成“车不能动”；这里给脚本和首屏一个稳定的门禁事实。
+  return motionCanStart
+    ? "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。"
+    : "自由移动启动条件未读到；相机、雷达和地图记录仍只作为建图验收材料。";
 }
 
 function freeRoamPlainNextParts(nextActionPlain: string, existingParts: string[]): string[] {
@@ -5833,6 +5843,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         plain_hint: "自由移动未就绪；先连接上车状态机并确认停止兜底。建图验收未就绪；还在等待上车状态机。下一步：先连接上车自由移动状态机，并确认停止兜底可用。",
         next_action_plain: "先连接上车自由移动状态机，并确认停止兜底可用",
         motion_readiness_plain: "自由移动未就绪；先连接上车状态机并确认停止兜底。",
+        motion_sensor_dependency_status: "unknown_until_motion_ready",
+        motion_sensor_dependency_plain: "自由移动启动条件未读到；相机、雷达和地图记录仍只作为建图验收材料。",
         free_move_start_status_plain: "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。",
         motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未就绪。",
         mapping_acceptance_status_plain: "建图验收未就绪；还在等待上车状态机。",

@@ -2109,7 +2109,15 @@ const plainFreeRoamReadbackSummary = computed(() => {
     .filter((item) => item && !["not_loaded", "none"].includes(item))
     .map((item) => item.replace(/[。；\s]+$/g, ""));
   const uniqueParts = [...new Set(parts)];
-  return uniqueParts.length > 0 ? `自由移动事实：${uniqueParts.join("；")}。` : "";
+	  return uniqueParts.length > 0 ? `自由移动事实：${uniqueParts.join("；")}。` : "";
+});
+const plainFreeRoamMotionDependencySummary = computed(() => {
+  // 单独一行讲清移动门禁，避免相机无帧或雷达停止时用户误以为不能先低速移动。
+  const text = robotSummary.value?.readback_summary.free_roam.motion_sensor_dependency_plain?.trim();
+  if (!text || ["not_loaded", "none"].includes(text)) {
+    return "";
+  }
+  return `移动门禁：${text.replace(/[。；\s]+$/g, "")}。`;
 });
 const plainRadarReadyForFreeRoamMapping = computed(() => radarSummary.value.state === "雷达已运行");
 const plainRadarStartUnavailable = computed(() => {
@@ -13667,8 +13675,9 @@ onBeforeUnmount(() => {
               </button>
               <span class="muted">{{ plainFreeRoamAutonomyReadiness.policyText }}</span>
             </div>
-            <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
-            <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
+	            <p class="panel-note">{{ plainFreeRoamAutonomyReadiness.hint }}</p>
+	            <p v-if="plainFreeRoamMotionDependencySummary" class="panel-note" data-testid="plain-free-roam-motion-dependency">{{ plainFreeRoamMotionDependencySummary }}</p>
+	            <p class="panel-note" data-testid="plain-free-roam-autonomy-next-action">{{ plainFreeRoamAutonomyReadiness.nextActionText }}</p>
             <p class="panel-note" data-testid="plain-free-roam-mapping-readiness">{{ plainFreeRoamAutonomyReadiness.mappingReadinessText }}</p>
             <div class="plain-mapping-unlock-plan" data-testid="plain-mapping-unlock-plan" aria-label="建图解锁包">
               <div class="simple-status-row">

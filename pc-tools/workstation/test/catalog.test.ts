@@ -6124,6 +6124,8 @@ describe("workstation fail-closed API contracts", () => {
         next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
         motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
         mapping_start_readiness_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。",
+        motion_sensor_dependency_status: "not_required_for_motion",
+        motion_sensor_dependency_plain: "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。",
         mapping_readiness_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。",
         motion_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图。",
         mapping_start_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜。",
@@ -6238,6 +6240,8 @@ describe("workstation fail-closed API contracts", () => {
         plain_hint: "可先自由移动；只需要现场安全确认和停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。",
         next_action_plain: "勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面",
         motion_readiness_plain: "可先自由移动；只需要现场安全确认和停止兜底。",
+        motion_sensor_dependency_status: "not_required_for_motion",
+        motion_sensor_dependency_plain: "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。",
         mapping_start_readiness_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收。",
         mapping_readiness_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
         motion_next_action_plain: "勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。",
@@ -7232,6 +7236,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.next_action_plain).toBe(summary.safe_command_boundary.free_roam_autonomy_next_action);
       expect(summary.readback_summary.free_roam.plain_hint).toBe("可先自由移动；只需要现场安全确认和停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。");
       expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
+      expect(summary.readback_summary.free_roam.motion_sensor_dependency_status).toBe("not_required_for_motion");
+      expect(summary.readback_summary.free_roam.motion_sensor_dependency_plain).toBe("自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。");
       expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
       expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。");
       expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
