@@ -4514,3 +4514,10 @@ exclusive camera claim 状态。该按钮只做只读首帧探测；共享实时
 终点 `goal_frame_id/x/y`、`data-route-wysiwyg-ready`、`data-executes-current-route-goal` 和 `data-target-source`。
 没有当前路线时，主按钮只准备或刷新路线，不发车；当前地图路线可执行时，短行显示“主按钮会执行这条地图路线”。
 该变化只更新 PC Web 所见即所得展示和验收合同，不启动 ROS2 runtime、不执行 Nav2、不发送任何运动命令。
+
+2026-06-30 19:40 CST 起，普通首屏键盘卡新增 `keyboard-telemetry-summary` 实时仪表。
+该短行直接显示当前方向、当前按住 pulse 数、最佳连续 pulse 数、轮速 L/R、停止收口状态和按住时是否会发低速脉冲；
+DOM 同步暴露 `data-current-direction`、`data-current-hold-pulse-count`、`data-best-continuous-pulse-count`、
+`data-wheel-state`、`data-wheel-left/right`、`data-stop-state`、`data-stop-settled-after-pulse`、
+`data-sends-motion-while-held` 和固定 manual/stop endpoint。
+该变化只让 PC 键盘连续手控更容易现场确认，不改变安全确认、按住才动、松开/失焦/切页停止等控制门禁。

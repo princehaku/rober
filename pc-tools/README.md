@@ -1038,3 +1038,10 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `data-route-wysiwyg-ready`、`data-executes-current-route-goal` 和 `data-target-source`。
 当地图上没有当前路线时，短行明确主按钮只会准备或刷新路线、不发车；当当前地图路线可执行时，短行显示主按钮将执行这条地图路线。
 该变化只增强 PC Web 显示和 DOM 验收，不启动 ROS2 runtime、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
+2026-06-30 19:40 CST 起，普通首屏键盘卡新增 `keyboard-telemetry-summary` 实时仪表短行。
+它把当前方向、当前按住 pulse 数、最佳连续 pulse 数、轮速 L/R、停止收口状态和是否会在按住时发低速脉冲合并显示，
+并暴露 `data-current-direction`、`data-current-hold-pulse-count`、`data-best-continuous-pulse-count`、
+`data-wheel-state`、`data-wheel-left/right`、`data-stop-state`、`data-stop-settled-after-pulse`、
+`data-sends-motion-while-held` 以及固定 manual/stop endpoint。
+该变化只增强 PC Web 可视状态和 DOM 验收，不改变键盘手控 gate，不自动启用键盘，也不额外发送 manual/stop 或 `/cmd_vel`。

@@ -1943,6 +1943,31 @@ h3 {
   line-height: 30px;
 }
 
+.plain-keyboard-telemetry {
+  /* 键盘连续控制的现场仪表：方向、pulse、轮速和停止收口必须比普通说明更醒目。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #8c959f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-keyboard-telemetry[data-state="手控中"],
+.plain-keyboard-telemetry[data-state="待停止"] {
+  border-left-color: #bf8700;
+}
+
+.plain-keyboard-telemetry[data-state="已验证"],
+.plain-keyboard-telemetry[data-state="可手控"] {
+  border-left-color: #238636;
+}
+
+.plain-keyboard-telemetry[data-state="停止失败"],
+.plain-keyboard-telemetry[data-state="未满足"] {
+  border-left-color: #cf222e;
+}
+
 .keyboard-direction-pad {
   display: grid;
   gap: 8px;

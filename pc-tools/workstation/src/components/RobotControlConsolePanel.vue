@@ -6857,6 +6857,44 @@ const plainKeyboardLiveStatus = computed(() => {
   return plainKeyboardMissingSummary.value || "键盘手控暂未满足。";
 });
 
+const plainKeyboardTelemetrySummary = computed(() => {
+  // 现场最常看的五件事压成一行：方向、连续 pulse、轮速、停止收口和当前是否会发运动。
+  const values = keyboardLastWheelFeedbackValues.value;
+  const left = values?.wheel_feedback_latest_raw_left ?? values?.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const right = values?.wheel_feedback_latest_raw_right ?? values?.wheel_feedback_latest_right_speed ?? "not_loaded";
+  const wheelState = keyboardWheelFeedbackState();
+  const stopState = keyboardHeldDirection.value
+    ? "按住中"
+    : keyboardStopFailedAfterPulse.value
+      ? "停止失败"
+      : keyboardStopSettledAfterPulse.value
+        ? "停止已收口"
+        : keyboardControlStatus.value.startsWith("released")
+          ? "停止请求中"
+          : keyboardControlStatus.value.startsWith("stop_sent")
+            ? "已停止"
+            : "未触发";
+  const motionState = plainKeyboardMainActionSendsMotion.value ? "按住会发低速脉冲" : "当前不发车";
+  const wheelText = wheelState === "未读取" ? "轮速未读取" : `轮速 L/R=${left}/${right}，${wheelState}`;
+  return {
+    state: plainKeyboardControlSummary.value.state,
+    text: `键盘仪表：方向 ${keyboardDirectionPlainLabel.value}；${keyboardForwardedPulseProgressText.value}；${wheelText}；${stopState}；${motionState}。`,
+    direction: keyboardHeldDirection.value ?? "none",
+    directionLabel: keyboardDirectionPlainLabel.value,
+    currentHoldPulseCount: keyboardHoldPulseCount.value,
+    bestContinuousPulseCount: keyboardVerifiedPulseCount.value,
+    verifiedMinForwardedPulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
+    wheelState,
+    wheelLeft: left,
+    wheelRight: right,
+    stopState,
+    stopSettledAfterPulse: keyboardStopSettledAfterPulse.value,
+    sendsMotionWhileHeld: plainKeyboardMainActionSendsMotion.value,
+    fixedManualEndpoint: plainKeyboardDirectionButtonEvidence.value.fixedManualEndpoint,
+    fixedStopEndpoint: plainKeyboardDirectionButtonEvidence.value.fixedStopEndpoint,
+  };
+});
+
 const plainKeyboardMainActionSummary = computed(() => {
   // 首屏必须直接说明“启用键盘”和“按住方向键”不是同一个动作，避免误以为启用就会自己动。
   switch (plainKeyboardMainActionKind.value) {
@@ -15345,6 +15383,26 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="plain-keyboard-safety-summary">{{ plainKeyboardSafetySummary }}</p>
             <p v-if="plainKeyboardReadbackSummary" class="panel-note" data-testid="plain-keyboard-readback-summary">{{ plainKeyboardReadbackSummary }}</p>
             <p v-if="plainKeyboardWheelReadbackGoal" class="panel-note" data-testid="keyboard-wheel-readback-goal">{{ plainKeyboardWheelReadbackGoal }}</p>
+            <p
+              class="panel-note plain-keyboard-telemetry"
+              data-testid="keyboard-telemetry-summary"
+              :data-state="plainKeyboardTelemetrySummary.state"
+              :data-current-direction="plainKeyboardTelemetrySummary.direction"
+              :data-current-direction-label="plainKeyboardTelemetrySummary.directionLabel"
+              :data-current-hold-pulse-count="String(plainKeyboardTelemetrySummary.currentHoldPulseCount)"
+              :data-best-continuous-pulse-count="String(plainKeyboardTelemetrySummary.bestContinuousPulseCount)"
+              :data-verified-min-forwarded-pulses="String(plainKeyboardTelemetrySummary.verifiedMinForwardedPulses)"
+              :data-wheel-state="plainKeyboardTelemetrySummary.wheelState"
+              :data-wheel-left="plainKeyboardTelemetrySummary.wheelLeft"
+              :data-wheel-right="plainKeyboardTelemetrySummary.wheelRight"
+              :data-stop-state="plainKeyboardTelemetrySummary.stopState"
+              :data-stop-settled-after-pulse="String(plainKeyboardTelemetrySummary.stopSettledAfterPulse)"
+              :data-sends-motion-while-held="String(plainKeyboardTelemetrySummary.sendsMotionWhileHeld)"
+              :data-fixed-keyboard-manual-endpoint="plainKeyboardTelemetrySummary.fixedManualEndpoint"
+              :data-fixed-keyboard-stop-endpoint="plainKeyboardTelemetrySummary.fixedStopEndpoint"
+            >
+              {{ plainKeyboardTelemetrySummary.text }}
+            </p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
             <p v-if="plainKeyboardWheelFeedbackSummary" class="panel-note" data-testid="keyboard-wheel-feedback-summary">{{ plainKeyboardWheelFeedbackSummary }}</p>
             <p class="panel-note" data-testid="keyboard-last-stop-summary">{{ plainKeyboardLastStopSummary }}</p>
