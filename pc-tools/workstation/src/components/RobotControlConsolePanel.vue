@@ -11346,6 +11346,15 @@ async function loadNavGoalExecutionLatest(options: { allowDuringMapRefresh?: boo
   }
 }
 
+async function loadNavGoalExecutionLatestAndRefreshMap(): Promise<void> {
+  // 用户显式读取最近行程时，地图也要跟同一轮只读刷新；否则 latest 已变了但画面仍可能是旧路线。
+  if (!canLoadNavGoalExecutionLatest.value) {
+    return;
+  }
+  await loadNavGoalExecutionLatest();
+  await refreshMapPreview();
+}
+
 async function loadDeliveryLatest(options: { allowDuringMapRefresh?: boolean } = {}): Promise<void> {
   // delivery latest 只读最近 gate 结论；用于明确现场还缺哪些送达材料。
   if (!robotApiBaseUrl.value.trim() || deliveryLatestPending.value || (!options.allowDuringMapRefresh && mapWysiwygRefreshPending.value)) {
@@ -13922,7 +13931,7 @@ onBeforeUnmount(() => {
               <button v-if="plainTripNav2NeedsLifecycleRestore" ref="plainTripNav2RestoreButton" type="button" class="secondary compact-stop" :disabled="!canRestorePlainNav2Lifecycle" data-testid="plain-trip-nav2-restore" @click="restorePlainNav2Lifecycle">
                 {{ plainTripNav2LifecycleButtonLabel }}
               </button>
-              <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="!canLoadNavGoalExecutionLatest" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatest">
+              <button ref="plainTripLatestButton" type="button" class="secondary compact-stop" :disabled="!canLoadNavGoalExecutionLatest" data-testid="plain-trip-latest" @click="loadNavGoalExecutionLatestAndRefreshMap">
                 {{ plainTripLatestButtonLabel }}
               </button>
               <button v-if="navGoalExecutionPending" type="button" class="danger-button compact-stop" :disabled="!canSendStop" data-testid="plain-trip-stop" @click="stopPlainTripExecution">
@@ -14512,7 +14521,7 @@ onBeforeUnmount(() => {
             </button>
           </form>
           <div class="robot-control-form">
-            <button class="secondary" type="button" :disabled="!canLoadNavGoalExecutionLatest" @click="loadNavGoalExecutionLatest">
+            <button class="secondary" type="button" :disabled="!canLoadNavGoalExecutionLatest" @click="loadNavGoalExecutionLatestAndRefreshMap">
               读取最近 Nav2 结果（高级）
             </button>
             <button class="secondary" type="button" :disabled="!canLoadDeliveryLatest" @click="loadDeliveryLatest">

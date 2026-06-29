@@ -19865,6 +19865,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const latestCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?")).length;
+    const mapPreviewCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     delayNextTripLatest = true;
     const latestClick = wrapper.find('[data-testid="plain-trip-latest"]').trigger("click");
     await wrapper.vm.$nextTick();
@@ -19895,6 +19896,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("重新读取行程（只读）");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).not.toContain("旧结果暂不作为当前结论");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBefore + 1);
   });
 
   it("shows delivery confirmation pending on the map while final completion is in flight", async () => {
