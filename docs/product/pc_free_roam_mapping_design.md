@@ -183,6 +183,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   “路线结果成功但执行窗口轮速 L/R 未非零，勾安全确认后用 ROS 模式重跑并复验执行窗口轮速 L/R”。
   原始 `nav2_goal_next_action` 继续保留给工程诊断；普通首屏优先消费白话字段，避免把 `wheel raw`、`controller`
   或模式 token 当成普通用户说明。该变化只修正只读 summary 和 UI 文案，不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 19:15 起，PC Node 新增固定只读状态代理：
+  `GET /api/robot-control/base/status` 转发上车 `/api/base/status`，`GET /api/robot-control/nav2/status` 转发上车 `/api/nav2/status`。
+  两个接口都会返回 fail-closed 顶层控制 flag、`status_key_values` 和白话 `next_action_plain`：base 直出
+  `base_command_mode/nav2_base_command_mode/wheel_feedback_lr_nonzero_proven/motion_signal_observed`，Nav2 直出
+  `path_point_count/path_generated/planner_server_active/controller_server_active`。这样现场脚本不用再从 summary 间接拼状态，就能判断
+  “底盘是否有 wheel raw L/R 证据”和“自动驾驶卡在 controller/lifecycle 还是路线生成”。该变化只读状态，不启动雷达、不执行 Nav2 goal、
+  不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 19:30 起，`readback_summary.free_roam` 增加 `next_action_plain`：
   它复用同一轮 `safe_command_boundary.free_roam_autonomy_next_action`，把“能先自由移动”和“建图验收还差什么”放进自由移动 readback 自身。
   因此 live 出现 `status=start_ready`、`motion_ready=true`、`mapping_missing=camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview` 时，

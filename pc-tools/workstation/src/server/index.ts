@@ -76,6 +76,9 @@ import type {
   RobotControlNav2LifecycleAction,
   RobotControlRadarLifecycleAction,
   RobotControlRadarStatusResponse,
+  RobotControlReadOnlyStatusRemoteEndpoint,
+  RobotControlReadOnlyStatusResponse,
+  RobotControlReadOnlyStatusWorkstationEndpoint,
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalExecutionLatestResponse,
   RobotControlDeliveryCompleteRequest,
@@ -842,8 +845,13 @@ const BASE_COMMAND_EVIDENCE_KEYS = [
   "proof_status",
   "feedback_ack_status",
   "latest_t1001_observed_count",
+  "base_command_mode",
+  "nav2_base_command_mode",
+  "nav2_goal_execute_default_base_command_mode",
   "wheel_feedback_lr_nonzero_proven",
   "wheel_feedback_nonzero_observed",
+  "motion_signal_observed",
+  "motion_signal_source",
   "physical_motion_lidar_delta_proven",
   "lidar_motion_delta_proven",
   "scan_delta_observed",
@@ -859,6 +867,14 @@ const BASE_COMMAND_EVIDENCE_KEYS = [
   "lifecycle_running",
   "lifecycle_state",
   "lifecycle_status",
+  "controller_server_active",
+  "planner_server_active",
+  "path_generated",
+  "path_point_count",
+  "latest_controller_active",
+  "latest_planner_active",
+  "latest_path_generated",
+  "latest_path_point_count",
   "latest_scan_proof_fresh",
   "latest_raw_packet_proof_status",
   "scan_once_observed",
@@ -902,6 +918,238 @@ function compactKeyValues(payload: Record<string, unknown> | null): Record<strin
     return [[key, serialized.slice(0, 180)] as const];
   });
   return Object.fromEntries(entries);
+}
+
+function statusStringValue(payload: Record<string, unknown> | null, key: string, fallback = "not_loaded"): string {
+  // 上车状态字段可能在顶层、proof_latest 或反馈摘要里；统一转成短字符串给 PC 直连状态代理。
+  const feedbackSamples = asRecord(payload?.feedback_samples_latest);
+  const feedbackReadback = asRecord(payload?.feedback_readback);
+  const proofLatest = asRecord(payload?.proof_latest);
+  const values = [
+    payload?.[key],
+    proofLatest?.[key],
+    feedbackSamples?.[key],
+    feedbackReadback?.[key],
+  ];
+  const value = firstLoadedValue(...values);
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  return (typeof value === "string" ? value : JSON.stringify(value)).slice(0, 180);
+}
+
+function readOnlyStatusKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
+  // compactKeyValues 只抓固定顶层；这里补齐 live 排障需要的嵌套状态别名。
+  const base = compactKeyValues(payload);
+  const keys = [
+    "base_command_mode",
+    "nav2_base_command_mode",
+    "nav2_goal_execute_default_base_command_mode",
+    "wheel_feedback_lr_nonzero_proven",
+    "wheel_feedback_nonzero_observed",
+    "motion_signal_observed",
+    "motion_signal_source",
+    "latest_t1001_observed_count",
+    "lifecycle_running",
+    "lifecycle_state",
+    "controller_server_active",
+    "planner_server_active",
+    "path_generated",
+    "path_point_count",
+    "latest_controller_active",
+    "latest_planner_active",
+    "latest_path_generated",
+    "latest_path_point_count",
+    "status",
+  ];
+  for (const key of keys) {
+    const value = statusStringValue(payload, key, "");
+    if (value) {
+      base[key] = value;
+    }
+  }
+  return base;
+}
+
+function readOnlyStatusPlainFields(
+  workstationEndpoint: RobotControlReadOnlyStatusWorkstationEndpoint,
+  keyValues: Record<string, string>,
+): Pick<
+  RobotControlReadOnlyStatusResponse,
+  | "plain_hint"
+  | "next_action_plain"
+  | "base_command_mode"
+  | "nav2_base_command_mode"
+  | "nav2_goal_execute_default_base_command_mode"
+  | "lifecycle_running"
+  | "lifecycle_state"
+  | "controller_server_active"
+  | "planner_server_active"
+  | "path_generated"
+  | "path_point_count"
+  | "wheel_feedback_lr_nonzero_proven"
+  | "wheel_feedback_nonzero_observed"
+  | "motion_signal_observed"
+  | "motion_signal_source"
+  | "latest_t1001_observed_count"
+> {
+  // 这里只生成白话读回，不决定是否发车；真正动作仍走带安全确认的固定 POST。
+  const baseCommandMode = keyValues.base_command_mode || "not_loaded";
+  const nav2BaseCommandMode = keyValues.nav2_base_command_mode || "not_loaded";
+  const nav2DefaultBaseMode = keyValues.nav2_goal_execute_default_base_command_mode || "not_loaded";
+  const lifecycleRunning = keyValues.lifecycle_running || "not_loaded";
+  const lifecycleState = keyValues.lifecycle_state || "not_loaded";
+  const controllerActive = keyValues.controller_server_active || keyValues.latest_controller_active || "not_loaded";
+  const plannerActive = keyValues.planner_server_active || keyValues.latest_planner_active || "not_loaded";
+  const pathGenerated = keyValues.path_generated || keyValues.latest_path_generated || "not_loaded";
+  const pathPointCount = keyValues.path_point_count || keyValues.latest_path_point_count || "not_loaded";
+  const wheelLrNonzero = keyValues.wheel_feedback_lr_nonzero_proven || "not_loaded";
+  const wheelAnyNonzero = keyValues.wheel_feedback_nonzero_observed || "not_loaded";
+  const motionObserved = keyValues.motion_signal_observed || "not_loaded";
+  const motionSource = keyValues.motion_signal_source || "not_loaded";
+  const t1001Count = keyValues.latest_t1001_observed_count || "not_loaded";
+  if (workstationEndpoint === "/api/robot-control/base/status") {
+    const wheelReady = wheelLrNonzero === "true" || wheelAnyNonzero === "true";
+    const motionReady = motionObserved === "true";
+    return {
+      plain_hint: wheelReady
+        ? "底盘状态已读到，wheel raw L/R 已出现非零。"
+        : motionReady
+          ? "底盘状态已读到，wheel raw L/R 仍未非零；已看到其它运动迹象。"
+          : "底盘状态已读到，wheel raw L/R 当前未非零。",
+      next_action_plain: wheelReady
+        ? "继续用同一个状态窗口复核 Nav2 路线或键盘手控闭环。"
+        : "需要证明轮速时，在现场安全确认后执行短动作或路线，并读取同窗口 wheel raw L/R。",
+      base_command_mode: baseCommandMode,
+      nav2_base_command_mode: nav2BaseCommandMode,
+      nav2_goal_execute_default_base_command_mode: nav2DefaultBaseMode,
+      lifecycle_running: lifecycleRunning,
+      lifecycle_state: lifecycleState,
+      controller_server_active: controllerActive,
+      planner_server_active: plannerActive,
+      path_generated: pathGenerated,
+      path_point_count: pathPointCount,
+      wheel_feedback_lr_nonzero_proven: wheelLrNonzero,
+      wheel_feedback_nonzero_observed: wheelAnyNonzero,
+      motion_signal_observed: motionObserved,
+      motion_signal_source: motionSource,
+      latest_t1001_observed_count: t1001Count,
+    };
+  }
+  const navStatus = keyValues.status || "not_loaded";
+  const servicesReady = controllerActive === "true" && plannerActive === "true";
+  const pathReady = pathGenerated === "true" && pathPointCount !== "0" && pathPointCount !== "not_loaded";
+  const nextAction = servicesReady && pathReady
+    ? "Nav2 路线和服务已读到；勾现场安全确认后可执行图上路线。"
+    : controllerActive === "false"
+      ? "Nav2 路线已生成但 controller 未 active，先启动或恢复 Nav2 runtime。"
+      : "先启动或刷新 Nav2 runtime，再确认路线点和 controller 状态。";
+  return {
+    plain_hint: `Nav2 状态已读到：${navStatus}；路线点 ${pathPointCount}；controller=${controllerActive}。`,
+    next_action_plain: nextAction,
+    base_command_mode: baseCommandMode,
+    nav2_base_command_mode: nav2BaseCommandMode,
+    nav2_goal_execute_default_base_command_mode: nav2DefaultBaseMode,
+    lifecycle_running: lifecycleRunning,
+    lifecycle_state: lifecycleState,
+    controller_server_active: controllerActive,
+    planner_server_active: plannerActive,
+    path_generated: pathGenerated,
+    path_point_count: pathPointCount,
+    wheel_feedback_lr_nonzero_proven: wheelLrNonzero,
+    wheel_feedback_nonzero_observed: wheelAnyNonzero,
+    motion_signal_observed: motionObserved,
+    motion_signal_source: motionSource,
+    latest_t1001_observed_count: t1001Count,
+  };
+}
+
+function readOnlyStatusDangerousFields(
+  workstationEndpoint: RobotControlReadOnlyStatusWorkstationEndpoint,
+  payload: Record<string, unknown> | null,
+): string[] {
+  // 直连 status 是只读窗口；base/status 允许上车回报 readback sends_commands，但仍禁止 motion/control 顶层放行。
+  const allowedReadback = new Set([
+    "sends_commands",
+    "readback_sends_commands",
+  ]);
+  return scanDangerousTrueFields(payload).filter((field) => {
+    if (workstationEndpoint !== "/api/robot-control/base/status") {
+      return true;
+    }
+    const last = field.split(".").pop() ?? field;
+    return !allowedReadback.has(last);
+  });
+}
+
+async function buildReadOnlyStatusResponse(
+  sourceBaseUrl: string,
+  workstationEndpoint: RobotControlReadOnlyStatusWorkstationEndpoint,
+  remoteEndpoint: RobotControlReadOnlyStatusRemoteEndpoint,
+): Promise<{ httpStatus: number; body: RobotControlReadOnlyStatusResponse }> {
+  // 统一两个直连 status 代理，避免 base/nav2 出现不同的 fail-closed 细节。
+  const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+  const fallbackBase: RobotControlReadOnlyStatusResponse = {
+    schema: "trashbot.pc_tools_workstation.robot_control_read_only_status_proxy.v1",
+    proxy_status: "status_rejected",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    robot_control_executed: false,
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: normalized.ok ? normalized.normalized.toString().replace(/\/$/, "") : "not_loaded",
+    workstation_endpoint: workstationEndpoint,
+    remote_endpoint: remoteEndpoint,
+    remote_method: "GET",
+    remote_http_status: null,
+    status: "blocked",
+    status_key_values: {},
+    ...readOnlyStatusPlainFields(workstationEndpoint, {}),
+    failure_reason: normalized.ok ? "" : normalized.reason,
+    blocked_reasons: normalized.ok ? [] : [normalized.reason],
+    hard_dangerous_true_fields: [],
+    sends_commands: false,
+    sends_motion_commands: false,
+  };
+  if (!normalized.ok) {
+    return { httpStatus: 400, body: fallbackBase };
+  }
+  try {
+    const remote = await fetch(endpointUrl(normalized.normalized, remoteEndpoint), {
+      method: "GET",
+      signal: AbortSignal.timeout(10000),
+    });
+    const remotePayload = asRecord(await remote.json().catch(() => null));
+    const dangerous = readOnlyStatusDangerousFields(workstationEndpoint, remotePayload);
+    const statusKeyValues = readOnlyStatusKeyValues(remotePayload);
+    const responseBody: RobotControlReadOnlyStatusResponse = {
+      ...fallbackBase,
+      proxy_status: remote.ok && remotePayload && dangerous.length === 0 ? "status_loaded" : "status_failed",
+      remote_http_status: remote.status,
+      status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
+      status_key_values: statusKeyValues,
+      ...readOnlyStatusPlainFields(workstationEndpoint, statusKeyValues),
+      failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `status_http_status_${remote.status}`,
+      blocked_reasons: [
+        ...(remote.ok ? [] : [`status_http_status_${remote.status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+      ],
+      hard_dangerous_true_fields: dangerous,
+      sends_commands: false,
+      sends_motion_commands: false,
+      robot_control_executed: false,
+    };
+    return { httpStatus: responseBody.proxy_status === "status_loaded" ? 200 : 502, body: responseBody };
+  } catch (error) {
+    const reason = error instanceof Error ? shortText(error.message, "status_failed") : "status_failed";
+    return {
+      httpStatus: 502,
+      body: { ...fallbackBase, proxy_status: "status_failed", failure_reason: reason, blocked_reasons: [reason] },
+    };
+  }
 }
 
 function radarStatusPlainFields(
@@ -2901,6 +3149,26 @@ export function createWorkstationApp(): express.Express {
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
+  });
+
+  workstationApp.get("/api/robot-control/base/status", async (req, res) => {
+    // Base status 是固定只读 GET；用于证明 command mode 与 wheel raw L/R 读回，不发送 manual/stop/cmd_vel。
+    const response = await buildReadOnlyStatusResponse(
+      robotControlReadOnlyQueryBaseUrl(req.query.baseUrl),
+      "/api/robot-control/base/status",
+      "/api/base/status",
+    );
+    res.status(response.httpStatus).json(response.body);
+  });
+
+  workstationApp.get("/api/robot-control/nav2/status", async (req, res) => {
+    // Nav2 status 是固定只读 GET；用于解释路线/服务 blocker，不启动 lifecycle、不执行 goal。
+    const response = await buildReadOnlyStatusResponse(
+      robotControlReadOnlyQueryBaseUrl(req.query.baseUrl),
+      "/api/robot-control/nav2/status",
+      "/api/nav2/status",
+    );
+    res.status(response.httpStatus).json(response.body);
   });
 
   workstationApp.get("/api/robot-control/radar/status", async (req, res) => {

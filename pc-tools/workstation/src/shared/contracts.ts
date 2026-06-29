@@ -3042,6 +3042,51 @@ export interface RobotControlRadarStatusResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export type RobotControlReadOnlyStatusProxyStatus = "status_loaded" | "status_rejected" | "status_failed";
+export type RobotControlReadOnlyStatusWorkstationEndpoint =
+  | "/api/robot-control/base/status"
+  | "/api/robot-control/nav2/status";
+export type RobotControlReadOnlyStatusRemoteEndpoint =
+  | "/api/base/status"
+  | "/api/nav2/status";
+
+// PC 直连状态代理只做固定 GET 读回，给现场脚本和普通 UI 一份稳定 JSON。
+// 顶层控制/交付 flag 继续固定 fail-closed，不能从上车状态读回外推成“可控”。
+export interface RobotControlReadOnlyStatusResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_read_only_status_proxy.v1";
+  proxy_status: RobotControlReadOnlyStatusProxyStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: RobotControlReadOnlyStatusWorkstationEndpoint;
+  remote_endpoint: RobotControlReadOnlyStatusRemoteEndpoint;
+  remote_method: "GET";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  status_key_values: Record<string, string>;
+  plain_hint: string;
+  next_action_plain: string;
+  base_command_mode: string;
+  nav2_base_command_mode: string;
+  nav2_goal_execute_default_base_command_mode: string;
+  lifecycle_running: string;
+  lifecycle_state: string;
+  controller_server_active: string;
+  planner_server_active: string;
+  path_generated: string;
+  path_point_count: string;
+  wheel_feedback_lr_nonzero_proven: string;
+  wheel_feedback_nonzero_observed: string;
+  motion_signal_observed: string;
+  motion_signal_source: string;
+  latest_t1001_observed_count: string;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  sends_commands: false;
+  sends_motion_commands: false;
+  robot_control_executed: false;
+}
+
 export type RobotControlMapLifecycleAction = "list" | "start" | "save" | "reset";
 export type RobotControlMapLifecycleProxyStatus = "lifecycle_forwarded" | "lifecycle_rejected" | "lifecycle_failed";
 export type RobotControlMapLifecycleEndpoint =
