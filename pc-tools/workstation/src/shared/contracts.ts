@@ -3064,6 +3064,13 @@ export interface RobotControlRadarStatusResponse extends ProofFlags {
   latest_scan_age_ms: string;
   radar_status_plain: string;
   radar_next_action_plain: string;
+  radar_scan_required_observations: string;
+  radar_scan_observation_status: string;
+  radar_scan_observation_missing_reasons: string;
+  radar_scan_ready_for_map_overlay: string;
+  radar_overlay_ready_for_map: string;
+  radar_map_overlay_readiness_status: string;
+  radar_map_overlay_next_action_plain: string;
   radar_overlay_point_count: string;
   radar_overlay_source_point_count: string;
   radar_overlay_wysiwyg_status_plain: string;

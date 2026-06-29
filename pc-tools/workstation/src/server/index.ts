@@ -1171,6 +1171,13 @@ function radarStatusPlainFields(
   | "next_action_plain"
   | "radar_status_plain"
   | "radar_next_action_plain"
+  | "radar_scan_required_observations"
+  | "radar_scan_observation_status"
+  | "radar_scan_observation_missing_reasons"
+  | "radar_scan_ready_for_map_overlay"
+  | "radar_overlay_ready_for_map"
+  | "radar_map_overlay_readiness_status"
+  | "radar_map_overlay_next_action_plain"
   | "radar_overlay_point_count"
   | "radar_overlay_source_point_count"
   | "radar_overlay_wysiwyg_status_plain"
@@ -1185,6 +1192,37 @@ function radarStatusPlainFields(
   const scanAgeMs = keyValues.latest_scan_age_ms || keyValues.scan_age_ms || "not_loaded";
   const radarReady = running === "true" && fresh === "true";
   const radarStopped = running === "false" || lifecycleState === "stopped" || continuous === "lifecycle_not_running";
+  const requiredObservations = [
+    ["scan_once_observed", "scan_once"],
+    ["scan_hz_observed", "scan_hz"],
+    ["raw_packet_once_observed", "raw_packet_once"],
+  ] as const;
+  const missingObservations = radarReady
+    ? []
+    : requiredObservations
+      .filter(([key]) => keyValues[key] !== "true")
+      .map(([, label]) => label);
+  const missingObservationText = missingObservations.length > 0 ? missingObservations.join(",") : "none";
+  const observationStatus = radarReady
+    ? "all_required_observations_observed"
+    : missingObservations.length > 0
+      ? "missing_required_observations"
+      : "latest_scan_not_fresh";
+  const overlayReadinessStatus = radarStopped
+    ? "blocked_radar_lifecycle_not_running"
+    : radarReady
+      ? "scan_ready_refresh_map_preview"
+      : missingObservations.length > 0
+        ? "blocked_missing_scan_observations"
+        : "blocked_latest_scan_not_fresh";
+  const overlayReadyForMap = radarReady ? "map_preview_required" : "false";
+  const overlayNextActionPlain = overlayReadinessStatus === "scan_ready_refresh_map_preview"
+    ? "雷达扫描材料已就绪；刷新地图画面，确认地图上实际显示的雷达点数。"
+    : overlayReadinessStatus === "blocked_missing_scan_observations"
+      ? `先修复雷达扫描观测：${missingObservations.join("、")}；有新扫描后再刷新地图画面。`
+      : radarStopped
+        ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
+        : "先刷新雷达扫描 proof，确认最新扫描为 fresh 后再刷新地图画面。";
   const radarStatusPlain = radarReady
     ? "雷达已运行，最新扫描是新的；地图雷达点仍以同轮地图预览为准。"
     : radarStopped
@@ -1206,10 +1244,17 @@ function radarStatusPlainFields(
     next_action_plain: radarNextActionPlain,
     radar_status_plain: radarStatusPlain,
     radar_next_action_plain: radarNextActionPlain,
+    radar_scan_required_observations: requiredObservations.map(([, label]) => label).join(","),
+    radar_scan_observation_status: observationStatus,
+    radar_scan_observation_missing_reasons: missingObservationText,
+    radar_scan_ready_for_map_overlay: radarReady && missingObservations.length === 0 ? "true" : "false",
+    radar_overlay_ready_for_map: overlayReadyForMap,
+    radar_map_overlay_readiness_status: overlayReadinessStatus,
+    radar_map_overlay_next_action_plain: overlayNextActionPlain,
     radar_overlay_point_count: "not_loaded",
     radar_overlay_source_point_count: scanPointCount,
     radar_overlay_wysiwyg_status_plain: `雷达 status 不直接绘制地图雷达点；${radarStatusPlain}`,
-    radar_overlay_wysiwyg_next_action_plain: radarNextActionPlain,
+    radar_overlay_wysiwyg_next_action_plain: overlayNextActionPlain,
   };
 }
 

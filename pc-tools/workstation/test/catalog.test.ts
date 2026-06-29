@@ -10651,6 +10651,13 @@ describe("workstation fail-closed API contracts", () => {
         next_action_plain: string;
         radar_status_plain: string;
         radar_next_action_plain: string;
+        radar_scan_required_observations: string;
+        radar_scan_observation_status: string;
+        radar_scan_observation_missing_reasons: string;
+        radar_scan_ready_for_map_overlay: string;
+        radar_overlay_ready_for_map: string;
+        radar_map_overlay_readiness_status: string;
+        radar_map_overlay_next_action_plain: string;
         radar_overlay_point_count: string;
         radar_overlay_source_point_count: string;
         radar_overlay_wysiwyg_status_plain: string;
@@ -10673,10 +10680,75 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.plain_hint).not.toContain("overlay");
       expect(body.radar_status_plain).toBe("雷达未运行或扫描已停；旧雷达来源点不能当作当前地图雷达点。");
       expect(body.radar_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
+      expect(body.radar_scan_required_observations).toBe("scan_once,scan_hz,raw_packet_once");
+      expect(body.radar_scan_observation_status).toBe("missing_required_observations");
+      expect(body.radar_scan_observation_missing_reasons).toBe("scan_once,scan_hz,raw_packet_once");
+      expect(body.radar_scan_ready_for_map_overlay).toBe("false");
+      expect(body.radar_overlay_ready_for_map).toBe("false");
+      expect(body.radar_map_overlay_readiness_status).toBe("blocked_radar_lifecycle_not_running");
+      expect(body.radar_map_overlay_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(body.radar_overlay_point_count).toBe("not_loaded");
       expect(body.radar_overlay_source_point_count).toBe("81");
       expect(body.radar_overlay_wysiwyg_status_plain).toBe("雷达 status 不直接绘制地图雷达点；雷达未运行或扫描已停；旧雷达来源点不能当作当前地图雷达点。");
       expect(body.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/radar/status"]);
+      expect(Object.keys(upstream.receivedBodies)).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("radar status proxy names missing scan observations before map overlay can draw", async () => {
+    // 现场常见形态是 lifecycle running 但最新 proof 缺 scan/hz/raw packet；PC 必须直接说明缺口。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/radar/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          evidence_ref: "o1-lidar-scan-proof-running-incomplete",
+          latest_evidence_ref: "o1-lidar-scan-proof-running-incomplete",
+          scan_status: "not_proven",
+          continuous_scan_status: "latest_proof_incomplete_while_lifecycle_running",
+          continuity_window_status: "latest_proof_incomplete_while_lifecycle_running",
+          continuous_window_observed: false,
+          lifecycle_running: true,
+          lifecycle_state: "running",
+          lifecycle_status: "latest_proof_incomplete_while_lifecycle_running",
+          latest_scan_proof_fresh: false,
+          scan_once_observed: false,
+          scan_hz_observed: false,
+          raw_packet_once_observed: false,
+          scan_point_count: 0,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/radar/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        radar_scan_observation_status: string;
+        radar_scan_observation_missing_reasons: string;
+        radar_scan_ready_for_map_overlay: string;
+        radar_overlay_ready_for_map: string;
+        radar_map_overlay_readiness_status: string;
+        radar_map_overlay_next_action_plain: string;
+        radar_overlay_wysiwyg_next_action_plain: string;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.radar_scan_observation_status).toBe("missing_required_observations");
+      expect(body.radar_scan_observation_missing_reasons).toBe("scan_once,scan_hz,raw_packet_once");
+      expect(body.radar_scan_ready_for_map_overlay).toBe("false");
+      expect(body.radar_overlay_ready_for_map).toBe("false");
+      expect(body.radar_map_overlay_readiness_status).toBe("blocked_missing_scan_observations");
+      expect(body.radar_map_overlay_next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面。");
+      expect(body.radar_overlay_wysiwyg_next_action_plain).toBe(body.radar_map_overlay_next_action_plain);
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/radar/status"]);
       expect(Object.keys(upstream.receivedBodies)).toEqual([]);

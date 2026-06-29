@@ -524,6 +524,16 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 `radar_overlay_status`、`radar_overlay_point_count` 和 `radar_overlay_wysiwyg_status_plain` 作为地图标记所见即所得证据。
 该变化只补响应合同，不发送底盘、Nav2、free-roam、delivery、manual、keyboard、stop 或 `/cmd_vel`。
 
+2026-06-29 21:10 起，PC 直连 `GET /api/robot-control/radar/status` 在 `radar_overlay_wysiwyg_*`
+之外新增地图贴图前置缺口字段：`radar_scan_required_observations`、
+`radar_scan_observation_status`、`radar_scan_observation_missing_reasons`、
+`radar_scan_ready_for_map_overlay`、`radar_overlay_ready_for_map`、
+`radar_map_overlay_readiness_status` 和 `radar_map_overlay_next_action_plain`。
+当现场出现 `lifecycle_running=true` 但 `latest_scan_proof_fresh=false` 时，PC 会直接显示缺
+`scan_once,scan_hz,raw_packet_once`，而不是只说雷达未就绪。该状态仍只证明扫描材料是否足够，
+地图上是否真的画出雷达点必须继续以 `/api/robot-control/map/preview` 同轮 overlay 点数为准；
+本变更不启动雷达、不刷新 proof、不发送底盘、Nav2、free-roam、delivery、manual、keyboard、stop 或 `/cmd_vel`。
+
 2026-06-27 08:51 起，PC summary 在 `/api/radar/status` 已显示 `lifecycle_running=true` 时，优先把
 `continuous_scan_status` 作为普通首屏雷达主状态；如果独立 latest proof endpoint 仍是 404/missing，地图和雷达卡片显示
 `雷达无新点`，并说明“雷达驱动在运行，但当前没有读到新的雷达点”。这样现场点击启动雷达后不会把“驱动已运行但 proof
