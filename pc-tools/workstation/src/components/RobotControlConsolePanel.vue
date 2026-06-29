@@ -8428,6 +8428,54 @@ const plainTripRouteExecutionReadback = computed(() => {
   const uniqueParts = [...new Set(parts)];
   return uniqueParts.length > 0 ? `行程复验事实：${uniqueParts.join("；")}。` : "";
 });
+type PlainTripExecutionPlanItem = {
+  id: "mode" | "runtime" | "wheel";
+  label: string;
+  state: string;
+  hint: string;
+};
+const plainTripExecutionPlanItems = computed<PlainTripExecutionPlanItem[]>(() => {
+  // 把真正点击执行时的三个硬口径拆成短行：模式、runtime、轮速验收，避免现场从长句里猜自动驾驶卡在哪里。
+  const nav2 = robotSummary.value?.readback_summary.nav2;
+  const values = directNav2ExecutionValues();
+  const requestedMode = plainTripRequestedBaseCommandMode().toUpperCase();
+  const previousMode = values?.base_command_mode && values.base_command_mode !== "not_loaded"
+    ? values.base_command_mode.toUpperCase()
+    : "";
+  const changedModeText = previousMode && previousMode !== requestedMode
+    ? `上次 ${previousMode}，本次请求 ${requestedMode}。`
+    : `本次请求 ${requestedMode}。`;
+  const runtimeManaged = plainTripManagedRuntimePrecheckText().length > 0;
+  const wheelPair = nav2BaseFeedbackPair(values);
+  const wheelPairText = wheelPair ? `当前读回轮速 L/R=${wheelPair.left}/${wheelPair.right}。` : "";
+  const wheelState = explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)
+    ? "已证明"
+    : plainTripHasFreshUnprovenControlEvidence.value || explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven)
+      ? "待复验"
+      : "执行后验";
+  return [
+    {
+      id: "mode",
+      label: "执行模式",
+      state: requestedMode,
+      hint: `${changedModeText}执行请求会带上这个模式，避免沿用旧诊断路径。`,
+    },
+    {
+      id: "runtime",
+      label: "自动驾驶",
+      state: runtimeManaged ? "执行时启动" : "按当前状态",
+      hint: runtimeManaged
+        ? "自动驾驶服务停着时，执行会托管启动；这不是额外预检。"
+        : "执行接口只复核现场安全确认和固定白名单。",
+    },
+    {
+      id: "wheel",
+      label: "轮速验收",
+      state: wheelState,
+      hint: `${wheelPairText}完整行程必须在本次执行窗口读到轮速 L/R 非零；IMU 只作运动迹象。`,
+    },
+  ];
+});
 const plainTripCurrentRouteVisible = computed(() => {
   // 只有当前路线真正画到地图上，普通首屏才允许执行“图上路线”；最近路线不能作为执行依据。
   const routePath = latestNavPathOverlay();
@@ -13516,6 +13564,18 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
             <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
             <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
+            <div class="plain-trip-execution-plan" data-testid="plain-trip-execution-plan" aria-label="行程执行包">
+              <div
+                v-for="item in plainTripExecutionPlanItems"
+                :key="item.id"
+                class="plain-trip-execution-plan-row"
+                :data-testid="`plain-trip-execution-plan-${item.id}`"
+              >
+                <span class="plain-progress-label">{{ item.label }}</span>
+                <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+                <span class="muted">{{ item.hint }}</span>
+              </div>
+            </div>
             <p v-if="plainTripRouteExecutionReadback" class="panel-note" data-testid="plain-trip-route-execution-readback">{{ plainTripRouteExecutionReadback }}</p>
             <p v-if="plainTripExecutionProgress" class="panel-note" data-testid="plain-trip-execution-progress">{{ plainTripExecutionProgress }}</p>
             <p v-if="plainTripRouteWysiwygSummary" class="panel-note" data-testid="plain-trip-route-wysiwyg">
