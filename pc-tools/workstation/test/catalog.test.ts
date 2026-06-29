@@ -11974,7 +11974,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_status).toBe("not_loaded");
       expect(statusBody.source_diagnosis_plain_hint).toBe("not_loaded");
       expect(statusBody.source_diagnosis_next_action).toBe("not_loaded");
-      expect(statusBody.source_diagnosis_next_action_plain).toBe("");
+      expect(statusBody.source_diagnosis_next_action_plain).toBe("打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("not_loaded");
       expect(statusBody.status).toBe("idle_not_started");
       expect(statusBody.plain_hint).toBe("页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。");

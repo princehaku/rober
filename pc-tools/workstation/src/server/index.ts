@@ -1740,6 +1740,8 @@ function cameraMjpegStatusResponse(
   const lastFailureReason = lastFailure?.failure_reason ?? "";
   const lastRemoteHttpStatus = lastFailure?.remote_http_status ?? null;
   const lastFailureAtMs = lastFailure?.failed_at_ms ?? null;
+  const sourceDiagnosisNextActionPlain = cameraMjpegActionPlainText(diagnosisSource?.source_diagnosis_next_action ?? "not_loaded")
+    || previewGuidance.next_action_plain;
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -1776,7 +1778,7 @@ function cameraMjpegStatusResponse(
     source_diagnosis_status: diagnosisSource?.source_diagnosis_status ?? "not_loaded",
     source_diagnosis_plain_hint: diagnosisSource?.source_diagnosis_plain_hint ?? "not_loaded",
     source_diagnosis_next_action: diagnosisSource?.source_diagnosis_next_action ?? "not_loaded",
-    source_diagnosis_next_action_plain: cameraMjpegActionPlainText(diagnosisSource?.source_diagnosis_next_action ?? "not_loaded"),
+    source_diagnosis_next_action_plain: sourceDiagnosisNextActionPlain,
     source_diagnosis_not_exclusive: diagnosisSource?.source_diagnosis_not_exclusive ?? "not_loaded",
     selected_path: diagnosisSource?.selected_path ?? "not_loaded",
     selected_name: diagnosisSource?.selected_name ?? "not_loaded",

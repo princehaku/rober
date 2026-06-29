@@ -4149,3 +4149,9 @@ manual、delivery、stop 或 `/cmd_vel`。
 不可读，普通首屏/API 会显示“自动驾驶状态读取失败”或“地图/定位读取失败”，并把下一步写成先确认小车地址和上位机 API 可读。
 路线生成、执行图上路线和同窗口轮速 L/R 复验仍保留原有显式按钮与安全确认流程；该变化只修正只读 summary 文案，
 不自动刷新 proof、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:17 CST 起，相机共享预览的下一步字段更加完整：当 source diagnosis 还没有硬件级结论时，
+`source_diagnosis_next_action_plain` 会回退到共享 MJPEG/首帧检查动作，提示打开页面自动接入共享预览，并在仍无画面时
+点只读检查复测首帧；当诊断已证明 `uvc_no_frame_not_exclusive` 时，仍优先提示检查 USB、摄像头输入或供电、换
+known-good UVC 复测。该变化只修正只读 summary 和 camera MJPEG status 文案，不新建额外 capture、不执行 Nav2、
+不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

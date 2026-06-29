@@ -714,3 +714,9 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 读不到时，`nav2_goal_next_action_plain` 和 `readback_summary.nav2.next_action_plain` 会先提示确认小车地址和上位机 API 可读，
 再刷新地图/自动驾驶状态并准备图上路线；不再只写“先生成图上路线”。该变化只修正只读 summary 文案，不自动刷新 proof、
 不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-06-29 12:17 CST 起，相机 source diagnosis 还没形成硬件结论时，`source_diagnosis_next_action_plain` 不再留空，
+会回退到共享 MJPEG/首帧检查下一步：打开页面自动接入共享预览，若仍无画面则点只读检查复测首帧。已经明确为
+`uvc_no_frame_not_exclusive` 时仍优先显示检查 USB、摄像头输入或供电、换 known-good UVC 复测。该变化只修正只读
+summary 和 `/api/robot-control/camera/mjpeg/status` 文案，不新建额外 capture、不执行 Nav2、不发送 manual、
+keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

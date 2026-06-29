@@ -2006,6 +2006,7 @@ function cameraSummaryFromReadbacks(
     cachedFrameAgeMs: sharedPreviewCachedFrameAgeMs,
     previewVisiblePlain: previewVisibility.visiblePlain,
   });
+  const sourceDiagnosisNextActionPlain = derivedSourceDiagnosis.next_action_plain || previewGuidance.next_action_plain;
   return {
     status: cameraStatus,
     devices_status: devicesReadback?.status ?? "not_loaded",
@@ -2065,7 +2066,7 @@ function cameraSummaryFromReadbacks(
     source_diagnosis_status: derivedSourceDiagnosis.status,
     source_diagnosis_plain_hint: derivedSourceDiagnosis.plain_hint,
     source_diagnosis_next_action: derivedSourceDiagnosis.next_action,
-    source_diagnosis_next_action_plain: derivedSourceDiagnosis.next_action_plain,
+    source_diagnosis_next_action_plain: sourceDiagnosisNextActionPlain,
     source_diagnosis_not_exclusive: compactValueText(derivedSourceDiagnosis.not_exclusive),
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
     source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
