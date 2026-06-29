@@ -6096,7 +6096,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
       expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 pwm，下次 ros");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线，并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或控制服务；勾选行程前安全确认后用 ROS 模式重跑图上路线，并复验执行窗口轮速 L/R");
       expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_ros_rerun_after_pwm");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
@@ -6216,7 +6217,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线，并复验 wheel raw L/R");
     } finally {
       await robotApi.close();
     }

@@ -6061,7 +6061,7 @@ function nav2GoalBoundaryGuidance(
       ? `当前图上路线未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
       : inactiveServiceNames.length
         ? `当前自动驾驶服务未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
-        : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线${managedRuntimeHint}`;
+        : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线${managedRuntimeHint}，并复验 wheel raw L/R`;
     const nextAction = `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${routePrepActions.length ? "" : serviceInactiveSuffix}；${rerunNextAction}`;
     return {
       ...base,
