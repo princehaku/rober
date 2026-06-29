@@ -10457,6 +10457,118 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("map preview radar overlay is not loaded when pose exists but radar has no current points", async () => {
+    // 只有 map pose 不能让雷达层变成 partial；没有新雷达点时地图应明确显示 0 个当前雷达点。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/map/preview": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_preview",
+          status: "loaded",
+          safe_to_control: false,
+          robot_control_executed: false,
+          map_name: "floor_1",
+          map_yaml_name: "floor_1.yaml",
+          map_image_name: "floor_1.pgm",
+          width: 20,
+          height: 10,
+          resolution: 0.05,
+          origin: [0, 0, 0],
+          cell_counts: { free: 10, unknown: 0, occupied: 0, other: 0 },
+          has_free_cells: true,
+          navigation_quality: "has_free_cells",
+          image_mime_type: "image/png",
+          image_data_url: "data:image/png;base64,abc",
+          source_image_format: "pgm_p5",
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_proof_latest",
+          status: "localization_reset_observed",
+          safe_to_control: false,
+          robot_control_executed: false,
+          robot_pose: { x: 0.4, y: -0.2, yaw: 0.1, frame_id: "map", source: "/amcl_pose" },
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "not_proven",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof",
+          status: "not_proven",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/radar/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          status: "radar_stopped",
+          safe_to_control: false,
+          robot_control_executed: false,
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          latest_scan_proof_fresh: false,
+        },
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_scan_proof",
+          status: "not_loaded",
+          safe_to_control: false,
+          robot_control_executed: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/map/preview?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        radar_overlay_status: string;
+        radar_overlay_count: number;
+        radar_overlay_source_count: number | null;
+        radar_overlay_wysiwyg_status_plain: string;
+        radar_overlay_next_action_plain: string;
+        radar_overlay: {
+          overlay_status: string;
+          count: number;
+          source_count: number | null;
+          blocked_reasons: string[];
+          blocked_reason_labels: string[];
+        };
+        robot_pose_status: string;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("preview_forwarded");
+      expect(body.robot_pose_status).toBe("map_pose_observed");
+      expect(body.radar_overlay_status).toBe("not_loaded");
+      expect(body.radar_overlay.overlay_status).toBe("not_loaded");
+      expect(body.radar_overlay_count).toBe(0);
+      expect(body.radar_overlay.count).toBe(0);
+      expect(body.radar_overlay_source_count).toBeNull();
+      expect(body.radar_overlay.source_count).toBeNull();
+      expect(body.radar_overlay_wysiwyg_status_plain).toContain("当前显示 0 个点");
+      expect(body.radar_overlay_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
+      expect(body.radar_overlay.blocked_reasons).toContain("scan_preview_points_missing_for_map_radar_overlay");
+      expect(body.radar_overlay.blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
+      expect(body.radar_overlay.blocked_reason_labels).toContain("没有可贴图的新雷达点");
+      expect(body.radar_overlay.blocked_reason_labels).toContain("雷达未运行");
+      expect(body.robot_control_executed).toBe(false);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("radar status proxy exposes top-level lifecycle and map-marker guidance", async () => {
     // 独立雷达状态页只证明雷达本体；地图 marker 所见即所得仍要指向 map preview 的 overlay 计数。
     const upstream = await listenRobotBaseCommandApi({}, {

@@ -218,6 +218,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   同轮 overlay 读到 map-frame 小车位置时返回 `map_pose_observed`，没有读到时返回 `not_observed`。
   这样地图画面、路线点、小车位置和雷达贴图状态都能用顶层字段一眼判断，外部脚本不必自己解析 `robot_pose=null`。
   该变化只补只读 map preview 所见即所得字段，不刷新定位、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-06-29 19:41 起，`/api/robot-control/map/preview` 的地图雷达 overlay 状态与 summary 对齐：
+  `partial` 只表示“有当前雷达点，但缺少小车 map pose 等贴图材料”；如果只有小车位置、没有新鲜雷达点，或雷达 lifecycle stopped/scan stale，
+  直连 map preview 返回 `radar_overlay_status=not_loaded` 或 `not_current`，当前显示点数固定为 0，并提示先启动/刷新雷达后再刷新地图画面。
+  这样不会因为地图上有小车位置，就把雷达层误报成 partial。该变化只修正只读地图预览判定，不启动雷达、不执行 Nav2、
+  不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 20:30 起，`/api/robot-control/map/preview` 顶层增加 `path_preview_status`：
   同轮 map preview 读到当前路线点时返回 `path_preview_observed`，否则返回 `not_observed`。
   外部脚本可以直接把 `path_preview_status`、`robot_pose_status`、`radar_overlay_status` 作为地图 WYSIWYG 三件套，不必手动推断点数和 frame。

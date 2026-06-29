@@ -3420,14 +3420,13 @@ async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOver
     hasMapPose && !hasRadarPoints ? "scan_preview_points_missing_for_map_radar_overlay" : "",
   ].filter(Boolean);
   const overlayBlockedReasons = [...blockedReasons, ...overlayGaps];
-  const hasCurrentRadarPoints = radarOverlayCurrent;
-  const hasVisibleOverlay = hasCurrentRadarPoints || hasMapPose;
-  const hasCompleteOverlay = hasCurrentRadarPoints && hasMapPose;
-  const overlayStatus: RobotControlMapPreviewRadarOverlay["overlay_status"] = hasRadarPoints && !radarOverlayCurrent
-    ? "not_current"
-    : hasVisibleOverlay
-      ? overlayBlockedReasons.length > 0 || !hasCompleteOverlay ? "partial" : "loaded"
-      : overlayBlockedReasons.length > 0 ? "blocked" : "not_loaded";
+  const overlayStatus: RobotControlMapPreviewRadarOverlay["overlay_status"] = radarOverlayCurrent && hasMapPose
+    ? "loaded"
+    : radarOverlayCurrent
+      ? "partial"
+      : hasRadarPoints
+        ? "not_current"
+        : "not_loaded";
   const explanation = mapRadarOverlayExplanation(
     overlayStatus,
     overlayBlockedReasons,
