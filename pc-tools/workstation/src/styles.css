@@ -1305,6 +1305,11 @@ h3 {
   background: #ffffff;
 }
 
+.plain-map-engineering-tools-body dl > .plain-map-engineering-tools-wide {
+  /* topic 清单比命令更长，单独跨两列避免工程信息把普通卡片撑乱。 */
+  grid-column: 1 / -1;
+}
+
 .plain-map-engineering-tools-body dt {
   margin-bottom: 4px;
   color: #526171;

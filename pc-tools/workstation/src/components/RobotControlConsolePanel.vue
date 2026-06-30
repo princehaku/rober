@@ -305,6 +305,17 @@ const plainMapLegacyDirectViewHref = "?view=map";
 const PLAIN_MAP_RVIZ_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_bringup rviz.launch.py";
 const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml";
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
+const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
+  "/map",
+  "/scan",
+  "/tf",
+  "/plan",
+  "/local_plan",
+  "/amcl_pose",
+  "/global_costmap/costmap",
+  "/local_costmap/costmap",
+] as const;
+const PLAIN_MAP_ROS2_OBSERVE_TOPICS_TEXT = PLAIN_MAP_ROS2_OBSERVE_TOPICS.join(",");
 const plainMapDirectViewRequested = computed(() => {
   // 直达地图只读取当前 URL，用于现场大屏打开即看地图；它不代表 ROS2/RViz2 已启动。
   const pathname = window.location.pathname.replace(/\/+$/, "");
@@ -16395,6 +16406,9 @@ onBeforeUnmount(() => {
         :data-map-display-foxglove-bridge-package="plainLiveClosureSummary.map_display_foxglove_bridge_package"
         :data-map-display-foxglove-bridge-launch-command="plainLiveClosureSummary.map_display_foxglove_bridge_launch_command"
         :data-map-display-foxglove-websocket-url="plainLiveClosureSummary.map_display_foxglove_websocket_url"
+        :data-map-display-ros2-observe-topics="plainLiveClosureSummary.map_display_ros2_observe_topics?.join(',') || 'none'"
+        :data-map-display-ros2-observe-motion-topics="String(plainLiveClosureSummary.map_display_ros2_observe_motion_topics)"
+        :data-map-display-ros2-observe-control-tools="String(plainLiveClosureSummary.map_display_ros2_observe_control_tools)"
         :data-map-display-sends-motion-when-clicked="String(plainLiveClosureSummary.map_display_sends_motion_when_clicked)"
         :data-map-display-starts-ros2="String(plainLiveClosureSummary.map_display_starts_ros2)"
         :data-map-display-starts-rviz2="String(plainLiveClosureSummary.map_display_starts_rviz2)"
@@ -16724,6 +16738,9 @@ onBeforeUnmount(() => {
           :data-foxglove-bridge-package="plainLiveClosureSummary.map_display_foxglove_bridge_package"
           :data-foxglove-bridge-launch-command="plainLiveClosureSummary.map_display_foxglove_bridge_launch_command"
           :data-foxglove-websocket-url="plainLiveClosureSummary.map_display_foxglove_websocket_url"
+          :data-ros2-observe-topics="plainLiveClosureSummary.map_display_ros2_observe_topics?.join(',') || 'none'"
+          :data-ros2-observe-motion-topics="String(plainLiveClosureSummary.map_display_ros2_observe_motion_topics)"
+          :data-ros2-observe-control-tools="String(plainLiveClosureSummary.map_display_ros2_observe_control_tools)"
           :data-sends-motion-when-clicked="String(plainLiveClosureSummary.map_display_sends_motion_when_clicked)"
           :data-starts-ros2="String(plainLiveClosureSummary.map_display_starts_ros2)"
           :data-starts-rviz2="String(plainLiveClosureSummary.map_display_starts_rviz2)"
@@ -18020,6 +18037,9 @@ onBeforeUnmount(() => {
           data-rviz-companion-purpose="local_engineering_debug_map_scan_tf_path_pose"
           data-foxglove-companion-purpose="browser_remote_observation_map_scan_tf_path_pose"
           data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
+          :data-ros2-observe-topics="PLAIN_MAP_ROS2_OBSERVE_TOPICS_TEXT"
+          data-ros2-observe-motion-topics="false"
+          data-ros2-observe-control-tools="false"
           :data-rviz-launch-command="PLAIN_MAP_RVIZ_LAUNCH_COMMAND"
           data-foxglove-bridge-package="foxglove_bridge"
           :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
@@ -18392,6 +18412,9 @@ onBeforeUnmount(() => {
             data-foxglove-bridge-package="foxglove_bridge"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
             :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
+            :data-ros2-observe-topics="PLAIN_MAP_ROS2_OBSERVE_TOPICS_TEXT"
+            data-ros2-observe-motion-topics="false"
+            data-ros2-observe-control-tools="false"
             data-sends-motion-when-clicked="false"
             data-starts-ros2="false"
             data-starts-rviz2="false"
@@ -18417,6 +18440,9 @@ onBeforeUnmount(() => {
             data-rviz-companion-purpose="local_engineering_debug_map_scan_tf_path_pose"
             data-foxglove-companion-purpose="browser_remote_observation_map_scan_tf_path_pose"
             data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
+            :data-ros2-observe-topics="PLAIN_MAP_ROS2_OBSERVE_TOPICS_TEXT"
+            data-ros2-observe-motion-topics="false"
+            data-ros2-observe-control-tools="false"
             :data-rviz-launch-command="PLAIN_MAP_RVIZ_LAUNCH_COMMAND"
             data-foxglove-bridge-package="foxglove_bridge"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
@@ -18445,6 +18471,9 @@ onBeforeUnmount(() => {
               <p>
                 普通用户继续用本页大地图和 /map；ROS2 配套只给工程观察使用，不是发车前置条件。
               </p>
+              <p>
+                观察项固定为地图、雷达、TF、路径、定位和 costmap；不提供 GoalTool，不观察或发送底盘移动 topic。
+              </p>
               <dl>
                 <div>
                   <dt>本地 RViz2</dt>
@@ -18453,6 +18482,10 @@ onBeforeUnmount(() => {
                 <div>
                   <dt>远程 Foxglove</dt>
                   <dd><code>{{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}</code>，然后连接 <code>{{ PLAIN_MAP_FOXGLOVE_WS_URL }}</code></dd>
+                </div>
+                <div class="plain-map-engineering-tools-wide">
+                  <dt>观察 topic</dt>
+                  <dd><code>{{ PLAIN_MAP_ROS2_OBSERVE_TOPICS_TEXT }}</code></dd>
                 </div>
               </dl>
             </div>
