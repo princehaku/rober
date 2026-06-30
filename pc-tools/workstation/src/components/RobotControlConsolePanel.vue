@@ -17326,6 +17326,11 @@ onBeforeUnmount(() => {
               :data-minimal-precheck-safety-only="String(plainFreeRoamDomEvidence.freeMoveSafetyOnly)"
               :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"
               :data-fixed-mapping-start-endpoint="plainFreeRoamDomEvidence.fixedMappingStartEndpoint"
+              data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+              data-fixed-free-roam-map-preview-endpoint="/api/robot-control/map/preview"
+              data-refreshes-radar-scan-proof-after-start="true"
+              data-refreshes-map-preview-after-start="true"
+              data-refreshes-radar-status-after-start="true"
               data-testid="plain-free-roam-start"
               @click="startPlainFreeRoamPrimary"
             >

@@ -5173,6 +5173,11 @@ describe("App", () => {
     expect(freeRoamStartButton.attributes("data-free-roam-stop-request-pending")).toBe("false");
     expect(freeRoamStartButton.attributes("data-start-will-clear-stop-request")).toBe("false");
     expect(freeRoamStartButton.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(freeRoamStartButton.attributes("data-fixed-free-roam-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(freeRoamStartButton.attributes("data-refreshes-radar-scan-proof-after-start")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-refreshes-map-preview-after-start")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-refreshes-radar-status-after-start")).toBe("true");
     expect(freeRoamStartButton.attributes("data-requires-safety-confirmation")).toBe("true");
     expect(freeRoamStartButton.attributes("data-minimal-precheck-safety-only")).toBe("true");
     const defaultFreeRoamKeyboardButton = wrapper.find('[data-testid="plain-free-roam-keyboard"]');
@@ -7235,6 +7240,11 @@ describe("App", () => {
     expect(freeRoamStartButton.attributes("data-radar-blocks-free-motion")).toBe("false");
     expect(freeRoamStartButton.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeRoamStartButton.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
+    expect(freeRoamStartButton.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(freeRoamStartButton.attributes("data-fixed-free-roam-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(freeRoamStartButton.attributes("data-refreshes-radar-scan-proof-after-start")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-refreshes-map-preview-after-start")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-refreshes-radar-status-after-start")).toBe("true");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始扫图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
 
