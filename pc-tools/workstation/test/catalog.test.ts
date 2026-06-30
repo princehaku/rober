@@ -11743,6 +11743,20 @@ describe("workstation fail-closed API contracts", () => {
       expect(rejected.missing_requirements).not.toContain("operator_report_preflight_required");
       expect(rejected.operator_report_preflight.missing_fields).not.toContain("delivery_success");
       expect(rejected.operator_report_preflight.status).toBe("not_required_for_nav2_minimal_safety_precheck");
+      expect(rejected.operator_report_preflight.required_fields).toEqual([]);
+      expect(rejected.minimal_precheck_safety_only).toBe(true);
+      expect(rejected.camera_preflight_required).toBe(false);
+      expect(rejected.radar_preflight_required).toBe(false);
+      expect(rejected.operator_report_preflight_required).toBe(false);
+      expect(rejected.route_readback_preflight_required).toBe(false);
+      expect(rejected.localization_readback_preflight_required).toBe(false);
+      expect(rejected.nav2_status_readback_preflight_required).toBe(false);
+      expect(rejected.preflight_blocking_requirements).toEqual([
+        "confirm_navigation_preflight",
+        "goal_limits",
+        "hard_dangerous_true_fields",
+      ]);
+      expect(rejected.minimal_precheck_plain).toContain("相机、雷达、operator report、路线读回、定位读回和 Nav2 status 只做显示或复验");
       expect(JSON.stringify(rejected.remote_read_endpoints)).not.toContain("\"payload\"");
       expect(rejected.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/nav2/start"]).toBeUndefined();
@@ -11756,6 +11770,13 @@ describe("workstation fail-closed API contracts", () => {
       });
       expect(accepted.proxy_status).toBe("preflight_passed");
       expect(accepted.missing_requirements).toEqual([]);
+      expect(accepted.minimal_precheck_safety_only).toBe(true);
+      expect(accepted.camera_preflight_required).toBe(false);
+      expect(accepted.radar_preflight_required).toBe(false);
+      expect(accepted.operator_report_preflight_required).toBe(false);
+      expect(accepted.route_readback_preflight_required).toBe(false);
+      expect(accepted.localization_readback_preflight_required).toBe(false);
+      expect(accepted.nav2_status_readback_preflight_required).toBe(false);
       expect(accepted.nav2_path_summary.path_generated).toBe(false);
       expect(accepted.nav2_path_summary.path_point_count).toBe(0);
       expect(accepted.robot_control_executed).toBe(false);
@@ -11842,6 +11863,15 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         blocked_reasons: string[];
+        minimal_precheck_safety_only: boolean;
+        minimal_precheck_plain: string;
+        execution_blocking_requirements: string[];
+        camera_preflight_required: boolean;
+        radar_preflight_required: boolean;
+        operator_report_preflight_required: boolean;
+        route_readback_preflight_required: boolean;
+        localization_readback_preflight_required: boolean;
+        nav2_status_readback_preflight_required: boolean;
         goal_request: {
           route_preview_point_count: number;
           route_preview_source_point_count: number;
@@ -11858,6 +11888,19 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("execution_forwarded");
       expect(body.blocked_reasons).toEqual([]);
+      expect(body.minimal_precheck_safety_only).toBe(true);
+      expect(body.camera_preflight_required).toBe(false);
+      expect(body.radar_preflight_required).toBe(false);
+      expect(body.operator_report_preflight_required).toBe(false);
+      expect(body.route_readback_preflight_required).toBe(false);
+      expect(body.localization_readback_preflight_required).toBe(false);
+      expect(body.nav2_status_readback_preflight_required).toBe(false);
+      expect(body.execution_blocking_requirements).toEqual([
+        "confirm_navigation_execution",
+        "goal_limits",
+        "hard_dangerous_true_fields",
+      ]);
+      expect(body.minimal_precheck_plain).toContain("路线读回、定位读回和 Nav2 status 只做显示或复验");
       expect(body.goal_request.route_preview_point_count).toBe(3);
       expect(body.goal_request.route_preview_source_point_count).toBe(15);
       expect(body.goal_request.route_preview_frame_id).toBe("map");

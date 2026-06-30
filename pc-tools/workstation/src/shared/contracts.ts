@@ -2163,6 +2163,15 @@ export interface RobotControlNavGoalPreflightResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1";
   proxy_status: RobotControlNavGoalPreflightProxyStatus;
   preflight_status: RobotControlNavGoalPreflightStatus;
+  minimal_precheck_safety_only: true;
+  minimal_precheck_plain: string;
+  preflight_blocking_requirements: string[];
+  camera_preflight_required: false;
+  radar_preflight_required: false;
+  operator_report_preflight_required: false;
+  route_readback_preflight_required: false;
+  localization_readback_preflight_required: false;
+  nav2_status_readback_preflight_required: false;
   source_base_url: string;
   normalized_base_url: string;
   workstation_endpoint: "/api/robot-control/nav2/goal/preflight";
@@ -2234,6 +2243,15 @@ export interface RobotControlNavGoalExecutionRequest {
 export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_execution_proxy.v1";
   proxy_status: "execution_forwarded" | "execution_rejected" | "execution_failed";
+  minimal_precheck_safety_only: true;
+  minimal_precheck_plain: string;
+  execution_blocking_requirements: string[];
+  camera_preflight_required: false;
+  radar_preflight_required: false;
+  operator_report_preflight_required: false;
+  route_readback_preflight_required: false;
+  localization_readback_preflight_required: false;
+  nav2_status_readback_preflight_required: false;
   source_base_url: string;
   normalized_base_url: string;
   workstation_endpoint: "/api/robot-control/nav2/goal/execute";

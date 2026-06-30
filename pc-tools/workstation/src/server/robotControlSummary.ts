@@ -68,6 +68,17 @@ export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
 export const ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS = 260;
 export const ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS = 240;
 const ROBOT_CONTROL_PATH_PREVIEW_POINT_LIMIT = 64;
+export const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = [
+  "confirm_navigation_preflight",
+  "goal_limits",
+  "hard_dangerous_true_fields",
+] as const;
+export const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = [
+  "confirm_navigation_execution",
+  "goal_limits",
+  "hard_dangerous_true_fields",
+] as const;
+export const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只复核现场安全确认、目标白名单和危险 true 字段；相机、雷达、operator report、路线读回、定位读回和 Nav2 status 只做显示或复验，不作为发车前额外预检。";
 const ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT = 72;
 const ROBOT_CONTROL_SCAN_PREVIEW_MIN_RANGE_M = 0.03;
 const ROBOT_CONTROL_SCAN_PREVIEW_MAX_RANGE_M = 8;
@@ -821,6 +832,7 @@ function notRequiredNav2OperatorReportPreflight(): RobotControlOperatorReportPre
     status: "not_required_for_nav2_minimal_safety_precheck",
     report_status: "not_required_for_nav2_minimal_safety_precheck",
     evidence_ref: "not_required_for_nav2_minimal_safety_precheck",
+    required_fields: [],
   };
 }
 
@@ -2911,6 +2923,15 @@ function blockedNavGoalPreflightResponse(
     ...PROOF_FLAGS,
     proxy_status: "preflight_rejected",
     preflight_status: "preflight_rejected",
+    minimal_precheck_safety_only: true,
+    minimal_precheck_plain: NAV2_GOAL_MINIMAL_PRECHECK_PLAIN,
+    preflight_blocking_requirements: [...NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS],
+    camera_preflight_required: false,
+    radar_preflight_required: false,
+    operator_report_preflight_required: false,
+    route_readback_preflight_required: false,
+    localization_readback_preflight_required: false,
+    nav2_status_readback_preflight_required: false,
     source_base_url: sourceBaseUrl,
     normalized_base_url: "not_loaded",
     workstation_endpoint: "/api/robot-control/nav2/goal/preflight",
@@ -2989,6 +3010,15 @@ export async function buildNavGoalPreflightProxy(
     ...PROOF_FLAGS,
     proxy_status: proxyStatus,
     preflight_status: proxyStatus === "preflight_passed" ? "ready_for_navigation_goal_not_executed" : "preflight_rejected",
+    minimal_precheck_safety_only: true,
+    minimal_precheck_plain: NAV2_GOAL_MINIMAL_PRECHECK_PLAIN,
+    preflight_blocking_requirements: [...NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS],
+    camera_preflight_required: false,
+    radar_preflight_required: false,
+    operator_report_preflight_required: false,
+    route_readback_preflight_required: false,
+    localization_readback_preflight_required: false,
+    nav2_status_readback_preflight_required: false,
     source_base_url: baseUrl,
     normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
     workstation_endpoint: "/api/robot-control/nav2/goal/preflight",

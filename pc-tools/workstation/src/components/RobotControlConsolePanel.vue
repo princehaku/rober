@@ -95,6 +95,9 @@ const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
+const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只复核现场安全确认、目标白名单和危险 true 字段；相机、雷达、operator report、路线读回、定位读回和 Nav2 status 只做显示或复验，不作为发车前额外预检。";
+const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = ["confirm_navigation_preflight", "goal_limits", "hard_dangerous_true_fields"] as const;
+const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = ["confirm_navigation_execution", "goal_limits", "hard_dangerous_true_fields"] as const;
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
 const robotApiBaseUrlUsesDefault = computed(() => robotApiBaseUrl.value.trim() === DEFAULT_ROBOT_API_BASE_URL);
 const robotApiBaseUrlPlainLabel = computed(() => {
@@ -12191,6 +12194,15 @@ function makeNavGoalPreflightFallback(reason: string): RobotControlNavGoalPrefli
     pc_only: true,
     proxy_status: "preflight_rejected",
     preflight_status: "preflight_rejected",
+    minimal_precheck_safety_only: true,
+    minimal_precheck_plain: NAV2_GOAL_MINIMAL_PRECHECK_PLAIN,
+    preflight_blocking_requirements: [...NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS],
+    camera_preflight_required: false,
+    radar_preflight_required: false,
+    operator_report_preflight_required: false,
+    route_readback_preflight_required: false,
+    localization_readback_preflight_required: false,
+    nav2_status_readback_preflight_required: false,
     source_base_url: robotApiBaseUrl.value,
     normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
     workstation_endpoint: "/api/robot-control/nav2/goal/preflight",
@@ -12251,6 +12263,15 @@ function makeNavGoalExecutionFallback(reason: string): RobotControlNavGoalExecut
     primary_actions_enabled: false,
     pc_only: true,
     proxy_status: "execution_failed",
+    minimal_precheck_safety_only: true,
+    minimal_precheck_plain: NAV2_GOAL_MINIMAL_PRECHECK_PLAIN,
+    execution_blocking_requirements: [...NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS],
+    camera_preflight_required: false,
+    radar_preflight_required: false,
+    operator_report_preflight_required: false,
+    route_readback_preflight_required: false,
+    localization_readback_preflight_required: false,
+    nav2_status_readback_preflight_required: false,
     source_base_url: robotApiBaseUrl.value,
     normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
     workstation_endpoint: "/api/robot-control/nav2/goal/execute",
@@ -17431,7 +17452,23 @@ onBeforeUnmount(() => {
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
             <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
             <p v-if="plainTripMotionClosureSummary" class="panel-note" data-testid="plain-trip-motion-closure">{{ plainTripMotionClosureSummary }}</p>
-            <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
+            <p
+              class="panel-note"
+              data-testid="plain-trip-minimal-precheck"
+              data-minimal-precheck-safety-only="true"
+              :data-preflight-blocking-requirements="NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS.join(',')"
+              :data-execution-blocking-requirements="NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS.join(',')"
+              data-camera-preflight-required="false"
+              data-radar-preflight-required="false"
+              data-operator-report-preflight-required="false"
+              data-route-readback-preflight-required="false"
+              data-localization-readback-preflight-required="false"
+              data-nav2-status-readback-preflight-required="false"
+              data-fixed-execute-proxy-endpoint="/api/robot-control/nav2/goal/execute"
+              data-sends-motion-when-clicked="false"
+            >
+              {{ plainTripMinimalPrecheckSummary }}
+            </p>
             <p
               class="panel-note plain-trip-execution-gauge"
               data-testid="plain-trip-execution-gauge"
