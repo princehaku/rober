@@ -65,6 +65,7 @@ import type {
   RobotApiScanPreviewPoint,
   RobotControlActionStatusCardId,
   RobotControlGoalChecklistSummaryActionItem,
+  RobotControlLiveMotionRunbookItem,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
@@ -3856,6 +3857,29 @@ const plainLiveClosureSideGapText = computed(() => {
   const sideBlockers = plainLiveClosureSideBlockerItems.value.map((item) => item.title).join("、") || "暂无";
   const readyActions = plainLiveClosureReadyActionItems.value.map((item) => item.title).join("、") || "暂无";
   return `其它缺口：${sideBlockers}；可先做：${readyActions}。`;
+});
+const plainLiveMotionRunbookRows = computed(() => {
+  // runbook 只是把 summary 的只读合同压成普通用户能扫一眼的动作清单，不参与放行判断。
+  const items = plainLiveClosureSummary.value?.live_motion_runbook_items ?? [];
+  return items.map((item: RobotControlLiveMotionRunbookItem) => ({
+    ...item,
+    state: item.ready ? "可做" : "未就绪",
+    primary: item.id === plainLiveClosureSummary.value?.live_motion_runbook_primary_action_id,
+    blockedText: item.blocked_reasons.join("、") || "none",
+    acceptanceText: plainActionCardUserText(item.acceptance_plain),
+  }));
+});
+const plainLiveMotionRunbookReadyText = computed(() => {
+  const readyLabels = plainLiveMotionRunbookRows.value
+    .filter((item) => item.ready)
+    .map((item) => item.label);
+  return readyLabels.join("、") || "暂无";
+});
+const plainLiveMotionRunbookBlockedText = computed(() => {
+  const blockedLabels = plainLiveMotionRunbookRows.value
+    .filter((item) => !item.ready)
+    .map((item) => item.label);
+  return blockedLabels.join("、") || "暂无";
 });
 const plainLiveClosureFocusTargetKind = computed(() => {
   // 当前卡点按钮要说清真实落点：轮速复验先落到安全确认，勾过后才落到行程执行按钮。
@@ -16164,6 +16188,45 @@ onBeforeUnmount(() => {
         >
           {{ plainLiveClosureSideGapText }}
         </p>
+        <div
+          v-if="plainLiveMotionRunbookRows.length"
+          class="plain-live-motion-runbook"
+          data-testid="plain-live-motion-runbook"
+          :data-primary-action-id="plainLiveClosureSummary.live_motion_runbook_primary_action_id"
+          :data-ready-action-ids="plainLiveClosureSummary.live_motion_runbook_ready_action_ids?.join(',') || 'none'"
+          :data-blocked-action-ids="plainLiveClosureSummary.live_motion_runbook_blocked_action_ids?.join(',') || 'none'"
+          :data-start-endpoints="plainLiveClosureSummary.live_motion_runbook_start_endpoints?.join(',') || 'none'"
+          :data-acceptance-endpoints="plainLiveClosureSummary.live_motion_runbook_acceptance_endpoints?.join(',') || 'none'"
+          :data-minimal-precheck-safety-only="String(plainLiveClosureSummary.live_motion_runbook_minimal_precheck_safety_only)"
+          :data-safety-confirm-required="String(plainLiveClosureSummary.live_motion_runbook_safety_confirm_required)"
+          data-sends-motion-when-clicked="false"
+        >
+          <div class="simple-status-row">
+            <strong>动作清单</strong>
+            <span class="muted">可做：{{ plainLiveMotionRunbookReadyText }}；未就绪：{{ plainLiveMotionRunbookBlockedText }}。</span>
+          </div>
+          <div
+            v-for="item in plainLiveMotionRunbookRows"
+            :key="item.id"
+            class="plain-progress-row"
+            :data-testid="`plain-live-motion-runbook-${item.id}`"
+            :data-action-id="item.id"
+            :data-state="item.state"
+            :data-ready="String(item.ready)"
+            :data-primary="String(item.primary)"
+            :data-minimal-precheck-safety-only="String(item.minimal_precheck_safety_only)"
+            :data-safety-confirm-required="String(item.safety_confirm_required)"
+            :data-sends-motion-when-executed="String(item.sends_motion_when_executed)"
+            :data-start-endpoint="item.start_endpoint"
+            :data-stop-endpoint="item.stop_endpoint"
+            :data-acceptance-endpoints="item.acceptance_endpoints.join(',') || 'none'"
+            :data-blocked-reasons="item.blockedText"
+          >
+            <span class="plain-progress-label">{{ plainActionCardUserText(item.label) }}</span>
+            <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+            <span class="muted">{{ item.acceptanceText }}</span>
+          </div>
+        </div>
         <span class="muted">下一步：{{ plainActionCardUserText(plainLiveClosureSummary.next_action_plain) }}</span>
         <button
           type="button"
