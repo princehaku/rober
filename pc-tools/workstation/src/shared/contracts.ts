@@ -3109,6 +3109,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       uvc_kernel_diagnostics_next_action?: string;
       uvc_kernel_diagnostics_transport_error_count?: string;
       uvc_kernel_diagnostics_latest_transport_error?: string;
+      uvc_usb_topology_status?: string;
+      uvc_usb_topology_plain_hint?: string;
+      uvc_usb_topology_next_action?: string;
+      uvc_usb_topology_video_usb_speed?: string;
+      uvc_usb_topology_kernel_usb_address?: string;
+      uvc_usb_topology_video_interface_count?: string;
       source_usage_status: string;
       source_usage_owner_count: string;
       source_usage_scope?: "free" | "camera_service_self" | "external_holder" | "unknown";
@@ -4038,6 +4044,12 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   uvc_kernel_diagnostics_next_action?: string;
   uvc_kernel_diagnostics_transport_error_count?: string;
   uvc_kernel_diagnostics_latest_transport_error?: string;
+  uvc_usb_topology_status?: string;
+  uvc_usb_topology_plain_hint?: string;
+  uvc_usb_topology_next_action?: string;
+  uvc_usb_topology_video_usb_speed?: string;
+  uvc_usb_topology_kernel_usb_address?: string;
+  uvc_usb_topology_video_interface_count?: string;
   source_readiness: string;
   source_failure_reason: string;
   last_first_frame_format_attempts_summary: string;

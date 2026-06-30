@@ -3445,12 +3445,19 @@ def flatten_camera_health_aliases(payload: dict[str, Any]) -> dict[str, Any]:
         else {}
     )
     source_diagnosis = payload.get("source_diagnosis") if isinstance(payload.get("source_diagnosis"), dict) else {}
+    uvc_usb_topology = payload.get("uvc_usb_topology") if isinstance(payload.get("uvc_usb_topology"), dict) else {}
     media_source_diagnosis = (
         media_diagnostics.get("source_diagnosis")
         if isinstance(media_diagnostics.get("source_diagnosis"), dict)
         else {}
     )
+    media_uvc_usb_topology = (
+        media_diagnostics.get("uvc_usb_topology")
+        if isinstance(media_diagnostics.get("uvc_usb_topology"), dict)
+        else {}
+    )
     diagnosis = source_diagnosis or media_source_diagnosis
+    usb_topology = uvc_usb_topology or media_uvc_usb_topology
     usage = source_usage or media_source_usage
     selected_path = payload.get("selected_path") or current_selection.get("selected_path") or payload.get("video_source")
     selected_name = payload.get("selected_name") or current_selection.get("selected_name") or diagnosis.get("selected_name")
@@ -3468,6 +3475,12 @@ def flatten_camera_health_aliases(payload: dict[str, Any]) -> dict[str, Any]:
         "source_diagnosis_plain_hint": diagnosis.get("plain_hint") or "not_loaded",
         "source_diagnosis_next_action": diagnosis.get("next_action") or "not_loaded",
         "source_diagnosis_not_exclusive": diagnosis.get("not_exclusive") if diagnosis.get("not_exclusive") is not None else "not_loaded",
+        "uvc_usb_topology_status": usb_topology.get("status") or diagnosis.get("uvc_usb_topology_status") or "not_loaded",
+        "uvc_usb_topology_plain_hint": usb_topology.get("plain_hint") or "not_loaded",
+        "uvc_usb_topology_next_action": usb_topology.get("next_action") or "not_loaded",
+        "uvc_usb_topology_video_usb_speed": usb_topology.get("video_usb_speed") or diagnosis.get("uvc_usb_topology_video_usb_speed") or "not_loaded",
+        "uvc_usb_topology_kernel_usb_address": usb_topology.get("kernel_usb_address") or "not_loaded",
+        "uvc_usb_topology_video_interface_count": usb_topology.get("video_interface_count", "not_loaded"),
         "shared_preview_contract": payload.get("shared_preview_contract")
         or media_diagnostics.get("shared_preview_contract")
         or diagnosis.get("shared_preview_contract")
@@ -3588,6 +3601,12 @@ def camera_mjpeg_status_payload(
         "source_diagnosis_plain_hint": aliases.get("source_diagnosis_plain_hint") or "not_loaded",
         "source_diagnosis_next_action": aliases.get("source_diagnosis_next_action") or "not_loaded",
         "source_diagnosis_not_exclusive": aliases.get("source_diagnosis_not_exclusive", "not_loaded"),
+        "uvc_usb_topology_status": aliases.get("uvc_usb_topology_status") or "not_loaded",
+        "uvc_usb_topology_plain_hint": aliases.get("uvc_usb_topology_plain_hint") or "not_loaded",
+        "uvc_usb_topology_next_action": aliases.get("uvc_usb_topology_next_action") or "not_loaded",
+        "uvc_usb_topology_video_usb_speed": aliases.get("uvc_usb_topology_video_usb_speed") or "not_loaded",
+        "uvc_usb_topology_kernel_usb_address": aliases.get("uvc_usb_topology_kernel_usb_address") or "not_loaded",
+        "uvc_usb_topology_video_interface_count": aliases.get("uvc_usb_topology_video_interface_count", "not_loaded"),
         "source_readiness": source_readiness,
         "source_failure_reason": source_failure_reason,
         "last_first_frame_format_attempts_summary": camera_first_frame_attempts_summary(health_payload),

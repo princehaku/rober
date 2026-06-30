@@ -465,6 +465,92 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
     }
 
 
+def collect_uvc_usb_topology_diagnostics(selected_path: str | None, selected_candidate: dict[str, Any] | None) -> dict[str, Any]:
+    """只读 USB 拓扑，识别 UVC 是否掉到 12M full-speed；这会直接导致视频流无法稳定出帧。"""
+    bus_info = parse_v4l2_bus_info(selected_candidate)
+    selected_name = str((selected_candidate or {}).get("v4l2_name") or (selected_candidate or {}).get("sysfs_name") or selected_path or "camera")
+    if shutil.which("lsusb") is None:
+        return {
+            "status": "usb_topology_unavailable",
+            "plain_hint": "未安装 lsusb，无法读取 USB 速率；继续按相机无首帧排查 USB 线、接口和供电。",
+            "selected_path": selected_path or "",
+            "selected_name": selected_name,
+            "bus_info": bus_info,
+            "opens_camera": False,
+            **proof_flags(),
+        }
+    try:
+        completed = subprocess.run(["lsusb", "-t"], check=False, capture_output=True, text=True, timeout=1.5)
+        topology_text = completed.stdout
+    except (OSError, subprocess.TimeoutExpired):
+        topology_text = ""
+    if not topology_text:
+        return {
+            "status": "usb_topology_unavailable",
+            "plain_hint": "未能读取 USB 拓扑；继续按相机无首帧排查 USB 线、接口和供电。",
+            "selected_path": selected_path or "",
+            "selected_name": selected_name,
+            "bus_info": bus_info,
+            "opens_camera": False,
+            **proof_flags(),
+        }
+
+    current_bus = ""
+    video_entries: list[dict[str, str]] = []
+    for raw_line in topology_text.splitlines():
+        bus_match = re.search(r"Bus\s+(\d+)", raw_line)
+        if raw_line.startswith("/:") and bus_match:
+            current_bus = bus_match.group(1).lstrip("0") or "0"
+        if "Class=Video" not in raw_line:
+            continue
+        port_match = re.search(r"Port\s+(\d+):", raw_line)
+        dev_match = re.search(r"Dev\s+(\d+)", raw_line)
+        speed_match = re.search(r",\s*([0-9]+[MGK])\s*$", raw_line.strip())
+        video_entries.append(
+            {
+                "bus": current_bus,
+                "port": port_match.group(1) if port_match else "",
+                "dev": dev_match.group(1) if dev_match else "",
+                "speed": speed_match.group(1) if speed_match else "unknown",
+                "kernel_usb_address": f"{current_bus}-{port_match.group(1)}" if current_bus and port_match else "",
+                "line": raw_line.strip()[-260:],
+            }
+        )
+
+    full_speed_entries = [entry for entry in video_entries if entry.get("speed") in {"1.5M", "12M"}]
+    selected_entry = full_speed_entries[0] if full_speed_entries else (video_entries[0] if video_entries else {})
+    speed = selected_entry.get("speed") or "not_loaded"
+    kernel_usb_address = selected_entry.get("kernel_usb_address") or "not_loaded"
+    if full_speed_entries:
+        status = "uvc_video_on_full_speed_usb"
+        plain_hint = f"{selected_name} 当前在 USB {speed} full-speed 拓扑上，视频流容易 STREAMON I/O error；换高速 USB 口/线、减少转接并确认供电后复测。"
+        next_action = "move_camera_to_high_speed_usb_port_or_powered_hub"
+    elif video_entries:
+        status = "uvc_video_usb_speed_loaded"
+        plain_hint = f"{selected_name} USB 视频拓扑已读到，当前速率 {speed}；若仍无首帧，继续看 UVC/USB 错误和格式尝试。"
+        next_action = "continue_first_frame_format_diagnostics"
+    else:
+        status = "uvc_video_usb_topology_not_matched"
+        plain_hint = f"USB 拓扑未匹配到 {selected_name} 的 Video 接口；检查摄像头枚举、线缆和接口。"
+        next_action = "check_camera_usb_enumeration"
+
+    return {
+        "status": status,
+        "plain_hint": plain_hint,
+        "next_action": next_action,
+        "selected_path": selected_path or "",
+        "selected_name": selected_name,
+        "bus_info": bus_info,
+        "video_usb_speed": speed,
+        "kernel_usb_address": kernel_usb_address,
+        "video_interface_count": len(video_entries),
+        "video_interfaces": video_entries[:6],
+        "topology_tail": topology_text[-1600:],
+        "opens_camera": False,
+        **proof_flags(),
+    }
+
+
 def _read_proc_text(path: Path, limit: int = 240) -> str:
     """procfs 文本只用于诊断展示；读不到时返回空串而不是影响 health。"""
     try:
@@ -832,6 +918,7 @@ def build_source_diagnosis(
     selected_candidate: dict[str, Any] | None,
     last_offer_reason: str,
     uvc_kernel_diagnostics: dict[str, Any] | None = None,
+    uvc_usb_topology: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把 health 的工程事实压成稳定归因，PC 普通界面不用猜是不是浏览器独占。"""
     usage_status = str(source_usage.get("status") or "not_loaded")
@@ -841,6 +928,9 @@ def build_source_diagnosis(
     selected_is_uvc = bool((selected_candidate or {}).get("is_uvc_or_usb"))
     kernel_status = str((uvc_kernel_diagnostics or {}).get("status") or "")
     kernel_transport_error = kernel_status == "uvc_usb_transport_errors_observed"
+    usb_topology_status = str((uvc_usb_topology or {}).get("status") or "")
+    usb_full_speed = usb_topology_status == "uvc_video_on_full_speed_usb"
+    usb_speed = str((uvc_usb_topology or {}).get("video_usb_speed") or "12M")
     not_exclusive = usage_status in {"not_in_use", "in_use_by_camera_service"} or other_owner_count <= 0
     if not selected_path:
         status = "no_video_source"
@@ -854,6 +944,10 @@ def build_source_diagnosis(
         status = "source_busy"
         plain_hint = f"{selected_name} 当前被其他进程占用；释放占用或重启相机服务后再打开画面。"
         next_action = "release_camera_owner_or_restart_camera_service"
+    elif source_failed and not_exclusive and selected_is_uvc and usb_full_speed:
+        status = "uvc_full_speed_usb_not_exclusive"
+        plain_hint = f"不是页面独占：{selected_name} 当前无人占用，但摄像头挂在 USB {usb_speed} full-speed，视频流会 STREAMON I/O error；换高速 USB 口/线、减少转接并确认供电后复测。"
+        next_action = "move_camera_to_high_speed_usb_port_or_powered_hub"
     elif source_failed and not_exclusive and selected_is_uvc and kernel_transport_error:
         status = "uvc_transport_error_not_exclusive"
         plain_hint = f"不是页面独占：{selected_name} 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。"
@@ -885,6 +979,8 @@ def build_source_diagnosis(
         "source_usage_owner_count": owner_count,
         "source_failure_reason": last_offer_reason or "none",
         "uvc_kernel_diagnostics_status": kernel_status or "not_loaded",
+        "uvc_usb_topology_status": usb_topology_status or "not_loaded",
+        "uvc_usb_topology_video_usb_speed": usb_speed if usb_topology_status else "not_loaded",
         "shared_preview_contract": "single_shared_capture_for_multiple_clients",
         "opens_camera": False,
         **proof_flags(),
@@ -1547,6 +1643,10 @@ class CameraServiceState:
             str(selected_path) if selected_path else None,
             selected_candidate,
         )
+        uvc_usb_topology = collect_uvc_usb_topology_diagnostics(
+            str(selected_path) if selected_path else None,
+            selected_candidate,
+        )
         source_diagnosis = build_source_diagnosis(
             str(selected_path) if selected_path else None,
             source_failed,
@@ -1555,6 +1655,7 @@ class CameraServiceState:
             selected_candidate,
             last_offer_reason,
             uvc_kernel_diagnostics,
+            uvc_usb_topology,
         )
         source_summary = source_candidates_summary(snapshot, selection)
         source_summary_selection = source_summary.get("current_selection", {})
@@ -1582,6 +1683,7 @@ class CameraServiceState:
             "last_successful_frame": self.last_successful_frame,
             "source_usage": source_usage,
             "uvc_kernel_diagnostics": uvc_kernel_diagnostics,
+            "uvc_usb_topology": uvc_usb_topology,
             "source_diagnosis": source_diagnosis,
             "shared_preview_contract": "single_shared_capture_for_multiple_clients",
             "width": self.width,
@@ -1602,6 +1704,7 @@ class CameraServiceState:
                 "last_successful_frame": self.last_successful_frame,
                 "source_usage": source_usage,
                 "uvc_kernel_diagnostics": uvc_kernel_diagnostics,
+                "uvc_usb_topology": uvc_usb_topology,
                 "source_diagnosis": source_diagnosis,
                 "shared_preview_contract": "single_shared_capture_for_multiple_clients",
             },

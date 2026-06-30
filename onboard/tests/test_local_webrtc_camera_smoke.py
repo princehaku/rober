@@ -1045,6 +1045,37 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertFalse(diagnostics["opens_camera"])
         self.assertFalse(diagnostics["safe_to_control"])
 
+    def test_uvc_usb_topology_marks_full_speed_video_device(self) -> None:
+        """UVC 掉到 12M full-speed 时，health 要直接给现场可执行的换口/换线建议。"""
+        topology = """/:  Bus 06.Port 1: Dev 1, Class=root_hub, Driver=ohci-platform/1p, 12M
+    |__ Port 1: Dev 2, If 0, Class=Video, Driver=uvcvideo, 12M
+    |__ Port 1: Dev 2, If 1, Class=Video, Driver=uvcvideo, 12M
+/:  Bus 03.Port 1: Dev 1, Class=root_hub, Driver=ehci-platform/1p, 480M
+"""
+        completed = camera.subprocess.CompletedProcess(["lsusb", "-t"], 0, stdout=topology, stderr="")
+        candidate = {
+            "path": "/dev/video1",
+            "v4l2_name": "USB Composite Device: DV20 USB",
+            "sysfs_name": "USB Composite Device: DV20 USB",
+            "readonly_probe": {
+                "v4l2_all": {
+                    "stdout": "Driver Info:\n\tBus info         : usb-5310400.usb-1\n",
+                },
+            },
+        }
+
+        with mock.patch.object(camera.shutil, "which", return_value="/usr/bin/lsusb"):
+            with mock.patch.object(camera.subprocess, "run", return_value=completed):
+                diagnostics = camera.collect_uvc_usb_topology_diagnostics("/dev/video1", candidate)
+
+        self.assertEqual("uvc_video_on_full_speed_usb", diagnostics["status"])
+        self.assertEqual("12M", diagnostics["video_usb_speed"])
+        self.assertEqual("6-1", diagnostics["kernel_usb_address"])
+        self.assertEqual("move_camera_to_high_speed_usb_port_or_powered_hub", diagnostics["next_action"])
+        self.assertIn("full-speed", diagnostics["plain_hint"])
+        self.assertFalse(diagnostics["opens_camera"])
+        self.assertFalse(diagnostics["safe_to_control"])
+
     def test_source_diagnosis_prefers_kernel_transport_error_when_not_exclusive(self) -> None:
         """无首帧且无人占用时，如内核已有 -71/URB 错误，要指向 USB 链路。"""
         diagnosis = camera.build_source_diagnosis(
@@ -1071,6 +1102,38 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertTrue(diagnosis["not_exclusive"])
         self.assertIn("不是页面独占", diagnosis["plain_hint"])
         self.assertIn("UVC/USB 传输错误", diagnosis["plain_hint"])
+
+    def test_source_diagnosis_prefers_full_speed_usb_when_not_exclusive(self) -> None:
+        """摄像头挂在 12M full-speed 时，比泛化传输错误更应该先提示换高速口/线。"""
+        diagnosis = camera.build_source_diagnosis(
+            "/dev/video1",
+            source_failed=True,
+            source_observed=False,
+            source_usage={
+                "status": "not_in_use",
+                "owner_count": 0,
+                "other_owner_count": 0,
+            },
+            selected_candidate={
+                "v4l2_name": "USB Composite Device: DV20 USB",
+                "is_uvc_or_usb": True,
+            },
+            last_offer_reason="first_frame_total_timeout",
+            uvc_kernel_diagnostics={
+                "status": "uvc_usb_transport_errors_observed",
+            },
+            uvc_usb_topology={
+                "status": "uvc_video_on_full_speed_usb",
+                "video_usb_speed": "12M",
+            },
+        )
+
+        self.assertEqual("uvc_full_speed_usb_not_exclusive", diagnosis["status"])
+        self.assertEqual("move_camera_to_high_speed_usb_port_or_powered_hub", diagnosis["next_action"])
+        self.assertEqual("uvc_video_on_full_speed_usb", diagnosis["uvc_usb_topology_status"])
+        self.assertEqual("12M", diagnosis["uvc_usb_topology_video_usb_speed"])
+        self.assertIn("full-speed", diagnosis["plain_hint"])
+        self.assertIn("不是页面独占", diagnosis["plain_hint"])
 
     def test_health_reports_selected_source_usage_without_opening_camera(self) -> None:
         """health 要能解释占用状态，但不能通过 OpenCV 或 V4L2 打开摄像头。"""

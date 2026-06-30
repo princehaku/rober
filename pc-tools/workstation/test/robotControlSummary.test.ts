@@ -568,6 +568,14 @@ describe("robotControlSummary", () => {
             transport_error_count: 3,
             latest_transport_error: "uvcvideo 3-1:1.1: Failed to resubmit video URB (-1).",
           },
+          uvc_usb_topology: {
+            status: "uvc_video_on_full_speed_usb",
+            plain_hint: "USB Composite Device: DV20 USB 当前在 USB 12M full-speed 拓扑上，视频流容易 STREAMON I/O error。",
+            next_action: "move_camera_to_high_speed_usb_port_or_powered_hub",
+            video_usb_speed: "12M",
+            kernel_usb_address: "6-1",
+            video_interface_count: 2,
+          },
           source_diagnosis: {
             status: "uvc_transport_error_not_exclusive",
             plain_hint: "不是页面独占：USB Composite Device: DV20 USB 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。",
@@ -597,6 +605,11 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.camera.uvc_kernel_diagnostics_status).toBe("uvc_usb_transport_errors_observed");
     expect(summary.readback_summary.camera.uvc_kernel_diagnostics_transport_error_count).toBe("3");
     expect(summary.readback_summary.camera.uvc_kernel_diagnostics_latest_transport_error).toContain("Failed to resubmit video URB");
+    expect(summary.readback_summary.camera.uvc_usb_topology_status).toBe("uvc_video_on_full_speed_usb");
+    expect(summary.readback_summary.camera.uvc_usb_topology_video_usb_speed).toBe("12M");
+    expect(summary.readback_summary.camera.uvc_usb_topology_kernel_usb_address).toBe("6-1");
+    expect(summary.readback_summary.camera.uvc_usb_topology_video_interface_count).toBe("2");
+    expect(summary.readback_summary.camera.uvc_usb_topology_next_action).toBe("move_camera_to_high_speed_usb_port_or_powered_hub");
     expect(summary.readback_summary.camera.plain_hint).toContain("UVC/USB 传输错误");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("诊断=UVC/USB 传输错误");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).not.toContain("uvc_transport_error_not_exclusive");

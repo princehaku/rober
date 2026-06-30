@@ -135,6 +135,14 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                     "selected_name": "USB Composite Device: DV20 USB",
                     "shared_preview_contract": "single_shared_capture_for_multiple_clients",
                 },
+                "uvc_usb_topology": {
+                    "status": "uvc_video_on_full_speed_usb",
+                    "plain_hint": "USB Composite Device: DV20 USB 当前在 USB 12M full-speed 拓扑上，视频流容易 STREAMON I/O error。",
+                    "next_action": "move_camera_to_high_speed_usb_port_or_powered_hub",
+                    "video_usb_speed": "12M",
+                    "kernel_usb_address": "6-1",
+                    "video_interface_count": 2,
+                },
             },
         }
 
@@ -159,6 +167,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis_status"])
         self.assertEqual("check_usb_camera_input_power_or_known_good_uvc", payload["source_diagnosis_next_action"])
         self.assertTrue(payload["source_diagnosis_not_exclusive"])
+        self.assertEqual("uvc_video_on_full_speed_usb", payload["uvc_usb_topology_status"])
+        self.assertEqual("12M", payload["uvc_usb_topology_video_usb_speed"])
+        self.assertEqual("6-1", payload["uvc_usb_topology_kernel_usb_address"])
+        self.assertEqual(2, payload["uvc_usb_topology_video_interface_count"])
+        self.assertEqual("move_camera_to_high_speed_usb_port_or_powered_hub", payload["uvc_usb_topology_next_action"])
         self.assertEqual("single_shared_capture_for_multiple_clients", payload["shared_preview_contract"])
         self.assertFalse(payload.get("safe_to_control", False))
 

@@ -1218,3 +1218,43 @@ manual/free-roam/keyboard/delivery/stop 或 `/cmd_vel`。真实摄像头仍需�
 `local_webrtc_camera_smoke.py` 已收紧状态口径：只有 `last_successful_frame` 证明同一 source 已读到真实帧时才返回
 `status=ready`；只选中设备但还没读到首帧时返回 `status=source_not_probed`、`source_readiness=source_selected_not_probed`。
 该改动不打开底盘、不发布 `/cmd_vel`、不调用 `/api/base/manual`，只修正 camera WYSIWYG 状态。
+
+## 2026-07-01 05:25 UVC full-speed USB topology diagnosis
+
+本轮继续只读复核真实上位机 `root@192.168.1.11 -p 37878`，不执行 Nav2、manual、keyboard、
+free-roam、map start、delivery、stop 或 `/cmd_vel`。
+
+采用的本地硬件资料入口是 `docs/vendor/VENDOR_INDEX.md`。其中 Orange Pi Zero 3 用户手册覆盖
+USB 接口、USB 摄像头和 5V/2A 或 5V/3A Type-C 供电说明；Orange Pi Zero 3 电路图覆盖
+USB DM/DP/VCC_USB 等 USB 相关信号。结论仍以现场 Linux 读回为准。
+
+现场只读证据：
+
+- PC `POST /api/robot-control/camera/first-frame/probe` 返回 HTTP 502，未能形成首帧 JSON 成功证据。
+- `GET /api/robot-control/camera/mjpeg/status` 返回 `status=waiting_for_first_frame`、
+  `upstream_active=true`、`client_count=1`、`has_recent_frame=false`、
+  `last_failure_reason=mjpeg_auto_retry_cooldown_after_first_frame_failure`，且
+  `shared_preview_exclusive_camera_claim=false`。
+- SSH 上车 `ls -l /dev/video*` 显示 `/dev/video1` 与 `/dev/video2`；`fuser -v /dev/video*`
+  无占用输出，说明不是其它进程长期独占。
+- `v4l2-ctl --list-devices` 显示 `USB Composite Device: DV20 USB` 对应 `/dev/video1` 和
+  `/dev/video2`；`/dev/video1` 具备 Video Capture，支持 `MJPG` 与 `YUYV`。
+- `lsusb -t` 显示该 UVC Video 接口当前在 `Bus 06 ... ohci-platform ... 12M` 下：
+  `Class=Video, Driver=uvcvideo, 12M`。这意味着摄像头视频链路落到了 full-speed USB，而不是
+  high-speed USB。
+- 上车短取帧 smoke 到 `/dev/null`：`YUYV@320x240` 与 `MJPG@640x480` 均返回
+  `VIDIOC_STREAMON returned -1 (Input/output error)`。
+- `dmesg` 有 `device descriptor read/all, error -71`、`Failed to resubmit video URB (-1)`、
+  `Failed to query ... UVC probe control : -71` 等 UVC/USB 错误。
+
+代码侧已把这个根因结构化：
+
+- `local_webrtc_camera_smoke.py` 新增 `uvc_usb_topology`，只读 `lsusb -t`，不打开摄像头。
+- 当 UVC Video 接口落在 `12M` full-speed 时，`source_diagnosis.status` 可提升为
+  `uvc_full_speed_usb_not_exclusive`，`next_action=move_camera_to_high_speed_usb_port_or_powered_hub`。
+- `upper_robot_api.py` 将 `uvc_usb_topology_*` 平铺到 8787 camera health / MJPEG status。
+- PC summary 继续把字段同步到 `readback_summary.camera.uvc_usb_topology_*`。
+
+当前工程判断：这不是 PC 页面独占，也不是共享预览多人观看导致的独占；首帧阻塞更具体地收敛为
+DV20 UVC 当前挂在 12M full-speed USB 拓扑并出现 STREAMON I/O error。下一步应换高速 USB 口/线、
+减少转接、确认 5V 供电或使用 powered hub/known-good UVC 后再复测。

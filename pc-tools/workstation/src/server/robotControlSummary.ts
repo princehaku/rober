@@ -2152,6 +2152,7 @@ function cameraSummaryFromReadbacks(
   const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage) ?? overlaySourceUsage;
   const sourceDiagnosis = asRecord(findFirstKey(healthPayload, ["source_diagnosis"]) ?? mediaDiagnostics?.source_diagnosis);
   const uvcKernelDiagnostics = asRecord(findFirstKey(healthPayload, ["uvc_kernel_diagnostics"]) ?? mediaDiagnostics?.uvc_kernel_diagnostics);
+  const uvcUsbTopology = asRecord(findFirstKey(healthPayload, ["uvc_usb_topology"]) ?? mediaDiagnostics?.uvc_usb_topology);
   const sharedPreviewContract = asString(findFirstKey(healthPayload, ["shared_preview_contract"]) ?? mediaDiagnostics?.shared_preview_contract, "single_shared_capture_for_multiple_clients");
   const sourceUsageOwners = Array.isArray(sourceUsage?.owners) ? sourceUsage.owners : [];
   const sourceUsageSummary = sourceUsageOwners
@@ -2455,6 +2456,14 @@ function cameraSummaryFromReadbacks(
       ? "not_loaded"
       : compactValueText(uvcKernelDiagnostics.transport_error_count),
     uvc_kernel_diagnostics_latest_transport_error: asString(uvcKernelDiagnostics?.latest_transport_error, ""),
+    uvc_usb_topology_status: asString(uvcUsbTopology?.status ?? sourceDiagnosis?.uvc_usb_topology_status ?? findFirstKey(healthPayload, ["uvc_usb_topology_status"]), "not_loaded"),
+    uvc_usb_topology_plain_hint: asString(uvcUsbTopology?.plain_hint ?? findFirstKey(healthPayload, ["uvc_usb_topology_plain_hint"]), "not_loaded"),
+    uvc_usb_topology_next_action: asString(uvcUsbTopology?.next_action ?? findFirstKey(healthPayload, ["uvc_usb_topology_next_action"]), "not_loaded"),
+    uvc_usb_topology_video_usb_speed: asString(uvcUsbTopology?.video_usb_speed ?? sourceDiagnosis?.uvc_usb_topology_video_usb_speed ?? findFirstKey(healthPayload, ["uvc_usb_topology_video_usb_speed"]), "not_loaded"),
+    uvc_usb_topology_kernel_usb_address: asString(uvcUsbTopology?.kernel_usb_address ?? findFirstKey(healthPayload, ["uvc_usb_topology_kernel_usb_address"]), "not_loaded"),
+    uvc_usb_topology_video_interface_count: uvcUsbTopology?.video_interface_count === undefined
+      ? summaryValueText(healthPayload, ["uvc_usb_topology_video_interface_count"])
+      : compactValueText(uvcUsbTopology.video_interface_count),
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
     source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
     source_usage_scope: sourceUsageScope,
