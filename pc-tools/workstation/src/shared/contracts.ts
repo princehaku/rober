@@ -1949,6 +1949,7 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
 export type RobotApiReadEndpointId =
   | "health"
   | "status"
+  | "map_preview"
   | "map_proof_latest"
   | "localize_proof_latest"
   | "nav2_status"

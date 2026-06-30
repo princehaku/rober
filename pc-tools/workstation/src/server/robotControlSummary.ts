@@ -108,6 +108,8 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   // 真实上位机 /api/status 会顺带聚合 camera/radar/base 子摘要，读取窗口要比 proof latest 更宽。
   { id: "status", endpoint: "/api/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
   { id: "map_proof_latest", endpoint: "/api/map/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  // map preview 是当前 PC 地图画面同源证据；summary 只消费其中 overlay 摘要，不发送任何运动或建图命令。
+  { id: "map_preview", endpoint: "/api/map/preview", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
@@ -131,6 +133,7 @@ const OPTIONAL_MISSING_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = 
   "radar_raw_packet_proof_latest",
   "free_roam_autonomy_latest",
   "nav2_goal_execution_latest",
+  "map_preview",
 ]);
 const OPTIONAL_MISSING_HTTP_STATUSES = new Set([404, 405, 501]);
 const MAP_PREVIEW_OVERLAY_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([
@@ -3815,6 +3818,96 @@ function mapRadarOverlayExplanation(
   };
 }
 
+function mapPreviewOverlayStatus(value: unknown): RobotControlMapPreviewRadarOverlay["overlay_status"] | null {
+  // 上车 map preview 自带 overlay 时，以它为当前地图画面的事实；只接受已知状态，避免任意字符串污染 UI。
+  const status = asString(value, "");
+  return status === "loaded" || status === "partial" || status === "blocked" || status === "not_current" || status === "not_loaded"
+    ? status
+    : null;
+}
+
+function mapPreviewRobotPoseFromPayload(value: unknown): RobotApiMapPose | null {
+  // 地图预览里的 robot_pose 已经是 map 坐标；没有完整 x/y 时不能拿来贴雷达点。
+  const rawPose = asRecord(value);
+  if (!rawPose) {
+    return null;
+  }
+  const x = finitePathCoordinate(rawPose.x ?? rawPose.x_m);
+  const y = finitePathCoordinate(rawPose.y ?? rawPose.y_m);
+  if (x === null || y === null) {
+    return null;
+  }
+  return {
+    x,
+    y,
+    yaw: finitePathCoordinate(rawPose.yaw ?? rawPose.yaw_rad) ?? 0,
+    frame_id: asString(rawPose.frame_id, "map"),
+    source: asString(rawPose.source, "/api/map/preview.radar_overlay.robot_pose"),
+  };
+}
+
+function mapPreviewRadarOverlayFromPayload(payload: JsonRecord): RobotControlMapPreviewRadarOverlay | null {
+  // 新版上车 /api/map/preview 会直接返回当前地图雷达层；PC proxy 必须优先信任这份“画面本体”证据。
+  const rawOverlay = asRecord(payload.radar_overlay);
+  const source = rawOverlay ?? payload;
+  const overlayStatus = mapPreviewOverlayStatus(rawOverlay ? (source.overlay_status ?? source.status) : payload.radar_overlay_status);
+  if (!overlayStatus) {
+    return null;
+  }
+  const points: RobotApiScanPreviewPoint[] = [];
+  appendStructuredScanPreviewPoints(source.scan_preview_points ?? source.points ?? payload.radar_overlay_points, source, points);
+  const pointCount = finitePathCoordinate(source.scan_preview_point_count ?? source.count ?? payload.radar_overlay_point_count) ?? points.length;
+  const sourcePointCount = finitePathCoordinate(source.scan_preview_source_point_count ?? source.source_count ?? payload.radar_overlay_source_point_count) ?? pointCount;
+  const sourceFrameId = asString(source.scan_preview_frame_id ?? source.source_frame_id ?? payload.radar_overlay_source_frame_id, points[0]?.frame_id ?? "");
+  const frameId = overlayStatus === "loaded" || overlayStatus === "partial"
+    ? asString(source.frame_id ?? payload.radar_overlay_frame_id, sourceFrameId)
+    : "not_loaded";
+  const robotPose = mapPreviewRobotPoseFromPayload(source.robot_pose);
+  const blockedReasons = stringList(source.blocked_reasons ?? payload.radar_overlay_blocked_reasons, 8);
+  const effectiveBlockedReasons = overlayStatus === "loaded" ? [] : blockedReasons;
+  const explanation = mapRadarOverlayExplanation(overlayStatus, effectiveBlockedReasons, sourcePointCount, robotPose);
+  const staleSourcePointsSuppressed = mapRadarOverlayStaleSourcePointsSuppressed(overlayStatus, pointCount, sourcePointCount);
+  const wysiwyg = radarOverlayWysiwygPlainSummary({
+    radarStatus: overlayStatus,
+    pointCount: String(pointCount),
+    sourcePointCount: String(sourcePointCount),
+    frameId,
+    radarHint: explanation.plain_hint,
+    radarNextAction: explanation.next_action_plain,
+  });
+  return {
+    overlay_status: overlayStatus,
+    status: overlayStatus,
+    plain_hint: asString(source.plain_hint, explanation.plain_hint),
+    wysiwyg_status_plain: asString(source.wysiwyg_status_plain, wysiwyg.statusPlain),
+    wysiwyg_next_action_plain: asString(source.wysiwyg_next_action_plain, wysiwyg.nextActionPlain),
+    next_action: asString(source.next_action, explanation.next_action),
+    next_action_plain: asString(source.next_action_plain, explanation.next_action_plain),
+    scan_preview_points: points,
+    scan_preview_point_count: pointCount,
+    scan_preview_source_point_count: sourcePointCount,
+    scan_preview_frame_id: sourceFrameId,
+    points,
+    count: pointCount,
+    source_count: sourcePointCount,
+    frame_id: frameId,
+    source_frame_id: sourceFrameId,
+    robot_pose: robotPose,
+    source_endpoint_ids: ["map_preview"],
+    blocked_reasons: effectiveBlockedReasons,
+    blocked_reason_labels: explanation.blocked_reason_labels,
+    refresh_required: explanation.next_action !== "continue_monitoring_map_radar_overlay",
+    stale_source_points_suppressed: staleSourcePointsSuppressed,
+    primary_blocked_reason: mapRadarOverlayPrimaryBlockedReason(effectiveBlockedReasons),
+    current_vs_source_plain: mapRadarOverlayCurrentVsSourcePlain(
+      pointCount,
+      sourcePointCount,
+      staleSourcePointsSuppressed,
+      explanation.next_action_plain,
+    ),
+  };
+}
+
 async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOverlayReadback> {
   // 地图图片和雷达/位姿 overlay 分开读；overlay 只补“所见即所得”材料，不反向阻塞地图图片。
   const endpoints = READ_ENDPOINTS.filter((endpoint) => MAP_PREVIEW_OVERLAY_ENDPOINT_IDS.has(endpoint.id));
@@ -4244,17 +4337,18 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   ];
   const forwarded = response.ok && blockedReasons.length === 0;
   const overlayReadback = await overlayReadbackPromise;
+  const radarOverlay = mapPreviewRadarOverlayFromPayload(payload) ?? overlayReadback.radarOverlay;
   const pathStatus = overlayReadback.pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
-  const poseStatus = overlayReadback.radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
+  const poseStatus = radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathStatus, poseStatus);
   const mapWysiwyg = mapWysiwygPlainSummary({
     mapObserved: forwarded ? "true" : "false",
     pathStatus,
     poseStatus,
-    radarStatus: overlayReadback.radarOverlay.overlay_status,
-    radarHint: overlayReadback.radarOverlay.plain_hint,
+    radarStatus: radarOverlay.overlay_status,
+    radarHint: radarOverlay.plain_hint,
     pathNextAction: pathNextActionPlain,
-    radarNextAction: overlayReadback.radarOverlay.next_action_plain,
+    radarNextAction: radarOverlay.next_action_plain,
   });
   const pathWysiwygStatusPlain = pathStatus === "path_preview_observed"
     ? "图上路线已显示在当前地图画面。"
@@ -4295,11 +4389,11 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
         : asString(findFirstKey(payload, ["failure_reason", "error"]), ""),
     blocked_reasons: blockedReasons,
     hard_dangerous_true_fields: hardDangerous,
-    radar_overlay: overlayReadback.radarOverlay,
+    radar_overlay: radarOverlay,
     map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
     map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
-    ...mapPreviewRadarOverlayAliases(overlayReadback.radarOverlay),
-    robot_pose: overlayReadback.radarOverlay.robot_pose,
+    ...mapPreviewRadarOverlayAliases(radarOverlay),
+    robot_pose: radarOverlay.robot_pose,
     robot_pose_status: poseStatus,
     path_preview_points: overlayReadback.pathPreview.path_preview_points,
     path_preview_status: pathStatus,
@@ -5346,6 +5440,8 @@ function mapSummaryFromReadbacks(
 ): RobotControlSummaryResponse["readback_summary"]["map"] {
   // 地图摘要把 proof/latest 的关键事实提升到 readback_summary，方便普通 UI 直接解释地图是否真的读到。
   const mapProof = readbackById(readbacks, "map_proof_latest");
+  const mapPreview = readbackById(readbacks, "map_preview");
+  const mapPreviewOverlay = mapPreview?.payload ? mapPreviewRadarOverlayFromPayload(mapPreview.payload) : null;
   const hasScanPreviewPoints = proof.scan_preview_point_count > 0;
   // 地图雷达层使用 scan proof 点位；proof 不 fresh 时不能被 free-roam runtime scan 覆盖成当前贴图。
   const latestScanProofStale = lidar.latest_scan_proof_fresh === "false"
@@ -5367,27 +5463,44 @@ function mapSummaryFromReadbacks(
       : hasScanPreviewPoints
         ? "not_current"
         : "not_loaded";
-  const radarOverlayExplanation = mapRadarOverlayExplanation(
-    radarOverlayStatus,
-    radarOverlayBlockedReasons,
-    proof.scan_preview_source_point_count,
-    proof.robot_pose,
-  );
+  const effectiveRadarOverlayStatus = mapPreviewOverlay?.overlay_status ?? radarOverlayStatus;
+  const effectiveRadarOverlayBlockedReasons = mapPreviewOverlay?.blocked_reasons ?? radarOverlayBlockedReasons;
+  const effectiveRadarOverlayExplanation = mapPreviewOverlay
+    ? {
+        plain_hint: mapPreviewOverlay.plain_hint,
+        next_action: mapPreviewOverlay.next_action,
+        next_action_plain: mapPreviewOverlay.next_action_plain,
+        blocked_reason_labels: mapPreviewOverlay.blocked_reason_labels,
+      }
+    : mapRadarOverlayExplanation(
+      radarOverlayStatus,
+      radarOverlayBlockedReasons,
+      proof.scan_preview_source_point_count,
+      proof.robot_pose,
+    );
   const pathPreviewStatus = proof.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
-  const robotPoseStatus = proof.robot_pose ? "map_pose_observed" : "not_observed";
-  const radarOverlayPointCount = String(radarOverlayCurrent ? proof.scan_preview_point_count : 0);
-  const radarOverlaySourcePointCount = proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count);
-  const radarOverlayStaleSourcePointsSuppressed = mapRadarOverlayStaleSourcePointsSuppressed(
-    radarOverlayStatus,
+  const effectiveRobotPose = mapPreviewOverlay?.robot_pose ?? proof.robot_pose;
+  const robotPoseStatus = effectiveRobotPose ? "map_pose_observed" : "not_observed";
+  const fallbackRadarOverlayPointCount = String(radarOverlayCurrent ? proof.scan_preview_point_count : 0);
+  const fallbackRadarOverlaySourcePointCount = proof.scan_preview_source_point_count === null ? "not_loaded" : String(proof.scan_preview_source_point_count);
+  const radarOverlayPointCount = mapPreviewOverlay ? String(mapPreviewOverlay.count) : fallbackRadarOverlayPointCount;
+  const radarOverlaySourcePointCount = mapPreviewOverlay
+    ? mapPreviewOverlay.source_count === null ? "not_loaded" : String(mapPreviewOverlay.source_count)
+    : fallbackRadarOverlaySourcePointCount;
+  const radarOverlayStaleSourcePointsSuppressed = mapPreviewOverlay?.stale_source_points_suppressed ?? mapRadarOverlayStaleSourcePointsSuppressed(
+    effectiveRadarOverlayStatus,
     radarOverlayPointCount,
     radarOverlaySourcePointCount,
   );
-  const radarOverlaySourceFrameId = proof.scan_preview_frame_id || "not_loaded";
-  const radarOverlayFrameId = radarOverlayCurrent ? radarOverlaySourceFrameId : "not_loaded";
+  const fallbackRadarOverlaySourceFrameId = proof.scan_preview_frame_id || "not_loaded";
+  const radarOverlaySourceFrameId = mapPreviewOverlay?.source_frame_id || fallbackRadarOverlaySourceFrameId;
+  const radarOverlayFrameId = mapPreviewOverlay
+    ? mapPreviewOverlay.frame_id || "not_loaded"
+    : radarOverlayCurrent ? fallbackRadarOverlaySourceFrameId : "not_loaded";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathPreviewStatus, robotPoseStatus);
   const mapCurrentVisible = booleanSummaryValue(proof.map_once_observed) === "true";
   const pathCurrentVisible = pathPreviewStatus === "path_preview_observed";
-  const radarOverlayCurrentVisible = radarOverlayStatus === "loaded" && Number(radarOverlayPointCount) > 0;
+  const radarOverlayCurrentVisible = effectiveRadarOverlayStatus === "loaded" && Number(radarOverlayPointCount) > 0;
   const pathWysiwygStatusPlain = pathPreviewStatus === "path_preview_observed"
     ? "图上路线已显示在当前地图画面。"
     : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
@@ -5395,18 +5508,18 @@ function mapSummaryFromReadbacks(
     mapObserved: booleanSummaryValue(proof.map_once_observed),
     pathStatus: pathPreviewStatus,
     poseStatus: robotPoseStatus,
-    radarStatus: radarOverlayStatus,
-    radarHint: radarOverlayExplanation.plain_hint,
+    radarStatus: effectiveRadarOverlayStatus,
+    radarHint: effectiveRadarOverlayExplanation.plain_hint,
     pathNextAction: pathNextActionPlain,
-    radarNextAction: radarOverlayExplanation.next_action_plain,
+    radarNextAction: effectiveRadarOverlayExplanation.next_action_plain,
   });
   const radarOverlayWysiwyg = radarOverlayWysiwygPlainSummary({
-    radarStatus: radarOverlayStatus,
+    radarStatus: effectiveRadarOverlayStatus,
     pointCount: radarOverlayPointCount,
     sourcePointCount: radarOverlaySourcePointCount,
     frameId: radarOverlayFrameId,
-    radarHint: radarOverlayExplanation.plain_hint,
-    radarNextAction: radarOverlayExplanation.next_action_plain,
+    radarHint: effectiveRadarOverlayExplanation.plain_hint,
+    radarNextAction: effectiveRadarOverlayExplanation.next_action_plain,
   });
   return {
     status: mapProof?.status ?? "not_loaded",
@@ -5427,11 +5540,11 @@ function mapSummaryFromReadbacks(
       mapWysiwyg.statusPlain,
       pathWysiwygStatusPlain,
       mapRadarUserFacingStatusPlain({
-        radarStatus: radarOverlayStatus,
+        radarStatus: effectiveRadarOverlayStatus,
         pointCount: radarOverlayPointCount,
         sourcePointCount: radarOverlaySourcePointCount,
         frameId: radarOverlayFrameId,
-        blockedReasonLabels: radarOverlayExplanation.blocked_reason_labels,
+        blockedReasonLabels: effectiveRadarOverlayExplanation.blocked_reason_labels,
       }),
       mapWysiwyg.nextActionPlain,
     ),
@@ -5449,27 +5562,27 @@ function mapSummaryFromReadbacks(
     path_wysiwyg_status_plain: pathWysiwygStatusPlain,
     path_wysiwyg_next_action_plain: pathNextActionPlain,
     robot_pose_status: robotPoseStatus,
-    radar_overlay_status: radarOverlayStatus,
-    radar_overlay_plain_hint: radarOverlayExplanation.plain_hint,
+    radar_overlay_status: effectiveRadarOverlayStatus,
+    radar_overlay_plain_hint: effectiveRadarOverlayExplanation.plain_hint,
     radar_overlay_wysiwyg_status_plain: radarOverlayWysiwyg.statusPlain,
     radar_overlay_wysiwyg_next_action_plain: radarOverlayWysiwyg.nextActionPlain,
-    radar_overlay_next_action: radarOverlayExplanation.next_action,
-    radar_overlay_next_action_plain: radarOverlayExplanation.next_action_plain,
+    radar_overlay_next_action: effectiveRadarOverlayExplanation.next_action,
+    radar_overlay_next_action_plain: effectiveRadarOverlayExplanation.next_action_plain,
     radar_overlay_point_count: radarOverlayPointCount,
     radar_overlay_source_point_count: radarOverlaySourcePointCount,
-    radar_overlay_refresh_required: String(radarOverlayExplanation.next_action !== "continue_monitoring_map_radar_overlay"),
+    radar_overlay_refresh_required: String(effectiveRadarOverlayExplanation.next_action !== "continue_monitoring_map_radar_overlay"),
     radar_overlay_stale_source_points_suppressed: String(radarOverlayStaleSourcePointsSuppressed),
-    radar_overlay_primary_blocked_reason: mapRadarOverlayPrimaryBlockedReason(radarOverlayBlockedReasons),
+    radar_overlay_primary_blocked_reason: mapRadarOverlayPrimaryBlockedReason(effectiveRadarOverlayBlockedReasons),
     radar_overlay_current_vs_source_plain: mapRadarOverlayCurrentVsSourcePlain(
       radarOverlayPointCount,
       radarOverlaySourcePointCount,
       radarOverlayStaleSourcePointsSuppressed,
-      radarOverlayExplanation.next_action_plain,
+      effectiveRadarOverlayExplanation.next_action_plain,
     ),
     radar_overlay_frame_id: radarOverlayFrameId,
     radar_overlay_source_frame_id: radarOverlaySourceFrameId,
-    radar_overlay_blocked_reasons: radarOverlayBlockedReasons.join(",") || "none",
-    radar_overlay_blocked_reason_labels: radarOverlayExplanation.blocked_reason_labels.join(",") || "none",
+    radar_overlay_blocked_reasons: effectiveRadarOverlayBlockedReasons.join(",") || "none",
+    radar_overlay_blocked_reason_labels: effectiveRadarOverlayExplanation.blocked_reason_labels.join(",") || "none",
     radar_overlay_scan_preview_point_count: radarOverlayPointCount,
     radar_overlay_scan_preview_source_point_count: radarOverlaySourcePointCount,
     radar_overlay_scan_preview_frame_id: radarOverlaySourceFrameId,

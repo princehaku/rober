@@ -806,6 +806,12 @@ describe("robotControlSummary", () => {
           ...basePayload,
           schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
           amcl_pose: { frame_id: "map", x: 1, y: 2, yaw: 0 },
+          path_preview_points: [
+            { x: 1, y: 2, frame_id: "map", source_index: 0 },
+            { x: 1.5, y: 2.2, frame_id: "map", source_index: 1 },
+          ],
+          path_preview_point_count: 2,
+          path_preview_frame_id: "map",
         },
       };
       const payload = payloadByPath[url.pathname] ?? basePayload;
@@ -852,5 +858,112 @@ describe("robotControlSummary", () => {
       "刷新雷达扫描读数",
       "刷新地图画面",
     ]);
+  });
+
+  it("uses map preview embedded radar overlay before fallback readback overlay", async () => {
+    // 新版上车 map preview 已经把当前地图雷达层随图返回；PC 代理必须优先使用这份画面本体证据。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      const payloadByPath: Record<string, Record<string, unknown>> = {
+        "/api/map/preview": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.map_preview_result",
+          status: "loaded",
+          map_name: "trashbot_map",
+          width: 8,
+          height: 8,
+          resolution: 0.05,
+          origin: [0, 0, 0],
+          cell_counts: { free: 2, unknown: 62, occupied: 0 },
+          has_free_cells: true,
+          navigation_quality: "has_free_cells",
+          image_data_url: "data:image/png;base64,abc",
+          source_image_format: "pgm_p5",
+          radar_overlay: {
+            overlay_status: "loaded",
+            scan_preview_points: [
+              { x_m: 0.2, y_m: 0.1, range_m: 0.22, angle_rad: 0.46, frame_id: "laser_frame", source_index: 0 },
+              { x_m: 0.3, y_m: 0.2, range_m: 0.36, angle_rad: 0.58, frame_id: "laser_frame", source_index: 1 },
+            ],
+            scan_preview_point_count: 2,
+            scan_preview_source_point_count: 138,
+            scan_preview_frame_id: "laser_frame",
+            robot_pose: { frame_id: "map", x: 1, y: 2, yaw: 0.1, source: "/amcl_pose" },
+            blocked_reasons: [],
+          },
+        },
+        "/api/radar/status": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          continuous_scan_status: "latest_proof_stale_while_lifecycle_running",
+          continuity_window_status: "latest_proof_stale_while_lifecycle_running",
+          lifecycle_running: true,
+          lifecycle_state: "running",
+          latest_scan_proof_fresh: false,
+          scan_proof_latest: {
+            scan_preview_points: [{ x_m: 0.1, y_m: 0.2, range_m: 0.22, angle_rad: 1.1, frame_id: "laser_frame", source_index: 0 }],
+            scan_preview_point_count: 1,
+            scan_preview_source_point_count: 3,
+            scan_preview_frame_id: "laser_frame",
+            freshness: { status: "stale", age_seconds: 1200 },
+          },
+        },
+        "/api/radar/scan-proof/latest": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          latest_proof_status: "scan_once_hz_raw_packet_tf_observed",
+          scan_preview_points: [{ x_m: 0.1, y_m: 0.2, range_m: 0.22, angle_rad: 1.1, frame_id: "laser_frame", source_index: 0 }],
+          scan_preview_point_count: 1,
+          scan_preview_source_point_count: 3,
+          scan_preview_frame_id: "laser_frame",
+          freshness: { status: "stale", age_seconds: 1200 },
+        },
+        "/api/nav2/proof/latest": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          amcl_pose: { frame_id: "map", x: 1, y: 2, yaw: 0 },
+          path_preview_points: [
+            { x: 1, y: 2, frame_id: "map", source_index: 0 },
+            { x: 1.5, y: 2.2, frame_id: "map", source_index: 1 },
+          ],
+          path_preview_point_count: 2,
+          path_preview_frame_id: "map",
+        },
+      };
+      const payload = payloadByPath[url.pathname] ?? basePayload;
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const preview = await buildMapPreviewProxy("http://192.168.1.11:8787");
+
+    expect(preview.proxy_status).toBe("preview_forwarded");
+    expect(preview.radar_overlay_status).toBe("loaded");
+    expect(preview.radar_overlay_point_count).toBe(2);
+    expect(preview.radar_overlay_source_point_count).toBe(138);
+    expect(preview.radar_overlay_refresh_required).toBe(false);
+    expect(preview.radar_overlay_primary_blocked_reason).toBe("none");
+    expect(preview.radar_overlay?.source_endpoint_ids).toEqual(["map_preview"]);
+    expect(preview.radar_overlay_wysiwyg_status_plain).toBe("雷达点已贴到当前地图：当前显示 2 个点，frame=laser_frame。");
+    expect(preview.map_wysiwyg_status_plain).toContain("雷达标记都已按当前读数显示");
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+    expect(summary.readback_summary.map.radar_overlay_status).toBe("loaded");
+    expect(summary.readback_summary.map.radar_overlay_point_count).toBe("2");
+    expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("138");
+    expect(summary.readback_summary.map.radar_overlay_refresh_required).toBe("false");
+    expect(summary.live_closure_summary?.radar_map_points_visible).toBe(true);
   });
 });

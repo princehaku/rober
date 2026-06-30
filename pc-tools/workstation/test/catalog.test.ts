@@ -4714,6 +4714,7 @@ describe("workstation fail-closed API contracts", () => {
         "/api/health",
         "/api/status",
         "/api/map/proof/latest",
+        "/api/map/preview",
         "/api/localize/proof/latest",
         "/api/nav2/status",
         "/api/nav2/proof/latest",
