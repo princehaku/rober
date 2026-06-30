@@ -8343,6 +8343,20 @@ function buildLiveClosureSummary(
       sourceCardId: goalSummary.first_incomplete_source_card_id || goalSummary.primary_ready_action_source_card_id,
     };
   })();
+  const liveWysiwygRefreshSequence = [
+    "/api/robot-control/radar/scan-proof/refresh",
+    "/api/robot-control/camera/first-frame/probe",
+    "/api/robot-control/map/preview",
+    "/api/robot-control/radar/status",
+    "/api/robot-control/camera/mjpeg/status",
+  ];
+  const liveWysiwygRefreshSequenceLabels = [
+    "刷新雷达扫描 proof",
+    "复测相机首帧",
+    "刷新地图画面",
+    "读取雷达状态",
+    "读取相机 MJPEG 状态",
+  ];
   return {
     status,
     status_label: labels[status],
@@ -8366,7 +8380,23 @@ function buildLiveClosureSummary(
     fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
     fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
+    fixed_live_wysiwyg_radar_status_endpoint: "/api/robot-control/radar/status",
     fixed_live_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+    live_wysiwyg_refresh_plan_available: true,
+    live_wysiwyg_refresh_sequence: liveWysiwygRefreshSequence,
+    live_wysiwyg_refresh_sequence_labels: liveWysiwygRefreshSequenceLabels,
+    live_wysiwyg_refreshes_radar_scan_proof: true,
+    live_wysiwyg_refreshes_camera_first_frame_probe: true,
+    live_wysiwyg_refreshes_map_preview: true,
+    live_wysiwyg_refreshes_radar_status: true,
+    live_wysiwyg_refreshes_camera_mjpeg_status: true,
+    live_wysiwyg_refresh_sends_motion: false,
+    live_wysiwyg_refresh_starts_nav2: false,
+    live_wysiwyg_refresh_starts_manual: false,
+    live_wysiwyg_refresh_starts_keyboard: false,
+    live_wysiwyg_refresh_starts_free_roam: false,
+    live_wysiwyg_refresh_starts_radar_lifecycle: false,
+    live_wysiwyg_refresh_starts_map_runtime: false,
     live_wysiwyg_surface_summaries: liveWysiwygSurfaceSummaries,
     free_move_start_ready: freeMoveStartReady,
     free_move_minimal_precheck_safety_only: true,

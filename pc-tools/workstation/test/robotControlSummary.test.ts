@@ -123,7 +123,35 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_status_endpoint).toBe("/api/robot-control/radar/status");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_plan_available).toBe(true);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_sequence).toEqual([
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/radar/status",
+      "/api/robot-control/camera/mjpeg/status",
+    ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_sequence_labels).toEqual([
+      "刷新雷达扫描 proof",
+      "复测相机首帧",
+      "刷新地图画面",
+      "读取雷达状态",
+      "读取相机 MJPEG 状态",
+    ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_refreshes_radar_scan_proof).toBe(true);
+    expect(summary.live_closure_summary?.live_wysiwyg_refreshes_camera_first_frame_probe).toBe(true);
+    expect(summary.live_closure_summary?.live_wysiwyg_refreshes_map_preview).toBe(true);
+    expect(summary.live_closure_summary?.live_wysiwyg_refreshes_radar_status).toBe(true);
+    expect(summary.live_closure_summary?.live_wysiwyg_refreshes_camera_mjpeg_status).toBe(true);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_sends_motion).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_nav2).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_manual).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_keyboard).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_free_roam).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_radar_lifecycle).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_surface_summaries).toEqual([
       expect.objectContaining({
         id: "camera",

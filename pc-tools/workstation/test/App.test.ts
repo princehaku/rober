@@ -811,7 +811,35 @@ const fixtures: Record<string, unknown> = {
       fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
       fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
       fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
+      fixed_live_wysiwyg_radar_status_endpoint: "/api/robot-control/radar/status",
       fixed_live_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+      live_wysiwyg_refresh_plan_available: true,
+      live_wysiwyg_refresh_sequence: [
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/camera/first-frame/probe",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/camera/mjpeg/status",
+      ],
+      live_wysiwyg_refresh_sequence_labels: [
+        "刷新雷达扫描 proof",
+        "复测相机首帧",
+        "刷新地图画面",
+        "读取雷达状态",
+        "读取相机 MJPEG 状态",
+      ],
+      live_wysiwyg_refreshes_radar_scan_proof: true,
+      live_wysiwyg_refreshes_camera_first_frame_probe: true,
+      live_wysiwyg_refreshes_map_preview: true,
+      live_wysiwyg_refreshes_radar_status: true,
+      live_wysiwyg_refreshes_camera_mjpeg_status: true,
+      live_wysiwyg_refresh_sends_motion: false,
+      live_wysiwyg_refresh_starts_nav2: false,
+      live_wysiwyg_refresh_starts_manual: false,
+      live_wysiwyg_refresh_starts_keyboard: false,
+      live_wysiwyg_refresh_starts_free_roam: false,
+      live_wysiwyg_refresh_starts_radar_lifecycle: false,
+      live_wysiwyg_refresh_starts_map_runtime: false,
       live_wysiwyg_surface_summaries: [
         {
           id: "camera",
@@ -4575,12 +4603,26 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-action-testid")).toBe("plain-live-closure-wysiwyg-refresh");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-plan-available")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-sequence-labels")).toBe("刷新雷达扫描 proof,复测相机首帧,刷新地图画面,读取雷达状态,读取相机 MJPEG 状态");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-camera-first-frame-probe")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-radar-scan-proof")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-map-preview")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-map-after-radar")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-radar-status")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-camera-mjpeg-status")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-sends-motion")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-starts-radar-lifecycle")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-starts-map-runtime")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-starts-nav2")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-starts-manual")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-starts-keyboard")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-starts-free-roam")).toBe("false");
     expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-radar-status-endpoint")).toBe("/api/robot-control/radar/status");
     expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-camera-mjpeg-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     expect(liveClosureSummary.attributes("data-free-move-start-ready")).toBe("true");
     expect(liveClosureSummary.attributes("data-mapping-start-ready")).toBe("false");
@@ -4651,12 +4693,18 @@ describe("App", () => {
     expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
     expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera");
     expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-refresh-plan-available")).toBe("true");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-refresh-sequence-labels")).toBe("刷新雷达扫描 proof,复测相机首帧,刷新地图画面,读取雷达状态,读取相机 MJPEG 状态");
     expect(liveClosureWysiwygRefresh.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(liveClosureWysiwygRefresh.attributes("data-fixed-first-frame-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(liveClosureWysiwygRefresh.attributes("data-fixed-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(liveClosureWysiwygRefresh.attributes("data-fixed-radar-status-endpoint")).toBe("/api/robot-control/radar/status");
     expect(liveClosureWysiwygRefresh.attributes("data-fixed-camera-mjpeg-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     expect(liveClosureWysiwygRefresh.attributes("data-refreshes-radar-scan-proof")).toBe("true");
     expect(liveClosureWysiwygRefresh.attributes("data-refreshes-map-after-radar")).toBe("true");
+    expect(liveClosureWysiwygRefresh.attributes("data-refreshes-map-preview")).toBe("true");
+    expect(liveClosureWysiwygRefresh.attributes("data-refreshes-radar-status")).toBe("true");
     expect(liveClosureWysiwygRefresh.attributes("data-refreshes-camera-first-frame-probe")).toBe("true");
     expect(liveClosureWysiwygRefresh.attributes("data-refreshes-camera-mjpeg-status")).toBe("true");
     expect(liveClosureWysiwygRefresh.attributes("data-starts-radar-lifecycle")).toBe("false");
@@ -6366,6 +6414,10 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera,map,radar_map_points");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-needs-refresh")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-plan-available")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-sends-motion")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-starts-nav2")).toBe("false");
     expect(liveClosureSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
 
     const liveClosureWysiwygRefresh = wrapper.find('[data-testid="plain-live-closure-wysiwyg-refresh"]');
@@ -6373,6 +6425,9 @@ describe("App", () => {
     expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,map,radar_map_points");
     expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera,map,radar_map_points");
     expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-refresh-plan-available")).toBe("true");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
+    expect(liveClosureWysiwygRefresh.attributes("data-fixed-radar-status-endpoint")).toBe("/api/robot-control/radar/status");
     expect(liveClosureWysiwygRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveClosureWysiwygRefresh.attributes("data-starts-radar-lifecycle")).toBe("false");
     expect(liveClosureWysiwygRefresh.attributes("data-starts-nav2")).toBe("false");
@@ -6497,6 +6552,9 @@ describe("App", () => {
     const liveClosureWysiwygRefresh = wrapper.find('[data-testid="plain-live-closure-wysiwyg-refresh"]');
     expect(liveClosureWysiwygRefresh.exists()).toBe(true);
     expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-refresh-plan-available")).toBe("true");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
+    expect(liveClosureWysiwygRefresh.attributes("data-fixed-radar-status-endpoint")).toBe("/api/robot-control/radar/status");
     expect(liveClosureWysiwygRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveClosureWysiwygRefresh.attributes("data-starts-nav2")).toBe("false");
     expect(liveClosureWysiwygRefresh.attributes("data-starts-manual")).toBe("false");

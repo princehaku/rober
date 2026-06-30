@@ -3801,6 +3801,19 @@ const plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId = computed(() => (
   || plainLiveClosureWysiwygReadbackGapSurfaceIds.value.split(",")[0]
   || "none"
 ));
+const plainLiveClosureWysiwygRefreshSequence = computed(() => (
+  plainLiveClosureSummary.value?.live_wysiwyg_refresh_sequence?.length
+    ? plainLiveClosureSummary.value.live_wysiwyg_refresh_sequence.join(",")
+    : "/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status"
+));
+const plainLiveClosureWysiwygRefreshSequenceLabels = computed(() => (
+  plainLiveClosureSummary.value?.live_wysiwyg_refresh_sequence_labels?.length
+    ? plainLiveClosureSummary.value.live_wysiwyg_refresh_sequence_labels.join(",")
+    : "刷新雷达扫描 proof,复测相机首帧,刷新地图画面,读取雷达状态,读取相机 MJPEG 状态"
+));
+const plainLiveClosureWysiwygRefreshPlanAvailable = computed(() => (
+  plainLiveClosureSummary.value?.live_wysiwyg_refresh_plan_available ?? true
+));
 const plainLiveClosureTargetSourceCardId = computed(() => (
   plainLiveClosureSummary.value?.primary_status_source_card_id
   || plainLiveClosureSummary.value?.next_action_source_card_id
@@ -15919,12 +15932,26 @@ onBeforeUnmount(() => {
         :data-live-wysiwyg-readback-gap-surface-ids="plainLiveClosureWysiwygReadbackGapSurfaceIds"
         :data-live-wysiwyg-primary-readback-gap-surface-id="plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId"
         data-live-wysiwyg-refresh-action-testid="plain-live-closure-wysiwyg-refresh"
-        data-live-wysiwyg-refreshes-camera-first-frame-probe="true"
-        data-live-wysiwyg-refreshes-radar-scan-proof="true"
+        :data-live-wysiwyg-refresh-plan-available="String(plainLiveClosureWysiwygRefreshPlanAvailable)"
+        :data-live-wysiwyg-refresh-sequence="plainLiveClosureWysiwygRefreshSequence"
+        :data-live-wysiwyg-refresh-sequence-labels="plainLiveClosureWysiwygRefreshSequenceLabels"
+        :data-live-wysiwyg-refreshes-camera-first-frame-probe="String(plainLiveClosureSummary.live_wysiwyg_refreshes_camera_first_frame_probe ?? true)"
+        :data-live-wysiwyg-refreshes-radar-scan-proof="String(plainLiveClosureSummary.live_wysiwyg_refreshes_radar_scan_proof ?? true)"
+        :data-live-wysiwyg-refreshes-map-preview="String(plainLiveClosureSummary.live_wysiwyg_refreshes_map_preview ?? true)"
         data-live-wysiwyg-refreshes-map-after-radar="true"
+        :data-live-wysiwyg-refreshes-radar-status="String(plainLiveClosureSummary.live_wysiwyg_refreshes_radar_status ?? true)"
+        :data-live-wysiwyg-refreshes-camera-mjpeg-status="String(plainLiveClosureSummary.live_wysiwyg_refreshes_camera_mjpeg_status ?? true)"
+        :data-live-wysiwyg-refresh-sends-motion="String(plainLiveClosureSummary.live_wysiwyg_refresh_sends_motion ?? false)"
+        :data-live-wysiwyg-refresh-starts-radar-lifecycle="String(plainLiveClosureSummary.live_wysiwyg_refresh_starts_radar_lifecycle ?? false)"
+        :data-live-wysiwyg-refresh-starts-map-runtime="String(plainLiveClosureSummary.live_wysiwyg_refresh_starts_map_runtime ?? false)"
+        :data-live-wysiwyg-refresh-starts-nav2="String(plainLiveClosureSummary.live_wysiwyg_refresh_starts_nav2 ?? false)"
+        :data-live-wysiwyg-refresh-starts-manual="String(plainLiveClosureSummary.live_wysiwyg_refresh_starts_manual ?? false)"
+        :data-live-wysiwyg-refresh-starts-keyboard="String(plainLiveClosureSummary.live_wysiwyg_refresh_starts_keyboard ?? false)"
+        :data-live-wysiwyg-refresh-starts-free-roam="String(plainLiveClosureSummary.live_wysiwyg_refresh_starts_free_roam ?? false)"
         :data-fixed-live-wysiwyg-radar-refresh-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint"
         :data-fixed-live-wysiwyg-camera-probe-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint"
         :data-fixed-live-wysiwyg-map-preview-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_map_preview_endpoint"
+        :data-fixed-live-wysiwyg-radar-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_radar_status_endpoint"
         :data-fixed-live-wysiwyg-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint"
         :data-free-move-start-ready="String(plainLiveClosureSummary.free_move_start_ready)"
         :data-mapping-start-ready="String(plainLiveClosureSummary.mapping_start_ready)"
@@ -16017,12 +16044,18 @@ onBeforeUnmount(() => {
           :data-live-wysiwyg-missing-surface-ids="plainLiveClosureWysiwygMissingSurfaceIds"
           :data-live-wysiwyg-readback-gap-surface-ids="plainLiveClosureWysiwygReadbackGapSurfaceIds"
           :data-live-wysiwyg-primary-readback-gap-surface-id="plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId"
+          :data-live-wysiwyg-refresh-plan-available="String(plainLiveClosureWysiwygRefreshPlanAvailable)"
+          :data-live-wysiwyg-refresh-sequence="plainLiveClosureWysiwygRefreshSequence"
+          :data-live-wysiwyg-refresh-sequence-labels="plainLiveClosureWysiwygRefreshSequenceLabels"
           data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
           data-fixed-first-frame-probe-endpoint="/api/robot-control/camera/first-frame/probe"
           data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
+          data-fixed-radar-status-endpoint="/api/robot-control/radar/status"
           data-fixed-camera-mjpeg-status-endpoint="/api/robot-control/camera/mjpeg/status"
           data-refreshes-radar-scan-proof="true"
           data-refreshes-map-after-radar="true"
+          data-refreshes-map-preview="true"
+          data-refreshes-radar-status="true"
           data-refreshes-camera-first-frame-probe="true"
           data-refreshes-camera-mjpeg-status="true"
           data-starts-radar-lifecycle="false"
