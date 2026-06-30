@@ -824,7 +824,7 @@ function navGoalLatestPlainFields(
       execution_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${left}/${right} 未非零；${motionMaterial}`,
       next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
       route_execution_readiness_plain: `图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=${left}/${right} 未非零。`,
-      route_execution_precheck_plain: `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ${nextMode} 模式跑图上路线。`,
+      route_execution_precheck_plain: `只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用 ${nextMode} 模式跑图上路线。`,
       goal_execution_wheel_raw_lr_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${left}/${right} 未非零；${commandText}${imuText}。`,
       goal_execution_wheel_raw_lr_next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
       ...modePlain,

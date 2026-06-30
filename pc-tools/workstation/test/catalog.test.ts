@@ -4514,9 +4514,9 @@ describe("workstation fail-closed API contracts", () => {
       ]));
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线");
-      expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("nav2_map_not_consumed");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_service_unavailable");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_not_attempted");
@@ -6981,11 +6981,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：勾选行程前安全确认后用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.plain_hint).not.toContain("wheel raw");
       expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=0/0 未非零。");
-      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
+      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用 ROS 模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 pwm，下次 ros");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或控制服务；勾选行程前安全确认后用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验执行窗口轮速 L/R");
@@ -9908,7 +9908,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.current_blocker_reasons).toBe("nav2_lifecycle_not_running");
       expect(summary.readback_summary.nav2.current_blocker_labels).toBe("自动驾驶 lifecycle 未运行");
       expect(summary.readback_summary.nav2.next_action_plain).toBe("勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口确认轮速 L/R 非零。");
-      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用当前模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
+      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用当前模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
       expect(summary.current_fact_plain).toContain("自动驾驶：图上路线已准备，但本轮完整执行和轮速 L/R 还未证明。下一步：勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
@@ -12297,7 +12297,7 @@ describe("workstation fail-closed API contracts", () => {
         "goal_limits",
         "hard_dangerous_true_fields",
       ]);
-      expect(rejected.minimal_precheck_plain).toContain("相机、雷达、operator report、路线读回、定位读回和 Nav2 status 只做显示或复验");
+      expect(rejected.minimal_precheck_plain).toContain("相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验");
       expect(JSON.stringify(rejected.remote_read_endpoints)).not.toContain("\"payload\"");
       expect(rejected.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/nav2/start"]).toBeUndefined();
@@ -12441,7 +12441,7 @@ describe("workstation fail-closed API contracts", () => {
         "goal_limits",
         "hard_dangerous_true_fields",
       ]);
-      expect(body.minimal_precheck_plain).toContain("路线读回、定位读回和 Nav2 status 只做显示或复验");
+      expect(body.minimal_precheck_plain).toContain("路线读回、定位读回和自动驾驶状态只做显示或复验");
       expect(body.goal_request.route_preview_point_count).toBe(3);
       expect(body.goal_request.route_preview_source_point_count).toBe(15);
       expect(body.goal_request.route_preview_frame_id).toBe("map");
@@ -12980,7 +12980,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.plain_hint).toBe(body.execution_status_plain);
       expect(body.next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(body.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=0/0 未非零。");
-      expect(body.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
+      expect(body.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
       expect(body.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到 49 次非零底盘命令。");
       expect(body.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(body.base_command_mode).toBe("pwm");

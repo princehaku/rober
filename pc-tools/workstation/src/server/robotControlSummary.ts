@@ -80,7 +80,7 @@ export const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = [
   "goal_limits",
   "hard_dangerous_true_fields",
 ] as const;
-export const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只复核现场安全确认、目标白名单和危险 true 字段；相机、雷达、operator report、路线读回、定位读回和 Nav2 status 只做显示或复验，不作为发车前额外预检。";
+export const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只复核现场安全确认、目标白名单和危险 true 字段；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验，不作为发车前额外预检。";
 const ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT = 72;
 const ROBOT_CONTROL_SCAN_PREVIEW_MIN_RANGE_M = 0.03;
 const ROBOT_CONTROL_SCAN_PREVIEW_MAX_RANGE_M = 8;
@@ -5754,7 +5754,7 @@ function nav2RouteExecutionPlainSummary(args: {
     ? "当前模式"
     : `${args.nextBaseMode.toUpperCase()} 模式`;
   const modeActionText = modeText === "当前模式" ? modeText : ` ${modeText}`;
-  const minimalPrecheck = `只需勾选行程前安全确认；相机、雷达和 operator report 不作为额外发车前置；执行会用${modeActionText}跑图上路线${runtimeAutoStartText}。`;
+  const minimalPrecheck = `只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用${modeActionText}跑图上路线${runtimeAutoStartText}。`;
   if (args.goalExecutionProven === "true" || args.wheelFeedbackProven === "true") {
     return {
       readinessPlain: "完整路线执行已证明；同窗口轮速 L/R 已非零。",
@@ -7302,7 +7302,7 @@ function lockedBoundary(
   const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime, manualMotionFallbackActive);
   const keyboardNextAction = "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
   const keyboardStopTriggers = ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"];
-  const nav2MinimalPrecheckPlain = "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。";
+  const nav2MinimalPrecheckPlain = "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。";
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",
@@ -8803,7 +8803,7 @@ function buildLiveClosureSummary(
   const liveMotionRunbookBlockedPlain = liveMotionRunbookBlockedLabels.length > 0
     ? `暂不可执行：${liveMotionRunbookBlockedLabels.join("、")}。`
     : "暂无被阻塞的运动入口。";
-  const liveMotionRunbookMinimalPrecheckPlain = "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置。";
+  const liveMotionRunbookMinimalPrecheckPlain = "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。";
   const liveMotionRunbookSummaryPlain = `${liveMotionRunbookReadyPlain}${liveMotionRunbookBlockedPlain}主推荐：${liveMotionRunbookPrimaryActionLabel}；${liveMotionRunbookMinimalPrecheckPlain}`;
   const nav2GoalSucceeded = nav2GoalExecutionProven;
   const allWysiwygReady = cameraCurrentVisible && mapCurrentVisible && radarMapPointsVisible;

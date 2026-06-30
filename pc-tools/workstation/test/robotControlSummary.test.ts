@@ -343,7 +343,7 @@ describe("robotControlSummary", () => {
     );
     expect(summary.live_closure_summary?.live_motion_runbook_primary_action_plain).toBe("完整行程执行");
     expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_plain).toBe(
-      "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置。",
+      "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
     );
     expect(summary.live_closure_summary?.live_motion_runbook_summary_plain).toContain(
       "可先执行：完整行程执行、键盘连续手控、自由自助移动。",

@@ -1088,11 +1088,11 @@ const fixtures: Record<string, unknown> = {
       live_motion_runbook_acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview"],
       live_motion_runbook_minimal_precheck_safety_only: true,
       live_motion_runbook_safety_confirm_required: true,
-      live_motion_runbook_summary_plain: "可先执行：键盘连续手控、自由自助移动。暂不可执行：完整行程执行、传感器就绪后建图。主推荐：键盘连续手控；发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置。",
+      live_motion_runbook_summary_plain: "可先执行：键盘连续手控、自由自助移动。暂不可执行：完整行程执行、传感器就绪后建图。主推荐：键盘连续手控；发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
       live_motion_runbook_ready_plain: "可先执行：键盘连续手控、自由自助移动。",
       live_motion_runbook_blocked_plain: "暂不可执行：完整行程执行、传感器就绪后建图。",
       live_motion_runbook_primary_action_plain: "键盘连续手控",
-      live_motion_runbook_minimal_precheck_plain: "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置。",
+      live_motion_runbook_minimal_precheck_plain: "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       wheel_rerun_minimal_precheck_safety_only: false,
@@ -1439,9 +1439,9 @@ const fixtures: Record<string, unknown> = {
       nav2_goal_wheel_feedback_status: "not_loaded",
       nav2_goal_next_action: "先生成图上路线并读到小车地图位置",
       nav2_goal_next_action_plain: "先生成图上路线并读到小车地图位置",
-      nav2_goal_minimal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。",
-      nav2_goal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。",
-      navigation_preflight_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和 operator report 不作为发车前额外预检。",
+      nav2_goal_minimal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。",
+      nav2_goal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。",
+      navigation_preflight_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。",
       nav2_goal_execution_mode_label: "not_loaded",
       map_start: "map start locked",
       radar_start: "radar start locked",
@@ -5004,6 +5004,7 @@ describe("App", () => {
     expect(liveMotionRunbook.text()).toContain("主推荐：键盘连续手控");
     expect(liveMotionRunbook.text()).toContain("发车前预检已精简");
     expect(liveMotionRunbook.text()).toContain("可做：键盘连续手控、自由自助移动；未就绪：完整行程执行、传感器就绪后建图。");
+    expect(liveMotionRunbook.text()).not.toContain("operator report");
     expect(liveMotionRunbook.attributes("data-primary-action-id")).toBe("hold_keyboard");
     expect(liveMotionRunbook.attributes("data-ready-action-ids")).toBe("hold_keyboard,start_free_move");
     expect(liveMotionRunbook.attributes("data-blocked-action-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
@@ -5013,18 +5014,18 @@ describe("App", () => {
     expect(liveMotionRunbook.attributes("data-ready-plain")).toBe("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbook.attributes("data-blocked-plain")).toBe("暂不可执行：完整行程执行、传感器就绪后建图。");
     expect(liveMotionRunbook.attributes("data-primary-action-plain")).toBe("键盘连续手控");
-    expect(liveMotionRunbook.attributes("data-minimal-precheck-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置。");
+    expect(liveMotionRunbook.attributes("data-minimal-precheck-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。");
     expect(liveMotionRunbook.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveMotionRunbook.attributes("data-safety-confirmed")).toBe("false");
     expect(liveMotionRunbook.attributes("data-camera-preflight-required-for-motion")).toBe("false");
     expect(liveMotionRunbook.attributes("data-radar-preflight-required-for-motion")).toBe("false");
-    expect(liveMotionRunbook.attributes("data-preflight-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置。（还未勾安全确认）");
+    expect(liveMotionRunbook.attributes("data-preflight-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。（还未勾安全确认）");
     const liveMotionRunbookSummary = wrapper.find('[data-testid="plain-live-motion-runbook-summary"]');
     expect(liveMotionRunbookSummary.text()).toContain("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbookSummary.text()).toContain("主推荐：键盘连续手控");
     expect(liveMotionRunbookSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
     const liveMotionRunbookPreflight = wrapper.find('[data-testid="plain-live-motion-runbook-preflight"]');
-    expect(liveMotionRunbookPreflight.text()).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置。（还未勾安全确认）");
+    expect(liveMotionRunbookPreflight.text()).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。（还未勾安全确认）");
     expect(liveMotionRunbookPreflight.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveMotionRunbookPreflight.attributes("data-safety-confirmed")).toBe("false");
     expect(liveMotionRunbookPreflight.attributes("data-camera-preflight-required-for-motion")).toBe("false");
@@ -17713,7 +17714,7 @@ describe("App", () => {
         safety_confirmation_received: true,
         operator_report_preflight_required: false,
         camera_or_radar_required_for_motion: false,
-        minimal_precheck_plain: "最小预检已通过：只复核现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
+        minimal_precheck_plain: "最小预检已通过：只复核现场安全确认；相机、雷达和现场报告不作为本次低速运动前置。",
         non_stop_requires_confirm_hil_checklist: true,
         hil_checklist_gate_status: "manual_allowed",
         checklist_missing: [],
@@ -17864,7 +17865,7 @@ describe("App", () => {
         safety_confirmation_received: true,
         operator_report_preflight_required: false,
         camera_or_radar_required_for_motion: false,
-        minimal_precheck_plain: "最小预检已通过：只复核现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
+        minimal_precheck_plain: "最小预检已通过：只复核现场安全确认；相机、雷达和现场报告不作为本次低速运动前置。",
         non_stop_requires_confirm_hil_checklist: true,
         hil_checklist_gate_status: "manual_allowed",
         checklist_missing: [],
@@ -19483,7 +19484,7 @@ describe("App", () => {
         safety_confirmation_received: false,
         operator_report_preflight_required: false,
         camera_or_radar_required_for_motion: false,
-        minimal_precheck_plain: "最小预检未通过：还需要现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
+        minimal_precheck_plain: "最小预检未通过：还需要现场安全确认；相机、雷达和现场报告不作为本次低速运动前置。",
         non_stop_requires_confirm_hil_checklist: true,
         hil_checklist_gate_status: "stop_allowed_without_checklist",
         checklist_missing: [],

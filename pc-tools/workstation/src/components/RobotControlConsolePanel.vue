@@ -97,7 +97,7 @@ const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
-const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只复核现场安全确认、目标白名单和危险 true 字段；相机、雷达、operator report、路线读回、定位读回和 Nav2 status 只做显示或复验，不作为发车前额外预检。";
+const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只复核现场安全确认、目标白名单和危险 true 字段；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验，不作为发车前额外预检。";
 const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = ["confirm_navigation_preflight", "goal_limits", "hard_dangerous_true_fields"] as const;
 const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = ["confirm_navigation_execution", "goal_limits", "hard_dangerous_true_fields"] as const;
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
@@ -12761,8 +12761,8 @@ function baseCommandMinimalPrecheckFallback(confirmHilChecklist: boolean) {
     operator_report_preflight_required: false as const,
     camera_or_radar_required_for_motion: false as const,
     minimal_precheck_plain: confirmHilChecklist
-      ? "最小预检已通过：只复核现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。"
-      : "最小预检未通过：还需要现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
+      ? "最小预检已通过：只复核现场安全确认；相机、雷达和现场报告不作为本次低速运动前置。"
+      : "最小预检未通过：还需要现场安全确认；相机、雷达和现场报告不作为本次低速运动前置。",
   };
 }
 
