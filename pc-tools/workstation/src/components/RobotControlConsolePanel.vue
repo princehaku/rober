@@ -3354,9 +3354,10 @@ const plainWysiwygCurrentGauge = computed<PlainWysiwygCurrentGauge>(() => {
 });
 
 const canRefreshPlainWysiwygEvidence = computed(() => (
-  // 这只是所见即所得只读刷新：summary、地图画面、雷达状态和共享画面状态，不触发任何控制端点。
+  // 这只是所见即所得只读刷新：雷达 scan proof、地图画面和共享画面状态，不触发任何运动端点。
   robotApiBaseUrl.value.trim().length > 0
   && !loading.value
+  && !radarRefreshPending.value
   && !mapWysiwygRefreshPending.value
   && !cameraMjpegStatusPending.value
 ));
@@ -3366,13 +3367,16 @@ const plainWysiwygEvidenceRefreshButtonLabel = computed(() => {
   if (loading.value) {
     return "刷新总览中";
   }
+  if (radarRefreshPending.value) {
+    return "刷新雷达扫描中";
+  }
   if (mapWysiwygRefreshPending.value) {
     return "刷新地图画面中";
   }
   if (cameraMjpegStatusPending.value) {
     return "刷新画面状态中";
   }
-  return "刷新当前所见（只读）";
+  return "刷新当前所见（含雷达贴图）";
 });
 
 const canRefreshPlainMappingUnlockEvidence = computed(() => canRefreshPlainWysiwygEvidence.value);
@@ -13528,6 +13532,17 @@ async function refreshPlainConsole(): Promise<void> {
   ]);
 }
 
+async function refreshPlainWysiwygEvidence(): Promise<void> {
+  // 当前所见刷新必须先让雷达扫描 proof 变新，再读地图画面；否则地图只能继续显示旧来源点或 0 个当前点。
+  if (!canRefreshPlainWysiwygEvidence.value) {
+    return;
+  }
+  await Promise.all([
+    refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true }),
+    refreshCameraMjpegStatus(),
+  ]);
+}
+
 async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean; radarStatusRefresh?: boolean } = {}): Promise<void> {
   // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
   if (!robotApiBaseUrl.value.trim() || mapWysiwygRefreshPending.value) {
@@ -15764,7 +15779,11 @@ onBeforeUnmount(() => {
             class="secondary compact-stop"
             :disabled="!canRefreshPlainWysiwygEvidence"
             data-testid="plain-wysiwyg-evidence-refresh"
-            @click="refreshPlainConsole"
+            data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+            data-refreshes-radar-scan-proof="true"
+            data-refreshes-map-after-radar="true"
+            data-sends-motion-when-clicked="false"
+            @click="refreshPlainWysiwygEvidence"
           >
             {{ plainWysiwygEvidenceRefreshButtonLabel }}
           </button>

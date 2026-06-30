@@ -4514,7 +4514,11 @@ describe("App", () => {
     expect(wysiwygSurfaceGauge.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(wysiwygSurfaceGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-camera"]').attributes("data-testid")).toBe("plain-wysiwyg-evidence-camera");
-    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').text()).toBe("刷新当前所见（只读）");
+    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').text()).toBe("刷新当前所见（含雷达贴图）");
+    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-refreshes-radar-scan-proof")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-refreshes-map-after-radar")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-sends-motion-when-clicked")).toBe("false");
     const callsBeforeWysiwygRefresh = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').trigger("click");
     await flushPromises();
@@ -4524,6 +4528,7 @@ describe("App", () => {
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?"))).toBe(true);
+    expect(wysiwygRefreshCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
     expect(wysiwygRefreshCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(false);
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
