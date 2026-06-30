@@ -898,8 +898,8 @@ const fixtures: Record<string, unknown> = {
       live_wysiwyg_missing_surface_refresh_labels: ["复测相机首帧", "刷新雷达扫描 proof"],
       live_wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
       live_wysiwyg_primary_refresh_label: "复测相机首帧",
-      live_wysiwyg_diagnostic_plain: "画面诊断：首帧未证明；状态=未通过；原因=读取首帧超时。 雷达诊断：服务=true/running；新读数=false；还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认。 地图雷达诊断：当前点=0；来源点=81；还差=地图缺雷达点；雷达点不是当前新读数。",
-      live_wysiwyg_camera_diagnostic_plain: "画面诊断：首帧未证明；状态=未通过；原因=读取首帧超时。",
+      live_wysiwyg_diagnostic_plain: "画面诊断：首帧未证明；状态=未通过；原因=读取首帧超时；诊断=UVC 无首帧；已排除页面独占；不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧；下一步：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。 雷达诊断：服务=true/running；新读数=false；还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认。 地图雷达诊断：当前点=0；来源点=81；还差=地图缺雷达点；雷达点不是当前新读数。",
+      live_wysiwyg_camera_diagnostic_plain: "画面诊断：首帧未证明；状态=未通过；原因=读取首帧超时；诊断=UVC 无首帧；已排除页面独占；不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧；下一步：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。",
       live_wysiwyg_radar_diagnostic_plain: "雷达诊断：服务=true/running；新读数=false；还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认。",
       live_wysiwyg_map_radar_diagnostic_plain: "地图雷达诊断：当前点=0；来源点=81；还差=地图缺雷达点；雷达点不是当前新读数。",
       live_wysiwyg_camera_probe_failure_reason: "first_frame_total_timeout",
@@ -4862,6 +4862,9 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-primary-blocked-reason")).toBe("scan_preview_points_missing");
     const liveClosureWysiwygDiagnostics = wrapper.find('[data-testid="plain-live-closure-wysiwyg-diagnostics"]');
     expect(liveClosureWysiwygDiagnostics.text()).toContain("画面诊断：首帧未证明");
+    expect(liveClosureWysiwygDiagnostics.text()).toContain("已排除页面独占");
+    expect(liveClosureWysiwygDiagnostics.text()).toContain("UVC 设备没有输出视频帧");
+    expect(liveClosureWysiwygDiagnostics.text()).toContain("下一步：检查 USB");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=地图缺雷达点；雷达点不是当前新读数");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-probe-failure-reason")).toBe("first_frame_total_timeout");

@@ -8587,6 +8587,28 @@ function buildLiveClosureSummary(
   const cameraProbeFailureReason = readback.camera.first_frame_probe_failure_reason
     || readback.camera.source_failure_reason
     || "none";
+  const meaningfulCameraText = (value: string | undefined): string => {
+    const text = (value || "").trim();
+    return text && text !== "not_loaded" && text !== "none" ? text : "";
+  };
+  const plainSentencePart = (value: string): string => value.replace(/[。；;.\s]+$/u, "");
+  const cameraSourceDiagnosisHint = plainSentencePart(meaningfulCameraText(readback.camera.source_diagnosis_plain_hint));
+  const cameraSourceDiagnosisNextAction = plainSentencePart(meaningfulCameraText(readback.camera.source_diagnosis_next_action_plain));
+  const cameraSourceDiagnosisStatus = meaningfulCameraText(readback.camera.source_diagnosis_status);
+  const cameraSourceDiagnosisLabel = (status: string): string => ({
+    uvc_transport_error_not_exclusive: "UVC/USB 传输错误",
+    uvc_no_frame_not_exclusive: "UVC 无首帧",
+    source_first_frame_failed: "相机源无首帧",
+    first_frame_failed: "首帧失败",
+  }[status] || status.replace(/_/g, " "));
+  const cameraSourceDiagnosisNotExclusive = readback.camera.source_diagnosis_not_exclusive === "true"
+    || readback.camera.source_usage_not_exclusive === "true";
+  const cameraSourceDiagnosisTail = [
+    cameraSourceDiagnosisStatus ? `诊断=${cameraSourceDiagnosisLabel(cameraSourceDiagnosisStatus)}` : "",
+    cameraSourceDiagnosisNotExclusive ? "已排除页面独占" : "",
+    cameraSourceDiagnosisHint,
+    cameraSourceDiagnosisNextAction ? `下一步：${cameraSourceDiagnosisNextAction}` : "",
+  ].filter(Boolean).join("；");
   const radarScanMissingObservations = splitDiagnosticList(readback.radar.radar_scan_observation_missing_reasons);
   const mapRadarBlockedReasons = splitDiagnosticList(readback.map.radar_overlay_blocked_reasons);
   const radarMapCurrentPointCount = readback.map.radar_overlay_point_count || readback.radar.radar_overlay_point_count || "not_loaded";
@@ -8600,7 +8622,9 @@ function buildLiveClosureSummary(
     && parsedRadarMapSourcePointCount > 0;
   const cameraDiagnosticPlain = cameraCurrentVisible
     ? "画面诊断：当前页面已有实时画面。"
-    : `画面诊断：首帧未证明；状态=${cameraProbeStatusLabel(readback.camera.first_frame_probe_status || "not_loaded")}；原因=${cameraFailureLabel(cameraProbeFailureReason || "not_loaded")}。`;
+    : cameraSourceDiagnosisTail
+      ? `画面诊断：首帧未证明；状态=${cameraProbeStatusLabel(readback.camera.first_frame_probe_status || "not_loaded")}；原因=${cameraFailureLabel(cameraProbeFailureReason || "not_loaded")}；${cameraSourceDiagnosisTail}。`
+      : `画面诊断：首帧未证明；状态=${cameraProbeStatusLabel(readback.camera.first_frame_probe_status || "not_loaded")}；原因=${cameraFailureLabel(cameraProbeFailureReason || "not_loaded")}。`;
   const radarDiagnosticPlain = radarMapPointsVisible
     ? "雷达诊断：当前雷达点已贴到地图。"
     : `雷达诊断：服务=${readback.radar.lifecycle_running || "not_loaded"}/${readback.radar.lifecycle_state || "not_loaded"}；新读数=${readback.radar.latest_scan_proof_fresh || "not_loaded"}；还差=${diagnosticLabelsPlain(radarScanMissingObservations)}。`;

@@ -473,6 +473,11 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("相机服务正在用单上游共享预览读取 USB Composite Device: DV20 USB");
     expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("UVC 设备没有输出视频帧");
     expect(summary.readback_summary.camera.preview_next_action_plain).toContain("检查 USB");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("已排除页面独占");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("诊断=UVC 无首帧");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).not.toContain("uvc_no_frame_not_exclusive");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("UVC 设备没有输出视频帧");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("下一步：检查 USB");
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
   });
 
@@ -542,6 +547,11 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.camera.uvc_kernel_diagnostics_transport_error_count).toBe("3");
     expect(summary.readback_summary.camera.uvc_kernel_diagnostics_latest_transport_error).toContain("Failed to resubmit video URB");
     expect(summary.readback_summary.camera.plain_hint).toContain("UVC/USB 传输错误");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("诊断=UVC/USB 传输错误");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).not.toContain("uvc_transport_error_not_exclusive");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("已排除页面独占");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("UVC/USB 传输错误");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("下一步：检查 USB 线");
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
   });
 
