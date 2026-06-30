@@ -8,6 +8,23 @@
 
 ## 2026-07-01 系列
 
+### 2026-07-01 02-20｜camera_uvc_kernel_transport_wysiwyg｜画面 UVC 传输错误所见即所得
+
+本轮 `sprints/2026.07.01_02-20_camera_uvc_kernel_transport_wysiwyg/` 修正上车 8088 camera smoke 的
+UVC 内核日志诊断：不再只扫 `dmesg` 短 tail，而是全量扫描并从 `uvcvideo 3-1` / `usb 3-1` 提取同一内核 USB 地址，
+把 `error -71`、UVC 初始化失败、URB 重提交失败和 `can't read configurations` 归入当前 DV20 UVC 摄像头。
+PC `/api/robot-control/camera/mjpeg/status` 同步补齐 `uvc_transport_error_not_exclusive` 的首帧失败状态和中文下一步，
+避免普通用户看到英文 token 或误以为是浏览器页面独占。
+
+验证范围：`python3 -m unittest onboard.tests.test_local_webrtc_camera_smoke -v` 35 tests OK；
+`npm test -- test/robotControlSummary.test.ts --run` 6 tests OK；
+`npm test -- test/catalog.test.ts -t "camera MJPEG|UVC|source diagnosis" --run` 14 tests OK / 164 skipped。
+已部署并重启 `trashbot-local-webrtc-camera.service`，live health 返回
+`uvc_kernel_diagnostics.status=uvc_usb_transport_errors_observed`、`transport_error_count=44`、
+`latest_transport_error=[777992.581028] usb 3-1: device descriptor read/all, error -71`；
+PC 7001 summary 返回 `source_diagnosis_status=uvc_transport_error_not_exclusive` 和中文 USB/供电复测下一步。本轮未执行
+Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-07-01 02-03｜pc_map_radar_overlay_readback_aliases｜地图雷达贴图只读别名
 
 本轮 `sprints/2026.07.01_02-03_pc_map_radar_overlay_readback_aliases/` 把地图雷达贴图的新鲜度和旧点抑制口径提升到

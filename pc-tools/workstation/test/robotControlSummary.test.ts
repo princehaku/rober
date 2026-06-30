@@ -439,7 +439,7 @@ describe("robotControlSummary", () => {
           source_diagnosis: {
             status: "uvc_transport_error_not_exclusive",
             plain_hint: "不是页面独占：USB Composite Device: DV20 USB 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。",
-            next_action: "check_usb_cable_port_power_or_known_good_uvc",
+            next_action: "check usb cable port power or known good uvc",
             not_exclusive: true,
             uvc_kernel_diagnostics_status: "uvc_usb_transport_errors_observed",
           },

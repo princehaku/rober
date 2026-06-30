@@ -1016,6 +1016,62 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertTrue(payload["source_diagnosis"]["not_exclusive"])
         self.assertIn("不是页面独占", payload["source_diagnosis"]["plain_hint"])
 
+    def test_uvc_kernel_diagnostics_scans_full_dmesg_for_old_transport_errors(self) -> None:
+        """UVC 传输错误可能被后续日志挤出短 tail，但仍要进入 health 归因。"""
+        old_error = "[695752.523424] uvcvideo 3-1:1.1: Failed to initialize the device (-5)."
+        newer_error = "[777980.953405] usb 3-1: can't read configurations, error -71"
+        filler = "\n".join(f"[800000.{index:06d}] unrelated service log" for index in range(700))
+        dmesg_text = f"{old_error}\n{filler}\n{newer_error}\n"
+        completed = camera.subprocess.CompletedProcess(["dmesg"], 0, stdout=dmesg_text, stderr="")
+        candidate = {
+            "path": "/dev/video1",
+            "v4l2_name": "USB Composite Device: DV20 USB",
+            "sysfs_name": "USB Composite Device: DV20 USB",
+            "readonly_probe": {
+                "v4l2_all": {
+                    "stdout": "Driver Info:\n\tBus info         : usb-5310400.usb-1\n",
+                },
+            },
+        }
+
+        with mock.patch.object(camera.shutil, "which", return_value="/bin/dmesg"):
+            with mock.patch.object(camera.subprocess, "run", return_value=completed):
+                diagnostics = camera.collect_uvc_kernel_diagnostics("/dev/video1", candidate)
+
+        self.assertEqual("uvc_usb_transport_errors_observed", diagnostics["status"])
+        self.assertEqual(2, diagnostics["transport_error_count"])
+        self.assertIn("can't read configurations", diagnostics["latest_transport_error"])
+        self.assertIn("UVC/USB 传输错误", diagnostics["plain_hint"])
+        self.assertFalse(diagnostics["opens_camera"])
+        self.assertFalse(diagnostics["safe_to_control"])
+
+    def test_source_diagnosis_prefers_kernel_transport_error_when_not_exclusive(self) -> None:
+        """无首帧且无人占用时，如内核已有 -71/URB 错误，要指向 USB 链路。"""
+        diagnosis = camera.build_source_diagnosis(
+            "/dev/video1",
+            source_failed=True,
+            source_observed=False,
+            source_usage={
+                "status": "not_in_use",
+                "owner_count": 0,
+                "other_owner_count": 0,
+            },
+            selected_candidate={
+                "v4l2_name": "USB Composite Device: DV20 USB",
+                "is_uvc_or_usb": True,
+            },
+            last_offer_reason="first_frame_total_timeout",
+            uvc_kernel_diagnostics={
+                "status": "uvc_usb_transport_errors_observed",
+            },
+        )
+
+        self.assertEqual("uvc_transport_error_not_exclusive", diagnosis["status"])
+        self.assertEqual("check_usb_cable_port_power_or_known_good_uvc", diagnosis["next_action"])
+        self.assertTrue(diagnosis["not_exclusive"])
+        self.assertIn("不是页面独占", diagnosis["plain_hint"])
+        self.assertIn("UVC/USB 传输错误", diagnosis["plain_hint"])
+
     def test_health_reports_selected_source_usage_without_opening_camera(self) -> None:
         """health 要能解释占用状态，但不能通过 OpenCV 或 V4L2 打开摄像头。"""
         state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)

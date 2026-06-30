@@ -1424,9 +1424,7 @@ function cameraSummaryPreviewGuidance(
     const nextAction = sourceDiagnosis.next_action && !["not_loaded", "none"].includes(sourceDiagnosis.next_action)
       ? sourceDiagnosis.next_action
       : "check_usb_camera_input_power_or_known_good_uvc";
-    const nextActionPlain = sourceDiagnosis.next_action_plain && !["not_loaded", "none"].includes(sourceDiagnosis.next_action_plain)
-      ? sourceDiagnosis.next_action_plain
-      : cameraActionPlainText(nextAction);
+    const nextActionPlain = cameraPlainTextOrActionPlain(sourceDiagnosis.next_action_plain, nextAction);
     return { plain_hint: plainHint, next_action: nextAction, next_action_plain: nextActionPlain };
   }
   if (["starting_local_peer", "connecting_offer_posted"].includes(previewStatus)) {
@@ -1456,34 +1454,46 @@ function cameraActionPlainText(action: string): string {
   if (!value || value === "not_loaded" || value === "none") {
     return "";
   }
-  if (value === "check_usb_camera_input_power_or_known_good_uvc") {
+  const normalized = value.replace(/\s+/g, "_").toLowerCase();
+  if (normalized === "check_usb_camera_input_power_or_known_good_uvc") {
     return "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
   }
-  if (value === "check_usb_cable_port_power_or_known_good_uvc") {
+  if (normalized === "check_usb_cable_port_power_or_known_good_uvc") {
     return "检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
   }
-  if (value === "continue_monitoring_shared_preview") {
+  if (normalized === "continue_monitoring_shared_preview") {
     return "继续监看共享实时画面。";
   }
-  if (value === "open_shared_preview") {
+  if (normalized === "open_shared_preview") {
     return "打开共享实时预览；页面会复用同一条上游流。";
   }
-  if (value === "auto_join_shared_mjpeg_preview") {
+  if (normalized === "auto_join_shared_mjpeg_preview") {
     return "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。";
   }
-  if (value === "open_shared_preview_when_needed" || value === "open_shared_preview_or_run_first_frame_probe") {
+  if (normalized === "open_shared_preview_when_needed" || normalized === "open_shared_preview_or_run_first_frame_probe") {
     return "需要看画面时打开共享预览，或点只读检查复测首帧。";
   }
-  if (value === "wait_or_run_first_frame_probe") {
+  if (normalized === "wait_or_run_first_frame_probe") {
     return "等待首帧，必要时点只读检查复测画面。";
   }
-  if (value === "inspect_shared_preview_failure_and_retry") {
+  if (normalized === "inspect_shared_preview_failure_and_retry") {
     return "查看共享预览失败原因后再重试。";
   }
-  if (value === "check_robot_api_base_url_and_retry") {
+  if (normalized === "check_robot_api_base_url_and_retry") {
     return "确认小车地址可访问后重试共享预览状态。";
   }
   return `${value.replace(/_/g, " ")}。`;
+}
+
+function cameraPlainTextOrActionPlain(plainText: string | undefined, action: string): string {
+  // 有些 relay/上车路径会把 token 先转成英文空格句；普通用户文案必须再映射回中文。
+  const mapped = cameraActionPlainText(action);
+  const plain = (plainText ?? "").trim();
+  if (!plain || ["not_loaded", "none"].includes(plain)) {
+    return mapped;
+  }
+  const asciiFallback = /^[A-Za-z0-9_ ./-]+。?$/.test(plain);
+  return asciiFallback && mapped ? mapped : plain;
 }
 
 function cameraPreviewVisibilityPlainSummary(args: {
@@ -2328,7 +2338,10 @@ function cameraSummaryFromReadbacks(
     cachedFrameAgeMs: sharedPreviewCachedFrameAgeMs,
     previewVisiblePlain: previewVisibility.visiblePlain,
   });
-  const sourceDiagnosisNextActionPlain = derivedSourceDiagnosis.next_action_plain || previewGuidance.next_action_plain;
+  const sourceDiagnosisNextActionPlain = cameraPlainTextOrActionPlain(
+    derivedSourceDiagnosis.next_action_plain,
+    derivedSourceDiagnosis.next_action,
+  ) || previewGuidance.next_action_plain;
   const lastOfferFormatAttemptsSummary = cameraFormatAttemptsSummary(lastOfferError);
   const inferredProbeFailureReason = ["", "none", "not_loaded"].includes(resolvedSourceFailureReason)
     ? relayFirstFrameFailureReason || lastOfferFailureReason || sharedPreviewLastFailureReason

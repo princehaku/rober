@@ -4747,3 +4747,10 @@ scan proof refresh、地图 preview、Nav2、键盘、自由移动或建图的�
 WYSIWYG 地图画布和 2400% 缩放上限；ROS2 本机工程调试使用 `ros2 launch ros2_trashbot_bringup rviz.launch.py`
 查看 map/scan/tf/path/pose；需要浏览器远程观察时先运行 `ros2 launch foxglove_bridge foxglove_bridge_launch.xml`
 再接 Foxglove Studio。RViz2/Foxglove 是配套观察工具，不作为普通发车、键盘手控、自由移动或建图的前置条件。
+
+2026-07-01 02:20 CST 起，画面 WYSIWYG 诊断进一步收紧：上车 8088 camera smoke 会全量扫描
+`dmesg` 的 UVC/USB 错误并匹配同一内核 USB 地址，PC `/api/robot-control/camera/mjpeg/status` 与 summary
+现在能把真实 `error -71`、UVC 初始化失败、URB 重提交失败归类为
+`uvc_transport_error_not_exclusive` / `uvc_usb_transport_errors_observed`。普通用户看到的下一步统一为
+“检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占”。该变化只提升只读画面诊断，
+不启动相机以外的新 reader、不 reset USB、不启动 Nav2/键盘/自由移动/建图，也不发送 `/cmd_vel`。

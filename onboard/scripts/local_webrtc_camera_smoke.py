@@ -62,6 +62,7 @@ UVC_KERNEL_ERROR_PATTERNS = (
     "failed to query",
     "device descriptor read",
     "device not accepting address",
+    "can't read configurations",
     "failed to initialize the device",
     "device firmware changed",
 )
@@ -408,11 +409,26 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
 
     lines = dmesg_text.splitlines()
     bus_tokens = [token for token in [bus_info, bus_info.replace("usb-", ""), "uvcvideo"] if token]
+    kernel_usb_addresses: set[str] = set()
+    for line in lines:
+        # v4l2 的 bus_info 可能是 `usb-5310400.usb-1`，dmesg 却写 `usb 3-1`；
+        # 先从 UVC 行提取内核地址，再把同地址 USB 错误归到当前摄像头。
+        lower = line.lower()
+        if "uvc" not in lower:
+            continue
+        for match in re.finditer(r"(?:uvcvideo|usb)\s+([0-9]+-[0-9][0-9.\-]*)", lower):
+            kernel_usb_addresses.add(match.group(1))
+
     matched_lines: list[str] = []
     error_lines: list[str] = []
-    for line in lines[-600:]:
+    for line in lines:
+        # UVC 错误可能被服务轮询日志挤出短 tail；全量扫描 dmesg，返回时再截断 tail。
         lower = line.lower()
-        related = any(token.lower() in lower for token in bus_tokens) or "uvc" in lower
+        related = (
+            any(token.lower() in lower for token in bus_tokens)
+            or "uvc" in lower
+            or any(f"usb {address}" in lower or f"uvcvideo {address}" in lower for address in kernel_usb_addresses)
+        )
         if not related:
             continue
         compact_line = line[-360:]

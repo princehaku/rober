@@ -1113,6 +1113,31 @@ fail-closed，把建图缺口保留为 `camera_first_frame`，不能因为服务
 PC `GET /api/robot-control/camera/mjpeg/status` 继续保持只读、不会创建 MJPEG client；但现在会把
 上车 `/api/camera/health` 里的 `source_not_probed/source_selected_not_probed` 诊断同步贴到 status。
 
+## 2026-07-01 02:20 UVC 内核传输错误 WYSIWYG 诊断
+
+真实上车环境里 `/dev/video1` 仍能枚举为 `USB Composite Device: DV20 USB`，但 `dmesg`
+已有 `error -71`、`Failed to initialize the device`、`Failed to resubmit video URB`、
+`can't read configurations` 等 UVC/USB 传输错误。旧版 8088 camera smoke 只扫 `dmesg`
+短 tail，服务轮询日志变多后会把这些旧 UVC 错误挤出窗口，导致 health 误报
+`uvc_kernel_log_not_matched`。
+
+`onboard/scripts/local_webrtc_camera_smoke.py` 现在全量扫描 `dmesg`，但只在响应里返回截断
+tail；并从 `uvcvideo 3-1` / `usb 3-1` 日志提取同一个内核 USB 地址，把后续同地址
+`error -71` 或配置读取失败归到当前 UVC 摄像头。该诊断仍然只读内核日志和 v4l2 枚举，
+不会打开额外 camera reader、不会 reset USB、不会启动 ROS2，也不会发布 `/cmd_vel`。
+
+部署到 `root@192.168.1.11:37878` 后，`/api/camera/health` 已返回：
+
+- `source_diagnosis.status=uvc_transport_error_not_exclusive`
+- `uvc_kernel_diagnostics.status=uvc_usb_transport_errors_observed`
+- `uvc_kernel_diagnostics.transport_error_count=44`
+- `latest_transport_error=[777992.581028] usb 3-1: device descriptor read/all, error -71`
+
+PC 7001 的 `/api/robot-control/camera/mjpeg/status` 和 `/api/robot-control/summary`
+同步显示中文下一步：检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；
+共享预览不是页面独占。该结论推进“画面所见即所得”：当前不是页面抢占或多用户预览独占，
+而是 UVC/USB 链路已经有内核传输错误，仍未证明真实画面可见。
+
 live 只读复核：
 
 - `client_count=0`
