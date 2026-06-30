@@ -883,7 +883,7 @@ const fixtures: Record<string, unknown> = {
       map_display_foxglove_bridge_package: "foxglove_bridge",
       map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
       map_display_foxglove_websocket_url: "ws://192.168.1.11:8765",
-      map_display_companion_plain: "普通用户地图：打开 /map 使用 PC 大地图，默认 100% 整图铺满大画布，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765。",
+      map_display_companion_plain: "普通用户地图：进入 /map 使用 PC 大地图，默认 100% 整图铺满大画布，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765。",
       map_display_sends_motion_when_clicked: false,
       map_display_starts_ros2: false,
       map_display_starts_rviz2: false,
@@ -4961,7 +4961,7 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.attributes("data-sends-motion-when-clicked")).toBe("false");
     const liveMapCompanionSummary = wrapper.find('[data-testid="plain-live-map-companion-summary"]');
     expect(liveMapCompanionSummary.exists()).toBe(true);
-    expect(liveMapCompanionSummary.text()).toContain("打开 /map 使用 PC 大地图");
+    expect(liveMapCompanionSummary.text()).toContain("进入 /map 使用 PC 大地图");
     expect(liveMapCompanionSummary.text()).toContain("默认 100% 整图铺满大画布");
     expect(liveMapCompanionSummary.text()).toContain("细节放大最高 2400%");
     expect(liveMapCompanionSummary.text()).toContain("ROS2 配套只作工程观察");
@@ -6433,14 +6433,17 @@ describe("App", () => {
     expect(mapDirectViewLink.exists()).toBe(true);
     expect(wrapper.find(".plain-map-heading-actions").element.firstElementChild).toBe(mapDirectViewLink.element);
     expect(mapDirectViewLink.classes()).toContain("plain-map-direct-view-link-primary");
-    expect(mapDirectViewLink.text()).toBe("打开地图大屏");
+    expect(mapDirectViewLink.text()).toBe("进入地图大屏");
     expect(mapDirectViewLink.attributes("href")).toBe("/map");
-    expect(mapDirectViewLink.attributes("target")).toBe("_blank");
-    expect(mapDirectViewLink.attributes("rel")).toBe("noopener noreferrer");
+    expect(mapDirectViewLink.attributes("target")).toBeUndefined();
+    expect(mapDirectViewLink.attributes("rel")).toBeUndefined();
     expect(mapDirectViewLink.attributes("data-map-view-action")).toBe("open_direct_map_view");
     expect(mapDirectViewLink.attributes("data-user-facing-primary-map-action")).toBe("true");
     expect(mapDirectViewLink.attributes("data-ordinary-user-map-entry")).toBe("true");
-    expect(mapDirectViewLink.attributes("data-opens-new-window")).toBe("true");
+    expect(mapDirectViewLink.attributes("data-opens-new-window")).toBe("false");
+    expect(mapDirectViewLink.attributes("data-opens-current-page")).toBe("true");
+    expect(mapDirectViewLink.attributes("data-direct-map-view-default-observer")).toBe("true");
+    expect(mapDirectViewLink.attributes("data-direct-map-view-map-only")).toBe("true");
     expect(mapDirectViewLink.attributes("data-direct-map-view-url")).toBe("/map");
     expect(mapDirectViewLink.attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
     expect(mapDirectViewLink.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
@@ -6479,8 +6482,9 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-user-facing-map-surface")).toBe("pc_plain_big_map");
     expect(mapDisplayProof.attributes("data-primary-map-first")).toBe("true");
     expect(mapDisplayProof.attributes("data-primary-map-action-testid")).toBe("plain-map-direct-view-link");
-    expect(mapDisplayProof.attributes("data-primary-map-action-label")).toBe("打开地图大屏");
-    expect(mapDisplayProof.attributes("data-primary-map-action-opens-new-window")).toBe("true");
+    expect(mapDisplayProof.attributes("data-primary-map-action-label")).toBe("进入地图大屏");
+    expect(mapDisplayProof.attributes("data-primary-map-action-opens-new-window")).toBe("false");
+    expect(mapDisplayProof.attributes("data-primary-map-action-opens-current-page")).toBe("true");
     expect(mapDisplayProof.attributes("data-wysiwyg-overlays")).toBe("image-route-robot-radar");
     expect(mapDisplayProof.attributes("data-default-map-layout")).toBe("dominant-first-screen-map");
     expect(mapDisplayProof.attributes("data-default-map-height-mode")).toBe("viewport-dominant");
@@ -6493,6 +6497,8 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-direct-map-view-url")).toBe("/map");
     expect(mapDisplayProof.attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
     expect(mapDisplayProof.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
+    expect(mapDisplayProof.attributes("data-direct-map-view-default-observer")).toBe("true");
+    expect(mapDisplayProof.attributes("data-direct-map-view-map-only")).toBe("true");
     expect(mapDisplayProof.attributes("data-ros2-companion-tool")).toBe("rviz2");
     expect(mapDisplayProof.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
     expect(mapDisplayProof.attributes("data-ros2-companion-required")).toBe("false");
@@ -6510,7 +6516,7 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("PC 默认大地图主视图");
     expect(mapDisplayProof.text()).toContain("默认 100% 整图铺满大画布");
     expect(mapDisplayProof.text()).toContain("2400%");
-    expect(mapDisplayProof.text()).toContain("/map 大地图");
+    expect(mapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
     expect(mapDisplayProof.text()).toContain("?view=map 兼容入口");
     expect(mapDisplayProof.text()).toContain("图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布");
     expect(mapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
@@ -6637,6 +6643,8 @@ describe("App", () => {
     expect(workstationStyles).toContain(".plain-map-direct-view-link");
     expect(workstationStyles).toContain(".plain-map-direct-view-link-primary");
     expect(workstationStyles).toContain("border-color: #0f6b45;");
+    expect(workstationStyles).toContain('/map 直达页必须一打开就是地图观察屏');
+    expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
     expect(workstationStyles).toContain("--plain-map-large-min-height: 1040px;");
     expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh - 4px);");
     expect(workstationStyles).toContain("--plain-map-fullscreen-height: 100vh;");
@@ -7445,6 +7453,8 @@ describe("App", () => {
       expect(mapPanel.attributes("data-direct-map-view-url")).toBe("/map");
       expect(mapPanel.attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
       expect(mapPanel.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
+      expect(mapPanel.attributes("data-direct-map-view-default-observer")).toBe("true");
+      expect(mapPanel.attributes("data-direct-map-view-map-only")).toBe("true");
       expect(mapPanel.attributes("data-direct-map-view-default-zoom-percent")).toBe("100%");
       expect(mapPanel.attributes("data-direct-map-view-max-zoom-percent")).toBe("2400%");
       expect(mapPanel.attributes("data-direct-map-loads-camera-preview")).toBe("false");
@@ -7474,9 +7484,12 @@ describe("App", () => {
       expect(directMapDisplayProof.attributes("data-direct-map-view-requested")).toBe("true");
       expect(directMapDisplayProof.attributes("data-direct-map-view-url")).toBe("/map");
       expect(directMapDisplayProof.attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
+      expect(directMapDisplayProof.attributes("data-direct-map-view-default-observer")).toBe("true");
+      expect(directMapDisplayProof.attributes("data-direct-map-view-map-only")).toBe("true");
       expect(directMapDisplayProof.attributes("data-primary-map-action-testid")).toBe("plain-map-direct-view-link");
-      expect(directMapDisplayProof.attributes("data-primary-map-action-label")).toBe("打开地图大屏");
-      expect(directMapDisplayProof.attributes("data-primary-map-action-opens-new-window")).toBe("true");
+      expect(directMapDisplayProof.attributes("data-primary-map-action-label")).toBe("进入地图大屏");
+      expect(directMapDisplayProof.attributes("data-primary-map-action-opens-new-window")).toBe("false");
+      expect(directMapDisplayProof.attributes("data-primary-map-action-opens-current-page")).toBe("true");
       expect(directMapDisplayProof.attributes("data-ros2-companion-tool")).toBe("rviz2");
       expect(directMapDisplayProof.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
       expect(directMapDisplayProof.attributes("data-ros2-companion-required")).toBe("false");
@@ -7493,14 +7506,17 @@ describe("App", () => {
       expect(directMapDisplayProof.text()).toContain("只看地图大屏");
       expect(directMapDisplayProof.text()).toContain("默认 100% 整图铺满大画布");
       expect(directMapDisplayProof.text()).toContain("2400%");
-      expect(directMapDisplayProof.text()).toContain("/map 大地图");
+      expect(directMapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
       expect(directMapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
       expect(directMapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(directMapDisplayProof.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').classes()).toContain("plain-map-direct-view-link-primary");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-user-facing-primary-map-action")).toBe("true");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-ordinary-user-map-entry")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-opens-new-window")).toBe("true");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-opens-new-window")).toBe("false");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-opens-current-page")).toBe("true");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-default-observer")).toBe("true");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-map-only")).toBe("true");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("href")).toBe("/map");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-url")).toBe("/map");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-legacy-url")).toBe("?view=map");

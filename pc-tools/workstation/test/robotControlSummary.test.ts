@@ -173,6 +173,11 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_primary_tool).toBe("pc_big_map");
     expect(summary.live_closure_summary?.map_display_primary_url).toBe("/map");
     expect(summary.live_closure_summary?.map_display_legacy_url).toBe("?view=map");
+    expect(summary.live_closure_summary?.map_display_primary_action_label).toBe("进入地图大屏");
+    expect(summary.live_closure_summary?.map_display_primary_action_opens_new_window).toBe(false);
+    expect(summary.live_closure_summary?.map_display_primary_action_opens_current_page).toBe(true);
+    expect(summary.live_closure_summary?.map_display_direct_map_default_observer).toBe(true);
+    expect(summary.live_closure_summary?.map_display_direct_map_only).toBe(true);
     expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("100%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("2400%");
     expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
@@ -182,7 +187,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_foxglove_bridge_package).toBe("foxglove_bridge");
     expect(summary.live_closure_summary?.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
     expect(summary.live_closure_summary?.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：打开 /map 使用 PC 大地图");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：进入 /map 使用 PC 大地图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 100% 整图铺满大画布");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("细节放大最高 2400%");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ROS2 配套只作工程观察");

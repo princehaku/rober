@@ -319,7 +319,7 @@ const plainMapZoomStyle = computed(() => ({
 const plainMapDisplayProofText = computed(() => {
   // 这行只给普通用户确认“当前就是大地图”；工程命令收进折叠区，避免首屏重新变复杂。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 整图铺满大画布，当前 ${plainMapZoomPercent.value}，细节放大最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先打开 /map 大地图，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口。本条只读，不启动工程工具、行程执行或小车运动。`;
+  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 整图铺满大画布，当前 ${plainMapZoomPercent.value}，细节放大最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口。本条只读，不启动工程工具、行程执行或小车运动。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -17867,6 +17867,8 @@ onBeforeUnmount(() => {
           data-direct-map-view-url="/map"
           data-direct-map-view-legacy-url="?view=map"
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
+          data-direct-map-view-default-observer="true"
+          data-direct-map-view-map-only="true"
           :data-direct-map-view-default-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
           :data-direct-map-view-max-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
           data-direct-map-loads-camera-preview="false"
@@ -17904,12 +17906,13 @@ onBeforeUnmount(() => {
                 class="secondary plain-link-button plain-map-direct-view-link plain-map-direct-view-link-primary"
                 data-testid="plain-map-direct-view-link"
                 :href="plainMapDirectViewHref"
-                target="_blank"
-                rel="noopener noreferrer"
                 data-map-view-action="open_direct_map_view"
                 data-user-facing-primary-map-action="true"
                 data-ordinary-user-map-entry="true"
-                data-opens-new-window="true"
+                data-opens-new-window="false"
+                data-opens-current-page="true"
+                data-direct-map-view-default-observer="true"
+                data-direct-map-view-map-only="true"
                 data-direct-map-view-url="/map"
                 data-direct-map-view-legacy-url="?view=map"
                 data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
@@ -17928,7 +17931,7 @@ onBeforeUnmount(() => {
                 data-ros2-companion-tool="rviz2"
                 data-ros2-remote-companion-tool="foxglove"
               >
-                打开地图大屏
+                进入地图大屏
               </a>
               <button
                 v-if="plainMapVisualSummary.radarRefreshActionVisible"
@@ -18224,8 +18227,9 @@ onBeforeUnmount(() => {
             data-user-facing-map-surface="pc_plain_big_map"
             data-primary-map-first="true"
             data-primary-map-action-testid="plain-map-direct-view-link"
-            data-primary-map-action-label="打开地图大屏"
-            data-primary-map-action-opens-new-window="true"
+            data-primary-map-action-label="进入地图大屏"
+            data-primary-map-action-opens-new-window="false"
+            data-primary-map-action-opens-current-page="true"
             data-wysiwyg-overlays="image-route-robot-radar"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
@@ -18238,6 +18242,8 @@ onBeforeUnmount(() => {
             data-direct-map-view-url="/map"
             data-direct-map-view-legacy-url="?view=map"
             data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
+            data-direct-map-view-default-observer="true"
+            data-direct-map-view-map-only="true"
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
             data-ros2-companion-required="false"

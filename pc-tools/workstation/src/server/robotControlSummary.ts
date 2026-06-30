@@ -9130,7 +9130,7 @@ function buildLiveClosureSummary(
     "读取雷达状态",
     "读取相机 MJPEG 状态",
   ];
-  const mapDisplayCompanionPlain = "普通用户地图：打开 /map 使用 PC 大地图，默认 100% 整图铺满大画布，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765。";
+  const mapDisplayCompanionPlain = "普通用户地图：进入 /map 使用 PC 大地图，默认 100% 整图铺满大画布，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
   const freeMoveObjectiveDone = readback.free_roam.motion_ready === "true"
@@ -9254,6 +9254,11 @@ function buildLiveClosureSummary(
     map_display_primary_tool: "pc_big_map",
     map_display_primary_url: "/map",
     map_display_legacy_url: "?view=map",
+    map_display_primary_action_label: "进入地图大屏",
+    map_display_primary_action_opens_new_window: false,
+    map_display_primary_action_opens_current_page: true,
+    map_display_direct_map_default_observer: true,
+    map_display_direct_map_only: true,
     map_display_default_zoom_percent: "100%",
     map_display_max_zoom_percent: "2400%",
     map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],

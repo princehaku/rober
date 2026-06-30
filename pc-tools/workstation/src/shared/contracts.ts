@@ -2794,6 +2794,11 @@ export interface RobotControlLiveClosureSummary {
   map_display_primary_tool: "pc_big_map";
   map_display_primary_url: "/map";
   map_display_legacy_url: "?view=map";
+  map_display_primary_action_label: "进入地图大屏";
+  map_display_primary_action_opens_new_window: false;
+  map_display_primary_action_opens_current_page: true;
+  map_display_direct_map_default_observer: true;
+  map_display_direct_map_only: true;
   map_display_default_zoom_percent: "100%";
   map_display_max_zoom_percent: "2400%";
   map_display_wysiwyg_overlays: string[];
