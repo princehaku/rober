@@ -808,6 +808,24 @@ const fixtures: Record<string, unknown> = {
       camera_current_visible: false,
       map_current_visible: true,
       radar_map_points_visible: false,
+      map_display_primary_tool: "pc_big_map",
+      map_display_primary_url: "/map",
+      map_display_legacy_url: "?view=map",
+      map_display_default_zoom_percent: "2400%",
+      map_display_max_zoom_percent: "2400%",
+      map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],
+      map_display_ros2_companion_required: false,
+      map_display_ros2_companion_tools: ["rviz2", "foxglove"],
+      map_display_rviz_launch_command: "ros2 launch ros2_trashbot_bringup rviz.launch.py",
+      map_display_foxglove_bridge_package: "foxglove_bridge",
+      map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
+      map_display_companion_plain: "普通用户地图：打开 /map 使用 PC 大地图，默认 2400% 缩放，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge。",
+      map_display_sends_motion_when_clicked: false,
+      map_display_starts_ros2: false,
+      map_display_starts_rviz2: false,
+      map_display_starts_foxglove: false,
+      map_display_starts_nav2: false,
+      map_display_starts_map_runtime: false,
       live_wysiwyg_ready: false,
       live_wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
       live_wysiwyg_needs_refresh: true,
@@ -4723,6 +4741,23 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-current-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-current-visible")).toBe("true");
     expect(liveClosureSummary.attributes("data-radar-map-points-visible")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-primary-tool")).toBe("pc_big_map");
+    expect(liveClosureSummary.attributes("data-map-display-primary-url")).toBe("/map");
+    expect(liveClosureSummary.attributes("data-map-display-legacy-url")).toBe("?view=map");
+    expect(liveClosureSummary.attributes("data-map-display-default-zoom-percent")).toBe("2400%");
+    expect(liveClosureSummary.attributes("data-map-display-max-zoom-percent")).toBe("2400%");
+    expect(liveClosureSummary.attributes("data-map-display-wysiwyg-overlays")).toBe("image,route,robot,radar");
+    expect(liveClosureSummary.attributes("data-map-display-ros2-companion-required")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-ros2-companion-tools")).toBe("rviz2,foxglove");
+    expect(liveClosureSummary.attributes("data-map-display-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-package")).toBe("foxglove_bridge");
+    expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(liveClosureSummary.attributes("data-map-display-sends-motion-when-clicked")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-starts-ros2")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-starts-rviz2")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-starts-foxglove")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-starts-nav2")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-starts-map-runtime")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-ready")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-needs-refresh")).toBe("true");
@@ -4759,6 +4794,30 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-source-point-count")).toBe("81");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-stale-source-points-suppressed")).toBe("true");
     expect(liveClosureWysiwygDiagnostics.attributes("data-sends-motion-when-clicked")).toBe("false");
+    const liveMapCompanionSummary = wrapper.find('[data-testid="plain-live-map-companion-summary"]');
+    expect(liveMapCompanionSummary.exists()).toBe(true);
+    expect(liveMapCompanionSummary.text()).toContain("打开 /map 使用 PC 大地图");
+    expect(liveMapCompanionSummary.text()).toContain("2400% 缩放");
+    expect(liveMapCompanionSummary.text()).toContain("ROS2 配套只作工程观察");
+    expect(liveMapCompanionSummary.text()).toContain("RViz2");
+    expect(liveMapCompanionSummary.text()).toContain("Foxglove bridge");
+    expect(liveMapCompanionSummary.attributes("data-primary-tool")).toBe("pc_big_map");
+    expect(liveMapCompanionSummary.attributes("data-primary-url")).toBe("/map");
+    expect(liveMapCompanionSummary.attributes("data-legacy-url")).toBe("?view=map");
+    expect(liveMapCompanionSummary.attributes("data-default-zoom-percent")).toBe("2400%");
+    expect(liveMapCompanionSummary.attributes("data-max-zoom-percent")).toBe("2400%");
+    expect(liveMapCompanionSummary.attributes("data-wysiwyg-overlays")).toBe("image,route,robot,radar");
+    expect(liveMapCompanionSummary.attributes("data-ros2-companion-required")).toBe("false");
+    expect(liveMapCompanionSummary.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
+    expect(liveMapCompanionSummary.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(liveMapCompanionSummary.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
+    expect(liveMapCompanionSummary.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(liveMapCompanionSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(liveMapCompanionSummary.attributes("data-starts-ros2")).toBe("false");
+    expect(liveMapCompanionSummary.attributes("data-starts-rviz2")).toBe("false");
+    expect(liveMapCompanionSummary.attributes("data-starts-foxglove")).toBe("false");
+    expect(liveMapCompanionSummary.attributes("data-starts-nav2")).toBe("false");
+    expect(liveMapCompanionSummary.attributes("data-starts-map-runtime")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-action-testid")).toBe("plain-live-closure-wysiwyg-refresh");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-plan-available")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");

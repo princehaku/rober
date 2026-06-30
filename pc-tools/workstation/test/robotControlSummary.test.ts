@@ -134,6 +134,25 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_latest_endpoint).toBe("/api/robot-control/nav2/goal/execution/latest");
     expect(summary.live_closure_summary?.fixed_wheel_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
+    expect(summary.live_closure_summary?.map_display_primary_tool).toBe("pc_big_map");
+    expect(summary.live_closure_summary?.map_display_primary_url).toBe("/map");
+    expect(summary.live_closure_summary?.map_display_legacy_url).toBe("?view=map");
+    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("2400%");
+    expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("2400%");
+    expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
+    expect(summary.live_closure_summary?.map_display_ros2_companion_required).toBe(false);
+    expect(summary.live_closure_summary?.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
+    expect(summary.live_closure_summary?.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(summary.live_closure_summary?.map_display_foxglove_bridge_package).toBe("foxglove_bridge");
+    expect(summary.live_closure_summary?.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：打开 /map 使用 PC 大地图");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ROS2 配套只作工程观察");
+    expect(summary.live_closure_summary?.map_display_sends_motion_when_clicked).toBe(false);
+    expect(summary.live_closure_summary?.map_display_starts_ros2).toBe(false);
+    expect(summary.live_closure_summary?.map_display_starts_rviz2).toBe(false);
+    expect(summary.live_closure_summary?.map_display_starts_foxglove).toBe(false);
+    expect(summary.live_closure_summary?.map_display_starts_nav2).toBe(false);
+    expect(summary.live_closure_summary?.map_display_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.primary_status_item_id).toBe("nav2_route_execution");
     expect(summary.live_closure_summary?.side_blocker_ids).toEqual([
       "camera_wysiwyg",

@@ -3288,7 +3288,8 @@ th {
   .plain-map-viewport[data-size="large"] .plain-map-layer,
   .plain-map-viewport[data-size="normal"] .plain-map-layer,
   .plain-map-layer {
-    height: clamp(280px, 56vh, 520px);
-    min-height: 280px;
+    /* 窄 PC 窗口也要保持地图主视图，不能因为媒体查询退回小卡片。 */
+    height: clamp(620px, calc(100vh - 96px), 1100px);
+    min-height: 620px;
   }
 }

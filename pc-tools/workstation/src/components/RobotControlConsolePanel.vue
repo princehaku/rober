@@ -16209,6 +16209,23 @@ onBeforeUnmount(() => {
         :data-camera-current-visible="String(plainLiveClosureSummary.camera_current_visible)"
         :data-map-current-visible="String(plainLiveClosureSummary.map_current_visible)"
         :data-radar-map-points-visible="String(plainLiveClosureSummary.radar_map_points_visible)"
+        :data-map-display-primary-tool="plainLiveClosureSummary.map_display_primary_tool"
+        :data-map-display-primary-url="plainLiveClosureSummary.map_display_primary_url"
+        :data-map-display-legacy-url="plainLiveClosureSummary.map_display_legacy_url"
+        :data-map-display-default-zoom-percent="plainLiveClosureSummary.map_display_default_zoom_percent"
+        :data-map-display-max-zoom-percent="plainLiveClosureSummary.map_display_max_zoom_percent"
+        :data-map-display-wysiwyg-overlays="plainLiveClosureSummary.map_display_wysiwyg_overlays?.join(',') || 'none'"
+        :data-map-display-ros2-companion-required="String(plainLiveClosureSummary.map_display_ros2_companion_required)"
+        :data-map-display-ros2-companion-tools="plainLiveClosureSummary.map_display_ros2_companion_tools?.join(',') || 'none'"
+        :data-map-display-rviz-launch-command="plainLiveClosureSummary.map_display_rviz_launch_command"
+        :data-map-display-foxglove-bridge-package="plainLiveClosureSummary.map_display_foxglove_bridge_package"
+        :data-map-display-foxglove-bridge-launch-command="plainLiveClosureSummary.map_display_foxglove_bridge_launch_command"
+        :data-map-display-sends-motion-when-clicked="String(plainLiveClosureSummary.map_display_sends_motion_when_clicked)"
+        :data-map-display-starts-ros2="String(plainLiveClosureSummary.map_display_starts_ros2)"
+        :data-map-display-starts-rviz2="String(plainLiveClosureSummary.map_display_starts_rviz2)"
+        :data-map-display-starts-foxglove="String(plainLiveClosureSummary.map_display_starts_foxglove)"
+        :data-map-display-starts-nav2="String(plainLiveClosureSummary.map_display_starts_nav2)"
+        :data-map-display-starts-map-runtime="String(plainLiveClosureSummary.map_display_starts_map_runtime)"
         :data-live-wysiwyg-ready="String(plainLiveClosureWysiwygReady)"
         :data-live-wysiwyg-missing-surface-ids="plainLiveClosureWysiwygMissingSurfaceIds"
         :data-live-wysiwyg-needs-refresh="String(plainLiveClosureNeedsWysiwygRefresh)"
@@ -16377,6 +16394,29 @@ onBeforeUnmount(() => {
           data-sends-motion-when-clicked="false"
         >
           {{ plainLiveClosureSideGapText }}
+        </p>
+        <p
+          class="panel-note"
+          data-testid="plain-live-map-companion-summary"
+          :data-primary-tool="plainLiveClosureSummary.map_display_primary_tool"
+          :data-primary-url="plainLiveClosureSummary.map_display_primary_url"
+          :data-legacy-url="plainLiveClosureSummary.map_display_legacy_url"
+          :data-default-zoom-percent="plainLiveClosureSummary.map_display_default_zoom_percent"
+          :data-max-zoom-percent="plainLiveClosureSummary.map_display_max_zoom_percent"
+          :data-wysiwyg-overlays="plainLiveClosureSummary.map_display_wysiwyg_overlays?.join(',') || 'none'"
+          :data-ros2-companion-required="String(plainLiveClosureSummary.map_display_ros2_companion_required)"
+          :data-ros2-companion-tools="plainLiveClosureSummary.map_display_ros2_companion_tools?.join(',') || 'none'"
+          :data-rviz-launch-command="plainLiveClosureSummary.map_display_rviz_launch_command"
+          :data-foxglove-bridge-package="plainLiveClosureSummary.map_display_foxglove_bridge_package"
+          :data-foxglove-bridge-launch-command="plainLiveClosureSummary.map_display_foxglove_bridge_launch_command"
+          :data-sends-motion-when-clicked="String(plainLiveClosureSummary.map_display_sends_motion_when_clicked)"
+          :data-starts-ros2="String(plainLiveClosureSummary.map_display_starts_ros2)"
+          :data-starts-rviz2="String(plainLiveClosureSummary.map_display_starts_rviz2)"
+          :data-starts-foxglove="String(plainLiveClosureSummary.map_display_starts_foxglove)"
+          :data-starts-nav2="String(plainLiveClosureSummary.map_display_starts_nav2)"
+          :data-starts-map-runtime="String(plainLiveClosureSummary.map_display_starts_map_runtime)"
+        >
+          {{ plainActionCardUserText(plainLiveClosureSummary.map_display_companion_plain) }}
         </p>
         <div
           v-if="plainLiveMotionRunbookRows.length"
