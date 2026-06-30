@@ -48,6 +48,7 @@ pc-tools/workstation/
 - `App.vue` 只保留全局状态、刷新流程、错误处理和页面组合。
 - `src/client/workstationApi.ts` 集中封装 `/api/*` 路径、fetch 和 route debug query 参数拼接。
 - `src/components/` 只做展示与本地交互，不直接拼 API URL，不发明机器人状态。`RobotControlConsolePanel.vue` 通过 client 层调用 Node `GET /api/robot-control/summary` 和 O6 consumer detail adapter；Vue 不直接跨域访问上位机 Robot API。它的默认首屏必须保持 `Rober 小车控制台` + `.simple-user-console` 五卡片的普通用户视图，短状态、少量按钮和可停止入口留在首屏，`task_id`、`O6`、`O7`、`HIL`、`proof`、`/cmd_vel`、`/api/base/manual`、`field manifest` 等工程字段都必须折叠到默认关闭的 `高级诊断`。`O7FixturePreviewPanel.vue` 通过 client 层调用 fixture preview、probe、archive fixture 和 O6 consumer read adapter；route replay 主路径消费 consumer detail，旧 archive fixture player 只作为次路径 / debug fallback；页面不自动读取本地路径。
+- 2026-06-30 10:51 CST 起，普通首屏雷达卡必须提供 `plain-radar-start-map-proof` 雷达贴图验收条，明确雷达启动/重启后的地图刷新状态、当前地图雷达点、旧点抑制和固定 map preview endpoint。该验收条只读，不替代雷达启动/刷新按钮，也不新增任何运动入口。
 - 2026-06-30 10:45 CST 起，普通首屏键盘卡必须提供 `plain-keyboard-continuous-proof` 连续手控验收条，明确同一次按住窗口、连续 pulse 阈值、松开后 stop 收口、轮速 L/R 和固定 manual/stop endpoint。该验收条只读，不替代真实手控按钮，也不新增任何运动入口。
 - 2026-06-30 21:30 CST 起，普通首屏地图必须继续按 PC 主视图处理：默认 `600%` 缩放、最高 `800%`、桌面外壳接近全宽、大图高度贴近整屏，只看地图模式使用普通用户文案并保留路线、小车位置和雷达贴图。ROS2 配套分层为 RViz2 / `nav2_rviz_plugins` 做工程调试，Foxglove / `foxglove_bridge` 做浏览器远程观察；普通用户默认不离开简易 PC 工作站。
 - 2026-06-30 09:36 CST 起，普通首屏 summary 聚合不得被聚合 status、相机设备枚举或底盘慢读数拖住：`status`、`camera_health`、`camera_devices`、`base_status` 和 `base_feedback_samples_latest` 在 summary 内使用 2400ms 上限，超时只作为分项读取较慢/轮速未知提示；独立底盘状态刷新入口继续保留较长只读窗口。地图、画面、雷达、Nav2 路线和自由移动状态必须先可见。

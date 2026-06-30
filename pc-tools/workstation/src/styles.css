@@ -1003,6 +1003,33 @@ h3 {
   border-left-color: #cf222e;
 }
 
+.plain-radar-start-map-proof {
+  /* 雷达启动后的贴图验收是只读结论，帮助现场区分 lifecycle running 和地图 marker 已当前。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #8c959f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #17202a;
+}
+
+.plain-radar-start-map-proof[data-state="已贴图"],
+.plain-radar-start-map-proof[data-state="已显示"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-radar-start-map-proof[data-state="刷新中"],
+.plain-radar-start-map-proof[data-state="待贴图"],
+.plain-radar-start-map-proof[data-state="旧点抑制"] {
+  border-left-color: #bf8700;
+}
+
+.plain-radar-start-map-proof[data-state="刷新失败"] {
+  border-left-color: #cf222e;
+  background: #fff5f5;
+}
+
 .plain-map-panel {
   grid-column: 1 / -1;
   border-left: 3px solid transparent;

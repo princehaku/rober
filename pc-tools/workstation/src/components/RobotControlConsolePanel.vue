@@ -5238,6 +5238,57 @@ const plainRadarMapDomEvidence = computed(() => {
     fixedRadarMapPreviewEndpoint: map.fixedRadarMapPreviewEndpoint,
   };
 });
+const plainRadarStartMapProofSummary = computed(() => {
+  // 雷达启动后的验收必须看地图上真正画出的 marker，不能只看雷达 lifecycle 是否 running。
+  const evidence = plainRadarMapDomEvidence.value;
+  const state = evidence.startMapRefreshComplete
+    ? "已贴图"
+    : evidence.startMapRefreshPending
+      ? "刷新中"
+      : evidence.startMapRefreshFailed
+        ? "刷新失败"
+        : evidence.mapPointsVisible
+          ? "已显示"
+          : evidence.oldPointsSuppressed
+            ? "旧点抑制"
+            : "待贴图";
+  const refreshText = evidence.startMapRefreshPending
+    ? "启动/重启后的地图刷新中"
+    : evidence.startMapRefreshFailed
+      ? "启动/重启后的地图刷新失败"
+      : evidence.startMapRefreshComplete
+        ? "启动/重启后的地图刷新已完成"
+        : "启动/重启后会刷新地图画面";
+  const pointText = evidence.mapPointsVisible
+    ? `当前地图雷达点 ${evidence.mapPointCount} 个已显示`
+    : `当前地图雷达点未显示（来源点 ${evidence.mapSourcePointCount} 个）`;
+  const oldPointText = evidence.oldPointsSuppressed ? "旧雷达点已抑制" : "旧雷达点不算当前点";
+  const nextAction = evidence.startMapRefreshComplete
+    ? "按当前地图 marker 验收"
+    : evidence.startMapRefreshPending
+      ? "等待地图刷新返回"
+      : evidence.startMapRefreshFailed
+        ? "重试刷新地图画面"
+        : evidence.mapPointsVisible
+          ? "继续按当前地图 marker 验收"
+          : "启动或刷新雷达后刷新地图画面确认点位";
+  return {
+    state,
+    text: `雷达贴图验收：${refreshText}；${pointText}；${oldPointText}。下一步：${nextAction}。`,
+    mapPointsVisible: evidence.mapPointsVisible,
+    mapPointCount: evidence.mapPointCount,
+    mapSourcePointCount: evidence.mapSourcePointCount,
+    mapFrameId: evidence.mapFrameId,
+    mapSource: evidence.mapSource,
+    mapOverlayStatus: evidence.mapOverlayStatus,
+    startMapRefreshRequired: evidence.startMapRefreshRequired,
+    startMapRefreshPending: evidence.startMapRefreshPending,
+    startMapRefreshFailed: evidence.startMapRefreshFailed,
+    startMapRefreshComplete: evidence.startMapRefreshComplete,
+    oldPointsSuppressed: evidence.oldPointsSuppressed,
+    fixedRadarMapPreviewEndpoint: evidence.fixedRadarMapPreviewEndpoint,
+  };
+});
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
 type PlainSafetyActionItem = {
   id: "trip" | "keyboard" | "free_move" | "mapping";
@@ -15972,6 +16023,26 @@ onBeforeUnmount(() => {
           <p class="panel-note">{{ radarSummary.hint }}</p>
           <p v-if="showPlainRadarStart || showPlainRadarRestart" class="panel-note" data-testid="plain-radar-map-refresh-contract">
             启动或重启雷达后会自动刷新雷达读数和地图画面；返回前不把旧点当作当前地图标记。
+          </p>
+          <p
+            class="panel-note plain-radar-start-map-proof"
+            data-testid="plain-radar-start-map-proof"
+            data-sends-motion-when-clicked="false"
+            :data-state="plainRadarStartMapProofSummary.state"
+            :data-radar-map-points-visible="String(plainRadarStartMapProofSummary.mapPointsVisible)"
+            :data-radar-map-point-count="String(plainRadarStartMapProofSummary.mapPointCount)"
+            :data-radar-map-source-point-count="String(plainRadarStartMapProofSummary.mapSourcePointCount)"
+            :data-radar-map-frame-id="plainRadarStartMapProofSummary.mapFrameId"
+            :data-radar-map-source="plainRadarStartMapProofSummary.mapSource"
+            :data-radar-map-overlay-status="plainRadarStartMapProofSummary.mapOverlayStatus"
+            :data-radar-start-map-refresh-required="String(plainRadarStartMapProofSummary.startMapRefreshRequired)"
+            :data-radar-start-map-refresh-pending="String(plainRadarStartMapProofSummary.startMapRefreshPending)"
+            :data-radar-start-map-refresh-failed="String(plainRadarStartMapProofSummary.startMapRefreshFailed)"
+            :data-radar-start-map-refresh-complete="String(plainRadarStartMapProofSummary.startMapRefreshComplete)"
+            :data-radar-old-points-suppressed="String(plainRadarStartMapProofSummary.oldPointsSuppressed)"
+            :data-fixed-radar-map-preview-endpoint="plainRadarStartMapProofSummary.fixedRadarMapPreviewEndpoint"
+          >
+            {{ plainRadarStartMapProofSummary.text }}
           </p>
           <p v-if="plainRadarMapMarkerReadback" class="panel-note" data-testid="plain-radar-map-marker-readback">{{ plainRadarMapMarkerReadback }}</p>
           <p v-if="plainRadarCardNextActionText()" class="panel-note" data-testid="plain-radar-next-action">{{ plainRadarCardNextActionText() }}</p>
