@@ -1897,7 +1897,7 @@ function freeRoamLatestMotionReadinessPlain(startReady: boolean, motionReady: bo
     return "自由移动正在运行；相机和雷达不作为继续移动的前置。";
   }
   if (externalStopRequested) {
-    return "可先自由移动；当前有停止请求，开始自由移动会先清除停止请求。";
+    return "可先自由移动；停止请求会在开始时自动解除，不作为启动阻塞。";
   }
   return "可先自由移动；只需要现场安全确认和停止兜底。";
 }
@@ -1937,7 +1937,7 @@ function freeRoamLatestStartStatusPlain(startReady: boolean, motionReady: boolea
     return "自由移动暂不可启动；先连接上车自由移动状态机并确认停止兜底。";
   }
   return externalStopRequested
-    ? "自由移动可启动；当前有停止请求，点击开始会先清除停止请求。"
+    ? "自由移动可启动；点击开始会先清除停止请求，不作为启动阻塞。"
     : "自由移动可启动；只需现场安全确认和停止兜底。";
 }
 
@@ -1997,6 +1997,7 @@ function freeRoamLatestReadinessFromKeyValues(
   | "stop_request_pending"
   | "free_roam_stop_request_pending"
   | "start_will_clear_stop_request"
+  | "start_clears_stop_request_not_blocking"
   | "motion_start_blocked_by_stop_request"
   | "stop_request_status_plain"
   | "safety_confirmed"
@@ -2053,8 +2054,11 @@ function freeRoamLatestReadinessFromKeyValues(
   const mappingAcceptancePlain = freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingReady, mappingMissing);
   const motionNextActionPlain = freeRoamLatestMotionNextAction(startReady, motionReady, externalStopRequested);
   const mappingNextActionPlain = freeRoamLatestMappingNextAction(startReady, mappingReady, mappingMissing);
+  const startWillClearStopRequest = startReady && externalStopRequested;
   const stopRequestStatusPlain = externalStopRequested
-    ? "当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。"
+    ? startWillClearStopRequest
+      ? "停止请求会在开始自由移动时自动解除，不作为启动阻塞。"
+      : "当前有停止请求；先恢复自由移动启动条件，再清除停止请求。"
     : "当前没有停止请求。";
   return {
     runtime_status: runtimeStatus,
@@ -2062,7 +2066,8 @@ function freeRoamLatestReadinessFromKeyValues(
     decision_reason: decisionReason,
     stop_request_pending: externalStopRequested,
     free_roam_stop_request_pending: externalStopRequested,
-    start_will_clear_stop_request: startReady && externalStopRequested,
+    start_will_clear_stop_request: startWillClearStopRequest,
+    start_clears_stop_request_not_blocking: startWillClearStopRequest,
     motion_start_blocked_by_stop_request: false,
     stop_request_status_plain: stopRequestStatusPlain,
     safety_confirmed: safetyConfirmed,
@@ -4119,6 +4124,7 @@ export function createWorkstationApp(): express.Express {
       stop_request_pending: false,
       free_roam_stop_request_pending: false,
       start_will_clear_stop_request: false,
+      start_clears_stop_request_not_blocking: false,
       motion_start_blocked_by_stop_request: false,
       stop_request_status_plain: "停止请求状态未读到；先恢复上车连接。",
       safety_confirmed: false,

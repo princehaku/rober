@@ -5680,6 +5680,7 @@ function freeRoamSummaryFromReadbacks(
   const mappingMissingText = mappingMissing.length ? mappingMissing.join(",") : "none";
   const nextActionPlain = freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime, manualMotionFallbackActive);
   const startWillClearStopRequest = motionStartReady && externalStopRequested;
+  const startClearsStopRequestNotBlocking = startWillClearStopRequest && !manualMotionFallbackActive;
   const stopRequestStatusPlain = freeRoamStopRequestStatusPlain(motionStartReady, externalStopRequested);
   return {
     status: derivedStatus,
@@ -5690,6 +5691,7 @@ function freeRoamSummaryFromReadbacks(
     stop_request_pending: booleanSummaryValue(externalStopRequested),
     free_roam_stop_request_pending: booleanSummaryValue(externalStopRequested),
     start_will_clear_stop_request: booleanSummaryValue(startWillClearStopRequest),
+    start_clears_stop_request_not_blocking: booleanSummaryValue(startClearsStopRequestNotBlocking),
     motion_start_blocked_by_stop_request: "false",
     stop_request_status_plain: stopRequestStatusPlain,
     artifact_only: latest ? booleanSummaryValue(latest.artifact_only !== false) : summaryValueText(payload, ["artifact_only"]) ?? "not_loaded",
@@ -5747,7 +5749,7 @@ function freeRoamStopRequestStatusPlain(motionStartReady: boolean, externalStopR
     return "当前没有外部停止请求；自由移动启动不需要先清除停止请求。";
   }
   if (motionStartReady) {
-    return "当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。";
+    return "停止请求会在开始自由移动时自动解除，不作为启动阻塞。";
   }
   return "当前有停止请求；先恢复自由移动启动条件，再清除停止请求。";
 }
@@ -6175,6 +6177,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         stop_request_pending: "false",
         free_roam_stop_request_pending: "false",
         start_will_clear_stop_request: "false",
+        start_clears_stop_request_not_blocking: "false",
         motion_start_blocked_by_stop_request: "false",
         stop_request_status_plain: "停止请求状态未读到；先连接上车自由移动状态机。",
         artifact_only: "not_loaded",
@@ -6527,7 +6530,7 @@ function freeRoamAutonomyNextAction(
   }
   if (status === "start_ready") {
     const motionAction = externalStopRequested
-      ? "当前处于停止请求；勾选现场安全确认后可先自由移动，开始时会先解除停止请求"
+      ? "停止请求会在开始自由移动时自动解除，不作为启动阻塞；勾选现场安全确认后可先自由移动"
       : mappingReady
         ? "勾选现场安全确认后可开始自动扫图（低速）"
         : "勾选现场安全确认后可先自由移动";
@@ -6551,7 +6554,7 @@ function freeRoamMotionNextAction(startReady: boolean, motionReady: boolean, ext
   }
   if (startReady) {
     const stopPrefix = externalStopRequested
-      ? "当前处于停止请求；开始自由移动会先解除停止请求。"
+      ? "停止请求会在开始自由移动时自动解除，不作为启动阻塞。"
       : "";
     return `${stopPrefix}勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。`;
   }
@@ -6568,7 +6571,7 @@ function freeRoamMotionReadinessPlain(startReady: boolean, motionReady: boolean,
   }
   if (startReady) {
     return externalStopRequested
-      ? "可先自由移动；当前有停止请求，开始自由移动会先清除停止请求。"
+      ? "可先自由移动；停止请求会在开始时自动解除，不作为启动阻塞。"
       : "可先自由移动；只需要现场安全确认和停止兜底。";
   }
   if (manualMotionFallbackActive) {
@@ -6584,7 +6587,7 @@ function freeRoamStartStatusPlain(startReady: boolean, motionReady: boolean, ext
   }
   if (startReady) {
     return externalStopRequested
-      ? "自由移动可启动；当前有停止请求，点击开始会先清除停止请求。"
+      ? "自由移动可启动；点击开始会先清除停止请求，不作为启动阻塞。"
       : "自由移动可启动；只需现场安全确认和停止兜底。";
   }
   if (manualMotionFallbackActive) {
@@ -7571,6 +7574,7 @@ function buildActionStatusCards(
         fixed_free_roam_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
         free_roam_stop_request_pending: freeRoamStopRequestPending,
         start_will_clear_stop_request: freeRoamStartWillClearStopRequest,
+        start_clears_stop_request_not_blocking: freeRoamStartWillClearStopRequest && !freeRoamMotionBlockedByStopRequest,
         motion_start_blocked_by_stop_request: freeRoamMotionBlockedByStopRequest,
         fixed_mapping_start_endpoint: "/api/robot-control/map/start",
         fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",

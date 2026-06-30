@@ -4160,6 +4160,7 @@ describe("workstation fail-closed API contracts", () => {
           fixed_free_roam_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
           free_roam_stop_request_pending: false,
           start_will_clear_stop_request: false,
+          start_clears_stop_request_not_blocking: false,
           motion_start_blocked_by_stop_request: false,
           fixed_mapping_start_endpoint: "/api/robot-control/map/start",
           fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
@@ -6358,6 +6359,7 @@ describe("workstation fail-closed API contracts", () => {
         stop_request_pending: "false",
         free_roam_stop_request_pending: "false",
         start_will_clear_stop_request: "false",
+        start_clears_stop_request_not_blocking: "false",
         motion_start_blocked_by_stop_request: "false",
         stop_request_status_plain: "当前没有外部停止请求；自由移动启动不需要先清除停止请求。",
         artifact_only: "not_loaded",
@@ -6487,6 +6489,7 @@ describe("workstation fail-closed API contracts", () => {
         stop_request_pending: "false",
         free_roam_stop_request_pending: "false",
         start_will_clear_stop_request: "false",
+        start_clears_stop_request_not_blocking: "false",
         motion_start_blocked_by_stop_request: "false",
         stop_request_status_plain: "当前没有外部停止请求；自由移动启动不需要先清除停止请求。",
         artifact_only: "true",
@@ -6744,7 +6747,7 @@ describe("workstation fail-closed API contracts", () => {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
-      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("当前处于停止请求");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("停止请求会在开始自由移动时自动解除，不作为启动阻塞");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("可先自由移动");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action.match(/勾选现场安全确认/g)?.length).toBe(1);
       expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toContain("lidar_fresh");
@@ -12943,6 +12946,7 @@ describe("workstation fail-closed API contracts", () => {
         stop_request_pending: boolean;
         free_roam_stop_request_pending: boolean;
         start_will_clear_stop_request: boolean;
+        start_clears_stop_request_not_blocking: boolean;
         motion_start_blocked_by_stop_request: boolean;
         stop_request_status_plain: string;
         safety_confirmed: boolean;
@@ -13090,6 +13094,7 @@ describe("workstation fail-closed API contracts", () => {
         stop_request_pending: boolean;
         free_roam_stop_request_pending: boolean;
         start_will_clear_stop_request: boolean;
+        start_clears_stop_request_not_blocking: boolean;
         motion_start_blocked_by_stop_request: boolean;
         stop_request_status_plain: string;
         safety_confirmed: boolean;
@@ -13103,7 +13108,7 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("latest_loaded");
-      expect(body.plain_hint).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。");
+      expect(body.plain_hint).toBe("自由移动可启动；点击开始会先清除停止请求，不作为启动阻塞。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。");
       expect(body.next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.free_move_ready).toBe(true);
       expect(body.free_move_start_ready).toBe(true);
@@ -13114,8 +13119,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.stop_request_pending).toBe(true);
       expect(body.free_roam_stop_request_pending).toBe(true);
       expect(body.start_will_clear_stop_request).toBe(true);
+      expect(body.start_clears_stop_request_not_blocking).toBe(true);
       expect(body.motion_start_blocked_by_stop_request).toBe(false);
-      expect(body.stop_request_status_plain).toBe("当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。");
+      expect(body.stop_request_status_plain).toBe("停止请求会在开始自由移动时自动解除，不作为启动阻塞。");
       expect(body.safety_confirmed).toBe(false);
       expect(body.mapping_start_ready).toBe(false);
       expect(body.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
@@ -13125,8 +13131,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.mapping_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"]);
       expect(body.missing_capabilities).toEqual(["camera_first_frame", "lidar_fresh", "mapping_active", "fresh_map_preview"]);
       expect(body.mapping_readiness_ready).toBe(false);
-      expect(body.motion_readiness_plain).toBe("可先自由移动；当前有停止请求，开始自由移动会先清除停止请求。");
-      expect(body.free_move_start_status_plain).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。");
+      expect(body.motion_readiness_plain).toBe("可先自由移动；停止请求会在开始时自动解除，不作为启动阻塞。");
+      expect(body.free_move_start_status_plain).toBe("自由移动可启动；点击开始会先清除停止请求，不作为启动阻塞。");
       expect(body.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
       expect(body.mapping_acceptance_status_plain).toContain("这不阻止先低速自由移动");
       expect(body.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。");
@@ -13182,6 +13188,7 @@ describe("workstation fail-closed API contracts", () => {
         stop_request_pending: boolean;
         free_roam_stop_request_pending: boolean;
         start_will_clear_stop_request: boolean;
+        start_clears_stop_request_not_blocking: boolean;
         stop_request_status_plain: string;
         motion_readiness_plain: string;
         free_move_start_status_plain: string;
@@ -13195,6 +13202,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.stop_request_pending).toBe(false);
       expect(body.free_roam_stop_request_pending).toBe(false);
       expect(body.start_will_clear_stop_request).toBe(false);
+      expect(body.start_clears_stop_request_not_blocking).toBe(false);
       expect(body.stop_request_status_plain).toBe("当前没有停止请求。");
       expect(body.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
       expect(body.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");

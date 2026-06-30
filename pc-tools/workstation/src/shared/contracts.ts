@@ -2522,6 +2522,7 @@ export interface RobotControlActionStatusCard {
     fixed_free_roam_stop_endpoint?: string;
     free_roam_stop_request_pending?: boolean;
     start_will_clear_stop_request?: boolean;
+    start_clears_stop_request_not_blocking?: boolean;
     motion_start_blocked_by_stop_request?: boolean;
     fixed_mapping_start_endpoint?: string;
     fixed_mapping_preview_endpoint?: string;
@@ -2983,6 +2984,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       stop_request_pending: string;
       free_roam_stop_request_pending: string;
       start_will_clear_stop_request: string;
+      start_clears_stop_request_not_blocking: string;
       motion_start_blocked_by_stop_request: string;
       stop_request_status_plain: string;
       artifact_only: string;
@@ -3452,6 +3454,7 @@ export interface RobotControlFreeRoamAutonomyLatestResponse extends ProofFlags {
   stop_request_pending: boolean;
   free_roam_stop_request_pending: boolean;
   start_will_clear_stop_request: boolean;
+  start_clears_stop_request_not_blocking: boolean;
   motion_start_blocked_by_stop_request: boolean;
   stop_request_status_plain: string;
   safety_confirmed: boolean;

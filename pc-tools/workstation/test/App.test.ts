@@ -1798,8 +1798,9 @@ const fixtures: Record<string, unknown> = {
     stop_request_pending: true,
     free_roam_stop_request_pending: true,
     start_will_clear_stop_request: true,
+    start_clears_stop_request_not_blocking: true,
     motion_start_blocked_by_stop_request: false,
-    stop_request_status_plain: "当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。",
+    stop_request_status_plain: "停止请求会在开始自由移动时自动解除，不作为启动阻塞。",
     safety_confirmed: false,
     free_move_ready: true,
     free_move_start_ready: true,
@@ -1838,8 +1839,9 @@ const fixtures: Record<string, unknown> = {
       stop_request_pending: "true",
       free_roam_stop_request_pending: "true",
       start_will_clear_stop_request: "true",
+      start_clears_stop_request_not_blocking: "true",
       motion_start_blocked_by_stop_request: "false",
-      stop_request_status_plain: "当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。",
+      stop_request_status_plain: "停止请求会在开始自由移动时自动解除，不作为启动阻塞。",
       artifact_only: "true",
       cmd_vel_publish_enabled: "false",
       free_roam_motion_start_ready: "true",
@@ -8024,12 +8026,14 @@ describe("App", () => {
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.free_roam.stop_required = "true";
     summaryFixture.readback_summary.free_roam.decision_state = "stopping";
-    summaryFixture.readback_summary.free_roam.stop_request_status_plain = "当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。";
+    summaryFixture.readback_summary.free_roam.start_clears_stop_request_not_blocking = "true";
+    summaryFixture.readback_summary.free_roam.stop_request_status_plain = "停止请求会在开始自由移动时自动解除，不作为启动阻塞。";
     const freeMoveCard = summaryFixture.action_status_cards.find((card: { id: string }) => card.id === "free_move");
     freeMoveCard.evidence = {
       ...freeMoveCard.evidence,
       free_roam_stop_request_pending: true,
       start_will_clear_stop_request: true,
+      start_clears_stop_request_not_blocking: true,
       motion_start_blocked_by_stop_request: false,
     };
     stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
@@ -8047,15 +8051,17 @@ describe("App", () => {
     expect(freeRoamStartButton.attributes("data-can-start-free-motion")).toBe("true");
     expect(freeRoamStartButton.attributes("data-free-roam-stop-request-pending")).toBe("true");
     expect(freeRoamStartButton.attributes("data-start-will-clear-stop-request")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-start-clears-stop-request-not-blocking")).toBe("true");
     expect(freeRoamStartButton.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     expect(freeRoamStartButton.attributes("data-sends-motion-when-clicked")).toBe("true");
     expect(freeRoamStartButton.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
 
     const freeRoamMotionGauge = wrapper.find('[data-testid="plain-free-roam-motion-gauge"]');
-    expect(freeRoamMotionGauge.text()).toContain("当前有停止请求，点击会先解除");
+    expect(freeRoamMotionGauge.text()).toContain("停止请求会自动解除，不阻塞启动");
     expect(freeRoamMotionGauge.text()).toContain("下一步：解除停止请求并开始低速自由移动。");
     expect(freeRoamMotionGauge.attributes("data-free-roam-stop-request-pending")).toBe("true");
     expect(freeRoamMotionGauge.attributes("data-start-will-clear-stop-request")).toBe("true");
+    expect(freeRoamMotionGauge.attributes("data-start-clears-stop-request-not-blocking")).toBe("true");
     expect(freeRoamMotionGauge.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
   });
 

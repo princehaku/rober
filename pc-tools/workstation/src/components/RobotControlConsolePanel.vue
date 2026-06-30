@@ -3512,6 +3512,10 @@ function actionCardWithDerivedEvidence(
     );
     const freeMoveStartReady = boundary?.free_roam_motion_start_ready ?? false;
     const startWillClearStopRequest = boolText(freeRoam?.start_will_clear_stop_request, stopRequestPending && freeMoveStartReady);
+    const startClearsStopRequestNotBlocking = boolText(
+      freeRoam?.start_clears_stop_request_not_blocking,
+      startWillClearStopRequest && freeMoveStartReady,
+    );
     const motionStartBlockedByStopRequest = boolText(freeRoam?.motion_start_blocked_by_stop_request, false);
     return {
       ...card,
@@ -3526,6 +3530,7 @@ function actionCardWithDerivedEvidence(
         fixed_free_roam_stop_endpoint: card.evidence?.fixed_free_roam_stop_endpoint ?? "/api/robot-control/free-roam/autonomy/stop",
         free_roam_stop_request_pending: card.evidence?.free_roam_stop_request_pending ?? stopRequestPending,
         start_will_clear_stop_request: card.evidence?.start_will_clear_stop_request ?? startWillClearStopRequest,
+        start_clears_stop_request_not_blocking: card.evidence?.start_clears_stop_request_not_blocking ?? startClearsStopRequestNotBlocking,
         motion_start_blocked_by_stop_request: card.evidence?.motion_start_blocked_by_stop_request ?? motionStartBlockedByStopRequest,
         fixed_mapping_start_endpoint: card.evidence?.fixed_mapping_start_endpoint ?? "/api/robot-control/map/start",
         fixed_mapping_preview_endpoint: card.evidence?.fixed_mapping_preview_endpoint ?? "/api/robot-control/map/preview",
@@ -6999,6 +7004,7 @@ type PlainFreeRoamDomEvidence = {
   primaryActionRadarBlocksMappingStart: boolean;
   freeRoamStopRequestPending: boolean;
   startWillClearStopRequest: boolean;
+  startClearsStopRequestNotBlocking: boolean;
   motionStartBlockedByStopRequest: boolean;
   // 固定代理入口暴露在主面板，避免普通验收去解析高级诊断或中文长文案。
   fixedFreeRoamStartEndpoint: string;
@@ -7036,6 +7042,7 @@ type PlainFreeRoamMotionGauge = {
   primaryActionRequestsMapping: boolean;
   freeRoamStopRequestPending: boolean;
   startWillClearStopRequest: boolean;
+  startClearsStopRequestNotBlocking: boolean;
   motionStartBlockedByStopRequest: boolean;
   fixedFreeRoamStartEndpoint: string;
   fixedFreeRoamStopEndpoint: string;
@@ -7179,6 +7186,8 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
   const freeMoveEvidence = freeMoveActionCard?.evidence ?? {};
   const freeRoamStopRequestPending = freeMoveEvidence.free_roam_stop_request_pending === true;
   const startWillClearStopRequest = freeMoveEvidence.start_will_clear_stop_request === true;
+  const startClearsStopRequestNotBlocking = freeMoveEvidence.start_clears_stop_request_not_blocking === true
+    || (startWillClearStopRequest && freeMoveStartReady);
   const motionStartBlockedByStopRequest = freeMoveEvidence.motion_start_blocked_by_stop_request === true;
   const camera = summary?.readback_summary.camera;
   const sourceFirstFrameReady = camera?.source_readiness === "first_frame_observed"
@@ -7218,6 +7227,7 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     primaryActionRadarBlocksMappingStart: !plainRadarReadyForFreeRoamMapping.value,
     freeRoamStopRequestPending,
     startWillClearStopRequest,
+    startClearsStopRequestNotBlocking,
     motionStartBlockedByStopRequest,
     fixedFreeRoamStartEndpoint: "/api/robot-control/free-roam/autonomy/start",
     fixedFreeRoamStopEndpoint: "/api/robot-control/free-roam/autonomy/stop",
@@ -7321,7 +7331,7 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
       : "建图记录可随自由移动启动"
     : "建图记录还差传感器条件";
   const stopRequestText = evidence.startWillClearStopRequest
-    ? "当前有停止请求，点击会先解除"
+    ? "停止请求会自动解除，不阻塞启动"
     : evidence.freeRoamStopRequestPending
       ? "当前有停止请求"
       : "没有停止请求阻塞";
@@ -7358,6 +7368,7 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
     primaryActionRequestsMapping: evidence.primaryActionRequestsMapping,
     freeRoamStopRequestPending: evidence.freeRoamStopRequestPending,
     startWillClearStopRequest: evidence.startWillClearStopRequest,
+    startClearsStopRequestNotBlocking: evidence.startClearsStopRequestNotBlocking,
     motionStartBlockedByStopRequest: evidence.motionStartBlockedByStopRequest,
     fixedFreeRoamStartEndpoint: evidence.fixedFreeRoamStartEndpoint,
     fixedFreeRoamStopEndpoint: evidence.fixedFreeRoamStopEndpoint,
@@ -16020,6 +16031,7 @@ onBeforeUnmount(() => {
           :data-fixed-free-roam-stop-endpoint="card.evidence?.fixed_free_roam_stop_endpoint"
           :data-free-roam-stop-request-pending="card.evidence?.free_roam_stop_request_pending === undefined ? undefined : String(card.evidence.free_roam_stop_request_pending)"
           :data-start-will-clear-stop-request="card.evidence?.start_will_clear_stop_request === undefined ? undefined : String(card.evidence.start_will_clear_stop_request)"
+          :data-start-clears-stop-request-not-blocking="card.evidence?.start_clears_stop_request_not_blocking === undefined ? undefined : String(card.evidence.start_clears_stop_request_not_blocking)"
           :data-motion-start-blocked-by-stop-request="card.evidence?.motion_start_blocked_by_stop_request === undefined ? undefined : String(card.evidence.motion_start_blocked_by_stop_request)"
           :data-fixed-mapping-start-endpoint="card.evidence?.fixed_mapping_start_endpoint"
           :data-fixed-mapping-preview-endpoint="card.evidence?.fixed_mapping_preview_endpoint"
@@ -16892,6 +16904,7 @@ onBeforeUnmount(() => {
             :data-primary-action-requests-mapping="String(plainFreeRoamMotionGauge.primaryActionRequestsMapping)"
             :data-free-roam-stop-request-pending="String(plainFreeRoamMotionGauge.freeRoamStopRequestPending)"
             :data-start-will-clear-stop-request="String(plainFreeRoamMotionGauge.startWillClearStopRequest)"
+            :data-start-clears-stop-request-not-blocking="String(plainFreeRoamMotionGauge.startClearsStopRequestNotBlocking)"
             :data-motion-start-blocked-by-stop-request="String(plainFreeRoamMotionGauge.motionStartBlockedByStopRequest)"
             :data-next-action="plainFreeRoamMotionGauge.nextAction"
             :data-fixed-free-roam-start-endpoint="plainFreeRoamMotionGauge.fixedFreeRoamStartEndpoint"
@@ -16984,6 +16997,7 @@ onBeforeUnmount(() => {
               :data-radar-blocks-free-motion="String(plainFreeRoamDomEvidence.radarBlocksFreeMotion)"
               :data-free-roam-stop-request-pending="String(plainFreeRoamDomEvidence.freeRoamStopRequestPending)"
               :data-start-will-clear-stop-request="String(plainFreeRoamDomEvidence.startWillClearStopRequest)"
+              :data-start-clears-stop-request-not-blocking="String(plainFreeRoamDomEvidence.startClearsStopRequestNotBlocking)"
               :data-motion-start-blocked-by-stop-request="String(plainFreeRoamDomEvidence.motionStartBlockedByStopRequest)"
               :data-mapping-start-degraded-for-session="String(plainFreeRoamMappingStartDegradedForSession)"
               :data-requires-safety-confirmation="String(true)"
