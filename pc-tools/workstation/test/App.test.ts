@@ -919,6 +919,68 @@ const fixtures: Record<string, unknown> = {
       fixed_keyboard_summary_endpoint: "/api/robot-control/summary",
       keyboard_continuous_post_hold_feedback_readback_required: true,
       keyboard_continuous_post_hold_summary_refresh_required: true,
+      live_motion_runbook_items: [
+        {
+          id: "run_nav2_route",
+          label: "完整行程执行",
+          ready: false,
+          minimal_precheck_safety_only: true,
+          safety_confirm_required: false,
+          sends_motion_when_executed: true,
+          start_endpoint: "/api/robot-control/nav2/goal/execute",
+          stop_endpoint: "/api/robot-control/base/stop",
+          acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+          acceptance_plain: "执行后读取 latest、同窗口 wheel L/R 和 summary，确认到点成功且轮速非零。",
+          blocked_reasons: ["route_not_ready_on_map"],
+        },
+        {
+          id: "hold_keyboard",
+          label: "键盘连续手控",
+          ready: true,
+          minimal_precheck_safety_only: true,
+          safety_confirm_required: true,
+          sends_motion_when_executed: true,
+          start_endpoint: "/api/robot-control/base/manual",
+          stop_endpoint: "/api/robot-control/base/stop",
+          acceptance_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+          acceptance_plain: "启用后按住方向键或 WASD，松开会 stop；按住窗口后读取 wheel L/R 非零和 summary。",
+          blocked_reasons: [],
+        },
+        {
+          id: "start_free_move",
+          label: "自由自助移动",
+          ready: true,
+          minimal_precheck_safety_only: true,
+          safety_confirm_required: true,
+          sends_motion_when_executed: true,
+          start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+          stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+          acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
+          acceptance_plain: "启动后读取 free-roam latest 和 summary；相机、雷达不作为自由移动发车前置。",
+          blocked_reasons: [],
+        },
+        {
+          id: "start_mapping_when_sensors_ready",
+          label: "传感器就绪后建图",
+          ready: false,
+          minimal_precheck_safety_only: true,
+          safety_confirm_required: false,
+          sends_motion_when_executed: true,
+          start_endpoint: "/api/robot-control/map/start",
+          stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+          acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/summary"],
+          acceptance_plain: "相机首帧和雷达 fresh 后启动建图；随后读取地图预览和 summary 确认地图所见即所得。",
+          blocked_reasons: ["camera_first_frame", "lidar_fresh"],
+        },
+      ],
+      live_motion_runbook_action_ids: ["run_nav2_route", "hold_keyboard", "start_free_move", "start_mapping_when_sensors_ready"],
+      live_motion_runbook_ready_action_ids: ["hold_keyboard", "start_free_move"],
+      live_motion_runbook_blocked_action_ids: ["run_nav2_route", "start_mapping_when_sensors_ready"],
+      live_motion_runbook_primary_action_id: "hold_keyboard",
+      live_motion_runbook_start_endpoints: ["/api/robot-control/base/manual", "/api/robot-control/free-roam/autonomy/start"],
+      live_motion_runbook_acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview"],
+      live_motion_runbook_minimal_precheck_safety_only: true,
+      live_motion_runbook_safety_confirm_required: true,
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       wheel_rerun_minimal_precheck_safety_only: false,
@@ -4703,6 +4765,14 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-fixed-keyboard-summary-endpoint")).toBe("/api/robot-control/summary");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-post-hold-feedback-readback-required")).toBe("true");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-post-hold-summary-refresh-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-action-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move,start_mapping_when_sensors_ready");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-ready-action-ids")).toBe("hold_keyboard,start_free_move");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-blocked-action-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-primary-action-id")).toBe("hold_keyboard");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-minimal-precheck-safety-only")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-safety-confirm-required")).toBe("true");
     expect(liveClosureSummary.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-safety-confirm-required-for-motion")).toBe("true");
     expect(liveClosureSummary.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("false");

@@ -233,6 +233,77 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_keyboard_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.live_closure_summary?.keyboard_continuous_post_hold_feedback_readback_required).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_post_hold_summary_refresh_required).toBe(true);
+    expect(summary.live_closure_summary?.live_motion_runbook_action_ids).toEqual([
+      "run_nav2_route",
+      "hold_keyboard",
+      "start_free_move",
+      "start_mapping_when_sensors_ready",
+    ]);
+    expect(summary.live_closure_summary?.live_motion_runbook_ready_action_ids).toEqual([
+      "run_nav2_route",
+      "hold_keyboard",
+      "start_free_move",
+    ]);
+    expect(summary.live_closure_summary?.live_motion_runbook_blocked_action_ids).toEqual([
+      "start_mapping_when_sensors_ready",
+    ]);
+    expect(summary.live_closure_summary?.live_motion_runbook_primary_action_id).toBe("run_nav2_route");
+    expect(summary.live_closure_summary?.live_motion_runbook_start_endpoints).toEqual([
+      "/api/robot-control/nav2/goal/execute",
+      "/api/robot-control/base/manual",
+      "/api/robot-control/free-roam/autonomy/start",
+    ]);
+    expect(summary.live_closure_summary?.live_motion_runbook_acceptance_endpoints).toEqual([
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/map/preview",
+    ]);
+    expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
+    expect(summary.live_closure_summary?.live_motion_runbook_safety_confirm_required).toBe(true);
+    expect(summary.live_closure_summary?.live_motion_runbook_items).toEqual([
+      expect.objectContaining({
+        id: "run_nav2_route",
+        ready: true,
+        minimal_precheck_safety_only: true,
+        safety_confirm_required: true,
+        sends_motion_when_executed: true,
+        start_endpoint: "/api/robot-control/nav2/goal/execute",
+        acceptance_endpoints: [
+          "/api/robot-control/nav2/goal/execution/latest",
+          "/api/robot-control/base/feedback-samples",
+          "/api/robot-control/summary",
+        ],
+      }),
+      expect.objectContaining({
+        id: "hold_keyboard",
+        ready: true,
+        start_endpoint: "/api/robot-control/base/manual",
+        acceptance_endpoints: [
+          "/api/robot-control/base/feedback-samples",
+          "/api/robot-control/summary",
+        ],
+      }),
+      expect.objectContaining({
+        id: "start_free_move",
+        ready: true,
+        start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+        acceptance_endpoints: [
+          "/api/robot-control/free-roam/autonomy/latest",
+          "/api/robot-control/summary",
+        ],
+      }),
+      expect.objectContaining({
+        id: "start_mapping_when_sensors_ready",
+        ready: false,
+        start_endpoint: "/api/robot-control/map/start",
+        acceptance_endpoints: [
+          "/api/robot-control/map/preview",
+          "/api/robot-control/summary",
+        ],
+      }),
+    ]);
   });
 
   it("treats camera service self-owner as non-exclusive no-frame usage", async () => {

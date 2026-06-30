@@ -8377,6 +8377,83 @@ function buildLiveClosureSummary(
   const minimalPrecheckSafetyOnly = nav2.evidence?.minimal_precheck_safety_only === true
     || boundary.nav2_goal_minimal_precheck_plain.includes("只需要现场安全确认");
   const wheelRerunCommandMode = nav2.evidence?.next_base_command_mode || readback.nav2.next_execution_base_command_mode || "not_loaded";
+  const liveMotionRunbookItems: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_motion_runbook_items"] = [
+    {
+      id: "run_nav2_route",
+      label: "完整行程执行",
+      ready: routeReadyOnMap || needsSameWindowWheelRerun,
+      minimal_precheck_safety_only: minimalPrecheckSafetyOnly,
+      safety_confirm_required: routeReadyOnMap || needsSameWindowWheelRerun,
+      sends_motion_when_executed: true,
+      start_endpoint: "/api/robot-control/nav2/goal/execute",
+      stop_endpoint: "/api/robot-control/base/stop",
+      acceptance_endpoints: [
+        "/api/robot-control/nav2/goal/execution/latest",
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/summary",
+      ],
+      acceptance_plain: "执行后读取 latest、同窗口 wheel L/R 和 summary，确认到点成功且轮速非零。",
+      blocked_reasons: routeReadyOnMap || needsSameWindowWheelRerun ? [] : ["route_not_ready_on_map"],
+    },
+    {
+      id: "hold_keyboard",
+      label: "键盘连续手控",
+      ready: keyboardContinuousControlReady,
+      minimal_precheck_safety_only: true,
+      safety_confirm_required: keyboardContinuousControlReady,
+      sends_motion_when_executed: true,
+      start_endpoint: "/api/robot-control/base/manual",
+      stop_endpoint: "/api/robot-control/base/stop",
+      acceptance_endpoints: [
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/summary",
+      ],
+      acceptance_plain: "启用后按住方向键或 WASD，松开会 stop；按住窗口后读取 wheel L/R 非零和 summary。",
+      blocked_reasons: keyboardContinuousControlReady ? [] : ["keyboard_continuous_not_ready"],
+    },
+    {
+      id: "start_free_move",
+      label: "自由自助移动",
+      ready: freeMoveStartReady,
+      minimal_precheck_safety_only: true,
+      safety_confirm_required: freeMoveStartReady,
+      sends_motion_when_executed: true,
+      start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+      stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+      acceptance_endpoints: [
+        "/api/robot-control/free-roam/autonomy/latest",
+        "/api/robot-control/summary",
+      ],
+      acceptance_plain: "启动后读取 free-roam latest 和 summary；相机、雷达不作为自由移动发车前置。",
+      blocked_reasons: freeMoveStartReady ? [] : ["free_move_not_ready"],
+    },
+    {
+      id: "start_mapping_when_sensors_ready",
+      label: "传感器就绪后建图",
+      ready: mappingStartReady,
+      minimal_precheck_safety_only: true,
+      safety_confirm_required: mappingStartReady,
+      sends_motion_when_executed: true,
+      start_endpoint: "/api/robot-control/map/start",
+      stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+      acceptance_endpoints: [
+        "/api/robot-control/map/preview",
+        "/api/robot-control/summary",
+      ],
+      acceptance_plain: "相机首帧和雷达 fresh 后启动建图；随后读取地图预览和 summary 确认地图所见即所得。",
+      blocked_reasons: mappingStartReady ? [] : mappingStartMissingReasons,
+    },
+  ];
+  const liveMotionRunbookReadyItems = liveMotionRunbookItems.filter((item) => item.ready);
+  const liveMotionRunbookBlockedItems = liveMotionRunbookItems.filter((item) => !item.ready);
+  const liveMotionRunbookPrimaryActionId = (() => {
+    if (needsSameWindowWheelRerun && liveMotionRunbookReadyItems.some((item) => item.id === "run_nav2_route")) {
+      return "run_nav2_route" as const;
+    }
+    return liveMotionRunbookReadyItems[0]?.id ?? "none";
+  })();
+  const liveMotionRunbookStartEndpoints = Array.from(new Set(liveMotionRunbookReadyItems.map((item) => item.start_endpoint)));
+  const liveMotionRunbookAcceptanceEndpoints = Array.from(new Set(liveMotionRunbookItems.flatMap((item) => item.acceptance_endpoints)));
   const nav2GoalSucceeded = nav2GoalExecutionProven;
   const allWysiwygReady = cameraCurrentVisible && mapCurrentVisible && radarMapPointsVisible;
   const status = (() => {
@@ -8589,6 +8666,15 @@ function buildLiveClosureSummary(
     fixed_keyboard_summary_endpoint: "/api/robot-control/summary",
     keyboard_continuous_post_hold_feedback_readback_required: true,
     keyboard_continuous_post_hold_summary_refresh_required: true,
+    live_motion_runbook_items: liveMotionRunbookItems,
+    live_motion_runbook_action_ids: liveMotionRunbookItems.map((item) => item.id),
+    live_motion_runbook_ready_action_ids: liveMotionRunbookReadyItems.map((item) => item.id),
+    live_motion_runbook_blocked_action_ids: liveMotionRunbookBlockedItems.map((item) => item.id),
+    live_motion_runbook_primary_action_id: liveMotionRunbookPrimaryActionId,
+    live_motion_runbook_start_endpoints: liveMotionRunbookStartEndpoints,
+    live_motion_runbook_acceptance_endpoints: liveMotionRunbookAcceptanceEndpoints,
+    live_motion_runbook_minimal_precheck_safety_only: liveMotionRunbookItems.every((item) => item.minimal_precheck_safety_only),
+    live_motion_runbook_safety_confirm_required: liveMotionRunbookReadyItems.some((item) => item.safety_confirm_required),
     minimal_precheck_safety_only: minimalPrecheckSafetyOnly,
     safety_confirm_required_for_motion: goalSummary.safety_confirm_needed_count > 0,
     wheel_rerun_minimal_precheck_safety_only: needsSameWindowWheelRerun && minimalPrecheckSafetyOnly,

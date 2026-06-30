@@ -2718,6 +2718,26 @@ export interface RobotControlLiveWysiwygSurfaceSummary {
   sends_motion_when_clicked: false;
 }
 
+export type RobotControlLiveMotionRunbookActionId =
+  | "run_nav2_route"
+  | "hold_keyboard"
+  | "start_free_move"
+  | "start_mapping_when_sensors_ready";
+
+export interface RobotControlLiveMotionRunbookItem {
+  id: RobotControlLiveMotionRunbookActionId;
+  label: string;
+  ready: boolean;
+  minimal_precheck_safety_only: boolean;
+  safety_confirm_required: boolean;
+  sends_motion_when_executed: boolean;
+  start_endpoint: string;
+  stop_endpoint: string;
+  acceptance_endpoints: string[];
+  acceptance_plain: string;
+  blocked_reasons: string[];
+}
+
 export interface RobotControlLiveClosureSummary {
   status: "complete" | "ready_for_motion" | "needs_safety_confirm" | "needs_wheel_rerun" | "needs_delivery" | "needs_wysiwyg" | "needs_sensor" | "not_ready";
   status_label: string;
@@ -2809,6 +2829,15 @@ export interface RobotControlLiveClosureSummary {
   fixed_keyboard_summary_endpoint: "/api/robot-control/summary";
   keyboard_continuous_post_hold_feedback_readback_required: true;
   keyboard_continuous_post_hold_summary_refresh_required: true;
+  live_motion_runbook_items: RobotControlLiveMotionRunbookItem[];
+  live_motion_runbook_action_ids: RobotControlLiveMotionRunbookActionId[];
+  live_motion_runbook_ready_action_ids: RobotControlLiveMotionRunbookActionId[];
+  live_motion_runbook_blocked_action_ids: RobotControlLiveMotionRunbookActionId[];
+  live_motion_runbook_primary_action_id: RobotControlLiveMotionRunbookActionId | "none";
+  live_motion_runbook_start_endpoints: string[];
+  live_motion_runbook_acceptance_endpoints: string[];
+  live_motion_runbook_minimal_precheck_safety_only: boolean;
+  live_motion_runbook_safety_confirm_required: boolean;
   minimal_precheck_safety_only: boolean;
   safety_confirm_required_for_motion: boolean;
   wheel_rerun_minimal_precheck_safety_only: boolean;
