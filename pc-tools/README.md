@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 08:16 CST 起，普通首屏自由移动 / 建图卡新增 `plain-free-roam-motion-gauge`。它把“低速自由移动是否只差安全确认 / 是否可启动”“相机和雷达是否阻止自由移动”“相机和雷达是否满足建图”“主按钮会只自由移动还是同时请求建图记录”合成一行，并暴露 `data-safety-confirmed`、`data-free-move-start-ready`、`data-can-free-move-now`、`data-camera-blocks-free-motion=false`、`data-radar-blocks-free-motion=false`、`data-camera-ready-for-mapping`、`data-radar-ready-for-mapping`、`data-mapping-start-ready`、主按钮语义和固定自由移动/停止/建图 endpoint。该仪表本身固定 `data-sends-motion-when-clicked=false`，不自动启动自由移动、不启动建图、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-30 08:09 CST 起，普通首屏 `当前所见` 区新增 `plain-wysiwyg-current-gauge`。它把画面是否真的显示、地图是否显示、图上行程是否显示、小车位置是否显示、当前地图雷达点数量、旧雷达来源点是否仅作诊断和下一步动作合成一行，并暴露 `data-camera-current-visible`、`data-map-current-visible`、`data-route-current-visible`、`data-robot-pose-visible`、`data-radar-map-points-visible`、`data-radar-map-point-count`、`data-radar-map-source-point-count`、`data-old-radar-points-diagnostic-only`、`data-all-wysiwyg-ready` 与固定只读刷新 endpoint。该仪表固定 `data-sends-motion-when-clicked=false`，不启动画面、雷达、地图、Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-30 08:00 CST 起，普通首屏地图默认缩放从 `200%` 提升到 `300%`，仍保留 `适配` 回到 `100%` 和最高 `400%`。ROS2 配套口径保持：工程调试用 RViz2 看 `/map`、雷达、TF、规划轨迹和定位，浏览器远程观察可接 Foxglove；普通用户继续在 PC 工作站大地图操作。移动/导航卡同步新增 `plain-trip-execution-gauge` 行程仪表，把当前图上行程点数、主按钮是否会执行、同窗口轮速 L/R、送达是否对齐当前行程和下一步动作合成一行，并暴露固定执行/送达代理 endpoint。该仪表本身固定 `data-sends-motion-when-clicked=false`，本轮只改 PC Web 只读显示和 DOM 合同，不自动执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。

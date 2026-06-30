@@ -2272,6 +2272,28 @@ h3 {
   background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), transparent 42%);
 }
 
+.plain-free-roam-motion-gauge {
+  /* 自由移动仪表突出“能先动”和“传感器只影响建图”，避免现场把建图缺口当成运动门禁。 */
+  border-left: 3px solid #8c959f;
+  padding: 8px 10px;
+  background: #f7f9fb;
+}
+
+.plain-free-roam-motion-gauge[data-state="可先移动"],
+.plain-free-roam-motion-gauge[data-state="可边动边建图"] {
+  border-left-color: #238636;
+  background: linear-gradient(90deg, rgba(35, 134, 54, 0.09), transparent 48%);
+}
+
+.plain-free-roam-motion-gauge[data-state="待安全确认"] {
+  border-left-color: #bf8700;
+  background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 48%);
+}
+
+.plain-free-roam-motion-gauge[data-state="待连接"] {
+  border-left-color: #8c959f;
+}
+
 .plain-mapping-readiness-gauge {
   border-left: 3px solid #8c959f;
   padding: 8px 10px;

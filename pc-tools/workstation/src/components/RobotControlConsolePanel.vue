@@ -6575,6 +6575,26 @@ type PlainMappingReadinessGauge = {
   mappingEvidenceReady: boolean;
   missingReasons: string;
 };
+type PlainFreeRoamMotionGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  safetyConfirmed: boolean;
+  freeMoveStartReady: boolean;
+  canFreeMoveNow: boolean;
+  cameraBlocksFreeMotion: boolean;
+  radarBlocksFreeMotion: boolean;
+  cameraReadyForMapping: boolean;
+  radarReadyForMapping: boolean;
+  mappingStartReady: boolean;
+  primaryActionKind: string;
+  primaryActionCanStartMotion: boolean;
+  primaryActionRequestsMapping: boolean;
+  fixedFreeRoamStartEndpoint: string;
+  fixedFreeRoamStopEndpoint: string;
+  fixedMappingStartEndpoint: string;
+  fixedMappingPreviewEndpoint: string;
+};
 const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
   // 建图解锁包按“先能动、再补传感器、最后启动建图”排序；这里只读展示，不代替任何安全确认或启动动作。
   const summary = robotSummary.value;
@@ -6768,6 +6788,63 @@ const plainMappingReadinessGauge = computed<PlainMappingReadinessGauge>(() => {
     mapPreviewFresh: previewFresh,
     mappingEvidenceReady,
     missingReasons: missing.length ? missing.join("、") : "none",
+  };
+});
+const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
+  // 自由移动仪表只回答“现在能不能先动”和“传感器是否只影响建图”，避免把建图缺口误读成底盘不能动。
+  const evidence = plainFreeRoamDomEvidence.value;
+  const safetyConfirmed = plainManualSafetyConfirmed.value;
+  const canFreeMoveNow = evidence.freeMoveStartReady && safetyConfirmed;
+  const cameraReadyForMapping = evidence.cameraSourceFirstFrameReady;
+  const radarReadyForMapping = evidence.radarFreshForMapping;
+  let state = "待连接";
+  if (canFreeMoveNow && evidence.mappingStartReady) {
+    state = "可边动边建图";
+  } else if (canFreeMoveNow) {
+    state = "可先移动";
+  } else if (evidence.freeMoveStartReady) {
+    state = "待安全确认";
+  }
+  const moveText = canFreeMoveNow
+    ? "低速自由移动可启动"
+    : evidence.freeMoveStartReady
+      ? "低速自由移动只差安全确认"
+      : "低速自由移动待连接";
+  const sensorText = `画面${cameraReadyForMapping ? "已就绪" : "未就绪"}、雷达${radarReadyForMapping ? "已就绪" : "未就绪"}，不阻止先动`;
+  const mappingText = evidence.mappingStartReady
+    ? "建图记录可随自由移动启动"
+    : "建图记录还差传感器条件";
+  const nextAction = (() => {
+    if (!evidence.freeMoveStartReady) {
+      return "连接默认小车";
+    }
+    if (!safetyConfirmed) {
+      return "勾选现场安全确认";
+    }
+    if (!evidence.mappingStartReady) {
+      return "可先低速自由移动；补齐画面首帧和雷达刷新后再建图";
+    }
+    return "可以启动自由移动并请求建图记录";
+  })();
+  return {
+    state,
+    text: `自由移动仪表：${moveText}；${sensorText}；${mappingText}。下一步：${nextAction}。`,
+    nextAction,
+    safetyConfirmed,
+    freeMoveStartReady: evidence.freeMoveStartReady,
+    canFreeMoveNow,
+    cameraBlocksFreeMotion: evidence.cameraBlocksFreeMotion,
+    radarBlocksFreeMotion: evidence.radarBlocksFreeMotion,
+    cameraReadyForMapping,
+    radarReadyForMapping,
+    mappingStartReady: evidence.mappingStartReady,
+    primaryActionKind: evidence.primaryActionKind,
+    primaryActionCanStartMotion: evidence.primaryActionCanStartMotion,
+    primaryActionRequestsMapping: evidence.primaryActionRequestsMapping,
+    fixedFreeRoamStartEndpoint: evidence.fixedFreeRoamStartEndpoint,
+    fixedFreeRoamStopEndpoint: evidence.fixedFreeRoamStopEndpoint,
+    fixedMappingStartEndpoint: evidence.fixedMappingStartEndpoint,
+    fixedMappingPreviewEndpoint: evidence.fixedMappingPreviewEndpoint,
   };
 });
 const plainFreeRoamMappingSteps = computed(() => {
@@ -15395,6 +15472,30 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="plainFreeRoamMappingSummary.state">{{ plainFreeRoamMappingSummary.state }}</span>
             <span class="muted" data-testid="plain-free-roam-mode-subtitle">{{ plainFreeRoamPanelCopy.subtitle }}</span>
           </div>
+          <p
+            class="panel-note plain-free-roam-motion-gauge"
+            data-testid="plain-free-roam-motion-gauge"
+            :data-state="plainFreeRoamMotionGauge.state"
+            :data-safety-confirmed="String(plainFreeRoamMotionGauge.safetyConfirmed)"
+            :data-free-move-start-ready="String(plainFreeRoamMotionGauge.freeMoveStartReady)"
+            :data-can-free-move-now="String(plainFreeRoamMotionGauge.canFreeMoveNow)"
+            :data-camera-blocks-free-motion="String(plainFreeRoamMotionGauge.cameraBlocksFreeMotion)"
+            :data-radar-blocks-free-motion="String(plainFreeRoamMotionGauge.radarBlocksFreeMotion)"
+            :data-camera-ready-for-mapping="String(plainFreeRoamMotionGauge.cameraReadyForMapping)"
+            :data-radar-ready-for-mapping="String(plainFreeRoamMotionGauge.radarReadyForMapping)"
+            :data-mapping-start-ready="String(plainFreeRoamMotionGauge.mappingStartReady)"
+            :data-primary-action-kind="plainFreeRoamMotionGauge.primaryActionKind"
+            :data-primary-action-can-start-motion="String(plainFreeRoamMotionGauge.primaryActionCanStartMotion)"
+            :data-primary-action-requests-mapping="String(plainFreeRoamMotionGauge.primaryActionRequestsMapping)"
+            :data-next-action="plainFreeRoamMotionGauge.nextAction"
+            :data-fixed-free-roam-start-endpoint="plainFreeRoamMotionGauge.fixedFreeRoamStartEndpoint"
+            :data-fixed-free-roam-stop-endpoint="plainFreeRoamMotionGauge.fixedFreeRoamStopEndpoint"
+            :data-fixed-mapping-start-endpoint="plainFreeRoamMotionGauge.fixedMappingStartEndpoint"
+            :data-fixed-mapping-preview-endpoint="plainFreeRoamMotionGauge.fixedMappingPreviewEndpoint"
+            data-sends-motion-when-clicked="false"
+          >
+            {{ plainFreeRoamMotionGauge.text }}
+          </p>
           <p
             class="panel-note plain-mapping-readiness-gauge"
             data-testid="plain-mapping-readiness-gauge"
