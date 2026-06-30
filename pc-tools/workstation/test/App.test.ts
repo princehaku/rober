@@ -5325,6 +5325,9 @@ describe("App", () => {
     expect(mapPanel.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(mapPanel.attributes("data-ros2-companion-tool")).toBe("rviz2");
     expect(mapPanel.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
+    expect(mapPanel.attributes("data-rviz-companion-purpose")).toBe("local_engineering_debug_map_scan_tf_path_pose");
+    expect(mapPanel.attributes("data-foxglove-companion-purpose")).toBe("browser_remote_observation_map_scan_tf_path_pose");
+    expect(mapPanel.attributes("data-foxglove-bridge-handoff")).toBe("deploy_bridge_then_open_foxglove_studio");
     expect(mapPanel.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapPanel.attributes("data-wysiwyg-surface")).toBe("primary-map");
     expect(mapPanel.attributes("data-radar-map-points-visible")).toBe("false");
@@ -5420,9 +5423,14 @@ describe("App", () => {
     expect(mapRos2ToolNote.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(mapRos2ToolNote.attributes("data-ros2-companion-tool")).toBe("rviz2");
     expect(mapRos2ToolNote.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
+    expect(mapRos2ToolNote.attributes("data-rviz-companion-purpose")).toBe("local_engineering_debug_map_scan_tf_path_pose");
+    expect(mapRos2ToolNote.attributes("data-foxglove-companion-purpose")).toBe("browser_remote_observation_map_scan_tf_path_pose");
+    expect(mapRos2ToolNote.attributes("data-foxglove-bridge-handoff")).toBe("deploy_bridge_then_open_foxglove_studio");
     expect(mapRos2ToolNote.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapRos2ToolNote.text()).toContain("RViz2");
     expect(mapRos2ToolNote.text()).toContain("Foxglove");
+    expect(mapRos2ToolNote.text()).toContain("bridge");
+    expect(mapRos2ToolNote.text()).toContain("Studio");
     expect(mapRos2ToolNote.text()).toContain("地图");
     expect(mapRos2ToolNote.text()).toContain("?view=map");
     expect(mapRos2ToolNote.text()).toContain("PC 默认先显示近整屏大地图");

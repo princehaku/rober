@@ -16518,6 +16518,9 @@ onBeforeUnmount(() => {
           data-ros2-companion-tools="rviz2,foxglove"
           data-ros2-companion-tool="rviz2"
           data-ros2-remote-companion-tool="foxglove"
+          data-rviz-companion-purpose="local_engineering_debug_map_scan_tf_path_pose"
+          data-foxglove-companion-purpose="browser_remote_observation_map_scan_tf_path_pose"
+          data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
           data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
           :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
@@ -16828,9 +16831,12 @@ onBeforeUnmount(() => {
             data-ros2-companion-tools="rviz2,foxglove"
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
+            data-rviz-companion-purpose="local_engineering_debug_map_scan_tf_path_pose"
+            data-foxglove-companion-purpose="browser_remote_observation_map_scan_tf_path_pose"
+            data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            PC 默认先显示近整屏大地图；需要独立观察屏时打开 ?view=map 地图大屏；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
+            PC 默认先显示近整屏大地图；需要独立观察屏时打开 ?view=map 地图大屏；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时部署 bridge 后接 Foxglove Studio；普通操作仍在本页完成。
           </p>
         </article>
 
