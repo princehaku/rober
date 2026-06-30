@@ -302,6 +302,11 @@ const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
 }));
+const plainMapDisplayProofText = computed(() => {
+  // 这行给普通用户确认“当前就是大地图”，ROS2 配套只作为工程观察入口，不改变本页控制边界。
+  const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
+  return `地图显示：${viewText}，当前 ${plainMapZoomPercent.value}，图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；工程调试用 RViz2，远程浏览器观察先部署 Foxglove bridge。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
+});
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
 function zoomPlainMap(delta: number): void {
@@ -16959,6 +16964,35 @@ onBeforeUnmount(() => {
           </div>
           <p class="panel-note">{{ mapSummary.hint }}</p>
           <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
+          <p
+            class="panel-note plain-map-display-proof"
+            data-testid="plain-map-display-proof"
+            data-user-facing-map-surface="pc_plain_big_map"
+            data-primary-map-first="true"
+            data-wysiwyg-overlays="image-route-robot-radar"
+            data-default-map-layout="dominant-first-screen-map"
+            data-default-map-height-mode="viewport-dominant"
+            data-default-map-zoom-percent="600%"
+            data-max-map-zoom-percent="800%"
+            :data-current-map-zoom-percent="plainMapZoomPercent"
+            :data-current-map-size="plainMapViewSize"
+            :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
+            :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
+            data-direct-map-view-url="?view=map"
+            data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
+            data-ros2-companion-tool="rviz2"
+            data-ros2-remote-companion-tool="foxglove"
+            data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
+            data-foxglove-bridge-status="handoff_required"
+            data-sends-motion-when-clicked="false"
+            data-starts-ros2="false"
+            data-starts-rviz2="false"
+            data-starts-foxglove="false"
+            data-starts-nav2="false"
+            data-starts-map-runtime="false"
+          >
+            {{ plainMapDisplayProofText }}
+          </p>
           <p
             class="panel-note plain-map-ros2-tool-note"
             data-testid="plain-map-ros2-tool-note"
