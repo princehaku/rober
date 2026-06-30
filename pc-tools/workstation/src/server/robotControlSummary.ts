@@ -7314,6 +7314,18 @@ function actionCardReasonList(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function actionCardLabelList(value: string | undefined): string[] {
+  // 中文标签通常用顿号拼接；也兼容逗号，避免现场脚本还要理解后端展示文案格式。
+  const compact = (value ?? "").trim();
+  if (!compact || compact === "none" || compact === "not_loaded") {
+    return [];
+  }
+  return compact
+    .split(/[、,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function actionCardBoolean(value: string | undefined, fallback = false): boolean {
   // readback_summary 为兼容脚本使用字符串；动作卡 evidence 要给 DOM/脚本稳定布尔值。
   if (value === "true") return true;
@@ -7517,6 +7529,15 @@ function buildActionStatusCards(
         imu_pitch_delta: readback.nav2.goal_execution_base_feedback_imu_pitch_delta,
         last_base_command_mode: readback.nav2.goal_execution_base_command_mode,
         next_base_command_mode: readback.nav2.next_execution_base_command_mode,
+        nav2_stack_running: actionCardBoolean(readback.nav2.nav2_stack_running, false),
+        nav2_stack_lifecycle_state: readback.nav2.nav2_stack_lifecycle_state,
+        planner_server_active: actionCardBoolean(readback.nav2.planner_server_active, false),
+        controller_server_active: actionCardBoolean(readback.nav2.controller_server_active, false),
+        controller_server_requested: actionCardBoolean(readback.nav2.controller_server_requested, false),
+        path_generated: actionCardBoolean(readback.nav2.path_generated, false),
+        nav2_path_point_count: actionCardNumber(readback.nav2.path_point_count || readback.nav2.path_preview_point_count),
+        current_blocker_reasons: actionCardReasonList(readback.nav2.current_blocker_reasons),
+        current_blocker_labels: actionCardLabelList(readback.nav2.current_blocker_labels),
         managed_runtime_autostart: nav2ManagedRuntimeAutostart,
         managed_runtime_requested: nav2ManagedRuntimeRequested,
         managed_runtime_started: nav2ManagedRuntimeStarted,

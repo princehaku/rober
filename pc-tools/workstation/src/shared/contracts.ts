@@ -2507,6 +2507,15 @@ export interface RobotControlActionStatusCard {
     imu_pitch_delta?: string;
     last_base_command_mode?: string;
     next_base_command_mode?: string;
+    nav2_stack_running?: boolean;
+    nav2_stack_lifecycle_state?: string;
+    planner_server_active?: boolean;
+    controller_server_active?: boolean;
+    controller_server_requested?: boolean;
+    path_generated?: boolean;
+    nav2_path_point_count?: number;
+    current_blocker_reasons?: string[];
+    current_blocker_labels?: string[];
     managed_runtime_autostart?: boolean;
     managed_runtime_requested?: boolean;
     managed_runtime_started?: boolean;

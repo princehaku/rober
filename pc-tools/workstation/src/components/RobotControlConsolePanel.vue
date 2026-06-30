@@ -3563,6 +3563,18 @@ function actionCardWithDerivedEvidence(
     };
   }
   if (card.id === "nav2_route") {
+    const reasonList = (value: string | undefined): string[] => {
+      if (!value || ["none", "not_loaded"].includes(value)) {
+        return [];
+      }
+      return value.split(",").map((item) => item.trim()).filter(Boolean);
+    };
+    const labelList = (value: string | undefined): string[] => {
+      if (!value || ["none", "not_loaded"].includes(value)) {
+        return [];
+      }
+      return value.split(/[、,]/).map((item) => item.trim()).filter(Boolean);
+    };
     const managedRuntimeRequested = boolText(nav2?.goal_execution_managed_runtime_requested, false);
     const managedRuntimeStarted = boolText(nav2?.goal_execution_managed_runtime_started, false);
     const managedRuntimeLifecycleReadyOk = boolText(nav2?.goal_execution_managed_runtime_lifecycle_ready_ok, false);
@@ -3595,6 +3607,15 @@ function actionCardWithDerivedEvidence(
         imu_pitch_delta: card.evidence?.imu_pitch_delta ?? nav2?.goal_execution_base_feedback_imu_pitch_delta ?? "not_loaded",
         last_base_command_mode: card.evidence?.last_base_command_mode ?? nav2?.goal_execution_base_command_mode ?? "not_loaded",
         next_base_command_mode: card.evidence?.next_base_command_mode ?? nav2?.next_execution_base_command_mode ?? "not_loaded",
+        nav2_stack_running: card.evidence?.nav2_stack_running ?? boolText(nav2?.nav2_stack_running, false),
+        nav2_stack_lifecycle_state: card.evidence?.nav2_stack_lifecycle_state ?? nav2?.nav2_stack_lifecycle_state ?? "not_loaded",
+        planner_server_active: card.evidence?.planner_server_active ?? boolText(nav2?.planner_server_active, false),
+        controller_server_active: card.evidence?.controller_server_active ?? boolText(nav2?.controller_server_active, false),
+        controller_server_requested: card.evidence?.controller_server_requested ?? boolText(nav2?.controller_server_requested, false),
+        path_generated: card.evidence?.path_generated ?? boolText(nav2?.path_generated, false),
+        nav2_path_point_count: card.evidence?.nav2_path_point_count ?? numberText(nav2?.path_point_count || nav2?.path_preview_point_count, 0),
+        current_blocker_reasons: card.evidence?.current_blocker_reasons ?? reasonList(nav2?.current_blocker_reasons),
+        current_blocker_labels: card.evidence?.current_blocker_labels ?? labelList(nav2?.current_blocker_labels),
         managed_runtime_autostart: card.evidence?.managed_runtime_autostart ?? managedRuntimeAutostart,
         managed_runtime_requested: card.evidence?.managed_runtime_requested ?? managedRuntimeRequested,
         managed_runtime_started: card.evidence?.managed_runtime_started ?? managedRuntimeStarted,
@@ -16036,6 +16057,15 @@ onBeforeUnmount(() => {
           :data-imu-pitch-delta="card.evidence?.imu_pitch_delta"
           :data-last-base-command-mode="card.evidence?.last_base_command_mode"
           :data-next-base-command-mode="card.evidence?.next_base_command_mode"
+          :data-nav2-stack-running="card.evidence?.nav2_stack_running === undefined ? undefined : String(card.evidence.nav2_stack_running)"
+          :data-nav2-stack-lifecycle-state="card.evidence?.nav2_stack_lifecycle_state"
+          :data-planner-server-active="card.evidence?.planner_server_active === undefined ? undefined : String(card.evidence.planner_server_active)"
+          :data-controller-server-active="card.evidence?.controller_server_active === undefined ? undefined : String(card.evidence.controller_server_active)"
+          :data-controller-server-requested="card.evidence?.controller_server_requested === undefined ? undefined : String(card.evidence.controller_server_requested)"
+          :data-path-generated="card.evidence?.path_generated === undefined ? undefined : String(card.evidence.path_generated)"
+          :data-nav2-path-point-count="card.evidence?.nav2_path_point_count === undefined ? undefined : String(card.evidence.nav2_path_point_count)"
+          :data-current-blocker-reasons="card.evidence?.current_blocker_reasons?.join(',')"
+          :data-current-blocker-labels="card.evidence?.current_blocker_labels?.join('、')"
           :data-managed-runtime-autostart="card.evidence?.managed_runtime_autostart === undefined ? undefined : String(card.evidence.managed_runtime_autostart)"
           :data-managed-runtime-requested="card.evidence?.managed_runtime_requested === undefined ? undefined : String(card.evidence.managed_runtime_requested)"
           :data-managed-runtime-started="card.evidence?.managed_runtime_started === undefined ? undefined : String(card.evidence.managed_runtime_started)"

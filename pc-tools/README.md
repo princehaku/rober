@@ -1011,6 +1011,14 @@ free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `
 `/api/robot-control/nav2/goal/execute` 走 ROS 模式并自动托管 Nav2 runtime，剩余缺口聚焦在同窗口 wheel raw L/R 非零。
 该变化只修正只读 summary/UI 证据，不执行 NavigateToPose、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-30 14:06 CST 起，`action_status_cards[].id=nav2_route.evidence` 额外返回当前 Nav2 服务和路线生成读数：
+`nav2_stack_running`、`nav2_stack_lifecycle_state`、`planner_server_active`、`controller_server_active`、
+`controller_server_requested`、`path_generated`、`nav2_path_point_count`、`current_blocker_reasons[]` 和
+`current_blocker_labels[]`。普通首屏同步暴露 `data-nav2-stack-*`、`data-planner-server-active`、
+`data-controller-server-*`、`data-path-generated`、`data-nav2-path-point-count` 和当前 blocker `data-*`。
+该变化只补只读 summary/UI 证据，用于定位“路线有了但 controller 当前没 active”等自动驾驶问题；不执行
+NavigateToPose、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-30 10:35 CST 起，`action_status_cards[].id=map_preview.evidence` 返回地图所见即所得的结构化合同：
 `map_current_visible`、可通行格数量、图上路线是否可见、路线点数和 frame、小车位置是否可见、雷达点是否贴到地图、
 地图雷达点数。普通首屏同步暴露 `data-map-*`、`data-path-*`、`data-robot-pose-visible` 和

@@ -5214,6 +5214,15 @@ describe("App", () => {
     expect(nav2ActionCard.attributes("data-imu-attitude-delta-observed")).toBe("false");
     expect(nav2ActionCard.attributes("data-imu-roll-delta")).toBe("not_loaded");
     expect(nav2ActionCard.attributes("data-imu-pitch-delta")).toBe("not_loaded");
+    expect(nav2ActionCard.attributes("data-nav2-stack-running")).toBe("false");
+    expect(nav2ActionCard.attributes("data-nav2-stack-lifecycle-state")).toBe("not_loaded");
+    expect(nav2ActionCard.attributes("data-planner-server-active")).toBe("false");
+    expect(nav2ActionCard.attributes("data-controller-server-active")).toBe("false");
+    expect(nav2ActionCard.attributes("data-controller-server-requested")).toBe("false");
+    expect(nav2ActionCard.attributes("data-path-generated")).toBe("false");
+    expect(nav2ActionCard.attributes("data-nav2-path-point-count")).toBe("0");
+    expect(nav2ActionCard.attributes("data-current-blocker-reasons")).toBe("");
+    expect(nav2ActionCard.attributes("data-current-blocker-labels")).toBe("");
     expect(nav2ActionCard.attributes("data-managed-runtime-autostart")).toBe("false");
     expect(nav2ActionCard.attributes("data-managed-runtime-requested")).toBe("false");
     expect(nav2ActionCard.attributes("data-managed-runtime-started")).toBe("false");
