@@ -973,6 +973,10 @@ const fixtures: Record<string, unknown> = {
           id: "camera",
           visible: false,
           readback_gap: true,
+          completed: false,
+          proof_status: "blocked",
+          missing_evidence: ["camera_first_frame"],
+          proof_plain: "画面未对齐；还差：相机首帧。",
           status_plain: "画面未可见：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作画面可见。",
           next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。",
           fixed_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
@@ -982,6 +986,10 @@ const fixtures: Record<string, unknown> = {
           id: "map",
           visible: true,
           readback_gap: false,
+          completed: true,
+          proof_status: "completed",
+          missing_evidence: [],
+          proof_plain: "地图已对齐：当前地图画面已显示。",
           status_plain: "地图画面已显示。",
           next_action_plain: "继续确认图上路线和小车位置。",
           fixed_refresh_endpoint: "/api/robot-control/map/preview",
@@ -991,6 +999,10 @@ const fixtures: Record<string, unknown> = {
           id: "radar_map_points",
           visible: false,
           readback_gap: false,
+          completed: false,
+          proof_status: "ready_to_refresh",
+          missing_evidence: ["scan_preview_points_missing", "runtime_scan_stale_for_map_radar_overlay"],
+          proof_plain: "雷达点未对齐；还差：地图缺雷达点、雷达点不是当前新读数。",
           status_plain: "雷达点未贴到当前地图。",
           next_action_plain: "刷新雷达扫描，再刷新地图画面。",
           fixed_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
@@ -5329,7 +5341,24 @@ describe("App", () => {
     expect(wysiwygSurfaceGauge.attributes("data-fixed-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
     expect(wysiwygSurfaceGauge.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(wysiwygSurfaceGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
-    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-camera"]').attributes("data-testid")).toBe("plain-wysiwyg-evidence-camera");
+    const cameraWysiwygEvidence = wrapper.find('[data-testid="plain-wysiwyg-evidence-camera"]');
+    expect(cameraWysiwygEvidence.attributes("data-testid")).toBe("plain-wysiwyg-evidence-camera");
+    expect(cameraWysiwygEvidence.attributes("data-completed")).toBe("false");
+    expect(cameraWysiwygEvidence.attributes("data-proof-status")).toBe("blocked");
+    expect(cameraWysiwygEvidence.attributes("data-missing-evidence")).toBe("camera_first_frame");
+    expect(cameraWysiwygEvidence.attributes("data-proof-plain")).toBe("画面未对齐；还差：相机首帧。");
+    expect(cameraWysiwygEvidence.text()).toContain("画面未对齐；还差：相机首帧。");
+    const mapWysiwygEvidence = wrapper.find('[data-testid="plain-wysiwyg-evidence-map"]');
+    expect(mapWysiwygEvidence.attributes("data-completed")).toBe("true");
+    expect(mapWysiwygEvidence.attributes("data-proof-status")).toBe("completed");
+    expect(mapWysiwygEvidence.attributes("data-missing-evidence")).toBe("none");
+    expect(mapWysiwygEvidence.text()).toContain("地图已对齐：当前地图画面已显示。");
+    const radarWysiwygEvidence = wrapper.find('[data-testid="plain-wysiwyg-evidence-radar"]');
+    expect(radarWysiwygEvidence.attributes("data-completed")).toBe("false");
+    expect(radarWysiwygEvidence.attributes("data-proof-status")).toBe("ready_to_refresh");
+    expect(radarWysiwygEvidence.attributes("data-missing-evidence")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");
+    expect(radarWysiwygEvidence.text()).toContain("雷达点未对齐；还差：地图缺雷达点、雷达点不是当前新读数。");
+    expect(radarWysiwygEvidence.text()).not.toContain("overlay");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').text()).toBe("刷新当前所见（含雷达贴图）");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-fixed-first-frame-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");

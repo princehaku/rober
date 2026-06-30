@@ -2716,6 +2716,10 @@ export interface RobotControlLiveWysiwygSurfaceSummary {
   id: RobotControlLiveWysiwygSurfaceId;
   visible: boolean;
   readback_gap: boolean;
+  completed: boolean;
+  proof_status: "completed" | "ready_to_refresh" | "blocked";
+  missing_evidence: string[];
+  proof_plain: string;
   status_plain: string;
   next_action_plain: string;
   fixed_refresh_endpoint: string;

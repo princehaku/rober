@@ -3285,6 +3285,10 @@ type PlainWysiwygEvidenceItem = {
   id: "camera" | "map" | "radar";
   title: string;
   state: string;
+  completed: boolean;
+  proofStatus: "completed" | "ready_to_refresh" | "blocked";
+  missingEvidence: string[];
+  proofPlain: string;
   summary: string;
   nextAction: string;
   sourceCardId: RobotControlActionStatusCardId;
@@ -3295,6 +3299,17 @@ const plainWysiwygEvidenceItems = computed<PlainWysiwygEvidenceItem[]>(() => {
   if (!summary) {
     return [];
   }
+  const surfaceById = new Map((summary.live_closure_summary?.live_wysiwyg_surface_summaries ?? []).map((surface) => [surface.id, surface]));
+  const surfaceFor = (id: "camera" | "map" | "radar_map_points") => surfaceById.get(id);
+  const surfaceProofStatus = (id: "camera" | "map" | "radar_map_points", visible: boolean): PlainWysiwygEvidenceItem["proofStatus"] => (
+    surfaceFor(id)?.proof_status ?? (visible ? "completed" : "ready_to_refresh")
+  );
+  const surfaceMissingEvidence = (id: "camera" | "map" | "radar_map_points", fallback: string[]): string[] => (
+    surfaceFor(id)?.missing_evidence ?? fallback
+  );
+  const surfaceProofPlain = (id: "camera" | "map" | "radar_map_points", fallback: string): string => (
+    surfaceFor(id)?.proof_plain || fallback
+  );
   const camera = summary.readback_summary.camera;
   const map = summary.readback_summary.map;
   const radar = summary.readback_summary.radar;
@@ -3316,6 +3331,10 @@ const plainWysiwygEvidenceItems = computed<PlainWysiwygEvidenceItem[]>(() => {
       id: "camera",
       title: "画面",
       state: cameraVisible ? "已经看到画面" : "画面未显示",
+      completed: surfaceFor("camera")?.completed ?? cameraVisible,
+      proofStatus: surfaceProofStatus("camera", cameraVisible),
+      missingEvidence: surfaceMissingEvidence("camera", cameraVisible ? [] : ["camera_current_frame_visible"]),
+      proofPlain: surfaceProofPlain("camera", cameraVisible ? "画面已对齐：当前页面已有实时画面。" : "画面未对齐；还差：当前页面画面帧。"),
       summary: camera.plain_hint || camera.camera_wysiwyg_status_plain,
       nextAction: camera.camera_wysiwyg_next_action_plain || camera.preview_next_action_plain || "打开共享预览或复测首帧。",
       sourceCardId: "camera_preview",
@@ -3324,6 +3343,10 @@ const plainWysiwygEvidenceItems = computed<PlainWysiwygEvidenceItem[]>(() => {
       id: "map",
       title: "地图",
       state: mapObserved ? "地图可见" : "地图未读取",
+      completed: surfaceFor("map")?.completed ?? mapObserved,
+      proofStatus: surfaceProofStatus("map", mapObserved),
+      missingEvidence: surfaceMissingEvidence("map", mapObserved ? [] : ["map_current_image_visible"]),
+      proofPlain: surfaceProofPlain("map", mapObserved ? "地图已对齐：当前地图画面已显示。" : "地图未对齐；还差：当前地图画面。"),
       summary: `地图画面${mapObserved ? "已显示" : "未显示"}；图上行程${routeObserved ? "已显示" : "未显示"}；小车位置${poseObserved ? "已显示" : "未显示"}。`,
       nextAction: map.path_preview_next_action_plain || map.map_wysiwyg_next_action_plain || "刷新地图画面。",
       sourceCardId: "map_preview",
@@ -3332,6 +3355,10 @@ const plainWysiwygEvidenceItems = computed<PlainWysiwygEvidenceItem[]>(() => {
       id: "radar",
       title: "雷达点",
       state: radarPointCount > 0 ? "雷达点已贴图" : "当前图上 0 点",
+      completed: surfaceFor("radar_map_points")?.completed ?? (radarPointCount > 0),
+      proofStatus: surfaceProofStatus("radar_map_points", radarPointCount > 0),
+      missingEvidence: surfaceMissingEvidence("radar_map_points", radarPointCount > 0 ? [] : ["radar_current_map_points_visible"]),
+      proofPlain: surfaceProofPlain("radar_map_points", radarPointCount > 0 ? "雷达点已对齐：当前地图已有雷达点。" : "雷达点未对齐；还差：当前地图雷达点。"),
       summary: `地图雷达点当前显示 ${radarPointCount} 个；旧来源点 ${radarSourcePointCount} 个只作诊断${radarReasonText}。`,
       nextAction: radar.radar_overlay_wysiwyg_next_action_plain || map.radar_overlay_next_action_plain || radar.radar_next_action_plain || "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
       sourceCardId: "radar_map_points",
@@ -16777,9 +16804,14 @@ onBeforeUnmount(() => {
           :key="item.id"
           class="plain-wysiwyg-evidence-row"
           :data-testid="`plain-wysiwyg-evidence-${item.id}`"
+          :data-completed="String(item.completed)"
+          :data-proof-status="item.proofStatus"
+          :data-missing-evidence="item.missingEvidence.join(',') || 'none'"
+          :data-proof-plain="item.proofPlain"
         >
           <span class="plain-progress-label">{{ item.title }}</span>
           <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+          <span class="muted">{{ plainActionCardUserText(item.proofPlain) }}</span>
           <span class="muted">{{ plainActionCardUserText(item.summary) }}</span>
           <span class="muted">下一步：{{ plainActionCardUserText(item.nextAction) }}</span>
           <button

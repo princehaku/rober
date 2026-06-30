@@ -8669,11 +8669,55 @@ function buildLiveClosureSummary(
       ? `地图雷达诊断：当前点=${readback.map.radar_overlay_point_count || "not_loaded"}；来源点=${readback.map.radar_overlay_source_point_count || "not_loaded"}；旧来源点已抑制，不贴到当前地图。下一步：刷新雷达扫描读数，再刷新地图画面。`
       : `地图雷达诊断：当前点=${readback.map.radar_overlay_point_count || "not_loaded"}；来源点=${readback.map.radar_overlay_source_point_count || "not_loaded"}；还差=${diagnosticLabelsPlain(mapRadarBlockedReasons)}。`;
   const liveWysiwygDiagnosticPlain = `${cameraDiagnosticPlain} ${radarDiagnosticPlain} ${mapRadarDiagnosticPlain}`;
+  const liveSurfaceEvidenceLabel = (id: string): string => ({
+    camera_current_frame_visible: "当前页面画面帧",
+    camera_first_frame: "相机首帧",
+    map_current_image_visible: "当前地图画面",
+    radar_current_map_points_visible: "当前地图雷达点",
+    scan_preview_points_missing: "地图缺雷达点",
+    runtime_scan_stale_for_map_radar_overlay: "雷达点不是当前新读数",
+    robot_pose_missing_for_map_radar_overlay: "小车地图位置未读到",
+  }[id] || diagnosticLabel(id));
+  const liveSurfaceProofStatus = (
+    visible: boolean,
+    readbackGap: boolean,
+  ): RobotControlLiveWysiwygSurfaceSummary["proof_status"] => {
+    // 已显示、可只读刷新、读回断档三种状态分开，普通页面才能把下一步落到具体入口。
+    if (visible) {
+      return "completed";
+    }
+    return readbackGap ? "blocked" : "ready_to_refresh";
+  };
+  const liveSurfaceProofPlain = (
+    label: string,
+    visible: boolean,
+    visiblePlain: string,
+    missingEvidence: string[],
+  ): string => {
+    if (visible) {
+      return `${label}已对齐：${visiblePlain}。`;
+    }
+    const missingPlain = missingEvidence.map(liveSurfaceEvidenceLabel).join("、") || "当前显示";
+    return `${label}未对齐；还差：${missingPlain}。`;
+  };
+  const cameraSurfaceMissingEvidence = cameraCurrentVisible
+    ? []
+    : cameraSourceDiagnosisNotExclusive
+      ? ["camera_first_frame"]
+      : ["camera_current_frame_visible"];
+  const mapSurfaceMissingEvidence = mapCurrentVisible ? [] : ["map_current_image_visible"];
+  const radarSurfaceMissingEvidence = radarMapPointsVisible
+    ? []
+    : Array.from(new Set(mapRadarBlockedReasons.length > 0 ? mapRadarBlockedReasons : ["radar_current_map_points_visible"]));
   const liveWysiwygSurfaceSummaries: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_wysiwyg_surface_summaries"] = [
     {
       id: "camera",
       visible: cameraCurrentVisible,
       readback_gap: liveWysiwygReadbackGapSurfaceIds.includes("camera"),
+      completed: cameraCurrentVisible,
+      proof_status: liveSurfaceProofStatus(cameraCurrentVisible, liveWysiwygReadbackGapSurfaceIds.includes("camera")),
+      missing_evidence: cameraSurfaceMissingEvidence,
+      proof_plain: liveSurfaceProofPlain("画面", cameraCurrentVisible, "当前页面已有实时画面", cameraSurfaceMissingEvidence),
       status_plain: readback.camera.camera_wysiwyg_status_plain || camera.summary_plain,
       next_action_plain: readback.camera.camera_wysiwyg_next_action_plain || camera.next_action_plain,
       fixed_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
@@ -8683,6 +8727,10 @@ function buildLiveClosureSummary(
       id: "map",
       visible: mapCurrentVisible,
       readback_gap: liveWysiwygReadbackGapSurfaceIds.includes("map"),
+      completed: mapCurrentVisible,
+      proof_status: liveSurfaceProofStatus(mapCurrentVisible, liveWysiwygReadbackGapSurfaceIds.includes("map")),
+      missing_evidence: mapSurfaceMissingEvidence,
+      proof_plain: liveSurfaceProofPlain("地图", mapCurrentVisible, "当前地图画面已显示", mapSurfaceMissingEvidence),
       status_plain: readback.map.map_wysiwyg_status_plain || map.summary_plain,
       next_action_plain: readback.map.map_wysiwyg_next_action_plain || readback.map.map_next_action_plain || map.next_action_plain,
       fixed_refresh_endpoint: "/api/robot-control/map/preview",
@@ -8692,6 +8740,10 @@ function buildLiveClosureSummary(
       id: "radar_map_points",
       visible: radarMapPointsVisible,
       readback_gap: liveWysiwygReadbackGapSurfaceIds.includes("radar_map_points"),
+      completed: radarMapPointsVisible,
+      proof_status: liveSurfaceProofStatus(radarMapPointsVisible, liveWysiwygReadbackGapSurfaceIds.includes("radar_map_points")),
+      missing_evidence: radarSurfaceMissingEvidence,
+      proof_plain: liveSurfaceProofPlain("雷达点", radarMapPointsVisible, "当前地图已有雷达点", radarSurfaceMissingEvidence),
       status_plain: readback.radar.radar_overlay_wysiwyg_status_plain || radar.summary_plain,
       next_action_plain: readback.radar.radar_overlay_wysiwyg_next_action_plain || readback.radar.radar_next_action_plain || radar.next_action_plain,
       fixed_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
