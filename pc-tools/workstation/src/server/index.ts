@@ -1834,6 +1834,7 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
     .map((gate) => asRecord(gate))
     .filter((gate): gate is Record<string, unknown> => gate !== null)
     .map((gate) => [shortValue(gate.id), shortValue(gate.state)]));
+  const externalStopRequested = snapshot?.external_stop_requested === true || gateStateById.has("external_stop_request");
   // 自由移动只看 runtime 启停门禁；建图验收必须把四个材料缺口补齐，避免 latest 和 summary 口径打架。
   const remoteMappingStartMissing = shortStringList(latest?.free_roam_mapping_start_missing_reasons ?? payload?.free_roam_mapping_start_missing_reasons)
     .map(normalizeFreeRoamMappingMissingId);
@@ -1849,6 +1850,7 @@ function freeRoamAutonomyLatestKeyValues(payload: Record<string, unknown> | null
     decision_state: shortValue(decision?.state ?? latest?.decision_state),
     decision_reason: shortValue(decision?.reason ?? latest?.decision_reason),
     stop_required: shortValue(decision?.stop_required ?? latest?.stop_required),
+    external_stop_requested: externalStopRequested ? "true" : "false",
     operator_confirmed: gateStateById.get("operator_confirmed") === "ready" ? "true" : gateStateById.has("operator_confirmed") ? "false" : "not_loaded",
     artifact_only: shortValue(latest?.artifact_only),
     cmd_vel_publish_enabled: shortValue(latest?.cmd_vel_publish_enabled),
@@ -2044,7 +2046,8 @@ function freeRoamLatestReadinessFromKeyValues(
     .filter((item) => item && item !== "none" && item !== "not_loaded");
   const mappingReady = startReady && (latestKeyValues.mapping_ready === "true" || mappingMissing.length === 0);
   const mappingStartReady = startReady && (latestKeyValues.mapping_start_ready === "true" || latestKeyValues.free_roam_mapping_start_ready === "true" || mappingStartMissing.length === 0);
-  const externalStopRequested = latestKeyValues.stop_required === "true" || (decisionState === "stopping" && /现场请求停止|external_stop/i.test(decisionReason));
+  const externalStopRequested = latestKeyValues.external_stop_requested === "true"
+    || (decisionState === "stopping" && /现场请求停止|external_stop/i.test(decisionReason));
   const safetyConfirmed = latestKeyValues.operator_confirmed === "true";
   const startStatusPlain = freeRoamLatestStartStatusPlain(startReady, motionReady, externalStopRequested);
   const mappingAcceptancePlain = freeRoamLatestMappingAcceptanceStatusPlain(startReady, mappingReady, mappingMissing);

@@ -7284,6 +7284,75 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("does not call missing safety confirmation an external stop request", async () => {
+    // live 形态会在未勾安全确认时给 stop_required=true；这只是安全锁，不是“当前有停止请求”。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": { payload: safePayload("trashbot.upper_robot_api.v1.status", "ready") },
+      "/api/map/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed") },
+      "/api/localize/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed") },
+      "/api/nav2/status": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven") },
+      "/api/nav2/proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven") },
+      "/api/operator/report": { payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded") },
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            snapshot: {
+              external_stop_requested: false,
+              mapping_active: false,
+              stop_available: true,
+            },
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "locked",
+              reason: "还未勾选现场安全确认",
+              stop_required: true,
+              gates: [
+                { id: "operator_confirmed", label: "现场安全确认", state: "blocked", evidence: "还未勾选现场安全确认", next_action: "勾选现场安全确认" },
+                { id: "stop_available", label: "停止兜底", state: "ready", evidence: "停止按钮可用", next_action: "继续保持现场可接管" },
+              ],
+            },
+          },
+        },
+      },
+      "/api/camera/health": { payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed") },
+      "/api/camera/devices": { payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded") },
+      "/api/radar/status": { payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "stopped") },
+      "/api/radar/scan-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "stale") },
+      "/api/radar/raw-packet-proof/latest": { payload: safePayload("trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result", "loaded") },
+      "/api/base/status": { payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded") },
+      "/api/base/feedback-samples/latest": { payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded") },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.readback_summary.free_roam.decision_state).toBe("locked");
+      expect(summary.readback_summary.free_roam.decision_reason).toBe("还未勾选现场安全确认");
+      expect(summary.readback_summary.free_roam.stop_required).toBe("true");
+      expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
+      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
+      expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。");
+      expect(summary.readback_summary.free_roam.plain_hint).not.toContain("停止请求");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).not.toContain("停止请求");
+      expect(summary.safe_command_boundary.free_roam_autonomy_gates).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "external_stop_request" }),
+      ]));
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("does not treat stale runtime scan as mapping-start lidar readiness when radar lifecycle is stopped", async () => {
     // live 形态：runtime snapshot 仍带着旧 fresh 距离，但 /api/radar/status 已明确雷达 lifecycle 停止。
     const safePayload = (schema: string, status = "loaded") => ({
@@ -8639,7 +8708,8 @@ describe("workstation fail-closed API contracts", () => {
       }));
       expect(summary.readback_summary.free_roam.motion_start_ready).toBe("true");
       expect(summary.readback_summary.free_roam.free_move_start_ready).toBe("true");
-      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；当前有停止请求，点击开始会先清除停止请求。");
+      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
+      expect(summary.readback_summary.free_roam.plain_hint).not.toContain("停止请求");
       expect(summary.readback_summary.free_roam.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
       expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(true);
       expect(summary.safe_command_boundary.free_roam_mapping_ready).toBe(false);
@@ -13014,6 +13084,79 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
       expect(body.mapping_acceptance_status_plain).toContain("这不阻止先低速自由移动");
       expect(body.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/free-roam/autonomy/latest"]);
+      expect(Object.keys(upstream.receivedBodies)).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("free-roam autonomy latest treats safety-confirmation lock separately from stop request", async () => {
+    // stop_required=true 是保守停车要求；未勾安全确认时不能把它解释成外部停止请求。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/free-roam/autonomy/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.free_roam_autonomy_latest",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_result: {
+            schema: "trashbot.free_roam_autonomy.runtime.v1",
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+            snapshot: {
+              external_stop_requested: false,
+              mapping_active: false,
+              stop_available: true,
+            },
+            decision: {
+              schema: "trashbot.free_roam_autonomy.decision.v1",
+              state: "locked",
+              reason: "还未勾选现场安全确认",
+              stop_required: true,
+              gates: [
+                { id: "operator_confirmed", state: "blocked" },
+                { id: "stop_available", state: "ready" },
+              ],
+            },
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/free-roam/autonomy/latest?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        proxy_status: string;
+        plain_hint: string;
+        next_action_plain: string;
+        stop_request_pending: boolean;
+        free_roam_stop_request_pending: boolean;
+        start_will_clear_stop_request: boolean;
+        stop_request_status_plain: string;
+        motion_readiness_plain: string;
+        free_move_start_status_plain: string;
+        motion_next_action_plain: string;
+        latest_key_values: Record<string, string>;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("latest_loaded");
+      expect(body.stop_request_pending).toBe(false);
+      expect(body.free_roam_stop_request_pending).toBe(false);
+      expect(body.start_will_clear_stop_request).toBe(false);
+      expect(body.stop_request_status_plain).toBe("当前没有停止请求。");
+      expect(body.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
+      expect(body.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
+      expect(body.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动。");
+      expect(body.plain_hint).not.toContain("停止请求");
+      expect(body.next_action_plain).not.toContain("清除停止请求");
+      expect(body.latest_key_values.stop_required).toBe("true");
+      expect(body.latest_key_values.external_stop_requested).toBe("false");
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/free-roam/autonomy/latest"]);
       expect(Object.keys(upstream.receivedBodies)).toEqual([]);

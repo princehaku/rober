@@ -5666,10 +5666,7 @@ function freeRoamSummaryFromReadbacks(
   const mappingStartReady = startReady && mappingStartMissing.length === 0;
   const mappingReady = startReady && mappingMissing.length === 0;
   const nextActionStatus = mappingReady ? "ready" : startReady ? "start_ready" : "locked";
-  const externalStopRequested = Boolean(
-    freeRoamRuntime?.stop_required === true
-    || (freeRoamRuntime?.state === "stopping" && /现场请求停止|external_stop/i.test(freeRoamRuntime.reason)),
-  );
+  const externalStopRequested = freeRoamExternalStopRequested(freeRoamRuntime, freeRoamRuntimeGates);
   const derivedStatus = mappingReady
     ? "mapping_ready"
     : motionReady
@@ -5725,6 +5722,17 @@ function freeRoamSummaryFromReadbacks(
     ros2_runtime_proven: summaryValueText(payload, ["ros2_runtime_proven"]) ?? "not_loaded",
     gate_count: gateCount,
   };
+}
+
+function freeRoamExternalStopRequested(
+  freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null,
+  freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null = null,
+): boolean {
+  // stop_required=true 也会出现在“未勾安全确认”的 locked 态；只有显式外部停止才按停止请求解释。
+  return Boolean(
+    freeRoamRuntime?.state === "stopping" && /现场请求停止|external_stop/i.test(freeRoamRuntime.reason)
+    || (freeRoamRuntimeGates ?? []).some((gate) => gate.id === "external_stop_request"),
+  );
 }
 
 function freeRoamPlainHint(motionReadinessPlain: string, mappingReadinessPlain: string, nextActionPlain: string): string {
