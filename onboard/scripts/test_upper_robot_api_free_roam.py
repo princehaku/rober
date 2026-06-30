@@ -31,6 +31,69 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
 
         self.assertEqual(module.ROUTE_PATHS["health"], "/api/health")
 
+    def test_base_status_get_skips_direct_t130_by_default(self) -> None:
+        """普通 summary 刷新不能用 GET /api/base/status 抢 UART；轮速采样走显式接口。"""
+        module = load_upper_robot_api_module()
+        original_request = module.request_base_feedback_once
+        original_env = module.os.environ.pop(module.BASE_STATUS_DIRECT_FEEDBACK_ENV, None)
+
+        def fail_if_called(*_args, **_kwargs):
+            raise AssertionError("GET /api/base/status must not send direct T=130 by default")
+
+        module.request_base_feedback_once = fail_if_called
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                api = module.UpperRobotApi(
+                    camera_base_url="http://127.0.0.1:8088",
+                    base_port="/dev/null",
+                    base_baudrate=115200,
+                    max_speed=0.12,
+                    feedback_samples_artifact_path=str(Path(td) / "base_feedback_samples_latest.json"),
+                )
+
+                payload = api.base_status()
+
+            self.assertEqual(payload["schema"], "trashbot.upper_robot_api.v1.base_status")
+            self.assertFalse(payload["direct_feedback_on_get_enabled"])
+            self.assertEqual(payload["explicit_feedback_request_endpoint"], "/api/base/feedback-request")
+            self.assertEqual(payload["explicit_feedback_samples_endpoint"], "/api/base/feedback-samples")
+            self.assertFalse(payload["feedback_readback"]["request"]["attempted"])
+            self.assertEqual(payload["feedback_readback"]["request"]["reason"], "base_status_get_lightweight_no_direct_t130")
+            self.assertIn("lightweight GET /api/base/status", payload["feedback_readback"]["feedback_ack"]["reason"])
+            self.assertFalse(payload["feedback_readback"]["sends_commands"])
+            self.assertFalse(payload["sends_commands"])
+            self.assertFalse(payload["sends_motion_commands"])
+            self.assertFalse(payload["robot_control_executed"])
+        finally:
+            module.request_base_feedback_once = original_request
+            if original_env is None:
+                module.os.environ.pop(module.BASE_STATUS_DIRECT_FEEDBACK_ENV, None)
+            else:
+                module.os.environ[module.BASE_STATUS_DIRECT_FEEDBACK_ENV] = original_env
+
+    def test_bridge_feedback_debug_summary_reads_log_tail_only(self) -> None:
+        """bridge JSONL 可能很大；状态读取只能扫尾部，避免 base/status 超时或 OOM。"""
+        module = load_upper_robot_api_module()
+        with tempfile.TemporaryDirectory() as td:
+            log_path = Path(td) / "wave_rover_feedback_debug.jsonl"
+            with log_path.open("w", encoding="utf-8") as handle:
+                for index in range(30000):
+                    handle.write(json.dumps({"source": "noise", "index": index}) + "\n")
+                handle.write(json.dumps({
+                    "source": "wave_rover_uart_t1001",
+                    "vendor_frame": {"L": 12, "R": 13, "r": 0.1, "p": 0.2, "y": 0.3, "v": 12.4},
+                }) + "\n")
+
+            summary = module.summarize_bridge_feedback_debug_log(str(log_path), max_lines=8)
+
+        self.assertEqual(summary["status"] if "status" in summary else summary["artifact"]["status"], "loaded")
+        self.assertLess(summary["artifact"]["bytes_scanned"], summary["artifact"]["bytes_read"])
+        self.assertEqual(summary["artifact"]["tail_line_count"], 8)
+        self.assertEqual(summary["t1001_observed_count"], 1)
+        self.assertTrue(summary["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(summary["latest_frame"]["L"], 12)
+        self.assertFalse(summary["sends_commands"])
+
     def test_lidar_driver_diagnostics_artifact_flattens_status_for_pc(self) -> None:
         """driver 写出的诊断状态必须被 API 展平成 PC 可直接显示的字段。"""
         module = load_upper_robot_api_module()

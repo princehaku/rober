@@ -46,6 +46,7 @@ ALLOWED_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 ALLOWED_NAV2_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 DEFAULT_FEEDBACK_READ_TIMEOUT_S = 0.2
 DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
+BASE_STATUS_DIRECT_FEEDBACK_ENV = "ROBER_BASE_STATUS_DIRECT_FEEDBACK_ON_GET"
 DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
 DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
@@ -4996,6 +4997,30 @@ def summarize_feedback_samples_latest_artifact(
     return base_summary
 
 
+def read_recent_text_lines(path: str, *, max_lines: int, max_bytes: int = 256 * 1024) -> tuple[list[str], int]:
+    """从大日志尾部读最近行，避免 PC 状态刷新把几百 MB JSONL 全量读入内存。"""
+    max_lines = max(1, int(max_lines))
+    max_bytes = max(1024, int(max_bytes))
+    with Path(path).open("rb") as handle:
+        handle.seek(0, os.SEEK_END)
+        file_size = handle.tell()
+        remaining = min(file_size, max_bytes)
+        chunks: list[bytes] = []
+        bytes_read = 0
+        while remaining > 0:
+            chunk_size = min(64 * 1024, remaining)
+            handle.seek(file_size - bytes_read - chunk_size)
+            chunk = handle.read(chunk_size)
+            chunks.append(chunk)
+            bytes_read += len(chunk)
+            remaining -= chunk_size
+            if b"\n".join(reversed(chunks)).count(b"\n") >= max_lines + 1:
+                break
+    raw_tail = b"".join(reversed(chunks))
+    text_tail = raw_tail.decode("utf-8", errors="ignore")
+    return text_tail.splitlines()[-max_lines:], bytes_read
+
+
 def summarize_bridge_feedback_debug_log(
     path: str,
     stale_after_ms: int = DEFAULT_BRIDGE_FEEDBACK_DEBUG_STALE_AFTER_MS,
@@ -5052,7 +5077,7 @@ def summarize_bridge_feedback_debug_log(
     age_ms = max(0, generated_at_ms - mtime_ms)
     artifact.update({"mtime_ms": mtime_ms, "age_ms": age_ms})
     try:
-        lines = Path(path).read_text(encoding="utf-8", errors="ignore").splitlines()
+        lines, bytes_scanned = read_recent_text_lines(path, max_lines=max_lines)
     except OSError as exc:
         artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
         summary["freshness"]["status"] = "read_failed"
@@ -5060,7 +5085,7 @@ def summarize_bridge_feedback_debug_log(
 
     frames: list[dict[str, Any]] = []
     bad_line_count = 0
-    for line in lines[-max(1, max_lines):]:
+    for line in lines:
         try:
             record = json.loads(line)
         except json.JSONDecodeError:
@@ -5081,7 +5106,7 @@ def summarize_bridge_feedback_debug_log(
         if compact_t1001_feedback_frame(frame) is not None:
             frames.append(frame)
 
-    artifact.update({"ok": True, "status": "loaded", "bytes_read": stat_result.st_size})
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": stat_result.st_size, "bytes_scanned": bytes_scanned, "tail_line_count": len(lines)})
     summary["freshness"]["status"] = freshness_from_age(age_ms, stale_after_ms)
     wheel_summary = wheel_feedback_summary_from_frames(frames)
     imu_summary = imu_attitude_delta_summary_from_frames(frames)
@@ -6483,7 +6508,13 @@ def build_base_feedback_samples_payload(
 
 
 def skipped_base_status_feedback_payload(port: str, baudrate: int, reason: str) -> dict[str, Any]:
-    """bridge 反馈 fresh 时不再发送 T=130，避免 status 页面刷新抢底盘串口。"""
+    """GET status 默认不直接抢 UART；需要 T=130 时走显式采样接口。"""
+    if reason == "fresh_bridge_feedback_debug_log_available":
+        ack_reason = "direct T=130 feedback request skipped because esp32_bridge feedback debug log is fresh"
+    elif reason == "base_status_get_lightweight_no_direct_t130":
+        ack_reason = "direct T=130 feedback request skipped for lightweight GET /api/base/status; use /api/base/feedback-request or /api/base/feedback-samples for explicit sampling"
+    else:
+        ack_reason = f"direct T=130 feedback request skipped: {reason}"
     return {
         "schema": f"{SCHEMA}.base_status_feedback_skipped",
         "generated_at_ms": now_ms(),
@@ -6509,7 +6540,7 @@ def skipped_base_status_feedback_payload(port: str, baudrate: int, reason: str) 
         "feedback_ack": {
             "t1001_observed": False,
             "robot_ack_connected": False,
-            "reason": "direct T=130 feedback request skipped because esp32_bridge feedback debug log is fresh",
+            "reason": ack_reason,
         },
         "wheel_feedback_summary": {},
         "wheel_feedback_nonzero_observed": False,
@@ -6935,7 +6966,7 @@ class UpperRobotApi:
         }
 
     def base_status(self) -> dict[str, Any]:
-        """底盘状态执行非运动 T=130 readback，但仍不授予运动控制权限。"""
+        """底盘状态默认只聚合已落盘读数；显式采样接口才发送非运动 T=130。"""
         serial_module, import_error = load_serial_module()
         port_info = describe_path(self.base_port)
         feedback_samples_latest = summarize_feedback_samples_latest_artifact(
@@ -6955,13 +6986,21 @@ class UpperRobotApi:
                 "fresh_bridge_feedback_debug_log_available",
             )
             feedback_ack = feedback_ack_from_bridge_debug(bridge_feedback_debug)
-        else:
-            # 没有 fresh bridge 反馈时才保留旧的非运动 T=130 fallback，且仍不授予运动控制权限。
+        elif os.getenv(BASE_STATUS_DIRECT_FEEDBACK_ENV) == "1":
+            # 只有显式打开兼容开关时，GET 状态端点才做旧式 T=130；默认由专用采样接口承担轮速复验。
             feedback_readback = request_base_feedback_once(
                 self.base_port,
                 self.base_baudrate,
                 read_timeout_s=DEFAULT_FEEDBACK_READ_TIMEOUT_S,
                 read_window_s=DEFAULT_FEEDBACK_READ_WINDOW_S,
+            )
+            feedback_ack = feedback_ack_from_fresh_evidence(feedback_readback, feedback_samples_latest)
+        else:
+            # 普通 PC summary 会高频读取 base/status；默认跳过直接 T=130，避免状态刷新长时间占用 WAVE ROVER UART。
+            feedback_readback = skipped_base_status_feedback_payload(
+                self.base_port,
+                self.base_baudrate,
+                "base_status_get_lightweight_no_direct_t130",
             )
             feedback_ack = feedback_ack_from_fresh_evidence(feedback_readback, feedback_samples_latest)
         best_wheel_summary = (
@@ -6999,6 +7038,9 @@ class UpperRobotApi:
             "write_control_available": bool(port_info["exists"] and serial_module is not None),
             "feedback_ack": feedback_ack,
             "feedback_readback": feedback_readback,
+            "direct_feedback_on_get_enabled": os.getenv(BASE_STATUS_DIRECT_FEEDBACK_ENV) == "1",
+            "explicit_feedback_request_endpoint": ROUTE_PATHS["base_feedback_request"],
+            "explicit_feedback_samples_endpoint": ROUTE_PATHS["base_feedback_samples"],
             "feedback_samples_latest": feedback_samples_latest,
             "bridge_feedback_debug": bridge_feedback_debug,
             "wheel_feedback_summary": best_wheel_summary,
