@@ -3583,6 +3583,13 @@ function actionCardWithDerivedEvidence(
       || managedRuntimeStarted
       || managedRuntimeLifecycleReadyOk
       || boundary?.nav2_goal_ready === true;
+    const controllerIdleNotBlocking = nav2?.controller_server_active === "false" && nav2?.controller_server_requested === "false";
+    const controllerBlockingCurrentGoal = nav2?.controller_server_active === "false" && nav2?.controller_server_requested === "true";
+    const controllerIdleReasonPlain = controllerIdleNotBlocking
+      ? "控制服务当前未被请求，属于等待重跑的空闲读数，不是当前自动驾驶阻塞。"
+      : controllerBlockingCurrentGoal
+        ? "控制服务已被请求但当前未运行，重跑前需要先恢复控制服务。"
+        : nav2?.controller_server_active === "true" ? "控制服务当前已运行。" : "控制服务当前状态未读到。";
     return {
       ...card,
       evidence: {
@@ -3612,6 +3619,9 @@ function actionCardWithDerivedEvidence(
         planner_server_active: card.evidence?.planner_server_active ?? boolText(nav2?.planner_server_active, false),
         controller_server_active: card.evidence?.controller_server_active ?? boolText(nav2?.controller_server_active, false),
         controller_server_requested: card.evidence?.controller_server_requested ?? boolText(nav2?.controller_server_requested, false),
+        controller_idle_not_blocking: card.evidence?.controller_idle_not_blocking ?? controllerIdleNotBlocking,
+        controller_blocking_current_goal: card.evidence?.controller_blocking_current_goal ?? controllerBlockingCurrentGoal,
+        controller_idle_reason_plain: card.evidence?.controller_idle_reason_plain ?? controllerIdleReasonPlain,
         path_generated: card.evidence?.path_generated ?? boolText(nav2?.path_generated, false),
         nav2_path_point_count: card.evidence?.nav2_path_point_count ?? numberText(nav2?.path_point_count || nav2?.path_preview_point_count, 0),
         current_blocker_reasons: card.evidence?.current_blocker_reasons ?? reasonList(nav2?.current_blocker_reasons),
@@ -16062,6 +16072,9 @@ onBeforeUnmount(() => {
           :data-planner-server-active="card.evidence?.planner_server_active === undefined ? undefined : String(card.evidence.planner_server_active)"
           :data-controller-server-active="card.evidence?.controller_server_active === undefined ? undefined : String(card.evidence.controller_server_active)"
           :data-controller-server-requested="card.evidence?.controller_server_requested === undefined ? undefined : String(card.evidence.controller_server_requested)"
+          :data-controller-idle-not-blocking="card.evidence?.controller_idle_not_blocking === undefined ? undefined : String(card.evidence.controller_idle_not_blocking)"
+          :data-controller-blocking-current-goal="card.evidence?.controller_blocking_current_goal === undefined ? undefined : String(card.evidence.controller_blocking_current_goal)"
+          :data-controller-idle-reason-plain="card.evidence?.controller_idle_reason_plain"
           :data-path-generated="card.evidence?.path_generated === undefined ? undefined : String(card.evidence.path_generated)"
           :data-nav2-path-point-count="card.evidence?.nav2_path_point_count === undefined ? undefined : String(card.evidence.nav2_path_point_count)"
           :data-current-blocker-reasons="card.evidence?.current_blocker_reasons?.join(',')"

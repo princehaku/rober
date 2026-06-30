@@ -1019,6 +1019,13 @@ free-roam、不启动建图、不发送 manual/keyboard/Nav2/delivery/stop 或 `
 该变化只补只读 summary/UI 证据，用于定位“路线有了但 controller 当前没 active”等自动驾驶问题；不执行
 NavigateToPose、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-06-30 14:18 CST 起，`action_status_cards[].id=nav2_route.evidence` 额外返回 controller idle 判定：
+`controller_idle_not_blocking`、`controller_blocking_current_goal` 和 `controller_idle_reason_plain`；普通首屏同步暴露
+`data-controller-idle-not-blocking`、`data-controller-blocking-current-goal` 和 `data-controller-idle-reason-plain`。
+当 controller 未 active 且未 requested 时，页面会明确说明这是等待重跑的空闲读数，不是当前自动驾驶阻塞；只有
+requested=true 且 active=false 才作为控制服务 blocker。该变化只补只读 summary/UI 证据，不恢复 controller、
+不执行 NavigateToPose、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-30 10:35 CST 起，`action_status_cards[].id=map_preview.evidence` 返回地图所见即所得的结构化合同：
 `map_current_visible`、可通行格数量、图上路线是否可见、路线点数和 frame、小车位置是否可见、雷达点是否贴到地图、
 地图雷达点数。普通首屏同步暴露 `data-map-*`、`data-path-*`、`data-robot-pose-visible` 和

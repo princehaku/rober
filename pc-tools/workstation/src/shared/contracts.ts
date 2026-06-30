@@ -2512,6 +2512,9 @@ export interface RobotControlActionStatusCard {
     planner_server_active?: boolean;
     controller_server_active?: boolean;
     controller_server_requested?: boolean;
+    controller_idle_not_blocking?: boolean;
+    controller_blocking_current_goal?: boolean;
+    controller_idle_reason_plain?: string;
     path_generated?: boolean;
     nav2_path_point_count?: number;
     current_blocker_reasons?: string[];

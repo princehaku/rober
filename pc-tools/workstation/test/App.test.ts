@@ -5219,6 +5219,9 @@ describe("App", () => {
     expect(nav2ActionCard.attributes("data-planner-server-active")).toBe("false");
     expect(nav2ActionCard.attributes("data-controller-server-active")).toBe("false");
     expect(nav2ActionCard.attributes("data-controller-server-requested")).toBe("false");
+    expect(nav2ActionCard.attributes("data-controller-idle-not-blocking")).toBe("false");
+    expect(nav2ActionCard.attributes("data-controller-blocking-current-goal")).toBe("false");
+    expect(nav2ActionCard.attributes("data-controller-idle-reason-plain")).toBe("控制服务当前状态未读到。");
     expect(nav2ActionCard.attributes("data-path-generated")).toBe("false");
     expect(nav2ActionCard.attributes("data-nav2-path-point-count")).toBe("0");
     expect(nav2ActionCard.attributes("data-current-blocker-reasons")).toBe("");

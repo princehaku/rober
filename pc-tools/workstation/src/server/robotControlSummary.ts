@@ -7333,6 +7333,20 @@ function actionCardBoolean(value: string | undefined, fallback = false): boolean
   return fallback;
 }
 
+function nav2ControllerIdleReasonPlain(nav2: RobotControlSummaryResponse["readback_summary"]["nav2"]): string {
+  // controller 只有在被请求执行目标时才应 active；未请求时 inactive 是空闲事实，不应误写成自动驾驶 blocker。
+  if (nav2.controller_server_active === "false" && nav2.controller_server_requested === "false") {
+    return "控制服务当前未被请求，属于等待重跑的空闲读数，不是当前自动驾驶阻塞。";
+  }
+  if (nav2.controller_server_active === "false" && nav2.controller_server_requested === "true") {
+    return "控制服务已被请求但当前未运行，重跑前需要先恢复控制服务。";
+  }
+  if (nav2.controller_server_active === "true") {
+    return "控制服务当前已运行。";
+  }
+  return "控制服务当前状态未读到。";
+}
+
 function mapWysiwygVisibleFromPlain(statusPlain: string): boolean {
   // 地图目标只验收地图画面本身；图上路线、车位和雷达点有独立目标项，不能把它们的缺口反算成地图不可见。
   const plain = plainFactPart(statusPlain).trim();
@@ -7377,6 +7391,11 @@ function buildActionStatusCards(
     || nav2ManagedRuntimeStarted
     || nav2ManagedRuntimeLifecycleReadyOk
     || boundary.nav2_goal_ready;
+  const nav2ControllerIdleNotBlocking = readback.nav2.controller_server_active === "false"
+    && readback.nav2.controller_server_requested === "false";
+  const nav2ControllerBlockingCurrentGoal = readback.nav2.controller_server_active === "false"
+    && readback.nav2.controller_server_requested === "true";
+  const nav2ControllerIdleReason = nav2ControllerIdleReasonPlain(readback.nav2);
   const freeRoamStopRequestPendingValue = readback.free_roam.free_roam_stop_request_pending !== "not_loaded"
     ? readback.free_roam.free_roam_stop_request_pending
     : readback.free_roam.stop_request_pending;
@@ -7500,7 +7519,9 @@ function buildActionStatusCards(
       title: "图上路线",
       status: boundary.nav2_goal_ready ? (nav2NeedsWheelRerun ? "ready_needs_wheel_rerun" : "ready") : "not_ready",
       status_label: boundary.nav2_goal_ready ? (nav2NeedsWheelRerun ? "可重跑复验" : "可执行") : "未就绪",
-      summary_plain: actionCardText(readback.nav2.route_execution_readiness_plain || readback.nav2.execution_status_plain, "图上路线状态未读到"),
+      summary_plain: nav2ControllerIdleNotBlocking
+        ? `${actionCardText(readback.nav2.route_execution_readiness_plain || readback.nav2.execution_status_plain, "图上路线状态未读到")}；${nav2ControllerIdleReason}`
+        : actionCardText(readback.nav2.route_execution_readiness_plain || readback.nav2.execution_status_plain, "图上路线状态未读到"),
       next_action_plain: actionCardText(boundary.nav2_goal_next_action_plain || readback.nav2.next_action_plain, "准备图上路线"),
       wysiwyg_status: boundary.nav2_goal_ready ? "route_ready_on_map" : "route_not_ready",
       requires_safety_confirmation: true,
@@ -7534,6 +7555,9 @@ function buildActionStatusCards(
         planner_server_active: actionCardBoolean(readback.nav2.planner_server_active, false),
         controller_server_active: actionCardBoolean(readback.nav2.controller_server_active, false),
         controller_server_requested: actionCardBoolean(readback.nav2.controller_server_requested, false),
+        controller_idle_not_blocking: nav2ControllerIdleNotBlocking,
+        controller_blocking_current_goal: nav2ControllerBlockingCurrentGoal,
+        controller_idle_reason_plain: nav2ControllerIdleReason,
         path_generated: actionCardBoolean(readback.nav2.path_generated, false),
         nav2_path_point_count: actionCardNumber(readback.nav2.path_point_count || readback.nav2.path_preview_point_count),
         current_blocker_reasons: actionCardReasonList(readback.nav2.current_blocker_reasons),
