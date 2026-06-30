@@ -658,6 +658,23 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-unified-safety-confirm {
+  /* 首屏唯一确认入口直接复用全页面安全 gate；勾选本身不发车。 */
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #f7f9fb;
+  color: #17202a;
+}
+
+.plain-unified-safety-confirm[data-safety-confirmed="true"] {
+  border-color: #8ecf9f;
+  background: #f3fbf6;
+}
+
 .plain-safety-action-row {
   display: grid;
   grid-template-columns: minmax(88px, 0.5fr) auto minmax(220px, 1.2fr) minmax(180px, 0.9fr) auto;

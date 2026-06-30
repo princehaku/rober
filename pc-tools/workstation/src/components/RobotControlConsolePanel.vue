@@ -14797,6 +14797,23 @@ onBeforeUnmount(() => {
           <strong>勾确认后可做</strong>
           <span class="muted">同一个安全确认用于行程、键盘和自由移动；建图另看画面和雷达是否到位。</span>
         </div>
+        <label
+          class="plain-unified-safety-confirm"
+          data-testid="plain-unified-safety-gate"
+          :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+          data-minimal-precheck-safety-only="true"
+          data-camera-required-for-motion="false"
+          data-radar-required-for-motion="false"
+          data-operator-report-required="false"
+          data-sends-motion-when-clicked="false"
+        >
+          <input
+            v-model="plainUnifiedSafetyConfirmed"
+            type="checkbox"
+            data-testid="plain-unified-safety-confirm"
+          >
+          <span>现场安全确认：人在旁边、周围安全、停止手段就绪（勾一次，全页面生效）</span>
+        </label>
         <p
           class="plain-motion-readiness-gauge"
           :data-state="plainMotionReadinessGauge.state"

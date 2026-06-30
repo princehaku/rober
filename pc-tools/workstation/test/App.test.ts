@@ -4468,6 +4468,17 @@ describe("App", () => {
     expect(safetyActions.text()).not.toContain("operator report");
     expect(safetyActions.text()).not.toContain("raw");
     expect(safetyActions.text()).not.toContain("/cmd_vel");
+    const unifiedSafetyGate = wrapper.find('[data-testid="plain-unified-safety-gate"]');
+    expect(unifiedSafetyGate.exists()).toBe(true);
+    expect(unifiedSafetyGate.text()).toContain("现场安全确认");
+    expect(unifiedSafetyGate.text()).toContain("勾一次，全页面生效");
+    expect(unifiedSafetyGate.attributes("data-safety-confirmed")).toBe("false");
+    expect(unifiedSafetyGate.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(unifiedSafetyGate.attributes("data-camera-required-for-motion")).toBe("false");
+    expect(unifiedSafetyGate.attributes("data-radar-required-for-motion")).toBe("false");
+    expect(unifiedSafetyGate.attributes("data-operator-report-required")).toBe("false");
+    expect(unifiedSafetyGate.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
     const motionReadinessGauge = wrapper.find('[data-testid="plain-motion-readiness-gauge"]');
     expect(motionReadinessGauge.exists()).toBe(true);
     expect(motionReadinessGauge.text()).toBe("移动仪表：安全确认未勾；图上行程待准备；键盘待确认；自由移动待确认；画面和雷达不阻止先动。下一步：勾选现场安全确认。");
@@ -5237,6 +5248,8 @@ describe("App", () => {
     expect(workstationStyles).toContain(".plain-motion-readiness-gauge");
     expect(workstationStyles).toContain('.plain-motion-readiness-gauge[data-state="可先动"]');
     expect(workstationStyles).toContain('.plain-motion-readiness-gauge[data-state="待安全确认"]');
+    expect(workstationStyles).toContain(".plain-unified-safety-confirm");
+    expect(workstationStyles).toContain('.plain-unified-safety-confirm[data-safety-confirmed="true"]');
     expect(workstationStyles).toContain('.plain-map-panel[data-state="地图可见"]');
     expect(workstationStyles).toContain('.plain-map-panel[data-state="地图处理中"]');
     expect(workstationStyles).toContain('.plain-connection-panel[data-state="已连接"]');
@@ -7419,6 +7432,11 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
+    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-safety-confirmed")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-camera-required-for-motion")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-radar-required-for-motion")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-operator-report-required")).toBe("false");
     expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
     expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(false);
     expect((wrapper.find('[data-testid="advanced-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
@@ -7430,9 +7448,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').text()).toContain("勾一次，全页面生效");
 
     const callsBeforeSharedSafety = mockedFetch.mock.calls.length;
-    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await wrapper.find('[data-testid="plain-unified-safety-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
 
+    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-safety-confirmed")).toBe("true");
     expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
     expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(true);
     expect((wrapper.find('[data-testid="advanced-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
@@ -7461,6 +7481,8 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(false);
     await wrapper.vm.$nextTick();
 
+    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
+    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-safety-confirmed")).toBe("false");
     expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
     expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(false);
     expect((wrapper.find('[data-testid="advanced-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
