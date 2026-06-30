@@ -3638,7 +3638,11 @@ async function buildMapPreviewOverlayReadback(base: URL): Promise<MapPreviewOver
   const blockedReasons = readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`));
   const hasRadarPoints = proofSummary.scan_preview_point_count > 0 || proofSummary.scan_preview_points.length > 0;
   const hasMapPose = proofSummary.robot_pose !== null;
-  const radarRuntimeStale = lidar.runtime_scan_status === "stale";
+  // 地图上画的点来自 scan proof；free-roam runtime 距离新鲜不能替代这批点自身的新鲜度。
+  const latestScanProofStale = lidar.latest_scan_proof_fresh === "false"
+    || lidar.continuous_scan_status.includes("stale")
+    || lidar.continuity_window_status.includes("stale");
+  const radarRuntimeStale = latestScanProofStale || lidar.runtime_scan_status === "stale";
   const radarLifecycleStopped = lidar.lifecycle_running === "false" || lidar.lifecycle_state === "stopped";
   const radarOverlayCurrent = hasRadarPoints && !radarRuntimeStale && !radarLifecycleStopped;
   const overlayGaps = [
@@ -5008,7 +5012,11 @@ function mapSummaryFromReadbacks(
   // 地图摘要把 proof/latest 的关键事实提升到 readback_summary，方便普通 UI 直接解释地图是否真的读到。
   const mapProof = readbackById(readbacks, "map_proof_latest");
   const hasScanPreviewPoints = proof.scan_preview_point_count > 0;
-  const radarRuntimeStale = lidar.runtime_scan_status === "stale";
+  // 地图雷达层使用 scan proof 点位；proof 不 fresh 时不能被 free-roam runtime scan 覆盖成当前贴图。
+  const latestScanProofStale = lidar.latest_scan_proof_fresh === "false"
+    || lidar.continuous_scan_status.includes("stale")
+    || lidar.continuity_window_status.includes("stale");
+  const radarRuntimeStale = latestScanProofStale || lidar.runtime_scan_status === "stale";
   const radarLifecycleStopped = lidar.lifecycle_running === "false" || lidar.lifecycle_state === "stopped";
   const radarOverlayCurrent = hasScanPreviewPoints && !radarRuntimeStale && !radarLifecycleStopped;
   const radarOverlayBlockedReasons = [

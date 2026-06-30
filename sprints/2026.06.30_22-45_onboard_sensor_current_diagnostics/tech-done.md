@@ -18,6 +18,7 @@ sprint_type: micro
 - 2026-06-30 21:15 CST 修正 PC `?view=map` 直达地图页：`RobotControlConsolePanel.vue` 增加直达地图模式 DOM 合同，`styles.css` 在该模式隐藏非地图卡片，只保留地图面板、缩放、刷新和 ROS2 配套说明，避免连接/卡点/手控卡片继续挤占地图画布。该改动只影响显示，不启动 ROS2/RViz2/Foxglove，不执行 Nav2，不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 - 2026-06-30 21:15 CST 修正 8088 相机服务共享占用残留：`local_webrtc_camera_smoke.py` 会在 `/health` 清理没有 active peer 且 0 帧的 stale shared capture，并在最近 `first_frame_total_timeout` 后对 MJPEG 自动重试加短冷却，避免浏览器自动重试反复占住 `/dev/video1`。新增单测覆盖 stale capture 释放和首帧失败冷却。
 - 更新 `docs/product/pc_tools_workstation.md`，明确“地图太小”的现场用法：普通用户打开 PC `7001/?view=map` 得到真正只看地图的大屏；ROS2 配套是 RViz2 本地工程观察 `/map`、`/scan`、TF、Nav2 path、AMCL 和 costmap，Foxglove 是 bridge 后的浏览器远程观察，不替代普通用户 PC 地图。
+- 2026-06-30 21:55 CST 修正 PC 地图雷达 WYSIWYG stale 判定：`robotControlSummary.ts` 的 `map/preview` 代理和 `summary.readback_summary.map` 都改为按 scan proof 点位自身的新鲜度判定；当 `latest_scan_proof_fresh=false` 或 continuity 状态 stale 时，即使旧 scan proof 仍有点数组，也返回 `radar_overlay_status=not_current`、当前点数 `0`、旧来源点只作诊断。新增 `robotControlSummary.test.ts` 回归覆盖该形态，避免 free-roam runtime scan 新鲜度错误覆盖地图 overlay 的 proof 新鲜度。
 
 ## 验证结果
 
@@ -31,6 +32,8 @@ sprint_type: micro
 - `python3 -m unittest onboard.scripts.test_local_webrtc_camera_smoke_health onboard.scripts.test_upper_robot_api_free_roam`：通过，9 tests；覆盖 camera health stale shared capture 释放、最近首帧失败冷却，以及 free-roam latest artifact-only。
 - `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py`：通过。
 - `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 225 tests；覆盖 `?view=map` DOM 合同、1600% 直达地图、RViz2/Foxglove 配套说明和不触发运动接口。
+- `npm test -- --run robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，2 files / 229 tests；覆盖 scan proof stale 时地图雷达点不贴到当前地图、summary 不误报 `radar_map_points_visible=true`，以及 PC 地图大屏合同。
+- `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
 - `git diff --check`：通过。
 - 上车端 `python3 -m py_compile /root/rober/onboard/scripts/local_webrtc_camera_smoke.py /root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py`、`bash -n /root/rober/onboard/scripts/o1_lidar_lifecycle.sh`：通过；`colcon build --symlink-install --packages-select ros2_trashbot_hardware`：通过，1 package finished。
 - 上车端部署 `upper_robot_api.py`、RViz2 launch/config/test 和 bringup CMake 安装合同后：`python3 -m py_compile scripts/upper_robot_api.py src/ros2_trashbot_bringup/test/test_launch_contract_static.py` 通过；`python3 -m unittest src.ros2_trashbot_bringup.test.test_launch_contract_static` 通过，22 tests；`colcon build --symlink-install --packages-select ros2_trashbot_bringup` 通过，1 package finished。
@@ -44,6 +47,9 @@ sprint_type: micro
 - 2026-06-30 20:10 CST 复验 PC 固定雷达刷新：`POST /api/robot-control/radar/scan-proof/refresh` 返回 `proxy_status=refresh_forwarded`、`last_result_status=refreshed`、`scan_once_observed=true`、`scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`、`latest_scan_proof_fresh=true`、`blocked_reasons=[]`；同轮 `GET /api/robot-control/map/preview` 返回 `radar_overlay_status=loaded`、`radar_overlay_point_count=72`。
 - 上车端重启 8088 后，相机 `/health` 返回 `source_not_probed/not_in_use/shared_captures={}`；触发 `/mjpeg` 后最近首帧失败进入冷却，HTTP 503 在约 0.1s 返回 `first_frame_recent_failure_cooldown`，随后 `fuser /dev/video1 /dev/video2` 无 owner。后续 backend probe 仍显示 OpenCV open ok 但 read timeout，v4l2/ffmpeg 无 kernel frame，结论是 DV20 UVC 当前无真实帧，不是页面独占。
 - PC 7001 summary 复验相机口径：`source_first_frame_failed`、`source_readiness=first_frame_failed`、`source_diagnosis=uvc_no_frame_not_exclusive`、`source_usage=not_in_use`；自由移动、键盘、地图和雷达 WYSIWYG 仍按原门禁展示。
+- 2026-06-30 21:55 CST 重启 PC Node 到新代码，确认 `pc-tools workstation API listening on http://0.0.0.0:7001`，`lsof` 显示 `TCP *:7001 (LISTEN)`。
+- PC 7001 真实只读复验：`GET /api/robot-control/map/preview` 返回 `proxy_status=preview_forwarded`、`radar_overlay_status=not_current`、`radar_overlay_point_count=0`、`radar_overlay_source_point_count=81`、`radar_overlay.blocked_reasons=["runtime_scan_stale_for_map_radar_overlay"]`、`radar_overlay_next_action=refresh_radar_scan_for_map_overlay`。
+- PC 7001 summary 真实只读复验：`live_status=needs_wheel_rerun`、`radar_map_points_visible=false`、`live_wysiwyg_missing_surface_ids=["camera","radar_map_points"]`、`map_radar_overlay_status=not_current`、`map_radar_overlay_point_count=0`、`radar_latest_scan_proof_fresh=false`、`radar_continuous_scan_status=latest_proof_stale_while_lifecycle_running`。
 
 ## 剩余风险
 
