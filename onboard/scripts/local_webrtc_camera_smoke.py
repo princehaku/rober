@@ -56,6 +56,15 @@ PEER_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,32}$")
 API_CAMERA_PREFIX = "/api/camera"
 IMPORTS = ("aiortc", "cv2", "av")
 FIRST_FRAME_FAILURE_REASONS = {"first_frame_timeout", "first_frame_total_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
+UVC_KERNEL_ERROR_PATTERNS = (
+    "error -71",
+    "failed to resubmit video urb",
+    "failed to query",
+    "device descriptor read",
+    "device not accepting address",
+    "failed to initialize the device",
+    "device firmware changed",
+)
 TEMPERATURE_GLOBS = (
     "/sys/class/thermal/thermal_zone*/temp",
     "/sys/class/hwmon/hwmon*/temp*_input",
@@ -355,6 +364,88 @@ def run_readonly_command(args: list[str], timeout_s: float = COMMAND_TIMEOUT_S) 
         "returncode": completed.returncode,
         "stdout": completed.stdout[:12000],
         "stderr": completed.stderr[:4000],
+    }
+
+
+def parse_v4l2_bus_info(candidate: dict[str, Any] | None) -> str:
+    """从 v4l2 只读输出里提取 USB bus，便于把 dmesg 错误限定到当前摄像头。"""
+    probe = (candidate or {}).get("readonly_probe")
+    v4l2_all = probe.get("v4l2_all") if isinstance(probe, dict) else {}
+    stdout = str(v4l2_all.get("stdout") or "") if isinstance(v4l2_all, dict) else ""
+    match = re.search(r"Bus info\s*:\s*(\S+)", stdout)
+    return match.group(1) if match else ""
+
+
+def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate: dict[str, Any] | None) -> dict[str, Any]:
+    """只读 dmesg 中的 UVC/USB 错误；它解释无首帧根因，不会打开摄像头。"""
+    bus_info = parse_v4l2_bus_info(selected_candidate)
+    selected_name = str((selected_candidate or {}).get("v4l2_name") or (selected_candidate or {}).get("sysfs_name") or selected_path or "camera")
+    if shutil.which("dmesg") is None:
+        return {
+            "status": "kernel_log_unavailable",
+            "plain_hint": "未能读取内核 UVC 日志；继续按相机无首帧排查 USB、输入和供电。",
+            "selected_path": selected_path or "",
+            "selected_name": selected_name,
+            "bus_info": bus_info,
+            "opens_camera": False,
+            **proof_flags(),
+        }
+    try:
+        completed = subprocess.run(["dmesg"], check=False, capture_output=True, text=True, timeout=1.5)
+        dmesg_text = completed.stdout
+    except (OSError, subprocess.TimeoutExpired):
+        dmesg_text = ""
+    if not dmesg_text:
+        return {
+            "status": "kernel_log_unavailable",
+            "plain_hint": "未能读取内核 UVC 日志；继续按相机无首帧排查 USB、输入和供电。",
+            "selected_path": selected_path or "",
+            "selected_name": selected_name,
+            "bus_info": bus_info,
+            "opens_camera": False,
+            **proof_flags(),
+        }
+
+    lines = dmesg_text.splitlines()
+    bus_tokens = [token for token in [bus_info, bus_info.replace("usb-", ""), "uvcvideo"] if token]
+    matched_lines: list[str] = []
+    error_lines: list[str] = []
+    for line in lines[-600:]:
+        lower = line.lower()
+        related = any(token.lower() in lower for token in bus_tokens) or "uvc" in lower
+        if not related:
+            continue
+        compact_line = line[-360:]
+        matched_lines.append(compact_line)
+        if any(pattern in lower for pattern in UVC_KERNEL_ERROR_PATTERNS):
+            error_lines.append(compact_line)
+
+    if error_lines:
+        status = "uvc_usb_transport_errors_observed"
+        plain_hint = f"{selected_name} 的内核日志出现 UVC/USB 传输错误；优先检查 USB 线、接口、供电或换 known-good UVC。"
+        next_action = "check_usb_cable_port_power_or_known_good_uvc"
+    elif matched_lines:
+        status = "uvc_kernel_seen_without_recent_transport_errors"
+        plain_hint = f"{selected_name} 已在内核日志中出现，但最近未匹配到明确 UVC 传输错误；继续按无首帧和格式尝试排查。"
+        next_action = "continue_first_frame_format_diagnostics"
+    else:
+        status = "uvc_kernel_log_not_matched"
+        plain_hint = f"内核日志未匹配到 {selected_name} 的 UVC 记录；检查设备枚举和 USB 连接。"
+        next_action = "check_camera_device_enumeration"
+
+    return {
+        "status": status,
+        "plain_hint": plain_hint,
+        "next_action": next_action,
+        "selected_path": selected_path or "",
+        "selected_name": selected_name,
+        "bus_info": bus_info,
+        "matched_line_count": len(matched_lines),
+        "transport_error_count": len(error_lines),
+        "latest_transport_error": error_lines[-1] if error_lines else "",
+        "tail": error_lines[-8:] if error_lines else matched_lines[-8:],
+        "opens_camera": False,
+        **proof_flags(),
     }
 
 
@@ -724,6 +815,7 @@ def build_source_diagnosis(
     source_usage: dict[str, Any],
     selected_candidate: dict[str, Any] | None,
     last_offer_reason: str,
+    uvc_kernel_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把 health 的工程事实压成稳定归因，PC 普通界面不用猜是不是浏览器独占。"""
     usage_status = str(source_usage.get("status") or "not_loaded")
@@ -731,6 +823,8 @@ def build_source_diagnosis(
     other_owner_count = int(source_usage.get("other_owner_count") or 0) if str(source_usage.get("other_owner_count") or "").isdigit() else 0
     selected_name = str((selected_candidate or {}).get("v4l2_name") or (selected_candidate or {}).get("sysfs_name") or selected_path or "camera")
     selected_is_uvc = bool((selected_candidate or {}).get("is_uvc_or_usb"))
+    kernel_status = str((uvc_kernel_diagnostics or {}).get("status") or "")
+    kernel_transport_error = kernel_status == "uvc_usb_transport_errors_observed"
     not_exclusive = usage_status in {"not_in_use", "in_use_by_camera_service"} or other_owner_count <= 0
     if not selected_path:
         status = "no_video_source"
@@ -744,6 +838,10 @@ def build_source_diagnosis(
         status = "source_busy"
         plain_hint = f"{selected_name} 当前被其他进程占用；释放占用或重启相机服务后再打开画面。"
         next_action = "release_camera_owner_or_restart_camera_service"
+    elif source_failed and not_exclusive and selected_is_uvc and kernel_transport_error:
+        status = "uvc_transport_error_not_exclusive"
+        plain_hint = f"不是页面独占：{selected_name} 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。"
+        next_action = "check_usb_cable_port_power_or_known_good_uvc"
     elif source_failed and not_exclusive and selected_is_uvc:
         status = "uvc_no_frame_not_exclusive"
         plain_hint = f"不是页面独占：{selected_name} 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。"
@@ -770,6 +868,7 @@ def build_source_diagnosis(
         "source_usage_status": usage_status,
         "source_usage_owner_count": owner_count,
         "source_failure_reason": last_offer_reason or "none",
+        "uvc_kernel_diagnostics_status": kernel_status or "not_loaded",
         "shared_preview_contract": "single_shared_capture_for_multiple_clients",
         "opens_camera": False,
         **proof_flags(),
@@ -1427,13 +1526,19 @@ class CameraServiceState:
             else "first_frame_observed" if source_observed else ("source_selected_not_probed" if selected_path else "no_video_source")
         )
         source_usage = collect_device_usage(str(selected_path) if selected_path else None)
+        selected_candidate = selection.get("selected") if isinstance(selection.get("selected"), dict) else None
+        uvc_kernel_diagnostics = collect_uvc_kernel_diagnostics(
+            str(selected_path) if selected_path else None,
+            selected_candidate,
+        )
         source_diagnosis = build_source_diagnosis(
             str(selected_path) if selected_path else None,
             source_failed,
             source_observed,
             source_usage,
-            selection.get("selected") if isinstance(selection.get("selected"), dict) else None,
+            selected_candidate,
             last_offer_reason,
+            uvc_kernel_diagnostics,
         )
         source_summary = source_candidates_summary(snapshot, selection)
         source_summary_selection = source_summary.get("current_selection", {})
@@ -1460,6 +1565,7 @@ class CameraServiceState:
             ),
             "last_successful_frame": self.last_successful_frame,
             "source_usage": source_usage,
+            "uvc_kernel_diagnostics": uvc_kernel_diagnostics,
             "source_diagnosis": source_diagnosis,
             "shared_preview_contract": "single_shared_capture_for_multiple_clients",
             "width": self.width,
@@ -1479,6 +1585,7 @@ class CameraServiceState:
                 "last_offer_error": self.last_offer_error,
                 "last_successful_frame": self.last_successful_frame,
                 "source_usage": source_usage,
+                "uvc_kernel_diagnostics": uvc_kernel_diagnostics,
                 "source_diagnosis": source_diagnosis,
                 "shared_preview_contract": "single_shared_capture_for_multiple_clients",
             },

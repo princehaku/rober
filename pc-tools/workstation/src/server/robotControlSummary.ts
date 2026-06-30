@@ -1459,6 +1459,9 @@ function cameraActionPlainText(action: string): string {
   if (value === "check_usb_camera_input_power_or_known_good_uvc") {
     return "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
   }
+  if (value === "check_usb_cable_port_power_or_known_good_uvc") {
+    return "检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
+  }
   if (value === "continue_monitoring_shared_preview") {
     return "继续监看共享实时画面。";
   }
@@ -2137,6 +2140,7 @@ function cameraSummaryFromReadbacks(
     : null;
   const sourceUsage = asRecord(findFirstKey(healthPayload, ["source_usage"]) ?? mediaDiagnostics?.source_usage) ?? overlaySourceUsage;
   const sourceDiagnosis = asRecord(findFirstKey(healthPayload, ["source_diagnosis"]) ?? mediaDiagnostics?.source_diagnosis);
+  const uvcKernelDiagnostics = asRecord(findFirstKey(healthPayload, ["uvc_kernel_diagnostics"]) ?? mediaDiagnostics?.uvc_kernel_diagnostics);
   const sharedPreviewContract = asString(findFirstKey(healthPayload, ["shared_preview_contract"]) ?? mediaDiagnostics?.shared_preview_contract, "single_shared_capture_for_multiple_clients");
   const sourceUsageOwners = Array.isArray(sourceUsage?.owners) ? sourceUsage.owners : [];
   const sourceUsageSummary = sourceUsageOwners
@@ -2218,6 +2222,8 @@ function cameraSummaryFromReadbacks(
   const sourceUsageNotExclusive = cameraSourceUsageNotExclusive(sourceUsageScope);
   const sourceUsageNotExclusiveForNoFrame = sourceUsageNotExclusive === "true";
   const sourceNoFrameNotExclusive = Boolean(sourceFirstFrameFailedForSharedPreview && sourceUsageNotExclusiveForNoFrame);
+  const uvcKernelTransportErrorsObserved = asString(uvcKernelDiagnostics?.status, "") === "uvc_usb_transport_errors_observed"
+    || asString(sourceDiagnosis?.uvc_kernel_diagnostics_status, "") === "uvc_usb_transport_errors_observed";
   const probeBackendNoFrameNotExclusive = Boolean(
     firstFrameProbeOverlay?.backend_smoke_status === "backend_no_frame_observed"
     && firstFrameProbeOverlay.backend_frame_observed === "false"
@@ -2237,7 +2243,15 @@ function cameraSummaryFromReadbacks(
   );
   const overlayDiagnosisIsPositiveFirstFrame = overlaySourceDiagnosis.status === "first_frame_observed";
   const overlayDiagnosisCanStandAlone = !overlayDiagnosisIsPositiveFirstFrame || cameraHealthLoaded;
-  const derivedSourceDiagnosis = probeBackendNoFrameNotExclusive
+  const derivedSourceDiagnosis = sourceNoFrameNotExclusive && uvcKernelTransportErrorsObserved
+    ? {
+      status: "uvc_transport_error_not_exclusive",
+      plain_hint: `不是页面独占：${selectedName} 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。`,
+      next_action: "check_usb_cable_port_power_or_known_good_uvc",
+      next_action_plain: cameraActionPlainText("check_usb_cable_port_power_or_known_good_uvc"),
+      not_exclusive: true,
+    }
+    : probeBackendNoFrameNotExclusive
     ? {
       status: "uvc_no_frame_not_exclusive",
       plain_hint: `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 OpenCV/V4L2 后端也没有取到视频帧。`,
@@ -2417,6 +2431,13 @@ function cameraSummaryFromReadbacks(
     source_diagnosis_next_action: derivedSourceDiagnosis.next_action,
     source_diagnosis_next_action_plain: sourceDiagnosisNextActionPlain,
     source_diagnosis_not_exclusive: compactValueText(derivedSourceDiagnosis.not_exclusive),
+    uvc_kernel_diagnostics_status: asString(uvcKernelDiagnostics?.status, "not_loaded"),
+    uvc_kernel_diagnostics_plain_hint: asString(uvcKernelDiagnostics?.plain_hint, "not_loaded"),
+    uvc_kernel_diagnostics_next_action: asString(uvcKernelDiagnostics?.next_action, "not_loaded"),
+    uvc_kernel_diagnostics_transport_error_count: uvcKernelDiagnostics?.transport_error_count === undefined
+      ? "not_loaded"
+      : compactValueText(uvcKernelDiagnostics.transport_error_count),
+    uvc_kernel_diagnostics_latest_transport_error: asString(uvcKernelDiagnostics?.latest_transport_error, ""),
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
     source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
     source_usage_scope: sourceUsageScope,

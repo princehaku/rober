@@ -34,6 +34,8 @@ sprint_type: micro
 - 2026-07-01 00:54 CST 把 PC 运动 runbook 每行按钮从泛化“去处理”改为具体下一步文案，并暴露 `data-focus-target-kind`：Nav2 根据轮速复验和安全确认显示去勾安全确认/去重跑图上行程/去看行程条件，键盘显示去启用键盘或条件，自由移动显示去自由移动或条件，建图显示去启动建图或条件。该改动仍只聚焦，不新增任何控制请求。
 - 2026-07-01 01:02 CST 在 PC 运动 runbook 顶部增加可见最小预检边界：`plain-live-motion-runbook-preflight` 直接写明发车前只需现场安全确认，画面/雷达不作为运动前置，建图另看传感器；DOM 暴露 safety confirmed、minimal precheck、camera/radar motion preflight false 和 no-motion 字段。
 - 2026-07-01 01:15 CST 稳定 PC 雷达刷新与地图贴图的 WYSIWYG 读回一致性：`POST /api/robot-control/radar/scan-proof/refresh` 在成功回包缺少 scan/fresh 关键字段，或本轮 scan/raw/tf 四项已观测但 `latest_scan_proof_fresh` 仍未同步 true 时，会追加固定只读 `GET /api/radar/scan-proof/latest` 短读回，并把 fresh 后的 `latest_readback_key_values`、顶层 alias、`post_refresh_latest_readback_status` 和 `post_refresh_latest_readback_attempt_count` 返回给 PC/脚本。该补读只允许固定 latest GET，不启动 radar lifecycle、不启动建图、不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+- 2026-06-30 23:11 CST 回应“PC 地图太小”：普通首屏地图默认缩放从 `1200%` 提升到 `1600%`，`/map` 直达页继续是只看地图大屏，路线、小车位置和雷达 overlay 仍共用同一张 WYSIWYG 画布。ROS2 配套结论写入 PC 地图卡：RViz2 用于本地工程观察 `/map`、`/scan`、TF、规划轨迹和定位，Foxglove bridge 用于浏览器/远程观察；普通用户仍优先使用 PC `7001/map` 简易大地图，不要求进入 RViz2/Foxglove。
+- 2026-06-30 23:11 CST 补齐相机无法出图的内核根因诊断：上车 8088 `/health` 新增 UVC kernel diagnostics，从 `dmesg` 读取 DV20 所在 USB bus 的 UVC/USB transport error，不再只停在“首帧失败/不是独占”。PC summary 和 `/api/robot-control/camera/mjpeg/status` 同步暴露 `uvc_kernel_diagnostics_*` 与 `uvc_transport_error_not_exclusive`，现场可直接看到“USB 线、接口、供电或 known-good UVC”下一步。
 
 ## 验证结果
 
@@ -56,6 +58,14 @@ sprint_type: micro
 - `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 405 tests；覆盖 camera service self-owner 非独占、backend smoke 无帧归因、`/map` 推荐直达大地图、雷达 proof refresh 顶层 alias、地图雷达 stale 口径和 PC 首屏合同。
 - `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
 - `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 405 tests；覆盖 Nav2 latest 顶层 `goal_execution_wheel_rerun_needed=true`、最小预检 safety-only 字段、camera service self-owner 非独占、`/map` 推荐直达大地图、雷达 proof refresh 顶层 alias 和 PC 首屏合同。
+- `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
+- `git diff --check`：通过。
+- `npm test -- --run App.test.ts robotControlSummary.test.ts`（`pc-tools/workstation`）：通过，2 files / 232 tests；覆盖默认 PC 地图 `1600%` 缩放、`/map` 直达地图大屏、RViz2/Foxglove 说明不触发 motion，以及 UVC kernel transport error 在 PC summary 中归因为 `uvc_transport_error_not_exclusive`。
+- `python3 -m unittest onboard.scripts.test_local_webrtc_camera_smoke_health`：通过，5 tests；覆盖 UVC kernel transport error 细化无帧诊断。
+- `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py`：通过。
+- 上车端 `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py` 与 `python3 -m unittest onboard.scripts.test_local_webrtc_camera_smoke_health`：通过，5 tests。
+- 上车 8088 重启后只读 `/health`：`uvc_kernel_diagnostics.status=uvc_usb_transport_errors_observed`、`transport_error_count=28`、`latest_transport_error` 含 `Failed to query (129) UVC probe control : -71`，并保持 `safe_to_control=false`、`robot_control_executed=false`。
+- PC 7001 重启到 `0.0.0.0:7001` 后只读 `GET /api/robot-control/summary`：相机返回 `camera_status=source_first_frame_failed`、`source_diagnosis_status=uvc_transport_error_not_exclusive`、`uvc_kernel_diagnostics_status=uvc_usb_transport_errors_observed`、`uvc_kernel_diagnostics_transport_error_count=28`；服务日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
 - `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
 - `git diff --check`：通过。
 - 2026-06-30 23:15 CST 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
@@ -147,7 +157,7 @@ sprint_type: micro
 ## 剩余风险
 
 - 本轮没有发送任何 live 运动/control POST；Nav2 完整路线当前仍停在 `needs_wheel_rerun`，需要现场安全确认后重跑图上路线，并在同一个执行窗口复验 wheel L/R 非零。
-- 相机不是页面独占，但仍未恢复真实首帧；需要现场检查 DV20 UVC 的 USB、摄像头输入或供电，必要时换 known-good UVC 复测。
+- 相机不是页面独占；本轮已进一步证明 DV20 UVC 所在 USB bus 存在内核 UVC/USB transport error，但仍未恢复真实首帧。需要现场检查 USB 线、接口、摄像头输入/供电，必要时换 known-good UVC 复测。
 - 雷达地图贴图已恢复为 WYSIWYG；PC summary 和 map preview 已按 driver diagnostics + map overlay 正确展示。后续仍可单独继续清理历史 scan proof 字段兼容，但本轮 fixed radar refresh 已返回 `blocked_reasons=[]`。
 - RViz2 配置已部署并构建，但本轮未在带图形桌面的现场启动 RViz2；真实 RViz2 渲染效果仍取决于当前 ROS graph 是否发布 `/map`、`/scan`、TF、Nav2 path 和 costmap。
 - PC `?view=map` 现在是真正只看地图的 CSS/DOM 模式，但本轮未用真实浏览器截图验收现场屏幕尺寸；已用 Vitest DOM 合同和 CSS 规则锁定。真实显示仍取决于浏览器窗口大小和 operator 是否打开 `http://<PC>:7001/?view=map`。

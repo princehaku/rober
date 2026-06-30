@@ -382,6 +382,75 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
   });
 
+  it("surfaces UVC kernel transport errors in camera summary", async () => {
+    // 现场 dmesg 出现 -71/URB 这类 UVC 传输错误时，普通 summary 要指向 USB 链路而不是泛化无首帧。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      if (url.pathname === "/api/camera/health") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          current_selection: {
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_path: "/dev/video1",
+            selected_is_uvc_or_usb: true,
+          },
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            other_owner_count: 0,
+            owners: [],
+          },
+          uvc_kernel_diagnostics: {
+            status: "uvc_usb_transport_errors_observed",
+            plain_hint: "USB Composite Device: DV20 USB 的内核日志出现 UVC/USB 传输错误；优先检查 USB 线、接口、供电或换 known-good UVC。",
+            next_action: "check_usb_cable_port_power_or_known_good_uvc",
+            transport_error_count: 3,
+            latest_transport_error: "uvcvideo 3-1:1.1: Failed to resubmit video URB (-1).",
+          },
+          source_diagnosis: {
+            status: "uvc_transport_error_not_exclusive",
+            plain_hint: "不是页面独占：USB Composite Device: DV20 USB 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。",
+            next_action: "check_usb_cable_port_power_or_known_good_uvc",
+            not_exclusive: true,
+            uvc_kernel_diagnostics_status: "uvc_usb_transport_errors_observed",
+          },
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(basePayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+    expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_transport_error_not_exclusive");
+    expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("UVC/USB 传输错误");
+    expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).toContain("USB 线");
+    expect(summary.readback_summary.camera.uvc_kernel_diagnostics_status).toBe("uvc_usb_transport_errors_observed");
+    expect(summary.readback_summary.camera.uvc_kernel_diagnostics_transport_error_count).toBe("3");
+    expect(summary.readback_summary.camera.uvc_kernel_diagnostics_latest_transport_error).toContain("Failed to resubmit video URB");
+    expect(summary.readback_summary.camera.plain_hint).toContain("UVC/USB 传输错误");
+    expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
+  });
+
   it("separates free movement from mapping sensor readiness in live closure", async () => {
     // 自由移动只要安全确认和停止兜底；相机/雷达缺口只能阻塞建图启动，不能冒充移动前置。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

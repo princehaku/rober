@@ -304,7 +304,7 @@ const plainMapDirectViewRequested = computed(() => {
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16] as const;
-const plainMapZoomIndex = ref(9);
+const plainMapZoomIndex = ref(PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const plainMapZoomStyle = computed(() => ({
@@ -17347,7 +17347,7 @@ onBeforeUnmount(() => {
           data-default-map-layout="dominant-first-screen-map"
           data-default-map-height-mode="viewport-dominant"
           data-default-size="large"
-          data-default-map-zoom-percent="1200%"
+          data-default-map-zoom-percent="1600%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -17690,7 +17690,7 @@ onBeforeUnmount(() => {
             data-wysiwyg-overlays="image-route-robot-radar"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
-            data-default-map-zoom-percent="1200%"
+            data-default-map-zoom-percent="1600%"
             data-max-map-zoom-percent="1600%"
             :data-current-map-zoom-percent="plainMapZoomPercent"
             :data-current-map-size="plainMapViewSize"
@@ -17732,7 +17732,7 @@ onBeforeUnmount(() => {
             data-foxglove-bridge-package="foxglove_bridge"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
           >
-            PC 默认先显示近整屏 1200% 大地图；需要独立观察屏时打开 /map 地图大屏，?view=map 继续兼容，直达页使用 1600% 上限；专业调试用 RViz2，运行 {{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }} 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时先在已安装 foxglove_bridge 的 ROS2 环境运行 {{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}，再接 Foxglove Studio；普通操作仍在本页完成。
+            PC 默认先显示近整屏 1600% 大地图；需要独立观察屏时打开 /map 地图大屏，?view=map 继续兼容，直达页同样使用 1600% 上限；专业调试用 RViz2，运行 {{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }} 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时先在已安装 foxglove_bridge 的 ROS2 环境运行 {{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}，再接 Foxglove Studio；普通操作仍在本页完成。
           </p>
         </article>
 

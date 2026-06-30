@@ -2977,6 +2977,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       source_diagnosis_next_action: string;
       source_diagnosis_next_action_plain: string;
       source_diagnosis_not_exclusive: string;
+      uvc_kernel_diagnostics_status?: string;
+      uvc_kernel_diagnostics_plain_hint?: string;
+      uvc_kernel_diagnostics_next_action?: string;
+      uvc_kernel_diagnostics_transport_error_count?: string;
+      uvc_kernel_diagnostics_latest_transport_error?: string;
       source_usage_status: string;
       source_usage_owner_count: string;
       source_usage_scope?: "free" | "camera_service_self" | "external_holder" | "unknown";
@@ -3879,6 +3884,11 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   source_diagnosis_next_action: string;
   source_diagnosis_next_action_plain: string;
   source_diagnosis_not_exclusive: string;
+  uvc_kernel_diagnostics_status?: string;
+  uvc_kernel_diagnostics_plain_hint?: string;
+  uvc_kernel_diagnostics_next_action?: string;
+  uvc_kernel_diagnostics_transport_error_count?: string;
+  uvc_kernel_diagnostics_latest_transport_error?: string;
   source_readiness: string;
   source_failure_reason: string;
   last_first_frame_format_attempts_summary: string;
