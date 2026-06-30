@@ -4511,6 +4511,13 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-manual-command-mode")).toBe("ros");
     expect(liveClosureSummary.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-safety-confirm-required-for-motion")).toBe("true");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-safety-confirm-required")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-camera-preflight-required")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-radar-preflight-required")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-route-wysiwyg-preflight-required")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-blocked-by-camera-wysiwyg")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-blocked-by-radar-wysiwyg")).toBe("false");
     expect(liveClosureSummary.attributes("data-primary-status-item-id")).toBe("camera_wysiwyg");
     expect(liveClosureSummary.attributes("data-primary-status-source-card-id")).toBe("camera_preview");
     expect(liveClosureSummary.attributes("data-next-action-item-id")).toBe("camera_wysiwyg");
@@ -4526,6 +4533,13 @@ describe("App", () => {
     expect(liveClosureGuide.attributes("data-focus-target-kind")).toBe("camera_preview");
     expect(liveClosureGuide.attributes("data-needs-wheel-rerun")).toBe("false");
     expect(liveClosureGuide.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-safety-confirm-required")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-camera-preflight-required")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-radar-preflight-required")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-route-wysiwyg-preflight-required")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-blocked-by-camera-wysiwyg")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-blocked-by-radar-wysiwyg")).toBe("false");
     expect(liveClosureGuide.attributes("data-focus-only")).toBe("true");
     expect(liveClosureGuide.attributes("data-fixed-wheel-rerun-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(liveClosureGuide.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
@@ -6192,9 +6206,9 @@ describe("App", () => {
       wheel_lr_nonzero_proven: false,
       needs_same_window_wheel_rerun: true,
       delivery_success: false,
-      camera_current_visible: true,
+      camera_current_visible: false,
       map_current_visible: true,
-      radar_map_points_visible: true,
+      radar_map_points_visible: false,
       primary_status_item_id: "nav2_route_execution",
       primary_status_source_card_id: "nav2_route",
       next_action_item_id: "nav2_route_execution",
@@ -6221,7 +6235,16 @@ describe("App", () => {
     expect(liveClosureSummary.exists()).toBe(true);
     expect(liveClosureSummary.attributes("data-state")).toBe("needs_wheel_rerun");
     expect(liveClosureSummary.attributes("data-needs-wheel-rerun")).toBe("true");
+    expect(liveClosureSummary.attributes("data-camera-current-visible")).toBe("false");
+    expect(liveClosureSummary.attributes("data-radar-map-points-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-primary-status-source-card-id")).toBe("nav2_route");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("true");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-safety-confirm-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-camera-preflight-required")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-radar-preflight-required")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-route-wysiwyg-preflight-required")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-blocked-by-camera-wysiwyg")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-blocked-by-radar-wysiwyg")).toBe("false");
     expect(liveClosureSummary.attributes("data-wheel-rerun-command-mode")).toBe("ros");
     expect(liveClosureSummary.attributes("data-last-base-command-mode")).toBe("pwm");
     expect(liveClosureSummary.attributes("data-next-base-command-mode")).toBe("ros");
@@ -6239,6 +6262,13 @@ describe("App", () => {
     expect(liveClosureGuide.attributes("data-focus-target-kind")).toBe("trip_safety_confirm");
     expect(liveClosureGuide.attributes("data-needs-wheel-rerun")).toBe("true");
     expect(liveClosureGuide.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("true");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-safety-confirm-required")).toBe("true");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-camera-preflight-required")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-radar-preflight-required")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-route-wysiwyg-preflight-required")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-blocked-by-camera-wysiwyg")).toBe("false");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-blocked-by-radar-wysiwyg")).toBe("false");
     expect(liveClosureGuide.attributes("data-wheel-rerun-command-mode")).toBe("ros");
     expect(liveClosureGuide.attributes("data-last-base-command-mode")).toBe("pwm");
     expect(liveClosureGuide.attributes("data-next-base-command-mode")).toBe("ros");
