@@ -6767,6 +6767,11 @@ type PlainMappingStartGateGauge = {
   safetyConfirmed: boolean;
   canFreeMoveNow: boolean;
   cameraReadyForMapping: boolean;
+  cameraCurrentFrameVisible: boolean;
+  cameraCurrentMjpegFrameVisible: boolean;
+  cameraCurrentVideoFrameVisible: boolean;
+  cameraSharedPreviewSingleUpstream: boolean;
+  cameraSharedPreviewClientCount: number;
   radarReadyForMapping: boolean;
   radarMapPointsVisible: boolean;
   radarMapPointCount: number;
@@ -6778,6 +6783,8 @@ type PlainMappingStartGateGauge = {
   fixedFreeRoamStartEndpoint: string;
   fixedMappingPreviewEndpoint: string;
   fixedRadarMapPreviewEndpoint: string;
+  fixedSharedPreviewEndpoint: string;
+  fixedSharedPreviewStatusEndpoint: string;
 };
 const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
   // 建图解锁包按“先能动、再补传感器、最后启动建图”排序；这里只读展示，不代替任何安全确认或启动动作。
@@ -7035,6 +7042,7 @@ const plainMappingStartGateGauge = computed<PlainMappingStartGateGauge>(() => {
   // 顶层建图入口只读说明“什么时候可建图”；真正启动仍由自由移动卡主按钮执行后端 gate。
   const evidence = plainFreeRoamDomEvidence.value;
   const mapping = plainMappingReadinessGauge.value;
+  const cameraView = plainCameraSharedPreviewDomEvidence.value;
   const radarMap = plainRadarMapDomEvidence.value;
   const safetyConfirmed = plainManualSafetyConfirmed.value;
   let state = "待连接";
@@ -7049,6 +7057,7 @@ const plainMappingStartGateGauge = computed<PlainMappingStartGateGauge>(() => {
   }
   const safetyText = safetyConfirmed ? "安全确认已勾" : "安全确认未勾";
   const cameraText = mapping.cameraReadyForMapping ? "画面已就绪" : "画面未就绪";
+  const cameraVisibleText = cameraView.currentFrameVisible ? "本页画面已显示" : "本页画面未显示";
   const radarText = mapping.radarReadyForMapping ? "雷达已就绪" : "雷达未就绪";
   const radarMapText = radarMap.mapPointsVisible ? `地图雷达点 ${radarMap.mapPointCount} 个已显示` : "地图雷达点未显示";
   const mappingText = evidence.mappingStartReady ? "建图记录可启动" : "建图记录待传感器";
@@ -7076,11 +7085,16 @@ const plainMappingStartGateGauge = computed<PlainMappingStartGateGauge>(() => {
   })();
   return {
     state,
-    text: `建图入口：${safetyText}；${cameraText}；${radarText}；${radarMapText}；${mappingText}；${actionText}。下一步：${nextAction}。`,
+    text: `建图入口：${safetyText}；${cameraText}；${cameraVisibleText}；${radarText}；${radarMapText}；${mappingText}；${actionText}。下一步：${nextAction}。`,
     nextAction,
     safetyConfirmed,
     canFreeMoveNow: mapping.canFreeMoveNow,
     cameraReadyForMapping: mapping.cameraReadyForMapping,
+    cameraCurrentFrameVisible: cameraView.currentFrameVisible,
+    cameraCurrentMjpegFrameVisible: cameraView.currentMjpegFrameVisible,
+    cameraCurrentVideoFrameVisible: cameraView.currentVideoFrameVisible,
+    cameraSharedPreviewSingleUpstream: cameraView.singleUpstream,
+    cameraSharedPreviewClientCount: cameraView.clientCount,
     radarReadyForMapping: mapping.radarReadyForMapping,
     radarMapPointsVisible: radarMap.mapPointsVisible,
     radarMapPointCount: radarMap.mapPointCount,
@@ -7092,6 +7106,8 @@ const plainMappingStartGateGauge = computed<PlainMappingStartGateGauge>(() => {
     fixedFreeRoamStartEndpoint: evidence.fixedFreeRoamStartEndpoint,
     fixedMappingPreviewEndpoint: evidence.fixedMappingPreviewEndpoint,
     fixedRadarMapPreviewEndpoint: radarMap.fixedRadarMapPreviewEndpoint,
+    fixedSharedPreviewEndpoint: cameraView.fixedSharedPreviewEndpoint,
+    fixedSharedPreviewStatusEndpoint: cameraView.fixedSharedPreviewStatusEndpoint,
   };
 });
 const plainFreeRoamMappingSteps = computed(() => {
@@ -15173,6 +15189,11 @@ onBeforeUnmount(() => {
           :data-safety-confirmed="String(plainMappingStartGateGauge.safetyConfirmed)"
           :data-can-free-move-now="String(plainMappingStartGateGauge.canFreeMoveNow)"
           :data-camera-ready-for-mapping="String(plainMappingStartGateGauge.cameraReadyForMapping)"
+          :data-camera-current-frame-visible="String(plainMappingStartGateGauge.cameraCurrentFrameVisible)"
+          :data-camera-current-mjpeg-frame-visible="String(plainMappingStartGateGauge.cameraCurrentMjpegFrameVisible)"
+          :data-camera-current-video-frame-visible="String(plainMappingStartGateGauge.cameraCurrentVideoFrameVisible)"
+          :data-camera-shared-preview-single-upstream="String(plainMappingStartGateGauge.cameraSharedPreviewSingleUpstream)"
+          :data-camera-shared-preview-client-count="String(plainMappingStartGateGauge.cameraSharedPreviewClientCount)"
           :data-radar-ready-for-mapping="String(plainMappingStartGateGauge.radarReadyForMapping)"
           :data-radar-map-points-visible="String(plainMappingStartGateGauge.radarMapPointsVisible)"
           :data-radar-map-point-count="String(plainMappingStartGateGauge.radarMapPointCount)"
@@ -15185,6 +15206,8 @@ onBeforeUnmount(() => {
           :data-fixed-free-roam-start-endpoint="plainMappingStartGateGauge.fixedFreeRoamStartEndpoint"
           :data-fixed-mapping-preview-endpoint="plainMappingStartGateGauge.fixedMappingPreviewEndpoint"
           :data-fixed-radar-map-preview-endpoint="plainMappingStartGateGauge.fixedRadarMapPreviewEndpoint"
+          :data-fixed-shared-preview-endpoint="plainMappingStartGateGauge.fixedSharedPreviewEndpoint"
+          :data-fixed-shared-preview-status-endpoint="plainMappingStartGateGauge.fixedSharedPreviewStatusEndpoint"
           data-sends-motion-when-clicked="false"
         >
           {{ plainMappingStartGateGauge.text }}

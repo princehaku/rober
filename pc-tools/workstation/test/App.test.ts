@@ -4559,7 +4559,7 @@ describe("App", () => {
     expect(keyboardHoldGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     const mappingStartGate = wrapper.find('[data-testid="plain-mapping-start-gate"]');
     expect(mappingStartGate.exists()).toBe(true);
-    expect(mappingStartGate.text()).toBe("建图入口：安全确认未勾；画面未就绪；雷达已就绪；地图雷达点未显示；建图记录待传感器；主按钮待确认。下一步：勾选现场安全确认。");
+    expect(mappingStartGate.text()).toBe("建图入口：安全确认未勾；画面未就绪；本页画面未显示；雷达已就绪；地图雷达点未显示；建图记录待传感器；主按钮待确认。下一步：勾选现场安全确认。");
     expect(mappingStartGate.text()).not.toContain("Nav2");
     expect(mappingStartGate.text()).not.toContain("raw");
     expect(mappingStartGate.text()).not.toContain("/cmd_vel");
@@ -4567,6 +4567,11 @@ describe("App", () => {
     expect(mappingStartGate.attributes("data-safety-confirmed")).toBe("false");
     expect(mappingStartGate.attributes("data-can-free-move-now")).toBe("false");
     expect(mappingStartGate.attributes("data-camera-ready-for-mapping")).toBe("false");
+    expect(mappingStartGate.attributes("data-camera-current-frame-visible")).toBe("false");
+    expect(mappingStartGate.attributes("data-camera-current-mjpeg-frame-visible")).toBe("false");
+    expect(mappingStartGate.attributes("data-camera-current-video-frame-visible")).toBe("false");
+    expect(mappingStartGate.attributes("data-camera-shared-preview-single-upstream")).toBe("true");
+    expect(mappingStartGate.attributes("data-camera-shared-preview-client-count")).toBe("2");
     expect(mappingStartGate.attributes("data-radar-ready-for-mapping")).toBe("true");
     expect(mappingStartGate.attributes("data-radar-map-points-visible")).toBe("false");
     expect(mappingStartGate.attributes("data-radar-map-point-count")).toBe("0");
@@ -4579,6 +4584,8 @@ describe("App", () => {
     expect(mappingStartGate.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(mappingStartGate.attributes("data-fixed-mapping-preview-endpoint")).toBe("/api/robot-control/map/preview");
     expect(mappingStartGate.attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(mappingStartGate.attributes("data-fixed-shared-preview-endpoint")).toBe("/api/robot-control/camera/mjpeg");
+    expect(mappingStartGate.attributes("data-fixed-shared-preview-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     expect(mappingStartGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     const callsBeforeSafetyFreeMoveGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeSafetyFreeMoveGuide = focusSpy.mock.calls.length;
@@ -6521,11 +6528,15 @@ describe("App", () => {
     expect(mappingGauge.attributes("data-next-action")).toBe("画面和雷达已就绪；现在可启动建图记录。");
     expect(mappingGauge.text()).toBe("建图仪表：移动可启动；画面已出帧；雷达已刷新；记录未启动；地图画面已刷新。下一步：画面和雷达已就绪；现在可启动建图记录。");
     const mappingStartGate = wrapper.find('[data-testid="plain-mapping-start-gate"]');
-    expect(mappingStartGate.text()).toBe("建图入口：安全确认已勾；画面已就绪；雷达已就绪；地图雷达点未显示；建图记录可启动；主按钮会先建图再自由移动。下一步：可启动建图记录；刷新地图画面确认雷达点。");
+    expect(mappingStartGate.text()).toBe("建图入口：安全确认已勾；画面已就绪；本页画面未显示；雷达已就绪；地图雷达点未显示；建图记录可启动；主按钮会先建图再自由移动。下一步：可启动建图记录；刷新地图画面确认雷达点。");
     expect(mappingStartGate.attributes("data-state")).toBe("可启动建图");
     expect(mappingStartGate.attributes("data-safety-confirmed")).toBe("true");
     expect(mappingStartGate.attributes("data-can-free-move-now")).toBe("true");
     expect(mappingStartGate.attributes("data-camera-ready-for-mapping")).toBe("true");
+    expect(mappingStartGate.attributes("data-camera-current-frame-visible")).toBe("false");
+    expect(mappingStartGate.attributes("data-camera-current-mjpeg-frame-visible")).toBe("false");
+    expect(mappingStartGate.attributes("data-camera-current-video-frame-visible")).toBe("false");
+    expect(mappingStartGate.attributes("data-camera-shared-preview-single-upstream")).toBe("true");
     expect(mappingStartGate.attributes("data-radar-ready-for-mapping")).toBe("true");
     expect(mappingStartGate.attributes("data-radar-map-points-visible")).toBe("false");
     expect(mappingStartGate.attributes("data-radar-map-point-count")).toBe("0");
@@ -6535,6 +6546,8 @@ describe("App", () => {
     expect(mappingStartGate.attributes("data-primary-action-requests-mapping")).toBe("true");
     expect(mappingStartGate.attributes("data-next-action")).toBe("可启动建图记录；刷新地图画面确认雷达点");
     expect(mappingStartGate.attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(mappingStartGate.attributes("data-fixed-shared-preview-endpoint")).toBe("/api/robot-control/camera/mjpeg");
+    expect(mappingStartGate.attributes("data-fixed-shared-preview-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     expect(mappingStartGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：画面和雷达已就绪；可启动扫图记录");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：画面和雷达已就绪；下一步启动扫图记录，启动后本轮可按建图记录监看。");
@@ -22148,6 +22161,14 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：当前显示 MJPEG 实时画面。MJPEG 实时流已显示。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：已看到 MJPEG 实时画面；2 个页面共享同一条上游流，不是浏览器独占。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：2 个页面观看，上游已连接，已拿到视频边界；不是独占，每个页面共享同一条上游流。 已有最近帧缓存（约0.1秒前），后进页面会先显示最近帧。");
+    expect(wrapper.find('[data-testid="plain-mapping-start-gate"]').text()).toContain("本页画面已显示");
+    expect(wrapper.find('[data-testid="plain-mapping-start-gate"]').attributes("data-camera-current-frame-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-mapping-start-gate"]').attributes("data-camera-current-mjpeg-frame-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-mapping-start-gate"]').attributes("data-camera-current-video-frame-visible")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-mapping-start-gate"]').attributes("data-camera-shared-preview-single-upstream")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-mapping-start-gate"]').attributes("data-camera-shared-preview-client-count")).toBe("2");
+    expect(wrapper.find('[data-testid="plain-mapping-start-gate"]').attributes("data-fixed-shared-preview-endpoint")).toBe("/api/robot-control/camera/mjpeg");
+    expect(wrapper.find('[data-testid="plain-mapping-start-gate"]').attributes("data-fixed-shared-preview-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
 
     const previewVideoElement = wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement;
     Object.defineProperty(previewVideoElement, "videoWidth", { configurable: true, value: 640 });

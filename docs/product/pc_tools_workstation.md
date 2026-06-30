@@ -48,6 +48,7 @@ pc-tools/workstation/
 - `App.vue` 只保留全局状态、刷新流程、错误处理和页面组合。
 - `src/client/workstationApi.ts` 集中封装 `/api/*` 路径、fetch 和 route debug query 参数拼接。
 - `src/components/` 只做展示与本地交互，不直接拼 API URL，不发明机器人状态。`RobotControlConsolePanel.vue` 通过 client 层调用 Node `GET /api/robot-control/summary` 和 O6 consumer detail adapter；Vue 不直接跨域访问上位机 Robot API。它的默认首屏必须保持 `Rober 小车控制台` + `.simple-user-console` 五卡片的普通用户视图，短状态、少量按钮和可停止入口留在首屏，`task_id`、`O6`、`O7`、`HIL`、`proof`、`/cmd_vel`、`/api/base/manual`、`field manifest` 等工程字段都必须折叠到默认关闭的 `高级诊断`。`O7FixturePreviewPanel.vue` 通过 client 层调用 fixture preview、probe、archive fixture 和 O6 consumer read adapter；route replay 主路径消费 consumer detail，旧 archive fixture player 只作为次路径 / debug fallback；页面不自动读取本地路径。
+- 2026-06-30 09:21 CST 起，普通首屏 `plain-mapping-start-gate` 必须区分“相机首帧满足建图启动”和“本页当前真的显示画面”。当前页面的 MJPEG/视频帧、共享预览单上游、观看人数和固定共享预览 endpoint 作为只读 WYSIWYG 证据暴露，不替代相机首帧 gate，也不触发任何摄像头或运动动作。
 - 2026-06-30 09:15 CST 起，普通首屏 `plain-mapping-start-gate` 必须同时表达两层事实：相机首帧/雷达新鲜是否满足建图启动，以及当前地图是否真的显示了雷达点。`data-radar-map-points-visible` 和点数字段只作为 WYSIWYG 证据，不替代建图启动 gate，也不阻塞低速自由移动。
 - 2026-06-30 09:09 CST 起，普通首屏 `勾确认后可做` 区新增 `plain-trip-closure-gate`，将完整行程执行闭环前置到同一行只读仪表：安全确认、图上路线 ready、主按钮执行语义、同窗口轮速 L/R 非零、送达 success 与当前行程对齐。该仪表固定不触发 motion，所有真实执行仍由行程卡主按钮和后端 gate 控制。
 - 2026-06-30 09:02 CST 起，普通首屏 `visual-first` 布局必须让 PC 地图成为第一视觉面：地图卡暴露 `data-visual-priority=pc-primary-map-first`，CSS 视觉顺序为地图先占整行、实时画面和雷达随后显示。该约束用于解决现场“地图太小/不够主视图”的问题，同时保持普通用户不进入 RViz2 复杂面板；RViz2/Foxglove 只作为 ROS2 工程观察配套。
