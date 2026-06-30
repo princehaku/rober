@@ -4204,6 +4204,8 @@ describe("workstation fail-closed API contracts", () => {
           mapping_start_ready: false,
           mapping_start_requires_camera_first_frame: true,
           mapping_start_requires_lidar_fresh: true,
+          mapping_camera_first_frame_ready: false,
+          mapping_lidar_fresh_ready: false,
           camera_blocks_free_motion: false,
           radar_blocks_free_motion: false,
         },
@@ -7536,6 +7538,14 @@ describe("workstation fail-closed API contracts", () => {
         evidence: {
           mapping_start_ready: false,
           mapping_start_missing_reasons: ["lidar_fresh"],
+          mapping_camera_first_frame_ready: true,
+          mapping_lidar_fresh_ready: false,
+          mapping_lidar_lifecycle_running: false,
+          mapping_lidar_lifecycle_state: "stopped",
+          mapping_runtime_scan_fresh: true,
+          mapping_runtime_scan_diagnostic_only: true,
+          mapping_lidar_fresh_blocked_by_lifecycle: true,
+          mapping_lidar_next_action_plain: "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
         },
       });
       expect(summary.action_status_cards?.find((card) => card.id === "free_move")).toMatchObject({

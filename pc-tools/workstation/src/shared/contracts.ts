@@ -2543,6 +2543,15 @@ export interface RobotControlActionStatusCard {
     mapping_start_requires_lidar_fresh?: boolean;
     mapping_start_missing_reasons?: string[];
     mapping_acceptance_missing_reasons?: string[];
+    mapping_camera_first_frame_ready?: boolean;
+    mapping_camera_source_readiness?: string;
+    mapping_lidar_fresh_ready?: boolean;
+    mapping_lidar_lifecycle_running?: boolean;
+    mapping_lidar_lifecycle_state?: string;
+    mapping_runtime_scan_fresh?: boolean;
+    mapping_runtime_scan_diagnostic_only?: boolean;
+    mapping_lidar_fresh_blocked_by_lifecycle?: boolean;
+    mapping_lidar_next_action_plain?: string;
     camera_current_frame_visible?: boolean;
     camera_source_first_frame_ready?: boolean;
     camera_source_readiness?: string;

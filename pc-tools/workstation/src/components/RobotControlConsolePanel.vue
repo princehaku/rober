@@ -3537,6 +3537,17 @@ function actionCardWithDerivedEvidence(
       startWillClearStopRequest && freeMoveStartReady,
     );
     const motionStartBlockedByStopRequest = boolText(freeRoam?.motion_start_blocked_by_stop_request, false);
+    const camera = robotSummary.value?.readback_summary.camera;
+    const lidar = robotSummary.value?.readback_summary.lidar;
+    const mappingCameraFirstFrameReady = camera?.source_readiness === "first_frame_observed"
+      || camera?.source_diagnosis_status === "first_frame_observed"
+      || boolText(camera?.first_frame_probe_read_ok, false)
+      || boolText(camera?.first_frame_probe_visible_content_proven, false);
+    const mappingLidarFreshReady = !uniqueStartMissing.includes("lidar_fresh");
+    const mappingLidarLifecycleRunning = lidar?.lifecycle_running === "true";
+    const mappingRuntimeScanFresh = lidar?.runtime_scan_status === "fresh";
+    const mappingRuntimeScanDiagnosticOnly = mappingRuntimeScanFresh && !mappingLidarFreshReady;
+    const mappingLidarFreshBlockedByLifecycle = uniqueStartMissing.includes("lidar_fresh") && lidar?.lifecycle_running === "false";
     return {
       ...card,
       evidence: {
@@ -3557,6 +3568,15 @@ function actionCardWithDerivedEvidence(
         mapping_start_ready: card.evidence?.mapping_start_ready ?? boundary?.free_roam_mapping_start_ready ?? false,
         mapping_start_requires_camera_first_frame: card.evidence?.mapping_start_requires_camera_first_frame ?? true,
         mapping_start_requires_lidar_fresh: card.evidence?.mapping_start_requires_lidar_fresh ?? true,
+        mapping_camera_first_frame_ready: card.evidence?.mapping_camera_first_frame_ready ?? mappingCameraFirstFrameReady,
+        mapping_camera_source_readiness: card.evidence?.mapping_camera_source_readiness ?? camera?.source_readiness ?? "not_loaded",
+        mapping_lidar_fresh_ready: card.evidence?.mapping_lidar_fresh_ready ?? mappingLidarFreshReady,
+        mapping_lidar_lifecycle_running: card.evidence?.mapping_lidar_lifecycle_running ?? mappingLidarLifecycleRunning,
+        mapping_lidar_lifecycle_state: card.evidence?.mapping_lidar_lifecycle_state ?? lidar?.lifecycle_state ?? "not_loaded",
+        mapping_runtime_scan_fresh: card.evidence?.mapping_runtime_scan_fresh ?? mappingRuntimeScanFresh,
+        mapping_runtime_scan_diagnostic_only: card.evidence?.mapping_runtime_scan_diagnostic_only ?? mappingRuntimeScanDiagnosticOnly,
+        mapping_lidar_fresh_blocked_by_lifecycle: card.evidence?.mapping_lidar_fresh_blocked_by_lifecycle ?? mappingLidarFreshBlockedByLifecycle,
+        mapping_lidar_next_action_plain: card.evidence?.mapping_lidar_next_action_plain ?? lidar?.radar_map_overlay_next_action_plain ?? "not_loaded",
         mapping_start_missing_reasons: card.evidence?.mapping_start_missing_reasons ?? uniqueStartMissing,
         mapping_acceptance_missing_reasons: card.evidence?.mapping_acceptance_missing_reasons ?? acceptanceMissing,
       },
@@ -16101,6 +16121,15 @@ onBeforeUnmount(() => {
           :data-mapping-start-ready="card.evidence?.mapping_start_ready === undefined ? undefined : String(card.evidence.mapping_start_ready)"
           :data-mapping-start-requires-camera-first-frame="card.evidence?.mapping_start_requires_camera_first_frame === undefined ? undefined : String(card.evidence.mapping_start_requires_camera_first_frame)"
           :data-mapping-start-requires-lidar-fresh="card.evidence?.mapping_start_requires_lidar_fresh === undefined ? undefined : String(card.evidence.mapping_start_requires_lidar_fresh)"
+          :data-mapping-camera-first-frame-ready="card.evidence?.mapping_camera_first_frame_ready === undefined ? undefined : String(card.evidence.mapping_camera_first_frame_ready)"
+          :data-mapping-camera-source-readiness="card.evidence?.mapping_camera_source_readiness"
+          :data-mapping-lidar-fresh-ready="card.evidence?.mapping_lidar_fresh_ready === undefined ? undefined : String(card.evidence.mapping_lidar_fresh_ready)"
+          :data-mapping-lidar-lifecycle-running="card.evidence?.mapping_lidar_lifecycle_running === undefined ? undefined : String(card.evidence.mapping_lidar_lifecycle_running)"
+          :data-mapping-lidar-lifecycle-state="card.evidence?.mapping_lidar_lifecycle_state"
+          :data-mapping-runtime-scan-fresh="card.evidence?.mapping_runtime_scan_fresh === undefined ? undefined : String(card.evidence.mapping_runtime_scan_fresh)"
+          :data-mapping-runtime-scan-diagnostic-only="card.evidence?.mapping_runtime_scan_diagnostic_only === undefined ? undefined : String(card.evidence.mapping_runtime_scan_diagnostic_only)"
+          :data-mapping-lidar-fresh-blocked-by-lifecycle="card.evidence?.mapping_lidar_fresh_blocked_by_lifecycle === undefined ? undefined : String(card.evidence.mapping_lidar_fresh_blocked_by_lifecycle)"
+          :data-mapping-lidar-next-action-plain="card.evidence?.mapping_lidar_next_action_plain"
           :data-mapping-start-missing-reasons="card.evidence?.mapping_start_missing_reasons?.join(',')"
           :data-mapping-acceptance-missing-reasons="card.evidence?.mapping_acceptance_missing_reasons?.join(',')"
           :data-camera-current-frame-visible="card.evidence?.camera_current_frame_visible === undefined ? undefined : String(card.evidence.camera_current_frame_visible)"

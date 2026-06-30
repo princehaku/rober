@@ -5172,6 +5172,14 @@ describe("App", () => {
     expect(mappingActionCard.attributes("data-mapping-start-ready")).toBe("false");
     expect(mappingActionCard.attributes("data-mapping-start-requires-camera-first-frame")).toBe("true");
     expect(mappingActionCard.attributes("data-mapping-start-requires-lidar-fresh")).toBe("true");
+    expect(mappingActionCard.attributes("data-mapping-camera-first-frame-ready")).toBe("false");
+    expect(mappingActionCard.attributes("data-mapping-camera-source-readiness")).toBe("source_selected_not_probed");
+    expect(mappingActionCard.attributes("data-mapping-lidar-fresh-ready")).toBe("false");
+    expect(mappingActionCard.attributes("data-mapping-lidar-lifecycle-running")).toBe("true");
+    expect(mappingActionCard.attributes("data-mapping-lidar-lifecycle-state")).toBe("running");
+    expect(mappingActionCard.attributes("data-mapping-runtime-scan-fresh")).toBe("false");
+    expect(mappingActionCard.attributes("data-mapping-runtime-scan-diagnostic-only")).toBe("false");
+    expect(mappingActionCard.attributes("data-mapping-lidar-fresh-blocked-by-lifecycle")).toBe("false");
     expect(mappingActionCard.attributes("data-mapping-start-missing-reasons")).toContain("camera_first_frame");
     expect(mappingActionCard.attributes("data-mapping-start-missing-reasons")).toContain("lidar_fresh");
     const callsBeforePrimaryReadyAction = mockedFetch.mock.calls.length;

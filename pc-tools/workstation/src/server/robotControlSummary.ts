@@ -7382,6 +7382,13 @@ function buildActionStatusCards(
   const radarNextActionPlain = radarCurrent
     ? readback.radar.radar_overlay_wysiwyg_next_action_plain || readback.radar.radar_map_overlay_next_action_plain
     : readback.radar.radar_next_action_plain || readback.radar.radar_overlay_wysiwyg_next_action_plain;
+  const mappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
+  const mappingLidarFreshReady = !mappingStartMissingReasons.includes("lidar_fresh");
+  const mappingLidarLifecycleRunning = readback.lidar.lifecycle_running === "true";
+  const mappingRuntimeScanFresh = readback.lidar.runtime_scan_status === "fresh";
+  const mappingRuntimeScanDiagnosticOnly = mappingRuntimeScanFresh && !mappingLidarFreshReady;
+  const mappingLidarFreshBlockedByLifecycle = mappingStartMissingReasons.includes("lidar_fresh")
+    && readback.lidar.lifecycle_running === "false";
   const nav2NeedsWheelRerun = boundary.nav2_goal_wheel_feedback_status === "goal_succeeded_but_wheel_lr_zero";
   const nav2ManagedRuntimeRequested = actionCardBoolean(readback.nav2.goal_execution_managed_runtime_requested, false);
   const nav2ManagedRuntimeStarted = actionCardBoolean(readback.nav2.goal_execution_managed_runtime_started, false);
@@ -7624,6 +7631,15 @@ function buildActionStatusCards(
         fixed_mapping_start_endpoint: "/api/robot-control/map/start",
         fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
         mapping_start_ready: boundary.free_roam_mapping_start_ready,
+        mapping_camera_first_frame_ready: cameraSourceFirstFrameReady,
+        mapping_camera_source_readiness: readback.camera.source_readiness,
+        mapping_lidar_fresh_ready: mappingLidarFreshReady,
+        mapping_lidar_lifecycle_running: mappingLidarLifecycleRunning,
+        mapping_lidar_lifecycle_state: readback.lidar.lifecycle_state,
+        mapping_runtime_scan_fresh: mappingRuntimeScanFresh,
+        mapping_runtime_scan_diagnostic_only: mappingRuntimeScanDiagnosticOnly,
+        mapping_lidar_fresh_blocked_by_lifecycle: mappingLidarFreshBlockedByLifecycle,
+        mapping_lidar_next_action_plain: readback.lidar.radar_map_overlay_next_action_plain || readback.radar.radar_next_action_plain,
         mapping_start_missing_reasons: boundary.free_roam_mapping_start_missing_reasons,
         mapping_acceptance_missing_reasons: boundary.free_roam_mapping_missing_reasons,
       },
@@ -7649,6 +7665,15 @@ function buildActionStatusCards(
         mapping_start_ready: boundary.free_roam_mapping_start_ready,
         mapping_start_requires_camera_first_frame: true,
         mapping_start_requires_lidar_fresh: true,
+        mapping_camera_first_frame_ready: cameraSourceFirstFrameReady,
+        mapping_camera_source_readiness: readback.camera.source_readiness,
+        mapping_lidar_fresh_ready: mappingLidarFreshReady,
+        mapping_lidar_lifecycle_running: mappingLidarLifecycleRunning,
+        mapping_lidar_lifecycle_state: readback.lidar.lifecycle_state,
+        mapping_runtime_scan_fresh: mappingRuntimeScanFresh,
+        mapping_runtime_scan_diagnostic_only: mappingRuntimeScanDiagnosticOnly,
+        mapping_lidar_fresh_blocked_by_lifecycle: mappingLidarFreshBlockedByLifecycle,
+        mapping_lidar_next_action_plain: readback.lidar.radar_map_overlay_next_action_plain || readback.radar.radar_next_action_plain,
         mapping_start_missing_reasons: boundary.free_roam_mapping_start_missing_reasons,
         mapping_acceptance_missing_reasons: boundary.free_roam_mapping_missing_reasons,
         fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
