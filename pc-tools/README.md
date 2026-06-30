@@ -57,6 +57,8 @@ Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
 2026-06-30 18:11 CST 起，`live_closure_summary.live_wysiwyg_surface_summaries` 按 `camera`、`map`、`radar_map_points` 三个 surface 输出明细：`visible`、`readback_gap`、`status_plain`、`next_action_plain`、`fixed_refresh_endpoint` 和 `sends_motion_when_clicked=false`。外部脚本不再需要拼 `readback_summary.camera/map/radar` 才知道每个所见缺口的原因和下一步；当前字段仍只读，不自动刷新、不启动设备、不发送运动命令。
 
+2026-06-30 18:16 CST 起，`live_wysiwyg_needs_refresh` 不再只跟随 `status=needs_wysiwyg`，而是只要 `live_wysiwyg_missing_surface_ids` 非空就为 `true`。因此即使当前主卡点是 `needs_wheel_rerun`，普通首屏也会显示 `plain-live-closure-wysiwyg-refresh` 只读刷新按钮；主按钮仍只聚焦 Nav2 复验，不执行 Nav2/manual/keyboard/free-roam。该刷新按钮只调用 radar scan proof refresh、camera first-frame probe、map preview、radar status 和 camera MJPEG status，不发车。
+
 2026-06-30 17:14 CST 起，`plain-live-closure-summary` 在 `needs_wysiwyg` 卡点下直接暴露当前所见缺口清单和刷新入口：`data-live-wysiwyg-ready`、`data-live-wysiwyg-missing-surface-ids`、`data-live-wysiwyg-needs-refresh`、`data-live-wysiwyg-refresh-action-testid=plain-live-closure-wysiwyg-refresh`。卡内新增 `plain-live-closure-wysiwyg-refresh` 按钮，复用 no-motion 当前所见刷新链路：只调用 radar scan proof refresh、camera first-frame probe、map preview、radar status 和 camera MJPEG status，不启动 radar lifecycle、不执行 Nav2、不发送 manual/keyboard/free-roam/stop 或 `/cmd_vel`。这样 live 卡点不再只跳到第一个 camera blocker，而是能一键复测画面、地图和雷达贴图三类 WYSIWYG 证据。
 
 2026-06-30 17:21 CST 起，`plain-live-closure-summary` 和 `plain-live-closure-wysiwyg-refresh` 进一步暴露 `data-live-wysiwyg-readback-gap-surface-ids` 与 `data-live-wysiwyg-primary-readback-gap-surface-id`。该字段只描述当前 WYSIWYG 缺口中哪些是上车读数未加载、not_proven 或 fetch_failed，而不是单纯页面没画出来；例如真实 live 为 camera/radar `fetch_failed`、map `not_loaded` 时会显示 `camera,map,radar_map_points`。这让现场可直接判断要先恢复上车 API/读数链路，再复测当前所见；按钮仍然只读、不发车。

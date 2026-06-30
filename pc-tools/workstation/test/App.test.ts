@@ -6408,7 +6408,7 @@ describe("App", () => {
       radar_map_points_visible: false,
       live_wysiwyg_ready: false,
       live_wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
-      live_wysiwyg_needs_refresh: false,
+      live_wysiwyg_needs_refresh: true,
       live_wysiwyg_readback_gap_surface_ids: ["camera"],
       live_wysiwyg_primary_readback_gap_surface_id: "camera",
       wheel_rerun_minimal_precheck_safety_only: true,
@@ -6449,7 +6449,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-current-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-radar-map-points-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
-    expect(liveClosureSummary.attributes("data-live-wysiwyg-needs-refresh")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-needs-refresh")).toBe("true");
     expect(liveClosureSummary.attributes("data-primary-status-source-card-id")).toBe("nav2_route");
     expect(liveClosureSummary.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-wheel-rerun-safety-confirm-required")).toBe("true");
@@ -6494,7 +6494,13 @@ describe("App", () => {
     expect(liveClosureGuide.attributes("data-starts-nav2")).toBe("false");
     expect(liveClosureGuide.attributes("data-starts-manual")).toBe("false");
     expect(liveClosureGuide.attributes("data-starts-keyboard")).toBe("false");
-    expect(wrapper.find('[data-testid="plain-live-closure-wysiwyg-refresh"]').exists()).toBe(false);
+    const liveClosureWysiwygRefresh = wrapper.find('[data-testid="plain-live-closure-wysiwyg-refresh"]');
+    expect(liveClosureWysiwygRefresh.exists()).toBe(true);
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(liveClosureWysiwygRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(liveClosureWysiwygRefresh.attributes("data-starts-nav2")).toBe("false");
+    expect(liveClosureWysiwygRefresh.attributes("data-starts-manual")).toBe("false");
+    expect(liveClosureWysiwygRefresh.attributes("data-starts-keyboard")).toBe("false");
     const callsBeforeClick = mockedFetch.mock.calls.length;
     const focusCallsBeforeClick = focusSpy.mock.calls.length;
     await liveClosureGuide.trigger("click");
@@ -6504,6 +6510,16 @@ describe("App", () => {
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    const callsBeforeWysiwygRefresh = mockedFetch.mock.calls.length;
+    await liveClosureWysiwygRefresh.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const refreshCalls = mockedFetch.mock.calls.slice(callsBeforeWysiwygRefresh);
+    expect(refreshCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(refreshCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?") && options?.method === "POST")).toBe(true);
+    expect(refreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(refreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(refreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();

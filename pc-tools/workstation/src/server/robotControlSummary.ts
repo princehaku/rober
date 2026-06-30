@@ -8360,7 +8360,7 @@ function buildLiveClosureSummary(
     radar_map_points_visible: radarMapPointsVisible,
     live_wysiwyg_ready: liveWysiwygMissingSurfaceIds.length === 0,
     live_wysiwyg_missing_surface_ids: liveWysiwygMissingSurfaceIds,
-    live_wysiwyg_needs_refresh: status === "needs_wysiwyg",
+    live_wysiwyg_needs_refresh: liveWysiwygMissingSurfaceIds.length > 0,
     live_wysiwyg_readback_gap_surface_ids: liveWysiwygReadbackGapSurfaceIds,
     live_wysiwyg_primary_readback_gap_surface_id: liveWysiwygReadbackGapSurfaceIds[0] ?? "none",
     fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",

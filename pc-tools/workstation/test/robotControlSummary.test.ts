@@ -117,7 +117,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.live_closure_summary?.live_wysiwyg_ready).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
-    expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_readback_gap_surface_ids).toEqual([]);
     expect(summary.live_closure_summary?.live_wysiwyg_primary_readback_gap_surface_id).toBe("none");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
