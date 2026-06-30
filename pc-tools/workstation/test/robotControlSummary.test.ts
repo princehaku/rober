@@ -124,6 +124,29 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_map_preview_endpoint).toBe("/api/robot-control/map/preview");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.live_closure_summary?.live_wysiwyg_surface_summaries).toEqual([
+      expect.objectContaining({
+        id: "camera",
+        visible: false,
+        readback_gap: false,
+        fixed_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
+        sends_motion_when_clicked: false,
+      }),
+      expect.objectContaining({
+        id: "map",
+        visible: true,
+        readback_gap: false,
+        fixed_refresh_endpoint: "/api/robot-control/map/preview",
+        sends_motion_when_clicked: false,
+      }),
+      expect.objectContaining({
+        id: "radar_map_points",
+        visible: false,
+        readback_gap: false,
+        fixed_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+        sends_motion_when_clicked: false,
+      }),
+    ]);
     expect(summary.live_closure_summary?.keyboard_continuous_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_safety_confirm_required).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_enable_sends_motion).toBe(false);

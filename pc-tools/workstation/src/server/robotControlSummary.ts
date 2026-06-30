@@ -8193,6 +8193,35 @@ function buildLiveClosureSummary(
     ...(!mapCurrentVisible && mapUnread ? ["map"] : []),
     ...(!radarMapPointsVisible && /fetch_failed|not_loaded|not_proven/.test(readback.radar.status || "") ? ["radar_map_points"] : []),
   ];
+  const liveWysiwygSurfaceSummaries: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_wysiwyg_surface_summaries"] = [
+    {
+      id: "camera",
+      visible: cameraCurrentVisible,
+      readback_gap: liveWysiwygReadbackGapSurfaceIds.includes("camera"),
+      status_plain: readback.camera.camera_wysiwyg_status_plain || camera.summary_plain,
+      next_action_plain: readback.camera.camera_wysiwyg_next_action_plain || camera.next_action_plain,
+      fixed_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
+      sends_motion_when_clicked: false,
+    },
+    {
+      id: "map",
+      visible: mapCurrentVisible,
+      readback_gap: liveWysiwygReadbackGapSurfaceIds.includes("map"),
+      status_plain: readback.map.map_wysiwyg_status_plain || map.summary_plain,
+      next_action_plain: readback.map.map_wysiwyg_next_action_plain || readback.map.map_next_action_plain || map.next_action_plain,
+      fixed_refresh_endpoint: "/api/robot-control/map/preview",
+      sends_motion_when_clicked: false,
+    },
+    {
+      id: "radar_map_points",
+      visible: radarMapPointsVisible,
+      readback_gap: liveWysiwygReadbackGapSurfaceIds.includes("radar_map_points"),
+      status_plain: readback.radar.radar_overlay_wysiwyg_status_plain || radar.summary_plain,
+      next_action_plain: readback.radar.radar_overlay_wysiwyg_next_action_plain || readback.radar.radar_next_action_plain || radar.next_action_plain,
+      fixed_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+      sends_motion_when_clicked: false,
+    },
+  ];
   const freeMoveStartReady = boundary.free_roam_motion_start_ready || goalSummary.ready_action_ids.includes("free_move");
   const mappingStartReady = boundary.free_roam_mapping_start_ready || goalSummary.ready_action_ids.includes("mapping_start");
   const mappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
@@ -8338,6 +8367,7 @@ function buildLiveClosureSummary(
     fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
     fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
     fixed_live_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+    live_wysiwyg_surface_summaries: liveWysiwygSurfaceSummaries,
     free_move_start_ready: freeMoveStartReady,
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: freeMoveStartReady,

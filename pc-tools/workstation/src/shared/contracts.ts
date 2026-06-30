@@ -2696,6 +2696,18 @@ export interface RobotControlGoalChecklistSummary {
   blocked_action_items: RobotControlGoalChecklistSummaryActionItem[];
 }
 
+export type RobotControlLiveWysiwygSurfaceId = "camera" | "map" | "radar_map_points";
+
+export interface RobotControlLiveWysiwygSurfaceSummary {
+  id: RobotControlLiveWysiwygSurfaceId;
+  visible: boolean;
+  readback_gap: boolean;
+  status_plain: string;
+  next_action_plain: string;
+  fixed_refresh_endpoint: string;
+  sends_motion_when_clicked: false;
+}
+
 export interface RobotControlLiveClosureSummary {
   status: "complete" | "ready_for_motion" | "needs_safety_confirm" | "needs_wheel_rerun" | "needs_delivery" | "needs_wysiwyg" | "needs_sensor" | "not_ready";
   status_label: string;
@@ -2720,6 +2732,7 @@ export interface RobotControlLiveClosureSummary {
   fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
   fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview";
   fixed_live_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status";
+  live_wysiwyg_surface_summaries: RobotControlLiveWysiwygSurfaceSummary[];
   free_move_start_ready: boolean;
   free_move_minimal_precheck_safety_only: boolean;
   free_move_safety_confirm_required: boolean;
