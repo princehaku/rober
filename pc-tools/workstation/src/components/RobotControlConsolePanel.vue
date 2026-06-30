@@ -305,16 +305,18 @@ const plainMapDirectViewRequested = computed(() => {
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24] as const;
-const plainMapZoomIndex = ref(PLAIN_MAP_ZOOM_LEVELS.length - 1);
+const plainMapZoomIndex = ref(0);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
+const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "100%";
+const PLAIN_MAP_MAX_ZOOM_PERCENT = "2400%";
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
 }));
 const plainMapDisplayProofText = computed(() => {
   // 这行给普通用户确认“当前就是大地图”，ROS2 配套只作为工程观察入口，不改变本页控制边界。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，当前 ${plainMapZoomPercent.value}，图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先打开 /map 超大地图，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；工程调试命令：${PLAIN_MAP_RVIZ_LAUNCH_COMMAND}；远程浏览器观察先部署 Foxglove bridge：${PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND}。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
+  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 整图铺满大画布，当前 ${plainMapZoomPercent.value}，细节放大最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先打开 /map 大地图，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；工程调试命令：${PLAIN_MAP_RVIZ_LAUNCH_COMMAND}；远程浏览器观察先部署 Foxglove bridge：${PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND}。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -326,6 +328,10 @@ function zoomPlainMap(delta: number): void {
 function resetPlainMapZoom(): void {
   // “适配”回到完整地图，方便现场在放大查看细节后恢复全局路线视角。
   plainMapZoomIndex.value = 0;
+}
+function zoomPlainMapToDetail(): void {
+  // 细节放大只改变同一张只读画布的比例，不拆分路线、车位或雷达点坐标。
+  plainMapZoomIndex.value = PLAIN_MAP_ZOOM_LEVELS.length - 1;
 }
 async function enterPlainMapBrowserFullscreen(): Promise<void> {
   // 优先使用浏览器原生全屏，让现场 PC 真的把地图铺满；失败时保留 fixed 大图兜底。
@@ -369,7 +375,7 @@ function applyPlainMapDirectViewIfRequested(): void {
   plainMapLargeView.value = true;
   plainMapFullscreenView.value = true;
   plainMapObserverView.value = true;
-  plainMapZoomIndex.value = PLAIN_MAP_ZOOM_LEVELS.length - 1;
+  plainMapZoomIndex.value = 0;
 }
 async function togglePlainMapObserverView(): Promise<void> {
   // 观测模式只改变 PC 显示密度；进入时顺手拉起全屏，退出时回到普通大地图。
@@ -17399,7 +17405,9 @@ onBeforeUnmount(() => {
               :data-fixed-shared-preview-endpoint="plainCameraPrimaryActionEvidence.fixedSharedPreviewEndpoint"
               :data-fixed-shared-preview-status-endpoint="plainCameraPrimaryActionEvidence.fixedSharedPreviewStatusEndpoint"
               @click="startPreview"
-            >{{ plainCameraStartButtonLabel }}</button>
+            >
+              {{ plainCameraStartButtonLabel }}
+            </button>
             <button
               ref="plainCameraProbeButton"
               type="button"
@@ -17667,7 +17675,8 @@ onBeforeUnmount(() => {
           data-default-map-layout="dominant-first-screen-map"
           data-default-map-height-mode="viewport-dominant"
           data-default-size="large"
-          data-default-map-zoom-percent="2400%"
+          :data-default-map-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
+          :data-max-map-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -17680,7 +17689,8 @@ onBeforeUnmount(() => {
           data-direct-map-view-url="/map"
           data-direct-map-view-legacy-url="?view=map"
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-          data-direct-map-view-default-zoom-percent="2400%"
+          :data-direct-map-view-default-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
+          :data-direct-map-view-max-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
           data-direct-map-loads-camera-preview="false"
           data-direct-map-refreshes-camera-mjpeg-status="false"
           data-direct-map-starts-camera-webrtc="false"
@@ -17724,7 +17734,8 @@ onBeforeUnmount(() => {
                 data-direct-map-view-url="/map"
                 data-direct-map-view-legacy-url="?view=map"
                 data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-                data-direct-map-view-default-zoom-percent="2400%"
+                :data-direct-map-view-default-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
+                :data-direct-map-view-max-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
                 data-sends-motion-when-clicked="false"
                 data-starts-ros2="false"
                 data-starts-rviz2="false"
@@ -17773,6 +17784,7 @@ onBeforeUnmount(() => {
                 <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-out" :disabled="!canZoomPlainMapOut" @click="zoomPlainMap(-1)">-</button>
                 <span data-testid="plain-map-zoom-readout">{{ plainMapZoomPercent }}</span>
                 <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-in" :disabled="!canZoomPlainMapIn" @click="zoomPlainMap(1)">+</button>
+                <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-detail" :disabled="!canZoomPlainMapIn" @click="zoomPlainMapToDetail">细节放大</button>
                 <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-reset" :disabled="plainMapZoomScale === 1" @click="resetPlainMapZoom">适配</button>
               </div>
               <button
@@ -18038,8 +18050,8 @@ onBeforeUnmount(() => {
             data-wysiwyg-overlays="image-route-robot-radar"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
-            data-default-map-zoom-percent="2400%"
-            data-max-map-zoom-percent="2400%"
+            :data-default-map-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
+            :data-max-map-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
             :data-current-map-zoom-percent="plainMapZoomPercent"
             :data-current-map-size="plainMapViewSize"
             :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
@@ -18080,7 +18092,7 @@ onBeforeUnmount(() => {
             data-foxglove-bridge-package="foxglove_bridge"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
           >
-            PC 默认先显示近整屏 2400% 超大地图；需要独立观察屏时打开 /map 地图大屏，?view=map 继续兼容，直达页同样使用 2400% 上限；专业调试用 RViz2，运行 {{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }} 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时先在已安装 foxglove_bridge 的 ROS2 环境运行 {{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}，再接 Foxglove Studio；普通操作仍在本页完成。
+            PC 默认先显示 100% 整图大地图；需要看细节时点细节放大到 2400%；独立观察屏打开 /map 地图大屏，?view=map 继续兼容；专业调试用 RViz2，运行 {{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }} 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时先在已安装 foxglove_bridge 的 ROS2 环境运行 {{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}，再接 Foxglove Studio；普通操作仍在本页完成。
           </p>
         </article>
 
@@ -18628,7 +18640,9 @@ onBeforeUnmount(() => {
                 :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
                 :data-stop-settled-after-pulse="String(keyboardStopSettledAfterPulse)"
                 @click="activateKeyboardControl"
-              >{{ plainKeyboardArmButtonLabel }}</button>
+              >
+                {{ plainKeyboardArmButtonLabel }}
+              </button>
               <button class="danger-button compact-stop" type="button" :disabled="!canRequestKeyboardStop" data-testid="keyboard-control-stop" @click="stopKeyboardControl('button_stop')">键盘停止（随时可点）</button>
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>

@@ -2786,7 +2786,7 @@ export interface RobotControlLiveClosureSummary {
   map_display_primary_tool: "pc_big_map";
   map_display_primary_url: "/map";
   map_display_legacy_url: "?view=map";
-  map_display_default_zoom_percent: "2400%";
+  map_display_default_zoom_percent: "100%";
   map_display_max_zoom_percent: "2400%";
   map_display_wysiwyg_overlays: string[];
   map_display_ros2_companion_required: false;
