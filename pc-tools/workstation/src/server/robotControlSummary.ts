@@ -1469,6 +1469,9 @@ function cameraActionPlainText(action: string): string {
   if (normalized === "check_usb_cable_port_power_or_known_good_uvc") {
     return "检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
   }
+  if (normalized === "move_camera_to_high_speed_usb_port_or_powered_hub") {
+    return "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。";
+  }
   if (normalized === "continue_monitoring_shared_preview") {
     return "继续监看共享实时画面。";
   }
@@ -2254,6 +2257,10 @@ function cameraSummaryFromReadbacks(
   const sourceNoFrameNotExclusive = Boolean(sourceFirstFrameFailedForSharedPreview && sourceUsageNotExclusiveForNoFrame);
   const uvcKernelTransportErrorsObserved = asString(uvcKernelDiagnostics?.status, "") === "uvc_usb_transport_errors_observed"
     || asString(sourceDiagnosis?.uvc_kernel_diagnostics_status, "") === "uvc_usb_transport_errors_observed";
+  const uvcVideoOnFullSpeedUsb = asString(uvcUsbTopology?.status, "") === "uvc_video_on_full_speed_usb"
+    || asString(sourceDiagnosis?.uvc_usb_topology_status, "") === "uvc_video_on_full_speed_usb";
+  const uvcFullSpeedPlainHint = asString(uvcUsbTopology?.plain_hint, "")
+    || `不是页面独占：${selectedName} 当前无人占用，但摄像头挂在 USB 12M full-speed，视频流会 STREAMON I/O error；换高速 USB 口/线、减少转接并确认供电后复测。`;
   const probeBackendNoFrameNotExclusive = Boolean(
     firstFrameProbeOverlay?.backend_smoke_status === "backend_no_frame_observed"
     && firstFrameProbeOverlay.backend_frame_observed === "false"
@@ -2273,7 +2280,15 @@ function cameraSummaryFromReadbacks(
   );
   const overlayDiagnosisIsPositiveFirstFrame = overlaySourceDiagnosis.status === "first_frame_observed";
   const overlayDiagnosisCanStandAlone = !overlayDiagnosisIsPositiveFirstFrame || cameraHealthLoaded;
-  const derivedSourceDiagnosis = sourceNoFrameNotExclusive && uvcKernelTransportErrorsObserved
+  const derivedSourceDiagnosis = sourceNoFrameNotExclusive && uvcVideoOnFullSpeedUsb
+    ? {
+      status: "uvc_full_speed_usb_not_exclusive",
+      plain_hint: uvcFullSpeedPlainHint,
+      next_action: "move_camera_to_high_speed_usb_port_or_powered_hub",
+      next_action_plain: cameraActionPlainText("move_camera_to_high_speed_usb_port_or_powered_hub"),
+      not_exclusive: true,
+    }
+    : sourceNoFrameNotExclusive && uvcKernelTransportErrorsObserved
     ? {
       status: "uvc_transport_error_not_exclusive",
       plain_hint: `不是页面独占：${selectedName} 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。`,
@@ -8670,6 +8685,7 @@ function buildLiveClosureSummary(
   const cameraSourceDiagnosisNextAction = plainSentencePart(meaningfulCameraText(readback.camera.source_diagnosis_next_action_plain));
   const cameraSourceDiagnosisStatus = meaningfulCameraText(readback.camera.source_diagnosis_status);
   const cameraSourceDiagnosisLabel = (status: string): string => ({
+    uvc_full_speed_usb_not_exclusive: "USB full-speed",
     uvc_transport_error_not_exclusive: "UVC/USB 传输错误",
     uvc_no_frame_not_exclusive: "UVC 无首帧",
     source_first_frame_failed: "相机源无首帧",

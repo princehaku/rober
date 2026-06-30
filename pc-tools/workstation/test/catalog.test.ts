@@ -14388,6 +14388,72 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation camera MJPEG status translates full-speed USB diagnosis", async () => {
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          source_diagnosis: {
+            status: "uvc_full_speed_usb_not_exclusive",
+            plain_hint: "不是页面独占：USB Composite Device: DV20 USB 当前无人占用，但摄像头挂在 USB 12M full-speed，视频流会 STREAMON I/O error；换高速 USB 口/线、减少转接并确认供电后复测。",
+            next_action: "move_camera_to_high_speed_usb_port_or_powered_hub",
+            not_exclusive: true,
+          },
+          uvc_usb_topology: {
+            status: "uvc_video_on_full_speed_usb",
+            plain_hint: "USB Composite Device: DV20 USB 当前在 USB 12M full-speed 拓扑上，视频流容易 STREAMON I/O error。",
+            next_action: "move_camera_to_high_speed_usb_port_or_powered_hub",
+            video_usb_speed: "12M",
+            kernel_usb_address: "6-1",
+            video_interface_count: 2,
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+      expect(statusBody.source_diagnosis_next_action).toBe("move_camera_to_high_speed_usb_port_or_powered_hub");
+      expect(statusBody.source_diagnosis_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
+      expect(statusBody.preview_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
+      expect(statusBody.camera_wysiwyg_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
+      expect(statusBody.robot_control_executed).toBe(false);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("Robot Control summary promotes camera device identity from source diagnosis when devices readback is empty", async () => {
     // live 形态：/api/camera/devices 可能只返回空列表，真实设备名在 health.source_diagnosis 里；summary 不能把结构化字段留成 not_loaded。
     const robotApi = await listenRobotApiReadbackByPath({

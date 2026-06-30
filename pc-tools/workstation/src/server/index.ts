@@ -2588,6 +2588,9 @@ function cameraMjpegActionPlainText(action: string): string {
   if (normalized === "check_usb_cable_port_power_or_known_good_uvc") {
     return "检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
   }
+  if (normalized === "move_camera_to_high_speed_usb_port_or_powered_hub") {
+    return "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。";
+  }
   if (normalized === "continue_monitoring_shared_preview") {
     return "继续监看共享实时画面。";
   }

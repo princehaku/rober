@@ -537,7 +537,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
   });
 
-  it("surfaces UVC kernel transport errors in camera summary", async () => {
+  it("prioritizes full-speed USB camera diagnosis in camera summary", async () => {
     // 现场 dmesg 出现 -71/URB 这类 UVC 传输错误时，普通 summary 要指向 USB 链路而不是泛化无首帧。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
       const url = new URL(String(input));
@@ -604,9 +604,10 @@ describe("robotControlSummary", () => {
     });
 
     expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
-    expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_transport_error_not_exclusive");
-    expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("UVC/USB 传输错误");
-    expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).toContain("USB 线");
+    expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+    expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("USB 12M full-speed");
+    expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
+    expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).not.toContain("move camera");
     expect(summary.readback_summary.camera.uvc_kernel_diagnostics_status).toBe("uvc_usb_transport_errors_observed");
     expect(summary.readback_summary.camera.uvc_kernel_diagnostics_transport_error_count).toBe("3");
     expect(summary.readback_summary.camera.uvc_kernel_diagnostics_latest_transport_error).toContain("Failed to resubmit video URB");
@@ -615,12 +616,12 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.camera.uvc_usb_topology_kernel_usb_address).toBe("6-1");
     expect(summary.readback_summary.camera.uvc_usb_topology_video_interface_count).toBe("2");
     expect(summary.readback_summary.camera.uvc_usb_topology_next_action).toBe("move_camera_to_high_speed_usb_port_or_powered_hub");
-    expect(summary.readback_summary.camera.plain_hint).toContain("UVC/USB 传输错误");
-    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("诊断=UVC/USB 传输错误");
-    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).not.toContain("uvc_transport_error_not_exclusive");
+    expect(summary.readback_summary.camera.plain_hint).toContain("USB 12M full-speed");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("诊断=USB full-speed");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).not.toContain("uvc_full_speed_usb_not_exclusive");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("已排除页面独占");
-    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("UVC/USB 传输错误");
-    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("下一步：检查 USB 线");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("USB 12M full-speed");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("下一步：摄像头现在挂在 USB 12M full-speed");
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
   });
 
