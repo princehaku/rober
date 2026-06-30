@@ -954,6 +954,36 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-trip-execution-gauge {
+  /* 行程仪表把执行后闭环放到一行，方便现场扫一眼判断路线、轮速和送达是否同源。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-trip-execution-gauge[data-state="已闭环"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-trip-execution-gauge[data-state="可执行"],
+.plain-trip-execution-gauge[data-state="待送达"] {
+  border-left-color: #1a7f37;
+}
+
+.plain-trip-execution-gauge[data-state="待安全确认"],
+.plain-trip-execution-gauge[data-state="待执行"],
+.plain-trip-execution-gauge[data-state="待轮速"] {
+  border-left-color: #9a6700;
+}
+
+.plain-trip-execution-gauge[data-state="待路线"] {
+  border-left-color: #8c959f;
+}
+
 .plain-motion-panel {
   border-left: 3px solid transparent;
 }

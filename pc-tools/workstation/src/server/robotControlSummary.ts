@@ -1862,7 +1862,7 @@ function radarMissingScanObservations(
   const missing = new Set<string>();
   for (const reason of rawReasons) {
     const text = Array.isArray(reason) ? reason.join(",") : typeof reason === "string" ? reason : reason === undefined ? "" : JSON.stringify(reason);
-    for (const match of text.matchAll(/required_observations_missing:([^"\]\[]+)/g)) {
+    for (const match of text.matchAll(/required_observations_missing:([^"\][]+)/g)) {
       for (const item of (match[1] ?? "").split(",")) {
         const normalized = item.trim();
         if (["scan_once", "scan_hz", "raw_packet_once"].includes(normalized)) {

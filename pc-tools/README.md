@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 08:00 CST 起，普通首屏地图默认缩放从 `200%` 提升到 `300%`，仍保留 `适配` 回到 `100%` 和最高 `400%`。ROS2 配套口径保持：工程调试用 RViz2 看 `/map`、雷达、TF、规划轨迹和定位，浏览器远程观察可接 Foxglove；普通用户继续在 PC 工作站大地图操作。移动/导航卡同步新增 `plain-trip-execution-gauge` 行程仪表，把当前图上行程点数、主按钮是否会执行、同窗口轮速 L/R、送达是否对齐当前行程和下一步动作合成一行，并暴露固定执行/送达代理 endpoint。该仪表本身固定 `data-sends-motion-when-clicked=false`，本轮只改 PC Web 只读显示和 DOM 合同，不自动执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-06-30 07:49 CST 起，普通首屏 `目标总览` 每一行都补齐结构化 DOM 证据：`data-objective-id`、`data-state`、`data-completed`、`data-actionable`、`data-missing-count`、`data-item-ids`、`data-source-card-id`、`data-next-action` 和 `data-sends-motion-when-clicked=false`。四行分别对应“行程/键盘/自由移动”“画面/地图/雷达点”“发车前确认”“自由移动到建图”，现场脚本不用解析中文即可判断哪组目标完成、哪组可处理、还差几项，以及点击“去处理”会聚焦到哪张普通卡。该变化只补只读验收合同，不自动勾选安全确认、不执行 Nav2、不启用键盘、不启动自由移动/建图、不发送 manual、delivery、stop 或 `/cmd_vel`。
 
 2026-06-30 07:43 CST 起，普通首屏自由移动 / 建图卡新增 `建图仪表`。它把自由移动、安全确认、相机首帧、雷达刷新、地图记录和地图画面刷新合成一行普通状态，同时暴露 `data-testid=plain-mapping-readiness-gauge`、`data-can-free-move-now`、`data-camera-ready-for-mapping`、`data-radar-ready-for-mapping`、`data-map-runtime-started`、`data-map-preview-fresh`、`data-mapping-start-ready`、`data-mapping-evidence-ready`、`data-mapping-missing-reasons` 和固定自由移动/建图/地图预览入口。这样现场不用读长段落也能判断：未勾安全确认时只是待确认；摄像头或雷达缺口不挡低速自由移动；画面和雷达就绪后可启动建图记录；记录和地图画面也就绪后才按建图收口。该仪表本身固定 `data-sends-motion-when-clicked=false`，不自动启动建图、不启动自由移动、不发送 manual、keyboard、Nav2、delivery、stop 或 `/cmd_vel`。

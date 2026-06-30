@@ -277,7 +277,7 @@ const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4] as const;
-const plainMapZoomIndex = ref(2);
+const plainMapZoomIndex = ref(3);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const plainMapZoomStyle = computed(() => ({
@@ -9905,6 +9905,111 @@ const plainTripRouteBindingSummary = computed(() => {
   };
 });
 
+type PlainTripExecutionGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  currentRouteVisible: boolean;
+  routeWysiwygReady: boolean;
+  routePointCount: number;
+  routeSourcePointCount: number;
+  routePreviewComplete: boolean;
+  executionRoutePointCount: number;
+  mainActionKind: string;
+  mainActionCanRun: boolean;
+  mainActionSendsMotion: boolean;
+  executesCurrentRouteGoal: boolean;
+  targetSource: string;
+  managedRuntimeAutostart: boolean;
+  requiresSameWindowWheelLrNonzero: boolean;
+  wheelLrNonzeroProven: boolean;
+  wheelLeft: string;
+  wheelRight: string;
+  deliverySuccessMatchesCurrentNav2: boolean;
+  deliverySuccessEvidenceStale: boolean;
+};
+
+const plainTripExecutionGauge = computed<PlainTripExecutionGauge>(() => {
+  // 这行是普通首页的行程闭环仪表：路线、按钮、轮速、送达必须同源显示，避免现场在多个卡片之间拼结论。
+  const evidence = plainTripDomEvidence.value;
+  // delivery success 只有和当前行程 ref 对齐且不过期，才允许点亮整轮闭环。
+  const deliveryClosed = evidence.deliverySuccessMatchesCurrentNav2 && !evidence.deliverySuccessEvidenceStale;
+  // 轮速读数用执行窗口内的 L/R；没有读到时宁可显示未读取，也不拿其它运动迹象代替。
+  const wheelPairReady = evidence.latestWheelRawLeft !== "not_loaded" && evidence.latestWheelRawRight !== "not_loaded";
+  const wheelText = wheelPairReady ? `${evidence.latestWheelRawLeft}/${evidence.latestWheelRawRight}` : "未读取";
+  // 主按钮语义要面向普通用户：说明会不会动车，不暴露内部 endpoint 或高级字段。
+  const actionText = evidence.mainActionSendsMotion
+    ? "会执行图上行程"
+    : evidence.mainActionKind === "await_safety_confirm"
+      ? "等待安全确认"
+      : "只准备或刷新，不发车";
+  let state = "待路线";
+  // 状态优先级按验收闭环倒推，避免已送达后仍提示路线或轮速待处理。
+  if (deliveryClosed) {
+    state = "已闭环";
+  } else if (evidence.executionComplete || evidence.wheelLrNonzeroProven) {
+    state = "待送达";
+  } else if (evidence.executionFeedbackSampleCount > 0 || navGoalExecutionPending.value) {
+    state = "待轮速";
+  } else if (evidence.routeWysiwygReady && evidence.executesCurrentRouteGoal && evidence.mainActionCanRun) {
+    state = "可执行";
+  } else if (evidence.routeWysiwygReady && evidence.mainActionKind === "await_safety_confirm") {
+    state = "待安全确认";
+  } else if (evidence.routeWysiwygReady) {
+    state = "待执行";
+  }
+  let nextAction = "先准备图上行程";
+  // 下一步同样先尊重闭环结论；地图 overlay 可稍后刷新，但不能阻塞已完成的送达证据。
+  if (deliveryClosed) {
+    nextAction = "本轮行程已收口";
+  } else if (!evidence.routeWysiwygReady) {
+    nextAction = evidence.routeSourcePointCount > 0 ? "刷新地图画面，确认图上行程" : "先准备图上行程";
+  } else if (!evidence.mainActionCanRun) {
+    nextAction = evidence.mainActionKind === "await_safety_confirm" ? "勾选现场安全确认" : "按行程区提示恢复可执行状态";
+  } else if (!evidence.executionComplete && !evidence.wheelLrNonzeroProven) {
+    nextAction = evidence.mainActionSendsMotion ? "执行图上行程后看轮速 L/R" : "先让主按钮进入执行图上行程";
+  } else {
+    nextAction = "准备材料并确认送达";
+  }
+  // delivery 已闭环但地图图层还没刷新时，只说“本轮行程已完成”，不假称当前路线已经贴图。
+  const routeText = deliveryClosed && !evidence.routeWysiwygReady && evidence.routeSourcePointCount > 0
+    ? `本轮行程 ${evidence.routeSourcePointCount} 个点已完成`
+    : evidence.routeWysiwygReady
+      ? `图上行程 ${evidence.routePointCount}/${evidence.routeSourcePointCount} 个点`
+      : evidence.routeSourcePointCount > 0
+        ? `行程已准备 ${evidence.routeSourcePointCount} 个点，待贴到地图`
+        : "图上行程未准备";
+  const wheelStateText = evidence.wheelLrNonzeroProven ? "已非零" : "待非零";
+  const deliveryText = deliveryClosed
+    ? "送达已对齐"
+    : evidence.deliverySuccessEvidenceStale
+      ? "送达证据较旧"
+      : "送达待确认";
+  return {
+    state,
+    text: `行程仪表：${routeText}；执行按钮${actionText}；轮速 L/R=${wheelText}，${wheelStateText}；${deliveryText}。下一步：${nextAction}。`,
+    nextAction,
+    currentRouteVisible: evidence.currentRouteVisible,
+    routeWysiwygReady: evidence.routeWysiwygReady,
+    routePointCount: evidence.routePointCount,
+    routeSourcePointCount: evidence.routeSourcePointCount,
+    routePreviewComplete: evidence.routePreviewComplete,
+    executionRoutePointCount: evidence.executionRoutePointCount,
+    mainActionKind: evidence.mainActionKind,
+    mainActionCanRun: evidence.mainActionCanRun,
+    mainActionSendsMotion: evidence.mainActionSendsMotion,
+    executesCurrentRouteGoal: evidence.executesCurrentRouteGoal,
+    targetSource: evidence.mainActionTargetSource,
+    managedRuntimeAutostart: evidence.managedRuntimeAutostart,
+    requiresSameWindowWheelLrNonzero: evidence.requiresSameWindowWheelLrNonzero,
+    wheelLrNonzeroProven: evidence.wheelLrNonzeroProven,
+    wheelLeft: evidence.latestWheelRawLeft,
+    wheelRight: evidence.latestWheelRawRight,
+    deliverySuccessMatchesCurrentNav2: evidence.deliverySuccessMatchesCurrentNav2,
+    deliverySuccessEvidenceStale: evidence.deliverySuccessEvidenceStale,
+  };
+});
+
 const plainTripPreparationButtonLabel = computed(() => {
   // 普通用户的主流程只看执行按钮；这个按钮只是可选只读刷新，不再表现成发车前必做预检。
   if (deliveryNav2GoalReady.value) {
@@ -14901,7 +15006,7 @@ onBeforeUnmount(() => {
           data-testid="plain-map-panel"
           data-wysiwyg-surface="primary-map"
           data-default-size="large"
-          data-default-map-zoom-percent="200%"
+          data-default-map-zoom-percent="300%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -15847,6 +15952,35 @@ onBeforeUnmount(() => {
             <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
             <p v-if="plainTripMotionClosureSummary" class="panel-note" data-testid="plain-trip-motion-closure">{{ plainTripMotionClosureSummary }}</p>
             <p class="panel-note" data-testid="plain-trip-minimal-precheck">{{ plainTripMinimalPrecheckSummary }}</p>
+            <p
+              class="panel-note plain-trip-execution-gauge"
+              data-testid="plain-trip-execution-gauge"
+              :data-state="plainTripExecutionGauge.state"
+              :data-current-route-visible="String(plainTripExecutionGauge.currentRouteVisible)"
+              :data-route-wysiwyg-ready="String(plainTripExecutionGauge.routeWysiwygReady)"
+              :data-route-point-count="String(plainTripExecutionGauge.routePointCount)"
+              :data-route-source-point-count="String(plainTripExecutionGauge.routeSourcePointCount)"
+              :data-route-preview-complete="String(plainTripExecutionGauge.routePreviewComplete)"
+              :data-execution-route-point-count="String(plainTripExecutionGauge.executionRoutePointCount)"
+              :data-main-action-kind="plainTripExecutionGauge.mainActionKind"
+              :data-main-action-can-run="String(plainTripExecutionGauge.mainActionCanRun)"
+              :data-main-action-sends-motion="String(plainTripExecutionGauge.mainActionSendsMotion)"
+              :data-executes-current-route-goal="String(plainTripExecutionGauge.executesCurrentRouteGoal)"
+              :data-target-source="plainTripExecutionGauge.targetSource"
+              :data-managed-runtime-autostart="String(plainTripExecutionGauge.managedRuntimeAutostart)"
+              :data-requires-same-window-wheel-lr-nonzero="String(plainTripExecutionGauge.requiresSameWindowWheelLrNonzero)"
+              :data-wheel-lr-nonzero-proven="String(plainTripExecutionGauge.wheelLrNonzeroProven)"
+              :data-wheel-left="plainTripExecutionGauge.wheelLeft"
+              :data-wheel-right="plainTripExecutionGauge.wheelRight"
+              :data-delivery-success-matches-current-nav2="String(plainTripExecutionGauge.deliverySuccessMatchesCurrentNav2)"
+              :data-delivery-success-evidence-stale="String(plainTripExecutionGauge.deliverySuccessEvidenceStale)"
+              :data-next-action="plainTripExecutionGauge.nextAction"
+              data-fixed-nav2-execute-endpoint="/api/robot-control/nav2/goal/execute"
+              data-fixed-delivery-complete-endpoint="/api/robot-control/delivery/complete"
+              data-sends-motion-when-clicked="false"
+            >
+              {{ plainTripExecutionGauge.text }}
+            </p>
             <p
               class="panel-note plain-trip-route-binding"
               data-testid="plain-trip-route-binding"
