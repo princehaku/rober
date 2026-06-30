@@ -362,6 +362,7 @@ async function togglePlainMapObserverView(): Promise<void> {
   plainMapFullscreenView.value = plainMapObserverView.value;
   if (plainMapObserverView.value) {
     await enterPlainMapBrowserFullscreen();
+    await refreshMapPreview({ radarStatusRefresh: true });
   } else {
     plainMapLargeView.value = true;
     await exitPlainMapBrowserFullscreen();
@@ -372,6 +373,7 @@ async function togglePlainMapFullscreenView(): Promise<void> {
   plainMapFullscreenView.value = !plainMapFullscreenView.value;
   if (plainMapFullscreenView.value) {
     await enterPlainMapBrowserFullscreen();
+    await refreshMapPreview({ radarStatusRefresh: true });
   } else {
     plainMapObserverView.value = false;
     plainMapLargeView.value = true;
@@ -15478,7 +15480,7 @@ onMounted(() => {
   document.addEventListener("visibilitychange", handlePageVisibilityChange);
   document.addEventListener("fullscreenchange", syncPlainMapBrowserFullscreenState);
   void refreshConsole().then(() => {
-    void refreshMapPreview();
+    void refreshMapPreview({ radarStatusRefresh: plainMapDirectViewRequested.value });
     void preloadGoalClosureReadbacks();
     void refreshCameraMjpegStatus();
   });
@@ -16487,6 +16489,8 @@ onBeforeUnmount(() => {
                 data-starts-map-runtime="false"
                 data-starts-nav2="false"
                 data-uses-browser-fullscreen-api="true"
+                data-refreshes-map-preview-on-enter="true"
+                data-refreshes-radar-status-on-enter="true"
                 data-target-surface="primary-map"
                 :data-observer-mode-after-click="plainMapFullscreenView ? 'false' : String(plainMapObserverView)"
                 :aria-pressed="plainMapFullscreenView ? 'true' : 'false'"
@@ -16507,6 +16511,8 @@ onBeforeUnmount(() => {
                 data-uses-browser-fullscreen-api="true"
                 data-target-surface="primary-map"
                 data-enter-size="fullscreen"
+                data-refreshes-map-preview-on-enter="true"
+                data-refreshes-radar-status-on-enter="true"
                 data-hides-ordinary-actions-when-active="true"
                 data-keeps-wysiwyg-overlays="image-route-robot-radar"
                 data-user-facing-action="map_only_view"
@@ -16532,6 +16538,8 @@ onBeforeUnmount(() => {
                 data-starts-map-runtime="false"
                 data-starts-nav2="false"
                 data-uses-browser-fullscreen-api="false"
+                data-refreshes-map-preview-on-enter="true"
+                data-refreshes-radar-status-on-enter="true"
                 data-keeps-wysiwyg-overlays="image-route-robot-radar"
                 data-ros2-companion-tool="rviz2"
                 data-ros2-remote-companion-tool="foxglove"

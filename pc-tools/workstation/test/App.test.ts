@@ -5316,6 +5316,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("data-starts-map-runtime")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("data-starts-nav2")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("data-uses-browser-fullscreen-api")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("data-refreshes-map-preview-on-enter")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("data-refreshes-radar-status-on-enter")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("data-target-surface")).toBe("primary-map");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').text()).toBe("只看地图");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("aria-pressed")).toBe("false");
@@ -5328,6 +5330,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-uses-browser-fullscreen-api")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-target-surface")).toBe("primary-map");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-enter-size")).toBe("fullscreen");
+    expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-refreshes-map-preview-on-enter")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-refreshes-radar-status-on-enter")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-hides-ordinary-actions-when-active")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-keeps-wysiwyg-overlays")).toBe("image-route-robot-radar");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-user-facing-action")).toBe("map_only_view");
@@ -5347,6 +5351,8 @@ describe("App", () => {
     expect(mapDirectViewLink.attributes("data-starts-map-runtime")).toBe("false");
     expect(mapDirectViewLink.attributes("data-starts-nav2")).toBe("false");
     expect(mapDirectViewLink.attributes("data-uses-browser-fullscreen-api")).toBe("false");
+    expect(mapDirectViewLink.attributes("data-refreshes-map-preview-on-enter")).toBe("true");
+    expect(mapDirectViewLink.attributes("data-refreshes-radar-status-on-enter")).toBe("true");
     expect(mapDirectViewLink.attributes("data-keeps-wysiwyg-overlays")).toBe("image-route-robot-radar");
     expect(mapDirectViewLink.attributes("data-ros2-companion-tool")).toBe("rviz2");
     expect(mapDirectViewLink.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
@@ -5388,8 +5394,13 @@ describe("App", () => {
     expect(mapRos2ToolNote.text()).toContain("PC 默认先显示近整屏大地图");
     expect(mapRos2ToolNote.text()).toContain("规划轨迹");
     expect(mapRos2ToolNote.text()).not.toContain("Nav2");
+    const fullscreenMapPreviewCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
+    const fullscreenRadarStatusCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length;
     await wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(fullscreenMapPreviewCallsBefore + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length).toBe(fullscreenRadarStatusCallsBefore + 1);
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("fullscreen");
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-fullscreen")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-browser-fullscreen-active")).toBe("false");
@@ -5400,8 +5411,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').attributes("data-starts-ros2")).toBe("false");
     await wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').trigger("click");
     await wrapper.vm.$nextTick();
+    const observerMapPreviewCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
+    const observerRadarStatusCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length;
     await wrapper.find('[data-testid="plain-map-observer-toggle"]').trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(observerMapPreviewCallsBefore + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length).toBe(observerRadarStatusCallsBefore + 1);
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("fullscreen");
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-fullscreen")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-observer-mode")).toBe("true");
@@ -5870,7 +5886,7 @@ describe("App", () => {
     const originalUrl = window.location.href;
     window.history.pushState({}, "", "/?view=map");
     try {
-      stubWorkstationFetch();
+      const mockedFetch = stubWorkstationFetch();
 
       const wrapper = mount(App);
       await flushPromises();
@@ -5896,6 +5912,13 @@ describe("App", () => {
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-map-runtime")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-nav2")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-map-preview-on-enter")).toBe("true");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-radar-status-on-enter")).toBe("true");
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
       expect(visiblePlainHomeText(wrapper)).not.toContain("/cmd_vel");
     } finally {
       window.history.pushState({}, "", originalUrl);
