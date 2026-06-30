@@ -12,6 +12,10 @@ def read_launch(name):
     return (LAUNCH_ROOT / name).read_text(encoding="utf-8")
 
 
+def read_rviz(name):
+    return (RVIZ_ROOT / name).read_text(encoding="utf-8")
+
+
 def node_block(source, executable):
     start = source.index(f"executable='{executable}'")
     end = source.index("\n        ),", start)
@@ -217,6 +221,39 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertNotIn("trash_detector", source)
                 self.assertNotIn("vision_detection_confidence", source)
                 self.assertNotIn("save_detection_samples", source)
+
+    def test_rviz_companion_observes_nav2_without_goal_tool(self):
+        # RViz2 是工程观察面，不是普通用户发车入口；这里锁住只读地图/雷达/Nav2 诊断层。
+        launch_source = read_launch("rviz.launch.py")
+        rviz_source = read_rviz("trashbot_nav.rviz")
+        ast.parse(launch_source)
+
+        self.assertIn("trashbot_nav.rviz", launch_source)
+        self.assertIn('executable="rviz2"', launch_source)
+        for expected in (
+            "Fixed Frame: map",
+            "Name: Map",
+            "Value: /map",
+            "Name: LaserScan",
+            "Value: /scan",
+            "Name: TF",
+            "Name: Nav2 Path",
+            "Value: /plan",
+            "Name: Nav2 Local Plan",
+            "Value: /local_plan",
+            "Name: AMCL Pose",
+            "Value: /amcl_pose",
+            "Name: Nav2 Global Costmap",
+            "Value: /global_costmap/costmap",
+            "Value: /global_costmap/costmap_updates",
+            "Name: Nav2 Local Costmap",
+            "Value: /local_costmap/costmap",
+            "Value: /local_costmap/costmap_updates",
+        ):
+            self.assertIn(expected, rviz_source)
+
+        self.assertNotIn("nav2_rviz_plugins/GoalTool", rviz_source)
+        self.assertNotIn("SetInitialPose", rviz_source)
 
     def test_rviz_launch_is_read_only_observation_view(self):
         # RViz 入口只帮助现场看 /map、/scan、TF、路线和定位；目标下发仍必须走 PC 安全确认链路。

@@ -11,6 +11,10 @@ sprint_type: micro
 - 2026-06-30 19:42 CST 现场部署到上车端：备份旧文件到 `/root/rober/runtime/deploy_backups/sensor_diag_20260630_194247` 和 `/root/rober/runtime/deploy_backups/upper_api_sensor_diag_20260630_194532`；同步 `local_webrtc_camera_smoke.py`、`o1_lidar_lifecycle.sh`、`lidar_driver.py`、`upper_robot_api.py`；远端重建 `ros2_trashbot_hardware` 并重启 8088 相机服务、8787 upper API、LiDAR lifecycle。该部署未调用任何底盘 motion/control POST，LiDAR lifecycle 只使用 `/dev/ttyACM0`，明确不使用 `/dev/ttyS5` 或 `/cmd_vel`。
 - 修正 `onboard/scripts/o1_lidar_scan_proof_collector.py`：雷达 status 的 `fresh_scan_proof_observed` 不再被当成 blocker；topic 读取从四路并发改为顺序读取，避免 ROS2 CLI discovery 抖动；短窗口读取失败但上车已有 fresh latest proof 时，保留 fresh proof 作为 fallback，避免把好 artifact 覆盖成坏材料。
 - 修正 PC radar proof refresh 固定合同：`pc-tools/workstation/src/server/robotControlSummary.ts` 不再从刷新按钮请求 `start_runtime`，固定 body 改为 `timeout_s=12`，代理 timeout 预算调为 90 秒；雷达启动继续走独立 `/api/robot-control/radar/start`，proof refresh 只读已有 topic。
+- 2026-06-30 20:36 CST 修正上车 `GET /api/free-roam/autonomy/latest`：该入口改为真正 artifact-only，只读 `free_roam_autonomy_latest.json`、LiDAR scan proof artifact 和 runtime snapshot，不再同步调用相机 `/health` 或完整 `radar_status()`；相机 readiness 在该入口保守标为 `deferred_to_camera_health_endpoint`，所以不会误放开建图，但自由移动仍保持安全确认后可启动。
+- 2026-06-30 20:36 CST 为 8787 常用只读同步 handler 增加线程隔离，覆盖 radar/base/map/Nav2/free-roam latest/status、delivery latest 等，避免 PC summary 并发读取多个端点时某个慢文件或状态读取阻塞 aiohttp 事件循环。
+- 补齐 ROS2 配套 RViz2 观察面：`onboard/src/ros2_trashbot_bringup/rviz/trashbot_nav.rviz` 新增 Nav2 local plan、global costmap、local costmap，只做工程观察，不加入 GoalTool；`test_launch_contract_static.py` 锁定 RViz2 只读观察 `/map`、`/scan`、TF、`/plan`、`/local_plan`、`/amcl_pose` 和 costmap。
+- 更新 `docs/navigation/free_roam_autonomy.md`、`docs/navigation/fixed_route_workflow.md`、`docs/product/pc_tools_workstation.md`：明确普通用户继续使用 PC `7001` 大地图和 `?view=map`，RViz2 是本地工程排障工具，Foxglove 是后续 bridge 后的浏览器远程观察工具。
 
 ## 验证结果
 
@@ -18,8 +22,15 @@ sprint_type: micro
 - `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py onboard/scripts/test_upper_robot_api_free_roam.py`：通过。
 - `python3 -m unittest onboard.src.ros2_trashbot_hardware.test.test_lidar_driver_stubs`：通过，16 tests。
 - `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 225 tests。
+- `python3 -m unittest onboard.scripts.test_upper_robot_api_free_roam`：通过，6 tests；覆盖 latest 不调用相机 HTTP 或完整 radar status。
+- `python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api_free_roam.py`：通过。
+- `python3 -m unittest onboard.src.ros2_trashbot_bringup.test.test_launch_contract_static`：通过，22 tests；覆盖 RViz2 配套观察面和不包含 GoalTool。
 - `git diff --check`：通过。
 - 上车端 `python3 -m py_compile /root/rober/onboard/scripts/local_webrtc_camera_smoke.py /root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py`、`bash -n /root/rober/onboard/scripts/o1_lidar_lifecycle.sh`：通过；`colcon build --symlink-install --packages-select ros2_trashbot_hardware`：通过，1 package finished。
+- 上车端部署 `upper_robot_api.py`、RViz2 launch/config/test 和 bringup CMake 安装合同后：`python3 -m py_compile scripts/upper_robot_api.py src/ros2_trashbot_bringup/test/test_launch_contract_static.py` 通过；`python3 -m unittest src.ros2_trashbot_bringup.test.test_launch_contract_static` 通过，22 tests；`colcon build --symlink-install --packages-select ros2_trashbot_bringup` 通过，1 package finished。
+- 上车端重启 8787 后，`GET /api/free-roam/autonomy/latest` 在 PC summary 并发读取时返回 `HTTP 200 time 0.019721`、`runtime_status=loaded`、`camera_status=deferred_to_camera_health_endpoint`、`radar_lifecycle=not_checked_by_free_roam_latest`、`runtime_scan_ready=True`、`free_move_start_ready=True`、`mapping_start_ready=False`、`mapping_missing=camera_first_frame_not_observed`、`sends_motion=False`、`publishes_cmd_vel=False`。
+- RViz2 安装验证：`ros2 pkg prefix ros2_trashbot_bringup` 返回 `/root/rober/onboard/install/ros2_trashbot_bringup`，安装后的 `trashbot_nav.rviz` 命中 `Nav2 Local Plan`、`Nav2 Global Costmap`、`Nav2 Local Costmap`。
+- PC 7001 summary 并发复验：`live_status=needs_wheel_rerun`，下一步仍是重跑图上路线并复验 wheel L/R；`map_current=True`、`radar_map=True`、`free_move=True`、`keyboard=True`、`nav2=goal_succeeded_wheel_feedback_not_proven`、`minimal_precheck=True`。
 - 上车端相机 `/health`：`status=source_first_frame_failed`、`source_readiness=first_frame_failed`、`source_failure_reason=first_frame_total_timeout`、`source_diagnosis.status=uvc_no_frame_not_exclusive`、`not_exclusive=true`、`last_successful_frame=null`。
 - 上车端 LiDAR driver diagnostics：`diagnosis.status=scan_published`，`bytes_read_total=314482`、`packet_count_total=9387`、`published_raw_packet_count=9387`、`published_scan_count=515`；`ros2 topic echo --once /lidar/raw_packet` 和 `/scan` 均成功返回。
 - PC 7001 只读刷新：`POST /api/robot-control/radar/scan-proof/refresh` 观测到 `scan_once_observed=true`、`scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`；`GET /api/robot-control/map/preview` 返回 `radar_overlay_status=loaded`、`radar_overlay_point_count=72`、`path_preview_status=path_preview_observed`、`robot_pose_status=map_pose_observed`。
@@ -30,4 +41,5 @@ sprint_type: micro
 
 - 本轮没有发送任何 live 运动/control POST；Nav2 完整路线当前仍停在 `needs_wheel_rerun`，需要现场安全确认后重跑图上路线，并在同一个执行窗口复验 wheel L/R 非零。
 - 相机不是页面独占，但仍未恢复真实首帧；需要现场检查 DV20 UVC 的 USB、摄像头输入或供电，必要时换 known-good UVC 复测。
-- 雷达地图贴图已恢复为 WYSIWYG；但 `radar/scan-proof/refresh` 的汇总状态仍出现“观测项 true 但 status blocked”的字段兼容问题，当前 PC summary 和 map preview 已按 driver diagnostics + map overlay 正确展示，后续可单独修 proof collector 的 blocked reason 归并。
+- 雷达地图贴图已恢复为 WYSIWYG；PC summary 和 map preview 已按 driver diagnostics + map overlay 正确展示。后续仍可单独继续清理历史 scan proof 字段兼容，但本轮 fixed radar refresh 已返回 `blocked_reasons=[]`。
+- RViz2 配置已部署并构建，但本轮未在带图形桌面的现场启动 RViz2；真实 RViz2 渲染效果仍取决于当前 ROS graph 是否发布 `/map`、`/scan`、TF、Nav2 path 和 costmap。

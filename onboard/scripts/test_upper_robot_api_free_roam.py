@@ -386,6 +386,61 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         finally:
             module.run_free_roam_param_sequence = original_param_sequence
 
+    def test_latest_is_artifact_only_and_does_not_call_camera_or_radar_status(self) -> None:
+        """latest 必须快速读 artifact；相机 HTTP 或雷达完整 status 慢时不能拖死该入口。"""
+        module = load_upper_robot_api_module()
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "free_roam.json"
+            scan_proof_path = Path(td) / "scan_proof.json"
+            artifact_path.write_text(json.dumps({
+                "schema": "trashbot.free_roam_autonomy.runtime.v1",
+                "artifact_only": True,
+                "cmd_vel_publish_enabled": False,
+                "snapshot": {
+                    "lidar_age_s": 0.04,
+                    "lidar_min_distance_m": 0.72,
+                    "mapping_active": False,
+                },
+                "decision": {
+                    "schema": "trashbot.free_roam_autonomy.decision.v1",
+                    "state": "stopping",
+                    "reason": "现场请求停止",
+                    "stop_required": True,
+                    "gates": [],
+                },
+            }, ensure_ascii=False), encoding="utf-8")
+            api = module.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/null",
+                base_baudrate=115200,
+                max_speed=0.12,
+                free_roam_autonomy_artifact_path=str(artifact_path),
+                lidar_scan_proof_artifact_path=str(scan_proof_path),
+            )
+
+            def fail_camera():
+                raise AssertionError("free_roam_autonomy_latest must not call camera_motion_readiness")
+
+            def fail_radar():
+                raise AssertionError("free_roam_autonomy_latest must not call radar_status")
+
+            api.camera_motion_readiness = fail_camera
+            api.radar_status = fail_radar
+
+            http_status, payload = api.free_roam_autonomy_latest()
+
+        self.assertEqual(http_status, 200)
+        self.assertTrue(payload["free_roam_runtime_artifact_proven"])
+        self.assertTrue(payload["free_move_start_ready"])
+        self.assertTrue(payload["motion_without_radar_allowed"])
+        self.assertEqual(payload["camera_readiness"]["status"], "deferred_to_camera_health_endpoint")
+        self.assertEqual(payload["camera_readiness"]["endpoint"], module.ROUTE_PATHS["camera_health"])
+        self.assertTrue(payload["radar_readiness"]["runtime_scan_ready"])
+        self.assertFalse(payload["radar_readiness"]["proof_ready"])
+        self.assertEqual(payload["radar_readiness"]["lifecycle_running"], "not_checked_by_free_roam_latest")
+        self.assertFalse(payload["free_roam_mapping_start_ready"])
+        self.assertEqual(payload["free_roam_mapping_start_missing_reasons"], ["camera_first_frame_not_observed"])
+
 
 if __name__ == "__main__":
     unittest.main()

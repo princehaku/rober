@@ -7701,8 +7701,16 @@ class UpperRobotApi:
             and isinstance(latest, dict)
             and latest.get("schema") == "trashbot.free_roam_autonomy.runtime.v1"
         )
-        camera = self.camera_motion_readiness()
-        radar = self.radar_status()
+        camera = {
+            "ready": False,
+            "status": "deferred_to_camera_health_endpoint",
+            "source_readiness": "not_checked_by_free_roam_latest",
+            "missing": ["camera_first_frame_not_observed"],
+            "endpoint": ROUTE_PATHS["camera_health"],
+            "reason": "free_roam_latest_is_artifact_only_and_must_not_block_on_camera_http",
+        }
+        scan_proof_latest = summarize_lidar_scan_proof_latest_artifact(self.lidar_scan_proof_artifact_path)
+        latest_scan_proof = build_radar_latest_scan_proof_status(scan_proof_latest)
         lidar_age_s = finite_lidar_scan_number(snapshot.get("lidar_age_s"))
         lidar_min_distance_m = finite_lidar_scan_number(snapshot.get("lidar_min_distance_m"))
         # latest endpoint 不能调用 free_roam_runtime_lidar_readiness()，否则会递归回到本函数。
@@ -7712,7 +7720,8 @@ class UpperRobotApi:
             and lidar_age_s <= 1.5
             and lidar_min_distance_m is not None
         )
-        radar_proof_ready = bool(radar.get("lifecycle_running")) and bool(radar.get("latest_scan_proof_fresh"))
+        # 这里只消费已落盘 proof 和 free-roam artifact，避免 latest 被 lifecycle/status 慢读拖死。
+        radar_proof_ready = bool(latest_scan_proof.get("fresh_while_observed"))
         radar_ready = radar_proof_ready or runtime_lidar_ready
         camera_missing = camera.get("missing") if isinstance(camera.get("missing"), list) else ["camera_not_ready"]
         mapping_missing: list[str] = []
@@ -7760,9 +7769,12 @@ class UpperRobotApi:
                     "ready": radar_ready,
                     "proof_ready": radar_proof_ready,
                     "runtime_scan_ready": runtime_lidar_ready,
-                    "lifecycle_running": bool(radar.get("lifecycle_running")),
-                    "lifecycle_state": radar.get("lifecycle_state") or "not_loaded",
-                    "latest_scan_proof_fresh": bool(radar.get("latest_scan_proof_fresh")),
+                    "lifecycle_running": "not_checked_by_free_roam_latest",
+                    "lifecycle_state": "not_checked_by_free_roam_latest",
+                    "latest_scan_proof_fresh": bool(latest_scan_proof.get("fresh_while_observed")),
+                    "latest_scan_proof_state": latest_scan_proof.get("state"),
+                    "latest_scan_proof_failure_reason": latest_scan_proof.get("failure_reason"),
+                    "scan_proof_latest": scan_proof_latest,
                     "lidar_age_s": lidar_age_s,
                     "lidar_min_distance_m": lidar_min_distance_m,
                 },
@@ -8969,7 +8981,8 @@ def create_app(api: UpperRobotApi) -> Any:
             camera_mjpeg_relay.unregister(queue)
 
     async def radar_status(_: web.Request) -> Any:
-        return json_response(api.radar_status())
+        # 同步硬件/文件状态读取放到线程，避免并发 PC summary 卡住 aiohttp 事件循环。
+        return json_response(await asyncio.to_thread(api.radar_status))
 
     async def radar_start(_: web.Request) -> Any:
         return json_response(api.radar_control("start"))
@@ -8983,15 +8996,15 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(payload)
 
     async def radar_scan_proof_latest(_: web.Request) -> Any:
-        http_status, payload = api.radar_scan_proof_latest()
+        http_status, payload = await asyncio.to_thread(api.radar_scan_proof_latest)
         return json_response(payload, status=http_status)
 
     async def radar_raw_packet_proof_latest(_: web.Request) -> Any:
-        http_status, payload = api.radar_raw_packet_proof_latest()
+        http_status, payload = await asyncio.to_thread(api.radar_raw_packet_proof_latest)
         return json_response(payload, status=http_status)
 
     async def base_status(_: web.Request) -> Any:
-        return json_response(api.base_status())
+        return json_response(await asyncio.to_thread(api.base_status))
 
     async def map_start(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
@@ -9010,15 +9023,15 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(api.map_control("load", body if isinstance(body, dict) else {}))
 
     async def map_list(_: web.Request) -> Any:
-        return json_response(api.map_list())
+        return json_response(await asyncio.to_thread(api.map_list))
 
     async def map_status(_: web.Request) -> Any:
         # 只读地图状态入口，方便现场脚本直接 GET，不触发建图、保存或 ROS 查询。
-        return json_response(api.map_status())
+        return json_response(await asyncio.to_thread(api.map_status))
 
     async def map_preview(request: web.Request) -> Any:
         # 地图预览只读本地 YAML/PGM，不触发 SLAM、Nav2、底盘或串口。
-        return json_response(api.map_preview(request.query.get("map_name")))
+        return json_response(await asyncio.to_thread(api.map_preview, request.query.get("map_name")))
 
     async def map_proof_refresh(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
@@ -9026,7 +9039,7 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(payload)
 
     async def map_proof_latest(_: web.Request) -> Any:
-        http_status, payload = api.map_proof_latest()
+        http_status, payload = await asyncio.to_thread(api.map_proof_latest)
         return json_response(payload, status=http_status)
 
     async def localize_reset(request: web.Request) -> Any:
@@ -9034,11 +9047,11 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(await api.localize_reset(body if isinstance(body, dict) else {}))
 
     async def localize_proof_latest(_: web.Request) -> Any:
-        http_status, payload = api.localize_proof_latest()
+        http_status, payload = await asyncio.to_thread(api.localize_proof_latest)
         return json_response(payload, status=http_status)
 
     async def nav2_status(_: web.Request) -> Any:
-        return json_response(api.nav2_status())
+        return json_response(await asyncio.to_thread(api.nav2_status))
 
     async def nav2_proof_refresh(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
@@ -9046,7 +9059,7 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(payload)
 
     async def nav2_proof_latest(_: web.Request) -> Any:
-        http_status, payload = api.nav2_proof_latest()
+        http_status, payload = await asyncio.to_thread(api.nav2_proof_latest)
         return json_response(payload, status=http_status)
 
     async def nav2_goal_execute(request: web.Request) -> Any:
@@ -9054,7 +9067,7 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(await api.nav2_goal_execute(body if isinstance(body, dict) else {}))
 
     async def nav2_goal_execution_latest(_: web.Request) -> Any:
-        http_status, payload = api.nav2_goal_execution_latest()
+        http_status, payload = await asyncio.to_thread(api.nav2_goal_execution_latest)
         return json_response(payload, status=http_status)
 
     async def delivery_complete(request: web.Request) -> Any:
@@ -9062,11 +9075,11 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(api.delivery_complete(body if isinstance(body, dict) else {}))
 
     async def delivery_latest(_: web.Request) -> Any:
-        http_status, payload = api.delivery_latest()
+        http_status, payload = await asyncio.to_thread(api.delivery_latest)
         return json_response(payload, status=http_status)
 
     async def free_roam_autonomy_latest(_: web.Request) -> Any:
-        http_status, payload = api.free_roam_autonomy_latest()
+        http_status, payload = await asyncio.to_thread(api.free_roam_autonomy_latest)
         return json_response(payload, status=http_status)
 
     async def free_roam_autonomy_start(request: web.Request) -> Any:
@@ -9086,7 +9099,7 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(api.nav2_control("stop"))
 
     async def elevator_status(_: web.Request) -> Any:
-        return json_response(api.elevator_status())
+        return json_response(await asyncio.to_thread(api.elevator_status))
 
     async def operator_report_post(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
@@ -9105,7 +9118,7 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(api.operator_report(body))
 
     async def operator_report_get(_: web.Request) -> Any:
-        http_status, payload = api.operator_report_latest()
+        http_status, payload = await asyncio.to_thread(api.operator_report_latest)
         return json_response(payload, status=http_status)
 
     async def base_stop(_: web.Request) -> Any:
@@ -9120,7 +9133,7 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(await api.base_feedback_samples(body if isinstance(body, dict) else {}))
 
     async def base_feedback_samples_latest(_: web.Request) -> Any:
-        http_status, payload = api.base_feedback_samples_latest()
+        http_status, payload = await asyncio.to_thread(api.base_feedback_samples_latest)
         return json_response(payload, status=http_status)
 
     async def base_manual(request: web.Request) -> Any:

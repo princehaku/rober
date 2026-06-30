@@ -104,6 +104,25 @@ bash onboard/scripts/board_live_route_preflight.sh
 - `fixed_route_autonomy dry_run`
 - 可选 `ros2 bag record`
 
+## 1.6 RViz2 Engineering Map View
+
+普通用户在 PC 上优先使用 `http://<PC>:7001/` 的大地图和 `?view=map` 地图大屏。ROS2 原生配套用于工程排障，不替代普通 PC 界面：
+
+```bash
+ros2 launch ros2_trashbot_bringup rviz.launch.py
+```
+
+该 launch 加载 `ros2_trashbot_bringup/rviz/trashbot_nav.rviz`，只读观察以下 topic/frame：
+
+- `/map` 和 `/map_updates`：确认当前地图是否真的发布。
+- `/scan`：确认雷达点是否进入 ROS graph。
+- TF：确认 `map`、`odom`、`base_link`、`laser_frame` 链路是否连通。
+- `/plan`、`/local_plan`：确认 Nav2 全局/局部路线是否生成。
+- `/amcl_pose`：确认定位是否可见。
+- `/global_costmap/costmap`、`/local_costmap/costmap`：确认 Nav2 costmap 是否有数据。
+
+这个 RViz2 配置不包含 GoalTool，也不用于普通用户发车。现场要执行路线仍回到 PC `7001` 普通界面，按图上路线和安全确认按钮走固定 gate。
+
 失败边界约束：
 
 - `--local-only` 仅做本机预检，不发起 SSH 远端命令。

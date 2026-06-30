@@ -38,6 +38,15 @@
 - PC `GET /api/robot-control/summary` 会消费该摘要并把 `decision.gates` 显示到“自动扫图准备”门禁，同时把
   `decision.state/reason/stop_required` 压缩为 `safe_command_boundary.free_roam_autonomy_runtime`，让首屏显示
   上车端状态机当前是锁定、直行判断、避障换向、补覆盖、停止中还是完成。
+- 2026-06-30 20:36 CST 起，`GET /api/free-roam/autonomy/latest` 必须保持 artifact-only：只读取
+  `free_roam_autonomy_latest.json`、已落盘 LiDAR scan proof 和 runtime snapshot，不再同步调用相机
+  `/health` 或完整 `radar_status()`。相机 readiness 在该入口中保守标为
+  `deferred_to_camera_health_endpoint`，因此不会误放开建图；PC summary 需要完整建图 ready 时，应继续
+  合并独立相机、雷达和地图 preview 只读端点。这个边界避免 8787 latest 在相机 HTTP、雷达 lifecycle
+  或并发 summary 慢读时卡住，同时不改变自由移动的安全确认门禁。
+- 同一轮起，8787 的常用只读同步 handler（radar/base/map/Nav2/free-roam latest/status、delivery latest 等）
+  必须通过线程隔离执行，避免 PC summary 并发读取多个端点时某个慢文件或状态读取阻塞 aiohttp 事件循环。
+  这只改变 HTTP 并发稳定性，不启动 ROS2 runtime、不打开底盘串口、不发送 `/cmd_vel`。
 
 ## 当前边界
 
