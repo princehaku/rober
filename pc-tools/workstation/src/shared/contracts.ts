@@ -3967,7 +3967,7 @@ export interface RobotControlBaseFeedbackSamplesProxyResponse extends ProofFlags
   proxy_status: "samples_forwarded" | "samples_rejected" | "samples_failed";
   source_base_url: string;
   normalized_base_url: string;
-  remote_endpoint: "/api/base/feedback-samples";
+  remote_endpoint: "/api/base/feedback-samples" | "/api/base/feedback-samples/latest";
   remote_http_status: number | null;
   status: string;
   sample_key_values: {

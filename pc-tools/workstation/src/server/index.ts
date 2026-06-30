@@ -872,7 +872,11 @@ function deliveryMaterialRefs(payload: Record<string, unknown> | null): RobotCon
   };
 }
 
-function baseFeedbackSamplesFailure(sourceBaseUrl: string, reason: string): RobotControlBaseFeedbackSamplesProxyResponse {
+function baseFeedbackSamplesFailure(
+  sourceBaseUrl: string,
+  reason: string,
+  remoteEndpoint: RobotControlBaseFeedbackSamplesProxyResponse["remote_endpoint"] = "/api/base/feedback-samples",
+): RobotControlBaseFeedbackSamplesProxyResponse {
   // 本机拒绝时不能触发任何串口请求；响应仍保持完整 fail-closed 形状。
   const sampleKeyValues = baseFeedbackSampleKeyValues(null);
   return {
@@ -886,7 +890,7 @@ function baseFeedbackSamplesFailure(sourceBaseUrl: string, reason: string): Robo
     proxy_status: "samples_rejected",
     source_base_url: sourceBaseUrl,
     normalized_base_url: "not_loaded",
-    remote_endpoint: "/api/base/feedback-samples",
+    remote_endpoint: remoteEndpoint,
     remote_http_status: null,
     status: "blocked",
     sample_key_values: sampleKeyValues,
@@ -894,6 +898,48 @@ function baseFeedbackSamplesFailure(sourceBaseUrl: string, reason: string): Robo
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
+    sends_motion_commands: false,
+    robot_control_executed: false,
+  };
+}
+
+function buildBaseFeedbackSamplesResponse(
+  sourceBaseUrl: string,
+  normalizedBaseUrl: URL,
+  remoteEndpoint: RobotControlBaseFeedbackSamplesProxyResponse["remote_endpoint"],
+  remote: { remote_http_status: number | null; payload: Record<string, unknown> | null; error: string },
+): RobotControlBaseFeedbackSamplesProxyResponse {
+  // POST 采样与 GET latest 共用同一套危险字段扫描，避免两个入口对“只读轮速”的解释分叉。
+  const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_FEEDBACK_SAMPLE_FAIL_CLOSED_FIELDS);
+  const sampleKeyValues = baseFeedbackSampleKeyValues(remote.payload);
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+    proxy_status:
+      remote.remote_http_status === 200 && dangerous.length === 0 ? "samples_forwarded" : "samples_failed",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: normalizedBaseUrl.toString().replace(/\/$/, ""),
+    remote_endpoint: remoteEndpoint,
+    remote_http_status: remote.remote_http_status,
+    status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked"),
+    sample_key_values: sampleKeyValues,
+    ...baseFeedbackSampleAliases(sampleKeyValues),
+    failure_reason:
+      dangerous.length > 0
+        ? `dangerous_true_field:${dangerous[0]}`
+        : remote.remote_http_status === 200
+          ? ""
+          : `feedback_samples_http_status_${remote.remote_http_status}`,
+    blocked_reasons: [
+      ...(remote.remote_http_status === 200 ? [] : [`feedback_samples_http_status_${remote.remote_http_status}`]),
+      ...dangerous.map((field) => `dangerous_true_field:${field}`),
+    ],
+    hard_dangerous_true_fields: dangerous,
     sends_motion_commands: false,
     robot_control_executed: false,
   };
@@ -2879,6 +2925,34 @@ async function fetchBaseFeedbackSamplesProxy(
   }
 }
 
+async function fetchBaseFeedbackSamplesLatestProxy(
+  baseUrl: string,
+): Promise<{ remote_http_status: number | null; payload: Record<string, unknown> | null; error: string }> {
+  // GET 入口只读取上位机已经缓存的 latest 轮速材料，给脚本/首屏 readback 使用，不触发 T=130 采样窗口。
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return { remote_http_status: null, payload: null, error: normalized.reason };
+  }
+  try {
+    const response = await fetch(endpointUrl(normalized.normalized, "/api/base/feedback-samples/latest"), {
+      method: "GET",
+      signal: AbortSignal.timeout(6000),
+    });
+    const json = await response.json().catch(() => null);
+    return {
+      remote_http_status: response.status,
+      payload: asRecord(json),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      remote_http_status: null,
+      payload: null,
+      error: error instanceof Error ? shortText(error.message, "upper_api_unreachable") : "upper_api_unreachable",
+    };
+  }
+}
+
 export function createWorkstationApp(): express.Express {
   const workstationApp = express();
 
@@ -3395,39 +3469,27 @@ export function createWorkstationApp(): express.Express {
       } satisfies RobotControlBaseFeedbackSamplesProxyResponse);
       return;
     }
-    const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_FEEDBACK_SAMPLE_FAIL_CLOSED_FIELDS);
-    const sampleKeyValues = baseFeedbackSampleKeyValues(remote.payload);
-    const responseBody: RobotControlBaseFeedbackSamplesProxyResponse = {
-      schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
-      proxy_status:
-        remote.remote_http_status === 200 && dangerous.length === 0 ? "samples_forwarded" : "samples_failed",
-      source: "software_proof",
-      proof_status: "not_proven",
-      safe_to_control: false,
-      delivery_success: false,
-      primary_actions_enabled: false,
-      pc_only: true,
-      source_base_url: sourceBaseUrl,
-      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
-      remote_endpoint: "/api/base/feedback-samples",
-      remote_http_status: remote.remote_http_status,
-      status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked"),
-      sample_key_values: sampleKeyValues,
-      ...baseFeedbackSampleAliases(sampleKeyValues),
-      failure_reason:
-        dangerous.length > 0
-          ? `dangerous_true_field:${dangerous[0]}`
-          : remote.remote_http_status === 200
-            ? ""
-            : `feedback_samples_http_status_${remote.remote_http_status}`,
-      blocked_reasons: [
-        ...(remote.remote_http_status === 200 ? [] : [`feedback_samples_http_status_${remote.remote_http_status}`]),
-        ...dangerous.map((field) => `dangerous_true_field:${field}`),
-      ],
-      hard_dangerous_true_fields: dangerous,
-      sends_motion_commands: false,
-      robot_control_executed: false,
-    };
+    const responseBody = buildBaseFeedbackSamplesResponse(sourceBaseUrl, normalized.normalized, "/api/base/feedback-samples", remote);
+    res.status(responseBody.proxy_status === "samples_forwarded" ? 200 : 502).json(responseBody);
+  });
+
+  workstationApp.get("/api/robot-control/base/feedback-samples", async (req, res) => {
+    // 只读脚本入口必须返回 JSON latest；不能让 GET 掉进 SPA fallback，也不能补发采样或运动 POST。
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      res.status(400).json(baseFeedbackSamplesFailure(sourceBaseUrl, normalized.reason, "/api/base/feedback-samples/latest"));
+      return;
+    }
+    const remote = await fetchBaseFeedbackSamplesLatestProxy(sourceBaseUrl);
+    if (remote.error) {
+      res.status(502).json({
+        ...baseFeedbackSamplesFailure(sourceBaseUrl, remote.error, "/api/base/feedback-samples/latest"),
+        proxy_status: "samples_failed",
+      } satisfies RobotControlBaseFeedbackSamplesProxyResponse);
+      return;
+    }
+    const responseBody = buildBaseFeedbackSamplesResponse(sourceBaseUrl, normalized.normalized, "/api/base/feedback-samples/latest", remote);
     res.status(responseBody.proxy_status === "samples_forwarded" ? 200 : 502).json(responseBody);
   });
 

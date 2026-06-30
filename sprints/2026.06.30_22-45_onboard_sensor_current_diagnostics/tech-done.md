@@ -37,9 +37,14 @@ sprint_type: micro
 - 2026-06-30 23:11 CST 回应“PC 地图太小”：普通首屏地图默认缩放从 `1200%` 提升到 `1600%`，`/map` 直达页继续是只看地图大屏，路线、小车位置和雷达 overlay 仍共用同一张 WYSIWYG 画布。ROS2 配套结论写入 PC 地图卡：RViz2 用于本地工程观察 `/map`、`/scan`、TF、规划轨迹和定位，Foxglove bridge 用于浏览器/远程观察；普通用户仍优先使用 PC `7001/map` 简易大地图，不要求进入 RViz2/Foxglove。
 - 2026-06-30 23:11 CST 补齐相机无法出图的内核根因诊断：上车 8088 `/health` 新增 UVC kernel diagnostics，从 `dmesg` 读取 DV20 所在 USB bus 的 UVC/USB transport error，不再只停在“首帧失败/不是独占”。PC summary 和 `/api/robot-control/camera/mjpeg/status` 同步暴露 `uvc_kernel_diagnostics_*` 与 `uvc_transport_error_not_exclusive`，现场可直接看到“USB 线、接口、供电或 known-good UVC”下一步。
 - 2026-06-30 23:20 CST 补齐 Nav2 轮速复验顶层上下文：`live_closure_summary` API 和 `plain-live-closure-summary` DOM 新增 `wheel_rerun_last_base_command_mode`、`wheel_rerun_next_base_command_mode`、`wheel_rerun_feedback_sample_count`、`wheel_rerun_feedback_nonzero_sample_count`、`wheel_rerun_latest_raw_left/right`、IMU delta 字段和 `wheel_rerun_readback_plain`。现场脚本只读 summary 即可看到上次执行窗口 `pwm`、下次 `ros`、`239/0` 样本和 `0/0` L/R；字段只解释卡点，不把历史材料当成功证明，也不触发任何运动/control POST。
+- 2026-06-30 23:26 CST 修正 PC 固定轮速 readback endpoint 的 GET 行为：`GET /api/robot-control/base/feedback-samples?baseUrl=...` 现在返回 JSON，并只读代理上位机 `/api/base/feedback-samples/latest`；原 POST 继续发送后端写死的 T=130 短采样参数。两个入口共用 wheel raw L/R 顶层 alias 和 fail-closed 危险字段扫描，避免现场脚本按 summary 提示读 endpoint 时拿到 SPA HTML。
 
 ## 验证结果
 
+- `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 409 tests；新增覆盖 `GET /api/robot-control/base/feedback-samples` 返回 JSON latest 轮速 readback、只命中上位机 `/api/base/feedback-samples/latest`，不发送 `/api/base/feedback-samples` POST、manual 或 Nav2 execute。
+- `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
+- `git diff --check`：通过。
+- 2026-06-30 23:29 CST PC 7001 live GET 验证固定轮速 readback endpoint：`GET /api/robot-control/base/feedback-samples?baseUrl=http://192.168.1.11:8787` 返回 `HTTP 200 application/json`，`schema=trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1`、`proxy_status=samples_forwarded`、`remote_endpoint=/api/base/feedback-samples/latest`、`remote_http_status=200`、`status=loaded`、`wheel_raw_left=not_observed`、`wheel_raw_right=not_observed`、`wheel_feedback_lr_nonzero_proven=false`、`sends_motion_commands=false`、`robot_control_executed=false`。该验证只调用 GET readback，没有发送 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - `python3 -m unittest onboard.scripts.test_local_webrtc_camera_smoke_health onboard.scripts.test_upper_robot_api_free_roam`：通过，6 tests。
 - `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py onboard/scripts/test_upper_robot_api_free_roam.py`：通过。
 - `python3 -m unittest onboard.src.ros2_trashbot_hardware.test.test_lidar_driver_stubs`：通过，16 tests。
