@@ -6034,6 +6034,55 @@ const plainWysiwygSurfaceGauge = computed<PlainWysiwygSurfaceGauge>(() => {
     fixedRadarRefreshEndpoint: "/api/robot-control/radar/scan-proof/refresh",
   };
 });
+const plainMapRadarWysiwygProof = computed(() => {
+  // 地图卡里的雷达验收只认当前画出来的地图点层；局部点、旧点和只有点数都不能冒充已贴图。
+  const map = plainMapVisualSummary.value;
+  const visible = map.radarMapPointsVisible;
+  const state = visible
+    ? "已贴图"
+    : map.radarMapLocalPointCount > 0
+      ? "局部点"
+      : map.radarMapCountOnlyPointCount > 0
+        ? "只有点数"
+        : map.radarMapNotCurrentSourcePointCount > 0
+          ? "旧点已抑制"
+          : "未贴图";
+  const text = (() => {
+    if (visible) {
+      const sourceText = map.radarMapSource === "map_preview"
+        ? "地图预览"
+        : map.radarMapSource === "runtime_scan"
+          ? "实时扫描"
+          : "当前读数";
+      return `雷达贴图验收：当前地图已画出 ${map.radarMapPointCount} 个雷达点，来自${sourceText}，帧 ${map.radarMapFrameId}；只按当前地图点层验收。下一步：按当前地图标记验收。`;
+    }
+    if (map.radarMapLocalPointCount > 0) {
+      return `雷达贴图验收：当前只有局部雷达点 ${map.radarMapLocalPointCount} 个，还没有贴到地图坐标。下一步：刷新定位和地图画面。`;
+    }
+    if (map.radarMapCountOnlyPointCount > 0) {
+      return `雷达贴图验收：当前只读到雷达点数 ${map.radarMapCountOnlyPointCount}，没有点位图层，不能算地图已显示。下一步：刷新雷达读数和地图画面。`;
+    }
+    if (map.radarMapNotCurrentSourcePointCount > 0) {
+      return `雷达贴图验收：旧雷达点 ${map.radarMapNotCurrentSourcePointCount} 个已抑制，没有当作当前地图点。下一步：刷新雷达读数和地图画面。`;
+    }
+    return "雷达贴图验收：当前地图还没有雷达点层。下一步：让雷达运行后刷新地图画面。";
+  })();
+  return {
+    state,
+    text,
+    radarMapPointsVisible: visible,
+    radarMapPointCount: map.radarMapPointCount,
+    radarMapSourcePointCount: map.radarMapSourcePointCount,
+    radarMapFrameId: map.radarMapFrameId,
+    radarMapSource: map.radarMapSource,
+    radarMapOverlayStatus: map.radarMapOverlayStatus,
+    radarMapLocalPointCount: map.radarMapLocalPointCount,
+    radarMapNotCurrentSourcePointCount: map.radarMapNotCurrentSourcePointCount,
+    radarMapCountOnlyPointCount: map.radarMapCountOnlyPointCount,
+    fixedRadarMapPreviewEndpoint: map.fixedRadarMapPreviewEndpoint,
+    fixedRadarRefreshEndpoint: map.fixedRadarRefreshEndpoint,
+  };
+});
 const plainRadarMapDomEvidence = computed(() => {
   // 雷达卡复用地图卡的贴图事实，避免一处说已贴图、另一处其实没画出来。
   const map = plainMapVisualSummary.value;
@@ -18359,6 +18408,29 @@ onBeforeUnmount(() => {
               <span class="muted" data-testid="plain-map-coordinate-truth-label">{{ plainMapVisualSummary.coordinateTruthLabel }}</span>
               <span v-if="plainMapVisualSummary.tripExecutionLabel" class="muted" data-testid="plain-map-trip-execution-label">{{ plainMapVisualSummary.tripExecutionLabel }}</span>
             </div>
+            <p
+              class="panel-note plain-map-radar-wysiwyg-proof"
+              data-testid="plain-map-radar-wysiwyg-proof"
+              :data-state="plainMapRadarWysiwygProof.state"
+              :data-radar-map-points-visible="String(plainMapRadarWysiwygProof.radarMapPointsVisible)"
+              :data-radar-map-point-count="String(plainMapRadarWysiwygProof.radarMapPointCount)"
+              :data-radar-map-source-point-count="String(plainMapRadarWysiwygProof.radarMapSourcePointCount)"
+              :data-radar-map-frame-id="plainMapRadarWysiwygProof.radarMapFrameId"
+              :data-radar-map-source="plainMapRadarWysiwygProof.radarMapSource"
+              :data-radar-map-overlay-status="plainMapRadarWysiwygProof.radarMapOverlayStatus"
+              :data-radar-local-point-count="String(plainMapRadarWysiwygProof.radarMapLocalPointCount)"
+              :data-radar-not-current-source-point-count="String(plainMapRadarWysiwygProof.radarMapNotCurrentSourcePointCount)"
+              :data-radar-count-only-point-count="String(plainMapRadarWysiwygProof.radarMapCountOnlyPointCount)"
+              :data-fixed-radar-map-preview-endpoint="plainMapRadarWysiwygProof.fixedRadarMapPreviewEndpoint"
+              :data-fixed-radar-refresh-endpoint="plainMapRadarWysiwygProof.fixedRadarRefreshEndpoint"
+              data-sends-motion-when-clicked="false"
+              data-starts-radar="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+            >
+              {{ plainMapRadarWysiwygProof.text }}
+            </p>
           </div>
           <div class="panel-action-row wrap-actions">
             <button

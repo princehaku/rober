@@ -713,6 +713,31 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-map-radar-wysiwyg-proof {
+  /* 雷达贴图只看地图卡当前画出的点层，避免把旧点、局部点或点数当成已显示。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-map-radar-wysiwyg-proof[data-state="已贴图"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-map-radar-wysiwyg-proof[data-state="局部点"],
+.plain-map-radar-wysiwyg-proof[data-state="只有点数"] {
+  border-left-color: #9a6700;
+}
+
+.plain-map-radar-wysiwyg-proof[data-state="旧点已抑制"],
+.plain-map-radar-wysiwyg-proof[data-state="未贴图"] {
+  border-left-color: #8c959f;
+}
+
 .plain-safety-actions {
   display: grid;
   gap: 7px;
