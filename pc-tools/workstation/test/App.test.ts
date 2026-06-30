@@ -911,6 +911,10 @@ const fixtures: Record<string, unknown> = {
       keyboard_continuous_wheel_feedback_acceptance: "same_hold_window_wheel_lr_nonzero",
       fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",
       fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop",
+      fixed_keyboard_feedback_readback_endpoint: "/api/robot-control/base/feedback-samples",
+      fixed_keyboard_summary_endpoint: "/api/robot-control/summary",
+      keyboard_continuous_post_hold_feedback_readback_required: true,
+      keyboard_continuous_post_hold_summary_refresh_required: true,
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       wheel_rerun_minimal_precheck_safety_only: false,
@@ -4687,6 +4691,10 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-continuous-wheel-feedback-acceptance")).toBe("same_hold_window_wheel_lr_nonzero");
     expect(liveClosureSummary.attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
     expect(liveClosureSummary.attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(liveClosureSummary.attributes("data-fixed-keyboard-feedback-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
+    expect(liveClosureSummary.attributes("data-fixed-keyboard-summary-endpoint")).toBe("/api/robot-control/summary");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-post-hold-feedback-readback-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-post-hold-summary-refresh-required")).toBe("true");
     expect(liveClosureSummary.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-safety-confirm-required-for-motion")).toBe("true");
     expect(liveClosureSummary.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("false");

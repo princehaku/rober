@@ -2801,6 +2801,10 @@ export interface RobotControlLiveClosureSummary {
   keyboard_continuous_wheel_feedback_acceptance: "same_hold_window_wheel_lr_nonzero";
   fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual";
   fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop";
+  fixed_keyboard_feedback_readback_endpoint: "/api/robot-control/base/feedback-samples";
+  fixed_keyboard_summary_endpoint: "/api/robot-control/summary";
+  keyboard_continuous_post_hold_feedback_readback_required: true;
+  keyboard_continuous_post_hold_summary_refresh_required: true;
   minimal_precheck_safety_only: boolean;
   safety_confirm_required_for_motion: boolean;
   wheel_rerun_minimal_precheck_safety_only: boolean;
