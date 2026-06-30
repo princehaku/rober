@@ -3009,6 +3009,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       first_frame_probe_backend_smoke_status: string;
       first_frame_probe_backend_frame_observed: string;
       first_frame_probe_backend_attempts: string;
+      first_frame_probe_streamon_io_error_observed: string;
+      first_frame_probe_streamon_io_error_count: string;
+      first_frame_probe_latest_streamon_io_error: string;
       first_frame_probe_fallback_attempts_summary: string;
       first_frame_probe_checked_at_ms: string;
     };
@@ -3953,6 +3956,9 @@ export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFla
     backend_smoke_status: string;
     backend_frame_observed: string;
     backend_attempts: string;
+    streamon_io_error_observed: string;
+    streamon_io_error_count: string;
+    latest_streamon_io_error: string;
     fallback_attempt_count: string;
     fallback_attempts_summary: string;
   };

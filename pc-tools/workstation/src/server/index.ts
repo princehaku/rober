@@ -452,6 +452,9 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
     backend_smoke_status: shortValue(backendSmoke?.status, "not_requested"),
     backend_frame_observed: shortValue(backendSmoke?.frame_observed, "false"),
     backend_attempts: shortValue(backendAttempts.length),
+    streamon_io_error_observed: shortValue(backendSmoke?.streamon_io_error_observed, "false"),
+    streamon_io_error_count: shortValue(backendSmoke?.streamon_io_error_count, "0"),
+    latest_streamon_io_error: shortValue(backendSmoke?.latest_streamon_io_error, "none"),
     fallback_attempt_count: shortValue(fallbackAttempts.length),
     fallback_attempts_summary: fallbackAttemptSummary || "none",
   };
@@ -2326,6 +2329,9 @@ function cameraProbeOverlayFromResponse(
     backend_smoke_status: response.probe_key_values.backend_smoke_status,
     backend_frame_observed: response.probe_key_values.backend_frame_observed,
     backend_attempts: response.probe_key_values.backend_attempts,
+    streamon_io_error_observed: response.probe_key_values.streamon_io_error_observed,
+    streamon_io_error_count: response.probe_key_values.streamon_io_error_count,
+    latest_streamon_io_error: response.probe_key_values.latest_streamon_io_error,
     fallback_attempts_summary: response.probe_key_values.fallback_attempts_summary,
   };
 }

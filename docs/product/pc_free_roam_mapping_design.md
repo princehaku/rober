@@ -152,6 +152,14 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `first_frame_total_timeout` 后对 MJPEG 自动重试加冷却；这样后进入页面不会因为旧共享 capture 或自动重试把
   `/dev/video1` 长时间占住。当前现场结论是 `source_usage=not_in_use` 但 DV20 UVC 无 kernel frame，剩余 blocker
   应按 USB、摄像头输入、供电或 known-good UVC 复测处理，而不是按浏览器独占处理。
+- 2026-07-01 起，8088 相机服务启动脚本会在启动前清理同端口且同命令的 stale
+  `local_webrtc_camera_smoke.py` listener，避免旧进程脱离 systemd 后导致 `Address already in use` 重启循环。
+  `camera_first_frame_probe.py --include-backend-smoke` 也会把 V4L2/ffmpeg 的
+  `VIDIOC_STREAMON: Input/output error` 汇总成 `streamon_io_error_observed/count/latest_streamon_io_error`；
+  PC probe proxy 和 summary 会透传这些字段。现场 2026-07-01 00:52 验证：8088 连续两次
+  `systemctl restart` 后 active，`/dev/video1` 仍无真实首帧，backend smoke 读到
+  `streamon_io_error_observed=true`、`streamon_io_error_count=9`。这只修复共享预览服务可恢复性和
+  无画面根因表达，不把相机标成 ready。
 - 2026-06-27 03:10 起，PC 普通首屏把“能尝试共享实时预览”和“画面已经可见”拆开：即使上车 summary
   报 `source_first_frame_failed`，只要设备已加载或已选中 `/dev/video1`，页面仍会挂载只读
   `/api/robot-control/camera/mjpeg` 共享预览，让后来进入的页面也能复用同一条上游流并看到真实画面或真实失败原因；

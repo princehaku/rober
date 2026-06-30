@@ -9508,6 +9508,9 @@ describe("workstation fail-closed API contracts", () => {
         backend_smoke_status: "not_requested",
         backend_frame_observed: "not_loaded",
         backend_attempts: "0",
+        streamon_io_error_observed: "false",
+        streamon_io_error_count: "0",
+        latest_streamon_io_error: "none",
         fallback_attempts_summary: "none",
       });
 

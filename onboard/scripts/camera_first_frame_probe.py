@@ -436,6 +436,12 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
     frame_observed = any(item.get("status") == "frame_observed" for item in attempts)
     primary_failure = next((item.get("failure_reason") for item in attempts if item.get("failure_reason")), None)
     no_frame_timeouts = [item for item in attempts if item.get("status") == "no_frame_timeout"]
+    streamon_io_errors = [
+        item
+        for item in attempts
+        if "vidioc_streamon" in str(item.get("stderr_preview") or "").lower()
+        and "input/output error" in str(item.get("stderr_preview") or "").lower()
+    ]
     return {
         "executed": True,
         "frame_observed": frame_observed,
@@ -443,6 +449,10 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
         "overall_status": "frame_observed" if frame_observed else "no_kernel_frame_observed",
         "failure_reason": None if frame_observed else primary_failure or "backend_no_frame_observed",
         "no_frame_timeout_count": len(no_frame_timeouts),
+        # 多后端都在 VIDIOC_STREAMON 阶段 I/O error 时，根因已经低于 OpenCV/浏览器层。
+        "streamon_io_error_observed": bool(streamon_io_errors),
+        "streamon_io_error_count": len(streamon_io_errors),
+        "latest_streamon_io_error": str(streamon_io_errors[-1].get("stderr_preview") or "")[-400:] if streamon_io_errors else "",
         "v4l2_info": v4l2_info,
         "attempts": attempts,
         "output_dir": str(output_dir),
@@ -616,6 +626,10 @@ def probe_device(args: argparse.Namespace) -> dict[str, Any]:
     try:
         if not capture.isOpened():
             payload.update({"status": "open_failed", "open_ok": False})
+            if getattr(args, "include_backend_smoke", False):
+                # OpenCV open 失败时也要跑底层 V4L2/ffmpeg smoke，避免 PC 只看到泛化 open_failed。
+                capture.release()
+                payload["backend_smoke"] = backend_smoke_probe(args)
             return payload
 
         payload["open_ok"] = True

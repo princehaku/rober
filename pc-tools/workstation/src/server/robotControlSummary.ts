@@ -2343,6 +2343,9 @@ function cameraSummaryFromReadbacks(
     ?? (sourceFirstFrameFailedForSharedPreview ? "false" : "not_loaded");
   const firstFrameProbeFallbackAttemptsSummary = firstFrameProbeOverlay?.fallback_attempts_summary
     ?? (sourceFirstFrameFailedForSharedPreview ? lastOfferFormatAttemptsSummary : "none");
+  const firstFrameProbeStreamonIoErrorObserved = firstFrameProbeOverlay?.streamon_io_error_observed ?? "false";
+  const firstFrameProbeStreamonIoErrorCount = firstFrameProbeOverlay?.streamon_io_error_count ?? "0";
+  const firstFrameProbeLatestStreamonIoError = firstFrameProbeOverlay?.latest_streamon_io_error ?? "none";
   const firstFrameProbeCheckedAtMs = firstFrameProbeOverlay
     ? String(firstFrameProbeOverlay.checked_at_ms)
     : sourceFirstFrameFailedForSharedPreview && mjpegRelayOverlay?.last_failure_at_ms !== null && mjpegRelayOverlay?.last_failure_at_ms !== undefined
@@ -2455,6 +2458,9 @@ function cameraSummaryFromReadbacks(
     first_frame_probe_backend_smoke_status: firstFrameProbeOverlay?.backend_smoke_status ?? "not_requested",
     first_frame_probe_backend_frame_observed: firstFrameProbeOverlay?.backend_frame_observed ?? "not_loaded",
     first_frame_probe_backend_attempts: firstFrameProbeOverlay?.backend_attempts ?? "0",
+    first_frame_probe_streamon_io_error_observed: firstFrameProbeStreamonIoErrorObserved,
+    first_frame_probe_streamon_io_error_count: firstFrameProbeStreamonIoErrorCount,
+    first_frame_probe_latest_streamon_io_error: firstFrameProbeLatestStreamonIoError,
     first_frame_probe_fallback_attempts_summary: firstFrameProbeFallbackAttemptsSummary,
     first_frame_probe_checked_at_ms: firstFrameProbeCheckedAtMs,
   };
@@ -2496,6 +2502,9 @@ export type RobotControlCameraFirstFrameProbeOverlay = {
   backend_smoke_status: string;
   backend_frame_observed: string;
   backend_attempts: string;
+  streamon_io_error_observed: string;
+  streamon_io_error_count: string;
+  latest_streamon_io_error: string;
   fallback_attempts_summary: string;
 };
 
@@ -6283,6 +6292,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         first_frame_probe_backend_smoke_status: "not_requested",
         first_frame_probe_backend_frame_observed: "not_loaded",
         first_frame_probe_backend_attempts: "0",
+        first_frame_probe_streamon_io_error_observed: "false",
+        first_frame_probe_streamon_io_error_count: "0",
+        first_frame_probe_latest_streamon_io_error: "none",
         first_frame_probe_fallback_attempts_summary: "none",
         first_frame_probe_checked_at_ms: "not_loaded",
       },

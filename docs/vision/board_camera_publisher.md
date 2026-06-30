@@ -340,6 +340,29 @@ PC Node 对 MJPEG 只维护一条上游流再 fanout，8088 camera service 的 `
 PC 7001 summary 同步读回 `shared_preview_exclusive_camera_claim=false` 和
 `source_diagnosis_plain_hint=不是页面独占...UVC 设备没有输出视频帧...`。
 
+## 2026-07-01 00:52 camera service restart 与 STREAMON 证据
+
+本轮继续按真实上位机 `root@192.168.1.11:37878` 复查摄像头链路，结论仍是“8088 共享预览服务可用，但
+DV20 `/dev/video1` 没有输出 kernel frame”，不是浏览器独占：
+
+- 现场发现旧 `python3 scripts/local_webrtc_camera_smoke.py ...` 进程脱离 systemd 后仍监听 `0.0.0.0:8088`，
+  导致 `trashbot-local-webrtc-camera.service` 重启时反复报 `OSError: [Errno 98] Address already in use`。
+  `onboard/scripts/local_webrtc_camera_smoke.sh` 已新增 stale listener 清理：只杀同端口且命令行包含
+  `local_webrtc_camera_smoke.py` 的旧实例；如果端口被其它服务占用，只报错不抢占。
+- 上车部署后连续两次 `systemctl restart trashbot-local-webrtc-camera.service` 均成功，
+  `systemctl is-active` 为 `active`，8088 由 systemd MainPID 监听。
+- 共享 MJPEG 复测后，`GET http://127.0.0.1:8088/health` 返回
+  `status=source_first_frame_failed`、`source_readiness=first_frame_failed`、
+  `source_failure_reason=first_frame_total_timeout`、`source_usage.status=not_in_use`、
+  `source_diagnosis.status=uvc_no_frame_not_exclusive`。
+- `camera_first_frame_probe.py --include-backend-smoke` 现在即使 OpenCV `open_failed` 也会继续跑
+  V4L2/ffmpeg backend smoke，并汇总 `streamon_io_error_observed/count/latest_streamon_io_error`。
+  现场读回 `streamon_io_error_observed=true`、`streamon_io_error_count=9`，最新错误为
+  `ioctl(VIDIOC_STREAMON): Input/output error` / `/dev/video1: Input/output error`。
+
+本轮修复的是 8088 service 可重复恢复和 PC/脚本对底层无帧根因的所见即所得表达；没有证明摄像头已可见。
+恢复画面仍需检查 USB 线/接口/供电、DV20 输入，或替换 known-good UVC 后复测。
+
 ## 2026-06-11 20:05 camera visible content gate refresh
 
 `sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/` 继续只做
