@@ -8652,6 +8652,25 @@ function buildLiveClosureSummary(
   const mappingStartReady = boundary.free_roam_mapping_start_ready || goalSummary.ready_action_ids.includes("mapping_start");
   const mappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
   const mappingAcceptanceMissingReasons = boundary.free_roam_mapping_missing_reasons;
+  const mappingCameraBlocksStart = mappingStartMissingReasons.includes("camera_first_frame");
+  const mappingLidarBlocksStart = mappingStartMissingReasons.includes("lidar_fresh");
+  const mappingStartUnblockPlain = (() => {
+    if (mappingStartReady) {
+      return "建图启动已就绪：画面首帧和雷达新鲜都满足；勾现场安全确认后可启动建图记录。";
+    }
+    const missingPlain = [
+      ...(mappingCameraBlocksStart ? ["画面首帧"] : []),
+      ...(mappingLidarBlocksStart ? ["雷达新鲜"] : []),
+    ].join("、") || "传感器条件";
+    const cameraDiagnosisPlain = readback.camera.source_diagnosis_plain_hint
+      || readback.camera.source_diagnosis_next_action_plain
+      || readback.camera.camera_wysiwyg_next_action_plain
+      || camera.next_action_plain;
+    const cameraTail = mappingCameraBlocksStart
+      ? `当前相机提示：${cameraDiagnosisPlain}`
+      : "相机首帧已满足。";
+    return `建图启动还差：${missingPlain}；自由移动仍可先做，不被相机/雷达画面缺口阻塞。${cameraTail}；只读复测相机首帧和 MJPEG 状态，首帧 ready 后再启动建图。`;
+  })();
   const keyboardControlStartReady = keyboard.evidence?.keyboard_start_ready === true
     || readback.keyboard.keyboard_control_start_ready === "true";
   const keyboardContinuousControlReady = keyboardControlStartReady
@@ -9001,8 +9020,18 @@ function buildLiveClosureSummary(
     mapping_start_requires_lidar_fresh: true,
     mapping_start_missing_reasons: mappingStartMissingReasons,
     mapping_acceptance_missing_reasons: mappingAcceptanceMissingReasons,
+    mapping_start_unblock_plain: mappingStartUnblockPlain,
+    mapping_camera_blocks_start: mappingCameraBlocksStart,
+    mapping_lidar_blocks_start: mappingLidarBlocksStart,
+    mapping_unblock_allows_free_move: true,
+    mapping_unblock_camera_diagnosis_status: readback.camera.source_diagnosis_status || "not_loaded",
+    mapping_unblock_camera_not_exclusive: readback.camera.source_diagnosis_not_exclusive || "not_loaded",
+    mapping_unblock_camera_next_action_plain: readback.camera.source_diagnosis_next_action_plain || readback.camera.camera_wysiwyg_next_action_plain || camera.next_action_plain,
     fixed_mapping_start_endpoint: "/api/robot-control/map/start",
     fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
+    fixed_mapping_unblock_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
+    fixed_mapping_unblock_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+    mapping_unblock_sends_motion_when_clicked: false,
     keyboard_control_start_ready: keyboardControlStartReady,
     keyboard_continuous_control_ready: keyboardContinuousControlReady,
     keyboard_hold_to_move_required: keyboardHoldToMoveRequired,

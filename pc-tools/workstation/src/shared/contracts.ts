@@ -2837,8 +2837,18 @@ export interface RobotControlLiveClosureSummary {
   mapping_start_requires_lidar_fresh: true;
   mapping_start_missing_reasons: string[];
   mapping_acceptance_missing_reasons: string[];
+  mapping_start_unblock_plain: string;
+  mapping_camera_blocks_start: boolean;
+  mapping_lidar_blocks_start: boolean;
+  mapping_unblock_allows_free_move: true;
+  mapping_unblock_camera_diagnosis_status: string;
+  mapping_unblock_camera_not_exclusive: string;
+  mapping_unblock_camera_next_action_plain: string;
   fixed_mapping_start_endpoint: "/api/robot-control/map/start";
   fixed_mapping_preview_endpoint: "/api/robot-control/map/preview";
+  fixed_mapping_unblock_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
+  fixed_mapping_unblock_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status";
+  mapping_unblock_sends_motion_when_clicked: false;
   keyboard_control_start_ready: boolean;
   keyboard_continuous_control_ready: boolean;
   keyboard_hold_to_move_required: boolean;

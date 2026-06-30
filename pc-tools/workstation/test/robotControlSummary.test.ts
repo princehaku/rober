@@ -586,6 +586,17 @@ describe("robotControlSummary", () => {
       "mapping_active",
       "fresh_map_preview",
     ]);
+    expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧、雷达新鲜");
+    expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("自由移动仍可先做");
+    expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("只读复测相机首帧和 MJPEG 状态");
+    expect(summary.live_closure_summary?.mapping_camera_blocks_start).toBe(true);
+    expect(summary.live_closure_summary?.mapping_lidar_blocks_start).toBe(true);
+    expect(summary.live_closure_summary?.mapping_unblock_allows_free_move).toBe(true);
+    expect(summary.live_closure_summary?.mapping_unblock_camera_diagnosis_status).toBe("not_loaded");
+    expect(summary.live_closure_summary?.mapping_unblock_camera_not_exclusive).toBe("not_loaded");
+    expect(summary.live_closure_summary?.fixed_mapping_unblock_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.live_closure_summary?.fixed_mapping_unblock_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.live_closure_summary?.mapping_unblock_sends_motion_when_clicked).toBe(false);
     expect(summary.live_closure_summary?.fixed_mapping_start_endpoint).toBe("/api/robot-control/map/start");
     expect(summary.live_closure_summary?.fixed_mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
   });
