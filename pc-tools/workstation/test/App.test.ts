@@ -6077,7 +6077,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-executes-current-route-goal")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requested-base-command-mode")).toBe("ros");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-camera-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-radar-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-route-wysiwyg-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-latest-refresh-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-summary-refresh-required")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-execution-latest-endpoint")).toBe("/api/robot-control/nav2/goal/execution/latest");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-wheel-feedback-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     const defaultTripRouteBinding = wrapper.find('[data-testid="plain-trip-route-binding"]');
     expect(defaultTripRouteBinding.text()).toBe("执行绑定：地图上还没有当前图上行程；主按钮只会准备或刷新行程，不发车。");
     expect(defaultTripRouteBinding.attributes("data-state")).toBe("未绑定");
@@ -11039,6 +11047,18 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-sends-motion-when-clicked")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-target-source")).toBe("current_map_route");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-managed-runtime-autostart")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-last-base-command-mode")).toBe("pwm");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-next-base-command-mode")).toBe("ros");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requested-base-command-mode")).toBe("ros");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-wheel-feedback-status")).toBe("goal_succeeded_but_wheel_lr_zero");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-wheel-lr-nonzero-proven")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-camera-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-radar-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-route-wysiwyg-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-latest-refresh-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-summary-refresh-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-execution-latest-endpoint")).toBe("/api/robot-control/nav2/goal/execution/latest");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-wheel-feedback-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：将执行当前地图上的路线；发车前只复核安全确认和固定白名单。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
 

@@ -11050,6 +11050,14 @@ type PlainTripDomEvidence = {
   deliveryRouteMapRef: string;
   lastBaseCommandMode: string;
   nextBaseCommandMode: string;
+  requestedBaseCommandMode: string;
+  cameraPreflightRequired: boolean;
+  radarPreflightRequired: boolean;
+  routeWysiwygPreflightRequired: boolean;
+  postExecuteLatestRefreshRequired: boolean;
+  postExecuteSummaryRefreshRequired: boolean;
+  fixedExecutionLatestEndpoint: string;
+  fixedWheelFeedbackReadbackEndpoint: string;
   fixedExecuteProxyEndpoint: string;
 };
 const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
@@ -11110,6 +11118,14 @@ const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
     deliveryRouteMapRef: deliveryOperatorRouteMapRef.value.trim() || "not_loaded",
     lastBaseCommandMode: values?.base_command_mode ?? nav2?.goal_execution_base_command_mode ?? "not_loaded",
     nextBaseCommandMode: plainTripRequestedBaseCommandMode(),
+    requestedBaseCommandMode: plainTripRequestedBaseCommandMode(),
+    cameraPreflightRequired: false,
+    radarPreflightRequired: false,
+    routeWysiwygPreflightRequired: false,
+    postExecuteLatestRefreshRequired: true,
+    postExecuteSummaryRefreshRequired: true,
+    fixedExecutionLatestEndpoint: "/api/robot-control/nav2/goal/execution/latest",
+    fixedWheelFeedbackReadbackEndpoint: "/api/robot-control/base/feedback-samples",
     fixedExecuteProxyEndpoint: "/api/robot-control/nav2/goal/execute",
   };
 });
@@ -18181,7 +18197,15 @@ onBeforeUnmount(() => {
             :data-delivery-route-map-ref="plainTripDomEvidence.deliveryRouteMapRef"
             :data-last-base-command-mode="plainTripDomEvidence.lastBaseCommandMode"
             :data-next-base-command-mode="plainTripDomEvidence.nextBaseCommandMode"
+            :data-requested-base-command-mode="plainTripDomEvidence.requestedBaseCommandMode"
+            :data-camera-preflight-required="String(plainTripDomEvidence.cameraPreflightRequired)"
+            :data-radar-preflight-required="String(plainTripDomEvidence.radarPreflightRequired)"
+            :data-route-wysiwyg-preflight-required="String(plainTripDomEvidence.routeWysiwygPreflightRequired)"
+            :data-post-execute-latest-refresh-required="String(plainTripDomEvidence.postExecuteLatestRefreshRequired)"
+            :data-post-execute-summary-refresh-required="String(plainTripDomEvidence.postExecuteSummaryRefreshRequired)"
             :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
+            :data-fixed-execution-latest-endpoint="plainTripDomEvidence.fixedExecutionLatestEndpoint"
+            :data-fixed-wheel-feedback-readback-endpoint="plainTripDomEvidence.fixedWheelFeedbackReadbackEndpoint"
             data-testid="plain-trip-run"
           >
             <div class="simple-status-row">
@@ -18216,7 +18240,21 @@ onBeforeUnmount(() => {
                 :data-minimal-precheck-safety-only="String(true)"
                 :data-managed-runtime-autostart="String(plainTripManagedRuntimeWillAutostart)"
                 :data-requires-same-window-wheel-lr-nonzero="String(plainTripDomEvidence.requiresSameWindowWheelLrNonzero)"
+                :data-wheel-feedback-status="plainTripDomEvidence.wheelFeedbackStatus"
+                :data-wheel-lr-nonzero-proven="String(plainTripDomEvidence.wheelLrNonzeroProven)"
+                :data-latest-wheel-raw-left="plainTripDomEvidence.latestWheelRawLeft"
+                :data-latest-wheel-raw-right="plainTripDomEvidence.latestWheelRawRight"
+                :data-last-base-command-mode="plainTripDomEvidence.lastBaseCommandMode"
+                :data-next-base-command-mode="plainTripDomEvidence.nextBaseCommandMode"
+                :data-requested-base-command-mode="plainTripDomEvidence.requestedBaseCommandMode"
+                :data-camera-preflight-required="String(plainTripDomEvidence.cameraPreflightRequired)"
+                :data-radar-preflight-required="String(plainTripDomEvidence.radarPreflightRequired)"
+                :data-route-wysiwyg-preflight-required="String(plainTripDomEvidence.routeWysiwygPreflightRequired)"
+                :data-post-execute-latest-refresh-required="String(plainTripDomEvidence.postExecuteLatestRefreshRequired)"
+                :data-post-execute-summary-refresh-required="String(plainTripDomEvidence.postExecuteSummaryRefreshRequired)"
                 :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
+                :data-fixed-execution-latest-endpoint="plainTripDomEvidence.fixedExecutionLatestEndpoint"
+                :data-fixed-wheel-feedback-readback-endpoint="plainTripDomEvidence.fixedWheelFeedbackReadbackEndpoint"
                 @click="runPlainTripExecution"
               >
                 {{ plainTripExecutionButtonLabel }}
