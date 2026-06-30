@@ -15478,28 +15478,36 @@ describe("workstation fail-closed API contracts", () => {
           payload: {
             schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
             status: "loaded",
-            safe_to_control: false,
-            robot_control_executed: false,
-            requested_sample_count: 3,
-            completed_sample_count: 3,
-            t1001_observed_count: 3,
-            all_samples_observed_t1001: true,
-            partial_samples_observed_t1001: true,
-            wheel_feedback_lr_nonzero_proven: true,
-            wheel_feedback_nonzero_observed: true,
-            observed_feedback_types: [1001],
-            sends_motion_commands: false,
-            feedback_ack: {
-              t1001_observed: true,
-            },
-            wheel_feedback_summary: {
-              nonzero_frame_count: 2,
-              source: "vendor_t1001_L_R",
-              latest_pair: {
-                left_speed: 12,
-                right_speed: 13,
+            latest_result: {
+              schema: "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+              status: "loaded",
+              safe_to_control: false,
+              robot_control_executed: false,
+              requested_sample_count: 3,
+              completed_sample_count: 3,
+              t1001_observed_count: 3,
+              all_samples_observed_t1001: true,
+              partial_samples_observed_t1001: true,
+              wheel_feedback_lr_nonzero_proven: true,
+              wheel_feedback_nonzero_observed: true,
+              observed_feedback_types: [1001],
+              sends_motion_commands: false,
+              feedback_ack: {
+                t1001_observed: true,
+              },
+              wheel_feedback_summary: {
+                nonzero_frame_count: 2,
+                source: "vendor_t1001_L_R",
+                latest_pair: {
+                  left_speed: 12,
+                  right_speed: 13,
+                },
               },
             },
+            safe_to_control: false,
+            sends_motion_commands: false,
+            robot_control_executed: false,
+            wheel_feedback_lr_nonzero_proven: true,
           },
         },
       },
@@ -15524,8 +15532,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.headers.get("content-type")).toContain("application/json");
       expect(body.proxy_status).toBe("samples_forwarded");
       expect(body.remote_endpoint).toBe("/api/base/feedback-samples/latest");
+      expect(body.sample_key_values.completed_sample_count).toBe("3");
+      expect(body.sample_key_values.t1001_observed_count).toBe("3");
       expect(body.sample_key_values.wheel_feedback_latest_left_speed).toBe("12");
       expect(body.sample_key_values.wheel_feedback_latest_right_speed).toBe("13");
+      expect(body.sample_key_values.wheel_feedback_source).toBe("vendor_t1001_L_R");
       expect(body.wheel_raw_left).toBe("12");
       expect(body.wheel_raw_right).toBe("13");
       expect(body.wheel_feedback_lr_nonzero_proven).toBe("true");

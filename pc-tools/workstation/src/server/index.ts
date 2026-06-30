@@ -459,26 +459,28 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
 
 function baseFeedbackSampleKeyValues(payload: Record<string, unknown> | null): RobotControlBaseFeedbackSamplesProxyResponse["sample_key_values"] {
   // 反馈采集只展示样本摘要；原始串口帧留在上位机 artifact，避免 PC 页面误读为 HIL pass。
-  const feedbackAck = asRecord(payload?.feedback_ack);
-  const wheelSummary = asRecord(payload?.wheel_feedback_summary);
+  const latestResult = asRecord(payload?.latest_result);
+  const sampleRoot = latestResult ?? payload;
+  const feedbackAck = asRecord(sampleRoot?.feedback_ack) ?? asRecord(payload?.feedback_ack);
+  const wheelSummary = asRecord(sampleRoot?.wheel_feedback_summary) ?? asRecord(payload?.wheel_feedback_summary);
   const latestPair = asRecord(wheelSummary?.latest_pair);
   return {
-    schema: shortText(payload?.schema, "not_loaded"),
-    requested_sample_count: shortValue(payload?.requested_sample_count),
-    completed_sample_count: shortValue(payload?.completed_sample_count),
-    t1001_observed_count: shortValue(payload?.t1001_observed_count),
-    all_samples_observed_t1001: shortValue(payload?.all_samples_observed_t1001),
-    partial_samples_observed_t1001: shortValue(payload?.partial_samples_observed_t1001),
-    wheel_feedback_lr_nonzero_proven: shortValue(payload?.wheel_feedback_lr_nonzero_proven),
-    wheel_feedback_nonzero_observed: shortValue(payload?.wheel_feedback_nonzero_observed),
+    schema: shortText(sampleRoot?.schema ?? payload?.schema, "not_loaded"),
+    requested_sample_count: shortValue(sampleRoot?.requested_sample_count),
+    completed_sample_count: shortValue(sampleRoot?.completed_sample_count),
+    t1001_observed_count: shortValue(sampleRoot?.t1001_observed_count),
+    all_samples_observed_t1001: shortValue(sampleRoot?.all_samples_observed_t1001),
+    partial_samples_observed_t1001: shortValue(sampleRoot?.partial_samples_observed_t1001),
+    wheel_feedback_lr_nonzero_proven: shortValue(sampleRoot?.wheel_feedback_lr_nonzero_proven ?? payload?.wheel_feedback_lr_nonzero_proven),
+    wheel_feedback_nonzero_observed: shortValue(sampleRoot?.wheel_feedback_nonzero_observed ?? payload?.wheel_feedback_nonzero_observed),
     wheel_feedback_nonzero_frame_count: shortValue(wheelSummary?.nonzero_frame_count),
     wheel_feedback_latest_left_speed: shortValue(latestPair?.left_speed, "not_observed"),
     wheel_feedback_latest_right_speed: shortValue(latestPair?.right_speed, "not_observed"),
     wheel_feedback_source: shortValue(wheelSummary?.source, "not_observed"),
     feedback_ack_t1001_observed: shortValue(feedbackAck?.t1001_observed),
-    observed_feedback_types: shortValue(payload?.observed_feedback_types),
-    sends_motion_commands: shortValue(payload?.sends_motion_commands),
-    robot_control_executed: shortValue(payload?.robot_control_executed),
+    observed_feedback_types: shortValue(sampleRoot?.observed_feedback_types),
+    sends_motion_commands: shortValue(sampleRoot?.sends_motion_commands ?? payload?.sends_motion_commands),
+    robot_control_executed: shortValue(sampleRoot?.robot_control_executed ?? payload?.robot_control_executed),
   };
 }
 
