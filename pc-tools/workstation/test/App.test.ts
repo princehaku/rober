@@ -7343,6 +7343,40 @@ describe("App", () => {
     expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(false);
   });
 
+  it("labels full-speed USB camera recovery as USB fix before recheck", async () => {
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.live_closure_summary = {
+      ...summaryFixture.live_closure_summary!,
+      mapping_start_ready: false,
+      mapping_camera_blocks_start: true,
+      mapping_unblock_camera_diagnosis_status: "uvc_full_speed_usb_not_exclusive",
+      mapping_unblock_camera_not_exclusive: "true",
+      mapping_unblock_camera_next_action_plain: "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。",
+      mapping_unblock_camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。",
+      live_wysiwyg_camera_source_diagnosis_status: "uvc_full_speed_usb_not_exclusive",
+      live_wysiwyg_camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。",
+    };
+    summaryFixture.readback_summary.camera.source_diagnosis_status = "uvc_full_speed_usb_not_exclusive";
+    summaryFixture.readback_summary.camera.source_diagnosis_next_action_plain = "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const mappingCameraUnblockPlan = wrapper.find('[data-testid="plain-mapping-camera-unblock-plan"]');
+    const mappingCameraRecoveryRefresh = wrapper.find('[data-testid="plain-mapping-camera-recovery-refresh"]');
+    expect(mappingCameraRecoveryRefresh.text()).toBe("换USB后复测");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-action-label")).toBe("换USB后复测");
+    expect(mappingCameraRecoveryRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-camera-exclusive-capture")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-map-runtime")).toBe("false");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+  });
+
   it("exposes live WYSIWYG readback gaps when camera map and radar are unreadable", async () => {
     // live 卡点要把“没显示”和“读数没回来”分开，现场才能直接判断是刷新证据还是先恢复上车接口。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);

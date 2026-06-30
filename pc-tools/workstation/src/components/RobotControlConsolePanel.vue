@@ -3871,6 +3871,22 @@ const plainLiveClosureSummary = computed(() => {
   // 这是首屏给普通用户看的“当前卡点”，只读展示，不会替代原本的安全确认或运动按钮。
   return robotSummary.value?.live_closure_summary ?? null;
 });
+const plainMappingCameraRecoveryActionLabel = computed(() => {
+  // USB full-speed 不是页面独占问题；按钮要先提示现场换高速 USB 链路，再复测只读首帧。
+  if (cameraFirstFrameProbePending.value) {
+    return "复测中";
+  }
+  const summary = plainLiveClosureSummary.value;
+  const diagnosis = summary?.mapping_unblock_camera_diagnosis_status || summary?.live_wysiwyg_camera_source_diagnosis_status || "";
+  const actionPlain = [
+    summary?.mapping_unblock_camera_recovery_next_action_plain,
+    summary?.mapping_unblock_camera_next_action_plain,
+    summary?.live_wysiwyg_camera_recovery_next_action_plain,
+  ].filter(Boolean).join(" ");
+  return diagnosis === "uvc_full_speed_usb_not_exclusive" || /USB 12M full-speed|高速 USB|带供电 USB Hub/u.test(actionPlain)
+    ? "换USB后复测"
+    : "复测相机";
+});
 const plainLiveClosureWysiwygMissingSurfaceIds = computed(() => {
   // 当前卡点需要把多项“所见”缺口一次说清，避免只跳到画面而漏掉地图或雷达贴图。
   const summary = plainLiveClosureSummary.value;
@@ -16755,7 +16771,7 @@ onBeforeUnmount(() => {
           :data-camera-recovery-next-action-plain="plainLiveClosureSummary.mapping_unblock_camera_recovery_next_action_plain"
           :data-camera-recovery-sequence="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence?.join(',') || 'none'"
           :data-camera-recovery-sequence-labels="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence_labels?.join(',') || 'none'"
-          :data-camera-recovery-action-label="cameraFirstFrameProbePending ? '复测中' : '复测相机'"
+          :data-camera-recovery-action-label="plainMappingCameraRecoveryActionLabel"
           data-camera-recovery-action-testid="plain-mapping-camera-recovery-refresh"
           :data-fixed-camera-probe-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_probe_endpoint"
           :data-fixed-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_mjpeg_status_endpoint"
@@ -16796,7 +16812,7 @@ onBeforeUnmount(() => {
             data-stops-motion="false"
             @click="refreshMappingCameraRecovery"
           >
-            {{ cameraFirstFrameProbePending ? "复测中" : "复测相机" }}
+            {{ plainMappingCameraRecoveryActionLabel }}
           </button>
         </p>
         <p
