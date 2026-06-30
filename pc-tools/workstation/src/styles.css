@@ -1440,6 +1440,32 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-trip-closure-readback {
+  /* 完整行程的三项验收放在行程卡内，避免用户只看到 Nav2 成功就误以为任务收口。 */
+  display: grid;
+  grid-template-columns: minmax(96px, auto) auto minmax(0, 1fr) minmax(110px, auto);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+}
+
+.plain-trip-closure-readback[data-state="已闭环"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-trip-closure-readback[data-state="待收口"] {
+  border-left-color: #9a6700;
+}
+
+.plain-trip-closure-readback[data-state="未就绪"] {
+  border-left-color: #8c959f;
+}
+
 .plain-nav2-material-alignment {
   /* 送达材料是否真的属于当前 Nav2 行程必须单独说清，不能只靠 matches=true 这种机器字段。 */
   border: 1px solid #b8c7d6;

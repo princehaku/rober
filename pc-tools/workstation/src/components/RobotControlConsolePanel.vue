@@ -4056,6 +4056,58 @@ const plainLiveMotionRunbookPreflightPlain = computed(() => {
   }
   return `发车前：按当前动作卡片提示确认安全（${safetyText}）。`;
 });
+const plainTripRunbookItem = computed(() => (
+  plainLiveClosureSummary.value?.live_motion_runbook_items.find((item) => item.id === "run_nav2_route") ?? null
+));
+const plainTripClosureReadbackSummary = computed(() => {
+  // 行程卡直接复用 live runbook 的权威闭环口径，避免顶部说一套、行程卡又让现场自己拼证据。
+  const summary = plainLiveClosureSummary.value;
+  const item = plainTripRunbookItem.value;
+  const missing = new Set(item?.missing_evidence ?? []);
+  const arrivedText = summary?.nav2_goal_succeeded ? "到点已读到" : "到点未读到";
+  const wheelText = summary?.wheel_lr_nonzero_proven ? "同窗口轮速已非零" : "同窗口轮速未证明";
+  const deliveryText = summary?.delivery_success ? "送达确认已完成" : "送达确认未完成";
+  const nextAction = (() => {
+    if (item?.completed) {
+      return "本轮完整行程已收口";
+    }
+    if (!item?.ready) {
+      return "先让图上行程显示到地图";
+    }
+    if (missing.has("same_window_wheel_lr_nonzero")) {
+      return plainManualSafetyConfirmed.value
+        ? "执行图上行程后读回轮速"
+        : "先勾现场安全确认，再执行图上行程并读回轮速";
+    }
+    if (missing.has("delivery_success")) {
+      return "准备材料并做送达确认";
+    }
+    return "读回行程闭环";
+  })();
+  const endpoints = item?.acceptance_endpoints ?? [
+    "/api/robot-control/nav2/goal/execution/latest",
+    "/api/robot-control/base/feedback-samples",
+    "/api/robot-control/summary",
+    "/api/robot-control/delivery/latest",
+  ];
+  return {
+    state: item?.completed ? "已闭环" : item?.ready ? "待收口" : "未就绪",
+    text: `完整行程闭环：${arrivedText}；${wheelText}；${deliveryText}。下一步：${nextAction}。`,
+    nextAction,
+    nav2GoalSucceeded: Boolean(summary?.nav2_goal_succeeded),
+    sameWindowWheelLrNonzero: Boolean(summary?.wheel_lr_nonzero_proven),
+    deliverySuccess: Boolean(summary?.delivery_success),
+    needsSameWindowWheelRerun: Boolean(summary?.needs_same_window_wheel_rerun),
+    completed: Boolean(item?.completed),
+    ready: Boolean(item?.ready),
+    proofStatus: item?.proof_status ?? "blocked",
+    missingEvidence: item?.missing_evidence ?? [],
+    proofPlain: plainActionCardUserText(item?.proof_plain ?? ""),
+    acceptanceEndpoints: endpoints,
+    readbackPending: liveMotionRunbookReadbackPendingAction.value === "run_nav2_route",
+    readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
+  };
+});
 const plainLiveMotionExecutionStrip = computed(() => {
   // 执行条只把 runbook 压成一个普通用户入口；按钮仍只聚焦，不自动勾选或发车。
   const rows = plainLiveMotionRunbookRows.value;
@@ -19451,6 +19503,53 @@ onBeforeUnmount(() => {
             >
               {{ plainTripExecutionGauge.text }}
             </p>
+            <div
+              class="plain-trip-closure-readback"
+              data-testid="plain-trip-closure-readback"
+              :data-state="plainTripClosureReadbackSummary.state"
+              :data-ready="String(plainTripClosureReadbackSummary.ready)"
+              :data-completed="String(plainTripClosureReadbackSummary.completed)"
+              :data-proof-status="plainTripClosureReadbackSummary.proofStatus"
+              :data-nav2-goal-succeeded="String(plainTripClosureReadbackSummary.nav2GoalSucceeded)"
+              :data-same-window-wheel-lr-nonzero="String(plainTripClosureReadbackSummary.sameWindowWheelLrNonzero)"
+              :data-delivery-success="String(plainTripClosureReadbackSummary.deliverySuccess)"
+              :data-needs-same-window-wheel-rerun="String(plainTripClosureReadbackSummary.needsSameWindowWheelRerun)"
+              :data-missing-evidence="plainTripClosureReadbackSummary.missingEvidence.join(',') || 'none'"
+              :data-proof-plain="plainTripClosureReadbackSummary.proofPlain"
+              :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+              data-readback-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+            >
+              <span class="plain-progress-label">完整行程闭环</span>
+              <span class="status-chip" :data-state="plainTripClosureReadbackSummary.state">{{ plainTripClosureReadbackSummary.state }}</span>
+              <span class="muted">{{ plainTripClosureReadbackSummary.text }}</span>
+              <button
+                type="button"
+                class="secondary compact-stop"
+                data-testid="plain-trip-closure-readback-refresh"
+                :disabled="plainTripClosureReadbackSummary.readbackDisabled"
+                :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+                data-readback-only="true"
+                data-sends-motion-when-clicked="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                data-starts-map-runtime="false"
+                data-submits-delivery="false"
+                data-stops-motion="false"
+                @click="refreshLiveMotionRunbookReadback('run_nav2_route')"
+              >
+                {{ plainTripClosureReadbackSummary.readbackPending ? "读回中" : "读回闭环" }}
+              </button>
+            </div>
             <p
               class="panel-note plain-trip-route-binding"
               data-testid="plain-trip-route-binding"
