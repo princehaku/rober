@@ -89,6 +89,7 @@ DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
 DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH = "runtime/operator_report_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
 LIDAR_SCAN_PREVIEW_POINT_LIMIT = 240
+NAV2_PATH_PREVIEW_POINT_LIMIT = 240
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
 MAX_FEEDBACK_SAMPLE_COUNT = 8
@@ -3982,7 +3983,79 @@ def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
     ):
         if key in proof:
             summary[key] = proof.get(key)
+    summary.update(nav2_path_preview_overlay_from_latest(latest))
     return summary
+
+
+def finite_nav2_path_coordinate(value: Any) -> float | None:
+    """路线点来自 runtime artifact；只接受有限数字，避免坏 JSON 污染地图。"""
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed):
+        return None
+    return min(max(parsed, -1000.0), 1000.0)
+
+
+def nav2_path_preview_overlay_from_latest(latest: dict[str, Any] | None) -> dict[str, Any]:
+    """把 Nav2 proof 的路径点折成地图 overlay；没有点数组时不能冒充已贴图。"""
+    proof = latest.get("proof") if isinstance(latest, dict) and isinstance(latest.get("proof"), dict) else {}
+    raw_points = proof.get("path_preview_points") if isinstance(proof.get("path_preview_points"), list) else []
+    path_goal_response = proof.get("path_goal_response") if isinstance(proof.get("path_goal_response"), dict) else {}
+    frame_id = str(proof.get("path_preview_frame_id") or path_goal_response.get("path_frame_id") or "map")[:40]
+    points: list[dict[str, Any]] = []
+    for fallback_index, raw_point in enumerate(raw_points[:NAV2_PATH_PREVIEW_POINT_LIMIT]):
+        if not isinstance(raw_point, dict):
+            continue
+        x = finite_nav2_path_coordinate(raw_point.get("x"))
+        y = finite_nav2_path_coordinate(raw_point.get("y"))
+        if x is None or y is None:
+            continue
+        source_index_raw = finite_nav2_path_coordinate(raw_point.get("source_index"))
+        # source_index 只用于前端稳定 key；缺失时用过滤后的原始顺序兜底。
+        source_index = int(source_index_raw) if source_index_raw is not None else fallback_index
+        point_frame_id = str(raw_point.get("frame_id") or frame_id or "map")[:40]
+        points.append({"x": x, "y": y, "frame_id": point_frame_id, "source_index": source_index})
+    source_count_raw = finite_nav2_path_coordinate(proof.get("path_preview_source_point_count"))
+    source_count = int(source_count_raw) if source_count_raw is not None else len(raw_points)
+    point_count_raw = finite_nav2_path_coordinate(proof.get("path_preview_point_count") or proof.get("path_point_count"))
+    reported_point_count = int(point_count_raw) if point_count_raw is not None else len(raw_points)
+    if points:
+        status = "path_preview_observed"
+        next_action = "图上路线已贴到地图；勾选现场安全确认后可执行，并复验 wheel raw L/R。"
+        status_plain = f"图上路线已显示，当前地图路径点 {len(points)} 个。"
+    elif reported_point_count > 0:
+        status = "metadata_only"
+        next_action = "Nav2 已生成路线点数但缺少可绘制点数组；刷新 Nav2 路径 proof 后再刷新地图画面。"
+        status_plain = f"图上路线只有点数 {reported_point_count}，没有点数组，当前不贴图。"
+    else:
+        status = "not_observed"
+        next_action = "先刷新 Nav2 路径 proof，再刷新地图画面。"
+        status_plain = "图上路线未显示；不能把旧路线或空路线当作当前所见。"
+    return {
+        "path_preview_points": points,
+        "path_preview_status": status,
+        "path_preview_point_count": len(points),
+        "path_preview_source_point_count": source_count if source_count > 0 else None,
+        "path_preview_reported_point_count": reported_point_count,
+        "path_preview_frame_id": points[0]["frame_id"] if points else (frame_id or "not_loaded"),
+        "path_preview_next_action_plain": next_action,
+        "path_wysiwyg_status_plain": status_plain,
+        "path_wysiwyg_next_action_plain": next_action,
+        "nav2_route_overlay_status": status,
+        "nav2_route_overlay_point_count": len(points),
+        "nav2_route_overlay_next_action_plain": next_action,
+    }
+
+
+def nav2_path_preview_overlay_from_artifact(path: str) -> dict[str, Any]:
+    """地图预览只需要路径 overlay 字段；不能把 Nav2 summary 的 status 覆盖地图 status。"""
+    try:
+        latest = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        latest = None
+    return nav2_path_preview_overlay_from_latest(latest if isinstance(latest, dict) else None)
 
 
 def build_amcl_nav2_readiness_from_map_proof(map_proof_path: str, map_artifact_dir: str) -> dict[str, Any]:
@@ -7216,6 +7289,7 @@ class UpperRobotApi:
     def map_preview(self, map_name: str | None = None) -> dict[str, Any]:
         """读取真实 YAML/PGM 并返回浏览器可显示的 PNG data URL；不启动任何 ROS2 或底盘动作。"""
         root = Path(self.map_artifact_dir)
+        path_overlay = nav2_path_preview_overlay_from_artifact(self.nav2_lifecycle_artifact_path)
         try:
             requested_map_name = safe_preview_map_name(map_name)
         except ValueError as exc:
@@ -7232,6 +7306,7 @@ class UpperRobotApi:
                     "map_name": map_name,
                     "image_data_url": "",
                     "radar_overlay": radar_overlay,
+                    **path_overlay,
                     "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
                 },
             )
@@ -7249,6 +7324,7 @@ class UpperRobotApi:
                     "map_name": requested_map_name or "",
                     "image_data_url": "",
                     "radar_overlay": radar_overlay,
+                    **path_overlay,
                     "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
                 },
             )
@@ -7288,6 +7364,7 @@ class UpperRobotApi:
                         "image_data_url": image_preview["image_data_url"],
                         "source_image_format": image_preview["source_image_format"],
                         "radar_overlay": radar_overlay,
+                        **path_overlay,
                         "failure_reason": None,
                         "blocked_reasons": [],
                         "command_result": {"mode": "read_only_local_files", "executed": False, "ok": True},
@@ -7313,6 +7390,7 @@ class UpperRobotApi:
                 "map_name": requested_map_name or "",
                 "image_data_url": "",
                 "radar_overlay": radar_overlay,
+                **path_overlay,
                 "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
             },
         )
@@ -7966,6 +8044,30 @@ class UpperRobotApi:
         snapshot = latest.get("snapshot") if isinstance(latest.get("snapshot"), dict) else {}
         map_metrics = latest.get("map_metrics") if isinstance(latest.get("map_metrics"), dict) else {}
         runtime_artifact_proven = bool(payload.get("free_roam_runtime_artifact_proven"))
+        try:
+            sensor_readiness = self.free_roam_motion_readiness()
+        except Exception as exc:  # noqa: BLE001 - status 也必须 fail-closed 返回，不能因为 readiness 慢读无响应。
+            sensor_readiness = {
+                "ready": True,
+                "free_move_ready": True,
+                "motion_without_radar_allowed": True,
+                "free_move_without_camera_allowed": True,
+                "mapping_readiness": {
+                    "ready": False,
+                    "missing": ["sensor_readiness_unavailable"],
+                    "requires_camera_first_frame": True,
+                    "requires_fresh_radar_scan": True,
+                    "free_move_allowed_when_mapping_not_ready": True,
+                },
+                "failure_reason": compact_error(exc),
+            }
+        mapping_readiness = sensor_readiness.get("mapping_readiness") if isinstance(sensor_readiness.get("mapping_readiness"), dict) else {}
+        mapping_ready = bool(mapping_readiness.get("ready"))
+        mapping_missing = (
+            mapping_readiness.get("missing")
+            if isinstance(mapping_readiness.get("missing"), list)
+            else payload.get("free_roam_mapping_start_missing_reasons", [])
+        )
         return {
             "schema": f"{SCHEMA}.free_roam_autonomy_status",
             "generated_at_ms": now_ms(),
@@ -7979,20 +8081,25 @@ class UpperRobotApi:
             "decision_state": decision.get("state") or "not_loaded",
             "decision_reason": decision.get("reason") or "not_loaded",
             "decision_gates": decision.get("gates") if isinstance(decision.get("gates"), list) else [],
-            "free_roam_motion_start_ready": bool(payload.get("free_roam_motion_start_ready")),
-            "free_move_start_ready": bool(payload.get("free_move_start_ready")),
-            "motion_without_radar_allowed": bool(payload.get("motion_without_radar_allowed")),
-            "free_move_without_camera_allowed": bool(payload.get("free_move_without_camera_allowed")),
-            "mapping_readiness": payload.get("mapping_readiness") if isinstance(payload.get("mapping_readiness"), dict) else {},
-            "free_roam_mapping_start_ready": bool(payload.get("free_roam_mapping_start_ready")),
-            "free_roam_mapping_start_missing_reasons": (
-                payload.get("free_roam_mapping_start_missing_reasons")
-                if isinstance(payload.get("free_roam_mapping_start_missing_reasons"), list)
-                else []
-            ),
+            "free_roam_motion_start_ready": bool(sensor_readiness.get("free_move_ready", payload.get("free_roam_motion_start_ready"))),
+            "free_move_start_ready": bool(sensor_readiness.get("free_move_ready", payload.get("free_move_start_ready"))),
+            "motion_without_radar_allowed": bool(sensor_readiness.get("motion_without_radar_allowed", payload.get("motion_without_radar_allowed"))),
+            "free_move_without_camera_allowed": bool(sensor_readiness.get("free_move_without_camera_allowed", payload.get("free_move_without_camera_allowed"))),
+            "mapping_readiness": mapping_readiness,
+            "free_roam_mapping_start_ready": mapping_ready,
+            "free_roam_mapping_start_missing_reasons": list(dict.fromkeys(str(item) for item in mapping_missing)),
             "free_roam_motion_minimal_precheck_plain": payload.get("free_roam_motion_minimal_precheck_plain"),
-            "free_roam_mapping_start_plain": payload.get("free_roam_mapping_start_plain"),
-            "free_roam_mapping_start_next_action": payload.get("free_roam_mapping_start_next_action"),
+            "free_roam_mapping_start_plain": (
+                "画面和雷达已 ready；勾选安全确认后可以启动建图。"
+                if mapping_ready
+                else f"建图启动未就绪，还差 {','.join(str(item) for item in mapping_missing)}；低速自由移动不受影响。"
+            ),
+            "free_roam_mapping_start_next_action": (
+                "勾选现场安全确认后启动建图。"
+                if mapping_ready
+                else "先补齐画面首帧和雷达新鲜扫描；需要移动时可先勾安全确认低速自由移动。"
+            ),
+            "sensor_readiness": sensor_readiness,
             "snapshot": snapshot,
             "map_metrics": map_metrics,
             "artifact_only": bool(latest.get("artifact_only")) if isinstance(latest, dict) else True,
@@ -8372,6 +8479,17 @@ class UpperRobotApi:
             "path_generation_service_name": proof_latest.get("path_generation_service_name"),
             "path_generation_service_available": bool(proof_latest.get("path_generation_service_available")),
             "path_generation_succeeded": bool(proof_latest.get("path_generation_succeeded")),
+            "path_preview_points": proof_latest.get("path_preview_points") if isinstance(proof_latest.get("path_preview_points"), list) else [],
+            "path_preview_status": proof_latest.get("path_preview_status") or "not_observed",
+            "path_preview_point_count": int(proof_latest.get("path_preview_point_count") or 0),
+            "path_preview_source_point_count": proof_latest.get("path_preview_source_point_count"),
+            "path_preview_frame_id": proof_latest.get("path_preview_frame_id") or "not_loaded",
+            "path_preview_next_action_plain": proof_latest.get("path_preview_next_action_plain"),
+            "path_wysiwyg_status_plain": proof_latest.get("path_wysiwyg_status_plain"),
+            "path_wysiwyg_next_action_plain": proof_latest.get("path_wysiwyg_next_action_plain"),
+            "nav2_route_overlay_status": proof_latest.get("nav2_route_overlay_status") or "not_observed",
+            "nav2_route_overlay_point_count": int(proof_latest.get("nav2_route_overlay_point_count") or 0),
+            "nav2_route_overlay_next_action_plain": proof_latest.get("nav2_route_overlay_next_action_plain"),
             "planner_server_active": proof_latest.get("planner_server_active"),
             "controller_server_active": proof_latest.get("controller_server_active"),
             "controller_server_requested": proof_latest.get("controller_server_requested"),

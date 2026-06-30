@@ -181,12 +181,36 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            nav2_path = map_dir / "nav2_lifecycle_latest.json"
+            nav2_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_proof",
+                        "proof": {
+                            "status": "path_generated",
+                            "path_generated": True,
+                            "path_point_count": 3,
+                            "path_preview_point_count": 3,
+                            "path_preview_source_point_count": 3,
+                            "path_preview_frame_id": "map",
+                            "path_preview_points": [
+                                {"x": 0.0, "y": 0.0, "frame_id": "map", "source_index": 0},
+                                {"x": 0.2, "y": 0.1, "frame_id": "map", "source_index": 1},
+                                {"x": 0.8, "y": 0.0, "frame_id": "map", "source_index": 2},
+                            ],
+                            "path_goal_response": {"path_frame_id": "map", "path_point_count": 3},
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
             api = upper_robot_api.UpperRobotApi(
                 camera_base_url="http://127.0.0.1:8088",
                 base_port="/dev/ttyS5",
                 base_baudrate=115200,
                 max_speed=0.12,
                 map_artifact_dir=str(map_dir),
+                nav2_lifecycle_artifact_path=str(nav2_path),
             )
             stale_radar = {
                 "lifecycle_running": False,
@@ -211,6 +235,14 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         overlay = payload["radar_overlay"]
         self.assertEqual("loaded", payload["status"])
         self.assertTrue(payload["image_data_url"].startswith("data:image/png;base64,"))
+        self.assertEqual("path_preview_observed", payload["path_preview_status"])
+        self.assertEqual(3, payload["path_preview_point_count"])
+        self.assertEqual(3, payload["path_preview_source_point_count"])
+        self.assertEqual("map", payload["path_preview_frame_id"])
+        self.assertEqual(3, len(payload["path_preview_points"]))
+        self.assertEqual(0.8, payload["path_preview_points"][-1]["x"])
+        self.assertEqual("path_preview_observed", payload["nav2_route_overlay_status"])
+        self.assertIn("图上路线已显示", payload["path_wysiwyg_status_plain"])
         self.assertEqual("not_current", overlay["overlay_status"])
         self.assertEqual([], overlay["scan_preview_points"])
         self.assertEqual(0, overlay["scan_preview_point_count"])
@@ -222,6 +254,31 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["command_result"]["executed"])
         self.assertFalse(payload["sends_motion_commands"])
         self.assertFalse(payload["publishes_cmd_vel"])
+
+    def test_nav2_path_preview_overlay_keeps_metadata_only_off_map(self) -> None:
+        """只有点数没有点数组时，API 要解释缺口，不能声称路线已贴到地图。"""
+        overlay = upper_robot_api.nav2_path_preview_overlay_from_latest(
+            {
+                "proof": {
+                    "path_generated": True,
+                    "path_preview_point_count": 12,
+                    "path_preview_source_point_count": 12,
+                    "path_preview_frame_id": "map",
+                    "path_preview_points": [
+                        {"x": "bad", "y": 0.0, "frame_id": "map"},
+                        {"x": 0.1, "y": "nan", "frame_id": "map"},
+                    ],
+                }
+            }
+        )
+
+        self.assertEqual("metadata_only", overlay["path_preview_status"])
+        self.assertEqual([], overlay["path_preview_points"])
+        self.assertEqual(0, overlay["path_preview_point_count"])
+        self.assertEqual(12, overlay["path_preview_reported_point_count"])
+        self.assertEqual("map", overlay["path_preview_frame_id"])
+        self.assertIn("没有点数组", overlay["path_wysiwyg_status_plain"])
+        self.assertIn("刷新 Nav2 路径 proof", overlay["path_preview_next_action_plain"])
 
     def test_t1001_frame_allows_null_yaw(self) -> None:
         """ACK 只证明底盘反馈帧到达，不要求 yaw 可用于姿态发布。"""
@@ -1969,13 +2026,16 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                     },
                 ):
                     latest_status, latest = api.free_roam_autonomy_latest()
+                    status = api.free_roam_autonomy_status()
 
         self.assertEqual(200, latest_status)
         self.assertTrue(latest["free_roam_motion_start_ready"])
-        self.assertTrue(latest["free_roam_mapping_start_ready"])
-        self.assertTrue(latest["mapping_readiness"]["ready"])
-        self.assertEqual([], latest["mapping_readiness"]["missing"])
-        self.assertIn("可以启动建图", latest["free_roam_mapping_start_plain"])
+        self.assertFalse(latest["free_roam_mapping_start_ready"])
+        self.assertTrue(status["free_roam_motion_start_ready"])
+        self.assertTrue(status["free_roam_mapping_start_ready"])
+        self.assertTrue(status["mapping_readiness"]["ready"])
+        self.assertEqual([], status["mapping_readiness"]["missing"])
+        self.assertIn("可以启动建图", status["free_roam_mapping_start_plain"])
 
     def test_free_roam_param_sequence_unlocks_motion_only_when_requested(self) -> None:
         """参数序列默认不解锁；只有 readiness 通过后的 start 才写运动发布双锁。"""
@@ -2891,7 +2951,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
             with mock.patch.object(
                 upper_robot_api,
-                "run_lidar_scan_proof_collector",
+                "run_lidar_driver_diagnostics_scan_proof_refresh",
                 return_value={
                     "command_result": {"ok": True, "reason": "ok"},
                     "collector_payload": artifact,
