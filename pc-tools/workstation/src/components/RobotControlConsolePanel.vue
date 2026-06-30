@@ -742,6 +742,17 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
     : "摄像头";
   const sharedFactPrefix = ["共享预览支持多人观看", clientCount, sharedStream, exclusive].filter(Boolean).join("，");
   const prefix = sharedFactPrefix ? `${sharedFactPrefix}，` : "";
+  if (
+    camera.shared_preview_upstream_active === "true"
+    && camera.shared_preview_content_type_loaded !== "true"
+    && !browserVideoFrameDrawn()
+    && !cameraMjpegFrameObserved.value
+  ) {
+    const realtime = camera.shared_preview_realtime_plain && !["", "not_loaded", "none"].includes(camera.shared_preview_realtime_plain)
+      ? camera.shared_preview_realtime_plain
+      : "共享预览正在等待首帧；首帧出现前不能把黑框当作画面可见。";
+    return `画面：${prefix}${realtime}`;
+  }
   if (!cameraSourceFirstFrameFailed(camera)) {
     if (cameraVisibleForFreeRoamMapping.value) {
       return "画面：已看到真实帧。";
@@ -1915,19 +1926,26 @@ const plainCameraSharedPreviewDomEvidence = computed(() => {
   const contentTypeLoaded = statusLoaded ? status.content_type_loaded : boolFromText(camera?.shared_preview_content_type_loaded);
   const cachedFrameLoaded = statusLoaded ? status.cached_frame_loaded : boolFromText(camera?.shared_preview_cached_frame_loaded);
   const exclusiveCameraClaim = statusLoaded ? status.exclusive_camera_claim : boolFromText(camera?.shared_preview_exclusive_camera_claim);
+  const currentMjpegFrameVisible = cameraMjpegFrameObserved.value;
+  const currentVideoFrameVisible = browserVideoFrameDrawn();
+  const currentFrameVisible = currentMjpegFrameVisible || currentVideoFrameVisible;
+  const waitingFirstFrame = upstreamActive && !contentTypeLoaded && !currentFrameVisible;
+  const connectedNoFrame = upstreamActive && !currentFrameVisible;
   return {
     statusSource,
     clientCount: statusLoaded ? status.client_count : numberFromText(camera?.shared_preview_client_count),
     upstreamActive,
     contentTypeLoaded,
     cachedFrameLoaded,
+    waitingFirstFrame,
+    connectedNoFrame,
     exclusiveCameraClaim,
     sharedCapture: boolFromText(camera?.shared_preview_shared_capture, true),
     singleUpstream: camera?.shared_preview_multi_viewer_status === "single_upstream_multi_viewer" || boolFromText(camera?.shared_preview_single_upstream, true),
     autoJoinsSharedPreview: Boolean(cameraMjpegPreviewUrl.value),
-    currentFrameVisible: cameraMjpegFrameObserved.value || browserVideoFrameDrawn(),
-    currentMjpegFrameVisible: cameraMjpegFrameObserved.value,
-    currentVideoFrameVisible: browserVideoFrameDrawn(),
+    currentFrameVisible,
+    currentMjpegFrameVisible,
+    currentVideoFrameVisible,
     fixedSharedPreviewEndpoint: "/api/robot-control/camera/mjpeg",
     fixedSharedPreviewStatusEndpoint: "/api/robot-control/camera/mjpeg/status",
   };
@@ -1973,6 +1991,8 @@ const plainCameraCurrentFrameProofSummary = computed(() => {
     upstreamActive: evidence.upstreamActive,
     contentTypeLoaded: evidence.contentTypeLoaded,
     cachedFrameLoaded: evidence.cachedFrameLoaded,
+    waitingFirstFrame: evidence.waitingFirstFrame,
+    connectedNoFrame: evidence.connectedNoFrame,
     sharedCapture: evidence.sharedCapture,
     singleUpstream: evidence.singleUpstream,
     exclusiveCameraClaim: evidence.exclusiveCameraClaim,
@@ -16247,6 +16267,8 @@ onBeforeUnmount(() => {
           :data-shared-preview-upstream-active="String(plainCameraSharedPreviewDomEvidence.upstreamActive)"
           :data-shared-preview-content-type-loaded="String(plainCameraSharedPreviewDomEvidence.contentTypeLoaded)"
           :data-shared-preview-cached-frame-loaded="String(plainCameraSharedPreviewDomEvidence.cachedFrameLoaded)"
+          :data-shared-preview-waiting-first-frame="String(plainCameraSharedPreviewDomEvidence.waitingFirstFrame)"
+          :data-shared-preview-connected-no-frame="String(plainCameraSharedPreviewDomEvidence.connectedNoFrame)"
           :data-shared-preview-exclusive-camera-claim="String(plainCameraSharedPreviewDomEvidence.exclusiveCameraClaim)"
           :data-shared-preview-shared-capture="String(plainCameraSharedPreviewDomEvidence.sharedCapture)"
           :data-shared-preview-single-upstream="String(plainCameraSharedPreviewDomEvidence.singleUpstream)"
@@ -16333,6 +16355,8 @@ onBeforeUnmount(() => {
               :data-shared-preview-upstream-active="String(plainCameraSharedPreviewDomEvidence.upstreamActive)"
               :data-shared-preview-content-type-loaded="String(plainCameraSharedPreviewDomEvidence.contentTypeLoaded)"
               :data-shared-preview-cached-frame-loaded="String(plainCameraSharedPreviewDomEvidence.cachedFrameLoaded)"
+              :data-shared-preview-waiting-first-frame="String(plainCameraSharedPreviewDomEvidence.waitingFirstFrame)"
+              :data-shared-preview-connected-no-frame="String(plainCameraSharedPreviewDomEvidence.connectedNoFrame)"
               :data-shared-preview-exclusive-camera-claim="String(plainCameraSharedPreviewDomEvidence.exclusiveCameraClaim)"
               :data-shared-preview-shared-capture="String(plainCameraSharedPreviewDomEvidence.sharedCapture)"
               :data-shared-preview-single-upstream="String(plainCameraSharedPreviewDomEvidence.singleUpstream)"
@@ -16381,6 +16405,8 @@ onBeforeUnmount(() => {
             :data-shared-preview-upstream-active="String(plainCameraCurrentFrameProofSummary.upstreamActive)"
             :data-shared-preview-content-type-loaded="String(plainCameraCurrentFrameProofSummary.contentTypeLoaded)"
             :data-shared-preview-cached-frame-loaded="String(plainCameraCurrentFrameProofSummary.cachedFrameLoaded)"
+            :data-shared-preview-waiting-first-frame="String(plainCameraCurrentFrameProofSummary.waitingFirstFrame)"
+            :data-shared-preview-connected-no-frame="String(plainCameraCurrentFrameProofSummary.connectedNoFrame)"
             :data-shared-preview-shared-capture="String(plainCameraCurrentFrameProofSummary.sharedCapture)"
             :data-shared-preview-single-upstream="String(plainCameraCurrentFrameProofSummary.singleUpstream)"
             :data-shared-preview-exclusive-camera-claim="String(plainCameraCurrentFrameProofSummary.exclusiveCameraClaim)"

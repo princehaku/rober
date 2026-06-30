@@ -5292,6 +5292,8 @@ describe("App", () => {
     expect(defaultCameraFrameProof.attributes("data-shared-preview-upstream-active")).toBe("true");
     expect(defaultCameraFrameProof.attributes("data-shared-preview-content-type-loaded")).toBe("true");
     expect(defaultCameraFrameProof.attributes("data-shared-preview-cached-frame-loaded")).toBe("true");
+    expect(defaultCameraFrameProof.attributes("data-shared-preview-waiting-first-frame")).toBe("false");
+    expect(defaultCameraFrameProof.attributes("data-shared-preview-connected-no-frame")).toBe("true");
     expect(defaultCameraFrameProof.attributes("data-shared-preview-single-upstream")).toBe("true");
     expect(defaultCameraFrameProof.attributes("data-shared-preview-exclusive-camera-claim")).toBe("false");
     expect(defaultCameraFrameProof.attributes("data-auto-joins-shared-preview")).toBe("true");
@@ -22866,6 +22868,51 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-readback"]').text()).toContain("画面事实：已经看到画面：共享实时画面已有缓存帧，多个页面复用同一条上游流。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 3 个页面观看。下一步：继续监看共享实时画面。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-readback"]').exists()).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("marks shared camera upstream connected but not visible until first MJPEG frame arrives", async () => {
+    // live 形态：共享上游已经被页面接入，但 content-type/首帧还没回来；这不是画面可见，也不是页面独占。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.preview_status = "starting_local_peer";
+    summaryFixture.readback_summary.camera.shared_preview_client_count = "1";
+    summaryFixture.readback_summary.camera.shared_preview_upstream_active = "true";
+    summaryFixture.readback_summary.camera.shared_preview_content_type_loaded = "false";
+    summaryFixture.readback_summary.camera.shared_preview_cached_frame_loaded = "false";
+    summaryFixture.readback_summary.camera.shared_preview_shared_capture = "true";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+    summaryFixture.readback_summary.camera.shared_preview_multi_viewer_status = "single_upstream_multi_viewer";
+    summaryFixture.readback_summary.camera.shared_preview_realtime_plain = "共享预览正在等待首帧；首帧出现前不能把黑框当作画面可见。";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": {
+        ...(fixtures["/api/robot-control/camera/mjpeg/status"] as Record<string, unknown>),
+        proxy_status: "status_rejected",
+        failure_reason: "status_fixture_rejected",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const panel = wrapper.find('[data-testid="plain-camera-panel"]');
+    expect(panel.attributes("data-shared-preview-upstream-active")).toBe("true");
+    expect(panel.attributes("data-shared-preview-content-type-loaded")).toBe("false");
+    expect(panel.attributes("data-shared-preview-waiting-first-frame")).toBe("true");
+    expect(panel.attributes("data-shared-preview-connected-no-frame")).toBe("true");
+    expect(panel.attributes("data-current-frame-visible")).toBe("false");
+    expect(panel.attributes("data-shared-preview-exclusive-camera-claim")).toBe("false");
+
+    const frameProof = wrapper.find('[data-testid="plain-camera-current-frame-proof"]');
+    expect(frameProof.attributes("data-state")).toBe("接入中");
+    expect(frameProof.attributes("data-shared-preview-waiting-first-frame")).toBe("true");
+    expect(frameProof.attributes("data-shared-preview-connected-no-frame")).toBe("true");
+    expect(frameProof.attributes("data-current-frame-visible")).toBe("false");
+    expect(frameProof.text()).toContain("本页还没确认显示画面帧");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("共享预览正在等待首帧");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });
 
   it("keeps shared camera status pending unproven until status polling returns", async () => {
