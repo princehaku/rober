@@ -8688,10 +8688,12 @@ function buildLiveClosureSummary(
     if (mappingStartReady) {
       return "建图启动已就绪：画面首帧和雷达新鲜都满足；勾现场安全确认后可启动建图记录。";
     }
-    const cameraDiagnosisPlain = readback.camera.source_diagnosis_plain_hint
-      || readback.camera.source_diagnosis_next_action_plain
-      || readback.camera.camera_wysiwyg_next_action_plain
-      || camera.next_action_plain;
+    const cameraDiagnosisPlain = plainSentencePart(
+      meaningfulCameraText(readback.camera.source_diagnosis_plain_hint)
+      || meaningfulCameraText(readback.camera.source_diagnosis_next_action_plain)
+      || meaningfulCameraText(readback.camera.camera_wysiwyg_next_action_plain)
+      || meaningfulCameraText(camera.next_action_plain),
+    );
     const cameraTail = mappingCameraBlocksStart
       ? `当前相机提示：${cameraDiagnosisPlain}`
       : "相机首帧已满足。";

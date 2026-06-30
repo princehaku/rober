@@ -621,6 +621,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧、雷达新鲜");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("自由移动仍可先做");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("只读复测相机首帧和 MJPEG 状态");
+    expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("。；");
     expect(summary.live_closure_summary?.mapping_camera_blocks_start).toBe(true);
     expect(summary.live_closure_summary?.mapping_lidar_blocks_start).toBe(true);
     expect(summary.live_closure_summary?.mapping_unblock_allows_free_move).toBe(true);
