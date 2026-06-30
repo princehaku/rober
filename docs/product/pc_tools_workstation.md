@@ -4555,6 +4555,14 @@ DOM 同步暴露 `data-nav2-ready`、`data-material-ready`、`data-route-map-mat
 和固定 `/api/robot-control/delivery/complete` endpoint。
 该变化只提升完整行程后的送达收口可读性，不自动提交送达、不发车、不调用任何运动接口。
 
+2026-06-30 11:06 CST 起，普通首屏“任务收口”新增 `plain-nav2-material-alignment`。
+该短行专门说明送达材料是否能用 route/map ref 证明属于当前 Nav2 行程，并暴露
+`data-current-nav2-route-map-ref-loaded`、`data-delivery-route-map-ref-loaded`、`data-route-map-comparable`、
+`data-route-map-matches-current-nav2`、`data-material-aligned-current-nav2`、固定
+`/api/robot-control/nav2/goal/execution/latest` 和 `/api/robot-control/delivery/latest` endpoint。
+当本轮 Nav2 行程已完成但当前 ref 未读到时，页面会明确显示“不能用 ref 证明材料同源”，避免旧送达草稿被误读成本轮材料；
+该变化只补 PC Web 只读收口判断，不执行 Nav2、不提交 delivery、不发送 manual、keyboard、free-roam、stop 或 `/cmd_vel`。
+
 2026-06-30 09:55 CST 起，Robot Control 的相机源首帧 gate 改为当前证据优先：
 当 `/api/camera/health` 在 summary 预算内超时或未加载时，MJPEG relay overlay 里残留的
 `source_diagnosis_status=first_frame_observed` 不再被当作当前首帧证明。PC 端只有在当前 health 明确返回

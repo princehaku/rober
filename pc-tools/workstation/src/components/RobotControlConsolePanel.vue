@@ -8962,6 +8962,57 @@ const plainDeliveryClosureSummary = computed(() => {
   };
 });
 
+const plainNav2MaterialAlignmentSummary = computed(() => {
+  // 这行专门避免把“没有 current Nav2 ref 可比”误读成“送达材料已证明同源”。
+  const currentRef = freshNav2RouteMapRef.value;
+  const deliveryRef = deliveryOperatorRouteMapRef.value.trim();
+  const currentRefLoaded = Boolean(currentRef);
+  const deliveryRefLoaded = Boolean(deliveryRef);
+  const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryRefLoaded);
+  const comparable = currentRefLoaded && deliveryRefLoaded;
+  const routeMapMatches = comparable && deliveryRef === currentRef;
+  const materialAlignedCurrentNav2 = deliveryNav2GoalReady.value && materialReady && routeMapMatches;
+  const state = deliverySuccessReady.value
+    ? "已送达"
+    : !deliveryNav2GoalReady.value
+      ? "待行程"
+      : !currentRefLoaded
+        ? "待行程ref"
+        : !materialReady
+          ? "待材料"
+          : routeMapMatches
+            ? "已对齐"
+            : "需更新";
+  const text = deliverySuccessReady.value
+    ? "行程材料对齐：送达已确认；当前行程和材料已完成收口。"
+    : !deliveryNav2GoalReady.value
+      ? "行程材料对齐：还没有本轮完整行程；先执行或读取行程结果。"
+      : !currentRefLoaded
+        ? "行程材料对齐：本轮行程已完成，但当前行程编号未读到；不能用编号证明材料同源，先刷新行程结果或重新准备材料。"
+        : !materialReady
+          ? "行程材料对齐：本轮行程编号已读到，送达材料还未准备。"
+          : routeMapMatches
+            ? "行程材料对齐：送达材料已匹配当前行程；按现场确认项收口，不重复发车。"
+            : "行程材料对齐：送达材料不是当前行程；先点准备送达材料更新。";
+  return {
+    state,
+    text,
+    nav2Ready: deliveryNav2GoalReady.value,
+    currentRouteMapRefLoaded: currentRefLoaded,
+    deliveryRouteMapRefLoaded: deliveryRefLoaded,
+    materialReady,
+    comparable,
+    routeMapMatches,
+    materialAlignedCurrentNav2,
+    confirmationReady: deliveryOperatorConfirmationReady.value,
+    deliverySuccessReady: deliverySuccessReady.value,
+    currentNav2RouteMapRef: currentRef || "not_loaded",
+    deliveryRouteMapRef: deliveryRef || "not_loaded",
+    fixedNav2LatestEndpoint: "/api/robot-control/nav2/goal/execution/latest",
+    fixedDeliveryLatestEndpoint: "/api/robot-control/delivery/latest",
+  };
+});
+
 const plainDeliverySubmitResultSummary = computed(() => {
   // 红色确认按钮的后端 gate 结果必须回到普通首屏；这里只读结果，不自动重试。
   const result = deliveryCompletionResult.value;
@@ -17306,6 +17357,27 @@ onBeforeUnmount(() => {
               data-sends-motion-when-clicked="false"
             >
               {{ plainDeliveryClosureSummary.text }}
+            </p>
+            <p
+              class="panel-note plain-nav2-material-alignment"
+              data-testid="plain-nav2-material-alignment"
+              :data-state="plainNav2MaterialAlignmentSummary.state"
+              :data-nav2-ready="String(plainNav2MaterialAlignmentSummary.nav2Ready)"
+              :data-current-nav2-route-map-ref-loaded="String(plainNav2MaterialAlignmentSummary.currentRouteMapRefLoaded)"
+              :data-delivery-route-map-ref-loaded="String(plainNav2MaterialAlignmentSummary.deliveryRouteMapRefLoaded)"
+              :data-material-ready="String(plainNav2MaterialAlignmentSummary.materialReady)"
+              :data-route-map-comparable="String(plainNav2MaterialAlignmentSummary.comparable)"
+              :data-route-map-matches-current-nav2="String(plainNav2MaterialAlignmentSummary.routeMapMatches)"
+              :data-material-aligned-current-nav2="String(plainNav2MaterialAlignmentSummary.materialAlignedCurrentNav2)"
+              :data-confirmation-ready="String(plainNav2MaterialAlignmentSummary.confirmationReady)"
+              :data-delivery-success-ready="String(plainNav2MaterialAlignmentSummary.deliverySuccessReady)"
+              :data-current-nav2-route-map-ref="plainNav2MaterialAlignmentSummary.currentNav2RouteMapRef"
+              :data-delivery-route-map-ref="plainNav2MaterialAlignmentSummary.deliveryRouteMapRef"
+              :data-fixed-nav2-latest-endpoint="plainNav2MaterialAlignmentSummary.fixedNav2LatestEndpoint"
+              :data-fixed-delivery-latest-endpoint="plainNav2MaterialAlignmentSummary.fixedDeliveryLatestEndpoint"
+              data-sends-motion-when-clicked="false"
+            >
+              {{ plainNav2MaterialAlignmentSummary.text }}
             </p>
             <p v-if="plainDeliveryGateMissingSummary" class="panel-note" data-testid="plain-delivery-gate-missing">
               {{ plainDeliveryGateMissingSummary }}

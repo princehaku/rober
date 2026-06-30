@@ -1238,6 +1238,36 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-nav2-material-alignment {
+  /* 送达材料是否真的属于当前 Nav2 行程必须单独说清，不能只靠 matches=true 这种机器字段。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-nav2-material-alignment[data-state="已对齐"],
+.plain-nav2-material-alignment[data-state="已送达"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-nav2-material-alignment[data-state="待行程ref"],
+.plain-nav2-material-alignment[data-state="待材料"] {
+  border-left-color: #9a6700;
+}
+
+.plain-nav2-material-alignment[data-state="待行程"] {
+  border-left-color: #8c959f;
+}
+
+.plain-nav2-material-alignment[data-state="需更新"] {
+  border-left-color: #cf222e;
+  background: #fff5f5;
+}
+
 .plain-motion-panel {
   border-left: 3px solid transparent;
 }
