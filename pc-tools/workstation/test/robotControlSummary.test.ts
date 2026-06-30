@@ -219,6 +219,82 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
   });
 
+  it("treats camera service self-owner as non-exclusive no-frame usage", async () => {
+    // 8088 相机服务自己持有 UVC 是共享预览单上游模型；summary 不能把它说成外部独占。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      if (url.pathname === "/api/camera/health") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          selected_name: "USB Composite Device: DV20 USB",
+          current_selection: {
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_path: "/dev/video1",
+            selected_is_uvc_or_usb: true,
+          },
+          source_usage: {
+            status: "in_use_by_camera_service",
+            owner_count: 1,
+            owners: [
+              {
+                pid: 525518,
+                command: "python3 scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088",
+                self: true,
+              },
+            ],
+          },
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.pathname === "/api/camera/devices") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          devices: [],
+          source_candidates_summary: {
+            candidates: [],
+          },
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(basePayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+    expect(summary.readback_summary.camera.source_usage_status).toBe("in_use_by_camera_service");
+    expect(summary.readback_summary.camera.source_usage_owner_count).toBe("1");
+    expect(summary.readback_summary.camera.source_usage_scope).toBe("camera_service_self");
+    expect(summary.readback_summary.camera.source_usage_not_exclusive).toBe("true");
+    expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+    expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+    expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("不是页面独占");
+    expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("相机服务正在用单上游共享预览读取 USB Composite Device: DV20 USB");
+    expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("UVC 设备没有输出视频帧");
+    expect(summary.readback_summary.camera.preview_next_action_plain).toContain("检查 USB");
+    expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
+  });
+
   it("separates free movement from mapping sensor readiness in live closure", async () => {
     // 自由移动只要安全确认和停止兜底；相机/雷达缺口只能阻塞建图启动，不能冒充移动前置。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

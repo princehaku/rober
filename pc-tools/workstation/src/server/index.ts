@@ -192,7 +192,33 @@ type CameraMjpegRelayLastFailure = {
   selected_is_uvc_or_usb?: string;
   source_usage_status?: string;
   source_usage_owner_count?: string;
+  source_usage_scope?: "free" | "camera_service_self" | "external_holder" | "unknown";
+  source_usage_not_exclusive?: string;
 };
+
+function cameraSourceUsageScope(
+  status: string | undefined,
+  ownerCount: string | undefined,
+): "free" | "camera_service_self" | "external_holder" | "unknown" {
+  // 相机服务自己持有设备是共享预览的单上游模型，不是浏览器或其它进程独占。
+  const normalizedStatus = shortText(status, "");
+  const normalizedOwnerCount = shortText(ownerCount, "");
+  if (normalizedStatus === "not_in_use" || normalizedOwnerCount === "0") {
+    return "free";
+  }
+  if (normalizedStatus === "in_use_by_camera_service" || normalizedStatus === "camera_service_self") {
+    return "camera_service_self";
+  }
+  if (normalizedStatus && normalizedStatus !== "not_loaded") {
+    return "external_holder";
+  }
+  return "unknown";
+}
+
+function cameraSourceUsageNotExclusive(scope: "free" | "camera_service_self" | "external_holder" | "unknown"): string {
+  // 输出字符串而不是布尔，是为了和既有 compactValueText 风格保持兼容。
+  return scope === "free" || scope === "camera_service_self" ? "true" : "false";
+}
 
 function cameraMjpegFormatAttemptsSummary(payload: Record<string, unknown> | null | undefined): string {
   // health/status 里只放短摘要；raw 尝试矩阵仍留在上车端，避免普通页面被大 JSON 淹没。
@@ -2306,6 +2332,8 @@ function cameraMjpegStatusResponse(
     ?? (previewStatus === "source_first_frame_failed" ? "first_frame_failed" : "not_loaded");
   const sourceFailureReason = diagnosisSource?.source_failure_reason
     ?? (previewStatus === "source_first_frame_failed" ? lastFailureReason || "first_frame_failed" : "not_loaded");
+  const sourceUsageScope = cameraSourceUsageScope(diagnosisSource?.source_usage_status, diagnosisSource?.source_usage_owner_count);
+  const sourceUsageNotExclusive = cameraSourceUsageNotExclusive(sourceUsageScope);
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -2354,6 +2382,8 @@ function cameraMjpegStatusResponse(
     selected_is_uvc_or_usb: diagnosisSource?.selected_is_uvc_or_usb ?? "not_loaded",
     source_usage_status: diagnosisSource?.source_usage_status ?? "not_loaded",
     source_usage_owner_count: diagnosisSource?.source_usage_owner_count ?? "not_loaded",
+    source_usage_scope: sourceUsageScope,
+    source_usage_not_exclusive: sourceUsageNotExclusive,
     // status/plain_hint 是 preview_* 的顶层别名，方便现场脚本直接读共享画面是否可见。
     status: previewStatus,
     plain_hint: previewGuidance.plain_hint,
@@ -2573,13 +2603,16 @@ async function cameraSourceFirstFrameFailureForStatus(
       || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(lastOfferReason);
     const sourceUsageStatus = shortText(sourceUsage?.status, "");
     const sourceUsageOwnerCount = sourceUsage?.owner_count === undefined ? "not_loaded" : String(sourceUsage.owner_count);
-    const sourceUsageLooksFree = sourceUsageStatus === "not_in_use" || sourceUsageOwnerCount === "0";
-    const canExplainNoFrameAsNotExclusive = firstFrameFailed && sourceUsageLooksFree && rawDiagnosisNotExclusive !== "true";
+    const sourceUsageScope = cameraSourceUsageScope(sourceUsageStatus, sourceUsageOwnerCount);
+    const sourceUsageNotExclusive = cameraSourceUsageNotExclusive(sourceUsageScope);
+    const canExplainNoFrameAsNotExclusive = firstFrameFailed && sourceUsageNotExclusive === "true" && rawDiagnosisNotExclusive !== "true";
     const resolvedDiagnosisStatus = canExplainNoFrameAsNotExclusive && diagnosisStatus !== "uvc_no_frame_not_exclusive"
       ? "uvc_no_frame_not_exclusive"
       : diagnosisStatus;
     const resolvedDiagnosisPlainHint = canExplainNoFrameAsNotExclusive && (!diagnosisPlainHint || !diagnosisPlainHint.includes("不是页面独占"))
-      ? `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`
+      ? sourceUsageScope === "camera_service_self"
+        ? `不是页面独占：相机服务正在用单上游共享预览读取 ${selectedName}，但 UVC 设备没有输出视频帧。`
+        : `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`
       : diagnosisPlainHint;
     const resolvedDiagnosisNextAction = canExplainNoFrameAsNotExclusive
       ? "check_usb_camera_input_power_or_known_good_uvc"
@@ -2608,6 +2641,8 @@ async function cameraSourceFirstFrameFailureForStatus(
         selected_is_uvc_or_usb: selectedIsUvcOrUsb,
         source_usage_status: sourceUsageStatus || "not_loaded",
         source_usage_owner_count: sourceUsageOwnerCount,
+        source_usage_scope: sourceUsageScope,
+        source_usage_not_exclusive: sourceUsageNotExclusive,
         last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
       };
     }
@@ -2626,6 +2661,8 @@ async function cameraSourceFirstFrameFailureForStatus(
       selected_is_uvc_or_usb: selectedIsUvcOrUsb,
       source_usage_status: sourceUsageStatus || "not_loaded",
       source_usage_owner_count: sourceUsageOwnerCount,
+      source_usage_scope: sourceUsageScope,
+      source_usage_not_exclusive: sourceUsageNotExclusive,
       last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
     };
   } catch {

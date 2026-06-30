@@ -1377,6 +1377,30 @@ function cameraOwnerFreeText(selectedName: string): string {
   return /[A-Za-z0-9]$/.test(selectedName) ? `${selectedName} 当前没人占用` : `${selectedName}当前没人占用`;
 }
 
+function cameraSourceUsageScope(
+  status: unknown,
+  ownerCount: unknown,
+): "free" | "camera_service_self" | "external_holder" | "unknown" {
+  // 共享预览的相机服务 self-owner 是单上游正常形态，不应被普通用户理解成外部独占。
+  const usageStatus = asString(status, "");
+  const usageOwnerCount = compactValueText(ownerCount ?? "");
+  if (usageStatus === "not_in_use" || usageOwnerCount === "0") {
+    return "free";
+  }
+  if (usageStatus === "in_use_by_camera_service" || usageStatus === "camera_service_self") {
+    return "camera_service_self";
+  }
+  if (usageStatus && !["not_loaded", "none", "unknown", "null"].includes(usageStatus)) {
+    return "external_holder";
+  }
+  return "unknown";
+}
+
+function cameraSourceUsageNotExclusive(scope: "free" | "camera_service_self" | "external_holder" | "unknown"): string {
+  // 继续输出 compact 字符串，保持 readback_summary 现有兼容风格。
+  return scope === "free" || scope === "camera_service_self" ? "true" : "false";
+}
+
 function cameraSummaryPreviewGuidance(
   previewStatus: RobotControlSummaryResponse["readback_summary"]["camera"]["preview_status"],
   sourceFirstFrameFailed: boolean,
@@ -2181,13 +2205,14 @@ function cameraSummaryFromReadbacks(
     || CAMERA_FIRST_FRAME_FAILURE_REASONS.includes(lastOfferFailureReason as typeof CAMERA_FIRST_FRAME_FAILURE_REASONS[number]),
   );
   const selectedName = cameraDisplayDeviceName(selectedCandidate.selected_name) || "UVC 设备";
-  const sourceUsageLooksFree = ["not_in_use", ""].includes(asString(sourceUsage?.status, ""))
-    || compactValueText(sourceUsage?.owner_count ?? "not_loaded") === "0";
-  const sourceNoFrameNotExclusive = Boolean(sourceFirstFrameFailedForSharedPreview && sourceUsageLooksFree);
+  const sourceUsageScope = cameraSourceUsageScope(sourceUsage?.status, sourceUsage?.owner_count);
+  const sourceUsageNotExclusive = cameraSourceUsageNotExclusive(sourceUsageScope);
+  const sourceUsageNotExclusiveForNoFrame = sourceUsageNotExclusive === "true";
+  const sourceNoFrameNotExclusive = Boolean(sourceFirstFrameFailedForSharedPreview && sourceUsageNotExclusiveForNoFrame);
   const probeBackendNoFrameNotExclusive = Boolean(
     firstFrameProbeOverlay?.backend_smoke_status === "backend_no_frame_observed"
     && firstFrameProbeOverlay.backend_frame_observed === "false"
-    && sourceUsageLooksFree
+    && sourceUsageScope !== "external_holder"
   );
   const overlaySourceDiagnosis = {
     status: asString(mjpegRelayOverlay?.source_diagnosis_status, ""),
@@ -2226,7 +2251,9 @@ function cameraSummaryFromReadbacks(
     )
       ? {
         status: "uvc_no_frame_not_exclusive",
-        plain_hint: `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`,
+        plain_hint: sourceUsageScope === "camera_service_self"
+          ? `不是页面独占：相机服务正在用单上游共享预览读取 ${selectedName}，但 UVC 设备没有输出视频帧。`
+          : `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`,
         next_action: "check_usb_camera_input_power_or_known_good_uvc",
         next_action_plain: cameraActionPlainText("check_usb_camera_input_power_or_known_good_uvc"),
         not_exclusive: true,
@@ -2383,6 +2410,8 @@ function cameraSummaryFromReadbacks(
     source_diagnosis_not_exclusive: compactValueText(derivedSourceDiagnosis.not_exclusive),
     source_usage_status: asString(sourceUsage?.status, "not_loaded"),
     source_usage_owner_count: sourceUsage?.owner_count === undefined ? "not_loaded" : compactValueText(sourceUsage.owner_count),
+    source_usage_scope: sourceUsageScope,
+    source_usage_not_exclusive: sourceUsageNotExclusive,
     source_usage_summary: sourceUsageSummary || "none",
     active_peer_count: summaryValueText(healthPayload, ["active_peer_count", "active_peer_connections"]),
     last_offer_error: asString(lastOfferError?.error, "none"),

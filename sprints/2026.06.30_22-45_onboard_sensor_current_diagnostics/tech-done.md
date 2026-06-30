@@ -21,6 +21,7 @@ sprint_type: micro
 - 2026-06-30 21:55 CST 修正 PC 地图雷达 WYSIWYG stale 判定：`robotControlSummary.ts` 的 `map/preview` 代理和 `summary.readback_summary.map` 都改为按 scan proof 点位自身的新鲜度判定；当 `latest_scan_proof_fresh=false` 或 continuity 状态 stale 时，即使旧 scan proof 仍有点数组，也返回 `radar_overlay_status=not_current`、当前点数 `0`、旧来源点只作诊断。新增 `robotControlSummary.test.ts` 回归覆盖该形态，避免 free-roam runtime scan 新鲜度错误覆盖地图 overlay 的 proof 新鲜度。
 - 2026-06-30 22:10 CST 提升 PC proof refresh 易用性：`RobotControlProofRefreshProxyResponse` 增加固定顶层只读 alias，`buildProofRefreshProxy` 会把 `latest_readback_key_values` 中的 `scan_once_observed`、`scan_hz_observed`、`raw_packet_once_observed`、`tf_observed`、`latest_scan_proof_fresh`、lifecycle/continuity、map/Nav2 常用字段同步到顶层。`catalog.test.ts` 覆盖雷达刷新回包顶层 alias，方便现场脚本直接读结果，不需要翻深层 JSON。
 - 2026-06-30 22:35 CST 提升 PC 地图普通用户入口：`/map` 成为推荐直达大地图 URL，地图卡“打开地图大屏”改为打开 `/map`，前端仍兼容旧 `?view=map` 和 `#map`。`App.vue` 与 `RobotControlConsolePanel.vue` 只按 URL 切换地图大屏 DOM/CSS 状态，不启动 ROS2/RViz2/Foxglove，不执行 Nav2，不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`；`App.test.ts` 覆盖 `/map` 直达和 `?view=map` legacy 兼容。
+- 2026-06-30 22:55 CST 收紧 PC 相机共享预览非独占口径：`readback_summary.camera` 与 `/api/robot-control/camera/mjpeg/status` 新增 `source_usage_scope`、`source_usage_not_exclusive`，并把 `in_use_by_camera_service` 识别为 `camera_service_self`。当 8088 相机服务按单上游共享预览模型持有 UVC 但首帧失败时，summary 会派生 `uvc_no_frame_not_exclusive`，明确问题是 UVC 无帧而非浏览器/页面独占。该改动只派生只读状态，不新开 camera reader，不发送任何 live 运动/control POST。
 
 ## 验证结果
 
@@ -38,6 +39,14 @@ sprint_type: micro
 - `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 403 tests；覆盖雷达 proof refresh 顶层 alias、地图雷达 stale 口径和 PC 首屏合同。
 - `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 226 tests；覆盖 `/map` 推荐直达大地图、`?view=map` legacy 兼容、直达页隐藏非地图卡片、1600% 地图缩放和不触发运动接口。
 - `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 404 tests；覆盖 `/map` 推荐直达大地图、legacy query、雷达 proof refresh 顶层 alias、地图雷达 stale 口径和 PC 首屏合同。
+- `npm test -- --run robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，2 files / 231 tests；覆盖 `source_usage_scope=camera_service_self` 时 summary 派生 `uvc_no_frame_not_exclusive`，以及普通首屏不把相机服务 self-owner 误说成外部独占。
+- `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
+- `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 405 tests；覆盖 camera service self-owner 非独占、backend smoke 无帧归因、`/map` 推荐直达大地图、雷达 proof refresh 顶层 alias、地图雷达 stale 口径和 PC 首屏合同。
+- `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
+- `git diff --check`：通过。
+- 2026-06-30 23:00 CST 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
+- PC 7001 live GET 验证相机非独占合同：`GET /api/robot-control/summary` 返回 `camera_status=source_first_frame_failed`、`source_usage_scope=free`、`source_usage_not_exclusive=true`、`source_diagnosis_status=uvc_no_frame_not_exclusive`、`source_diagnosis_not_exclusive=true`；`GET /api/robot-control/camera/mjpeg/status` 返回同组 `source_usage_scope=free/source_usage_not_exclusive=true`。当前 live 是没人占用形态；新增单测覆盖 camera service self-owner 形态。
+- PC 7001 live GET/refresh 验证雷达地图 WYSIWYG：首次 `GET /api/robot-control/map/preview` 因 proof stale 返回 `radar_overlay_status=not_current` 后，固定 no-motion `POST /api/robot-control/radar/scan-proof/refresh` 返回 `scan_once_observed=true`、`scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`、`latest_scan_proof_fresh=true`、`blocked_reasons=[]`；随后 `GET /api/robot-control/map/preview` 返回 `radar_overlay_status=loaded`、`radar_overlay_point_count=72`，`GET /api/robot-control/summary` 返回 `live_wysiwyg_missing_surface_ids=["camera"]`、`map_radar_overlay_status=loaded`、`map_radar_overlay_point_count=72`。该验证未调用 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
 - `git diff --check`：通过。
 - 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
