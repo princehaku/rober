@@ -1075,6 +1075,31 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-camera-shared-preview-proof {
+  /* 回答“是不是独占/能不能多人看”，只读展示共享流合同，不新开独占采集。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #8c959f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #17202a;
+}
+
+.plain-camera-shared-preview-proof[data-state="画面可见"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-camera-shared-preview-proof[data-state="非独占无帧"],
+.plain-camera-shared-preview-proof[data-state="等待画面"] {
+  border-left-color: #bf8700;
+}
+
+.plain-camera-shared-preview-proof[data-state="可能被占用"] {
+  border-left-color: #cf222e;
+  background: #fff5f5;
+}
+
 .plain-radar-panel {
   border-left: 3px solid transparent;
 }

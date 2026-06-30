@@ -1964,6 +1964,67 @@ const plainCameraSharedPreviewDomEvidence = computed(() => {
   };
 });
 
+const plainCameraSharedPreviewProofSummary = computed(() => {
+  // 这条给普通用户回答“是不是独占、能不能多人看、现在为什么没画面”，避免把硬件无帧误读成页面抢占。
+  const evidence = plainCameraSharedPreviewDomEvidence.value;
+  const camera = robotSummary.value?.readback_summary.camera;
+  const sourceUsageScope = camera?.source_usage_scope
+    || (camera?.source_usage_status === "in_use_by_camera_service"
+      ? "camera_service_self"
+      : camera?.source_usage_status === "not_in_use" || camera?.source_usage_owner_count === "0"
+        ? "free"
+        : camera?.source_usage_status === "in_use_by_other_process" || camera?.source_usage_status === "in_use_by_probe"
+          ? "external_holder"
+          : "unknown");
+  const sourceUsageNotExclusive = camera?.source_usage_not_exclusive === "true"
+    || sourceUsageScope === "free"
+    || sourceUsageScope === "camera_service_self";
+  const firstFrameFailed = cameraSourceFirstFrameFailed(camera);
+  const diagnosisStatus = camera?.source_diagnosis_status || "not_loaded";
+  const noFrameNotExclusive = sourceUsageNotExclusive && firstFrameFailed;
+  const state = evidence.currentFrameVisible
+    ? "画面可见"
+    : noFrameNotExclusive
+      ? "非独占无帧"
+      : evidence.exclusiveCameraClaim || sourceUsageScope === "external_holder"
+        ? "可能被占用"
+        : "等待画面";
+  const sharingText = evidence.singleUpstream
+    ? `单上游共享，${evidence.clientCount} 个页面可共用同一条流`
+    : `${evidence.clientCount} 个页面观看，单上游仍待确认`;
+  const exclusiveText = sourceUsageNotExclusive && !evidence.exclusiveCameraClaim
+    ? "不是页面独占"
+    : "需要确认是否有外部占用";
+  const noFrameText = noFrameNotExclusive
+    ? sourceUsageScope === "camera_service_self"
+      ? "相机服务自己持有设备但没有读到首帧"
+      : "设备未被外部占用但没有读到首帧"
+    : evidence.currentFrameVisible
+      ? "本页已经显示真实帧"
+      : "本页尚未确认真实帧";
+  const nextAction = noFrameNotExclusive
+    ? "检查 USB、摄像头输入或供电，必要时换 known-good UVC 后复测"
+    : evidence.currentFrameVisible
+      ? "继续监看共享预览"
+      : "打开共享预览或点只读检查复测首帧";
+  return {
+    state,
+    text: `共享预览证明：${sharingText}；${exclusiveText}；${noFrameText}。下一步：${nextAction}。`,
+    singleUpstream: evidence.singleUpstream,
+    clientCount: evidence.clientCount,
+    sourceUsageScope,
+    sourceUsageNotExclusive,
+    diagnosisStatus,
+    firstFrameFailed,
+    noFrameNotExclusive,
+    currentFrameVisible: evidence.currentFrameVisible,
+    currentMjpegFrameVisible: evidence.currentMjpegFrameVisible,
+    currentVideoFrameVisible: evidence.currentVideoFrameVisible,
+    fixedSharedPreviewEndpoint: evidence.fixedSharedPreviewEndpoint,
+    fixedSharedPreviewStatusEndpoint: evidence.fixedSharedPreviewStatusEndpoint,
+  };
+});
+
 const plainCameraCurrentFrameProofSummary = computed(() => {
   // 画面验收必须看本页是否真的绘出帧，不能把共享流缓存或上游连接误当成本页可见。
   const evidence = plainCameraSharedPreviewDomEvidence.value;
@@ -17284,6 +17345,30 @@ onBeforeUnmount(() => {
             :data-fixed-shared-preview-status-endpoint="plainCameraCurrentFrameProofSummary.fixedSharedPreviewStatusEndpoint"
           >
             {{ plainCameraCurrentFrameProofSummary.text }}
+          </p>
+          <p
+            class="panel-note plain-camera-shared-preview-proof"
+            data-testid="plain-camera-shared-preview-proof"
+            data-sends-motion-when-clicked="false"
+            data-starts-camera-exclusive-capture="false"
+            data-starts-map-runtime="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            :data-state="plainCameraSharedPreviewProofSummary.state"
+            :data-single-upstream="String(plainCameraSharedPreviewProofSummary.singleUpstream)"
+            :data-client-count="String(plainCameraSharedPreviewProofSummary.clientCount)"
+            :data-source-usage-scope="plainCameraSharedPreviewProofSummary.sourceUsageScope"
+            :data-source-usage-not-exclusive="String(plainCameraSharedPreviewProofSummary.sourceUsageNotExclusive)"
+            :data-source-diagnosis-status="plainCameraSharedPreviewProofSummary.diagnosisStatus"
+            :data-source-first-frame-failed="String(plainCameraSharedPreviewProofSummary.firstFrameFailed)"
+            :data-no-frame-not-exclusive="String(plainCameraSharedPreviewProofSummary.noFrameNotExclusive)"
+            :data-current-frame-visible="String(plainCameraSharedPreviewProofSummary.currentFrameVisible)"
+            :data-current-mjpeg-frame-visible="String(plainCameraSharedPreviewProofSummary.currentMjpegFrameVisible)"
+            :data-current-video-frame-visible="String(plainCameraSharedPreviewProofSummary.currentVideoFrameVisible)"
+            :data-fixed-shared-preview-endpoint="plainCameraSharedPreviewProofSummary.fixedSharedPreviewEndpoint"
+            :data-fixed-shared-preview-status-endpoint="plainCameraSharedPreviewProofSummary.fixedSharedPreviewStatusEndpoint"
+          >
+            {{ plainCameraSharedPreviewProofSummary.text }}
           </p>
           <p v-if="plainCameraWysiwygReadback" class="panel-note" data-testid="robot-camera-wysiwyg-readback">{{ plainCameraWysiwygReadback }}</p>
           <p v-if="plainCameraDeviceReadback" class="panel-note" data-testid="robot-camera-device-readback">{{ plainCameraDeviceReadback }}</p>
