@@ -20,6 +20,7 @@ sprint_type: micro
 - 更新 `docs/product/pc_tools_workstation.md`，明确“地图太小”的现场用法：普通用户打开 PC `7001/?view=map` 得到真正只看地图的大屏；ROS2 配套是 RViz2 本地工程观察 `/map`、`/scan`、TF、Nav2 path、AMCL 和 costmap，Foxglove 是 bridge 后的浏览器远程观察，不替代普通用户 PC 地图。
 - 2026-06-30 21:55 CST 修正 PC 地图雷达 WYSIWYG stale 判定：`robotControlSummary.ts` 的 `map/preview` 代理和 `summary.readback_summary.map` 都改为按 scan proof 点位自身的新鲜度判定；当 `latest_scan_proof_fresh=false` 或 continuity 状态 stale 时，即使旧 scan proof 仍有点数组，也返回 `radar_overlay_status=not_current`、当前点数 `0`、旧来源点只作诊断。新增 `robotControlSummary.test.ts` 回归覆盖该形态，避免 free-roam runtime scan 新鲜度错误覆盖地图 overlay 的 proof 新鲜度。
 - 2026-06-30 22:10 CST 提升 PC proof refresh 易用性：`RobotControlProofRefreshProxyResponse` 增加固定顶层只读 alias，`buildProofRefreshProxy` 会把 `latest_readback_key_values` 中的 `scan_once_observed`、`scan_hz_observed`、`raw_packet_once_observed`、`tf_observed`、`latest_scan_proof_fresh`、lifecycle/continuity、map/Nav2 常用字段同步到顶层。`catalog.test.ts` 覆盖雷达刷新回包顶层 alias，方便现场脚本直接读结果，不需要翻深层 JSON。
+- 2026-06-30 22:35 CST 提升 PC 地图普通用户入口：`/map` 成为推荐直达大地图 URL，地图卡“打开地图大屏”改为打开 `/map`，前端仍兼容旧 `?view=map` 和 `#map`。`App.vue` 与 `RobotControlConsolePanel.vue` 只按 URL 切换地图大屏 DOM/CSS 状态，不启动 ROS2/RViz2/Foxglove，不执行 Nav2，不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`；`App.test.ts` 覆盖 `/map` 直达和 `?view=map` legacy 兼容。
 
 ## 验证结果
 
@@ -35,6 +36,12 @@ sprint_type: micro
 - `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 225 tests；覆盖 `?view=map` DOM 合同、1600% 直达地图、RViz2/Foxglove 配套说明和不触发运动接口。
 - `npm test -- --run robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，2 files / 229 tests；覆盖 scan proof stale 时地图雷达点不贴到当前地图、summary 不误报 `radar_map_points_visible=true`，以及 PC 地图大屏合同。
 - `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 403 tests；覆盖雷达 proof refresh 顶层 alias、地图雷达 stale 口径和 PC 首屏合同。
+- `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 226 tests；覆盖 `/map` 推荐直达大地图、`?view=map` legacy 兼容、直达页隐藏非地图卡片、1600% 地图缩放和不触发运动接口。
+- `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 404 tests；覆盖 `/map` 推荐直达大地图、legacy query、雷达 proof refresh 顶层 alias、地图雷达 stale 口径和 PC 首屏合同。
+- `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
+- `git diff --check`：通过。
+- 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
+- PC 7001 live GET 验证：`GET /map` 与 `GET /?view=map` 均返回 `HTTP 200 text/html`；`GET /api/robot-control/map/preview` 返回 `radar_overlay_status=loaded`、`radar_overlay_point_count=72`、`robot_pose_status=map_pose_observed`、`path_preview_status=path_preview_observed`；`GET /api/robot-control/summary` 返回 `live_status=needs_wheel_rerun`、`live_wysiwyg_missing_surface_ids=["camera"]`、`keyboard_continuous_control_ready=true`、`free_move_start_ready=true`、`map_radar_overlay_status=loaded`、`map_radar_overlay_point_count=72`、`camera_status=source_first_frame_failed`。该验证只调用 GET 页面/summary/map preview，不发送任何 live 运动/control POST。
 - `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
 - `git diff --check`：通过。
 - 上车端 `python3 -m py_compile /root/rober/onboard/scripts/local_webrtc_camera_smoke.py /root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py`、`bash -n /root/rober/onboard/scripts/o1_lidar_lifecycle.sh`：通过；`colcon build --symlink-install --packages-select ros2_trashbot_hardware`：通过，1 package finished。

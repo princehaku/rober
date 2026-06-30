@@ -48,6 +48,10 @@ const routeInputs = ref<RouteDebugInputs>({
 
 function isDirectMapViewRequested(): boolean {
   // 直达地图大屏只改变 PC 页面壳，不启动 RViz2、ROS2 runtime 或任何运动接口。
+  const pathname = window.location.pathname.replace(/\/+$/, "");
+  if (pathname === "/map") {
+    return true;
+  }
   const params = new URLSearchParams(window.location.search);
   const view = params.get("view") ?? params.get("mode");
   return view === "map" || view === "map-only" || window.location.hash === "#map";
@@ -86,7 +90,8 @@ onMounted(() => {
   <main
     class="shell"
     :data-direct-map-view-requested="String(directMapViewRequested)"
-    data-direct-map-view-url="?view=map"
+    data-direct-map-view-url="/map"
+    data-direct-map-view-legacy-url="?view=map"
     data-direct-map-view-behavior="page_shell_map_only"
   >
     <header v-if="!directMapViewRequested" class="topbar">

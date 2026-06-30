@@ -288,9 +288,14 @@ const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
 const plainMapBrowserFullscreenActive = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
-const plainMapDirectViewHref = "?view=map";
+const plainMapDirectViewHref = "/map";
+const plainMapLegacyDirectViewHref = "?view=map";
 const plainMapDirectViewRequested = computed(() => {
   // 直达地图只读取当前 URL，用于现场大屏打开即看地图；它不代表 ROS2/RViz2 已启动。
+  const pathname = window.location.pathname.replace(/\/+$/, "");
+  if (pathname === "/map") {
+    return true;
+  }
   const params = new URLSearchParams(window.location.search);
   const view = params.get("view") ?? params.get("mode");
   return view === "map" || view === "map-only" || window.location.hash === "#map";
@@ -305,7 +310,7 @@ const plainMapZoomStyle = computed(() => ({
 const plainMapDisplayProofText = computed(() => {
   // 这行给普通用户确认“当前就是大地图”，ROS2 配套只作为工程观察入口，不改变本页控制边界。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，当前 ${plainMapZoomPercent.value}，图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先用本页大地图，工程调试用 RViz2，远程浏览器观察先部署 Foxglove bridge。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
+  return `地图显示：${viewText}，当前 ${plainMapZoomPercent.value}，图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先打开 /map 大地图，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；工程调试用 RViz2，远程浏览器观察先部署 Foxglove bridge。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -17168,7 +17173,8 @@ onBeforeUnmount(() => {
           :data-browser-fullscreen-active="String(plainMapBrowserFullscreenActive)"
           :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
           :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
-          data-direct-map-view-url="?view=map"
+          data-direct-map-view-url="/map"
+          data-direct-map-view-legacy-url="?view=map"
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
           data-direct-map-view-default-zoom-percent="1600%"
           data-ros2-companion-style="rviz2-map-focus"
@@ -17203,7 +17209,8 @@ onBeforeUnmount(() => {
                 data-user-facing-primary-map-action="true"
                 data-ordinary-user-map-entry="true"
                 data-opens-new-window="true"
-                data-direct-map-view-url="?view=map"
+                data-direct-map-view-url="/map"
+                data-direct-map-view-legacy-url="?view=map"
                 data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
                 data-direct-map-view-default-zoom-percent="1600%"
                 data-sends-motion-when-clicked="false"
@@ -17503,7 +17510,8 @@ onBeforeUnmount(() => {
             :data-current-map-size="plainMapViewSize"
             :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
             :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
-            data-direct-map-view-url="?view=map"
+            data-direct-map-view-url="/map"
+            data-direct-map-view-legacy-url="?view=map"
             data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
@@ -17534,7 +17542,7 @@ onBeforeUnmount(() => {
             data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            PC 默认先显示近整屏 1200% 大地图；需要独立观察屏时打开 ?view=map 地图大屏，直达页使用 1600% 上限；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时部署 bridge 后接 Foxglove Studio；普通操作仍在本页完成。
+            PC 默认先显示近整屏 1200% 大地图；需要独立观察屏时打开 /map 地图大屏，?view=map 继续兼容，直达页使用 1600% 上限；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时部署 bridge 后接 Foxglove Studio；普通操作仍在本页完成。
           </p>
         </article>
 
