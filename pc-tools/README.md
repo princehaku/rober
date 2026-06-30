@@ -1097,3 +1097,10 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 `观测模式` 额外声明 `data-enter-size=fullscreen`、`data-hides-ordinary-actions-when-active=true`、
 `data-keeps-wysiwyg-overlays=image-route-robot-radar`，并保留 RViz2 配套命令作为工程观察提示。
 这样现场一键进入大屏地图时，脚本能直接确认它只是 PC 内置 RViz-like 观察模式，不启动 ROS2/RViz2、不发车。
+
+2026-06-30 10:11 CST 起，普通首屏自由移动主按钮会显式处理 stop request pending 的现场形态。
+当 action card 读到 `free_roam_stop_request_pending=true` 且 `start_will_clear_stop_request=true` 时，勾选安全确认后的
+主按钮文案改为 `解除停止并开始自由移动（低速）` 或 `解除停止并开始自动扫图（低速）`，并暴露
+`data-free-roam-stop-request-pending`、`data-start-will-clear-stop-request`、`data-motion-start-blocked-by-stop-request`。
+自由移动仪表同步写明“当前有停止请求，点击会先解除”。该变化只让 PC 端把 stop-request 语义说清楚；
+真实启动仍必须勾安全确认，并且只走固定 `/api/robot-control/free-roam/autonomy/start` 代理。

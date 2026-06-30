@@ -4933,7 +4933,7 @@ describe("App", () => {
     expect(mappingGauge.text()).toBe("建图仪表：移动待安全确认；画面未出帧；雷达已刷新；记录未启动；地图画面已刷新。下一步：先勾安全确认；勾后可先低速移动。");
     const freeRoamMotionGauge = wrapper.find('[data-testid="plain-free-roam-motion-gauge"]');
     expect(freeRoamMotionGauge.exists()).toBe(true);
-    expect(freeRoamMotionGauge.text()).toBe("自由移动仪表：低速自由移动只差安全确认；画面未就绪、雷达已就绪，不阻止先动；建图记录还差传感器条件。下一步：勾选现场安全确认。");
+    expect(freeRoamMotionGauge.text()).toBe("自由移动仪表：低速自由移动只差安全确认；画面未就绪、雷达已就绪，不阻止先动；建图记录还差传感器条件；没有停止请求阻塞。下一步：勾选现场安全确认。");
     expect(freeRoamMotionGauge.attributes("data-state")).toBe("待安全确认");
     expect(freeRoamMotionGauge.attributes("data-safety-confirmed")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-free-move-start-ready")).toBe("true");
@@ -4946,6 +4946,9 @@ describe("App", () => {
     expect(freeRoamMotionGauge.attributes("data-primary-action-kind")).toBe("blocked");
     expect(freeRoamMotionGauge.attributes("data-primary-action-can-start-motion")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-primary-action-requests-mapping")).toBe("false");
+    expect(freeRoamMotionGauge.attributes("data-free-roam-stop-request-pending")).toBe("false");
+    expect(freeRoamMotionGauge.attributes("data-start-will-clear-stop-request")).toBe("false");
+    expect(freeRoamMotionGauge.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-next-action")).toBe("勾选现场安全确认");
     expect(freeRoamMotionGauge.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeRoamMotionGauge.attributes("data-fixed-free-roam-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
@@ -4966,6 +4969,9 @@ describe("App", () => {
     expect(freeRoamStartButton.attributes("data-radar-blocks-mapping-start")).toBe("false");
     expect(freeRoamStartButton.attributes("data-camera-blocks-free-motion")).toBe("false");
     expect(freeRoamStartButton.attributes("data-radar-blocks-free-motion")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-free-roam-stop-request-pending")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-start-will-clear-stop-request")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     expect(freeRoamStartButton.attributes("data-requires-safety-confirmation")).toBe("true");
     expect(freeRoamStartButton.attributes("data-minimal-precheck-safety-only")).toBe("true");
     const defaultFreeRoamKeyboardButton = wrapper.find('[data-testid="plain-free-roam-keyboard"]');
@@ -7645,6 +7651,46 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：勾选安全确认后即可启用；按住方向键才会动。");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
+  });
+
+  it("labels free-roam start as clearing a pending stop request before moving", async () => {
+    // live 形态：上车自由移动停在 stop request；开始自由移动会先清掉停止请求，再进入低速状态机。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.free_roam.stop_required = "true";
+    summaryFixture.readback_summary.free_roam.decision_state = "stopping";
+    summaryFixture.readback_summary.free_roam.stop_request_status_plain = "当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。";
+    const freeMoveCard = summaryFixture.action_status_cards.find((card: { id: string }) => card.id === "free_move");
+    freeMoveCard.evidence = {
+      ...freeMoveCard.evidence,
+      free_roam_stop_request_pending: true,
+      start_will_clear_stop_request: true,
+      motion_start_blocked_by_stop_request: false,
+    };
+    stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+
+    const freeRoamStartButton = wrapper.find('[data-testid="plain-free-roam-start"]');
+    expect(freeRoamStartButton.text()).toBe("解除停止并开始自由移动（低速）");
+    expect(freeRoamStartButton.attributes("disabled")).toBeUndefined();
+    expect(freeRoamStartButton.attributes("data-primary-action-kind")).toBe("start_free_move_only");
+    expect(freeRoamStartButton.attributes("data-can-start-free-motion")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-free-roam-stop-request-pending")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-start-will-clear-stop-request")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
+    expect(freeRoamStartButton.attributes("data-sends-motion-when-clicked")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
+
+    const freeRoamMotionGauge = wrapper.find('[data-testid="plain-free-roam-motion-gauge"]');
+    expect(freeRoamMotionGauge.text()).toContain("当前有停止请求，点击会先解除");
+    expect(freeRoamMotionGauge.text()).toContain("下一步：解除停止请求并开始低速自由移动。");
+    expect(freeRoamMotionGauge.attributes("data-free-roam-stop-request-pending")).toBe("true");
+    expect(freeRoamMotionGauge.attributes("data-start-will-clear-stop-request")).toBe("true");
+    expect(freeRoamMotionGauge.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
   });
 
   it("allows low-speed free-roam recording while marking mapping degraded when camera has no first frame", async () => {
@@ -13773,8 +13819,11 @@ describe("App", () => {
     expect(freeMoveOnlyButton.attributes("data-camera-blocks-free-motion")).toBe("false");
     expect(freeMoveOnlyButton.attributes("data-radar-blocks-free-motion")).toBe("false");
     expect(freeMoveOnlyButton.attributes("data-camera-blocks-mapping-start")).toBe("true");
+    expect(freeMoveOnlyButton.attributes("data-free-roam-stop-request-pending")).toBe("false");
+    expect(freeMoveOnlyButton.attributes("data-start-will-clear-stop-request")).toBe("false");
+    expect(freeMoveOnlyButton.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     const freeMoveOnlyGauge = wrapper.find('[data-testid="plain-free-roam-motion-gauge"]');
-    expect(freeMoveOnlyGauge.text()).toBe("自由移动仪表：低速自由移动可启动；画面未就绪、雷达已就绪，不阻止先动；建图记录还差传感器条件。下一步：可先低速自由移动；补齐画面首帧和雷达刷新后再建图。");
+    expect(freeMoveOnlyGauge.text()).toBe("自由移动仪表：低速自由移动可启动；画面未就绪、雷达已就绪，不阻止先动；建图记录还差传感器条件；没有停止请求阻塞。下一步：可先低速自由移动；补齐画面首帧和雷达刷新后再建图。");
     expect(freeMoveOnlyGauge.attributes("data-state")).toBe("可先移动");
     expect(freeMoveOnlyGauge.attributes("data-safety-confirmed")).toBe("true");
     expect(freeMoveOnlyGauge.attributes("data-free-move-start-ready")).toBe("true");
@@ -13787,6 +13836,9 @@ describe("App", () => {
     expect(freeMoveOnlyGauge.attributes("data-primary-action-kind")).toBe("start_free_move_only");
     expect(freeMoveOnlyGauge.attributes("data-primary-action-can-start-motion")).toBe("true");
     expect(freeMoveOnlyGauge.attributes("data-primary-action-requests-mapping")).toBe("false");
+    expect(freeMoveOnlyGauge.attributes("data-free-roam-stop-request-pending")).toBe("false");
+    expect(freeMoveOnlyGauge.attributes("data-start-will-clear-stop-request")).toBe("false");
+    expect(freeMoveOnlyGauge.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     expect(freeMoveOnlyGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
     const motionReadinessGauge = wrapper.find('[data-testid="plain-motion-readiness-gauge"]');
     expect(motionReadinessGauge.text()).toBe("移动仪表：安全确认已勾；图上行程待准备；键盘可启用，按住才会动；自由移动可启动；画面和雷达不阻止先动。下一步：可先自由移动；图上行程和键盘按需继续。");

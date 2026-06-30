@@ -5963,6 +5963,10 @@ const plainFreeRoamMappingStartLabel = computed(() => (
       ? "等待地图刷新"
       : !plainManualSafetyConfirmed.value
         ? "先勾安全确认"
+        : plainFreeRoamDomEvidence.value.startWillClearStopRequest
+          ? plainFreeRoamMotionModeName.value === "自动扫图"
+            ? "解除停止并开始自动扫图（低速）"
+            : "解除停止并开始自由移动（低速）"
         : plainFreeRoamMotionStartButtonText.value
 ));
 const plainFreeRoamMappingSaveLabel = computed(() => (
@@ -6735,6 +6739,9 @@ type PlainFreeRoamDomEvidence = {
   primaryActionMappingStartReady: boolean;
   primaryActionCameraBlocksMappingStart: boolean;
   primaryActionRadarBlocksMappingStart: boolean;
+  freeRoamStopRequestPending: boolean;
+  startWillClearStopRequest: boolean;
+  motionStartBlockedByStopRequest: boolean;
   // 固定代理入口暴露在主面板，避免普通验收去解析高级诊断或中文长文案。
   fixedFreeRoamStartEndpoint: string;
   fixedFreeRoamStopEndpoint: string;
@@ -6768,6 +6775,9 @@ type PlainFreeRoamMotionGauge = {
   primaryActionKind: string;
   primaryActionCanStartMotion: boolean;
   primaryActionRequestsMapping: boolean;
+  freeRoamStopRequestPending: boolean;
+  startWillClearStopRequest: boolean;
+  motionStartBlockedByStopRequest: boolean;
   fixedFreeRoamStartEndpoint: string;
   fixedFreeRoamStopEndpoint: string;
   fixedMappingStartEndpoint: string;
@@ -6883,6 +6893,11 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
   const freeMoveStartReady = boundary?.free_roam_motion_start_ready === true;
   const primaryActionCanStartMotion = canStartPlainFreeRoamPrimary.value && freeMoveStartReady;
   const primaryActionRequestsMapping = primaryActionCanStartMotion && mappingStartReady;
+  const freeMoveActionCard = plainActionStatusCards.value.find((card) => card.id === "free_move");
+  const freeMoveEvidence = freeMoveActionCard?.evidence ?? {};
+  const freeRoamStopRequestPending = freeMoveEvidence.free_roam_stop_request_pending === true;
+  const startWillClearStopRequest = freeMoveEvidence.start_will_clear_stop_request === true;
+  const motionStartBlockedByStopRequest = freeMoveEvidence.motion_start_blocked_by_stop_request === true;
   const camera = summary?.readback_summary.camera;
   const sourceFirstFrameReady = camera?.source_readiness === "first_frame_observed"
     || camera?.source_diagnosis_status === "first_frame_observed"
@@ -6919,6 +6934,9 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     primaryActionMappingStartReady: mappingStartReady,
     primaryActionCameraBlocksMappingStart: !sourceFirstFrameReady,
     primaryActionRadarBlocksMappingStart: !plainRadarReadyForFreeRoamMapping.value,
+    freeRoamStopRequestPending,
+    startWillClearStopRequest,
+    motionStartBlockedByStopRequest,
     fixedFreeRoamStartEndpoint: "/api/robot-control/free-roam/autonomy/start",
     fixedFreeRoamStopEndpoint: "/api/robot-control/free-roam/autonomy/stop",
     fixedMappingStartEndpoint: "/api/robot-control/map/start",
@@ -7018,12 +7036,20 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
   const mappingText = evidence.mappingStartReady
     ? "建图记录可随自由移动启动"
     : "建图记录还差传感器条件";
+  const stopRequestText = evidence.startWillClearStopRequest
+    ? "当前有停止请求，点击会先解除"
+    : evidence.freeRoamStopRequestPending
+      ? "当前有停止请求"
+      : "没有停止请求阻塞";
   const nextAction = (() => {
     if (!evidence.freeMoveStartReady) {
       return "连接默认小车";
     }
     if (!safetyConfirmed) {
       return "勾选现场安全确认";
+    }
+    if (evidence.startWillClearStopRequest) {
+      return "解除停止请求并开始低速自由移动";
     }
     if (!evidence.mappingStartReady) {
       return "可先低速自由移动；补齐画面首帧和雷达刷新后再建图";
@@ -7032,7 +7058,7 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
   })();
   return {
     state,
-    text: `自由移动仪表：${moveText}；${sensorText}；${mappingText}。下一步：${nextAction}。`,
+    text: `自由移动仪表：${moveText}；${sensorText}；${mappingText}；${stopRequestText}。下一步：${nextAction}。`,
     nextAction,
     safetyConfirmed,
     freeMoveStartReady: evidence.freeMoveStartReady,
@@ -7045,6 +7071,9 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
     primaryActionKind: evidence.primaryActionKind,
     primaryActionCanStartMotion: evidence.primaryActionCanStartMotion,
     primaryActionRequestsMapping: evidence.primaryActionRequestsMapping,
+    freeRoamStopRequestPending: evidence.freeRoamStopRequestPending,
+    startWillClearStopRequest: evidence.startWillClearStopRequest,
+    motionStartBlockedByStopRequest: evidence.motionStartBlockedByStopRequest,
     fixedFreeRoamStartEndpoint: evidence.fixedFreeRoamStartEndpoint,
     fixedFreeRoamStopEndpoint: evidence.fixedFreeRoamStopEndpoint,
     fixedMappingStartEndpoint: evidence.fixedMappingStartEndpoint,
@@ -16176,6 +16205,9 @@ onBeforeUnmount(() => {
             :data-primary-action-kind="plainFreeRoamMotionGauge.primaryActionKind"
             :data-primary-action-can-start-motion="String(plainFreeRoamMotionGauge.primaryActionCanStartMotion)"
             :data-primary-action-requests-mapping="String(plainFreeRoamMotionGauge.primaryActionRequestsMapping)"
+            :data-free-roam-stop-request-pending="String(plainFreeRoamMotionGauge.freeRoamStopRequestPending)"
+            :data-start-will-clear-stop-request="String(plainFreeRoamMotionGauge.startWillClearStopRequest)"
+            :data-motion-start-blocked-by-stop-request="String(plainFreeRoamMotionGauge.motionStartBlockedByStopRequest)"
             :data-next-action="plainFreeRoamMotionGauge.nextAction"
             :data-fixed-free-roam-start-endpoint="plainFreeRoamMotionGauge.fixedFreeRoamStartEndpoint"
             :data-fixed-free-roam-stop-endpoint="plainFreeRoamMotionGauge.fixedFreeRoamStopEndpoint"
@@ -16226,6 +16258,9 @@ onBeforeUnmount(() => {
               :data-radar-blocks-mapping-start="String(plainFreeRoamDomEvidence.primaryActionRadarBlocksMappingStart)"
               :data-camera-blocks-free-motion="String(plainFreeRoamDomEvidence.cameraBlocksFreeMotion)"
               :data-radar-blocks-free-motion="String(plainFreeRoamDomEvidence.radarBlocksFreeMotion)"
+              :data-free-roam-stop-request-pending="String(plainFreeRoamDomEvidence.freeRoamStopRequestPending)"
+              :data-start-will-clear-stop-request="String(plainFreeRoamDomEvidence.startWillClearStopRequest)"
+              :data-motion-start-blocked-by-stop-request="String(plainFreeRoamDomEvidence.motionStartBlockedByStopRequest)"
               :data-requires-safety-confirmation="String(true)"
               :data-minimal-precheck-safety-only="String(plainFreeRoamDomEvidence.freeMoveSafetyOnly)"
               :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"

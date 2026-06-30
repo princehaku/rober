@@ -4559,3 +4559,11 @@ UVC 无首帧”，但不会放行建图。该变化只修正普通首屏事实�
 `观测模式` 进一步声明进入后使用 fullscreen、收起普通操作行、保留地图/路线/小车/雷达 overlay，并继续暴露
 `ros2 launch ros2_trashbot_bringup rviz.launch.py` 作为工程观察配套提示。该变化让“PC 地图太小”时的一键大屏观察入口可验收，
 同时保证普通用户不会因为点观测按钮误启动 ROS2、RViz2、建图 runtime、Nav2 或任何运动命令。
+
+2026-06-30 10:11 CST 起，普通首屏自由移动主按钮把 stop request pending 变成明确的一步动作。
+当后端 action card evidence 显示 `free_roam_stop_request_pending=true` 且
+`start_will_clear_stop_request=true` 时，勾选安全确认后的按钮会显示“解除停止并开始自由移动（低速）”；
+建图传感器已满足时显示“解除停止并开始自动扫图（低速）”。按钮和自由移动仪表同步暴露
+`data-free-roam-stop-request-pending`、`data-start-will-clear-stop-request`、
+`data-motion-start-blocked-by-stop-request`，避免用户把“有停止请求”误读成自由移动不可启动。
+该变化只更新 PC 端普通文案、DOM 合同和测试；真实启动仍只在安全确认后走固定 free-roam start 代理。
