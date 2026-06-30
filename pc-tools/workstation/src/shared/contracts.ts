@@ -2458,6 +2458,18 @@ export interface RobotControlActionStatusCard {
     source_frame_id?: string;
     blocked_reasons?: string[];
     radar_lifecycle_running?: boolean;
+    radar_lifecycle_state?: string;
+    map_radar_status?: string;
+    map_radar_point_count?: number;
+    map_radar_source_point_count?: number;
+    map_radar_blocked_by_lifecycle_not_running?: boolean;
+    runtime_scan_status?: string;
+    runtime_scan_fresh?: boolean;
+    runtime_scan_point_count?: number;
+    runtime_scan_source_point_count?: number;
+    runtime_scan_frame_id?: string;
+    runtime_scan_age_s?: string;
+    runtime_scan_source?: string;
     radar_start_configured?: boolean;
     fixed_radar_start_endpoint?: string;
     fixed_radar_refresh_endpoint?: string;

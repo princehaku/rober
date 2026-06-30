@@ -6059,6 +6059,16 @@ describe("App", () => {
     expect(radarActionCard.attributes("data-source-frame-id")).toBe("laser_frame");
     expect(radarActionCard.attributes("data-blocked-reasons")).toBe("runtime_scan_stale_for_map_radar_points");
     expect(radarActionCard.attributes("data-radar-lifecycle-running")).toBe("true");
+    expect(radarActionCard.attributes("data-radar-lifecycle-state")).toBe("running");
+    expect(radarActionCard.attributes("data-map-radar-status")).toBe("not_current");
+    expect(radarActionCard.attributes("data-map-radar-point-count")).toBe("0");
+    expect(radarActionCard.attributes("data-map-radar-source-point-count")).toBe("81");
+    expect(radarActionCard.attributes("data-map-radar-blocked-by-lifecycle-not-running")).toBe("false");
+    expect(radarActionCard.attributes("data-runtime-scan-status")).toBe("stale");
+    expect(radarActionCard.attributes("data-runtime-scan-fresh")).toBe("false");
+    expect(radarActionCard.attributes("data-runtime-scan-point-count")).toBe("81");
+    expect(radarActionCard.attributes("data-runtime-scan-source-point-count")).toBe("81");
+    expect(radarActionCard.attributes("data-runtime-scan-frame-id")).toBe("laser_frame");
     expect(radarActionCard.attributes("data-radar-start-configured")).toBe("true");
     expect(radarActionCard.attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
     expect(radarActionCard.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
@@ -10013,6 +10023,9 @@ describe("App", () => {
     summaryFixture.readback_summary.lidar.lifecycle_running = "false";
     summaryFixture.readback_summary.lidar.lifecycle_state = "stopped";
     summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.lidar.runtime_scan_status = "fresh";
+    summaryFixture.readback_summary.lidar.runtime_lidar_age_s = "0.01";
+    summaryFixture.readback_summary.lidar.runtime_scan_source = "free_roam_runtime_snapshot";
     summaryFixture.readback_summary.lidar.scan_preview_point_count = "72";
     summaryFixture.readback_summary.lidar.scan_preview_source_point_count = "72";
     summaryFixture.readback_summary.lidar.scan_preview_frame_id = "laser_frame";

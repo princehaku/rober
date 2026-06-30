@@ -3455,11 +3455,28 @@ function actionCardWithDerivedEvidence(
   if (card.id === "radar_map_points") {
     const radar = robotSummary.value?.readback_summary.radar;
     const lidar = robotSummary.value?.readback_summary.lidar;
+    const radarCardBlockedReasons = card.evidence?.blocked_reasons ?? [];
+    const runtimeScanStatusFallback = radarCardBlockedReasons.some((reason) => reason.includes("runtime_scan_stale"))
+      ? "stale"
+      : "not_loaded";
     return {
       ...card,
       evidence: {
         ...card.evidence,
         radar_lifecycle_running: card.evidence?.radar_lifecycle_running ?? radar?.lifecycle_running === "true",
+        radar_lifecycle_state: card.evidence?.radar_lifecycle_state ?? radar?.lifecycle_state ?? "not_loaded",
+        map_radar_status: card.evidence?.map_radar_status ?? (radar?.radar_overlay_status && radar.radar_overlay_status !== "not_loaded" ? radar.radar_overlay_status : card.status ?? "not_loaded"),
+        map_radar_point_count: card.evidence?.map_radar_point_count ?? card.evidence?.current_point_count ?? numberText(radar?.radar_overlay_point_count, 0),
+        map_radar_source_point_count: card.evidence?.map_radar_source_point_count ?? card.evidence?.source_point_count ?? numberText(radar?.radar_overlay_source_point_count, 0),
+        map_radar_blocked_by_lifecycle_not_running: card.evidence?.map_radar_blocked_by_lifecycle_not_running
+          ?? ((radar?.radar_overlay_blocked_reasons ?? "").includes("radar_lifecycle_not_running") || radar?.lifecycle_running === "false"),
+        runtime_scan_status: card.evidence?.runtime_scan_status ?? (lidar?.runtime_scan_status && lidar.runtime_scan_status !== "not_loaded" ? lidar.runtime_scan_status : runtimeScanStatusFallback),
+        runtime_scan_fresh: card.evidence?.runtime_scan_fresh ?? lidar?.runtime_scan_status === "fresh",
+        runtime_scan_point_count: card.evidence?.runtime_scan_point_count ?? card.evidence?.source_point_count ?? numberText(lidar?.scan_preview_point_count, 0),
+        runtime_scan_source_point_count: card.evidence?.runtime_scan_source_point_count ?? card.evidence?.source_point_count ?? numberText(lidar?.scan_preview_source_point_count, 0),
+        runtime_scan_frame_id: card.evidence?.runtime_scan_frame_id ?? (lidar?.scan_preview_frame_id && lidar.scan_preview_frame_id !== "not_loaded" ? lidar.scan_preview_frame_id : card.evidence?.source_frame_id ?? "not_loaded"),
+        runtime_scan_age_s: card.evidence?.runtime_scan_age_s ?? lidar?.runtime_lidar_age_s ?? "not_loaded",
+        runtime_scan_source: card.evidence?.runtime_scan_source ?? lidar?.runtime_scan_source ?? "not_loaded",
         radar_start_configured: card.evidence?.radar_start_configured ?? lidar?.radar_start_configured !== "false",
         fixed_radar_start_endpoint: card.evidence?.fixed_radar_start_endpoint ?? "/api/robot-control/radar/start",
         fixed_radar_refresh_endpoint: card.evidence?.fixed_radar_refresh_endpoint ?? "/api/robot-control/radar/scan-proof/refresh",
@@ -15931,6 +15948,18 @@ onBeforeUnmount(() => {
           :data-source-frame-id="card.evidence?.source_frame_id"
           :data-blocked-reasons="card.evidence?.blocked_reasons?.join(',')"
           :data-radar-lifecycle-running="card.evidence?.radar_lifecycle_running === undefined ? undefined : String(card.evidence.radar_lifecycle_running)"
+          :data-radar-lifecycle-state="card.evidence?.radar_lifecycle_state"
+          :data-map-radar-status="card.evidence?.map_radar_status"
+          :data-map-radar-point-count="card.evidence?.map_radar_point_count === undefined ? undefined : String(card.evidence.map_radar_point_count)"
+          :data-map-radar-source-point-count="card.evidence?.map_radar_source_point_count === undefined ? undefined : String(card.evidence.map_radar_source_point_count)"
+          :data-map-radar-blocked-by-lifecycle-not-running="card.evidence?.map_radar_blocked_by_lifecycle_not_running === undefined ? undefined : String(card.evidence.map_radar_blocked_by_lifecycle_not_running)"
+          :data-runtime-scan-status="card.evidence?.runtime_scan_status"
+          :data-runtime-scan-fresh="card.evidence?.runtime_scan_fresh === undefined ? undefined : String(card.evidence.runtime_scan_fresh)"
+          :data-runtime-scan-point-count="card.evidence?.runtime_scan_point_count === undefined ? undefined : String(card.evidence.runtime_scan_point_count)"
+          :data-runtime-scan-source-point-count="card.evidence?.runtime_scan_source_point_count === undefined ? undefined : String(card.evidence.runtime_scan_source_point_count)"
+          :data-runtime-scan-frame-id="card.evidence?.runtime_scan_frame_id"
+          :data-runtime-scan-age-s="card.evidence?.runtime_scan_age_s"
+          :data-runtime-scan-source="card.evidence?.runtime_scan_source"
           :data-radar-start-configured="card.evidence?.radar_start_configured === undefined ? undefined : String(card.evidence.radar_start_configured)"
           :data-fixed-radar-start-endpoint="card.evidence?.fixed_radar_start_endpoint"
           :data-fixed-radar-refresh-endpoint="card.evidence?.fixed_radar_refresh_endpoint"
