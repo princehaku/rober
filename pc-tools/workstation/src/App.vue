@@ -46,6 +46,15 @@ const routeInputs = ref<RouteDebugInputs>({
   elevatorRouteReconciliation: "",
 });
 
+function isDirectMapViewRequested(): boolean {
+  // 直达地图大屏只改变 PC 页面壳，不启动 RViz2、ROS2 runtime 或任何运动接口。
+  const params = new URLSearchParams(window.location.search);
+  const view = params.get("view") ?? params.get("mode");
+  return view === "map" || view === "map-only" || window.location.hash === "#map";
+}
+
+const directMapViewRequested = isDirectMapViewRequested();
+
 async function refresh(): Promise<void> {
   // 数据加载统一走 client，App 不直接拼 fetch URL。
   loading.value = true;
@@ -74,8 +83,13 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="shell">
-    <header class="topbar">
+  <main
+    class="shell"
+    :data-direct-map-view-requested="String(directMapViewRequested)"
+    data-direct-map-view-url="?view=map"
+    data-direct-map-view-behavior="page_shell_map_only"
+  >
+    <header v-if="!directMapViewRequested" class="topbar">
       <div>
         <h1>Rober 小车控制台</h1>
         <p class="topbar-subtitle">连接小车、查看画面和地图，必要时一键停止。</p>
@@ -93,7 +107,7 @@ onMounted(() => {
 
     <RobotControlConsolePanel />
 
-    <details class="advanced-tools-details">
+    <details v-if="!directMapViewRequested" class="advanced-tools-details">
       <summary>高级工具</summary>
       <div class="advanced-tools-body">
         <WorkstationTabs v-model="activePanel" />

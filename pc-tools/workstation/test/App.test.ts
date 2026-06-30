@@ -5300,6 +5300,9 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="robot-camera-wysiwyg-readback"]').text()).toBe("画面事实：画面未显示：页面会自动接入共享 MJPEG 预览；多个页面复用同一条上游流，未出帧前不当作已经看到画面。共享预览不是页面独占；谁打开页面都接入同一条上游流，当前 0 个页面观看。下一步：打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧。");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-readback"]').exists()).toBe(false);
     const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
+    expect(wrapper.find(".shell").attributes("data-direct-map-view-requested")).toBe("false");
+    expect(wrapper.find(".shell").attributes("data-direct-map-view-url")).toBe("?view=map");
+    expect(wrapper.find(".shell").attributes("data-direct-map-view-behavior")).toBe("page_shell_map_only");
     expect(mapPanel.exists()).toBe(true);
     expect(mapPanel.attributes("data-state")).toBe("地图可见");
     expect(mapPanel.attributes("data-visual-priority")).toBe("pc-primary-map-first");
@@ -5317,6 +5320,7 @@ describe("App", () => {
     expect(mapPanel.attributes("data-direct-map-view-requested")).toBe("false");
     expect(mapPanel.attributes("data-direct-map-view-url")).toBe("?view=map");
     expect(mapPanel.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
+    expect(mapPanel.attributes("data-direct-map-view-default-zoom-percent")).toBe("800%");
     expect(mapPanel.attributes("data-ros2-companion-style")).toBe("rviz2-map-focus");
     expect(mapPanel.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(mapPanel.attributes("data-ros2-companion-tool")).toBe("rviz2");
@@ -5374,6 +5378,7 @@ describe("App", () => {
     expect(mapDirectViewLink.attributes("data-map-view-action")).toBe("open_direct_map_view");
     expect(mapDirectViewLink.attributes("data-direct-map-view-url")).toBe("?view=map");
     expect(mapDirectViewLink.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
+    expect(mapDirectViewLink.attributes("data-direct-map-view-default-zoom-percent")).toBe("800%");
     expect(mapDirectViewLink.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mapDirectViewLink.attributes("data-starts-ros2")).toBe("false");
     expect(mapDirectViewLink.attributes("data-starts-rviz2")).toBe("false");
@@ -5467,6 +5472,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').text()).toBe("放大地图");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain("width: min(2600px, calc(100% - 2px));");
+    expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"]');
+    expect(workstationStyles).toContain("width: 100vw;");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="large"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
@@ -5921,21 +5928,30 @@ describe("App", () => {
       await flushPromises();
       await wrapper.vm.$nextTick();
 
+      expect(wrapper.find(".shell").attributes("data-direct-map-view-requested")).toBe("true");
+      expect(wrapper.find(".shell").attributes("data-direct-map-view-url")).toBe("?view=map");
+      expect(wrapper.find(".shell").attributes("data-direct-map-view-behavior")).toBe("page_shell_map_only");
+      expect(wrapper.find(".topbar").exists()).toBe(false);
+      expect(wrapper.find(".advanced-tools-details").exists()).toBe(false);
       const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
       expect(mapPanel.attributes("data-direct-map-view-requested")).toBe("true");
       expect(mapPanel.attributes("data-direct-map-view-url")).toBe("?view=map");
       expect(mapPanel.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
+      expect(mapPanel.attributes("data-direct-map-view-default-zoom-percent")).toBe("800%");
       expect(mapPanel.attributes("data-size")).toBe("fullscreen");
       expect(mapPanel.attributes("data-fullscreen")).toBe("true");
       expect(mapPanel.attributes("data-observer-mode")).toBe("true");
       expect(mapPanel.attributes("data-browser-fullscreen-active")).toBe("false");
-      expect(mapPanel.attributes("data-map-zoom-percent")).toBe("600%");
+      expect(mapPanel.attributes("data-map-zoom-scale")).toBe("8");
+      expect(mapPanel.attributes("data-map-zoom-percent")).toBe("800%");
       expect(mapPanel.attributes("data-map-zoom-affects")).toBe("image-route-robot-radar");
       expect(mapPanel.attributes("data-ros2-companion-tool")).toBe("rviz2");
       expect(mapPanel.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
       expect(mapPanel.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("fullscreen");
       expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').text()).toBe("退出只看");
+      expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("800%");
+      expect(wrapper.find('[data-testid="plain-map-zoom-in"]').attributes("disabled")).toBeDefined();
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-ros2")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-rviz2")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-map-runtime")).toBe("false");
@@ -5948,7 +5964,7 @@ describe("App", () => {
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
-      expect(visiblePlainHomeText(wrapper)).not.toContain("/cmd_vel");
+      expect(wrapper.find(".simple-user-console").text()).not.toContain("/cmd_vel");
     } finally {
       window.history.pushState({}, "", originalUrl);
     }

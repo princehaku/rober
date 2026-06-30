@@ -351,10 +351,11 @@ function applyPlainMapDirectViewIfRequested(): void {
   if (!plainMapDirectViewRequested.value) {
     return;
   }
-  // URL 直达模式必须是纯显示状态：铺满页面内地图，但不自动请求浏览器全屏权限。
+  // URL 直达模式必须是纯显示状态：铺满页面内地图，但不自动请求浏览器全屏权限或发车。
   plainMapLargeView.value = true;
   plainMapFullscreenView.value = true;
   plainMapObserverView.value = true;
+  plainMapZoomIndex.value = PLAIN_MAP_ZOOM_LEVELS.length - 1;
 }
 async function togglePlainMapObserverView(): Promise<void> {
   // 观测模式只改变 PC 显示密度；进入时顺手拉起全屏，退出时回到普通大地图。
@@ -16483,6 +16484,7 @@ onBeforeUnmount(() => {
           :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
           data-direct-map-view-url="?view=map"
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
+          data-direct-map-view-default-zoom-percent="800%"
           data-ros2-companion-style="rviz2-map-focus"
           data-ros2-companion-tools="rviz2,foxglove"
           data-ros2-companion-tool="rviz2"
@@ -16585,6 +16587,7 @@ onBeforeUnmount(() => {
                 data-map-view-action="open_direct_map_view"
                 data-direct-map-view-url="?view=map"
                 data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
+                data-direct-map-view-default-zoom-percent="800%"
                 data-sends-motion-when-clicked="false"
                 data-starts-ros2="false"
                 data-starts-rviz2="false"

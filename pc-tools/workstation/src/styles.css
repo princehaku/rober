@@ -27,6 +27,13 @@ button {
   padding: 2px 0 12px;
 }
 
+.shell[data-direct-map-view-requested="true"] {
+  /* 地图直达页作为第二屏观察入口，去掉普通控制台外壳留白但不改变任何控制门禁。 */
+  width: 100vw;
+  min-height: 100vh;
+  padding: 0;
+}
+
 .topbar {
   display: flex;
   align-items: center;
