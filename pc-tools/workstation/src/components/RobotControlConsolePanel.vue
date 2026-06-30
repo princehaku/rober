@@ -3390,6 +3390,12 @@ const plainMappingUnlockRefreshButtonLabel = computed(() => {
   if (loading.value) {
     return "刷新总览中";
   }
+  if (radarRefreshPending.value) {
+    return "刷新雷达扫描中";
+  }
+  if (cameraFirstFrameProbePending.value) {
+    return "复测画面首帧中";
+  }
   if (mapWysiwygRefreshPending.value) {
     return "刷新地图和雷达中";
   }
@@ -13560,6 +13566,11 @@ async function refreshPlainWysiwygEvidence(): Promise<void> {
   ]);
 }
 
+async function refreshPlainMappingUnlockEvidence(): Promise<void> {
+  // 建图解锁条件必须复测相机首帧和雷达新扫描，再读同轮地图画面；这仍是只读证据刷新，不启动建图或自由移动。
+  await refreshPlainWysiwygEvidence();
+}
+
 async function refreshCameraFirstFrameProbeForWysiwyg(): Promise<void> {
   // 这里只刷新后端首帧证据和 summary；不覆盖“只读检查”按钮的本地结果卡，避免普通刷新把相机卡误变成操作失败。
   if (!robotApiBaseUrl.value.trim()) {
@@ -17523,7 +17534,18 @@ onBeforeUnmount(() => {
                   class="secondary compact-stop"
                   :disabled="!canRefreshPlainMappingUnlockEvidence"
                   data-testid="plain-mapping-unlock-refresh"
-                  @click="refreshPlainConsole"
+                  data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+                  data-fixed-first-frame-probe-endpoint="/api/robot-control/camera/first-frame/probe"
+                  data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
+                  data-fixed-camera-mjpeg-status-endpoint="/api/robot-control/camera/mjpeg/status"
+                  data-refreshes-radar-scan-proof="true"
+                  data-refreshes-camera-first-frame-probe="true"
+                  data-refreshes-map-after-radar="true"
+                  data-refreshes-camera-mjpeg-status="true"
+                  data-starts-map-runtime="false"
+                  data-starts-free-roam="false"
+                  data-sends-motion-when-clicked="false"
+                  @click="refreshPlainMappingUnlockEvidence"
                 >
                   {{ plainMappingUnlockRefreshButtonLabel }}
                 </button>
