@@ -275,9 +275,10 @@ const plainMapRuntimeStartButton = ref<HTMLButtonElement | null>(null);
 const plainMapLargeView = ref(true);
 const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
+const plainMapBrowserFullscreenActive = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5] as const;
-const plainMapZoomIndex = ref(4);
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6] as const;
+const plainMapZoomIndex = ref(5);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const plainMapZoomStyle = computed(() => ({
@@ -294,19 +295,60 @@ function resetPlainMapZoom(): void {
   // “适配”回到完整地图，方便现场在放大查看细节后恢复全局路线视角。
   plainMapZoomIndex.value = 0;
 }
-function togglePlainMapObserverView(): void {
-  // 观测模式只改变 PC 显示密度；进入时顺手拉起全屏，退出时回到普通大地图。
-  plainMapObserverView.value = !plainMapObserverView.value;
-  plainMapFullscreenView.value = plainMapObserverView.value;
-  if (!plainMapObserverView.value) {
+async function enterPlainMapBrowserFullscreen(): Promise<void> {
+  // 优先使用浏览器原生全屏，让现场 PC 真的把地图铺满；失败时保留 fixed 大图兜底。
+  await nextTick();
+  const panel = plainMapPanel.value;
+  if (!panel?.requestFullscreen || document.fullscreenElement === panel) {
+    return;
+  }
+  try {
+    await panel.requestFullscreen({ navigationUI: "hide" });
+  } catch {
+    // 浏览器可能因权限、焦点或测试环境拒绝全屏；页面内全屏状态仍能提供大地图兜底。
+  }
+}
+async function exitPlainMapBrowserFullscreen(): Promise<void> {
+  // 只退出本地图面板占用的全屏，避免误关用户手动打开的其他全屏元素。
+  if (document.fullscreenElement !== plainMapPanel.value || !document.exitFullscreen) {
+    return;
+  }
+  try {
+    await document.exitFullscreen();
+  } catch {
+    // 退出失败时继续依靠本地状态收起 fixed 兜底，不阻断普通操作。
+  }
+}
+function syncPlainMapBrowserFullscreenState(): void {
+  // 用户按 Esc 退出原生全屏时同步收起地图状态，避免按钮还显示“退出全屏”。
+  const active = document.fullscreenElement === plainMapPanel.value;
+  plainMapBrowserFullscreenActive.value = active;
+  if (!active && plainMapFullscreenView.value) {
+    plainMapFullscreenView.value = false;
+    plainMapObserverView.value = false;
     plainMapLargeView.value = true;
   }
 }
-function togglePlainMapFullscreenView(): void {
+async function togglePlainMapObserverView(): Promise<void> {
+  // 观测模式只改变 PC 显示密度；进入时顺手拉起全屏，退出时回到普通大地图。
+  plainMapObserverView.value = !plainMapObserverView.value;
+  plainMapFullscreenView.value = plainMapObserverView.value;
+  if (plainMapObserverView.value) {
+    await enterPlainMapBrowserFullscreen();
+  } else {
+    plainMapLargeView.value = true;
+    await exitPlainMapBrowserFullscreen();
+  }
+}
+async function togglePlainMapFullscreenView(): Promise<void> {
   // 手动退出全屏时同步退出观测模式，避免界面状态和实际地图尺寸不一致。
   plainMapFullscreenView.value = !plainMapFullscreenView.value;
-  if (!plainMapFullscreenView.value) {
+  if (plainMapFullscreenView.value) {
+    await enterPlainMapBrowserFullscreen();
+  } else {
     plainMapObserverView.value = false;
+    plainMapLargeView.value = true;
+    await exitPlainMapBrowserFullscreen();
   }
 }
 const plainLocalizationResetButton = ref<HTMLButtonElement | null>(null);
@@ -14977,6 +15019,7 @@ onMounted(() => {
   window.addEventListener("keyup", handleGlobalKeyUp);
   window.addEventListener("blur", handleWindowBlur);
   document.addEventListener("visibilitychange", handlePageVisibilityChange);
+  document.addEventListener("fullscreenchange", syncPlainMapBrowserFullscreenState);
   void refreshConsole().then(() => {
     void refreshMapPreview();
     void preloadGoalClosureReadbacks();
@@ -14993,6 +15036,8 @@ onBeforeUnmount(() => {
   window.removeEventListener("keyup", handleGlobalKeyUp);
   window.removeEventListener("blur", handleWindowBlur);
   document.removeEventListener("visibilitychange", handlePageVisibilityChange);
+  document.removeEventListener("fullscreenchange", syncPlainMapBrowserFullscreenState);
+  void exitPlainMapBrowserFullscreen();
   void cleanupPreview("stopped_by_user", "component_unmounted");
 });
 </script>
@@ -15869,14 +15914,17 @@ onBeforeUnmount(() => {
           data-testid="plain-map-panel"
           data-wysiwyg-surface="primary-map"
           data-visual-priority="pc-primary-map-first"
+          data-default-map-layout="dominant-first-screen-map"
+          data-default-map-height-mode="near-viewport"
           data-default-size="large"
-          data-default-map-zoom-percent="400%"
+          data-default-map-zoom-percent="500%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
           :data-state="plainMapVisualSummary.state"
           :data-size="plainMapViewSize"
           :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'"
+          :data-browser-fullscreen-active="String(plainMapBrowserFullscreenActive)"
           :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
           data-ros2-companion-style="rviz2-map-focus"
           data-ros2-companion-tools="rviz2,foxglove"
@@ -15936,6 +15984,7 @@ onBeforeUnmount(() => {
                 data-starts-rviz2="false"
                 data-starts-map-runtime="false"
                 data-starts-nav2="false"
+                data-uses-browser-fullscreen-api="true"
                 data-target-surface="primary-map"
                 :data-observer-mode-after-click="plainMapFullscreenView ? 'false' : String(plainMapObserverView)"
                 :aria-pressed="plainMapFullscreenView ? 'true' : 'false'"
@@ -15953,6 +16002,7 @@ onBeforeUnmount(() => {
                 data-starts-rviz2="false"
                 data-starts-map-runtime="false"
                 data-starts-nav2="false"
+                data-uses-browser-fullscreen-api="true"
                 data-target-surface="primary-map"
                 data-enter-size="fullscreen"
                 data-hides-ordinary-actions-when-active="true"

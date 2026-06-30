@@ -4567,3 +4567,10 @@ UVC 无首帧”，但不会放行建图。该变化只修正普通首屏事实�
 `data-free-roam-stop-request-pending`、`data-start-will-clear-stop-request`、
 `data-motion-start-blocked-by-stop-request`，避免用户把“有停止请求”误读成自由移动不可启动。
 该变化只更新 PC 端普通文案、DOM 合同和测试；真实启动仍只在安全确认后走固定 free-roam start 代理。
+
+2026-06-30 20:30 CST 起，PC 普通首屏地图不再只按普通 card 处理，而是默认作为大屏主视图：
+`data-default-map-layout=dominant-first-screen-map`、`data-default-map-height-mode=near-viewport`，
+地图 panel 默认占据首屏主高度，默认缩放从 400% 提升到 500%，最高 600%。`全屏地图` 与 `观测模式`
+优先请求浏览器 Fullscreen API，同时保留页面内 fixed 全屏作为兜底；两者仍声明不启动 ROS2、RViz2、Nav2、
+建图 runtime 或任何运动命令。ROS2 配套工具口径明确为：工程调试用 RViz2 查看地图、雷达、TF、规划轨迹和定位；
+浏览器远程多人观察用 Foxglove；普通用户路线执行、键盘手控、自由移动和建图入口继续留在 PC 本页。

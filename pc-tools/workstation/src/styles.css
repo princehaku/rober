@@ -1,4 +1,8 @@
 :root {
+  --plain-map-large-min-height: 960px;
+  --plain-map-large-target-height: calc(100vh - 54px);
+  --plain-map-large-max-height: 1800px;
+  --plain-map-fullscreen-height: calc(100vh - 40px);
   color: #17202a;
   background: #f4f6f8;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
@@ -386,6 +390,7 @@ h3 {
   /* 地图是现场判断路线和雷达贴图的主视图，桌面端默认先占整行。 */
   order: -1;
   grid-column: 1 / -1;
+  min-height: calc(100vh - 18px);
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
@@ -1003,6 +1008,11 @@ h3 {
   border-left: 3px solid transparent;
 }
 
+.plain-map-panel[data-size="large"] {
+  /* 普通 PC 首屏默认把地图当主视图，不再退化成一张小卡片。 */
+  min-height: calc(100vh - 18px);
+}
+
 .plain-map-heading {
   display: flex;
   align-items: center;
@@ -1072,6 +1082,14 @@ h3 {
   overflow: auto;
   background: #f8fafc;
   box-shadow: 0 18px 48px rgb(31 43 55 / 26%);
+}
+
+.plain-map-panel[data-fullscreen="true"]:fullscreen {
+  /* 浏览器原生全屏可用时铺满真实屏幕；fixed 规则继续作为不支持时的兜底。 */
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
 }
 
 .plain-map-panel[data-fullscreen="true"] .plain-map-viewport {
@@ -1334,13 +1352,13 @@ h3 {
 }
 
 .plain-map-viewport[data-size="large"] .plain-map-layer {
-  height: clamp(960px, calc(100vh - 54px), 1800px);
-  min-height: 960px;
+  height: clamp(var(--plain-map-large-min-height), var(--plain-map-large-target-height), var(--plain-map-large-max-height));
+  min-height: var(--plain-map-large-min-height);
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  height: calc(100vh - 40px);
-  min-height: 960px;
+  height: var(--plain-map-fullscreen-height);
+  min-height: var(--plain-map-large-min-height);
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {

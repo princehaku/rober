@@ -1104,3 +1104,9 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 `data-free-roam-stop-request-pending`、`data-start-will-clear-stop-request`、`data-motion-start-blocked-by-stop-request`。
 自由移动仪表同步写明“当前有停止请求，点击会先解除”。该变化只让 PC 端把 stop-request 语义说清楚；
 真实启动仍必须勾安全确认，并且只走固定 `/api/robot-control/free-roam/autonomy/start` 代理。
+
+2026-06-30 20:30 CST 起，普通 PC 地图默认按主视图处理：`data-default-map-layout=dominant-first-screen-map`、
+`data-default-map-height-mode=near-viewport`，默认缩放从 400% 提到 500%，可继续放大到 600%。`全屏地图` 和
+`观测模式` 仍不启动 ROS2、RViz2、Nav2、建图 runtime 或运动命令，但会优先调用浏览器 Fullscreen API；
+浏览器拒绝时继续使用页面内 fixed 大图兜底。ROS2 工程配套仍是
+`ros2 launch ros2_trashbot_bringup rviz.launch.py`；需要浏览器远程共享观察时接 Foxglove，普通用户操作仍在本页完成。
