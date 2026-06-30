@@ -3988,6 +3988,9 @@ const plainLiveMotionRunbookPreflightPlain = computed(() => {
   // 这行给普通用户看，避免把相机/雷达 WYSIWYG 误读成发车前硬预检。
   const summary = plainLiveClosureSummary.value;
   const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾" : "还未勾安全确认";
+  if (summary?.live_motion_runbook_minimal_precheck_plain) {
+    return `${summary.live_motion_runbook_minimal_precheck_plain}（${safetyText}）`;
+  }
   if (summary?.live_motion_runbook_minimal_precheck_safety_only) {
     return `发车前：只需现场安全确认（${safetyText}）；画面和雷达不作为运动前置，建图另看传感器。`;
   }
@@ -16386,6 +16389,11 @@ onBeforeUnmount(() => {
           :data-acceptance-endpoints="plainLiveClosureSummary.live_motion_runbook_acceptance_endpoints?.join(',') || 'none'"
           :data-minimal-precheck-safety-only="String(plainLiveClosureSummary.live_motion_runbook_minimal_precheck_safety_only)"
           :data-safety-confirm-required="String(plainLiveClosureSummary.live_motion_runbook_safety_confirm_required)"
+          :data-summary-plain="plainLiveClosureSummary.live_motion_runbook_summary_plain"
+          :data-ready-plain="plainLiveClosureSummary.live_motion_runbook_ready_plain"
+          :data-blocked-plain="plainLiveClosureSummary.live_motion_runbook_blocked_plain"
+          :data-primary-action-plain="plainLiveClosureSummary.live_motion_runbook_primary_action_plain"
+          :data-minimal-precheck-plain="plainLiveClosureSummary.live_motion_runbook_minimal_precheck_plain"
           :data-safety-confirmed="String(plainManualSafetyConfirmed)"
           data-camera-preflight-required-for-motion="false"
           data-radar-preflight-required-for-motion="false"
@@ -16396,6 +16404,14 @@ onBeforeUnmount(() => {
             <strong>动作清单</strong>
             <span class="muted">可做：{{ plainLiveMotionRunbookReadyText }}；未就绪：{{ plainLiveMotionRunbookBlockedText }}。</span>
           </div>
+          <p
+            v-if="plainLiveClosureSummary.live_motion_runbook_summary_plain"
+            class="panel-note"
+            data-testid="plain-live-motion-runbook-summary"
+            data-sends-motion-when-clicked="false"
+          >
+            {{ plainActionCardUserText(plainLiveClosureSummary.live_motion_runbook_summary_plain) }}
+          </p>
           <p
             class="panel-note"
             data-testid="plain-live-motion-runbook-preflight"

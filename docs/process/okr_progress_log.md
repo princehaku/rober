@@ -8,6 +8,18 @@
 
 ## 2026-07-01 系列
 
+### 2026-07-01 02-29｜pc_live_motion_runbook_plain｜当前卡点动作清单普通用户汇总
+
+本轮 `sprints/2026.07.01_02-29_pc_live_motion_runbook_plain/` 把 PC 当前卡点的运动动作清单从结构化 item 再提升一层普通用户汇总。
+`live_closure_summary` 新增 `live_motion_runbook_summary_plain`、`live_motion_runbook_ready_plain`、
+`live_motion_runbook_blocked_plain`、`live_motion_runbook_primary_action_plain` 和 `live_motion_runbook_minimal_precheck_plain`；
+普通首屏 `plain-live-motion-runbook` 同步展示这些中文短句并暴露为 `data-*`。
+现场能一眼看到可执行动作、未就绪动作、主推荐动作，以及“发车前只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置”。
+
+验证范围：`npm test -- test/robotControlSummary.test.ts --run` 6 tests OK；
+`npm test -- test/App.test.ts -t "live closure|motion runbook|当前卡点|动作清单" --run` 1 test OK / 228 skipped；
+`npm run build` 通过。该轮只改只读 API/DOM 合同与文档，未执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-07-01 02-20｜camera_uvc_kernel_transport_wysiwyg｜画面 UVC 传输错误所见即所得
 
 本轮 `sprints/2026.07.01_02-20_camera_uvc_kernel_transport_wysiwyg/` 修正上车 8088 camera smoke 的

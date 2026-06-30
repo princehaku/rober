@@ -4754,3 +4754,11 @@ WYSIWYG 地图画布和 2400% 缩放上限；ROS2 本机工程调试使用 `ros2
 `uvc_transport_error_not_exclusive` / `uvc_usb_transport_errors_observed`。普通用户看到的下一步统一为
 “检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占”。该变化只提升只读画面诊断，
 不启动相机以外的新 reader、不 reset USB、不启动 Nav2/键盘/自由移动/建图，也不发送 `/cmd_vel`。
+
+2026-07-01 02:29 CST 起，当前卡点的动作清单新增普通用户汇总字段。`live_closure_summary` 增加
+`live_motion_runbook_summary_plain`、`live_motion_runbook_ready_plain`、`live_motion_runbook_blocked_plain`、
+`live_motion_runbook_primary_action_plain` 和 `live_motion_runbook_minimal_precheck_plain`；PC 首屏
+`plain-live-motion-runbook` 同步展示并暴露同名 `data-*`。现场不需要再从四个 action item 拼结论即可读到：
+可先执行完整行程/键盘/自由移动中的哪些项，传感器就绪后建图是否仍阻塞，主推荐动作是什么，以及“发车前只需勾现场安全确认；
+相机、雷达和 operator report 不作为额外发车前置”。该变化只改只读文案和 DOM 合同，不改变任何发车按钮、键盘按住逻辑、
+自由移动启动逻辑或建图 gate。

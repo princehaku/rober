@@ -8760,6 +8760,17 @@ function buildLiveClosureSummary(
   })();
   const liveMotionRunbookStartEndpoints = Array.from(new Set(liveMotionRunbookReadyItems.map((item) => item.start_endpoint)));
   const liveMotionRunbookAcceptanceEndpoints = Array.from(new Set(liveMotionRunbookItems.flatMap((item) => item.acceptance_endpoints)));
+  const liveMotionRunbookReadyLabels = liveMotionRunbookReadyItems.map((item) => item.label);
+  const liveMotionRunbookBlockedLabels = liveMotionRunbookBlockedItems.map((item) => item.label);
+  const liveMotionRunbookPrimaryActionLabel = liveMotionRunbookItems.find((item) => item.id === liveMotionRunbookPrimaryActionId)?.label ?? "暂无";
+  const liveMotionRunbookReadyPlain = liveMotionRunbookReadyLabels.length > 0
+    ? `可先执行：${liveMotionRunbookReadyLabels.join("、")}。`
+    : "暂无可执行运动入口；先刷新小车状态。";
+  const liveMotionRunbookBlockedPlain = liveMotionRunbookBlockedLabels.length > 0
+    ? `暂不可执行：${liveMotionRunbookBlockedLabels.join("、")}。`
+    : "暂无被阻塞的运动入口。";
+  const liveMotionRunbookMinimalPrecheckPlain = "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和 operator report 不作为额外发车前置。";
+  const liveMotionRunbookSummaryPlain = `${liveMotionRunbookReadyPlain}${liveMotionRunbookBlockedPlain}主推荐：${liveMotionRunbookPrimaryActionLabel}；${liveMotionRunbookMinimalPrecheckPlain}`;
   const nav2GoalSucceeded = nav2GoalExecutionProven;
   const allWysiwygReady = cameraCurrentVisible && mapCurrentVisible && radarMapPointsVisible;
   const status = (() => {
@@ -8992,6 +9003,11 @@ function buildLiveClosureSummary(
     live_motion_runbook_acceptance_endpoints: liveMotionRunbookAcceptanceEndpoints,
     live_motion_runbook_minimal_precheck_safety_only: liveMotionRunbookItems.every((item) => item.minimal_precheck_safety_only),
     live_motion_runbook_safety_confirm_required: liveMotionRunbookReadyItems.some((item) => item.safety_confirm_required),
+    live_motion_runbook_summary_plain: liveMotionRunbookSummaryPlain,
+    live_motion_runbook_ready_plain: liveMotionRunbookReadyPlain,
+    live_motion_runbook_blocked_plain: liveMotionRunbookBlockedPlain,
+    live_motion_runbook_primary_action_plain: liveMotionRunbookPrimaryActionLabel,
+    live_motion_runbook_minimal_precheck_plain: liveMotionRunbookMinimalPrecheckPlain,
     minimal_precheck_safety_only: minimalPrecheckSafetyOnly,
     safety_confirm_required_for_motion: goalSummary.safety_confirm_needed_count > 0,
     wheel_rerun_minimal_precheck_safety_only: needsSameWindowWheelRerun && minimalPrecheckSafetyOnly,

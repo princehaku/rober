@@ -2853,6 +2853,11 @@ export interface RobotControlLiveClosureSummary {
   live_motion_runbook_acceptance_endpoints: string[];
   live_motion_runbook_minimal_precheck_safety_only: boolean;
   live_motion_runbook_safety_confirm_required: boolean;
+  live_motion_runbook_summary_plain: string;
+  live_motion_runbook_ready_plain: string;
+  live_motion_runbook_blocked_plain: string;
+  live_motion_runbook_primary_action_plain: string;
+  live_motion_runbook_minimal_precheck_plain: string;
   minimal_precheck_safety_only: boolean;
   safety_confirm_required_for_motion: boolean;
   wheel_rerun_minimal_precheck_safety_only: boolean;
