@@ -3409,6 +3409,15 @@ function actionCardWithDerivedEvidence(
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   };
+  const splitEvidenceList = (value: string | string[] | undefined): string[] => {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item).trim()).filter(Boolean);
+    }
+    if (!value || value === "none" || value === "not_loaded") {
+      return [];
+    }
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  };
   if (card.id === "camera_preview") {
     const camera = robotSummary.value?.readback_summary.camera;
     const currentFrameVisible = camera?.preview_visible_status === "visible" || camera?.camera_wysiwyg_status_plain?.startsWith("画面已可见") === true;
@@ -3502,6 +3511,14 @@ function actionCardWithDerivedEvidence(
         runtime_scan_frame_id: card.evidence?.runtime_scan_frame_id ?? (lidar?.scan_preview_frame_id && lidar.scan_preview_frame_id !== "not_loaded" ? lidar.scan_preview_frame_id : card.evidence?.source_frame_id ?? "not_loaded"),
         runtime_scan_age_s: card.evidence?.runtime_scan_age_s ?? lidar?.runtime_lidar_age_s ?? "not_loaded",
         runtime_scan_source: card.evidence?.runtime_scan_source ?? lidar?.runtime_scan_source ?? "not_loaded",
+        latest_scan_proof_fresh: card.evidence?.latest_scan_proof_fresh ?? radar?.latest_scan_proof_fresh === "true",
+        radar_scan_observation_status: card.evidence?.radar_scan_observation_status ?? radar?.radar_scan_observation_status ?? "not_loaded",
+        radar_scan_observation_missing_reasons: card.evidence?.radar_scan_observation_missing_reasons
+          ?? splitEvidenceList(radar?.radar_scan_observation_missing_reasons),
+        map_radar_readiness_status: card.evidence?.map_radar_readiness_status ?? radar?.radar_map_overlay_readiness_status ?? "not_loaded",
+        map_radar_next_action_plain: card.evidence?.map_radar_next_action_plain ?? radar?.radar_map_overlay_next_action_plain ?? "not_loaded",
+        map_radar_blocked_reason_labels: card.evidence?.map_radar_blocked_reason_labels
+          ?? splitEvidenceList(radar?.radar_overlay_blocked_reason_labels),
         radar_start_configured: card.evidence?.radar_start_configured ?? lidar?.radar_start_configured !== "false",
         fixed_radar_start_endpoint: card.evidence?.fixed_radar_start_endpoint ?? "/api/robot-control/radar/start",
         fixed_radar_refresh_endpoint: card.evidence?.fixed_radar_refresh_endpoint ?? "/api/robot-control/radar/scan-proof/refresh",
@@ -16059,6 +16076,12 @@ onBeforeUnmount(() => {
           :data-runtime-scan-frame-id="card.evidence?.runtime_scan_frame_id"
           :data-runtime-scan-age-s="card.evidence?.runtime_scan_age_s"
           :data-runtime-scan-source="card.evidence?.runtime_scan_source"
+          :data-latest-scan-proof-fresh="card.evidence?.latest_scan_proof_fresh === undefined ? undefined : String(card.evidence.latest_scan_proof_fresh)"
+          :data-radar-scan-observation-status="card.evidence?.radar_scan_observation_status"
+          :data-radar-scan-observation-missing-reasons="card.evidence?.radar_scan_observation_missing_reasons?.join(',')"
+          :data-map-radar-readiness-status="card.evidence?.map_radar_readiness_status"
+          :data-map-radar-next-action-plain="card.evidence?.map_radar_next_action_plain"
+          :data-map-radar-blocked-reason-labels="card.evidence?.map_radar_blocked_reason_labels?.join('、')"
           :data-radar-start-configured="card.evidence?.radar_start_configured === undefined ? undefined : String(card.evidence.radar_start_configured)"
           :data-fixed-radar-start-endpoint="card.evidence?.fixed_radar_start_endpoint"
           :data-fixed-radar-refresh-endpoint="card.evidence?.fixed_radar_refresh_endpoint"

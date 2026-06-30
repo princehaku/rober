@@ -2470,6 +2470,12 @@ export interface RobotControlActionStatusCard {
     runtime_scan_frame_id?: string;
     runtime_scan_age_s?: string;
     runtime_scan_source?: string;
+    latest_scan_proof_fresh?: boolean;
+    radar_scan_observation_status?: string;
+    radar_scan_observation_missing_reasons?: string[];
+    map_radar_readiness_status?: string;
+    map_radar_next_action_plain?: string;
+    map_radar_blocked_reason_labels?: string[];
     radar_start_configured?: boolean;
     fixed_radar_start_endpoint?: string;
     fixed_radar_refresh_endpoint?: string;

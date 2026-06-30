@@ -6161,6 +6161,12 @@ describe("App", () => {
     expect(radarActionCard.attributes("data-runtime-scan-point-count")).toBe("81");
     expect(radarActionCard.attributes("data-runtime-scan-source-point-count")).toBe("81");
     expect(radarActionCard.attributes("data-runtime-scan-frame-id")).toBe("laser_frame");
+    expect(radarActionCard.attributes("data-latest-scan-proof-fresh")).toBe("true");
+    expect(radarActionCard.attributes("data-radar-scan-observation-status")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-radar-scan-observation-missing-reasons")).toBe("");
+    expect(radarActionCard.attributes("data-map-radar-readiness-status")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-map-radar-next-action-plain")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-map-radar-blocked-reason-labels")).toBe("");
     expect(radarActionCard.attributes("data-radar-start-configured")).toBe("true");
     expect(radarActionCard.attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
     expect(radarActionCard.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
