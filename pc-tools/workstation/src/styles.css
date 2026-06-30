@@ -1255,6 +1255,65 @@ h3 {
   background: #f7e58c;
 }
 
+.plain-map-engineering-tools {
+  /* ROS2 工程工具默认收起，普通用户首屏仍保持“地图大屏优先”的简单形态。 */
+  border: 1px solid #d7dee6;
+  border-left: 3px solid #7a8694;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fbfcfe;
+}
+
+.plain-map-engineering-tools-summary {
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #273747;
+  font-weight: 720;
+  text-align: left;
+}
+
+.plain-map-engineering-tools-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.plain-map-engineering-tools-body p {
+  margin: 0;
+}
+
+.plain-map-engineering-tools-body dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.plain-map-engineering-tools-body dl > div {
+  min-width: 0;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.plain-map-engineering-tools-body dt {
+  margin-bottom: 4px;
+  color: #526171;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.plain-map-engineering-tools-body dd {
+  margin: 0;
+}
+
+.plain-map-engineering-tools-body code {
+  overflow-wrap: anywhere;
+}
+
 .plain-map-panel[data-fullscreen="true"] {
   /* 全屏只放大只读画面和 marker，不改变任何控制按钮的安全门禁。 */
   position: fixed;

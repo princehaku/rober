@@ -8952,7 +8952,7 @@ function buildLiveClosureSummary(
     "读取雷达状态",
     "读取相机 MJPEG 状态",
   ];
-  const mapDisplayCompanionPlain = "普通用户地图：打开 /map 使用 PC 大地图，默认 100% 整图铺满大画布，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge。";
+  const mapDisplayCompanionPlain = "普通用户地图：打开 /map 使用 PC 大地图，默认 100% 整图铺满大画布，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
   const freeMoveObjectiveDone = readback.free_roam.motion_ready === "true"
@@ -9084,6 +9084,7 @@ function buildLiveClosureSummary(
     map_display_rviz_launch_command: "ros2 launch ros2_trashbot_bringup rviz.launch.py",
     map_display_foxglove_bridge_package: "foxglove_bridge",
     map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
+    map_display_foxglove_websocket_url: "ws://192.168.1.11:8765",
     map_display_companion_plain: mapDisplayCompanionPlain,
     map_display_sends_motion_when_clicked: false,
     map_display_starts_ros2: false,

@@ -882,7 +882,8 @@ const fixtures: Record<string, unknown> = {
       map_display_rviz_launch_command: "ros2 launch ros2_trashbot_bringup rviz.launch.py",
       map_display_foxglove_bridge_package: "foxglove_bridge",
       map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
-      map_display_companion_plain: "普通用户地图：打开 /map 使用 PC 大地图，默认 100% 整图铺满大画布，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge。",
+      map_display_foxglove_websocket_url: "ws://192.168.1.11:8765",
+      map_display_companion_plain: "普通用户地图：打开 /map 使用 PC 大地图，默认 100% 整图铺满大画布，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765。",
       map_display_sends_motion_when_clicked: false,
       map_display_starts_ros2: false,
       map_display_starts_rviz2: false,
@@ -4833,6 +4834,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-map-display-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-package")).toBe("foxglove_bridge");
     expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(liveClosureSummary.attributes("data-map-display-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(liveClosureSummary.attributes("data-map-display-sends-motion-when-clicked")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-starts-ros2")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-starts-rviz2")).toBe("false");
@@ -4886,6 +4888,7 @@ describe("App", () => {
     expect(liveMapCompanionSummary.text()).toContain("ROS2 配套只作工程观察");
     expect(liveMapCompanionSummary.text()).toContain("RViz2");
     expect(liveMapCompanionSummary.text()).toContain("Foxglove bridge");
+    expect(liveMapCompanionSummary.text()).toContain("ws://192.168.1.11:8765");
     expect(liveMapCompanionSummary.attributes("data-primary-tool")).toBe("pc_big_map");
     expect(liveMapCompanionSummary.attributes("data-primary-url")).toBe("/map");
     expect(liveMapCompanionSummary.attributes("data-legacy-url")).toBe("?view=map");
@@ -4897,6 +4900,7 @@ describe("App", () => {
     expect(liveMapCompanionSummary.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(liveMapCompanionSummary.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
     expect(liveMapCompanionSummary.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(liveMapCompanionSummary.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(liveMapCompanionSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveMapCompanionSummary.attributes("data-starts-ros2")).toBe("false");
     expect(liveMapCompanionSummary.attributes("data-starts-rviz2")).toBe("false");
@@ -6198,6 +6202,7 @@ describe("App", () => {
     expect(mapPanel.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapPanel.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
     expect(mapPanel.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(mapPanel.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(mapPanel.attributes("data-wysiwyg-surface")).toBe("primary-map");
     expect(mapPanel.attributes("data-radar-map-points-visible")).toBe("false");
     expect(mapPanel.attributes("data-radar-map-point-count")).toBe("0");
@@ -6313,6 +6318,7 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-foxglove-bridge-status")).toBe("handoff_required");
     expect(mapDisplayProof.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
     expect(mapDisplayProof.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(mapDisplayProof.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(mapDisplayProof.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mapDisplayProof.attributes("data-starts-ros2")).toBe("false");
     expect(mapDisplayProof.attributes("data-starts-rviz2")).toBe("false");
@@ -6325,11 +6331,9 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("/map 大地图");
     expect(mapDisplayProof.text()).toContain("?view=map 兼容入口");
     expect(mapDisplayProof.text()).toContain("图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布");
-    expect(mapDisplayProof.text()).toContain("RViz2");
-    expect(mapDisplayProof.text()).toContain("Foxglove bridge");
-    expect(mapDisplayProof.text()).toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
-    expect(mapDisplayProof.text()).toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
-    expect(mapDisplayProof.text()).toContain("不发车");
+    expect(mapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
+    expect(mapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(mapDisplayProof.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
     await wrapper.find('[data-testid="plain-map-zoom-in"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-scale")).toBe("1.5");
@@ -6350,6 +6354,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-zoom-reset"]').attributes("disabled")).toBeDefined();
     const mapRos2ToolNote = wrapper.find('[data-testid="plain-map-ros2-tool-note"]');
     expect(mapRos2ToolNote.exists()).toBe(true);
+    expect(mapRos2ToolNote.element.tagName.toLowerCase()).toBe("div");
+    expect(mapRos2ToolNote.attributes("data-visible-by-default")).toBe("false");
+    expect(mapRos2ToolNote.attributes("data-ordinary-user-ui-simplified")).toBe("true");
+    expect(mapRos2ToolNote.attributes("data-open")).toBe("false");
     expect(mapRos2ToolNote.attributes("data-ordinary-user-map-tool")).toBe("pc_big_map");
     expect(mapRos2ToolNote.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(mapRos2ToolNote.attributes("data-ros2-companion-tool")).toBe("rviz2");
@@ -6363,19 +6371,32 @@ describe("App", () => {
     expect(mapRos2ToolNote.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
-    expect(mapRos2ToolNote.text()).toContain("RViz2");
-    expect(mapRos2ToolNote.text()).toContain("Foxglove");
-    expect(mapRos2ToolNote.text()).toContain("bridge");
-    expect(mapRos2ToolNote.text()).toContain("Studio");
-    expect(mapRos2ToolNote.text()).toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
-    expect(mapRos2ToolNote.text()).toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
-    expect(mapRos2ToolNote.text()).toContain("地图");
-    expect(mapRos2ToolNote.text()).toContain("/map");
-    expect(mapRos2ToolNote.text()).toContain("?view=map");
-    expect(mapRos2ToolNote.text()).toContain("PC 默认先显示 100% 整图大地图");
-    expect(mapRos2ToolNote.text()).toContain("细节放大到 2400%");
-    expect(mapRos2ToolNote.text()).toContain("规划轨迹");
-    expect(mapRos2ToolNote.text()).not.toContain("Nav2");
+    expect(mapRos2ToolNote.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
+    expect(mapRos2ToolNote.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(mapRos2ToolNote.attributes("data-starts-ros2")).toBe("false");
+    expect(mapRos2ToolNote.attributes("data-starts-rviz2")).toBe("false");
+    expect(mapRos2ToolNote.attributes("data-starts-foxglove")).toBe("false");
+    expect(mapRos2ToolNote.attributes("data-starts-nav2")).toBe("false");
+    expect(mapRos2ToolNote.attributes("data-starts-map-runtime")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').text()).toBe("工程观察");
+    expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').attributes("aria-expanded")).toBe("false");
+    expect(mapRos2ToolNote.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(mapRos2ToolNote.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    await wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    const openedMapRos2ToolNote = wrapper.find('[data-testid="plain-map-ros2-tool-note"]');
+    expect(openedMapRos2ToolNote.attributes("data-open")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').attributes("aria-expanded")).toBe("true");
+    expect(openedMapRos2ToolNote.text()).toContain("RViz2");
+    expect(openedMapRos2ToolNote.text()).toContain("Foxglove");
+    expect(openedMapRos2ToolNote.text()).toContain("bridge");
+    expect(openedMapRos2ToolNote.text()).toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(openedMapRos2ToolNote.text()).toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(openedMapRos2ToolNote.text()).toContain("ws://192.168.1.11:8765");
+    expect(openedMapRos2ToolNote.text()).toContain("地图");
+    expect(openedMapRos2ToolNote.text()).toContain("/map");
+    expect(openedMapRos2ToolNote.text()).toContain("不是发车前置条件");
+    expect(openedMapRos2ToolNote.text()).not.toContain("Nav2");
     const fullscreenMapPreviewCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     const fullscreenRadarStatusCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length;
     await wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').trigger("click");
@@ -7218,6 +7239,7 @@ describe("App", () => {
       expect(mapPanel.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(mapPanel.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
       expect(mapPanel.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+      expect(mapPanel.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
       expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("fullscreen");
       expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').text()).toBe("退出只看");
       expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("100%");
@@ -7239,6 +7261,7 @@ describe("App", () => {
       expect(directMapDisplayProof.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(directMapDisplayProof.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
       expect(directMapDisplayProof.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+      expect(directMapDisplayProof.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
       expect(directMapDisplayProof.attributes("data-starts-ros2")).toBe("false");
       expect(directMapDisplayProof.attributes("data-starts-rviz2")).toBe("false");
       expect(directMapDisplayProof.attributes("data-starts-foxglove")).toBe("false");
@@ -7248,8 +7271,9 @@ describe("App", () => {
       expect(directMapDisplayProof.text()).toContain("默认 100% 整图铺满大画布");
       expect(directMapDisplayProof.text()).toContain("2400%");
       expect(directMapDisplayProof.text()).toContain("/map 大地图");
-      expect(directMapDisplayProof.text()).toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
-      expect(directMapDisplayProof.text()).toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+      expect(directMapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
+      expect(directMapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+      expect(directMapDisplayProof.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').classes()).toContain("plain-map-direct-view-link-primary");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-user-facing-primary-map-action")).toBe("true");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-ordinary-user-map-entry")).toBe("true");
@@ -20814,18 +20838,19 @@ describe("App", () => {
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
     expect(visiblePlainHomeText(wrapper)).not.toContain("scan 可见");
     expect(visiblePlainHomeText(wrapper)).not.toContain("tf 可见");
-    expect(wrapper.find("details").text()).toContain("scan_once_observed");
-    expect(wrapper.find("details").text()).toContain("scan_hz_observed");
-    expect(wrapper.find("details").text()).toContain("tf_observed");
-    expect(wrapper.find("details").text()).toContain("continuous_scan_status");
-    expect(wrapper.find("details").text()).toContain("lifecycle_running");
-    expect(wrapper.find("details").text()).toContain("continuous_window_observed");
-    expect(wrapper.find("details").text()).toContain("non-motion evidence actions");
-    expect(wrapper.find("details").text()).toContain("sends_commands");
-    expect(wrapper.find("details").text()).toContain("starts_ros2");
-    expect(wrapper.find("details").text()).toContain("last refreshed time");
-    expect(wrapper.find("details").text()).toContain("latest readback key values");
-    expect(wrapper.find("details").text()).toContain("blocked reasons");
+    const diagnosticsDetails = wrapper.findAll("details").find((details) => details.text().includes("scan_once_observed"));
+    expect(diagnosticsDetails?.text()).toContain("scan_once_observed");
+    expect(diagnosticsDetails?.text()).toContain("scan_hz_observed");
+    expect(diagnosticsDetails?.text()).toContain("tf_observed");
+    expect(diagnosticsDetails?.text()).toContain("continuous_scan_status");
+    expect(diagnosticsDetails?.text()).toContain("lifecycle_running");
+    expect(diagnosticsDetails?.text()).toContain("continuous_window_observed");
+    expect(diagnosticsDetails?.text()).toContain("non-motion evidence actions");
+    expect(diagnosticsDetails?.text()).toContain("sends_commands");
+    expect(diagnosticsDetails?.text()).toContain("starts_ros2");
+    expect(diagnosticsDetails?.text()).toContain("last refreshed time");
+    expect(diagnosticsDetails?.text()).toContain("latest readback key values");
+    expect(diagnosticsDetails?.text()).toContain("blocked reasons");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh") && options?.method === "POST")).toBe(true);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/base/first-jog?"),
@@ -20837,26 +20862,28 @@ describe("App", () => {
     const summaryCallsAfterRadar = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterRadar).toBeGreaterThan(summaryCallsBefore);
 
-    expect(wrapper.find("details").text()).toContain("启动雷达（高级）");
-    expect(wrapper.find("details").text()).toContain("停止雷达（高级）");
-    await wrapper.find("details").element.setAttribute("open", "");
+    expect(diagnosticsDetails?.text()).toContain("启动雷达（高级）");
+    expect(diagnosticsDetails?.text()).toContain("停止雷达（高级）");
+    diagnosticsDetails?.element.setAttribute("open", "");
     await wrapper.vm.$nextTick();
     await wrapper.findAll("button").find((button) => button.text() === "启动雷达（高级）")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
     expect(visiblePlainHomeText(wrapper)).not.toContain("启动雷达");
-    expect(wrapper.find("details").text()).toContain("start:lifecycle_forwarded");
-    expect(wrapper.find("details").text()).toContain("/api/radar/start");
-    expect(wrapper.find("details").text()).toContain("dry_run_stub");
-    expect(wrapper.find("details").text()).toContain("executed=false");
-    expect(wrapper.find("details").text()).toContain("command_not_configured");
+    const refreshedDiagnosticsDetails = wrapper.findAll("details").find((details) => details.text().includes("start:lifecycle_forwarded"));
+    expect(refreshedDiagnosticsDetails?.text()).toContain("start:lifecycle_forwarded");
+    expect(refreshedDiagnosticsDetails?.text()).toContain("/api/radar/start");
+    expect(refreshedDiagnosticsDetails?.text()).toContain("dry_run_stub");
+    expect(refreshedDiagnosticsDetails?.text()).toContain("executed=false");
+    expect(refreshedDiagnosticsDetails?.text()).toContain("command_not_configured");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start") && options?.method === "POST")).toBe(true);
 
     await wrapper.findAll("button").find((button) => button.text() === "停止雷达（高级）")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find("details").text()).toContain("stop:lifecycle_forwarded");
-    expect(wrapper.find("details").text()).toContain("/api/radar/stop");
+    const stoppedDiagnosticsDetails = wrapper.findAll("details").find((details) => details.text().includes("stop:lifecycle_forwarded"));
+    expect(stoppedDiagnosticsDetails?.text()).toContain("stop:lifecycle_forwarded");
+    expect(stoppedDiagnosticsDetails?.text()).toContain("/api/radar/stop");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/stop") && options?.method === "POST")).toBe(true);
 
     await wrapper.findAll("button").find((button) => button.text() === "刷新地图")?.trigger("click");
@@ -20866,9 +20893,10 @@ describe("App", () => {
     expect(visiblePlainHomeText(wrapper)).toContain("已刷新");
     expect(visiblePlainHomeText(wrapper)).not.toContain("map 可见");
     expect(visiblePlainHomeText(wrapper)).not.toContain("evidence 可见");
-    expect(wrapper.find("details").text()).toContain("map_once_observed");
-    expect(wrapper.find("details").text()).toContain("map_file_observed");
-    expect(wrapper.find("details").text()).toContain("map_metadata_observed");
+    const mapDiagnosticsDetails = wrapper.findAll("details").find((details) => details.text().includes("map_once_observed"));
+    expect(mapDiagnosticsDetails?.text()).toContain("map_once_observed");
+    expect(mapDiagnosticsDetails?.text()).toContain("map_file_observed");
+    expect(mapDiagnosticsDetails?.text()).toContain("map_metadata_observed");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/proof/refresh") && options?.method === "POST")).toBe(true);
     const summaryCallsAfterMap = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterMap).toBeGreaterThan(summaryCallsAfterRadar);

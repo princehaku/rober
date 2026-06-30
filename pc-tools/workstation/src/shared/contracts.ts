@@ -2794,6 +2794,7 @@ export interface RobotControlLiveClosureSummary {
   map_display_rviz_launch_command: "ros2 launch ros2_trashbot_bringup rviz.launch.py";
   map_display_foxglove_bridge_package: "foxglove_bridge";
   map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml";
+  map_display_foxglove_websocket_url: "ws://192.168.1.11:8765";
   map_display_companion_plain: string;
   map_display_sends_motion_when_clicked: false;
   map_display_starts_ros2: false;

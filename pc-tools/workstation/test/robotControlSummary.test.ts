@@ -181,10 +181,12 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(summary.live_closure_summary?.map_display_foxglove_bridge_package).toBe("foxglove_bridge");
     expect(summary.live_closure_summary?.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(summary.live_closure_summary?.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：打开 /map 使用 PC 大地图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 100% 整图铺满大画布");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("细节放大最高 2400%");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ROS2 配套只作工程观察");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ws://192.168.1.11:8765");
     expect(summary.live_closure_summary?.map_display_sends_motion_when_clicked).toBe(false);
     expect(summary.live_closure_summary?.map_display_starts_ros2).toBe(false);
     expect(summary.live_closure_summary?.map_display_starts_rviz2).toBe(false);

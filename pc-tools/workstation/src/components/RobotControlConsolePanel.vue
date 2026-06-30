@@ -289,11 +289,13 @@ const plainMapLargeView = ref(true);
 const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
 const plainMapBrowserFullscreenActive = ref(false);
+const plainMapEngineeringToolsOpen = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
 const plainMapDirectViewHref = "/map";
 const plainMapLegacyDirectViewHref = "?view=map";
 const PLAIN_MAP_RVIZ_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_bringup rviz.launch.py";
 const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml";
+const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const plainMapDirectViewRequested = computed(() => {
   // 直达地图只读取当前 URL，用于现场大屏打开即看地图；它不代表 ROS2/RViz2 已启动。
   const pathname = window.location.pathname.replace(/\/+$/, "");
@@ -314,9 +316,9 @@ const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
 }));
 const plainMapDisplayProofText = computed(() => {
-  // 这行给普通用户确认“当前就是大地图”，ROS2 配套只作为工程观察入口，不改变本页控制边界。
+  // 这行只给普通用户确认“当前就是大地图”；工程命令收进折叠区，避免首屏重新变复杂。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 整图铺满大画布，当前 ${plainMapZoomPercent.value}，细节放大最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先打开 /map 大地图，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；工程调试命令：${PLAIN_MAP_RVIZ_LAUNCH_COMMAND}；远程浏览器观察先部署 Foxglove bridge：${PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND}。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
+  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 整图铺满大画布，当前 ${plainMapZoomPercent.value}，细节放大最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先打开 /map 大地图，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口。本条只读，不启动工程工具、行程执行或小车运动。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -16242,6 +16244,7 @@ onBeforeUnmount(() => {
         :data-map-display-rviz-launch-command="plainLiveClosureSummary.map_display_rviz_launch_command"
         :data-map-display-foxglove-bridge-package="plainLiveClosureSummary.map_display_foxglove_bridge_package"
         :data-map-display-foxglove-bridge-launch-command="plainLiveClosureSummary.map_display_foxglove_bridge_launch_command"
+        :data-map-display-foxglove-websocket-url="plainLiveClosureSummary.map_display_foxglove_websocket_url"
         :data-map-display-sends-motion-when-clicked="String(plainLiveClosureSummary.map_display_sends_motion_when_clicked)"
         :data-map-display-starts-ros2="String(plainLiveClosureSummary.map_display_starts_ros2)"
         :data-map-display-starts-rviz2="String(plainLiveClosureSummary.map_display_starts_rviz2)"
@@ -16495,6 +16498,7 @@ onBeforeUnmount(() => {
           :data-rviz-launch-command="plainLiveClosureSummary.map_display_rviz_launch_command"
           :data-foxglove-bridge-package="plainLiveClosureSummary.map_display_foxglove_bridge_package"
           :data-foxglove-bridge-launch-command="plainLiveClosureSummary.map_display_foxglove_bridge_launch_command"
+          :data-foxglove-websocket-url="plainLiveClosureSummary.map_display_foxglove_websocket_url"
           :data-sends-motion-when-clicked="String(plainLiveClosureSummary.map_display_sends_motion_when_clicked)"
           :data-starts-ros2="String(plainLiveClosureSummary.map_display_starts_ros2)"
           :data-starts-rviz2="String(plainLiveClosureSummary.map_display_starts_rviz2)"
@@ -17704,6 +17708,7 @@ onBeforeUnmount(() => {
           :data-rviz-launch-command="PLAIN_MAP_RVIZ_LAUNCH_COMMAND"
           data-foxglove-bridge-package="foxglove_bridge"
           :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
+          :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
           :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
           :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
           :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
@@ -18066,6 +18071,7 @@ onBeforeUnmount(() => {
             data-foxglove-bridge-status="handoff_required"
             data-foxglove-bridge-package="foxglove_bridge"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
+            :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
             data-sends-motion-when-clicked="false"
             data-starts-ros2="false"
             data-starts-rviz2="false"
@@ -18075,9 +18081,12 @@ onBeforeUnmount(() => {
           >
             {{ plainMapDisplayProofText }}
           </p>
-          <p
-            class="panel-note plain-map-ros2-tool-note"
+          <div
+            class="panel-note plain-map-ros2-tool-note plain-map-engineering-tools"
             data-testid="plain-map-ros2-tool-note"
+            data-visible-by-default="false"
+            data-ordinary-user-ui-simplified="true"
+            :data-open="String(plainMapEngineeringToolsOpen)"
             data-ordinary-user-map-tool="pc_big_map"
             data-ros2-companion-tools="rviz2,foxglove"
             data-ros2-companion-tool="rviz2"
@@ -18091,9 +18100,43 @@ onBeforeUnmount(() => {
             :data-rviz-launch-command="PLAIN_MAP_RVIZ_LAUNCH_COMMAND"
             data-foxglove-bridge-package="foxglove_bridge"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
+            :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
+            data-sends-motion-when-clicked="false"
+            data-starts-ros2="false"
+            data-starts-rviz2="false"
+            data-starts-foxglove="false"
+            data-starts-nav2="false"
+            data-starts-map-runtime="false"
           >
-            PC 默认先显示 100% 整图大地图；需要看细节时点细节放大到 2400%；独立观察屏打开 /map 地图大屏，?view=map 继续兼容；专业调试用 RViz2，运行 {{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }} 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时先在已安装 foxglove_bridge 的 ROS2 环境运行 {{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}，再接 Foxglove Studio；普通操作仍在本页完成。
-          </p>
+            <button
+              type="button"
+              class="plain-map-engineering-tools-summary"
+              data-testid="plain-map-ros2-tool-summary"
+              :aria-expanded="String(plainMapEngineeringToolsOpen)"
+              data-sends-motion-when-clicked="false"
+              data-starts-ros2="false"
+              data-starts-rviz2="false"
+              data-starts-foxglove="false"
+              @click="plainMapEngineeringToolsOpen = !plainMapEngineeringToolsOpen"
+            >
+              工程观察
+            </button>
+            <div v-if="plainMapEngineeringToolsOpen" class="plain-map-engineering-tools-body">
+              <p>
+                普通用户继续用本页大地图和 /map；ROS2 配套只给工程观察使用，不是发车前置条件。
+              </p>
+              <dl>
+                <div>
+                  <dt>本地 RViz2</dt>
+                  <dd><code>{{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }}</code></dd>
+                </div>
+                <div>
+                  <dt>远程 Foxglove</dt>
+                  <dd><code>{{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}</code>，然后连接 <code>{{ PLAIN_MAP_FOXGLOVE_WS_URL }}</code></dd>
+                </div>
+              </dl>
+            </div>
+          </div>
         </article>
 
         <article
