@@ -922,6 +922,8 @@ const fixtures: Record<string, unknown> = {
       wheel_rerun_blocked_by_radar_wysiwyg: false,
       wheel_rerun_command_mode: "ros",
       fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
+      fixed_wheel_rerun_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+      fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples",
       sends_motion_when_clicked: false,
       blocker_ids: [
         "camera_wysiwyg",
@@ -6639,6 +6641,9 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-wheel-feedback-status")).toBe("goal_succeeded_but_wheel_lr_zero");
     expect(liveClosureSummary.attributes("data-latest-wheel-raw-left")).toBe("0");
     expect(liveClosureSummary.attributes("data-latest-wheel-raw-right")).toBe("0");
+    expect(liveClosureSummary.attributes("data-fixed-wheel-rerun-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(liveClosureSummary.attributes("data-fixed-wheel-rerun-latest-endpoint")).toBe("/api/robot-control/nav2/goal/execution/latest");
+    expect(liveClosureSummary.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(liveClosureSummary.text()).toContain("待轮速复验");
     expect(liveClosureSummary.text()).toContain("同窗口轮速 L/R 还没有非零闭环");
     expect(liveClosureSummary.text()).toContain("重跑图上行程");

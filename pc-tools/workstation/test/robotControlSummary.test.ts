@@ -123,6 +123,8 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_blocked_by_radar_wysiwyg).toBe(false);
     expect(summary.live_closure_summary?.wheel_rerun_command_mode).toBe("ros");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.live_closure_summary?.fixed_wheel_rerun_latest_endpoint).toBe("/api/robot-control/nav2/goal/execution/latest");
+    expect(summary.live_closure_summary?.fixed_wheel_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.live_closure_summary?.primary_status_item_id).toBe("nav2_route_execution");
     expect(summary.live_closure_summary?.side_blocker_ids).toEqual([
       "camera_wysiwyg",

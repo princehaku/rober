@@ -2812,6 +2812,8 @@ export interface RobotControlLiveClosureSummary {
   wheel_rerun_blocked_by_radar_wysiwyg: false;
   wheel_rerun_command_mode: string;
   fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute";
+  fixed_wheel_rerun_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest";
+  fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples";
   sends_motion_when_clicked: false;
   blocker_ids: RobotControlGoalChecklistItemId[];
   ready_action_ids: RobotControlGoalChecklistItemId[];
