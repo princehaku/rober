@@ -2577,6 +2577,29 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-free-roam-handoff-proof {
+  /* 自由移动到建图是用户最关心的链路；单独成行避免在传感器和运动门禁之间来回猜。 */
+  border-left: 3px solid #0969da;
+  padding: 8px 10px;
+  background: #f7f9fb;
+}
+
+.plain-free-roam-handoff-proof[data-state="建图可收口"],
+.plain-free-roam-handoff-proof[data-state="可边动边建图"],
+.plain-free-roam-handoff-proof[data-state="可先移动"] {
+  border-left-color: #238636;
+  background: linear-gradient(90deg, rgba(35, 134, 54, 0.09), transparent 48%);
+}
+
+.plain-free-roam-handoff-proof[data-state="待安全确认"] {
+  border-left-color: #bf8700;
+  background: linear-gradient(90deg, rgba(191, 135, 0, 0.1), transparent 48%);
+}
+
+.plain-free-roam-handoff-proof[data-state="待连接"] {
+  border-left-color: #8c959f;
+}
+
 .plain-mapping-readiness-gauge {
   border-left: 3px solid #8c959f;
   padding: 8px 10px;

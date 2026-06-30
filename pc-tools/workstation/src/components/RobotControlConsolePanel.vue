@@ -6925,6 +6925,28 @@ type PlainFreeRoamMotionGauge = {
   fixedMappingStartEndpoint: string;
   fixedMappingPreviewEndpoint: string;
 };
+type PlainFreeRoamHandoffGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  handoffStage: string;
+  safetyConfirmed: boolean;
+  freeMoveStartReady: boolean;
+  canFreeMoveNow: boolean;
+  cameraReadyForMapping: boolean;
+  radarReadyForMapping: boolean;
+  mappingStartReady: boolean;
+  mapRuntimeStarted: boolean;
+  mapPreviewFresh: boolean;
+  mappingEvidenceReady: boolean;
+  primaryActionKind: string;
+  primaryActionRequestsMapping: boolean;
+  fixedFreeRoamStartEndpoint: string;
+  fixedMappingStartEndpoint: string;
+  fixedMappingPreviewEndpoint: string;
+  fixedSharedPreviewStatusEndpoint: string;
+  fixedRadarMapPreviewEndpoint: string;
+};
 type PlainMappingStartGateGauge = {
   state: string;
   text: string;
@@ -7220,6 +7242,97 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
     fixedFreeRoamStopEndpoint: evidence.fixedFreeRoamStopEndpoint,
     fixedMappingStartEndpoint: evidence.fixedMappingStartEndpoint,
     fixedMappingPreviewEndpoint: evidence.fixedMappingPreviewEndpoint,
+  };
+});
+const plainFreeRoamHandoffGauge = computed<PlainFreeRoamHandoffGauge>(() => {
+  // 这行把“先自由移动”和“传感器 ready 后建图”串起来，避免用户在多个卡片间拼状态。
+  const evidence = plainFreeRoamDomEvidence.value;
+  const mapping = plainMappingReadinessGauge.value;
+  const safetyConfirmed = plainManualSafetyConfirmed.value;
+  const canFreeMoveNow = evidence.freeMoveStartReady && safetyConfirmed;
+  const cameraReady = evidence.cameraSourceFirstFrameReady;
+  const radarReady = evidence.radarFreshForMapping;
+  const mapRuntimeStartedNow = mapping.mapRuntimeStarted;
+  const mapPreviewFresh = mapping.mapPreviewFresh;
+  const mappingEvidenceReady = mapping.mappingEvidenceReady;
+  const handoffStage = mappingEvidenceReady
+    ? "mapping_acceptance_ready"
+    : mapRuntimeStartedNow
+      ? mapPreviewFresh ? "mapping_recording_visible" : "mapping_recording_needs_map_refresh"
+      : canFreeMoveNow && evidence.mappingStartReady
+        ? "mapping_start_ready"
+        : canFreeMoveNow
+          ? "free_move_now_sensor_pending"
+          : evidence.freeMoveStartReady
+            ? "await_safety_confirm"
+            : "await_robot_connection";
+  const state = mappingEvidenceReady
+    ? "建图可收口"
+    : canFreeMoveNow && evidence.mappingStartReady
+      ? "可边动边建图"
+      : canFreeMoveNow
+        ? "可先移动"
+        : evidence.freeMoveStartReady
+          ? "待安全确认"
+          : "待连接";
+  const sensorText = `画面${cameraReady ? "已就绪" : "未就绪"}，雷达${radarReady ? "已就绪" : "未就绪"}`;
+  const nextAction = (() => {
+    if (!evidence.freeMoveStartReady) {
+      return "连接默认小车";
+    }
+    if (!safetyConfirmed) {
+      return "先勾安全确认";
+    }
+    if (!cameraReady || !radarReady) {
+      return "先低速自由移动，同时补齐画面和雷达";
+    }
+    if (!mapRuntimeStartedNow) {
+      return "点击自由移动主按钮，先启动建图记录再低速移动";
+    }
+    if (!mapPreviewFresh) {
+      return "刷新地图画面后按建图收口";
+    }
+    return "继续监看建图记录和地图画面";
+  })();
+  const text = (() => {
+    if (!evidence.freeMoveStartReady) {
+      return `自由移动到建图：等待默认小车连接；${nextAction}。`;
+    }
+    if (!safetyConfirmed) {
+      return `自由移动到建图：低速自由移动入口已在；${nextAction}，画面和雷达只影响建图。`;
+    }
+    if (!cameraReady || !radarReady) {
+      return `自由移动到建图：现在可先低速自由移动；${sensorText}，补齐后再启动建图记录。下一步：${nextAction}。`;
+    }
+    if (!mapRuntimeStartedNow) {
+      return `自由移动到建图：画面和雷达已就绪；主按钮会先启动建图记录，再低速自由移动。下一步：${nextAction}。`;
+    }
+    if (!mapPreviewFresh) {
+      return `自由移动到建图：建图记录已启动；地图画面还没刷新。下一步：${nextAction}。`;
+    }
+    return "自由移动到建图：画面、雷达、建图记录和地图画面都就绪；可按建图记录收口。下一步：继续监看建图记录和地图画面。";
+  })();
+  return {
+    state,
+    text,
+    nextAction,
+    handoffStage,
+    safetyConfirmed,
+    freeMoveStartReady: evidence.freeMoveStartReady,
+    canFreeMoveNow,
+    cameraReadyForMapping: cameraReady,
+    radarReadyForMapping: radarReady,
+    mappingStartReady: evidence.mappingStartReady,
+    mapRuntimeStarted: mapRuntimeStartedNow,
+    mapPreviewFresh,
+    mappingEvidenceReady,
+    primaryActionKind: evidence.primaryActionKind,
+    primaryActionRequestsMapping: evidence.primaryActionRequestsMapping,
+    fixedFreeRoamStartEndpoint: evidence.fixedFreeRoamStartEndpoint,
+    fixedMappingStartEndpoint: evidence.fixedMappingStartEndpoint,
+    fixedMappingPreviewEndpoint: evidence.fixedMappingPreviewEndpoint,
+    fixedSharedPreviewStatusEndpoint: plainCameraSharedPreviewDomEvidence.value.fixedSharedPreviewStatusEndpoint,
+    fixedRadarMapPreviewEndpoint: plainRadarMapDomEvidence.value.fixedRadarMapPreviewEndpoint,
   };
 });
 const plainMappingStartGateGauge = computed<PlainMappingStartGateGauge>(() => {
@@ -16530,6 +16643,32 @@ onBeforeUnmount(() => {
             data-sends-motion-when-clicked="false"
           >
             {{ plainFreeRoamMotionGauge.text }}
+          </p>
+          <p
+            class="panel-note plain-free-roam-handoff-proof"
+            data-testid="plain-free-roam-handoff-proof"
+            :data-state="plainFreeRoamHandoffGauge.state"
+            :data-handoff-stage="plainFreeRoamHandoffGauge.handoffStage"
+            :data-safety-confirmed="String(plainFreeRoamHandoffGauge.safetyConfirmed)"
+            :data-free-move-start-ready="String(plainFreeRoamHandoffGauge.freeMoveStartReady)"
+            :data-can-free-move-now="String(plainFreeRoamHandoffGauge.canFreeMoveNow)"
+            :data-camera-ready-for-mapping="String(plainFreeRoamHandoffGauge.cameraReadyForMapping)"
+            :data-radar-ready-for-mapping="String(plainFreeRoamHandoffGauge.radarReadyForMapping)"
+            :data-mapping-start-ready="String(plainFreeRoamHandoffGauge.mappingStartReady)"
+            :data-map-runtime-started="String(plainFreeRoamHandoffGauge.mapRuntimeStarted)"
+            :data-map-preview-fresh="String(plainFreeRoamHandoffGauge.mapPreviewFresh)"
+            :data-mapping-evidence-ready="String(plainFreeRoamHandoffGauge.mappingEvidenceReady)"
+            :data-primary-action-kind="plainFreeRoamHandoffGauge.primaryActionKind"
+            :data-primary-action-requests-mapping="String(plainFreeRoamHandoffGauge.primaryActionRequestsMapping)"
+            :data-next-action="plainFreeRoamHandoffGauge.nextAction"
+            :data-fixed-free-roam-start-endpoint="plainFreeRoamHandoffGauge.fixedFreeRoamStartEndpoint"
+            :data-fixed-mapping-start-endpoint="plainFreeRoamHandoffGauge.fixedMappingStartEndpoint"
+            :data-fixed-mapping-preview-endpoint="plainFreeRoamHandoffGauge.fixedMappingPreviewEndpoint"
+            :data-fixed-shared-preview-status-endpoint="plainFreeRoamHandoffGauge.fixedSharedPreviewStatusEndpoint"
+            :data-fixed-radar-map-preview-endpoint="plainFreeRoamHandoffGauge.fixedRadarMapPreviewEndpoint"
+            data-sends-motion-when-clicked="false"
+          >
+            {{ plainFreeRoamHandoffGauge.text }}
           </p>
           <p
             class="panel-note plain-mapping-readiness-gauge"
