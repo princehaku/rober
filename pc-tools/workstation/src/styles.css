@@ -18,9 +18,9 @@ button {
 
 .shell {
   /* 现场 PC 大屏优先服务地图观察，普通控制台应接近占满浏览器宽度。 */
-  width: min(1920px, calc(100% - 12px));
+  width: min(2200px, calc(100% - 4px));
   margin: 0 auto;
-  padding: 10px 0 24px;
+  padding: 6px 0 18px;
 }
 
 .topbar {
@@ -399,7 +399,7 @@ h3 {
   /* 这个作用域只承载普通用户首屏，测试会用它隔离关闭的高级诊断文本。 */
   border: 1px solid #d8dee6;
   border-radius: 8px;
-  padding: 16px;
+  padding: 10px;
   background: #ffffff;
   box-shadow: 0 1px 2px rgb(17 24 39 / 5%);
 }
@@ -1065,7 +1065,7 @@ h3 {
 .plain-map-panel[data-fullscreen="true"] {
   /* 全屏只放大只读画面和 marker，不改变任何控制按钮的安全门禁。 */
   position: fixed;
-  inset: 14px;
+  inset: 4px;
   z-index: 40;
   display: flex;
   flex-direction: column;
@@ -1094,8 +1094,8 @@ h3 {
 }
 
 .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  height: calc(100vh - 92px);
-  min-height: 820px;
+  height: calc(100vh - 58px);
+  min-height: 860px;
 }
 
 .plain-map-panel[data-state="地图可见"] {
@@ -1315,7 +1315,7 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: clamp(420px, 64vh, 780px);
+  height: clamp(520px, 72vh, 980px);
   min-height: 420px;
   overflow: auto;
   overscroll-behavior: contain;
@@ -1329,18 +1329,18 @@ h3 {
 }
 
 .plain-map-viewport[data-size="normal"] .plain-map-layer {
-  height: clamp(360px, 52vh, 560px);
-  min-height: 360px;
+  height: clamp(480px, 68vh, 820px);
+  min-height: 420px;
 }
 
 .plain-map-viewport[data-size="large"] .plain-map-layer {
-  height: clamp(900px, calc(100vh - 96px), 1500px);
-  min-height: 900px;
+  height: clamp(960px, calc(100vh - 54px), 1800px);
+  min-height: 960px;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  height: calc(100vh - 72px);
-  min-height: 900px;
+  height: calc(100vh - 40px);
+  min-height: 960px;
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {

@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 09:28 CST 起，普通首屏地图按现场 PC 主画布继续放大：工作站外壳扩到 `min(2200px, calc(100% - 4px))`，默认地图缩放从 `300%` 提升到 `400%`，缩放上限提升到 `500%`，大图高度提升为 `clamp(960px, calc(100vh - 54px), 1800px)`，全屏地图高度提升为 `calc(100vh - 40px)`，观测模式高度提升为 `calc(100vh - 58px)`。ROS2 配套口径明确为：工程调试首选 RViz2，远程浏览器观察接 Foxglove；普通用户仍在 PC 简易工作站近全屏地图里看路线、小车位置和雷达贴图。同期 `plain-keyboard-hold-gate` 补齐当前方向、方向文案、轮速 L/R 和 stop 收口 DOM 字段，便于首屏直接验 PC 键盘连续手控。该变化只改显示和只读合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-30 09:21 CST 起，普通首屏 `plain-mapping-start-gate` 建图入口仪表补齐“本页当前画面是否真的显示”的 WYSIWYG 证据。它在 `data-camera-ready-for-mapping` 之外新增 `data-camera-current-frame-visible`、`data-camera-current-mjpeg-frame-visible`、`data-camera-current-video-frame-visible`、`data-camera-shared-preview-single-upstream`、`data-camera-shared-preview-client-count`、`data-fixed-shared-preview-endpoint` 和 `data-fixed-shared-preview-status-endpoint`。因此建图入口会区分“相机首帧可用于建图”和“当前 PC 页面已经看到 MJPEG/视频帧”；该变化只补只读验收合同，不自动打开画面、不独占相机、不启动建图或自由移动、不发送任何运动命令。
 
 2026-06-30 09:15 CST 起，普通首屏 `plain-mapping-start-gate` 建图入口仪表补齐地图雷达点 WYSIWYG 证据：在画面 ready、雷达 ready、建图记录可启动之外，额外显示当前地图是否已经实际画出雷达点和点数，并暴露 `data-radar-map-points-visible`、`data-radar-map-point-count`、`data-radar-map-source-point-count`、`data-fixed-radar-map-preview-endpoint=/api/robot-control/map/preview`。这避免把“雷达已就绪”误读成“地图上已经看到雷达标记”；该变化只补只读验收合同，不自动刷新地图、不启动雷达/建图、不发送 manual、keyboard、free-roam、stop 或 `/cmd_vel`。

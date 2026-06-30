@@ -276,8 +276,8 @@ const plainMapLargeView = ref(true);
 const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4] as const;
-const plainMapZoomIndex = ref(3);
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5] as const;
+const plainMapZoomIndex = ref(4);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const plainMapZoomStyle = computed(() => ({
@@ -5600,9 +5600,15 @@ type PlainKeyboardHoldGateGauge = {
   armSendsMotion: boolean;
   sendsMotionWhileHeld: boolean;
   requiresHoldToMove: boolean;
+  currentDirection: string;
+  currentDirectionLabel: string;
   currentHoldPulseCount: number;
   bestContinuousPulseCount: number;
   verifiedMinForwardedPulses: number;
+  wheelState: string;
+  wheelLeft: string;
+  wheelRight: string;
+  stopState: string;
   pulseIntervalMs: number;
   pulseDurationMs: number;
   sameHoldWindowRequired: boolean;
@@ -5629,6 +5635,7 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
 const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
   // 键盘入口仪表把“点击启用”和“按住才动”拆开，避免把启用键盘误读成发车。
   const evidence = plainKeyboardDirectionButtonEvidence.value;
+  const telemetry = plainKeyboardTelemetrySummary.value;
   let state = "待连接";
   if (robotApiBaseUrl.value.trim() && !plainManualSafetyConfirmed.value) {
     state = "待安全确认";
@@ -5680,9 +5687,15 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
     armSendsMotion: false,
     sendsMotionWhileHeld: evidence.sendsMotionWhileHeld,
     requiresHoldToMove: evidence.requiresHoldToMove,
+    currentDirection: telemetry.direction,
+    currentDirectionLabel: telemetry.directionLabel,
     currentHoldPulseCount: evidence.currentHoldPulseCount,
     bestContinuousPulseCount: evidence.bestContinuousPulseCount,
     verifiedMinForwardedPulses: evidence.verifiedMinForwardedPulses,
+    wheelState: telemetry.wheelState,
+    wheelLeft: telemetry.wheelLeft,
+    wheelRight: telemetry.wheelRight,
+    stopState: telemetry.stopState,
     pulseIntervalMs: evidence.pulseIntervalMs,
     pulseDurationMs: evidence.pulseDurationMs,
     sameHoldWindowRequired: evidence.sameHoldWindowRequired,
@@ -15167,9 +15180,15 @@ onBeforeUnmount(() => {
           :data-arm-sends-motion="String(plainKeyboardHoldGateGauge.armSendsMotion)"
           :data-sends-motion-while-held="String(plainKeyboardHoldGateGauge.sendsMotionWhileHeld)"
           :data-requires-hold-to-move="String(plainKeyboardHoldGateGauge.requiresHoldToMove)"
+          :data-current-direction="plainKeyboardHoldGateGauge.currentDirection"
+          :data-current-direction-label="plainKeyboardHoldGateGauge.currentDirectionLabel"
           :data-current-hold-pulse-count="String(plainKeyboardHoldGateGauge.currentHoldPulseCount)"
           :data-best-continuous-pulse-count="String(plainKeyboardHoldGateGauge.bestContinuousPulseCount)"
           :data-verified-min-forwarded-pulses="String(plainKeyboardHoldGateGauge.verifiedMinForwardedPulses)"
+          :data-wheel-state="plainKeyboardHoldGateGauge.wheelState"
+          :data-wheel-left="plainKeyboardHoldGateGauge.wheelLeft"
+          :data-wheel-right="plainKeyboardHoldGateGauge.wheelRight"
+          :data-stop-state="plainKeyboardHoldGateGauge.stopState"
           :data-pulse-interval-ms="String(plainKeyboardHoldGateGauge.pulseIntervalMs)"
           :data-pulse-duration-ms="String(plainKeyboardHoldGateGauge.pulseDurationMs)"
           :data-same-hold-window-required="String(plainKeyboardHoldGateGauge.sameHoldWindowRequired)"
@@ -15822,7 +15841,7 @@ onBeforeUnmount(() => {
           data-wysiwyg-surface="primary-map"
           data-visual-priority="pc-primary-map-first"
           data-default-size="large"
-          data-default-map-zoom-percent="300%"
+          data-default-map-zoom-percent="400%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -15831,6 +15850,7 @@ onBeforeUnmount(() => {
           :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'"
           :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
           data-ros2-companion-style="rviz2-map-focus"
+          data-ros2-companion-tools="rviz2,foxglove"
           data-ros2-companion-tool="rviz2"
           data-ros2-remote-companion-tool="foxglove"
           data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
@@ -16053,11 +16073,12 @@ onBeforeUnmount(() => {
           <p
             class="panel-note plain-map-ros2-tool-note"
             data-testid="plain-map-ros2-tool-note"
+            data-ros2-companion-tools="rviz2,foxglove"
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            PC 默认先显示大地图；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
+            PC 默认先显示近全屏大地图；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
           </p>
         </article>
 
