@@ -4586,13 +4586,14 @@ describe("workstation fail-closed API contracts", () => {
       const readStatusById = new Map(summary.read_endpoints.map((endpoint) => [endpoint.id, endpoint.request_status]));
       const requestedUrlIndex = (url: string) => robotApi.requestedUrls.indexOf(url);
 
-      expect(summary.robot_api_connection.status).toBe("readable");
-      expect(summary.robot_api_connection.failed_count).toBe(0);
+      expect(summary.robot_api_connection.status).toBe("degraded");
+      expect(summary.robot_api_connection.failed_count).toBe(1);
+      expect(summary.robot_api_connection.blocked_reasons).toContain("status:fetch_timeout_2400ms");
       expect(readStatusById.get("map_proof_latest")).toBe("loaded");
       expect(readStatusById.get("nav2_status")).toBe("loaded");
       expect(readStatusById.get("camera_health")).toBe("loaded");
       expect(readStatusById.get("base_status")).toBe("loaded");
-      expect(readStatusById.get("status")).toBe("loaded");
+      expect(readStatusById.get("status")).toBe("fetch_failed");
       expect(summary.read_endpoints.map((endpoint) => endpoint.endpoint)).toEqual([
         "/api/status",
         "/api/map/proof/latest",
@@ -4611,7 +4612,8 @@ describe("workstation fail-closed API contracts", () => {
         "/api/base/feedback-samples/latest",
       ]);
       expect(requestedUrlIndex("/api/nav2/status")).toBeLessThan(requestedUrlIndex("/api/base/status"));
-      expect(requestedUrlIndex("/api/base/feedback-samples/latest")).toBeLessThan(requestedUrlIndex("/api/base/status"));
+      expect(requestedUrlIndex("/api/nav2/status")).toBeLessThan(requestedUrlIndex("/api/status"));
+      expect(requestedUrlIndex("/api/base/feedback-samples/latest")).toBeLessThan(requestedUrlIndex("/api/status"));
       expect(requestedUrlIndex("/api/base/status")).toBeLessThan(requestedUrlIndex("/api/status"));
     } finally {
       await robotApi.close();
@@ -6417,8 +6419,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("workstation summary route keeps slow base readback budget instead of the old short cap", async () => {
-    // 真实上位机底盘/相机只读端点可能超过 4s；HTTP route 不能把合法慢读误判成轮速不可读。
+  it("workstation summary route caps slow base readback so the plain first screen stays responsive", async () => {
+    // 真实上位机 base/status 可能卡到 8s 以上；summary 首屏要先返回地图/画面/Nav2事实，轮速慢读交给独立刷新入口。
     const safePayload = (schema: string, status = "loaded") => ({
       schema,
       status,
@@ -6459,17 +6461,27 @@ describe("workstation fail-closed API contracts", () => {
     });
     const workstation = await listen(createWorkstationApp());
     try {
+      const startedAt = Date.now();
       const response = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(robotApi.baseUrl)}`);
+      const elapsedMs = Date.now() - startedAt;
       const summary = await response.json() as RobotControlSummaryResponse;
 
       expect(response.status).toBe(200);
+      expect(elapsedMs).toBeLessThan(4000);
       expect(summary.read_endpoints.find((item) => item.id === "base_status")).toEqual(expect.objectContaining({
-        request_status: "loaded",
-        status: "loaded",
-        blocked_reasons: [],
+        request_status: "fetch_failed",
+        status: "fetch_failed",
+        blocked_reasons: ["fetch_timeout_2400ms"],
       }));
-      expect(summary.readback_summary.base.wheel_feedback_latest_raw_left).toBe("0.03");
-      expect(summary.robot_api_connection.blocked_reasons).not.toContain("base_status:fetch_timeout_2400ms");
+      expect(summary.read_endpoints.find((item) => item.id === "base_feedback_samples_latest")).toEqual(expect.objectContaining({
+        request_status: "fetch_failed",
+        status: "fetch_failed",
+        blocked_reasons: ["fetch_timeout_2400ms"],
+      }));
+      expect(summary.readback_summary.base.wheel_feedback_latest_raw_left).toBe("not_loaded");
+      expect(summary.readback_summary.base.current_feedback_read_status).toBe("not_loaded");
+      expect(summary.robot_api_connection.blocked_reasons).toContain("base_status:fetch_timeout_2400ms");
+      expect(summary.robot_api_connection.blocked_reasons).toContain("base_feedback_samples_latest:fetch_timeout_2400ms");
       expect(summary.robot_api_connection.blocked_reasons).not.toContain("base_status:fetch_timeout_4000ms");
       expect(summary.robot_api_connection.blocked_reasons).not.toContain("base_feedback_samples_latest:fetch_timeout_4000ms");
     } finally {
@@ -6478,8 +6490,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   }, 12_000);
 
-  it("Robot Control summary keeps slow camera devices readback within camera budget", async () => {
-    // 板端 camera devices 会做 v4l2 只读枚举；慢一拍时不应让普通首屏连接状态变成 degraded。
+  it("Robot Control summary caps slow camera devices readback for a responsive plain first screen", async () => {
+    // 板端 camera devices 会做 v4l2 只读枚举；summary 首屏不能为了设备列表卡住地图/路线/雷达状态。
     const safePayload = (schema: string, status = "loaded") => ({
       schema,
       status,
@@ -6528,13 +6540,15 @@ describe("workstation fail-closed API contracts", () => {
       const cameraDevices = summary.read_endpoints.find((item) => item.id === "camera_devices");
 
       expect(cameraDevices).toEqual(expect.objectContaining({
-        request_status: "loaded",
-        status: "loaded",
-        blocked_reasons: [],
+        request_status: "fetch_failed",
+        status: "fetch_failed",
+        blocked_reasons: ["fetch_timeout_2400ms"],
       }));
-      expect(summary.readback_summary.camera.devices_status).toBe("loaded");
-      expect(summary.robot_api_connection.status).toBe("readable");
+      expect(summary.readback_summary.camera.devices_status).toBe("fetch_failed");
+      expect(summary.robot_api_connection.status).toBe("degraded");
+      expect(summary.robot_api_connection.blocked_reasons).toContain("camera_devices:fetch_timeout_2400ms");
       expect(summary.robot_api_connection.blocked_reasons).not.toContain("camera_devices:fetch_timeout_4000ms");
+      expect(summary.robot_api_connection.blocked_reasons).not.toContain("camera_devices:fetch_timeout_8000ms");
     } finally {
       await robotApi.close();
     }
@@ -8086,8 +8100,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("Robot Control summary keeps slow status and camera endpoints readable with endpoint timeouts", async () => {
-    // status/camera 在真实板端可能慢于 proof latest；只要仍在白名单窗口内，就不应被误记成 fetch_failed。
+  it("Robot Control summary keeps camera diagnosis while capping slow status readback", async () => {
+    // status 聚合慢时 summary 先返回分项事实；相机 health 在短预算内仍解析完整诊断。
     const robotApi = await listenRobotApiReadbackByPath({
       "/api/status": {
         delay_ms: 4200,
@@ -8106,7 +8120,7 @@ describe("workstation fail-closed API contracts", () => {
         },
       },
       "/api/camera/health": {
-        delay_ms: 5400,
+        delay_ms: 1200,
         payload: {
           schema: "trashbot.upper_robot_api.v1.camera_health",
           status: "ready",
@@ -8156,7 +8170,7 @@ describe("workstation fail-closed API contracts", () => {
         },
       },
       "/api/camera/devices": {
-        delay_ms: 2300,
+        delay_ms: 1200,
         payload: {
           schema: "trashbot.upper_robot_api.v1.camera_devices",
           status: "devices_ready",
@@ -8298,10 +8312,12 @@ describe("workstation fail-closed API contracts", () => {
       const cameraHealth = summary.read_endpoints.find((item) => item.id === "camera_health");
       const cameraDevices = summary.read_endpoints.find((item) => item.id === "camera_devices");
 
-      expect(statusReadback?.request_status).toBe("loaded");
+      expect(statusReadback?.request_status).toBe("fetch_failed");
+      expect(statusReadback?.blocked_reasons).toEqual(["fetch_timeout_2400ms"]);
       expect(cameraHealth?.request_status).toBe("loaded");
       expect(cameraDevices?.request_status).toBe("loaded");
-      expect(summary.robot_api_connection.failed_count).toBe(0);
+      expect(summary.robot_api_connection.failed_count).toBe(1);
+      expect(summary.robot_api_connection.blocked_reasons).toContain("status:fetch_timeout_2400ms");
       expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(1);
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.sends_commands");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_feedback_samples_latest.latest_result.sends_commands");
@@ -8367,29 +8383,30 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_scan_preview_frame_id).toBe("laser");
       expect(summary.readback_summary.map.robot_pose_status).toBe("map_pose_observed");
 	      expect(summary.readback_summary.map.radar_overlay_robot_pose_status).toBe("map_pose_observed");
-	      expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
+	      expect(summary.readback_summary.map.map_wysiwyg_status_plain).toBe("地图画面未读到；不能把旧图或空白图当作当前所见。");
 	      expect(summary.readback_summary.radar.radar_status_plain).toBe("雷达点已贴到当前地图：当前显示 3 个点，frame=laser");
 	      expect(summary.readback_summary.radar.radar_next_action_plain).toBe("继续观察地图雷达层");
 	      expect(summary.readback_summary.radar.plain_hint).toBe("雷达点已贴到当前地图：当前显示 3 个点，frame=laser。下一步：继续观察地图雷达层。");
 	      expect(summary.current_fact_plain).toContain("雷达点已贴到当前地图：当前显示 3 个点，frame=laser");
 	      expect(summary.current_fact_plain).not.toContain("先修复雷达扫描观测");
 	      expect(summary.action_status_cards?.find((card) => card.id === "map_preview")).toMatchObject({
-	        status: "visible",
-	        status_label: "已显示",
-	        wysiwyg_status: "current_map_visible",
+	        status: "not_visible",
+	        status_label: "未显示",
+	        wysiwyg_status: "map_not_visible",
+	        next_action_plain: "先刷新地图画面",
 	      });
 	      expect(summary.goal_checklist?.find((item) => item.id === "map_wysiwyg")).toMatchObject({
-	        status: "done",
-	        status_label: "已满足",
-	        blocks_goal_completion: false,
+	        status: "needs_action",
+	        status_label: "待处理",
+	        blocks_goal_completion: true,
 	      });
-	      expect(summary.readback_summary.map.plain_hint).toContain("地图画面、图上路线、小车位置都已按当前读数显示");
+	      expect(summary.readback_summary.map.plain_hint).toContain("地图画面未读到；不能把旧图或空白图当作当前所见");
       expect(summary.readback_summary.map.plain_hint).toContain("地图雷达点已按当前读数显示：当前显示 3 个点，frame=laser");
       expect(summary.readback_summary.map.plain_hint).not.toContain("雷达 marker");
       expect(summary.readback_summary.map.plain_hint).not.toContain("overlay");
-      expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
+      expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先刷新地图画面。");
       expect(summary.readback_summary.map.next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
-      expect(summary.readback_summary.map.map_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
+      expect(summary.readback_summary.map.map_next_action_plain).toBe("先刷新地图画面。");
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
       expect(summary.readback_summary.map.path_preview_point_count).toBe("3");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");

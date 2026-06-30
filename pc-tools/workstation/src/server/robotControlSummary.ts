@@ -82,11 +82,12 @@ type RobotReadEndpointConfig = {
   id: RobotApiReadEndpointId;
   endpoint: string;
   timeout_ms: number;
+  summary_timeout_ms?: number;
 };
 
 const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   // 真实上位机 /api/status 会顺带聚合 camera/radar/base 子摘要，读取窗口要比 proof latest 更宽。
-  { id: "status", endpoint: "/api/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
+  { id: "status", endpoint: "/api/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
   { id: "map_proof_latest", endpoint: "/api/map/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
@@ -95,14 +96,14 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "free_roam_autonomy_latest", endpoint: "/api/free-roam/autonomy/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   // camera 端点在真实板端会探测设备与健康摘要，允许更长只读窗口，避免误判成离线。
-  { id: "camera_health", endpoint: "/api/camera/health", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
-  { id: "camera_devices", endpoint: "/api/camera/devices", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
+  { id: "camera_health", endpoint: "/api/camera/health", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
+  { id: "camera_devices", endpoint: "/api/camera/devices", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
   { id: "radar_status", endpoint: "/api/radar/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "radar_raw_packet_proof_latest", endpoint: "/api/radar/raw-packet-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
-  // base status 可能触发 T=130 只读反馈窗口；真实串口读数常接近 4s，使用 heavy 预算避免误报轮速不可读。
-  { id: "base_status", endpoint: "/api/base/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
-  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
+  // summary 首屏不能被底盘慢串口窗口拖住；完整慢读仍保留在独立 base/status 刷新入口。
+  { id: "base_status", endpoint: "/api/base/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
+  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
 ];
 
 const OPTIONAL_MISSING_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([
@@ -122,7 +123,6 @@ const MAP_PREVIEW_OVERLAY_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = ne
 ]);
 const SUMMARY_SERIAL_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([
   "status",
-  "base_status",
 ]);
 const ALLOWED_ROBOT_READBACK_SCHEMA_PREFIXES = [
   "trashbot.upper_robot_api.v1",
@@ -4275,20 +4275,25 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig, timeoutO
   };
 }
 
+function summaryReadbackTimeoutMs(config: RobotReadEndpointConfig, options: RobotControlSummaryBuildOptions): number | undefined {
+  // 测试可注入统一短超时；生产默认对会拖首屏的聚合/设备/底盘慢读做 summary 级短预算。
+  return options.readbackTimeoutMs ?? config.summary_timeout_ms;
+}
+
 async function readSummaryEndpoints(
   base: URL,
   options: RobotControlSummaryBuildOptions,
 ): Promise<InternalRobotApiEndpointReadback[]> {
-  // 真实上位机 HTTP 服务接近单 worker；先读快端点，再串行收尾慢聚合和底盘窗口，避免互相排队超时。
+  // 真实上位机 HTTP 服务接近单 worker；底盘慢读走短预算并行，最后串行读状态聚合，避免普通首屏被串口窗口拖住。
   const fastConfigs = READ_ENDPOINTS.filter((item) => !SUMMARY_SERIAL_READ_ENDPOINT_IDS.has(item.id));
   const fastReadbacks = await Promise.all(
-    fastConfigs.map((item) => readEndpoint(base, item, options.readbackTimeoutMs)),
+    fastConfigs.map((item) => readEndpoint(base, item, summaryReadbackTimeoutMs(item, options))),
   );
   const serialReadbacks: InternalRobotApiEndpointReadback[] = [];
-  for (const id of ["base_status", "status"] as const) {
+  for (const id of ["status"] as const) {
     const config = READ_ENDPOINTS.find((item) => item.id === id);
     if (config) {
-      serialReadbacks.push(await readEndpoint(base, config, options.readbackTimeoutMs));
+      serialReadbacks.push(await readEndpoint(base, config, summaryReadbackTimeoutMs(config, options)));
     }
   }
   const byId = new Map([...fastReadbacks, ...serialReadbacks].map((item) => [item.id, item]));

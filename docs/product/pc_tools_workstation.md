@@ -48,6 +48,7 @@ pc-tools/workstation/
 - `App.vue` 只保留全局状态、刷新流程、错误处理和页面组合。
 - `src/client/workstationApi.ts` 集中封装 `/api/*` 路径、fetch 和 route debug query 参数拼接。
 - `src/components/` 只做展示与本地交互，不直接拼 API URL，不发明机器人状态。`RobotControlConsolePanel.vue` 通过 client 层调用 Node `GET /api/robot-control/summary` 和 O6 consumer detail adapter；Vue 不直接跨域访问上位机 Robot API。它的默认首屏必须保持 `Rober 小车控制台` + `.simple-user-console` 五卡片的普通用户视图，短状态、少量按钮和可停止入口留在首屏，`task_id`、`O6`、`O7`、`HIL`、`proof`、`/cmd_vel`、`/api/base/manual`、`field manifest` 等工程字段都必须折叠到默认关闭的 `高级诊断`。`O7FixturePreviewPanel.vue` 通过 client 层调用 fixture preview、probe、archive fixture 和 O6 consumer read adapter；route replay 主路径消费 consumer detail，旧 archive fixture player 只作为次路径 / debug fallback；页面不自动读取本地路径。
+- 2026-06-30 09:36 CST 起，普通首屏 summary 聚合不得被聚合 status、相机设备枚举或底盘慢读数拖住：`status`、`camera_health`、`camera_devices`、`base_status` 和 `base_feedback_samples_latest` 在 summary 内使用 2400ms 上限，超时只作为分项读取较慢/轮速未知提示；独立底盘状态刷新入口继续保留较长只读窗口。地图、画面、雷达、Nav2 路线和自由移动状态必须先可见。
 - 2026-06-30 09:28 CST 起，普通首屏地图必须按 PC 主画布处理：默认 400% 缩放、最高 500%、桌面外壳接近全宽、大图高度接近当前视口，ROS2 配套口径为 RViz2 工程调试和 Foxglove 远程观察；普通用户仍在简易 PC 工作站操作。`plain-keyboard-hold-gate` 同步暴露当前方向、轮速 L/R 和 stop 收口字段，便于首屏直接验证连续手控。
 - 2026-06-30 09:21 CST 起，普通首屏 `plain-mapping-start-gate` 必须区分“相机首帧满足建图启动”和“本页当前真的显示画面”。当前页面的 MJPEG/视频帧、共享预览单上游、观看人数和固定共享预览 endpoint 作为只读 WYSIWYG 证据暴露，不替代相机首帧 gate，也不触发任何摄像头或运动动作。
 - 2026-06-30 09:15 CST 起，普通首屏 `plain-mapping-start-gate` 必须同时表达两层事实：相机首帧/雷达新鲜是否满足建图启动，以及当前地图是否真的显示了雷达点。`data-radar-map-points-visible` 和点数字段只作为 WYSIWYG 证据，不替代建图启动 gate，也不阻塞低速自由移动。

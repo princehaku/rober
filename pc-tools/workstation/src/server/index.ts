@@ -46,6 +46,7 @@ import {
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
   ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS,
+  ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
   notRequiredConfirmedManualOperatorReportPreflight,
   notRequiredOperatorReportPreflight,
   scanDangerousTrueFields,
@@ -91,7 +92,7 @@ import type {
   RobotControlCameraMjpegRelayOverlay,
 } from "./robotControlSummary";
 
-const ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS = ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS;
+const ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS = ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS;
 const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "capture_read_returned_false",
   "capture_read_call_timeout",
