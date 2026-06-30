@@ -2481,6 +2481,18 @@ export interface RobotControlActionStatusCard {
     execute_sends_motion_when_ready?: boolean;
     requires_same_window_wheel_lr_nonzero?: boolean;
     wheel_feedback_status?: string;
+    goal_execution_proven?: boolean;
+    goal_execution_hil_pass?: boolean;
+    base_command_nonzero_observed?: boolean;
+    base_command_nonzero_count?: number;
+    base_feedback_sample_count?: number;
+    base_feedback_nonzero_sample_count?: number;
+    base_feedback_lr_nonzero_proven?: boolean;
+    base_feedback_latest_raw_left?: string;
+    base_feedback_latest_raw_right?: string;
+    imu_attitude_delta_observed?: boolean;
+    imu_roll_delta?: string;
+    imu_pitch_delta?: string;
     last_base_command_mode?: string;
     next_base_command_mode?: string;
     managed_runtime_autostart?: boolean;

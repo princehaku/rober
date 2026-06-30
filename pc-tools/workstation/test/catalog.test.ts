@@ -4099,6 +4099,18 @@ describe("workstation fail-closed API contracts", () => {
           execute_sends_motion_when_ready: false,
           requires_same_window_wheel_lr_nonzero: true,
           wheel_feedback_status: "not_loaded",
+          goal_execution_proven: false,
+          goal_execution_hil_pass: false,
+          base_command_nonzero_observed: false,
+          base_command_nonzero_count: 0,
+          base_feedback_sample_count: 0,
+          base_feedback_nonzero_sample_count: 0,
+          base_feedback_lr_nonzero_proven: false,
+          base_feedback_latest_raw_left: "not_loaded",
+          base_feedback_latest_raw_right: "not_loaded",
+          imu_attitude_delta_observed: false,
+          imu_roll_delta: "not_loaded",
+          imu_pitch_delta: "not_loaded",
         },
       });
       expect(Array.isArray(actionCards.find((card) => card.id === "nav2_route")?.evidence?.blockers)).toBe(true);

@@ -5200,6 +5200,18 @@ describe("App", () => {
     expect(nav2ActionCard.attributes("data-execute-sends-motion-when-ready")).toBe("false");
     expect(nav2ActionCard.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(nav2ActionCard.attributes("data-wheel-feedback-status")).toBe("not_loaded");
+    expect(nav2ActionCard.attributes("data-goal-execution-proven")).toBe("false");
+    expect(nav2ActionCard.attributes("data-goal-execution-hil-pass")).toBe("false");
+    expect(nav2ActionCard.attributes("data-base-command-nonzero-observed")).toBe("false");
+    expect(nav2ActionCard.attributes("data-base-command-nonzero-count")).toBe("0");
+    expect(nav2ActionCard.attributes("data-base-feedback-sample-count")).toBe("0");
+    expect(nav2ActionCard.attributes("data-base-feedback-nonzero-sample-count")).toBe("0");
+    expect(nav2ActionCard.attributes("data-base-feedback-lr-nonzero-proven")).toBe("false");
+    expect(nav2ActionCard.attributes("data-base-feedback-latest-raw-left")).toBe("not_loaded");
+    expect(nav2ActionCard.attributes("data-base-feedback-latest-raw-right")).toBe("not_loaded");
+    expect(nav2ActionCard.attributes("data-imu-attitude-delta-observed")).toBe("false");
+    expect(nav2ActionCard.attributes("data-imu-roll-delta")).toBe("not_loaded");
+    expect(nav2ActionCard.attributes("data-imu-pitch-delta")).toBe("not_loaded");
     expect(nav2ActionCard.attributes("data-managed-runtime-autostart")).toBe("false");
     expect(nav2ActionCard.attributes("data-managed-runtime-requested")).toBe("false");
     expect(nav2ActionCard.attributes("data-managed-runtime-started")).toBe("false");

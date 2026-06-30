@@ -3538,6 +3538,18 @@ function actionCardWithDerivedEvidence(
         execute_sends_motion_when_ready: card.evidence?.execute_sends_motion_when_ready ?? boundary?.nav2_goal_ready ?? false,
         requires_same_window_wheel_lr_nonzero: card.evidence?.requires_same_window_wheel_lr_nonzero ?? true,
         wheel_feedback_status: card.evidence?.wheel_feedback_status ?? boundary?.nav2_goal_wheel_feedback_status ?? "not_loaded",
+        goal_execution_proven: card.evidence?.goal_execution_proven ?? boolText(nav2?.goal_execution_proven, false),
+        goal_execution_hil_pass: card.evidence?.goal_execution_hil_pass ?? boolText(nav2?.goal_execution_hil_pass, false),
+        base_command_nonzero_observed: card.evidence?.base_command_nonzero_observed ?? boolText(nav2?.goal_execution_base_command_nonzero_observed, false),
+        base_command_nonzero_count: card.evidence?.base_command_nonzero_count ?? numberText(nav2?.goal_execution_base_command_nonzero_count, 0),
+        base_feedback_sample_count: card.evidence?.base_feedback_sample_count ?? numberText(nav2?.goal_execution_base_feedback_sample_count, 0),
+        base_feedback_nonzero_sample_count: card.evidence?.base_feedback_nonzero_sample_count ?? numberText(nav2?.goal_execution_base_feedback_nonzero_sample_count, 0),
+        base_feedback_lr_nonzero_proven: card.evidence?.base_feedback_lr_nonzero_proven ?? boolText(nav2?.goal_execution_base_feedback_lr_nonzero_proven, false),
+        base_feedback_latest_raw_left: card.evidence?.base_feedback_latest_raw_left ?? nav2?.goal_execution_base_feedback_latest_raw_left ?? "not_loaded",
+        base_feedback_latest_raw_right: card.evidence?.base_feedback_latest_raw_right ?? nav2?.goal_execution_base_feedback_latest_raw_right ?? "not_loaded",
+        imu_attitude_delta_observed: card.evidence?.imu_attitude_delta_observed ?? boolText(nav2?.goal_execution_base_feedback_imu_attitude_delta_observed, false),
+        imu_roll_delta: card.evidence?.imu_roll_delta ?? nav2?.goal_execution_base_feedback_imu_roll_delta ?? "not_loaded",
+        imu_pitch_delta: card.evidence?.imu_pitch_delta ?? nav2?.goal_execution_base_feedback_imu_pitch_delta ?? "not_loaded",
         last_base_command_mode: card.evidence?.last_base_command_mode ?? nav2?.goal_execution_base_command_mode ?? "not_loaded",
         next_base_command_mode: card.evidence?.next_base_command_mode ?? nav2?.next_execution_base_command_mode ?? "not_loaded",
         managed_runtime_autostart: card.evidence?.managed_runtime_autostart ?? managedRuntimeAutostart,
@@ -15949,6 +15961,18 @@ onBeforeUnmount(() => {
           :data-execute-sends-motion-when-ready="card.evidence?.execute_sends_motion_when_ready === undefined ? undefined : String(card.evidence.execute_sends_motion_when_ready)"
           :data-requires-same-window-wheel-lr-nonzero="card.evidence?.requires_same_window_wheel_lr_nonzero === undefined ? undefined : String(card.evidence.requires_same_window_wheel_lr_nonzero)"
           :data-wheel-feedback-status="card.evidence?.wheel_feedback_status"
+          :data-goal-execution-proven="card.evidence?.goal_execution_proven === undefined ? undefined : String(card.evidence.goal_execution_proven)"
+          :data-goal-execution-hil-pass="card.evidence?.goal_execution_hil_pass === undefined ? undefined : String(card.evidence.goal_execution_hil_pass)"
+          :data-base-command-nonzero-observed="card.evidence?.base_command_nonzero_observed === undefined ? undefined : String(card.evidence.base_command_nonzero_observed)"
+          :data-base-command-nonzero-count="card.evidence?.base_command_nonzero_count === undefined ? undefined : String(card.evidence.base_command_nonzero_count)"
+          :data-base-feedback-sample-count="card.evidence?.base_feedback_sample_count === undefined ? undefined : String(card.evidence.base_feedback_sample_count)"
+          :data-base-feedback-nonzero-sample-count="card.evidence?.base_feedback_nonzero_sample_count === undefined ? undefined : String(card.evidence.base_feedback_nonzero_sample_count)"
+          :data-base-feedback-lr-nonzero-proven="card.evidence?.base_feedback_lr_nonzero_proven === undefined ? undefined : String(card.evidence.base_feedback_lr_nonzero_proven)"
+          :data-base-feedback-latest-raw-left="card.evidence?.base_feedback_latest_raw_left"
+          :data-base-feedback-latest-raw-right="card.evidence?.base_feedback_latest_raw_right"
+          :data-imu-attitude-delta-observed="card.evidence?.imu_attitude_delta_observed === undefined ? undefined : String(card.evidence.imu_attitude_delta_observed)"
+          :data-imu-roll-delta="card.evidence?.imu_roll_delta"
+          :data-imu-pitch-delta="card.evidence?.imu_pitch_delta"
           :data-last-base-command-mode="card.evidence?.last_base_command_mode"
           :data-next-base-command-mode="card.evidence?.next_base_command_mode"
           :data-managed-runtime-autostart="card.evidence?.managed_runtime_autostart === undefined ? undefined : String(card.evidence.managed_runtime_autostart)"
