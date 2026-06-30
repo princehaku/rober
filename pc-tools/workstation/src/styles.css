@@ -977,6 +977,30 @@ h3 {
   border-left-color: #cf222e;
 }
 
+.plain-camera-current-frame-proof {
+  /* 当前页面是否真的出帧是画面 WYSIWYG 的核心；这行只读，不触发相机或运动动作。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #8c959f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #17202a;
+}
+
+.plain-camera-current-frame-proof[data-state="本页已显示"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-camera-current-frame-proof[data-state="等待本页出帧"],
+.plain-camera-current-frame-proof[data-state="接入中"] {
+  border-left-color: #bf8700;
+}
+
+.plain-camera-current-frame-proof[data-state="待打开"] {
+  border-left-color: #8c959f;
+}
+
 .plain-radar-panel {
   border-left: 3px solid transparent;
 }

@@ -4457,6 +4457,13 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 但本页共享预览 `<img>` 还未绘制时，画面卡不再显示“影响建图”。该变化只更新只读 summary、前端 DOM 属性和测试合同，
 不创建额外 camera reader、不执行 free-roam/map/Nav2/manual/keyboard/delivery/stop 或 `/cmd_vel`。
 
+2026-06-30 10:58 CST 起，普通首屏实时画面卡新增 `plain-camera-current-frame-proof`。这行只看当前页面是否真的绘出
+MJPEG `<img>` 或浏览器 video 帧，并同步暴露 `data-current-frame-visible`、`data-current-mjpeg-frame-visible`、
+`data-current-video-frame-visible`、`data-shared-preview-single-upstream`、`data-shared-preview-exclusive-camera-claim`、
+固定 `/api/robot-control/camera/mjpeg` 和 `/api/robot-control/camera/mjpeg/status` endpoint。它用于现场区分“共享上游已有缓存帧”
+和“本页已经看到实时画面”，同时说明后进页面复用同一条上游流、不是浏览器独占；该变化只补当前页显示验收，不新建相机 reader，
+不触发 camera offer、manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+
 2026-06-30 11:35 CST 起，Robot Control summary 对建图启动的雷达新鲜度增加 lifecycle 围栏：
 free-roam runtime snapshot 只有在同轮 `/api/radar/status` 未明确停止时，才能作为 `lidar_fresh` 证据覆盖 stale proof。
 如果 radar status 返回 `lifecycle_running=false`、`lifecycle_state=stopped` 或 `continuous_scan_status=lifecycle_not_running`，

@@ -1903,6 +1903,55 @@ const plainCameraSharedPreviewDomEvidence = computed(() => {
   };
 });
 
+const plainCameraCurrentFrameProofSummary = computed(() => {
+  // 画面验收必须看本页是否真的绘出帧，不能把共享流缓存或上游连接误当成本页可见。
+  const evidence = plainCameraSharedPreviewDomEvidence.value;
+  const frameVisible = evidence.currentFrameVisible;
+  const state = frameVisible
+    ? "本页已显示"
+    : evidence.upstreamActive && evidence.cachedFrameLoaded
+      ? "等待本页出帧"
+      : evidence.upstreamActive
+        ? "接入中"
+        : "待打开";
+  const frameText = frameVisible
+    ? evidence.currentMjpegFrameVisible
+      ? "本页已显示 MJPEG 实时帧"
+      : evidence.currentVideoFrameVisible
+        ? "本页已显示浏览器视频帧"
+        : "本页已显示画面帧"
+    : evidence.cachedFrameLoaded
+      ? "共享流已有最近帧，但本页还没确认显示"
+      : "本页还没确认显示画面帧";
+  const sharedText = evidence.singleUpstream
+    ? `${evidence.clientCount} 个页面共用同一条上游流`
+    : `${evidence.clientCount} 个页面观看，仍待确认单上游`;
+  const exclusiveText = evidence.exclusiveCameraClaim ? "发现可能独占" : "不是浏览器独占";
+  const nextAction = frameVisible
+    ? "继续监看当前画面"
+    : evidence.autoJoinsSharedPreview
+      ? "等待 MJPEG 出帧，必要时点只读检查"
+      : "打开共享预览";
+  return {
+    state,
+    text: `画面验收：${frameText}；${sharedText}；${exclusiveText}。下一步：${nextAction}。`,
+    currentFrameVisible: frameVisible,
+    currentMjpegFrameVisible: evidence.currentMjpegFrameVisible,
+    currentVideoFrameVisible: evidence.currentVideoFrameVisible,
+    statusSource: evidence.statusSource,
+    clientCount: evidence.clientCount,
+    upstreamActive: evidence.upstreamActive,
+    contentTypeLoaded: evidence.contentTypeLoaded,
+    cachedFrameLoaded: evidence.cachedFrameLoaded,
+    sharedCapture: evidence.sharedCapture,
+    singleUpstream: evidence.singleUpstream,
+    exclusiveCameraClaim: evidence.exclusiveCameraClaim,
+    autoJoinsSharedPreview: evidence.autoJoinsSharedPreview,
+    fixedSharedPreviewEndpoint: evidence.fixedSharedPreviewEndpoint,
+    fixedSharedPreviewStatusEndpoint: evidence.fixedSharedPreviewStatusEndpoint,
+  };
+});
+
 const plainCameraSharedPreviewReadback = computed(() => {
   // 后端 summary 已经把共享入口和实时可见性拆成两句；首屏直接显示，避免用户误以为新页面会独占摄像头。
   const camera = robotSummary.value?.readback_summary.camera;
@@ -15935,6 +15984,28 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="cameraSummary.state !== '失败'" class="panel-note">{{ cameraSummary.hint }}</p>
           <p class="panel-note" data-testid="robot-camera-wysiwyg-status">{{ plainCameraWysiwygStatus }}</p>
+          <p
+            class="panel-note plain-camera-current-frame-proof"
+            data-testid="plain-camera-current-frame-proof"
+            data-sends-motion-when-clicked="false"
+            :data-state="plainCameraCurrentFrameProofSummary.state"
+            :data-current-frame-visible="String(plainCameraCurrentFrameProofSummary.currentFrameVisible)"
+            :data-current-mjpeg-frame-visible="String(plainCameraCurrentFrameProofSummary.currentMjpegFrameVisible)"
+            :data-current-video-frame-visible="String(plainCameraCurrentFrameProofSummary.currentVideoFrameVisible)"
+            :data-shared-preview-status-source="plainCameraCurrentFrameProofSummary.statusSource"
+            :data-shared-preview-client-count="String(plainCameraCurrentFrameProofSummary.clientCount)"
+            :data-shared-preview-upstream-active="String(plainCameraCurrentFrameProofSummary.upstreamActive)"
+            :data-shared-preview-content-type-loaded="String(plainCameraCurrentFrameProofSummary.contentTypeLoaded)"
+            :data-shared-preview-cached-frame-loaded="String(plainCameraCurrentFrameProofSummary.cachedFrameLoaded)"
+            :data-shared-preview-shared-capture="String(plainCameraCurrentFrameProofSummary.sharedCapture)"
+            :data-shared-preview-single-upstream="String(plainCameraCurrentFrameProofSummary.singleUpstream)"
+            :data-shared-preview-exclusive-camera-claim="String(plainCameraCurrentFrameProofSummary.exclusiveCameraClaim)"
+            :data-auto-joins-shared-preview="String(plainCameraCurrentFrameProofSummary.autoJoinsSharedPreview)"
+            :data-fixed-shared-preview-endpoint="plainCameraCurrentFrameProofSummary.fixedSharedPreviewEndpoint"
+            :data-fixed-shared-preview-status-endpoint="plainCameraCurrentFrameProofSummary.fixedSharedPreviewStatusEndpoint"
+          >
+            {{ plainCameraCurrentFrameProofSummary.text }}
+          </p>
           <p v-if="plainCameraWysiwygReadback" class="panel-note" data-testid="robot-camera-wysiwyg-readback">{{ plainCameraWysiwygReadback }}</p>
           <p v-if="plainCameraDeviceReadback" class="panel-note" data-testid="robot-camera-device-readback">{{ plainCameraDeviceReadback }}</p>
           <p v-if="plainCameraCachedFrameStatus" class="panel-note" data-testid="robot-camera-cached-frame-status">{{ plainCameraCachedFrameStatus }}</p>
