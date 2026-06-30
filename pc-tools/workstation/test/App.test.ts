@@ -6434,6 +6434,7 @@ describe("App", () => {
     expect(mapPanel.attributes("data-visual-priority")).toBe("pc-primary-map-first");
     expect(mapPanel.attributes("data-default-map-layout")).toBe("dominant-first-screen-map");
     expect(mapPanel.attributes("data-default-map-height-mode")).toBe("viewport-dominant");
+    expect(mapPanel.attributes("data-real-map-fit-mode")).toBe("width-first-preserve-aspect-scroll-y");
     expect(mapPanel.attributes("data-size")).toBe("large");
     expect(mapPanel.attributes("data-default-size")).toBe("large");
     expect(mapPanel.attributes("data-default-map-zoom-percent")).toBe("100%");
@@ -6564,6 +6565,7 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-wysiwyg-overlays")).toBe("image-route-robot-radar");
     expect(mapDisplayProof.attributes("data-default-map-layout")).toBe("dominant-first-screen-map");
     expect(mapDisplayProof.attributes("data-default-map-height-mode")).toBe("viewport-dominant");
+    expect(mapDisplayProof.attributes("data-real-map-fit-mode")).toBe("width-first-preserve-aspect-scroll-y");
     expect(mapDisplayProof.attributes("data-default-map-zoom-percent")).toBe("100%");
     expect(mapDisplayProof.attributes("data-max-map-zoom-percent")).toBe("2400%");
     expect(mapDisplayProof.attributes("data-current-map-zoom-percent")).toBe("100%");
@@ -6736,6 +6738,9 @@ describe("App", () => {
     expect(workstationStyles).toContain(".plain-map-zoom-controls");
     expect(workstationStyles).toContain("width: calc(100% * var(--plain-map-zoom, 1));");
     expect(workstationStyles).toContain("height: calc(100% * var(--plain-map-zoom, 1));");
+    expect(workstationStyles).toContain("真实地图优先撑满宽屏 PC 的宽度");
+    expect(workstationStyles).toContain("height: auto;");
+    expect(workstationStyles).toContain("min-width: 100%;");
     expect(workstationStyles).toContain("overflow: auto;");
     expect(workstationStyles).toContain("min-height: 260px;");
     expect(workstationStyles).toContain(".plain-map-size-toggle");

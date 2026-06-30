@@ -1670,8 +1670,11 @@ h3 {
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
-  width: auto;
-  height: calc(100% * var(--plain-map-zoom, 1));
+  /* 真实地图优先撑满宽屏 PC 的宽度，保持原始比例；高度超出时用滚动看细节。 */
+  width: calc(100% * var(--plain-map-zoom, 1));
+  height: auto;
+  min-width: 100%;
+  min-height: 100%;
   max-width: none;
   aspect-ratio: var(--map-aspect, 1);
 }
