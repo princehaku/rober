@@ -186,6 +186,7 @@ ROUTE_PATHS = {
     "camera_peer_close": "/api/camera/peers/{peer_id}/close",
     "camera_first_frame_probe": "/api/camera/first-frame/probe",
     "camera_mjpeg": "/api/camera/mjpeg",
+    "camera_mjpeg_status": "/api/camera/mjpeg/status",
     "radar_status": "/api/radar/status",
     "radar_start": "/api/radar/start",
     "radar_stop": "/api/radar/stop",
@@ -3471,6 +3472,147 @@ def flatten_camera_health_aliases(payload: dict[str, Any]) -> dict[str, Any]:
         or media_diagnostics.get("shared_preview_contract")
         or diagnosis.get("shared_preview_contract")
         or "single_shared_capture_for_multiple_clients",
+    }
+
+
+def camera_first_frame_attempts_summary(payload: dict[str, Any]) -> str:
+    """把相机首帧尝试矩阵压成一行，方便现场 curl 直接判断哪种格式无帧。"""
+    if not isinstance(payload, dict):
+        return "none"
+    candidates: list[Any] = []
+    last_error = payload.get("last_first_frame_error") if isinstance(payload.get("last_first_frame_error"), dict) else {}
+    for key in ("first_frame_format_attempts", "last_first_frame_format_attempts"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            candidates = value
+            break
+    if not candidates and isinstance(last_error.get("first_frame_format_attempts"), list):
+        candidates = last_error["first_frame_format_attempts"]
+    if not candidates:
+        return "none"
+    parts: list[str] = []
+    for item in candidates[:6]:
+        if not isinstance(item, dict):
+            continue
+        label = str(item.get("label") or item.get("fourcc") or item.get("open_source") or "unknown").strip()
+        backend = str(item.get("open_backend") or "").strip()
+        source = str(item.get("open_source") or "").strip()
+        status = str(item.get("status") or item.get("failure_reason") or "not_loaded").strip()
+        suffix_items = [value for value in (source, backend if backend and backend != "default" else "") if value]
+        suffix = f"({'/'.join(suffix_items)})" if suffix_items and source not in label else ""
+        plain_status = "无首帧" if "unreadable" in status or "false" in status or "timeout" in status else status
+        parts.append(f"{label}{suffix} {plain_status}")
+    return "；".join(parts) if parts else "none"
+
+
+def camera_mjpeg_preview_status(health_payload: dict[str, Any], relay_snapshot: dict[str, Any]) -> str:
+    """状态端点只表达当前可见性，不因为 health 已选源就假装页面已经看到画面。"""
+    if relay_snapshot.get("last_error_payload") or relay_snapshot.get("last_failure_reason"):
+        return "source_first_frame_failed"
+    if relay_snapshot.get("content_type_loaded") or relay_snapshot.get("has_recent_frame"):
+        return "visible"
+    readiness = str(health_payload.get("source_readiness") or "")
+    status = str(health_payload.get("status") or "")
+    failure_reason = str(health_payload.get("source_failure_reason") or "")
+    if status == "source_first_frame_failed" or readiness == "first_frame_failed" or failure_reason:
+        return "source_first_frame_failed"
+    if status == "ready" and readiness == "first_frame_observed":
+        return "source_ready_not_viewing"
+    return "no_current_frame"
+
+
+def camera_mjpeg_status_payload(
+    *,
+    camera_base_url: str,
+    health_http_status: int,
+    health_payload: dict[str, Any],
+    relay_snapshot: dict[str, Any],
+) -> dict[str, Any]:
+    """8787 直连状态只汇总 8088 health 与本进程 relay，不拉流、不打开相机。"""
+    aliases = flatten_camera_health_aliases(health_payload)
+    source_readiness = str(health_payload.get("source_readiness") or aliases.get("source_readiness") or "not_loaded")
+    source_failure_reason = str(health_payload.get("source_failure_reason") or "not_loaded")
+    preview_status = camera_mjpeg_preview_status(health_payload, relay_snapshot)
+    selected_name = str(aliases.get("selected_name") or "not_loaded")
+    if preview_status == "visible":
+        visible_plain = "共享 MJPEG 预览已有当前画面或最近帧。"
+        next_action_plain = "继续使用同一条共享预览；多人页面会复用同一个上游流。"
+        visible_status = "visible"
+        wysiwyg_status_plain = "画面已可见：共享 MJPEG 预览已有当前画面。"
+    elif preview_status == "source_first_frame_failed":
+        visible_plain = f"画面未可见：不是页面独占：{selected_name} 当前没有证明被其他页面独占，但 UVC 设备没有输出视频帧。"
+        next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。"
+        visible_status = "not_visible_source_first_frame_failed"
+        wysiwyg_status_plain = visible_plain
+    elif preview_status == "source_ready_not_viewing":
+        visible_plain = "相机源已有首帧证明，但当前没有浏览器正在拉共享 MJPEG。"
+        next_action_plain = "打开 PC 实时画面；多人页面会复用同一条共享预览。"
+        visible_status = "not_visible_no_viewer"
+        wysiwyg_status_plain = "画面未可见：当前没有页面正在显示共享 MJPEG。"
+    else:
+        visible_plain = "画面未可见：共享 MJPEG 还没有当前帧。"
+        next_action_plain = "打开共享预览或运行只读首帧检查；不要用多个页面各自抢占相机。"
+        visible_status = "not_visible_no_current_frame"
+        wysiwyg_status_plain = visible_plain
+
+    client_count = int(relay_snapshot.get("client_count") or 0)
+    return {
+        "schema": f"{SCHEMA}.camera_mjpeg_status",
+        "proxy_status": "status_loaded" if health_http_status == 200 else "camera_health_unavailable",
+        "endpoint": ROUTE_PATHS["camera_mjpeg_status"],
+        "camera_health_endpoint": ROUTE_PATHS["camera_health"],
+        "remote_endpoint": "/mjpeg",
+        "upper_api_proxy": True,
+        "upper_api_camera_base_url": camera_base_url,
+        "camera_health_http_status": health_http_status,
+        "client_count": client_count,
+        "shared_preview_client_count": client_count,
+        "viewer_count": client_count,
+        "upstream_active": bool(relay_snapshot.get("upstream_active")),
+        "shared_preview_upstream_active": bool(relay_snapshot.get("upstream_active")),
+        "content_type_loaded": bool(relay_snapshot.get("content_type_loaded")),
+        "shared_preview_content_type_loaded": bool(relay_snapshot.get("content_type_loaded")),
+        "shared_capture": True,
+        "shared_preview_shared_capture": True,
+        "exclusive_camera_claim": False,
+        "shared_preview_exclusive_camera_claim": False,
+        "shared_preview_contract": aliases.get("shared_preview_contract") or "single_shared_capture_for_multiple_clients",
+        "shared_preview_multi_viewer_status": "single_upstream_multi_viewer",
+        "last_failure_reason": relay_snapshot.get("last_failure_reason") or source_failure_reason,
+        "shared_preview_last_failure_reason": relay_snapshot.get("last_failure_reason") or source_failure_reason,
+        "last_remote_http_status": relay_snapshot.get("last_remote_http_status"),
+        "shared_preview_last_remote_http_status": relay_snapshot.get("last_remote_http_status"),
+        "last_failure_at_ms": relay_snapshot.get("last_failure_at_ms"),
+        "shared_preview_last_failure_at_ms": relay_snapshot.get("last_failure_at_ms"),
+        "source_diagnosis_status": aliases.get("source_diagnosis_status") or "not_loaded",
+        "source_diagnosis_plain_hint": aliases.get("source_diagnosis_plain_hint") or "not_loaded",
+        "source_diagnosis_next_action": aliases.get("source_diagnosis_next_action") or "not_loaded",
+        "source_diagnosis_not_exclusive": aliases.get("source_diagnosis_not_exclusive", "not_loaded"),
+        "source_readiness": source_readiness,
+        "source_failure_reason": source_failure_reason,
+        "last_first_frame_format_attempts_summary": camera_first_frame_attempts_summary(health_payload),
+        "selected_path": aliases.get("selected_path") or "not_loaded",
+        "selected_name": selected_name,
+        "selected_is_uvc_or_usb": aliases.get("selected_is_uvc_or_usb", "not_loaded"),
+        "source_usage_status": aliases.get("source_usage_status") or "not_loaded",
+        "source_usage_owner_count": aliases.get("source_usage_owner_count", "not_loaded"),
+        "source_usage_summary": aliases.get("source_usage_summary") or "not_loaded",
+        "status": preview_status,
+        "plain_hint": visible_plain,
+        "next_action_plain": next_action_plain,
+        "preview_status": preview_status,
+        "preview_plain_hint": visible_plain,
+        "preview_next_action_plain": next_action_plain,
+        "preview_visible_status": visible_status,
+        "preview_visible_plain": visible_plain,
+        "camera_wysiwyg_status_plain": wysiwyg_status_plain,
+        "camera_wysiwyg_next_action_plain": next_action_plain,
+        "opens_camera_device": False,
+        "starts_camera_webrtc": False,
+        "starts_camera_mjpeg_stream": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        **proof_flags(),
     }
 
 
@@ -9188,6 +9330,19 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = await api.camera_health()
         return json_response(payload, status=http_status)
 
+    async def camera_mjpeg_status(_: web.Request) -> Any:
+        """共享 MJPEG 状态只读汇总；不能因为查状态就启动新视频流。"""
+        http_status, payload = await api.camera_health()
+        return json_response(
+            camera_mjpeg_status_payload(
+                camera_base_url=api.camera_base_url,
+                health_http_status=http_status,
+                health_payload=payload,
+                relay_snapshot=camera_mjpeg_relay.snapshot(),
+            ),
+            status=200,
+        )
+
     async def camera_devices(_: web.Request) -> Any:
         http_status, payload = await api.camera_devices()
         return json_response(payload, status=http_status)
@@ -9434,6 +9589,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["camera_peer_close"], camera_peer_close)
     app.router.add_post(ROUTE_PATHS["camera_first_frame_probe"], camera_first_frame_probe)
     app.router.add_get(ROUTE_PATHS["camera_mjpeg"], camera_mjpeg)
+    app.router.add_get(ROUTE_PATHS["camera_mjpeg_status"], camera_mjpeg_status)
     app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
     app.router.add_post(ROUTE_PATHS["radar_start"], radar_start)
     app.router.add_post(ROUTE_PATHS["radar_stop"], radar_stop)

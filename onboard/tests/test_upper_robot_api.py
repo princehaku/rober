@@ -162,6 +162,65 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("single_shared_capture_for_multiple_clients", payload["shared_preview_contract"])
         self.assertFalse(payload.get("safe_to_control", False))
 
+    def test_camera_mjpeg_status_wraps_health_without_opening_stream(self) -> None:
+        """8787 直连 MJPEG 状态必须只读 health/relay，不能因为查状态再打开相机。"""
+        health_payload = {
+            "schema": "trashbot.local_webrtc_camera_smoke.v1",
+            "status": "source_first_frame_failed",
+            "video_source": "/dev/video1",
+            "source_readiness": "first_frame_failed",
+            "source_failure_reason": "first_frame_total_timeout",
+            "current_selection": {
+                "selected_path": "/dev/video1",
+                "selected_name": "USB Composite Device: DV20 USB",
+                "selected_is_uvc_or_usb": True,
+            },
+            "media_diagnostics": {
+                "source_usage": {"status": "not_in_use", "owner_count": 0, "owners": []},
+                "source_diagnosis": {
+                    "status": "uvc_no_frame_not_exclusive",
+                    "next_action": "check_usb_camera_input_power_or_known_good_uvc",
+                    "not_exclusive": True,
+                },
+            },
+            "last_first_frame_error": {
+                "first_frame_format_attempts": [
+                    {
+                        "label": "MJPG@640x480@30",
+                        "open_source": "/dev/video1",
+                        "open_backend": "CAP_V4L2",
+                        "status": "first_frame_unreadable",
+                    }
+                ]
+            },
+        }
+        payload = upper_robot_api.camera_mjpeg_status_payload(
+            camera_base_url="http://127.0.0.1:8088",
+            health_http_status=200,
+            health_payload=health_payload,
+            relay_snapshot={
+                "client_count": 0,
+                "upstream_active": False,
+                "content_type_loaded": False,
+                "last_failure_reason": "",
+                "last_remote_http_status": None,
+                "last_failure_at_ms": None,
+                "last_error_payload": None,
+            },
+        )
+
+        self.assertEqual("/api/camera/mjpeg/status", payload["endpoint"])
+        self.assertEqual("source_first_frame_failed", payload["status"])
+        self.assertEqual("not_visible_source_first_frame_failed", payload["preview_visible_status"])
+        self.assertFalse(payload["exclusive_camera_claim"])
+        self.assertFalse(payload["shared_preview_exclusive_camera_claim"])
+        self.assertFalse(payload["opens_camera_device"])
+        self.assertFalse(payload["starts_camera_mjpeg_stream"])
+        self.assertFalse(payload["robot_control_executed"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertIn("MJPG@640x480@30", payload["last_first_frame_format_attempts_summary"])
+        self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis_status"])
+
     def test_map_preview_returns_not_current_radar_overlay_without_drawing_stale_points(self) -> None:
         """8787 直连地图预览也要保守返回雷达层，旧雷达点不能继续画在地图上。"""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1369,6 +1428,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         registered = {(route.method, route.resource.canonical) for route in app.router.routes()}
 
         self.assertIn(("GET", "/api/map/status"), registered)
+        self.assertIn(("GET", "/api/camera/mjpeg/status"), registered)
         self.assertNotIn(("POST", "/api/map/status"), registered)
 
     def test_map_proof_latest_fails_closed_on_bad_json(self) -> None:

@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-07-01 系列
+
+### 2026-07-01 01-36｜upper_camera_mjpeg_status｜8787 直连共享画面状态
+
+本轮 `sprints/2026.07.01_01-36_upper_camera_mjpeg_status/` 修正上车 8787 缺少
+`GET /api/camera/mjpeg/status` 的问题。新端点只读汇总 8088 `/health` 与 8787 共享 MJPEG relay snapshot，
+对齐 PC 普通首屏的共享画面诊断字段，明确 `exclusive_camera_claim=false`、`opens_camera_device=false`、
+`starts_camera_mjpeg_stream=false`、`robot_control_executed=false`、`safe_to_control=false`。这只解决状态端点缺失，
+不宣称 DV20 UVC 已经出帧；真实画面仍需检查 USB、摄像头输入、供电或换 known-good UVC 复测。
+
+验证范围：本地 `python3 -m py_compile onboard/scripts/upper_robot_api.py` 通过；
+`python3 -m unittest onboard.tests.test_upper_robot_api` 91 tests OK / 1 skipped；
+`python3 -m unittest onboard.scripts.test_upper_robot_api_free_roam` 7 tests OK。已部署到真实上车机并重启 8787，
+只读读取 `http://127.0.0.1:8787/api/camera/mjpeg/status` 返回 HTTP 200，`status=source_first_frame_failed`、
+`preview_visible_status=not_visible_source_first_frame_failed`、`exclusive_camera_claim=false`、`safe_to_control=false`。
+
 ## 2026-06-29 系列
 
 ### 2026-06-29 23-32｜upper_nav2_default_next_mode_fallback｜上车 Nav2 默认执行跟随下一次模式
