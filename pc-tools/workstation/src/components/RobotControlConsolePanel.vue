@@ -7272,6 +7272,14 @@ type PlainFreeRoamDomEvidence = {
   primaryActionMappingStartReady: boolean;
   primaryActionCameraBlocksMappingStart: boolean;
   primaryActionRadarBlocksMappingStart: boolean;
+  safetyConfirmationRequired: boolean;
+  cameraPreflightRequiredForMotion: boolean;
+  radarPreflightRequiredForMotion: boolean;
+  mappingStartBeforeFreeMoveRequired: boolean;
+  postStartRadarRefreshRequired: boolean;
+  postStartMapPreviewRefreshRequired: boolean;
+  postStartRadarStatusRefreshRequired: boolean;
+  postStartLatestRefreshRequired: boolean;
   freeRoamStopRequestPending: boolean;
   startWillClearStopRequest: boolean;
   startClearsStopRequestNotBlocking: boolean;
@@ -7279,8 +7287,11 @@ type PlainFreeRoamDomEvidence = {
   // 固定代理入口暴露在主面板，避免普通验收去解析高级诊断或中文长文案。
   fixedFreeRoamStartEndpoint: string;
   fixedFreeRoamStopEndpoint: string;
+  fixedFreeRoamLatestEndpoint: string;
   fixedMappingStartEndpoint: string;
   fixedMappingPreviewEndpoint: string;
+  fixedRadarRefreshEndpoint: string;
+  fixedRadarStatusEndpoint: string;
 };
 type PlainMappingReadinessGauge = {
   state: string;
@@ -7495,14 +7506,25 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     primaryActionMappingStartReady: mappingStartReady,
     primaryActionCameraBlocksMappingStart: !sourceFirstFrameReady,
     primaryActionRadarBlocksMappingStart: !plainRadarReadyForFreeRoamMapping.value,
+    safetyConfirmationRequired: true,
+    cameraPreflightRequiredForMotion: false,
+    radarPreflightRequiredForMotion: false,
+    mappingStartBeforeFreeMoveRequired: primaryActionRequestsMapping,
+    postStartRadarRefreshRequired: true,
+    postStartMapPreviewRefreshRequired: true,
+    postStartRadarStatusRefreshRequired: true,
+    postStartLatestRefreshRequired: true,
     freeRoamStopRequestPending,
     startWillClearStopRequest,
     startClearsStopRequestNotBlocking,
     motionStartBlockedByStopRequest,
     fixedFreeRoamStartEndpoint: "/api/robot-control/free-roam/autonomy/start",
     fixedFreeRoamStopEndpoint: "/api/robot-control/free-roam/autonomy/stop",
+    fixedFreeRoamLatestEndpoint: "/api/robot-control/free-roam/autonomy/latest",
     fixedMappingStartEndpoint: "/api/robot-control/map/start",
     fixedMappingPreviewEndpoint: "/api/robot-control/map/preview",
+    fixedRadarRefreshEndpoint: "/api/robot-control/radar/scan-proof/refresh",
+    fixedRadarStatusEndpoint: "/api/robot-control/radar/status",
   };
 });
 const plainMappingReadinessGauge = computed<PlainMappingReadinessGauge>(() => {
@@ -17568,6 +17590,14 @@ onBeforeUnmount(() => {
               :data-radar-blocks-mapping-start="String(plainFreeRoamDomEvidence.primaryActionRadarBlocksMappingStart)"
               :data-camera-blocks-free-motion="String(plainFreeRoamDomEvidence.cameraBlocksFreeMotion)"
               :data-radar-blocks-free-motion="String(plainFreeRoamDomEvidence.radarBlocksFreeMotion)"
+              :data-safety-confirmation-required="String(plainFreeRoamDomEvidence.safetyConfirmationRequired)"
+              :data-camera-preflight-required-for-motion="String(plainFreeRoamDomEvidence.cameraPreflightRequiredForMotion)"
+              :data-radar-preflight-required-for-motion="String(plainFreeRoamDomEvidence.radarPreflightRequiredForMotion)"
+              :data-mapping-start-before-free-move-required="String(plainFreeRoamDomEvidence.mappingStartBeforeFreeMoveRequired)"
+              :data-post-start-radar-refresh-required="String(plainFreeRoamDomEvidence.postStartRadarRefreshRequired)"
+              :data-post-start-map-preview-refresh-required="String(plainFreeRoamDomEvidence.postStartMapPreviewRefreshRequired)"
+              :data-post-start-radar-status-refresh-required="String(plainFreeRoamDomEvidence.postStartRadarStatusRefreshRequired)"
+              :data-post-start-latest-refresh-required="String(plainFreeRoamDomEvidence.postStartLatestRefreshRequired)"
               :data-free-roam-stop-request-pending="String(plainFreeRoamDomEvidence.freeRoamStopRequestPending)"
               :data-start-will-clear-stop-request="String(plainFreeRoamDomEvidence.startWillClearStopRequest)"
               :data-start-clears-stop-request-not-blocking="String(plainFreeRoamDomEvidence.startClearsStopRequestNotBlocking)"
@@ -17576,12 +17606,16 @@ onBeforeUnmount(() => {
               :data-requires-safety-confirmation="String(true)"
               :data-minimal-precheck-safety-only="String(plainFreeRoamDomEvidence.freeMoveSafetyOnly)"
               :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"
+              :data-fixed-free-roam-stop-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStopEndpoint"
+              :data-fixed-free-roam-latest-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamLatestEndpoint"
               :data-fixed-mapping-start-endpoint="plainFreeRoamDomEvidence.fixedMappingStartEndpoint"
-              data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
-              data-fixed-free-roam-map-preview-endpoint="/api/robot-control/map/preview"
-              data-refreshes-radar-scan-proof-after-start="true"
-              data-refreshes-map-preview-after-start="true"
-              data-refreshes-radar-status-after-start="true"
+              :data-fixed-mapping-preview-endpoint="plainFreeRoamDomEvidence.fixedMappingPreviewEndpoint"
+              :data-fixed-radar-refresh-endpoint="plainFreeRoamDomEvidence.fixedRadarRefreshEndpoint"
+              :data-fixed-radar-status-endpoint="plainFreeRoamDomEvidence.fixedRadarStatusEndpoint"
+              :data-fixed-free-roam-map-preview-endpoint="plainFreeRoamDomEvidence.fixedMappingPreviewEndpoint"
+              :data-refreshes-radar-scan-proof-after-start="String(plainFreeRoamDomEvidence.postStartRadarRefreshRequired)"
+              :data-refreshes-map-preview-after-start="String(plainFreeRoamDomEvidence.postStartMapPreviewRefreshRequired)"
+              :data-refreshes-radar-status-after-start="String(plainFreeRoamDomEvidence.postStartRadarStatusRefreshRequired)"
               data-testid="plain-free-roam-start"
               @click="startPlainFreeRoamPrimary"
             >
