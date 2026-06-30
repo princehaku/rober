@@ -4646,10 +4646,17 @@ function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRob
   const wheelAria = keyboardWheelFeedbackPlainText().replace(/^；/, "，");
   const progressText = keyboardForwardedPulseProgressText.value;
   const modeLabel = mapRuntimeStarted.value ? "扫图" : "自由移动";
+  const values = keyboardLastWheelFeedbackValues.value;
+  const wheelLeft = values?.wheel_feedback_latest_raw_left ?? values?.wheel_feedback_latest_left_speed ?? "not_loaded";
+  const wheelRight = values?.wheel_feedback_latest_raw_right ?? values?.wheel_feedback_latest_right_speed ?? "not_loaded";
+  const wheelState = keyboardWheelFeedbackState();
   return {
     label: `${modeLabel}方向：${label}${wheelSuffix}`,
     state: direction,
-    wheelState: keyboardWheelFeedbackState(),
+    wheelState,
+    wheelLeft,
+    wheelRight,
+    wheelLrNonzeroProven: wheelState === "非零已读到",
     style: robotPose
       ? robotPose.style
       : { left: "12px", top: "48px" },
@@ -5203,6 +5210,9 @@ const plainMapVisualSummary = computed(() => {
     freeRoamDirectionMarkerLabel: freeRoamDirectionMarker?.label ?? "",
     freeRoamDirectionMarkerState: freeRoamDirectionMarker?.state ?? "",
     freeRoamDirectionMarkerWheelState: freeRoamDirectionMarker?.wheelState ?? "",
+    freeRoamDirectionMarkerWheelLeft: freeRoamDirectionMarker?.wheelLeft ?? "not_loaded",
+    freeRoamDirectionMarkerWheelRight: freeRoamDirectionMarker?.wheelRight ?? "not_loaded",
+    freeRoamDirectionMarkerWheelLrNonzeroProven: freeRoamDirectionMarker?.wheelLrNonzeroProven ?? false,
     freeRoamDirectionMarkerStyle: freeRoamDirectionMarker?.style ?? {},
     freeRoamDirectionMarkerAria: freeRoamDirectionMarker?.aria ?? "",
     showFreeRoamTrail: Boolean(freeRoamTrail),
@@ -16588,7 +16598,18 @@ onBeforeUnmount(() => {
                 <span v-if="plainMapVisualSummary.showFreeRoamSweepStart" class="plain-map-free-roam-start-marker" data-testid="plain-map-free-roam-start-marker" :style="plainMapVisualSummary.freeRoamSweepStartStyle" aria-label="扫图草图从机器人当前位置接入">扫图起点</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamRuntimeMarker" class="plain-map-free-roam-runtime-marker" data-testid="plain-map-free-roam-runtime-marker" :data-state="plainMapVisualSummary.freeRoamRuntimeMarkerState" :style="plainMapVisualSummary.freeRoamRuntimeMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamRuntimeMarkerAria">{{ plainMapVisualSummary.freeRoamRuntimeMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showFreeRoamActionMarker" class="plain-map-free-roam-action-marker" data-testid="plain-map-free-roam-action-marker" :data-state="plainMapVisualSummary.freeRoamActionMarkerState" :style="plainMapVisualSummary.freeRoamActionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamActionMarkerAria">{{ plainMapVisualSummary.freeRoamActionMarkerLabel }}</span>
-                <span v-if="plainMapVisualSummary.showFreeRoamDirectionMarker" class="plain-map-free-roam-direction-marker" data-testid="plain-map-free-roam-direction-marker" :data-state="plainMapVisualSummary.freeRoamDirectionMarkerState" :data-wheel-state="plainMapVisualSummary.freeRoamDirectionMarkerWheelState" :style="plainMapVisualSummary.freeRoamDirectionMarkerStyle" :aria-label="plainMapVisualSummary.freeRoamDirectionMarkerAria">{{ plainMapVisualSummary.freeRoamDirectionMarkerLabel }}</span>
+                <span
+                  v-if="plainMapVisualSummary.showFreeRoamDirectionMarker"
+                  class="plain-map-free-roam-direction-marker"
+                  data-testid="plain-map-free-roam-direction-marker"
+                  :data-state="plainMapVisualSummary.freeRoamDirectionMarkerState"
+                  :data-wheel-state="plainMapVisualSummary.freeRoamDirectionMarkerWheelState"
+                  :data-wheel-left="plainMapVisualSummary.freeRoamDirectionMarkerWheelLeft"
+                  :data-wheel-right="plainMapVisualSummary.freeRoamDirectionMarkerWheelRight"
+                  :data-wheel-lr-nonzero-proven="String(plainMapVisualSummary.freeRoamDirectionMarkerWheelLrNonzeroProven)"
+                  :style="plainMapVisualSummary.freeRoamDirectionMarkerStyle"
+                  :aria-label="plainMapVisualSummary.freeRoamDirectionMarkerAria"
+                >{{ plainMapVisualSummary.freeRoamDirectionMarkerLabel }}</span>
                 <span v-if="plainMapVisualSummary.showRadarSweep" class="plain-map-radar-sweep" :class="`mode-${plainMapVisualSummary.radarOverlayMode}`" data-testid="plain-map-radar-sweep" :data-state="plainMapVisualSummary.radarLabel" :style="plainMapVisualSummary.radarOverlayStyle" :aria-label="plainMapVisualSummary.radarSweepAria" />
                 <svg
                   v-if="plainMapVisualSummary.showRadarScanPoints"
@@ -17197,6 +17218,10 @@ onBeforeUnmount(() => {
             :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
             :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
             :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
+            :data-wheel-state="plainKeyboardTelemetrySummary.wheelState"
+            :data-wheel-left="plainKeyboardTelemetrySummary.wheelLeft"
+            :data-wheel-right="plainKeyboardTelemetrySummary.wheelRight"
+            :data-wheel-lr-nonzero-proven="String(plainKeyboardTelemetrySummary.wheelState === '非零已读到')"
             :data-same-hold-window-required="String(plainKeyboardDirectionButtonEvidence.sameHoldWindowRequired)"
             :data-stop-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopRequiredAfterHold)"
             :data-stop-settled-after-pulse="String(keyboardStopSettledAfterPulse)"
@@ -17279,7 +17304,17 @@ onBeforeUnmount(() => {
               {{ plainKeyboardContinuousProofSummary.text }}
             </p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
-            <p v-if="plainKeyboardWheelFeedbackSummary" class="panel-note" data-testid="keyboard-wheel-feedback-summary">{{ plainKeyboardWheelFeedbackSummary }}</p>
+            <p
+              v-if="plainKeyboardWheelFeedbackSummary"
+              class="panel-note"
+              data-testid="keyboard-wheel-feedback-summary"
+              :data-wheel-state="plainKeyboardTelemetrySummary.wheelState"
+              :data-wheel-left="plainKeyboardTelemetrySummary.wheelLeft"
+              :data-wheel-right="plainKeyboardTelemetrySummary.wheelRight"
+              :data-wheel-lr-nonzero-proven="String(plainKeyboardTelemetrySummary.wheelState === '非零已读到')"
+            >
+              {{ plainKeyboardWheelFeedbackSummary }}
+            </p>
             <p class="panel-note" data-testid="keyboard-last-stop-summary">{{ plainKeyboardLastStopSummary }}</p>
             <div class="keyboard-direction-pad" data-testid="keyboard-direction-pad">
               <button

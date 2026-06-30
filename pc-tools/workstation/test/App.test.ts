@@ -7118,6 +7118,9 @@ describe("App", () => {
     expect(freeMoveDirectionMarker.text()).toBe("自由移动方向：前进，轮速非零");
     expect(freeMoveDirectionMarker.attributes("data-state")).toBe("forward");
     expect(freeMoveDirectionMarker.attributes("data-wheel-state")).toBe("非零已读到");
+    expect(freeMoveDirectionMarker.attributes("data-wheel-left")).toBe("0.07");
+    expect(freeMoveDirectionMarker.attributes("data-wheel-right")).toBe("0.08");
+    expect(freeMoveDirectionMarker.attributes("data-wheel-lr-nonzero-proven")).toBe("true");
     expect(freeMoveDirectionMarker.attributes("aria-label")).toBe("正在前进自由移动，本次按住 1/2 次，轮速 L/R=0.07/0.08，非零已读到，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-map-free-roam-trail"]').exists()).toBe(false);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/manual?")).length).toBe(manualCallsBeforeArm + 1);
@@ -8587,11 +8590,17 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-current-hold-pulse-count")).toBe("1");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-best-continuous-pulse-count")).toBe("1");
     expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：L/R=0.07/0.08，非零已读到 2 帧。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').attributes("data-wheel-left")).toBe("0.07");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').attributes("data-wheel-right")).toBe("0.08");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').attributes("data-wheel-lr-nonzero-proven")).toBe("true");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：正在前进扫图，松开即停；本次按住 1/2 次；轮速 L/R=0.07/0.08，非零已读到。");
     const directionMarker = wrapper.find('[data-testid="plain-map-free-roam-direction-marker"]');
     expect(directionMarker.text()).toBe("扫图方向：前进，轮速非零");
     expect(directionMarker.attributes("data-state")).toBe("forward");
     expect(directionMarker.attributes("data-wheel-state")).toBe("非零已读到");
+    expect(directionMarker.attributes("data-wheel-left")).toBe("0.07");
+    expect(directionMarker.attributes("data-wheel-right")).toBe("0.08");
+    expect(directionMarker.attributes("data-wheel-lr-nonzero-proven")).toBe("true");
     expect(directionMarker.attributes("aria-label")).toBe("正在前进扫图，本次按住 1/2 次，轮速 L/R=0.07/0.08，非零已读到，机器人地图位置未读到，标记不代表坐标");
     const freeRoamTrail = wrapper.find('[data-testid="plain-map-free-roam-trail"]');
     expect(freeRoamTrail.exists()).toBe(true);
@@ -18234,6 +18243,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0.08/0.07，非零已读到。");
     const holdingKeyboardTelemetry = wrapper.find('[data-testid="keyboard-telemetry-summary"]');
     expect(holdingKeyboardTelemetry.text()).toBe("键盘仪表：方向 前进；本次按住 1/2 次；轮速 L/R=0.08/0.07，非零已读到；按住中；按住会发低速脉冲。");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-wheel-state")).toBe("非零已读到");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-wheel-left")).toBe("0.08");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-wheel-right")).toBe("0.07");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-wheel-lr-nonzero-proven")).toBe("true");
     expect(holdingKeyboardTelemetry.attributes("data-state")).toBe("手控中");
     expect(holdingKeyboardTelemetry.attributes("data-current-direction")).toBe("forward");
     expect(holdingKeyboardTelemetry.attributes("data-current-direction-label")).toBe("前进");
