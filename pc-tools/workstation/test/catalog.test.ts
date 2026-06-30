@@ -10148,6 +10148,158 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("reads fixed radar latest after refresh when observations are present but fresh lags", async () => {
+    // 上车端 artifact 落盘有短暂时序差时，PC 代理只能补读固定 latest GET，不能补发任何运动或 start POST。
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = String(url);
+      if (init?.method === "POST" && requestUrl === "http://127.0.0.1:8787/api/radar/scan-proof/refresh") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            schema: "trashbot.upper_robot_api.v1.radar_scan_proof_refresh",
+            status: "refreshed",
+            evidence_ref: "radar-refresh-proof",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+            robot_control_executed: false,
+            upper_api: {
+              radar_status: {
+                payload: {
+                  continuous_scan_status: "latest_proof_stale_while_lifecycle_running",
+                  continuous_window_observed: true,
+                  continuity_window_status: "fresh_window_observed",
+                  lifecycle_running: true,
+                  lifecycle_state: "running",
+                  latest_scan_proof_fresh: false,
+                  latest_scan_proof_state: "scan_once_hz_raw_packet_tf_observed",
+                  latest_scan_proof_blocked_reasons: [],
+                  latest_scan_proof: {
+                    scan_once_observed: true,
+                    scan_hz_observed: true,
+                    raw_packet_once_observed: true,
+                    tf_observed: true,
+                  },
+                },
+              },
+            },
+          }),
+        } as Response;
+      }
+      if (init?.method === "GET" && requestUrl === "http://127.0.0.1:8787/api/radar/scan-proof/latest") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            schema: "trashbot.upper_robot_api.v1.radar_scan_proof_latest",
+            status: "scan_once_hz_raw_packet_tf_observed",
+            latest_proof_status: "scan_once_hz_raw_packet_tf_observed",
+            latest_scan_once_observed: true,
+            latest_scan_hz_observed: true,
+            latest_raw_packet_once_observed: true,
+            latest_tf_observed: true,
+            latest_scan_proof_fresh: true,
+            continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+            continuous_window_observed: true,
+            continuity_window_status: "fresh_window_observed",
+            lifecycle_running: true,
+            lifecycle_state: "running",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          }),
+        } as Response;
+      }
+      throw new Error(`unexpected fetch ${init?.method ?? "GET"} ${requestUrl}`);
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const response = await buildRadarScanProofRefreshProxy("http://127.0.0.1:8787");
+      expect(response.proxy_status).toBe("refresh_forwarded");
+      expect(response.scan_once_observed).toBe("true");
+      expect(response.scan_hz_observed).toBe("true");
+      expect(response.raw_packet_once_observed).toBe("true");
+      expect(response.tf_observed).toBe("true");
+      expect(response.latest_scan_proof_fresh).toBe("true");
+      expect(response.continuous_scan_status).toBe("latest_proof_fresh_while_lifecycle_running");
+      expect(response.latest_readback_key_values.latest_scan_proof_fresh).toBe("true");
+      expect(response.post_refresh_latest_readback_status).toBe("fresh_after_retry");
+      expect(response.post_refresh_latest_readback_attempt_count).toBe("1");
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.safe_to_control).toBe(false);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock.mock.calls.map(([calledUrl, init]) => `${init?.method ?? "GET"} ${String(calledUrl)}`)).toEqual([
+        "POST http://127.0.0.1:8787/api/radar/scan-proof/refresh",
+        "GET http://127.0.0.1:8787/api/radar/scan-proof/latest",
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("reads fixed radar latest after refresh when the success response omits scan fields", async () => {
+    // 真实上车端可能只返回 refreshed；成功但字段不完整时也要补读 latest，避免按钮回包缺 scan/fresh alias。
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = String(url);
+      if (init?.method === "POST" && requestUrl === "http://127.0.0.1:8787/api/radar/scan-proof/refresh") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            schema: "trashbot.upper_robot_api.v1.radar_scan_proof_refresh",
+            status: "refreshed",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+            robot_control_executed: false,
+          }),
+        } as Response;
+      }
+      if (init?.method === "GET" && requestUrl === "http://127.0.0.1:8787/api/radar/scan-proof/latest") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: "scan_once_hz_raw_packet_tf_observed",
+            latest_scan_once_observed: true,
+            latest_scan_hz_observed: true,
+            latest_raw_packet_once_observed: true,
+            latest_tf_observed: true,
+            latest_scan_proof_fresh: true,
+            continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+            lifecycle_running: true,
+            lifecycle_state: "running",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          }),
+        } as Response;
+      }
+      throw new Error(`unexpected fetch ${init?.method ?? "GET"} ${requestUrl}`);
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const response = await buildRadarScanProofRefreshProxy("http://127.0.0.1:8787");
+      expect(response.scan_once_observed).toBe("true");
+      expect(response.scan_hz_observed).toBe("true");
+      expect(response.raw_packet_once_observed).toBe("true");
+      expect(response.tf_observed).toBe("true");
+      expect(response.latest_scan_proof_fresh).toBe("true");
+      expect(response.post_refresh_latest_readback_status).toBe("fresh_after_retry");
+      expect(response.post_refresh_latest_readback_attempt_count).toBe("1");
+      expect(response.robot_control_executed).toBe(false);
+      expect(fetchMock.mock.calls.map(([calledUrl, init]) => `${init?.method ?? "GET"} ${String(calledUrl)}`)).toEqual([
+        "POST http://127.0.0.1:8787/api/radar/scan-proof/refresh",
+        "GET http://127.0.0.1:8787/api/radar/scan-proof/latest",
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("workstation Nav2 no-motion proof refresh fails closed on motion and Nav2 start claims", async () => {
     // Nav2 规划检查不能接受任何启动 Nav2、发布 /cmd_vel 或执行控制的上位机声明。
     const upstream = await listenRobotProofRefreshApi({

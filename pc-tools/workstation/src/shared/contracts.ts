@@ -3404,6 +3404,8 @@ export interface RobotControlProofRefreshProxyResponse extends ProofFlags {
   path_generated?: string;
   path_generation_succeeded?: string;
   path_point_count?: string;
+  post_refresh_latest_readback_status?: string;
+  post_refresh_latest_readback_attempt_count?: string;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

@@ -388,6 +388,8 @@ const LOCALIZATION_RESET_CONFIG: RobotProofRefreshConfig = {
 };
 
 const NAV2_NO_MOTION_PROOF_LATEST_ENDPOINT = "/api/nav2/proof/latest" as const;
+const RADAR_SCAN_PROOF_LATEST_ENDPOINT = "/api/radar/scan-proof/latest" as const;
+const RADAR_SCAN_PROOF_POST_REFRESH_READBACK_DELAYS_MS = [0, 120, 280] as const;
 const NAV_GOAL_PREFLIGHT_GOAL_LIMITS = {
   frame_id: "map",
   x_min_m: -3,
@@ -1704,12 +1706,9 @@ function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord |
   }
   const upperApi = asRecord(payload.upper_api);
   const radarStatusEnvelope = asRecord(upperApi?.radar_status);
-  const radarStatus = asRecord(radarStatusEnvelope?.payload) ?? radarStatusEnvelope;
-  if (!radarStatus) {
-    return payload;
-  }
-  const latestScanProof = asRecord(radarStatus.latest_scan_proof);
-  const scanProofLatest = asRecord(radarStatus.scan_proof_latest);
+  const radarStatus = asRecord(radarStatusEnvelope?.payload) ?? radarStatusEnvelope ?? payload;
+  const latestScanProof = asRecord(radarStatus.latest_scan_proof) ?? asRecord(payload.latest_scan_proof) ?? payload;
+  const scanProofLatest = asRecord(radarStatus.scan_proof_latest) ?? asRecord(payload.scan_proof_latest) ?? payload;
   const readback: JsonRecord = {};
   if (payload.status !== undefined) {
     readback.status = payload.status;
@@ -1724,30 +1723,39 @@ function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord |
     radarStatus.latest_scan_proof_state,
     latestScanProof?.state,
     scanProofLatest?.latest_proof_status,
+    payload.latest_proof_status,
   ]);
   assignFirst("scan_once_observed", [
     latestScanProof?.scan_once_observed,
     scanProofLatest?.latest_scan_once_observed,
+    payload.scan_once_observed,
+    payload.latest_scan_once_observed,
   ]);
   assignFirst("scan_hz_observed", [
     latestScanProof?.scan_hz_observed,
     scanProofLatest?.latest_scan_hz_observed,
+    payload.scan_hz_observed,
+    payload.latest_scan_hz_observed,
   ]);
   assignFirst("raw_packet_once_observed", [
     latestScanProof?.raw_packet_once_observed,
     scanProofLatest?.latest_raw_packet_once_observed,
+    payload.raw_packet_once_observed,
+    payload.latest_raw_packet_once_observed,
   ]);
   assignFirst("tf_observed", [
     latestScanProof?.tf_observed,
     scanProofLatest?.latest_tf_observed,
+    payload.tf_observed,
+    payload.latest_tf_observed,
   ]);
   // refresh 成功后优先消费最终 radar_status continuity/lifecycle 结论，避免旧 collector blocker 覆盖最终状态。
-  assignFirst("continuous_scan_status", [radarStatus.continuous_scan_status]);
-  assignFirst("continuous_window_observed", [radarStatus.continuous_window_observed]);
-  assignFirst("continuity_window_status", [radarStatus.continuity_window_status]);
-  assignFirst("lifecycle_running", [radarStatus.lifecycle_running]);
-  assignFirst("lifecycle_state", [radarStatus.lifecycle_state]);
-  assignFirst("latest_scan_proof_fresh", [radarStatus.latest_scan_proof_fresh]);
+  assignFirst("continuous_scan_status", [radarStatus.continuous_scan_status, payload.continuous_scan_status]);
+  assignFirst("continuous_window_observed", [radarStatus.continuous_window_observed, payload.continuous_window_observed]);
+  assignFirst("continuity_window_status", [radarStatus.continuity_window_status, payload.continuity_window_status]);
+  assignFirst("lifecycle_running", [radarStatus.lifecycle_running, payload.lifecycle_running]);
+  assignFirst("lifecycle_state", [radarStatus.lifecycle_state, payload.lifecycle_state]);
+  assignFirst("latest_scan_proof_fresh", [radarStatus.latest_scan_proof_fresh, payload.latest_scan_proof_fresh]);
   const finalBlockedReasons = radarStatus.latest_scan_proof_blocked_reasons ?? latestScanProof?.blocked_reasons;
   if (Array.isArray(finalBlockedReasons) && finalBlockedReasons.length > 0) {
     readback.blocked_reasons = finalBlockedReasons;
@@ -4565,6 +4573,95 @@ async function nav2LatestReadbackAfterPostFailure(
   });
 }
 
+function radarRefreshNeedsLatestReadback(readbackKeyValues: Record<string, string>): boolean {
+  // 真实 refresh 回包有时只返回 refreshed；成功但关键字段不完整时也要补读固定 latest。
+  const observationsComplete = readbackKeyValues.scan_once_observed === "true" &&
+    readbackKeyValues.scan_hz_observed === "true" &&
+    readbackKeyValues.raw_packet_once_observed === "true" &&
+    readbackKeyValues.tf_observed === "true";
+  return !observationsComplete || readbackKeyValues.latest_scan_proof_fresh !== "true";
+}
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function radarLatestReadbackAfterRefresh(
+  normalizedBaseUrl: URL,
+  refreshReadbackKeyValues: Record<string, string>,
+): Promise<{
+  latestReadbackKeyValues: Record<string, string>;
+  postRefreshLatestReadbackStatus: string;
+  postRefreshLatestReadbackAttemptCount: string;
+}> {
+  // 这里只允许固定 no-motion latest GET，避免把雷达刷新按钮变成新的任意代理或 runtime 启动入口。
+  if (!radarRefreshNeedsLatestReadback(refreshReadbackKeyValues)) {
+    return {
+      latestReadbackKeyValues: refreshReadbackKeyValues,
+      postRefreshLatestReadbackStatus: "not_required",
+      postRefreshLatestReadbackAttemptCount: "0",
+    };
+  }
+
+  let lastStatus = "not_fresh_after_retry";
+  let attemptCount = 0;
+  for (const delayMs of RADAR_SCAN_PROOF_POST_REFRESH_READBACK_DELAYS_MS) {
+    if (delayMs > 0) {
+      await sleepMs(delayMs);
+    }
+    attemptCount += 1;
+
+    let latestResponse: Response;
+    try {
+      latestResponse = await fetch(endpointUrl(normalizedBaseUrl, RADAR_SCAN_PROOF_LATEST_ENDPOINT), {
+        method: "GET",
+        signal: AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      lastStatus = error instanceof Error && error.name === "TimeoutError"
+        ? `latest_fetch_timeout_${DEFAULT_REQUEST_TIMEOUT_MS}ms`
+        : "latest_fetch_failed";
+      continue;
+    }
+
+    const latestBody = await latestResponse.json().catch(() => null);
+    const latestEnvelope = asRecord(latestBody);
+    const latestPayload = asRecord(latestEnvelope?.payload) ?? latestEnvelope;
+    if (!latestResponse.ok || !latestPayload) {
+      lastStatus = latestPayload ? `latest_http_status_${latestResponse.status}` : "latest_response_json_not_object";
+      continue;
+    }
+
+    const hardDangerous = scanDangerousTrueFields(latestPayload, "", HARD_DANGEROUS_TRUE_FIELDS);
+    if (hardDangerous.length > 0) {
+      return {
+        latestReadbackKeyValues: refreshReadbackKeyValues,
+        postRefreshLatestReadbackStatus: `latest_hard_dangerous_true_field:${hardDangerous[0]}`,
+        postRefreshLatestReadbackAttemptCount: String(attemptCount),
+      };
+    }
+
+    const latestReadbackPayload = radarScanProofReadbackPayload(latestPayload);
+    const latestReadbackKeyValues = compactKeyValues(latestReadbackPayload, RADAR_SCAN_PROOF_REFRESH_CONFIG.key_fields);
+    if (latestReadbackKeyValues.latest_scan_proof_fresh === "true") {
+      return {
+        latestReadbackKeyValues,
+        postRefreshLatestReadbackStatus: "fresh_after_retry",
+        postRefreshLatestReadbackAttemptCount: String(attemptCount),
+      };
+    }
+    lastStatus = "not_fresh_after_retry";
+  }
+
+  return {
+    latestReadbackKeyValues: refreshReadbackKeyValues,
+    postRefreshLatestReadbackStatus: lastStatus,
+    postRefreshLatestReadbackAttemptCount: String(attemptCount),
+  };
+}
+
 async function buildProofRefreshProxy(
   baseUrl: string,
   config: RobotProofRefreshConfig,
@@ -4664,8 +4761,19 @@ async function buildProofRefreshProxy(
     ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
   ];
   const refreshSuccessful = response.ok && hardDangerous.length === 0;
+  const refreshResultAllowsLatestReadback = refreshSuccessful && !lastResultStatus.toLowerCase().includes("blocked") &&
+    !lastResultStatus.toLowerCase().includes("failed") &&
+    !lastResultStatus.toLowerCase().includes("error");
   const readbackPayload = config.kind === "radar_scan_proof_refresh" ? radarScanProofReadbackPayload(payload) : payload;
-  const latestReadbackKeyValues = compactKeyValues(readbackPayload, config.key_fields);
+  const refreshReadbackKeyValues = compactKeyValues(readbackPayload, config.key_fields);
+  const radarPostRefreshReadback = config.kind === "radar_scan_proof_refresh" && refreshResultAllowsLatestReadback
+    ? await radarLatestReadbackAfterRefresh(normalized.normalized, refreshReadbackKeyValues)
+    : {
+        latestReadbackKeyValues: refreshReadbackKeyValues,
+        postRefreshLatestReadbackStatus: "",
+        postRefreshLatestReadbackAttemptCount: "",
+      };
+  const latestReadbackKeyValues = radarPostRefreshReadback.latestReadbackKeyValues;
 
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
@@ -4683,6 +4791,8 @@ async function buildProofRefreshProxy(
     last_refreshed_at_ms: observedAt,
     latest_readback_key_values: latestReadbackKeyValues,
     ...proofRefreshTopLevelAliases(latestReadbackKeyValues),
+    post_refresh_latest_readback_status: radarPostRefreshReadback.postRefreshLatestReadbackStatus || undefined,
+    post_refresh_latest_readback_attempt_count: radarPostRefreshReadback.postRefreshLatestReadbackAttemptCount || undefined,
     failure_reason:
       hardDangerous.length > 0
         ? `hard_dangerous_true_field:${hardDangerous[0]}`
