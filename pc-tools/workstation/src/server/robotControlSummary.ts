@@ -112,9 +112,10 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "radar_status", endpoint: "/api/radar/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "radar_raw_packet_proof_latest", endpoint: "/api/radar/raw-packet-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
-  // summary 首屏不能被底盘慢串口窗口拖住；完整慢读仍保留在独立 base/status 刷新入口。
+  // latest samples 只读 bridge 已落盘反馈，不发送控制；现场常要 5-6 秒才回，给 wheel L/R 验收留足窗口。
+  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: HEAVY_READBACK_TIMEOUT_MS },
+  // fresh base/status 可能触发当前底盘反馈读数，首屏仍短预算，避免慢串口窗口拖住普通页面。
   { id: "base_status", endpoint: "/api/base/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
-  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
 ];
 
 const OPTIONAL_MISSING_READ_ENDPOINT_IDS: ReadonlySet<RobotApiReadEndpointId> = new Set([

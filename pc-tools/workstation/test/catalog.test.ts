@@ -4608,12 +4608,13 @@ describe("workstation fail-closed API contracts", () => {
         "/api/radar/status",
         "/api/radar/scan-proof/latest",
         "/api/radar/raw-packet-proof/latest",
-        "/api/base/status",
         "/api/base/feedback-samples/latest",
+        "/api/base/status",
       ]);
       expect(requestedUrlIndex("/api/nav2/status")).toBeLessThan(requestedUrlIndex("/api/base/status"));
       expect(requestedUrlIndex("/api/nav2/status")).toBeLessThan(requestedUrlIndex("/api/status"));
       expect(requestedUrlIndex("/api/base/feedback-samples/latest")).toBeLessThan(requestedUrlIndex("/api/status"));
+      expect(requestedUrlIndex("/api/base/feedback-samples/latest")).toBeLessThan(requestedUrlIndex("/api/base/status"));
       expect(requestedUrlIndex("/api/base/status")).toBeLessThan(requestedUrlIndex("/api/status"));
     } finally {
       await robotApi.close();
@@ -5751,6 +5752,78 @@ describe("workstation fail-closed API contracts", () => {
       await robotApi.close();
     }
   });
+
+  it("Robot Control summary keeps slow feedback samples available for wheel L/R readback", async () => {
+    // 现场 /api/base/status 可能被 fresh 串口读数拖慢；latest samples 是只读 artifact，应给 wheel L/R 慢读窗口。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/base/status": {
+        delay_ms: 3000,
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/base/feedback-samples/latest": {
+        delay_ms: 3000,
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_result: {
+            sends_commands: true,
+            sends_motion_commands: false,
+            robot_control_executed: false,
+            t1001_observed_count: 2,
+            t1001_feedback_frames: [{ T: 1001, L: 17, R: 19, v: 12.4 }],
+            wheel_feedback_lr_nonzero_proven: true,
+            wheel_feedback_nonzero_observed: true,
+            wheel_feedback_summary: {
+              frame_count: 2,
+              latest_pair: {
+                left_speed: 17,
+                right_speed: 19,
+                source: "vendor_t1001_L_R",
+              },
+              latest_nonzero_pair: {
+                left_speed: 17,
+                right_speed: 19,
+                source: "vendor_t1001_L_R",
+              },
+              lr_nonzero_observed: true,
+              matched_frame_count: 2,
+              nonzero_frame_count: 2,
+              source: "vendor_t1001_L_R",
+            },
+          },
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const baseStatusReadback = summary.read_endpoints.find((item) => item.id === "base_status");
+      const feedbackLatestReadback = summary.read_endpoints.find((item) => item.id === "base_feedback_samples_latest");
+
+      expect(baseStatusReadback?.request_status).toBe("fetch_failed");
+      expect(baseStatusReadback?.blocked_reasons).toContain("fetch_timeout_2400ms");
+      expect(feedbackLatestReadback?.request_status).toBe("loaded");
+      expect(feedbackLatestReadback?.key_values.wheel_feedback_latest_raw_left).toBe("17");
+      expect(feedbackLatestReadback?.key_values.wheel_feedback_latest_raw_right).toBe("19");
+      expect(summary.readback_summary.base.status).toBe("fetch_failed");
+      expect(summary.readback_summary.base.latest_feedback_status).toBe("loaded");
+      expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("2");
+      expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("true");
+      expect(summary.readback_summary.base.wheel_raw_left).toBe("17");
+      expect(summary.readback_summary.base.wheel_raw_right).toBe("19");
+      expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_lr_nonzero_material_observed_not_hil");
+    } finally {
+      await robotApi.close();
+    }
+  }, 12000);
 
   it("Robot Control summary derives fresh base status T1001 frame count from frames array", async () => {
     // 真实 /api/base/status 会返回 fresh T=1001 frames 数组；即使没有显式 count，也不能退回 stale samples 旧计数。

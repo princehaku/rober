@@ -3036,8 +3036,10 @@ export function createWorkstationApp(): express.Express {
           last_error_payload: lastFailureForOverlay.last_error_payload ?? null,
         }
         : null;
-    // 普通 PC 首屏需要保留各端点自己的慢读预算；全局短超时只留给测试注入，避免相机/底盘慢读被误判为离线。
-    res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay));
+    // HTTP 首屏固定快预算；慢 wheel L/R 证据由内部 builder/独立刷新读取，不能拖慢普通用户首屏。
+    res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay, {
+      readbackTimeoutMs: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
+    }));
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {
