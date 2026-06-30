@@ -116,4 +116,71 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_command_mode).toBe("ros");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
   });
+
+  it("separates free movement from mapping sensor readiness in live closure", async () => {
+    // 自由移动只要安全确认和停止兜底；相机/雷达缺口只能阻塞建图启动，不能冒充移动前置。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      const payloadByPath: Record<string, Record<string, unknown>> = {
+        "/api/free-roam/autonomy/latest": {
+          ...basePayload,
+          latest_result: {
+            decision: {
+              state: "ready",
+              reason: "operator_can_start_low_speed_free_move",
+              gates: [
+                { id: "stop_available", label: "停止兜底", state: "ready", evidence: "stop endpoint ready", next_action: "继续监看" },
+                { id: "camera_first_frame", label: "画面首帧", state: "not_proven", evidence: "画面首帧未出", next_action: "检查画面" },
+                { id: "lidar_fresh", label: "雷达新鲜", state: "not_proven", evidence: "雷达最新扫描未刷新", next_action: "先刷新雷达" },
+              ],
+            },
+            snapshot: {
+              external_stop_requested: false,
+              mapping_active: false,
+            },
+            cmd_vel_publish_enabled: false,
+          },
+        },
+      };
+      const payload = payloadByPath[url.pathname] ?? basePayload;
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.live_closure_summary?.free_move_start_ready).toBe(true);
+    expect(summary.live_closure_summary?.free_move_minimal_precheck_safety_only).toBe(true);
+    expect(summary.live_closure_summary?.free_move_safety_confirm_required).toBe(true);
+    expect(summary.live_closure_summary?.free_move_camera_preflight_required).toBe(false);
+    expect(summary.live_closure_summary?.free_move_radar_preflight_required).toBe(false);
+    expect(summary.live_closure_summary?.free_move_blocked_by_camera_wysiwyg).toBe(false);
+    expect(summary.live_closure_summary?.free_move_blocked_by_radar_wysiwyg).toBe(false);
+    expect(summary.live_closure_summary?.fixed_free_roam_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
+    expect(summary.live_closure_summary?.fixed_free_roam_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(summary.live_closure_summary?.mapping_start_ready).toBe(false);
+    expect(summary.live_closure_summary?.mapping_start_requires_camera_first_frame).toBe(true);
+    expect(summary.live_closure_summary?.mapping_start_requires_lidar_fresh).toBe(true);
+    expect(summary.live_closure_summary?.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.live_closure_summary?.mapping_acceptance_missing_reasons).toEqual([
+      "camera_first_frame",
+      "lidar_fresh",
+      "mapping_active",
+      "fresh_map_preview",
+    ]);
+    expect(summary.live_closure_summary?.fixed_mapping_start_endpoint).toBe("/api/robot-control/map/start");
+    expect(summary.live_closure_summary?.fixed_mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
+  });
 });
