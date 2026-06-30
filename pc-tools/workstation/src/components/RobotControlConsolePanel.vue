@@ -295,8 +295,8 @@ const plainMapDirectViewRequested = computed(() => {
   const view = params.get("view") ?? params.get("mode");
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8] as const;
-const plainMapZoomIndex = ref(6);
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12] as const;
+const plainMapZoomIndex = ref(7);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const plainMapZoomStyle = computed(() => ({
@@ -305,7 +305,7 @@ const plainMapZoomStyle = computed(() => ({
 const plainMapDisplayProofText = computed(() => {
   // 这行给普通用户确认“当前就是大地图”，ROS2 配套只作为工程观察入口，不改变本页控制边界。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，当前 ${plainMapZoomPercent.value}，图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；工程调试用 RViz2，远程浏览器观察先部署 Foxglove bridge。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
+  return `地图显示：${viewText}，当前 ${plainMapZoomPercent.value}，图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先用本页大地图，工程调试用 RViz2，远程浏览器观察先部署 Foxglove bridge。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -16873,7 +16873,7 @@ onBeforeUnmount(() => {
           data-default-map-layout="dominant-first-screen-map"
           data-default-map-height-mode="viewport-dominant"
           data-default-size="large"
-          data-default-map-zoom-percent="600%"
+          data-default-map-zoom-percent="800%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -16885,7 +16885,7 @@ onBeforeUnmount(() => {
           :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
           data-direct-map-view-url="?view=map"
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-          data-direct-map-view-default-zoom-percent="800%"
+          data-direct-map-view-default-zoom-percent="1200%"
           data-ros2-companion-style="rviz2-map-focus"
           data-ros2-companion-tools="rviz2,foxglove"
           data-ros2-companion-tool="rviz2"
@@ -16920,7 +16920,7 @@ onBeforeUnmount(() => {
                 data-opens-new-window="true"
                 data-direct-map-view-url="?view=map"
                 data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-                data-direct-map-view-default-zoom-percent="800%"
+                data-direct-map-view-default-zoom-percent="1200%"
                 data-sends-motion-when-clicked="false"
                 data-starts-ros2="false"
                 data-starts-rviz2="false"
@@ -17212,8 +17212,8 @@ onBeforeUnmount(() => {
             data-wysiwyg-overlays="image-route-robot-radar"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
-            data-default-map-zoom-percent="600%"
-            data-max-map-zoom-percent="800%"
+            data-default-map-zoom-percent="800%"
+            data-max-map-zoom-percent="1200%"
             :data-current-map-zoom-percent="plainMapZoomPercent"
             :data-current-map-size="plainMapViewSize"
             :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
@@ -17249,7 +17249,7 @@ onBeforeUnmount(() => {
             data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            PC 默认先显示近整屏大地图；需要独立观察屏时打开 ?view=map 地图大屏；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时部署 bridge 后接 Foxglove Studio；普通操作仍在本页完成。
+            PC 默认先显示近整屏 800% 大地图；需要独立观察屏时打开 ?view=map 地图大屏，直达页使用 1200% 上限；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时部署 bridge 后接 Foxglove Studio；普通操作仍在本页完成。
           </p>
         </article>
 

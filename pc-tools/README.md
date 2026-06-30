@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 17:02 CST 起，普通首屏地图继续按普通用户“大地图优先”处理：默认缩放从 `600%` 提升到 `800%`，缩放档位最高提升到 `1200%`，`?view=map` 直达地图大屏默认使用最高 `1200%`。ROS2 配套口径保持分层：RViz2 / `nav2_rviz_plugins` 是本地工程调试地图、雷达、TF、规划轨迹和定位的标准工具；Foxglove / `foxglove_bridge` 是浏览器远程观察配套；普通用户默认仍留在 PC 简易工作站大地图里看路线、小车位置和雷达贴图。该变化只改显示和只读 DOM 合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-30 14:49 CST 起，普通首屏地图新增 `plain-map-display-proof` 可见验收条，把“PC 默认大地图主视图 / `?view=map` 只看地图大屏”“当前缩放百分比”“路线、小车位置、雷达标记共用同一张 WYSIWYG 画布”“RViz2 / Foxglove bridge 只是 ROS2 配套观察工具”放到地图卡正文，并暴露 `data-user-facing-map-surface=pc_plain_big_map`、`data-primary-map-first=true`、`data-wysiwyg-overlays=image-route-robot-radar`、`data-current-map-zoom-percent`、`data-ros2-companion-tool=rviz2`、`data-ros2-remote-companion-tool=foxglove` 和 `data-foxglove-bridge-status=handoff_required`。该验收条只读，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-30 15:37 CST 起，地图卡标题行把“打开地图大屏”提升为第一个主入口，并暴露 `data-user-facing-primary-map-action=true`、`data-ordinary-user-map-entry=true`、`data-opens-new-window=true` 和 `data-ros2-companion-required=false`。`plain-map-display-proof` 同步给出 `data-primary-map-action-testid=plain-map-direct-view-link`、`data-primary-map-action-label=打开地图大屏` 和 `data-primary-map-action-opens-new-window=true`；普通用户解决“地图太小”优先点 PC 地图大屏，RViz2 / Foxglove 继续只是工程调试和远程观察配套。该入口只读，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
