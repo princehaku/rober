@@ -148,6 +148,7 @@ const mapPreviewPending = ref(false);
 const freeRoamAutonomyPending = ref(false);
 const freeRoamAutonomyLatestPending = ref(false);
 const freeRoamAutonomyLatestResult = ref<RobotControlFreeRoamAutonomyLatestResponse | null>(null);
+const liveMotionRunbookReadbackPendingAction = ref<RobotControlLiveMotionRunbookItem["id"] | null>(null);
 const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
 const plainFreeRoamMappingConfirmed = ref(false);
@@ -4004,6 +4005,9 @@ const plainLiveMotionRunbookRows = computed(() => {
     sourceCardId: targetByAction[item.id],
     focusKind: focusKind(item),
     buttonLabel: buttonLabel(item),
+    readbackButtonLabel: liveMotionRunbookReadbackPendingAction.value === item.id ? "读回中" : "读回验收",
+    readbackPending: liveMotionRunbookReadbackPendingAction.value === item.id,
+    readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
     blockedText: item.blocked_reasons.join("、") || "none",
     acceptanceText: plainActionCardUserText(item.acceptance_plain),
     proofText: plainActionCardUserText(item.proof_plain || item.acceptance_plain),
@@ -4033,6 +4037,37 @@ const plainLiveMotionRunbookPreflightPlain = computed(() => {
   }
   return `发车前：按当前动作卡片提示确认安全（${safetyText}）。`;
 });
+
+async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotionRunbookItem["id"]): Promise<void> {
+  // 动作清单的验收读回只刷新固定验收端点；不会执行路线、手控、自由移动、建图或 stop。
+  if (!robotApiBaseUrl.value.trim() || liveMotionRunbookReadbackPendingAction.value !== null) {
+    return;
+  }
+  liveMotionRunbookReadbackPendingAction.value = actionId;
+  try {
+    if (actionId === "run_nav2_route") {
+      await loadNavGoalExecutionLatest({ allowDuringMapRefresh: true });
+      await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
+      await refreshConsole();
+      await loadDeliveryLatest({ allowDuringMapRefresh: true });
+      return;
+    }
+    if (actionId === "hold_keyboard") {
+      await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
+      await refreshConsole();
+      return;
+    }
+    if (actionId === "start_free_move") {
+      await refreshFreeRoamAutonomyLatest();
+      await refreshConsole();
+      return;
+    }
+    await refreshMapPreview({ radarStatusRefresh: true });
+    await refreshConsole();
+  } finally {
+    liveMotionRunbookReadbackPendingAction.value = null;
+  }
+}
 const plainLiveClosureFocusTargetKind = computed(() => {
   // 当前卡点按钮要说清真实落点：轮速复验先落到安全确认，勾过后才落到行程执行按钮。
   const summary = plainLiveClosureSummary.value;
@@ -16629,14 +16664,46 @@ onBeforeUnmount(() => {
             :data-start-endpoint="item.start_endpoint"
             :data-stop-endpoint="item.stop_endpoint"
             :data-acceptance-endpoints="item.acceptance_endpoints.join(',') || 'none'"
+            :data-readback-refresh-endpoints="item.acceptance_endpoints.join(',') || 'none'"
+            :data-readback-refresh-pending="String(item.readbackPending)"
+            data-readback-only="true"
+            data-readback-refresh-sends-motion="false"
+            data-readback-refresh-starts-nav2="false"
+            data-readback-refresh-starts-manual="false"
+            data-readback-refresh-starts-keyboard="false"
+            data-readback-refresh-starts-free-roam="false"
+            data-readback-refresh-starts-map-runtime="false"
+            data-readback-refresh-submits-delivery="false"
+            data-readback-refresh-stops-motion="false"
             :data-blocked-reasons="item.blockedText"
             :data-focus-target-source-card-id="item.sourceCardId"
             :data-focus-target-kind="item.focusKind"
             :data-action-button-label="item.buttonLabel"
+            :data-readback-button-label="item.readbackButtonLabel"
           >
             <span class="plain-progress-label">{{ plainActionCardUserText(item.label) }}</span>
             <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
             <span class="muted">{{ item.proofText }}</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              :disabled="item.readbackDisabled"
+              :data-testid="`plain-live-motion-runbook-readback-${item.id}`"
+              :data-action-id="item.id"
+              :data-readback-refresh-endpoints="item.acceptance_endpoints.join(',') || 'none'"
+              data-readback-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="refreshLiveMotionRunbookReadback(item.id)"
+            >
+              {{ item.readbackButtonLabel }}
+            </button>
             <button
               type="button"
               class="secondary compact-stop"
