@@ -5285,6 +5285,9 @@ describe("App", () => {
     expect(mapPanel.attributes("data-fullscreen")).toBe("false");
     expect(mapPanel.attributes("data-browser-fullscreen-active")).toBe("false");
     expect(mapPanel.attributes("data-observer-mode")).toBe("false");
+    expect(mapPanel.attributes("data-direct-map-view-requested")).toBe("false");
+    expect(mapPanel.attributes("data-direct-map-view-url")).toBe("?view=map");
+    expect(mapPanel.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
     expect(mapPanel.attributes("data-ros2-companion-style")).toBe("rviz2-map-focus");
     expect(mapPanel.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(mapPanel.attributes("data-ros2-companion-tool")).toBe("rviz2");
@@ -5330,6 +5333,23 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-user-facing-action")).toBe("map_only_view");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-ros2-companion-tool")).toBe("rviz2");
     expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    const mapDirectViewLink = wrapper.find('[data-testid="plain-map-direct-view-link"]');
+    expect(mapDirectViewLink.exists()).toBe(true);
+    expect(mapDirectViewLink.text()).toBe("打开地图大屏");
+    expect(mapDirectViewLink.attributes("href")).toBe("?view=map");
+    expect(mapDirectViewLink.attributes("target")).toBe("_blank");
+    expect(mapDirectViewLink.attributes("data-map-view-action")).toBe("open_direct_map_view");
+    expect(mapDirectViewLink.attributes("data-direct-map-view-url")).toBe("?view=map");
+    expect(mapDirectViewLink.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
+    expect(mapDirectViewLink.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(mapDirectViewLink.attributes("data-starts-ros2")).toBe("false");
+    expect(mapDirectViewLink.attributes("data-starts-rviz2")).toBe("false");
+    expect(mapDirectViewLink.attributes("data-starts-map-runtime")).toBe("false");
+    expect(mapDirectViewLink.attributes("data-starts-nav2")).toBe("false");
+    expect(mapDirectViewLink.attributes("data-uses-browser-fullscreen-api")).toBe("false");
+    expect(mapDirectViewLink.attributes("data-keeps-wysiwyg-overlays")).toBe("image-route-robot-radar");
+    expect(mapDirectViewLink.attributes("data-ros2-companion-tool")).toBe("rviz2");
+    expect(mapDirectViewLink.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("large");
@@ -5364,6 +5384,7 @@ describe("App", () => {
     expect(mapRos2ToolNote.text()).toContain("RViz2");
     expect(mapRos2ToolNote.text()).toContain("Foxglove");
     expect(mapRos2ToolNote.text()).toContain("地图");
+    expect(mapRos2ToolNote.text()).toContain("?view=map");
     expect(mapRos2ToolNote.text()).toContain("PC 默认先显示近整屏大地图");
     expect(mapRos2ToolNote.text()).toContain("规划轨迹");
     expect(mapRos2ToolNote.text()).not.toContain("Nav2");
@@ -5407,6 +5428,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-panel[data-fullscreen="true"]');
     expect(workstationStyles).toContain('.plain-map-panel[data-fullscreen="true"]:fullscreen');
     expect(workstationStyles).toContain('.plain-map-panel[data-observer-mode="true"]');
+    expect(workstationStyles).toContain(".plain-map-direct-view-link");
     expect(workstationStyles).toContain("--plain-map-large-min-height: 1040px;");
     expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh - 12px);");
     expect(workstationStyles).toContain("--plain-map-fullscreen-height: calc(100vh - 8px);");
@@ -5841,6 +5863,43 @@ describe("App", () => {
     expect(diagnostics.text()).not.toContain("现场有人扶控并准备急停");
     expect(diagnostics.text()).not.toContain("本轮不是自动导航任务");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("opens direct map view from URL without starting ROS2 or motion", async () => {
+    // 现场第二块屏幕可直接用 ?view=map 看大地图；URL 模式只改显示，不自动触发任何控制接口。
+    const originalUrl = window.location.href;
+    window.history.pushState({}, "", "/?view=map");
+    try {
+      stubWorkstationFetch();
+
+      const wrapper = mount(App);
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+
+      const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
+      expect(mapPanel.attributes("data-direct-map-view-requested")).toBe("true");
+      expect(mapPanel.attributes("data-direct-map-view-url")).toBe("?view=map");
+      expect(mapPanel.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
+      expect(mapPanel.attributes("data-size")).toBe("fullscreen");
+      expect(mapPanel.attributes("data-fullscreen")).toBe("true");
+      expect(mapPanel.attributes("data-observer-mode")).toBe("true");
+      expect(mapPanel.attributes("data-browser-fullscreen-active")).toBe("false");
+      expect(mapPanel.attributes("data-map-zoom-percent")).toBe("600%");
+      expect(mapPanel.attributes("data-map-zoom-affects")).toBe("image-route-robot-radar");
+      expect(mapPanel.attributes("data-ros2-companion-tool")).toBe("rviz2");
+      expect(mapPanel.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
+      expect(mapPanel.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+      expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("fullscreen");
+      expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').text()).toBe("退出只看");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-ros2")).toBe("false");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-rviz2")).toBe("false");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-map-runtime")).toBe("false");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-nav2")).toBe("false");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+      expect(visiblePlainHomeText(wrapper)).not.toContain("/cmd_vel");
+    } finally {
+      window.history.pushState({}, "", originalUrl);
+    }
   });
 
   it("keeps camera source first-frame readiness separate from current page preview visibility", async () => {

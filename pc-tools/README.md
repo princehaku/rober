@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 11:21 CST 起，普通首屏地图新增 `?view=map` 直达地图大屏入口。地图卡提供“打开地图大屏”链接，打开后页面内自动进入全屏只看地图状态，保留同一个地图、路线、小车位置和雷达 overlay 的 WYSIWYG 画布；DOM 暴露 `data-direct-map-view-requested`、`data-direct-map-view-url="?view=map"` 和 `data-direct-map-view-behavior=page_fixed_fullscreen_map_only`。该直达模式只改变 PC Web 显示，不自动请求浏览器 Fullscreen API、不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。ROS2 配套仍分层：工程调试用 RViz2，浏览器远程观察用 Foxglove，普通用户用 PC 简易工作站和地图大屏。
+
 2026-06-30 10:51 CST 起，普通首屏雷达卡新增 `plain-radar-start-map-proof` 雷达贴图验收条。它把“雷达启动/重启后是否触发地图画面刷新”“地图上是否实际显示当前雷达点”“旧雷达来源点是否被抑制”和固定 `/api/robot-control/map/preview` endpoint 放到可见短句与结构化 DOM 字段中；`data-radar-start-map-refresh-pending/failed/complete`、`data-radar-map-points-visible`、`data-radar-map-point-count`、`data-radar-old-points-suppressed` 可直接用于现场脚本验收。该变化只补 PC Web 显示和只读合同，不自动启动雷达、不刷新地图、不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 
 2026-06-30 10:58 CST 起，普通首屏实时画面卡新增 `plain-camera-current-frame-proof` 当前出帧验收条。它把“本页是否真的显示 MJPEG/video 帧”“多个页面是否共用同一条上游流”“是否存在浏览器独占说法”和固定 `/api/robot-control/camera/mjpeg`、`/api/robot-control/camera/mjpeg/status` endpoint 放到一行普通文案与结构化 DOM 字段中；`data-current-frame-visible`、`data-current-mjpeg-frame-visible`、`data-current-video-frame-visible`、`data-shared-preview-single-upstream`、`data-shared-preview-exclusive-camera-claim` 可直接用于现场脚本验收。该变化只补 PC Web 当前页显示判断，不新开相机 reader、不执行 camera offer/manual/keyboard/free-roam/Nav2/delivery/stop 或 `/cmd_vel`。

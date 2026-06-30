@@ -1123,6 +1123,13 @@ h3 {
   white-space: nowrap;
 }
 
+.plain-map-direct-view-link {
+  /* 直达地图大屏给现场第二块屏幕使用，只改变观察面，不挂接任何运动控制。 */
+  min-height: 34px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
 .plain-map-panel[data-fullscreen="true"] {
   /* 全屏只放大只读画面和 marker，不改变任何控制按钮的安全门禁。 */
   position: fixed;

@@ -277,6 +277,13 @@ const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
 const plainMapBrowserFullscreenActive = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
+const plainMapDirectViewHref = "?view=map";
+const plainMapDirectViewRequested = computed(() => {
+  // 直达地图只读取当前 URL，用于现场大屏打开即看地图；它不代表 ROS2/RViz2 已启动。
+  const params = new URLSearchParams(window.location.search);
+  const view = params.get("view") ?? params.get("mode");
+  return view === "map" || view === "map-only" || window.location.hash === "#map";
+});
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8] as const;
 const plainMapZoomIndex = ref(6);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
@@ -328,6 +335,15 @@ function syncPlainMapBrowserFullscreenState(): void {
     plainMapObserverView.value = false;
     plainMapLargeView.value = true;
   }
+}
+function applyPlainMapDirectViewIfRequested(): void {
+  if (!plainMapDirectViewRequested.value) {
+    return;
+  }
+  // URL 直达模式必须是纯显示状态：铺满页面内地图，但不自动请求浏览器全屏权限。
+  plainMapLargeView.value = true;
+  plainMapFullscreenView.value = true;
+  plainMapObserverView.value = true;
 }
 async function togglePlainMapObserverView(): Promise<void> {
   // 观测模式只改变 PC 显示密度；进入时顺手拉起全屏，退出时回到普通大地图。
@@ -15348,6 +15364,7 @@ watch(manualBoundary, () => {
 
 onMounted(() => {
   // 初次加载直接读取固定上位机地址；实时画面可自动接入，运动控制仍需要显式点击或按键。
+  applyPlainMapDirectViewIfRequested();
   resetKeyboardControlOwnerOnMount();
   window.addEventListener("keydown", handleGlobalKeyDown);
   window.addEventListener("keyup", handleGlobalKeyUp);
@@ -16302,6 +16319,9 @@ onBeforeUnmount(() => {
           :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'"
           :data-browser-fullscreen-active="String(plainMapBrowserFullscreenActive)"
           :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
+          :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
+          data-direct-map-view-url="?view=map"
+          data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
           data-ros2-companion-style="rviz2-map-focus"
           data-ros2-companion-tools="rviz2,foxglove"
           data-ros2-companion-tool="rviz2"
@@ -16391,6 +16411,27 @@ onBeforeUnmount(() => {
               >
                 {{ plainMapObserverView ? "退出只看" : "只看地图" }}
               </button>
+              <a
+                class="secondary plain-link-button plain-map-direct-view-link"
+                data-testid="plain-map-direct-view-link"
+                :href="plainMapDirectViewHref"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-map-view-action="open_direct_map_view"
+                data-direct-map-view-url="?view=map"
+                data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
+                data-sends-motion-when-clicked="false"
+                data-starts-ros2="false"
+                data-starts-rviz2="false"
+                data-starts-map-runtime="false"
+                data-starts-nav2="false"
+                data-uses-browser-fullscreen-api="false"
+                data-keeps-wysiwyg-overlays="image-route-robot-radar"
+                data-ros2-companion-tool="rviz2"
+                data-ros2-remote-companion-tool="foxglove"
+              >
+                打开地图大屏
+              </a>
             </div>
           </div>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" data-wysiwyg-surface="primary-map" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize">
@@ -16579,7 +16620,7 @@ onBeforeUnmount(() => {
             data-ros2-remote-companion-tool="foxglove"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            PC 默认先显示近整屏大地图；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
+            PC 默认先显示近整屏大地图；需要独立观察屏时打开 ?view=map 地图大屏；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
           </p>
         </article>
 
