@@ -596,6 +596,32 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-wysiwyg-surface-gauge {
+  /* 实物所见仪表只看当前页面实际画出的面，避免 summary ready 误当成已显示。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-wysiwyg-surface-gauge[data-state="全部已显示"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-wysiwyg-surface-gauge[data-state="待画面"],
+.plain-wysiwyg-surface-gauge[data-state="待地图图像"],
+.plain-wysiwyg-surface-gauge[data-state="待路线定位层"],
+.plain-wysiwyg-surface-gauge[data-state="待雷达点层"] {
+  border-left-color: #9a6700;
+}
+
+.plain-wysiwyg-surface-gauge[data-state="未完整"] {
+  border-left-color: #8c959f;
+}
+
 .plain-safety-actions {
   display: grid;
   gap: 7px;

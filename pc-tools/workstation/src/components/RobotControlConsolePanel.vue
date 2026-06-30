@@ -5091,6 +5091,85 @@ const plainMapVisualSummary = computed(() => {
     freeRoamActionMarkerAria: freeRoamActionMarker?.aria ?? "",
   };
 });
+type PlainWysiwygSurfaceGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  cameraFrameVisible: boolean;
+  cameraMjpegFrameVisible: boolean;
+  cameraVideoFrameVisible: boolean;
+  mapImageVisible: boolean;
+  routeLayerVisible: boolean;
+  robotMarkerVisible: boolean;
+  radarMapPointsVisible: boolean;
+  radarMapPointCount: number;
+  radarMapSourcePointCount: number;
+  allVisible: boolean;
+  fixedSharedPreviewStatusEndpoint: string;
+  fixedMapPreviewEndpoint: string;
+  fixedRadarRefreshEndpoint: string;
+};
+const plainWysiwygSurfaceGauge = computed<PlainWysiwygSurfaceGauge>(() => {
+  // 这一条只看当前页面实际画出的面：媒体帧、地图图像、路线层、小车位置和地图雷达点。
+  const camera = plainCameraSharedPreviewDomEvidence.value;
+  const map = plainMapVisualSummary.value;
+  const cameraFrameVisible = camera.currentFrameVisible;
+  const mapImageVisible = Boolean(map.imageDataUrl);
+  const routeLayerVisible = map.showRoutePath;
+  const robotMarkerVisible = map.showRobotPose;
+  const radarMapPointsVisible = map.radarMapPointsVisible;
+  const allVisible = cameraFrameVisible && mapImageVisible && routeLayerVisible && robotMarkerVisible && radarMapPointsVisible;
+  let state = "未完整";
+  if (allVisible) {
+    state = "全部已显示";
+  } else if (!cameraFrameVisible) {
+    state = "待画面";
+  } else if (!mapImageVisible) {
+    state = "待地图图像";
+  } else if (!routeLayerVisible || !robotMarkerVisible) {
+    state = "待路线定位层";
+  } else if (!radarMapPointsVisible) {
+    state = "待雷达点层";
+  }
+  const nextAction = (() => {
+    if (!cameraFrameVisible) {
+      return "先让当前页面显示共享画面";
+    }
+    if (!mapImageVisible) {
+      return "刷新地图画面";
+    }
+    if (!routeLayerVisible || !robotMarkerVisible) {
+      return "准备图上行程并刷新小车位置";
+    }
+    if (!radarMapPointsVisible) {
+      return "启动雷达并刷新地图画面确认雷达点";
+    }
+    return "画面、地图、路线、小车位置和雷达点都已实际显示";
+  })();
+  const cameraText = cameraFrameVisible ? "画面帧已显示" : "画面帧未显示";
+  const mapText = mapImageVisible ? "地图图像已显示" : "地图图像未显示";
+  const routeText = routeLayerVisible ? "图上行程层已显示" : "图上行程层未显示";
+  const robotText = robotMarkerVisible ? "小车位置已显示" : "小车位置未显示";
+  const radarText = radarMapPointsVisible ? `地图雷达点 ${map.radarMapPointCount} 个已显示` : "地图雷达点未显示";
+  return {
+    state,
+    text: `实物所见：${cameraText}；${mapText}；${routeText}；${robotText}；${radarText}。下一步：${nextAction}。`,
+    nextAction,
+    cameraFrameVisible,
+    cameraMjpegFrameVisible: camera.currentMjpegFrameVisible,
+    cameraVideoFrameVisible: camera.currentVideoFrameVisible,
+    mapImageVisible,
+    routeLayerVisible,
+    robotMarkerVisible,
+    radarMapPointsVisible,
+    radarMapPointCount: map.radarMapPointCount,
+    radarMapSourcePointCount: map.radarMapSourcePointCount,
+    allVisible,
+    fixedSharedPreviewStatusEndpoint: camera.fixedSharedPreviewStatusEndpoint,
+    fixedMapPreviewEndpoint: map.fixedRadarMapPreviewEndpoint,
+    fixedRadarRefreshEndpoint: "/api/robot-control/radar/scan-proof/refresh",
+  };
+});
 const plainRadarMapDomEvidence = computed(() => {
   // 雷达卡复用地图卡的贴图事实，避免一处说已贴图、另一处其实没画出来。
   const map = plainMapVisualSummary.value;
@@ -14669,6 +14748,28 @@ onBeforeUnmount(() => {
           data-sends-motion-when-clicked="false"
         >
           {{ plainWysiwygCurrentGauge.text }}
+        </p>
+        <p
+          class="panel-note plain-wysiwyg-surface-gauge"
+          data-testid="plain-wysiwyg-surface-gauge"
+          :data-state="plainWysiwygSurfaceGauge.state"
+          :data-camera-frame-visible="String(plainWysiwygSurfaceGauge.cameraFrameVisible)"
+          :data-camera-mjpeg-frame-visible="String(plainWysiwygSurfaceGauge.cameraMjpegFrameVisible)"
+          :data-camera-video-frame-visible="String(plainWysiwygSurfaceGauge.cameraVideoFrameVisible)"
+          :data-map-image-visible="String(plainWysiwygSurfaceGauge.mapImageVisible)"
+          :data-route-layer-visible="String(plainWysiwygSurfaceGauge.routeLayerVisible)"
+          :data-robot-marker-visible="String(plainWysiwygSurfaceGauge.robotMarkerVisible)"
+          :data-radar-map-points-visible="String(plainWysiwygSurfaceGauge.radarMapPointsVisible)"
+          :data-radar-map-point-count="String(plainWysiwygSurfaceGauge.radarMapPointCount)"
+          :data-radar-map-source-point-count="String(plainWysiwygSurfaceGauge.radarMapSourcePointCount)"
+          :data-all-surfaces-visible="String(plainWysiwygSurfaceGauge.allVisible)"
+          :data-next-action="plainWysiwygSurfaceGauge.nextAction"
+          :data-fixed-shared-preview-status-endpoint="plainWysiwygSurfaceGauge.fixedSharedPreviewStatusEndpoint"
+          :data-fixed-map-preview-endpoint="plainWysiwygSurfaceGauge.fixedMapPreviewEndpoint"
+          :data-fixed-radar-refresh-endpoint="plainWysiwygSurfaceGauge.fixedRadarRefreshEndpoint"
+          data-sends-motion-when-clicked="false"
+        >
+          {{ plainWysiwygSurfaceGauge.text }}
         </p>
         <div
           v-for="item in plainWysiwygEvidenceItems"
