@@ -371,21 +371,27 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel {
+  /* 地图先给现场判断路线和雷达点，画面随后占据下一行左侧。 */
+  order: 1;
   grid-column: span 7;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-radar-panel {
+  /* 雷达卡跟随画面显示，地图上的雷达 overlay 才是主观察面。 */
+  order: 2;
   grid-column: span 5;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel {
-  /* 地图是现场判断路线和雷达贴图的主视图，桌面端默认独占整行。 */
+  /* 地图是现场判断路线和雷达贴图的主视图，桌面端默认先占整行。 */
+  order: -1;
   grid-column: 1 / -1;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
 .robot-console-grid[data-layout="visual-first"] .plain-free-roam-map,
 .robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
+  order: 3;
   grid-column: span 6;
 }
 

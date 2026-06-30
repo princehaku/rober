@@ -15648,6 +15648,7 @@ onBeforeUnmount(() => {
           tabindex="-1"
           data-testid="plain-map-panel"
           data-wysiwyg-surface="primary-map"
+          data-visual-priority="pc-primary-map-first"
           data-default-size="large"
           data-default-map-zoom-percent="300%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
@@ -15884,7 +15885,7 @@ onBeforeUnmount(() => {
             data-ros2-remote-companion-tool="foxglove"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            专业调试：ROS2 配套用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
+            PC 默认先显示大地图；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
           </p>
         </article>
 

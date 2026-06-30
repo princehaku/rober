@@ -5166,6 +5166,7 @@ describe("App", () => {
     const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
     expect(mapPanel.exists()).toBe(true);
     expect(mapPanel.attributes("data-state")).toBe("地图可见");
+    expect(mapPanel.attributes("data-visual-priority")).toBe("pc-primary-map-first");
     expect(mapPanel.attributes("data-size")).toBe("large");
     expect(mapPanel.attributes("data-default-size")).toBe("large");
     expect(mapPanel.attributes("data-default-map-zoom-percent")).toBe("300%");
@@ -5222,6 +5223,7 @@ describe("App", () => {
     expect(mapRos2ToolNote.text()).toContain("RViz2");
     expect(mapRos2ToolNote.text()).toContain("Foxglove");
     expect(mapRos2ToolNote.text()).toContain("地图");
+    expect(mapRos2ToolNote.text()).toContain("PC 默认先显示大地图");
     expect(mapRos2ToolNote.text()).toContain("规划轨迹");
     expect(mapRos2ToolNote.text()).not.toContain("Nav2");
     await wrapper.find('[data-testid="plain-map-fullscreen-toggle"]').trigger("click");
@@ -5261,6 +5263,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
     expect(workstationStyles).toContain("grid-column: 1 / -1;");
+    expect(workstationStyles).toContain("order: -1;");
     expect(workstationStyles).toContain("height: clamp(900px, calc(100vh - 96px), 1500px);");
     expect(workstationStyles).toContain("height: calc(100vh - 72px);");
     expect(workstationStyles).toContain(".plain-map-zoom-controls");
