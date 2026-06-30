@@ -5248,6 +5248,9 @@ function mapSummaryFromReadbacks(
   const radarOverlaySourceFrameId = proof.scan_preview_frame_id || "not_loaded";
   const radarOverlayFrameId = radarOverlayCurrent ? radarOverlaySourceFrameId : "not_loaded";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathPreviewStatus, robotPoseStatus);
+  const mapCurrentVisible = booleanSummaryValue(proof.map_once_observed) === "true";
+  const pathCurrentVisible = pathPreviewStatus === "path_preview_observed";
+  const radarOverlayCurrentVisible = radarOverlayStatus === "loaded" && Number(radarOverlayPointCount) > 0;
   const pathWysiwygStatusPlain = pathPreviewStatus === "path_preview_observed"
     ? "图上路线已显示在当前地图画面。"
     : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
@@ -5296,6 +5299,9 @@ function mapSummaryFromReadbacks(
       mapWysiwyg.nextActionPlain,
     ),
     next_action_plain: pathNextActionPlain,
+    map_current_visible: String(mapCurrentVisible),
+    path_current_visible: String(pathCurrentVisible),
+    radar_overlay_current_visible: String(radarOverlayCurrentVisible),
     map_next_action_plain: mapWysiwyg.nextActionPlain,
     map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
     map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
@@ -6376,6 +6382,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         map_usable_for_navigation: "not_loaded",
         plain_hint: "地图画面未读到；不能把旧图或空白图当作当前所见。图上路线未显示；不能把旧路线或空路线当作当前所见。地图雷达点未加载：当前显示 0 个点；来源点 0 个。地图雷达层未加载。下一步：先刷新地图画面。",
         next_action_plain: "先准备图上路线，再刷新地图画面。",
+        map_current_visible: "false",
+        path_current_visible: "false",
+        radar_overlay_current_visible: "false",
         map_next_action_plain: "先刷新地图画面。",
         map_wysiwyg_status_plain: "地图画面未读到；不能把旧图或空白图当作当前所见。",
         map_wysiwyg_next_action_plain: "先刷新地图画面。",

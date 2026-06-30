@@ -8,6 +8,19 @@
 
 ## 2026-07-01 系列
 
+### 2026-07-01 01-47｜pc_map_wysiwyg_summary_flags｜PC 地图当前可见字段
+
+本轮 `sprints/2026.07.01_01-47_pc_map_wysiwyg_summary_flags/` 给 PC `readback_summary.map` 新增
+`map_current_visible`、`path_current_visible`、`radar_overlay_current_visible` 三个只读字段。这样 `status=not_proven`
+仍保留 proof 边界，但普通首屏和现场脚本不再需要从中文文案或 `status` 推断 WYSIWYG：地图画面、图上路线、地图雷达点
+是否当前可见可以直接读取。
+
+验证范围：`npm test -- test/robotControlSummary.test.ts --run` 6 tests OK；
+`npm test -- test/catalog.test.ts -t "stale|map preview|图上路线" --run` 11 tests OK / 166 skipped；
+`npm test -- --run` 412 tests OK；`npm run build` 通过。PC Node 已重启到 `0.0.0.0:7001`，live 只读 summary 返回
+`map_current_visible=true`、`path_current_visible=true`、`radar_overlay_current_visible=false`、`path_preview_point_count=18`、
+`radar_overlay_point_count=0`、`radar_overlay_source_point_count=123`、`safe_to_control=false`。
+
 ### 2026-07-01 01-36｜upper_camera_mjpeg_status｜8787 直连共享画面状态
 
 本轮 `sprints/2026.07.01_01-36_upper_camera_mjpeg_status/` 修正上车 8787 缺少

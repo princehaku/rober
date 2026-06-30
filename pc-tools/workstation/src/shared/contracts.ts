@@ -3117,6 +3117,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       map_usable_for_navigation: string;
       plain_hint: string;
       next_action_plain: string;
+      map_current_visible: string;
+      path_current_visible: string;
+      radar_overlay_current_visible: string;
       map_next_action_plain: string;
       map_wysiwyg_status_plain: string;
       map_wysiwyg_next_action_plain: string;

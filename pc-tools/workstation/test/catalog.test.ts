@@ -4404,6 +4404,9 @@ describe("workstation fail-closed API contracts", () => {
         status: expect.any(String),
         map_once_observed: "true",
         plain_hint: expect.stringContaining("地图画面已读到，但图上路线还未显示"),
+        map_current_visible: "true",
+        path_current_visible: "false",
+        radar_overlay_current_visible: "false",
         map_wysiwyg_status_plain: "地图画面已读到，但图上路线还未显示。",
         map_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
         next_action_plain: "先准备图上路线，再刷新地图画面。",
@@ -9336,6 +9339,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.runtime_scan_status).toBe("stale");
       expect(summary.o3_proof_summary.scan_preview_point_count).toBe(2);
       expect(summary.readback_summary.map.radar_overlay_status).toBe("not_current");
+      expect(summary.readback_summary.map.map_current_visible).toBe("true");
+      expect(summary.readback_summary.map.path_current_visible).toBe("true");
+      expect(summary.readback_summary.map.radar_overlay_current_visible).toBe("false");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toContain("已有雷达来源点 65 个");
       expect(summary.readback_summary.map.radar_overlay_plain_hint).toContain("当前不贴到地图");
       expect(summary.readback_summary.map.radar_overlay_wysiwyg_status_plain).toBe("雷达点未贴到当前地图：当前显示 0 个点；旧来源点 65 个只作诊断。已有雷达来源点 65 个，但雷达扫描已过期、雷达未运行，所以当前不贴到地图。");
