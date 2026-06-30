@@ -4300,12 +4300,13 @@ manual、delivery、stop 或 `/cmd_vel`。
 known-good UVC 复测。该变化只修正只读 summary 和 camera MJPEG status 文案，不新建额外 capture、不执行 Nav2、
 不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
-2026-06-29 12:24 CST 起，PC 工作站把“PC Node 端口”和“小车 Robot API 端口”在只读诊断里分开说明：
+2026-06-30 17:31 CST 起，PC 工作站把“PC Node 端口”和“小车 Robot API 端口”在只读诊断里分开说明：
 PC Node 继续固定 `0.0.0.0:7001` 供局域网访问，小车上位机 Robot API 使用 `192.168.1.11:8787`。
-如果旧链接或高级输入显式传入 `http://192.168.1.11:7071`，且所有上车只读端点都 fetch failed，summary 会在
-`robot_api_connection.blocked_reasons` 和 `current_fact_plain` 首位提示
-`robot_api_port_7071_mismatch_use_8787`。这样现场不会把端口写错误判为摄像头独占、雷达未就绪 或 Nav2 不能动；
-该诊断仍然只读，不自动重写 baseUrl、不执行 Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+如果旧链接或高级输入显式传入 `http://192.168.1.11:7001` 或 `http://192.168.1.11:7071`，且所有上车只读端点都
+fetch failed，summary 会在 `robot_api_connection.blocked_reasons` 和 `current_fact_plain` 首位提示
+`robot_api_port_7001_mismatch_use_8787` 或 `robot_api_port_7071_mismatch_use_8787`。这样现场不会把 PC 页面端口或
+Clash 相关端口写错误判为摄像头独占、雷达未就绪或 Nav2 不能动；该诊断仍然只读，不自动重写 baseUrl、不执行
+Nav2、不调用 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 12:32 CST 起，PC summary 对底盘反馈只读端点使用 8s heavy 预算：`/api/base/status` 和
 `/api/base/feedback-samples/latest` 不再沿用 4s 短窗口。现场直连两个端点约 3.6s 返回，和 `/api/status`、

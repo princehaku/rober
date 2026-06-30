@@ -938,12 +938,13 @@ manual、Nav2、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 summary 和 `/api/robot-control/camera/mjpeg/status` 文案，不新建额外 capture、不执行 Nav2、不发送 manual、
 keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
-2026-06-29 12:24 CST 起，Robot Control summary 会识别现场常见端口漂移：PC Node 监听 `0.0.0.0:7001`，
-小车上位机 Robot API 监听 `192.168.1.11:8787`，`7071` 不是 Robot API 端口。当显式传入
-`baseUrl=http://192.168.1.11:7071` 且只读端点全失败时，`robot_api_connection.blocked_reasons` 和
-`current_fact_plain` 会把 `robot_api_port_7071_mismatch_use_8787` 放在最前面，直接提示不要把 Robot API 填成
-7071。该变化只修正只读诊断，不自动改写用户输入、不重启上位机、不执行 Nav2、不发送 manual、keyboard、
-free-roam、delivery、stop 或 `/cmd_vel`。
+2026-06-30 17:31 CST 起，Robot Control summary 会识别现场常见端口漂移：PC Node 监听 `0.0.0.0:7001`，
+小车上位机 Robot API 监听 `192.168.1.11:8787`，`7001` 和 `7071` 都不是 Robot API 端口。当显式传入
+`baseUrl=http://192.168.1.11:7001` 或 `baseUrl=http://192.168.1.11:7071` 且只读端点全失败时，
+`robot_api_connection.blocked_reasons` 和 `current_fact_plain` 会分别把
+`robot_api_port_7001_mismatch_use_8787` / `robot_api_port_7071_mismatch_use_8787` 放在最前面，直接提示不要把
+Robot API 填成 PC 页面端口或 Clash 相关端口。该变化只修正只读诊断，不自动改写用户输入、不重启上位机、
+不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-29 12:32 CST 起，Robot Control summary 的 `/api/base/status` 和
 `/api/base/feedback-samples/latest` 只读窗口从 4s 提升到 8s。现场直连这两个端点约 3.6s 返回，并发 summary

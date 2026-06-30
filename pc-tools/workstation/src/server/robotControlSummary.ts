@@ -700,6 +700,9 @@ export function endpointUrl(base: URL, endpoint: string): string {
 function robotApiPortDriftReason(base: URL): string {
   // 现场 PC Node 固定跑在 7001，小车上位机 Robot API 固定跑在 8787；7071 常被 Clash 占用或根本无服务。
   const port = base.port || (base.protocol === "http:" ? "80" : "");
+  if (base.hostname === "192.168.1.11" && port === "7001") {
+    return "robot_api_port_7001_mismatch_use_8787";
+  }
   if (base.hostname === "192.168.1.11" && port === "7071") {
     return "robot_api_port_7071_mismatch_use_8787";
   }
@@ -708,9 +711,13 @@ function robotApiPortDriftReason(base: URL): string {
 
 function robotApiPortDriftPlain(reason: string): string {
   // 这句必须出现在普通首屏和脚本读数里，避免把端口写错误判成 Nav2、摄像头或雷达坏了。
-  return reason === "robot_api_port_7071_mismatch_use_8787"
-    ? "小车地址端口写错：PC 页面是 0.0.0.0:7001，小车上位机 Robot API 是 192.168.1.11:8787；不要把 Robot API 填成 7071"
-    : "";
+  if (reason === "robot_api_port_7001_mismatch_use_8787") {
+    return "小车地址端口写错：7001 是 PC 页面服务端口，小车上位机 Robot API 是 192.168.1.11:8787；不要把 Robot API 填成 7001";
+  }
+  if (reason === "robot_api_port_7071_mismatch_use_8787") {
+    return "小车地址端口写错：PC 页面是 0.0.0.0:7001，小车上位机 Robot API 是 192.168.1.11:8787；不要把 Robot API 填成 7071";
+  }
+  return "";
 }
 
 export function scanDangerousTrueFields(
