@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 09:15 CST 起，普通首屏 `plain-mapping-start-gate` 建图入口仪表补齐地图雷达点 WYSIWYG 证据：在画面 ready、雷达 ready、建图记录可启动之外，额外显示当前地图是否已经实际画出雷达点和点数，并暴露 `data-radar-map-points-visible`、`data-radar-map-point-count`、`data-radar-map-source-point-count`、`data-fixed-radar-map-preview-endpoint=/api/robot-control/map/preview`。这避免把“雷达已就绪”误读成“地图上已经看到雷达标记”；该变化只补只读验收合同，不自动刷新地图、不启动雷达/建图、不发送 manual、keyboard、free-roam、stop 或 `/cmd_vel`。
+
 2026-06-30 09:09 CST 起，普通首屏 `勾确认后可做` 区新增 `plain-trip-closure-gate` 行程闭环入口仪表。它把安全确认、当前图上行程是否可执行、执行按钮是否会发车、同窗口轮速 L/R 是否非零、送达 success 是否对齐当前行程合成一行，并暴露 `data-route-ready`、`data-main-action-kind`、`data-main-action-sends-motion`、`data-executes-current-route-goal`、`data-wheel-lr-nonzero-proven`、`data-delivery-success-matches-current-nav2`、`data-requires-same-window-wheel-lr-nonzero` 和固定执行/送达 endpoint。该仪表固定 `data-sends-motion-when-clicked=false`，只把完整行程闭环验收前置到首屏，不自动执行路线、不确认送达、不发送 manual、keyboard、free-roam、stop 或 `/cmd_vel`。
 
 2026-06-30 09:02 CST 起，普通首屏 `visual-first` 布局改为 PC 地图优先：`plain-map-panel` 暴露 `data-visual-priority=pc-primary-map-first`，CSS 视觉顺序让地图先占整行，再显示实时画面和雷达卡。地图仍默认 `large`、默认缩放 `300%`，全屏/观测模式保留；RViz2 和 Foxglove 只作为 ROS2 工程调试配套，普通用户继续在简易 PC 工作站大地图里看路线、小车位置和雷达贴图。
