@@ -6201,6 +6201,13 @@ describe("App", () => {
       next_action_source_card_id: "nav2_route",
       sends_motion_when_clicked: false,
     };
+    summaryFixture.readback_summary.nav2.goal_execution_base_command_mode = "pwm";
+    summaryFixture.readback_summary.nav2.next_execution_base_command_mode = "ros";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.nav2.goal_execution_base_feedback_latest_right_speed = "0";
+    summaryFixture.safe_command_boundary.nav2_goal_wheel_feedback_status = "goal_succeeded_but_wheel_lr_zero";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
     });
@@ -6215,6 +6222,12 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-state")).toBe("needs_wheel_rerun");
     expect(liveClosureSummary.attributes("data-needs-wheel-rerun")).toBe("true");
     expect(liveClosureSummary.attributes("data-primary-status-source-card-id")).toBe("nav2_route");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-command-mode")).toBe("ros");
+    expect(liveClosureSummary.attributes("data-last-base-command-mode")).toBe("pwm");
+    expect(liveClosureSummary.attributes("data-next-base-command-mode")).toBe("ros");
+    expect(liveClosureSummary.attributes("data-wheel-feedback-status")).toBe("goal_succeeded_but_wheel_lr_zero");
+    expect(liveClosureSummary.attributes("data-latest-wheel-raw-left")).toBe("0");
+    expect(liveClosureSummary.attributes("data-latest-wheel-raw-right")).toBe("0");
     expect(liveClosureSummary.text()).toContain("待轮速复验");
     expect(liveClosureSummary.text()).toContain("同窗口轮速 L/R 还没有非零闭环");
     expect(liveClosureSummary.text()).toContain("重跑图上行程");
@@ -6226,6 +6239,11 @@ describe("App", () => {
     expect(liveClosureGuide.attributes("data-focus-target-kind")).toBe("trip_safety_confirm");
     expect(liveClosureGuide.attributes("data-needs-wheel-rerun")).toBe("true");
     expect(liveClosureGuide.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-command-mode")).toBe("ros");
+    expect(liveClosureGuide.attributes("data-last-base-command-mode")).toBe("pwm");
+    expect(liveClosureGuide.attributes("data-next-base-command-mode")).toBe("ros");
+    expect(liveClosureGuide.attributes("data-latest-wheel-raw-left")).toBe("0");
+    expect(liveClosureGuide.attributes("data-latest-wheel-raw-right")).toBe("0");
     expect(liveClosureGuide.attributes("data-focus-only")).toBe("true");
     expect(liveClosureGuide.attributes("data-fixed-wheel-rerun-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(liveClosureGuide.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
