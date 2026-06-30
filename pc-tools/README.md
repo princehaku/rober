@@ -1209,3 +1209,12 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 “自动刷新地图画面”作为完整 Nav2 路线执行的一部分展示：刷新完成前不把旧地图画面当作送达收口依据；
 刷新失败时显示 `刷新失败` 和具体原因，例如 `map_preview_timeout`，并提示先刷新地图画面再准备送达材料。
 该步骤只读展示现有执行后地图刷新状态，不新增发车、Nav2 start、map runtime 或 `/cmd_vel` 调用。
+
+2026-06-30 18:48 CST 起，普通首屏键盘连续手控的面板、启用键、四个屏幕方向键和屏幕停止键都暴露按钮级复验计划：
+`data-manual-command-mode=ros`、固定 `/api/robot-control/base/manual`、`/api/robot-control/base/stop`、
+`/api/robot-control/base/feedback-samples` 与 `/api/robot-control/summary`，并声明
+`data-post-hold-feedback-readback-required=true`、`data-post-hold-summary-refresh-required=true`、
+`data-wheel-lr-nonzero-required=true`、`data-stop-settled-required-after-hold=true`。停止键额外暴露
+`data-post-stop-summary-refresh-required=true` 和 `data-stop-settles-keyboard-hold=true`。这样现场脚本能直接确认：
+点击启用键不发车；按住方向键才发低速 pulse；同一次按住窗口至少 2 次 pulse 后，必须读取 wheel raw L/R 非零并刷新 summary；
+松开或点停止后还要 stop 收口。本变化只补 PC Web DOM 合同和测试，不自动启用键盘、不发送任何 live motion 请求。

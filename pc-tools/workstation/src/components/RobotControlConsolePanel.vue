@@ -6086,6 +6086,9 @@ type PlainKeyboardDirectionButtonEvidence = {
   stopTrigger: string;
   fixedManualEndpoint: string;
   fixedStopEndpoint: string;
+  fixedFeedbackSamplesEndpoint: string;
+  fixedSummaryEndpoint: string;
+  manualCommandMode: string;
   pulseIntervalMs: number;
   pulseDurationMs: number;
   verifiedMinForwardedPulses: number;
@@ -6093,6 +6096,10 @@ type PlainKeyboardDirectionButtonEvidence = {
   bestContinuousPulseCount: number;
   sameHoldWindowRequired: boolean;
   stopRequiredAfterHold: boolean;
+  postHoldFeedbackReadbackRequired: boolean;
+  postHoldSummaryRefreshRequired: boolean;
+  wheelLrNonzeroRequired: boolean;
+  stopSettledRequiredAfterHold: boolean;
 };
 type PlainKeyboardHoldGateGauge = {
   state: string;
@@ -6127,6 +6134,9 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   stopTrigger: "pointerup,pointerleave,pointercancel",
   fixedManualEndpoint: manualBoundary.value?.keyboard_manual_proxy_endpoint ?? "/api/robot-control/base/manual",
   fixedStopEndpoint: manualBoundary.value?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
+  fixedFeedbackSamplesEndpoint: "/api/robot-control/base/feedback-samples",
+  fixedSummaryEndpoint: "/api/robot-control/summary",
+  manualCommandMode: "ros",
   pulseIntervalMs: keyboardJogIntervalMs.value,
   pulseDurationMs: keyboardJogDurationMs.value,
   verifiedMinForwardedPulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
@@ -6134,6 +6144,10 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   bestContinuousPulseCount: keyboardVerifiedPulseCount.value,
   sameHoldWindowRequired: true,
   stopRequiredAfterHold: true,
+  postHoldFeedbackReadbackRequired: true,
+  postHoldSummaryRefreshRequired: true,
+  wheelLrNonzeroRequired: true,
+  stopSettledRequiredAfterHold: true,
 }));
 const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
   // 键盘入口仪表把“点击启用”和“按住才动”拆开，避免把启用键盘误读成发车。
@@ -17933,6 +17947,15 @@ onBeforeUnmount(() => {
             :data-requires-hold-to-move="String(plainKeyboardRequiresHold)"
             :data-target-source="plainKeyboardTargetSource"
             :data-stop-triggers="manualBoundary?.keyboard_stop_triggers?.join(',') ?? 'key_released,window_blur,page_hidden,direction_changed,button_stop'"
+            :data-manual-command-mode="plainKeyboardDirectionButtonEvidence.manualCommandMode"
+            :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
+            :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+            :data-fixed-wheel-feedback-readback-endpoint="plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
+            :data-fixed-summary-endpoint="plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
+            :data-post-hold-feedback-readback-required="String(plainKeyboardDirectionButtonEvidence.postHoldFeedbackReadbackRequired)"
+            :data-post-hold-summary-refresh-required="String(plainKeyboardDirectionButtonEvidence.postHoldSummaryRefreshRequired)"
+            :data-wheel-lr-nonzero-required="String(plainKeyboardDirectionButtonEvidence.wheelLrNonzeroRequired)"
+            :data-stop-settled-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopSettledRequiredAfterHold)"
             :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
             :data-best-continuous-pulse-count="String(plainKeyboardDirectionButtonEvidence.bestContinuousPulseCount)"
             :data-verified-min-forwarded-pulses="String(plainKeyboardDirectionButtonEvidence.verifiedMinForwardedPulses)"
@@ -17960,11 +17983,19 @@ onBeforeUnmount(() => {
                 data-testid="keyboard-control-arm"
                 :data-main-action-kind="plainKeyboardMainActionKind"
                 :data-target-source="plainKeyboardTargetSource"
+                data-arm-sends-motion="false"
                 :data-sends-motion-when-clicked="String(false)"
                 :data-sends-motion-when-holding="String(plainKeyboardMainActionSendsMotion)"
                 :data-requires-hold-to-move="String(true)"
+                :data-manual-command-mode="plainKeyboardDirectionButtonEvidence.manualCommandMode"
                 :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
                 :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                :data-fixed-wheel-feedback-readback-endpoint="plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
+                :data-fixed-summary-endpoint="plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
+                :data-post-hold-feedback-readback-required="String(plainKeyboardDirectionButtonEvidence.postHoldFeedbackReadbackRequired)"
+                :data-post-hold-summary-refresh-required="String(plainKeyboardDirectionButtonEvidence.postHoldSummaryRefreshRequired)"
+                :data-wheel-lr-nonzero-required="String(plainKeyboardDirectionButtonEvidence.wheelLrNonzeroRequired)"
+                :data-stop-settled-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopSettledRequiredAfterHold)"
                 :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                 :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                 :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
@@ -18043,8 +18074,15 @@ onBeforeUnmount(() => {
                 :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
                 :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
                 :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
+                :data-manual-command-mode="plainKeyboardDirectionButtonEvidence.manualCommandMode"
                 :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
                 :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                :data-fixed-wheel-feedback-readback-endpoint="plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
+                :data-fixed-summary-endpoint="plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
+                :data-post-hold-feedback-readback-required="String(plainKeyboardDirectionButtonEvidence.postHoldFeedbackReadbackRequired)"
+                :data-post-hold-summary-refresh-required="String(plainKeyboardDirectionButtonEvidence.postHoldSummaryRefreshRequired)"
+                :data-wheel-lr-nonzero-required="String(plainKeyboardDirectionButtonEvidence.wheelLrNonzeroRequired)"
+                :data-stop-settled-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopSettledRequiredAfterHold)"
                 :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                 :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                 :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
@@ -18068,8 +18106,15 @@ onBeforeUnmount(() => {
                   :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
                   :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
                   :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
+                  :data-manual-command-mode="plainKeyboardDirectionButtonEvidence.manualCommandMode"
                   :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
                   :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                  :data-fixed-wheel-feedback-readback-endpoint="plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
+                  :data-fixed-summary-endpoint="plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
+                  :data-post-hold-feedback-readback-required="String(plainKeyboardDirectionButtonEvidence.postHoldFeedbackReadbackRequired)"
+                  :data-post-hold-summary-refresh-required="String(plainKeyboardDirectionButtonEvidence.postHoldSummaryRefreshRequired)"
+                  :data-wheel-lr-nonzero-required="String(plainKeyboardDirectionButtonEvidence.wheelLrNonzeroRequired)"
+                  :data-stop-settled-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopSettledRequiredAfterHold)"
                   :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                   :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                   :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
@@ -18092,6 +18137,10 @@ onBeforeUnmount(() => {
                   data-sends-motion-when-clicked="false"
                   data-stop-trigger="click"
                   :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                  :data-fixed-summary-endpoint="plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
+                  :data-post-stop-summary-refresh-required="String(plainKeyboardDirectionButtonEvidence.postHoldSummaryRefreshRequired)"
+                  :data-stop-settles-keyboard-hold="String(true)"
+                  :data-stop-settled-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopSettledRequiredAfterHold)"
                   @click="stopKeyboardControl('screen_button_stop')"
                 >
                   停止
@@ -18104,8 +18153,15 @@ onBeforeUnmount(() => {
                   :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
                   :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
                   :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
+                  :data-manual-command-mode="plainKeyboardDirectionButtonEvidence.manualCommandMode"
                   :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
                   :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                  :data-fixed-wheel-feedback-readback-endpoint="plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
+                  :data-fixed-summary-endpoint="plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
+                  :data-post-hold-feedback-readback-required="String(plainKeyboardDirectionButtonEvidence.postHoldFeedbackReadbackRequired)"
+                  :data-post-hold-summary-refresh-required="String(plainKeyboardDirectionButtonEvidence.postHoldSummaryRefreshRequired)"
+                  :data-wheel-lr-nonzero-required="String(plainKeyboardDirectionButtonEvidence.wheelLrNonzeroRequired)"
+                  :data-stop-settled-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopSettledRequiredAfterHold)"
                   :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                   :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                   :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"
@@ -18129,8 +18185,15 @@ onBeforeUnmount(() => {
                 :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
                 :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
                 :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
+                :data-manual-command-mode="plainKeyboardDirectionButtonEvidence.manualCommandMode"
                 :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
                 :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
+                :data-fixed-wheel-feedback-readback-endpoint="plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
+                :data-fixed-summary-endpoint="plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
+                :data-post-hold-feedback-readback-required="String(plainKeyboardDirectionButtonEvidence.postHoldFeedbackReadbackRequired)"
+                :data-post-hold-summary-refresh-required="String(plainKeyboardDirectionButtonEvidence.postHoldSummaryRefreshRequired)"
+                :data-wheel-lr-nonzero-required="String(plainKeyboardDirectionButtonEvidence.wheelLrNonzeroRequired)"
+                :data-stop-settled-required-after-hold="String(plainKeyboardDirectionButtonEvidence.stopSettledRequiredAfterHold)"
                 :data-pulse-interval-ms="String(plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
                 :data-pulse-duration-ms="String(plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
                 :data-current-hold-pulse-count="String(plainKeyboardDirectionButtonEvidence.currentHoldPulseCount)"

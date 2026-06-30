@@ -4642,3 +4642,10 @@ UVC 无首帧”，但不会放行建图。该变化只修正普通首屏事实�
 刷新失败时把 `map_preview_timeout` 等具体原因直接展示，并要求先刷新地图画面再准备送达材料。该行只消费已有
 `executionPostMapRefreshRequired`、`executionPostMapRefreshComplete` 和地图预览失败状态，不新增运动命令或
 额外预检，继续保持发车前只复核现场安全确认和固定白名单。
+
+2026-06-30 18:48 CST 起，PC 键盘连续手控补齐按钮级复验计划。`keyboard-control-panel`、
+`keyboard-control-arm`、`keyboard-screen-forward/left/right/back` 会暴露 `data-manual-command-mode=ros`、
+固定 manual/stop、wheel feedback samples 和 summary endpoint，并声明按住后必须读取 wheel raw L/R 非零、刷新 summary、
+同一次按住窗口达到 2 次 pulse、松开后 stop 收口。`keyboard-screen-stop` 同步声明点击不发运动、固定 stop endpoint、
+stop 后刷新 summary 和收口 keyboard hold。该变化不改变安全确认和按住才动的控制逻辑，只让现场验收脚本可以从按钮本体判断
+PC 键盘连续手控是否真正完成“发 pulse -> wheel raw L/R 非零 -> stop settled”的闭环。
