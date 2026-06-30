@@ -15,6 +15,7 @@ from ros2_trashbot_hardware.lidar_driver import (
     packets_from_mock_config,
     parse_bool,
     scan_dict_from_packet,
+    scan_preview_from_scan_dict,
     uses_real_serial,
 )
 from ros2_trashbot_hardware.lidar_packets import find_packets, make_mock_packet, make_stc_mock_packet
@@ -259,3 +260,15 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertIn('DIAGNOSTICS_FILE="$RUNTIME_DIR/lidar_driver_diagnostics.json"', script)
         self.assertIn('"driver_diagnostics_path": f"{runtime_dir}/lidar_driver_diagnostics.json"', script)
         self.assertIn('-p diagnostics_path:="$DIAGNOSTICS_FILE"', script)
+
+    def test_scan_preview_from_scan_dict_keeps_real_points_for_pc_map(self):
+        scan = scan_dict_from_packet(make_mock_packet())
+
+        preview = scan_preview_from_scan_dict(scan, limit=16)
+
+        self.assertGreater(preview["scan_preview_point_count"], 0)
+        self.assertEqual(preview["scan_preview_source"], "lidar_driver_diagnostics.last_scan_preview")
+        self.assertEqual(preview["scan_preview_frame_id"], "laser_frame")
+        first = preview["scan_preview_points"][0]
+        self.assertIn("x_m", first)
+        self.assertIn("y_m", first)

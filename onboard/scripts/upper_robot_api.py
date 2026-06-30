@@ -658,6 +658,7 @@ def read_lidar_driver_diagnostics_artifact(path: str | None) -> dict[str, Any]:
     diagnosis = payload.get("diagnosis") if isinstance(payload.get("diagnosis"), dict) else {}
     serial = payload.get("serial") if isinstance(payload.get("serial"), dict) else {}
     runtime = payload.get("runtime") if isinstance(payload.get("runtime"), dict) else {}
+    scan_preview = payload.get("scan_preview") if isinstance(payload.get("scan_preview"), dict) else {}
     return {
         "status": "loaded",
         "artifact": {
@@ -671,6 +672,7 @@ def read_lidar_driver_diagnostics_artifact(path: str | None) -> dict[str, Any]:
         "next_action_plain": str(diagnosis.get("next_action_plain") or "LiDAR driver 诊断未给出下一步。"),
         "serial": serial,
         "runtime": runtime,
+        "scan_preview": scan_preview,
         "readback_sends_commands": False,
         "sends_base_motion_commands": False,
         "publishes_cmd_vel": False,
@@ -845,6 +847,20 @@ def lidar_scan_preview_from_artifact(artifact_payload: dict[str, Any]) -> dict[s
     """从 artifact 已有文本材料派生点位；失败时返回 None，调用方保持 fail-closed。"""
     stdout_preview = lidar_scan_stdout_preview_from_artifact(artifact_payload)
     return parse_lidar_scan_stdout_preview(stdout_preview)
+
+
+def structured_lidar_scan_preview_from_artifact(artifact_payload: dict[str, Any]) -> dict[str, Any] | None:
+    """读取 driver diagnostics 已落盘的结构化点位；只接受 producer 明确写出的坐标。"""
+    points = artifact_payload.get("scan_preview_points")
+    if not isinstance(points, list) or not points:
+        return None
+    return {
+        "scan_preview_points": points[:LIDAR_SCAN_PREVIEW_POINT_LIMIT],
+        "scan_preview_point_count": min(len(points), LIDAR_SCAN_PREVIEW_POINT_LIMIT),
+        "scan_preview_source_point_count": artifact_payload.get("scan_preview_source_point_count"),
+        "scan_preview_frame_id": artifact_payload.get("scan_preview_frame_id", ""),
+        "scan_preview_source": artifact_payload.get("scan_preview_source", "artifact.scan_preview_points"),
+    }
 
 
 def lidar_raw_packet_proof_artifact_info(path: str) -> dict[str, Any]:
@@ -3032,6 +3048,150 @@ def run_lidar_scan_proof_collector(
     }
 
 
+def run_lidar_driver_diagnostics_scan_proof_refresh(
+    *,
+    artifact_path: str,
+    diagnostics_path: str | None = None,
+    lifecycle_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """默认 refresh 只消费 driver 每秒诊断，避免 Orange Pi 上再拉起 ROS2 CLI 子进程。"""
+    lifecycle_status = lifecycle_status if isinstance(lifecycle_status, dict) else read_radar_lifecycle_status()
+    lifecycle_latest = lifecycle_status.get("latest_result") if isinstance(lifecycle_status.get("latest_result"), dict) else {}
+    resolved_diagnostics_path = (
+        diagnostics_path
+        or lifecycle_status.get("driver_diagnostics_path")
+        or lifecycle_latest.get("driver_diagnostics_path")
+    )
+    diagnostics = read_lidar_driver_diagnostics_artifact(str(resolved_diagnostics_path) if resolved_diagnostics_path else None)
+    artifact = diagnostics.get("artifact") if isinstance(diagnostics.get("artifact"), dict) else {}
+    runtime = diagnostics.get("runtime") if isinstance(diagnostics.get("runtime"), dict) else {}
+    serial = diagnostics.get("serial") if isinstance(diagnostics.get("serial"), dict) else {}
+    scan_preview = diagnostics.get("scan_preview") if isinstance(diagnostics.get("scan_preview"), dict) else {}
+    generated_at_ms = now_ms()
+    diagnostics_age_ms = None
+    if isinstance(artifact.get("mtime_ms"), int):
+        diagnostics_age_ms = max(0, generated_at_ms - int(artifact["mtime_ms"]))
+    diagnostics_fresh = diagnostics.get("status") == "loaded" and (
+        diagnostics_age_ms is None or diagnostics_age_ms <= 5_000
+    )
+    scan_point_count = int(scan_preview.get("scan_preview_point_count") or 0)
+    scan_source_count = int(scan_preview.get("scan_preview_source_point_count") or runtime.get("last_scan_range_count") or 0)
+    scan_once_observed = diagnostics_fresh and diagnostics.get("diagnosis_status") == "scan_published" and scan_source_count > 0
+    # fresh 诊断文件由 driver 秒级重写；这里把它作为轻量连续窗口，而不是再执行 `ros2 topic hz`。
+    scan_hz_observed = bool(scan_once_observed)
+    raw_packet_once_observed = diagnostics_fresh and (
+        int(runtime.get("published_raw_packet_count") or 0) > 0
+        or int(serial.get("packet_count_total") or 0) > 0
+    )
+    static_tf_text = str(lifecycle_latest.get("static_tf") or "")
+    frame_id = str(scan_preview.get("scan_preview_frame_id") or lifecycle_latest.get("frame_id") or "laser_frame")
+    tf_observed = bool(lifecycle_status.get("running") and "base_link" in static_tf_text and frame_id in static_tf_text)
+    required_observations = {
+        "scan_once": {
+            "topic": "/scan",
+            "observed": scan_once_observed,
+            "result_key": "driver_diagnostics.runtime.last_scan_range_count",
+            "source": "lidar_driver_diagnostics_file",
+        },
+        "scan_hz": {
+            "topic": "/scan",
+            "observed": scan_hz_observed,
+            "average_rate_hz": None,
+            "result_key": "driver_diagnostics.artifact.mtime_ms",
+            "source": "fresh_lidar_driver_diagnostics_file",
+        },
+        "raw_packet_once": {
+            "topic": "/lidar/raw_packet",
+            "observed": raw_packet_once_observed,
+            "result_key": "driver_diagnostics.runtime.published_raw_packet_count",
+            "source": "lidar_driver_diagnostics_file",
+        },
+        "tf": {
+            "parent_frame": "base_link",
+            "child_frame": frame_id,
+            "observed": tf_observed,
+            "result_key": "lidar_lifecycle_status.static_tf",
+            "source": "lidar_lifecycle_status_managed_runtime",
+        },
+    }
+    all_required_observations_observed = all(item["observed"] for item in required_observations.values())
+    blockers = []
+    if diagnostics.get("status") != "loaded":
+        blockers.append({"code": "driver_diagnostics_not_loaded", "detail": str(diagnostics.get("status") or "not_loaded")})
+    if not diagnostics_fresh:
+        blockers.append({"code": "driver_diagnostics_stale", "detail": f"age_ms={diagnostics_age_ms}"})
+    if not scan_once_observed:
+        blockers.append({"code": "scan_preview_not_observed", "detail": str(diagnostics.get("diagnosis_status") or "not_loaded")})
+    if not raw_packet_once_observed:
+        blockers.append({"code": "raw_packet_not_observed", "detail": "driver diagnostics has no raw packet evidence"})
+    if not tf_observed:
+        blockers.append({"code": "static_tf_not_observed", "detail": str(static_tf_text or "not_loaded")})
+    current_scan_preview = scan_preview if diagnostics_fresh and scan_once_observed and scan_point_count > 0 else {}
+    payload: dict[str, Any] = {
+        "schema": "trashbot.o1.lidar_scan_proof.v1",
+        "generated_at_ms": generated_at_ms,
+        "vendor_sources": LIDAR_VENDOR_SOURCES,
+        "evidence_boundary": "lidar_driver_diagnostics_scan_proof_not_base_hil",
+        "collector_mode": "driver_diagnostics",
+        "driver_diagnostics": diagnostics,
+        "lifecycle_status": lifecycle_status,
+        "topic_reads": {
+            "attempted": False,
+            "reason": "driver_diagnostics_lightweight_refresh_avoids_ros2_cli_oom",
+            "results": {},
+        },
+        "proof": {
+            "status": "scan_once_hz_raw_packet_tf_observed" if all_required_observations_observed else "driver_diagnostics_partial_or_blocked",
+            "scan_topic": "/scan",
+            "raw_packet_topic": "/lidar/raw_packet",
+            "tf_parent_frame": "base_link",
+            "tf_child_frame": frame_id,
+            "scan_once_observed": scan_once_observed,
+            "scan_hz_observed": scan_hz_observed,
+            "scan_hz_average_rate_hz": None,
+            "raw_packet_once_observed": raw_packet_once_observed,
+            "tf_observed": tf_observed,
+            "required_observations": required_observations,
+            "all_required_observations_observed": all_required_observations_observed,
+            "runtime_summary_fallback_used": False,
+            "pointcloud_fabricated": False,
+            "driver_started_by_collector": False,
+            "lidar_start_command_sent_by_collector": False,
+        },
+        "blockers": blockers,
+        "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"],
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "uses_base_uart": False,
+        "opens_serial": False,
+        **proof_flags(),
+    }
+    if current_scan_preview:
+        payload.update({
+            "scan_preview_points": current_scan_preview.get("scan_preview_points", []),
+            "scan_preview_point_count": current_scan_preview.get("scan_preview_point_count", 0),
+            "scan_preview_source_point_count": current_scan_preview.get("scan_preview_source_point_count"),
+            "scan_preview_frame_id": current_scan_preview.get("scan_preview_frame_id", ""),
+            "scan_preview_source": current_scan_preview.get("scan_preview_source"),
+        })
+    payload["artifact"] = atomic_write_json_artifact(artifact_path, payload)
+    return {
+        "command_result": {
+            "mode": "lidar_driver_diagnostics_refresh",
+            "executed": True,
+            "ok": all_required_observations_observed,
+            "diagnostics_path": str(resolved_diagnostics_path or ""),
+            "diagnostics_fresh": diagnostics_fresh,
+            "diagnostics_age_ms": diagnostics_age_ms,
+            "collector_replaced": "read_only_scan_proof_collector",
+        },
+        "collector_payload": payload,
+        "parse_error": None,
+    }
+
+
 def summarize_lidar_refresh_blockers(
     command_result: dict[str, Any],
     collector_payload: dict[str, Any] | None,
@@ -3086,6 +3246,7 @@ def build_lidar_scan_proof_refresh_payload(
     runtime_result: dict[str, Any] | None = None,
     runtime_requested: bool = False,
     runtime_warmup_s: float = DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S,
+    collector_mode: str = "driver_diagnostics",
 ) -> dict[str, Any]:
     """构造 refresh 回包；即使 proof 观察到 `/scan`，也不能外推到底盘可控。"""
     command_result = refresh_result.get("command_result", {})
@@ -3113,7 +3274,7 @@ def build_lidar_scan_proof_refresh_payload(
         "request": {
             "method": "POST",
             "endpoint": ROUTE_PATHS["radar_scan_proof_refresh"],
-            "mode": "api_managed_lidar_runtime_then_topic_observation" if runtime_requested else "read_only_expect_existing_topics",
+            "mode": collector_mode,
             "timeout_s": timeout_s,
             "runtime_requested": runtime_requested,
             "runtime_warmup_s": runtime_warmup_s,
@@ -4013,9 +4174,9 @@ def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any
     payload["evidence_ref"] = evidence_ref
     payload["latest_evidence_ref"] = evidence_ref
     payload["latest_result"] = parsed
-    scan_preview = lidar_scan_preview_from_artifact(parsed)
+    scan_preview = structured_lidar_scan_preview_from_artifact(parsed) or lidar_scan_preview_from_artifact(parsed)
     if scan_preview:
-        # 点位来自 artifact 内已记录的 `/scan` stdout，不会在 latest readback 阶段触发硬件。
+        # 点位来自 artifact 内已记录的结构化 `/scan` 材料，不会在 latest readback 阶段触发硬件。
         payload.update(scan_preview)
     return 200, payload
 
@@ -6737,11 +6898,8 @@ class UpperRobotApi:
                 },
                 "scan_proof_refresh": {
                     "endpoint": ROUTE_PATHS["radar_scan_proof_refresh"],
-                    "mode": (
-                        "api_managed_lidar_runtime_then_topic_observation"
-                        if self.lidar_scan_proof_runtime_command
-                        else "read_only_expect_existing_topics"
-                    ),
+                    "mode": "driver_diagnostics",
+                    "legacy_mode": "legacy_ros2_cli",
                     "artifact": lidar_scan_proof_artifact_info(self.lidar_scan_proof_artifact_path),
                     "runtime_command": command_config_info(
                         "ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND",
@@ -6749,9 +6907,9 @@ class UpperRobotApi:
                     ),
                     "runtime_warmup_s": self.lidar_scan_proof_runtime_warmup_s,
                     "allowed_runtime_script": SAFE_LIDAR_RUNTIME_SCRIPT,
-                    "starts_driver": bool(self.lidar_scan_proof_runtime_command),
-                    "opens_lidar_serial": bool(self.lidar_scan_proof_runtime_command),
-                    "sends_lidar_start_command": bool(self.lidar_scan_proof_runtime_command),
+                    "starts_driver": False,
+                    "opens_lidar_serial": False,
+                    "sends_lidar_start_command": False,
                     "sends_motion_commands": False,
                 },
             },
@@ -6809,8 +6967,9 @@ class UpperRobotApi:
         )
 
     async def radar_scan_proof_refresh(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
-        """显式刷新 LiDAR proof artifact；可选先启动 LiDAR-only runtime，永不触碰底盘。"""
+        """显式刷新 LiDAR proof artifact；默认只读 driver diagnostics，永不触碰底盘。"""
         body = body if isinstance(body, dict) else {}
+        collector_mode = str(body.get("collector_mode") or body.get("mode") or "driver_diagnostics").strip() or "driver_diagnostics"
         timeout_s = clamp_float(
             body.get("timeout_s"),
             DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S,
@@ -6823,9 +6982,7 @@ class UpperRobotApi:
             0.0,
             30.0,
         )
-        runtime_requested = bool(self.lidar_scan_proof_runtime_command)
-        if "start_runtime" in body:
-            runtime_requested = bool(body.get("start_runtime"))
+        runtime_requested = bool(body.get("start_runtime")) if "start_runtime" in body else False
         upper_api_base_url = str(body.get("upper_api_base_url") or "http://127.0.0.1:8787")
         runtime_result = None
         if runtime_requested:
@@ -6834,13 +6991,19 @@ class UpperRobotApi:
                 self.lidar_scan_proof_runtime_command,
                 runtime_warmup_s,
             )
-        # subprocess 放到线程里，避免 collector 反查本机 8787 /health 时被当前 HTTP handler 阻塞。
-        refresh_result = await asyncio.to_thread(
-            run_lidar_scan_proof_collector,
-            artifact_path=self.lidar_scan_proof_artifact_path,
-            upper_api_base_url=upper_api_base_url,
-            timeout_s=timeout_s,
-        )
+        if collector_mode in {"legacy_ros2_cli", "ros2_cli", "read_only_scan_proof_collector"}:
+            # legacy 模式保留给工程深采样；普通 PC 刷新不再默认启动 ROS2 CLI 子进程。
+            refresh_result = await asyncio.to_thread(
+                run_lidar_scan_proof_collector,
+                artifact_path=self.lidar_scan_proof_artifact_path,
+                upper_api_base_url=upper_api_base_url,
+                timeout_s=timeout_s,
+            )
+        else:
+            refresh_result = await asyncio.to_thread(
+                run_lidar_driver_diagnostics_scan_proof_refresh,
+                artifact_path=self.lidar_scan_proof_artifact_path,
+            )
         if runtime_requested:
             await asyncio.to_thread(
                 apply_lidar_runtime_summary_fallback,
@@ -6855,6 +7018,7 @@ class UpperRobotApi:
             runtime_result=runtime_result,
             runtime_requested=runtime_requested,
             runtime_warmup_s=runtime_warmup_s,
+            collector_mode=collector_mode,
         )
 
     def map_status(self) -> dict[str, Any]:

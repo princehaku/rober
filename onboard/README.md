@@ -43,6 +43,14 @@ Foxglove 只用于远程共享观察 `/map`、`/scan`、TF、路径和位姿；�
 Nav2 execution `goal_request` / latest readback，便于现场证明本次执行绑定的是当前图上完整路线读数；
 该回显不改变 Nav2 发车门禁，真实执行仍必须由 PC 安全确认后的固定入口触发。
 
+2026-07-01 起，LiDAR driver 每秒 diagnostics 会携带最近一帧 `/scan` 派生的结构化
+`scan_preview_points`。上车 `/api/radar/scan-proof/refresh` 默认消费该 diagnostics 写入
+`runtime/lidar_scan_proof_latest.json`，不再默认启动 `ros2 topic echo/hz` CLI collector；
+只有显式传 `collector_mode=legacy_ros2_cli` 时才走旧工程采样路径。该刷新仍只读雷达 runtime，
+不触碰 WAVE ROVER 底盘 UART `/dev/ttyS5`，不发布 `/cmd_vel`，不发送 manual/Nav2/free-roam/delivery
+运动命令。现场验证口径以 `/api/map/preview.radar_overlay_status=loaded` 和当前
+`radar_overlay.scan_preview_point_count` 为准。
+
 Compose 需在 `onboard/` 下执行，使挂载上下文为上车目录：
 
 ```bash

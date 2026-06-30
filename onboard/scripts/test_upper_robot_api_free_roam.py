@@ -59,6 +59,66 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         self.assertIn("没有读到任何字节", latest["next_action_plain"])
         self.assertEqual(latest["serial"]["bytes_read_total"], 0)
 
+    def test_lidar_scan_proof_refresh_uses_driver_diagnostics_preview(self) -> None:
+        """雷达刷新默认使用轻量 diagnostics 点位，避免现场再启动 ROS2 CLI collector。"""
+        module = load_upper_robot_api_module()
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            diagnostics_path = root / "lidar_driver_diagnostics.json"
+            artifact_path = root / "lidar_scan_proof_latest.json"
+            diagnostics_path.write_text(json.dumps({
+                "schema": "trashbot.o1.lidar_driver_diagnostics.v1",
+                "generated_at_ms": module.now_ms(),
+                "state": "running",
+                "diagnosis": {
+                    "status": "scan_published",
+                    "next_action_plain": "LiDAR driver 已发布 /scan。",
+                },
+                "runtime": {
+                    "published_scan_count": 8,
+                    "published_raw_packet_count": 64,
+                    "last_scan_range_count": 3,
+                },
+                "serial": {
+                    "packet_count_total": 64,
+                    "bytes_read_total": 2048,
+                },
+                "scan_preview": {
+                    "scan_preview_points": [
+                        {"x_m": 1.0, "y_m": 0.0, "range_m": 1.0, "angle_rad": 0.0, "frame_id": "laser_frame", "source_index": 0},
+                    ],
+                    "scan_preview_point_count": 1,
+                    "scan_preview_source_point_count": 3,
+                    "scan_preview_frame_id": "laser_frame",
+                    "scan_preview_source": "lidar_driver_diagnostics.last_scan_preview",
+                },
+            }, ensure_ascii=False), encoding="utf-8")
+            lifecycle_status = {
+                "status": "loaded",
+                "running": True,
+                "driver_diagnostics_path": str(diagnostics_path),
+                "latest_result": {
+                    "driver_diagnostics_path": str(diagnostics_path),
+                    "frame_id": "laser_frame",
+                    "static_tf": "base_link -> laser_frame",
+                },
+            }
+
+            result = module.run_lidar_driver_diagnostics_scan_proof_refresh(
+                artifact_path=str(artifact_path),
+                lifecycle_status=lifecycle_status,
+            )
+            latest_status, latest = module.read_lidar_scan_proof_latest_artifact(str(artifact_path))
+
+        self.assertEqual(result["command_result"]["mode"], "lidar_driver_diagnostics_refresh")
+        self.assertTrue(result["command_result"]["ok"])
+        self.assertEqual(latest_status, 200)
+        self.assertEqual(latest["scan_preview_point_count"], 1)
+        self.assertEqual(latest["scan_preview_frame_id"], "laser_frame")
+        proof = latest["latest_result"]["proof"]
+        self.assertTrue(proof["all_required_observations_observed"])
+        self.assertFalse(latest["latest_result"]["topic_reads"]["attempted"])
+
     def test_start_unlocks_motion_even_when_mapping_readiness_is_degraded(self) -> None:
         """相机或雷达不 ready 只能降级建图 readiness，不能阻止低速自由移动。"""
         module = load_upper_robot_api_module()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 import time
 from typing import Any
@@ -13,6 +14,7 @@ from .lidar_packets import LidarPoint, find_packets, make_mock_packet, packet_fr
 
 LIDAR_START_COMMAND = b"\xA5\x60"
 LIDAR_STOP_COMMAND = b"\xA5\x00\xA5\x65\xA5\x65"
+SCAN_PREVIEW_POINT_LIMIT = 240
 
 
 @dataclass(frozen=True)
@@ -233,6 +235,50 @@ def scan_dict_from_points(
     }
 
 
+def scan_preview_from_scan_dict(scan_dict: dict[str, Any], *, limit: int = SCAN_PREVIEW_POINT_LIMIT) -> dict[str, Any]:
+    """把刚发布的 LaserScan 压成小体积预览点，供 PC 地图 WYSIWYG 贴点。"""
+
+    ranges = list(scan_dict.get("ranges") or [])
+    range_min = float(scan_dict.get("range_min") or 0.05)
+    range_max = float(scan_dict.get("range_max") or 8.0)
+    angle_min = float(scan_dict.get("angle_min") or 0.0)
+    angle_increment = float(scan_dict.get("angle_increment") or 0.0)
+    frame_id = str(scan_dict.get("frame_id") or "laser_frame")
+    # 预览点只抽样真实 range，不填补缺失角度，避免地图上出现并不存在的障碍物。
+    step = max(1, math.ceil(len(ranges) / max(1, int(limit))))
+    points: list[dict[str, Any]] = []
+    for index in range(0, len(ranges), step):
+        try:
+            distance = float(ranges[index])
+        except (TypeError, ValueError):
+            continue
+        # LaserScan 允许 inf/nan；这些值只能说明无有效回波，不能画成当前障碍。
+        if not math.isfinite(distance) or distance < range_min or distance > range_max:
+            continue
+        angle = angle_min + angle_increment * index
+        points.append({
+            "x_m": distance * math.cos(angle),
+            "y_m": distance * math.sin(angle),
+            "range_m": distance,
+            "angle_rad": angle,
+            "frame_id": frame_id,
+            "source_index": index,
+        })
+        if len(points) >= limit:
+            break
+    return {
+        "scan_preview_points": points,
+        "scan_preview_point_count": len(points),
+        "scan_preview_source_point_count": len(ranges),
+        "scan_preview_frame_id": frame_id,
+        "scan_preview_angle_min": angle_min,
+        "scan_preview_angle_increment": angle_increment,
+        "scan_preview_range_min": range_min,
+        "scan_preview_range_max": range_max,
+        "scan_preview_source": "lidar_driver_diagnostics.last_scan_preview",
+    }
+
+
 class LidarScanAggregator:
     """把多个 LiDAR packet 聚合成一帧更宽角度的 LaserScan 字典。"""
 
@@ -338,6 +384,7 @@ def main() -> None:
             self.published_raw_packet_count = 0
             self.parsed_packet_count = 0
             self.last_scan_range_count = 0
+            self.last_scan_preview = scan_preview_from_scan_dict({"ranges": [], "frame_id": self.config.frame_id})
             self.last_diagnostics_written_at = 0.0
             self.started_at = time.time()
             self.scan_aggregator = LidarScanAggregator(
@@ -449,6 +496,8 @@ def main() -> None:
             self.scan_pub.publish(msg)
             self.published_scan_count += 1
             self.last_scan_range_count = len(msg.ranges)
+            # 诊断点位来自同一帧 scan_dict，避免上位机再启动 ROS2 CLI 抢资源。
+            self.last_scan_preview = scan_preview_from_scan_dict(scan_dict)
 
         def _write_diagnostics_if_due(self) -> None:
             # 诊断文件只需秒级刷新，避免 50Hz timer 对 SD 卡造成无意义写放大。
@@ -509,6 +558,7 @@ def main() -> None:
                     "published_scan_count": self.published_scan_count,
                     "last_scan_range_count": self.last_scan_range_count,
                 },
+                "scan_preview": self.last_scan_preview,
                 "serial": self.serial_session.diagnostics() if self.serial_session else {
                     "serial_port": self.config.serial_port,
                     "serial_baudrate": int(self.config.serial_baudrate),

@@ -100,6 +100,15 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   同轮上位机部署后，默认 proof refresh 改为 12 秒只读观察窗口，`scan_once`、`scan_hz`、`raw_packet_once` 和
   `base_link->laser_frame` TF 均已观察到，雷达状态进入 `fresh_scan_proof_observed`；PC 地图 summary 已能显示
   雷达标记按当前读数贴到地图。摄像头首帧仍未恢复，自动驾驶真实移动仍需在安全确认后复验 wheel raw L/R。
+- 2026-07-01 起，雷达 proof refresh 的默认实现从重型 ROS2 CLI collector 切到 driver diagnostics：
+  `ros2_trashbot_hardware.lidar_driver` 在发布 `/scan` 后缓存最多 240 个结构化预览点到
+  `/tmp/rober_lidar_lifecycle/lidar_driver_diagnostics.json`，上位机 `/api/radar/scan-proof/refresh`
+  直接把这些当前点写入 latest proof。旧 `ros2 topic echo/hz` 采样仅保留为
+  `collector_mode=legacy_ros2_cli` 工程模式。这样 PC 地图只画 diagnostics 证明为 fresh 的当前点，
+  不再因为点击刷新触发多个 ROS2 CLI 子进程导致 Orange Pi OOM，也不会把旧点伪装成当前雷达标记。
+  2026-07-01 00:44 上车验证：`/api/radar/status.latest_scan_proof_fresh=true`，
+  `/api/map/preview.radar_overlay_status=loaded`，当前 `radar_overlay.scan_preview_point_count=108`，
+  且 `sends_motion_commands=false`。
 - 2026-06-26 12:15 起，如果自动扫图 start 成功后的只读雷达 proof refresh 失败，普通首屏扫图状态和地图扫图 marker
   会显示 `自动扫图已启动，雷达刷新失败：<原因>`，不再继续写成“地图和雷达监看中”。该状态只消费固定
   `/api/robot-control/radar/scan-proof/refresh` 回包，不自动重试、不停止自动扫图、不发送 manual、Nav2、delivery 或 `/cmd_vel`。
