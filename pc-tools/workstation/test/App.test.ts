@@ -4690,9 +4690,13 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
         };
       }
     }
+    let responseFixture = localFixtures[fixtureKey];
+    if (Array.isArray(responseFixture)) {
+      responseFixture = responseFixture.length > 1 ? responseFixture.shift() : responseFixture[0];
+    }
     return {
       ok: true,
-      json: async () => localFixtures[fixtureKey],
+      json: async () => responseFixture,
     };
   });
   vi.stubGlobal("fetch", mockedFetch);
@@ -21706,8 +21710,87 @@ describe("App", () => {
     summaryFixture.readback_summary.map.radar_overlay_blocked_reason_labels = "雷达扫描已过期";
     summaryFixture.readback_summary.map.radar_overlay_scan_preview_point_count = "0";
     summaryFixture.readback_summary.map.radar_overlay_scan_preview_source_point_count = "72";
+    const stalePreviewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
+    stalePreviewFixture.radar_overlay_status = "not_current";
+    stalePreviewFixture.radar_overlay_next_action = "refresh_radar_scan_for_map_overlay";
+    stalePreviewFixture.radar_overlay_next_action_plain = "刷新雷达扫描，再刷新地图画面。";
+    stalePreviewFixture.radar_overlay_wysiwyg_next_action_plain = "刷新雷达扫描，再刷新地图画面。";
+    stalePreviewFixture.radar_overlay_point_count = 0;
+    stalePreviewFixture.radar_overlay_source_point_count = 72;
+    stalePreviewFixture.radar_overlay_refresh_required = true;
+    stalePreviewFixture.radar_overlay_primary_blocked_reason = "runtime_scan_stale_for_map_radar_overlay";
+    stalePreviewFixture.radar_overlay = {
+      ...(stalePreviewFixture.radar_overlay ?? {}),
+      overlay_status: "not_current",
+      status: "not_current",
+      plain_hint: "已有雷达来源点 72 个，但雷达扫描已过期，所以当前不贴到地图。",
+      next_action: "refresh_radar_scan_for_map_overlay",
+      next_action_plain: "刷新雷达扫描，再刷新地图画面。",
+      wysiwyg_status_plain: "雷达点未贴到当前地图：旧来源点 72 个已抑制。",
+      wysiwyg_next_action_plain: "刷新雷达扫描，再刷新地图画面。",
+      scan_preview_points: [],
+      scan_preview_point_count: 0,
+      scan_preview_source_point_count: 72,
+      scan_preview_frame_id: "laser_frame",
+      points: [],
+      count: 0,
+      source_count: 72,
+      frame_id: "laser_frame",
+      source_frame_id: "laser_frame",
+      robot_pose: null,
+      source_endpoint_ids: ["radar_scan_proof_latest"],
+      blocked_reasons: ["runtime_scan_stale_for_map_radar_overlay"],
+      blocked_reason_labels: ["雷达扫描已过期"],
+      refresh_required: true,
+      stale_source_points_suppressed: true,
+      primary_blocked_reason: "runtime_scan_stale_for_map_radar_overlay",
+      current_vs_source_plain: "地图雷达点：当前 0 个，来源 72 个；旧来源点已抑制，未贴到当前地图；下一步：刷新雷达扫描，再刷新地图画面。",
+    };
+    const loadedPreviewFixture = structuredClone(stalePreviewFixture);
+    loadedPreviewFixture.radar_overlay_status = "loaded";
+    loadedPreviewFixture.radar_overlay_next_action = "observe_current_map_radar_overlay";
+    loadedPreviewFixture.radar_overlay_next_action_plain = "继续观察地图雷达层。";
+    loadedPreviewFixture.radar_overlay_wysiwyg_next_action_plain = "继续观察地图雷达层。";
+    loadedPreviewFixture.radar_overlay_point_count = 2;
+    loadedPreviewFixture.radar_overlay_source_point_count = 2;
+    loadedPreviewFixture.radar_overlay_refresh_required = false;
+    loadedPreviewFixture.radar_overlay_primary_blocked_reason = "none";
+    loadedPreviewFixture.radar_overlay_points = [
+      { x_m: 0.1, y_m: 0, range_m: 0.1, angle_rad: 0, frame_id: "laser_frame", source_index: 0 },
+      { x_m: 0, y_m: 0.1, range_m: 0.1, angle_rad: 1.5708, frame_id: "laser_frame", source_index: 1 },
+    ];
+    loadedPreviewFixture.radar_overlay_count = 2;
+    loadedPreviewFixture.radar_overlay_source_count = 2;
+    loadedPreviewFixture.radar_overlay = {
+      ...(loadedPreviewFixture.radar_overlay ?? {}),
+      overlay_status: "loaded",
+      status: "loaded",
+      plain_hint: "地图雷达点 2 个已显示。",
+      next_action: "observe_current_map_radar_overlay",
+      next_action_plain: "继续观察地图雷达层。",
+      wysiwyg_status_plain: "雷达点已贴到当前地图：当前显示 2 个点。",
+      wysiwyg_next_action_plain: "继续观察地图雷达层。",
+      scan_preview_points: loadedPreviewFixture.radar_overlay_points,
+      scan_preview_point_count: 2,
+      scan_preview_source_point_count: 2,
+      scan_preview_frame_id: "laser_frame",
+      points: loadedPreviewFixture.radar_overlay_points,
+      count: 2,
+      source_count: 2,
+      frame_id: "laser_frame",
+      source_frame_id: "laser_frame",
+      robot_pose: null,
+      source_endpoint_ids: ["radar_scan_proof_latest"],
+      blocked_reasons: [],
+      blocked_reason_labels: [],
+      refresh_required: false,
+      stale_source_points_suppressed: false,
+      primary_blocked_reason: "none",
+      current_vs_source_plain: "地图雷达点：当前 2 个，来源 2 个；继续观察地图雷达层。",
+    };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/preview": [stalePreviewFixture, stalePreviewFixture, loadedPreviewFixture],
     });
 
     const wrapper = mount(App);
@@ -21732,17 +21815,26 @@ describe("App", () => {
     expect(refreshAction.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-radar-next-action"]').text()).toBe("地图下一步：刷新雷达扫描，再刷新地图画面。");
 
-    await refreshAction.trigger("click");
-    await flushPromises();
-    await wrapper.vm.$nextTick();
+    vi.useFakeTimers();
+    try {
+      const clickPromise = refreshAction.trigger("click");
+      await flushPromises();
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(2);
+      await vi.advanceTimersByTimeAsync(750);
+      await flushPromises();
+      await clickPromise;
+      await wrapper.vm.$nextTick();
 
-    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(3);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps stale radar overlay refresh manual-only on the direct map screen", async () => {

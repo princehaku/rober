@@ -95,6 +95,7 @@ type PlainMapRadarReadback = {
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
+const RADAR_MAP_PREVIEW_AFTER_PROOF_RETRY_DELAYS_MS = [750, 1500] as const;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
 const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只要求现场安全确认；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
@@ -212,6 +213,13 @@ const deliveryOperatorConfirmations = ref({
   delivery_success: false,
 });
 const navGoalExecutionTimeoutS = ref(20);
+
+function waitForUiReadback(ms: number): Promise<void> {
+  // 只等待上车只读 artifact 落盘/聚合，不代表任何控制动作或运动执行。
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 // WebRTC 状态单独维护，是为了把“上位机 readback”与“本地页面会话状态”区分开。
 const previewStatus = ref<RobotControlPreviewStatus>("idle_not_started");
@@ -14122,6 +14130,21 @@ async function refreshCameraFirstFrameProbeForWysiwyg(): Promise<void> {
   }
 }
 
+function mapPreviewNeedsRadarProofSettlingRetry(mapPreview: RobotControlMapPreviewResponse | null): boolean {
+  // proof 刚刷新后 map preview 可能仍短暂拿到旧 scan；只对这种 stale/refresh_required 情况做只读重试。
+  if (!mapPreview || mapPreview.proxy_status !== "preview_forwarded") {
+    return false;
+  }
+  const blockedReason = mapPreview.radar_overlay_primary_blocked_reason || "";
+  const nextAction = mapPreview.radar_overlay_next_action || "";
+  return mapPreview.radar_overlay_status === "not_current"
+    && (
+      mapPreview.radar_overlay_refresh_required
+      || blockedReason.includes("runtime_scan_stale")
+      || nextAction === "refresh_radar_scan_for_map_overlay"
+    );
+}
+
 async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean; radarStatusRefresh?: boolean } = {}): Promise<void> {
   // 地图画面只读真实 YAML/PGM 预览；失败时保留状态视图，不阻断 summary 刷新。
   if (!robotApiBaseUrl.value.trim() || mapWysiwygRefreshPending.value) {
@@ -14194,6 +14217,18 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
   }
 }
 
+async function refreshMapPreviewAfterRadarProof(): Promise<void> {
+  // 雷达 proof 已 fresh 后，地图侧 artifact 可能慢半拍；短重读避免用户看到“刚刷新仍未贴图”的假失败。
+  await refreshMapPreview({ radarStatusRefresh: true });
+  for (const delayMs of RADAR_MAP_PREVIEW_AFTER_PROOF_RETRY_DELAYS_MS) {
+    if (!mapPreviewNeedsRadarProofSettlingRetry(mapPreviewResult.value)) {
+      return;
+    }
+    await waitForUiReadback(delayMs);
+    await refreshMapPreview({ radarStatusRefresh: true });
+  }
+}
+
 async function runRefreshAction(
   kind: "radar_scan_proof_refresh" | "map_proof_refresh" | "nav2_no_motion_proof_refresh",
   action: () => Promise<RobotControlProofRefreshProxyResponse>,
@@ -14231,7 +14266,7 @@ async function refreshRadarProof(options: { focusAfterReady?: boolean; mapPrevie
     radarStatusResult.value = makeRadarStatusFallback(err instanceof Error ? err.message : "radar_status_request_failed");
   }
   if (options.mapPreviewAfter !== false) {
-    await refreshMapPreview();
+    await refreshMapPreviewAfterRadarProof();
   }
   if (options.focusAfterReady !== false) {
     await focusPlainGoalProgressAfterRadarReady();
