@@ -25,6 +25,40 @@ def load_upper_robot_api_module():
 
 
 class UpperRobotApiFreeRoamTest(unittest.TestCase):
+    def test_lidar_driver_diagnostics_artifact_flattens_status_for_pc(self) -> None:
+        """driver 写出的诊断状态必须被 API 展平成 PC 可直接显示的字段。"""
+        module = load_upper_robot_api_module()
+        with tempfile.TemporaryDirectory() as td:
+            diagnostics_path = Path(td) / "lidar_driver_diagnostics.json"
+            diagnostics_path.write_text(json.dumps({
+                "schema": "trashbot.o1.lidar_driver_diagnostics.v1",
+                "state": "running",
+                "diagnosis": {
+                    "status": "serial_open_but_no_bytes",
+                    "next_action_plain": "LiDAR 串口已打开且启动命令已写入，但没有读到任何字节。",
+                },
+                "serial": {
+                    "serial_port": "/dev/ttyACM0",
+                    "serial_baudrate": 230400,
+                    "start_command_written": True,
+                    "read_call_count": 24,
+                    "empty_read_count": 24,
+                    "bytes_read_total": 0,
+                    "packet_count_total": 0,
+                },
+                "runtime": {
+                    "published_scan_count": 0,
+                    "published_raw_packet_count": 0,
+                },
+            }, ensure_ascii=False), encoding="utf-8")
+
+            latest = module.read_lidar_driver_diagnostics_artifact(str(diagnostics_path))
+
+        self.assertEqual(latest["status"], "loaded")
+        self.assertEqual(latest["diagnosis_status"], "serial_open_but_no_bytes")
+        self.assertIn("没有读到任何字节", latest["next_action_plain"])
+        self.assertEqual(latest["serial"]["bytes_read_total"], 0)
+
     def test_start_unlocks_motion_even_when_mapping_readiness_is_degraded(self) -> None:
         """相机或雷达不 ready 只能降级建图 readiness，不能阻止低速自由移动。"""
         module = load_upper_robot_api_module()

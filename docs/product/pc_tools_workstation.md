@@ -4677,6 +4677,15 @@ API 侧新增 `live_wysiwyg_diagnostic_plain`、`live_wysiwyg_camera_diagnostic_
 `radar_scan_observation_missing_reasons` 仍保留原值。该口径同时覆盖 summary、`/api/robot-control/radar/status`
 代理和 `radar_map_points` action card，保持“地图雷达点是否显示”仍以同轮地图预览为准。
 
+2026-06-30 22:45 CST 起，上车相机 health 按当前首帧状态优先，不再让历史 `last_successful_frame` 把当前
+`source_first_frame_failed` 翻成 `first_frame_observed`。现场 SSH 只读诊断显示 `/dev/video1` 是 DV20 UVC capture，
+但内核有 `error -71`、UVC 初始化/URB 重提交失败等 USB/UVC 层错误；因此普通首屏和 API 应继续显示“不是页面独占，
+UVC 设备当前没有输出视频帧”，而不是提示浏览器抢占。雷达侧保持 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER/STC
+资料口径：LiDAR 走 `/dev/ttyACM0 @ 230400`，driver 诊断 JSON 必须把 `serial_open_but_no_bytes`、
+`bytes_read_but_no_packets` 或 `scan_published` 展平成 PC 可直接显示的 `driver_diagnostics_status`，方便区分“串口打开但没字节”
+和“有字节但协议/解析不对”。普通地图仍优先使用本页大地图和 `?view=map`；ROS2 配套工具推荐 RViz2 做本地工程调试，
+Foxglove 做浏览器远程观察，但二者都不是普通用户发车、键盘手控或自由移动的前置条件。
+
 2026-06-30 21:35 CST 起，完整 Nav2 路线执行的当前卡点在 API 层也使用普通用户文案。
 `live_closure_summary.status=needs_wheel_rerun` 时，`summary_plain` 写“同窗口轮速 L/R 还没有非零闭环”，
 `next_action_plain` 写“复验轮速 L/R 非零”，不再要求前端把 `wheel raw L/R` 二次翻译成中文。

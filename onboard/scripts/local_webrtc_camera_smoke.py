@@ -1359,7 +1359,12 @@ class CameraServiceState:
             and last_offer_reason in FIRST_FRAME_FAILURE_REASONS
         )
         last_success = self.last_successful_frame if isinstance(self.last_successful_frame, dict) else {}
-        source_observed = bool(selected_path and last_success.get("source") == selected_path)
+        # 当前首帧失败必须压过历史成功帧；否则 PC 会同时看到“失败”和“已观察”的矛盾材料。
+        source_observed = bool(
+            selected_path
+            and not source_failed
+            and last_success.get("source") == selected_path
+        )
         source_readiness = (
             "first_frame_failed"
             if source_failed
