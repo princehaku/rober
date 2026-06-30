@@ -81,6 +81,13 @@ class FakeStcSerial(FakeSerial):
         self.read_chunks = [b"noise" + packet]
 
 
+class FakeEmptySerial(FakeSerial):
+    def __init__(self, *, port, baudrate, timeout):
+        super().__init__(port=port, baudrate=baudrate, timeout=timeout)
+        # live 故障排查最需要区分：串口已打开但 read 长期没有任何字节。
+        self.read_chunks = []
+
+
 class LidarDriverStubsTest(unittest.TestCase):
     def setUp(self):
         FakeSerial.instances = []
@@ -161,6 +168,27 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertEqual(fake.writes[-1], LIDAR_STOP_COMMAND)
         self.assertEqual(len(packets), 1)
         self.assertTrue(fake.closed)
+        diagnostics = session.diagnostics()
+        self.assertTrue(diagnostics["start_command_written"])
+        self.assertGreater(diagnostics["bytes_read_total"], 0)
+        self.assertEqual(diagnostics["packet_count_total"], 1)
+        self.assertIn("aa 55", diagnostics["last_packet_preview_hex"])
+
+    def test_real_serial_session_diagnostics_reports_empty_reads(self):
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)
+        session = LidarSerialSession(config, serial_factory=FakeEmptySerial)
+
+        session.open()
+        self.assertEqual(session.read_packets(), [])
+        self.assertEqual(session.read_packets(), [])
+        diagnostics = session.diagnostics()
+        session.close()
+
+        self.assertTrue(diagnostics["start_command_written"])
+        self.assertEqual(diagnostics["read_call_count"], 2)
+        self.assertEqual(diagnostics["empty_read_count"], 2)
+        self.assertEqual(diagnostics["bytes_read_total"], 0)
+        self.assertEqual(diagnostics["packet_count_total"], 0)
 
     def test_start_write_failure_closes_serial_handle(self):
         config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)
@@ -222,3 +250,12 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertFalse(uses_real_serial(config))
         self.assertEqual(len(packets_from_mock_config(config.mock_scan, config.mock_packets)), 1)
         self.assertEqual(FakeSerial.instances, [])
+
+    def test_lidar_lifecycle_passes_driver_diagnostics_path(self):
+        script_path = PACKAGE_ROOT.parents[1] / "scripts" / "o1_lidar_lifecycle.sh"
+
+        script = script_path.read_text(encoding="utf-8")
+
+        self.assertIn('DIAGNOSTICS_FILE="$RUNTIME_DIR/lidar_driver_diagnostics.json"', script)
+        self.assertIn('"driver_diagnostics_path": f"{runtime_dir}/lidar_driver_diagnostics.json"', script)
+        self.assertIn('-p diagnostics_path:="$DIAGNOSTICS_FILE"', script)

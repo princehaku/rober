@@ -74,6 +74,7 @@ LOG_DIR="$RUNTIME_DIR/logs"
 MANAGER_LOG="$LOG_DIR/lidar_lifecycle_manager.log"
 DRIVER_LOG="$LOG_DIR/lidar_driver.log"
 TF_LOG="$LOG_DIR/tf_static.log"
+DIAGNOSTICS_FILE="$RUNTIME_DIR/lidar_driver_diagnostics.json"
 DRIVER_PID_FILE="$RUNTIME_DIR/lidar_driver.pid"
 TF_PID_FILE="$RUNTIME_DIR/tf_static.pid"
 START_CONFIRM_TIMEOUT_S="${ROBER_LIDAR_START_CONFIRM_TIMEOUT_S:-4}"
@@ -102,6 +103,7 @@ payload = {
     "frame_id": frame_id,
     "runtime_dir": runtime_dir,
     "log_dir": log_dir,
+    "driver_diagnostics_path": f"{runtime_dir}/lidar_driver_diagnostics.json",
     "driver": "ros2_trashbot_hardware lidar_driver",
     "static_tf": "base_link -> laser_frame",
     "sends_base_motion_commands": False,
@@ -251,6 +253,7 @@ run_manager() {
     -p serial_baudrate:="$SERIAL_BAUDRATE" \
     -p frame_id:="$FRAME_ID" \
     -p publish_raw_packets:=true \
+    -p diagnostics_path:="$DIAGNOSTICS_FILE" \
     >"$DRIVER_LOG" 2>&1 &
   DRIVER_PID="$!"
   echo "$DRIVER_PID" >"$DRIVER_PID_FILE"

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+from pathlib import Path
+import time
 from typing import Any
 
 from .lidar_packets import LidarPoint, find_packets, make_mock_packet, packet_from_hex, parse_packet
@@ -31,6 +34,7 @@ class LidarRuntimeConfig:
     read_size: int = 1024
     aggregation_max_packets: int = 24
     aggregation_min_points: int = 48
+    diagnostics_path: str = ""
 
 
 def parse_bool(value: Any) -> bool:
@@ -72,6 +76,15 @@ class LidarSerialSession:
         self._serial_factory = serial_factory
         self._serial: Any | None = None
         self._buffer = b""
+        self.start_command_written = False
+        self.stop_command_written = False
+        self.read_call_count = 0
+        self.empty_read_count = 0
+        self.bytes_read_total = 0
+        self.packet_count_total = 0
+        self.last_chunk_size = 0
+        self.last_packet_preview_hex = ""
+        self.last_error = ""
 
     def open(self) -> None:
         """打开串口并发送 vendor 启动命令 A5 60。"""
@@ -91,8 +104,10 @@ class LidarSerialSession:
         try:
             # WAVE ROVER vendor base_ctrl.py 使用 /dev/ttyACM* @ 230400，并用 A5 60 启动电机。
             serial_obj.write(LIDAR_START_COMMAND)
+            self.start_command_written = True
         except Exception:
             # 启动写入失败时立即释放句柄，避免半开串口阻塞下一轮排查。
+            self.last_error = "start_command_write_failed"
             try:
                 serial_obj.close()
             finally:
@@ -105,12 +120,23 @@ class LidarSerialSession:
 
         if self._serial is None:
             return []
+        self.read_call_count += 1
         # read_size 保持可配置，后续真机调参时不需要改解析逻辑。
-        chunk = self._serial.read(int(self.config.read_size)) or b""
+        try:
+            chunk = self._serial.read(int(self.config.read_size)) or b""
+        except Exception:
+            self.last_error = "serial_read_failed"
+            raise
+        self.last_chunk_size = len(chunk)
         if not chunk:
+            self.empty_read_count += 1
             return []
+        self.bytes_read_total += len(chunk)
         self._buffer += bytes(chunk)
         packets, self._buffer = find_packets(self._buffer)
+        self.packet_count_total += len(packets)
+        if packets:
+            self.last_packet_preview_hex = packets[-1][:16].hex(" ")
         return packets
 
     def close(self) -> None:
@@ -123,15 +149,35 @@ class LidarSerialSession:
         try:
             # vendor ROS2 参考退出时连续发送停止相关命令，先尽力让电机停转。
             serial_obj.write(LIDAR_STOP_COMMAND)
+            self.stop_command_written = True
         except Exception:
             # 停止命令失败不能阻止 close；真实物理停转仍需 HIL 观察补证。
+            self.last_error = "stop_command_write_failed"
             pass
         finally:
             try:
                 serial_obj.close()
             except Exception:
                 # close 失败不应让 rclpy shutdown 卡住，风险在 sprint 文档中保留。
+                self.last_error = "serial_close_failed"
                 pass
+
+    def diagnostics(self) -> dict[str, Any]:
+        """返回只读串口诊断；不包含控制命令入口，也不推断 HIL 成功。"""
+
+        return {
+            "serial_port": self.config.serial_port,
+            "serial_baudrate": int(self.config.serial_baudrate),
+            "start_command_written": self.start_command_written,
+            "stop_command_written": self.stop_command_written,
+            "read_call_count": self.read_call_count,
+            "empty_read_count": self.empty_read_count,
+            "bytes_read_total": self.bytes_read_total,
+            "packet_count_total": self.packet_count_total,
+            "last_chunk_size": self.last_chunk_size,
+            "last_packet_preview_hex": self.last_packet_preview_hex,
+            "last_error": self.last_error,
+        }
 
 
 def scan_dict_from_packet(
@@ -288,6 +334,12 @@ def main() -> None:
             )
             self.mock_packet_index = 0
             self.serial_session: LidarSerialSession | None = None
+            self.published_scan_count = 0
+            self.published_raw_packet_count = 0
+            self.parsed_packet_count = 0
+            self.last_scan_range_count = 0
+            self.last_diagnostics_written_at = 0.0
+            self.started_at = time.time()
             self.scan_aggregator = LidarScanAggregator(
                 frame_id=self.config.frame_id,
                 range_min=self.config.range_min,
@@ -310,6 +362,7 @@ def main() -> None:
             else:
                 # mock 模式必须显式留痕，防止把软件包回放误读成真实雷达闭环。
                 self.get_logger().info(f"LiDAR mock mode active: packets={len(self.mock_packets)}")
+            self._write_diagnostics("started")
             self.timer = self.create_timer(0.02, self._tick)
 
         def _declare_parameters(self) -> None:
@@ -326,8 +379,10 @@ def main() -> None:
             self.declare_parameter("time_increment", 0.0001)
             self.declare_parameter("mock_packets", "")
             self.declare_parameter("mock_scan", False)
+            self.declare_parameter("read_size", 1024)
             self.declare_parameter("scan_aggregation_max_packets", 24)
             self.declare_parameter("scan_aggregation_min_points", 48)
+            self.declare_parameter("diagnostics_path", "")
 
         def _param(self, name: str) -> Any:
             # rclpy Parameter 在不同测试/运行路径里统一从 value 取真实值。
@@ -347,14 +402,17 @@ def main() -> None:
                 time_increment=float(self._param("time_increment")),
                 mock_packets=str(self._param("mock_packets")),
                 mock_scan=parse_bool(self._param("mock_scan")),
+                read_size=int(self._param("read_size")),
                 aggregation_max_packets=int(self._param("scan_aggregation_max_packets")),
                 aggregation_min_points=int(self._param("scan_aggregation_min_points")),
+                diagnostics_path=str(self._param("diagnostics_path")),
             )
 
         def _tick(self) -> None:
             packets = self._next_packets()
             for packet in packets:
                 self._publish_packet(packet)
+            self._write_diagnostics_if_due()
 
         def _next_packets(self) -> list[bytes]:
             if self.mock_packets:
@@ -367,10 +425,12 @@ def main() -> None:
             return self.serial_session.read_packets()
 
         def _publish_packet(self, packet: bytes) -> None:
+            self.parsed_packet_count += 1
             if self.raw_pub is not None:
                 raw_msg = UInt8MultiArray()
                 raw_msg.data = list(packet)
                 self.raw_pub.publish(raw_msg)
+                self.published_raw_packet_count += 1
             scan_dict = self.scan_aggregator.add_packet(packet)
             if scan_dict is None:
                 return
@@ -387,11 +447,97 @@ def main() -> None:
             msg.ranges = scan_dict["ranges"]
             msg.intensities = scan_dict["intensities"]
             self.scan_pub.publish(msg)
+            self.published_scan_count += 1
+            self.last_scan_range_count = len(msg.ranges)
+
+        def _write_diagnostics_if_due(self) -> None:
+            # 诊断文件只需秒级刷新，避免 50Hz timer 对 SD 卡造成无意义写放大。
+            now = time.time()
+            if now - self.last_diagnostics_written_at < 1.0:
+                return
+            self.last_diagnostics_written_at = now
+            self._write_diagnostics("running")
+
+        def _diagnose_driver_state(self) -> dict[str, Any]:
+            serial = self.serial_session.diagnostics() if self.serial_session else {}
+            if not uses_real_serial(self.config):
+                status = "mock_runtime"
+                next_action = "软件 mock 正常时只能证明解析链路，不能作为真实雷达贴图验收。"
+            elif serial.get("bytes_read_total", 0) == 0:
+                status = "serial_open_but_no_bytes"
+                next_action = "LiDAR 串口已打开且启动命令已写入，但没有读到任何字节；检查雷达供电、线序、波特率或设备节点。"
+            elif serial.get("packet_count_total", 0) == 0:
+                status = "bytes_read_but_no_packets"
+                next_action = "LiDAR 串口已有字节，但未解析出 0x54/0xAA55 packet；抓取原始字节核对协议或波特率。"
+            elif self.published_scan_count == 0:
+                status = "packets_without_scan"
+                next_action = "LiDAR packet 已解析，但聚合阈值还没发布 /scan；检查 packet 角度回绕或降低聚合阈值。"
+            else:
+                status = "scan_published"
+                next_action = "LiDAR driver 已发布 /scan；继续用 scan proof 验证 topic 一次读取和 hz。"
+            return {"status": status, "next_action_plain": next_action}
+
+        def _write_diagnostics(self, state: str) -> None:
+            if not self.config.diagnostics_path:
+                return
+            payload = {
+                "schema": "trashbot.o1.lidar_driver_diagnostics.v1",
+                "generated_at_ms": int(time.time() * 1000),
+                "state": state,
+                "evidence_boundary": "lidar_driver_runtime_diagnostics_not_base_hil",
+                "readback_sends_commands": False,
+                "sends_base_motion_commands": False,
+                "publishes_cmd_vel": False,
+                "robot_control_executed": False,
+                "hil_pass": False,
+                "config": {
+                    "serial_port": self.config.serial_port,
+                    "serial_baudrate": int(self.config.serial_baudrate),
+                    "frame_id": self.config.frame_id,
+                    "scan_topic": self.config.scan_topic,
+                    "raw_packet_topic": self.config.raw_packet_topic,
+                    "publish_raw_packets": self.config.publish_raw_packets,
+                    "read_size": int(self.config.read_size),
+                    "aggregation_max_packets": int(self.config.aggregation_max_packets),
+                    "aggregation_min_points": int(self.config.aggregation_min_points),
+                    "mock_mode": not uses_real_serial(self.config),
+                },
+                "runtime": {
+                    "uptime_s": round(time.time() - self.started_at, 3),
+                    "parsed_packet_count": self.parsed_packet_count,
+                    "published_raw_packet_count": self.published_raw_packet_count,
+                    "published_scan_count": self.published_scan_count,
+                    "last_scan_range_count": self.last_scan_range_count,
+                },
+                "serial": self.serial_session.diagnostics() if self.serial_session else {
+                    "serial_port": self.config.serial_port,
+                    "serial_baudrate": int(self.config.serial_baudrate),
+                    "start_command_written": False,
+                    "stop_command_written": False,
+                    "read_call_count": 0,
+                    "empty_read_count": 0,
+                    "bytes_read_total": 0,
+                    "packet_count_total": 0,
+                    "last_chunk_size": 0,
+                    "last_packet_preview_hex": "",
+                    "last_error": "",
+                },
+                "diagnosis": self._diagnose_driver_state(),
+            }
+            try:
+                path = Path(self.config.diagnostics_path)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception as exc:
+                # 诊断写失败不应影响 /scan 发布，日志足够定位权限或磁盘问题。
+                self.get_logger().warn(f"Failed to write LiDAR diagnostics: {exc}")
 
         def destroy_node(self) -> bool:
             # destroy_node 是 rclpy 正常生命周期出口，在这里集中释放真实串口。
+            self._write_diagnostics("stopping")
             if self.serial_session is not None:
                 self.serial_session.close()
+            self._write_diagnostics("stopped")
             return super().destroy_node()
 
     rclpy.init()

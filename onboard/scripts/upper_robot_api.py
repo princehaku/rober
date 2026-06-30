@@ -616,6 +616,69 @@ def lidar_scan_proof_artifact_info(path: str) -> dict[str, Any]:
     }
 
 
+def lidar_driver_diagnostics_artifact_info(path: str | None) -> dict[str, Any]:
+    """LiDAR driver 诊断文件只读入口，用于区分无字节、无 packet 和无 scan。"""
+    return {
+        "path": path or "",
+        "configured_by": "o1_lidar_lifecycle.sh driver_diagnostics_path",
+        "format": "json",
+        "schema": "trashbot.o1.lidar_driver_diagnostics.v1",
+    }
+
+
+def read_lidar_driver_diagnostics_artifact(path: str | None) -> dict[str, Any]:
+    """读取 driver 运行时诊断；失败只作为状态材料，不影响 radar/status。"""
+    artifact = lidar_driver_diagnostics_artifact_info(path)
+    if not path:
+        return {
+            "status": "not_configured",
+            "artifact": artifact,
+            "diagnosis_status": "not_configured",
+            "next_action_plain": "LiDAR driver 诊断路径未配置；重启 lifecycle 后应由脚本注入 diagnostics_path。",
+        }
+    resolved = Path(path)
+    try:
+        data = resolved.read_text(encoding="utf-8")
+        payload = json.loads(data)
+    except FileNotFoundError:
+        return {
+            "status": "missing",
+            "artifact": artifact,
+            "diagnosis_status": "missing",
+            "next_action_plain": "LiDAR driver 诊断文件还没生成；确认 lifecycle 使用新版脚本并重启雷达。",
+        }
+    except Exception as exc:  # noqa: BLE001 - artifact 可能损坏，API 要给出可读原因。
+        return {
+            "status": "invalid",
+            "artifact": artifact,
+            "diagnosis_status": "invalid",
+            "failure_reason": compact_error(exc),
+            "next_action_plain": "LiDAR driver 诊断文件不可读；查看 lifecycle 日志和磁盘权限。",
+        }
+    diagnosis = payload.get("diagnosis") if isinstance(payload.get("diagnosis"), dict) else {}
+    serial = payload.get("serial") if isinstance(payload.get("serial"), dict) else {}
+    runtime = payload.get("runtime") if isinstance(payload.get("runtime"), dict) else {}
+    return {
+        "status": "loaded",
+        "artifact": {
+            **artifact,
+            "bytes_read": len(data.encode("utf-8")),
+            "mtime_ms": int(resolved.stat().st_mtime * 1000),
+        },
+        "schema": payload.get("schema"),
+        "state": payload.get("state"),
+        "diagnosis_status": str(diagnosis.get("status") or "not_loaded"),
+        "next_action_plain": str(diagnosis.get("next_action_plain") or "LiDAR driver 诊断未给出下一步。"),
+        "serial": serial,
+        "runtime": runtime,
+        "readback_sends_commands": False,
+        "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "robot_control_executed": False,
+        "hil_pass": False,
+    }
+
+
 def safe_lidar_evidence_ref_suffix(value: Any) -> str | None:
     """把时间字段转成稳定 ref 后缀，避免 ISO 冒号等字符影响 URL/文件名消费。"""
     if value is None:
@@ -6577,6 +6640,15 @@ class UpperRobotApi:
         lifecycle_running = bool(lifecycle_status_readback.get("running"))
         lifecycle_state = lifecycle_status_readback.get("state")
         lifecycle_pid = lifecycle_status_readback.get("pid")
+        lifecycle_latest = lifecycle_status_readback.get("latest_result")
+        lifecycle_latest = lifecycle_latest if isinstance(lifecycle_latest, dict) else {}
+        driver_diagnostics_path = (
+            lifecycle_status_readback.get("driver_diagnostics_path")
+            or lifecycle_latest.get("driver_diagnostics_path")
+        )
+        driver_diagnostics_latest = read_lidar_driver_diagnostics_artifact(
+            str(driver_diagnostics_path) if driver_diagnostics_path else None
+        )
         fresh_scan_proof_observed = bool(latest_scan_proof["observed"])
         latest_scan_proof_fresh = bool(latest_scan_proof.get("fresh_while_observed"))
         latest_scan_proof_blocked_reasons = (
@@ -6625,6 +6697,9 @@ class UpperRobotApi:
             "lifecycle_state": lifecycle_state,
             "lifecycle_pid": lifecycle_pid,
             "lifecycle_status_readback": lifecycle_status_readback,
+            "driver_diagnostics_latest": driver_diagnostics_latest,
+            "driver_diagnostics_status": driver_diagnostics_latest.get("diagnosis_status"),
+            "driver_diagnostics_next_action_plain": driver_diagnostics_latest.get("next_action_plain"),
             "continuous_window_observed": continuous_window_observed,
             "continuity_window_status": continuity_window_status,
             "continuity_blocked_reasons": continuous_blocked_reasons,

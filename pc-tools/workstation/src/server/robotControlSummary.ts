@@ -1791,6 +1791,9 @@ function lidarSummaryFromReadbacks(
   const radarContinuousStatus = summaryValueText(radarStatusPayload, ["continuous_scan_status"]);
   const radarLifecycleState = summaryValueText(radarStatusPayload, ["lifecycle_state"]);
   const latestScanProofFresh = summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"]);
+  const driverDiagnostics = asRecord(radarStatusPayload?.driver_diagnostics_latest);
+  const driverDiagnosticsSerial = asRecord(driverDiagnostics?.serial);
+  const driverDiagnosticsRuntime = asRecord(driverDiagnostics?.runtime);
   const missingObservations = radarMissingScanObservations(
     radarStatusReadback,
     radarScanProofReadback,
@@ -1846,6 +1849,12 @@ function lidarSummaryFromReadbacks(
     continuous_window_observed: summaryValueText(radarStatusPayload, ["continuous_window_observed"]),
     continuity_window_status: summaryValueText(radarStatusPayload, ["continuity_window_status"]),
     latest_scan_proof_fresh: latestScanProofFresh,
+    driver_diagnostics_status: summaryValueText(radarStatusPayload, ["driver_diagnostics_status"], summaryValueText(driverDiagnostics, ["diagnosis_status"])),
+    driver_diagnostics_next_action_plain: summaryValueText(radarStatusPayload, ["driver_diagnostics_next_action_plain"], summaryValueText(driverDiagnostics, ["next_action_plain"])),
+    driver_serial_bytes_read_total: summaryValueText(driverDiagnosticsSerial, ["bytes_read_total"]),
+    driver_serial_packet_count_total: summaryValueText(driverDiagnosticsSerial, ["packet_count_total"]),
+    driver_serial_empty_read_count: summaryValueText(driverDiagnosticsSerial, ["empty_read_count"]),
+    driver_published_scan_count: summaryValueText(driverDiagnosticsRuntime, ["published_scan_count"]),
     runtime_scan_status: runtimeScan.status,
     runtime_lidar_min_distance_m: runtimeScan.min_distance_m,
     runtime_lidar_age_s: runtimeScan.age_s,
@@ -1966,6 +1975,12 @@ function radarSummaryFromReadbacks(
     continuous_scan_status: lidar.continuous_scan_status,
     latest_scan_proof_fresh: lidar.latest_scan_proof_fresh,
     runtime_scan_status: lidar.runtime_scan_status,
+    driver_diagnostics_status: lidar.driver_diagnostics_status || "not_loaded",
+    driver_diagnostics_next_action_plain: lidar.driver_diagnostics_next_action_plain || "not_loaded",
+    driver_serial_bytes_read_total: lidar.driver_serial_bytes_read_total || "not_loaded",
+    driver_serial_packet_count_total: lidar.driver_serial_packet_count_total || "not_loaded",
+    driver_serial_empty_read_count: lidar.driver_serial_empty_read_count || "not_loaded",
+    driver_published_scan_count: lidar.driver_published_scan_count || "not_loaded",
     radar_scan_observation_status: lidar.radar_scan_observation_status || "not_loaded",
     radar_scan_observation_missing_reasons: missingObservationText,
     radar_map_overlay_readiness_status: lidar.radar_map_overlay_readiness_status || "not_loaded",
@@ -7518,6 +7533,12 @@ function buildActionStatusCards(
         map_radar_readiness_status: readback.radar.radar_map_overlay_readiness_status,
         map_radar_next_action_plain: readback.radar.radar_map_overlay_next_action_plain,
         map_radar_blocked_reason_labels: actionCardLabelList(readback.radar.radar_overlay_blocked_reason_labels),
+        driver_diagnostics_status: readback.radar.driver_diagnostics_status,
+        driver_diagnostics_next_action_plain: readback.radar.driver_diagnostics_next_action_plain,
+        driver_serial_bytes_read_total: readback.radar.driver_serial_bytes_read_total,
+        driver_serial_packet_count_total: readback.radar.driver_serial_packet_count_total,
+        driver_serial_empty_read_count: readback.radar.driver_serial_empty_read_count,
+        driver_published_scan_count: readback.radar.driver_published_scan_count,
         radar_start_configured: readback.lidar.radar_start_configured !== "false",
         fixed_radar_start_endpoint: "/api/robot-control/radar/start",
         fixed_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",

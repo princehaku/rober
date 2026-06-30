@@ -4096,6 +4096,12 @@ describe("workstation fail-closed API contracts", () => {
           map_radar_readiness_status: "blocked_latest_scan_not_fresh",
           map_radar_next_action_plain: "先刷新雷达扫描 proof，确认最新扫描为 fresh 后再刷新地图画面。",
           map_radar_blocked_reason_labels: ["没有可贴图的新雷达点", "小车地图位置未读到"],
+          driver_diagnostics_status: "not_loaded",
+          driver_diagnostics_next_action_plain: "not_loaded",
+          driver_serial_bytes_read_total: "not_loaded",
+          driver_serial_packet_count_total: "not_loaded",
+          driver_serial_empty_read_count: "not_loaded",
+          driver_published_scan_count: "not_loaded",
           radar_start_configured: true,
           fixed_radar_start_endpoint: "/api/robot-control/radar/start",
           fixed_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
@@ -8264,6 +8270,20 @@ describe("workstation fail-closed API contracts", () => {
           continuous_window_observed: false,
           continuity_window_status: "latest_proof_incomplete_while_lifecycle_running",
           latest_scan_proof_fresh: false,
+          driver_diagnostics_status: "serial_open_but_no_bytes",
+          driver_diagnostics_next_action_plain: "LiDAR 串口已打开且启动命令已写入，但没有读到任何字节；检查雷达供电、线序、波特率或设备节点。",
+          driver_diagnostics_latest: {
+            diagnosis_status: "serial_open_but_no_bytes",
+            next_action_plain: "LiDAR 串口已打开且启动命令已写入，但没有读到任何字节；检查雷达供电、线序、波特率或设备节点。",
+            serial: {
+              bytes_read_total: 0,
+              packet_count_total: 0,
+              empty_read_count: 125,
+            },
+            runtime: {
+              published_scan_count: 0,
+            },
+          },
           blocked_reasons: [
             "latest_scan_proof_required_observations_missing:scan_once,scan_hz,raw_packet_once,all_required_observations",
           ],
@@ -8293,10 +8313,24 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.raw_packet_once_observed).toBe("true");
       expect(summary.readback_summary.lidar.radar_scan_observation_status).toBe("missing_required_observations");
       expect(summary.readback_summary.lidar.radar_scan_observation_missing_reasons).toBe("scan_once,scan_hz,raw_packet_once");
+      expect(summary.readback_summary.lidar.driver_diagnostics_status).toBe("serial_open_but_no_bytes");
+      expect(summary.readback_summary.lidar.driver_serial_bytes_read_total).toBe("0");
+      expect(summary.readback_summary.lidar.driver_serial_packet_count_total).toBe("0");
+      expect(summary.readback_summary.lidar.driver_serial_empty_read_count).toBe("125");
+      expect(summary.readback_summary.lidar.driver_published_scan_count).toBe("0");
+      expect(summary.readback_summary.radar.driver_diagnostics_status).toBe("serial_open_but_no_bytes");
+      expect(summary.readback_summary.radar.driver_diagnostics_next_action_plain).toContain("没有读到任何字节");
       expect(summary.readback_summary.radar.radar_scan_observation_missing_reasons).toBe("scan_once,scan_hz,raw_packet_once");
       expect(summary.readback_summary.radar.radar_status_plain).toContain("扫描 proof 缺 scan_once、scan_hz、raw_packet_once");
       expect(summary.readback_summary.radar.radar_next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面。");
       expect(summary.action_status_cards?.find((card) => card.id === "radar_map_points")?.next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面");
+      expect(summary.action_status_cards?.find((card) => card.id === "radar_map_points")?.evidence).toMatchObject({
+        driver_diagnostics_status: "serial_open_but_no_bytes",
+        driver_serial_bytes_read_total: "0",
+        driver_serial_packet_count_total: "0",
+        driver_serial_empty_read_count: "125",
+        driver_published_scan_count: "0",
+      });
       expect(summary.goal_checklist_summary?.radar_next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面");
       expect(summary.readback_summary.lidar.scan_preview_point_count).toBe("0");
     } finally {

@@ -2476,6 +2476,12 @@ export interface RobotControlActionStatusCard {
     map_radar_readiness_status?: string;
     map_radar_next_action_plain?: string;
     map_radar_blocked_reason_labels?: string[];
+    driver_diagnostics_status?: string;
+    driver_diagnostics_next_action_plain?: string;
+    driver_serial_bytes_read_total?: string;
+    driver_serial_packet_count_total?: string;
+    driver_serial_empty_read_count?: string;
+    driver_published_scan_count?: string;
     radar_start_configured?: boolean;
     fixed_radar_start_endpoint?: string;
     fixed_radar_refresh_endpoint?: string;
@@ -2838,6 +2844,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       continuous_window_observed: string;
       continuity_window_status: string;
       latest_scan_proof_fresh: string;
+      driver_diagnostics_status?: string;
+      driver_diagnostics_next_action_plain?: string;
+      driver_serial_bytes_read_total?: string;
+      driver_serial_packet_count_total?: string;
+      driver_serial_empty_read_count?: string;
+      driver_published_scan_count?: string;
       runtime_scan_status: string;
       runtime_lidar_min_distance_m: string;
       runtime_lidar_age_s: string;
@@ -2858,6 +2870,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       continuous_scan_status: string;
       latest_scan_proof_fresh: string;
       runtime_scan_status: string;
+      driver_diagnostics_status?: string;
+      driver_diagnostics_next_action_plain?: string;
+      driver_serial_bytes_read_total?: string;
+      driver_serial_packet_count_total?: string;
+      driver_serial_empty_read_count?: string;
+      driver_published_scan_count?: string;
       radar_scan_observation_status?: string;
       radar_scan_observation_missing_reasons?: string;
       radar_map_overlay_readiness_status?: string;

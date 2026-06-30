@@ -6167,6 +6167,12 @@ describe("App", () => {
     expect(radarActionCard.attributes("data-map-radar-readiness-status")).toBe("not_loaded");
     expect(radarActionCard.attributes("data-map-radar-next-action-plain")).toBe("not_loaded");
     expect(radarActionCard.attributes("data-map-radar-blocked-reason-labels")).toBe("");
+    expect(radarActionCard.attributes("data-driver-diagnostics-status")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-driver-diagnostics-next-action-plain")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-driver-serial-bytes-read-total")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-driver-serial-packet-count-total")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-driver-serial-empty-read-count")).toBe("not_loaded");
+    expect(radarActionCard.attributes("data-driver-published-scan-count")).toBe("not_loaded");
     expect(radarActionCard.attributes("data-radar-start-configured")).toBe("true");
     expect(radarActionCard.attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
     expect(radarActionCard.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");

@@ -3519,6 +3519,12 @@ function actionCardWithDerivedEvidence(
         map_radar_next_action_plain: card.evidence?.map_radar_next_action_plain ?? radar?.radar_map_overlay_next_action_plain ?? "not_loaded",
         map_radar_blocked_reason_labels: card.evidence?.map_radar_blocked_reason_labels
           ?? splitEvidenceList(radar?.radar_overlay_blocked_reason_labels),
+        driver_diagnostics_status: card.evidence?.driver_diagnostics_status ?? radar?.driver_diagnostics_status ?? "not_loaded",
+        driver_diagnostics_next_action_plain: card.evidence?.driver_diagnostics_next_action_plain ?? radar?.driver_diagnostics_next_action_plain ?? "not_loaded",
+        driver_serial_bytes_read_total: card.evidence?.driver_serial_bytes_read_total ?? radar?.driver_serial_bytes_read_total ?? "not_loaded",
+        driver_serial_packet_count_total: card.evidence?.driver_serial_packet_count_total ?? radar?.driver_serial_packet_count_total ?? "not_loaded",
+        driver_serial_empty_read_count: card.evidence?.driver_serial_empty_read_count ?? radar?.driver_serial_empty_read_count ?? "not_loaded",
+        driver_published_scan_count: card.evidence?.driver_published_scan_count ?? radar?.driver_published_scan_count ?? "not_loaded",
         radar_start_configured: card.evidence?.radar_start_configured ?? lidar?.radar_start_configured !== "false",
         fixed_radar_start_endpoint: card.evidence?.fixed_radar_start_endpoint ?? "/api/robot-control/radar/start",
         fixed_radar_refresh_endpoint: card.evidence?.fixed_radar_refresh_endpoint ?? "/api/robot-control/radar/scan-proof/refresh",
@@ -16082,6 +16088,12 @@ onBeforeUnmount(() => {
           :data-map-radar-readiness-status="card.evidence?.map_radar_readiness_status"
           :data-map-radar-next-action-plain="card.evidence?.map_radar_next_action_plain"
           :data-map-radar-blocked-reason-labels="card.evidence?.map_radar_blocked_reason_labels?.join('、')"
+          :data-driver-diagnostics-status="card.evidence?.driver_diagnostics_status"
+          :data-driver-diagnostics-next-action-plain="card.evidence?.driver_diagnostics_next_action_plain"
+          :data-driver-serial-bytes-read-total="card.evidence?.driver_serial_bytes_read_total"
+          :data-driver-serial-packet-count-total="card.evidence?.driver_serial_packet_count_total"
+          :data-driver-serial-empty-read-count="card.evidence?.driver_serial_empty_read_count"
+          :data-driver-published-scan-count="card.evidence?.driver_published_scan_count"
           :data-radar-start-configured="card.evidence?.radar_start_configured === undefined ? undefined : String(card.evidence.radar_start_configured)"
           :data-fixed-radar-start-endpoint="card.evidence?.fixed_radar_start_endpoint"
           :data-fixed-radar-refresh-endpoint="card.evidence?.fixed_radar_refresh_endpoint"
