@@ -154,6 +154,7 @@ const plainFreeRoamMapPreviewRefreshFailedForSession = ref(false);
 const plainFreeRoamLiveMapPreviewRefreshedForHold = ref(false);
 const plainFreeRoamSavedMapPreviewFreshForSession = ref(false);
 const plainFreeRoamSavedMapPreviewRefreshFailed = ref(false);
+const plainFreeRoamMappingStartDegradedForSession = ref(false);
 const operatorReportPending = ref(false);
 const operatorReportResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainVisualMaterialPending = ref(false);
@@ -5907,6 +5908,28 @@ const plainFreeRoamMappingQualityReady = computed(() => (
   && plainCameraReadyForFreeRoamAutonomy.value
   && plainRadarReadyForFreeRoamMapping.value
 ));
+const plainFreeRoamMappingStartFailureText = computed(() => (
+  mapLifecycleFailed(mapLifecycleResult.value) && mapLifecycleResult.value?.action === "start"
+    ? mapLifecycleFailureText(mapLifecycleResult.value) || "地图记录启动失败"
+    : ""
+));
+const plainFreeRoamMappingDegradeNotice = computed(() => {
+  // 主按钮已经表达“要低速移动”；建图服务失败时只降级建图意图，不把移动入口锁死。
+  if (!plainFreeRoamMappingStartDegradedForSession.value) {
+    return null;
+  }
+  const reason = plainFreeRoamMappingStartFailureText.value || "地图记录启动失败";
+  const started = freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded"
+    && freeRoamAutonomyResult.value.action === "start";
+  return {
+    state: started ? "degraded_free_move_started" : "degraded_free_move_pending",
+    text: started
+      ? `建图记录启动失败：${reason}；本次已降级为低速自由移动，修复地图记录后再建图。`
+      : `建图记录启动失败：${reason}；正在尝试降级为低速自由移动，仍只走固定自由移动代理。`,
+    freeMoveStarted: started,
+    reason,
+  };
+});
 const plainFreeRoamMappingSensorsReady = computed(() => (
   // 相机和雷达都就绪且上车端允许 start 时，首屏才优先进入建图流程；明确 locked 时仍按自由移动降级。
   plainCameraReadyForFreeRoamAutonomy.value
@@ -5997,7 +6020,7 @@ const canSavePlainFreeRoamMapping = computed(() => (
 const canStartFreeRoamAutonomy = computed(() => (
   plainManualSafetyConfirmed.value
   && !navGoalExecutionPending.value
-  && (plainFreeRoamMotionModeName.value !== "自动扫图" || mapRuntimeStarted.value || mapSavedThisSession.value)
+  && (plainFreeRoamMotionModeName.value !== "自动扫图" || mapRuntimeStarted.value || mapSavedThisSession.value || plainFreeRoamMappingStartDegradedForSession.value)
   && (!mapRuntimeStarted.value || !freeRoamMapWysiwygPending.value)
   && canSendStop.value
   && !freeRoamAutonomyPending.value
@@ -6333,6 +6356,14 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (mapLifecyclePendingAction.value === "save") {
     return "扫图状态：正在保存当前地图；返回前未证明地图已保存，不要继续移动。";
+  }
+  if (plainFreeRoamMappingStartDegradedForSession.value && mapLifecycleFailed(mapLifecycleResult.value) && mapLifecycleResult.value?.action === "start") {
+    const failureText = plainFreeRoamMappingStartFailureText.value;
+    const reasonSuffix = failureText ? `：${failureText}` : "";
+    if (freeRoamAutonomyResult.value?.proxy_status === "autonomy_forwarded" && freeRoamAutonomyResult.value.action === "start") {
+      return `自由移动状态：地图记录启动失败${reasonSuffix}，已降级为低速自由移动；当前不按建图验收，修复地图记录后再建图。`;
+    }
+    return `自由移动状态：地图记录启动失败${reasonSuffix}，正在尝试降级为低速自由移动；仍可随时停止。`;
   }
   if (mapLifecycleFailed(mapLifecycleResult.value) && mapLifecycleResult.value?.action !== "list") {
     const actionText = mapLifecycleResult.value?.action === "save" ? "地图保存" : "地图记录启动";
@@ -6945,6 +6976,7 @@ type PlainFreeRoamMotionGauge = {
   cameraReadyForMapping: boolean;
   radarReadyForMapping: boolean;
   mappingStartReady: boolean;
+  mappingStartDegradedForSession: boolean;
   primaryActionKind: string;
   primaryActionCanStartMotion: boolean;
   primaryActionRequestsMapping: boolean;
@@ -6967,6 +6999,7 @@ type PlainFreeRoamHandoffGauge = {
   cameraReadyForMapping: boolean;
   radarReadyForMapping: boolean;
   mappingStartReady: boolean;
+  mappingStartDegradedForSession: boolean;
   mapRuntimeStarted: boolean;
   mapPreviewFresh: boolean;
   mappingEvidenceReady: boolean;
@@ -7229,7 +7262,9 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
       : "低速自由移动待连接";
   const sensorText = `画面${cameraReadyForMapping ? "已就绪" : "未就绪"}、雷达${radarReadyForMapping ? "已就绪" : "未就绪"}，不阻止先动`;
   const mappingText = evidence.mappingStartReady
-    ? "建图记录可随自由移动启动"
+    ? plainFreeRoamMappingStartDegradedForSession.value
+      ? "建图记录启动失败，本轮降级自由移动"
+      : "建图记录可随自由移动启动"
     : "建图记录还差传感器条件";
   const stopRequestText = evidence.startWillClearStopRequest
     ? "当前有停止请求，点击会先解除"
@@ -7263,6 +7298,7 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
     cameraReadyForMapping,
     radarReadyForMapping,
     mappingStartReady: evidence.mappingStartReady,
+    mappingStartDegradedForSession: plainFreeRoamMappingStartDegradedForSession.value,
     primaryActionKind: evidence.primaryActionKind,
     primaryActionCanStartMotion: evidence.primaryActionCanStartMotion,
     primaryActionRequestsMapping: evidence.primaryActionRequestsMapping,
@@ -7290,6 +7326,8 @@ const plainFreeRoamHandoffGauge = computed<PlainFreeRoamHandoffGauge>(() => {
     ? "mapping_acceptance_ready"
     : mapRuntimeStartedNow
       ? mapPreviewFresh ? "mapping_recording_visible" : "mapping_recording_needs_map_refresh"
+      : plainFreeRoamMappingStartDegradedForSession.value
+        ? "mapping_start_degraded_free_move"
       : canFreeMoveNow && evidence.mappingStartReady
         ? "mapping_start_ready"
         : canFreeMoveNow
@@ -7299,6 +7337,8 @@ const plainFreeRoamHandoffGauge = computed<PlainFreeRoamHandoffGauge>(() => {
             : "await_robot_connection";
   const state = mappingEvidenceReady
     ? "建图可收口"
+    : plainFreeRoamMappingStartDegradedForSession.value
+      ? "已降级自由移动"
     : canFreeMoveNow && evidence.mappingStartReady
       ? "可边动边建图"
       : canFreeMoveNow
@@ -7317,6 +7357,9 @@ const plainFreeRoamHandoffGauge = computed<PlainFreeRoamHandoffGauge>(() => {
     if (!cameraReady || !radarReady) {
       return "先低速自由移动，同时补齐画面和雷达";
     }
+    if (plainFreeRoamMappingStartDegradedForSession.value) {
+      return "继续低速自由移动；修复地图记录后再建图";
+    }
     if (!mapRuntimeStartedNow) {
       return "点击自由移动主按钮，先启动建图记录再低速移动";
     }
@@ -7334,6 +7377,10 @@ const plainFreeRoamHandoffGauge = computed<PlainFreeRoamHandoffGauge>(() => {
     }
     if (!cameraReady || !radarReady) {
       return `自由移动到建图：现在可先低速自由移动；${sensorText}，补齐后再启动建图记录。下一步：${nextAction}。`;
+    }
+    if (plainFreeRoamMappingStartDegradedForSession.value) {
+      const reason = plainFreeRoamMappingStartFailureText.value || "地图记录启动失败";
+      return `自由移动到建图：建图记录启动失败：${reason}；本次先低速自由移动，修复地图记录后再建图。下一步：${nextAction}。`;
     }
     if (!mapRuntimeStartedNow) {
       return `自由移动到建图：画面和雷达已就绪；主按钮会先启动建图记录，再低速自由移动。下一步：${nextAction}。`;
@@ -7354,6 +7401,7 @@ const plainFreeRoamHandoffGauge = computed<PlainFreeRoamHandoffGauge>(() => {
     cameraReadyForMapping: cameraReady,
     radarReadyForMapping: radarReady,
     mappingStartReady: evidence.mappingStartReady,
+    mappingStartDegradedForSession: plainFreeRoamMappingStartDegradedForSession.value,
     mapRuntimeStarted: mapRuntimeStartedNow,
     mapPreviewFresh,
     mappingEvidenceReady,
@@ -14346,6 +14394,7 @@ async function startMapRuntime(): Promise<void> {
   if (!canStartMapLifecycle.value) {
     return;
   }
+  plainFreeRoamMappingStartDegradedForSession.value = false;
   plainFreeRoamMapPreviewFreshForSession.value = false;
   plainFreeRoamMapPreviewRefreshFailedForSession.value = false;
   plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
@@ -14368,6 +14417,11 @@ async function startPlainFreeRoamPrimary(): Promise<void> {
   if (shouldRecordMap) {
     await startMapRuntime();
     if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
+      plainFreeRoamMappingStartDegradedForSession.value = true;
+      if (canStartFreeRoamAutonomy.value) {
+        await startFreeRoamAutonomy({ forceFreeMoveOnly: true });
+        return;
+      }
       await focusPlainFreeRoamAutonomyNextTarget();
       return;
     }
@@ -14393,7 +14447,15 @@ async function saveMap(options: { refreshRouteAfterSave?: boolean } = {}): Promi
   }
 }
 
-function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string): RobotControlFreeRoamAutonomyResponse {
+function freeRoamAutonomyStartRequestBody(options: { forceFreeMoveOnly?: boolean } = {}) {
+  // 建图记录降级时必须显式告诉上车端本轮不是建图验收，只是低速自由移动。
+  return {
+    confirm_operator_safety: true,
+    confirm_mapping_active: options.forceFreeMoveOnly === true ? false : plainFreeRoamMappingQualityReady.value,
+  };
+}
+
+function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string, options: { forceFreeMoveOnly?: boolean } = {}): RobotControlFreeRoamAutonomyResponse {
   // 自动扫图代理失败时必须保持“未启动/未停止已证明”的可读状态。
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_free_roam_autonomy_proxy.v1",
@@ -14411,7 +14473,7 @@ function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string):
     remote_method: "POST",
     remote_http_status: null,
     status: "blocked",
-    request_body: action === "start" ? { confirm_operator_safety: true, confirm_mapping_active: plainFreeRoamMappingQualityReady.value } : {},
+    request_body: action === "start" ? freeRoamAutonomyStartRequestBody(options) : {},
     command_result: { mode: "not_sent", executed: false, ok: false },
     latest_decision_state: "not_loaded",
     latest_cmd_vel_publish_enabled: false,
@@ -14488,7 +14550,7 @@ async function refreshFreeRoamAutonomyLatest(): Promise<void> {
   await refreshConsole();
 }
 
-async function startFreeRoamAutonomy(): Promise<void> {
+async function startFreeRoamAutonomy(options: { forceFreeMoveOnly?: boolean } = {}): Promise<void> {
   // 自由移动 start 只走固定上车状态机代理；不满足最小条件时只推进非运动向导。
   if (!canStartFreeRoamAutonomy.value) {
     await advancePlainFreeRoamAutonomyGuide();
@@ -14498,12 +14560,9 @@ async function startFreeRoamAutonomy(): Promise<void> {
   freeRoamAutonomyPending.value = true;
   freeRoamAutonomyPendingAction.value = "start";
   try {
-    freeRoamAutonomyResult.value = await postRobotControlFreeRoamAutonomyStart(robotApiBaseUrl.value, {
-      confirm_operator_safety: true,
-      confirm_mapping_active: plainFreeRoamMappingQualityReady.value,
-    });
+    freeRoamAutonomyResult.value = await postRobotControlFreeRoamAutonomyStart(robotApiBaseUrl.value, freeRoamAutonomyStartRequestBody(options));
   } catch (err) {
-    freeRoamAutonomyResult.value = makeFreeRoamAutonomyFallback("start", err instanceof Error ? err.message : "free_roam_autonomy_start_failed");
+    freeRoamAutonomyResult.value = makeFreeRoamAutonomyFallback("start", err instanceof Error ? err.message : "free_roam_autonomy_start_failed", options);
   } finally {
     freeRoamAutonomyPending.value = false;
     freeRoamAutonomyPendingAction.value = null;
@@ -16717,6 +16776,7 @@ onBeforeUnmount(() => {
             :data-camera-ready-for-mapping="String(plainFreeRoamMotionGauge.cameraReadyForMapping)"
             :data-radar-ready-for-mapping="String(plainFreeRoamMotionGauge.radarReadyForMapping)"
             :data-mapping-start-ready="String(plainFreeRoamMotionGauge.mappingStartReady)"
+            :data-mapping-start-degraded-for-session="String(plainFreeRoamMotionGauge.mappingStartDegradedForSession)"
             :data-primary-action-kind="plainFreeRoamMotionGauge.primaryActionKind"
             :data-primary-action-can-start-motion="String(plainFreeRoamMotionGauge.primaryActionCanStartMotion)"
             :data-primary-action-requests-mapping="String(plainFreeRoamMotionGauge.primaryActionRequestsMapping)"
@@ -16743,6 +16803,7 @@ onBeforeUnmount(() => {
             :data-camera-ready-for-mapping="String(plainFreeRoamHandoffGauge.cameraReadyForMapping)"
             :data-radar-ready-for-mapping="String(plainFreeRoamHandoffGauge.radarReadyForMapping)"
             :data-mapping-start-ready="String(plainFreeRoamHandoffGauge.mappingStartReady)"
+            :data-mapping-start-degraded-for-session="String(plainFreeRoamHandoffGauge.mappingStartDegradedForSession)"
             :data-map-runtime-started="String(plainFreeRoamHandoffGauge.mapRuntimeStarted)"
             :data-map-preview-fresh="String(plainFreeRoamHandoffGauge.mapPreviewFresh)"
             :data-mapping-evidence-ready="String(plainFreeRoamHandoffGauge.mappingEvidenceReady)"
@@ -16757,6 +16818,18 @@ onBeforeUnmount(() => {
             data-sends-motion-when-clicked="false"
           >
             {{ plainFreeRoamHandoffGauge.text }}
+          </p>
+          <p
+            v-if="plainFreeRoamMappingDegradeNotice"
+            class="panel-note"
+            data-testid="plain-free-roam-map-start-degrade"
+            :data-state="plainFreeRoamMappingDegradeNotice.state"
+            :data-free-move-started="String(plainFreeRoamMappingDegradeNotice.freeMoveStarted)"
+            :data-reason="plainFreeRoamMappingDegradeNotice.reason"
+            data-fixed-free-roam-start-endpoint="/api/robot-control/free-roam/autonomy/start"
+            data-fixed-mapping-start-endpoint="/api/robot-control/map/start"
+          >
+            {{ plainFreeRoamMappingDegradeNotice.text }}
           </p>
           <p
             class="panel-note plain-mapping-readiness-gauge"
@@ -16802,6 +16875,7 @@ onBeforeUnmount(() => {
               :data-free-roam-stop-request-pending="String(plainFreeRoamDomEvidence.freeRoamStopRequestPending)"
               :data-start-will-clear-stop-request="String(plainFreeRoamDomEvidence.startWillClearStopRequest)"
               :data-motion-start-blocked-by-stop-request="String(plainFreeRoamDomEvidence.motionStartBlockedByStopRequest)"
+              :data-mapping-start-degraded-for-session="String(plainFreeRoamMappingStartDegradedForSession)"
               :data-requires-safety-confirmation="String(true)"
               :data-minimal-precheck-safety-only="String(plainFreeRoamDomEvidence.freeMoveSafetyOnly)"
               :data-fixed-free-roam-start-endpoint="plainFreeRoamDomEvidence.fixedFreeRoamStartEndpoint"
