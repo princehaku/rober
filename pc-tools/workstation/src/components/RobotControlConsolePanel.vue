@@ -3748,6 +3748,63 @@ const plainLiveClosureTargetSourceCardId = computed(() => (
   || plainLiveClosureSummary.value?.next_action_source_card_id
   || ""
 ));
+const plainLiveClosureFocusTargetKind = computed(() => {
+  // 当前卡点按钮要说清真实落点：轮速复验先落到安全确认，勾过后才落到行程执行按钮。
+  const summary = plainLiveClosureSummary.value;
+  if (!summary) {
+    return "not_loaded";
+  }
+  if (summary.needs_same_window_wheel_rerun) {
+    return plainManualSafetyConfirmed.value ? "trip_execute_button" : "trip_safety_confirm";
+  }
+  const sourceCardId = plainLiveClosureTargetSourceCardId.value;
+  if (sourceCardId === "camera_preview") {
+    return "camera_preview";
+  }
+  if (sourceCardId === "radar_map_points") {
+    return "radar_map_points";
+  }
+  if (sourceCardId === "free_move") {
+    return "free_move_safety_confirm";
+  }
+  if (sourceCardId === "keyboard_control") {
+    return "keyboard_arm";
+  }
+  if (sourceCardId === "mapping_start") {
+    return "mapping_start";
+  }
+  return sourceCardId || "not_loaded";
+});
+const plainLiveClosureGoButtonLabel = computed(() => {
+  // 文案跟随当前卡点，不让普通用户再猜“去处理”到底会跳到哪里。
+  const summary = plainLiveClosureSummary.value;
+  if (!summary) {
+    return "去处理当前卡点";
+  }
+  if (summary.needs_same_window_wheel_rerun) {
+    return plainManualSafetyConfirmed.value ? "去重跑图上行程" : "去勾行程安全确认";
+  }
+  const sourceCardId = plainLiveClosureTargetSourceCardId.value;
+  if (sourceCardId === "camera_preview") {
+    return "去看实时画面";
+  }
+  if (sourceCardId === "radar_map_points") {
+    return "去刷新雷达贴图";
+  }
+  if (summary.status === "needs_delivery") {
+    return "去送达确认";
+  }
+  if (sourceCardId === "free_move") {
+    return "去自由移动";
+  }
+  if (sourceCardId === "keyboard_control") {
+    return "去启用键盘";
+  }
+  if (sourceCardId === "mapping_start") {
+    return "去建图";
+  }
+  return "去处理当前卡点";
+});
 function focusPlainLiveClosureTarget(): void {
   // 当前卡点按钮只做页面内定位，真实发车仍必须走对应卡片里的安全确认和动作按钮。
   const sourceCardId = plainLiveClosureTargetSourceCardId.value;
@@ -15831,6 +15888,7 @@ onBeforeUnmount(() => {
           :disabled="!plainLiveClosureTargetSourceCardId"
           :data-focus-target-item-id="plainLiveClosureSummary.next_action_item_id"
           :data-focus-target-source-card-id="plainLiveClosureTargetSourceCardId"
+          :data-focus-target-kind="plainLiveClosureFocusTargetKind"
           :data-needs-wheel-rerun="String(plainLiveClosureSummary.needs_same_window_wheel_rerun)"
           :data-requires-same-window-wheel-lr-nonzero="String(plainLiveClosureSummary.needs_same_window_wheel_rerun || !plainLiveClosureSummary.wheel_lr_nonzero_proven)"
           data-focus-only="true"
@@ -15842,7 +15900,7 @@ onBeforeUnmount(() => {
           data-starts-keyboard="false"
           @click="focusPlainLiveClosureTarget"
         >
-          去处理当前卡点
+          {{ plainLiveClosureGoButtonLabel }}
         </button>
       </div>
 

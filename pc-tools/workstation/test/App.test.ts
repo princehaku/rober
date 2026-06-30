@@ -4520,9 +4520,10 @@ describe("App", () => {
     const focusCallsBeforeLiveClosureGuide = focusSpy.mock.calls.length;
     const liveClosureGuide = wrapper.find('[data-testid="plain-live-closure-go"]');
     expect(liveClosureGuide.exists()).toBe(true);
-    expect(liveClosureGuide.text()).toBe("去处理当前卡点");
+    expect(liveClosureGuide.text()).toBe("去看实时画面");
     expect(liveClosureGuide.attributes("data-focus-target-item-id")).toBe("camera_wysiwyg");
     expect(liveClosureGuide.attributes("data-focus-target-source-card-id")).toBe("camera_preview");
+    expect(liveClosureGuide.attributes("data-focus-target-kind")).toBe("camera_preview");
     expect(liveClosureGuide.attributes("data-needs-wheel-rerun")).toBe("false");
     expect(liveClosureGuide.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(liveClosureGuide.attributes("data-focus-only")).toBe("true");
@@ -6219,8 +6220,10 @@ describe("App", () => {
     expect(liveClosureSummary.text()).toContain("重跑图上行程");
     expect(liveClosureSummary.text()).not.toContain("/cmd_vel");
     const liveClosureGuide = wrapper.find('[data-testid="plain-live-closure-go"]');
+    expect(liveClosureGuide.text()).toBe("去勾行程安全确认");
     expect(liveClosureGuide.attributes("data-focus-target-item-id")).toBe("nav2_route_execution");
     expect(liveClosureGuide.attributes("data-focus-target-source-card-id")).toBe("nav2_route");
+    expect(liveClosureGuide.attributes("data-focus-target-kind")).toBe("trip_safety_confirm");
     expect(liveClosureGuide.attributes("data-needs-wheel-rerun")).toBe("true");
     expect(liveClosureGuide.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(liveClosureGuide.attributes("data-focus-only")).toBe("true");
@@ -6235,9 +6238,15 @@ describe("App", () => {
     await liveClosureGuide.trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeClick);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+
+    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-live-closure-go"]').text()).toBe("去重跑图上行程");
+    expect(wrapper.find('[data-testid="plain-live-closure-go"]').attributes("data-focus-target-kind")).toBe("trip_execute_button");
   });
 
   it("opens direct map view from URL without starting ROS2 or motion", async () => {
