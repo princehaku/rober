@@ -664,6 +664,33 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-trip-closure-gate {
+  /* 行程闭环仪表只读展示路线、执行、轮速和送达，不能成为新的发车按钮。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-trip-closure-gate[data-state="已闭环"],
+.plain-trip-closure-gate[data-state="待送达"],
+.plain-trip-closure-gate[data-state="可执行"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-trip-closure-gate[data-state="待安全确认"],
+.plain-trip-closure-gate[data-state="待执行"],
+.plain-trip-closure-gate[data-state="待贴图"] {
+  border-left-color: #9a6700;
+}
+
+.plain-trip-closure-gate[data-state="待路线"] {
+  border-left-color: #8c959f;
+}
+
 .plain-unified-safety-confirm {
   /* 首屏唯一确认入口直接复用全页面安全 gate；勾选本身不发车。 */
   display: flex;

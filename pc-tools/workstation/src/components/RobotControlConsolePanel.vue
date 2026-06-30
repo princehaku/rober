@@ -10358,6 +10358,29 @@ type PlainMotionReadinessGauge = {
   fixedFreeRoamStartEndpoint: string;
   fixedFreeRoamStopEndpoint: string;
 };
+type PlainTripClosureGateGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  safetyConfirmed: boolean;
+  routeReady: boolean;
+  currentRouteVisible: boolean;
+  routePointCount: number;
+  routeSourcePointCount: number;
+  mainActionKind: string;
+  mainActionCanRun: boolean;
+  mainActionSendsMotion: boolean;
+  executesCurrentRouteGoal: boolean;
+  wheelLrNonzeroProven: boolean;
+  wheelLeft: string;
+  wheelRight: string;
+  deliverySuccessMatchesCurrentNav2: boolean;
+  deliverySuccessEvidenceStale: boolean;
+  managedRuntimeAutostart: boolean;
+  requiresSameWindowWheelLrNonzero: boolean;
+  fixedNav2ExecuteEndpoint: string;
+  fixedDeliveryCompleteEndpoint: string;
+};
 
 const plainTripExecutionGauge = computed<PlainTripExecutionGauge>(() => {
   // 这行是普通首页的行程闭环仪表：路线、按钮、轮速、送达必须同源显示，避免现场在多个卡片之间拼结论。
@@ -10437,6 +10460,88 @@ const plainTripExecutionGauge = computed<PlainTripExecutionGauge>(() => {
     wheelRight: evidence.latestWheelRawRight,
     deliverySuccessMatchesCurrentNav2: evidence.deliverySuccessMatchesCurrentNav2,
     deliverySuccessEvidenceStale: evidence.deliverySuccessEvidenceStale,
+  };
+});
+const plainTripClosureGateGauge = computed<PlainTripClosureGateGauge>(() => {
+  // 首屏闭环仪表把“路线、执行、轮速、送达”放到安全确认区，避免完整行程验收藏在下方卡片里。
+  const trip = plainTripExecutionGauge.value;
+  const safetyConfirmed = plainManualSafetyConfirmed.value;
+  const routeReady = trip.routeWysiwygReady && trip.executesCurrentRouteGoal;
+  const deliveryClosed = trip.deliverySuccessMatchesCurrentNav2 && !trip.deliverySuccessEvidenceStale;
+  let state = "待路线";
+  // 已送达属于闭环终态，优先于当前地图是否还显示路线，避免旧刷新状态干扰本轮完成判断。
+  if (deliveryClosed) {
+    state = "已闭环";
+  } else if (trip.wheelLrNonzeroProven) {
+    state = "待送达";
+  } else if (trip.mainActionSendsMotion && trip.mainActionCanRun) {
+    state = "可执行";
+  } else if (!safetyConfirmed) {
+    state = "待安全确认";
+  } else if (routeReady) {
+    state = "待执行";
+  } else if (trip.routeSourcePointCount > 0) {
+    state = "待贴图";
+  }
+  const safetyText = safetyConfirmed ? "安全确认已勾" : "安全确认未勾";
+  const routeText = routeReady
+    ? `图上行程 ${trip.routePointCount}/${trip.routeSourcePointCount} 个点`
+    : trip.routeSourcePointCount > 0
+      ? `行程已准备 ${trip.routeSourcePointCount} 个点，待贴到地图`
+      : "图上行程未准备";
+  const actionText = trip.mainActionSendsMotion && trip.mainActionCanRun
+    ? "执行按钮会执行图上行程"
+    : trip.mainActionKind === "await_safety_confirm"
+      ? "执行按钮等待安全确认"
+      : "执行按钮只准备或刷新，不发车";
+  const wheelText = trip.wheelLeft !== "not_loaded" && trip.wheelRight !== "not_loaded"
+    ? `轮速 L/R ${trip.wheelLeft}/${trip.wheelRight}${trip.wheelLrNonzeroProven ? " 已非零" : " 待非零"}`
+    : "轮速 L/R 未读取";
+  const deliveryText = deliveryClosed
+    ? "送达已对齐"
+    : trip.deliverySuccessEvidenceStale
+      ? "送达证据较旧"
+      : "送达待确认";
+  const nextAction = (() => {
+    if (deliveryClosed) {
+      return "本轮行程已收口";
+    }
+    if (!safetyConfirmed) {
+      return "勾选现场安全确认";
+    }
+    if (!routeReady) {
+      return trip.routeSourcePointCount > 0 ? "刷新地图画面，确认图上行程" : "准备图上行程";
+    }
+    if (trip.mainActionSendsMotion && trip.mainActionCanRun) {
+      return "执行图上行程后看轮速 L/R";
+    }
+    if (trip.wheelLrNonzeroProven) {
+      return "准备材料并确认送达";
+    }
+    return "按行程区提示恢复可执行状态";
+  })();
+  return {
+    state,
+    text: `行程闭环：${safetyText}；${routeText}；${actionText}；${wheelText}；${deliveryText}。下一步：${nextAction}。`,
+    nextAction,
+    safetyConfirmed,
+    routeReady,
+    currentRouteVisible: trip.currentRouteVisible,
+    routePointCount: trip.routePointCount,
+    routeSourcePointCount: trip.routeSourcePointCount,
+    mainActionKind: trip.mainActionKind,
+    mainActionCanRun: trip.mainActionCanRun,
+    mainActionSendsMotion: trip.mainActionSendsMotion,
+    executesCurrentRouteGoal: trip.executesCurrentRouteGoal,
+    wheelLrNonzeroProven: trip.wheelLrNonzeroProven,
+    wheelLeft: trip.wheelLeft,
+    wheelRight: trip.wheelRight,
+    deliverySuccessMatchesCurrentNav2: trip.deliverySuccessMatchesCurrentNav2,
+    deliverySuccessEvidenceStale: trip.deliverySuccessEvidenceStale,
+    managedRuntimeAutostart: trip.managedRuntimeAutostart,
+    requiresSameWindowWheelLrNonzero: trip.requiresSameWindowWheelLrNonzero,
+    fixedNav2ExecuteEndpoint: "/api/robot-control/nav2/goal/execute",
+    fixedDeliveryCompleteEndpoint: "/api/robot-control/delivery/complete",
   };
 });
 const plainMotionReadinessGauge = computed<PlainMotionReadinessGauge>(() => {
@@ -14996,6 +15101,33 @@ onBeforeUnmount(() => {
           data-testid="plain-motion-readiness-gauge"
         >
           {{ plainMotionReadinessGauge.text }}
+        </p>
+        <p
+          class="plain-trip-closure-gate"
+          data-testid="plain-trip-closure-gate"
+          :data-state="plainTripClosureGateGauge.state"
+          :data-safety-confirmed="String(plainTripClosureGateGauge.safetyConfirmed)"
+          :data-route-ready="String(plainTripClosureGateGauge.routeReady)"
+          :data-current-route-visible="String(plainTripClosureGateGauge.currentRouteVisible)"
+          :data-route-point-count="String(plainTripClosureGateGauge.routePointCount)"
+          :data-route-source-point-count="String(plainTripClosureGateGauge.routeSourcePointCount)"
+          :data-main-action-kind="plainTripClosureGateGauge.mainActionKind"
+          :data-main-action-can-run="String(plainTripClosureGateGauge.mainActionCanRun)"
+          :data-main-action-sends-motion="String(plainTripClosureGateGauge.mainActionSendsMotion)"
+          :data-executes-current-route-goal="String(plainTripClosureGateGauge.executesCurrentRouteGoal)"
+          :data-wheel-lr-nonzero-proven="String(plainTripClosureGateGauge.wheelLrNonzeroProven)"
+          :data-wheel-left="plainTripClosureGateGauge.wheelLeft"
+          :data-wheel-right="plainTripClosureGateGauge.wheelRight"
+          :data-delivery-success-matches-current-nav2="String(plainTripClosureGateGauge.deliverySuccessMatchesCurrentNav2)"
+          :data-delivery-success-evidence-stale="String(plainTripClosureGateGauge.deliverySuccessEvidenceStale)"
+          :data-managed-runtime-autostart="String(plainTripClosureGateGauge.managedRuntimeAutostart)"
+          :data-requires-same-window-wheel-lr-nonzero="String(plainTripClosureGateGauge.requiresSameWindowWheelLrNonzero)"
+          :data-next-action="plainTripClosureGateGauge.nextAction"
+          :data-fixed-nav2-execute-endpoint="plainTripClosureGateGauge.fixedNav2ExecuteEndpoint"
+          :data-fixed-delivery-complete-endpoint="plainTripClosureGateGauge.fixedDeliveryCompleteEndpoint"
+          data-sends-motion-when-clicked="false"
+        >
+          {{ plainTripClosureGateGauge.text }}
         </p>
         <p
           class="plain-keyboard-hold-gate"
