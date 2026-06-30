@@ -8508,6 +8508,22 @@ function buildLiveClosureSummary(
   const minimalPrecheckSafetyOnly = nav2.evidence?.minimal_precheck_safety_only === true
     || boundary.nav2_goal_minimal_precheck_plain.includes("只需要现场安全确认");
   const wheelRerunCommandMode = nav2.evidence?.next_base_command_mode || readback.nav2.next_execution_base_command_mode || "not_loaded";
+  const wheelRerunLastBaseCommandMode = readback.nav2.goal_execution_base_command_mode || readback.nav2.goal_execution_base_command_latest_nonzero_mode || "not_loaded";
+  const wheelRerunNextBaseCommandMode = wheelRerunCommandMode;
+  const wheelRerunFeedbackSampleCount = readback.nav2.goal_execution_base_feedback_sample_count || "not_loaded";
+  const wheelRerunFeedbackNonzeroSampleCount = readback.nav2.goal_execution_base_feedback_nonzero_sample_count || "not_loaded";
+  const wheelRerunLatestRawLeft = readback.nav2.goal_execution_base_feedback_latest_raw_left
+    || readback.nav2.goal_execution_base_feedback_latest_left_speed
+    || "not_loaded";
+  const wheelRerunLatestRawRight = readback.nav2.goal_execution_base_feedback_latest_raw_right
+    || readback.nav2.goal_execution_base_feedback_latest_right_speed
+    || "not_loaded";
+  const wheelRerunImuDeltaObserved = readback.nav2.goal_execution_base_feedback_imu_attitude_delta_observed || "not_loaded";
+  const wheelRerunImuRollDelta = readback.nav2.goal_execution_base_feedback_imu_roll_delta || "not_loaded";
+  const wheelRerunImuPitchDelta = readback.nav2.goal_execution_base_feedback_imu_pitch_delta || "not_loaded";
+  const wheelRerunReadbackPlain = needsSameWindowWheelRerun
+    ? `上次执行窗口 wheel L/R=${wheelRerunLatestRawLeft}/${wheelRerunLatestRawRight}，样本 ${wheelRerunFeedbackSampleCount} 个，非零样本 ${wheelRerunFeedbackNonzeroSampleCount} 个；下次用 ${wheelRerunNextBaseCommandMode} 模式重跑后读取 latest 与只读轮速采样。`
+    : "当前不需要轮速复验。";
   const liveMotionRunbookItems: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_motion_runbook_items"] = [
     {
       id: "run_nav2_route",
@@ -8816,6 +8832,16 @@ function buildLiveClosureSummary(
     wheel_rerun_blocked_by_camera_wysiwyg: false,
     wheel_rerun_blocked_by_radar_wysiwyg: false,
     wheel_rerun_command_mode: wheelRerunCommandMode,
+    wheel_rerun_last_base_command_mode: wheelRerunLastBaseCommandMode,
+    wheel_rerun_next_base_command_mode: wheelRerunNextBaseCommandMode,
+    wheel_rerun_feedback_sample_count: wheelRerunFeedbackSampleCount,
+    wheel_rerun_feedback_nonzero_sample_count: wheelRerunFeedbackNonzeroSampleCount,
+    wheel_rerun_latest_raw_left: wheelRerunLatestRawLeft,
+    wheel_rerun_latest_raw_right: wheelRerunLatestRawRight,
+    wheel_rerun_imu_attitude_delta_observed: wheelRerunImuDeltaObserved,
+    wheel_rerun_imu_roll_delta: wheelRerunImuRollDelta,
+    wheel_rerun_imu_pitch_delta: wheelRerunImuPitchDelta,
+    wheel_rerun_readback_plain: wheelRerunReadbackPlain,
     fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
     fixed_wheel_rerun_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
     fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples",

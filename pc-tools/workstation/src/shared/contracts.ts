@@ -2848,6 +2848,16 @@ export interface RobotControlLiveClosureSummary {
   wheel_rerun_blocked_by_camera_wysiwyg: false;
   wheel_rerun_blocked_by_radar_wysiwyg: false;
   wheel_rerun_command_mode: string;
+  wheel_rerun_last_base_command_mode: string;
+  wheel_rerun_next_base_command_mode: string;
+  wheel_rerun_feedback_sample_count: string;
+  wheel_rerun_feedback_nonzero_sample_count: string;
+  wheel_rerun_latest_raw_left: string;
+  wheel_rerun_latest_raw_right: string;
+  wheel_rerun_imu_attitude_delta_observed: string;
+  wheel_rerun_imu_roll_delta: string;
+  wheel_rerun_imu_pitch_delta: string;
+  wheel_rerun_readback_plain: string;
   fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute";
   fixed_wheel_rerun_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest";
   fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples";

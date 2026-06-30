@@ -991,6 +991,16 @@ const fixtures: Record<string, unknown> = {
       wheel_rerun_blocked_by_camera_wysiwyg: false,
       wheel_rerun_blocked_by_radar_wysiwyg: false,
       wheel_rerun_command_mode: "ros",
+      wheel_rerun_last_base_command_mode: "pwm",
+      wheel_rerun_next_base_command_mode: "ros",
+      wheel_rerun_feedback_sample_count: "239",
+      wheel_rerun_feedback_nonzero_sample_count: "0",
+      wheel_rerun_latest_raw_left: "0",
+      wheel_rerun_latest_raw_right: "0",
+      wheel_rerun_imu_attitude_delta_observed: "true",
+      wheel_rerun_imu_roll_delta: "4.387221",
+      wheel_rerun_imu_pitch_delta: "24.210531",
+      wheel_rerun_readback_plain: "上次执行窗口 wheel L/R=0/0，样本 239 个，非零样本 0 个；下次用 ros 模式重跑后读取 latest 与只读轮速采样。",
       fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
       fixed_wheel_rerun_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
       fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples",
@@ -6787,6 +6797,17 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-wheel-rerun-blocked-by-camera-wysiwyg")).toBe("false");
     expect(liveClosureSummary.attributes("data-wheel-rerun-blocked-by-radar-wysiwyg")).toBe("false");
     expect(liveClosureSummary.attributes("data-wheel-rerun-command-mode")).toBe("ros");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-last-base-command-mode")).toBe("pwm");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-next-base-command-mode")).toBe("ros");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-feedback-sample-count")).toBe("239");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-feedback-nonzero-sample-count")).toBe("0");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-latest-raw-left")).toBe("0");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-latest-raw-right")).toBe("0");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-imu-attitude-delta-observed")).toBe("true");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-imu-roll-delta")).toBe("4.387221");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-imu-pitch-delta")).toBe("24.210531");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-readback-plain")).toContain("wheel L/R=0/0");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-readback-plain")).toContain("样本 239 个");
     expect(liveClosureSummary.attributes("data-last-base-command-mode")).toBe("pwm");
     expect(liveClosureSummary.attributes("data-next-base-command-mode")).toBe("ros");
     expect(liveClosureSummary.attributes("data-wheel-feedback-status")).toBe("goal_succeeded_but_wheel_lr_zero");
@@ -6814,6 +6835,13 @@ describe("App", () => {
     expect(liveClosureGuide.attributes("data-wheel-rerun-blocked-by-camera-wysiwyg")).toBe("false");
     expect(liveClosureGuide.attributes("data-wheel-rerun-blocked-by-radar-wysiwyg")).toBe("false");
     expect(liveClosureGuide.attributes("data-wheel-rerun-command-mode")).toBe("ros");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-last-base-command-mode")).toBe("pwm");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-next-base-command-mode")).toBe("ros");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-feedback-sample-count")).toBe("239");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-feedback-nonzero-sample-count")).toBe("0");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-latest-raw-left")).toBe("0");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-latest-raw-right")).toBe("0");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-readback-plain")).toContain("wheel L/R=0/0");
     expect(liveClosureGuide.attributes("data-last-base-command-mode")).toBe("pwm");
     expect(liveClosureGuide.attributes("data-next-base-command-mode")).toBe("ros");
     expect(liveClosureGuide.attributes("data-latest-wheel-raw-left")).toBe("0");

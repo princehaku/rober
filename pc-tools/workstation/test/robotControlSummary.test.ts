@@ -122,6 +122,15 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_blocked_by_camera_wysiwyg).toBe(false);
     expect(summary.live_closure_summary?.wheel_rerun_blocked_by_radar_wysiwyg).toBe(false);
     expect(summary.live_closure_summary?.wheel_rerun_command_mode).toBe("ros");
+    expect(summary.live_closure_summary?.wheel_rerun_last_base_command_mode).toBe("pwm");
+    expect(summary.live_closure_summary?.wheel_rerun_next_base_command_mode).toBe("ros");
+    expect(summary.live_closure_summary?.wheel_rerun_feedback_sample_count).toBe("2");
+    expect(summary.live_closure_summary?.wheel_rerun_feedback_nonzero_sample_count).toBe("0");
+    expect(summary.live_closure_summary?.wheel_rerun_latest_raw_left).toBe("0");
+    expect(summary.live_closure_summary?.wheel_rerun_latest_raw_right).toBe("0");
+    expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("wheel L/R=0/0");
+    expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("样本 2 个");
+    expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("非零样本 0 个");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_latest_endpoint).toBe("/api/robot-control/nav2/goal/execution/latest");
     expect(summary.live_closure_summary?.fixed_wheel_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
