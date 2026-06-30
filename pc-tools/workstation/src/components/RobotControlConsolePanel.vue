@@ -16014,6 +16014,13 @@ onBeforeUnmount(() => {
         :data-live-wysiwyg-needs-refresh="String(plainLiveClosureNeedsWysiwygRefresh)"
         :data-live-wysiwyg-readback-gap-surface-ids="plainLiveClosureWysiwygReadbackGapSurfaceIds"
         :data-live-wysiwyg-primary-readback-gap-surface-id="plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId"
+        :data-live-wysiwyg-diagnostic-plain="plainLiveClosureSummary.live_wysiwyg_diagnostic_plain"
+        :data-live-wysiwyg-camera-diagnostic-plain="plainLiveClosureSummary.live_wysiwyg_camera_diagnostic_plain"
+        :data-live-wysiwyg-radar-diagnostic-plain="plainLiveClosureSummary.live_wysiwyg_radar_diagnostic_plain"
+        :data-live-wysiwyg-map-radar-diagnostic-plain="plainLiveClosureSummary.live_wysiwyg_map_radar_diagnostic_plain"
+        :data-live-wysiwyg-camera-probe-failure-reason="plainLiveClosureSummary.live_wysiwyg_camera_probe_failure_reason"
+        :data-live-wysiwyg-radar-scan-missing-observations="plainLiveClosureSummary.live_wysiwyg_radar_scan_missing_observations?.join(',') || 'none'"
+        :data-live-wysiwyg-map-radar-blocked-reasons="plainLiveClosureSummary.live_wysiwyg_map_radar_blocked_reasons?.join(',') || 'none'"
         data-live-wysiwyg-refresh-action-testid="plain-live-closure-wysiwyg-refresh"
         :data-live-wysiwyg-refresh-plan-available="String(plainLiveClosureWysiwygRefreshPlanAvailable)"
         :data-live-wysiwyg-refresh-sequence="plainLiveClosureWysiwygRefreshSequence"
@@ -16089,6 +16096,16 @@ onBeforeUnmount(() => {
           <span class="status-chip" :data-state="plainLiveClosureSummary.status_label">{{ plainLiveClosureSummary.status_label }}</span>
         </div>
         <p>{{ plainActionCardUserText(plainLiveClosureSummary.summary_plain) }}</p>
+        <p
+          class="panel-note"
+          data-testid="plain-live-closure-wysiwyg-diagnostics"
+          :data-camera-probe-failure-reason="plainLiveClosureSummary.live_wysiwyg_camera_probe_failure_reason"
+          :data-radar-scan-missing-observations="plainLiveClosureSummary.live_wysiwyg_radar_scan_missing_observations?.join(',') || 'none'"
+          :data-map-radar-blocked-reasons="plainLiveClosureSummary.live_wysiwyg_map_radar_blocked_reasons?.join(',') || 'none'"
+          data-sends-motion-when-clicked="false"
+        >
+          {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_diagnostic_plain) }}
+        </p>
         <p
           class="panel-note"
           data-testid="plain-live-closure-side-gaps"

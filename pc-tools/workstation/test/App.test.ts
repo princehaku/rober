@@ -808,6 +808,13 @@ const fixtures: Record<string, unknown> = {
       live_wysiwyg_needs_refresh: true,
       live_wysiwyg_readback_gap_surface_ids: ["camera"],
       live_wysiwyg_primary_readback_gap_surface_id: "camera",
+      live_wysiwyg_diagnostic_plain: "画面诊断：首帧未证明；状态=未通过；原因=读取首帧超时。 雷达诊断：服务=true/running；新读数=false；还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认。 地图雷达诊断：当前点=0；来源点=81；还差=地图缺雷达点；雷达点不是当前新读数。",
+      live_wysiwyg_camera_diagnostic_plain: "画面诊断：首帧未证明；状态=未通过；原因=读取首帧超时。",
+      live_wysiwyg_radar_diagnostic_plain: "雷达诊断：服务=true/running；新读数=false；还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认。",
+      live_wysiwyg_map_radar_diagnostic_plain: "地图雷达诊断：当前点=0；来源点=81；还差=地图缺雷达点；雷达点不是当前新读数。",
+      live_wysiwyg_camera_probe_failure_reason: "first_frame_total_timeout",
+      live_wysiwyg_radar_scan_missing_observations: ["scan_once", "scan_hz", "raw_packet_once"],
+      live_wysiwyg_map_radar_blocked_reasons: ["scan_preview_points_missing", "runtime_scan_stale_for_map_radar_overlay"],
       fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
       fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
       fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
@@ -4610,6 +4617,17 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-needs-refresh")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-probe-failure-reason")).toBe("first_frame_total_timeout");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-scan-missing-observations")).toBe("scan_once,scan_hz,raw_packet_once");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-map-radar-blocked-reasons")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");
+    const liveClosureWysiwygDiagnostics = wrapper.find('[data-testid="plain-live-closure-wysiwyg-diagnostics"]');
+    expect(liveClosureWysiwygDiagnostics.text()).toContain("画面诊断：首帧未证明");
+    expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认");
+    expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=地图缺雷达点；雷达点不是当前新读数");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-probe-failure-reason")).toBe("first_frame_total_timeout");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-scan-missing-observations")).toBe("scan_once,scan_hz,raw_packet_once");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-map-radar-blocked-reasons")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-action-testid")).toBe("plain-live-closure-wysiwyg-refresh");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-plan-available")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");

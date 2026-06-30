@@ -1229,3 +1229,11 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 `side_blocker_ids`、`side_blocker_count`、`ready_action_count` 和 `side_gap_summary_plain`。前端 `plain-live-closure-side-gaps`
 优先消费这些 API 字段，再回退到本地 checklist 推导。这样外部只读脚本无需加载页面，也能确认主卡点、旁路 blocker
 和可先做动作是否一致；该 API 字段仍只读，不触发任何控制请求。
+
+2026-06-30 21:15 CST 起，`live_closure_summary` 继续补齐所见即所得诊断合同：
+新增 `live_wysiwyg_diagnostic_plain`、相机/雷达/地图雷达分项诊断、相机首帧失败原因、
+雷达缺失观测数组和地图雷达阻塞原因数组。普通首屏 `plain-live-closure-wysiwyg-diagnostics`
+只显示中文原因，例如“读取首帧超时、雷达频率未确认、地图缺雷达点”，不会把 `raw_packet_once`
+这类底层字段露给普通用户；原始字段仍保留在 API 和 `data-*` 上，方便脚本定位。
+PC 地图口径保持默认大地图主视图：普通用户优先用本页大图/地图大屏，ROS2 工程调试配套使用 RViz2，
+需要浏览器远程多人观察时再接 Foxglove。

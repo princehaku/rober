@@ -8193,6 +8193,47 @@ function buildLiveClosureSummary(
     ...(!mapCurrentVisible && mapUnread ? ["map"] : []),
     ...(!radarMapPointsVisible && /fetch_failed|not_loaded|not_proven/.test(readback.radar.status || "") ? ["radar_map_points"] : []),
   ];
+  const splitDiagnosticList = (value: string | undefined): string[] => (value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item && item !== "none" && item !== "not_loaded")
+    .slice(0, 8);
+  const diagnosticLabel = (item: string): string => ({
+    scan_once: "没有读到一帧雷达",
+    scan_hz: "雷达频率未确认",
+    raw_packet_once: "雷达原始包未确认",
+    scan_preview_points_missing: "地图缺雷达点",
+    runtime_scan_stale_for_map_radar_overlay: "雷达点不是当前新读数",
+    robot_pose_missing_for_map_radar_overlay: "小车地图位置未读到",
+  }[item] || item.replace(/_/g, " "));
+  const diagnosticLabelsPlain = (items: string[]): string => items.map(diagnosticLabel).join("；") || "无";
+  const cameraFailureLabel = (reason: string): string => ({
+    first_frame_total_timeout: "读取首帧超时",
+    camera_source_first_frame_failed: "相机源没有首帧",
+    source_first_frame_failed: "相机源没有首帧",
+    timeout: "读取首帧超时",
+  }[reason] || reason.replace(/_/g, " "));
+  const cameraProbeStatusLabel = (status: string): string => ({
+    source_first_frame_failed: "首帧失败",
+    first_frame_failed: "首帧失败",
+    blocked: "未通过",
+    not_loaded: "未读取",
+  }[status] || status.replace(/_/g, " "));
+  const cameraProbeFailureReason = readback.camera.first_frame_probe_failure_reason
+    || readback.camera.source_failure_reason
+    || "none";
+  const radarScanMissingObservations = splitDiagnosticList(readback.radar.radar_scan_observation_missing_reasons);
+  const mapRadarBlockedReasons = splitDiagnosticList(readback.map.radar_overlay_blocked_reasons);
+  const cameraDiagnosticPlain = cameraCurrentVisible
+    ? "画面诊断：当前页面已有实时画面。"
+    : `画面诊断：首帧未证明；状态=${cameraProbeStatusLabel(readback.camera.first_frame_probe_status || "not_loaded")}；原因=${cameraFailureLabel(cameraProbeFailureReason || "not_loaded")}。`;
+  const radarDiagnosticPlain = radarMapPointsVisible
+    ? "雷达诊断：当前雷达点已贴到地图。"
+    : `雷达诊断：服务=${readback.radar.lifecycle_running || "not_loaded"}/${readback.radar.lifecycle_state || "not_loaded"}；新读数=${readback.radar.latest_scan_proof_fresh || "not_loaded"}；还差=${diagnosticLabelsPlain(radarScanMissingObservations)}。`;
+  const mapRadarDiagnosticPlain = radarMapPointsVisible
+    ? "地图雷达诊断：当前地图已有雷达点。"
+    : `地图雷达诊断：当前点=${readback.map.radar_overlay_point_count || "not_loaded"}；来源点=${readback.map.radar_overlay_source_point_count || "not_loaded"}；还差=${diagnosticLabelsPlain(mapRadarBlockedReasons)}。`;
+  const liveWysiwygDiagnosticPlain = `${cameraDiagnosticPlain} ${radarDiagnosticPlain} ${mapRadarDiagnosticPlain}`;
   const liveWysiwygSurfaceSummaries: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_wysiwyg_surface_summaries"] = [
     {
       id: "camera",
@@ -8382,6 +8423,13 @@ function buildLiveClosureSummary(
     live_wysiwyg_needs_refresh: liveWysiwygMissingSurfaceIds.length > 0,
     live_wysiwyg_readback_gap_surface_ids: liveWysiwygReadbackGapSurfaceIds,
     live_wysiwyg_primary_readback_gap_surface_id: liveWysiwygReadbackGapSurfaceIds[0] ?? "none",
+    live_wysiwyg_diagnostic_plain: liveWysiwygDiagnosticPlain,
+    live_wysiwyg_camera_diagnostic_plain: cameraDiagnosticPlain,
+    live_wysiwyg_radar_diagnostic_plain: radarDiagnosticPlain,
+    live_wysiwyg_map_radar_diagnostic_plain: mapRadarDiagnosticPlain,
+    live_wysiwyg_camera_probe_failure_reason: cameraProbeFailureReason,
+    live_wysiwyg_radar_scan_missing_observations: radarScanMissingObservations,
+    live_wysiwyg_map_radar_blocked_reasons: mapRadarBlockedReasons,
     fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
     fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",

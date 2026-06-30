@@ -4659,3 +4659,14 @@ PC 键盘连续手控是否真正完成“发 pulse -> wheel raw L/R 非零 -> s
 新增 `side_blocker_ids`、`side_blocker_count`、`ready_action_count`、`side_gap_summary_plain`，表达“当前主卡点以外还缺什么”和
 “当前可先做什么”。PC 页面优先用 API 字段渲染，脚本也能直接读 summary 验收，不需要从页面 DOM 反推；该字段不改变任何安全确认、
 Nav2、键盘、自由移动或建图启动逻辑。
+
+2026-06-30 21:15 CST 起，PC 普通首屏当前卡点新增 `plain-live-closure-wysiwyg-diagnostics`。
+该短行把相机首帧、雷达新鲜度和地图雷达贴图的失败原因合并成普通用户能读懂的中文诊断；
+DOM 同步暴露 `data-camera-probe-failure-reason`、`data-radar-scan-missing-observations`、
+`data-map-radar-blocked-reasons` 和 `data-sends-motion-when-clicked=false`。
+API 侧新增 `live_wysiwyg_diagnostic_plain`、`live_wysiwyg_camera_diagnostic_plain`、
+`live_wysiwyg_radar_diagnostic_plain`、`live_wysiwyg_map_radar_diagnostic_plain`、
+`live_wysiwyg_camera_probe_failure_reason`、`live_wysiwyg_radar_scan_missing_observations`、
+`live_wysiwyg_map_radar_blocked_reasons`。普通文案只显示“读取首帧超时、雷达频率未确认、地图缺雷达点”等中文原因；
+`scan_once/raw_packet_once` 等底层字段只保留给 API/DOM 自动化。地图使用口径保持：本页默认大地图和 `?view=map`
+服务普通用户，RViz2 用于 ROS2 工程调试，Foxglove 用于浏览器远程共享观察。

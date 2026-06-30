@@ -2728,6 +2728,13 @@ export interface RobotControlLiveClosureSummary {
   live_wysiwyg_needs_refresh: boolean;
   live_wysiwyg_readback_gap_surface_ids: string[];
   live_wysiwyg_primary_readback_gap_surface_id: string;
+  live_wysiwyg_diagnostic_plain: string;
+  live_wysiwyg_camera_diagnostic_plain: string;
+  live_wysiwyg_radar_diagnostic_plain: string;
+  live_wysiwyg_map_radar_diagnostic_plain: string;
+  live_wysiwyg_camera_probe_failure_reason: string;
+  live_wysiwyg_radar_scan_missing_observations: string[];
+  live_wysiwyg_map_radar_blocked_reasons: string[];
   fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh";
   fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
   fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview";
