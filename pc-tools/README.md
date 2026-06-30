@@ -1084,3 +1084,9 @@ Nav2 执行仍走固定 `/api/robot-control/nav2/goal/execute`，并要求现场
 `data-confirmation-ready`、`data-delivery-success-ready`、`data-confirm-ready`、`data-missing-count`
 和固定 `/api/robot-control/delivery/complete` endpoint。该短行只读状态和解释下一步，不提交送达、不发车、不调用
 manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
+
+2026-06-30 09:55 CST 起，Robot Control summary 不再信任 camera health 超时期间残留在 MJPEG relay overlay 里的
+`source_diagnosis_status=first_frame_observed`。正向“相机源首帧已读到”只接受当前 health 读回、只读首帧 probe
+或当前共享预览缓存帧；旧 overlay 的正向诊断不会再让 `camera_source_first_frame_ready=true`，也不会放开建图启动的
+`camera_first_frame` gate。无首帧、非独占等失败诊断仍可在 health 超时时保留，因为它们不会误放行建图。
+该变化只修正只读 summary/action card/建图门禁证据，不打开相机、不启动建图、不发送任何运动命令。

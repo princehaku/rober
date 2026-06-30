@@ -8673,6 +8673,115 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary does not trust stale positive camera overlay when camera health times out", async () => {
+    // 正向“首帧已读到”会放行建图，必须来自当前 health 或 probe；旧 relay overlay 只能作为历史状态。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.status", "loaded"),
+      },
+      "/api/map/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed"),
+      },
+      "/api/localize/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "blocked_with_root_cause"),
+      },
+      "/api/nav2/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "not_proven"),
+      },
+      "/api/nav2/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "not_proven"),
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.nav2_goal_execution_latest", "not_proven"),
+      },
+      "/api/operator/report": {
+        payload: safePayload("trashbot.upper_robot_api.v1.operator_report_latest_result", "loaded"),
+      },
+      "/api/free-roam/autonomy/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+      },
+      "/api/camera/health": {
+        delay_ms: 300,
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.camera_health", "ready"),
+          source_readiness: "first_frame_observed",
+          source_failure_reason: "none",
+        },
+      },
+      "/api/camera/devices": {
+        payload: safePayload("trashbot.upper_robot_api.v1.camera_devices", "devices_ready"),
+      },
+      "/api/radar/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "loaded"),
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_scan_proof_latest", "scan_stale"),
+      },
+      "/api/radar/raw-packet-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_raw_packet_proof_latest", "raw_packet_not_proven"),
+      },
+      "/api/base/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded"),
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples", "loaded"),
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl, null, {
+        client_count: 0,
+        upstream_active: false,
+        content_type_loaded: false,
+        cached_frame_loaded: false,
+        cached_frame_age_ms: null,
+        shared_capture: true,
+        exclusive_camera_claim: false,
+        last_failure_reason: "none",
+        last_remote_http_status: 200,
+        last_failure_at_ms: null,
+        source_diagnosis_status: "first_frame_observed",
+        source_diagnosis_plain_hint: "USB Composite Device: DV20 USB 已读到真实首帧，可继续看实时预览。",
+        source_diagnosis_next_action: "open_shared_preview",
+        source_diagnosis_not_exclusive: "true",
+      }, { readbackTimeoutMs: 50 });
+
+      expect(summary.read_endpoints.find((item) => item.id === "camera_health")).toEqual(expect.objectContaining({
+        request_status: "fetch_failed",
+        blocked_reasons: ["fetch_timeout_50ms"],
+      }));
+      expect(summary.readback_summary.camera.status).toBe("fetch_failed");
+      expect(summary.readback_summary.camera.source_readiness).not.toBe("first_frame_observed");
+      expect(summary.readback_summary.camera.source_diagnosis_status).not.toBe("first_frame_observed");
+      expect(summary.readback_summary.camera.camera_wysiwyg_status_plain).toContain("未出帧前不当作画面可见");
+      expect(summary.readback_summary.camera.camera_wysiwyg_status_plain).not.toContain("首帧已读到");
+      expect(summary.current_fact_plain).not.toContain("首帧已读到");
+      expect(summary.action_status_cards?.find((card) => card.id === "camera_preview")).toMatchObject({
+        blocks_mapping_start: true,
+        evidence: {
+          camera_current_frame_visible: false,
+          camera_source_first_frame_ready: false,
+          camera_source_readiness: "not_loaded",
+          camera_blocks_mapping_start: true,
+          source_diagnosis_status: "not_loaded",
+          first_frame_probe_read_ok: false,
+          visible_content_proven: false,
+          shared_preview_cached_frame_loaded: false,
+        },
+      });
+      expect(summary.safe_command_boundary.free_roam_mapping_start_missing_reasons).toContain("camera_first_frame");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary treats relay first-frame total timeout as source failure when camera health times out", async () => {
     // live 7001 形态：共享预览最近失败保留原始 first_frame_total_timeout；summary 不能退回 fetch_failed。
     const safePayload = (schema: string, status = "loaded") => ({

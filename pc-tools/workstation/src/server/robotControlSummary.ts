@@ -2029,6 +2029,8 @@ function cameraSummaryFromReadbacks(
   const devicesReadback = readbackById(readbacks, "camera_devices");
   const healthPayload = healthReadback?.payload ?? null;
   const devicesPayload = devicesReadback?.payload ?? null;
+  const healthRequestStatus = healthReadback?.request_status ?? "not_loaded";
+  const cameraHealthLoaded = healthRequestStatus === "loaded";
   const devicesRecord = asRecord(devicesPayload);
   const currentSelection = asRecord(findFirstKey(healthPayload, ["current_selection"]));
   const sourceSummary = asRecord(findFirstKey(healthPayload, ["source_summary"]));
@@ -2152,6 +2154,8 @@ function cameraSummaryFromReadbacks(
     && overlaySourceDiagnosis.plain_hint
     && !["not_loaded", "none"].includes(overlaySourceDiagnosis.plain_hint)
   );
+  const overlayDiagnosisIsPositiveFirstFrame = overlaySourceDiagnosis.status === "first_frame_observed";
+  const overlayDiagnosisCanStandAlone = !overlayDiagnosisIsPositiveFirstFrame || cameraHealthLoaded;
   const derivedSourceDiagnosis = probeBackendNoFrameNotExclusive
     ? {
       status: "uvc_no_frame_not_exclusive",
@@ -2160,7 +2164,7 @@ function cameraSummaryFromReadbacks(
       next_action_plain: cameraActionPlainText("check_usb_camera_input_power_or_known_good_uvc"),
       not_exclusive: true,
     }
-    : overlayDiagnosisAvailable && !asRecord(sourceDiagnosis)
+    : overlayDiagnosisAvailable && overlayDiagnosisCanStandAlone && !asRecord(sourceDiagnosis)
       ? {
         status: overlaySourceDiagnosis.status,
         plain_hint: overlaySourceDiagnosis.plain_hint,
@@ -2195,8 +2199,9 @@ function cameraSummaryFromReadbacks(
       : "none"
     : compactValueText(mjpegRelayOverlay.last_remote_http_status);
   const sourceFirstFrameObserved = Boolean(
+    // 正向首帧证明必须来自当前 health/probe；relay overlay 可能是旧状态，不能在 health 超时时放行建图。
     resolvedSourceReadiness === "first_frame_observed"
-    || derivedSourceDiagnosis.status === "first_frame_observed"
+    || (cameraHealthLoaded && asString(sourceDiagnosis?.status, "") === "first_frame_observed")
     || probeVisibleContentObserved,
   );
   const rawPreviewGuidance = cameraSummaryPreviewGuidance(sharedPreviewStatus, sourceFirstFrameFailedForSharedPreview, derivedSourceDiagnosis);
@@ -7268,7 +7273,7 @@ function buildActionStatusCards(
   // 这些卡片是首屏“现在能做什么”的结构化摘要，不新增任何控制能力或放行条件。
   const cameraVisible = readback.camera.camera_wysiwyg_status_plain.startsWith("画面已可见");
   const cameraSourceFirstFrameReady = readback.camera.source_readiness === "first_frame_observed"
-    || readback.camera.source_diagnosis_status === "first_frame_observed"
+    || cameraVisible
     || actionCardBoolean(readback.camera.first_frame_probe_read_ok, false)
     || actionCardBoolean(readback.camera.first_frame_probe_visible_content_proven, false);
   const mapVisible = mapWysiwygVisibleFromPlain(readback.map.map_wysiwyg_status_plain);

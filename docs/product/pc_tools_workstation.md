@@ -4544,3 +4544,10 @@ DOM 同步暴露 `data-nav2-ready`、`data-material-ready`、`data-route-map-mat
 `data-confirmation-ready`、`data-delivery-success-ready`、`data-confirm-ready`、`data-missing-count`
 和固定 `/api/robot-control/delivery/complete` endpoint。
 该变化只提升完整行程后的送达收口可读性，不自动提交送达、不发车、不调用任何运动接口。
+
+2026-06-30 09:55 CST 起，Robot Control 的相机源首帧 gate 改为当前证据优先：
+当 `/api/camera/health` 在 summary 预算内超时或未加载时，MJPEG relay overlay 里残留的
+`source_diagnosis_status=first_frame_observed` 不再被当作当前首帧证明。PC 端只有在当前 health 明确返回
+`source_readiness=first_frame_observed`、只读首帧 probe 成功，或共享实时预览已经有缓存帧时，才会显示
+“相机源首帧已读到”并让 `camera_source_first_frame_ready=true`。失败类 overlay 诊断仍保留用于解释“不是页面独占 /
+UVC 无首帧”，但不会放行建图。该变化只修正普通首屏事实和结构化门禁证据，不打开相机、不启动建图、不发送任何运动命令。
