@@ -1137,6 +1137,18 @@ h3 {
   white-space: nowrap;
 }
 
+.plain-map-direct-view-link-primary {
+  /* 地图大屏是普通用户解决“地图太小”的首选入口，所以在工具行里保持第一视觉优先级。 */
+  border-color: #0f6b45;
+  background: #e8f6ef;
+  color: #114831;
+  font-weight: 760;
+}
+
+.plain-map-direct-view-link-primary:hover {
+  background: #d8f0e4;
+}
+
 .plain-map-panel[data-fullscreen="true"] {
   /* 全屏只放大只读画面和 marker，不改变任何控制按钮的安全门禁。 */
   position: fixed;
@@ -3148,7 +3160,8 @@ th {
 
   .plain-map-size-toggle,
   .plain-map-fullscreen-toggle,
-  .plain-map-observer-toggle {
+  .plain-map-observer-toggle,
+  .plain-map-direct-view-link {
     flex: 1 1 140px;
   }
 

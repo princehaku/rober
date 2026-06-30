@@ -16710,6 +16710,34 @@ onBeforeUnmount(() => {
           <div class="plain-map-heading">
             <h3>地图</h3>
             <div class="plain-map-heading-actions">
+              <a
+                class="secondary plain-link-button plain-map-direct-view-link plain-map-direct-view-link-primary"
+                data-testid="plain-map-direct-view-link"
+                :href="plainMapDirectViewHref"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-map-view-action="open_direct_map_view"
+                data-user-facing-primary-map-action="true"
+                data-ordinary-user-map-entry="true"
+                data-opens-new-window="true"
+                data-direct-map-view-url="?view=map"
+                data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
+                data-direct-map-view-default-zoom-percent="800%"
+                data-sends-motion-when-clicked="false"
+                data-starts-ros2="false"
+                data-starts-rviz2="false"
+                data-starts-map-runtime="false"
+                data-starts-nav2="false"
+                data-uses-browser-fullscreen-api="false"
+                data-refreshes-map-preview-on-enter="true"
+                data-refreshes-radar-status-on-enter="true"
+                data-keeps-wysiwyg-overlays="image-route-robot-radar"
+                data-ros2-companion-required="false"
+                data-ros2-companion-tool="rviz2"
+                data-ros2-remote-companion-tool="foxglove"
+              >
+                打开地图大屏
+              </a>
               <div
                 class="plain-map-zoom-controls"
                 data-testid="plain-map-zoom-controls"
@@ -16784,30 +16812,6 @@ onBeforeUnmount(() => {
               >
                 {{ plainMapObserverView ? "退出只看" : "只看地图" }}
               </button>
-              <a
-                class="secondary plain-link-button plain-map-direct-view-link"
-                data-testid="plain-map-direct-view-link"
-                :href="plainMapDirectViewHref"
-                target="_blank"
-                rel="noopener noreferrer"
-                data-map-view-action="open_direct_map_view"
-                data-direct-map-view-url="?view=map"
-                data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-                data-direct-map-view-default-zoom-percent="800%"
-                data-sends-motion-when-clicked="false"
-                data-starts-ros2="false"
-                data-starts-rviz2="false"
-                data-starts-map-runtime="false"
-                data-starts-nav2="false"
-                data-uses-browser-fullscreen-api="false"
-                data-refreshes-map-preview-on-enter="true"
-                data-refreshes-radar-status-on-enter="true"
-                data-keeps-wysiwyg-overlays="image-route-robot-radar"
-                data-ros2-companion-tool="rviz2"
-                data-ros2-remote-companion-tool="foxglove"
-              >
-                打开地图大屏
-              </a>
             </div>
           </div>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" data-wysiwyg-surface="primary-map" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize">
@@ -17004,6 +17008,9 @@ onBeforeUnmount(() => {
             data-testid="plain-map-display-proof"
             data-user-facing-map-surface="pc_plain_big_map"
             data-primary-map-first="true"
+            data-primary-map-action-testid="plain-map-direct-view-link"
+            data-primary-map-action-label="打开地图大屏"
+            data-primary-map-action-opens-new-window="true"
             data-wysiwyg-overlays="image-route-robot-radar"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
@@ -17017,6 +17024,7 @@ onBeforeUnmount(() => {
             data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
+            data-ros2-companion-required="false"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
             data-foxglove-bridge-status="handoff_required"
             data-sends-motion-when-clicked="false"
@@ -17031,9 +17039,13 @@ onBeforeUnmount(() => {
           <p
             class="panel-note plain-map-ros2-tool-note"
             data-testid="plain-map-ros2-tool-note"
+            data-ordinary-user-map-tool="pc_big_map"
             data-ros2-companion-tools="rviz2,foxglove"
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
+            data-ros2-companion-required="false"
+            data-rviz-for-engineering-only="true"
+            data-foxglove-for-remote-observation-only="true"
             data-rviz-companion-purpose="local_engineering_debug_map_scan_tf_path_pose"
             data-foxglove-companion-purpose="browser_remote_observation_map_scan_tf_path_pose"
             data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
