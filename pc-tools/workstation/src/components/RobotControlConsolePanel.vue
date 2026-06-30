@@ -303,7 +303,7 @@ const plainMapDirectViewRequested = computed(() => {
   const view = params.get("view") ?? params.get("mode");
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16] as const;
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24] as const;
 const plainMapZoomIndex = ref(PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
@@ -313,7 +313,7 @@ const plainMapZoomStyle = computed(() => ({
 const plainMapDisplayProofText = computed(() => {
   // 这行给普通用户确认“当前就是大地图”，ROS2 配套只作为工程观察入口，不改变本页控制边界。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，当前 ${plainMapZoomPercent.value}，图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先打开 /map 大地图，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；工程调试命令：${PLAIN_MAP_RVIZ_LAUNCH_COMMAND}；远程浏览器观察先部署 Foxglove bridge：${PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND}。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
+  return `地图显示：${viewText}，当前 ${plainMapZoomPercent.value}，图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户优先打开 /map 超大地图，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；工程调试命令：${PLAIN_MAP_RVIZ_LAUNCH_COMMAND}；远程浏览器观察先部署 Foxglove bridge：${PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND}。本条只读，不启动 ROS2/RViz2/Foxglove/行程执行，不发车。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -17497,7 +17497,7 @@ onBeforeUnmount(() => {
           data-default-map-layout="dominant-first-screen-map"
           data-default-map-height-mode="viewport-dominant"
           data-default-size="large"
-          data-default-map-zoom-percent="1600%"
+          data-default-map-zoom-percent="2400%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -17510,7 +17510,7 @@ onBeforeUnmount(() => {
           data-direct-map-view-url="/map"
           data-direct-map-view-legacy-url="?view=map"
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-          data-direct-map-view-default-zoom-percent="1600%"
+          data-direct-map-view-default-zoom-percent="2400%"
           data-direct-map-loads-camera-preview="false"
           data-direct-map-refreshes-camera-mjpeg-status="false"
           data-direct-map-starts-camera-webrtc="false"
@@ -17554,7 +17554,7 @@ onBeforeUnmount(() => {
                 data-direct-map-view-url="/map"
                 data-direct-map-view-legacy-url="?view=map"
                 data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-                data-direct-map-view-default-zoom-percent="1600%"
+                data-direct-map-view-default-zoom-percent="2400%"
                 data-sends-motion-when-clicked="false"
                 data-starts-ros2="false"
                 data-starts-rviz2="false"
@@ -17868,8 +17868,8 @@ onBeforeUnmount(() => {
             data-wysiwyg-overlays="image-route-robot-radar"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
-            data-default-map-zoom-percent="1600%"
-            data-max-map-zoom-percent="1600%"
+            data-default-map-zoom-percent="2400%"
+            data-max-map-zoom-percent="2400%"
             :data-current-map-zoom-percent="plainMapZoomPercent"
             :data-current-map-size="plainMapViewSize"
             :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
@@ -17910,7 +17910,7 @@ onBeforeUnmount(() => {
             data-foxglove-bridge-package="foxglove_bridge"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
           >
-            PC 默认先显示近整屏 1600% 大地图；需要独立观察屏时打开 /map 地图大屏，?view=map 继续兼容，直达页同样使用 1600% 上限；专业调试用 RViz2，运行 {{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }} 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时先在已安装 foxglove_bridge 的 ROS2 环境运行 {{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}，再接 Foxglove Studio；普通操作仍在本页完成。
+            PC 默认先显示近整屏 2400% 超大地图；需要独立观察屏时打开 /map 地图大屏，?view=map 继续兼容，直达页同样使用 2400% 上限；专业调试用 RViz2，运行 {{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }} 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时先在已安装 foxglove_bridge 的 ROS2 环境运行 {{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}，再接 Foxglove Studio；普通操作仍在本页完成。
           </p>
         </article>
 
