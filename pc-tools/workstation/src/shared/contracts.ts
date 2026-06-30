@@ -2303,6 +2303,16 @@ export interface RobotControlNavGoalExecutionLatestResponse extends ProofFlags {
   goal_execution_feedback_sample_count: string;
   goal_execution_base_feedback_sample_count: string;
   goal_execution_base_feedback_nonzero_sample_count: string;
+  goal_execution_goal_succeeded: string;
+  goal_execution_wheel_rerun_needed: string;
+  goal_execution_minimal_precheck_safety_only: boolean;
+  goal_execution_safety_confirm_required: boolean;
+  goal_execution_camera_preflight_required: false;
+  goal_execution_radar_preflight_required: false;
+  goal_execution_operator_report_preflight_required: false;
+  goal_execution_route_wysiwyg_preflight_required: false;
+  fixed_goal_execution_endpoint: "/api/robot-control/nav2/goal/execute";
+  fixed_goal_execution_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest";
   plain_hint: string;
   execution_status_plain: string;
   next_action_plain: string;

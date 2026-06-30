@@ -3782,6 +3782,16 @@ export function createWorkstationApp(): express.Express {
       goal_execution_feedback_sample_count: "not_loaded",
       goal_execution_base_feedback_sample_count: "not_loaded",
       goal_execution_base_feedback_nonzero_sample_count: "not_loaded",
+      goal_execution_goal_succeeded: "not_loaded",
+      goal_execution_wheel_rerun_needed: "not_loaded",
+      goal_execution_minimal_precheck_safety_only: true,
+      goal_execution_safety_confirm_required: true,
+      goal_execution_camera_preflight_required: false,
+      goal_execution_radar_preflight_required: false,
+      goal_execution_operator_report_preflight_required: false,
+      goal_execution_route_wysiwyg_preflight_required: false,
+      fixed_goal_execution_endpoint: "/api/robot-control/nav2/goal/execute",
+      fixed_goal_execution_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
       plain_hint: "图上路线还未准备完成。",
       execution_status_plain: "图上路线还未准备完成。",
       next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
@@ -3843,6 +3853,10 @@ export function createWorkstationApp(): express.Express {
         goal_execution_base_feedback_latest_raw_left: latestPlainFields.goal_execution_base_feedback_latest_raw_left,
         goal_execution_base_feedback_latest_raw_right: latestPlainFields.goal_execution_base_feedback_latest_raw_right,
       };
+      const goalExecutionGoalSucceeded = goalExecutionKeyValues.status === "goal_succeeded"
+        || goalExecutionKeyValues.result_status === "succeeded";
+      const goalExecutionWheelRerunNeeded = goalExecutionGoalSucceeded
+        && goalExecutionKeyValues.nav2_goal_execution_proven !== "true";
       const responseBody: RobotControlNavGoalExecutionLatestResponse = {
         ...fallbackBase,
         proxy_status: remote.ok && dangerous.length === 0 ? "latest_loaded" : "latest_failed",
@@ -3859,6 +3873,16 @@ export function createWorkstationApp(): express.Express {
         goal_execution_feedback_sample_count: goalExecutionKeyValues.feedback_sample_count ?? "not_loaded",
         goal_execution_base_feedback_sample_count: goalExecutionKeyValues.base_feedback_sample_count ?? "not_loaded",
         goal_execution_base_feedback_nonzero_sample_count: goalExecutionKeyValues.base_feedback_nonzero_sample_count ?? "not_loaded",
+        goal_execution_goal_succeeded: String(goalExecutionGoalSucceeded),
+        goal_execution_wheel_rerun_needed: String(goalExecutionWheelRerunNeeded),
+        goal_execution_minimal_precheck_safety_only: true,
+        goal_execution_safety_confirm_required: true,
+        goal_execution_camera_preflight_required: false,
+        goal_execution_radar_preflight_required: false,
+        goal_execution_operator_report_preflight_required: false,
+        goal_execution_route_wysiwyg_preflight_required: false,
+        fixed_goal_execution_endpoint: "/api/robot-control/nav2/goal/execute",
+        fixed_goal_execution_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
         ...latestPlainFields,
         plain_hint: latestPlainFields.execution_status_plain,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `latest_http_status_${remote.status}`,
