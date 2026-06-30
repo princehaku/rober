@@ -9,6 +9,8 @@ sprint_type: micro
 - 扩展 `onboard/scripts/test_upper_robot_api_free_roam.py`，验证 LiDAR driver 诊断 JSON 的 nested `diagnosis.status` 会展平成 PC 可消费的 `diagnosis_status`，例如 `serial_open_but_no_bytes`。
 - 更新 `docs/product/pc_tools_workstation.md`，同步本轮现场只读诊断结论：PC 地图普通用户用本页大地图和 `?view=map`，ROS2 配套建议 RViz2 / Foxglove；相机当前问题按 USB/UVC 无首帧处理，雷达按 WAVE ROVER/STC vendor 资料和 driver diagnostics 排查。
 - 2026-06-30 19:42 CST 现场部署到上车端：备份旧文件到 `/root/rober/runtime/deploy_backups/sensor_diag_20260630_194247` 和 `/root/rober/runtime/deploy_backups/upper_api_sensor_diag_20260630_194532`；同步 `local_webrtc_camera_smoke.py`、`o1_lidar_lifecycle.sh`、`lidar_driver.py`、`upper_robot_api.py`；远端重建 `ros2_trashbot_hardware` 并重启 8088 相机服务、8787 upper API、LiDAR lifecycle。该部署未调用任何底盘 motion/control POST，LiDAR lifecycle 只使用 `/dev/ttyACM0`，明确不使用 `/dev/ttyS5` 或 `/cmd_vel`。
+- 修正 `onboard/scripts/o1_lidar_scan_proof_collector.py`：雷达 status 的 `fresh_scan_proof_observed` 不再被当成 blocker；topic 读取从四路并发改为顺序读取，避免 ROS2 CLI discovery 抖动；短窗口读取失败但上车已有 fresh latest proof 时，保留 fresh proof 作为 fallback，避免把好 artifact 覆盖成坏材料。
+- 修正 PC radar proof refresh 固定合同：`pc-tools/workstation/src/server/robotControlSummary.ts` 不再从刷新按钮请求 `start_runtime`，固定 body 改为 `timeout_s=12`，代理 timeout 预算调为 90 秒；雷达启动继续走独立 `/api/robot-control/radar/start`，proof refresh 只读已有 topic。
 
 ## 验证结果
 
@@ -22,6 +24,7 @@ sprint_type: micro
 - 上车端 LiDAR driver diagnostics：`diagnosis.status=scan_published`，`bytes_read_total=314482`、`packet_count_total=9387`、`published_raw_packet_count=9387`、`published_scan_count=515`；`ros2 topic echo --once /lidar/raw_packet` 和 `/scan` 均成功返回。
 - PC 7001 只读刷新：`POST /api/robot-control/radar/scan-proof/refresh` 观测到 `scan_once_observed=true`、`scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`；`GET /api/robot-control/map/preview` 返回 `radar_overlay_status=loaded`、`radar_overlay_point_count=72`、`path_preview_status=path_preview_observed`、`robot_pose_status=map_pose_observed`。
 - PC 7001 summary：`readback_summary.radar.status=radar_ready`、`driver_diagnostics_status=scan_published`、`readback_summary.map.radar_overlay_status=loaded`、`radar_overlay_point_count=72`；`live_closure_summary.side_blocker_ids` 已不再包含 `radar_map_points_wysiwyg`。
+- 2026-06-30 20:10 CST 复验 PC 固定雷达刷新：`POST /api/robot-control/radar/scan-proof/refresh` 返回 `proxy_status=refresh_forwarded`、`last_result_status=refreshed`、`scan_once_observed=true`、`scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`、`latest_scan_proof_fresh=true`、`blocked_reasons=[]`；同轮 `GET /api/robot-control/map/preview` 返回 `radar_overlay_status=loaded`、`radar_overlay_point_count=72`。
 
 ## 剩余风险
 

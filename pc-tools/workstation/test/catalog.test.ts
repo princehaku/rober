@@ -9992,9 +9992,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(radarBody.latest_readback_key_values.blocked_reasons).toBeUndefined();
       expect(radarBody.latest_readback_key_values.continuity_blocked_reasons).toBeUndefined();
       expect(upstream.receivedBodies["/api/radar/scan-proof/refresh"]?.[0]).toEqual({
-        timeout_s: 20,
-        runtime_warmup_s: 15,
-        start_runtime: true,
+        timeout_s: 12,
       });
 
       const mapResponse = await fetch(
@@ -11597,11 +11595,11 @@ describe("workstation fail-closed API contracts", () => {
     // timeout 由 body 预估时长加余量推导，不再用拍脑袋的固定 15s / 50s。
     expect(
       computeRobotProofRefreshTimeoutMs({
-        request_body: { timeout_s: 20, runtime_warmup_s: 15, start_runtime: true },
-        timeout_cap_ms: 60_000,
-        safety_margin_ms: 10_000,
+        request_body: { timeout_s: 12 },
+        timeout_cap_ms: 120_000,
+        safety_margin_ms: 78_000,
       }),
-    ).toBe(45_000);
+    ).toBe(90_000);
     expect(
       computeRobotProofRefreshTimeoutMs({
         request_body: { timeout_s: 45 },
@@ -11648,11 +11646,11 @@ describe("workstation fail-closed API contracts", () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     try {
       const response = await buildRadarScanProofRefreshProxy("http://127.0.0.1:8787");
-      expect(timeoutSpy).toHaveBeenCalledWith(45_000);
+      expect(timeoutSpy).toHaveBeenCalledWith(90_000);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(response.proxy_status).toBe("refresh_failed");
-      expect(response.failure_reason).toBe("fetch_timeout_45000ms");
-      expect(response.blocked_reasons).toContain("fetch_timeout_45000ms");
+      expect(response.failure_reason).toBe("fetch_timeout_90000ms");
+      expect(response.blocked_reasons).toContain("fetch_timeout_90000ms");
       expect(response.safe_to_control).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;

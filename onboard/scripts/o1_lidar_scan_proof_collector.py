@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import concurrent.futures
 import json
 import os
 import re
@@ -202,32 +201,25 @@ def run_topic_read_commands(
     timeout_s: float,
     command_runner: Callable[[str, float], dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
-    """并发读取短生命周期 ROS2 topic/TF，避免串行采样错过同一 runtime 窗口。"""
+    """顺序读取 ROS2 topic/TF，避免多路 ros2 CLI 同时 discovery 时互相拖垮。"""
     results: dict[str, dict[str, Any]] = {}
     if not commands:
         return results
-    # API-managed LiDAR smoke 是短窗口 runtime；四个 probe 必须同时抢 DDS discovery 和消息。
-    # 如果串行执行，前两个 echo 成功后 driver/TF 可能已经退出，hz/TF 会被误判为 false。
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(commands), 4)) as executor:
-        future_to_name = {
-            executor.submit(command_runner, command, timeout_s + 2): name for name, command in commands.items()
-        }
-        for future in concurrent.futures.as_completed(future_to_name):
-            name = future_to_name[future]
-            command = commands[name]
-            try:
-                results[name] = future.result()
-            except Exception as exc:  # noqa: BLE001 - 单个 probe 异常不能吞掉其他 topic 证据。
-                results[name] = {
-                    "command": command,
-                    "returncode": None,
-                    "ok": False,
-                    "stdout_preview": "",
-                    "stderr_preview": "",
-                    "error": compact_error(exc),
-                }
-    # 按原始命令顺序输出，避免 artifact diff 因并发完成顺序抖动。
-    return {name: results[name] for name in commands if name in results}
+    # 真机上 4 个 `ros2` CLI 并发启动会让 DDS discovery 抖动，出现手工读取成功、
+    # collector 却三个 topic 全 timeout 的假阴性。顺序读取虽然稍慢，但仍在 API 预算内。
+    for name, command in commands.items():
+        try:
+            results[name] = command_runner(command, timeout_s + 2)
+        except Exception as exc:  # noqa: BLE001 - 单个 probe 异常不能吞掉后续 topic 证据。
+            results[name] = {
+                "command": command,
+                "returncode": None,
+                "ok": False,
+                "stdout_preview": "",
+                "stderr_preview": "",
+                "error": compact_error(exc),
+            }
+    return results
 
 
 def proof_flags() -> dict[str, bool]:
@@ -297,6 +289,65 @@ def build_required_observations(topic_reads: dict[str, Any]) -> dict[str, dict[s
     }
 
 
+def required_observations_from_upper_latest(radar_payload: dict[str, Any] | None) -> dict[str, dict[str, Any]] | None:
+    """短窗口 topic 采样抖动时，复用 8787 已加载的 fresh latest proof，避免把好材料覆盖坏。"""
+    if not isinstance(radar_payload, dict):
+        return None
+    latest = radar_payload.get("latest_scan_proof")
+    if not isinstance(latest, dict):
+        return None
+    # 只有 fresh 且已完整观察的 latest proof 才能兜底；旧材料不能重新提升成当前雷达证明。
+    if latest.get("fresh_while_observed") is not True or latest.get("all_required_observations_observed") is not True:
+        return None
+    required = latest.get("required_observations")
+    if isinstance(required, dict) and required:
+        copied: dict[str, dict[str, Any]] = {}
+        for key in ("scan_once", "scan_hz", "raw_packet_once", "tf"):
+            value = required.get(key)
+            if not isinstance(value, dict) or value.get("observed") is not True:
+                return None
+            copied[key] = {
+                "topic": value.get("topic"),
+                "parent_frame": value.get("parent_frame"),
+                "child_frame": value.get("child_frame"),
+                "observed": True,
+                "average_rate_hz": value.get("average_rate_hz"),
+                "result_key": value.get("result_key") or key,
+                "fallback_source": "upper_api_radar_status_latest_scan_proof",
+            }
+        return copied
+    if not all(latest.get(key) is True for key in ("scan_once_observed", "scan_hz_observed", "raw_packet_once_observed", "tf_observed")):
+        return None
+    return {
+        "scan_once": {
+            "topic": SCAN_TOPIC,
+            "observed": True,
+            "result_key": "scan_once",
+            "fallback_source": "upper_api_radar_status_latest_scan_proof",
+        },
+        "scan_hz": {
+            "topic": SCAN_TOPIC,
+            "observed": True,
+            "average_rate_hz": latest.get("scan_hz_average_rate_hz"),
+            "result_key": "scan_hz",
+            "fallback_source": "upper_api_radar_status_latest_scan_proof",
+        },
+        "raw_packet_once": {
+            "topic": RAW_PACKET_TOPIC,
+            "observed": True,
+            "result_key": "raw_packet_once",
+            "fallback_source": "upper_api_radar_status_latest_scan_proof",
+        },
+        "tf": {
+            "parent_frame": BASE_FRAME,
+            "child_frame": LIDAR_FRAME,
+            "observed": True,
+            "result_key": "tf",
+            "fallback_source": "upper_api_radar_status_latest_scan_proof",
+        },
+    }
+
+
 def build_probe_payload(
     *,
     upper_api_base_url: str = DEFAULT_UPPER_API_BASE_URL,
@@ -338,7 +389,7 @@ def build_probe_payload(
         blockers.append({"code": "lidar_device_candidate_missing", "detail": "no /dev/lidar, /dev/ttyACM0, or STC by-id candidate exists"})
     radar_payload = upper_api["radar_status"].get("payload") if isinstance(upper_api["radar_status"], dict) else None
     radar_scan_status = radar_payload.get("scan_status") if isinstance(radar_payload, dict) else None
-    if radar_scan_status not in {"proven", "scan_once_observed", "scan_hz_observed"}:
+    if radar_scan_status not in {"proven", "scan_once_observed", "scan_hz_observed", "fresh_scan_proof_observed"}:
         blockers.append({"code": "upper_api_scan_not_proven", "detail": f"8787 radar scan_status={radar_scan_status!r}"})
 
     topic_reads: dict[str, Any] = {
@@ -360,6 +411,12 @@ def build_probe_payload(
         topic_reads["reason"] = "blocked_before_topic_read_by_ros2_runtime"
 
     required_observations = build_required_observations(topic_reads)
+    fallback_required_observations = required_observations_from_upper_latest(radar_payload)
+    fallback_used = False
+    # collector 是短只读窗口，DDS discovery 偶发 miss 时不能把 8787 已证明 fresh 的材料覆盖成坏 artifact。
+    if not all(item["observed"] for item in required_observations.values()) and fallback_required_observations:
+        required_observations = fallback_required_observations
+        fallback_used = True
     scan_once_ok = required_observations["scan_once"]["observed"]
     scan_hz_ok = required_observations["scan_hz"]["observed"]
     raw_packet_ok = required_observations["raw_packet_once"]["observed"]
@@ -405,6 +462,8 @@ def build_probe_payload(
             "tf_observed": tf_ok,
             "required_observations": required_observations,
             "all_required_observations_observed": all_required_observations_ok,
+            "runtime_summary_fallback_used": fallback_used,
+            "runtime_summary_fallback_source": "upper_api_radar_status_latest_scan_proof" if fallback_used else None,
             "pointcloud_fabricated": False,
             "driver_started_by_collector": False,
             "lidar_start_command_sent_by_collector": False,

@@ -4686,6 +4686,13 @@ UVC 设备当前没有输出视频帧”，而不是提示浏览器抢占。雷�
 和“有字节但协议/解析不对”。普通地图仍优先使用本页大地图和 `?view=map`；ROS2 配套工具推荐 RViz2 做本地工程调试，
 Foxglove 做浏览器远程观察，但二者都不是普通用户发车、键盘手控或自由移动的前置条件。
 
+2026-06-30 20:10 CST 起，PC 雷达 proof refresh 改为只读已有 topic，不再在刷新按钮里请求 `start_runtime`。
+雷达启动仍由固定 `/api/robot-control/radar/start` 负责；刷新只调用上车 `/api/radar/scan-proof/refresh` 的
+`timeout_s=12` 固定 body，并给 PC 代理 90 秒预算，覆盖上车端顺序读取 `/scan`、`/scan hz`、`/lidar/raw_packet`
+和 TF 的稳定窗口。上车 collector 同步改为顺序运行 ROS2 CLI，避免四路 CLI 并发 discovery 时把真实存在的
+`/scan` 误判成 timeout；如果短窗口仍抖动，但 8787 已有 fresh latest proof，collector 会保留该 fresh proof，
+不会把好材料覆盖成坏材料。该变化只修正雷达 WYSIWYG 证据刷新，不启动底盘、不发布 `/cmd_vel`。
+
 2026-06-30 21:35 CST 起，完整 Nav2 路线执行的当前卡点在 API 层也使用普通用户文案。
 `live_closure_summary.status=needs_wheel_rerun` 时，`summary_plain` 写“同窗口轮速 L/R 还没有非零闭环”，
 `next_action_plain` 写“复验轮速 L/R 非零”，不再要求前端把 `wheel raw L/R` 二次翻译成中文。

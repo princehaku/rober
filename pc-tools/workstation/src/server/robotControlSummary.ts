@@ -265,14 +265,11 @@ const RADAR_SCAN_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
   kind: "radar_scan_proof_refresh",
   endpoint: "/api/radar/scan-proof/refresh",
   request_body: {
-    // 真实上位机冷启动 LiDAR runtime 需要先等 ROS2 driver、raw packet 和 TF 都进入稳定窗口；
-    // 固定长 warmup 仍是 no-motion 证据采集，不开放浏览器自定义控制参数。
-    timeout_s: 20,
-    runtime_warmup_s: 15,
-    start_runtime: true,
+    // 雷达启动归 `/radar/start` 管；proof refresh 只读已有 topic，避免无 runtime command 时把成功扫描误判 blocked。
+    timeout_s: 12,
   },
-  timeout_cap_ms: 60_000,
-  safety_margin_ms: 10_000,
+  timeout_cap_ms: 120_000,
+  safety_margin_ms: 78_000,
   key_fields: [
     "status",
     "latest_proof_status",
