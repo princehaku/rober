@@ -105,6 +105,14 @@ describe("robotControlSummary", () => {
     });
 
     expect(summary.live_closure_summary?.status).toBe("needs_wheel_rerun");
+    expect(summary.live_closure_summary?.summary_plain).toBe(
+      "当前卡点：图上路线已经有执行成功读数，但同窗口轮速 L/R 还没有非零闭环。",
+    );
+    expect(summary.live_closure_summary?.summary_plain).not.toContain("wheel raw");
+    expect(summary.live_closure_summary?.next_action_plain).toBe(
+      "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。",
+    );
+    expect(summary.live_closure_summary?.next_action_plain).not.toContain("wheel raw");
     expect(summary.live_closure_summary?.needs_same_window_wheel_rerun).toBe(true);
     expect(summary.live_closure_summary?.wheel_rerun_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.wheel_rerun_safety_confirm_required).toBe(true);

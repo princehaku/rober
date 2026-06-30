@@ -4676,3 +4676,9 @@ API 侧新增 `live_wysiwyg_diagnostic_plain`、`live_wysiwyg_camera_diagnostic_
 不再把 `scan_once/scan_hz/raw_packet_once` 直接放到用户可见文本里；机器可读字段
 `radar_scan_observation_missing_reasons` 仍保留原值。该口径同时覆盖 summary、`/api/robot-control/radar/status`
 代理和 `radar_map_points` action card，保持“地图雷达点是否显示”仍以同轮地图预览为准。
+
+2026-06-30 21:35 CST 起，完整 Nav2 路线执行的当前卡点在 API 层也使用普通用户文案。
+`live_closure_summary.status=needs_wheel_rerun` 时，`summary_plain` 写“同窗口轮速 L/R 还没有非零闭环”，
+`next_action_plain` 写“复验轮速 L/R 非零”，不再要求前端把 `wheel raw L/R` 二次翻译成中文。
+机器可读验收字段继续保留：`needs_same_window_wheel_rerun=true`、`fixed_wheel_rerun_endpoint=/api/robot-control/nav2/goal/execute`
+和轮速复验相关 `data-*`，完整路线仍必须在同一个执行窗口读到轮速 L/R 非零。

@@ -1244,3 +1244,8 @@ PC 地图口径保持默认大地图主视图：普通用户优先用本页大�
 页面和 summary 会显示“没有读到一帧雷达、雷达频率未确认、雷达原始包未确认”。原始缺失项仍保留在
 `radar_scan_observation_missing_reasons`，便于自动化脚本和工程调试定位。该变化只改只读文案和 API 合同，
 不启动雷达、不刷新地图、不执行 Nav2、不发送任何运动命令。
+
+2026-06-30 21:35 CST 起，`live_closure_summary` 的 Nav2 当前卡点 API 文案也直接使用普通用户口径。
+当状态为 `needs_wheel_rerun` 时，`summary_plain` 和 `next_action_plain` 显示“同窗口轮速 L/R”而不是
+`wheel raw L/R`；结构化字段 `needs_same_window_wheel_rerun`、`fixed_wheel_rerun_endpoint`、
+`wheel_rerun_command_mode` 等保持不变。这样外部脚本或非 Vue 客户端直接读 summary API 时，也能得到与 PC 简易页面一致的文案。

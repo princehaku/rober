@@ -8332,7 +8332,7 @@ function buildLiveClosureSummary(
   };
   const nextActionPlain = (() => {
     if (needsSameWindowWheelRerun) {
-      return "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验 wheel raw L/R 非零。";
+      return "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。";
     }
     if (nav2GoalSucceeded && wheelLrNonzeroProven && !deliveryClaimReady) {
       return "路线和轮速已闭环；下一步在现场确认投递成功并记录 delivery success。";
@@ -8350,7 +8350,7 @@ function buildLiveClosureSummary(
   })();
   const summaryPlain = (() => {
     if (needsSameWindowWheelRerun) {
-      return "当前卡点：图上路线已经有执行成功读数，但同窗口 wheel raw L/R 还没有非零闭环。";
+      return "当前卡点：图上路线已经有执行成功读数，但同窗口轮速 L/R 还没有非零闭环。";
     }
     if (status === "needs_delivery") {
       return "当前卡点：行程和轮速已满足，送达成功还未写入当前材料。";
