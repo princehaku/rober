@@ -4068,6 +4068,16 @@ async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotion
     liveMotionRunbookReadbackPendingAction.value = null;
   }
 }
+
+async function refreshMappingCameraRecovery(): Promise<void> {
+  // 建图相机解锁只复测首帧、共享预览状态和 summary；不启动建图、自由移动或任何运动。
+  if (!canRunPlainCameraProbe.value) {
+    return;
+  }
+  await runCameraFirstFrameProbe();
+  await refreshCameraMjpegStatus();
+  await refreshConsole();
+}
 const plainLiveClosureFocusTargetKind = computed(() => {
   // 当前卡点按钮要说清真实落点：轮速复验先落到安全确认，勾过后才落到行程执行按钮。
   const summary = plainLiveClosureSummary.value;
@@ -16538,18 +16548,49 @@ onBeforeUnmount(() => {
           :data-camera-recovery-next-action-plain="plainLiveClosureSummary.mapping_unblock_camera_recovery_next_action_plain"
           :data-camera-recovery-sequence="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence?.join(',') || 'none'"
           :data-camera-recovery-sequence-labels="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence_labels?.join(',') || 'none'"
+          :data-camera-recovery-action-label="cameraFirstFrameProbePending ? '复测中' : '复测相机'"
+          data-camera-recovery-action-testid="plain-mapping-camera-recovery-refresh"
           :data-fixed-camera-probe-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_probe_endpoint"
           :data-fixed-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_mjpeg_status_endpoint"
           :data-fixed-summary-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_summary_endpoint"
           :data-camera-recovery-sends-motion="String(plainLiveClosureSummary.mapping_unblock_camera_recovery_sends_motion)"
           :data-fixed-mapping-start-endpoint="plainLiveClosureSummary.fixed_mapping_start_endpoint"
           :data-sends-motion-when-clicked="String(plainLiveClosureSummary.mapping_unblock_sends_motion_when_clicked)"
+          data-camera-recovery-starts-camera-exclusive-capture="false"
+          data-camera-recovery-starts-map-runtime="false"
+          data-camera-recovery-starts-free-roam="false"
+          data-camera-recovery-starts-nav2="false"
+          data-camera-recovery-starts-manual="false"
+          data-camera-recovery-starts-keyboard="false"
           data-starts-map-runtime="false"
           data-starts-free-roam="false"
           data-starts-nav2="false"
         >
           {{ plainActionCardUserText(plainLiveClosureSummary.mapping_start_unblock_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.mapping_unblock_camera_recovery_next_action_plain) }}
+          <button
+            type="button"
+            class="secondary compact-stop"
+            :disabled="!canRunPlainCameraProbe"
+            data-testid="plain-mapping-camera-recovery-refresh"
+            :data-camera-recovery-sequence="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence?.join(',') || 'none'"
+            :data-camera-recovery-sequence-labels="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence_labels?.join(',') || 'none'"
+            :data-fixed-camera-probe-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_probe_endpoint"
+            :data-fixed-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_mjpeg_status_endpoint"
+            :data-fixed-summary-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_summary_endpoint"
+            data-sends-motion-when-clicked="false"
+            data-starts-camera-exclusive-capture="false"
+            data-starts-map-runtime="false"
+            data-starts-free-roam="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            @click="refreshMappingCameraRecovery"
+          >
+            {{ cameraFirstFrameProbePending ? "复测中" : "复测相机" }}
+          </button>
         </p>
         <p
           v-if="plainLiveClosureSummary.needs_same_window_wheel_rerun"

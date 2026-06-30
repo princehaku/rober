@@ -5054,15 +5054,39 @@ describe("App", () => {
     expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-next-action-plain")).toBe("相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。");
     expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-action-label")).toBe("复测相机");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-action-testid")).toBe("plain-mapping-camera-recovery-refresh");
     expect(mappingCameraUnblockPlan.attributes("data-fixed-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(mappingCameraUnblockPlan.attributes("data-fixed-camera-mjpeg-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     expect(mappingCameraUnblockPlan.attributes("data-fixed-summary-endpoint")).toBe("/api/robot-control/summary");
     expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-sends-motion")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
     expect(mappingCameraUnblockPlan.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-starts-camera-exclusive-capture")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-starts-map-runtime")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-starts-free-roam")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-starts-nav2")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-starts-manual")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-starts-keyboard")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-starts-map-runtime")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-starts-free-roam")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-starts-nav2")).toBe("false");
+    const mappingCameraRecoveryRefresh = wrapper.find('[data-testid="plain-mapping-camera-recovery-refresh"]');
+    expect(mappingCameraRecoveryRefresh.exists()).toBe(true);
+    expect(mappingCameraRecoveryRefresh.text()).toBe("复测相机");
+    expect(mappingCameraRecoveryRefresh.attributes("data-camera-recovery-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(mappingCameraRecoveryRefresh.attributes("data-fixed-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(mappingCameraRecoveryRefresh.attributes("data-fixed-camera-mjpeg-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(mappingCameraRecoveryRefresh.attributes("data-fixed-summary-endpoint")).toBe("/api/robot-control/summary");
+    expect(mappingCameraRecoveryRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-camera-exclusive-capture")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-map-runtime")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-free-roam")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-nav2")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-manual")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-keyboard")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-submits-delivery")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-stops-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
     expect(liveClosureSummary.attributes("data-fixed-mapping-preview-endpoint")).toBe("/api/robot-control/map/preview");
     expect(liveClosureSummary.attributes("data-keyboard-control-start-ready")).toBe("true");
@@ -7083,6 +7107,47 @@ describe("App", () => {
     expect(diagnostics.text()).not.toContain("现场有人扶控并准备急停");
     expect(diagnostics.text()).not.toContain("本轮不是自动导航任务");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("rechecks mapping camera recovery without starting motion or map runtime", async () => {
+    const mockedFetch = stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const mappingCameraRecoveryRefresh = wrapper.find('[data-testid="plain-mapping-camera-recovery-refresh"]');
+    expect(mappingCameraRecoveryRefresh.exists()).toBe(true);
+    expect(mappingCameraRecoveryRefresh.text()).toBe("复测相机");
+    expect(mappingCameraRecoveryRefresh.attributes("data-camera-recovery-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(mappingCameraRecoveryRefresh.attributes("data-fixed-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(mappingCameraRecoveryRefresh.attributes("data-fixed-camera-mjpeg-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(mappingCameraRecoveryRefresh.attributes("data-fixed-summary-endpoint")).toBe("/api/robot-control/summary");
+    expect(mappingCameraRecoveryRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-camera-exclusive-capture")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-map-runtime")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-free-roam")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-nav2")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-manual")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-starts-keyboard")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-submits-delivery")).toBe("false");
+    expect(mappingCameraRecoveryRefresh.attributes("data-stops-motion")).toBe("false");
+
+    const callsBeforeMappingCameraRecovery = mockedFetch.mock.calls.length;
+    await mappingCameraRecoveryRefresh.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const mappingCameraRecoveryCalls = mockedFetch.mock.calls.slice(callsBeforeMappingCameraRecovery);
+    expect(mappingCameraRecoveryCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?") && options?.method === "POST")).toBe(true);
+    expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?"))).toBe(true);
+    expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/summary?"))).toBe(true);
+    expect(mappingCameraRecoveryCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer?") && options?.method === "POST")).toBe(false);
+    expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mappingCameraRecoveryCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(false);
   });
 
   it("exposes live WYSIWYG readback gaps when camera map and radar are unreadable", async () => {
