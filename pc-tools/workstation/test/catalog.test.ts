@@ -810,7 +810,18 @@ function listenRobotApiReadbackByPath(
   // 真实上位机不同 endpoint 延迟不同；测试用按路径响应来验证只读超时预算不会误判慢端点。
   const server = http.createServer((req, res) => {
     const url = req.url ?? "/";
-    const handler = handlers[url];
+    const handler = handlers[url] ?? (url === "/api/health"
+      ? {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.health",
+          status: "ready",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      }
+      : undefined);
     if (!handler) {
       res.statusCode = 404;
       res.setHeader("Content-Type", "application/json");
@@ -848,7 +859,18 @@ function listenSerialRobotApiReadbackByPath(
   const server = http.createServer((req, res) => {
     const url = req.url ?? "/";
     requestedUrls.push(url);
-    const handler = handlers[url];
+    const handler = handlers[url] ?? (url === "/api/health"
+      ? {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.health",
+          status: "ready",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      }
+      : undefined);
     if (!handler) {
       res.statusCode = 404;
       res.setHeader("Content-Type", "application/json");
@@ -4680,6 +4702,7 @@ describe("workstation fail-closed API contracts", () => {
       const requestedUrlIndex = (url: string) => robotApi.requestedUrls.indexOf(url);
 
       expect(summary.robot_api_connection.status).toBe("degraded");
+      expect(readStatusById.get("health")).toBe("loaded");
       expect(summary.robot_api_connection.failed_count).toBe(1);
       expect(summary.robot_api_connection.blocked_reasons).toContain("status:fetch_timeout_2400ms");
       expect(readStatusById.get("map_proof_latest")).toBe("loaded");
@@ -4688,6 +4711,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(readStatusById.get("base_status")).toBe("loaded");
       expect(readStatusById.get("status")).toBe("fetch_failed");
       expect(summary.read_endpoints.map((endpoint) => endpoint.endpoint)).toEqual([
+        "/api/health",
         "/api/status",
         "/api/map/proof/latest",
         "/api/localize/proof/latest",

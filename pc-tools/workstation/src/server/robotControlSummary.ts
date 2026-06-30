@@ -103,6 +103,8 @@ type RobotReadEndpointConfig = {
 };
 
 const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
+  // `/api/health` 是上车轻量活性探针，不聚合硬件状态；先读它可区分 API 活着和重状态端点退化。
+  { id: "health", endpoint: "/api/health", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS, summary_timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
   // 真实上位机 /api/status 会顺带聚合 camera/radar/base 子摘要，读取窗口要比 proof latest 更宽。
   { id: "status", endpoint: "/api/status", timeout_ms: HEAVY_READBACK_TIMEOUT_MS, summary_timeout_ms: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS },
   { id: "map_proof_latest", endpoint: "/api/map/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },

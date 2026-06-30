@@ -180,6 +180,7 @@ OPERATOR_REPORT_DOES_NOT_REPLACE = [
     "field video or现场记录",
 ]
 ROUTE_PATHS = {
+    "health": "/api/health",
     "camera_health": "/api/camera/health",
     "camera_devices": "/api/camera/devices",
     "camera_offer": "/api/camera/offer",
@@ -9601,6 +9602,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_route("OPTIONS", "/{tail:.*}", options)
     app.router.add_get("/", root)
     app.router.add_get("/health", health)
+    app.router.add_get(ROUTE_PATHS["health"], health)
     app.router.add_get("/api/status", status)
     app.router.add_get(ROUTE_PATHS["camera_health"], camera_health)
     app.router.add_get(ROUTE_PATHS["camera_devices"], camera_devices)

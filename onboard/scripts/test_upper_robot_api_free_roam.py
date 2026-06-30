@@ -25,6 +25,12 @@ def load_upper_robot_api_module():
 
 
 class UpperRobotApiFreeRoamTest(unittest.TestCase):
+    def test_upper_robot_api_exposes_api_health_route_constant(self) -> None:
+        """PC 先用轻量 /api/health 判断 API 活性，不能只依赖重 /api/status。"""
+        module = load_upper_robot_api_module()
+
+        self.assertEqual(module.ROUTE_PATHS["health"], "/api/health")
+
     def test_lidar_driver_diagnostics_artifact_flattens_status_for_pc(self) -> None:
         """driver 写出的诊断状态必须被 API 展平成 PC 可直接显示的字段。"""
         module = load_upper_robot_api_module()
