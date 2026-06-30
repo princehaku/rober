@@ -3920,6 +3920,15 @@ const plainLiveMotionRunbookBlockedText = computed(() => {
     .map((item) => item.label);
   return blockedLabels.join("、") || "暂无";
 });
+const plainLiveMotionRunbookPreflightPlain = computed(() => {
+  // 这行给普通用户看，避免把相机/雷达 WYSIWYG 误读成发车前硬预检。
+  const summary = plainLiveClosureSummary.value;
+  const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾" : "还未勾安全确认";
+  if (summary?.live_motion_runbook_minimal_precheck_safety_only) {
+    return `发车前：只需现场安全确认（${safetyText}）；画面和雷达不作为运动前置，建图另看传感器。`;
+  }
+  return `发车前：按当前动作卡片提示确认安全（${safetyText}）。`;
+});
 const plainLiveClosureFocusTargetKind = computed(() => {
   // 当前卡点按钮要说清真实落点：轮速复验先落到安全确认，勾过后才落到行程执行按钮。
   const summary = plainLiveClosureSummary.value;
@@ -16242,12 +16251,27 @@ onBeforeUnmount(() => {
           :data-acceptance-endpoints="plainLiveClosureSummary.live_motion_runbook_acceptance_endpoints?.join(',') || 'none'"
           :data-minimal-precheck-safety-only="String(plainLiveClosureSummary.live_motion_runbook_minimal_precheck_safety_only)"
           :data-safety-confirm-required="String(plainLiveClosureSummary.live_motion_runbook_safety_confirm_required)"
+          :data-safety-confirmed="String(plainManualSafetyConfirmed)"
+          data-camera-preflight-required-for-motion="false"
+          data-radar-preflight-required-for-motion="false"
+          :data-preflight-plain="plainLiveMotionRunbookPreflightPlain"
           data-sends-motion-when-clicked="false"
         >
           <div class="simple-status-row">
             <strong>动作清单</strong>
             <span class="muted">可做：{{ plainLiveMotionRunbookReadyText }}；未就绪：{{ plainLiveMotionRunbookBlockedText }}。</span>
           </div>
+          <p
+            class="panel-note"
+            data-testid="plain-live-motion-runbook-preflight"
+            :data-safety-confirmed="String(plainManualSafetyConfirmed)"
+            :data-minimal-precheck-safety-only="String(plainLiveClosureSummary.live_motion_runbook_minimal_precheck_safety_only)"
+            data-camera-preflight-required-for-motion="false"
+            data-radar-preflight-required-for-motion="false"
+            data-sends-motion-when-clicked="false"
+          >
+            {{ plainLiveMotionRunbookPreflightPlain }}
+          </p>
           <div
             v-for="item in plainLiveMotionRunbookRows"
             :key="item.id"

@@ -4783,6 +4783,17 @@ describe("App", () => {
     expect(liveMotionRunbook.attributes("data-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
     expect(liveMotionRunbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview");
     expect(liveMotionRunbook.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(liveMotionRunbook.attributes("data-safety-confirmed")).toBe("false");
+    expect(liveMotionRunbook.attributes("data-camera-preflight-required-for-motion")).toBe("false");
+    expect(liveMotionRunbook.attributes("data-radar-preflight-required-for-motion")).toBe("false");
+    expect(liveMotionRunbook.attributes("data-preflight-plain")).toBe("发车前：只需现场安全确认（还未勾安全确认）；画面和雷达不作为运动前置，建图另看传感器。");
+    const liveMotionRunbookPreflight = wrapper.find('[data-testid="plain-live-motion-runbook-preflight"]');
+    expect(liveMotionRunbookPreflight.text()).toBe("发车前：只需现场安全确认（还未勾安全确认）；画面和雷达不作为运动前置，建图另看传感器。");
+    expect(liveMotionRunbookPreflight.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(liveMotionRunbookPreflight.attributes("data-safety-confirmed")).toBe("false");
+    expect(liveMotionRunbookPreflight.attributes("data-camera-preflight-required-for-motion")).toBe("false");
+    expect(liveMotionRunbookPreflight.attributes("data-radar-preflight-required-for-motion")).toBe("false");
+    expect(liveMotionRunbookPreflight.attributes("data-sends-motion-when-clicked")).toBe("false");
     const keyboardRunbook = wrapper.find('[data-testid="plain-live-motion-runbook-hold_keyboard"]');
     expect(keyboardRunbook.text()).toContain("键盘连续手控");
     expect(keyboardRunbook.text()).toContain("可做");
