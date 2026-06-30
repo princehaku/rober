@@ -2829,6 +2829,12 @@ export interface RobotControlLiveClosureSummary {
   live_wysiwyg_radar_map_source_point_count: string;
   live_wysiwyg_radar_map_stale_source_points_suppressed: boolean;
   live_wysiwyg_radar_map_primary_blocked_reason: string;
+  live_wysiwyg_radar_map_refresh_next_action_plain: string;
+  live_wysiwyg_radar_map_refresh_sequence: [
+    "/api/robot-control/radar/scan-proof/refresh",
+    "/api/robot-control/map/preview",
+  ];
+  live_wysiwyg_radar_map_refresh_sequence_labels: ["刷新雷达扫描读数", "刷新地图画面"];
   fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh";
   fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
   fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview";

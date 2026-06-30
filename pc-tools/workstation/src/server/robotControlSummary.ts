@@ -1871,7 +1871,7 @@ function lidarSummaryFromReadbacks(
       ? `先补齐雷达扫描材料：${radarObservationLabelPlain(missingObservations)}；有新扫描后再刷新地图画面。`
       : radarStopped
         ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
-        : "先刷新雷达扫描 proof，确认最新扫描为 fresh 后再刷新地图画面。";
+        : "先刷新雷达扫描读数，确认拿到新扫描后再刷新地图画面。";
   const radarEndpointStatus = radarStatusReadback?.status ?? "not_loaded";
   const radarSummaryStatus =
     radarLifecycleRunning === "true" && radarContinuousStatus !== "not_loaded"
@@ -8620,6 +8620,11 @@ function buildLiveClosureSummary(
     && Number.isFinite(parsedRadarMapSourcePointCount)
     && parsedRadarMapCurrentPointCount === 0
     && parsedRadarMapSourcePointCount > 0;
+  const radarMapRefreshNextActionPlain = radarMapPointsVisible
+    ? "当前地图已有雷达点；继续监看同轮地图画面。"
+    : radarMapStaleSourcePointsSuppressed
+      ? `旧雷达来源点 ${radarMapSourcePointCount} 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。`
+      : "先刷新雷达扫描读数，再刷新地图画面，确认地图雷达点来自同轮新读数。";
   const cameraDiagnosticPlain = cameraCurrentVisible
     ? "画面诊断：当前页面已有实时画面。"
     : cameraSourceDiagnosisTail
@@ -8627,10 +8632,14 @@ function buildLiveClosureSummary(
       : `画面诊断：首帧未证明；状态=${cameraProbeStatusLabel(readback.camera.first_frame_probe_status || "not_loaded")}；原因=${cameraFailureLabel(cameraProbeFailureReason || "not_loaded")}。`;
   const radarDiagnosticPlain = radarMapPointsVisible
     ? "雷达诊断：当前雷达点已贴到地图。"
-    : `雷达诊断：服务=${readback.radar.lifecycle_running || "not_loaded"}/${readback.radar.lifecycle_state || "not_loaded"}；新读数=${readback.radar.latest_scan_proof_fresh || "not_loaded"}；还差=${diagnosticLabelsPlain(radarScanMissingObservations)}。`;
+    : radarMapStaleSourcePointsSuppressed
+      ? `雷达诊断：服务=${readback.radar.lifecycle_running || "not_loaded"}/${readback.radar.lifecycle_state || "not_loaded"}；新读数=${readback.radar.latest_scan_proof_fresh || "not_loaded"}；旧来源点 ${radarMapSourcePointCount} 个未贴图。下一步：刷新雷达扫描读数，再刷新地图画面。`
+      : `雷达诊断：服务=${readback.radar.lifecycle_running || "not_loaded"}/${readback.radar.lifecycle_state || "not_loaded"}；新读数=${readback.radar.latest_scan_proof_fresh || "not_loaded"}；还差=${diagnosticLabelsPlain(radarScanMissingObservations)}。`;
   const mapRadarDiagnosticPlain = radarMapPointsVisible
     ? "地图雷达诊断：当前地图已有雷达点。"
-    : `地图雷达诊断：当前点=${readback.map.radar_overlay_point_count || "not_loaded"}；来源点=${readback.map.radar_overlay_source_point_count || "not_loaded"}；还差=${diagnosticLabelsPlain(mapRadarBlockedReasons)}。`;
+    : radarMapStaleSourcePointsSuppressed
+      ? `地图雷达诊断：当前点=${readback.map.radar_overlay_point_count || "not_loaded"}；来源点=${readback.map.radar_overlay_source_point_count || "not_loaded"}；旧来源点已抑制，不贴到当前地图。下一步：刷新雷达扫描读数，再刷新地图画面。`
+      : `地图雷达诊断：当前点=${readback.map.radar_overlay_point_count || "not_loaded"}；来源点=${readback.map.radar_overlay_source_point_count || "not_loaded"}；还差=${diagnosticLabelsPlain(mapRadarBlockedReasons)}。`;
   const liveWysiwygDiagnosticPlain = `${cameraDiagnosticPlain} ${radarDiagnosticPlain} ${mapRadarDiagnosticPlain}`;
   const liveWysiwygSurfaceSummaries: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_wysiwyg_surface_summaries"] = [
     {
@@ -8664,7 +8673,7 @@ function buildLiveClosureSummary(
   const liveWysiwygSurfaceLabel = (id: string): string => ({
     camera: "复测相机首帧",
     map: "刷新地图画面",
-    radar_map_points: "刷新雷达扫描 proof",
+    radar_map_points: "刷新雷达扫描读数",
   }[id] ?? id);
   const liveWysiwygMissingSurfaceRefreshItems = liveWysiwygMissingSurfaceIds
     .map((id) => liveWysiwygSurfaceSummaries.find((surface) => surface.id === id))
@@ -8946,7 +8955,7 @@ function buildLiveClosureSummary(
     "/api/robot-control/camera/mjpeg/status",
   ];
   const liveWysiwygRefreshSequenceLabels = [
-    "刷新雷达扫描 proof",
+    "刷新雷达扫描读数",
     "复测相机首帧",
     "刷新地图画面",
     "读取雷达状态",
@@ -9119,6 +9128,15 @@ function buildLiveClosureSummary(
     live_wysiwyg_radar_map_source_point_count: radarMapSourcePointCount,
     live_wysiwyg_radar_map_stale_source_points_suppressed: radarMapStaleSourcePointsSuppressed,
     live_wysiwyg_radar_map_primary_blocked_reason: mapRadarBlockedReasons[0] ?? "none",
+    live_wysiwyg_radar_map_refresh_next_action_plain: radarMapRefreshNextActionPlain,
+    live_wysiwyg_radar_map_refresh_sequence: [
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/map/preview",
+    ],
+    live_wysiwyg_radar_map_refresh_sequence_labels: [
+      "刷新雷达扫描读数",
+      "刷新地图画面",
+    ],
     fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
     fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",

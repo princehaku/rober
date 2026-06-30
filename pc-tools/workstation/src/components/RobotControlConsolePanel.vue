@@ -3890,7 +3890,7 @@ const plainLiveClosureWysiwygRefreshSequence = computed(() => (
 const plainLiveClosureWysiwygRefreshSequenceLabels = computed(() => (
   plainLiveClosureSummary.value?.live_wysiwyg_refresh_sequence_labels?.length
     ? plainLiveClosureSummary.value.live_wysiwyg_refresh_sequence_labels.join(",")
-    : "刷新雷达扫描 proof,复测相机首帧,刷新地图画面,读取雷达状态,读取相机 MJPEG 状态"
+    : "刷新雷达扫描读数,复测相机首帧,刷新地图画面,读取雷达状态,读取相机 MJPEG 状态"
 ));
 const plainLiveClosureWysiwygRefreshPlanAvailable = computed(() => (
   plainLiveClosureSummary.value?.live_wysiwyg_refresh_plan_available ?? true
@@ -16276,6 +16276,9 @@ onBeforeUnmount(() => {
         :data-live-wysiwyg-radar-map-source-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_source_point_count"
         :data-live-wysiwyg-radar-map-stale-source-points-suppressed="String(plainLiveClosureSummary.live_wysiwyg_radar_map_stale_source_points_suppressed)"
         :data-live-wysiwyg-radar-map-primary-blocked-reason="plainLiveClosureSummary.live_wysiwyg_radar_map_primary_blocked_reason"
+        :data-live-wysiwyg-radar-map-refresh-next-action-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain"
+        :data-live-wysiwyg-radar-map-refresh-sequence="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence?.join(',') || 'none'"
+        :data-live-wysiwyg-radar-map-refresh-sequence-labels="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence_labels?.join(',') || 'none'"
         data-live-wysiwyg-refresh-action-testid="plain-live-closure-wysiwyg-refresh"
         :data-live-wysiwyg-refresh-plan-available="String(plainLiveClosureWysiwygRefreshPlanAvailable)"
         :data-live-wysiwyg-refresh-sequence="plainLiveClosureWysiwygRefreshSequence"
@@ -16421,9 +16424,13 @@ onBeforeUnmount(() => {
           :data-radar-map-current-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_current_point_count"
           :data-radar-map-source-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_source_point_count"
           :data-radar-map-stale-source-points-suppressed="String(plainLiveClosureSummary.live_wysiwyg_radar_map_stale_source_points_suppressed)"
+          :data-radar-map-refresh-next-action-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain"
+          :data-radar-map-refresh-sequence="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence?.join(',') || 'none'"
+          :data-radar-map-refresh-sequence-labels="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence_labels?.join(',') || 'none'"
           data-sends-motion-when-clicked="false"
         >
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_diagnostic_plain) }}
+          {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain) }}
         </p>
         <p
           class="panel-note"

@@ -220,7 +220,7 @@ describe("robotControlSummary", () => {
     ]);
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_refresh_labels).toEqual([
       "复测相机首帧",
-      "刷新雷达扫描 proof",
+      "刷新雷达扫描读数",
     ]);
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_label).toBe("复测相机首帧");
@@ -239,6 +239,15 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_source_point_count).toBe("not_loaded");
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_stale_source_points_suppressed).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_primary_blocked_reason).toBe("scan_preview_points_missing");
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_next_action_plain).toContain("刷新雷达扫描读数");
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence).toEqual([
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/map/preview",
+    ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence_labels).toEqual([
+      "刷新雷达扫描读数",
+      "刷新地图画面",
+    ]);
     expect(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain).toContain("画面诊断：首帧未证明");
     expect(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain).toContain("还差=地图缺雷达点；小车地图位置未读到");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
@@ -255,7 +264,7 @@ describe("robotControlSummary", () => {
       "/api/robot-control/camera/mjpeg/status",
     ]);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_sequence_labels).toEqual([
-      "刷新雷达扫描 proof",
+      "刷新雷达扫描读数",
       "复测相机首帧",
       "刷新地图画面",
       "读取雷达状态",
@@ -736,5 +745,19 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.map.radar_overlay_current_vs_source_plain).toBe("地图雷达点：当前 0 个，来源 3 个；旧来源点已抑制，未贴到当前地图；下一步：刷新雷达扫描，再刷新地图画面。");
     expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
     expect(summary.live_closure_summary?.radar_map_points_visible).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_stale_source_points_suppressed).toBe(true);
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_diagnostic_plain).toContain("旧来源点 3 个未贴图");
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_diagnostic_plain).toContain("刷新雷达扫描读数，再刷新地图画面");
+    expect(summary.live_closure_summary?.live_wysiwyg_map_radar_diagnostic_plain).toContain("旧来源点已抑制");
+    expect(summary.live_closure_summary?.live_wysiwyg_map_radar_diagnostic_plain).toContain("不贴到当前地图");
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_next_action_plain).toBe("旧雷达来源点 3 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。");
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence).toEqual([
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/map/preview",
+    ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence_labels).toEqual([
+      "刷新雷达扫描读数",
+      "刷新地图画面",
+    ]);
   });
 });

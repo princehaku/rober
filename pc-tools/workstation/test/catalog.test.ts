@@ -4094,7 +4094,7 @@ describe("workstation fail-closed API contracts", () => {
           radar_scan_observation_status: "latest_scan_not_fresh",
           radar_scan_observation_missing_reasons: [],
           map_radar_readiness_status: "blocked_latest_scan_not_fresh",
-          map_radar_next_action_plain: "先刷新雷达扫描 proof，确认最新扫描为 fresh 后再刷新地图画面。",
+          map_radar_next_action_plain: "先刷新雷达扫描读数，确认拿到新扫描后再刷新地图画面。",
           map_radar_blocked_reason_labels: ["没有可贴图的新雷达点", "小车地图位置未读到"],
           driver_diagnostics_status: "not_loaded",
           driver_diagnostics_next_action_plain: "not_loaded",

@@ -1403,7 +1403,7 @@ function radarStatusPlainFields(
       ? `先补齐雷达扫描材料：${observationLabelPlain(missingObservations)}；有新扫描后再刷新地图画面。`
       : radarStopped
         ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
-        : "先刷新雷达扫描 proof，确认最新扫描为 fresh 后再刷新地图画面。";
+        : "先刷新雷达扫描读数，确认拿到新扫描后再刷新地图画面。";
   const radarStatusPlain = radarReady
     ? "雷达已运行，最新扫描是新的；地图雷达点仍以同轮地图预览为准。"
     : radarStopped
