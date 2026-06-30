@@ -2732,6 +2732,10 @@ export interface RobotControlLiveMotionRunbookItem {
   id: RobotControlLiveMotionRunbookActionId;
   label: string;
   ready: boolean;
+  completed: boolean;
+  proof_status: "completed" | "ready_to_verify" | "blocked";
+  missing_evidence: string[];
+  proof_plain: string;
   minimal_precheck_safety_only: boolean;
   safety_confirm_required: boolean;
   sends_motion_when_executed: boolean;

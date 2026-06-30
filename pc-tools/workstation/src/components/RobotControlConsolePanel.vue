@@ -3972,13 +3972,14 @@ const plainLiveMotionRunbookRows = computed(() => {
   const items = plainLiveClosureSummary.value?.live_motion_runbook_items ?? [];
   return items.map((item: RobotControlLiveMotionRunbookItem) => ({
     ...item,
-    state: item.ready ? "可做" : "未就绪",
+    state: item.completed ? "已完成" : item.ready ? "可验证" : "未就绪",
     primary: item.id === plainLiveClosureSummary.value?.live_motion_runbook_primary_action_id,
     sourceCardId: targetByAction[item.id],
     focusKind: focusKind(item),
     buttonLabel: buttonLabel(item),
     blockedText: item.blocked_reasons.join("、") || "none",
     acceptanceText: plainActionCardUserText(item.acceptance_plain),
+    proofText: plainActionCardUserText(item.proof_plain || item.acceptance_plain),
   }));
 });
 const plainLiveMotionRunbookReadyText = computed(() => {
@@ -16590,6 +16591,10 @@ onBeforeUnmount(() => {
             :data-action-id="item.id"
             :data-state="item.state"
             :data-ready="String(item.ready)"
+            :data-completed="String(item.completed)"
+            :data-proof-status="item.proof_status"
+            :data-missing-evidence="item.missing_evidence.join(',') || 'none'"
+            :data-proof-plain="item.proof_plain"
             :data-primary="String(item.primary)"
             :data-minimal-precheck-safety-only="String(item.minimal_precheck_safety_only)"
             :data-safety-confirm-required="String(item.safety_confirm_required)"
@@ -16604,7 +16609,7 @@ onBeforeUnmount(() => {
           >
             <span class="plain-progress-label">{{ plainActionCardUserText(item.label) }}</span>
             <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
-            <span class="muted">{{ item.acceptanceText }}</span>
+            <span class="muted">{{ item.proofText }}</span>
             <button
               type="button"
               class="secondary compact-stop"

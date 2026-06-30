@@ -356,6 +356,7 @@ describe("robotControlSummary", () => {
       "/api/robot-control/nav2/goal/execution/latest",
       "/api/robot-control/base/feedback-samples",
       "/api/robot-control/summary",
+      "/api/robot-control/delivery/latest",
       "/api/robot-control/free-roam/autonomy/latest",
       "/api/robot-control/map/preview",
     ]);
@@ -384,6 +385,9 @@ describe("robotControlSummary", () => {
       expect.objectContaining({
         id: "run_nav2_route",
         ready: true,
+        completed: false,
+        proof_status: "ready_to_verify",
+        missing_evidence: ["same_window_wheel_lr_nonzero", "delivery_success"],
         minimal_precheck_safety_only: true,
         safety_confirm_required: true,
         sends_motion_when_executed: true,
@@ -392,11 +396,16 @@ describe("robotControlSummary", () => {
           "/api/robot-control/nav2/goal/execution/latest",
           "/api/robot-control/base/feedback-samples",
           "/api/robot-control/summary",
+          "/api/robot-control/delivery/latest",
         ],
+        proof_plain: "可复验完整行程：勾现场安全确认后执行图上路线，执行后按验收端点读回；还差：同窗口 wheel L/R 非零、delivery success。",
       }),
       expect.objectContaining({
         id: "hold_keyboard",
         ready: true,
+        completed: false,
+        proof_status: "ready_to_verify",
+        missing_evidence: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
         start_endpoint: "/api/robot-control/base/manual",
         acceptance_endpoints: [
           "/api/robot-control/base/feedback-samples",
@@ -406,6 +415,9 @@ describe("robotControlSummary", () => {
       expect.objectContaining({
         id: "start_free_move",
         ready: true,
+        completed: false,
+        proof_status: "ready_to_verify",
+        missing_evidence: ["free_roam_latest_motion_ready"],
         start_endpoint: "/api/robot-control/free-roam/autonomy/start",
         acceptance_endpoints: [
           "/api/robot-control/free-roam/autonomy/latest",
@@ -415,6 +427,9 @@ describe("robotControlSummary", () => {
       expect.objectContaining({
         id: "start_mapping_when_sensors_ready",
         ready: false,
+        completed: false,
+        proof_status: "blocked",
+        missing_evidence: ["camera_first_frame", "lidar_fresh"],
         start_endpoint: "/api/robot-control/map/start",
         acceptance_endpoints: [
           "/api/robot-control/map/preview",

@@ -1064,19 +1064,27 @@ const fixtures: Record<string, unknown> = {
           id: "run_nav2_route",
           label: "完整行程执行",
           ready: false,
+          completed: false,
+          proof_status: "blocked",
+          missing_evidence: ["nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success"],
+          proof_plain: "完整行程暂不可复验；还差：图上行程到点成功、同窗口 wheel L/R 非零、delivery success。",
           minimal_precheck_safety_only: true,
           safety_confirm_required: false,
           sends_motion_when_executed: true,
           start_endpoint: "/api/robot-control/nav2/goal/execute",
           stop_endpoint: "/api/robot-control/base/stop",
-          acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
-          acceptance_plain: "执行后读取 latest、同窗口 wheel L/R 和 summary，确认到点成功且轮速非零。",
+          acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/delivery/latest"],
+          acceptance_plain: "执行后读取 latest、同窗口 wheel L/R、summary 和 delivery latest，确认到点成功、轮速非零且 delivery success 已记录。",
           blocked_reasons: ["route_not_ready_on_map"],
         },
         {
           id: "hold_keyboard",
           label: "键盘连续手控",
           ready: true,
+          completed: false,
+          proof_status: "ready_to_verify",
+          missing_evidence: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
+          proof_plain: "可验证键盘连续手控：勾现场安全确认后按住方向键或 WASD，再读轮速与 summary；还差：按住同窗口 wheel L/R 非零、松开/失焦后 stop 已落稳。",
           minimal_precheck_safety_only: true,
           safety_confirm_required: true,
           sends_motion_when_executed: true,
@@ -1090,6 +1098,10 @@ const fixtures: Record<string, unknown> = {
           id: "start_free_move",
           label: "自由自助移动",
           ready: true,
+          completed: false,
+          proof_status: "ready_to_verify",
+          missing_evidence: ["free_roam_latest_motion_ready"],
+          proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest 和 summary；还差：自由移动运行读数。",
           minimal_precheck_safety_only: true,
           safety_confirm_required: true,
           sends_motion_when_executed: true,
@@ -1103,6 +1115,10 @@ const fixtures: Record<string, unknown> = {
           id: "start_mapping_when_sensors_ready",
           label: "传感器就绪后建图",
           ready: false,
+          completed: false,
+          proof_status: "blocked",
+          missing_evidence: ["camera_first_frame", "lidar_fresh"],
+          proof_plain: "建图暂不可启动；还差：相机首帧、雷达新鲜读数。",
           minimal_precheck_safety_only: true,
           safety_confirm_required: false,
           sends_motion_when_executed: true,
@@ -1118,7 +1134,7 @@ const fixtures: Record<string, unknown> = {
       live_motion_runbook_blocked_action_ids: ["run_nav2_route", "start_mapping_when_sensors_ready"],
       live_motion_runbook_primary_action_id: "hold_keyboard",
       live_motion_runbook_start_endpoints: ["/api/robot-control/base/manual", "/api/robot-control/free-roam/autonomy/start"],
-      live_motion_runbook_acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview"],
+      live_motion_runbook_acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/delivery/latest", "/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview"],
       live_motion_runbook_minimal_precheck_safety_only: true,
       live_motion_runbook_safety_confirm_required: true,
       live_motion_runbook_summary_plain: "可先执行：键盘连续手控、自由自助移动。暂不可执行：完整行程执行、传感器就绪后建图。主推荐：键盘连续手控；发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
@@ -5065,7 +5081,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-motion-runbook-blocked-action-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-primary-action-id")).toBe("hold_keyboard");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
-    expect(liveClosureSummary.attributes("data-live-motion-runbook-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-safety-confirm-required")).toBe("true");
     const liveMotionRunbook = wrapper.find('[data-testid="plain-live-motion-runbook"]');
@@ -5079,7 +5095,7 @@ describe("App", () => {
     expect(liveMotionRunbook.attributes("data-ready-action-ids")).toBe("hold_keyboard,start_free_move");
     expect(liveMotionRunbook.attributes("data-blocked-action-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
     expect(liveMotionRunbook.attributes("data-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
-    expect(liveMotionRunbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview");
+    expect(liveMotionRunbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview");
     expect(liveMotionRunbook.attributes("data-summary-plain")).toContain("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbook.attributes("data-ready-plain")).toBe("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbook.attributes("data-blocked-plain")).toBe("暂不可执行：完整行程执行、传感器就绪后建图。");
@@ -5103,8 +5119,13 @@ describe("App", () => {
     expect(liveMotionRunbookPreflight.attributes("data-sends-motion-when-clicked")).toBe("false");
     const keyboardRunbook = wrapper.find('[data-testid="plain-live-motion-runbook-hold_keyboard"]');
     expect(keyboardRunbook.text()).toContain("键盘连续手控");
-    expect(keyboardRunbook.text()).toContain("可做");
+    expect(keyboardRunbook.text()).toContain("可验证");
+    expect(keyboardRunbook.text()).toContain("还差：按住同窗口 wheel L/R 非零、松开/失焦后 stop 已落稳");
     expect(keyboardRunbook.attributes("data-ready")).toBe("true");
+    expect(keyboardRunbook.attributes("data-completed")).toBe("false");
+    expect(keyboardRunbook.attributes("data-proof-status")).toBe("ready_to_verify");
+    expect(keyboardRunbook.attributes("data-missing-evidence")).toBe("same_hold_window_wheel_lr_nonzero,stop_after_release");
+    expect(keyboardRunbook.attributes("data-proof-plain")).toContain("可验证键盘连续手控");
     expect(keyboardRunbook.attributes("data-primary")).toBe("true");
     expect(keyboardRunbook.attributes("data-start-endpoint")).toBe("/api/robot-control/base/manual");
     expect(keyboardRunbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
@@ -5122,6 +5143,11 @@ describe("App", () => {
     expect(nav2Runbook.text()).toContain("完整行程执行");
     expect(nav2Runbook.text()).toContain("未就绪");
     expect(nav2Runbook.attributes("data-ready")).toBe("false");
+    expect(nav2Runbook.attributes("data-completed")).toBe("false");
+    expect(nav2Runbook.attributes("data-proof-status")).toBe("blocked");
+    expect(nav2Runbook.attributes("data-missing-evidence")).toBe("nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
+    expect(nav2Runbook.attributes("data-proof-plain")).toContain("图上行程到点成功、同窗口 wheel L/R 非零、delivery success");
+    expect(nav2Runbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(nav2Runbook.attributes("data-blocked-reasons")).toBe("route_not_ready_on_map");
     expect(nav2Runbook.attributes("data-focus-target-source-card-id")).toBe("nav2_route");
     expect(nav2Runbook.attributes("data-focus-target-kind")).toBe("nav2_route");
@@ -5132,6 +5158,10 @@ describe("App", () => {
     const mappingRunbook = wrapper.find('[data-testid="plain-live-motion-runbook-start_mapping_when_sensors_ready"]');
     expect(mappingRunbook.text()).toContain("传感器就绪后建图");
     expect(mappingRunbook.attributes("data-ready")).toBe("false");
+    expect(mappingRunbook.attributes("data-completed")).toBe("false");
+    expect(mappingRunbook.attributes("data-proof-status")).toBe("blocked");
+    expect(mappingRunbook.attributes("data-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(mappingRunbook.attributes("data-proof-plain")).toContain("建图暂不可启动；还差：相机首帧、雷达新鲜读数");
     expect(mappingRunbook.attributes("data-blocked-reasons")).toBe("camera_first_frame、lidar_fresh");
     expect(mappingRunbook.attributes("data-focus-target-source-card-id")).toBe("mapping_start");
     expect(mappingRunbook.attributes("data-focus-target-kind")).toBe("mapping_start");
