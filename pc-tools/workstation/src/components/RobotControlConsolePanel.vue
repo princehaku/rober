@@ -10059,7 +10059,7 @@ const plainTripRouteExecutionReadback = computed(() => {
   return uniqueParts.length > 0 ? `行程复验事实：${uniqueParts.join("；")}。` : "";
 });
 type PlainTripExecutionPlanItem = {
-  id: "mode" | "runtime" | "wheel";
+  id: "mode" | "runtime" | "wheel" | "map_refresh";
   label: string;
   state: string;
   hint: string;
@@ -10086,6 +10086,20 @@ const plainTripExecutionPlanItems = computed<PlainTripExecutionPlanItem[]>(() =>
     : plainTripHasFreshUnprovenControlEvidence.value || explicitFalseKeyValue(values?.base_feedback_lr_nonzero_proven)
       ? "待复验"
       : "执行后验";
+  const evidence = plainTripDomEvidence.value;
+  const postExecutionMapFailure = plainTripPostExecutionMapPreviewFailureText();
+  const mapRefreshState = postExecutionMapFailure
+    ? "刷新失败"
+    : evidence.executionPostMapRefreshComplete
+      ? "已刷新"
+      : evidence.executionPostMapRefreshRequired || navGoalExecutionPending.value
+        ? "执行后刷新"
+        : "执行后验";
+  const mapRefreshHint = postExecutionMapFailure
+    ? `执行后地图画面刷新失败：${postExecutionMapFailure}；先刷新地图画面，再准备送达材料。`
+    : evidence.executionPostMapRefreshComplete
+      ? "执行后地图画面已刷新；可以在当前地图上核对路线结果和小车位置。"
+      : "执行完成后会自动刷新地图画面；地图刷新完成前不把旧画面当作送达收口依据。";
   return [
     {
       id: "mode",
@@ -10106,6 +10120,12 @@ const plainTripExecutionPlanItems = computed<PlainTripExecutionPlanItem[]>(() =>
       label: "轮速验收",
       state: wheelState,
       hint: `${wheelPairText}完整行程必须在本次执行窗口读到轮速 L/R 非零；IMU 只作运动迹象。`,
+    },
+    {
+      id: "map_refresh",
+      label: "地图复核",
+      state: mapRefreshState,
+      hint: mapRefreshHint,
     },
   ];
 });

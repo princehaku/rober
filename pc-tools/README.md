@@ -1110,3 +1110,8 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 `观测模式` 仍不启动 ROS2、RViz2、Nav2、建图 runtime 或运动命令，但会优先调用浏览器 Fullscreen API；
 浏览器拒绝时继续使用页面内 fixed 大图兜底。ROS2 工程配套仍是
 `ros2 launch ros2_trashbot_bringup rviz.launch.py`；需要浏览器远程共享观察时接 Foxglove，普通用户操作仍在本页完成。
+
+2026-06-30 20:55 CST 起，普通首屏“行程执行包”新增 `地图复核` 步骤。执行图上行程后，PC 会把
+“自动刷新地图画面”作为完整 Nav2 路线执行的一部分展示：刷新完成前不把旧地图画面当作送达收口依据；
+刷新失败时显示 `刷新失败` 和具体原因，例如 `map_preview_timeout`，并提示先刷新地图画面再准备送达材料。
+该步骤只读展示现有执行后地图刷新状态，不新增发车、Nav2 start、map runtime 或 `/cmd_vel` 调用。
