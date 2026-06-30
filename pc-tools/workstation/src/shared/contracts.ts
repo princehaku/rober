@@ -2724,6 +2724,15 @@ export interface RobotControlLiveClosureSummary {
   keyboard_manual_command_mode: string;
   minimal_precheck_safety_only: boolean;
   safety_confirm_required_for_motion: boolean;
+  wheel_rerun_minimal_precheck_safety_only: boolean;
+  wheel_rerun_safety_confirm_required: boolean;
+  wheel_rerun_camera_preflight_required: false;
+  wheel_rerun_radar_preflight_required: false;
+  wheel_rerun_route_wysiwyg_preflight_required: false;
+  wheel_rerun_blocked_by_camera_wysiwyg: false;
+  wheel_rerun_blocked_by_radar_wysiwyg: false;
+  wheel_rerun_command_mode: string;
+  fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute";
   sends_motion_when_clicked: false;
   blocker_ids: RobotControlGoalChecklistItemId[];
   ready_action_ids: RobotControlGoalChecklistItemId[];

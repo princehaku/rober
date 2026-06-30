@@ -8197,6 +8197,7 @@ function buildLiveClosureSummary(
   const keyboardVerifiedMinForwardedPulses = keyboard.evidence?.keyboard_verified_min_forwarded_pulses ?? 2;
   const minimalPrecheckSafetyOnly = nav2.evidence?.minimal_precheck_safety_only === true
     || boundary.nav2_goal_minimal_precheck_plain.includes("只需要现场安全确认");
+  const wheelRerunCommandMode = nav2.evidence?.next_base_command_mode || readback.nav2.next_execution_base_command_mode || "not_loaded";
   const nav2GoalSucceeded = nav2GoalExecutionProven;
   const allWysiwygReady = cameraCurrentVisible && mapCurrentVisible && radarMapPointsVisible;
   const status = (() => {
@@ -8327,6 +8328,15 @@ function buildLiveClosureSummary(
     keyboard_manual_command_mode: readback.keyboard.manual_command_mode || "not_loaded",
     minimal_precheck_safety_only: minimalPrecheckSafetyOnly,
     safety_confirm_required_for_motion: goalSummary.safety_confirm_needed_count > 0,
+    wheel_rerun_minimal_precheck_safety_only: needsSameWindowWheelRerun && minimalPrecheckSafetyOnly,
+    wheel_rerun_safety_confirm_required: needsSameWindowWheelRerun && goalSummary.safety_confirm_needed_count > 0,
+    wheel_rerun_camera_preflight_required: false,
+    wheel_rerun_radar_preflight_required: false,
+    wheel_rerun_route_wysiwyg_preflight_required: false,
+    wheel_rerun_blocked_by_camera_wysiwyg: false,
+    wheel_rerun_blocked_by_radar_wysiwyg: false,
+    wheel_rerun_command_mode: wheelRerunCommandMode,
+    fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
     sends_motion_when_clicked: false,
     blocker_ids: goalSummary.blocked_action_ids,
     ready_action_ids: goalSummary.ready_action_ids,
