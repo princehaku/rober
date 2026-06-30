@@ -34,6 +34,38 @@ button {
   padding: 0;
 }
 
+.shell[data-direct-map-view-requested="true"] .simple-user-console {
+  /* 直达地图页必须真的只服务地图观察，避免连接/卡点/手控卡片继续挤占画布。 */
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.shell[data-direct-map-view-requested="true"] .simple-user-console > :not(.robot-console-grid) {
+  /* 这些普通首屏摘要仍在默认控制台显示；直达地图页只保留地图和只读地图工具。 */
+  display: none;
+}
+
+.shell[data-direct-map-view-requested="true"] .robot-console-grid {
+  display: block;
+  min-height: 100vh;
+}
+
+.shell[data-direct-map-view-requested="true"] .robot-console-grid > .snapshot-panel:not(.plain-map-panel) {
+  /* 只隐藏非地图卡片，不移除地图内部的刷新、缩放和 ROS2 配套说明。 */
+  display: none;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-panel {
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+  padding: 6px;
+}
+
 .topbar {
   display: flex;
   align-items: center;

@@ -5974,6 +5974,9 @@ describe("App", () => {
     expect(workstationStyles).toContain("width: min(2600px, calc(100% - 2px));");
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"]');
     expect(workstationStyles).toContain("width: 100vw;");
+    expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .simple-user-console > :not(.robot-console-grid)');
+    expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .robot-console-grid > .snapshot-panel:not(.plain-map-panel)');
+    expect(workstationStyles).toContain("只隐藏非地图卡片");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="large"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
@@ -6687,6 +6690,10 @@ describe("App", () => {
       expect(wrapper.find(".shell").attributes("data-direct-map-view-behavior")).toBe("page_shell_map_only");
       expect(wrapper.find(".topbar").exists()).toBe(false);
       expect(wrapper.find(".advanced-tools-details").exists()).toBe(false);
+      expect(wrapper.find('[data-testid="pc-simple-user-first-screen"]').attributes("data-direct-map-view-requested")).toBe("true");
+      expect(wrapper.find('[data-testid="pc-simple-user-first-screen"]').attributes("data-direct-map-view-behavior")).toBe("hide_non_map_cards");
+      expect(wrapper.find('[data-smoke-scope="simple-robot-control-first-screen"]').attributes("data-direct-map-view-requested")).toBe("true");
+      expect(wrapper.find('[data-smoke-scope="simple-robot-control-first-screen"]').attributes("data-direct-map-view-behavior")).toBe("hide_non_map_cards");
       const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
       expect(mapPanel.attributes("data-direct-map-view-requested")).toBe("true");
       expect(mapPanel.attributes("data-direct-map-view-url")).toBe("?view=map");

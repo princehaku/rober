@@ -48,6 +48,10 @@ FIRST_FRAME_WARMUP_INTERVAL_S = 0.05
 CAMERA_CAPTURE_FOURCC_FALLBACKS: tuple[str | None, ...] = ("MJPG", "YUYV", None)
 COMMAND_TIMEOUT_S = 2.5
 STALE_PEER_NO_FRAME_MAX_AGE_MS = 30_000
+# 共享 MJPEG/offer 首帧失败后若没有 active peer，残留 capture 会让 v4l2/ffmpeg 探针看到 busy。
+STALE_SHARED_CAPTURE_NO_FRAME_MAX_AGE_MS = int((MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S + 3.0) * 1000)
+# 自动 MJPEG 重试不能在已知 UVC 无首帧时持续抢设备；手动 probe 仍可立即复测。
+MJPEG_FIRST_FRAME_FAILURE_RETRY_COOLDOWN_MS = 30_000
 PEER_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,32}$")
 API_CAMERA_PREFIX = "/api/camera"
 IMPORTS = ("aiortc", "cv2", "av")
@@ -1187,6 +1191,57 @@ class CameraServiceState:
             if value is shared_capture:
                 self.shared_captures.pop(key, None)
 
+    def cleanup_stale_shared_captures(self, reason: str = "health_no_active_peer_cleanup") -> list[dict[str, Any]]:
+        """无人观看且首帧从未成功的共享句柄必须回收，避免 8088 自己长期占用 UVC。"""
+        released: list[dict[str, Any]] = []
+        if self.peers:
+            return released
+        current_ms = now_ms()
+        for key, shared in list(self.shared_captures.items()):
+            summary = shared.summary()
+            age_ms = current_ms - int(summary.get("created_ts_ms") or current_ms)
+            no_frame = int(summary.get("frames_read") or 0) <= 0 and summary.get("last_frame_age_ms") is None
+            # ref_count 残留可能来自已断开的 MJPEG 请求；超过首帧总预算后按 stale 处理。
+            stale = no_frame and age_ms >= STALE_SHARED_CAPTURE_NO_FRAME_MAX_AGE_MS
+            dangling = int(summary.get("ref_count") or 0) <= 0
+            if not (stale or dangling):
+                continue
+            force_released = shared.force_release()
+            self.shared_captures.pop(key, None)
+            released.append({
+                "key": key,
+                "reason": reason,
+                "age_ms": age_ms,
+                "stale_no_frame": stale,
+                "dangling_ref": dangling,
+                "force_released": force_released,
+                "summary": summary,
+            })
+        return released
+
+    def recent_first_frame_failure(self, source: str, cooldown_ms: int = MJPEG_FIRST_FRAME_FAILURE_RETRY_COOLDOWN_MS) -> dict[str, Any] | None:
+        """自动预览刚失败时短暂冷却，避免浏览器重试循环持续占用 UVC。"""
+        error = self.last_offer_error if isinstance(self.last_offer_error, dict) else {}
+        if not error or error.get("video_source") != source:
+            return None
+        reason = str(error.get("failure_reason") or "")
+        if reason not in FIRST_FRAME_FAILURE_REASONS:
+            return None
+        generated_at_ms = int(error.get("generated_at_ms") or 0)
+        if generated_at_ms <= 0:
+            return None
+        age_ms = max(0, now_ms() - generated_at_ms)
+        if age_ms >= cooldown_ms:
+            return None
+        return {
+            "cooldown_active": True,
+            "cooldown_ms": cooldown_ms,
+            "age_ms": age_ms,
+            "retry_after_ms": max(0, cooldown_ms - age_ms),
+            "failure_reason": reason,
+            "last_error": error,
+        }
+
     def acquire_first_frame_capture(
         self,
         source: str,
@@ -1344,6 +1399,7 @@ class CameraServiceState:
 
     def health(self) -> dict[str, Any]:
         """health 不打开相机，只读系统和设备摘要，保证轮询安全。"""
+        stale_shared_captures_released = self.cleanup_stale_shared_captures()
         snapshot = collect_video_candidates()
         selection = resolve_video_source(self.video_source, snapshot)
         active_summaries = {peer_id: peer.summary() for peer_id, peer in self.peers.items()}
@@ -1418,6 +1474,7 @@ class CameraServiceState:
             "media_diagnostics": {
                 "active_peers": active_summaries,
                 "shared_captures": {source: shared.summary() for source, shared in self.shared_captures.items()},
+                "stale_shared_captures_released": stale_shared_captures_released,
                 "last_closed_peer": self.last_closed_peer,
                 "last_offer_error": self.last_offer_error,
                 "last_successful_frame": self.last_successful_frame,
@@ -1427,6 +1484,7 @@ class CameraServiceState:
             },
             "source_summary": source_summary,
             "source_candidates_summary": source_summary,
+            "stale_shared_captures_released": stale_shared_captures_released,
             "current_selection": {
                 "mode": selection.get("mode"),
                 "requested_source": selection.get("requested_source"),
@@ -1716,6 +1774,21 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         selected_path = selection.get("selected_path")
         if not selected_path:
             self._send_json(error_payload("video_source_unavailable", "auto_selection_found_no_capture_device"), status=HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+        recent_failure = self.state.recent_first_frame_failure(str(selected_path))
+        if recent_failure:
+            payload = error_payload(
+                "first_frame_recent_failure_cooldown",
+                "mjpeg_auto_retry_cooldown_after_first_frame_failure",
+                video_source=str(selected_path),
+                retry_after_ms=recent_failure["retry_after_ms"],
+                cooldown_ms=recent_failure["cooldown_ms"],
+                last_first_frame_failure_reason=recent_failure["failure_reason"],
+                opens_camera=False,
+                automatic_retry_suppressed=True,
+            )
+            payload["last_first_frame_error"] = recent_failure["last_error"]
+            self._send_json(payload, status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
         shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_first_frame_capture(
             str(selected_path),

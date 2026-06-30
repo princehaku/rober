@@ -15,6 +15,9 @@ sprint_type: micro
 - 2026-06-30 20:36 CST 为 8787 常用只读同步 handler 增加线程隔离，覆盖 radar/base/map/Nav2/free-roam latest/status、delivery latest 等，避免 PC summary 并发读取多个端点时某个慢文件或状态读取阻塞 aiohttp 事件循环。
 - 补齐 ROS2 配套 RViz2 观察面：`onboard/src/ros2_trashbot_bringup/rviz/trashbot_nav.rviz` 新增 Nav2 local plan、global costmap、local costmap，只做工程观察，不加入 GoalTool；`test_launch_contract_static.py` 锁定 RViz2 只读观察 `/map`、`/scan`、TF、`/plan`、`/local_plan`、`/amcl_pose` 和 costmap。
 - 更新 `docs/navigation/free_roam_autonomy.md`、`docs/navigation/fixed_route_workflow.md`、`docs/product/pc_tools_workstation.md`：明确普通用户继续使用 PC `7001` 大地图和 `?view=map`，RViz2 是本地工程排障工具，Foxglove 是后续 bridge 后的浏览器远程观察工具。
+- 2026-06-30 21:15 CST 修正 PC `?view=map` 直达地图页：`RobotControlConsolePanel.vue` 增加直达地图模式 DOM 合同，`styles.css` 在该模式隐藏非地图卡片，只保留地图面板、缩放、刷新和 ROS2 配套说明，避免连接/卡点/手控卡片继续挤占地图画布。该改动只影响显示，不启动 ROS2/RViz2/Foxglove，不执行 Nav2，不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+- 2026-06-30 21:15 CST 修正 8088 相机服务共享占用残留：`local_webrtc_camera_smoke.py` 会在 `/health` 清理没有 active peer 且 0 帧的 stale shared capture，并在最近 `first_frame_total_timeout` 后对 MJPEG 自动重试加短冷却，避免浏览器自动重试反复占住 `/dev/video1`。新增单测覆盖 stale capture 释放和首帧失败冷却。
+- 更新 `docs/product/pc_tools_workstation.md`，明确“地图太小”的现场用法：普通用户打开 PC `7001/?view=map` 得到真正只看地图的大屏；ROS2 配套是 RViz2 本地工程观察 `/map`、`/scan`、TF、Nav2 path、AMCL 和 costmap，Foxglove 是 bridge 后的浏览器远程观察，不替代普通用户 PC 地图。
 
 ## 验证结果
 
@@ -25,6 +28,9 @@ sprint_type: micro
 - `python3 -m unittest onboard.scripts.test_upper_robot_api_free_roam`：通过，6 tests；覆盖 latest 不调用相机 HTTP 或完整 radar status。
 - `python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api_free_roam.py`：通过。
 - `python3 -m unittest onboard.src.ros2_trashbot_bringup.test.test_launch_contract_static`：通过，22 tests；覆盖 RViz2 配套观察面和不包含 GoalTool。
+- `python3 -m unittest onboard.scripts.test_local_webrtc_camera_smoke_health onboard.scripts.test_upper_robot_api_free_roam`：通过，9 tests；覆盖 camera health stale shared capture 释放、最近首帧失败冷却，以及 free-roam latest artifact-only。
+- `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py`：通过。
+- `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 225 tests；覆盖 `?view=map` DOM 合同、1600% 直达地图、RViz2/Foxglove 配套说明和不触发运动接口。
 - `git diff --check`：通过。
 - 上车端 `python3 -m py_compile /root/rober/onboard/scripts/local_webrtc_camera_smoke.py /root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py`、`bash -n /root/rober/onboard/scripts/o1_lidar_lifecycle.sh`：通过；`colcon build --symlink-install --packages-select ros2_trashbot_hardware`：通过，1 package finished。
 - 上车端部署 `upper_robot_api.py`、RViz2 launch/config/test 和 bringup CMake 安装合同后：`python3 -m py_compile scripts/upper_robot_api.py src/ros2_trashbot_bringup/test/test_launch_contract_static.py` 通过；`python3 -m unittest src.ros2_trashbot_bringup.test.test_launch_contract_static` 通过，22 tests；`colcon build --symlink-install --packages-select ros2_trashbot_bringup` 通过，1 package finished。
@@ -36,6 +42,8 @@ sprint_type: micro
 - PC 7001 只读刷新：`POST /api/robot-control/radar/scan-proof/refresh` 观测到 `scan_once_observed=true`、`scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`；`GET /api/robot-control/map/preview` 返回 `radar_overlay_status=loaded`、`radar_overlay_point_count=72`、`path_preview_status=path_preview_observed`、`robot_pose_status=map_pose_observed`。
 - PC 7001 summary：`readback_summary.radar.status=radar_ready`、`driver_diagnostics_status=scan_published`、`readback_summary.map.radar_overlay_status=loaded`、`radar_overlay_point_count=72`；`live_closure_summary.side_blocker_ids` 已不再包含 `radar_map_points_wysiwyg`。
 - 2026-06-30 20:10 CST 复验 PC 固定雷达刷新：`POST /api/robot-control/radar/scan-proof/refresh` 返回 `proxy_status=refresh_forwarded`、`last_result_status=refreshed`、`scan_once_observed=true`、`scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`、`latest_scan_proof_fresh=true`、`blocked_reasons=[]`；同轮 `GET /api/robot-control/map/preview` 返回 `radar_overlay_status=loaded`、`radar_overlay_point_count=72`。
+- 上车端重启 8088 后，相机 `/health` 返回 `source_not_probed/not_in_use/shared_captures={}`；触发 `/mjpeg` 后最近首帧失败进入冷却，HTTP 503 在约 0.1s 返回 `first_frame_recent_failure_cooldown`，随后 `fuser /dev/video1 /dev/video2` 无 owner。后续 backend probe 仍显示 OpenCV open ok 但 read timeout，v4l2/ffmpeg 无 kernel frame，结论是 DV20 UVC 当前无真实帧，不是页面独占。
+- PC 7001 summary 复验相机口径：`source_first_frame_failed`、`source_readiness=first_frame_failed`、`source_diagnosis=uvc_no_frame_not_exclusive`、`source_usage=not_in_use`；自由移动、键盘、地图和雷达 WYSIWYG 仍按原门禁展示。
 
 ## 剩余风险
 
@@ -43,3 +51,4 @@ sprint_type: micro
 - 相机不是页面独占，但仍未恢复真实首帧；需要现场检查 DV20 UVC 的 USB、摄像头输入或供电，必要时换 known-good UVC 复测。
 - 雷达地图贴图已恢复为 WYSIWYG；PC summary 和 map preview 已按 driver diagnostics + map overlay 正确展示。后续仍可单独继续清理历史 scan proof 字段兼容，但本轮 fixed radar refresh 已返回 `blocked_reasons=[]`。
 - RViz2 配置已部署并构建，但本轮未在带图形桌面的现场启动 RViz2；真实 RViz2 渲染效果仍取决于当前 ROS graph 是否发布 `/map`、`/scan`、TF、Nav2 path 和 costmap。
+- PC `?view=map` 现在是真正只看地图的 CSS/DOM 模式，但本轮未用真实浏览器截图验收现场屏幕尺寸；已用 Vitest DOM 合同和 CSS 规则锁定。真实显示仍取决于浏览器窗口大小和 operator 是否打开 `http://<PC>:7001/?view=map`。

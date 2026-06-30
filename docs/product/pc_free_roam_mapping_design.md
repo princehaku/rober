@@ -139,6 +139,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   合同和停止兜底，不把雷达作为手控前置；“可以进入自动/自助建图”才要求地图记录启动，并继续按上车端 runtime 检查
   camera/radar readiness、停止兜底和覆盖状态。同期摄像头 8088 服务已改为同源共享 capture，并会清理 0 帧 stale peer，
   避免旧页面独占 `/dev/video1` 后导致新页面看不到实时预览。
+- 2026-06-30 21:15 起，8088 相机服务会在 `/health` 清理没有 active peer 且 0 帧的 stale shared capture，并在最近
+  `first_frame_total_timeout` 后对 MJPEG 自动重试加冷却；这样后进入页面不会因为旧共享 capture 或自动重试把
+  `/dev/video1` 长时间占住。当前现场结论是 `source_usage=not_in_use` 但 DV20 UVC 无 kernel frame，剩余 blocker
+  应按 USB、摄像头输入、供电或 known-good UVC 复测处理，而不是按浏览器独占处理。
 - 2026-06-27 03:10 起，PC 普通首屏把“能尝试共享实时预览”和“画面已经可见”拆开：即使上车 summary
   报 `source_first_frame_failed`，只要设备已加载或已选中 `/dev/video1`，页面仍会挂载只读
   `/api/robot-control/camera/mjpeg` 共享预览，让后来进入的页面也能复用同一条上游流并看到真实画面或真实失败原因；

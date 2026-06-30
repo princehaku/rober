@@ -15950,7 +15950,12 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="workspace robot-console">
-    <div class="simple-user-console" data-testid="pc-simple-user-first-screen">
+    <div
+      class="simple-user-console"
+      data-testid="pc-simple-user-first-screen"
+      :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
+      data-direct-map-view-behavior="hide_non_map_cards"
+    >
       <div class="robot-quick-connect">
         <div class="plain-default-robot">
           <span class="plain-default-robot-title">默认小车</span>
@@ -16848,7 +16853,13 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen" data-layout="visual-first">
+      <div
+        class="robot-console-grid"
+        data-smoke-scope="simple-robot-control-first-screen"
+        data-layout="visual-first"
+        :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
+        data-direct-map-view-behavior="hide_non_map_cards"
+      >
         <article class="snapshot-panel plain-connection-panel" data-testid="plain-connection-panel" :data-state="robotConnectionSummary.state">
           <h3>小车连接</h3>
           <div class="simple-status-row">
