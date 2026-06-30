@@ -396,7 +396,8 @@ const LOCALIZATION_RESET_CONFIG: RobotProofRefreshConfig = {
 
 const NAV2_NO_MOTION_PROOF_LATEST_ENDPOINT = "/api/nav2/proof/latest" as const;
 const RADAR_SCAN_PROOF_LATEST_ENDPOINT = "/api/radar/scan-proof/latest" as const;
-const RADAR_SCAN_PROOF_POST_REFRESH_READBACK_DELAYS_MS = [0, 120, 280] as const;
+// 真实上车 refresh 成功后，scan proof artifact 可能晚于 HTTP 回包落盘；多等一轮避免按钮误报 stale。
+const RADAR_SCAN_PROOF_POST_REFRESH_READBACK_DELAYS_MS = [0, 250, 750, 1500] as const;
 const NAV_GOAL_PREFLIGHT_GOAL_LIMITS = {
   frame_id: "map",
   x_min_m: -3,
@@ -1727,6 +1728,8 @@ function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord |
   const upperApi = asRecord(payload.upper_api);
   const radarStatusEnvelope = asRecord(upperApi?.radar_status);
   const radarStatus = asRecord(radarStatusEnvelope?.payload) ?? radarStatusEnvelope ?? payload;
+  const latestResult = asRecord(payload.latest_result);
+  const latestResultProof = asRecord(latestResult?.proof);
   const latestScanProof = asRecord(radarStatus.latest_scan_proof) ?? asRecord(payload.latest_scan_proof) ?? payload;
   const scanProofLatest = asRecord(radarStatus.scan_proof_latest) ?? asRecord(payload.scan_proof_latest) ?? payload;
   const readback: JsonRecord = {};
@@ -1747,24 +1750,28 @@ function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord |
   ]);
   assignFirst("scan_once_observed", [
     latestScanProof?.scan_once_observed,
+    latestResultProof?.scan_once_observed,
     scanProofLatest?.latest_scan_once_observed,
     payload.scan_once_observed,
     payload.latest_scan_once_observed,
   ]);
   assignFirst("scan_hz_observed", [
     latestScanProof?.scan_hz_observed,
+    latestResultProof?.scan_hz_observed,
     scanProofLatest?.latest_scan_hz_observed,
     payload.scan_hz_observed,
     payload.latest_scan_hz_observed,
   ]);
   assignFirst("raw_packet_once_observed", [
     latestScanProof?.raw_packet_once_observed,
+    latestResultProof?.raw_packet_once_observed,
     scanProofLatest?.latest_raw_packet_once_observed,
     payload.raw_packet_once_observed,
     payload.latest_raw_packet_once_observed,
   ]);
   assignFirst("tf_observed", [
     latestScanProof?.tf_observed,
+    latestResultProof?.tf_observed,
     scanProofLatest?.latest_tf_observed,
     payload.tf_observed,
     payload.latest_tf_observed,
@@ -1775,7 +1782,12 @@ function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord |
   assignFirst("continuity_window_status", [radarStatus.continuity_window_status, payload.continuity_window_status]);
   assignFirst("lifecycle_running", [radarStatus.lifecycle_running, payload.lifecycle_running]);
   assignFirst("lifecycle_state", [radarStatus.lifecycle_state, payload.lifecycle_state]);
-  assignFirst("latest_scan_proof_fresh", [radarStatus.latest_scan_proof_fresh, payload.latest_scan_proof_fresh]);
+  // latest endpoint 的 proof 结构没有单独 fresh 字段；refresh 后 all_required 为 true 即代表本轮 latest 已可作为当前读数。
+  assignFirst("latest_scan_proof_fresh", [
+    radarStatus.latest_scan_proof_fresh,
+    payload.latest_scan_proof_fresh,
+    latestResultProof?.all_required_observations_observed,
+  ]);
   const finalBlockedReasons = radarStatus.latest_scan_proof_blocked_reasons ?? latestScanProof?.blocked_reasons;
   if (Array.isArray(finalBlockedReasons) && finalBlockedReasons.length > 0) {
     readback.blocked_reasons = finalBlockedReasons;
