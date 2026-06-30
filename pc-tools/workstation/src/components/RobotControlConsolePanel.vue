@@ -15829,7 +15829,17 @@ onBeforeUnmount(() => {
           class="secondary compact-stop"
           data-testid="plain-live-closure-go"
           :disabled="!plainLiveClosureTargetSourceCardId"
+          :data-focus-target-item-id="plainLiveClosureSummary.next_action_item_id"
+          :data-focus-target-source-card-id="plainLiveClosureTargetSourceCardId"
+          :data-needs-wheel-rerun="String(plainLiveClosureSummary.needs_same_window_wheel_rerun)"
+          :data-requires-same-window-wheel-lr-nonzero="String(plainLiveClosureSummary.needs_same_window_wheel_rerun || !plainLiveClosureSummary.wheel_lr_nonzero_proven)"
+          data-focus-only="true"
+          data-fixed-wheel-rerun-endpoint="/api/robot-control/nav2/goal/execute"
+          data-fixed-wheel-readback-endpoint="/api/robot-control/base/feedback-samples"
           data-sends-motion-when-clicked="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
           @click="focusPlainLiveClosureTarget"
         >
           去处理当前卡点

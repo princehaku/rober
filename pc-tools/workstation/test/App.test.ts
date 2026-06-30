@@ -4521,7 +4521,17 @@ describe("App", () => {
     const liveClosureGuide = wrapper.find('[data-testid="plain-live-closure-go"]');
     expect(liveClosureGuide.exists()).toBe(true);
     expect(liveClosureGuide.text()).toBe("去处理当前卡点");
+    expect(liveClosureGuide.attributes("data-focus-target-item-id")).toBe("camera_wysiwyg");
+    expect(liveClosureGuide.attributes("data-focus-target-source-card-id")).toBe("camera_preview");
+    expect(liveClosureGuide.attributes("data-needs-wheel-rerun")).toBe("false");
+    expect(liveClosureGuide.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(liveClosureGuide.attributes("data-focus-only")).toBe("true");
+    expect(liveClosureGuide.attributes("data-fixed-wheel-rerun-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(liveClosureGuide.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(liveClosureGuide.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(liveClosureGuide.attributes("data-starts-nav2")).toBe("false");
+    expect(liveClosureGuide.attributes("data-starts-manual")).toBe("false");
+    expect(liveClosureGuide.attributes("data-starts-keyboard")).toBe("false");
     await liveClosureGuide.trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeLiveClosureGuide);
@@ -6164,6 +6174,70 @@ describe("App", () => {
     expect(diagnostics.text()).not.toContain("现场有人扶控并准备急停");
     expect(diagnostics.text()).not.toContain("本轮不是自动导航任务");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("keeps live closure wheel rerun as a focus-only Nav2 action", async () => {
+    // 当前卡点如果是同窗口轮速复验，按钮只能把人带到行程卡，不能自己执行 Nav2 或底盘试动。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.live_closure_summary = {
+      ...summaryFixture.live_closure_summary!,
+      status: "needs_wheel_rerun",
+      status_label: "待轮速复验",
+      summary_plain: "当前卡点：图上路线已经有执行成功读数，但同窗口 wheel raw L/R 还没有非零闭环。",
+      next_action_plain: "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验 wheel raw L/R 非零。",
+      route_ready_on_map: true,
+      nav2_goal_succeeded: true,
+      nav2_goal_execution_proven: true,
+      wheel_lr_nonzero_proven: false,
+      needs_same_window_wheel_rerun: true,
+      delivery_success: false,
+      camera_current_visible: true,
+      map_current_visible: true,
+      radar_map_points_visible: true,
+      primary_status_item_id: "nav2_route_execution",
+      primary_status_source_card_id: "nav2_route",
+      next_action_item_id: "nav2_route_execution",
+      next_action_source_card_id: "nav2_route",
+      sends_motion_when_clicked: false,
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const liveClosureSummary = wrapper.find('[data-testid="plain-live-closure-summary"]');
+    expect(liveClosureSummary.exists()).toBe(true);
+    expect(liveClosureSummary.attributes("data-state")).toBe("needs_wheel_rerun");
+    expect(liveClosureSummary.attributes("data-needs-wheel-rerun")).toBe("true");
+    expect(liveClosureSummary.attributes("data-primary-status-source-card-id")).toBe("nav2_route");
+    expect(liveClosureSummary.text()).toContain("待轮速复验");
+    expect(liveClosureSummary.text()).toContain("同窗口轮速 L/R 还没有非零闭环");
+    expect(liveClosureSummary.text()).toContain("重跑图上行程");
+    expect(liveClosureSummary.text()).not.toContain("/cmd_vel");
+    const liveClosureGuide = wrapper.find('[data-testid="plain-live-closure-go"]');
+    expect(liveClosureGuide.attributes("data-focus-target-item-id")).toBe("nav2_route_execution");
+    expect(liveClosureGuide.attributes("data-focus-target-source-card-id")).toBe("nav2_route");
+    expect(liveClosureGuide.attributes("data-needs-wheel-rerun")).toBe("true");
+    expect(liveClosureGuide.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(liveClosureGuide.attributes("data-focus-only")).toBe("true");
+    expect(liveClosureGuide.attributes("data-fixed-wheel-rerun-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(liveClosureGuide.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
+    expect(liveClosureGuide.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(liveClosureGuide.attributes("data-starts-nav2")).toBe("false");
+    expect(liveClosureGuide.attributes("data-starts-manual")).toBe("false");
+    expect(liveClosureGuide.attributes("data-starts-keyboard")).toBe("false");
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    const focusCallsBeforeClick = focusSpy.mock.calls.length;
+    await liveClosureGuide.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeClick);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
 
   it("opens direct map view from URL without starting ROS2 or motion", async () => {
