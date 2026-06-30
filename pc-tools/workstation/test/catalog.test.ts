@@ -4016,7 +4016,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_fact_plain).toContain("地图画面已读到，但图上路线还未显示");
       expect(summary.current_fact_plain).toContain("自动驾驶：图上路线还未准备完成");
       expect(summary.current_fact_plain).toContain("键盘：必须按住 W/A/S/D 或方向键才会连续低速移动");
-      expect(summary.current_fact_plain).toContain("发车前：执行图上路线只复核现场安全确认和固定白名单");
+      expect(summary.current_fact_plain).toContain("发车前：执行图上路线只要求现场安全确认");
       expect(summary.current_fact_plain).not.toContain("marker");
       expect(summary.current_fact_plain).not.toContain("overlay");
       const actionCards = summary.action_status_cards ?? [];
@@ -4514,9 +4514,9 @@ describe("workstation fail-closed API contracts", () => {
       ]));
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线");
-      expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("nav2_map_not_consumed");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_service_unavailable");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_not_attempted");
@@ -6984,8 +6984,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用 ROS 模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 pwm，下次 ros");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或控制服务；勾选行程前安全确认后用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验执行窗口轮速 L/R");
@@ -12297,6 +12297,8 @@ describe("workstation fail-closed API contracts", () => {
         "goal_limits",
         "hard_dangerous_true_fields",
       ]);
+      expect(rejected.operator_precheck_requirements).toEqual(["confirm_navigation_preflight"]);
+      expect(rejected.proxy_guard_requirements).toEqual(["goal_limits", "hard_dangerous_true_fields"]);
       expect(rejected.minimal_precheck_plain).toContain("相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验");
       expect(JSON.stringify(rejected.remote_read_endpoints)).not.toContain("\"payload\"");
       expect(rejected.robot_control_executed).toBe(false);
@@ -12318,6 +12320,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(accepted.route_readback_preflight_required).toBe(false);
       expect(accepted.localization_readback_preflight_required).toBe(false);
       expect(accepted.nav2_status_readback_preflight_required).toBe(false);
+      expect(accepted.operator_precheck_requirements).toEqual(["confirm_navigation_preflight"]);
+      expect(accepted.proxy_guard_requirements).toEqual(["goal_limits", "hard_dangerous_true_fields"]);
       expect(accepted.nav2_path_summary.path_generated).toBe(false);
       expect(accepted.nav2_path_summary.path_point_count).toBe(0);
       expect(accepted.robot_control_executed).toBe(false);
@@ -12407,6 +12411,8 @@ describe("workstation fail-closed API contracts", () => {
         minimal_precheck_safety_only: boolean;
         minimal_precheck_plain: string;
         execution_blocking_requirements: string[];
+        operator_precheck_requirements: string[];
+        proxy_guard_requirements: string[];
         camera_preflight_required: boolean;
         radar_preflight_required: boolean;
         operator_report_preflight_required: boolean;
@@ -12441,6 +12447,8 @@ describe("workstation fail-closed API contracts", () => {
         "goal_limits",
         "hard_dangerous_true_fields",
       ]);
+      expect(body.operator_precheck_requirements).toEqual(["confirm_navigation_execution"]);
+      expect(body.proxy_guard_requirements).toEqual(["goal_limits", "hard_dangerous_true_fields"]);
       expect(body.minimal_precheck_plain).toContain("路线读回、定位读回和自动驾驶状态只做显示或复验");
       expect(body.goal_request.route_preview_point_count).toBe(3);
       expect(body.goal_request.route_preview_source_point_count).toBe(15);

@@ -1500,9 +1500,9 @@ const fixtures: Record<string, unknown> = {
       nav2_goal_wheel_feedback_status: "not_loaded",
       nav2_goal_next_action: "先生成图上路线并读到小车地图位置",
       nav2_goal_next_action_plain: "先生成图上路线并读到小车地图位置",
-      nav2_goal_minimal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。",
-      nav2_goal_precheck_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。",
-      navigation_preflight_plain: "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。",
+      nav2_goal_minimal_precheck_plain: "执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。",
+      nav2_goal_precheck_plain: "执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。",
+      navigation_preflight_plain: "执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。",
       nav2_goal_execution_mode_label: "not_loaded",
       map_start: "map start locked",
       radar_start: "radar start locked",
@@ -11956,7 +11956,7 @@ describe("App", () => {
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：读到旧行程成功记录；下一步用 ROS 重跑图上路线。");
-    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；可以用 ROS 重跑图上路线，执行接口只复核安全确认和固定白名单。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；可以用 ROS 重跑图上路线，发车前只要求安全确认；固定白名单是代理护栏。");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-mode"]').text()).toContain("上次 PWM，本次请求 ROS");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-wheel"]').text()).toContain("待复验");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("用 ROS 重跑图上路线");
@@ -11977,7 +11977,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-summary-refresh-required")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-execution-latest-endpoint")).toBe("/api/robot-control/nav2/goal/execution/latest");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-wheel-feedback-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
-    expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：将执行当前地图上的路线；发车前只复核安全确认和固定白名单。");
+    expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：将执行当前地图上的路线；发车前只要求安全确认。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
 
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
@@ -14194,7 +14194,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
-    expect(tripPanel.text()).toContain("地图上已显示路线 3 个点；可直接执行图上路线，执行接口只复核安全确认和固定白名单。");
+    expect(tripPanel.text()).toContain("地图上已显示路线 3 个点；可直接执行图上路线，发车前只要求安全确认；固定白名单是代理护栏。");
     expect(tripPanel.attributes("data-route-point-count")).toBe("3");
     expect(tripPanel.attributes("data-route-source-point-count")).toBe("15");
     expect(tripPanel.attributes("data-current-route-visible")).toBe("true");
@@ -14348,11 +14348,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').exists()).toBe(false);
-    expect(tripPanel.text()).toContain("可直接执行图上路线，执行会自动启动自动驾驶 runtime；执行接口只复核安全确认和固定白名单。");
+    expect(tripPanel.text()).toContain("可直接执行图上路线，执行会自动启动自动驾驶 runtime；发车前只要求安全确认；固定白名单是代理护栏。");
     expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已可执行；执行会自动启动自动驾驶 runtime；点击执行前确认起点、终点和路径。");
     expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("路线已准备 18 个点");
     expect(wrapper.find('[data-testid="plain-trip-autonomous-diagnosis"]').text()).toContain("点击执行图上路线会自动启动 runtime");
-    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；可以执行图上路线，执行会自动启动自动驾驶 runtime；执行接口只复核安全确认和固定白名单。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；可以执行图上路线，执行会自动启动自动驾驶 runtime；发车前只要求安全确认；固定白名单是代理护栏。");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-runtime"]').text()).toContain("执行时启动");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-runtime"]').text()).toContain("当前自动驾驶服务未运行");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-runtime"]').text()).toContain("执行会托管启动");
@@ -15134,7 +15134,7 @@ describe("App", () => {
   });
 
   it("keeps plain trip execution blocked until a visible route is confirmed while lidar is stopped", async () => {
-    // 发车前只要求现场安全确认，但执行图上路线必须先看到地图路线；后端只复核确认和固定白名单。
+    // 发车前只要求现场安全确认，但执行图上路线必须先看到地图路线；白名单属于代理护栏。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.lidar.continuous_scan_status = "lifecycle_not_running";
     summaryFixture.readback_summary.lidar.lifecycle_running = "false";

@@ -2170,6 +2170,8 @@ export interface RobotControlNavGoalPreflightResponse extends ProofFlags {
   minimal_precheck_safety_only: true;
   minimal_precheck_plain: string;
   preflight_blocking_requirements: string[];
+  operator_precheck_requirements: string[];
+  proxy_guard_requirements: string[];
   camera_preflight_required: false;
   radar_preflight_required: false;
   operator_report_preflight_required: false;
@@ -2250,6 +2252,8 @@ export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
   minimal_precheck_safety_only: true;
   minimal_precheck_plain: string;
   execution_blocking_requirements: string[];
+  operator_precheck_requirements: string[];
+  proxy_guard_requirements: string[];
   camera_preflight_required: false;
   radar_preflight_required: false;
   operator_report_preflight_required: false;

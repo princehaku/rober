@@ -97,7 +97,7 @@ const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
-const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只复核现场安全确认、目标白名单和危险 true 字段；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验，不作为发车前额外预检。";
+const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只要求现场安全确认；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
 const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = ["confirm_navigation_preflight", "goal_limits", "hard_dangerous_true_fields"] as const;
 const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = ["confirm_navigation_execution", "goal_limits", "hard_dangerous_true_fields"] as const;
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
@@ -10907,7 +10907,7 @@ const plainTripSummary = computed(() => {
       return { state: "待刷新", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备，但地图画面刷新失败：${mapFailure}；重试刷新图上路线。` };
     }
     return plainManualSafetyConfirmed.value
-      ? { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可执行图上路线，${plainTripManagedRuntimePrecheckText()}执行接口只复核安全确认和固定白名单。` : `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，建议先重新定位或刷新地图，但可执行当前图上路线。`) : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
+      ? { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可执行图上路线，${plainTripManagedRuntimePrecheckText()}发车前只要求安全确认；固定白名单是代理护栏。` : `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，建议先重新定位或刷新地图，但可执行当前图上路线。`) : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
       : { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `行程准备已刷新，地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，勾选安全确认后仍可执行。`) : `行程准备已刷新，路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
   }
   if (nav2RefreshResult.value && !plainTripPreparedByRefresh.value) {
@@ -10927,7 +10927,7 @@ const plainTripSummary = computed(() => {
       return { state: "待刷新", hint: `路线 ${plainTripPreparedPointCount.value} 个点已准备，但地图画面刷新失败：${mapFailure}；重试刷新图上路线。` };
     }
     return plainManualSafetyConfirmed.value
-      ? { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可直接执行图上路线，${plainTripManagedRuntimePrecheckText()}执行接口只复核安全确认和固定白名单。` : `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，建议先重新定位或刷新地图，但可直接执行图上路线。`) : `路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
+      ? { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；可直接执行图上路线，${plainTripManagedRuntimePrecheckText()}发车前只要求安全确认；固定白名单是代理护栏。` : `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，建议先重新定位或刷新地图，但可直接执行图上路线。`) : `路线 ${plainTripPreparedPointCount.value} 个点已准备；先刷新地图画面确认图上路线。` }
       : { state: "已准备", hint: routeVisible ? (plainTripRobotPoseVisibleForExecution.value ? `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；勾选安全确认后可执行图上路线。` : `地图上已显示路线 ${plainTripPreparedPointCount.value} 个点；小车位置未显示，勾选安全确认后仍可执行。`) : `路线 ${plainTripPreparedPointCount.value} 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。` };
   }
   if (navGoalPreflightResult.value?.proxy_status === "preflight_passed") {
@@ -10939,7 +10939,7 @@ const plainTripSummary = computed(() => {
   if (!plainManualSafetyConfirmed.value) {
     return { state: "待确认", hint: "先勾选现场安全确认，再用主按钮准备或执行行程。" };
   }
-  return { state: "可执行", hint: "已完成最小确认；点主按钮即可准备或执行图上路线，执行接口只复核安全确认和固定白名单。" };
+  return { state: "可执行", hint: "已完成最小确认；点主按钮即可准备或执行图上路线，发车前只要求安全确认；固定白名单是代理护栏。" };
 });
 
 const plainTripRouteWysiwygSummary = computed(() => {
@@ -11112,7 +11112,7 @@ const plainTripMinimalPrecheckSummary = computed(() => {
     if (!plainTripRobotPoseVisibleForExecution.value) {
       return `行程前确认：安全确认已完成；小车位置未显示，建议先重新定位或刷新地图；${runtimeText}仍可${actionText}。`;
     }
-    return `行程前确认：安全确认已完成；可以${actionText}，${runtimeText}执行接口只复核安全确认和固定白名单。`;
+    return `行程前确认：安全确认已完成；可以${actionText}，${runtimeText}发车前只要求安全确认；固定白名单是代理护栏。`;
   }
   if (plainTripPreparedBySummary.value) {
     return "行程前确认：安全确认已完成；先刷新地图画面确认图上路线。";
@@ -11199,7 +11199,7 @@ const plainTripExecutionPlanItems = computed<PlainTripExecutionPlanItem[]>(() =>
       state: runtimeManaged ? "执行时启动" : "按当前状态",
       hint: runtimeManaged
         ? `${plainTripManagedRuntimeStatusPrefix()}执行会托管启动；这不是额外预检，点击前仍只复核安全确认。`
-        : "执行接口只复核现场安全确认和固定白名单。",
+        : "发车前只要求现场安全确认；固定白名单是代理护栏。",
     },
     {
       id: "wheel",
@@ -11258,7 +11258,7 @@ const canRefreshPlainTripPreparation = computed(() => {
 
 const canRunPlainTripExecution = computed(() => {
   // 行程按钮承担普通首屏向导：无图上路线时只准备并刷新地图，已有图上路线时才执行。
-  // 小车位置可见性只作为 WYSIWYG 警告，不再做前端硬挡；后端仍复核安全确认和固定白名单。
+  // 小车位置可见性只作为 WYSIWYG 警告，不再做前端硬挡；后端只把安全确认作为操作员预检。
   return !deliveryNav2GoalReady.value
     && !loading.value
     && !plainTripActionPending.value
@@ -11339,8 +11339,8 @@ const plainTripMainActionSummary = computed(() => {
   switch (plainTripMainActionKind.value) {
     case "execute_current_map_route":
       return plainTripManagedRuntimeWillAutostart.value
-        ? "主按钮：将执行当前地图上的路线；执行时会托管启动自动驾驶 runtime，发车前只复核安全确认和固定白名单。"
-        : "主按钮：将执行当前地图上的路线；发车前只复核安全确认和固定白名单。";
+        ? "主按钮：将执行当前地图上的路线；执行时会托管启动自动驾驶 runtime；发车前只要求安全确认。"
+        : "主按钮：将执行当前地图上的路线；发车前只要求安全确认。";
     case "refresh_route_on_map_no_motion":
       return "主按钮：只刷新地图上的路线显示，不发车。";
     case "refresh_current_route_no_motion":

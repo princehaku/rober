@@ -75,12 +75,16 @@ export const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = [
   "goal_limits",
   "hard_dangerous_true_fields",
 ] as const;
+export const NAV2_GOAL_PREFLIGHT_OPERATOR_PRECHECK_REQUIREMENTS = ["confirm_navigation_preflight"] as const;
+export const NAV2_GOAL_PREFLIGHT_PROXY_GUARD_REQUIREMENTS = ["goal_limits", "hard_dangerous_true_fields"] as const;
 export const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = [
   "confirm_navigation_execution",
   "goal_limits",
   "hard_dangerous_true_fields",
 ] as const;
-export const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只复核现场安全确认、目标白名单和危险 true 字段；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验，不作为发车前额外预检。";
+export const NAV2_GOAL_EXECUTION_OPERATOR_PRECHECK_REQUIREMENTS = ["confirm_navigation_execution"] as const;
+export const NAV2_GOAL_EXECUTION_PROXY_GUARD_REQUIREMENTS = ["goal_limits", "hard_dangerous_true_fields"] as const;
+export const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只要求现场安全确认；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
 const ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT = 72;
 const ROBOT_CONTROL_SCAN_PREVIEW_MIN_RANGE_M = 0.03;
 const ROBOT_CONTROL_SCAN_PREVIEW_MAX_RANGE_M = 8;
@@ -3052,6 +3056,8 @@ function blockedNavGoalPreflightResponse(
     minimal_precheck_safety_only: true,
     minimal_precheck_plain: NAV2_GOAL_MINIMAL_PRECHECK_PLAIN,
     preflight_blocking_requirements: [...NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS],
+    operator_precheck_requirements: [...NAV2_GOAL_PREFLIGHT_OPERATOR_PRECHECK_REQUIREMENTS],
+    proxy_guard_requirements: [...NAV2_GOAL_PREFLIGHT_PROXY_GUARD_REQUIREMENTS],
     camera_preflight_required: false,
     radar_preflight_required: false,
     operator_report_preflight_required: false,
@@ -3139,6 +3145,8 @@ export async function buildNavGoalPreflightProxy(
     minimal_precheck_safety_only: true,
     minimal_precheck_plain: NAV2_GOAL_MINIMAL_PRECHECK_PLAIN,
     preflight_blocking_requirements: [...NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS],
+    operator_precheck_requirements: [...NAV2_GOAL_PREFLIGHT_OPERATOR_PRECHECK_REQUIREMENTS],
+    proxy_guard_requirements: [...NAV2_GOAL_PREFLIGHT_PROXY_GUARD_REQUIREMENTS],
     camera_preflight_required: false,
     radar_preflight_required: false,
     operator_report_preflight_required: false,
@@ -7311,7 +7319,7 @@ function lockedBoundary(
   const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime, manualMotionFallbackActive);
   const keyboardNextAction = "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
   const keyboardStopTriggers = ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"];
-  const nav2MinimalPrecheckPlain = "执行图上路线只复核现场安全确认和固定白名单；相机、雷达和现场报告不作为发车前额外预检。";
+  const nav2MinimalPrecheckPlain = "执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。";
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",
