@@ -3860,11 +3860,18 @@ const plainLiveClosureSideGapText = computed(() => {
 });
 const plainLiveMotionRunbookRows = computed(() => {
   // runbook 只是把 summary 的只读合同压成普通用户能扫一眼的动作清单，不参与放行判断。
+  const targetByAction: Record<RobotControlLiveMotionRunbookItem["id"], RobotControlActionStatusCardId> = {
+    run_nav2_route: "nav2_route",
+    hold_keyboard: "keyboard_control",
+    start_free_move: "free_move",
+    start_mapping_when_sensors_ready: "mapping_start",
+  };
   const items = plainLiveClosureSummary.value?.live_motion_runbook_items ?? [];
   return items.map((item: RobotControlLiveMotionRunbookItem) => ({
     ...item,
     state: item.ready ? "可做" : "未就绪",
     primary: item.id === plainLiveClosureSummary.value?.live_motion_runbook_primary_action_id,
+    sourceCardId: targetByAction[item.id],
     blockedText: item.blocked_reasons.join("、") || "none",
     acceptanceText: plainActionCardUserText(item.acceptance_plain),
   }));
@@ -3944,6 +3951,10 @@ function focusPlainLiveClosureTarget(): void {
   if (!sourceCardId) {
     return;
   }
+  focusPlainActionCardTarget(sourceCardId);
+}
+function focusPlainLiveMotionRunbookTarget(sourceCardId: RobotControlActionStatusCardId): void {
+  // 动作清单的行按钮也是只聚焦，避免把“可做”误解成“一键发车”。
   focusPlainActionCardTarget(sourceCardId);
 }
 function plainActionCardUserText(value: string): string {
@@ -16221,10 +16232,26 @@ onBeforeUnmount(() => {
             :data-stop-endpoint="item.stop_endpoint"
             :data-acceptance-endpoints="item.acceptance_endpoints.join(',') || 'none'"
             :data-blocked-reasons="item.blockedText"
+            :data-focus-target-source-card-id="item.sourceCardId"
           >
             <span class="plain-progress-label">{{ plainActionCardUserText(item.label) }}</span>
             <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
             <span class="muted">{{ item.acceptanceText }}</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              :data-testid="`plain-live-motion-runbook-go-${item.id}`"
+              :data-focus-target-source-card-id="item.sourceCardId"
+              data-focus-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              @click="focusPlainLiveMotionRunbookTarget(item.sourceCardId)"
+            >
+              去处理
+            </button>
           </div>
         </div>
         <span class="muted">下一步：{{ plainActionCardUserText(plainLiveClosureSummary.next_action_plain) }}</span>
