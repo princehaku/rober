@@ -3253,10 +3253,18 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       free_move_start_ready: string;
       motion_start_ready: string;
       free_roam_motion_start_ready: string;
+      free_move_without_camera_allowed: string;
+      motion_without_radar_allowed: string;
+      free_move_minimal_precheck_safety_only: string;
+      free_move_safety_confirm_required: string;
+      free_move_camera_preflight_required: string;
+      free_move_radar_preflight_required: string;
       motion_ready: string;
       free_roam_motion_ready: string;
       mapping_start_ready: string;
       free_roam_mapping_start_ready: string;
+      mapping_start_requires_camera_first_frame: string;
+      mapping_start_requires_lidar_fresh: string;
       mapping_start_missing: string;
       mapping_readiness_ready: string;
       mapping_blocked_reasons: string;

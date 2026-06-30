@@ -8,6 +8,22 @@
 
 ## 2026-07-01 系列
 
+### 2026-07-01 02-04｜pc_free_roam_readback_aliases｜自由移动与建图启动只读别名
+
+本轮 `sprints/2026.07.01_02-04_pc_free_roam_readback_aliases/` 把 PC 自由移动 readiness 抬到
+`readback_summary.free_roam` 的直观字段：`free_move_without_camera_allowed`、`motion_without_radar_allowed`、
+`free_move_minimal_precheck_safety_only`、`free_move_safety_confirm_required`、`free_move_camera_preflight_required`、
+`free_move_radar_preflight_required`、`mapping_start_requires_camera_first_frame`、`mapping_start_requires_lidar_fresh`。
+这样现场脚本可以直接读出“车可先自由移动，摄像头/雷达不作为自由移动前置；建图启动才要求画面首帧和雷达新鲜”。
+
+验证范围：`npm test -- test/catalog.test.ts -t "free roam|自由移动|mapping" --run` 7 tests OK / 170 skipped；
+`npm test -- test/robotControlSummary.test.ts --run` 6 tests OK；`npm test -- test/catalog.test.ts --run` 177 tests OK；
+`npm test -- --run` 412 tests OK；`npm run build` 通过；`npm run lint` 0 error / 4 existing warnings。PC Node 已重启到
+`0.0.0.0:7001`，live 只读 summary 返回 `motion_start_ready=true`、`free_move_without_camera_allowed=true`、
+`motion_without_radar_allowed=true`、`free_move_camera_preflight_required=false`、`free_move_radar_preflight_required=false`、
+`mapping_start_requires_camera_first_frame=true`、`mapping_start_requires_lidar_fresh=true`、`mapping_start_ready=false`、
+`mapping_start_missing=camera_first_frame`、`safe_to_control=false`。
+
 ### 2026-07-01 01-56｜pc_keyboard_readback_aliases｜键盘连续控制只读别名
 
 本轮 `sprints/2026.07.01_01-56_pc_keyboard_readback_aliases/` 把 PC 键盘连续控制合同抬到
