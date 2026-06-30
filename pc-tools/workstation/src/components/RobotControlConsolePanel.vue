@@ -65,6 +65,7 @@ import type {
   RobotApiScanPreviewPoint,
   RobotControlActionStatusCardId,
   RobotControlGoalChecklistSummaryActionItem,
+  RobotControlLiveObjectiveAuditItem,
   RobotControlLiveMotionRunbookItem,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
@@ -6049,7 +6050,7 @@ const plainIntentShortcutItems = computed<PlainIntentShortcutItem[]>(() => {
   ];
 });
 type PlainObjectiveOverviewItem = {
-  id: "motion" | "wysiwyg" | "precheck" | "mapping";
+  id: RobotControlLiveObjectiveAuditItem["id"];
   title: string;
   state: string;
   summary: string;
@@ -6111,6 +6112,21 @@ const plainMoveNowSnapshotItems = computed<PlainMoveNowSnapshotItem[]>(() => {
 });
 const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() => {
   // 直接按 CEO 的四条目标归并当前状态，避免现场只能看到零散卡片。
+  const liveAudit = plainLiveClosureSummary.value?.objective_audit_items ?? [];
+  if (liveAudit.length > 0) {
+    return liveAudit.map((item) => ({
+      id: item.id,
+      title: item.title,
+      state: item.state,
+      summary: item.summary_plain,
+      nextAction: item.next_action_plain,
+      itemIds: item.item_ids,
+      completed: item.completed,
+      actionable: item.actionable,
+      missingCount: item.missing_count,
+      sourceCardId: item.source_card_id,
+    }));
+  }
   const summary = plainGoalChecklistSummary.value;
   if (!summary) {
     return [];
@@ -16891,7 +16907,21 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div v-if="plainObjectiveOverviewItems.length" class="plain-objective-overview" data-testid="plain-objective-overview" aria-label="目标总览">
+      <div
+        v-if="plainObjectiveOverviewItems.length"
+        class="plain-objective-overview"
+        data-testid="plain-objective-overview"
+        aria-label="目标总览"
+        :data-objective-audit-status="plainLiveClosureSummary?.objective_audit_status ?? 'not_loaded'"
+        :data-objective-audit-total-count="String(plainLiveClosureSummary?.objective_audit_total_count ?? 0)"
+        :data-objective-audit-done-count="String(plainLiveClosureSummary?.objective_audit_done_count ?? 0)"
+        :data-objective-audit-remaining-count="String(plainLiveClosureSummary?.objective_audit_remaining_count ?? 0)"
+        :data-objective-audit-next-objective-id="plainLiveClosureSummary?.objective_audit_next_objective_id ?? 'not_loaded'"
+        :data-objective-audit-missing-objective-ids="plainLiveClosureSummary?.objective_audit_missing_objective_ids.join(',') ?? 'not_loaded'"
+        :data-objective-audit-summary-plain="plainLiveClosureSummary?.objective_audit_summary_plain ?? 'not_loaded'"
+        :data-fixed-objective-audit-summary-endpoint="plainLiveClosureSummary?.fixed_objective_audit_summary_endpoint ?? 'not_loaded'"
+        :data-objective-audit-sends-motion-when-clicked="String(plainLiveClosureSummary?.objective_audit_sends_motion_when_clicked ?? false)"
+      >
         <div class="simple-status-row">
           <strong>目标总览</strong>
           <span class="muted">按本轮四个目标归并，只显示当前卡点。</span>

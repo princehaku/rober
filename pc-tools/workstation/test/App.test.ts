@@ -808,6 +808,69 @@ const fixtures: Record<string, unknown> = {
       camera_current_visible: false,
       map_current_visible: true,
       radar_map_points_visible: false,
+      objective_audit_status: "in_progress",
+      objective_audit_total_count: 4,
+      objective_audit_done_count: 1,
+      objective_audit_remaining_count: 3,
+      objective_audit_next_objective_id: "motion",
+      objective_audit_missing_objective_ids: ["motion", "wysiwyg", "mapping"],
+      objective_audit_summary_plain: "四项目标完成 1/4；下一项：行程/键盘/自由移动；未完成：行程/键盘/自由移动、画面/地图/雷达点、自由移动到建图。",
+      objective_audit_items: [
+        {
+          id: "motion",
+          title: "行程/键盘/自由移动",
+          state: "可处理",
+          summary_plain: "图上行程：未就绪；键盘：可验证；自由移动：可启动。",
+          next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+          item_ids: ["nav2_route_execution", "keyboard_continuous_control", "free_move"],
+          completed: false,
+          actionable: true,
+          missing_count: 3,
+          source_card_id: "free_move",
+          sends_motion_when_clicked: false,
+        },
+        {
+          id: "wysiwyg",
+          title: "画面/地图/雷达点",
+          state: "待处理",
+          summary_plain: "画面：未显示；地图：已显示；雷达点：未贴图。",
+          next_action_plain: "刷新地图画面，确认地图上实际显示的雷达点数。",
+          item_ids: ["camera_wysiwyg", "map_wysiwyg", "radar_map_points_wysiwyg"],
+          completed: false,
+          actionable: true,
+          missing_count: 2,
+          source_card_id: "camera_preview",
+          sends_motion_when_clicked: false,
+        },
+        {
+          id: "precheck",
+          title: "发车前确认",
+          state: "只需勾确认",
+          summary_plain: "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
+          next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+          item_ids: ["safety_confirmation"],
+          completed: true,
+          actionable: true,
+          missing_count: 0,
+          source_card_id: "free_move",
+          sends_motion_when_clicked: false,
+        },
+        {
+          id: "mapping",
+          title: "自由移动到建图",
+          state: "先自由移动",
+          summary_plain: "自由移动：可启动；建图启动：未就绪，还差 画面首帧、雷达新鲜。",
+          next_action_plain: "建图启动还差：画面首帧、雷达新鲜；自由移动仍可先做，不被相机/雷达画面缺口阻塞。当前相机提示：不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。；只读复测相机首帧和 MJPEG 状态，首帧 ready 后再启动建图。",
+          item_ids: ["free_move", "mapping_start"],
+          completed: false,
+          actionable: true,
+          missing_count: 1,
+          source_card_id: "free_move",
+          sends_motion_when_clicked: false,
+        },
+      ],
+      fixed_objective_audit_summary_endpoint: "/api/robot-control/summary",
+      objective_audit_sends_motion_when_clicked: false,
       map_display_primary_tool: "pc_big_map",
       map_display_primary_url: "/map",
       map_display_legacy_url: "?view=map",
@@ -5353,6 +5416,15 @@ describe("App", () => {
     expect(objectiveOverview.text()).not.toContain("operator report");
     expect(objectiveOverview.text()).not.toContain("raw");
     expect(objectiveOverview.text()).not.toContain("/cmd_vel");
+    expect(objectiveOverview.attributes("data-objective-audit-status")).toBe("in_progress");
+    expect(objectiveOverview.attributes("data-objective-audit-total-count")).toBe("4");
+    expect(objectiveOverview.attributes("data-objective-audit-done-count")).toBe("1");
+    expect(objectiveOverview.attributes("data-objective-audit-remaining-count")).toBe("3");
+    expect(objectiveOverview.attributes("data-objective-audit-next-objective-id")).toBe("motion");
+    expect(objectiveOverview.attributes("data-objective-audit-missing-objective-ids")).toBe("motion,wysiwyg,mapping");
+    expect(objectiveOverview.attributes("data-objective-audit-summary-plain")).toContain("四项目标完成 1/4");
+    expect(objectiveOverview.attributes("data-fixed-objective-audit-summary-endpoint")).toBe("/api/robot-control/summary");
+    expect(objectiveOverview.attributes("data-objective-audit-sends-motion-when-clicked")).toBe("false");
     const objectiveMotion = wrapper.find('[data-testid="plain-objective-overview-motion"]');
     expect(objectiveMotion.attributes("data-objective-id")).toBe("motion");
     expect(objectiveMotion.attributes("data-state")).toBe("可处理");
@@ -5386,6 +5458,8 @@ describe("App", () => {
     expect(objectiveMapping.attributes("data-missing-count")).toBe("1");
     expect(objectiveMapping.attributes("data-item-ids")).toBe("free_move,mapping_start");
     expect(objectiveMapping.attributes("data-source-card-id")).toBe("free_move");
+    expect(objectiveMapping.text()).toContain("画面首帧");
+    expect(objectiveMapping.text()).not.toContain("camera_first_frame");
     const callsBeforeObjectiveWysiwygGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeObjectiveWysiwygGuide = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-objective-overview-go-wysiwyg"]').trigger("click");

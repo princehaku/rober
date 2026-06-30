@@ -2742,6 +2742,22 @@ export interface RobotControlLiveMotionRunbookItem {
   blocked_reasons: string[];
 }
 
+export type RobotControlLiveObjectiveAuditId = "motion" | "wysiwyg" | "precheck" | "mapping";
+
+export interface RobotControlLiveObjectiveAuditItem {
+  id: RobotControlLiveObjectiveAuditId;
+  title: string;
+  state: string;
+  summary_plain: string;
+  next_action_plain: string;
+  item_ids: string[];
+  completed: boolean;
+  actionable: boolean;
+  missing_count: number;
+  source_card_id: RobotControlActionStatusCardId;
+  sends_motion_when_clicked: false;
+}
+
 export interface RobotControlLiveClosureSummary {
   status: "complete" | "ready_for_motion" | "needs_safety_confirm" | "needs_wheel_rerun" | "needs_delivery" | "needs_wysiwyg" | "needs_sensor" | "not_ready";
   status_label: string;
@@ -2757,6 +2773,16 @@ export interface RobotControlLiveClosureSummary {
   camera_current_visible: boolean;
   map_current_visible: boolean;
   radar_map_points_visible: boolean;
+  objective_audit_status: "complete" | "in_progress";
+  objective_audit_total_count: 4;
+  objective_audit_done_count: number;
+  objective_audit_remaining_count: number;
+  objective_audit_next_objective_id: RobotControlLiveObjectiveAuditId | "none";
+  objective_audit_missing_objective_ids: RobotControlLiveObjectiveAuditId[];
+  objective_audit_summary_plain: string;
+  objective_audit_items: RobotControlLiveObjectiveAuditItem[];
+  fixed_objective_audit_summary_endpoint: "/api/robot-control/summary";
+  objective_audit_sends_motion_when_clicked: false;
   map_display_primary_tool: "pc_big_map";
   map_display_primary_url: "/map";
   map_display_legacy_url: "?view=map";

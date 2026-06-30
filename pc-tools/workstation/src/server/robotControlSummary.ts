@@ -27,6 +27,7 @@ import type {
   RobotControlNav2LifecycleEndpoint,
   RobotControlNav2LifecycleResponse,
   RobotControlGoalChecklistSummary,
+  RobotControlLiveObjectiveAuditItem,
   RobotControlLiveWysiwygSurfaceSummary,
   RobotControlRadarLifecycleAction,
   RobotControlRadarLifecycleEndpoint,
@@ -8654,14 +8655,15 @@ function buildLiveClosureSummary(
   const mappingAcceptanceMissingReasons = boundary.free_roam_mapping_missing_reasons;
   const mappingCameraBlocksStart = mappingStartMissingReasons.includes("camera_first_frame");
   const mappingLidarBlocksStart = mappingStartMissingReasons.includes("lidar_fresh");
+  const mappingStartMissingPlain = [
+    ...(mappingCameraBlocksStart ? ["画面首帧"] : []),
+    ...(mappingLidarBlocksStart ? ["雷达新鲜"] : []),
+    ...mappingStartMissingReasons.filter((reason) => !["camera_first_frame", "lidar_fresh"].includes(reason)),
+  ].join("、") || "传感器条件";
   const mappingStartUnblockPlain = (() => {
     if (mappingStartReady) {
       return "建图启动已就绪：画面首帧和雷达新鲜都满足；勾现场安全确认后可启动建图记录。";
     }
-    const missingPlain = [
-      ...(mappingCameraBlocksStart ? ["画面首帧"] : []),
-      ...(mappingLidarBlocksStart ? ["雷达新鲜"] : []),
-    ].join("、") || "传感器条件";
     const cameraDiagnosisPlain = readback.camera.source_diagnosis_plain_hint
       || readback.camera.source_diagnosis_next_action_plain
       || readback.camera.camera_wysiwyg_next_action_plain
@@ -8669,7 +8671,7 @@ function buildLiveClosureSummary(
     const cameraTail = mappingCameraBlocksStart
       ? `当前相机提示：${cameraDiagnosisPlain}`
       : "相机首帧已满足。";
-    return `建图启动还差：${missingPlain}；自由移动仍可先做，不被相机/雷达画面缺口阻塞。${cameraTail}；只读复测相机首帧和 MJPEG 状态，首帧 ready 后再启动建图。`;
+    return `建图启动还差：${mappingStartMissingPlain}；自由移动仍可先做，不被相机/雷达画面缺口阻塞。${cameraTail}；只读复测相机首帧和 MJPEG 状态，首帧 ready 后再启动建图。`;
   })();
   const keyboardControlStartReady = keyboard.evidence?.keyboard_start_ready === true
     || readback.keyboard.keyboard_control_start_ready === "true";
@@ -8925,6 +8927,101 @@ function buildLiveClosureSummary(
     "读取相机 MJPEG 状态",
   ];
   const mapDisplayCompanionPlain = "普通用户地图：打开 /map 使用 PC 大地图，默认 2400% 缩放，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge。";
+  const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
+  const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
+  const freeMoveObjectiveDone = readback.free_roam.motion_ready === "true"
+    || readback.free_roam.free_roam_motion_ready === "true";
+  const motionObjectiveDoneCount = [
+    nav2ObjectiveDone,
+    keyboardObjectiveDone,
+    freeMoveObjectiveDone,
+  ].filter(Boolean).length;
+  const motionObjectiveCompleted = motionObjectiveDoneCount === 3;
+  const motionObjectiveActionable = routeReadyOnMap || keyboardContinuousControlReady || freeMoveStartReady;
+  const motionObjectiveSourceCardId: RobotControlLiveObjectiveAuditItem["source_card_id"] = needsSameWindowWheelRerun
+    ? "nav2_route"
+    : (goalSummary.primary_ready_action_source_card_id || goalSummary.first_motion_source_card_id || "free_move") as RobotControlLiveObjectiveAuditItem["source_card_id"];
+  const motionObjectiveNextActionPlain = needsSameWindowWheelRerun
+    ? nextActionPlain
+    : goalSummary.primary_ready_action_next_action_plain || nextActionPlain;
+  const wysiwygObjectiveDoneCount = [
+    cameraCurrentVisible,
+    mapCurrentVisible,
+    radarMapPointsVisible,
+  ].filter(Boolean).length;
+  const wysiwygObjectiveCompleted = wysiwygObjectiveDoneCount === 3;
+  const mappingObjectiveCompleted = freeMoveStartReady && mappingStartReady;
+  const mappingObjectiveMissingCount = [!freeMoveStartReady, !mappingStartReady].filter(Boolean).length;
+  const objectiveAuditItems: RobotControlLiveObjectiveAuditItem[] = [
+    {
+      id: "motion",
+      title: "行程/键盘/自由移动",
+      state: motionObjectiveCompleted ? "已完成" : motionObjectiveActionable ? "可处理" : "未就绪",
+      summary_plain: `图上行程：${nav2ObjectiveDone ? "已闭环" : routeReadyOnMap ? "待轮速复验" : "未就绪"}；键盘：${keyboardObjectiveDone ? "已验证" : keyboardContinuousControlReady ? "可验证" : "未就绪"}；自由移动：${freeMoveObjectiveDone ? "运行中" : freeMoveStartReady ? "可启动" : "未就绪"}。`,
+      next_action_plain: motionObjectiveNextActionPlain,
+      item_ids: ["nav2_route_execution", "keyboard_continuous_control", "free_move"],
+      completed: motionObjectiveCompleted,
+      actionable: motionObjectiveActionable,
+      missing_count: 3 - motionObjectiveDoneCount,
+      source_card_id: motionObjectiveSourceCardId,
+      sends_motion_when_clicked: false,
+    },
+    {
+      id: "wysiwyg",
+      title: "画面/地图/雷达点",
+      state: wysiwygObjectiveCompleted ? "已完成" : "待处理",
+      summary_plain: `画面：${cameraCurrentVisible ? "已显示" : "未显示"}；地图：${mapCurrentVisible ? "已显示" : "未显示"}；雷达点：${radarMapPointsVisible ? "已贴图" : "未贴图"}。`,
+      next_action_plain: liveWysiwygPrimaryRefreshLabel === "当前所见已满足"
+        ? "当前画面、地图和雷达点已按同轮读数显示。"
+        : `下一步：${liveWysiwygPrimaryRefreshLabel}。`,
+      item_ids: ["camera_wysiwyg", "map_wysiwyg", "radar_map_points_wysiwyg"],
+      completed: wysiwygObjectiveCompleted,
+      actionable: !wysiwygObjectiveCompleted,
+      missing_count: 3 - wysiwygObjectiveDoneCount,
+      source_card_id: liveWysiwygMissingSurfaceIds.includes("camera")
+        ? "camera_preview"
+        : liveWysiwygMissingSurfaceIds.includes("radar_map_points")
+          ? "radar_map_points"
+          : "map_preview",
+      sends_motion_when_clicked: false,
+    },
+    {
+      id: "precheck",
+      title: "发车前确认",
+      state: minimalPrecheckSafetyOnly ? "只需勾确认" : "未收敛",
+      summary_plain: minimalPrecheckSafetyOnly
+        ? "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。"
+        : "发车前预检还未收敛到最小安全确认。",
+      next_action_plain: goalSummary.safety_precheck_next_action_plain || "当前没有待安全确认的入口。",
+      item_ids: ["safety_confirmation"],
+      completed: minimalPrecheckSafetyOnly,
+      actionable: goalSummary.safety_confirm_needed_count > 0,
+      missing_count: minimalPrecheckSafetyOnly ? 0 : 1,
+      source_card_id: (goalSummary.safety_precheck_source_card_id || "nav2_route") as RobotControlLiveObjectiveAuditItem["source_card_id"],
+      sends_motion_when_clicked: false,
+    },
+    {
+      id: "mapping",
+      title: "自由移动到建图",
+      state: mappingStartReady ? "可建图" : freeMoveStartReady ? "先自由移动" : "未就绪",
+      summary_plain: `自由移动：${freeMoveStartReady ? "可启动" : "未就绪"}；建图启动：${mappingStartReady ? "可启动" : `未就绪，还差 ${mappingStartMissingPlain}`}。`,
+      next_action_plain: mappingStartUnblockPlain,
+      item_ids: ["free_move", "mapping_start"],
+      completed: mappingObjectiveCompleted,
+      actionable: freeMoveStartReady || mappingStartReady,
+      missing_count: mappingObjectiveMissingCount,
+      source_card_id: mappingStartReady ? "mapping_start" : "free_move",
+      sends_motion_when_clicked: false,
+    },
+  ];
+  const objectiveAuditMissingIds = objectiveAuditItems.filter((item) => !item.completed).map((item) => item.id);
+  const objectiveAuditDoneCount = objectiveAuditItems.length - objectiveAuditMissingIds.length;
+  const objectiveAuditNextObjective = objectiveAuditItems.find((item) => !item.completed && item.actionable)
+    ?? objectiveAuditItems.find((item) => !item.completed)
+    ?? null;
+  const objectiveAuditSummaryPlain = objectiveAuditMissingIds.length === 0
+    ? "四项目标均已完成；继续保持现场监看。"
+    : `四项目标完成 ${objectiveAuditDoneCount}/4；下一项：${objectiveAuditNextObjective?.title ?? "继续现场监看"}；未完成：${objectiveAuditItems.filter((item) => !item.completed).map((item) => item.title).join("、")}。`;
   return {
     status,
     status_label: labels[status],
@@ -8940,6 +9037,16 @@ function buildLiveClosureSummary(
     camera_current_visible: cameraCurrentVisible,
     map_current_visible: mapCurrentVisible,
     radar_map_points_visible: radarMapPointsVisible,
+    objective_audit_status: objectiveAuditMissingIds.length === 0 ? "complete" : "in_progress",
+    objective_audit_total_count: 4,
+    objective_audit_done_count: objectiveAuditDoneCount,
+    objective_audit_remaining_count: objectiveAuditMissingIds.length,
+    objective_audit_next_objective_id: objectiveAuditNextObjective?.id ?? "none",
+    objective_audit_missing_objective_ids: objectiveAuditMissingIds,
+    objective_audit_summary_plain: objectiveAuditSummaryPlain,
+    objective_audit_items: objectiveAuditItems,
+    fixed_objective_audit_summary_endpoint: "/api/robot-control/summary",
+    objective_audit_sends_motion_when_clicked: false,
     map_display_primary_tool: "pc_big_map",
     map_display_primary_url: "/map",
     map_display_legacy_url: "?view=map",

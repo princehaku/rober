@@ -113,6 +113,26 @@ describe("robotControlSummary", () => {
       "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。",
     );
     expect(summary.live_closure_summary?.next_action_plain).not.toContain("wheel raw");
+    expect(summary.live_closure_summary?.objective_audit_status).toBe("in_progress");
+    expect(summary.live_closure_summary?.objective_audit_total_count).toBe(4);
+    expect(summary.live_closure_summary?.objective_audit_done_count).toBeGreaterThanOrEqual(1);
+    expect(summary.live_closure_summary?.objective_audit_remaining_count).toBeGreaterThan(0);
+    expect(summary.live_closure_summary?.objective_audit_missing_objective_ids).toContain("motion");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("四项目标完成");
+    expect(summary.live_closure_summary?.fixed_objective_audit_summary_endpoint).toBe("/api/robot-control/summary");
+    expect(summary.live_closure_summary?.objective_audit_sends_motion_when_clicked).toBe(false);
+    expect(summary.live_closure_summary?.objective_audit_items).toHaveLength(4);
+    const motionObjective = summary.live_closure_summary?.objective_audit_items.find((item) => item.id === "motion");
+    expect(motionObjective?.completed).toBe(false);
+    expect(motionObjective?.actionable).toBe(true);
+    expect(motionObjective?.item_ids).toEqual(["nav2_route_execution", "keyboard_continuous_control", "free_move"]);
+    expect(motionObjective?.summary_plain).toContain("图上行程");
+    expect(motionObjective?.sends_motion_when_clicked).toBe(false);
+    const wysiwygObjective = summary.live_closure_summary?.objective_audit_items.find((item) => item.id === "wysiwyg");
+    expect(wysiwygObjective?.item_ids).toEqual(["camera_wysiwyg", "map_wysiwyg", "radar_map_points_wysiwyg"]);
+    const mappingObjective = summary.live_closure_summary?.objective_audit_items.find((item) => item.id === "mapping");
+    expect(mappingObjective?.summary_plain).not.toContain("camera_first_frame");
+    expect(mappingObjective?.next_action_plain).not.toContain("camera_first_frame");
     expect(summary.live_closure_summary?.needs_same_window_wheel_rerun).toBe(true);
     expect(summary.live_closure_summary?.wheel_rerun_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.wheel_rerun_safety_confirm_required).toBe(true);
