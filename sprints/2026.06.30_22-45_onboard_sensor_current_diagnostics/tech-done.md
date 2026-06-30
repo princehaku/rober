@@ -31,6 +31,7 @@ sprint_type: micro
 - 2026-07-01 00:32 CST 补齐 PC 运动 runbook 顶层合同：`live_closure_summary` API 与 `plain-live-closure-summary` DOM 新增 `live_motion_runbook_items`、action/ready/blocked ids、primary action、start endpoints、acceptance endpoints、最小预检和安全确认字段。当前 live 读数会直接列出 Nav2 路线、键盘连续手控、自由移动 ready，建图因 camera 阻塞；字段本身只读，不勾安全确认、不发送 Nav2/manual/free-roam/map start 或 `/cmd_vel`。
 - 2026-07-01 00:40 CST 把 PC 运动 runbook 从隐藏合同提升为普通用户可见动作清单：`plain-live-motion-runbook` 在当前卡点卡内直接显示 Nav2、键盘连续手控、自由移动、传感器就绪后建图的“可做/未就绪”和验收口径，同时每行保留 start/stop/acceptance/blocked data 属性。该清单不新增按钮、不触发请求，当前卡点按钮仍只做页面聚焦。
 - 2026-07-01 00:47 CST 为 PC 运动 runbook 每行增加只聚焦“去处理”入口：Nav2、键盘、自由移动、建图行分别聚焦到对应卡片，并暴露 focus-only、no-motion、no-starts-* data 属性。该入口不勾安全确认、不发 Nav2/manual/free-roam/map start/stop 或 `/cmd_vel`。
+- 2026-07-01 00:54 CST 把 PC 运动 runbook 每行按钮从泛化“去处理”改为具体下一步文案，并暴露 `data-focus-target-kind`：Nav2 根据轮速复验和安全确认显示去勾安全确认/去重跑图上行程/去看行程条件，键盘显示去启用键盘或条件，自由移动显示去自由移动或条件，建图显示去启动建图或条件。该改动仍只聚焦，不新增任何控制请求。
 
 ## 验证结果
 
@@ -94,6 +95,11 @@ sprint_type: micro
 - `git diff --check`：通过。
 - 2026-07-01 00:47 CST 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
 - PC 7001 live GET 验证：`GET /api/robot-control/summary` 仍返回 `status=needs_wheel_rerun`、primary `run_nav2_route`、ready `["run_nav2_route","hold_keyboard","start_free_move"]`、blocked `["start_mapping_when_sensors_ready"]`、start endpoints `["/api/robot-control/nav2/goal/execute","/api/robot-control/base/manual","/api/robot-control/free-roam/autonomy/start"]`、acceptance endpoints `["/api/robot-control/nav2/goal/execution/latest","/api/robot-control/base/feedback-samples","/api/robot-control/summary","/api/robot-control/free-roam/autonomy/latest","/api/robot-control/map/preview"]`、`sends_motion=false`、`live_wysiwyg_missing_surface_ids=["camera"]`、`map_radar_overlay_status=loaded`、`map_radar_overlay_point_count=72`；`GET /` 与 `GET /map` 均返回 `HTTP 200 text/html`。该验证只调用 GET summary/page，未调用任何运动/control POST。
+- `npm test -- --run App.test.ts robotControlSummary.test.ts`（`pc-tools/workstation`）：通过，2 files / 231 tests；覆盖 runbook 行按钮的具体文案、`data-focus-target-kind`、focus-only/no-motion 属性，以及点击不新增 fetch。
+- `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
+- `git diff --check`：通过。
+- 2026-07-01 00:54 CST 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
+- PC 7001 live GET 验证：`GET /api/robot-control/summary` 返回 `status=needs_wheel_rerun`、primary `run_nav2_route`、ready `["run_nav2_route","hold_keyboard","start_free_move"]`、blocked `["start_mapping_when_sensors_ready"]`、`sends_motion=false`、`live_wysiwyg_missing_surface_ids=["camera"]`、`map_radar_overlay_status=loaded`、`map_radar_overlay_point_count=72`；`GET /` 与 `GET /map` 均返回 `HTTP 200 text/html`。该验证只调用 GET summary/page，未调用任何运动/control POST。
 - 2026-07-01 00:08 CST 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
 - PC 7001 live GET 验证键盘连续手控复验链路：`GET /api/robot-control/summary` 返回 `keyboard_continuous_control_ready=true`、`keyboard_enabled=false`、`keyboard_continuous_wheel_feedback_acceptance=same_hold_window_wheel_lr_nonzero`、`fixed_keyboard_manual_endpoint=/api/robot-control/base/manual`、`fixed_keyboard_stop_endpoint=/api/robot-control/base/stop`、`fixed_keyboard_feedback_readback_endpoint=/api/robot-control/base/feedback-samples`、`fixed_keyboard_summary_endpoint=/api/robot-control/summary`、`keyboard_continuous_post_hold_feedback_readback_required=true`、`keyboard_continuous_post_hold_summary_refresh_required=true`、`sends_motion=false`；`GET /map` 返回 `HTTP 200 text/html`。该验证只读 summary/page，未调用 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
 - `git diff --check`：通过。

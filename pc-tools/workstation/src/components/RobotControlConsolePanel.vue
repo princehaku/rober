@@ -3866,12 +3866,44 @@ const plainLiveMotionRunbookRows = computed(() => {
     start_free_move: "free_move",
     start_mapping_when_sensors_ready: "mapping_start",
   };
+  const buttonLabel = (item: RobotControlLiveMotionRunbookItem): string => {
+    if (item.id === "run_nav2_route") {
+      if (plainLiveClosureSummary.value?.needs_same_window_wheel_rerun) {
+        return plainManualSafetyConfirmed.value ? "去重跑图上行程" : "去勾行程安全确认";
+      }
+      return item.ready ? "去执行图上行程" : "去看行程条件";
+    }
+    if (item.id === "hold_keyboard") {
+      return item.ready ? "去启用键盘" : "去看键盘条件";
+    }
+    if (item.id === "start_free_move") {
+      return item.ready ? "去自由移动" : "去看移动条件";
+    }
+    return item.ready ? "去启动建图" : "去看建图条件";
+  };
+  const focusKind = (item: RobotControlLiveMotionRunbookItem): string => {
+    if (item.id === "run_nav2_route" && plainLiveClosureSummary.value?.needs_same_window_wheel_rerun) {
+      return plainManualSafetyConfirmed.value ? "trip_execute_button" : "trip_safety_confirm";
+    }
+    if (item.id === "hold_keyboard") {
+      return "keyboard_arm";
+    }
+    if (item.id === "start_free_move") {
+      return "free_move_safety_confirm";
+    }
+    if (item.id === "start_mapping_when_sensors_ready") {
+      return "mapping_start";
+    }
+    return targetByAction[item.id];
+  };
   const items = plainLiveClosureSummary.value?.live_motion_runbook_items ?? [];
   return items.map((item: RobotControlLiveMotionRunbookItem) => ({
     ...item,
     state: item.ready ? "可做" : "未就绪",
     primary: item.id === plainLiveClosureSummary.value?.live_motion_runbook_primary_action_id,
     sourceCardId: targetByAction[item.id],
+    focusKind: focusKind(item),
+    buttonLabel: buttonLabel(item),
     blockedText: item.blocked_reasons.join("、") || "none",
     acceptanceText: plainActionCardUserText(item.acceptance_plain),
   }));
@@ -16233,6 +16265,8 @@ onBeforeUnmount(() => {
             :data-acceptance-endpoints="item.acceptance_endpoints.join(',') || 'none'"
             :data-blocked-reasons="item.blockedText"
             :data-focus-target-source-card-id="item.sourceCardId"
+            :data-focus-target-kind="item.focusKind"
+            :data-action-button-label="item.buttonLabel"
           >
             <span class="plain-progress-label">{{ plainActionCardUserText(item.label) }}</span>
             <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
@@ -16242,6 +16276,7 @@ onBeforeUnmount(() => {
               class="secondary compact-stop"
               :data-testid="`plain-live-motion-runbook-go-${item.id}`"
               :data-focus-target-source-card-id="item.sourceCardId"
+              :data-focus-target-kind="item.focusKind"
               data-focus-only="true"
               data-sends-motion-when-clicked="false"
               data-starts-nav2="false"
@@ -16250,7 +16285,7 @@ onBeforeUnmount(() => {
               data-starts-map-runtime="false"
               @click="focusPlainLiveMotionRunbookTarget(item.sourceCardId)"
             >
-              去处理
+              {{ item.buttonLabel }}
             </button>
           </div>
         </div>
