@@ -5111,6 +5111,13 @@ describe("App", () => {
     expect(cameraActionCard.attributes("data-shared-preview-multi-viewer")).toBe("true");
     expect(cameraActionCard.attributes("data-shared-capture")).toBe("true");
     expect(cameraActionCard.attributes("data-exclusive-camera-claim")).toBe("false");
+    expect(cameraActionCard.attributes("data-source-failure-reason")).toBe("none");
+    expect(cameraActionCard.attributes("data-shared-preview-upstream-active")).toBe("false");
+    expect(cameraActionCard.attributes("data-shared-preview-content-type-loaded")).toBe("false");
+    expect(cameraActionCard.attributes("data-shared-preview-last-failure-reason")).toBe("none");
+    expect(cameraActionCard.attributes("data-shared-preview-last-remote-http-status")).toBe("none");
+    expect(cameraActionCard.attributes("data-last-offer-failure-reason")).toBe("none");
+    expect(cameraActionCard.attributes("data-last-offer-format-attempts-summary")).toBe("none");
     expect(cameraActionCard.attributes("data-first-frame-probe-read-ok")).toBe("false");
     expect(cameraActionCard.attributes("data-visible-content-proven")).toBe("false");
     expect(cameraActionCard.attributes("data-shared-preview-client-count")).toBe("0");

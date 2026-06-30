@@ -2516,6 +2516,13 @@ export interface RobotControlActionStatusCard {
     source_first_frame_failed?: boolean;
     source_diagnosis_status?: string;
     source_diagnosis_not_exclusive?: boolean;
+    source_failure_reason?: string;
+    shared_preview_upstream_active?: boolean;
+    shared_preview_content_type_loaded?: boolean;
+    shared_preview_last_failure_reason?: string;
+    shared_preview_last_remote_http_status?: string;
+    last_offer_failure_reason?: string;
+    last_offer_format_attempts_summary?: string;
     first_frame_probe_read_ok?: boolean;
     visible_content_proven?: boolean;
     shared_preview_client_count?: number;

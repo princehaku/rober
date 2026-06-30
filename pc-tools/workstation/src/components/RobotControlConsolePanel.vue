@@ -3406,6 +3406,13 @@ function actionCardWithDerivedEvidence(
         source_first_frame_failed: card.evidence?.source_first_frame_failed ?? (camera?.status === "source_first_frame_failed" || camera?.source_readiness === "first_frame_failed"),
         source_diagnosis_status: card.evidence?.source_diagnosis_status ?? camera?.source_diagnosis_status ?? "not_loaded",
         source_diagnosis_not_exclusive: card.evidence?.source_diagnosis_not_exclusive ?? boolText(camera?.source_diagnosis_not_exclusive, false),
+        source_failure_reason: card.evidence?.source_failure_reason ?? camera?.source_failure_reason ?? "not_loaded",
+        shared_preview_upstream_active: card.evidence?.shared_preview_upstream_active ?? boolText(camera?.shared_preview_upstream_active, false),
+        shared_preview_content_type_loaded: card.evidence?.shared_preview_content_type_loaded ?? boolText(camera?.shared_preview_content_type_loaded, false),
+        shared_preview_last_failure_reason: card.evidence?.shared_preview_last_failure_reason ?? camera?.shared_preview_last_failure_reason ?? "not_loaded",
+        shared_preview_last_remote_http_status: card.evidence?.shared_preview_last_remote_http_status ?? camera?.shared_preview_last_remote_http_status ?? "not_loaded",
+        last_offer_failure_reason: card.evidence?.last_offer_failure_reason ?? camera?.last_offer_failure_reason ?? "not_loaded",
+        last_offer_format_attempts_summary: card.evidence?.last_offer_format_attempts_summary ?? camera?.last_offer_format_attempts_summary ?? "not_loaded",
         first_frame_probe_read_ok: card.evidence?.first_frame_probe_read_ok ?? boolText(camera?.first_frame_probe_read_ok, false),
         visible_content_proven: card.evidence?.visible_content_proven ?? boolText(camera?.first_frame_probe_visible_content_proven, currentFrameVisible),
         shared_preview_client_count: card.evidence?.shared_preview_client_count ?? Number(camera?.shared_preview_client_count || "0"),
@@ -15977,6 +15984,13 @@ onBeforeUnmount(() => {
           :data-source-first-frame-failed="card.evidence?.source_first_frame_failed === undefined ? undefined : String(card.evidence.source_first_frame_failed)"
           :data-source-diagnosis-status="card.evidence?.source_diagnosis_status"
           :data-source-diagnosis-not-exclusive="card.evidence?.source_diagnosis_not_exclusive === undefined ? undefined : String(card.evidence.source_diagnosis_not_exclusive)"
+          :data-source-failure-reason="card.evidence?.source_failure_reason"
+          :data-shared-preview-upstream-active="card.evidence?.shared_preview_upstream_active === undefined ? undefined : String(card.evidence.shared_preview_upstream_active)"
+          :data-shared-preview-content-type-loaded="card.evidence?.shared_preview_content_type_loaded === undefined ? undefined : String(card.evidence.shared_preview_content_type_loaded)"
+          :data-shared-preview-last-failure-reason="card.evidence?.shared_preview_last_failure_reason"
+          :data-shared-preview-last-remote-http-status="card.evidence?.shared_preview_last_remote_http_status"
+          :data-last-offer-failure-reason="card.evidence?.last_offer_failure_reason"
+          :data-last-offer-format-attempts-summary="card.evidence?.last_offer_format_attempts_summary"
           :data-first-frame-probe-read-ok="card.evidence?.first_frame_probe_read_ok === undefined ? undefined : String(card.evidence.first_frame_probe_read_ok)"
           :data-visible-content-proven="card.evidence?.visible_content_proven === undefined ? undefined : String(card.evidence.visible_content_proven)"
           :data-shared-preview-client-count="card.evidence?.shared_preview_client_count === undefined ? undefined : String(card.evidence.shared_preview_client_count)"
