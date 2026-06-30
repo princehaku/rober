@@ -277,8 +277,8 @@ const plainMapFullscreenView = ref(false);
 const plainMapObserverView = ref(false);
 const plainMapBrowserFullscreenActive = ref(false);
 const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscreen" : plainMapLargeView.value ? "large" : "normal"));
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6] as const;
-const plainMapZoomIndex = ref(5);
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8] as const;
+const plainMapZoomIndex = ref(6);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const plainMapZoomStyle = computed(() => ({
@@ -15935,9 +15935,9 @@ onBeforeUnmount(() => {
           data-wysiwyg-surface="primary-map"
           data-visual-priority="pc-primary-map-first"
           data-default-map-layout="dominant-first-screen-map"
-          data-default-map-height-mode="near-viewport"
+          data-default-map-height-mode="viewport-dominant"
           data-default-size="large"
-          data-default-map-zoom-percent="500%"
+          data-default-map-zoom-percent="600%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -16027,12 +16027,13 @@ onBeforeUnmount(() => {
                 data-enter-size="fullscreen"
                 data-hides-ordinary-actions-when-active="true"
                 data-keeps-wysiwyg-overlays="image-route-robot-radar"
+                data-user-facing-action="map_only_view"
                 data-ros2-companion-tool="rviz2"
                 data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
                 :aria-pressed="plainMapObserverView ? 'true' : 'false'"
                 @click="togglePlainMapObserverView"
               >
-                {{ plainMapObserverView ? "退出观测" : "观测模式" }}
+                {{ plainMapObserverView ? "退出只看" : "只看地图" }}
               </button>
             </div>
           </div>
@@ -16222,7 +16223,7 @@ onBeforeUnmount(() => {
             data-ros2-remote-companion-tool="foxglove"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            PC 默认先显示近全屏大地图；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
+            PC 默认先显示近整屏大地图；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时接 Foxglove；普通操作仍在本页完成。
           </p>
         </article>
 

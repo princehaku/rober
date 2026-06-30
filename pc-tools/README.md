@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 21:30 CST 起，普通首屏地图继续按“PC 主视图”处理：工作站外壳扩到 `min(2600px, calc(100% - 2px))`，默认地图缩放提升到 `600%`，最高缩放提升到 `800%`，大图高度提升为 `clamp(1040px, calc(100vh - 12px), 2200px)`，全屏地图高度提升为 `calc(100vh - 8px)`，只看地图模式高度提升为 `calc(100vh - 42px)`，按钮文案从工程化的“观测模式”改成普通用户可理解的“只看地图”。ROS2 配套仍按两层处理：工程调试首选 RViz2 / `nav2_rviz_plugins` 看 `/map`、`/scan`、TF、规划轨迹和定位；浏览器远程观察接 Foxglove / `foxglove_bridge`；普通用户默认留在 PC 简易工作站近整屏大地图里看路线、小车位置和雷达贴图。该变化只改显示和只读合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-06-30 09:28 CST 起，普通首屏地图按现场 PC 主画布继续放大：工作站外壳扩到 `min(2200px, calc(100% - 4px))`，默认地图缩放从 `300%` 提升到 `400%`，缩放上限提升到 `500%`，大图高度提升为 `clamp(960px, calc(100vh - 54px), 1800px)`，全屏地图高度提升为 `calc(100vh - 40px)`，观测模式高度提升为 `calc(100vh - 58px)`。ROS2 配套口径明确为：工程调试首选 RViz2，远程浏览器观察接 Foxglove；普通用户仍在 PC 简易工作站近全屏地图里看路线、小车位置和雷达贴图。同期 `plain-keyboard-hold-gate` 补齐当前方向、方向文案、轮速 L/R 和 stop 收口 DOM 字段，便于首屏直接验 PC 键盘连续手控。该变化只改显示和只读合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-06-30 09:36 CST 起，普通首屏 `GET /api/robot-control/summary` 不再等待底盘完整慢读窗口或慢设备枚举。`status`、`camera_health`、`camera_devices`、`base_status` 与 `base_feedback_samples_latest` 在 summary 聚合里使用 2400ms 上限，超时后作为分项读取较慢展示；独立 `/api/robot-control/base/status` 仍保留较长只读窗口，供用户明确点击刷新 wheel raw L/R 时使用。该变化用于避免真实上位机 `/api/base/status`、`/api/camera/devices` 或聚合 `/api/status` 卡到 8-11s 时拖慢地图、画面、雷达和 Nav2 WYSIWYG 首屏；不发送 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。

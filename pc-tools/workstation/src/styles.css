@@ -1,8 +1,8 @@
 :root {
-  --plain-map-large-min-height: 960px;
-  --plain-map-large-target-height: calc(100vh - 54px);
-  --plain-map-large-max-height: 1800px;
-  --plain-map-fullscreen-height: calc(100vh - 40px);
+  --plain-map-large-min-height: 1040px;
+  --plain-map-large-target-height: calc(100vh - 12px);
+  --plain-map-large-max-height: 2200px;
+  --plain-map-fullscreen-height: calc(100vh - 8px);
   color: #17202a;
   background: #f4f6f8;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
@@ -22,9 +22,9 @@ button {
 
 .shell {
   /* 现场 PC 大屏优先服务地图观察，普通控制台应接近占满浏览器宽度。 */
-  width: min(2200px, calc(100% - 4px));
+  width: min(2600px, calc(100% - 2px));
   margin: 0 auto;
-  padding: 6px 0 18px;
+  padding: 2px 0 12px;
 }
 
 .topbar {
@@ -390,7 +390,7 @@ h3 {
   /* 地图是现场判断路线和雷达贴图的主视图，桌面端默认先占整行。 */
   order: -1;
   grid-column: 1 / -1;
-  min-height: calc(100vh - 18px);
+  min-height: calc(100vh - 4px);
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
@@ -1010,7 +1010,7 @@ h3 {
 
 .plain-map-panel[data-size="large"] {
   /* 普通 PC 首屏默认把地图当主视图，不再退化成一张小卡片。 */
-  min-height: calc(100vh - 18px);
+  min-height: calc(100vh - 4px);
 }
 
 .plain-map-heading {
@@ -1112,8 +1112,8 @@ h3 {
 }
 
 .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  height: calc(100vh - 58px);
-  min-height: 860px;
+  height: calc(100vh - 42px);
+  min-height: 920px;
 }
 
 .plain-map-panel[data-state="地图可见"] {
