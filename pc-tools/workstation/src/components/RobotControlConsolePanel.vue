@@ -3669,6 +3669,18 @@ function actionCardWithDerivedEvidence(
       wheel_feedback_required_in_same_hold_window: card.evidence?.wheel_feedback_required_in_same_hold_window ?? true,
       fixed_keyboard_manual_endpoint: card.evidence?.fixed_keyboard_manual_endpoint ?? boundary?.keyboard_manual_proxy_endpoint ?? "/api/robot-control/base/manual",
       fixed_keyboard_stop_endpoint: card.evidence?.fixed_keyboard_stop_endpoint ?? boundary?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
+      keyboard_start_ready: card.evidence?.keyboard_start_ready ?? boundary?.keyboard_control_start_ready ?? false,
+      keyboard_enabled: card.evidence?.keyboard_enabled ?? robotSummary.value?.readback_summary.keyboard.enabled === "true",
+      keyboard_armed: keyboardControlArmed.value,
+      keyboard_sends_motion_while_held: plainKeyboardMainActionSendsMotion.value,
+      keyboard_current_direction: keyboardHeldDirection.value || "none",
+      keyboard_current_hold_pulse_count: keyboardHoldPulseCount.value,
+      keyboard_best_continuous_pulse_count: keyboardVerifiedPulseCount.value,
+      keyboard_verified_min_forwarded_pulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
+      keyboard_continuous_pulse_verified: keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
+      keyboard_stop_required_after_hold: true,
+      keyboard_stop_settled_after_pulse: keyboardStopSettledAfterPulse.value,
+      keyboard_motion_verified: keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES && keyboardStopSettledAfterPulse.value,
     },
   };
 }
@@ -16067,6 +16079,18 @@ onBeforeUnmount(() => {
           :data-wheel-feedback-same-hold-window="card.evidence?.wheel_feedback_required_in_same_hold_window === undefined ? undefined : String(card.evidence.wheel_feedback_required_in_same_hold_window)"
           :data-fixed-keyboard-manual-endpoint="card.evidence?.fixed_keyboard_manual_endpoint"
           :data-fixed-keyboard-stop-endpoint="card.evidence?.fixed_keyboard_stop_endpoint"
+          :data-keyboard-start-ready="card.evidence?.keyboard_start_ready === undefined ? undefined : String(card.evidence.keyboard_start_ready)"
+          :data-keyboard-enabled="card.evidence?.keyboard_enabled === undefined ? undefined : String(card.evidence.keyboard_enabled)"
+          :data-keyboard-armed="card.evidence?.keyboard_armed === undefined ? undefined : String(card.evidence.keyboard_armed)"
+          :data-keyboard-sends-motion-while-held="card.evidence?.keyboard_sends_motion_while_held === undefined ? undefined : String(card.evidence.keyboard_sends_motion_while_held)"
+          :data-keyboard-current-direction="card.evidence?.keyboard_current_direction"
+          :data-keyboard-current-hold-pulse-count="card.evidence?.keyboard_current_hold_pulse_count === undefined ? undefined : String(card.evidence.keyboard_current_hold_pulse_count)"
+          :data-keyboard-best-continuous-pulse-count="card.evidence?.keyboard_best_continuous_pulse_count === undefined ? undefined : String(card.evidence.keyboard_best_continuous_pulse_count)"
+          :data-keyboard-verified-min-forwarded-pulses="card.evidence?.keyboard_verified_min_forwarded_pulses === undefined ? undefined : String(card.evidence.keyboard_verified_min_forwarded_pulses)"
+          :data-keyboard-continuous-pulse-verified="card.evidence?.keyboard_continuous_pulse_verified === undefined ? undefined : String(card.evidence.keyboard_continuous_pulse_verified)"
+          :data-keyboard-stop-required-after-hold="card.evidence?.keyboard_stop_required_after_hold === undefined ? undefined : String(card.evidence.keyboard_stop_required_after_hold)"
+          :data-keyboard-stop-settled-after-pulse="card.evidence?.keyboard_stop_settled_after_pulse === undefined ? undefined : String(card.evidence.keyboard_stop_settled_after_pulse)"
+          :data-keyboard-motion-verified="card.evidence?.keyboard_motion_verified === undefined ? undefined : String(card.evidence.keyboard_motion_verified)"
           :data-route-ready-on-map="card.evidence?.route_ready_on_map === undefined ? undefined : String(card.evidence.route_ready_on_map)"
           :data-minimal-precheck-safety-only="card.evidence?.minimal_precheck_safety_only === undefined ? undefined : String(card.evidence.minimal_precheck_safety_only)"
           :data-fixed-execute-proxy-endpoint="card.evidence?.fixed_execute_proxy_endpoint"

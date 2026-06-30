@@ -2487,6 +2487,18 @@ export interface RobotControlActionStatusCard {
     wheel_feedback_required_in_same_hold_window?: boolean;
     fixed_keyboard_manual_endpoint?: string;
     fixed_keyboard_stop_endpoint?: string;
+    keyboard_start_ready?: boolean;
+    keyboard_enabled?: boolean;
+    keyboard_armed?: boolean;
+    keyboard_sends_motion_while_held?: boolean;
+    keyboard_current_direction?: string;
+    keyboard_current_hold_pulse_count?: number;
+    keyboard_best_continuous_pulse_count?: number;
+    keyboard_verified_min_forwarded_pulses?: number;
+    keyboard_continuous_pulse_verified?: boolean;
+    keyboard_stop_required_after_hold?: boolean;
+    keyboard_stop_settled_after_pulse?: boolean;
+    keyboard_motion_verified?: boolean;
     route_ready_on_map?: boolean;
     minimal_precheck_safety_only?: boolean;
     fixed_execute_proxy_endpoint?: string;

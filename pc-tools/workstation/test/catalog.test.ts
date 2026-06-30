@@ -4164,6 +4164,18 @@ describe("workstation fail-closed API contracts", () => {
           wheel_feedback_required_in_same_hold_window: true,
           fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",
           fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop",
+          keyboard_start_ready: true,
+          keyboard_enabled: false,
+          keyboard_armed: false,
+          keyboard_sends_motion_while_held: false,
+          keyboard_current_direction: "none",
+          keyboard_current_hold_pulse_count: 0,
+          keyboard_best_continuous_pulse_count: 0,
+          keyboard_verified_min_forwarded_pulses: 2,
+          keyboard_continuous_pulse_verified: false,
+          keyboard_stop_required_after_hold: true,
+          keyboard_stop_settled_after_pulse: false,
+          keyboard_motion_verified: false,
         },
       });
       expect(actionCards.find((card) => card.id === "keyboard_control")?.evidence?.stop_triggers).toContain("window_blur");
