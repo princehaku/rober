@@ -16298,6 +16298,14 @@ onBeforeUnmount(() => {
         class="plain-live-closure-summary"
         data-testid="plain-live-closure-summary"
         :data-state="plainLiveClosureSummary.status"
+        :data-robot-api-connection-status="plainLiveClosureSummary.robot_api_connection_status"
+        :data-robot-api-connection-loaded-count="String(plainLiveClosureSummary.robot_api_connection_loaded_count)"
+        :data-robot-api-connection-failed-count="String(plainLiveClosureSummary.robot_api_connection_failed_count)"
+        :data-robot-api-connection-blocked-count="String(plainLiveClosureSummary.robot_api_connection_blocked_count)"
+        :data-robot-api-connection-failed-endpoint-ids="plainLiveClosureSummary.robot_api_connection_failed_endpoint_ids?.join(',') || 'none'"
+        :data-robot-api-connection-blocked-reasons="plainLiveClosureSummary.robot_api_connection_blocked_reasons?.join(',') || 'none'"
+        :data-robot-api-connection-recovery-endpoints="plainLiveClosureSummary.robot_api_connection_recovery_endpoints?.join(',') || 'none'"
+        :data-robot-api-connection-sends-motion-when-clicked="String(plainLiveClosureSummary.robot_api_connection_sends_motion_when_clicked)"
         :data-route-ready="String(plainLiveClosureSummary.route_ready_on_map)"
         :data-nav2-goal-succeeded="String(plainLiveClosureSummary.nav2_goal_succeeded)"
         :data-wheel-lr-nonzero-proven="String(plainLiveClosureSummary.wheel_lr_nonzero_proven)"
@@ -16494,6 +16502,21 @@ onBeforeUnmount(() => {
           <span class="status-chip" :data-state="plainLiveClosureSummary.status_label">{{ plainLiveClosureSummary.status_label }}</span>
         </div>
         <p>{{ plainActionCardUserText(plainLiveClosureSummary.summary_plain) }}</p>
+        <p
+          class="panel-note"
+          data-testid="plain-live-robot-connection"
+          :data-status="plainLiveClosureSummary.robot_api_connection_status"
+          :data-loaded-count="String(plainLiveClosureSummary.robot_api_connection_loaded_count)"
+          :data-failed-count="String(plainLiveClosureSummary.robot_api_connection_failed_count)"
+          :data-blocked-count="String(plainLiveClosureSummary.robot_api_connection_blocked_count)"
+          :data-failed-endpoint-ids="plainLiveClosureSummary.robot_api_connection_failed_endpoint_ids?.join(',') || 'none'"
+          :data-blocked-reasons="plainLiveClosureSummary.robot_api_connection_blocked_reasons?.join(',') || 'none'"
+          :data-recovery-endpoints="plainLiveClosureSummary.robot_api_connection_recovery_endpoints?.join(',') || 'none'"
+          :data-sends-motion-when-clicked="String(plainLiveClosureSummary.robot_api_connection_sends_motion_when_clicked)"
+        >
+          {{ plainActionCardUserText(plainLiveClosureSummary.robot_api_connection_plain) }}
+          {{ plainActionCardUserText(plainLiveClosureSummary.robot_api_connection_next_action_plain) }}
+        </p>
         <p
           class="panel-note"
           data-testid="plain-live-closure-wysiwyg-diagnostics"

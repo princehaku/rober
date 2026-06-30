@@ -2775,6 +2775,16 @@ export interface RobotControlLiveClosureSummary {
   status_label: string;
   summary_plain: string;
   next_action_plain: string;
+  robot_api_connection_status: "not_configured" | "blocked" | "degraded" | "readable";
+  robot_api_connection_plain: string;
+  robot_api_connection_next_action_plain: string;
+  robot_api_connection_loaded_count: number;
+  robot_api_connection_failed_count: number;
+  robot_api_connection_blocked_count: number;
+  robot_api_connection_failed_endpoint_ids: string[];
+  robot_api_connection_blocked_reasons: string[];
+  robot_api_connection_recovery_endpoints: string[];
+  robot_api_connection_sends_motion_when_clicked: false;
   route_ready_on_map: boolean;
   nav2_goal_succeeded: boolean;
   nav2_goal_execution_proven: boolean;

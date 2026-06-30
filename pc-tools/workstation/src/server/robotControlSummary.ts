@@ -8539,12 +8539,55 @@ function buildGoalChecklistSummary(
   };
 }
 
+type LiveRobotApiConnectionSummary = Pick<
+  RobotControlSummaryResponse["robot_api_connection"],
+  "status" | "loaded_count" | "blocked_count" | "failed_count" | "blocked_reasons"
+> & {
+  failed_endpoint_ids: string[];
+  recovery_endpoints: string[];
+};
+
+function robotApiConnectionPlain(summary: LiveRobotApiConnectionSummary): string {
+  // 连接总诊断要放在普通首屏，避免用户把“画面/地图未显示”误判成操作步骤问题。
+  if (summary.status === "readable") {
+    return `小车连接可读：已读取 ${summary.loaded_count} 个只读端点。`;
+  }
+  if (summary.status === "blocked") {
+    return "小车连接被代理安全护栏拦住；不会执行任何运动命令。";
+  }
+  if (summary.loaded_count === 0) {
+    const failedText = summary.failed_endpoint_ids.length
+      ? `失败端点：${summary.failed_endpoint_ids.slice(0, 6).join("、")}。`
+      : "";
+    return `小车连接不可用：Robot API 只读端点这轮没有返回。${failedText}`;
+  }
+  const failedText = summary.failed_endpoint_ids.length
+    ? `失败端点：${summary.failed_endpoint_ids.slice(0, 6).join("、")}。`
+    : "";
+  return `小车连接不完整：已读到 ${summary.loaded_count} 个端点，失败 ${summary.failed_count} 个。${failedText}`;
+}
+
+function robotApiConnectionNextActionPlain(summary: LiveRobotApiConnectionSummary): string {
+  // 这里只给恢复连接的 no-motion 下一步；真实发车仍由各动作按钮和安全确认控制。
+  if (summary.status === "readable") {
+    return "小车连接可读；继续按当前卡点处理。";
+  }
+  if (summary.status === "blocked") {
+    return "先修正小车地址或安全护栏命中的危险字段，再刷新 PC 状态。";
+  }
+  if (summary.loaded_count === 0) {
+    return "先确认小车电源、网络、8787 Robot API 服务和 SSH 登录状态，再刷新 PC 状态。";
+  }
+  return "先刷新 PC 状态；若同一只读端点继续失败，检查对应上车服务。";
+}
+
 function buildLiveClosureSummary(
   cards: NonNullable<RobotControlSummaryResponse["action_status_cards"]>,
   goalSummary: NonNullable<RobotControlSummaryResponse["goal_checklist_summary"]>,
   readback: RobotControlSummaryResponse["readback_summary"],
   boundary: RobotControlSummaryResponse["safe_command_boundary"],
   operatorHilMaterialSummary: RobotControlOperatorHilMaterialSummary,
+  robotApiConnection: LiveRobotApiConnectionSummary,
 ): RobotControlSummaryResponse["live_closure_summary"] {
   // 这个汇总只把同轮只读证据压成普通用户能懂的一块牌，不新增任何发车或解锁条件。
   const camera = actionCardById(cards, "camera_preview");
@@ -9050,7 +9093,12 @@ function buildLiveClosureSummary(
     needs_sensor: "待传感器",
     not_ready: "未就绪",
   };
+  const robotApiConnectionNextAction = robotApiConnectionNextActionPlain(robotApiConnection);
+  const robotApiConnectionAllReadsFailed = robotApiConnection.status === "degraded" && robotApiConnection.loaded_count === 0;
   const nextActionPlain = (() => {
+    if (robotApiConnectionAllReadsFailed) {
+      return robotApiConnectionNextAction;
+    }
     if (needsSameWindowWheelRerun) {
       return "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。";
     }
@@ -9069,6 +9117,9 @@ function buildLiveClosureSummary(
     return goalSummary.next_action_plain || "先刷新小车状态。";
   })();
   const summaryPlain = (() => {
+    if (robotApiConnectionAllReadsFailed) {
+      return "当前卡点：PC 已打开，但小车 Robot API 这轮没有任何只读端点返回；先恢复上车连接。";
+    }
     if (needsSameWindowWheelRerun) {
       return "当前卡点：图上路线已经有执行成功读数，但同窗口轮速 L/R 还没有非零闭环。";
     }
@@ -9239,6 +9290,16 @@ function buildLiveClosureSummary(
     status_label: labels[status],
     summary_plain: summaryPlain,
     next_action_plain: nextActionPlain,
+    robot_api_connection_status: robotApiConnection.status,
+    robot_api_connection_plain: robotApiConnectionPlain(robotApiConnection),
+    robot_api_connection_next_action_plain: robotApiConnectionNextAction,
+    robot_api_connection_loaded_count: robotApiConnection.loaded_count,
+    robot_api_connection_failed_count: robotApiConnection.failed_count,
+    robot_api_connection_blocked_count: robotApiConnection.blocked_count,
+    robot_api_connection_failed_endpoint_ids: robotApiConnection.failed_endpoint_ids,
+    robot_api_connection_blocked_reasons: robotApiConnection.blocked_reasons,
+    robot_api_connection_recovery_endpoints: robotApiConnection.recovery_endpoints,
+    robot_api_connection_sends_motion_when_clicked: false,
     route_ready_on_map: routeReadyOnMap,
     nav2_goal_succeeded: nav2GoalSucceeded,
     nav2_goal_execution_proven: nav2GoalExecutionProven,
@@ -9490,6 +9551,12 @@ export async function buildRobotControlSummary(
   const failedCount = readbacks.filter((item) => item.request_status === "fetch_failed" || item.request_status === "bad_json" || item.request_status === "not_object").length;
   const blockedCount = readbacks.filter((item) => item.request_status === "blocked").length;
   const schemaMismatchCount = readbacks.filter(isRobotReadbackSchemaMismatch).length;
+  const connectionStatus: RobotControlSummaryResponse["robot_api_connection"]["status"] = dangerous.length || blockedCount > 0
+    ? "blocked"
+    : failedCount > 0 ? "degraded" : "readable";
+  const failedEndpointIds = readbacks
+    .filter((item) => item.request_status === "fetch_failed" || item.request_status === "bad_json" || item.request_status === "not_object")
+    .map((item) => item.id);
   const blockedReasons = [
     ...readbacks.flatMap((item) => item.blocked_reasons.map((reason) => `${item.id}:${reason}`)),
     ...dangerous.map((field) => `dangerous_true_field:${field}`),
@@ -9537,6 +9604,20 @@ export async function buildRobotControlSummary(
     readbackSummary,
     safeCommandBoundary,
     operatorHilMaterialSummary,
+    {
+      status: connectionStatus,
+      loaded_count: loadedCount,
+      blocked_count: blockedCount,
+      failed_count: failedCount,
+      blocked_reasons: connectionBlockedReasons,
+      failed_endpoint_ids: failedEndpointIds,
+      recovery_endpoints: [
+        "/api/robot-control/summary",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/camera/mjpeg/status",
+      ],
+    },
   );
 
   return {
@@ -9555,7 +9636,7 @@ export async function buildRobotControlSummary(
     read_endpoints: readEndpoints,
     o3_proof_summary: proofSummary,
     robot_api_connection: {
-      status: dangerous.length || blockedCount > 0 ? "blocked" : failedCount > 0 ? "degraded" : "readable",
+      status: connectionStatus,
       loaded_count: loadedCount,
       blocked_count: blockedCount,
       failed_count: failedCount,

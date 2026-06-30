@@ -13671,6 +13671,22 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.robot_api_connection.loaded_count).toBe(0);
       expect(summary.robot_api_connection.blocked_reasons[0]).toBe("robot_api_port_7071_mismatch_use_8787");
       expect(summary.blocked_reasons[0]).toBe("robot_api_port_7071_mismatch_use_8787");
+      expect(summary.live_closure_summary?.robot_api_connection_status).toBe("degraded");
+      expect(summary.live_closure_summary?.robot_api_connection_loaded_count).toBe(0);
+      expect(summary.live_closure_summary?.robot_api_connection_failed_count).toBeGreaterThan(0);
+      expect(summary.live_closure_summary?.robot_api_connection_failed_endpoint_ids).toContain("status");
+      expect(summary.live_closure_summary?.robot_api_connection_blocked_reasons[0]).toBe("robot_api_port_7071_mismatch_use_8787");
+      expect(summary.live_closure_summary?.robot_api_connection_plain).toContain("小车连接不可用");
+      expect(summary.live_closure_summary?.robot_api_connection_next_action_plain).toContain("8787 Robot API 服务");
+      expect(summary.live_closure_summary?.robot_api_connection_recovery_endpoints).toEqual([
+        "/api/robot-control/summary",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/camera/mjpeg/status",
+      ]);
+      expect(summary.live_closure_summary?.robot_api_connection_sends_motion_when_clicked).toBe(false);
+      expect(summary.live_closure_summary?.summary_plain).toContain("先恢复上车连接");
+      expect(summary.live_closure_summary?.next_action_plain).toContain("先确认小车电源、网络、8787 Robot API 服务和 SSH 登录状态");
       expect(summary.current_fact_plain).toContain("小车地址端口写错");
       expect(summary.current_fact_plain).toContain("PC 页面是 0.0.0.0:7001");
       expect(summary.current_fact_plain).toContain("Robot API 是 192.168.1.11:8787");

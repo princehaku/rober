@@ -798,6 +798,21 @@ const fixtures: Record<string, unknown> = {
       status_label: "待当前所见",
       summary_plain: "当前所见还没齐：画面未显示，地图已显示，雷达点未贴图。",
       next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
+      robot_api_connection_status: "readable",
+      robot_api_connection_plain: "小车连接可读：已读取 14 个只读端点。",
+      robot_api_connection_next_action_plain: "小车连接可读；继续按当前卡点处理。",
+      robot_api_connection_loaded_count: 14,
+      robot_api_connection_failed_count: 0,
+      robot_api_connection_blocked_count: 0,
+      robot_api_connection_failed_endpoint_ids: [],
+      robot_api_connection_blocked_reasons: [],
+      robot_api_connection_recovery_endpoints: [
+        "/api/robot-control/summary",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/camera/mjpeg/status",
+      ],
+      robot_api_connection_sends_motion_when_clicked: false,
       route_ready_on_map: false,
       nav2_goal_succeeded: false,
       nav2_goal_execution_proven: false,
@@ -4875,6 +4890,13 @@ describe("App", () => {
     expect(liveClosureSummary.text()).toContain("下一步：打开页面会自动接入共享 MJPEG");
     expect(liveClosureSummary.text()).not.toContain("/cmd_vel");
     expect(liveClosureSummary.attributes("data-state")).toBe("needs_wysiwyg");
+    expect(liveClosureSummary.attributes("data-robot-api-connection-status")).toBe("readable");
+    expect(liveClosureSummary.attributes("data-robot-api-connection-loaded-count")).toBe("14");
+    expect(liveClosureSummary.attributes("data-robot-api-connection-failed-count")).toBe("0");
+    expect(liveClosureSummary.attributes("data-robot-api-connection-blocked-count")).toBe("0");
+    expect(liveClosureSummary.attributes("data-robot-api-connection-failed-endpoint-ids")).toBe("none");
+    expect(liveClosureSummary.attributes("data-robot-api-connection-recovery-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
+    expect(liveClosureSummary.attributes("data-robot-api-connection-sends-motion-when-clicked")).toBe("false");
     expect(liveClosureSummary.attributes("data-route-ready")).toBe("false");
     expect(liveClosureSummary.attributes("data-nav2-goal-succeeded")).toBe("false");
     expect(liveClosureSummary.attributes("data-wheel-lr-nonzero-proven")).toBe("false");
@@ -4883,6 +4905,14 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-current-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-current-visible")).toBe("true");
     expect(liveClosureSummary.attributes("data-radar-map-points-visible")).toBe("false");
+    const liveRobotConnection = wrapper.find('[data-testid="plain-live-robot-connection"]');
+    expect(liveRobotConnection.exists()).toBe(true);
+    expect(liveRobotConnection.text()).toContain("小车连接可读");
+    expect(liveRobotConnection.text()).toContain("继续按当前卡点处理");
+    expect(liveRobotConnection.attributes("data-status")).toBe("readable");
+    expect(liveRobotConnection.attributes("data-loaded-count")).toBe("14");
+    expect(liveRobotConnection.attributes("data-failed-count")).toBe("0");
+    expect(liveRobotConnection.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-primary-tool")).toBe("pc_big_map");
     expect(liveClosureSummary.attributes("data-map-display-primary-url")).toBe("/map");
     expect(liveClosureSummary.attributes("data-map-display-legacy-url")).toBe("?view=map");
