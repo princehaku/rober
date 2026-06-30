@@ -8259,6 +8259,39 @@ function buildLiveClosureSummary(
     }
     return goalSummary.summary_plain || "本轮闭环状态还未读到；先刷新小车状态。";
   })();
+  const primaryStatusTarget = (() => {
+    // “当前卡点”按钮必须跟状态文案一致；不能在轮速复验时跳去画面卡，避免现场找错入口。
+    if (needsSameWindowWheelRerun || status === "needs_delivery") {
+      return { itemId: "nav2_route_execution" as const, sourceCardId: "nav2_route" as const };
+    }
+    if (status === "needs_wysiwyg") {
+      if (!cameraCurrentVisible) {
+        return { itemId: "camera_wysiwyg" as const, sourceCardId: "camera_preview" as const };
+      }
+      if (!mapCurrentVisible) {
+        return { itemId: "map_wysiwyg" as const, sourceCardId: "map_preview" as const };
+      }
+      return { itemId: "radar_map_points_wysiwyg" as const, sourceCardId: "radar_map_points" as const };
+    }
+    if (status === "needs_sensor") {
+      return { itemId: "mapping_start" as const, sourceCardId: "mapping_start" as const };
+    }
+    if (status === "needs_safety_confirm") {
+      if (freeMoveStartReady) {
+        return { itemId: "free_move" as const, sourceCardId: "free_move" as const };
+      }
+      if (keyboardContinuousControlReady) {
+        return { itemId: "keyboard_continuous_control" as const, sourceCardId: "keyboard_control" as const };
+      }
+      if (routeReadyOnMap) {
+        return { itemId: "nav2_route_execution" as const, sourceCardId: "nav2_route" as const };
+      }
+    }
+    return {
+      itemId: goalSummary.first_incomplete_item_id || goalSummary.primary_ready_action_item_id,
+      sourceCardId: goalSummary.first_incomplete_source_card_id || goalSummary.primary_ready_action_source_card_id,
+    };
+  })();
   return {
     status,
     status_label: labels[status],
@@ -8290,8 +8323,10 @@ function buildLiveClosureSummary(
     sends_motion_when_clicked: false,
     blocker_ids: goalSummary.blocked_action_ids,
     ready_action_ids: goalSummary.ready_action_ids,
-    next_action_item_id: goalSummary.first_incomplete_item_id || goalSummary.primary_ready_action_item_id,
-    next_action_source_card_id: goalSummary.first_incomplete_source_card_id || goalSummary.primary_ready_action_source_card_id,
+    primary_status_item_id: primaryStatusTarget.itemId,
+    primary_status_source_card_id: primaryStatusTarget.sourceCardId,
+    next_action_item_id: primaryStatusTarget.itemId,
+    next_action_source_card_id: primaryStatusTarget.sourceCardId,
   };
 }
 

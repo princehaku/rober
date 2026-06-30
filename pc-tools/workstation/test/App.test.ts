@@ -827,6 +827,8 @@ const fixtures: Record<string, unknown> = {
         "free_move",
         "keyboard_continuous_control",
       ],
+      primary_status_item_id: "camera_wysiwyg",
+      primary_status_source_card_id: "camera_preview",
       next_action_item_id: "camera_wysiwyg",
       next_action_source_card_id: "camera_preview",
     },
@@ -4472,7 +4474,21 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-manual-command-mode")).toBe("ros");
     expect(liveClosureSummary.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-safety-confirm-required-for-motion")).toBe("true");
+    expect(liveClosureSummary.attributes("data-primary-status-item-id")).toBe("camera_wysiwyg");
+    expect(liveClosureSummary.attributes("data-primary-status-source-card-id")).toBe("camera_preview");
+    expect(liveClosureSummary.attributes("data-next-action-item-id")).toBe("camera_wysiwyg");
+    expect(liveClosureSummary.attributes("data-next-action-source-card-id")).toBe("camera_preview");
     expect(liveClosureSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
+    const callsBeforeLiveClosureGuide = mockedFetch.mock.calls.length;
+    const focusCallsBeforeLiveClosureGuide = focusSpy.mock.calls.length;
+    const liveClosureGuide = wrapper.find('[data-testid="plain-live-closure-go"]');
+    expect(liveClosureGuide.exists()).toBe(true);
+    expect(liveClosureGuide.text()).toBe("去处理当前卡点");
+    expect(liveClosureGuide.attributes("data-sends-motion-when-clicked")).toBe("false");
+    await liveClosureGuide.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeLiveClosureGuide);
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLiveClosureGuide);
     const wysiwygEvidence = wrapper.find('[data-testid="plain-wysiwyg-evidence"]');
     expect(wysiwygEvidence.exists()).toBe(true);
     expect(wysiwygEvidence.text()).toContain("当前所见");

@@ -3733,6 +3733,19 @@ const plainLiveClosureSummary = computed(() => {
   // 这是首屏给普通用户看的“当前卡点”，只读展示，不会替代原本的安全确认或运动按钮。
   return robotSummary.value?.live_closure_summary ?? null;
 });
+const plainLiveClosureTargetSourceCardId = computed(() => (
+  plainLiveClosureSummary.value?.primary_status_source_card_id
+  || plainLiveClosureSummary.value?.next_action_source_card_id
+  || ""
+));
+function focusPlainLiveClosureTarget(): void {
+  // 当前卡点按钮只做页面内定位，真实发车仍必须走对应卡片里的安全确认和动作按钮。
+  const sourceCardId = plainLiveClosureTargetSourceCardId.value;
+  if (!sourceCardId) {
+    return;
+  }
+  focusPlainActionCardTarget(sourceCardId);
+}
 function plainActionCardUserText(value: string): string {
   // API 保留“路线”等诊断口径；普通首屏统一说“行程”，避免回到工程调试风格。
   return plainNav2UserFacingText(value)
@@ -15768,6 +15781,10 @@ onBeforeUnmount(() => {
         :data-keyboard-manual-command-mode="plainLiveClosureSummary.keyboard_manual_command_mode"
         :data-minimal-precheck-safety-only="String(plainLiveClosureSummary.minimal_precheck_safety_only)"
         :data-safety-confirm-required-for-motion="String(plainLiveClosureSummary.safety_confirm_required_for_motion)"
+        :data-primary-status-item-id="plainLiveClosureSummary.primary_status_item_id"
+        :data-primary-status-source-card-id="plainLiveClosureSummary.primary_status_source_card_id"
+        :data-next-action-item-id="plainLiveClosureSummary.next_action_item_id"
+        :data-next-action-source-card-id="plainLiveClosureSummary.next_action_source_card_id"
         data-sends-motion-when-clicked="false"
         aria-label="当前闭环卡点"
       >
@@ -15777,6 +15794,16 @@ onBeforeUnmount(() => {
         </div>
         <p>{{ plainActionCardUserText(plainLiveClosureSummary.summary_plain) }}</p>
         <span class="muted">下一步：{{ plainActionCardUserText(plainLiveClosureSummary.next_action_plain) }}</span>
+        <button
+          type="button"
+          class="secondary compact-stop"
+          data-testid="plain-live-closure-go"
+          :disabled="!plainLiveClosureTargetSourceCardId"
+          data-sends-motion-when-clicked="false"
+          @click="focusPlainLiveClosureTarget"
+        >
+          去处理当前卡点
+        </button>
       </div>
 
       <div v-if="plainWysiwygEvidenceItems.length" class="plain-wysiwyg-evidence" data-testid="plain-wysiwyg-evidence" aria-label="所见即所得证据">
