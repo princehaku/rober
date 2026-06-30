@@ -808,6 +808,10 @@ const fixtures: Record<string, unknown> = {
       live_wysiwyg_needs_refresh: true,
       live_wysiwyg_readback_gap_surface_ids: ["camera"],
       live_wysiwyg_primary_readback_gap_surface_id: "camera",
+      live_wysiwyg_missing_surface_refresh_endpoints: ["/api/robot-control/camera/first-frame/probe", "/api/robot-control/radar/scan-proof/refresh"],
+      live_wysiwyg_missing_surface_refresh_labels: ["复测相机首帧", "刷新雷达扫描 proof"],
+      live_wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
+      live_wysiwyg_primary_refresh_label: "复测相机首帧",
       live_wysiwyg_diagnostic_plain: "画面诊断：首帧未证明；状态=未通过；原因=读取首帧超时。 雷达诊断：服务=true/running；新读数=false；还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认。 地图雷达诊断：当前点=0；来源点=81；还差=地图缺雷达点；雷达点不是当前新读数。",
       live_wysiwyg_camera_diagnostic_plain: "画面诊断：首帧未证明；状态=未通过；原因=读取首帧超时。",
       live_wysiwyg_radar_diagnostic_plain: "雷达诊断：服务=true/running；新读数=false；还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认。",
@@ -4623,6 +4627,10 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-needs-refresh")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-missing-surface-refresh-endpoints")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-missing-surface-refresh-labels")).toBe("复测相机首帧,刷新雷达扫描 proof");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-refresh-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-refresh-label")).toBe("复测相机首帧");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-probe-failure-reason")).toBe("first_frame_total_timeout");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-scan-missing-observations")).toBe("scan_once,scan_hz,raw_packet_once");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-map-radar-blocked-reasons")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");

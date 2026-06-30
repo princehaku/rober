@@ -2738,6 +2738,10 @@ export interface RobotControlLiveClosureSummary {
   live_wysiwyg_needs_refresh: boolean;
   live_wysiwyg_readback_gap_surface_ids: string[];
   live_wysiwyg_primary_readback_gap_surface_id: string;
+  live_wysiwyg_missing_surface_refresh_endpoints: string[];
+  live_wysiwyg_missing_surface_refresh_labels: string[];
+  live_wysiwyg_primary_refresh_endpoint: string;
+  live_wysiwyg_primary_refresh_label: string;
   live_wysiwyg_diagnostic_plain: string;
   live_wysiwyg_camera_diagnostic_plain: string;
   live_wysiwyg_radar_diagnostic_plain: string;

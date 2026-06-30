@@ -146,6 +146,16 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_readback_gap_surface_ids).toEqual([]);
     expect(summary.live_closure_summary?.live_wysiwyg_primary_readback_gap_surface_id).toBe("none");
+    expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_refresh_endpoints).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/radar/scan-proof/refresh",
+    ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_refresh_labels).toEqual([
+      "复测相机首帧",
+      "刷新雷达扫描 proof",
+    ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_label).toBe("复测相机首帧");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_probe_failure_reason).toBe("none");
     expect(summary.live_closure_summary?.live_wysiwyg_radar_scan_missing_observations).toEqual([]);
     expect(summary.live_closure_summary?.live_wysiwyg_map_radar_blocked_reasons).toEqual([

@@ -27,6 +27,7 @@ import type {
   RobotControlNav2LifecycleEndpoint,
   RobotControlNav2LifecycleResponse,
   RobotControlGoalChecklistSummary,
+  RobotControlLiveWysiwygSurfaceSummary,
   RobotControlRadarLifecycleAction,
   RobotControlRadarLifecycleEndpoint,
   RobotControlRadarLifecycleResponse,
@@ -8345,6 +8346,18 @@ function buildLiveClosureSummary(
       sends_motion_when_clicked: false,
     },
   ];
+  const liveWysiwygSurfaceLabel = (id: string): string => ({
+    camera: "复测相机首帧",
+    map: "刷新地图画面",
+    radar_map_points: "刷新雷达扫描 proof",
+  }[id] ?? id);
+  const liveWysiwygMissingSurfaceRefreshItems = liveWysiwygMissingSurfaceIds
+    .map((id) => liveWysiwygSurfaceSummaries.find((surface) => surface.id === id))
+    .filter((surface): surface is RobotControlLiveWysiwygSurfaceSummary => Boolean(surface));
+  const liveWysiwygMissingSurfaceRefreshEndpoints = liveWysiwygMissingSurfaceRefreshItems.map((surface) => surface.fixed_refresh_endpoint);
+  const liveWysiwygMissingSurfaceRefreshLabels = liveWysiwygMissingSurfaceRefreshItems.map((surface) => liveWysiwygSurfaceLabel(surface.id));
+  const liveWysiwygPrimaryRefreshEndpoint = liveWysiwygMissingSurfaceRefreshEndpoints[0] ?? "none";
+  const liveWysiwygPrimaryRefreshLabel = liveWysiwygMissingSurfaceRefreshLabels[0] ?? "无";
   const freeMoveStartReady = boundary.free_roam_motion_start_ready || goalSummary.ready_action_ids.includes("free_move");
   const mappingStartReady = boundary.free_roam_mapping_start_ready || goalSummary.ready_action_ids.includes("mapping_start");
   const mappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
@@ -8505,6 +8518,10 @@ function buildLiveClosureSummary(
     live_wysiwyg_needs_refresh: liveWysiwygMissingSurfaceIds.length > 0,
     live_wysiwyg_readback_gap_surface_ids: liveWysiwygReadbackGapSurfaceIds,
     live_wysiwyg_primary_readback_gap_surface_id: liveWysiwygReadbackGapSurfaceIds[0] ?? "none",
+    live_wysiwyg_missing_surface_refresh_endpoints: liveWysiwygMissingSurfaceRefreshEndpoints,
+    live_wysiwyg_missing_surface_refresh_labels: liveWysiwygMissingSurfaceRefreshLabels,
+    live_wysiwyg_primary_refresh_endpoint: liveWysiwygPrimaryRefreshEndpoint,
+    live_wysiwyg_primary_refresh_label: liveWysiwygPrimaryRefreshLabel,
     live_wysiwyg_diagnostic_plain: liveWysiwygDiagnosticPlain,
     live_wysiwyg_camera_diagnostic_plain: cameraDiagnosticPlain,
     live_wysiwyg_radar_diagnostic_plain: radarDiagnosticPlain,
