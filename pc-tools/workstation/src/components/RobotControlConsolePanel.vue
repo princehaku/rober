@@ -3743,6 +3743,26 @@ const plainLiveClosureSummary = computed(() => {
   // 这是首屏给普通用户看的“当前卡点”，只读展示，不会替代原本的安全确认或运动按钮。
   return robotSummary.value?.live_closure_summary ?? null;
 });
+const plainLiveClosureWysiwygMissingSurfaceIds = computed(() => {
+  // 当前卡点需要把多项“所见”缺口一次说清，避免只跳到画面而漏掉地图或雷达贴图。
+  const summary = plainLiveClosureSummary.value;
+  if (!summary) {
+    return "none";
+  }
+  const missing: string[] = [];
+  if (!summary.camera_current_visible) {
+    missing.push("camera");
+  }
+  if (!summary.map_current_visible) {
+    missing.push("map");
+  }
+  if (!summary.radar_map_points_visible) {
+    missing.push("radar_map_points");
+  }
+  return missing.length ? missing.join(",") : "none";
+});
+const plainLiveClosureWysiwygReady = computed(() => plainLiveClosureWysiwygMissingSurfaceIds.value === "none");
+const plainLiveClosureNeedsWysiwygRefresh = computed(() => plainLiveClosureSummary.value?.status === "needs_wysiwyg");
 const plainLiveClosureTargetSourceCardId = computed(() => (
   plainLiveClosureSummary.value?.primary_status_source_card_id
   || plainLiveClosureSummary.value?.next_action_source_card_id
@@ -15855,6 +15875,13 @@ onBeforeUnmount(() => {
         :data-camera-current-visible="String(plainLiveClosureSummary.camera_current_visible)"
         :data-map-current-visible="String(plainLiveClosureSummary.map_current_visible)"
         :data-radar-map-points-visible="String(plainLiveClosureSummary.radar_map_points_visible)"
+        :data-live-wysiwyg-ready="String(plainLiveClosureWysiwygReady)"
+        :data-live-wysiwyg-missing-surface-ids="plainLiveClosureWysiwygMissingSurfaceIds"
+        :data-live-wysiwyg-needs-refresh="String(plainLiveClosureNeedsWysiwygRefresh)"
+        data-live-wysiwyg-refresh-action-testid="plain-live-closure-wysiwyg-refresh"
+        data-live-wysiwyg-refreshes-camera-first-frame-probe="true"
+        data-live-wysiwyg-refreshes-radar-scan-proof="true"
+        data-live-wysiwyg-refreshes-map-after-radar="true"
         :data-free-move-start-ready="String(plainLiveClosureSummary.free_move_start_ready)"
         :data-mapping-start-ready="String(plainLiveClosureSummary.mapping_start_ready)"
         :data-keyboard-control-start-ready="String(plainLiveClosureSummary.keyboard_control_start_ready)"
@@ -15926,6 +15953,32 @@ onBeforeUnmount(() => {
           @click="focusPlainLiveClosureTarget"
         >
           {{ plainLiveClosureGoButtonLabel }}
+        </button>
+        <button
+          v-if="plainLiveClosureNeedsWysiwygRefresh"
+          type="button"
+          class="secondary compact-stop"
+          :disabled="!canRefreshPlainWysiwygEvidence"
+          data-testid="plain-live-closure-wysiwyg-refresh"
+          :data-live-wysiwyg-missing-surface-ids="plainLiveClosureWysiwygMissingSurfaceIds"
+          data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+          data-fixed-first-frame-probe-endpoint="/api/robot-control/camera/first-frame/probe"
+          data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
+          data-fixed-camera-mjpeg-status-endpoint="/api/robot-control/camera/mjpeg/status"
+          data-refreshes-radar-scan-proof="true"
+          data-refreshes-map-after-radar="true"
+          data-refreshes-camera-first-frame-probe="true"
+          data-refreshes-camera-mjpeg-status="true"
+          data-starts-radar-lifecycle="false"
+          data-starts-map-runtime="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+          data-sends-motion-when-clicked="false"
+          @click="refreshPlainWysiwygEvidence"
+        >
+          {{ plainWysiwygEvidenceRefreshButtonLabel }}
         </button>
       </div>
 
