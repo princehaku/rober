@@ -3112,6 +3112,101 @@ const plainWysiwygEvidenceItems = computed<PlainWysiwygEvidenceItem[]>(() => {
   ];
 });
 
+type PlainWysiwygCurrentGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  cameraCurrentVisible: boolean;
+  mapCurrentVisible: boolean;
+  routeCurrentVisible: boolean;
+  robotPoseVisible: boolean;
+  radarMapPointsVisible: boolean;
+  radarMapPointCount: number;
+  radarMapSourcePointCount: number;
+  oldRadarPointsDiagnosticOnly: boolean;
+  allWysiwygReady: boolean;
+};
+
+const plainWysiwygCurrentGauge = computed<PlainWysiwygCurrentGauge>(() => {
+  // 当前所见仪表只消费只读事实；它的作用是把画面、地图、路线和雷达贴图压成一条可验收结论。
+  const summary = robotSummary.value;
+  if (!summary) {
+    return {
+      state: "未连接",
+      text: "当前所见仪表：还没连接小车；不会把空状态当作当前画面。",
+      nextAction: "先连接默认小车",
+      cameraCurrentVisible: false,
+      mapCurrentVisible: false,
+      routeCurrentVisible: false,
+      robotPoseVisible: false,
+      radarMapPointsVisible: false,
+      radarMapPointCount: 0,
+      radarMapSourcePointCount: 0,
+      oldRadarPointsDiagnosticOnly: false,
+      allWysiwygReady: false,
+    };
+  }
+  const camera = summary.readback_summary.camera;
+  const map = summary.readback_summary.map;
+  const radar = summary.readback_summary.radar;
+  const cameraCurrentVisible = camera.camera_wysiwyg_status_plain.startsWith("画面已可见")
+    || camera.preview_visible_status.includes("visible_cached_frame")
+    || camera.preview_visible_status.includes("visible_live_frame");
+  const mapPreviewVisible = mapPreviewResult.value?.proxy_status === "preview_forwarded" && Boolean(mapPreviewResult.value.image_data_url);
+  const mapCurrentVisible = mapPreviewVisible || map.map_once_observed === "true";
+  const routeCurrentVisible = (finitePlainNumber(map.path_preview_point_count) ?? 0) > 0 || Boolean(latestNavPathOverlay());
+  const robotPoseVisible = map.robot_pose_status === "map_pose_observed" || Boolean(latestRobotPoseOverlay());
+  const radarMapPointCount = finitePlainNumber(map.radar_overlay_point_count || radar.map_marker_point_count) ?? 0;
+  const radarMapSourcePointCount = finitePlainNumber(map.radar_overlay_source_point_count || radar.map_marker_source_point_count) ?? 0;
+  const radarMapPointsVisible = radarMapPointCount > 0;
+  // 旧雷达来源点只能说明曾经读到过扫描，不能作为当前地图 marker 的完成证据。
+  const oldRadarPointsDiagnosticOnly = !radarMapPointsVisible && radarMapSourcePointCount > 0;
+  const allWysiwygReady = cameraCurrentVisible && mapCurrentVisible && routeCurrentVisible && robotPoseVisible && radarMapPointsVisible;
+  let state = "未完整";
+  if (allWysiwygReady) {
+    state = "当前已对齐";
+  } else if (!cameraCurrentVisible) {
+    state = "待画面";
+  } else if (!mapCurrentVisible) {
+    state = "待地图";
+  } else if (!routeCurrentVisible || !robotPoseVisible) {
+    state = "待路线定位";
+  } else if (!radarMapPointsVisible) {
+    state = "待雷达贴图";
+  }
+  let nextAction = "当前所见已对齐";
+  if (!cameraCurrentVisible) {
+    nextAction = camera.camera_wysiwyg_next_action_plain || camera.preview_next_action_plain || "打开共享预览或复测首帧";
+  } else if (!mapCurrentVisible) {
+    nextAction = map.map_wysiwyg_next_action_plain || "刷新地图画面";
+  } else if (!routeCurrentVisible || !robotPoseVisible) {
+    nextAction = map.path_preview_next_action_plain || "准备图上行程并刷新地图画面";
+  } else if (!radarMapPointsVisible) {
+    nextAction = radar.radar_overlay_wysiwyg_next_action_plain || map.radar_overlay_next_action_plain || "启动雷达并刷新地图画面确认雷达点";
+  }
+  const cameraText = cameraCurrentVisible ? "画面已显示" : "画面未显示";
+  const mapText = mapCurrentVisible ? "地图已显示" : "地图未显示";
+  const routeText = routeCurrentVisible ? "图上行程已显示" : "图上行程未显示";
+  const poseText = robotPoseVisible ? "小车位置已显示" : "小车位置未显示";
+  const radarText = radarMapPointsVisible
+    ? `雷达点 ${radarMapPointCount} 个已贴图`
+    : `雷达点当前 0 个未贴图，旧来源点 ${radarMapSourcePointCount} 个只作诊断`;
+  return {
+    state,
+    text: `当前所见仪表：${cameraText}；${mapText}；${routeText}；${poseText}；${radarText}。下一步：${plainActionCardUserText(nextAction)}。`,
+    nextAction: plainActionCardUserText(nextAction),
+    cameraCurrentVisible,
+    mapCurrentVisible,
+    routeCurrentVisible,
+    robotPoseVisible,
+    radarMapPointsVisible,
+    radarMapPointCount,
+    radarMapSourcePointCount,
+    oldRadarPointsDiagnosticOnly,
+    allWysiwygReady,
+  };
+});
+
 const canRefreshPlainWysiwygEvidence = computed(() => (
   // 这只是所见即所得只读刷新：summary、地图画面、雷达状态和共享画面状态，不触发任何控制端点。
   robotApiBaseUrl.value.trim().length > 0
@@ -14371,6 +14466,27 @@ onBeforeUnmount(() => {
             {{ plainWysiwygEvidenceRefreshButtonLabel }}
           </button>
         </div>
+        <p
+          class="panel-note plain-wysiwyg-current-gauge"
+          data-testid="plain-wysiwyg-current-gauge"
+          :data-state="plainWysiwygCurrentGauge.state"
+          :data-camera-current-visible="String(plainWysiwygCurrentGauge.cameraCurrentVisible)"
+          :data-map-current-visible="String(plainWysiwygCurrentGauge.mapCurrentVisible)"
+          :data-route-current-visible="String(plainWysiwygCurrentGauge.routeCurrentVisible)"
+          :data-robot-pose-visible="String(plainWysiwygCurrentGauge.robotPoseVisible)"
+          :data-radar-map-points-visible="String(plainWysiwygCurrentGauge.radarMapPointsVisible)"
+          :data-radar-map-point-count="String(plainWysiwygCurrentGauge.radarMapPointCount)"
+          :data-radar-map-source-point-count="String(plainWysiwygCurrentGauge.radarMapSourcePointCount)"
+          :data-old-radar-points-diagnostic-only="String(plainWysiwygCurrentGauge.oldRadarPointsDiagnosticOnly)"
+          :data-all-wysiwyg-ready="String(plainWysiwygCurrentGauge.allWysiwygReady)"
+          :data-next-action="plainWysiwygCurrentGauge.nextAction"
+          data-fixed-shared-preview-status-endpoint="/api/robot-control/camera/mjpeg/status"
+          data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
+          data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+          data-sends-motion-when-clicked="false"
+        >
+          {{ plainWysiwygCurrentGauge.text }}
+        </p>
         <div
           v-for="item in plainWysiwygEvidenceItems"
           :key="item.id"

@@ -569,6 +569,33 @@ h3 {
   padding-top: 7px;
 }
 
+.plain-wysiwyg-current-gauge {
+  /* 当前所见仪表是只读验收摘要，必须比三行明细更醒目，但不能像操作按钮一样抢焦点。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-wysiwyg-current-gauge[data-state="当前已对齐"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-wysiwyg-current-gauge[data-state="待画面"],
+.plain-wysiwyg-current-gauge[data-state="待地图"],
+.plain-wysiwyg-current-gauge[data-state="待路线定位"],
+.plain-wysiwyg-current-gauge[data-state="待雷达贴图"] {
+  border-left-color: #9a6700;
+}
+
+.plain-wysiwyg-current-gauge[data-state="未连接"],
+.plain-wysiwyg-current-gauge[data-state="未完整"] {
+  border-left-color: #8c959f;
+}
+
 .plain-safety-actions {
   display: grid;
   gap: 7px;
