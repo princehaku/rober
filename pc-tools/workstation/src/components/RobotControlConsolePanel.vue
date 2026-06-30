@@ -295,8 +295,8 @@ const plainMapDirectViewRequested = computed(() => {
   const view = params.get("view") ?? params.get("mode");
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12] as const;
-const plainMapZoomIndex = ref(7);
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16] as const;
+const plainMapZoomIndex = ref(9);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const plainMapZoomStyle = computed(() => ({
@@ -16968,7 +16968,7 @@ onBeforeUnmount(() => {
           data-default-map-layout="dominant-first-screen-map"
           data-default-map-height-mode="viewport-dominant"
           data-default-size="large"
-          data-default-map-zoom-percent="800%"
+          data-default-map-zoom-percent="1200%"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
           data-map-zoom-affects="image-route-robot-radar"
@@ -16980,7 +16980,7 @@ onBeforeUnmount(() => {
           :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
           data-direct-map-view-url="?view=map"
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-          data-direct-map-view-default-zoom-percent="1200%"
+          data-direct-map-view-default-zoom-percent="1600%"
           data-ros2-companion-style="rviz2-map-focus"
           data-ros2-companion-tools="rviz2,foxglove"
           data-ros2-companion-tool="rviz2"
@@ -17015,7 +17015,7 @@ onBeforeUnmount(() => {
                 data-opens-new-window="true"
                 data-direct-map-view-url="?view=map"
                 data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
-                data-direct-map-view-default-zoom-percent="1200%"
+                data-direct-map-view-default-zoom-percent="1600%"
                 data-sends-motion-when-clicked="false"
                 data-starts-ros2="false"
                 data-starts-rviz2="false"
@@ -17307,8 +17307,8 @@ onBeforeUnmount(() => {
             data-wysiwyg-overlays="image-route-robot-radar"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
-            data-default-map-zoom-percent="800%"
-            data-max-map-zoom-percent="1200%"
+            data-default-map-zoom-percent="1200%"
+            data-max-map-zoom-percent="1600%"
             :data-current-map-zoom-percent="plainMapZoomPercent"
             :data-current-map-size="plainMapViewSize"
             :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
@@ -17344,7 +17344,7 @@ onBeforeUnmount(() => {
             data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
             data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
           >
-            PC 默认先显示近整屏 800% 大地图；需要独立观察屏时打开 ?view=map 地图大屏，直达页使用 1200% 上限；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时部署 bridge 后接 Foxglove Studio；普通操作仍在本页完成。
+            PC 默认先显示近整屏 1200% 大地图；需要独立观察屏时打开 ?view=map 地图大屏，直达页使用 1600% 上限；专业调试用 RViz2 看地图、雷达、坐标变换、规划轨迹和定位；需要浏览器远程观察时部署 bridge 后接 Foxglove Studio；普通操作仍在本页完成。
           </p>
         </article>
 

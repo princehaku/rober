@@ -1,8 +1,8 @@
 :root {
   --plain-map-large-min-height: 1040px;
-  --plain-map-large-target-height: calc(100vh - 12px);
-  --plain-map-large-max-height: 2200px;
-  --plain-map-fullscreen-height: calc(100vh - 8px);
+  --plain-map-large-target-height: calc(100vh - 4px);
+  --plain-map-large-max-height: 2600px;
+  --plain-map-fullscreen-height: 100vh;
   color: #17202a;
   background: #f4f6f8;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
