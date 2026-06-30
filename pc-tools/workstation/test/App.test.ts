@@ -47,6 +47,11 @@ const SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS = [
 
 enableAutoUnmount(afterEach);
 
+afterEach(() => {
+  // 用例可能切到 /map 直达页；恢复普通首页，避免地图-only 路由污染后续用例。
+  window.history.pushState({}, "", "/");
+});
+
 const fixtures: Record<string, unknown> = {
   "/api/health": {
     schema: "trashbot.pc_tools_workstation.health.v1",
@@ -6916,6 +6921,9 @@ describe("App", () => {
       expect(mapPanel.attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
       expect(mapPanel.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
       expect(mapPanel.attributes("data-direct-map-view-default-zoom-percent")).toBe("1600%");
+      expect(mapPanel.attributes("data-direct-map-loads-camera-preview")).toBe("false");
+      expect(mapPanel.attributes("data-direct-map-refreshes-camera-mjpeg-status")).toBe("false");
+      expect(mapPanel.attributes("data-direct-map-starts-camera-webrtc")).toBe("false");
       expect(mapPanel.attributes("data-size")).toBe("fullscreen");
       expect(mapPanel.attributes("data-fullscreen")).toBe("true");
       expect(mapPanel.attributes("data-observer-mode")).toBe("true");
@@ -6976,6 +6984,9 @@ describe("App", () => {
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-radar-status-on-enter")).toBe("true");
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/offer?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -21098,6 +21109,81 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("keeps stale radar overlay refresh manual-only on the direct map screen", async () => {
+    // /map 打开时不能自动触发昂贵的 proof refresh；只显示手动 no-motion 刷新入口，避免第二屏压垮上车服务。
+    window.history.pushState({}, "", "/map");
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+    summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+    summaryFixture.readback_summary.lidar.runtime_scan_status = "stale";
+    summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+    summaryFixture.readback_summary.map.radar_overlay_status = "not_current";
+    summaryFixture.readback_summary.map.radar_overlay_point_count = "0";
+    summaryFixture.readback_summary.map.radar_overlay_source_point_count = "72";
+    summaryFixture.readback_summary.map.radar_overlay_next_action = "refresh_radar_scan_for_map_overlay";
+    summaryFixture.readback_summary.map.radar_overlay_wysiwyg_next_action_plain = "刷新雷达扫描，再刷新地图画面";
+    summaryFixture.readback_summary.map.radar_overlay_next_action_plain = "刷新雷达扫描，再刷新地图画面";
+    const stalePreviewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
+    stalePreviewFixture.radar_overlay = {
+      ...(stalePreviewFixture.radar_overlay ?? {}),
+      overlay_status: "not_current",
+      status: "not_current",
+      plain_hint: "已有雷达来源点 72 个，但当前 scan proof 已过期，所以当前不贴到地图。",
+      next_action: "refresh_radar_scan_for_map_overlay",
+      next_action_plain: "刷新雷达扫描，再刷新地图画面。",
+      wysiwyg_status_plain: "雷达点未贴到当前地图：旧来源点 72 个已抑制。",
+      wysiwyg_next_action_plain: "刷新雷达扫描，再刷新地图画面。",
+      scan_preview_points: [],
+      scan_preview_point_count: 0,
+      scan_preview_source_point_count: 72,
+      scan_preview_frame_id: "laser_frame",
+      points: [],
+      count: 0,
+      source_count: 72,
+      frame_id: "laser_frame",
+      source_frame_id: "laser_frame",
+      robot_pose: null,
+      source_endpoint_ids: ["radar_scan_proof_latest"],
+      blocked_reasons: ["runtime_scan_stale_for_map_radar_overlay"],
+      blocked_reason_labels: ["雷达扫描已过期"],
+    };
+    stalePreviewFixture.radar_overlay_status = "not_current";
+    stalePreviewFixture.radar_overlay_point_count = 0;
+    stalePreviewFixture.radar_overlay_source_point_count = 72;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/map/preview": stalePreviewFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await flushPromises();
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
+    expect(mapPanel.attributes("data-direct-map-view-requested")).toBe("true");
+    expect(mapPanel.attributes("data-radar-map-overlay-status")).toBe("not_current");
+    expect(mapPanel.attributes("data-radar-map-points-visible")).toBe("false");
+    expect(mapPanel.attributes("data-radar-map-point-count")).toBe("0");
+    expect(mapPanel.attributes("data-radar-map-source-point-count")).toBe("72");
+    const refreshAction = wrapper.find('[data-testid="plain-map-radar-refresh-action"]');
+    expect(refreshAction.exists()).toBe(true);
+    expect(refreshAction.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(refreshAction.attributes("data-starts-radar-lifecycle")).toBe("false");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(false);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/offer?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);

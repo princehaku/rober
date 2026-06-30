@@ -1495,6 +1495,9 @@ const cameraReadyForSharedPreview = computed(() => {
 });
 const cameraCanAttemptSharedMjpegPreview = computed(() => {
   // MJPEG relay 是只读共享流；即使首帧探针失败，也应该让新页面尝试接入并展示真实失败或真实画面。
+  if (plainMapDirectViewRequested.value) {
+    return false;
+  }
   const camera = robotSummary.value?.readback_summary.camera;
   const hasSelectedSource = Boolean(camera?.video_source || camera?.selected_path);
   const deviceKnown = camera?.devices_status === "loaded" || camera?.selected_is_uvc_or_usb === "true";
@@ -13762,7 +13765,7 @@ function handlePreviewVideoReady(): void {
 
 async function refreshCameraMjpegStatus(): Promise<void> {
   // 读取本机共享 relay 状态，不创建新预览客户端，也不会触发上位机额外打开摄像头。
-  if (!robotApiBaseUrl.value.trim() || cameraMjpegStatusPending.value) {
+  if (!robotApiBaseUrl.value.trim() || cameraMjpegStatusPending.value || plainMapDirectViewRequested.value) {
     return;
   }
   cameraMjpegStatusPending.value = true;
@@ -15930,7 +15933,8 @@ async function sendStop(): Promise<RobotControlBaseCommandProxyResponse | null> 
 
 function shouldAutoStartSharedCameraPreview(): boolean {
   // 只有相机源 ready 且浏览器支持 WebRTC 时才自动接入；失败态和手动关闭不反复打扰 operator。
-  return cameraReadyForSharedPreview.value
+  return !plainMapDirectViewRequested.value
+    && cameraReadyForSharedPreview.value
     && !previewAutoConnectSuppressed.value
     && typeof globalThis.RTCPeerConnection === "function"
     && robotApiBaseUrl.value.trim().length > 0
@@ -17507,6 +17511,9 @@ onBeforeUnmount(() => {
           data-direct-map-view-legacy-url="?view=map"
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
           data-direct-map-view-default-zoom-percent="1600%"
+          data-direct-map-loads-camera-preview="false"
+          data-direct-map-refreshes-camera-mjpeg-status="false"
+          data-direct-map-starts-camera-webrtc="false"
           data-ros2-companion-style="rviz2-map-focus"
           data-ros2-companion-tools="rviz2,foxglove"
           data-ros2-companion-tool="rviz2"
