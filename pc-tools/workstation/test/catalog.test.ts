@@ -4556,8 +4556,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.keyboard.start_ready).toBe("true");
       expect(summary.readback_summary.keyboard.continuous_control_ready).toBe("true");
       expect(summary.readback_summary.keyboard.keyboard_control_start_ready).toBe("true");
+      expect(summary.readback_summary.keyboard.keyboard_continuous_control_ready).toBe("true");
       expect(summary.readback_summary.keyboard.hold_to_move_required).toBe("true");
+      expect(summary.readback_summary.keyboard.keyboard_hold_to_move_required).toBe("true");
       expect(summary.readback_summary.keyboard.enabled).toBe("false");
+      expect(summary.readback_summary.keyboard.keyboard_enabled).toBe("false");
+      expect(summary.readback_summary.keyboard.keyboard_motion_verified).toBe("false");
+      expect(summary.readback_summary.keyboard.keyboard_continuous_pulse_verified).toBe("false");
+      expect(summary.readback_summary.keyboard.keyboard_current_hold_pulse_count).toBe("0");
+      expect(summary.readback_summary.keyboard.keyboard_best_continuous_pulse_count).toBe("0");
+      expect(summary.readback_summary.keyboard.keyboard_verified_min_forwarded_pulses).toBe("2");
+      expect(summary.readback_summary.keyboard.keyboard_safety_confirm_required).toBe("true");
+      expect(summary.readback_summary.keyboard.minimal_precheck_safety_only).toBe("true");
       expect(summary.readback_summary.keyboard.plain_hint).toBe("可启用键盘；启用本身不发车，必须按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页/换方向或点停止都会停。");
       expect(summary.readback_summary.keyboard.readiness_plain).toBe("可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动。");
       expect(summary.readback_summary.keyboard.continuous_control_contract_plain).toBe("按住时约每 0.26 秒发送一次 0.24 秒 ROS 低速脉冲；松开、失焦、切页、换方向或点击停止都会停。");

@@ -8,6 +8,21 @@
 
 ## 2026-07-01 系列
 
+### 2026-07-01 01-56｜pc_keyboard_readback_aliases｜键盘连续控制只读别名
+
+本轮 `sprints/2026.07.01_01-56_pc_keyboard_readback_aliases/` 把 PC 键盘连续控制合同抬到
+`readback_summary.keyboard` 的直观别名字段：`keyboard_continuous_control_ready`、`keyboard_hold_to_move_required`、
+`keyboard_enabled`、`keyboard_motion_verified`、`keyboard_continuous_pulse_verified`、`keyboard_verified_min_forwarded_pulses`、
+`keyboard_safety_confirm_required`、`minimal_precheck_safety_only` 等。这样现场脚本直接读键盘区块即可知道“可启用、按住才动、
+只需安全确认、当前未运动/未验收”，不必再从 action card 或 live closure 反查。
+
+验证范围：`npm test -- test/robotControlSummary.test.ts --run` 6 tests OK；
+`npm test -- test/catalog.test.ts --run` 177 tests OK；`npm test -- --run` 412 tests OK；`npm run build` 通过。
+PC Node 已重启到 `0.0.0.0:7001`，live 只读 summary 返回 `keyboard_continuous_control_ready=true`、
+`keyboard_hold_to_move_required=true`、`keyboard_enabled=false`、`keyboard_motion_verified=false`、
+`keyboard_continuous_pulse_verified=false`、`keyboard_safety_confirm_required=true`、`minimal_precheck_safety_only=true`、
+`safe_to_control=false`。
+
 ### 2026-07-01 01-47｜pc_map_wysiwyg_summary_flags｜PC 地图当前可见字段
 
 本轮 `sprints/2026.07.01_01-47_pc_map_wysiwyg_summary_flags/` 给 PC `readback_summary.map` 新增

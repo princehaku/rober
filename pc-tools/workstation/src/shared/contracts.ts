@@ -2883,8 +2883,18 @@ export interface RobotControlKeyboardReadbackSummary {
   start_ready: string;
   continuous_control_ready: string;
   keyboard_control_start_ready: string;
+  keyboard_continuous_control_ready: string;
   hold_to_move_required: string;
+  keyboard_hold_to_move_required: string;
   enabled: string;
+  keyboard_enabled: string;
+  keyboard_motion_verified: string;
+  keyboard_continuous_pulse_verified: string;
+  keyboard_current_hold_pulse_count: string;
+  keyboard_best_continuous_pulse_count: string;
+  keyboard_verified_min_forwarded_pulses: string;
+  keyboard_safety_confirm_required: string;
+  minimal_precheck_safety_only: string;
   plain_hint: string;
   readiness_plain: string;
   continuous_control_contract_plain: string;
