@@ -7530,6 +7530,56 @@ const plainKeyboardTelemetrySummary = computed(() => {
   };
 });
 
+const plainKeyboardContinuousProofSummary = computed(() => {
+  // 连续手控验收要同时满足同一次按住窗口、连续转发次数和松开后的停止收口。
+  const telemetry = plainKeyboardTelemetrySummary.value;
+  const minPulses = KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES;
+  const continuousReady = keyboardVerifiedPulseCount.value >= minPulses;
+  const verified = continuousReady && keyboardStopSettledAfterPulse.value;
+  const state = verified
+    ? "已验证"
+    : keyboardHeldDirection.value
+      ? "按住中"
+      : keyboardControlArmed.value && canUseKeyboardControl.value
+        ? "等待按住"
+        : canUseKeyboardControl.value
+          ? "可启用"
+          : plainManualSafetyConfirmed.value
+            ? "待入口"
+            : "待安全确认";
+  const pulseText = keyboardHeldDirection.value
+    ? `本次按住 ${keyboardHoldPulseCount.value}/${minPulses} 次`
+    : continuousReady
+      ? `最佳连续 ${keyboardVerifiedPulseCount.value}/${minPulses} 次`
+      : `最佳连续 ${keyboardVerifiedPulseCount.value}/${minPulses} 次`;
+  const stopText = keyboardStopSettledAfterPulse.value ? "停止已收口" : "松开后还需 stop 收口";
+  const nextAction = verified
+    ? "连续手控已满足"
+    : keyboardHeldDirection.value
+      ? (continuousReady ? "松开按键完成停止收口" : "保持同一次按住直到 2 次")
+      : keyboardControlArmed.value && canUseKeyboardControl.value
+        ? "按住 W/A/S/D 或方向键"
+        : plainManualSafetyConfirmed.value
+          ? "点击启用键盘"
+          : "勾选现场安全确认";
+  return {
+    state,
+    text: `连续手控验收：${pulseText}；必须同一次按住窗口；${stopText}；轮速 ${telemetry.wheelLeft}/${telemetry.wheelRight}，${telemetry.wheelState}。下一步：${nextAction}。`,
+    currentHoldPulseCount: keyboardHoldPulseCount.value,
+    bestContinuousPulseCount: keyboardVerifiedPulseCount.value,
+    verifiedMinForwardedPulses: minPulses,
+    sameHoldWindowRequired: true,
+    stopRequiredAfterHold: true,
+    stopSettledAfterPulse: keyboardStopSettledAfterPulse.value,
+    wheelState: telemetry.wheelState,
+    wheelLeft: telemetry.wheelLeft,
+    wheelRight: telemetry.wheelRight,
+    sendsMotionWhileHeld: plainKeyboardMainActionSendsMotion.value,
+    fixedManualEndpoint: telemetry.fixedManualEndpoint,
+    fixedStopEndpoint: telemetry.fixedStopEndpoint,
+  };
+});
+
 const plainKeyboardMainActionSummary = computed(() => {
   // 首屏必须直接说明“启用键盘”和“按住方向键”不是同一个动作，避免误以为启用就会自己动。
   switch (plainKeyboardMainActionKind.value) {
@@ -16706,6 +16756,25 @@ onBeforeUnmount(() => {
               :data-fixed-keyboard-stop-endpoint="plainKeyboardTelemetrySummary.fixedStopEndpoint"
             >
               {{ plainKeyboardTelemetrySummary.text }}
+            </p>
+            <p
+              class="panel-note plain-keyboard-continuous-proof"
+              data-testid="plain-keyboard-continuous-proof"
+              :data-state="plainKeyboardContinuousProofSummary.state"
+              :data-current-hold-pulse-count="String(plainKeyboardContinuousProofSummary.currentHoldPulseCount)"
+              :data-best-continuous-pulse-count="String(plainKeyboardContinuousProofSummary.bestContinuousPulseCount)"
+              :data-verified-min-forwarded-pulses="String(plainKeyboardContinuousProofSummary.verifiedMinForwardedPulses)"
+              :data-same-hold-window-required="String(plainKeyboardContinuousProofSummary.sameHoldWindowRequired)"
+              :data-stop-required-after-hold="String(plainKeyboardContinuousProofSummary.stopRequiredAfterHold)"
+              :data-stop-settled-after-pulse="String(plainKeyboardContinuousProofSummary.stopSettledAfterPulse)"
+              :data-wheel-state="plainKeyboardContinuousProofSummary.wheelState"
+              :data-wheel-left="plainKeyboardContinuousProofSummary.wheelLeft"
+              :data-wheel-right="plainKeyboardContinuousProofSummary.wheelRight"
+              :data-sends-motion-while-held="String(plainKeyboardContinuousProofSummary.sendsMotionWhileHeld)"
+              :data-fixed-keyboard-manual-endpoint="plainKeyboardContinuousProofSummary.fixedManualEndpoint"
+              :data-fixed-keyboard-stop-endpoint="plainKeyboardContinuousProofSummary.fixedStopEndpoint"
+            >
+              {{ plainKeyboardContinuousProofSummary.text }}
             </p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
             <p v-if="plainKeyboardWheelFeedbackSummary" class="panel-note" data-testid="keyboard-wheel-feedback-summary">{{ plainKeyboardWheelFeedbackSummary }}</p>

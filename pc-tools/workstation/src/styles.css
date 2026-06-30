@@ -2201,6 +2201,32 @@ h3 {
   border-left-color: #cf222e;
 }
 
+.plain-keyboard-continuous-proof {
+  /* 这行只表达验收状态，不作为控制按钮；颜色帮助现场快速区分是否已完成连续手控闭环。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #8c959f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #17202a;
+}
+
+.plain-keyboard-continuous-proof[data-state="已验证"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-keyboard-continuous-proof[data-state="按住中"],
+.plain-keyboard-continuous-proof[data-state="等待按住"],
+.plain-keyboard-continuous-proof[data-state="可启用"] {
+  border-left-color: #bf8700;
+}
+
+.plain-keyboard-continuous-proof[data-state="待安全确认"],
+.plain-keyboard-continuous-proof[data-state="待入口"] {
+  border-left-color: #8c959f;
+}
+
 .keyboard-direction-pad {
   display: grid;
   gap: 8px;
