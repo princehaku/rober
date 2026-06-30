@@ -805,6 +805,15 @@ const fixtures: Record<string, unknown> = {
       radar_map_points_visible: false,
       free_move_start_ready: true,
       mapping_start_ready: false,
+      keyboard_control_start_ready: true,
+      keyboard_continuous_control_ready: true,
+      keyboard_hold_to_move_required: true,
+      keyboard_enabled: false,
+      keyboard_motion_verified: false,
+      keyboard_stop_settled_after_pulse: false,
+      keyboard_best_continuous_pulse_count: 0,
+      keyboard_verified_min_forwarded_pulses: 2,
+      keyboard_manual_command_mode: "ros",
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       sends_motion_when_clicked: false,
@@ -4452,6 +4461,15 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-radar-map-points-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-free-move-start-ready")).toBe("true");
     expect(liveClosureSummary.attributes("data-mapping-start-ready")).toBe("false");
+    expect(liveClosureSummary.attributes("data-keyboard-control-start-ready")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-control-ready")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-hold-to-move-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-enabled")).toBe("false");
+    expect(liveClosureSummary.attributes("data-keyboard-motion-verified")).toBe("false");
+    expect(liveClosureSummary.attributes("data-keyboard-stop-settled-after-pulse")).toBe("false");
+    expect(liveClosureSummary.attributes("data-keyboard-best-continuous-pulse-count")).toBe("0");
+    expect(liveClosureSummary.attributes("data-keyboard-verified-min-forwarded-pulses")).toBe("2");
+    expect(liveClosureSummary.attributes("data-keyboard-manual-command-mode")).toBe("ros");
     expect(liveClosureSummary.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-safety-confirm-required-for-motion")).toBe("true");
     expect(liveClosureSummary.attributes("data-sends-motion-when-clicked")).toBe("false");

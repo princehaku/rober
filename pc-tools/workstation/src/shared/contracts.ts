@@ -2713,6 +2713,15 @@ export interface RobotControlLiveClosureSummary {
   radar_map_points_visible: boolean;
   free_move_start_ready: boolean;
   mapping_start_ready: boolean;
+  keyboard_control_start_ready: boolean;
+  keyboard_continuous_control_ready: boolean;
+  keyboard_hold_to_move_required: boolean;
+  keyboard_enabled: boolean;
+  keyboard_motion_verified: boolean;
+  keyboard_stop_settled_after_pulse: boolean;
+  keyboard_best_continuous_pulse_count: number;
+  keyboard_verified_min_forwarded_pulses: number;
+  keyboard_manual_command_mode: string;
   minimal_precheck_safety_only: boolean;
   safety_confirm_required_for_motion: boolean;
   sends_motion_when_clicked: false;

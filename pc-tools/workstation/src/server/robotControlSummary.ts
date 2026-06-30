@@ -8162,6 +8162,7 @@ function buildLiveClosureSummary(
   const map = actionCardById(cards, "map_preview");
   const radar = actionCardById(cards, "radar_map_points");
   const nav2 = actionCardById(cards, "nav2_route");
+  const keyboard = actionCardById(cards, "keyboard_control");
   const routeReadyOnMap = nav2.evidence?.route_ready_on_map === true || boundary.nav2_goal_ready;
   const nav2GoalExecutionProven = nav2.evidence?.goal_execution_proven === true
     || readback.nav2.goal_execution_status === "goal_succeeded";
@@ -8175,6 +8176,18 @@ function buildLiveClosureSummary(
   const radarMapPointsVisible = radar.evidence?.current_on_map === true || radar.status === "current_on_map";
   const freeMoveStartReady = boundary.free_roam_motion_start_ready || goalSummary.ready_action_ids.includes("free_move");
   const mappingStartReady = boundary.free_roam_mapping_start_ready || goalSummary.ready_action_ids.includes("mapping_start");
+  const keyboardControlStartReady = keyboard.evidence?.keyboard_start_ready === true
+    || readback.keyboard.keyboard_control_start_ready === "true";
+  const keyboardContinuousControlReady = keyboardControlStartReady
+    && readback.keyboard.continuous_control_ready === "true";
+  const keyboardHoldToMoveRequired = keyboard.evidence?.hold_to_move_required === true
+    || readback.keyboard.hold_to_move_required === "true";
+  const keyboardEnabled = keyboard.evidence?.keyboard_enabled === true
+    || readback.keyboard.enabled === "true";
+  const keyboardMotionVerified = keyboard.evidence?.keyboard_motion_verified === true;
+  const keyboardStopSettledAfterPulse = keyboard.evidence?.keyboard_stop_settled_after_pulse === true;
+  const keyboardBestContinuousPulseCount = keyboard.evidence?.keyboard_best_continuous_pulse_count ?? 0;
+  const keyboardVerifiedMinForwardedPulses = keyboard.evidence?.keyboard_verified_min_forwarded_pulses ?? 2;
   const minimalPrecheckSafetyOnly = nav2.evidence?.minimal_precheck_safety_only === true
     || boundary.nav2_goal_minimal_precheck_plain.includes("只需要现场安全确认");
   const nav2GoalSucceeded = nav2GoalExecutionProven;
@@ -8263,6 +8276,15 @@ function buildLiveClosureSummary(
     radar_map_points_visible: radarMapPointsVisible,
     free_move_start_ready: freeMoveStartReady,
     mapping_start_ready: mappingStartReady,
+    keyboard_control_start_ready: keyboardControlStartReady,
+    keyboard_continuous_control_ready: keyboardContinuousControlReady,
+    keyboard_hold_to_move_required: keyboardHoldToMoveRequired,
+    keyboard_enabled: keyboardEnabled,
+    keyboard_motion_verified: keyboardMotionVerified,
+    keyboard_stop_settled_after_pulse: keyboardStopSettledAfterPulse,
+    keyboard_best_continuous_pulse_count: keyboardBestContinuousPulseCount,
+    keyboard_verified_min_forwarded_pulses: keyboardVerifiedMinForwardedPulses,
+    keyboard_manual_command_mode: readback.keyboard.manual_command_mode || "not_loaded",
     minimal_precheck_safety_only: minimalPrecheckSafetyOnly,
     safety_confirm_required_for_motion: goalSummary.safety_confirm_needed_count > 0,
     sends_motion_when_clicked: false,
