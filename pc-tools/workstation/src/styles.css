@@ -606,6 +606,32 @@ h3 {
   background: #ffffff;
 }
 
+.plain-motion-readiness-gauge {
+  /* 移动总仪表只做只读聚合，放在安全区顶部帮助现场先判断能不能动车。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-motion-readiness-gauge[data-state="行程可执行"],
+.plain-motion-readiness-gauge[data-state="键盘移动中"],
+.plain-motion-readiness-gauge[data-state="可先动"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-motion-readiness-gauge[data-state="待安全确认"],
+.plain-motion-readiness-gauge[data-state="待路线或入口"] {
+  border-left-color: #9a6700;
+}
+
+.plain-motion-readiness-gauge[data-state="未连接"] {
+  border-left-color: #8c959f;
+}
+
 .plain-safety-action-row {
   display: grid;
   grid-template-columns: minmax(88px, 0.5fr) auto minmax(220px, 1.2fr) minmax(180px, 0.9fr) auto;

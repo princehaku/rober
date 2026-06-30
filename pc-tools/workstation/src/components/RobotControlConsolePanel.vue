@@ -10100,6 +10100,30 @@ type PlainTripExecutionGauge = {
   deliverySuccessMatchesCurrentNav2: boolean;
   deliverySuccessEvidenceStale: boolean;
 };
+type PlainMotionReadinessGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  safetyConfirmed: boolean;
+  minimalPrecheckSafetyOnly: boolean;
+  tripMainActionKind: string;
+  tripMainActionCanRun: boolean;
+  tripSendsMotion: boolean;
+  tripRouteReady: boolean;
+  keyboardMainActionKind: string;
+  keyboardSendsMotionWhileHeld: boolean;
+  keyboardBestContinuousPulseCount: number;
+  keyboardVerifiedMinForwardedPulses: number;
+  freeMoveStartReady: boolean;
+  canFreeMoveNow: boolean;
+  cameraBlocksMotion: boolean;
+  radarBlocksMotion: boolean;
+  fixedTripExecuteEndpoint: string;
+  fixedKeyboardManualEndpoint: string;
+  fixedKeyboardStopEndpoint: string;
+  fixedFreeRoamStartEndpoint: string;
+  fixedFreeRoamStopEndpoint: string;
+};
 
 const plainTripExecutionGauge = computed<PlainTripExecutionGauge>(() => {
   // 这行是普通首页的行程闭环仪表：路线、按钮、轮速、送达必须同源显示，避免现场在多个卡片之间拼结论。
@@ -10179,6 +10203,88 @@ const plainTripExecutionGauge = computed<PlainTripExecutionGauge>(() => {
     wheelRight: evidence.latestWheelRawRight,
     deliverySuccessMatchesCurrentNav2: evidence.deliverySuccessMatchesCurrentNav2,
     deliverySuccessEvidenceStale: evidence.deliverySuccessEvidenceStale,
+  };
+});
+const plainMotionReadinessGauge = computed<PlainMotionReadinessGauge>(() => {
+  // 首屏总仪表只合并门禁事实，不触发任何动作；真实发车仍由原卡片按钮和后端 gate 执行。
+  const trip = plainTripExecutionGauge.value;
+  const keyboard = plainKeyboardDirectionButtonEvidence.value;
+  const free = plainFreeRoamMotionGauge.value;
+  const connected = robotApiBaseUrl.value.trim().length > 0;
+  const safetyConfirmed = plainManualSafetyConfirmed.value;
+  const tripRouteReady = trip.routeWysiwygReady && trip.executesCurrentRouteGoal;
+  const keyboardCanMoveAfterHold = keyboard.sendsMotionWhileHeld;
+  const keyboardCanBeArmed = ["arm_keyboard_no_motion", "armed_waiting_for_keydown"].includes(plainKeyboardMainActionKind.value);
+  let state = "未连接";
+  if (connected && !safetyConfirmed) {
+    state = "待安全确认";
+  } else if (trip.mainActionCanRun && trip.mainActionSendsMotion) {
+    state = "行程可执行";
+  } else if (keyboardCanMoveAfterHold) {
+    state = "键盘移动中";
+  } else if (free.canFreeMoveNow || keyboardCanBeArmed) {
+    state = "可先动";
+  } else if (connected) {
+    state = "待路线或入口";
+  }
+  const safetyText = safetyConfirmed ? "安全确认已勾" : "安全确认未勾";
+  const tripText = trip.mainActionSendsMotion
+    ? "图上行程可执行"
+    : tripRouteReady
+      ? "图上行程待确认"
+      : "图上行程待准备";
+  const keyboardText = keyboardCanMoveAfterHold
+    ? `键盘按住会动，已验证 ${keyboard.bestContinuousPulseCount} 次连续脉冲`
+    : keyboardCanBeArmed
+      ? "键盘可启用，按住才会动"
+      : safetyConfirmed ? "键盘待恢复入口" : "键盘待确认";
+  const freeText = free.canFreeMoveNow
+    ? "自由移动可启动"
+    : free.freeMoveStartReady ? "自由移动待确认" : "自由移动待连接";
+  const nextAction = (() => {
+    if (!connected) {
+      return "连接默认小车";
+    }
+    if (!safetyConfirmed) {
+      return "勾选现场安全确认";
+    }
+    if (trip.mainActionCanRun && trip.mainActionSendsMotion) {
+      return "可执行图上行程；执行后看轮速 L/R 和送达";
+    }
+    if (free.canFreeMoveNow) {
+      return "可先自由移动；图上行程和键盘按需继续";
+    }
+    if (keyboardCanBeArmed) {
+      return "可启用键盘；按住方向键才会移动";
+    }
+    if (!tripRouteReady) {
+      return "先准备图上行程，或用自由移动/键盘先动";
+    }
+    return trip.nextAction;
+  })();
+  return {
+    state,
+    text: `移动仪表：${safetyText}；${tripText}；${keyboardText}；${freeText}；画面和雷达不阻止先动。下一步：${nextAction}。`,
+    nextAction,
+    safetyConfirmed,
+    minimalPrecheckSafetyOnly: true,
+    tripMainActionKind: trip.mainActionKind,
+    tripMainActionCanRun: trip.mainActionCanRun,
+    tripSendsMotion: trip.mainActionSendsMotion,
+    tripRouteReady,
+    keyboardMainActionKind: plainKeyboardMainActionKind.value,
+    keyboardSendsMotionWhileHeld: keyboardCanMoveAfterHold,
+    keyboardBestContinuousPulseCount: keyboard.bestContinuousPulseCount,
+    keyboardVerifiedMinForwardedPulses: keyboard.verifiedMinForwardedPulses,
+    freeMoveStartReady: free.freeMoveStartReady,
+    canFreeMoveNow: free.canFreeMoveNow,
+    cameraBlocksMotion: false,
+    radarBlocksMotion: false,
+    fixedTripExecuteEndpoint: "/api/robot-control/nav2/goal/execute",
+    fixedKeyboardManualEndpoint: keyboard.fixedManualEndpoint,
+    fixedKeyboardStopEndpoint: keyboard.fixedStopEndpoint,
+    fixedFreeRoamStartEndpoint: free.fixedFreeRoamStartEndpoint,
+    fixedFreeRoamStopEndpoint: free.fixedFreeRoamStopEndpoint,
   };
 });
 
@@ -14590,6 +14696,34 @@ onBeforeUnmount(() => {
           <strong>勾确认后可做</strong>
           <span class="muted">同一个安全确认用于行程、键盘和自由移动；建图另看画面和雷达是否到位。</span>
         </div>
+        <p
+          class="plain-motion-readiness-gauge"
+          :data-state="plainMotionReadinessGauge.state"
+          :data-safety-confirmed="String(plainMotionReadinessGauge.safetyConfirmed)"
+          :data-minimal-precheck-safety-only="String(plainMotionReadinessGauge.minimalPrecheckSafetyOnly)"
+          :data-trip-main-action-kind="plainMotionReadinessGauge.tripMainActionKind"
+          :data-trip-main-action-can-run="String(plainMotionReadinessGauge.tripMainActionCanRun)"
+          :data-trip-sends-motion="String(plainMotionReadinessGauge.tripSendsMotion)"
+          :data-trip-route-ready="String(plainMotionReadinessGauge.tripRouteReady)"
+          :data-keyboard-main-action-kind="plainMotionReadinessGauge.keyboardMainActionKind"
+          :data-keyboard-sends-motion-while-held="String(plainMotionReadinessGauge.keyboardSendsMotionWhileHeld)"
+          :data-keyboard-best-continuous-pulse-count="String(plainMotionReadinessGauge.keyboardBestContinuousPulseCount)"
+          :data-keyboard-verified-min-forwarded-pulses="String(plainMotionReadinessGauge.keyboardVerifiedMinForwardedPulses)"
+          :data-free-move-start-ready="String(plainMotionReadinessGauge.freeMoveStartReady)"
+          :data-can-free-move-now="String(plainMotionReadinessGauge.canFreeMoveNow)"
+          :data-camera-blocks-motion="String(plainMotionReadinessGauge.cameraBlocksMotion)"
+          :data-radar-blocks-motion="String(plainMotionReadinessGauge.radarBlocksMotion)"
+          :data-next-action="plainMotionReadinessGauge.nextAction"
+          :data-fixed-trip-execute-endpoint="plainMotionReadinessGauge.fixedTripExecuteEndpoint"
+          :data-fixed-keyboard-manual-endpoint="plainMotionReadinessGauge.fixedKeyboardManualEndpoint"
+          :data-fixed-keyboard-stop-endpoint="plainMotionReadinessGauge.fixedKeyboardStopEndpoint"
+          :data-fixed-free-roam-start-endpoint="plainMotionReadinessGauge.fixedFreeRoamStartEndpoint"
+          :data-fixed-free-roam-stop-endpoint="plainMotionReadinessGauge.fixedFreeRoamStopEndpoint"
+          data-sends-motion-when-clicked="false"
+          data-testid="plain-motion-readiness-gauge"
+        >
+          {{ plainMotionReadinessGauge.text }}
+        </p>
         <div
           v-for="item in plainSafetyActionItems"
           :key="item.id"
