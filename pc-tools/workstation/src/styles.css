@@ -675,6 +675,31 @@ h3 {
   background: #f3fbf6;
 }
 
+.plain-mapping-start-gate {
+  /* 建图入口仪表把“相机+雷达 ready 才建图”和“可先移动”分开说明。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-mapping-start-gate[data-state="建图可验收"],
+.plain-mapping-start-gate[data-state="可启动建图"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-mapping-start-gate[data-state="可先移动"],
+.plain-mapping-start-gate[data-state="待安全确认"] {
+  border-left-color: #9a6700;
+}
+
+.plain-mapping-start-gate[data-state="待连接"] {
+  border-left-color: #8c959f;
+}
+
 .plain-safety-action-row {
   display: grid;
   grid-template-columns: minmax(88px, 0.5fr) auto minmax(220px, 1.2fr) minmax(180px, 0.9fr) auto;

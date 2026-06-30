@@ -6674,6 +6674,21 @@ type PlainFreeRoamMotionGauge = {
   fixedMappingStartEndpoint: string;
   fixedMappingPreviewEndpoint: string;
 };
+type PlainMappingStartGateGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  safetyConfirmed: boolean;
+  canFreeMoveNow: boolean;
+  cameraReadyForMapping: boolean;
+  radarReadyForMapping: boolean;
+  mappingStartReady: boolean;
+  primaryActionKind: string;
+  primaryActionRequestsMapping: boolean;
+  fixedMappingStartEndpoint: string;
+  fixedFreeRoamStartEndpoint: string;
+  fixedMappingPreviewEndpoint: string;
+};
 const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
   // 建图解锁包按“先能动、再补传感器、最后启动建图”排序；这里只读展示，不代替任何安全确认或启动动作。
   const summary = robotSummary.value;
@@ -6923,6 +6938,60 @@ const plainFreeRoamMotionGauge = computed<PlainFreeRoamMotionGauge>(() => {
     fixedFreeRoamStartEndpoint: evidence.fixedFreeRoamStartEndpoint,
     fixedFreeRoamStopEndpoint: evidence.fixedFreeRoamStopEndpoint,
     fixedMappingStartEndpoint: evidence.fixedMappingStartEndpoint,
+    fixedMappingPreviewEndpoint: evidence.fixedMappingPreviewEndpoint,
+  };
+});
+const plainMappingStartGateGauge = computed<PlainMappingStartGateGauge>(() => {
+  // 顶层建图入口只读说明“什么时候可建图”；真正启动仍由自由移动卡主按钮执行后端 gate。
+  const evidence = plainFreeRoamDomEvidence.value;
+  const mapping = plainMappingReadinessGauge.value;
+  const safetyConfirmed = plainManualSafetyConfirmed.value;
+  let state = "待连接";
+  if (mapping.mappingEvidenceReady) {
+    state = "建图可验收";
+  } else if (safetyConfirmed && evidence.mappingStartReady && mapping.canFreeMoveNow) {
+    state = "可启动建图";
+  } else if (mapping.canFreeMoveNow) {
+    state = "可先移动";
+  } else if (evidence.freeMoveStartReady) {
+    state = "待安全确认";
+  }
+  const safetyText = safetyConfirmed ? "安全确认已勾" : "安全确认未勾";
+  const cameraText = mapping.cameraReadyForMapping ? "画面已就绪" : "画面未就绪";
+  const radarText = mapping.radarReadyForMapping ? "雷达已就绪" : "雷达未就绪";
+  const mappingText = evidence.mappingStartReady ? "建图记录可启动" : "建图记录待传感器";
+  const actionText = evidence.primaryActionRequestsMapping ? "主按钮会先建图再自由移动" : mapping.canFreeMoveNow ? "主按钮只会自由移动" : "主按钮待确认";
+  const nextAction = (() => {
+    if (!evidence.freeMoveStartReady) {
+      return "连接默认小车";
+    }
+    if (!safetyConfirmed) {
+      return "勾选现场安全确认";
+    }
+    if (!mapping.cameraReadyForMapping || !mapping.radarReadyForMapping) {
+      return "可先低速自由移动；补齐画面和雷达后再建图";
+    }
+    if (!mapping.mapRuntimeStarted) {
+      return "点击自由移动卡主按钮，先启动建图记录再低速移动";
+    }
+    if (!mapping.mapPreviewFresh) {
+      return "刷新地图画面后确认建图效果";
+    }
+    return "建图记录和地图画面已就绪，可按建图收口";
+  })();
+  return {
+    state,
+    text: `建图入口：${safetyText}；${cameraText}；${radarText}；${mappingText}；${actionText}。下一步：${nextAction}。`,
+    nextAction,
+    safetyConfirmed,
+    canFreeMoveNow: mapping.canFreeMoveNow,
+    cameraReadyForMapping: mapping.cameraReadyForMapping,
+    radarReadyForMapping: mapping.radarReadyForMapping,
+    mappingStartReady: evidence.mappingStartReady,
+    primaryActionKind: evidence.primaryActionKind,
+    primaryActionRequestsMapping: evidence.primaryActionRequestsMapping,
+    fixedMappingStartEndpoint: evidence.fixedMappingStartEndpoint,
+    fixedFreeRoamStartEndpoint: evidence.fixedFreeRoamStartEndpoint,
     fixedMappingPreviewEndpoint: evidence.fixedMappingPreviewEndpoint,
   };
 });
@@ -14841,6 +14910,25 @@ onBeforeUnmount(() => {
           data-testid="plain-motion-readiness-gauge"
         >
           {{ plainMotionReadinessGauge.text }}
+        </p>
+        <p
+          class="plain-mapping-start-gate"
+          data-testid="plain-mapping-start-gate"
+          :data-state="plainMappingStartGateGauge.state"
+          :data-safety-confirmed="String(plainMappingStartGateGauge.safetyConfirmed)"
+          :data-can-free-move-now="String(plainMappingStartGateGauge.canFreeMoveNow)"
+          :data-camera-ready-for-mapping="String(plainMappingStartGateGauge.cameraReadyForMapping)"
+          :data-radar-ready-for-mapping="String(plainMappingStartGateGauge.radarReadyForMapping)"
+          :data-mapping-start-ready="String(plainMappingStartGateGauge.mappingStartReady)"
+          :data-primary-action-kind="plainMappingStartGateGauge.primaryActionKind"
+          :data-primary-action-requests-mapping="String(plainMappingStartGateGauge.primaryActionRequestsMapping)"
+          :data-next-action="plainMappingStartGateGauge.nextAction"
+          :data-fixed-mapping-start-endpoint="plainMappingStartGateGauge.fixedMappingStartEndpoint"
+          :data-fixed-free-roam-start-endpoint="plainMappingStartGateGauge.fixedFreeRoamStartEndpoint"
+          :data-fixed-mapping-preview-endpoint="plainMappingStartGateGauge.fixedMappingPreviewEndpoint"
+          data-sends-motion-when-clicked="false"
+        >
+          {{ plainMappingStartGateGauge.text }}
         </p>
         <div
           v-for="item in plainSafetyActionItems"

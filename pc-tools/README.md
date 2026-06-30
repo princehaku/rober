@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 08:46 CST 起，普通首屏 `勾确认后可做` 区新增 `plain-mapping-start-gate` 建图入口仪表。它把安全确认、画面首帧、雷达新鲜、建图记录是否可启动、自由移动主按钮是否会先建图再自由移动合成一行，并暴露 `data-camera-ready-for-mapping`、`data-radar-ready-for-mapping`、`data-mapping-start-ready`、`data-primary-action-kind`、`data-primary-action-requests-mapping` 和固定建图/自由移动/地图预览 endpoint。该仪表固定 `data-sends-motion-when-clicked=false`，只把“雷达和摄像头 ready 后可以建图”的条件前置到首屏，不自动启动建图或自由移动。
+
 2026-06-30 08:39 CST 起，普通首屏 `勾确认后可做` 区新增顶层 `plain-unified-safety-gate` / `plain-unified-safety-confirm`。它直接绑定全页面同一个安全确认：勾选后同步行程、键盘、自由移动和高级区确认框；DOM 明确 `data-minimal-precheck-safety-only=true`、`data-camera-required-for-motion=false`、`data-radar-required-for-motion=false`、`data-operator-report-required=false`、`data-sends-motion-when-clicked=false`。因此普通用户不需要再先找行程卡或自由移动卡，首屏勾一次即可放开后续显式动作按钮；勾选本身不执行 Nav2、不启用键盘、不启动自由移动、不发送 manual、delivery、stop 或 `/cmd_vel`。
 
 2026-06-30 08:36 CST 起，普通首屏 `当前所见` 区新增 `plain-wysiwyg-surface-gauge` 实物所见仪表。它只看当前页面实际渲染出来的面：共享画面媒体帧、真实地图图像、图上行程层、小车位置 marker、地图雷达点层，并暴露 `data-camera-frame-visible`、`data-camera-mjpeg-frame-visible`、`data-camera-video-frame-visible`、`data-map-image-visible`、`data-route-layer-visible`、`data-robot-marker-visible`、`data-radar-map-points-visible`、`data-radar-map-point-count`、`data-all-surfaces-visible` 和固定只读刷新 endpoint。该仪表固定 `data-sends-motion-when-clicked=false`，不会把后端 ready、旧点、缓存状态或 summary 文案冒充为当前页面已经看到的东西。
