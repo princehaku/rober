@@ -2736,6 +2736,16 @@ export interface RobotControlLiveClosureSummary {
   keyboard_best_continuous_pulse_count: number;
   keyboard_verified_min_forwarded_pulses: number;
   keyboard_manual_command_mode: string;
+  keyboard_continuous_minimal_precheck_safety_only: boolean;
+  keyboard_continuous_safety_confirm_required: boolean;
+  keyboard_continuous_enable_sends_motion: false;
+  keyboard_continuous_hold_to_move_required: true;
+  keyboard_continuous_pulse_interval_ms: number;
+  keyboard_continuous_pulse_duration_ms: number;
+  keyboard_continuous_stop_triggers: string[];
+  keyboard_continuous_wheel_feedback_acceptance: "same_hold_window_wheel_lr_nonzero";
+  fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual";
+  fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop";
   minimal_precheck_safety_only: boolean;
   safety_confirm_required_for_motion: boolean;
   wheel_rerun_minimal_precheck_safety_only: boolean;

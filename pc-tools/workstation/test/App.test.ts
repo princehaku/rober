@@ -828,6 +828,16 @@ const fixtures: Record<string, unknown> = {
       keyboard_best_continuous_pulse_count: 0,
       keyboard_verified_min_forwarded_pulses: 2,
       keyboard_manual_command_mode: "ros",
+      keyboard_continuous_minimal_precheck_safety_only: true,
+      keyboard_continuous_safety_confirm_required: true,
+      keyboard_continuous_enable_sends_motion: false,
+      keyboard_continuous_hold_to_move_required: true,
+      keyboard_continuous_pulse_interval_ms: 260,
+      keyboard_continuous_pulse_duration_ms: 240,
+      keyboard_continuous_stop_triggers: ["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"],
+      keyboard_continuous_wheel_feedback_acceptance: "same_hold_window_wheel_lr_nonzero",
+      fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",
+      fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop",
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       wheel_rerun_minimal_precheck_safety_only: false,
@@ -4541,6 +4551,16 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-best-continuous-pulse-count")).toBe("0");
     expect(liveClosureSummary.attributes("data-keyboard-verified-min-forwarded-pulses")).toBe("2");
     expect(liveClosureSummary.attributes("data-keyboard-manual-command-mode")).toBe("ros");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-minimal-precheck-safety-only")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-safety-confirm-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-enable-sends-motion")).toBe("false");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-hold-to-move-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-pulse-interval-ms")).toBe("260");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-pulse-duration-ms")).toBe("240");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-stop-triggers")).toBe("key_release,window_blur,page_hidden,direction_change,stop_button");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-wheel-feedback-acceptance")).toBe("same_hold_window_wheel_lr_nonzero");
+    expect(liveClosureSummary.attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(liveClosureSummary.attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(liveClosureSummary.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-safety-confirm-required-for-motion")).toBe("true");
     expect(liveClosureSummary.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("false");

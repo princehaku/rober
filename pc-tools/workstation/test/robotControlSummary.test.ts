@@ -115,6 +115,16 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_blocked_by_radar_wysiwyg).toBe(false);
     expect(summary.live_closure_summary?.wheel_rerun_command_mode).toBe("ros");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.live_closure_summary?.keyboard_continuous_minimal_precheck_safety_only).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_continuous_safety_confirm_required).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_continuous_enable_sends_motion).toBe(false);
+    expect(summary.live_closure_summary?.keyboard_continuous_hold_to_move_required).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_continuous_pulse_interval_ms).toBe(260);
+    expect(summary.live_closure_summary?.keyboard_continuous_pulse_duration_ms).toBe(240);
+    expect(summary.live_closure_summary?.keyboard_continuous_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+    expect(summary.live_closure_summary?.keyboard_continuous_wheel_feedback_acceptance).toBe("same_hold_window_wheel_lr_nonzero");
+    expect(summary.live_closure_summary?.fixed_keyboard_manual_endpoint).toBe("/api/robot-control/base/manual");
+    expect(summary.live_closure_summary?.fixed_keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
   });
 
   it("separates free movement from mapping sensor readiness in live closure", async () => {
