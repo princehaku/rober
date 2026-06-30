@@ -2949,6 +2949,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       decision_state: string;
       decision_reason: string;
       stop_required: string;
+      stop_request_pending: string;
+      free_roam_stop_request_pending: string;
+      start_will_clear_stop_request: string;
+      motion_start_blocked_by_stop_request: string;
+      stop_request_status_plain: string;
       artifact_only: string;
       cmd_vel_publish_enabled: string;
       start_ready: string;

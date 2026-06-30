@@ -6324,6 +6324,11 @@ describe("workstation fail-closed API contracts", () => {
         decision_state: "not_loaded",
         decision_reason: "not_loaded",
         stop_required: "not_loaded",
+        stop_request_pending: "false",
+        free_roam_stop_request_pending: "false",
+        start_will_clear_stop_request: "false",
+        motion_start_blocked_by_stop_request: "false",
+        stop_request_status_plain: "当前没有外部停止请求；自由移动启动不需要先清除停止请求。",
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
         start_ready: "false",
@@ -6448,6 +6453,11 @@ describe("workstation fail-closed API contracts", () => {
         decision_state: "turning_for_coverage",
         decision_reason: "地图覆盖暂未增长，原地扫描寻找新方向",
         stop_required: "false",
+        stop_request_pending: "false",
+        free_roam_stop_request_pending: "false",
+        start_will_clear_stop_request: "false",
+        motion_start_blocked_by_stop_request: "false",
+        stop_request_status_plain: "当前没有外部停止请求；自由移动启动不需要先清除停止请求。",
         artifact_only: "true",
         cmd_vel_publish_enabled: "false",
         start_ready: "true",
@@ -7340,6 +7350,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.decision_state).toBe("locked");
       expect(summary.readback_summary.free_roam.decision_reason).toBe("还未勾选现场安全确认");
       expect(summary.readback_summary.free_roam.stop_required).toBe("true");
+      expect(summary.readback_summary.free_roam.stop_request_pending).toBe("false");
+      expect(summary.readback_summary.free_roam.free_roam_stop_request_pending).toBe("false");
+      expect(summary.readback_summary.free_roam.start_will_clear_stop_request).toBe("false");
+      expect(summary.readback_summary.free_roam.motion_start_blocked_by_stop_request).toBe("false");
+      expect(summary.readback_summary.free_roam.stop_request_status_plain).toBe("当前没有外部停止请求；自由移动启动不需要先清除停止请求。");
       expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
       expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
       expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。");

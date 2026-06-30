@@ -5679,12 +5679,19 @@ function freeRoamSummaryFromReadbacks(
   const motionSensorDependency = freeRoamMotionSensorDependencyPlain(startReady || manualMotionFallbackActive || motionReady);
   const mappingMissingText = mappingMissing.length ? mappingMissing.join(",") : "none";
   const nextActionPlain = freeRoamAutonomyNextAction(nextActionStatus, mappingReady, mappingMissing, freeRoamRuntime, manualMotionFallbackActive);
+  const startWillClearStopRequest = motionStartReady && externalStopRequested;
+  const stopRequestStatusPlain = freeRoamStopRequestStatusPlain(motionStartReady, externalStopRequested);
   return {
     status: derivedStatus,
     runtime_status: asString(payload?.runtime_status, latest ? "loaded" : "not_loaded"),
     decision_state: asString(decision?.state, asString(payload?.decision_state, "not_loaded")),
     decision_reason: asString(decision?.reason, asString(payload?.decision_reason, "not_loaded")),
     stop_required: decision ? booleanSummaryValue(decision.stop_required === true) : summaryValueText(payload, ["stop_required"]) ?? "not_loaded",
+    stop_request_pending: booleanSummaryValue(externalStopRequested),
+    free_roam_stop_request_pending: booleanSummaryValue(externalStopRequested),
+    start_will_clear_stop_request: booleanSummaryValue(startWillClearStopRequest),
+    motion_start_blocked_by_stop_request: "false",
+    stop_request_status_plain: stopRequestStatusPlain,
     artifact_only: latest ? booleanSummaryValue(latest.artifact_only !== false) : summaryValueText(payload, ["artifact_only"]) ?? "not_loaded",
     cmd_vel_publish_enabled: latest ? booleanSummaryValue(latest.cmd_vel_publish_enabled === true) : summaryValueText(payload, ["cmd_vel_publish_enabled"]) ?? "not_loaded",
     start_ready: booleanSummaryValue(startReady),
@@ -5733,6 +5740,16 @@ function freeRoamExternalStopRequested(
     freeRoamRuntime?.state === "stopping" && /现场请求停止|external_stop/i.test(freeRoamRuntime.reason)
     || (freeRoamRuntimeGates ?? []).some((gate) => gate.id === "external_stop_request"),
   );
+}
+
+function freeRoamStopRequestStatusPlain(motionStartReady: boolean, externalStopRequested: boolean): string {
+  if (!externalStopRequested) {
+    return "当前没有外部停止请求；自由移动启动不需要先清除停止请求。";
+  }
+  if (motionStartReady) {
+    return "当前有停止请求；开始自由移动会先清除停止请求，不作为启动阻塞。";
+  }
+  return "当前有停止请求；先恢复自由移动启动条件，再清除停止请求。";
 }
 
 function freeRoamPlainHint(motionReadinessPlain: string, mappingReadinessPlain: string, nextActionPlain: string): string {
@@ -6155,6 +6172,11 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         decision_state: "not_loaded",
         decision_reason: "not_loaded",
         stop_required: "not_loaded",
+        stop_request_pending: "false",
+        free_roam_stop_request_pending: "false",
+        start_will_clear_stop_request: "false",
+        motion_start_blocked_by_stop_request: "false",
+        stop_request_status_plain: "停止请求状态未读到；先连接上车自由移动状态机。",
         artifact_only: "not_loaded",
         cmd_vel_publish_enabled: "not_loaded",
         start_ready: "false",
@@ -7340,7 +7362,15 @@ function buildActionStatusCards(
     || nav2ManagedRuntimeStarted
     || nav2ManagedRuntimeLifecycleReadyOk
     || boundary.nav2_goal_ready;
-  const freeRoamStopRequestPending = readback.free_roam.stop_required === "true" || readback.free_roam.decision_state === "stopping";
+  const freeRoamStopRequestPendingValue = readback.free_roam.free_roam_stop_request_pending !== "not_loaded"
+    ? readback.free_roam.free_roam_stop_request_pending
+    : readback.free_roam.stop_request_pending;
+  const freeRoamStopRequestPending = freeRoamStopRequestPendingValue === "true"
+    || (freeRoamStopRequestPendingValue !== "false"
+      && (readback.free_roam.stop_required === "true" || readback.free_roam.decision_state === "stopping"));
+  const freeRoamStartWillClearStopRequest = readback.free_roam.start_will_clear_stop_request === "true"
+    || (freeRoamStopRequestPending && boundary.free_roam_motion_start_ready);
+  const freeRoamMotionBlockedByStopRequest = readback.free_roam.motion_start_blocked_by_stop_request === "true";
   return [
     {
       id: "camera_preview",
@@ -7508,8 +7538,8 @@ function buildActionStatusCards(
         fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
         fixed_free_roam_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
         free_roam_stop_request_pending: freeRoamStopRequestPending,
-        start_will_clear_stop_request: freeRoamStopRequestPending && boundary.free_roam_motion_start_ready,
-        motion_start_blocked_by_stop_request: false,
+        start_will_clear_stop_request: freeRoamStartWillClearStopRequest,
+        motion_start_blocked_by_stop_request: freeRoamMotionBlockedByStopRequest,
         fixed_mapping_start_endpoint: "/api/robot-control/map/start",
         fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
         mapping_start_ready: boundary.free_roam_mapping_start_ready,

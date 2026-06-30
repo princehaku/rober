@@ -3481,8 +3481,13 @@ function actionCardWithDerivedEvidence(
       : toList(freeRoam?.free_roam_mapping_start_missing_reasons || freeRoam?.mapping_start_missing)
         .concat(acceptanceMissing.filter((item) => ["camera_first_frame", "lidar_fresh"].includes(item)));
     const uniqueStartMissing = [...new Set(startMissing)];
-    const stopRequestPending = boolText(freeRoam?.stop_required, false) || freeRoam?.decision_state === "stopping";
+    const stopRequestPending = boolText(
+      freeRoam?.free_roam_stop_request_pending ?? freeRoam?.stop_request_pending,
+      boolText(freeRoam?.stop_required, false) || freeRoam?.decision_state === "stopping",
+    );
     const freeMoveStartReady = boundary?.free_roam_motion_start_ready ?? false;
+    const startWillClearStopRequest = boolText(freeRoam?.start_will_clear_stop_request, stopRequestPending && freeMoveStartReady);
+    const motionStartBlockedByStopRequest = boolText(freeRoam?.motion_start_blocked_by_stop_request, false);
     return {
       ...card,
       evidence: {
@@ -3495,8 +3500,8 @@ function actionCardWithDerivedEvidence(
         fixed_free_roam_start_endpoint: card.evidence?.fixed_free_roam_start_endpoint ?? "/api/robot-control/free-roam/autonomy/start",
         fixed_free_roam_stop_endpoint: card.evidence?.fixed_free_roam_stop_endpoint ?? "/api/robot-control/free-roam/autonomy/stop",
         free_roam_stop_request_pending: card.evidence?.free_roam_stop_request_pending ?? stopRequestPending,
-        start_will_clear_stop_request: card.evidence?.start_will_clear_stop_request ?? (stopRequestPending && freeMoveStartReady),
-        motion_start_blocked_by_stop_request: card.evidence?.motion_start_blocked_by_stop_request ?? false,
+        start_will_clear_stop_request: card.evidence?.start_will_clear_stop_request ?? startWillClearStopRequest,
+        motion_start_blocked_by_stop_request: card.evidence?.motion_start_blocked_by_stop_request ?? motionStartBlockedByStopRequest,
         fixed_mapping_start_endpoint: card.evidence?.fixed_mapping_start_endpoint ?? "/api/robot-control/map/start",
         fixed_mapping_preview_endpoint: card.evidence?.fixed_mapping_preview_endpoint ?? "/api/robot-control/map/preview",
         mapping_start_ready: card.evidence?.mapping_start_ready ?? boundary?.free_roam_mapping_start_ready ?? false,
