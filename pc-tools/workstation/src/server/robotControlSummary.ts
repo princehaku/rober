@@ -8150,6 +8150,129 @@ function buildGoalChecklistSummary(
   };
 }
 
+function buildLiveClosureSummary(
+  cards: NonNullable<RobotControlSummaryResponse["action_status_cards"]>,
+  goalSummary: NonNullable<RobotControlSummaryResponse["goal_checklist_summary"]>,
+  readback: RobotControlSummaryResponse["readback_summary"],
+  boundary: RobotControlSummaryResponse["safe_command_boundary"],
+  operatorHilMaterialSummary: RobotControlOperatorHilMaterialSummary,
+): RobotControlSummaryResponse["live_closure_summary"] {
+  // 这个汇总只把同轮只读证据压成普通用户能懂的一块牌，不新增任何发车或解锁条件。
+  const camera = actionCardById(cards, "camera_preview");
+  const map = actionCardById(cards, "map_preview");
+  const radar = actionCardById(cards, "radar_map_points");
+  const nav2 = actionCardById(cards, "nav2_route");
+  const routeReadyOnMap = nav2.evidence?.route_ready_on_map === true || boundary.nav2_goal_ready;
+  const nav2GoalExecutionProven = nav2.evidence?.goal_execution_proven === true
+    || readback.nav2.goal_execution_status === "goal_succeeded";
+  const wheelLrNonzeroProven = nav2.evidence?.base_feedback_lr_nonzero_proven === true;
+  const needsSameWindowWheelRerun = routeReadyOnMap
+    && nav2GoalExecutionProven
+    && !wheelLrNonzeroProven;
+  const deliveryClaimReady = operatorHilMaterialSummary.delivery_claim === "true";
+  const cameraCurrentVisible = camera.evidence?.camera_current_frame_visible === true || camera.status === "visible";
+  const mapCurrentVisible = map.evidence?.map_current_visible === true || map.status === "visible";
+  const radarMapPointsVisible = radar.evidence?.current_on_map === true || radar.status === "current_on_map";
+  const freeMoveStartReady = boundary.free_roam_motion_start_ready || goalSummary.ready_action_ids.includes("free_move");
+  const mappingStartReady = boundary.free_roam_mapping_start_ready || goalSummary.ready_action_ids.includes("mapping_start");
+  const minimalPrecheckSafetyOnly = nav2.evidence?.minimal_precheck_safety_only === true
+    || boundary.nav2_goal_minimal_precheck_plain.includes("只需要现场安全确认");
+  const nav2GoalSucceeded = nav2GoalExecutionProven;
+  const allWysiwygReady = cameraCurrentVisible && mapCurrentVisible && radarMapPointsVisible;
+  const status = (() => {
+    if (nav2GoalSucceeded && wheelLrNonzeroProven && deliveryClaimReady && allWysiwygReady) {
+      return "complete";
+    }
+    if (needsSameWindowWheelRerun) {
+      return "needs_wheel_rerun";
+    }
+    if (nav2GoalSucceeded && wheelLrNonzeroProven && !deliveryClaimReady) {
+      return "needs_delivery";
+    }
+    if (!allWysiwygReady) {
+      return "needs_wysiwyg";
+    }
+    if (routeReadyOnMap || freeMoveStartReady || goalSummary.motion_ready_count > 0) {
+      return "needs_safety_confirm";
+    }
+    if (mappingStartReady) {
+      return "needs_sensor";
+    }
+    return "not_ready";
+  })();
+  const labels: Record<NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["status"], string> = {
+    complete: "已闭环",
+    ready_for_motion: "可先动",
+    needs_safety_confirm: "待安全确认",
+    needs_wheel_rerun: "待轮速复验",
+    needs_delivery: "待送达",
+    needs_wysiwyg: "待当前所见",
+    needs_sensor: "待传感器",
+    not_ready: "未就绪",
+  };
+  const nextActionPlain = (() => {
+    if (needsSameWindowWheelRerun) {
+      return "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验 wheel raw L/R 非零。";
+    }
+    if (nav2GoalSucceeded && wheelLrNonzeroProven && !deliveryClaimReady) {
+      return "路线和轮速已闭环；下一步在现场确认投递成功并记录 delivery success。";
+    }
+    if (!cameraCurrentVisible) {
+      return camera.next_action_plain;
+    }
+    if (!radarMapPointsVisible) {
+      return radar.next_action_plain;
+    }
+    if (routeReadyOnMap || freeMoveStartReady) {
+      return goalSummary.safety_precheck_next_action_plain || goalSummary.motion_next_action_plain;
+    }
+    return goalSummary.next_action_plain || "先刷新小车状态。";
+  })();
+  const summaryPlain = (() => {
+    if (needsSameWindowWheelRerun) {
+      return "当前卡点：图上路线已经有执行成功读数，但同窗口 wheel raw L/R 还没有非零闭环。";
+    }
+    if (status === "needs_delivery") {
+      return "当前卡点：行程和轮速已满足，送达成功还未写入当前材料。";
+    }
+    if (status === "needs_wysiwyg") {
+      return `当前所见还没齐：画面${cameraCurrentVisible ? "已显示" : "未显示"}，地图${mapCurrentVisible ? "已显示" : "未显示"}，雷达点${radarMapPointsVisible ? "已贴图" : "未贴图"}。`;
+    }
+    if (status === "needs_safety_confirm") {
+      return "车可以进入下一步运动入口；发车前预检保持最小，只需要现场安全确认。";
+    }
+    if (status === "complete") {
+      return "图上路线、同窗口轮速、送达和当前所见都已闭环。";
+    }
+    return goalSummary.summary_plain || "本轮闭环状态还未读到；先刷新小车状态。";
+  })();
+  return {
+    status,
+    status_label: labels[status],
+    summary_plain: summaryPlain,
+    next_action_plain: nextActionPlain,
+    route_ready_on_map: routeReadyOnMap,
+    nav2_goal_succeeded: nav2GoalSucceeded,
+    nav2_goal_execution_proven: nav2GoalExecutionProven,
+    wheel_lr_nonzero_proven: wheelLrNonzeroProven,
+    needs_same_window_wheel_rerun: needsSameWindowWheelRerun,
+    delivery_success: deliveryClaimReady,
+    delivery_claim_ready: deliveryClaimReady,
+    camera_current_visible: cameraCurrentVisible,
+    map_current_visible: mapCurrentVisible,
+    radar_map_points_visible: radarMapPointsVisible,
+    free_move_start_ready: freeMoveStartReady,
+    mapping_start_ready: mappingStartReady,
+    minimal_precheck_safety_only: minimalPrecheckSafetyOnly,
+    safety_confirm_required_for_motion: goalSummary.safety_confirm_needed_count > 0,
+    sends_motion_when_clicked: false,
+    blocker_ids: goalSummary.blocked_action_ids,
+    ready_action_ids: goalSummary.ready_action_ids,
+    next_action_item_id: goalSummary.first_incomplete_item_id || goalSummary.primary_ready_action_item_id,
+    next_action_source_card_id: goalSummary.first_incomplete_source_card_id || goalSummary.primary_ready_action_source_card_id,
+  };
+}
+
 export async function buildRobotControlSummary(
   baseUrl: string,
   firstFrameProbeOverlay: RobotControlCameraFirstFrameProbeOverlay | null = null,
@@ -8222,7 +8345,14 @@ export async function buildRobotControlSummary(
   const safeCommandBoundary = lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary, true);
   const actionStatusCards = buildActionStatusCards(readbackSummary, safeCommandBoundary);
   const goalChecklist = buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary);
-  const goalSummary = buildGoalChecklistSummary(goalChecklist ?? []);
+  const goalSummary = buildGoalChecklistSummary(goalChecklist ?? []) as NonNullable<RobotControlSummaryResponse["goal_checklist_summary"]>;
+  const liveClosureSummary = buildLiveClosureSummary(
+    actionStatusCards ?? [],
+    goalSummary,
+    readbackSummary,
+    safeCommandBoundary,
+    operatorHilMaterialSummary,
+  );
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -8255,6 +8385,7 @@ export async function buildRobotControlSummary(
     action_status_cards: actionStatusCards,
     goal_checklist: goalChecklist,
     goal_checklist_summary: goalSummary,
+    live_closure_summary: liveClosureSummary,
     goal_summary: goalSummary,
     camera_summary: readbackSummary.camera,
     map_summary: readbackSummary.map,

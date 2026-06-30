@@ -3725,6 +3725,10 @@ const plainGoalChecklistSummary = computed(() => {
   // 汇总来自后端同一轮只读检查；前端只做普通文案翻译和聚焦跳转。
   return robotSummary.value?.goal_checklist_summary ?? null;
 });
+const plainLiveClosureSummary = computed(() => {
+  // 这是首屏给普通用户看的“当前卡点”，只读展示，不会替代原本的安全确认或运动按钮。
+  return robotSummary.value?.live_closure_summary ?? null;
+});
 function plainActionCardUserText(value: string): string {
   // API 保留“路线”等诊断口径；普通首屏统一说“行程”，避免回到工程调试风格。
   return plainNav2UserFacingText(value)
@@ -15721,6 +15725,34 @@ onBeforeUnmount(() => {
             去处理
           </button>
         </div>
+      </div>
+
+      <div
+        v-if="plainLiveClosureSummary"
+        class="plain-live-closure-summary"
+        data-testid="plain-live-closure-summary"
+        :data-state="plainLiveClosureSummary.status"
+        :data-route-ready="String(plainLiveClosureSummary.route_ready_on_map)"
+        :data-nav2-goal-succeeded="String(plainLiveClosureSummary.nav2_goal_succeeded)"
+        :data-wheel-lr-nonzero-proven="String(plainLiveClosureSummary.wheel_lr_nonzero_proven)"
+        :data-needs-wheel-rerun="String(plainLiveClosureSummary.needs_same_window_wheel_rerun)"
+        :data-delivery-success="String(plainLiveClosureSummary.delivery_success)"
+        :data-camera-current-visible="String(plainLiveClosureSummary.camera_current_visible)"
+        :data-map-current-visible="String(plainLiveClosureSummary.map_current_visible)"
+        :data-radar-map-points-visible="String(plainLiveClosureSummary.radar_map_points_visible)"
+        :data-free-move-start-ready="String(plainLiveClosureSummary.free_move_start_ready)"
+        :data-mapping-start-ready="String(plainLiveClosureSummary.mapping_start_ready)"
+        :data-minimal-precheck-safety-only="String(plainLiveClosureSummary.minimal_precheck_safety_only)"
+        :data-safety-confirm-required-for-motion="String(plainLiveClosureSummary.safety_confirm_required_for_motion)"
+        data-sends-motion-when-clicked="false"
+        aria-label="当前闭环卡点"
+      >
+        <div class="simple-status-row">
+          <strong>当前卡点</strong>
+          <span class="status-chip" :data-state="plainLiveClosureSummary.status_label">{{ plainLiveClosureSummary.status_label }}</span>
+        </div>
+        <p>{{ plainActionCardUserText(plainLiveClosureSummary.summary_plain) }}</p>
+        <span class="muted">下一步：{{ plainActionCardUserText(plainLiveClosureSummary.next_action_plain) }}</span>
       </div>
 
       <div v-if="plainWysiwygEvidenceItems.length" class="plain-wysiwyg-evidence" data-testid="plain-wysiwyg-evidence" aria-label="所见即所得证据">

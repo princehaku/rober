@@ -287,6 +287,7 @@ h3 {
 .status-chip[data-state="已保存"],
 .status-chip[data-state="已显示"],
 .status-chip[data-state="已贴图"],
+.status-chip[data-state="已闭环"],
 .status-chip[data-state="可建图"],
 .status-chip[data-state="可启动"],
 .status-chip[data-state="路径可生成"] {
@@ -324,7 +325,11 @@ h3 {
 .status-chip[data-state="待完成"],
 .status-chip[data-state="待准备"],
 .status-chip[data-state="待试动"],
+.status-chip[data-state="待当前所见"],
+.status-chip[data-state="待传感器"],
+.status-chip[data-state="待送达"],
 .status-chip[data-state="待重试"],
+.status-chip[data-state="待轮速复验"],
 .status-chip[data-state="locked"] {
   background: #f5f7fa;
   color: #5f6b7a;
@@ -459,6 +464,36 @@ h3 {
   border-left: 3px solid #d97706;
   padding-left: 8px;
   background: #fffaf0;
+}
+
+.plain-live-closure-summary {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+  border: 1px solid #d8dee4;
+  border-left: 4px solid #0969da;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f6f8fa;
+}
+
+.plain-live-closure-summary[data-state="complete"] {
+  border-left-color: #2da44e;
+  background: #f3fbf5;
+}
+
+.plain-live-closure-summary[data-state="needs_wheel_rerun"],
+.plain-live-closure-summary[data-state="needs_delivery"],
+.plain-live-closure-summary[data-state="needs_wysiwyg"],
+.plain-live-closure-summary[data-state="needs_sensor"] {
+  border-left-color: #d97706;
+  background: #fffaf0;
+}
+
+.plain-live-closure-summary p {
+  margin: 0;
+  color: #1f2d3a;
+  font-weight: 700;
 }
 
 .plain-action-status-cards {

@@ -788,6 +788,39 @@ const fixtures: Record<string, unknown> = {
         },
       ],
     },
+    live_closure_summary: {
+      status: "needs_wysiwyg",
+      status_label: "待当前所见",
+      summary_plain: "当前所见还没齐：画面未显示，地图已显示，雷达点未贴图。",
+      next_action_plain: "打开页面会自动接入共享 MJPEG；若仍无画面，点只读检查复测首帧",
+      route_ready_on_map: false,
+      nav2_goal_succeeded: false,
+      nav2_goal_execution_proven: false,
+      wheel_lr_nonzero_proven: false,
+      needs_same_window_wheel_rerun: false,
+      delivery_success: false,
+      delivery_claim_ready: false,
+      camera_current_visible: false,
+      map_current_visible: true,
+      radar_map_points_visible: false,
+      free_move_start_ready: true,
+      mapping_start_ready: false,
+      minimal_precheck_safety_only: true,
+      safety_confirm_required_for_motion: true,
+      sends_motion_when_clicked: false,
+      blocker_ids: [
+        "camera_wysiwyg",
+        "radar_map_points_wysiwyg",
+        "nav2_route_execution",
+        "mapping_start",
+      ],
+      ready_action_ids: [
+        "free_move",
+        "keyboard_continuous_control",
+      ],
+      next_action_item_id: "camera_wysiwyg",
+      next_action_source_card_id: "camera_preview",
+    },
     readback_summary: {
       camera: {
         status: "camera_health_not_proven",
@@ -4399,6 +4432,29 @@ describe("App", () => {
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeMoveSnapshotGuide);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeMoveSnapshotGuide);
+    const liveClosureSummary = wrapper.find('[data-testid="plain-live-closure-summary"]');
+    expect(liveClosureSummary.exists()).toBe(true);
+    expect(liveClosureSummary.text()).toContain("当前卡点");
+    expect(liveClosureSummary.text()).toContain("待当前所见");
+    expect(liveClosureSummary.text()).toContain("画面未显示");
+    expect(liveClosureSummary.text()).toContain("地图已显示");
+    expect(liveClosureSummary.text()).toContain("雷达点未贴图");
+    expect(liveClosureSummary.text()).toContain("下一步：打开页面会自动接入共享 MJPEG");
+    expect(liveClosureSummary.text()).not.toContain("/cmd_vel");
+    expect(liveClosureSummary.attributes("data-state")).toBe("needs_wysiwyg");
+    expect(liveClosureSummary.attributes("data-route-ready")).toBe("false");
+    expect(liveClosureSummary.attributes("data-nav2-goal-succeeded")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-lr-nonzero-proven")).toBe("false");
+    expect(liveClosureSummary.attributes("data-needs-wheel-rerun")).toBe("false");
+    expect(liveClosureSummary.attributes("data-delivery-success")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-current-visible")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-current-visible")).toBe("true");
+    expect(liveClosureSummary.attributes("data-radar-map-points-visible")).toBe("false");
+    expect(liveClosureSummary.attributes("data-free-move-start-ready")).toBe("true");
+    expect(liveClosureSummary.attributes("data-mapping-start-ready")).toBe("false");
+    expect(liveClosureSummary.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(liveClosureSummary.attributes("data-safety-confirm-required-for-motion")).toBe("true");
+    expect(liveClosureSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
     const wysiwygEvidence = wrapper.find('[data-testid="plain-wysiwyg-evidence"]');
     expect(wysiwygEvidence.exists()).toBe(true);
     expect(wysiwygEvidence.text()).toContain("当前所见");

@@ -2696,6 +2696,32 @@ export interface RobotControlGoalChecklistSummary {
   blocked_action_items: RobotControlGoalChecklistSummaryActionItem[];
 }
 
+export interface RobotControlLiveClosureSummary {
+  status: "complete" | "ready_for_motion" | "needs_safety_confirm" | "needs_wheel_rerun" | "needs_delivery" | "needs_wysiwyg" | "needs_sensor" | "not_ready";
+  status_label: string;
+  summary_plain: string;
+  next_action_plain: string;
+  route_ready_on_map: boolean;
+  nav2_goal_succeeded: boolean;
+  nav2_goal_execution_proven: boolean;
+  wheel_lr_nonzero_proven: boolean;
+  needs_same_window_wheel_rerun: boolean;
+  delivery_success: boolean;
+  delivery_claim_ready: boolean;
+  camera_current_visible: boolean;
+  map_current_visible: boolean;
+  radar_map_points_visible: boolean;
+  free_move_start_ready: boolean;
+  mapping_start_ready: boolean;
+  minimal_precheck_safety_only: boolean;
+  safety_confirm_required_for_motion: boolean;
+  sends_motion_when_clicked: false;
+  blocker_ids: RobotControlGoalChecklistItemId[];
+  ready_action_ids: RobotControlGoalChecklistItemId[];
+  next_action_item_id: RobotControlGoalChecklistItemId | "";
+  next_action_source_card_id: RobotControlActionStatusCardId | "";
+}
+
 export interface RobotControlKeyboardReadbackSummary {
   status: string;
   control_mode: string;
@@ -2748,6 +2774,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   action_status_cards?: RobotControlActionStatusCard[];
   goal_checklist?: RobotControlGoalChecklistItem[];
   goal_checklist_summary?: RobotControlGoalChecklistSummary;
+  live_closure_summary?: RobotControlLiveClosureSummary;
   goal_summary?: RobotControlGoalChecklistSummary;
   camera_summary?: RobotControlSummaryResponse["readback_summary"]["camera"];
   map_summary?: RobotControlSummaryResponse["readback_summary"]["map"];
