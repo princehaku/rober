@@ -166,11 +166,20 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_label).toBe("复测相机首帧");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_probe_failure_reason).toBe("none");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_status).toBe("not_loaded");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_not_exclusive).toBe("not_loaded");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count).toBe("0");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_upstream_active).toBe("false");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe("false");
     expect(summary.live_closure_summary?.live_wysiwyg_radar_scan_missing_observations).toEqual([]);
     expect(summary.live_closure_summary?.live_wysiwyg_map_radar_blocked_reasons).toEqual([
       "scan_preview_points_missing",
       "robot_pose_missing_for_map_radar_overlay",
     ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_current_point_count).toBe("0");
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_source_point_count).toBe("not_loaded");
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_stale_source_points_suppressed).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_radar_map_primary_blocked_reason).toBe("scan_preview_points_missing");
     expect(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain).toContain("画面诊断：首帧未证明");
     expect(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain).toContain("还差=地图缺雷达点；小车地图位置未读到");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");

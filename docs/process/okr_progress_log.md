@@ -8,6 +8,18 @@
 
 ## 2026-07-01 系列
 
+### 2026-07-01 01-54｜pc_live_wysiwyg_structured_gaps｜当前所见结构化缺口
+
+本轮 `sprints/2026.07.01_01-54_pc_live_wysiwyg_structured_gaps/` 把 PC 当前卡点里的相机/雷达 WYSIWYG 缺口从中文长句提升为结构化只读字段。
+相机侧 `live_closure_summary` 与 DOM 现在直接暴露 `source_diagnosis_status/plain_hint/next_action/not_exclusive` 和共享预览
+`client_count/upstream_active/exclusive_camera_claim`，现场可直接确认“共享预览不是浏览器独占；当前源头仍是 UVC 无帧/USB/供电/输入问题”。
+雷达地图侧同步暴露当前贴图点、来源点、旧来源点是否被抑制和首个 blocked reason，避免把 stale 来源点伪装成当前地图 marker。
+
+验证范围：`npm test -- test/robotControlSummary.test.ts --run` 6 tests OK；
+`npm test -- test/App.test.ts -t "live closure|WYSIWYG|map" --run` 68 tests OK / 161 skipped。
+live 只读检查显示当前 7001 summary 已有 `source_diagnosis_status=uvc_no_frame_not_exclusive`、共享预览非独占、
+地图/路线可见、雷达来源点 123 但当前贴图点 0；本轮未执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-07-01 02-04｜pc_free_roam_readback_aliases｜自由移动与建图启动只读别名
 
 本轮 `sprints/2026.07.01_02-04_pc_free_roam_readback_aliases/` 把 PC 自由移动 readiness 抬到

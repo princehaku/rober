@@ -822,8 +822,19 @@ const fixtures: Record<string, unknown> = {
       live_wysiwyg_radar_diagnostic_plain: "雷达诊断：服务=true/running；新读数=false；还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认。",
       live_wysiwyg_map_radar_diagnostic_plain: "地图雷达诊断：当前点=0；来源点=81；还差=地图缺雷达点；雷达点不是当前新读数。",
       live_wysiwyg_camera_probe_failure_reason: "first_frame_total_timeout",
+      live_wysiwyg_camera_source_diagnosis_status: "uvc_no_frame_not_exclusive",
+      live_wysiwyg_camera_source_diagnosis_plain_hint: "不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。",
+      live_wysiwyg_camera_source_diagnosis_next_action_plain: "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。",
+      live_wysiwyg_camera_source_diagnosis_not_exclusive: "true",
+      live_wysiwyg_camera_shared_preview_client_count: "0",
+      live_wysiwyg_camera_shared_preview_upstream_active: "false",
+      live_wysiwyg_camera_shared_preview_exclusive_camera_claim: "false",
       live_wysiwyg_radar_scan_missing_observations: ["scan_once", "scan_hz", "raw_packet_once"],
       live_wysiwyg_map_radar_blocked_reasons: ["scan_preview_points_missing", "runtime_scan_stale_for_map_radar_overlay"],
+      live_wysiwyg_radar_map_current_point_count: "0",
+      live_wysiwyg_radar_map_source_point_count: "81",
+      live_wysiwyg_radar_map_stale_source_points_suppressed: true,
+      live_wysiwyg_radar_map_primary_blocked_reason: "scan_preview_points_missing",
       fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
       fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
       fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
@@ -4709,15 +4720,31 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-refresh-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-refresh-label")).toBe("复测相机首帧");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-probe-failure-reason")).toBe("first_frame_total_timeout");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-source-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-source-diagnosis-not-exclusive")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-shared-preview-client-count")).toBe("0");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-shared-preview-upstream-active")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-shared-preview-exclusive-camera-claim")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-scan-missing-observations")).toBe("scan_once,scan_hz,raw_packet_once");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-map-radar-blocked-reasons")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-current-point-count")).toBe("0");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-source-point-count")).toBe("81");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-stale-source-points-suppressed")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-primary-blocked-reason")).toBe("scan_preview_points_missing");
     const liveClosureWysiwygDiagnostics = wrapper.find('[data-testid="plain-live-closure-wysiwyg-diagnostics"]');
     expect(liveClosureWysiwygDiagnostics.text()).toContain("画面诊断：首帧未证明");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=地图缺雷达点；雷达点不是当前新读数");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-probe-failure-reason")).toBe("first_frame_total_timeout");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-source-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-source-diagnosis-not-exclusive")).toBe("true");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-shared-preview-client-count")).toBe("0");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-shared-preview-exclusive-camera-claim")).toBe("false");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-scan-missing-observations")).toBe("scan_once,scan_hz,raw_packet_once");
     expect(liveClosureWysiwygDiagnostics.attributes("data-map-radar-blocked-reasons")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-current-point-count")).toBe("0");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-source-point-count")).toBe("81");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-stale-source-points-suppressed")).toBe("true");
     expect(liveClosureWysiwygDiagnostics.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-action-testid")).toBe("plain-live-closure-wysiwyg-refresh");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-plan-available")).toBe("true");

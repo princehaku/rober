@@ -4724,3 +4724,14 @@ Foxglove 做浏览器远程观察，但二者都不是普通用户发车、键�
 `next_action_plain` 写“复验轮速 L/R 非零”，不再要求前端把 `wheel raw L/R` 二次翻译成中文。
 机器可读验收字段继续保留：`needs_same_window_wheel_rerun=true`、`fixed_wheel_rerun_endpoint=/api/robot-control/nav2/goal/execute`
 和轮速复验相关 `data-*`，完整路线仍必须在同一个执行窗口读到轮速 L/R 非零。
+
+2026-07-01 01:54 CST 起，`live_closure_summary` 和普通首屏 `plain-live-closure-summary`/`plain-live-closure-wysiwyg-diagnostics`
+额外暴露相机与雷达 WYSIWYG 结构化缺口。相机侧新增
+`live_wysiwyg_camera_source_diagnosis_status`、`live_wysiwyg_camera_source_diagnosis_plain_hint`、
+`live_wysiwyg_camera_source_diagnosis_next_action_plain`、`live_wysiwyg_camera_source_diagnosis_not_exclusive`、
+`live_wysiwyg_camera_shared_preview_client_count`、`live_wysiwyg_camera_shared_preview_upstream_active` 和
+`live_wysiwyg_camera_shared_preview_exclusive_camera_claim`，让脚本直接判断“不是浏览器独占，而是 UVC 无帧/USB/供电/输入问题”。
+雷达地图侧新增 `live_wysiwyg_radar_map_current_point_count`、`live_wysiwyg_radar_map_source_point_count`、
+`live_wysiwyg_radar_map_stale_source_points_suppressed` 和 `live_wysiwyg_radar_map_primary_blocked_reason`，
+明确旧来源点不会被伪装成当前地图 marker。该变化只增加只读 API/DOM 合同，不启动相机、雷达、Nav2、键盘、自由移动、
+建图 runtime，不发送 `/cmd_vel` 或任何底盘运动命令。

@@ -8485,6 +8485,15 @@ function buildLiveClosureSummary(
     || "none";
   const radarScanMissingObservations = splitDiagnosticList(readback.radar.radar_scan_observation_missing_reasons);
   const mapRadarBlockedReasons = splitDiagnosticList(readback.map.radar_overlay_blocked_reasons);
+  const radarMapCurrentPointCount = readback.map.radar_overlay_point_count || readback.radar.radar_overlay_point_count || "not_loaded";
+  const radarMapSourcePointCount = readback.map.radar_overlay_source_point_count || readback.radar.radar_overlay_source_point_count || "not_loaded";
+  const parsedRadarMapCurrentPointCount = Number(radarMapCurrentPointCount);
+  const parsedRadarMapSourcePointCount = Number(radarMapSourcePointCount);
+  const radarMapStaleSourcePointsSuppressed = !radarMapPointsVisible
+    && Number.isFinite(parsedRadarMapCurrentPointCount)
+    && Number.isFinite(parsedRadarMapSourcePointCount)
+    && parsedRadarMapCurrentPointCount === 0
+    && parsedRadarMapSourcePointCount > 0;
   const cameraDiagnosticPlain = cameraCurrentVisible
     ? "画面诊断：当前页面已有实时画面。"
     : `画面诊断：首帧未证明；状态=${cameraProbeStatusLabel(readback.camera.first_frame_probe_status || "not_loaded")}；原因=${cameraFailureLabel(cameraProbeFailureReason || "not_loaded")}。`;
@@ -8798,8 +8807,19 @@ function buildLiveClosureSummary(
     live_wysiwyg_radar_diagnostic_plain: radarDiagnosticPlain,
     live_wysiwyg_map_radar_diagnostic_plain: mapRadarDiagnosticPlain,
     live_wysiwyg_camera_probe_failure_reason: cameraProbeFailureReason,
+    live_wysiwyg_camera_source_diagnosis_status: readback.camera.source_diagnosis_status || "not_loaded",
+    live_wysiwyg_camera_source_diagnosis_plain_hint: readback.camera.source_diagnosis_plain_hint || "not_loaded",
+    live_wysiwyg_camera_source_diagnosis_next_action_plain: readback.camera.source_diagnosis_next_action_plain || "not_loaded",
+    live_wysiwyg_camera_source_diagnosis_not_exclusive: readback.camera.source_diagnosis_not_exclusive || "not_loaded",
+    live_wysiwyg_camera_shared_preview_client_count: readback.camera.shared_preview_client_count || "0",
+    live_wysiwyg_camera_shared_preview_upstream_active: readback.camera.shared_preview_upstream_active || "not_loaded",
+    live_wysiwyg_camera_shared_preview_exclusive_camera_claim: readback.camera.shared_preview_exclusive_camera_claim || "not_loaded",
     live_wysiwyg_radar_scan_missing_observations: radarScanMissingObservations,
     live_wysiwyg_map_radar_blocked_reasons: mapRadarBlockedReasons,
+    live_wysiwyg_radar_map_current_point_count: radarMapCurrentPointCount,
+    live_wysiwyg_radar_map_source_point_count: radarMapSourcePointCount,
+    live_wysiwyg_radar_map_stale_source_points_suppressed: radarMapStaleSourcePointsSuppressed,
+    live_wysiwyg_radar_map_primary_blocked_reason: mapRadarBlockedReasons[0] ?? "none",
     fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
     fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
