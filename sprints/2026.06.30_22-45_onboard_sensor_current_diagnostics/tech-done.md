@@ -24,6 +24,7 @@ sprint_type: micro
 - 2026-06-30 22:55 CST 收紧 PC 相机共享预览非独占口径：`readback_summary.camera` 与 `/api/robot-control/camera/mjpeg/status` 新增 `source_usage_scope`、`source_usage_not_exclusive`，并把 `in_use_by_camera_service` 识别为 `camera_service_self`。当 8088 相机服务按单上游共享预览模型持有 UVC 但首帧失败时，summary 会派生 `uvc_no_frame_not_exclusive`，明确问题是 UVC 无帧而非浏览器/页面独占。该改动只派生只读状态，不新开 camera reader，不发送任何 live 运动/control POST。
 - 2026-06-30 23:15 CST 提升 Nav2 latest 只读易用性：`/api/robot-control/nav2/goal/execution/latest` 顶层新增 `goal_execution_goal_succeeded`、`goal_execution_wheel_rerun_needed`、最小预检字段和固定 execute/latest endpoint。现场脚本现在不用翻 `latest_result` 就能读出“Nav2 到点成功但 wheel L/R 未闭环，需要勾安全确认后重跑”，并确认相机/雷达/operator report/路线 WYSIWYG 不作为额外发车前预检。该改动只读 latest artifact，不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 - 2026-06-30 23:30 CST 提升 PC 地图 ROS2 配套可读性：`RobotControlConsolePanel.vue` 把 RViz2 与 Foxglove bridge 启动命令提升成固定 DOM 合同，`plain-map-panel`、`plain-map-display-proof` 和 `plain-map-ros2-tool-note` 都暴露 `data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"`、`data-foxglove-bridge-package=foxglove_bridge`、`data-foxglove-bridge-launch-command="ros2 launch foxglove_bridge foxglove_bridge_launch.xml"`。普通用户仍优先打开 `/map` 大地图；这些字段只提示手工工程观察，不启动 ROS2/RViz2/Foxglove，不执行 Nav2、建图或任何运动命令。同步更新 `docs/product/pc_tools_workstation.md` 和 `onboard/README.md`。
+- 2026-06-30 23:45 CST 补齐 PC 首屏“可先自由移动、传感器 ready 后建图”DOM 合同：`plain-live-closure-summary` 直接暴露自由移动 safety-only 字段、相机/雷达不作为自由移动 preflight、固定 free-roam start/stop endpoint，以及建图需要 camera first frame + lidar fresh、建图缺口和固定 map start/preview endpoint。现场脚本只读首屏 DOM 即可确认当前相机画面缺口不阻塞安全确认后的自由移动，但会阻塞建图启动；该改动不新增按钮、不自动勾安全确认、不发送任何运动/control POST。
 
 ## 验证结果
 
@@ -54,6 +55,11 @@ sprint_type: micro
 - `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 226 tests；覆盖默认首屏和 `/map` 直达地图页都暴露 RViz2 launch command、Foxglove bridge package/launch command，并继续声明不启动 ROS2/RViz2/Foxglove/Nav2/建图或运动接口。
 - `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
 - `git diff --check`：通过。
+- `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 226 tests；覆盖 `plain-live-closure-summary` 暴露自由移动 safety-only、相机/雷达不作为 free move preflight、固定 free-roam start/stop、建图 camera/lidar 条件和固定 map start/preview endpoint。
+- `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
+- `git diff --check`：通过。
+- 2026-06-30 23:45 CST 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
+- PC 7001 live GET 验证自由移动/建图分层：`GET /map` 返回 `HTTP 200 text/html`；`GET /api/robot-control/summary` 返回 `live_wysiwyg_missing_surface_ids=["camera"]`、`camera_status=source_first_frame_failed`、`camera_diag=uvc_no_frame_not_exclusive`、`free_move_start_ready=true`、`free_move_camera_preflight_required=false`、`free_move_radar_preflight_required=false`、`free_move_blocked_by_camera_wysiwyg=false`、`mapping_start_ready=false`、`mapping_start_missing_reasons=["camera_first_frame"]`、`fixed_free_roam_start_endpoint=/api/robot-control/free-roam/autonomy/start`、`fixed_mapping_start_endpoint=/api/robot-control/map/start`、`sends_motion=false`。该验证只读页面和 summary，未调用 Nav2 execute、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - `git diff --check`：通过。
 - 2026-06-30 23:00 CST 重启 PC Node：`HOST=0.0.0.0 PORT=7001 npm run api` 后 `lsof` 显示 `TCP *:7001 (LISTEN)`，日志输出 `pc-tools workstation API listening on http://0.0.0.0:7001`。
 - PC 7001 live GET 验证相机非独占合同：`GET /api/robot-control/summary` 返回 `camera_status=source_first_frame_failed`、`source_usage_scope=free`、`source_usage_not_exclusive=true`、`source_diagnosis_status=uvc_no_frame_not_exclusive`、`source_diagnosis_not_exclusive=true`；`GET /api/robot-control/camera/mjpeg/status` 返回同组 `source_usage_scope=free/source_usage_not_exclusive=true`。当前 live 是没人占用形态；新增单测覆盖 camera service self-owner 形态。
