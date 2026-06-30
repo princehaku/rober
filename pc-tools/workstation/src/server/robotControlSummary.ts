@@ -8683,6 +8683,19 @@ function buildLiveClosureSummary(
   const wheelRerunReadbackPlain = needsSameWindowWheelRerun
     ? `上次执行窗口 wheel L/R=${wheelRerunLatestRawLeft}/${wheelRerunLatestRawRight}，样本 ${wheelRerunFeedbackSampleCount} 个，非零样本 ${wheelRerunFeedbackNonzeroSampleCount} 个；下次用 ${wheelRerunNextBaseCommandMode} 模式重跑后读取 latest 与只读轮速采样。`
     : "当前不需要轮速复验。";
+  const wheelRerunAcceptanceEndpoints = [
+    "/api/robot-control/nav2/goal/execution/latest",
+    "/api/robot-control/base/feedback-samples",
+    "/api/robot-control/summary",
+    "/api/robot-control/delivery/latest",
+  ];
+  const wheelRerunChecklistPlain = needsSameWindowWheelRerun
+    ? "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取 latest、底盘轮速采样和 summary，确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。"
+    : "当前不需要重跑图上路线；如果后续出现同窗口轮速缺口，再按安全确认、执行、轮速读回、送达确认顺序收口。";
+  const wheelRerunAcceptancePlain = "验收口径：Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。";
+  const wheelRerunDeliveryNextActionPlain = deliveryClaimReady
+    ? "送达成功已经写入当前材料；轮速复验通过后可直接进入本轮闭环复核。"
+    : "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。";
   const liveMotionRunbookItems: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_motion_runbook_items"] = [
     {
       id: "run_nav2_route",
@@ -9047,8 +9060,16 @@ function buildLiveClosureSummary(
     wheel_rerun_imu_roll_delta: wheelRerunImuRollDelta,
     wheel_rerun_imu_pitch_delta: wheelRerunImuPitchDelta,
     wheel_rerun_readback_plain: wheelRerunReadbackPlain,
+    wheel_rerun_checklist_plain: wheelRerunChecklistPlain,
+    wheel_rerun_acceptance_plain: wheelRerunAcceptancePlain,
+    wheel_rerun_acceptance_endpoints: wheelRerunAcceptanceEndpoints,
+    wheel_rerun_delivery_success_required: !deliveryClaimReady,
+    wheel_rerun_delivery_next_action_plain: wheelRerunDeliveryNextActionPlain,
     fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
     fixed_wheel_rerun_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+    fixed_wheel_rerun_delivery_latest_endpoint: "/api/robot-control/delivery/latest",
+    fixed_wheel_rerun_delivery_complete_endpoint: "/api/robot-control/delivery/complete",
+    wheel_rerun_delivery_complete_sends_motion: false,
     fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples",
     sends_motion_when_clicked: false,
     blocker_ids: goalSummary.blocked_action_ids,

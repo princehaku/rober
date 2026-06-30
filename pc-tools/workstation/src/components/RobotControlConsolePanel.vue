@@ -16340,6 +16340,11 @@ onBeforeUnmount(() => {
         :data-wheel-rerun-imu-roll-delta="plainLiveClosureSummary.wheel_rerun_imu_roll_delta"
         :data-wheel-rerun-imu-pitch-delta="plainLiveClosureSummary.wheel_rerun_imu_pitch_delta"
         :data-wheel-rerun-readback-plain="plainLiveClosureSummary.wheel_rerun_readback_plain"
+        :data-wheel-rerun-checklist-plain="plainLiveClosureSummary.wheel_rerun_checklist_plain"
+        :data-wheel-rerun-acceptance-plain="plainLiveClosureSummary.wheel_rerun_acceptance_plain"
+        :data-wheel-rerun-acceptance-endpoints="plainLiveClosureSummary.wheel_rerun_acceptance_endpoints?.join(',') || 'none'"
+        :data-wheel-rerun-delivery-success-required="String(plainLiveClosureSummary.wheel_rerun_delivery_success_required)"
+        :data-wheel-rerun-delivery-next-action-plain="plainLiveClosureSummary.wheel_rerun_delivery_next_action_plain"
         :data-last-base-command-mode="plainLiveClosureSummary.wheel_rerun_last_base_command_mode || plainTripDomEvidence.lastBaseCommandMode"
         :data-next-base-command-mode="plainLiveClosureSummary.wheel_rerun_next_base_command_mode || plainTripDomEvidence.nextBaseCommandMode"
         :data-wheel-feedback-status="plainTripDomEvidence.wheelFeedbackStatus"
@@ -16347,6 +16352,9 @@ onBeforeUnmount(() => {
         :data-latest-wheel-raw-right="plainLiveClosureSummary.wheel_rerun_latest_raw_right || plainTripDomEvidence.latestWheelRawRight"
         :data-fixed-wheel-rerun-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_endpoint"
         :data-fixed-wheel-rerun-latest-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_latest_endpoint"
+        :data-fixed-wheel-rerun-delivery-latest-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_delivery_latest_endpoint"
+        :data-fixed-wheel-rerun-delivery-complete-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_delivery_complete_endpoint"
+        :data-wheel-rerun-delivery-complete-sends-motion="String(plainLiveClosureSummary.wheel_rerun_delivery_complete_sends_motion)"
         :data-fixed-wheel-readback-endpoint="plainLiveClosureSummary.fixed_wheel_readback_endpoint"
         :data-primary-status-item-id="plainLiveClosureSummary.primary_status_item_id"
         :data-primary-status-source-card-id="plainLiveClosureSummary.primary_status_source_card_id"
@@ -16394,6 +16402,31 @@ onBeforeUnmount(() => {
           data-sends-motion-when-clicked="false"
         >
           {{ plainLiveClosureSideGapText }}
+        </p>
+        <p
+          v-if="plainLiveClosureSummary.needs_same_window_wheel_rerun"
+          class="panel-note"
+          data-testid="plain-wheel-rerun-closure-plan"
+          :data-checklist-plain="plainLiveClosureSummary.wheel_rerun_checklist_plain"
+          :data-acceptance-plain="plainLiveClosureSummary.wheel_rerun_acceptance_plain"
+          :data-acceptance-endpoints="plainLiveClosureSummary.wheel_rerun_acceptance_endpoints?.join(',') || 'none'"
+          :data-delivery-success-required="String(plainLiveClosureSummary.wheel_rerun_delivery_success_required)"
+          :data-delivery-next-action-plain="plainLiveClosureSummary.wheel_rerun_delivery_next_action_plain"
+          :data-fixed-wheel-rerun-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_endpoint"
+          :data-fixed-wheel-rerun-latest-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_latest_endpoint"
+          :data-fixed-wheel-readback-endpoint="plainLiveClosureSummary.fixed_wheel_readback_endpoint"
+          :data-fixed-delivery-latest-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_delivery_latest_endpoint"
+          :data-fixed-delivery-complete-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_delivery_complete_endpoint"
+          :data-delivery-complete-sends-motion="String(plainLiveClosureSummary.wheel_rerun_delivery_complete_sends_motion)"
+          data-sends-motion-when-clicked="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+        >
+          {{ plainActionCardUserText(plainLiveClosureSummary.wheel_rerun_checklist_plain) }}
+          {{ plainActionCardUserText(plainLiveClosureSummary.wheel_rerun_acceptance_plain) }}
+          {{ plainActionCardUserText(plainLiveClosureSummary.wheel_rerun_delivery_next_action_plain) }}
         </p>
         <p
           class="panel-note"
@@ -16530,6 +16563,10 @@ onBeforeUnmount(() => {
           :data-wheel-rerun-latest-raw-left="plainLiveClosureSummary.wheel_rerun_latest_raw_left"
           :data-wheel-rerun-latest-raw-right="plainLiveClosureSummary.wheel_rerun_latest_raw_right"
           :data-wheel-rerun-readback-plain="plainLiveClosureSummary.wheel_rerun_readback_plain"
+          :data-wheel-rerun-checklist-plain="plainLiveClosureSummary.wheel_rerun_checklist_plain"
+          :data-wheel-rerun-acceptance-plain="plainLiveClosureSummary.wheel_rerun_acceptance_plain"
+          :data-wheel-rerun-acceptance-endpoints="plainLiveClosureSummary.wheel_rerun_acceptance_endpoints?.join(',') || 'none'"
+          :data-wheel-rerun-delivery-success-required="String(plainLiveClosureSummary.wheel_rerun_delivery_success_required)"
           :data-last-base-command-mode="plainLiveClosureSummary.wheel_rerun_last_base_command_mode || plainTripDomEvidence.lastBaseCommandMode"
           :data-next-base-command-mode="plainLiveClosureSummary.wheel_rerun_next_base_command_mode || plainTripDomEvidence.nextBaseCommandMode"
           :data-latest-wheel-raw-left="plainLiveClosureSummary.wheel_rerun_latest_raw_left || plainTripDomEvidence.latestWheelRawLeft"

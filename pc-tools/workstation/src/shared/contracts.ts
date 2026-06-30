@@ -2896,8 +2896,16 @@ export interface RobotControlLiveClosureSummary {
   wheel_rerun_imu_roll_delta: string;
   wheel_rerun_imu_pitch_delta: string;
   wheel_rerun_readback_plain: string;
+  wheel_rerun_checklist_plain: string;
+  wheel_rerun_acceptance_plain: string;
+  wheel_rerun_acceptance_endpoints: string[];
+  wheel_rerun_delivery_success_required: boolean;
+  wheel_rerun_delivery_next_action_plain: string;
   fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute";
   fixed_wheel_rerun_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest";
+  fixed_wheel_rerun_delivery_latest_endpoint: "/api/robot-control/delivery/latest";
+  fixed_wheel_rerun_delivery_complete_endpoint: "/api/robot-control/delivery/complete";
+  wheel_rerun_delivery_complete_sends_motion: false;
   fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples";
   sends_motion_when_clicked: false;
   blocker_ids: RobotControlGoalChecklistItemId[];

@@ -131,8 +131,24 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("wheel L/R=0/0");
     expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("样本 2 个");
     expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("非零样本 0 个");
+    expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("先勾现场安全确认");
+    expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("确认同窗口 wheel L/R 非零");
+    expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("delivery success");
+    expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("goal_succeeded");
+    expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("delivery success 与本轮行程材料对齐");
+    expect(summary.live_closure_summary?.wheel_rerun_acceptance_endpoints).toEqual([
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+      "/api/robot-control/delivery/latest",
+    ]);
+    expect(summary.live_closure_summary?.wheel_rerun_delivery_success_required).toBe(true);
+    expect(summary.live_closure_summary?.wheel_rerun_delivery_next_action_plain).toContain("提交 delivery success");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_latest_endpoint).toBe("/api/robot-control/nav2/goal/execution/latest");
+    expect(summary.live_closure_summary?.fixed_wheel_rerun_delivery_latest_endpoint).toBe("/api/robot-control/delivery/latest");
+    expect(summary.live_closure_summary?.fixed_wheel_rerun_delivery_complete_endpoint).toBe("/api/robot-control/delivery/complete");
+    expect(summary.live_closure_summary?.wheel_rerun_delivery_complete_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.fixed_wheel_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.live_closure_summary?.map_display_primary_tool).toBe("pc_big_map");
     expect(summary.live_closure_summary?.map_display_primary_url).toBe("/map");
