@@ -230,6 +230,19 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count).toBe("0");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_upstream_active).toBe("false");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe("false");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status).toBe("needs_probe");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain).toBe("先复测相机首帧并读取共享预览状态；拿到首帧后再刷新当前所见和建图条件。");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence_labels).toEqual([
+      "复测相机首帧",
+      "读取共享预览状态",
+      "刷新当前卡点",
+    ]);
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_scan_missing_observations).toEqual([]);
     expect(summary.live_closure_summary?.live_wysiwyg_map_radar_blocked_reasons).toEqual([
       "scan_preview_points_missing",
@@ -638,6 +651,19 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_unblock_allows_free_move).toBe(true);
     expect(summary.live_closure_summary?.mapping_unblock_camera_diagnosis_status).toBe("not_loaded");
     expect(summary.live_closure_summary?.mapping_unblock_camera_not_exclusive).toBe("not_loaded");
+    expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_next_action_plain).toBe("先复测相机首帧并读取共享预览状态；拿到首帧后再刷新当前所见和建图条件。");
+    expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_sequence).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_sequence_labels).toEqual([
+      "复测相机首帧",
+      "读取共享预览状态",
+      "刷新当前卡点",
+    ]);
+    expect(summary.live_closure_summary?.fixed_mapping_unblock_summary_endpoint).toBe("/api/robot-control/summary");
+    expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.fixed_mapping_unblock_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.fixed_mapping_unblock_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
     expect(summary.live_closure_summary?.mapping_unblock_sends_motion_when_clicked).toBe(false);

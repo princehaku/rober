@@ -2823,6 +2823,11 @@ export interface RobotControlLiveClosureSummary {
   live_wysiwyg_camera_shared_preview_client_count: string;
   live_wysiwyg_camera_shared_preview_upstream_active: string;
   live_wysiwyg_camera_shared_preview_exclusive_camera_claim: string;
+  live_wysiwyg_camera_recovery_status: string;
+  live_wysiwyg_camera_recovery_next_action_plain: string;
+  live_wysiwyg_camera_recovery_sequence: string[];
+  live_wysiwyg_camera_recovery_sequence_labels: string[];
+  live_wysiwyg_camera_recovery_sends_motion: false;
   live_wysiwyg_radar_scan_missing_observations: string[];
   live_wysiwyg_map_radar_blocked_reasons: string[];
   live_wysiwyg_radar_map_current_point_count: string;
@@ -2877,10 +2882,15 @@ export interface RobotControlLiveClosureSummary {
   mapping_unblock_camera_diagnosis_status: string;
   mapping_unblock_camera_not_exclusive: string;
   mapping_unblock_camera_next_action_plain: string;
+  mapping_unblock_camera_recovery_next_action_plain: string;
+  mapping_unblock_camera_recovery_sequence: string[];
+  mapping_unblock_camera_recovery_sequence_labels: string[];
   fixed_mapping_start_endpoint: "/api/robot-control/map/start";
   fixed_mapping_preview_endpoint: "/api/robot-control/map/preview";
   fixed_mapping_unblock_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
   fixed_mapping_unblock_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status";
+  fixed_mapping_unblock_summary_endpoint: "/api/robot-control/summary";
+  mapping_unblock_camera_recovery_sends_motion: false;
   mapping_unblock_sends_motion_when_clicked: false;
   keyboard_control_start_ready: boolean;
   keyboard_continuous_control_ready: boolean;

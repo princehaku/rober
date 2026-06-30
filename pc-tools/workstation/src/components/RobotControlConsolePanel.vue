@@ -16270,6 +16270,11 @@ onBeforeUnmount(() => {
         :data-live-wysiwyg-camera-shared-preview-client-count="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_client_count"
         :data-live-wysiwyg-camera-shared-preview-upstream-active="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active"
         :data-live-wysiwyg-camera-shared-preview-exclusive-camera-claim="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim"
+        :data-live-wysiwyg-camera-recovery-status="plainLiveClosureSummary.live_wysiwyg_camera_recovery_status"
+        :data-live-wysiwyg-camera-recovery-next-action-plain="plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain"
+        :data-live-wysiwyg-camera-recovery-sequence="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence?.join(',') || 'none'"
+        :data-live-wysiwyg-camera-recovery-sequence-labels="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels?.join(',') || 'none'"
+        :data-live-wysiwyg-camera-recovery-sends-motion="String(plainLiveClosureSummary.live_wysiwyg_camera_recovery_sends_motion)"
         :data-live-wysiwyg-radar-scan-missing-observations="plainLiveClosureSummary.live_wysiwyg_radar_scan_missing_observations?.join(',') || 'none'"
         :data-live-wysiwyg-map-radar-blocked-reasons="plainLiveClosureSummary.live_wysiwyg_map_radar_blocked_reasons?.join(',') || 'none'"
         :data-live-wysiwyg-radar-map-current-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_current_point_count"
@@ -16322,10 +16327,15 @@ onBeforeUnmount(() => {
         :data-mapping-unblock-camera-diagnosis-status="plainLiveClosureSummary.mapping_unblock_camera_diagnosis_status"
         :data-mapping-unblock-camera-not-exclusive="plainLiveClosureSummary.mapping_unblock_camera_not_exclusive"
         :data-mapping-unblock-camera-next-action-plain="plainLiveClosureSummary.mapping_unblock_camera_next_action_plain"
+        :data-mapping-unblock-camera-recovery-next-action-plain="plainLiveClosureSummary.mapping_unblock_camera_recovery_next_action_plain"
+        :data-mapping-unblock-camera-recovery-sequence="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence?.join(',') || 'none'"
+        :data-mapping-unblock-camera-recovery-sequence-labels="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence_labels?.join(',') || 'none'"
         :data-fixed-mapping-start-endpoint="plainLiveClosureSummary.fixed_mapping_start_endpoint"
         :data-fixed-mapping-preview-endpoint="plainLiveClosureSummary.fixed_mapping_preview_endpoint"
         :data-fixed-mapping-unblock-camera-probe-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_probe_endpoint"
         :data-fixed-mapping-unblock-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_mjpeg_status_endpoint"
+        :data-fixed-mapping-unblock-summary-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_summary_endpoint"
+        :data-mapping-unblock-camera-recovery-sends-motion="String(plainLiveClosureSummary.mapping_unblock_camera_recovery_sends_motion)"
         :data-mapping-unblock-sends-motion-when-clicked="String(plainLiveClosureSummary.mapping_unblock_sends_motion_when_clicked)"
         :data-keyboard-control-start-ready="String(plainLiveClosureSummary.keyboard_control_start_ready)"
         :data-keyboard-continuous-control-ready="String(plainLiveClosureSummary.keyboard_continuous_control_ready)"
@@ -16419,6 +16429,11 @@ onBeforeUnmount(() => {
           :data-camera-source-diagnosis-not-exclusive="plainLiveClosureSummary.live_wysiwyg_camera_source_diagnosis_not_exclusive"
           :data-camera-shared-preview-client-count="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_client_count"
           :data-camera-shared-preview-exclusive-camera-claim="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim"
+          :data-camera-recovery-status="plainLiveClosureSummary.live_wysiwyg_camera_recovery_status"
+          :data-camera-recovery-next-action-plain="plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain"
+          :data-camera-recovery-sequence="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence?.join(',') || 'none'"
+          :data-camera-recovery-sequence-labels="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels?.join(',') || 'none'"
+          :data-camera-recovery-sends-motion="String(plainLiveClosureSummary.live_wysiwyg_camera_recovery_sends_motion)"
           :data-radar-scan-missing-observations="plainLiveClosureSummary.live_wysiwyg_radar_scan_missing_observations?.join(',') || 'none'"
           :data-map-radar-blocked-reasons="plainLiveClosureSummary.live_wysiwyg_map_radar_blocked_reasons?.join(',') || 'none'"
           :data-radar-map-current-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_current_point_count"
@@ -16430,6 +16445,7 @@ onBeforeUnmount(() => {
           data-sends-motion-when-clicked="false"
         >
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_diagnostic_plain) }}
+          {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain) }}
         </p>
         <p
@@ -16456,8 +16472,13 @@ onBeforeUnmount(() => {
           :data-camera-diagnosis-status="plainLiveClosureSummary.mapping_unblock_camera_diagnosis_status"
           :data-camera-not-exclusive="plainLiveClosureSummary.mapping_unblock_camera_not_exclusive"
           :data-camera-next-action-plain="plainLiveClosureSummary.mapping_unblock_camera_next_action_plain"
+          :data-camera-recovery-next-action-plain="plainLiveClosureSummary.mapping_unblock_camera_recovery_next_action_plain"
+          :data-camera-recovery-sequence="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence?.join(',') || 'none'"
+          :data-camera-recovery-sequence-labels="plainLiveClosureSummary.mapping_unblock_camera_recovery_sequence_labels?.join(',') || 'none'"
           :data-fixed-camera-probe-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_probe_endpoint"
           :data-fixed-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_camera_mjpeg_status_endpoint"
+          :data-fixed-summary-endpoint="plainLiveClosureSummary.fixed_mapping_unblock_summary_endpoint"
+          :data-camera-recovery-sends-motion="String(plainLiveClosureSummary.mapping_unblock_camera_recovery_sends_motion)"
           :data-fixed-mapping-start-endpoint="plainLiveClosureSummary.fixed_mapping_start_endpoint"
           :data-sends-motion-when-clicked="String(plainLiveClosureSummary.mapping_unblock_sends_motion_when_clicked)"
           data-starts-map-runtime="false"
@@ -16465,6 +16486,7 @@ onBeforeUnmount(() => {
           data-starts-nav2="false"
         >
           {{ plainActionCardUserText(plainLiveClosureSummary.mapping_start_unblock_plain) }}
+          {{ plainActionCardUserText(plainLiveClosureSummary.mapping_unblock_camera_recovery_next_action_plain) }}
         </p>
         <p
           v-if="plainLiveClosureSummary.needs_same_window_wheel_rerun"

@@ -8625,6 +8625,34 @@ function buildLiveClosureSummary(
     : radarMapStaleSourcePointsSuppressed
       ? `旧雷达来源点 ${radarMapSourcePointCount} 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。`
       : "先刷新雷达扫描读数，再刷新地图画面，确认地图雷达点来自同轮新读数。";
+  const cameraRecoveryStatus = cameraCurrentVisible
+    ? "visible"
+    : cameraSourceDiagnosisNotExclusive
+      ? "not_exclusive_needs_source_check"
+      : cameraSourceDiagnosisStatus
+        ? "source_diagnosed"
+        : liveWysiwygReadbackGapSurfaceIds.includes("camera")
+          ? "needs_readback"
+          : "needs_probe";
+  const cameraRecoveryHasSpecificSourceAction = Boolean(cameraSourceDiagnosisNextAction)
+    && !/打开页面会自动接入共享 MJPEG|只读检查复测首帧/u.test(cameraSourceDiagnosisNextAction);
+  const cameraRecoveryNextActionPlain = cameraCurrentVisible
+    ? "相机画面已显示；继续监看共享实时预览。"
+    : cameraSourceDiagnosisNotExclusive
+      ? "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。"
+      : cameraRecoveryHasSpecificSourceAction
+        ? `先复测相机首帧并读取共享预览状态；若仍无画面，按诊断处理：${cameraSourceDiagnosisNextAction}。`
+        : "先复测相机首帧并读取共享预览状态；拿到首帧后再刷新当前所见和建图条件。";
+  const cameraRecoverySequence = [
+    "/api/robot-control/camera/first-frame/probe",
+    "/api/robot-control/camera/mjpeg/status",
+    "/api/robot-control/summary",
+  ];
+  const cameraRecoverySequenceLabels = [
+    "复测相机首帧",
+    "读取共享预览状态",
+    "刷新当前卡点",
+  ];
   const cameraDiagnosticPlain = cameraCurrentVisible
     ? "画面诊断：当前页面已有实时画面。"
     : cameraSourceDiagnosisTail
@@ -9122,6 +9150,11 @@ function buildLiveClosureSummary(
     live_wysiwyg_camera_shared_preview_client_count: readback.camera.shared_preview_client_count || "0",
     live_wysiwyg_camera_shared_preview_upstream_active: readback.camera.shared_preview_upstream_active || "not_loaded",
     live_wysiwyg_camera_shared_preview_exclusive_camera_claim: readback.camera.shared_preview_exclusive_camera_claim || "not_loaded",
+    live_wysiwyg_camera_recovery_status: cameraRecoveryStatus,
+    live_wysiwyg_camera_recovery_next_action_plain: cameraRecoveryNextActionPlain,
+    live_wysiwyg_camera_recovery_sequence: cameraRecoverySequence,
+    live_wysiwyg_camera_recovery_sequence_labels: cameraRecoverySequenceLabels,
+    live_wysiwyg_camera_recovery_sends_motion: false,
     live_wysiwyg_radar_scan_missing_observations: radarScanMissingObservations,
     live_wysiwyg_map_radar_blocked_reasons: mapRadarBlockedReasons,
     live_wysiwyg_radar_map_current_point_count: radarMapCurrentPointCount,
@@ -9179,10 +9212,15 @@ function buildLiveClosureSummary(
     mapping_unblock_camera_diagnosis_status: readback.camera.source_diagnosis_status || "not_loaded",
     mapping_unblock_camera_not_exclusive: readback.camera.source_diagnosis_not_exclusive || "not_loaded",
     mapping_unblock_camera_next_action_plain: readback.camera.source_diagnosis_next_action_plain || readback.camera.camera_wysiwyg_next_action_plain || camera.next_action_plain,
+    mapping_unblock_camera_recovery_next_action_plain: cameraRecoveryNextActionPlain,
+    mapping_unblock_camera_recovery_sequence: cameraRecoverySequence,
+    mapping_unblock_camera_recovery_sequence_labels: cameraRecoverySequenceLabels,
     fixed_mapping_start_endpoint: "/api/robot-control/map/start",
     fixed_mapping_preview_endpoint: "/api/robot-control/map/preview",
     fixed_mapping_unblock_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
     fixed_mapping_unblock_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+    fixed_mapping_unblock_summary_endpoint: "/api/robot-control/summary",
+    mapping_unblock_camera_recovery_sends_motion: false,
     mapping_unblock_sends_motion_when_clicked: false,
     keyboard_control_start_ready: keyboardControlStartReady,
     keyboard_continuous_control_ready: keyboardContinuousControlReady,
