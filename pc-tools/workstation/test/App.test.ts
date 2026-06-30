@@ -4501,6 +4501,8 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-ready")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-needs-refresh")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refresh-action-testid")).toBe("plain-live-closure-wysiwyg-refresh");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-camera-first-frame-probe")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-radar-scan-proof")).toBe("true");
@@ -4562,6 +4564,8 @@ describe("App", () => {
     expect(liveClosureWysiwygRefresh.exists()).toBe(true);
     expect(liveClosureWysiwygRefresh.text()).toBe("刷新当前所见（含雷达贴图）");
     expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
     expect(liveClosureWysiwygRefresh.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(liveClosureWysiwygRefresh.attributes("data-fixed-first-frame-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(liveClosureWysiwygRefresh.attributes("data-fixed-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
@@ -6230,6 +6234,68 @@ describe("App", () => {
     expect(diagnostics.text()).not.toContain("现场有人扶控并准备急停");
     expect(diagnostics.text()).not.toContain("本轮不是自动导航任务");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("exposes live WYSIWYG readback gaps when camera map and radar are unreadable", async () => {
+    // live 卡点要把“没显示”和“读数没回来”分开，现场才能直接判断是刷新证据还是先恢复上车接口。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.live_closure_summary = {
+      ...summaryFixture.live_closure_summary!,
+      status: "needs_wysiwyg",
+      status_label: "待当前所见",
+      summary_plain: "当前所见还没齐：画面未显示，地图未显示，雷达点未贴图。",
+      next_action_plain: "先刷新当前所见，确认相机、地图和雷达贴图读数是否恢复。",
+      camera_current_visible: false,
+      map_current_visible: false,
+      radar_map_points_visible: false,
+      primary_status_item_id: "camera_wysiwyg",
+      primary_status_source_card_id: "camera_preview",
+      next_action_item_id: "camera_wysiwyg",
+      next_action_source_card_id: "camera_preview",
+      sends_motion_when_clicked: false,
+    };
+    summaryFixture.readback_summary.camera.status = "fetch_failed";
+    summaryFixture.readback_summary.map.status = "map_not_proven";
+    summaryFixture.readback_summary.map.map_once_observed = "not_loaded";
+    summaryFixture.readback_summary.radar.status = "fetch_failed";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const liveClosureSummary = wrapper.find('[data-testid="plain-live-closure-summary"]');
+    expect(liveClosureSummary.attributes("data-state")).toBe("needs_wysiwyg");
+    expect(liveClosureSummary.attributes("data-camera-current-visible")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-current-visible")).toBe("false");
+    expect(liveClosureSummary.attributes("data-radar-map-points-visible")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-ready")).toBe("false");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,map,radar_map_points");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera,map,radar_map_points");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-needs-refresh")).toBe("true");
+    expect(liveClosureSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
+
+    const liveClosureWysiwygRefresh = wrapper.find('[data-testid="plain-live-closure-wysiwyg-refresh"]');
+    expect(liveClosureWysiwygRefresh.exists()).toBe(true);
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-missing-surface-ids")).toBe("camera,map,radar_map_points");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-readback-gap-surface-ids")).toBe("camera,map,radar_map_points");
+    expect(liveClosureWysiwygRefresh.attributes("data-live-wysiwyg-primary-readback-gap-surface-id")).toBe("camera");
+    expect(liveClosureWysiwygRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(liveClosureWysiwygRefresh.attributes("data-starts-radar-lifecycle")).toBe("false");
+    expect(liveClosureWysiwygRefresh.attributes("data-starts-nav2")).toBe("false");
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    await liveClosureWysiwygRefresh.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const calls = mockedFetch.mock.calls.slice(callsBeforeClick);
+    expect(calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?") && options?.method === "POST")).toBe(true);
+    expect(calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
   });
 
   it("keeps live closure wheel rerun as a focus-only Nav2 action", async () => {

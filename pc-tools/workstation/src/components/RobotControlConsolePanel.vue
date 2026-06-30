@@ -3763,6 +3763,30 @@ const plainLiveClosureWysiwygMissingSurfaceIds = computed(() => {
 });
 const plainLiveClosureWysiwygReady = computed(() => plainLiveClosureWysiwygMissingSurfaceIds.value === "none");
 const plainLiveClosureNeedsWysiwygRefresh = computed(() => plainLiveClosureSummary.value?.status === "needs_wysiwyg");
+const plainLiveClosureWysiwygReadbackGapSurfaceIds = computed(() => {
+  // 缺失 surface 还要区分“只是没显示”和“上车读数没回来”，现场排障时这两个下一步不同。
+  const summary = plainLiveClosureSummary.value;
+  const readback = robotSummary.value?.readback_summary;
+  if (!summary || !readback) {
+    return "none";
+  }
+  const gaps: string[] = [];
+  if (!summary.camera_current_visible && /fetch_failed|not_loaded|not_proven/.test(readback.camera.status || "")) {
+    gaps.push("camera");
+  }
+  const mapUnread = /fetch_failed|not_loaded|not_proven/.test(readback.map.status || "")
+    || !["true", "map_once_observed"].includes(String(readback.map.map_once_observed || ""));
+  if (!summary.map_current_visible && mapUnread) {
+    gaps.push("map");
+  }
+  if (!summary.radar_map_points_visible && /fetch_failed|not_loaded|not_proven/.test(readback.radar.status || "")) {
+    gaps.push("radar_map_points");
+  }
+  return gaps.length ? gaps.join(",") : "none";
+});
+const plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId = computed(() => (
+  plainLiveClosureWysiwygReadbackGapSurfaceIds.value.split(",")[0] || "none"
+));
 const plainLiveClosureTargetSourceCardId = computed(() => (
   plainLiveClosureSummary.value?.primary_status_source_card_id
   || plainLiveClosureSummary.value?.next_action_source_card_id
@@ -15878,6 +15902,8 @@ onBeforeUnmount(() => {
         :data-live-wysiwyg-ready="String(plainLiveClosureWysiwygReady)"
         :data-live-wysiwyg-missing-surface-ids="plainLiveClosureWysiwygMissingSurfaceIds"
         :data-live-wysiwyg-needs-refresh="String(plainLiveClosureNeedsWysiwygRefresh)"
+        :data-live-wysiwyg-readback-gap-surface-ids="plainLiveClosureWysiwygReadbackGapSurfaceIds"
+        :data-live-wysiwyg-primary-readback-gap-surface-id="plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId"
         data-live-wysiwyg-refresh-action-testid="plain-live-closure-wysiwyg-refresh"
         data-live-wysiwyg-refreshes-camera-first-frame-probe="true"
         data-live-wysiwyg-refreshes-radar-scan-proof="true"
@@ -15961,6 +15987,8 @@ onBeforeUnmount(() => {
           :disabled="!canRefreshPlainWysiwygEvidence"
           data-testid="plain-live-closure-wysiwyg-refresh"
           :data-live-wysiwyg-missing-surface-ids="plainLiveClosureWysiwygMissingSurfaceIds"
+          :data-live-wysiwyg-readback-gap-surface-ids="plainLiveClosureWysiwygReadbackGapSurfaceIds"
+          :data-live-wysiwyg-primary-readback-gap-surface-id="plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId"
           data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
           data-fixed-first-frame-probe-endpoint="/api/robot-control/camera/first-frame/probe"
           data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
