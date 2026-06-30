@@ -3819,6 +3819,29 @@ const plainLiveClosureTargetSourceCardId = computed(() => (
   || plainLiveClosureSummary.value?.next_action_source_card_id
   || ""
 ));
+const plainLiveClosureBlockerIds = computed(() => plainLiveClosureSummary.value?.blocker_ids ?? []);
+const plainLiveClosureReadyActionIds = computed(() => plainLiveClosureSummary.value?.ready_action_ids ?? []);
+const plainLiveClosureSideBlockerItems = computed(() => {
+  // 主卡点之外的缺口必须继续可见；否则 wheel rerun 会把画面/雷达问题盖住。
+  const primaryId = plainLiveClosureSummary.value?.primary_status_item_id || plainLiveClosureSummary.value?.next_action_item_id || "";
+  const blockerIds = new Set(plainLiveClosureBlockerIds.value.filter((id) => id !== primaryId));
+  return plainGoalChecklist.value.filter((item) => blockerIds.has(item.id));
+});
+const plainLiveClosureReadyActionItems = computed(() => {
+  // 只展示已有 summary 的 ready 动作，不改变任何 gate；真正执行仍走原按钮。
+  const itemById = new Map(plainGoalChecklist.value.map((item) => [item.id, item]));
+  return plainLiveClosureReadyActionIds.value
+    .map((id) => itemById.get(id))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+});
+const plainLiveClosureBlockerIdsText = computed(() => plainLiveClosureBlockerIds.value.join(",") || "none");
+const plainLiveClosureReadyActionIdsText = computed(() => plainLiveClosureReadyActionIds.value.join(",") || "none");
+const plainLiveClosureSideBlockerIdsText = computed(() => plainLiveClosureSideBlockerItems.value.map((item) => item.id).join(",") || "none");
+const plainLiveClosureSideGapText = computed(() => {
+  const sideBlockers = plainLiveClosureSideBlockerItems.value.map((item) => item.title).join("、") || "暂无";
+  const readyActions = plainLiveClosureReadyActionItems.value.map((item) => item.title).join("、") || "暂无";
+  return `其它缺口：${sideBlockers}；可先做：${readyActions}。`;
+});
 const plainLiveClosureFocusTargetKind = computed(() => {
   // 当前卡点按钮要说清真实落点：轮速复验先落到安全确认，勾过后才落到行程执行按钮。
   const summary = plainLiveClosureSummary.value;
@@ -16045,6 +16068,11 @@ onBeforeUnmount(() => {
         :data-primary-status-source-card-id="plainLiveClosureSummary.primary_status_source_card_id"
         :data-next-action-item-id="plainLiveClosureSummary.next_action_item_id"
         :data-next-action-source-card-id="plainLiveClosureSummary.next_action_source_card_id"
+        :data-blocker-ids="plainLiveClosureBlockerIdsText"
+        :data-ready-action-ids="plainLiveClosureReadyActionIdsText"
+        :data-side-blocker-ids="plainLiveClosureSideBlockerIdsText"
+        :data-side-blocker-count="String(plainLiveClosureSideBlockerItems.length)"
+        :data-ready-action-count="String(plainLiveClosureReadyActionItems.length)"
         data-sends-motion-when-clicked="false"
         aria-label="当前闭环卡点"
       >
@@ -16053,6 +16081,19 @@ onBeforeUnmount(() => {
           <span class="status-chip" :data-state="plainLiveClosureSummary.status_label">{{ plainLiveClosureSummary.status_label }}</span>
         </div>
         <p>{{ plainActionCardUserText(plainLiveClosureSummary.summary_plain) }}</p>
+        <p
+          class="panel-note"
+          data-testid="plain-live-closure-side-gaps"
+          :data-primary-status-item-id="plainLiveClosureSummary.primary_status_item_id"
+          :data-side-blocker-ids="plainLiveClosureSideBlockerIdsText"
+          :data-side-blocker-count="String(plainLiveClosureSideBlockerItems.length)"
+          :data-ready-action-ids="plainLiveClosureReadyActionIdsText"
+          :data-ready-action-count="String(plainLiveClosureReadyActionItems.length)"
+          :data-live-wysiwyg-missing-surface-ids="plainLiveClosureWysiwygMissingSurfaceIds"
+          data-sends-motion-when-clicked="false"
+        >
+          {{ plainLiveClosureSideGapText }}
+        </p>
         <span class="muted">下一步：{{ plainActionCardUserText(plainLiveClosureSummary.next_action_plain) }}</span>
         <button
           type="button"

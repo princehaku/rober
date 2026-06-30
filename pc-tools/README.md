@@ -1218,3 +1218,9 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 `data-post-stop-summary-refresh-required=true` 和 `data-stop-settles-keyboard-hold=true`。这样现场脚本能直接确认：
 点击启用键不发车；按住方向键才发低速 pulse；同一次按住窗口至少 2 次 pulse 后，必须读取 wheel raw L/R 非零并刷新 summary；
 松开或点停止后还要 stop 收口。本变化只补 PC Web DOM 合同和测试，不自动启用键盘、不发送任何 live motion 请求。
+
+2026-06-30 18:56 CST 起，普通首屏 `plain-live-closure-summary` 在“当前卡点”之外新增 `plain-live-closure-side-gaps`。
+卡片本体同步暴露 `data-blocker-ids`、`data-ready-action-ids`、`data-side-blocker-ids`、`data-side-blocker-count`
+和 `data-ready-action-count`。这样当前主卡点是 wheel raw L/R 复验时，画面所见、雷达贴图、建图启动等旁路缺口仍保持可见；
+当前主卡点是画面时，也能直接看到剩余雷达/Nav2/建图缺口和可先做动作。该短行只读展示已有 goal checklist summary，
+不新增按钮、不自动刷新、不执行 Nav2/free-roam/keyboard/manual/stop 或 `/cmd_vel`。

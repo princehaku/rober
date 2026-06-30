@@ -4649,3 +4649,8 @@ UVC 无首帧”，但不会放行建图。该变化只修正普通首屏事实�
 同一次按住窗口达到 2 次 pulse、松开后 stop 收口。`keyboard-screen-stop` 同步声明点击不发运动、固定 stop endpoint、
 stop 后刷新 summary 和收口 keyboard hold。该变化不改变安全确认和按住才动的控制逻辑，只让现场验收脚本可以从按钮本体判断
 PC 键盘连续手控是否真正完成“发 pulse -> wheel raw L/R 非零 -> stop settled”的闭环。
+
+2026-06-30 18:56 CST 起，`当前卡点` 卡片不再只显示一个主结论。新增 `plain-live-closure-side-gaps` 短行：
+用已有 `goal_checklist_summary` 展示主卡点之外仍未完成的缺口和可先执行的动作，并在 DOM 暴露 blocker/ready action id 清单。
+现场状态为 `needs_wheel_rerun` 时，卡片仍把主按钮指向行程复验，但旁路短行会继续显示画面、雷达贴图和建图缺口；
+现场状态为 `needs_wysiwyg` 时，也能看到 Nav2、自由移动、键盘等可先做项。该变化只做普通用户可读收口，不改变任何发车 gate。
