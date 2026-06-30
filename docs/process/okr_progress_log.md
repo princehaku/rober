@@ -8,6 +8,19 @@
 
 ## 2026-07-01 系列
 
+### 2026-07-01 02-03｜pc_map_radar_overlay_readback_aliases｜地图雷达贴图只读别名
+
+本轮 `sprints/2026.07.01_02-03_pc_map_radar_overlay_readback_aliases/` 把地图雷达贴图的新鲜度和旧点抑制口径提升到
+`readback_summary.map` 与 `/api/robot-control/map/preview` 顶层/嵌套 `radar_overlay`。新增字段包括
+`radar_overlay_refresh_required`、`radar_overlay_stale_source_points_suppressed`、`radar_overlay_primary_blocked_reason` 和
+`radar_overlay_current_vs_source_plain`。这样现场脚本只看地图区块即可知道：当前地图实际贴了几个雷达点、旧来源点有几个、
+旧点是否被抑制，以及下一步该刷新雷达 scan proof 还是先启动雷达。
+
+验证范围：`npm test -- test/robotControlSummary.test.ts --run` 6 tests OK；
+`npm test -- test/catalog.test.ts -t "map preview|stale|雷达" --run` 11 tests OK / 166 skipped；
+`npm test -- test/App.test.ts -t "radar overlay|map preview|direct map" --run` 19 tests OK / 210 skipped；
+`npm run build` 通过。该轮只改只读 API/DOM 合同与测试/文档，未执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-07-01 01-54｜pc_live_wysiwyg_structured_gaps｜当前所见结构化缺口
 
 本轮 `sprints/2026.07.01_01-54_pc_live_wysiwyg_structured_gaps/` 把 PC 当前卡点里的相机/雷达 WYSIWYG 缺口从中文长句提升为结构化只读字段。

@@ -2030,6 +2030,10 @@ export interface RobotControlMapPreviewRadarOverlay {
   source_endpoint_ids: RobotApiReadEndpointId[];
   blocked_reasons: string[];
   blocked_reason_labels: string[];
+  refresh_required: boolean;
+  stale_source_points_suppressed: boolean;
+  primary_blocked_reason: string;
+  current_vs_source_plain: string;
 }
 
 export interface RobotApiProofSummary {
@@ -3159,6 +3163,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       radar_overlay_next_action_plain: string;
       radar_overlay_point_count: string;
       radar_overlay_source_point_count: string;
+      radar_overlay_refresh_required: string;
+      radar_overlay_stale_source_points_suppressed: string;
+      radar_overlay_primary_blocked_reason: string;
+      radar_overlay_current_vs_source_plain: string;
       radar_overlay_frame_id: string;
       radar_overlay_source_frame_id: string;
       radar_overlay_blocked_reasons: string;
@@ -3831,6 +3839,10 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   radar_overlay_source_count: number | null;
   radar_overlay_point_count: number;
   radar_overlay_source_point_count: number | null;
+  radar_overlay_refresh_required: boolean;
+  radar_overlay_stale_source_points_suppressed: boolean;
+  radar_overlay_primary_blocked_reason: string;
+  radar_overlay_current_vs_source_plain: string;
   radar_overlay_scan_preview_point_count: number;
   radar_overlay_scan_preview_source_point_count: number | null;
   radar_overlay_frame_id: string;

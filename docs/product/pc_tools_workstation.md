@@ -4735,3 +4735,15 @@ Foxglove 做浏览器远程观察，但二者都不是普通用户发车、键�
 `live_wysiwyg_radar_map_stale_source_points_suppressed` 和 `live_wysiwyg_radar_map_primary_blocked_reason`，
 明确旧来源点不会被伪装成当前地图 marker。该变化只增加只读 API/DOM 合同，不启动相机、雷达、Nav2、键盘、自由移动、
 建图 runtime，不发送 `/cmd_vel` 或任何底盘运动命令。
+
+2026-07-01 02:03 CST 起，地图 WYSIWYG 主入口也直接暴露雷达贴图新鲜度合同。
+`readback_summary.map` 新增 `radar_overlay_refresh_required`、`radar_overlay_stale_source_points_suppressed`、
+`radar_overlay_primary_blocked_reason` 和 `radar_overlay_current_vs_source_plain`；`/api/robot-control/map/preview`
+顶层与嵌套 `radar_overlay` 同步暴露同义字段。这样只读地图接口即可回答：“当前地图上画了几个雷达点、上车来源点有几个、
+旧点是否被抑制、下一步该刷新雷达扫描还是启动雷达”。该合同继续坚持旧来源点不等于当前地图 marker，不改变雷达 start、
+scan proof refresh、地图 preview、Nav2、键盘、自由移动或建图的执行 gate。
+
+同日起，PC 地图太小的处理口径保持三层：普通用户优先点本页 `打开地图大屏` 或直接访问 `/map`，继续使用同一张
+WYSIWYG 地图画布和 2400% 缩放上限；ROS2 本机工程调试使用 `ros2 launch ros2_trashbot_bringup rviz.launch.py`
+查看 map/scan/tf/path/pose；需要浏览器远程观察时先运行 `ros2 launch foxglove_bridge foxglove_bridge_launch.xml`
+再接 Foxglove Studio。RViz2/Foxglove 是配套观察工具，不作为普通发车、键盘手控、自由移动或建图的前置条件。

@@ -9390,6 +9390,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(summary.readback_summary.map.radar_overlay_next_action).toBe("start_radar_then_refresh_map_preview");
       expect(summary.readback_summary.map.radar_overlay_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
+      expect(summary.readback_summary.map.radar_overlay_refresh_required).toBe("true");
+      expect(summary.readback_summary.map.radar_overlay_stale_source_points_suppressed).toBe("true");
+      expect(summary.readback_summary.map.radar_overlay_primary_blocked_reason).toBe("radar_lifecycle_not_running_for_map_radar_overlay");
+      expect(summary.readback_summary.map.radar_overlay_current_vs_source_plain).toBe("地图雷达点：当前 0 个，来源 65 个；旧来源点已抑制，未贴到当前地图；下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
       expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(summary.readback_summary.map.radar_overlay_blocked_reason_labels).toContain("雷达扫描已过期");
@@ -10935,6 +10939,10 @@ describe("workstation fail-closed API contracts", () => {
         };
         radar_overlay_point_count: number;
         radar_overlay_source_point_count: number | null;
+        radar_overlay_refresh_required: boolean;
+        radar_overlay_stale_source_points_suppressed: boolean;
+        radar_overlay_primary_blocked_reason: string;
+        radar_overlay_current_vs_source_plain: string;
         radar_overlay_scan_preview_point_count: number;
         radar_overlay_scan_preview_source_point_count: number | null;
         radar_overlay_frame_id: string;
@@ -10995,6 +11003,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.radar_overlay.source_frame_id).toBe("laser_frame");
       expect(previewBody.radar_overlay_point_count).toBe(1);
       expect(previewBody.radar_overlay_source_point_count).toBe(65);
+      expect(previewBody.radar_overlay_refresh_required).toBe(false);
+      expect(previewBody.radar_overlay_stale_source_points_suppressed).toBe(false);
+      expect(previewBody.radar_overlay_primary_blocked_reason).toBe("none");
+      expect(previewBody.radar_overlay_current_vs_source_plain).toBe("地图雷达点：当前 1 个，来源 65 个；下一步：继续观察地图雷达层。");
       expect(previewBody.radar_overlay_scan_preview_point_count).toBe(1);
       expect(previewBody.radar_overlay_scan_preview_source_point_count).toBe(65);
       expect(previewBody.radar_overlay_frame_id).toBe("laser_frame");
@@ -11539,12 +11551,20 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_status: string;
         radar_overlay_count: number;
         radar_overlay_source_count: number | null;
+        radar_overlay_refresh_required: boolean;
+        radar_overlay_stale_source_points_suppressed: boolean;
+        radar_overlay_primary_blocked_reason: string;
+        radar_overlay_current_vs_source_plain: string;
         radar_overlay_wysiwyg_status_plain: string;
         radar_overlay_next_action_plain: string;
         radar_overlay: {
           overlay_status: string;
           count: number;
           source_count: number | null;
+          refresh_required: boolean;
+          stale_source_points_suppressed: boolean;
+          primary_blocked_reason: string;
+          current_vs_source_plain: string;
           blocked_reasons: string[];
           blocked_reason_labels: string[];
         };
@@ -11561,6 +11581,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay.count).toBe(0);
       expect(body.radar_overlay_source_count).toBeNull();
       expect(body.radar_overlay.source_count).toBeNull();
+      expect(body.radar_overlay_refresh_required).toBe(true);
+      expect(body.radar_overlay.refresh_required).toBe(true);
+      expect(body.radar_overlay_stale_source_points_suppressed).toBe(false);
+      expect(body.radar_overlay.stale_source_points_suppressed).toBe(false);
+      expect(body.radar_overlay_primary_blocked_reason).toBe("radar_lifecycle_not_running_for_map_radar_overlay");
+      expect(body.radar_overlay.primary_blocked_reason).toBe("radar_lifecycle_not_running_for_map_radar_overlay");
+      expect(body.radar_overlay_current_vs_source_plain).toBe("地图雷达点：当前 0 个，来源 not_loaded 个；下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
+      expect(body.radar_overlay.current_vs_source_plain).toBe(body.radar_overlay_current_vs_source_plain);
       expect(body.radar_overlay_wysiwyg_status_plain).toContain("当前显示 0 个点");
       expect(body.radar_overlay_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(body.radar_overlay.blocked_reasons).toContain("scan_preview_points_missing_for_map_radar_overlay");

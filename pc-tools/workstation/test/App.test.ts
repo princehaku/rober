@@ -1880,6 +1880,10 @@ const fixtures: Record<string, unknown> = {
       source_endpoint_ids: [],
       blocked_reasons: [],
       blocked_reason_labels: [],
+      refresh_required: true,
+      stale_source_points_suppressed: false,
+      primary_blocked_reason: "none",
+      current_vs_source_plain: "地图雷达点：当前 0 个，来源 0 个；下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
     },
     radar_overlay_status: "not_loaded",
     radar_overlay_plain_hint: "雷达点还没有贴到地图。",
@@ -1892,6 +1896,10 @@ const fixtures: Record<string, unknown> = {
     radar_overlay_source_count: 0,
     radar_overlay_point_count: 0,
     radar_overlay_source_point_count: 0,
+    radar_overlay_refresh_required: true,
+    radar_overlay_stale_source_points_suppressed: false,
+    radar_overlay_primary_blocked_reason: "none",
+    radar_overlay_current_vs_source_plain: "地图雷达点：当前 0 个，来源 0 个；下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
     radar_overlay_scan_preview_point_count: 0,
     radar_overlay_scan_preview_source_point_count: 0,
     radar_overlay_frame_id: "",
@@ -10392,6 +10400,10 @@ describe("App", () => {
       source_endpoint_ids: ["localize_proof_latest", "radar_scan_proof_latest"],
       blocked_reasons: [],
       blocked_reason_labels: [],
+      refresh_required: false,
+      stale_source_points_suppressed: false,
+      primary_blocked_reason: "none",
+      current_vs_source_plain: "地图雷达点：当前 2 个，来源 2 个；下一步：继续观察地图雷达层。",
     };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -10469,6 +10481,10 @@ describe("App", () => {
       source_endpoint_ids: ["localize_proof_latest", "radar_scan_proof_latest"],
       blocked_reasons: ["robot_pose_missing_for_map_radar_overlay"],
       blocked_reason_labels: ["小车地图位置未读到"],
+      refresh_required: true,
+      stale_source_points_suppressed: false,
+      primary_blocked_reason: "robot_pose_missing_for_map_radar_overlay",
+      current_vs_source_plain: "地图雷达点：当前 2 个，来源 2 个；下一步：先刷新定位，再刷新雷达扫描和地图画面。",
     };
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -21179,10 +21195,18 @@ describe("App", () => {
       source_endpoint_ids: ["radar_scan_proof_latest"],
       blocked_reasons: ["runtime_scan_stale_for_map_radar_overlay"],
       blocked_reason_labels: ["雷达扫描已过期"],
+      refresh_required: true,
+      stale_source_points_suppressed: true,
+      primary_blocked_reason: "runtime_scan_stale_for_map_radar_overlay",
+      current_vs_source_plain: "地图雷达点：当前 0 个，来源 72 个；旧来源点已抑制，未贴到当前地图；下一步：刷新雷达扫描，再刷新地图画面。",
     };
     stalePreviewFixture.radar_overlay_status = "not_current";
     stalePreviewFixture.radar_overlay_point_count = 0;
     stalePreviewFixture.radar_overlay_source_point_count = 72;
+    stalePreviewFixture.radar_overlay_refresh_required = true;
+    stalePreviewFixture.radar_overlay_stale_source_points_suppressed = true;
+    stalePreviewFixture.radar_overlay_primary_blocked_reason = "runtime_scan_stale_for_map_radar_overlay";
+    stalePreviewFixture.radar_overlay_current_vs_source_plain = "地图雷达点：当前 0 个，来源 72 个；旧来源点已抑制，未贴到当前地图；下一步：刷新雷达扫描，再刷新地图画面。";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/preview": stalePreviewFixture,
@@ -21252,6 +21276,10 @@ describe("App", () => {
       source_endpoint_ids: ["radar_scan_proof_latest"],
       blocked_reasons: ["runtime_scan_stale_for_map_radar_overlay"],
       blocked_reason_labels: ["雷达扫描已过期"],
+      refresh_required: true,
+      stale_source_points_suppressed: true,
+      primary_blocked_reason: "runtime_scan_stale_for_map_radar_overlay",
+      current_vs_source_plain: "地图雷达点：当前 0 个，来源 72 个；旧来源点已抑制，未贴到当前地图；下一步：刷新雷达扫描，再刷新地图画面。",
     };
     previewFixture.radar_overlay_status = "not_current";
     previewFixture.radar_overlay_points = [];
@@ -21261,6 +21289,10 @@ describe("App", () => {
     previewFixture.radar_overlay_source_count = 72;
     previewFixture.radar_overlay_source_point_count = 72;
     previewFixture.radar_overlay_scan_preview_source_point_count = 72;
+    previewFixture.radar_overlay_refresh_required = true;
+    previewFixture.radar_overlay_stale_source_points_suppressed = true;
+    previewFixture.radar_overlay_primary_blocked_reason = "runtime_scan_stale_for_map_radar_overlay";
+    previewFixture.radar_overlay_current_vs_source_plain = "地图雷达点：当前 0 个，来源 72 个；旧来源点已抑制，未贴到当前地图；下一步：刷新雷达扫描，再刷新地图画面。";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/map/preview": previewFixture,
@@ -22271,6 +22303,10 @@ describe("App", () => {
       source_endpoint_ids: ["localize_proof_latest", "radar_scan_proof_latest"],
       blocked_reasons: [],
       blocked_reason_labels: [],
+      refresh_required: false,
+      stale_source_points_suppressed: false,
+      primary_blocked_reason: "none",
+      current_vs_source_plain: "地图雷达点：当前 2 个，来源 2 个；下一步：继续观察地图雷达层。",
     };
     loadedMapPreviewFixture.radar_overlay_status = "loaded";
     loadedMapPreviewFixture.radar_overlay_points = loadedRadarOverlayPoints;
@@ -22280,6 +22316,10 @@ describe("App", () => {
     loadedMapPreviewFixture.radar_overlay_source_point_count = 2;
     loadedMapPreviewFixture.radar_overlay_scan_preview_point_count = 2;
     loadedMapPreviewFixture.radar_overlay_scan_preview_source_point_count = 2;
+    loadedMapPreviewFixture.radar_overlay_refresh_required = false;
+    loadedMapPreviewFixture.radar_overlay_stale_source_points_suppressed = false;
+    loadedMapPreviewFixture.radar_overlay_primary_blocked_reason = "none";
+    loadedMapPreviewFixture.radar_overlay_current_vs_source_plain = "地图雷达点：当前 2 个，来源 2 个；下一步：继续观察地图雷达层。";
     loadedMapPreviewFixture.radar_overlay_frame_id = "laser_frame";
     loadedMapPreviewFixture.robot_pose = {
       x: 0.5,

@@ -630,6 +630,10 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.map.radar_overlay_status).toBe("not_current");
     expect(summary.readback_summary.map.radar_overlay_point_count).toBe("0");
     expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("3");
+    expect(summary.readback_summary.map.radar_overlay_refresh_required).toBe("true");
+    expect(summary.readback_summary.map.radar_overlay_stale_source_points_suppressed).toBe("true");
+    expect(summary.readback_summary.map.radar_overlay_primary_blocked_reason).toBe("runtime_scan_stale_for_map_radar_overlay");
+    expect(summary.readback_summary.map.radar_overlay_current_vs_source_plain).toBe("地图雷达点：当前 0 个，来源 3 个；旧来源点已抑制，未贴到当前地图；下一步：刷新雷达扫描，再刷新地图画面。");
     expect(summary.readback_summary.map.radar_overlay_blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");
     expect(summary.live_closure_summary?.radar_map_points_visible).toBe(false);
   });
