@@ -4193,6 +4193,13 @@ function effectivePlainMapRobotPose(): { pose: RobotApiMapPose; source: PlainMap
 
 function summaryRadarOverlayNotCurrentForPlainMap(): boolean {
   // 旧 PC Node 可能还把 stopped/stale 雷达 summary 报成 partial；前端再用 lidar 事实兜底，避免回捞旧点上图。
+  const preview = mapPreviewResult.value;
+  if (
+    preview?.proxy_status === "preview_forwarded"
+    && (preview.radar_overlay?.overlay_status === "not_current" || preview.radar_overlay_status === "not_current")
+  ) {
+    return true;
+  }
   const mapReadback = robotSummary.value?.readback_summary.map;
   if (!mapReadback) {
     return false;
@@ -4225,12 +4232,20 @@ function effectivePlainMapRadarReadback(): PlainMapRadarReadback {
   const mapReadback = robotSummary.value?.readback_summary.map;
   if (summaryRadarOverlayNotCurrentForPlainMap()) {
     // summary 已确认旧雷达点不能作为当前地图 overlay；保留 source count 只给高级诊断，普通地图不再回捞旧 proof。
+    const preview = mapPreviewResult.value;
+    const previewOverlay = preview?.radar_overlay;
+    const sourcePointCount = Math.max(
+      finitePlainNumber(previewOverlay?.scan_preview_source_point_count) ?? 0,
+      finitePlainNumber(preview?.radar_overlay_scan_preview_source_point_count) ?? 0,
+      finitePlainNumber(preview?.radar_overlay_source_point_count) ?? 0,
+      finitePlainNumber(mapReadback?.radar_overlay_scan_preview_source_point_count) ?? 0,
+    );
     return {
       points: [],
       pointCount: 0,
-      sourcePointCount: finitePlainNumber(mapReadback?.radar_overlay_scan_preview_source_point_count),
-      frameId: mapReadback?.radar_overlay_scan_preview_frame_id || "",
-      source: "summary",
+      sourcePointCount,
+      frameId: previewOverlay?.scan_preview_frame_id || preview?.radar_overlay_frame_id || mapReadback?.radar_overlay_scan_preview_frame_id || "",
+      source: preview?.proxy_status === "preview_forwarded" ? "map_preview" : "summary",
     };
   }
   const proof = robotSummary.value?.o3_proof_summary;
@@ -4944,7 +4959,8 @@ function plainMapRadarNextActionText(): string {
     const stalePointGuard = nextAction === "start_radar_then_refresh_map_preview" && !nextActionPlain.includes("旧雷达点")
       ? "；旧雷达点不会贴到当前地图"
       : "";
-    return `地图下一步：${nextActionPlain}${stalePointGuard}。`;
+    const text = `${nextActionPlain}${stalePointGuard}`;
+    return `地图下一步：${/[。！？]$/.test(text) ? text : `${text}。`}`;
   }
   if (nextAction === "start_radar_then_refresh_map_preview") {
     return "地图下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。";
@@ -4962,6 +4978,30 @@ function plainMapRadarNextActionText(): string {
     return "地图下一步：启动或刷新雷达后，再刷新地图画面。";
   }
   return `地图下一步：${nextAction.replace(/_/g, " ")}。`;
+}
+
+function plainMapRadarRefreshActionVisible(): boolean {
+  // 地图大屏上的快捷按钮只做 no-motion proof+preview 刷新；需要启动雷达或重新定位时交给对应卡片处理。
+  const nextActionCandidates = [
+    mapPreviewResult.value?.radar_overlay?.next_action,
+    mapPreviewResult.value?.radar_overlay_next_action,
+    robotSummary.value?.readback_summary.map.radar_overlay_next_action,
+  ].filter((action): action is string => Boolean(action) && !["not_loaded", "none", "continue_monitoring_map_radar_overlay"].includes(action));
+  const refreshActions = [
+    "refresh_radar_scan_for_map_overlay",
+    "refresh_map_preview_after_radar_scan",
+    "refresh_map_radar_overlay",
+    "start_or_refresh_radar",
+  ];
+  return nextActionCandidates.some((action) => refreshActions.includes(action));
+}
+
+function plainMapRadarRefreshActionLabel(): string {
+  // 标题区文案保持短，具体原因继续放在 caption 和雷达卡。
+  if (radarRefreshPending.value || mapPreviewPending.value) {
+    return "刷新雷达贴图中";
+  }
+  return "刷新雷达贴图";
 }
 
 function plainRadarCardNextActionText(): string {
@@ -4982,7 +5022,8 @@ function plainRadarCardNextActionText(): string {
     const stalePointGuard = nextAction === "start_radar_then_refresh_map_preview" && !nextActionPlain.includes("旧雷达点")
       ? "；旧雷达点不会贴到当前地图"
       : "";
-    return `雷达下一步：${radarButtonPlain}${stalePointGuard}。`;
+    const text = `${radarButtonPlain}${stalePointGuard}`;
+    return `雷达下一步：${/[。！？]$/.test(text) ? text : `${text}。`}`;
   }
   if (nextAction === "start_radar_then_refresh_map_preview") {
     return "雷达下一步：先点启动雷达并等待新扫描，再刷新地图画面确认雷达点；旧雷达点不会贴到当前地图。";
@@ -5589,6 +5630,9 @@ const plainMapVisualSummary = computed(() => {
     radarMapNotCurrentSourcePointCount: radarNotCurrentCount,
     radarMapCountOnlyPointCount: radarPreviewReadbackPointCount(),
     fixedRadarMapPreviewEndpoint: "/api/robot-control/map/preview",
+    fixedRadarRefreshEndpoint: "/api/robot-control/radar/scan-proof/refresh",
+    radarRefreshActionVisible: plainMapRadarRefreshActionVisible(),
+    radarRefreshActionLabel: plainMapRadarRefreshActionLabel(),
     showRadarSweep,
     radarSweepAria,
     radarScanDots: radarScanOverlay.dots,
@@ -17398,6 +17442,9 @@ onBeforeUnmount(() => {
           :data-radar-not-current-source-point-count="String(plainMapVisualSummary.radarMapNotCurrentSourcePointCount)"
           :data-radar-count-only-point-count="String(plainMapVisualSummary.radarMapCountOnlyPointCount)"
           :data-fixed-radar-map-preview-endpoint="plainMapVisualSummary.fixedRadarMapPreviewEndpoint"
+          :data-fixed-radar-refresh-endpoint="plainMapVisualSummary.fixedRadarRefreshEndpoint"
+          :data-radar-refresh-action-visible="String(plainMapVisualSummary.radarRefreshActionVisible)"
+          :data-radar-refresh-action-label="plainMapVisualSummary.radarRefreshActionLabel"
         >
           <div class="plain-map-heading">
             <h3>地图</h3>
@@ -17431,6 +17478,28 @@ onBeforeUnmount(() => {
               >
                 打开地图大屏
               </a>
+              <button
+                v-if="plainMapVisualSummary.radarRefreshActionVisible"
+                type="button"
+                class="secondary plain-map-radar-refresh-action"
+                data-testid="plain-map-radar-refresh-action"
+                data-map-view-action="refresh_radar_overlay_wysiwyg"
+                data-refreshes-radar-scan-proof="true"
+                data-refreshes-map-preview-after-radar="true"
+                data-sends-motion-when-clicked="false"
+                data-starts-radar-lifecycle="false"
+                data-starts-map-runtime="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                :data-fixed-radar-refresh-endpoint="plainMapVisualSummary.fixedRadarRefreshEndpoint"
+                :data-fixed-radar-map-preview-endpoint="plainMapVisualSummary.fixedRadarMapPreviewEndpoint"
+                :disabled="!canRefreshRadarProof"
+                @click="refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true })"
+              >
+                {{ plainMapVisualSummary.radarRefreshActionLabel }}
+              </button>
               <div
                 class="plain-map-zoom-controls"
                 data-testid="plain-map-zoom-controls"

@@ -1216,6 +1216,20 @@ h3 {
   background: #d8f0e4;
 }
 
+.plain-map-radar-refresh-action {
+  /* 大地图里雷达贴图 stale 时给普通用户一个就地刷新入口；动作只刷新 proof 和 map preview。 */
+  min-height: 34px;
+  white-space: nowrap;
+  border-color: #bf8700;
+  background: #fff8c5;
+  color: #5c3b00;
+  font-weight: 720;
+}
+
+.plain-map-radar-refresh-action:hover:not(:disabled) {
+  background: #f7e58c;
+}
+
 .plain-map-panel[data-fullscreen="true"] {
   /* 全屏只放大只读画面和 marker，不改变任何控制按钮的安全门禁。 */
   position: fixed;
