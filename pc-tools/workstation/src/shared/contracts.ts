@@ -2215,6 +2215,13 @@ export interface RobotControlNavGoalExecutionRequest {
   goal_x?: number;
   goal_y?: number;
   goal_yaw?: number;
+  route_preview_point_count?: number;
+  route_preview_source_point_count?: number;
+  route_preview_frame_id?: string;
+  route_start_x?: number;
+  route_start_y?: number;
+  route_goal_x?: number;
+  route_goal_y?: number;
   result_timeout_s?: number;
   server_timeout_s?: number;
   managed_runtime_opt_in?: boolean;
@@ -2243,6 +2250,13 @@ export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
     managed_startup_s: number;
     managed_ready_timeout_s: number;
     base_command_mode?: "ros" | "speed" | "pwm";
+    route_preview_point_count: number;
+    route_preview_source_point_count: number;
+    route_preview_frame_id: string;
+    route_start_x: number | null;
+    route_start_y: number | null;
+    route_goal_x: number | null;
+    route_goal_y: number | null;
   };
   goal_execution_key_values: Record<string, string>;
   failure_reason: string;

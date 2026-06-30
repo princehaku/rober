@@ -3200,10 +3200,29 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         with mock.patch.object(api, "nav2_proof_latest", return_value=(200, {"latest_result": {"proof": {"managed_runtime_map_yaml": "/tmp/map.yaml"}}})):
             with mock.patch.object(upper_robot_api, "run_nav2_goal_execution_helper", return_value={"mode": "o11", "executed": True, "ok": True}) as helper_mock:
                 with mock.patch.object(api, "nav2_goal_execution_latest", return_value=(200, {"latest_result": latest_result})):
-                    payload = asyncio.run(api.nav2_goal_execute({"confirm_navigation_execution": True}))
+                    payload = asyncio.run(api.nav2_goal_execute({
+                        "confirm_navigation_execution": True,
+                        "route_preview": {
+                            "point_count": 3,
+                            "source_point_count": 15,
+                            "frame_id": "map",
+                            "start_x": 0.1,
+                            "start_y": 0.1,
+                            "goal_x": 0.8,
+                            "goal_y": 0.0,
+                        },
+                    }))
 
         self.assertEqual("goal_succeeded", payload["status"])
         self.assertEqual("ros", payload["goal_request"]["base_command_mode"])
+        self.assertEqual(3, payload["goal_request"]["route_preview_point_count"])
+        self.assertEqual(15, payload["goal_request"]["route_preview_source_point_count"])
+        self.assertEqual("map", payload["goal_request"]["route_preview_frame_id"])
+        self.assertEqual(0.1, payload["goal_request"]["route_start_x"])
+        self.assertEqual(0.1, payload["goal_request"]["route_start_y"])
+        self.assertEqual(0.8, payload["goal_request"]["route_goal_x"])
+        self.assertEqual(0.0, payload["goal_request"]["route_goal_y"])
+        self.assertEqual(3, payload["goal_request"]["route_preview"]["point_count"])
         self.assertEqual("ros", helper_mock.call_args.kwargs["base_command_mode"])
         self.assertTrue(payload["nav2_goal_execution_proven"])
         self.assertTrue(payload["hil_pass"])

@@ -74,6 +74,13 @@ type MapNavGoal = {
   goal_x: number;
   goal_y: number;
   goal_yaw: number;
+  route_preview_point_count?: number;
+  route_preview_source_point_count?: number;
+  route_preview_frame_id?: string;
+  route_start_x?: number;
+  route_start_y?: number;
+  route_goal_x?: number;
+  route_goal_y?: number;
 };
 type PlainMapRadarOverlaySource = "map_preview" | "summary";
 type PlainMapRadarReadback = {
@@ -4180,6 +4187,11 @@ function latestNavPathOverlay() {
       frame_id: "map",
       x: lastPoint.source.x,
       y: lastPoint.source.y,
+    },
+    routeStart: {
+      frame_id: "map",
+      x: firstPoint.source.x,
+      y: firstPoint.source.y,
     },
     state: routeState,
     label: routeLabel,
@@ -10485,6 +10497,13 @@ function plainTripVisibleRouteGoal() {
     goal_y: routePath.executionGoal.y,
     // 路线预览只有平面终点；朝向仍沿用当前显式设置，避免新增隐藏推断。
     goal_yaw: navGoalYaw.value,
+    route_preview_point_count: routePath.displayedCount,
+    route_preview_source_point_count: routePath.totalCount,
+    route_preview_frame_id: routePath.executionGoal.frame_id,
+    route_start_x: routePath.routeStart.x,
+    route_start_y: routePath.routeStart.y,
+    route_goal_x: routePath.executionGoal.x,
+    route_goal_y: routePath.executionGoal.y,
   };
 }
 
@@ -13564,6 +13583,13 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
       goal_x: goalRequest.goal_x,
       goal_y: goalRequest.goal_y,
       goal_yaw: goalRequest.goal_yaw,
+      route_preview_point_count: goalRequest.route_preview_point_count,
+      route_preview_source_point_count: goalRequest.route_preview_source_point_count,
+      route_preview_frame_id: goalRequest.route_preview_frame_id,
+      route_start_x: goalRequest.route_start_x,
+      route_start_y: goalRequest.route_start_y,
+      route_goal_x: goalRequest.route_goal_x,
+      route_goal_y: goalRequest.route_goal_y,
       result_timeout_s: navGoalExecutionTimeoutS.value,
       base_command_mode: plainTripRequestedBaseCommandMode(),
       confirm_navigation_execution: plainManualSafetyConfirmed.value,

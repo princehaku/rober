@@ -21754,6 +21754,17 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
+    const nav2ExecuteCall = mockedFetch.mock.calls.find(([url]) =>
+      String(url).startsWith("/api/robot-control/nav2/goal/execute?"),
+    );
+    const nav2ExecuteBody = JSON.parse(String((nav2ExecuteCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
+    expect(nav2ExecuteBody.route_preview_point_count).toBe(3);
+    expect(nav2ExecuteBody.route_preview_source_point_count).toBe(15);
+    expect(nav2ExecuteBody.route_preview_frame_id).toBe("map");
+    expect(nav2ExecuteBody.route_start_x).toBe(0.1);
+    expect(nav2ExecuteBody.route_start_y).toBe(0.1);
+    expect(nav2ExecuteBody.route_goal_x).toBe(0.8);
+    expect(nav2ExecuteBody.route_goal_y).toBe(0);
     expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
 

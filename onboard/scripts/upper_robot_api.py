@@ -7447,6 +7447,28 @@ class UpperRobotApi:
         goal_x = clamp_float(body.get("goal_x"), 0.8, -3.0, 3.0)
         goal_y = clamp_float(body.get("goal_y"), 0.0, -3.0, 3.0)
         goal_yaw = clamp_float(body.get("goal_yaw"), 0.0, -math.pi, math.pi)
+        route_preview = body.get("route_preview") if isinstance(body.get("route_preview"), dict) else {}
+        route_preview_point_count = int(clamp_float(body.get("route_preview_point_count", route_preview.get("point_count")), 0.0, 0.0, 10000.0))
+        route_preview_source_point_count = int(
+            clamp_float(
+                body.get("route_preview_source_point_count", route_preview.get("source_point_count", route_preview_point_count)),
+                float(route_preview_point_count),
+                0.0,
+                100000.0,
+            )
+        )
+        route_preview_frame_id = str(body.get("route_preview_frame_id") or route_preview.get("frame_id") or goal_frame_id)[:40]
+        def route_optional_float(value: Any) -> float | None:
+            # 路线起点只做证据回显；缺失时保留 null，不能替代真实定位或目标点。
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError):
+                return None
+            return min(max(parsed, -1000.0), 1000.0)
+        route_start_x = route_optional_float(body.get("route_start_x", route_preview.get("start_x")))
+        route_start_y = route_optional_float(body.get("route_start_y", route_preview.get("start_y")))
+        route_goal_x = clamp_float(body.get("route_goal_x", route_preview.get("goal_x")), goal_x, -1000.0, 1000.0)
+        route_goal_y = clamp_float(body.get("route_goal_y", route_preview.get("goal_y")), goal_y, -1000.0, 1000.0)
         result_timeout_s = clamp_float(body.get("result_timeout_s"), 8.0, 2.0, 20.0)
         # 实车 Nav2 托管 runtime 在 lifecycle active 后仍可能需要数秒返回 goal response；窗口太短会误判 goal_handle_missing。
         server_timeout_s = clamp_float(body.get("server_timeout_s"), 12.0, 1.0, 20.0)
@@ -7512,6 +7534,22 @@ class UpperRobotApi:
                     "managed_startup_s": managed_startup_s,
                     "managed_ready_timeout_s": managed_ready_timeout_s,
                     "base_command_mode": nav2_base_command_mode,
+                    "route_preview": {
+                        "point_count": route_preview_point_count,
+                        "source_point_count": route_preview_source_point_count,
+                        "frame_id": route_preview_frame_id,
+                        "start_x": route_start_x,
+                        "start_y": route_start_y,
+                        "goal_x": route_goal_x,
+                        "goal_y": route_goal_y,
+                    },
+                    "route_preview_point_count": route_preview_point_count,
+                    "route_preview_source_point_count": route_preview_source_point_count,
+                    "route_preview_frame_id": route_preview_frame_id,
+                    "route_start_x": route_start_x,
+                    "route_start_y": route_start_y,
+                    "route_goal_x": route_goal_x,
+                    "route_goal_y": route_goal_y,
                     "managed_map_yaml_source": "latest_nav2_proof_managed_runtime_map_yaml" if managed_map_yaml == default_map_yaml else "request_body",
                     "latest_nav2_readback_http_status": latest_nav2_http_status,
                 },

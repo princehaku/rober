@@ -11772,6 +11772,17 @@ describe("workstation fail-closed API contracts", () => {
           schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result",
           status: "goal_forwarded_by_minimal_preflight",
           robot_control_executed: true,
+          goal_request: {
+            route_preview: {
+              point_count: 3,
+              source_point_count: 15,
+              frame_id: "map",
+              start_x: 0.1,
+              start_y: 0.1,
+              goal_x: 0.8,
+              goal_y: 0,
+            },
+          },
         },
       },
     }, {
@@ -11818,12 +11829,28 @@ describe("workstation fail-closed API contracts", () => {
           goal_y: 0,
           goal_yaw: 0,
           base_command_mode: "ros",
+          route_preview_point_count: 3,
+          route_preview_source_point_count: 15,
+          route_preview_frame_id: "map",
+          route_start_x: 0.1,
+          route_start_y: 0.1,
+          route_goal_x: 0.8,
+          route_goal_y: 0,
           confirm_navigation_execution: true,
         }),
       });
       const body = (await response.json()) as {
         proxy_status: string;
         blocked_reasons: string[];
+        goal_request: {
+          route_preview_point_count: number;
+          route_preview_source_point_count: number;
+          route_preview_frame_id: string;
+          route_start_x: number | null;
+          route_start_y: number | null;
+          route_goal_x: number | null;
+          route_goal_y: number | null;
+        };
         goal_execution_key_values: Record<string, string>;
         robot_control_executed: boolean;
       };
@@ -11831,7 +11858,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("execution_forwarded");
       expect(body.blocked_reasons).toEqual([]);
+      expect(body.goal_request.route_preview_point_count).toBe(3);
+      expect(body.goal_request.route_preview_source_point_count).toBe(15);
+      expect(body.goal_request.route_preview_frame_id).toBe("map");
+      expect(body.goal_request.route_start_x).toBe(0.1);
+      expect(body.goal_request.route_start_y).toBe(0.1);
+      expect(body.goal_request.route_goal_x).toBe(0.8);
+      expect(body.goal_request.route_goal_y).toBe(0);
       expect(body.goal_execution_key_values.status).toBe("goal_forwarded_by_minimal_preflight");
+      expect(body.goal_execution_key_values.route_preview_point_count).toBe("3");
+      expect(body.goal_execution_key_values.route_preview_source_point_count).toBe("15");
+      expect(body.goal_execution_key_values.route_start_x).toBe("0.1");
+      expect(body.goal_execution_key_values.route_goal_x).toBe("0.8");
       expect(body.robot_control_executed).toBe(true);
       expect(upstream.receivedGets).toEqual([
         "/api/localize/proof/latest",
@@ -11846,6 +11884,22 @@ describe("workstation fail-closed API contracts", () => {
         base_command_mode: "ros",
         managed_runtime_opt_in: true,
         confirm_navigation_execution: true,
+        route_preview: {
+          point_count: 3,
+          source_point_count: 15,
+          frame_id: "map",
+          start_x: 0.1,
+          start_y: 0.1,
+          goal_x: 0.8,
+          goal_y: 0,
+        },
+        route_preview_point_count: 3,
+        route_preview_source_point_count: 15,
+        route_preview_frame_id: "map",
+        route_start_x: 0.1,
+        route_start_y: 0.1,
+        route_goal_x: 0.8,
+        route_goal_y: 0,
       }));
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
     } finally {

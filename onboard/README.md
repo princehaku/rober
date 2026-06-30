@@ -30,6 +30,11 @@ ros2 launch ros2_trashbot_bringup rviz.launch.py
 默认配置安装在 `ros2_trashbot_bringup/rviz/trashbot_nav.rviz`，显示 `/map`、`/scan`、TF、`/plan` 和 `/amcl_pose`。
 该 RViz 配置不包含 2D Goal 工具；真实发车仍必须走 PC 工作站安全确认后的固定执行入口。
 
+2026-06-30 起，PC 工作站调用上车 `/api/nav2/goal/execute` 时会随请求携带当前图上路线元数据
+（预览点数、源点数、frame、起点、终点）。`onboard/scripts/upper_robot_api.py` 会把这些字段回显到
+Nav2 execution `goal_request` / latest readback，便于现场证明本次执行绑定的是当前图上完整路线读数；
+该回显不改变 Nav2 发车门禁，真实执行仍必须由 PC 安全确认后的固定入口触发。
+
 Compose 需在 `onboard/` 下执行，使挂载上下文为上车目录：
 
 ```bash

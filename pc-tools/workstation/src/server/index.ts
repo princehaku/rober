@@ -534,6 +534,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
   // 上位机执行响应里 latest_result 是真正的 action artifact；PC 只展示短摘要。
   const latestResult = asRecord(payload?.latest_result);
   const goalRequest = asRecord(latestResult?.goal_request) ?? asRecord(payload?.goal_request);
+  const routePreview = asRecord(goalRequest?.route_preview) ?? asRecord(latestResult?.route_preview) ?? asRecord(payload?.route_preview);
   const cancelResponse = asRecord(latestResult?.cancel_response);
   const baseFeedbackSummary = asRecord(latestResult?.base_feedback_summary) ?? asRecord(payload?.base_feedback_summary);
   const baseCommandSummary = asRecord(latestResult?.base_command_summary) ?? asRecord(payload?.base_command_summary);
@@ -598,6 +599,13 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     goal_x: shortValue(goalRequest?.x ?? goalRequest?.goal_x),
     goal_y: shortValue(goalRequest?.y ?? goalRequest?.goal_y),
     goal_yaw: shortValue(goalRequest?.yaw ?? goalRequest?.goal_yaw),
+    route_preview_point_count: shortValue(routePreview?.point_count ?? goalRequest?.route_preview_point_count, "0"),
+    route_preview_source_point_count: shortValue(routePreview?.source_point_count ?? goalRequest?.route_preview_source_point_count, "0"),
+    route_preview_frame_id: shortValue(routePreview?.frame_id ?? goalRequest?.route_preview_frame_id, "not_loaded"),
+    route_start_x: shortValue(routePreview?.start_x ?? goalRequest?.route_start_x, "not_loaded"),
+    route_start_y: shortValue(routePreview?.start_y ?? goalRequest?.route_start_y, "not_loaded"),
+    route_goal_x: shortValue(routePreview?.goal_x ?? goalRequest?.route_goal_x, "not_loaded"),
+    route_goal_y: shortValue(routePreview?.goal_y ?? goalRequest?.route_goal_y, "not_loaded"),
     result_timeout_s: shortValue(goalRequest?.result_timeout_s),
     cancel_requested: shortValue(payload?.cancel_requested ?? latestResult?.cancel_requested),
     cancel_accepted: shortValue(cancelResponse?.accepted, "false"),
@@ -3515,6 +3523,27 @@ export function createWorkstationApp(): express.Express {
     const goalX = clamp(Number(payload?.goal_x ?? 0.8), -3, 3);
     const goalY = clamp(Number(payload?.goal_y ?? 0), -3, 3);
     const goalYaw = clamp(Number(payload?.goal_yaw ?? 0), -Math.PI, Math.PI);
+    const routePreviewPointCount = Math.round(clamp(Number(payload?.route_preview_point_count ?? 0), 0, 10000));
+    const routePreviewSourcePointCount = Math.round(clamp(Number(payload?.route_preview_source_point_count ?? routePreviewPointCount), 0, 100000));
+    const routePreviewFrameId = shortText(String(payload?.route_preview_frame_id ?? "map"), "map").slice(0, 64);
+    const nullableRouteNumber = (value: unknown): number | null => {
+      // 路线元数据只做证据绑定；非法坐标丢弃为 null，不能影响真正目标点 clamp。
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? clamp(numeric, -1000, 1000) : null;
+    };
+    const routeStartX = nullableRouteNumber(payload?.route_start_x);
+    const routeStartY = nullableRouteNumber(payload?.route_start_y);
+    const routeGoalX = nullableRouteNumber(payload?.route_goal_x);
+    const routeGoalY = nullableRouteNumber(payload?.route_goal_y);
+    const routePreview = {
+      point_count: routePreviewPointCount,
+      source_point_count: routePreviewSourcePointCount,
+      frame_id: routePreviewFrameId,
+      start_x: routeStartX,
+      start_y: routeStartY,
+      goal_x: routeGoalX,
+      goal_y: routeGoalY,
+    };
     const resultTimeoutS = clamp(Number(payload?.result_timeout_s ?? 8), 2, 20);
     const serverTimeoutS = clamp(Number(payload?.server_timeout_s ?? 12), 1, 20);
     // O11 execute helper 默认支持托管 runtime；PC 侧显式写入，避免普通用户先手动启动 Nav2 lifecycle。
@@ -3555,6 +3584,13 @@ export function createWorkstationApp(): express.Express {
         managed_ready_timeout_s: managedReadyTimeoutS,
         confirm_navigation_execution: confirmNavigationExecution,
         base_command_mode: baseCommandMode,
+        route_preview_point_count: routePreviewPointCount,
+        route_preview_source_point_count: routePreviewSourcePointCount,
+        route_preview_frame_id: routePreviewFrameId,
+        route_start_x: routeStartX,
+        route_start_y: routeStartY,
+        route_goal_x: routeGoalX,
+        route_goal_y: routeGoalY,
       },
       goal_execution_key_values: {},
       failure_reason: normalized.ok ? "" : normalized.reason,
@@ -3614,6 +3650,14 @@ export function createWorkstationApp(): express.Express {
           managed_ready_timeout_s: managedReadyTimeoutS,
           confirm_navigation_execution: true,
           base_command_mode: baseCommandMode,
+          route_preview: routePreview,
+          route_preview_point_count: routePreviewPointCount,
+          route_preview_source_point_count: routePreviewSourcePointCount,
+          route_preview_frame_id: routePreviewFrameId,
+          route_start_x: routeStartX,
+          route_start_y: routeStartY,
+          route_goal_x: routeGoalX,
+          route_goal_y: routeGoalY,
         }),
         // O11 会等待 Nav2 lifecycle active 后才发 goal；PC 等待窗口必须大于上位机 helper 的结构化超时。
         signal: AbortSignal.timeout(Math.round((resultTimeoutS + 90) * 1000)),
