@@ -8321,9 +8321,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.radar.driver_diagnostics_status).toBe("serial_open_but_no_bytes");
       expect(summary.readback_summary.radar.driver_diagnostics_next_action_plain).toContain("没有读到任何字节");
       expect(summary.readback_summary.radar.radar_scan_observation_missing_reasons).toBe("scan_once,scan_hz,raw_packet_once");
-      expect(summary.readback_summary.radar.radar_status_plain).toContain("扫描 proof 缺 scan_once、scan_hz、raw_packet_once");
-      expect(summary.readback_summary.radar.radar_next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面。");
-      expect(summary.action_status_cards?.find((card) => card.id === "radar_map_points")?.next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面");
+      expect(summary.readback_summary.radar.radar_status_plain).toContain("扫描材料不完整：没有读到一帧雷达、雷达频率未确认、雷达原始包未确认");
+      expect(summary.readback_summary.radar.radar_status_plain).not.toContain("raw_packet_once");
+      expect(summary.readback_summary.radar.radar_next_action_plain).toBe("先补齐雷达扫描材料：没有读到一帧雷达、雷达频率未确认、雷达原始包未确认；有新扫描后再刷新地图画面。");
+      expect(summary.action_status_cards?.find((card) => card.id === "radar_map_points")?.next_action_plain).toBe("先补齐雷达扫描材料：没有读到一帧雷达、雷达频率未确认、雷达原始包未确认；有新扫描后再刷新地图画面");
       expect(summary.action_status_cards?.find((card) => card.id === "radar_map_points")?.evidence).toMatchObject({
         driver_diagnostics_status: "serial_open_but_no_bytes",
         driver_serial_bytes_read_total: "0",
@@ -8331,7 +8332,7 @@ describe("workstation fail-closed API contracts", () => {
         driver_serial_empty_read_count: "125",
         driver_published_scan_count: "0",
       });
-      expect(summary.goal_checklist_summary?.radar_next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面");
+      expect(summary.goal_checklist_summary?.radar_next_action_plain).toBe("先补齐雷达扫描材料：没有读到一帧雷达、雷达频率未确认、雷达原始包未确认；有新扫描后再刷新地图画面");
       expect(summary.readback_summary.lidar.scan_preview_point_count).toBe("0");
     } finally {
       await robotApi.close();
@@ -11487,7 +11488,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_scan_ready_for_map_overlay).toBe("false");
       expect(body.radar_overlay_ready_for_map).toBe("false");
       expect(body.radar_map_overlay_readiness_status).toBe("blocked_missing_scan_observations");
-      expect(body.radar_map_overlay_next_action_plain).toBe("先修复雷达扫描观测：scan_once、scan_hz、raw_packet_once；有新扫描后再刷新地图画面。");
+      expect(body.radar_map_overlay_next_action_plain).toBe("先补齐雷达扫描材料：没有读到一帧雷达、雷达频率未确认、雷达原始包未确认；有新扫描后再刷新地图画面。");
+      expect(body.radar_map_overlay_next_action_plain).not.toContain("raw_packet_once");
       expect(body.radar_overlay_wysiwyg_next_action_plain).toBe(body.radar_map_overlay_next_action_plain);
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/radar/status"]);

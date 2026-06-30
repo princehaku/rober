@@ -1237,3 +1237,10 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 这类底层字段露给普通用户；原始字段仍保留在 API 和 `data-*` 上，方便脚本定位。
 PC 地图口径保持默认大地图主视图：普通用户优先用本页大图/地图大屏，ROS2 工程调试配套使用 RViz2，
 需要浏览器远程多人观察时再接 Foxglove。
+
+2026-06-30 21:25 CST 起，雷达普通文案继续收敛到用户口径。
+`readback_summary.radar.radar_status_plain`、`radar_next_action_plain`、`radar_map_overlay_next_action_plain`
+以及 `radar_map_points` action card 不再直接显示 `scan_once/scan_hz/raw_packet_once`；
+页面和 summary 会显示“没有读到一帧雷达、雷达频率未确认、雷达原始包未确认”。原始缺失项仍保留在
+`radar_scan_observation_missing_reasons`，便于自动化脚本和工程调试定位。该变化只改只读文案和 API 合同，
+不启动雷达、不刷新地图、不执行 Nav2、不发送任何运动命令。

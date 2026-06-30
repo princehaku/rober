@@ -1282,6 +1282,12 @@ function radarStatusPlainFields(
   | "radar_overlay_wysiwyg_next_action_plain"
 > {
   // radar/status 只证明雷达本体；地图雷达点所见即所得必须以 map preview 同轮贴图为准。
+  const observationLabel = (reason: string): string => ({
+    scan_once: "没有读到一帧雷达",
+    scan_hz: "雷达频率未确认",
+    raw_packet_once: "雷达原始包未确认",
+  }[reason] || reason.replace(/_/g, " "));
+  const observationLabelPlain = (reasons: string[]): string => reasons.map(observationLabel).join("、") || "雷达新扫描未确认";
   const continuous = keyValues.continuous_scan_status || "not_loaded";
   const running = keyValues.lifecycle_running || "not_loaded";
   const lifecycleState = keyValues.lifecycle_state || "not_loaded";
@@ -1317,7 +1323,7 @@ function radarStatusPlainFields(
   const overlayNextActionPlain = overlayReadinessStatus === "scan_ready_refresh_map_preview"
     ? "雷达扫描材料已就绪；刷新地图画面，确认地图上实际显示的雷达点数。"
     : overlayReadinessStatus === "blocked_missing_scan_observations"
-      ? `先修复雷达扫描观测：${missingObservations.join("、")}；有新扫描后再刷新地图画面。`
+      ? `先补齐雷达扫描材料：${observationLabelPlain(missingObservations)}；有新扫描后再刷新地图画面。`
       : radarStopped
         ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
         : "先刷新雷达扫描 proof，确认最新扫描为 fresh 后再刷新地图画面。";

@@ -4670,3 +4670,9 @@ API 侧新增 `live_wysiwyg_diagnostic_plain`、`live_wysiwyg_camera_diagnostic_
 `live_wysiwyg_map_radar_blocked_reasons`。普通文案只显示“读取首帧超时、雷达频率未确认、地图缺雷达点”等中文原因；
 `scan_once/raw_packet_once` 等底层字段只保留给 API/DOM 自动化。地图使用口径保持：本页默认大地图和 `?view=map`
 服务普通用户，RViz2 用于 ROS2 工程调试，Foxglove 用于浏览器远程共享观察。
+
+2026-06-30 21:25 CST 起，雷达状态和地图雷达贴图下一步文案统一中文化。
+当雷达 lifecycle 已运行但扫描材料不足时，普通界面显示“没有读到一帧雷达、雷达频率未确认、雷达原始包未确认”，
+不再把 `scan_once/scan_hz/raw_packet_once` 直接放到用户可见文本里；机器可读字段
+`radar_scan_observation_missing_reasons` 仍保留原值。该口径同时覆盖 summary、`/api/robot-control/radar/status`
+代理和 `radar_map_points` action card，保持“地图雷达点是否显示”仍以同轮地图预览为准。

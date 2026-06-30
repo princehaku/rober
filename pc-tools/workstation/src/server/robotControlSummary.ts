@@ -1824,7 +1824,7 @@ function lidarSummaryFromReadbacks(
   const radarMapOverlayNextActionPlain = radarMapOverlayReadinessStatus === "scan_ready_refresh_map_preview"
     ? "雷达扫描材料已就绪；刷新地图画面，确认地图上实际显示的雷达点数。"
     : radarMapOverlayReadinessStatus === "blocked_missing_scan_observations"
-      ? `先修复雷达扫描观测：${missingObservations.join("、")}；有新扫描后再刷新地图画面。`
+      ? `先补齐雷达扫描材料：${radarObservationLabelPlain(missingObservations)}；有新扫描后再刷新地图画面。`
       : radarStopped
         ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
         : "先刷新雷达扫描 proof，确认最新扫描为 fresh 后再刷新地图画面。";
@@ -1920,6 +1920,20 @@ function radarMissingScanObservations(
   return ["scan_once", "scan_hz", "raw_packet_once"].filter((item) => missing.has(item));
 }
 
+function radarObservationLabel(reason: string): string {
+  // 原始 reason 继续保留给自动化；普通用户文案只说现场该补什么。
+  return ({
+    scan_once: "没有读到一帧雷达",
+    scan_hz: "雷达频率未确认",
+    raw_packet_once: "雷达原始包未确认",
+  } as Record<string, string>)[reason] || reason.replace(/_/g, " ");
+}
+
+function radarObservationLabelPlain(reasons: string[]): string {
+  // 多个缺口用中文顿号连接，避免把 scan_once 这类工程字段露到普通首屏。
+  return reasons.map(radarObservationLabel).join("、") || "雷达新扫描未确认";
+}
+
 function radarSummaryFromReadbacks(
   lidar: RobotControlSummaryResponse["readback_summary"]["lidar"],
   map: RobotControlSummaryResponse["readback_summary"]["map"],
@@ -1944,7 +1958,8 @@ function radarSummaryFromReadbacks(
   const status = radarReady ? "radar_ready" : radarStopped ? "radar_stopped" : lidar.status || "not_loaded";
   const missingObservationText = lidar.radar_scan_observation_missing_reasons || "none";
   const hasMissingObservations = missingObservationText !== "none" && missingObservationText !== "not_loaded";
-  const missingObservationPlain = missingObservationText.split(",").filter(Boolean).join("、");
+  const missingObservations = missingObservationText.split(",").map((item) => item.trim()).filter(Boolean);
+  const missingObservationPlain = radarObservationLabelPlain(missingObservations);
   // ready 但 marker 为 0 时仍要显式写 0 个点，方便脚本和现场人员对照地图画面。
   const radarStatusPlain = overlayVisibleOnMap
     // 地图上已经画出的雷达点必须优先作为普通用户事实；scan proof 缺口保留在拆分诊断字段中。
@@ -1957,7 +1972,7 @@ function radarSummaryFromReadbacks(
       // 雷达停了就不能把来源点当作当前地图 marker；这是本轮 WYSIWYG 的关键边界。
       ? `雷达未运行或扫描已停；地图雷达点当前显示 ${overlayPointCount} 个，旧来源点 ${overlaySourcePointCount} 个只作诊断。`
       : hasMissingObservations
-        ? `雷达已运行但扫描 proof 缺 ${missingObservationPlain}；地图雷达点当前显示 ${overlayPointCount} 个。`
+        ? `雷达已运行但扫描材料不完整：${missingObservationPlain}；地图雷达点当前显示 ${overlayPointCount} 个。`
         : `雷达状态未完全就绪；地图雷达点当前显示 ${overlayPointCount} 个，需确认雷达正在运行且有新扫描。`;
   // 下一步只引导 operator 做显式 start/refresh，不在 summary 构建时替 operator 发命令。
   const radarNextActionPlain = overlayVisibleOnMap
@@ -1968,8 +1983,8 @@ function radarSummaryFromReadbacks(
       : "刷新地图画面，确认地图上实际显示的雷达点数。"
     : radarStopped
       ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
-      : hasMissingObservations
-        ? lidar.radar_map_overlay_next_action_plain || `先修复雷达扫描观测：${missingObservationPlain}；有新扫描后再刷新地图画面。`
+    : hasMissingObservations
+        ? lidar.radar_map_overlay_next_action_plain || `先补齐雷达扫描材料：${missingObservationPlain}；有新扫描后再刷新地图画面。`
         : "先刷新雷达状态，就绪后再刷新地图画面确认雷达点。";
   return {
     status,
