@@ -4654,3 +4654,8 @@ PC 键盘连续手控是否真正完成“发 pulse -> wheel raw L/R 非零 -> s
 用已有 `goal_checklist_summary` 展示主卡点之外仍未完成的缺口和可先执行的动作，并在 DOM 暴露 blocker/ready action id 清单。
 现场状态为 `needs_wheel_rerun` 时，卡片仍把主按钮指向行程复验，但旁路短行会继续显示画面、雷达贴图和建图缺口；
 现场状态为 `needs_wysiwyg` 时，也能看到 Nav2、自由移动、键盘等可先做项。该变化只做普通用户可读收口，不改变任何发车 gate。
+
+2026-06-30 19:02 CST 起，`live_closure_summary` API 与首屏 DOM 对齐输出旁路缺口。
+新增 `side_blocker_ids`、`side_blocker_count`、`ready_action_count`、`side_gap_summary_plain`，表达“当前主卡点以外还缺什么”和
+“当前可先做什么”。PC 页面优先用 API 字段渲染，脚本也能直接读 summary 验收，不需要从页面 DOM 反推；该字段不改变任何安全确认、
+Nav2、键盘、自由移动或建图启动逻辑。

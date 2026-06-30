@@ -1224,3 +1224,8 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 和 `data-ready-action-count`。这样当前主卡点是 wheel raw L/R 复验时，画面所见、雷达贴图、建图启动等旁路缺口仍保持可见；
 当前主卡点是画面时，也能直接看到剩余雷达/Nav2/建图缺口和可先做动作。该短行只读展示已有 goal checklist summary，
 不新增按钮、不自动刷新、不执行 Nav2/free-roam/keyboard/manual/stop 或 `/cmd_vel`。
+
+2026-06-30 19:02 CST 起，`live_closure_summary` API 本体同步输出旁路缺口合同：
+`side_blocker_ids`、`side_blocker_count`、`ready_action_count` 和 `side_gap_summary_plain`。前端 `plain-live-closure-side-gaps`
+优先消费这些 API 字段，再回退到本地 checklist 推导。这样外部只读脚本无需加载页面，也能确认主卡点、旁路 blocker
+和可先做动作是否一致；该 API 字段仍只读，不触发任何控制请求。

@@ -8343,6 +8343,11 @@ function buildLiveClosureSummary(
       sourceCardId: goalSummary.first_incomplete_source_card_id || goalSummary.primary_ready_action_source_card_id,
     };
   })();
+  const sideBlockerItems = goalSummary.blocked_action_items.filter((item) => item.id !== primaryStatusTarget.itemId);
+  const readyActionItems = goalSummary.ready_action_items;
+  const sideBlockerTitles = sideBlockerItems.map((item) => item.title).join("、") || "暂无";
+  const readyActionTitles = readyActionItems.map((item) => item.title).join("、") || "暂无";
+  const sideGapSummaryPlain = `其它缺口：${sideBlockerTitles}；可先做：${readyActionTitles}。`;
   const liveWysiwygRefreshSequence = [
     "/api/robot-control/radar/scan-proof/refresh",
     "/api/robot-control/camera/first-frame/probe",
@@ -8447,6 +8452,10 @@ function buildLiveClosureSummary(
     sends_motion_when_clicked: false,
     blocker_ids: goalSummary.blocked_action_ids,
     ready_action_ids: goalSummary.ready_action_ids,
+    side_blocker_ids: sideBlockerItems.map((item) => item.id),
+    side_blocker_count: sideBlockerItems.length,
+    ready_action_count: readyActionItems.length,
+    side_gap_summary_plain: sideGapSummaryPlain,
     primary_status_item_id: primaryStatusTarget.itemId,
     primary_status_source_card_id: primaryStatusTarget.sourceCardId,
     next_action_item_id: primaryStatusTarget.itemId,

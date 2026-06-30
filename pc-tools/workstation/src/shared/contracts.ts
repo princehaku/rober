@@ -2798,6 +2798,10 @@ export interface RobotControlLiveClosureSummary {
   sends_motion_when_clicked: false;
   blocker_ids: RobotControlGoalChecklistItemId[];
   ready_action_ids: RobotControlGoalChecklistItemId[];
+  side_blocker_ids: RobotControlGoalChecklistItemId[];
+  side_blocker_count: number;
+  ready_action_count: number;
+  side_gap_summary_plain: string;
   primary_status_item_id: RobotControlGoalChecklistItemId | "";
   primary_status_source_card_id: RobotControlActionStatusCardId | "";
   next_action_item_id: RobotControlGoalChecklistItemId | "";

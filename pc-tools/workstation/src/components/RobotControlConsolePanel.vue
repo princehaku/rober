@@ -3821,8 +3821,13 @@ const plainLiveClosureTargetSourceCardId = computed(() => (
 ));
 const plainLiveClosureBlockerIds = computed(() => plainLiveClosureSummary.value?.blocker_ids ?? []);
 const plainLiveClosureReadyActionIds = computed(() => plainLiveClosureSummary.value?.ready_action_ids ?? []);
+const plainLiveClosureApiSideBlockerIds = computed(() => plainLiveClosureSummary.value?.side_blocker_ids ?? []);
 const plainLiveClosureSideBlockerItems = computed(() => {
   // 主卡点之外的缺口必须继续可见；否则 wheel rerun 会把画面/雷达问题盖住。
+  if (plainLiveClosureApiSideBlockerIds.value.length) {
+    const sideIds = new Set(plainLiveClosureApiSideBlockerIds.value);
+    return plainGoalChecklist.value.filter((item) => sideIds.has(item.id));
+  }
   const primaryId = plainLiveClosureSummary.value?.primary_status_item_id || plainLiveClosureSummary.value?.next_action_item_id || "";
   const blockerIds = new Set(plainLiveClosureBlockerIds.value.filter((id) => id !== primaryId));
   return plainGoalChecklist.value.filter((item) => blockerIds.has(item.id));
@@ -3838,6 +3843,9 @@ const plainLiveClosureBlockerIdsText = computed(() => plainLiveClosureBlockerIds
 const plainLiveClosureReadyActionIdsText = computed(() => plainLiveClosureReadyActionIds.value.join(",") || "none");
 const plainLiveClosureSideBlockerIdsText = computed(() => plainLiveClosureSideBlockerItems.value.map((item) => item.id).join(",") || "none");
 const plainLiveClosureSideGapText = computed(() => {
+  if (plainLiveClosureSummary.value?.side_gap_summary_plain) {
+    return plainLiveClosureSummary.value.side_gap_summary_plain;
+  }
   const sideBlockers = plainLiveClosureSideBlockerItems.value.map((item) => item.title).join("、") || "暂无";
   const readyActions = plainLiveClosureReadyActionItems.value.map((item) => item.title).join("、") || "暂无";
   return `其它缺口：${sideBlockers}；可先做：${readyActions}。`;

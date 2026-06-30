@@ -115,6 +115,22 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_blocked_by_radar_wysiwyg).toBe(false);
     expect(summary.live_closure_summary?.wheel_rerun_command_mode).toBe("ros");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.live_closure_summary?.primary_status_item_id).toBe("nav2_route_execution");
+    expect(summary.live_closure_summary?.side_blocker_ids).toEqual([
+      "camera_wysiwyg",
+      "radar_map_points_wysiwyg",
+      "mapping_start",
+    ]);
+    expect(summary.live_closure_summary?.side_blocker_count).toBe(3);
+    expect(summary.live_closure_summary?.ready_action_ids).toEqual([
+      "free_move",
+      "keyboard_continuous_control",
+      "nav2_route_execution",
+    ]);
+    expect(summary.live_closure_summary?.ready_action_count).toBe(3);
+    expect(summary.live_closure_summary?.side_gap_summary_plain).toBe(
+      "其它缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图；可先做：自由自助移动、键盘连续手控、完整行程执行。",
+    );
     expect(summary.live_closure_summary?.live_wysiwyg_ready).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
     expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(true);
