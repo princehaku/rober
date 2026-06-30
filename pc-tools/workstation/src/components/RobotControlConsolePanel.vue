@@ -4037,6 +4037,40 @@ const plainLiveMotionRunbookPreflightPlain = computed(() => {
   }
   return `发车前：按当前动作卡片提示确认安全（${safetyText}）。`;
 });
+const plainLiveMotionExecutionStrip = computed(() => {
+  // 执行条只把 runbook 压成一个普通用户入口；按钮仍只聚焦，不自动勾选或发车。
+  const rows = plainLiveMotionRunbookRows.value;
+  const readyRows = rows.filter((item) => item.ready && !item.completed);
+  const completedRows = rows.filter((item) => item.completed);
+  const blockedRows = rows.filter((item) => !item.ready && !item.completed);
+  const primary = rows.find((item) => item.primary) ?? readyRows[0] ?? blockedRows[0] ?? rows[0];
+  const readyLabels = readyRows.map((item) => item.label);
+  const blockedLabels = blockedRows.map((item) => item.label);
+  const state = readyRows.length > 0 ? "可现场验证" : completedRows.length === rows.length ? "已完成" : "先补条件";
+  const nextAction = primary
+    ? `${primary.buttonLabel}；${plainLiveMotionRunbookPreflightPlain.value}`
+    : plainLiveMotionRunbookPreflightPlain.value;
+  const text = readyRows.length > 0
+    ? `下一步：${readyLabels.join("、")} 已可现场验证；${plainLiveMotionRunbookPreflightPlain.value}`
+    : `下一步：先补 ${blockedLabels.join("、") || "动作条件"}；${plainLiveMotionRunbookPreflightPlain.value}`;
+  return {
+    state,
+    text,
+    nextAction,
+    primaryActionId: primary?.id ?? "none",
+    primarySourceCardId: primary?.sourceCardId ?? "",
+    primaryFocusKind: primary?.focusKind ?? "not_loaded",
+    primaryButtonLabel: primary?.buttonLabel ?? "去处理动作",
+    readyActionIds: readyRows.map((item) => item.id),
+    blockedActionIds: blockedRows.map((item) => item.id),
+    completedActionIds: completedRows.map((item) => item.id),
+    readyCount: readyRows.length,
+    blockedCount: blockedRows.length,
+    completedCount: completedRows.length,
+    safetyConfirmed: plainManualSafetyConfirmed.value,
+    minimalPrecheckSafetyOnly: Boolean(plainLiveClosureSummary.value?.live_motion_runbook_minimal_precheck_safety_only),
+  };
+});
 
 async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotionRunbookItem["id"]): Promise<void> {
   // 动作清单的验收读回只刷新固定验收端点；不会执行路线、手控、自由移动、建图或 stop。
@@ -16709,6 +16743,52 @@ onBeforeUnmount(() => {
           >
             {{ plainLiveMotionRunbookPreflightPlain }}
           </p>
+          <div
+            class="panel-note plain-live-motion-execution-strip"
+            data-testid="plain-live-motion-execution-strip"
+            :data-state="plainLiveMotionExecutionStrip.state"
+            :data-primary-action-id="plainLiveMotionExecutionStrip.primaryActionId"
+            :data-primary-source-card-id="plainLiveMotionExecutionStrip.primarySourceCardId"
+            :data-primary-focus-kind="plainLiveMotionExecutionStrip.primaryFocusKind"
+            :data-ready-action-ids="plainLiveMotionExecutionStrip.readyActionIds.join(',') || 'none'"
+            :data-blocked-action-ids="plainLiveMotionExecutionStrip.blockedActionIds.join(',') || 'none'"
+            :data-completed-action-ids="plainLiveMotionExecutionStrip.completedActionIds.join(',') || 'none'"
+            :data-ready-count="String(plainLiveMotionExecutionStrip.readyCount)"
+            :data-blocked-count="String(plainLiveMotionExecutionStrip.blockedCount)"
+            :data-completed-count="String(plainLiveMotionExecutionStrip.completedCount)"
+            :data-safety-confirmed="String(plainLiveMotionExecutionStrip.safetyConfirmed)"
+            :data-minimal-precheck-safety-only="String(plainLiveMotionExecutionStrip.minimalPrecheckSafetyOnly)"
+            :data-next-action="plainLiveMotionExecutionStrip.nextAction"
+            data-focus-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+          >
+            <span class="plain-progress-label">现场执行</span>
+            <span class="status-chip" :data-state="plainLiveMotionExecutionStrip.state">{{ plainLiveMotionExecutionStrip.state }}</span>
+            <span class="muted">{{ plainActionCardUserText(plainLiveMotionExecutionStrip.text) }}</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-live-motion-execution-go"
+              :disabled="!plainLiveMotionExecutionStrip.primarySourceCardId"
+              :data-focus-target-source-card-id="plainLiveMotionExecutionStrip.primarySourceCardId"
+              :data-focus-target-kind="plainLiveMotionExecutionStrip.primaryFocusKind"
+              data-focus-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              @click="plainLiveMotionExecutionStrip.primarySourceCardId && focusPlainActionCardTarget(plainLiveMotionExecutionStrip.primarySourceCardId)"
+            >
+              {{ plainLiveMotionExecutionStrip.primaryButtonLabel }}
+            </button>
+          </div>
           <div
             v-for="item in plainLiveMotionRunbookRows"
             :key="item.id"
