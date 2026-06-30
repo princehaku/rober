@@ -8726,12 +8726,17 @@ function buildLiveClosureSummary(
           : "needs_probe";
   const cameraRecoveryHasSpecificSourceAction = Boolean(cameraSourceDiagnosisNextAction)
     && !/打开页面会自动接入共享 MJPEG|只读检查复测首帧/u.test(cameraSourceDiagnosisNextAction);
+  const cameraRecoverySpecificSourceAction = cameraSourceDiagnosisNotExclusive
+    ? cameraSourceDiagnosisNextAction.replace(/；共享预览不是页面独占$/u, "")
+    : cameraSourceDiagnosisNextAction;
   const cameraRecoveryNextActionPlain = cameraCurrentVisible
     ? "相机画面已显示；继续监看共享实时预览。"
-    : cameraSourceDiagnosisNotExclusive
-      ? "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。"
-      : cameraRecoveryHasSpecificSourceAction
-        ? `先复测相机首帧并读取共享预览状态；若仍无画面，按诊断处理：${cameraSourceDiagnosisNextAction}。`
+    : cameraRecoveryHasSpecificSourceAction
+      ? cameraSourceDiagnosisNotExclusive
+        ? `相机不是页面独占；诊断显示 ${cameraSourceDiagnosisLabel(cameraSourceDiagnosisStatus)}；先复测相机首帧并读取共享预览状态。若仍无画面，${cameraRecoverySpecificSourceAction}。`
+        : `先复测相机首帧并读取共享预览状态；若仍无画面，按诊断处理：${cameraRecoverySpecificSourceAction}。`
+      : cameraSourceDiagnosisNotExclusive
+        ? "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。"
         : "先复测相机首帧并读取共享预览状态；拿到首帧后再刷新当前所见和建图条件。";
   const cameraRecoverySequence = [
     "/api/robot-control/camera/first-frame/probe",
