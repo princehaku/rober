@@ -9968,6 +9968,17 @@ describe("workstation fail-closed API contracts", () => {
         blocked_reasons: string[];
         last_result_evidence_ref: string;
         latest_readback_key_values: Record<string, string>;
+        latest_proof_status: string;
+        scan_once_observed: string;
+        scan_hz_observed: string;
+        raw_packet_once_observed: string;
+        tf_observed: string;
+        continuous_scan_status: string;
+        lifecycle_running: string;
+        lifecycle_state: string;
+        continuous_window_observed: string;
+        continuity_window_status: string;
+        latest_scan_proof_fresh: string;
         hard_dangerous_true_fields: string[];
         non_motion_evidence_actions_observed: string[];
       };
@@ -9989,6 +10000,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(radarBody.latest_readback_key_values.continuous_window_observed).toBe("true");
       expect(radarBody.latest_readback_key_values.continuity_window_status).toBe("fresh_window_observed");
       expect(radarBody.latest_readback_key_values.latest_scan_proof_fresh).toBe("true");
+      expect(radarBody.scan_once_observed).toBe("true");
+      expect(radarBody.scan_hz_observed).toBe("true");
+      expect(radarBody.raw_packet_once_observed).toBe("true");
+      expect(radarBody.tf_observed).toBe("true");
+      expect(radarBody.latest_proof_status).toBe("scan_once_hz_raw_packet_tf_observed");
+      expect(radarBody.continuous_scan_status).toBe("latest_proof_fresh_while_lifecycle_running");
+      expect(radarBody.lifecycle_running).toBe("true");
+      expect(radarBody.lifecycle_state).toBe("running");
+      expect(radarBody.continuous_window_observed).toBe("true");
+      expect(radarBody.continuity_window_status).toBe("fresh_window_observed");
+      expect(radarBody.latest_scan_proof_fresh).toBe("true");
       expect(radarBody.latest_readback_key_values.blocked_reasons).toBeUndefined();
       expect(radarBody.latest_readback_key_values.continuity_blocked_reasons).toBeUndefined();
       expect(upstream.receivedBodies["/api/radar/scan-proof/refresh"]?.[0]).toEqual({

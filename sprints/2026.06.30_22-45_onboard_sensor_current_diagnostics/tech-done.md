@@ -19,6 +19,7 @@ sprint_type: micro
 - 2026-06-30 21:15 CST 修正 8088 相机服务共享占用残留：`local_webrtc_camera_smoke.py` 会在 `/health` 清理没有 active peer 且 0 帧的 stale shared capture，并在最近 `first_frame_total_timeout` 后对 MJPEG 自动重试加短冷却，避免浏览器自动重试反复占住 `/dev/video1`。新增单测覆盖 stale capture 释放和首帧失败冷却。
 - 更新 `docs/product/pc_tools_workstation.md`，明确“地图太小”的现场用法：普通用户打开 PC `7001/?view=map` 得到真正只看地图的大屏；ROS2 配套是 RViz2 本地工程观察 `/map`、`/scan`、TF、Nav2 path、AMCL 和 costmap，Foxglove 是 bridge 后的浏览器远程观察，不替代普通用户 PC 地图。
 - 2026-06-30 21:55 CST 修正 PC 地图雷达 WYSIWYG stale 判定：`robotControlSummary.ts` 的 `map/preview` 代理和 `summary.readback_summary.map` 都改为按 scan proof 点位自身的新鲜度判定；当 `latest_scan_proof_fresh=false` 或 continuity 状态 stale 时，即使旧 scan proof 仍有点数组，也返回 `radar_overlay_status=not_current`、当前点数 `0`、旧来源点只作诊断。新增 `robotControlSummary.test.ts` 回归覆盖该形态，避免 free-roam runtime scan 新鲜度错误覆盖地图 overlay 的 proof 新鲜度。
+- 2026-06-30 22:10 CST 提升 PC proof refresh 易用性：`RobotControlProofRefreshProxyResponse` 增加固定顶层只读 alias，`buildProofRefreshProxy` 会把 `latest_readback_key_values` 中的 `scan_once_observed`、`scan_hz_observed`、`raw_packet_once_observed`、`tf_observed`、`latest_scan_proof_fresh`、lifecycle/continuity、map/Nav2 常用字段同步到顶层。`catalog.test.ts` 覆盖雷达刷新回包顶层 alias，方便现场脚本直接读结果，不需要翻深层 JSON。
 
 ## 验证结果
 
@@ -33,6 +34,7 @@ sprint_type: micro
 - `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py`：通过。
 - `npm test -- --run App.test.ts`（`pc-tools/workstation`）：通过，1 file / 225 tests；覆盖 `?view=map` DOM 合同、1600% 直达地图、RViz2/Foxglove 配套说明和不触发运动接口。
 - `npm test -- --run robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，2 files / 229 tests；覆盖 scan proof stale 时地图雷达点不贴到当前地图、summary 不误报 `radar_map_points_visible=true`，以及 PC 地图大屏合同。
+- `npm test -- --run catalog.test.ts robotControlSummary.test.ts App.test.ts`（`pc-tools/workstation`）：通过，3 files / 403 tests；覆盖雷达 proof refresh 顶层 alias、地图雷达 stale 口径和 PC 首屏合同。
 - `npm run build`（`pc-tools/workstation`）：通过；Vite 仍提示单 chunk 超 500 kB 的既有体积 warning。
 - `git diff --check`：通过。
 - 上车端 `python3 -m py_compile /root/rober/onboard/scripts/local_webrtc_camera_smoke.py /root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py`、`bash -n /root/rober/onboard/scripts/o1_lidar_lifecycle.sh`：通过；`colcon build --symlink-install --packages-select ros2_trashbot_hardware`：通过，1 package finished。
@@ -50,6 +52,7 @@ sprint_type: micro
 - 2026-06-30 21:55 CST 重启 PC Node 到新代码，确认 `pc-tools workstation API listening on http://0.0.0.0:7001`，`lsof` 显示 `TCP *:7001 (LISTEN)`。
 - PC 7001 真实只读复验：`GET /api/robot-control/map/preview` 返回 `proxy_status=preview_forwarded`、`radar_overlay_status=not_current`、`radar_overlay_point_count=0`、`radar_overlay_source_point_count=81`、`radar_overlay.blocked_reasons=["runtime_scan_stale_for_map_radar_overlay"]`、`radar_overlay_next_action=refresh_radar_scan_for_map_overlay`。
 - PC 7001 summary 真实只读复验：`live_status=needs_wheel_rerun`、`radar_map_points_visible=false`、`live_wysiwyg_missing_surface_ids=["camera","radar_map_points"]`、`map_radar_overlay_status=not_current`、`map_radar_overlay_point_count=0`、`radar_latest_scan_proof_fresh=false`、`radar_continuous_scan_status=latest_proof_stale_while_lifecycle_running`。
+- 2026-06-30 22:10 CST 通过 PC 固定 no-motion refresh 重刷雷达 proof：`POST /api/robot-control/radar/scan-proof/refresh` 返回 `proxy_status=refresh_forwarded`、`last_result_status=refreshed`、顶层 `scan_once_observed=true`、`scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`、`latest_scan_proof_fresh=true`、`blocked_reasons=[]`。随后 `GET /api/robot-control/summary` 返回 `live_wysiwyg_missing_surface_ids=["camera"]`、`radar_map_points_visible=true`、`map_radar_overlay_status=loaded`、`map_radar_overlay_point_count=72`、`radar_fresh=true`。该验证只调用 proof refresh/status/map/summary，不发送任何 live 运动/control POST。
 
 ## 剩余风险
 

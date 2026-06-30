@@ -4439,6 +4439,35 @@ function failedRefreshResponse(
   };
 }
 
+function proofRefreshTopLevelAliases(readbackKeyValues: Record<string, string>): Partial<RobotControlProofRefreshProxyResponse> {
+  // 顶层 alias 只复制固定 key_fields 的只读摘要，方便现场脚本直接读取，不扩大代理可读/可写范围。
+  const aliasKeys = [
+    "latest_proof_status",
+    "scan_once_observed",
+    "scan_hz_observed",
+    "raw_packet_once_observed",
+    "tf_observed",
+    "continuous_scan_status",
+    "continuous_window_observed",
+    "continuity_window_status",
+    "lifecycle_running",
+    "lifecycle_state",
+    "latest_scan_proof_fresh",
+    "map_once_observed",
+    "path_generated",
+    "path_generation_succeeded",
+    "path_point_count",
+  ] as const;
+  const aliases: Partial<RobotControlProofRefreshProxyResponse> = {};
+  for (const key of aliasKeys) {
+    const value = readbackKeyValues[key];
+    if (value !== undefined && value !== "") {
+      aliases[key] = value;
+    }
+  }
+  return aliases;
+}
+
 async function nav2LatestReadbackAfterPostFailure(
   baseUrl: string,
   normalizedBaseUrl: URL,
@@ -4492,6 +4521,7 @@ async function nav2LatestReadbackAfterPostFailure(
     });
   }
 
+  const latestReadbackKeyValues = compactKeyValues(latestPayload, config.key_fields);
   return failedRefreshResponse(baseUrl, normalizedBaseUrl, postFailureReason, config, observedAt, {
     last_result_status: asString(
       findFirstKey(latestPayload, ["status", "latest_proof_status", "latest_result_status", "refresh_status", "result_status"]),
@@ -4499,7 +4529,8 @@ async function nav2LatestReadbackAfterPostFailure(
     ),
     last_result_schema: asString(latestPayload.schema, "schema_missing"),
     last_result_evidence_ref: asString(findFirstKey(latestPayload, ["evidence_ref", "latest_evidence_ref", "result_evidence_ref"]), "not_loaded"),
-    latest_readback_key_values: compactKeyValues(latestPayload, config.key_fields),
+    latest_readback_key_values: latestReadbackKeyValues,
+    ...proofRefreshTopLevelAliases(latestReadbackKeyValues),
     blocked_reasons: [postFailureReason, "post_timeout_latest_readback_loaded"],
   });
 }
@@ -4604,6 +4635,7 @@ async function buildProofRefreshProxy(
   ];
   const refreshSuccessful = response.ok && hardDangerous.length === 0;
   const readbackPayload = config.kind === "radar_scan_proof_refresh" ? radarScanProofReadbackPayload(payload) : payload;
+  const latestReadbackKeyValues = compactKeyValues(readbackPayload, config.key_fields);
 
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
@@ -4619,7 +4651,8 @@ async function buildProofRefreshProxy(
     last_result_schema: lastResultSchema,
     last_result_evidence_ref: lastResultEvidenceRef,
     last_refreshed_at_ms: observedAt,
-    latest_readback_key_values: compactKeyValues(readbackPayload, config.key_fields),
+    latest_readback_key_values: latestReadbackKeyValues,
+    ...proofRefreshTopLevelAliases(latestReadbackKeyValues),
     failure_reason:
       hardDangerous.length > 0
         ? `hard_dangerous_true_field:${hardDangerous[0]}`
