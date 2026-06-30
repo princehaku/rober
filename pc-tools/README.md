@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-06-30 08:54 CST 起，普通首屏 `勾确认后可做` 区新增 `plain-keyboard-hold-gate` 键盘入口仪表。它把安全确认、启用键盘是否发车、按住是否连续发送低速 pulse、当前/最佳连续 pulse、同一次按住窗口、松开后 stop 收口和固定 manual/stop endpoint 合成一行；DOM 明确 `data-arm-sends-motion=false`、`data-requires-hold-to-move=true`、`data-sends-motion-while-held`、`data-best-continuous-pulse-count`、`data-stop-required-after-hold=true`、`data-sends-motion-when-clicked=false`。这样普通用户能在首屏直接看出：点击启用不发车，只有按住方向键/WASD 才连续移动，松开/失焦会停。
+
 2026-06-30 08:46 CST 起，普通首屏 `勾确认后可做` 区新增 `plain-mapping-start-gate` 建图入口仪表。它把安全确认、画面首帧、雷达新鲜、建图记录是否可启动、自由移动主按钮是否会先建图再自由移动合成一行，并暴露 `data-camera-ready-for-mapping`、`data-radar-ready-for-mapping`、`data-mapping-start-ready`、`data-primary-action-kind`、`data-primary-action-requests-mapping` 和固定建图/自由移动/地图预览 endpoint。该仪表固定 `data-sends-motion-when-clicked=false`，只把“雷达和摄像头 ready 后可以建图”的条件前置到首屏，不自动启动建图或自由移动。
 
 2026-06-30 08:39 CST 起，普通首屏 `勾确认后可做` 区新增顶层 `plain-unified-safety-gate` / `plain-unified-safety-confirm`。它直接绑定全页面同一个安全确认：勾选后同步行程、键盘、自由移动和高级区确认框；DOM 明确 `data-minimal-precheck-safety-only=true`、`data-camera-required-for-motion=false`、`data-radar-required-for-motion=false`、`data-operator-report-required=false`、`data-sends-motion-when-clicked=false`。因此普通用户不需要再先找行程卡或自由移动卡，首屏勾一次即可放开后续显式动作按钮；勾选本身不执行 Nav2、不启用键盘、不启动自由移动、不发送 manual、delivery、stop 或 `/cmd_vel`。

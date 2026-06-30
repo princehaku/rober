@@ -5591,6 +5591,26 @@ type PlainKeyboardDirectionButtonEvidence = {
   sameHoldWindowRequired: boolean;
   stopRequiredAfterHold: boolean;
 };
+type PlainKeyboardHoldGateGauge = {
+  state: string;
+  text: string;
+  nextAction: string;
+  safetyConfirmed: boolean;
+  mainActionKind: string;
+  armSendsMotion: boolean;
+  sendsMotionWhileHeld: boolean;
+  requiresHoldToMove: boolean;
+  currentHoldPulseCount: number;
+  bestContinuousPulseCount: number;
+  verifiedMinForwardedPulses: number;
+  pulseIntervalMs: number;
+  pulseDurationMs: number;
+  sameHoldWindowRequired: boolean;
+  stopRequiredAfterHold: boolean;
+  stopSettledAfterPulse: boolean;
+  fixedManualEndpoint: string;
+  fixedStopEndpoint: string;
+};
 const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButtonEvidence>(() => ({
   // canPressKeyboardDirection 已包含启用状态、后端键盘合同和 stop 失败 fail-closed。
   sendsMotionWhileHeld: canPressKeyboardDirection.value,
@@ -5606,6 +5626,72 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   sameHoldWindowRequired: true,
   stopRequiredAfterHold: true,
 }));
+const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
+  // 键盘入口仪表把“点击启用”和“按住才动”拆开，避免把启用键盘误读成发车。
+  const evidence = plainKeyboardDirectionButtonEvidence.value;
+  let state = "待连接";
+  if (robotApiBaseUrl.value.trim() && !plainManualSafetyConfirmed.value) {
+    state = "待安全确认";
+  } else if (keyboardStopFailedAfterPulse.value) {
+    state = "停止失败";
+  } else if (keyboardStopSettledAfterPulse.value) {
+    state = "已验证";
+  } else if (keyboardHeldDirection.value) {
+    state = "手控中";
+  } else if (canUseKeyboardControl.value) {
+    state = "可启用";
+  } else if (robotApiBaseUrl.value.trim()) {
+    state = "待入口";
+  }
+  const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾" : "安全确认未勾";
+  const armText = "点击启用不发车";
+  const holdText = evidence.sendsMotionWhileHeld ? "按住会连续低速脉冲" : "按住前不发车";
+  const pulseText = evidence.bestContinuousPulseCount >= evidence.verifiedMinForwardedPulses
+    ? `已连续 ${evidence.bestContinuousPulseCount}/${evidence.verifiedMinForwardedPulses} 次`
+    : `最佳连续 ${evidence.bestContinuousPulseCount}/${evidence.verifiedMinForwardedPulses} 次`;
+  const stopText = keyboardStopSettledAfterPulse.value ? "停止已收口" : "松开/失焦会停";
+  const nextAction = (() => {
+    if (!robotApiBaseUrl.value.trim()) {
+      return "连接默认小车";
+    }
+    if (!plainManualSafetyConfirmed.value) {
+      return "勾选现场安全确认";
+    }
+    if (keyboardStopFailedAfterPulse.value) {
+      return "先点停止并现场复核";
+    }
+    if (keyboardHeldDirection.value) {
+      return evidence.bestContinuousPulseCount >= evidence.verifiedMinForwardedPulses ? "松开按键完成停止收口" : "继续按住直到连续脉冲达标";
+    }
+    if (keyboardStopSettledAfterPulse.value) {
+      return "键盘连续手控已验证，可继续按住方向键移动";
+    }
+    if (canUseKeyboardControl.value) {
+      return keyboardControlArmed.value ? "按住方向键或 W/A/S/D 才会移动" : "点击启用键盘；启用本身不发车";
+    }
+    return "刷新键盘入口";
+  })();
+  return {
+    state,
+    text: `键盘入口：${safetyText}；${armText}；${holdText}；${pulseText}；${stopText}。下一步：${nextAction}。`,
+    nextAction,
+    safetyConfirmed: plainManualSafetyConfirmed.value,
+    mainActionKind: plainKeyboardMainActionKind.value,
+    armSendsMotion: false,
+    sendsMotionWhileHeld: evidence.sendsMotionWhileHeld,
+    requiresHoldToMove: evidence.requiresHoldToMove,
+    currentHoldPulseCount: evidence.currentHoldPulseCount,
+    bestContinuousPulseCount: evidence.bestContinuousPulseCount,
+    verifiedMinForwardedPulses: evidence.verifiedMinForwardedPulses,
+    pulseIntervalMs: evidence.pulseIntervalMs,
+    pulseDurationMs: evidence.pulseDurationMs,
+    sameHoldWindowRequired: evidence.sameHoldWindowRequired,
+    stopRequiredAfterHold: evidence.stopRequiredAfterHold,
+    stopSettledAfterPulse: keyboardStopSettledAfterPulse.value,
+    fixedManualEndpoint: evidence.fixedManualEndpoint,
+    fixedStopEndpoint: evidence.fixedStopEndpoint,
+  };
+});
 const mapSavedThisSession = computed(() => (
   mapLifecycleResult.value?.action === "save"
   && mapLifecycleResult.value.proxy_status === "lifecycle_forwarded"
@@ -14910,6 +14996,30 @@ onBeforeUnmount(() => {
           data-testid="plain-motion-readiness-gauge"
         >
           {{ plainMotionReadinessGauge.text }}
+        </p>
+        <p
+          class="plain-keyboard-hold-gate"
+          data-testid="plain-keyboard-hold-gate"
+          :data-state="plainKeyboardHoldGateGauge.state"
+          :data-safety-confirmed="String(plainKeyboardHoldGateGauge.safetyConfirmed)"
+          :data-main-action-kind="plainKeyboardHoldGateGauge.mainActionKind"
+          :data-arm-sends-motion="String(plainKeyboardHoldGateGauge.armSendsMotion)"
+          :data-sends-motion-while-held="String(plainKeyboardHoldGateGauge.sendsMotionWhileHeld)"
+          :data-requires-hold-to-move="String(plainKeyboardHoldGateGauge.requiresHoldToMove)"
+          :data-current-hold-pulse-count="String(plainKeyboardHoldGateGauge.currentHoldPulseCount)"
+          :data-best-continuous-pulse-count="String(plainKeyboardHoldGateGauge.bestContinuousPulseCount)"
+          :data-verified-min-forwarded-pulses="String(plainKeyboardHoldGateGauge.verifiedMinForwardedPulses)"
+          :data-pulse-interval-ms="String(plainKeyboardHoldGateGauge.pulseIntervalMs)"
+          :data-pulse-duration-ms="String(plainKeyboardHoldGateGauge.pulseDurationMs)"
+          :data-same-hold-window-required="String(plainKeyboardHoldGateGauge.sameHoldWindowRequired)"
+          :data-stop-required-after-hold="String(plainKeyboardHoldGateGauge.stopRequiredAfterHold)"
+          :data-stop-settled-after-pulse="String(plainKeyboardHoldGateGauge.stopSettledAfterPulse)"
+          :data-next-action="plainKeyboardHoldGateGauge.nextAction"
+          :data-fixed-keyboard-manual-endpoint="plainKeyboardHoldGateGauge.fixedManualEndpoint"
+          :data-fixed-keyboard-stop-endpoint="plainKeyboardHoldGateGauge.fixedStopEndpoint"
+          data-sends-motion-when-clicked="false"
+        >
+          {{ plainKeyboardHoldGateGauge.text }}
         </p>
         <p
           class="plain-mapping-start-gate"

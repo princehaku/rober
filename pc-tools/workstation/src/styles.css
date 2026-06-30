@@ -675,6 +675,37 @@ h3 {
   background: #f3fbf6;
 }
 
+.plain-keyboard-hold-gate {
+  /* 键盘仪表强调“启用不发车，按住才动，松开要停”。 */
+  border: 1px solid #b8c7d6;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.plain-keyboard-hold-gate[data-state="已验证"],
+.plain-keyboard-hold-gate[data-state="手控中"],
+.plain-keyboard-hold-gate[data-state="可启用"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-keyboard-hold-gate[data-state="待安全确认"],
+.plain-keyboard-hold-gate[data-state="待入口"] {
+  border-left-color: #9a6700;
+}
+
+.plain-keyboard-hold-gate[data-state="停止失败"] {
+  border-left-color: #cf222e;
+  background: #fff5f5;
+}
+
+.plain-keyboard-hold-gate[data-state="待连接"] {
+  border-left-color: #8c959f;
+}
+
 .plain-mapping-start-gate {
   /* 建图入口仪表把“相机+雷达 ready 才建图”和“可先移动”分开说明。 */
   border: 1px solid #b8c7d6;
