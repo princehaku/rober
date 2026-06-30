@@ -2711,6 +2711,15 @@ export interface RobotControlLiveClosureSummary {
   camera_current_visible: boolean;
   map_current_visible: boolean;
   radar_map_points_visible: boolean;
+  live_wysiwyg_ready: boolean;
+  live_wysiwyg_missing_surface_ids: string[];
+  live_wysiwyg_needs_refresh: boolean;
+  live_wysiwyg_readback_gap_surface_ids: string[];
+  live_wysiwyg_primary_readback_gap_surface_id: string;
+  fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh";
+  fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
+  fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview";
+  fixed_live_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status";
   free_move_start_ready: boolean;
   free_move_minimal_precheck_safety_only: boolean;
   free_move_safety_confirm_required: boolean;

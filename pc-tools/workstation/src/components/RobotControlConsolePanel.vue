@@ -3749,6 +3749,12 @@ const plainLiveClosureWysiwygMissingSurfaceIds = computed(() => {
   if (!summary) {
     return "none";
   }
+  if (summary.live_wysiwyg_missing_surface_ids.length > 0) {
+    return summary.live_wysiwyg_missing_surface_ids.join(",");
+  }
+  if (summary.live_wysiwyg_ready) {
+    return "none";
+  }
   const missing: string[] = [];
   if (!summary.camera_current_visible) {
     missing.push("camera");
@@ -3761,12 +3767,18 @@ const plainLiveClosureWysiwygMissingSurfaceIds = computed(() => {
   }
   return missing.length ? missing.join(",") : "none";
 });
-const plainLiveClosureWysiwygReady = computed(() => plainLiveClosureWysiwygMissingSurfaceIds.value === "none");
-const plainLiveClosureNeedsWysiwygRefresh = computed(() => plainLiveClosureSummary.value?.status === "needs_wysiwyg");
+const plainLiveClosureWysiwygReady = computed(() => plainLiveClosureSummary.value?.live_wysiwyg_ready ?? plainLiveClosureWysiwygMissingSurfaceIds.value === "none");
+const plainLiveClosureNeedsWysiwygRefresh = computed(() => plainLiveClosureSummary.value?.live_wysiwyg_needs_refresh ?? plainLiveClosureSummary.value?.status === "needs_wysiwyg");
 const plainLiveClosureWysiwygReadbackGapSurfaceIds = computed(() => {
   // 缺失 surface 还要区分“只是没显示”和“上车读数没回来”，现场排障时这两个下一步不同。
   const summary = plainLiveClosureSummary.value;
   const readback = robotSummary.value?.readback_summary;
+  if (summary?.live_wysiwyg_readback_gap_surface_ids.length) {
+    return summary.live_wysiwyg_readback_gap_surface_ids.join(",");
+  }
+  if (summary?.live_wysiwyg_readback_gap_surface_ids.length === 0 && summary.live_wysiwyg_primary_readback_gap_surface_id === "none") {
+    return "none";
+  }
   if (!summary || !readback) {
     return "none";
   }
@@ -3785,7 +3797,9 @@ const plainLiveClosureWysiwygReadbackGapSurfaceIds = computed(() => {
   return gaps.length ? gaps.join(",") : "none";
 });
 const plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId = computed(() => (
-  plainLiveClosureWysiwygReadbackGapSurfaceIds.value.split(",")[0] || "none"
+  plainLiveClosureSummary.value?.live_wysiwyg_primary_readback_gap_surface_id
+  || plainLiveClosureWysiwygReadbackGapSurfaceIds.value.split(",")[0]
+  || "none"
 ));
 const plainLiveClosureTargetSourceCardId = computed(() => (
   plainLiveClosureSummary.value?.primary_status_source_card_id
@@ -15908,6 +15922,10 @@ onBeforeUnmount(() => {
         data-live-wysiwyg-refreshes-camera-first-frame-probe="true"
         data-live-wysiwyg-refreshes-radar-scan-proof="true"
         data-live-wysiwyg-refreshes-map-after-radar="true"
+        :data-fixed-live-wysiwyg-radar-refresh-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint"
+        :data-fixed-live-wysiwyg-camera-probe-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint"
+        :data-fixed-live-wysiwyg-map-preview-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_map_preview_endpoint"
+        :data-fixed-live-wysiwyg-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint"
         :data-free-move-start-ready="String(plainLiveClosureSummary.free_move_start_ready)"
         :data-mapping-start-ready="String(plainLiveClosureSummary.mapping_start_ready)"
         :data-keyboard-control-start-ready="String(plainLiveClosureSummary.keyboard_control_start_ready)"

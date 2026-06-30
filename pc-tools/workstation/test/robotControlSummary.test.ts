@@ -115,6 +115,15 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_blocked_by_radar_wysiwyg).toBe(false);
     expect(summary.live_closure_summary?.wheel_rerun_command_mode).toBe("ros");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.live_closure_summary?.live_wysiwyg_ready).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
+    expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_readback_gap_surface_ids).toEqual([]);
+    expect(summary.live_closure_summary?.live_wysiwyg_primary_readback_gap_surface_id).toBe("none");
+    expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.live_closure_summary?.fixed_live_wysiwyg_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.live_closure_summary?.fixed_live_wysiwyg_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.live_closure_summary?.fixed_live_wysiwyg_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
     expect(summary.live_closure_summary?.keyboard_continuous_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_safety_confirm_required).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_enable_sends_motion).toBe(false);

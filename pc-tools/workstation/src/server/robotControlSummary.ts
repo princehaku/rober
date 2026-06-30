@@ -8181,6 +8181,18 @@ function buildLiveClosureSummary(
   const cameraCurrentVisible = camera.evidence?.camera_current_frame_visible === true || camera.status === "visible";
   const mapCurrentVisible = map.evidence?.map_current_visible === true || map.status === "visible";
   const radarMapPointsVisible = radar.evidence?.current_on_map === true || radar.status === "current_on_map";
+  const liveWysiwygMissingSurfaceIds = [
+    ...(!cameraCurrentVisible ? ["camera"] : []),
+    ...(!mapCurrentVisible ? ["map"] : []),
+    ...(!radarMapPointsVisible ? ["radar_map_points"] : []),
+  ];
+  const mapUnread = /fetch_failed|not_loaded|not_proven/.test(readback.map.status || "")
+    || !["true", "map_once_observed"].includes(String(readback.map.map_once_observed || ""));
+  const liveWysiwygReadbackGapSurfaceIds = [
+    ...(!cameraCurrentVisible && /fetch_failed|not_loaded|not_proven/.test(readback.camera.status || "") ? ["camera"] : []),
+    ...(!mapCurrentVisible && mapUnread ? ["map"] : []),
+    ...(!radarMapPointsVisible && /fetch_failed|not_loaded|not_proven/.test(readback.radar.status || "") ? ["radar_map_points"] : []),
+  ];
   const freeMoveStartReady = boundary.free_roam_motion_start_ready || goalSummary.ready_action_ids.includes("free_move");
   const mappingStartReady = boundary.free_roam_mapping_start_ready || goalSummary.ready_action_ids.includes("mapping_start");
   const mappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
@@ -8317,6 +8329,15 @@ function buildLiveClosureSummary(
     camera_current_visible: cameraCurrentVisible,
     map_current_visible: mapCurrentVisible,
     radar_map_points_visible: radarMapPointsVisible,
+    live_wysiwyg_ready: liveWysiwygMissingSurfaceIds.length === 0,
+    live_wysiwyg_missing_surface_ids: liveWysiwygMissingSurfaceIds,
+    live_wysiwyg_needs_refresh: status === "needs_wysiwyg",
+    live_wysiwyg_readback_gap_surface_ids: liveWysiwygReadbackGapSurfaceIds,
+    live_wysiwyg_primary_readback_gap_surface_id: liveWysiwygReadbackGapSurfaceIds[0] ?? "none",
+    fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+    fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
+    fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
+    fixed_live_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
     free_move_start_ready: freeMoveStartReady,
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: freeMoveStartReady,

@@ -803,6 +803,15 @@ const fixtures: Record<string, unknown> = {
       camera_current_visible: false,
       map_current_visible: true,
       radar_map_points_visible: false,
+      live_wysiwyg_ready: false,
+      live_wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
+      live_wysiwyg_needs_refresh: true,
+      live_wysiwyg_readback_gap_surface_ids: ["camera"],
+      live_wysiwyg_primary_readback_gap_surface_id: "camera",
+      fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+      fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
+      fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
+      fixed_live_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
       free_move_start_ready: true,
       free_move_minimal_precheck_safety_only: true,
       free_move_safety_confirm_required: true,
@@ -4540,6 +4549,10 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-camera-first-frame-probe")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-radar-scan-proof")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-refreshes-map-after-radar")).toBe("true");
+    expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(liveClosureSummary.attributes("data-fixed-live-wysiwyg-camera-mjpeg-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     expect(liveClosureSummary.attributes("data-free-move-start-ready")).toBe("true");
     expect(liveClosureSummary.attributes("data-mapping-start-ready")).toBe("false");
     expect(liveClosureSummary.attributes("data-keyboard-control-start-ready")).toBe("true");
@@ -6291,6 +6304,11 @@ describe("App", () => {
       camera_current_visible: false,
       map_current_visible: false,
       radar_map_points_visible: false,
+      live_wysiwyg_ready: false,
+      live_wysiwyg_missing_surface_ids: ["camera", "map", "radar_map_points"],
+      live_wysiwyg_needs_refresh: true,
+      live_wysiwyg_readback_gap_surface_ids: ["camera", "map", "radar_map_points"],
+      live_wysiwyg_primary_readback_gap_surface_id: "camera",
       primary_status_item_id: "camera_wysiwyg",
       primary_status_source_card_id: "camera_preview",
       next_action_item_id: "camera_wysiwyg",
@@ -6359,6 +6377,11 @@ describe("App", () => {
       camera_current_visible: false,
       map_current_visible: true,
       radar_map_points_visible: false,
+      live_wysiwyg_ready: false,
+      live_wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
+      live_wysiwyg_needs_refresh: false,
+      live_wysiwyg_readback_gap_surface_ids: ["camera"],
+      live_wysiwyg_primary_readback_gap_surface_id: "camera",
       wheel_rerun_minimal_precheck_safety_only: true,
       wheel_rerun_safety_confirm_required: true,
       wheel_rerun_camera_preflight_required: false,
