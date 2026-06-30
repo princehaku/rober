@@ -1090,3 +1090,10 @@ manual/keyboard/free-roam/Nav2/stop 或 `/cmd_vel`。
 或当前共享预览缓存帧；旧 overlay 的正向诊断不会再让 `camera_source_first_frame_ready=true`，也不会放开建图启动的
 `camera_first_frame` gate。无首帧、非独占等失败诊断仍可在 health 超时时保留，因为它们不会误放行建图。
 该变化只修正只读 summary/action card/建图门禁证据，不打开相机、不启动建图、不发送任何运动命令。
+
+2026-06-30 10:00 CST 起，普通首屏地图的 `放大地图`、`全屏地图`、`观测模式` 三个视图按钮补齐按钮级合同：
+`data-map-view-action`、`data-target-surface=primary-map`、`data-sends-motion-when-clicked=false`、
+`data-starts-ros2=false`、`data-starts-rviz2=false`、`data-starts-map-runtime=false`、`data-starts-nav2=false`。
+`观测模式` 额外声明 `data-enter-size=fullscreen`、`data-hides-ordinary-actions-when-active=true`、
+`data-keeps-wysiwyg-overlays=image-route-robot-radar`，并保留 RViz2 配套命令作为工程观察提示。
+这样现场一键进入大屏地图时，脚本能直接确认它只是 PC 内置 RViz-like 观察模式，不启动 ROS2/RViz2、不发车。

@@ -4551,3 +4551,11 @@ DOM 同步暴露 `data-nav2-ready`、`data-material-ready`、`data-route-map-mat
 `source_readiness=first_frame_observed`、只读首帧 probe 成功，或共享实时预览已经有缓存帧时，才会显示
 “相机源首帧已读到”并让 `camera_source_first_frame_ready=true`。失败类 overlay 诊断仍保留用于解释“不是页面独占 /
 UVC 无首帧”，但不会放行建图。该变化只修正普通首屏事实和结构化门禁证据，不打开相机、不启动建图、不发送任何运动命令。
+
+2026-06-30 10:00 CST 起，普通首屏地图视图按钮具备完整只读合同。
+`放大地图`、`全屏地图`、`观测模式` 分别暴露 `data-map-view-action`，并统一声明
+`data-sends-motion-when-clicked=false`、`data-starts-ros2=false`、`data-starts-rviz2=false`、
+`data-starts-map-runtime=false`、`data-starts-nav2=false`、`data-target-surface=primary-map`。
+`观测模式` 进一步声明进入后使用 fullscreen、收起普通操作行、保留地图/路线/小车/雷达 overlay，并继续暴露
+`ros2 launch ros2_trashbot_bringup rviz.launch.py` 作为工程观察配套提示。该变化让“PC 地图太小”时的一键大屏观察入口可验收，
+同时保证普通用户不会因为点观测按钮误启动 ROS2、RViz2、建图 runtime、Nav2 或任何运动命令。

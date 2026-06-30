@@ -15881,13 +15881,58 @@ onBeforeUnmount(() => {
                 <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-in" :disabled="!canZoomPlainMapIn" @click="zoomPlainMap(1)">+</button>
                 <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-reset" :disabled="plainMapZoomScale === 1" @click="resetPlainMapZoom">适配</button>
               </div>
-              <button type="button" class="secondary plain-map-size-toggle" data-testid="plain-map-size-toggle" :aria-pressed="plainMapLargeView ? 'true' : 'false'" @click="plainMapLargeView = !plainMapLargeView">
+              <button
+                type="button"
+                class="secondary plain-map-size-toggle"
+                data-testid="plain-map-size-toggle"
+                data-map-view-action="toggle_large_map"
+                data-sends-motion-when-clicked="false"
+                data-starts-ros2="false"
+                data-starts-rviz2="false"
+                data-starts-map-runtime="false"
+                data-starts-nav2="false"
+                data-target-surface="primary-map"
+                :aria-pressed="plainMapLargeView ? 'true' : 'false'"
+                @click="plainMapLargeView = !plainMapLargeView"
+              >
                 {{ plainMapLargeView ? "收起地图" : "放大地图" }}
               </button>
-              <button type="button" class="secondary plain-map-fullscreen-toggle" data-testid="plain-map-fullscreen-toggle" :aria-pressed="plainMapFullscreenView ? 'true' : 'false'" @click="togglePlainMapFullscreenView">
+              <button
+                type="button"
+                class="secondary plain-map-fullscreen-toggle"
+                data-testid="plain-map-fullscreen-toggle"
+                data-map-view-action="toggle_fullscreen_map"
+                data-sends-motion-when-clicked="false"
+                data-starts-ros2="false"
+                data-starts-rviz2="false"
+                data-starts-map-runtime="false"
+                data-starts-nav2="false"
+                data-target-surface="primary-map"
+                :data-observer-mode-after-click="plainMapFullscreenView ? 'false' : String(plainMapObserverView)"
+                :aria-pressed="plainMapFullscreenView ? 'true' : 'false'"
+                @click="togglePlainMapFullscreenView"
+              >
                 {{ plainMapFullscreenView ? "退出全屏" : "全屏地图" }}
               </button>
-              <button type="button" class="secondary plain-map-observer-toggle" data-testid="plain-map-observer-toggle" :aria-pressed="plainMapObserverView ? 'true' : 'false'" @click="togglePlainMapObserverView">
+              <button
+                type="button"
+                class="secondary plain-map-observer-toggle"
+                data-testid="plain-map-observer-toggle"
+                data-map-view-action="toggle_observer_map"
+                data-sends-motion-when-clicked="false"
+                data-starts-ros2="false"
+                data-starts-rviz2="false"
+                data-starts-map-runtime="false"
+                data-starts-nav2="false"
+                data-target-surface="primary-map"
+                data-enter-size="fullscreen"
+                data-hides-ordinary-actions-when-active="true"
+                data-keeps-wysiwyg-overlays="image-route-robot-radar"
+                data-ros2-companion-tool="rviz2"
+                data-rviz-launch-command="ros2 launch ros2_trashbot_bringup rviz.launch.py"
+                :aria-pressed="plainMapObserverView ? 'true' : 'false'"
+                @click="togglePlainMapObserverView"
+              >
                 {{ plainMapObserverView ? "退出观测" : "观测模式" }}
               </button>
             </div>
