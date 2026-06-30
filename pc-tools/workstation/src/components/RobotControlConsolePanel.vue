@@ -3358,6 +3358,7 @@ const canRefreshPlainWysiwygEvidence = computed(() => (
   robotApiBaseUrl.value.trim().length > 0
   && !loading.value
   && !radarRefreshPending.value
+  && !cameraFirstFrameProbePending.value
   && !mapWysiwygRefreshPending.value
   && !cameraMjpegStatusPending.value
 ));
@@ -3369,6 +3370,9 @@ const plainWysiwygEvidenceRefreshButtonLabel = computed(() => {
   }
   if (radarRefreshPending.value) {
     return "刷新雷达扫描中";
+  }
+  if (cameraFirstFrameProbePending.value) {
+    return "复测画面首帧中";
   }
   if (mapWysiwygRefreshPending.value) {
     return "刷新地图画面中";
@@ -13546,14 +13550,29 @@ async function refreshPlainConsole(): Promise<void> {
 }
 
 async function refreshPlainWysiwygEvidence(): Promise<void> {
-  // 当前所见刷新必须先让雷达扫描 proof 变新，再读地图画面；否则地图只能继续显示旧来源点或 0 个当前点。
+  // 当前所见刷新必须同时复测相机首帧和雷达扫描 proof；二者都只读，不会发送任何运动命令。
   if (!canRefreshPlainWysiwygEvidence.value) {
     return;
   }
   await Promise.all([
     refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true }),
-    refreshCameraMjpegStatus(),
+    refreshCameraFirstFrameProbeForWysiwyg(),
   ]);
+}
+
+async function refreshCameraFirstFrameProbeForWysiwyg(): Promise<void> {
+  // 这里只刷新后端首帧证据和 summary；不覆盖“只读检查”按钮的本地结果卡，避免普通刷新把相机卡误变成操作失败。
+  if (!robotApiBaseUrl.value.trim()) {
+    return;
+  }
+  try {
+    await postRobotControlCameraFirstFrameProbe(robotApiBaseUrl.value, true);
+  } catch {
+    // 当前所见总刷新不单独展示 probe 异常；summary 和 MJPEG 状态会给出可见结论。
+  } finally {
+    await refreshConsole();
+    await refreshCameraMjpegStatus();
+  }
 }
 
 async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; freeRoamLiveRefresh?: boolean; savedMapRefresh?: boolean; tripExecutionRefresh?: boolean; radarStatusRefresh?: boolean } = {}): Promise<void> {
@@ -15816,8 +15835,10 @@ onBeforeUnmount(() => {
             :disabled="!canRefreshPlainWysiwygEvidence"
             data-testid="plain-wysiwyg-evidence-refresh"
             data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+            data-fixed-first-frame-probe-endpoint="/api/robot-control/camera/first-frame/probe"
             data-refreshes-radar-scan-proof="true"
             data-refreshes-map-after-radar="true"
+            data-refreshes-camera-first-frame-probe="true"
             data-sends-motion-when-clicked="false"
             @click="refreshPlainWysiwygEvidence"
           >

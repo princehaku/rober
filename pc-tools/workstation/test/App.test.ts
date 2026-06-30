@@ -1933,6 +1933,43 @@ const fixtures: Record<string, unknown> = {
     blocked_reasons: [],
     ...PROOF_FLAGS,
   },
+  "/api/robot-control/camera/first-frame/probe": {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "probe_failed",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/camera/first-frame/probe",
+    remote_http_status: 502,
+    status: "blocked",
+    probe_key_values: {
+      schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
+      device: "/dev/video1",
+      requested_fourcc: "MJPG",
+      open_ok: "true",
+      read_ok: "false",
+      first_frame_timeout: "true",
+      failure_reason: "first_frame_total_timeout",
+      visible_content_proven: "false",
+      elapsed_ms: "3000",
+      mean_luma: "not_available",
+      non_black_ratio: "not_available",
+      backend_smoke_status: "backend_no_frame_observed",
+      backend_frame_observed: "false",
+      backend_attempts: "3",
+      fallback_attempt_count: "3",
+      fallback_attempts_summary: "MJPG@640x480 无首帧；MJPG@480x320 无首帧；YUYV@320x240 无首帧",
+    },
+    failure_reason: "first_frame_total_timeout",
+    blocked_reasons: ["first_frame_total_timeout"],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  },
   "/api/robot-control/camera/mjpeg/status": {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: "status_loaded",
@@ -4550,8 +4587,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-camera"]').attributes("data-testid")).toBe("plain-wysiwyg-evidence-camera");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').text()).toBe("刷新当前所见（含雷达贴图）");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-fixed-first-frame-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-refreshes-radar-scan-proof")).toBe("true");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-refreshes-map-after-radar")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-refreshes-camera-first-frame-probe")).toBe("true");
     expect(wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').attributes("data-sends-motion-when-clicked")).toBe("false");
     const callsBeforeWysiwygRefresh = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-wysiwyg-evidence-refresh"]').trigger("click");
@@ -4563,6 +4602,7 @@ describe("App", () => {
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?"))).toBe(true);
     expect(wysiwygRefreshCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(wysiwygRefreshCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?") && options?.method === "POST")).toBe(true);
     expect(wysiwygRefreshCalls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start?") && options?.method === "POST")).toBe(false);
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(wysiwygRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
