@@ -7202,6 +7202,24 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.free_move_proof_status).toBe("ready_to_verify");
       expect(summary.free_move_missing_evidence).toEqual(["free_roam_latest_motion_ready"]);
       expect(summary.free_move_proof_plain).toContain("可验证自由自助移动");
+      expect(summary.current_free_move_action_required).toBe(true);
+      expect(summary.current_free_move_action_ready).toBe(true);
+      expect(summary.current_free_move_action_id).toBe("start_free_move");
+      expect(summary.current_free_move_action_start_endpoint).toBe(summary.free_move_start_endpoint);
+      expect(summary.current_free_move_action_stop_endpoint).toBe(summary.free_move_stop_endpoint);
+      expect(summary.current_free_move_action_latest_endpoint).toBe("/api/robot-control/free-roam/autonomy/latest");
+      expect(summary.current_free_move_action_acceptance_endpoints).toEqual(summary.free_move_acceptance_endpoints);
+      expect(summary.current_free_move_action_readback_endpoints).toEqual(summary.free_move_acceptance_endpoints);
+      expect(summary.current_free_move_action_required_success_markers).toEqual(["free_roam_latest_motion_ready"]);
+      expect(summary.current_free_move_action_requires_safety_confirm).toBe(true);
+      expect(summary.current_free_move_action_minimal_precheck_safety_only).toBe(true);
+      expect(summary.current_free_move_action_camera_preflight_required).toBe(false);
+      expect(summary.current_free_move_action_radar_preflight_required).toBe(false);
+      expect(summary.current_free_move_action_without_camera_allowed).toBe(true);
+      expect(summary.current_free_move_action_without_radar_allowed).toBe(true);
+      expect(summary.current_free_move_action_blocked_by_camera_wysiwyg).toBe(false);
+      expect(summary.current_free_move_action_blocked_by_radar_wysiwyg).toBe(false);
+      expect(summary.current_free_move_action_sends_motion).toBe(true);
       expect(summary.mapping_start_endpoint).toBe("/api/robot-control/map/start");
       expect(summary.mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
       expect(summary.mapping_acceptance_endpoints).toEqual([

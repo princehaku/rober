@@ -5018,3 +5018,14 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `current_motion_action_requires_safety_confirm=true`、`current_motion_action_minimal_precheck_safety_only=true`，
 并明确 `current_motion_action_camera_preflight_required=false`、`current_motion_action_radar_preflight_required=false`、
 `current_motion_action_route_wysiwyg_preflight_required=false`。字段只描述当前动作和执行后读回口径，不自动勾安全确认、不发车。
+
+2026-07-02 07:54 CST 起，summary 顶层新增 `current_free_move_action_*` 短字段，直接表达“自由自助移动”这条动作的
+入口、停止口、latest/readback、验收端点、缺口和安全边界。当前会显示
+`current_free_move_action_id=start_free_move`、`current_free_move_action_start_endpoint=/api/robot-control/free-roam/autonomy/start`、
+`current_free_move_action_stop_endpoint=/api/robot-control/free-roam/autonomy/stop`、
+`current_free_move_action_acceptance_endpoints=[free-roam latest, map preview, summary]`、
+`current_free_move_action_requires_safety_confirm=true`、`current_free_move_action_minimal_precheck_safety_only=true`，
+并明确 `current_free_move_action_camera_preflight_required=false`、`current_free_move_action_radar_preflight_required=false`、
+`current_free_move_action_without_camera_allowed=true`、`current_free_move_action_without_radar_allowed=true`、
+`current_free_move_action_blocked_by_camera_wysiwyg=false`、`current_free_move_action_blocked_by_radar_wysiwyg=false`。
+这些字段只描述勾安全确认后的自由移动动作和执行后读回口径，不自动发车、不启动建图 runtime、不执行 Nav2、不发送 `/cmd_vel`。
