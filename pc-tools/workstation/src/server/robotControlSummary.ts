@@ -9028,15 +9028,16 @@ function buildLiveClosureSummary(
     ? `上次执行窗口 wheel L/R=${wheelRerunLatestRawLeft}/${wheelRerunLatestRawRight}，样本 ${wheelRerunFeedbackSampleCount} 个，非零样本 ${wheelRerunFeedbackNonzeroSampleCount} 个；下次用 ${wheelRerunNextBaseCommandMode} 模式重跑后读取 latest 与只读轮速采样。`
     : "当前不需要轮速复验。";
   const wheelRerunAcceptanceEndpoints = [
+    "/api/robot-control/map/preview",
     "/api/robot-control/nav2/goal/execution/latest",
     "/api/robot-control/base/feedback-samples",
     "/api/robot-control/summary",
     "/api/robot-control/delivery/latest",
   ];
   const wheelRerunChecklistPlain = needsSameWindowWheelRerun
-    ? "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取 latest、底盘轮速采样和 summary，确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。"
+    ? "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。"
     : "当前不需要重跑图上路线；如果后续出现同窗口轮速缺口，再按安全确认、执行、轮速读回、送达确认顺序收口。";
-  const wheelRerunAcceptancePlain = "验收口径：Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。";
+  const wheelRerunAcceptancePlain = "验收口径：地图仍显示本轮图上路线，Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。";
   const wheelRerunDeliveryNextActionPlain = deliveryClaimReady
     ? "送达成功已经写入当前材料；轮速复验通过后可直接进入本轮闭环复核。"
     : "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。";
@@ -9100,12 +9101,13 @@ function buildLiveClosureSummary(
       start_endpoint: "/api/robot-control/nav2/goal/execute",
       stop_endpoint: "/api/robot-control/base/stop",
       acceptance_endpoints: [
+        "/api/robot-control/map/preview",
         "/api/robot-control/nav2/goal/execution/latest",
         "/api/robot-control/base/feedback-samples",
         "/api/robot-control/summary",
         "/api/robot-control/delivery/latest",
       ],
-      acceptance_plain: "执行后读取 latest、同窗口 wheel L/R、summary 和 delivery latest，确认到点成功、轮速非零且 delivery success 已记录。",
+      acceptance_plain: "执行后读取地图路线画面、latest、同窗口 wheel L/R、summary 和 delivery latest，确认图上路线、到点成功、轮速非零且 delivery success 已记录。",
       blocked_reasons: routeReadyOnMap || needsSameWindowWheelRerun ? [] : ["route_not_ready_on_map"],
     },
     {

@@ -155,8 +155,10 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("确认同窗口 wheel L/R 非零");
     expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("delivery success");
     expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("goal_succeeded");
+    expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("地图仍显示本轮图上路线");
     expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("delivery success 与本轮行程材料对齐");
     expect(summary.live_closure_summary?.wheel_rerun_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview",
       "/api/robot-control/nav2/goal/execution/latest",
       "/api/robot-control/base/feedback-samples",
       "/api/robot-control/summary",
@@ -387,12 +389,12 @@ describe("robotControlSummary", () => {
       "/api/robot-control/free-roam/autonomy/start",
     ]);
     expect(summary.live_closure_summary?.live_motion_runbook_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview",
       "/api/robot-control/nav2/goal/execution/latest",
       "/api/robot-control/base/feedback-samples",
       "/api/robot-control/summary",
       "/api/robot-control/delivery/latest",
       "/api/robot-control/free-roam/autonomy/latest",
-      "/api/robot-control/map/preview",
     ]);
     expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.live_motion_runbook_safety_confirm_required).toBe(true);
@@ -427,6 +429,7 @@ describe("robotControlSummary", () => {
         sends_motion_when_executed: true,
         start_endpoint: "/api/robot-control/nav2/goal/execute",
         acceptance_endpoints: [
+          "/api/robot-control/map/preview",
           "/api/robot-control/nav2/goal/execution/latest",
           "/api/robot-control/base/feedback-samples",
           "/api/robot-control/summary",

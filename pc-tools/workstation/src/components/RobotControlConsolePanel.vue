@@ -4116,6 +4116,8 @@ const plainTripClosureReadbackSummary = computed(() => {
   const summary = plainLiveClosureSummary.value;
   const item = plainTripRunbookItem.value;
   const missing = new Set(item?.missing_evidence ?? []);
+  const routeReady = Boolean(summary?.route_ready_on_map);
+  const routeText = routeReady ? "图上路线已显示" : "图上路线未显示";
   const arrivedText = summary?.nav2_goal_succeeded ? "到点已读到" : "到点未读到";
   const wheelText = summary?.wheel_lr_nonzero_proven ? "同窗口轮速已非零" : "同窗口轮速未证明";
   const deliveryText = summary?.delivery_success ? "送达确认已完成" : "送达确认未完成";
@@ -4124,28 +4126,32 @@ const plainTripClosureReadbackSummary = computed(() => {
       return "本轮完整行程已收口";
     }
     if (!item?.ready) {
-      return "先让图上行程显示到地图";
+      return "先让图上路线显示到地图";
     }
     if (missing.has("same_window_wheel_lr_nonzero")) {
       return plainManualSafetyConfirmed.value
-        ? "执行图上行程后读回轮速"
-        : "先勾现场安全确认，再执行图上行程并读回轮速";
+        ? "执行图上路线后读回轮速"
+        : "先勾现场安全确认，再执行图上路线并读回轮速";
     }
     if (missing.has("delivery_success")) {
       return "准备材料并做送达确认";
     }
     return "读回行程闭环";
   })();
-  const endpoints = item?.acceptance_endpoints ?? [
-    "/api/robot-control/nav2/goal/execution/latest",
-    "/api/robot-control/base/feedback-samples",
-    "/api/robot-control/summary",
-    "/api/robot-control/delivery/latest",
-  ];
+  const endpoints = Array.from(new Set([
+    "/api/robot-control/map/preview",
+    ...(item?.acceptance_endpoints ?? [
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+      "/api/robot-control/delivery/latest",
+    ]),
+  ]));
   return {
     state: item?.completed ? "已闭环" : item?.ready ? "待收口" : "未就绪",
-    text: `完整行程闭环：${arrivedText}；${wheelText}；${deliveryText}。下一步：${nextAction}。`,
+    text: `完整行程闭环：${routeText}；${arrivedText}；${wheelText}；${deliveryText}。下一步：${nextAction}。`,
     nextAction,
+    routeReady,
     nav2GoalSucceeded: Boolean(summary?.nav2_goal_succeeded),
     sameWindowWheelLrNonzero: Boolean(summary?.wheel_lr_nonzero_proven),
     deliverySuccess: Boolean(summary?.delivery_success),
@@ -4277,6 +4283,7 @@ async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotion
   liveMotionRunbookReadbackPendingAction.value = actionId;
   try {
     if (actionId === "run_nav2_route") {
+      await refreshMapPreview({ radarStatusRefresh: true });
       await loadNavGoalExecutionLatest({ allowDuringMapRefresh: true });
       await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
       await refreshConsole();
@@ -17039,6 +17046,7 @@ onBeforeUnmount(() => {
           :data-ready="String(plainTripClosureReadbackSummary.ready)"
           :data-completed="String(plainTripClosureReadbackSummary.completed)"
           :data-proof-status="plainTripClosureReadbackSummary.proofStatus"
+          :data-route-ready="String(plainTripClosureReadbackSummary.routeReady)"
           :data-nav2-goal-succeeded="String(plainTripClosureReadbackSummary.nav2GoalSucceeded)"
           :data-same-window-wheel-lr-nonzero="String(plainTripClosureReadbackSummary.sameWindowWheelLrNonzero)"
           :data-delivery-success="String(plainTripClosureReadbackSummary.deliverySuccess)"
@@ -20160,6 +20168,7 @@ onBeforeUnmount(() => {
               :data-ready="String(plainTripClosureReadbackSummary.ready)"
               :data-completed="String(plainTripClosureReadbackSummary.completed)"
               :data-proof-status="plainTripClosureReadbackSummary.proofStatus"
+              :data-route-ready="String(plainTripClosureReadbackSummary.routeReady)"
               :data-nav2-goal-succeeded="String(plainTripClosureReadbackSummary.nav2GoalSucceeded)"
               :data-same-window-wheel-lr-nonzero="String(plainTripClosureReadbackSummary.sameWindowWheelLrNonzero)"
               :data-delivery-success="String(plainTripClosureReadbackSummary.deliverySuccess)"
@@ -20179,7 +20188,7 @@ onBeforeUnmount(() => {
             >
               <span class="plain-progress-label">完整行程闭环</span>
               <span class="status-chip" :data-state="plainTripClosureReadbackSummary.state">{{ plainTripClosureReadbackSummary.state }}</span>
-              <span class="muted">{{ plainTripClosureReadbackSummary.text }}</span>
+              <span class="muted">{{ plainActionCardUserText(plainTripClosureReadbackSummary.text) }}</span>
               <button
                 type="button"
                 class="secondary compact-stop"

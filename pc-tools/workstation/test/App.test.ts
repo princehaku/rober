@@ -1112,8 +1112,8 @@ const fixtures: Record<string, unknown> = {
           sends_motion_when_executed: true,
           start_endpoint: "/api/robot-control/nav2/goal/execute",
           stop_endpoint: "/api/robot-control/base/stop",
-          acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/delivery/latest"],
-          acceptance_plain: "执行后读取 latest、同窗口 wheel L/R、summary 和 delivery latest，确认到点成功、轮速非零且 delivery success 已记录。",
+          acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/delivery/latest"],
+          acceptance_plain: "执行后读取地图路线画面、latest、同窗口 wheel L/R、summary 和 delivery latest，确认图上路线、到点成功、轮速非零且 delivery success 已记录。",
           blocked_reasons: ["route_not_ready_on_map"],
         },
         {
@@ -1173,7 +1173,7 @@ const fixtures: Record<string, unknown> = {
       live_motion_runbook_blocked_action_ids: ["run_nav2_route", "start_mapping_when_sensors_ready"],
       live_motion_runbook_primary_action_id: "hold_keyboard",
       live_motion_runbook_start_endpoints: ["/api/robot-control/base/manual", "/api/robot-control/free-roam/autonomy/start"],
-      live_motion_runbook_acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/delivery/latest", "/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview"],
+      live_motion_runbook_acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/delivery/latest", "/api/robot-control/free-roam/autonomy/latest"],
       live_motion_runbook_minimal_precheck_safety_only: true,
       live_motion_runbook_safety_confirm_required: true,
       live_motion_runbook_summary_plain: "可先执行：键盘连续手控、自由自助移动。暂不可执行：完整行程执行、传感器就绪后建图。主推荐：键盘连续手控；发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
@@ -1203,7 +1203,7 @@ const fixtures: Record<string, unknown> = {
       wheel_rerun_readback_plain: "上次执行窗口 wheel L/R=0/0，样本 239 个，非零样本 0 个；下次用 ros 模式重跑后读取 latest 与只读轮速采样。",
       wheel_rerun_checklist_plain: "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取 latest、底盘轮速采样和 summary，确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。",
       wheel_rerun_acceptance_plain: "验收口径：Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。",
-      wheel_rerun_acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/delivery/latest"],
+      wheel_rerun_acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/summary", "/api/robot-control/delivery/latest"],
       wheel_rerun_delivery_success_required: true,
       wheel_rerun_delivery_next_action_plain: "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。",
       fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
@@ -5264,7 +5264,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-motion-runbook-blocked-action-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-primary-action-id")).toBe("hold_keyboard");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
-    expect(liveClosureSummary.attributes("data-live-motion-runbook-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest,/api/robot-control/free-roam/autonomy/latest");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-minimal-precheck-safety-only")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-safety-confirm-required")).toBe("true");
     const liveMotionRunbook = wrapper.find('[data-testid="plain-live-motion-runbook"]');
@@ -5278,7 +5278,7 @@ describe("App", () => {
     expect(liveMotionRunbook.attributes("data-ready-action-ids")).toBe("hold_keyboard,start_free_move");
     expect(liveMotionRunbook.attributes("data-blocked-action-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
     expect(liveMotionRunbook.attributes("data-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
-    expect(liveMotionRunbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview");
+    expect(liveMotionRunbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest,/api/robot-control/free-roam/autonomy/latest");
     expect(liveMotionRunbook.attributes("data-summary-plain")).toContain("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbook.attributes("data-ready-plain")).toBe("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbook.attributes("data-blocked-plain")).toBe("暂不可执行：完整行程执行、传感器就绪后建图。");
@@ -5480,8 +5480,8 @@ describe("App", () => {
     expect(nav2Runbook.attributes("data-proof-status")).toBe("blocked");
     expect(nav2Runbook.attributes("data-missing-evidence")).toBe("nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
     expect(nav2Runbook.attributes("data-proof-plain")).toContain("图上行程到点成功、同窗口 wheel L/R 非零、delivery success");
-    expect(nav2Runbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
-    expect(nav2Runbook.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(nav2Runbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(nav2Runbook.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(nav2Runbook.attributes("data-blocked-reasons")).toBe("route_not_ready_on_map");
     expect(nav2Runbook.attributes("data-focus-target-source-card-id")).toBe("nav2_route");
     expect(nav2Runbook.attributes("data-focus-target-kind")).toBe("nav2_route");
@@ -5552,6 +5552,7 @@ describe("App", () => {
     const liveTripClosureReadback = wrapper.find('[data-testid="plain-live-trip-closure-readback"]');
     expect(liveTripClosureReadback.exists()).toBe(true);
     expect(liveTripClosureReadback.text()).toContain("完整行程闭环");
+    expect(liveTripClosureReadback.text()).toContain("图上行程未显示");
     expect(liveTripClosureReadback.text()).toContain("到点未读到");
     expect(liveTripClosureReadback.text()).toContain("同窗口轮速未证明");
     expect(liveTripClosureReadback.text()).toContain("送达确认未完成");
@@ -5563,12 +5564,13 @@ describe("App", () => {
     expect(liveTripClosureReadback.attributes("data-ready")).toBe("false");
     expect(liveTripClosureReadback.attributes("data-completed")).toBe("false");
     expect(liveTripClosureReadback.attributes("data-proof-status")).toBe("blocked");
+    expect(liveTripClosureReadback.attributes("data-route-ready")).toBe("false");
     expect(liveTripClosureReadback.attributes("data-nav2-goal-succeeded")).toBe("false");
     expect(liveTripClosureReadback.attributes("data-same-window-wheel-lr-nonzero")).toBe("false");
     expect(liveTripClosureReadback.attributes("data-delivery-success")).toBe("false");
     expect(liveTripClosureReadback.attributes("data-needs-same-window-wheel-rerun")).toBe("false");
     expect(liveTripClosureReadback.attributes("data-missing-evidence")).toBe("nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
-    expect(liveTripClosureReadback.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(liveTripClosureReadback.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(liveTripClosureReadback.attributes("data-readback-only")).toBe("true");
     expect(liveTripClosureReadback.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveTripClosureReadback.attributes("data-starts-nav2")).toBe("false");
@@ -5581,7 +5583,7 @@ describe("App", () => {
     const liveTripClosureReadbackButton = wrapper.find('[data-testid="plain-live-trip-closure-readback-refresh"]');
     expect(liveTripClosureReadbackButton.text()).toBe("读回闭环");
     expect(liveTripClosureReadbackButton.attributes("disabled")).toBeUndefined();
-    expect(liveTripClosureReadbackButton.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(liveTripClosureReadbackButton.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(liveTripClosureReadbackButton.attributes("data-readback-only")).toBe("true");
     expect(liveTripClosureReadbackButton.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveTripClosureReadbackButton.attributes("data-starts-nav2")).toBe("false");
@@ -7277,6 +7279,7 @@ describe("App", () => {
     expect(defaultTripExecutionGauge.text()).not.toContain("/cmd_vel");
     const defaultTripClosureReadback = wrapper.find('[data-testid="plain-trip-closure-readback"]');
     expect(defaultTripClosureReadback.text()).toContain("完整行程闭环");
+    expect(defaultTripClosureReadback.text()).toContain("图上行程未显示");
     expect(defaultTripClosureReadback.text()).toContain("到点未读到");
     expect(defaultTripClosureReadback.text()).toContain("同窗口轮速未证明");
     expect(defaultTripClosureReadback.text()).toContain("送达确认未完成");
@@ -7288,12 +7291,13 @@ describe("App", () => {
     expect(defaultTripClosureReadback.attributes("data-ready")).toBe("false");
     expect(defaultTripClosureReadback.attributes("data-completed")).toBe("false");
     expect(defaultTripClosureReadback.attributes("data-proof-status")).toBe("blocked");
+    expect(defaultTripClosureReadback.attributes("data-route-ready")).toBe("false");
     expect(defaultTripClosureReadback.attributes("data-nav2-goal-succeeded")).toBe("false");
     expect(defaultTripClosureReadback.attributes("data-same-window-wheel-lr-nonzero")).toBe("false");
     expect(defaultTripClosureReadback.attributes("data-delivery-success")).toBe("false");
     expect(defaultTripClosureReadback.attributes("data-needs-same-window-wheel-rerun")).toBe("false");
     expect(defaultTripClosureReadback.attributes("data-missing-evidence")).toBe("nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
-    expect(defaultTripClosureReadback.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(defaultTripClosureReadback.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(defaultTripClosureReadback.attributes("data-readback-only")).toBe("true");
     expect(defaultTripClosureReadback.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(defaultTripClosureReadback.attributes("data-starts-nav2")).toBe("false");
@@ -7306,7 +7310,7 @@ describe("App", () => {
     const defaultTripClosureReadbackButton = wrapper.find('[data-testid="plain-trip-closure-readback-refresh"]');
     expect(defaultTripClosureReadbackButton.text()).toBe("读回闭环");
     expect(defaultTripClosureReadbackButton.attributes("disabled")).toBeUndefined();
-    expect(defaultTripClosureReadbackButton.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(defaultTripClosureReadbackButton.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(defaultTripClosureReadbackButton.attributes("data-readback-only")).toBe("true");
     expect(defaultTripClosureReadbackButton.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(defaultTripClosureReadbackButton.attributes("data-starts-nav2")).toBe("false");
@@ -7874,7 +7878,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-wheel-rerun-checklist-plain")).toContain("delivery success");
     expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-plain")).toContain("goal_succeeded");
     expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-plain")).toContain("delivery success 与本轮行程材料对齐");
-    expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(liveClosureSummary.attributes("data-wheel-rerun-delivery-success-required")).toBe("true");
     expect(liveClosureSummary.attributes("data-wheel-rerun-delivery-next-action-plain")).toContain("提交 delivery success");
     expect(liveClosureSummary.attributes("data-last-base-command-mode")).toBe("pwm");
@@ -7898,14 +7902,14 @@ describe("App", () => {
     expect(wheelRerunClosurePlan.text()).toContain("先勾现场安全确认");
     expect(wheelRerunClosurePlan.text()).toContain("同窗口 wheel L/R 非零");
     expect(wheelRerunClosurePlan.text()).toContain("delivery success 与本轮行程材料对齐");
-    expect(wheelRerunClosurePlan.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(wheelRerunClosurePlan.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(wheelRerunClosurePlan.attributes("data-delivery-success-required")).toBe("true");
     expect(wheelRerunClosurePlan.attributes("data-fixed-wheel-rerun-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(wheelRerunClosurePlan.attributes("data-fixed-wheel-rerun-latest-endpoint")).toBe("/api/robot-control/nav2/goal/execution/latest");
     expect(wheelRerunClosurePlan.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(wheelRerunClosurePlan.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
     expect(wheelRerunClosurePlan.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
-    expect(wheelRerunClosurePlan.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(wheelRerunClosurePlan.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(wheelRerunClosurePlan.attributes("data-readback-refresh-pending")).toBe("false");
     expect(wheelRerunClosurePlan.attributes("data-readback-only")).toBe("true");
     expect(wheelRerunClosurePlan.attributes("data-readback-refresh-sends-motion")).toBe("false");
@@ -7924,7 +7928,7 @@ describe("App", () => {
     expect(wheelRerunReadbackRefresh.exists()).toBe(true);
     expect(wheelRerunReadbackRefresh.text()).toBe("读回复验");
     expect(wheelRerunReadbackRefresh.attributes("disabled")).toBeUndefined();
-    expect(wheelRerunReadbackRefresh.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(wheelRerunReadbackRefresh.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(wheelRerunReadbackRefresh.attributes("data-readback-only")).toBe("true");
     expect(wheelRerunReadbackRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wheelRerunReadbackRefresh.attributes("data-starts-nav2")).toBe("false");
@@ -7973,7 +7977,7 @@ describe("App", () => {
     expect(liveClosureGuide.attributes("data-wheel-rerun-readback-plain")).toContain("wheel L/R=0/0");
     expect(liveClosureGuide.attributes("data-wheel-rerun-checklist-plain")).toContain("先勾现场安全确认");
     expect(liveClosureGuide.attributes("data-wheel-rerun-acceptance-plain")).toContain("delivery success 与本轮行程材料对齐");
-    expect(liveClosureGuide.attributes("data-wheel-rerun-acceptance-endpoints")).toBe("/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/summary,/api/robot-control/delivery/latest");
     expect(liveClosureGuide.attributes("data-wheel-rerun-delivery-success-required")).toBe("true");
     expect(liveClosureGuide.attributes("data-last-base-command-mode")).toBe("pwm");
     expect(liveClosureGuide.attributes("data-next-base-command-mode")).toBe("ros");
