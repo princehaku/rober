@@ -1267,6 +1267,14 @@ const fixtures: Record<string, unknown> = {
       wheel_rerun_checklist_plain: "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取 latest、底盘轮速采样和 summary，确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。",
       wheel_rerun_acceptance_plain: "验收口径：Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。",
       wheel_rerun_acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
+      wheel_rerun_ready_for_safety_confirm: false,
+      wheel_rerun_start_endpoint: "/api/robot-control/nav2/goal/execute",
+      wheel_rerun_start_sends_motion: true,
+      wheel_rerun_requires_safety_confirm: false,
+      wheel_rerun_readback_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
+      wheel_rerun_required_success_markers: ["map_route_visible", "nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success"],
+      wheel_rerun_current_gap_plain: "当前不需要同窗口轮速复验。",
+      wheel_rerun_no_extra_precheck_plain: "重跑图上路线的发车前预检只看现场安全确认；相机、雷达、地图所见缺口不作为额外发车前置，路线执行后再按读回端点验收。",
       wheel_rerun_delivery_success_required: true,
       wheel_rerun_delivery_next_action_plain: "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。",
       fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
@@ -8274,6 +8282,17 @@ describe("App", () => {
       wheel_rerun_base_command_mode_counts: "{\"pwm\":49}",
       wheel_rerun_control_diagnosis_plain: "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。 上次 PWM 模式已记录 49 次非零底盘命令，最新非零命令模式=pwm；IMU 姿态变化=true，轮速 L/R 仍为 0/0。 下一次执行会用 ROS 模式复验控制链；这不是雷达、相机或地图所见缺口。",
       wheel_rerun_readback_plain: "上次执行窗口轮速 L/R=0/0，样本 239 个，非零样本 0 个；下次将用 ROS 模式重跑图上路线。 重跑后读取 latest 与只读轮速采样。",
+      wheel_rerun_checklist_plain: "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。",
+      wheel_rerun_acceptance_plain: "验收口径：地图仍显示本轮图上路线，Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。",
+      wheel_rerun_acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
+      wheel_rerun_ready_for_safety_confirm: true,
+      wheel_rerun_start_endpoint: "/api/robot-control/nav2/goal/execute",
+      wheel_rerun_start_sends_motion: true,
+      wheel_rerun_requires_safety_confirm: true,
+      wheel_rerun_readback_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
+      wheel_rerun_required_success_markers: ["map_route_visible", "nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success"],
+      wheel_rerun_current_gap_plain: "当前缺口：同窗口 wheel L/R 非零尚未闭环；当前读数 L/R=0/0，非零样本 0/239。",
+      wheel_rerun_no_extra_precheck_plain: "重跑图上路线的发车前预检只看现场安全确认；相机、雷达、地图所见缺口不作为额外发车前置，路线执行后再按读回端点验收。",
       fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
       primary_status_item_id: "nav2_route_execution",
       primary_status_source_card_id: "nav2_route",
@@ -8339,6 +8358,14 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-plain")).toContain("goal_succeeded");
     expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-plain")).toContain("delivery success 与本轮行程材料对齐");
     expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-ready-for-safety-confirm")).toBe("true");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-start-sends-motion")).toBe("true");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-requires-safety-confirm")).toBe("true");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-required-success-markers")).toBe("map_route_visible,nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-current-gap-plain")).toContain("当前缺口");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-no-extra-precheck-plain")).toContain("发车前预检只看现场安全确认");
     expect(liveClosureSummary.attributes("data-wheel-rerun-delivery-success-required")).toBe("true");
     expect(liveClosureSummary.attributes("data-wheel-rerun-delivery-next-action-plain")).toContain("提交 delivery success");
     expect(liveClosureSummary.attributes("data-last-base-command-mode")).toBe("pwm");

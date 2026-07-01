@@ -9059,6 +9059,17 @@ function buildLiveClosureSummary(
     ? "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。"
     : "当前不需要重跑图上路线；如果后续出现同窗口轮速缺口，再按安全确认、执行、轮速读回、送达确认顺序收口。";
   const wheelRerunAcceptancePlain = "验收口径：地图仍显示本轮图上路线，Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。";
+  const wheelRerunRequiredSuccessMarkers = [
+    "map_route_visible",
+    "nav2_goal_succeeded",
+    "same_window_wheel_lr_nonzero",
+    "delivery_success",
+  ];
+  const wheelRerunReadyForSafetyConfirm = needsSameWindowWheelRerun && routeReadyOnMap;
+  const wheelRerunCurrentGapPlain = needsSameWindowWheelRerun
+    ? `当前缺口：同窗口 wheel L/R 非零尚未闭环；当前读数 L/R=${wheelRerunLatestRawLeft}/${wheelRerunLatestRawRight}，非零样本 ${wheelRerunFeedbackNonzeroSampleCount}/${wheelRerunFeedbackSampleCount}。`
+    : "当前不需要同窗口轮速复验。";
+  const wheelRerunNoExtraPrecheckPlain = "重跑图上路线的发车前预检只看现场安全确认；相机、雷达、地图所见缺口不作为额外发车前置，路线执行后再按读回端点验收。";
   const wheelRerunDeliveryNextActionPlain = deliveryClaimReady
     ? "送达成功已经写入当前材料；轮速复验通过后可直接进入本轮闭环复核。"
     : "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。";
@@ -9747,6 +9758,14 @@ function buildLiveClosureSummary(
     wheel_rerun_checklist_plain: wheelRerunChecklistPlain,
     wheel_rerun_acceptance_plain: wheelRerunAcceptancePlain,
     wheel_rerun_acceptance_endpoints: wheelRerunAcceptanceEndpoints,
+    wheel_rerun_ready_for_safety_confirm: wheelRerunReadyForSafetyConfirm,
+    wheel_rerun_start_endpoint: "/api/robot-control/nav2/goal/execute",
+    wheel_rerun_start_sends_motion: true,
+    wheel_rerun_requires_safety_confirm: needsSameWindowWheelRerun && goalSummary.safety_confirm_needed_count > 0,
+    wheel_rerun_readback_endpoints: wheelRerunAcceptanceEndpoints,
+    wheel_rerun_required_success_markers: wheelRerunRequiredSuccessMarkers,
+    wheel_rerun_current_gap_plain: wheelRerunCurrentGapPlain,
+    wheel_rerun_no_extra_precheck_plain: wheelRerunNoExtraPrecheckPlain,
     wheel_rerun_delivery_success_required: !deliveryClaimReady,
     wheel_rerun_delivery_next_action_plain: wheelRerunDeliveryNextActionPlain,
     fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",

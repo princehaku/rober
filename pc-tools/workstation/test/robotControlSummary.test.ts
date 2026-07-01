@@ -190,6 +190,25 @@ describe("robotControlSummary", () => {
       "/api/robot-control/delivery/latest",
       "/api/robot-control/summary",
     ]);
+    expect(summary.live_closure_summary?.wheel_rerun_ready_for_safety_confirm).toBe(true);
+    expect(summary.live_closure_summary?.wheel_rerun_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.live_closure_summary?.wheel_rerun_start_sends_motion).toBe(true);
+    expect(summary.live_closure_summary?.wheel_rerun_requires_safety_confirm).toBe(true);
+    expect(summary.live_closure_summary?.wheel_rerun_readback_endpoints).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.live_closure_summary?.wheel_rerun_required_success_markers).toEqual([
+      "map_route_visible",
+      "nav2_goal_succeeded",
+      "same_window_wheel_lr_nonzero",
+      "delivery_success",
+    ]);
+    expect(summary.live_closure_summary?.wheel_rerun_current_gap_plain).toContain("当前缺口");
+    expect(summary.live_closure_summary?.wheel_rerun_no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
     expect(summary.live_closure_summary?.wheel_rerun_delivery_success_required).toBe(true);
     expect(summary.live_closure_summary?.wheel_rerun_delivery_next_action_plain).toContain("提交 delivery success");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");

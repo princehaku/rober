@@ -6834,6 +6834,25 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.nav2_route_ready).toBe(true);
       expect(live.nav2_goal_succeeded).toBe(true);
       expect(live.wheel_lr_nonzero_proven).toBe(false);
+      expect(live.wheel_rerun_ready_for_safety_confirm).toBe(true);
+      expect(live.wheel_rerun_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+      expect(live.wheel_rerun_start_sends_motion).toBe(true);
+      expect(live.wheel_rerun_requires_safety_confirm).toBe(true);
+      expect(live.wheel_rerun_readback_endpoints).toEqual([
+        "/api/robot-control/map/preview",
+        "/api/robot-control/nav2/goal/execution/latest",
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/delivery/latest",
+        "/api/robot-control/summary",
+      ]);
+      expect(live.wheel_rerun_required_success_markers).toEqual([
+        "map_route_visible",
+        "nav2_goal_succeeded",
+        "same_window_wheel_lr_nonzero",
+        "delivery_success",
+      ]);
+      expect(live.wheel_rerun_current_gap_plain).toContain("当前缺口");
+      expect(live.wheel_rerun_no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
       expect(live.delivery_success).toBe(false);
       expect(live.delivery_success_required).toBe(true);
       expect(live.delivery_next_action_plain).toContain("delivery success");

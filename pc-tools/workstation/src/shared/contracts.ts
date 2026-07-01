@@ -3047,6 +3047,14 @@ export interface RobotControlLiveClosureSummary {
   wheel_rerun_checklist_plain: string;
   wheel_rerun_acceptance_plain: string;
   wheel_rerun_acceptance_endpoints: string[];
+  wheel_rerun_ready_for_safety_confirm: boolean;
+  wheel_rerun_start_endpoint: "/api/robot-control/nav2/goal/execute";
+  wheel_rerun_start_sends_motion: true;
+  wheel_rerun_requires_safety_confirm: boolean;
+  wheel_rerun_readback_endpoints: string[];
+  wheel_rerun_required_success_markers: string[];
+  wheel_rerun_current_gap_plain: string;
+  wheel_rerun_no_extra_precheck_plain: string;
   wheel_rerun_delivery_success_required: boolean;
   wheel_rerun_delivery_next_action_plain: string;
   fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute";
