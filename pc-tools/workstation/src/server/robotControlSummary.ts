@@ -6171,8 +6171,14 @@ function freeRoamSummaryFromReadbacks(
   const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
     .filter((gate) => gate.scope === "mapping_acceptance")
     .map((gate) => [gate.id, gate]));
-  const mappingStartMissing = FREE_ROAM_MAPPING_START_REQUIRED_IDS.filter((id) => mappingGateById.get(id)?.state !== "ready");
-  const mappingMissing = FREE_ROAM_MAPPING_ACCEPTANCE_REQUIRED_IDS.filter((id) => mappingGateById.get(id)?.state !== "ready");
+  const remoteMappingStartMissing = freeRoamRuntimeMissingList(latest?.free_roam_mapping_start_missing_reasons ?? payload?.free_roam_mapping_start_missing_reasons);
+  const remoteMappingMissing = freeRoamRuntimeMissingList(latest?.free_roam_mapping_missing_reasons ?? latest?.mapping_missing_reasons ?? payload?.free_roam_mapping_missing_reasons ?? payload?.mapping_missing_reasons);
+  const mappingStartMissing = remoteMappingStartMissing.length
+    ? remoteMappingStartMissing
+    : FREE_ROAM_MAPPING_START_REQUIRED_IDS.filter((id) => mappingGateById.get(id)?.state !== "ready");
+  const mappingMissing = remoteMappingMissing.length
+    ? remoteMappingMissing
+    : FREE_ROAM_MAPPING_ACCEPTANCE_REQUIRED_IDS.filter((id) => mappingGateById.get(id)?.state !== "ready");
   const mappingStartReady = startReady && mappingStartMissing.length === 0;
   const mappingReady = startReady && mappingMissing.length === 0;
   const nextActionStatus = mappingReady ? "ready" : startReady ? "start_ready" : "locked";
@@ -7000,6 +7006,8 @@ function freeRoamRuntimeSummaryFromReadbacks(
     return null;
   }
   const decision = asRecord(latest.decision);
+  const mappingStartMissing = freeRoamRuntimeMissingList(latest.free_roam_mapping_start_missing_reasons);
+  const mappingMissing = freeRoamRuntimeMissingList(latest.free_roam_mapping_missing_reasons ?? latest.mapping_missing_reasons);
   return {
     status: "loaded",
     state: asString(decision?.state, "not_loaded"),
@@ -7007,13 +7015,44 @@ function freeRoamRuntimeSummaryFromReadbacks(
     stop_required: decision?.stop_required === true,
     artifact_only: latest.artifact_only !== false,
     cmd_vel_publish_enabled: latest.cmd_vel_publish_enabled === true,
+    ...(mappingStartMissing.length > 0 ? { free_roam_mapping_start_missing_reasons: mappingStartMissing } : {}),
+    ...(mappingMissing.length > 0 ? { free_roam_mapping_missing_reasons: mappingMissing } : {}),
   };
+}
+
+function normalizeFreeRoamMappingMissingId(value: string): string {
+  // 上车端有时返回“未观测”状态词；summary 对外统一使用稳定 gate id。
+  const normalized: Record<string, string> = {
+    camera_first_frame_not_observed: "camera_first_frame",
+    camera_health_unreachable: "camera_first_frame",
+    radar_scan_proof_not_fresh: "lidar_fresh",
+    lidar_not_fresh: "lidar_fresh",
+  };
+  return normalized[value] ?? value;
+}
+
+function freeRoamRuntimeMissingList(value: unknown): string[] {
+  // runtime latest 已经给出短缺口时优先消费；空值和占位词表示未提供，不覆盖 gate fallback。
+  const rawItems = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+  return Array.from(new Set(rawItems
+    .map((item) => asString(item, "").trim())
+    .filter((item) => item && !["none", "not_loaded", "null", "undefined", "[]"].includes(item))
+    .map(normalizeFreeRoamMappingMissingId)));
 }
 
 function freeRoamMappingMissingIds(
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null,
+  freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
 ): string[] {
   // 自由移动不依赖相机/雷达；建图验收才需要这些材料同时就绪。
+  const remoteMissing = freeRoamRuntimeMissingList((freeRoamRuntime as unknown as JsonRecord | null)?.free_roam_mapping_missing_reasons);
+  if (remoteMissing.length > 0) {
+    return remoteMissing;
+  }
   const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
     .filter((gate) => gate.scope === "mapping_acceptance")
     .map((gate) => [gate.id, gate]));
@@ -7022,8 +7061,13 @@ function freeRoamMappingMissingIds(
 
 function freeRoamMappingStartMissingIds(
   freeRoamRuntimeGates: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"] | null,
+  freeRoamRuntime: RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_runtime"] | null = null,
 ): string[] {
   // 建图启动只看传感器入口；地图记录和地图画面属于启动后的验收材料。
+  const remoteStartMissing = freeRoamRuntimeMissingList((freeRoamRuntime as unknown as JsonRecord | null)?.free_roam_mapping_start_missing_reasons);
+  if (remoteStartMissing.length > 0) {
+    return remoteStartMissing;
+  }
   const mappingGateById = new Map((freeRoamRuntimeGates ?? [])
     .filter((gate) => gate.scope === "mapping_acceptance")
     .map((gate) => [gate.id, gate]));
@@ -7453,8 +7497,8 @@ function lockedBoundary(
     && freeRoamRuntime.cmd_vel_publish_enabled
     && stopFallbackReady,
   );
-  const freeRoamMappingMissingReasons = freeRoamMappingMissingIds(freeRoamRuntimeGates);
-  const freeRoamMappingStartMissingReasons = freeRoamMappingStartMissingIds(freeRoamRuntimeGates);
+  const freeRoamMappingMissingReasons = freeRoamMappingMissingIds(freeRoamRuntimeGates, freeRoamRuntime);
+  const freeRoamMappingStartMissingReasons = freeRoamMappingStartMissingIds(freeRoamRuntimeGates, freeRoamRuntime);
   const freeRoamMappingStartReady = freeRoamStartReady && freeRoamMappingStartMissingReasons.length === 0;
   const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";

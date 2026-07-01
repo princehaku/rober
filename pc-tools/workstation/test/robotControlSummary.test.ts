@@ -986,6 +986,74 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("雷达点未贴图");
   });
 
+  it("uses free-roam latest mapping start gaps before stale runtime gate rows", async () => {
+    // 上车 latest 已复算建图启动只差相机时，live-summary 不能继续沿用旧 gate 里的 lidar_fresh。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      const payloadByPath: Record<string, Record<string, unknown>> = {
+        "/api/free-roam/autonomy/latest": {
+          ...basePayload,
+          latest_result: {
+            status: "loaded",
+            free_roam_motion_start_ready: true,
+            free_move_start_ready: true,
+            motion_start_ready: true,
+            motion_without_radar_allowed: true,
+            free_move_without_camera_allowed: true,
+            free_roam_mapping_start_ready: false,
+            free_roam_mapping_start_missing_reasons: ["camera_first_frame_not_observed"],
+            free_roam_mapping_missing_reasons: ["camera_first_frame", "mapping_active", "fresh_map_preview"],
+            free_roam_mapping_start_plain: "建图启动未就绪，还差 camera_first_frame_not_observed；低速自由移动不受影响。",
+            free_roam_mapping_start_next_action: "先补齐画面首帧；需要移动时可先勾安全确认低速自由移动。",
+            decision: {
+              state: "stopping",
+              reason: "现场请求停止",
+              gates: [
+                { id: "stop_available", label: "停止兜底", state: "ready", evidence: "stop endpoint ready", next_action: "继续监看" },
+                { id: "camera_first_frame", label: "画面首帧", state: "not_proven", evidence: "画面首帧未出", next_action: "检查画面" },
+                { id: "lidar_fresh", label: "雷达新鲜", state: "not_proven", evidence: "旧 runtime gate 尚未刷新", next_action: "先刷新雷达" },
+              ],
+            },
+            snapshot: {
+              external_stop_requested: true,
+              mapping_active: false,
+            },
+            artifact_only: true,
+            cmd_vel_publish_enabled: false,
+          },
+        },
+      };
+      const payload = payloadByPath[url.pathname] ?? basePayload;
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.readback_summary.free_roam.mapping_start_missing).toBe("camera_first_frame");
+    expect(summary.safe_command_boundary.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame"]);
+    expect(summary.live_closure_summary?.mapping_start_missing_reasons).toEqual(["camera_first_frame"]);
+    expect(summary.live_closure_summary?.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame"]);
+    expect(summary.live_closure_summary?.mapping_lidar_blocks_start).toBe(false);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_status).toBe("not_loaded");
+    expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧");
+    expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("雷达新鲜");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("建图启动还差画面首帧");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("建图启动还差画面首帧、雷达新鲜");
+  });
+
   it("does not draw stale radar scan proof points as current map overlay", async () => {
     // 地图雷达 overlay 的点来自 scan proof；proof stale 时，即使有旧点数组也不能标成当前 WYSIWYG。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

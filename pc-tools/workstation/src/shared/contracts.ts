@@ -3646,6 +3646,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       stop_required: boolean;
       artifact_only: boolean;
       cmd_vel_publish_enabled: boolean;
+      free_roam_mapping_start_missing_reasons?: string[];
+      free_roam_mapping_missing_reasons?: string[];
     };
     map_click_goal: "map click goal locked";
     locked_reason: string;
