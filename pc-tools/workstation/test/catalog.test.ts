@@ -11439,6 +11439,14 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_next_action_plain: string;
         radar_overlay_count: number;
         radar_overlay_source_count: number | null;
+        radar_overlay_needs_refresh: boolean;
+        radar_overlay_blocks_wysiwyg: boolean;
+        radar_overlay_blocks_free_move: boolean;
+        radar_overlay_recovery_sequence: string[];
+        fixed_radar_overlay_refresh_endpoint: string;
+        fixed_radar_overlay_map_preview_endpoint: string;
+        radar_overlay_refresh_sends_motion: boolean;
+        radar_overlay_refresh_starts_radar_lifecycle: boolean;
         radar_overlay_frame_id: string;
         radar_overlay_source_frame_id: string;
         radar_overlay_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
@@ -11634,6 +11642,14 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_next_action_plain: string;
         radar_overlay_count: number;
         radar_overlay_source_count: number | null;
+        radar_overlay_needs_refresh: boolean;
+        radar_overlay_blocks_wysiwyg: boolean;
+        radar_overlay_blocks_free_move: boolean;
+        radar_overlay_recovery_sequence: string[];
+        fixed_radar_overlay_refresh_endpoint: string;
+        fixed_radar_overlay_map_preview_endpoint: string;
+        radar_overlay_refresh_sends_motion: boolean;
+        radar_overlay_refresh_starts_radar_lifecycle: boolean;
         radar_overlay_frame_id: string;
         radar_overlay_source_frame_id: string;
         radar_overlay_points: Array<{ x_m: number; y_m: number; frame_id: string }>;
@@ -11706,6 +11722,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay_count).toBe(0);
       expect(body.radar_overlay_points).toEqual([]);
       expect(body.radar_overlay_source_count).toBe(65);
+      expect(body.radar_overlay_needs_refresh).toBe(true);
+      expect(body.radar_overlay_blocks_wysiwyg).toBe(true);
+      expect(body.radar_overlay_blocks_free_move).toBe(false);
+      expect(body.radar_overlay_recovery_sequence).toEqual([
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/map/preview",
+      ]);
+      expect(body.fixed_radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+      expect(body.fixed_radar_overlay_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+      expect(body.radar_overlay_refresh_sends_motion).toBe(false);
+      expect(body.radar_overlay_refresh_starts_radar_lifecycle).toBe(false);
       expect(body.radar_overlay_frame_id).toBe("");
       expect(body.radar_overlay_source_frame_id).toBe("laser_frame");
       expect(body.radar_overlay.blocked_reasons).toContain("runtime_scan_stale_for_map_radar_overlay");

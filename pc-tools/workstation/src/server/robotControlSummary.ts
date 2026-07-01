@@ -3648,12 +3648,21 @@ function mapPreviewRadarOverlayAliases(
   | "radar_overlay_stale_source_points_suppressed"
   | "radar_overlay_primary_blocked_reason"
   | "radar_overlay_current_vs_source_plain"
+  | "radar_overlay_needs_refresh"
+  | "radar_overlay_blocks_wysiwyg"
+  | "radar_overlay_blocks_free_move"
+  | "radar_overlay_recovery_sequence"
+  | "fixed_radar_overlay_refresh_endpoint"
+  | "fixed_radar_overlay_map_preview_endpoint"
+  | "radar_overlay_refresh_sends_motion"
+  | "radar_overlay_refresh_starts_radar_lifecycle"
   | "radar_overlay_scan_preview_point_count"
   | "radar_overlay_scan_preview_source_point_count"
   | "radar_overlay_frame_id"
   | "radar_overlay_source_frame_id"
 > {
   // 顶层 alias 与嵌套 overlay 同源，方便现场 curl/jq 一眼确认“地图上到底贴了几个当前雷达点”。
+  const blocksWysiwyg = radarOverlay.overlay_status !== "loaded" || radarOverlay.count <= 0;
   return {
     radar_overlay_status: radarOverlay.overlay_status,
     radar_overlay_plain_hint: radarOverlay.plain_hint,
@@ -3670,6 +3679,17 @@ function mapPreviewRadarOverlayAliases(
     radar_overlay_stale_source_points_suppressed: radarOverlay.stale_source_points_suppressed,
     radar_overlay_primary_blocked_reason: radarOverlay.primary_blocked_reason,
     radar_overlay_current_vs_source_plain: radarOverlay.current_vs_source_plain,
+    radar_overlay_needs_refresh: radarOverlay.refresh_required,
+    radar_overlay_blocks_wysiwyg: blocksWysiwyg,
+    radar_overlay_blocks_free_move: false,
+    radar_overlay_recovery_sequence: [
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/map/preview",
+    ],
+    fixed_radar_overlay_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+    fixed_radar_overlay_map_preview_endpoint: "/api/robot-control/map/preview",
+    radar_overlay_refresh_sends_motion: false,
+    radar_overlay_refresh_starts_radar_lifecycle: false,
     radar_overlay_scan_preview_point_count: radarOverlay.scan_preview_point_count,
     radar_overlay_scan_preview_source_point_count: radarOverlay.scan_preview_source_point_count,
     radar_overlay_frame_id: radarOverlay.frame_id,
