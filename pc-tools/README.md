@@ -38,6 +38,14 @@ client publish、service 和 parameter 通道关到不匹配正则；安装仍�
 `ws://192.168.1.11:8765`；该按钮不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，固定 proof refresh POST 回包本体也直接说明 no-motion 边界：
+`readback_only=true`、`no_motion_refresh=true`、`sends_motion_when_clicked=false`、
+`starts_radar_lifecycle=false`、`starts_nav2=false`、`starts_manual=false`、`starts_keyboard=false`、
+`starts_free_roam=false`、`starts_map_runtime=false`、`submits_delivery=false` 和 `stops_motion=false`。
+覆盖 `/api/robot-control/radar/scan-proof/refresh`、`/api/robot-control/map/proof/refresh` 和
+`/api/robot-control/nav2/proof/refresh`，方便现场 `curl` 单看 proof refresh 回包就能确认它不发车、
+不启动雷达 lifecycle、不启动建图 runtime、不提交 delivery，也不发送 stop 或 `/cmd_vel`。
+
 2026-07-02 CST 起，现场验收包的只读复验动作不再只暴露单个 endpoint。`no_motion_readback_actions[]`
 每项都带 `sequence_endpoints`、`sequence_labels` 和 refresh flags；summary 顶层也暴露
 `field_acceptance_no_motion_readback_action_sequences`、`field_acceptance_no_motion_readback_action_sequence_labels`

@@ -10591,6 +10591,17 @@ describe("workstation fail-closed API contracts", () => {
       const radarBody = (await radarResponse.json()) as {
         proxy_status: string;
         safe_to_control: boolean;
+        no_motion_refresh: boolean;
+        readback_only: boolean;
+        sends_motion_when_clicked: boolean;
+        starts_radar_lifecycle: boolean;
+        starts_nav2: boolean;
+        starts_manual: boolean;
+        starts_keyboard: boolean;
+        starts_free_roam: boolean;
+        starts_map_runtime: boolean;
+        submits_delivery: boolean;
+        stops_motion: boolean;
         blocked_reasons: string[];
         last_result_evidence_ref: string;
         latest_readback_key_values: Record<string, string>;
@@ -10611,6 +10622,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(radarResponse.status).toBe(200);
       expect(radarBody.proxy_status).toBe("refresh_forwarded");
       expect(radarBody.safe_to_control).toBe(false);
+      expect(radarBody.no_motion_refresh).toBe(true);
+      expect(radarBody.readback_only).toBe(true);
+      expect(radarBody.sends_motion_when_clicked).toBe(false);
+      expect(radarBody.starts_radar_lifecycle).toBe(false);
+      expect(radarBody.starts_nav2).toBe(false);
+      expect(radarBody.starts_manual).toBe(false);
+      expect(radarBody.starts_keyboard).toBe(false);
+      expect(radarBody.starts_free_roam).toBe(false);
+      expect(radarBody.starts_map_runtime).toBe(false);
+      expect(radarBody.submits_delivery).toBe(false);
+      expect(radarBody.stops_motion).toBe(false);
       expect(radarBody.blocked_reasons).toEqual([]);
       expect(radarBody.last_result_evidence_ref).toBe("radar-refresh-proof");
       expect(radarBody.hard_dangerous_true_fields).toEqual([]);
@@ -10656,6 +10678,10 @@ describe("workstation fail-closed API contracts", () => {
       const mapBody = (await mapResponse.json()) as {
         proxy_status: string;
         safe_to_control: boolean;
+        no_motion_refresh: boolean;
+        sends_motion_when_clicked: boolean;
+        starts_map_runtime: boolean;
+        starts_nav2: boolean;
         blocked_reasons: string[];
         latest_readback_key_values: Record<string, string>;
         hard_dangerous_true_fields: string[];
@@ -10664,6 +10690,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(mapResponse.status).toBe(200);
       expect(mapBody.proxy_status).toBe("refresh_forwarded");
       expect(mapBody.safe_to_control).toBe(false);
+      expect(mapBody.no_motion_refresh).toBe(true);
+      expect(mapBody.sends_motion_when_clicked).toBe(false);
+      expect(mapBody.starts_map_runtime).toBe(false);
+      expect(mapBody.starts_nav2).toBe(false);
       expect(mapBody.blocked_reasons).toEqual([]);
       expect(mapBody.hard_dangerous_true_fields).toEqual([]);
       expect(mapBody.non_motion_evidence_actions_observed).toEqual(expect.arrayContaining(["sends_commands", "starts_ros2"]));
@@ -10686,6 +10716,10 @@ describe("workstation fail-closed API contracts", () => {
         delivery_success: boolean;
         primary_actions_enabled: boolean;
         robot_control_executed: boolean;
+        no_motion_refresh: boolean;
+        sends_motion_when_clicked: boolean;
+        starts_nav2: boolean;
+        starts_manual: boolean;
         remote_endpoint: string;
         latest_readback_key_values: Record<string, string>;
         hard_dangerous_true_fields: string[];
@@ -10697,6 +10731,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(nav2Body.delivery_success).toBe(false);
       expect(nav2Body.primary_actions_enabled).toBe(false);
       expect(nav2Body.robot_control_executed).toBe(false);
+      expect(nav2Body.no_motion_refresh).toBe(true);
+      expect(nav2Body.sends_motion_when_clicked).toBe(false);
+      expect(nav2Body.starts_nav2).toBe(false);
+      expect(nav2Body.starts_manual).toBe(false);
       expect(nav2Body.hard_dangerous_true_fields).toEqual([]);
       expect(nav2Body.latest_readback_key_values.path_generated).toBe("false");
       expect(nav2Body.latest_readback_key_values.path_generation_succeeded).toBe("false");

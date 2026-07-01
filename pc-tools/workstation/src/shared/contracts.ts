@@ -4519,6 +4519,17 @@ export interface RobotControlProofRefreshProxyResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1";
   refresh_kind: RobotControlProofRefreshKind;
   proxy_status: RobotControlProofRefreshProxyStatus;
+  readback_only: true;
+  no_motion_refresh: true;
+  sends_motion_when_clicked: false;
+  starts_radar_lifecycle: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
   source_base_url: string;
   normalized_base_url: string;
   remote_endpoint:

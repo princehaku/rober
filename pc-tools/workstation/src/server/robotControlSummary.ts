@@ -387,6 +387,34 @@ export type RobotProofRefreshConfig = {
   key_fields: string[];
 };
 
+const PROOF_REFRESH_NO_MOTION_FLAGS = {
+  // proof refresh POST 只刷新证据，不允许被现场脚本误当成运动或 runtime 开关。
+  readback_only: true,
+  no_motion_refresh: true,
+  sends_motion_when_clicked: false,
+  starts_radar_lifecycle: false,
+  starts_nav2: false,
+  starts_manual: false,
+  starts_keyboard: false,
+  starts_free_roam: false,
+  starts_map_runtime: false,
+  submits_delivery: false,
+  stops_motion: false,
+} satisfies Pick<
+  RobotControlProofRefreshProxyResponse,
+  | "readback_only"
+  | "no_motion_refresh"
+  | "sends_motion_when_clicked"
+  | "starts_radar_lifecycle"
+  | "starts_nav2"
+  | "starts_manual"
+  | "starts_keyboard"
+  | "starts_free_roam"
+  | "starts_map_runtime"
+  | "submits_delivery"
+  | "stops_motion"
+>;
+
 const RADAR_SCAN_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
   kind: "radar_scan_proof_refresh",
   endpoint: "/api/radar/scan-proof/refresh",
@@ -4819,6 +4847,7 @@ function blockedRefreshResponse(
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
     ...PROOF_FLAGS,
+    ...PROOF_REFRESH_NO_MOTION_FLAGS,
     refresh_kind: config.kind,
     proxy_status: "refresh_rejected",
     source_base_url: sourceBaseUrl,
@@ -4851,6 +4880,7 @@ function failedRefreshResponse(
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
     ...PROOF_FLAGS,
+    ...PROOF_REFRESH_NO_MOTION_FLAGS,
     refresh_kind: config.kind,
     proxy_status: "refresh_failed",
     source_base_url: sourceBaseUrl,
@@ -5096,6 +5126,7 @@ async function buildProofRefreshProxy(
     return {
       schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
       ...PROOF_FLAGS,
+      ...PROOF_REFRESH_NO_MOTION_FLAGS,
       refresh_kind: config.kind,
       proxy_status: "refresh_failed",
       source_base_url: baseUrl,
@@ -5121,6 +5152,7 @@ async function buildProofRefreshProxy(
     return {
       schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
       ...PROOF_FLAGS,
+      ...PROOF_REFRESH_NO_MOTION_FLAGS,
       refresh_kind: config.kind,
       proxy_status: "refresh_failed",
       source_base_url: baseUrl,
@@ -5173,6 +5205,7 @@ async function buildProofRefreshProxy(
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
     ...PROOF_FLAGS,
+    ...PROOF_REFRESH_NO_MOTION_FLAGS,
     refresh_kind: config.kind,
     proxy_status: refreshSuccessful ? "refresh_forwarded" : "refresh_failed",
     source_base_url: baseUrl,
