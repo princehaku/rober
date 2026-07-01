@@ -472,6 +472,82 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
   };
 }
 
+function cameraProbeDiagnosticAliases(
+  probeValues: RobotControlCameraFirstFrameProbeProxyResponse["probe_key_values"],
+  sourceFailure: CameraMjpegRelayLastFailure | null,
+  dangerousTrueFields: string[] = [],
+): Pick<
+  RobotControlCameraFirstFrameProbeProxyResponse,
+  | "camera_first_frame_ready"
+  | "frame_observed"
+  | "first_frame_observed"
+  | "source_diagnosis_status"
+  | "source_diagnosis_not_exclusive"
+  | "source_diagnosis_plain_hint"
+  | "source_diagnosis_next_action_plain"
+  | "camera_usb_speed"
+  | "camera_usb_full_speed_detected"
+  | "camera_hardware_action_required"
+  | "camera_hardware_action_label"
+  | "camera_blocks_mapping_start"
+  | "camera_blocks_free_move"
+  | "camera_reprobe_after_hardware_action_required"
+  | "camera_reprobe_sequence"
+  | "fixed_camera_probe_endpoint"
+  | "fixed_camera_mjpeg_status_endpoint"
+  | "fixed_summary_endpoint"
+  | "camera_recovery_sends_motion"
+  | "camera_recovery_starts_map_runtime"
+  | "sends_motion_when_clicked"
+  | "starts_map_runtime"
+  | "dangerous_true_fields"
+> {
+  // probe 失败体也要像 status/summary 一样给出同源诊断，避免现场把 502 误解成页面独占或控制动作。
+  const frameObserved = probeValues.read_ok === "true"
+    || probeValues.backend_frame_observed === "true"
+    || probeValues.visible_content_proven === "true";
+  const firstFrameReady = probeValues.visible_content_proven === "true";
+  const cameraUsbSpeed = sourceFailure?.uvc_usb_topology_video_usb_speed ?? "not_loaded";
+  const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M"
+    || sourceFailure?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive"
+    || sourceFailure?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb";
+  const sourceDiagnosisNextActionPlain = cameraMjpegActionPlainText(sourceFailure?.source_diagnosis_next_action ?? "not_loaded")
+    || (cameraUsbFullSpeedDetected
+      ? "摄像头当前挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测首帧。"
+      : "打开共享预览或点只读检查复测首帧。");
+  const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !firstFrameReady;
+  const cameraReprobeSequence = [
+    "/api/robot-control/camera/first-frame/probe",
+    "/api/robot-control/camera/mjpeg/status",
+    "/api/robot-control/summary",
+  ];
+  return {
+    camera_first_frame_ready: firstFrameReady,
+    frame_observed: frameObserved,
+    first_frame_observed: frameObserved,
+    source_diagnosis_status: sourceFailure?.source_diagnosis_status ?? "not_loaded",
+    source_diagnosis_not_exclusive: sourceFailure?.source_diagnosis_not_exclusive ?? "not_loaded",
+    source_diagnosis_plain_hint: sourceFailure?.source_diagnosis_plain_hint ?? "not_loaded",
+    source_diagnosis_next_action_plain: sourceDiagnosisNextActionPlain,
+    camera_usb_speed: cameraUsbSpeed,
+    camera_usb_full_speed_detected: cameraUsbFullSpeedDetected,
+    camera_hardware_action_required: cameraHardwareActionRequired,
+    camera_hardware_action_label: cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧",
+    camera_blocks_mapping_start: !firstFrameReady,
+    camera_blocks_free_move: false,
+    camera_reprobe_after_hardware_action_required: cameraHardwareActionRequired,
+    camera_reprobe_sequence: cameraReprobeSequence,
+    fixed_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
+    fixed_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+    fixed_summary_endpoint: "/api/robot-control/summary",
+    camera_recovery_sends_motion: false,
+    camera_recovery_starts_map_runtime: false,
+    sends_motion_when_clicked: false,
+    starts_map_runtime: false,
+    dangerous_true_fields: dangerousTrueFields,
+  };
+}
+
 function baseFeedbackSampleKeyValues(payload: Record<string, unknown> | null): RobotControlBaseFeedbackSamplesProxyResponse["sample_key_values"] {
   // 反馈采集只展示样本摘要；原始串口帧留在上位机 artifact，避免 PC 页面误读为 HIL pass。
   const latestResult = asRecord(payload?.latest_result);
@@ -2329,6 +2405,7 @@ function unsafeProxyFailure(
 
 function cameraProbeFailure(sourceBaseUrl: string, reason: string): RobotControlCameraFirstFrameProbeProxyResponse {
   // 本机拒绝或 fetch 失败也返回完整合同，避免高级诊断分叉成异常栈展示。
+  const probeValues = cameraProbeKeyValues(null);
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
     source: "software_proof",
@@ -2343,9 +2420,10 @@ function cameraProbeFailure(sourceBaseUrl: string, reason: string): RobotControl
     remote_endpoint: "/api/camera/first-frame/probe",
     remote_http_status: null,
     status: "blocked",
-    probe_key_values: cameraProbeKeyValues(null),
+    probe_key_values: probeValues,
     failure_reason: reason,
     blocked_reasons: [reason],
+    ...cameraProbeDiagnosticAliases(probeValues, null),
     hard_dangerous_true_fields: [],
     robot_control_executed: false,
   };
@@ -4751,6 +4829,7 @@ export function createWorkstationApp(): express.Express {
       return;
     }
     const includeBackendSmoke = req.query.backendSmoke === "1" || req.query.backendSmoke === "true";
+    const sourceFailurePromise = cameraSourceFirstFrameFailureForStatus(normalized.normalized);
     // 默认保持快速首帧探针；只有用户主动请求深度诊断时才启动 ffmpeg/v4l2-ctl 后端矩阵。
     const remote = await fetchCameraProxySummary(
       sourceBaseUrl,
@@ -4763,11 +4842,15 @@ export function createWorkstationApp(): express.Express {
       },
       includeBackendSmoke ? CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS : CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS,
     );
+    const sourceFailure = await sourceFailurePromise;
     if (remote.error) {
+      const probeValues = cameraProbeKeyValues(null);
       const failureBody = {
         ...cameraProbeFailure(sourceBaseUrl, remote.error),
         proxy_status: "probe_failed" as const,
         normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+        probe_key_values: probeValues,
+        ...cameraProbeDiagnosticAliases(probeValues, sourceFailure),
       };
       cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(failureBody));
       res.status(502).json(failureBody);
@@ -4806,6 +4889,7 @@ export function createWorkstationApp(): express.Express {
         ...dangerous.map((field) => `dangerous_true_field:${field}`),
         ...(failureReason && dangerous.length === 0 ? [failureReason] : []),
       ],
+      ...cameraProbeDiagnosticAliases(probeValues, sourceFailure, dangerous),
       hard_dangerous_true_fields: dangerous,
       robot_control_executed: false,
     };

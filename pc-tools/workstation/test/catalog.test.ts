@@ -908,17 +908,24 @@ function listenSerialRobotApiReadbackByPath(
 }
 
 function listenRobotCameraProxyApi(
-  handlers: Record<string, { payload: unknown; statusCode?: number }>,
+  handlers: Record<string, { payload: unknown; statusCode?: number; method?: "GET" | "POST" }>,
 ): Promise<{ baseUrl: string; close: () => Promise<void>; receivedBodies: Record<string, unknown[]> }> {
   // camera proxy 测试需要按固定 POST 路径返回 JSON，验证 workstation 不会退化成任意代理。
   const receivedBodies: Record<string, unknown[]> = {};
   const server = http.createServer((req, res) => {
     const url = req.url ?? "/";
     const handler = handlers[url];
-    if (req.method !== "POST" || !handler) {
+    const expectedMethod = handler?.method ?? "POST";
+    if (req.method !== expectedMethod || !handler) {
       res.statusCode = 404;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ error: "not_found" }));
+      return;
+    }
+    if (expectedMethod === "GET") {
+      res.statusCode = handler.statusCode ?? 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(handler.payload));
       return;
     }
     let body = "";
@@ -15583,6 +15590,7 @@ describe("workstation fail-closed API contracts", () => {
     // 普通首屏检查画面不能默认启动 ffmpeg/v4l2 后端矩阵，否则失败时会长时间占住摄像头。
     const upstream = await listenRobotCameraProxyApi({
       "/api/camera/health": {
+        method: "GET",
         payload: {
           schema: "trashbot.local_webrtc_camera_smoke.v1",
           status: "source_not_probed",
@@ -15748,6 +15756,35 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
         },
       },
+      "/api/camera/health": {
+        method: "GET",
+        payload: {
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "deadline_expired",
+          current_selection: {
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_path: "/dev/video1",
+            selected_is_uvc_or_usb: true,
+          },
+          source_diagnosis: {
+            status: "uvc_full_speed_usb_not_exclusive",
+            plain_hint: "不是页面独占：DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。",
+            next_action: "check_usb_camera_input_power_or_known_good_uvc",
+            not_exclusive: true,
+          },
+          source_usage: {
+            status: "free",
+            owner_count: 0,
+          },
+          uvc_usb_topology: {
+            status: "uvc_video_on_full_speed_usb",
+            video_usb_speed: "12M",
+            plain_hint: "摄像头挂在 USB full-speed。",
+            next_action: "move_camera_to_high_speed_usb",
+          },
+        },
+      },
     });
     const workstation = await listen(createWorkstationApp());
     try {
@@ -15757,6 +15794,21 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         failure_reason: string;
+        camera_first_frame_ready: boolean;
+        frame_observed: boolean;
+        source_diagnosis_status: string;
+        source_diagnosis_not_exclusive: string;
+        source_diagnosis_next_action_plain: string;
+        camera_usb_speed: string;
+        camera_usb_full_speed_detected: boolean;
+        camera_hardware_action_required: boolean;
+        camera_hardware_action_label: string;
+        camera_blocks_mapping_start: boolean;
+        camera_blocks_free_move: boolean;
+        sends_motion_when_clicked: boolean;
+        starts_map_runtime: boolean;
+        robot_control_executed: boolean;
+        dangerous_true_fields: string[];
         probe_key_values: {
           backend_smoke_status: string;
           backend_frame_observed: string;
@@ -15773,6 +15825,21 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.probe_key_values.backend_smoke_status).toBe("backend_no_frame_observed");
       expect(body.probe_key_values.backend_frame_observed).toBe("false");
       expect(body.probe_key_values.backend_attempts).toBe("2");
+      expect(body.camera_first_frame_ready).toBe(false);
+      expect(body.frame_observed).toBe(false);
+      expect(body.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+      expect(body.source_diagnosis_not_exclusive).toBe("true");
+      expect(body.source_diagnosis_next_action_plain).toContain("known-good UVC");
+      expect(body.camera_usb_speed).toBe("12M");
+      expect(body.camera_usb_full_speed_detected).toBe(true);
+      expect(body.camera_hardware_action_required).toBe(true);
+      expect(body.camera_hardware_action_label).toBe("换高速USB后复测");
+      expect(body.camera_blocks_mapping_start).toBe(true);
+      expect(body.camera_blocks_free_move).toBe(false);
+      expect(body.sends_motion_when_clicked).toBe(false);
+      expect(body.starts_map_runtime).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+      expect(body.dangerous_true_fields).toEqual([]);
       expect(body.safe_to_control).toBe(false);
       expect(upstream.receivedBodies["/api/camera/first-frame/probe"]).toEqual([
         {
@@ -15789,8 +15856,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_smoke_status).toBe("backend_no_frame_observed");
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_frame_observed).toBe("false");
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_attempts).toBe("2");
-      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
-      expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("OpenCV/V4L2 后端也没有取到视频帧");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("USB full-speed");
       expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
     } finally {
       await workstation.close();
