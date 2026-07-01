@@ -302,6 +302,14 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_direct_map_keeps_page_fullscreen_without_browser_api).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_browser_fullscreen_required).toBe(false);
     expect(summary.map_display_direct_map_browser_fullscreen_required).toBe(false);
+    expect(summary.live_closure_summary?.map_display_direct_map_refreshes_radar_scan_proof_on_enter).toBe(true);
+    expect(summary.map_display_direct_map_refreshes_radar_scan_proof_on_enter).toBe(true);
+    expect(summary.live_closure_summary?.map_display_direct_map_refreshes_map_preview_on_enter).toBe(true);
+    expect(summary.map_display_direct_map_refreshes_map_preview_on_enter).toBe(true);
+    expect(summary.live_closure_summary?.map_display_direct_map_refreshes_radar_status_on_enter).toBe(true);
+    expect(summary.map_display_direct_map_refreshes_radar_status_on_enter).toBe(true);
+    expect(summary.live_closure_summary?.map_display_direct_map_starts_radar_lifecycle_on_enter).toBe(false);
+    expect(summary.map_display_direct_map_starts_radar_lifecycle_on_enter).toBe(false);
     expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("1000%");
     expect(summary.map_display_default_zoom_percent).toBe("1000%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("3200%");

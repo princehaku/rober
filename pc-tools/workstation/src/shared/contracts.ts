@@ -3104,6 +3104,10 @@ export interface RobotControlLiveClosureSummary {
   map_display_direct_map_only: true;
   map_display_direct_map_keeps_page_fullscreen_without_browser_api: true;
   map_display_direct_map_browser_fullscreen_required: false;
+  map_display_direct_map_refreshes_radar_scan_proof_on_enter: true;
+  map_display_direct_map_refreshes_map_preview_on_enter: true;
+  map_display_direct_map_refreshes_radar_status_on_enter: true;
+  map_display_direct_map_starts_radar_lifecycle_on_enter: false;
   map_display_default_zoom_percent: "1000%";
   map_display_max_zoom_percent: "3200%";
   map_display_too_small_next_action_plain: string;
@@ -3543,6 +3547,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   map_display_direct_map_only?: RobotControlLiveClosureSummary["map_display_direct_map_only"];
   map_display_direct_map_keeps_page_fullscreen_without_browser_api?: RobotControlLiveClosureSummary["map_display_direct_map_keeps_page_fullscreen_without_browser_api"];
   map_display_direct_map_browser_fullscreen_required?: RobotControlLiveClosureSummary["map_display_direct_map_browser_fullscreen_required"];
+  map_display_direct_map_refreshes_radar_scan_proof_on_enter?: RobotControlLiveClosureSummary["map_display_direct_map_refreshes_radar_scan_proof_on_enter"];
+  map_display_direct_map_refreshes_map_preview_on_enter?: RobotControlLiveClosureSummary["map_display_direct_map_refreshes_map_preview_on_enter"];
+  map_display_direct_map_refreshes_radar_status_on_enter?: RobotControlLiveClosureSummary["map_display_direct_map_refreshes_radar_status_on_enter"];
+  map_display_direct_map_starts_radar_lifecycle_on_enter?: RobotControlLiveClosureSummary["map_display_direct_map_starts_radar_lifecycle_on_enter"];
   map_display_default_zoom_percent?: RobotControlLiveClosureSummary["map_display_default_zoom_percent"];
   map_display_max_zoom_percent?: RobotControlLiveClosureSummary["map_display_max_zoom_percent"];
   map_display_too_small_next_action_plain?: RobotControlLiveClosureSummary["map_display_too_small_next_action_plain"];

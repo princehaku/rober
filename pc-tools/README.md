@@ -87,6 +87,8 @@ manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 `data-direct-map-refreshes-map-preview-on-enter=true`、`data-direct-map-refreshes-radar-status-on-enter=true`
 和 `data-direct-map-starts-radar-lifecycle-on-enter=false`，确保雷达开始后的地图标记按当前读回验收；
 该入口仍不启动雷达 lifecycle、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+同一合同也暴露在 summary 顶层 `map_display_direct_map_*_on_enter` 字段里，现场 `curl /api/robot-control/summary`
+即可确认 `/map` 打开会刷新雷达 proof、地图预览和雷达状态，同时不启动雷达 lifecycle。
 
 2026-07-01 23:01 CST 起，现场验收包把剩余动作分成三类并同步到 `GET /api/robot-control/summary`
 和普通首屏 DOM：`safety_confirm_ready_step_ids` 表示只差现场安全确认的运动验收，
