@@ -10508,6 +10508,10 @@ describe("App", () => {
       expect(mapPanel.attributes("data-direct-map-loads-camera-preview")).toBe("false");
       expect(mapPanel.attributes("data-direct-map-refreshes-camera-mjpeg-status")).toBe("false");
       expect(mapPanel.attributes("data-direct-map-starts-camera-webrtc")).toBe("false");
+      expect(mapPanel.attributes("data-direct-map-refreshes-radar-scan-proof-on-enter")).toBe("true");
+      expect(mapPanel.attributes("data-direct-map-refreshes-map-preview-on-enter")).toBe("true");
+      expect(mapPanel.attributes("data-direct-map-refreshes-radar-status-on-enter")).toBe("true");
+      expect(mapPanel.attributes("data-direct-map-starts-radar-lifecycle-on-enter")).toBe("false");
       expect(mapPanel.attributes("data-size")).toBe("fullscreen");
       expect(mapPanel.attributes("data-fullscreen")).toBe("true");
       expect(mapPanel.attributes("data-observer-mode")).toBe("true");
@@ -10536,6 +10540,10 @@ describe("App", () => {
       expect(directMapDisplayProof.attributes("data-direct-map-view-map-only")).toBe("true");
       expect(directMapDisplayProof.attributes("data-direct-map-view-keeps-page-fullscreen-without-browser-api")).toBe("true");
       expect(directMapDisplayProof.attributes("data-direct-map-view-browser-fullscreen-required")).toBe("false");
+      expect(directMapDisplayProof.attributes("data-direct-map-refreshes-radar-scan-proof-on-enter")).toBe("true");
+      expect(directMapDisplayProof.attributes("data-direct-map-refreshes-map-preview-on-enter")).toBe("true");
+      expect(directMapDisplayProof.attributes("data-direct-map-refreshes-radar-status-on-enter")).toBe("true");
+      expect(directMapDisplayProof.attributes("data-direct-map-starts-radar-lifecycle-on-enter")).toBe("false");
       expect(directMapDisplayProof.attributes("data-primary-map-action-testid")).toBe("plain-map-direct-view-link");
       expect(directMapDisplayProof.attributes("data-primary-map-action-label")).toBe("进入地图大屏");
       expect(directMapDisplayProof.attributes("data-primary-map-action-opens-new-window")).toBe("false");
@@ -10589,10 +10597,14 @@ describe("App", () => {
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-map-runtime")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-nav2")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-radar-scan-proof-on-enter")).toBe("true");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-map-preview-on-enter")).toBe("true");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-radar-status-on-enter")).toBe("true");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-radar-lifecycle-on-enter")).toBe("false");
+      expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/offer?"))).toBe(false);
@@ -24917,8 +24929,8 @@ describe("App", () => {
     }
   });
 
-  it("keeps stale radar overlay refresh manual-only on the direct map screen", async () => {
-    // /map 打开时不能自动触发昂贵的 proof refresh；只显示手动 no-motion 刷新入口，避免第二屏压垮上车服务。
+  it("refreshes stale radar overlay proof on direct map entry without starting radar lifecycle", async () => {
+    // /map 打开就是现场大屏，进入时应刷新 no-motion 雷达 proof，再保留手动刷新入口兜底。
     window.history.pushState({}, "", "/map");
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.readback_summary.lidar.lifecycle_running = "true";
@@ -24987,8 +24999,12 @@ describe("App", () => {
     expect(refreshAction.exists()).toBe(true);
     expect(refreshAction.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(refreshAction.attributes("data-starts-radar-lifecycle")).toBe("false");
-    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(false);
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(1);
+    expect(mapPanel.attributes("data-direct-map-refreshes-radar-scan-proof-on-enter")).toBe("true");
+    expect(mapPanel.attributes("data-direct-map-refreshes-map-preview-on-enter")).toBe("true");
+    expect(mapPanel.attributes("data-direct-map-refreshes-radar-status-on-enter")).toBe("true");
+    expect(mapPanel.attributes("data-direct-map-starts-radar-lifecycle-on-enter")).toBe("false");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBeGreaterThanOrEqual(1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/offer?"))).toBe(false);

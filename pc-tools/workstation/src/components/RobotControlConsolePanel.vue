@@ -455,6 +455,16 @@ function applyPlainMapDirectViewIfRequested(): void {
   plainMapZoomIndex.value = PLAIN_MAP_DEFAULT_ZOOM_INDEX;
   centerPlainMapViewport();
 }
+
+async function refreshPlainMapDirectViewOnEnter(): Promise<void> {
+  // `/map` 是现场大屏入口；进入时刷新雷达 scan proof 后再读地图，避免旧雷达点冒充当前 WYSIWYG 标记。
+  if (plainMapDirectViewRequested.value) {
+    await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true });
+    return;
+  }
+  await refreshMapPreview({ radarStatusRefresh: false });
+}
+
 async function togglePlainMapObserverView(): Promise<void> {
   // 观测模式只改变 PC 显示密度；进入时顺手拉起全屏，退出时回到普通大地图。
   plainMapObserverView.value = !plainMapObserverView.value;
@@ -17758,7 +17768,7 @@ onMounted(() => {
   document.addEventListener("visibilitychange", handlePageVisibilityChange);
   document.addEventListener("fullscreenchange", syncPlainMapBrowserFullscreenState);
   void refreshConsole().then(() => {
-    void refreshMapPreview({ radarStatusRefresh: plainMapDirectViewRequested.value });
+    void refreshPlainMapDirectViewOnEnter();
     void preloadGoalClosureReadbacks();
     void refreshCameraMjpegStatus();
   });
@@ -21234,6 +21244,10 @@ onBeforeUnmount(() => {
           data-direct-map-loads-camera-preview="false"
           data-direct-map-refreshes-camera-mjpeg-status="false"
           data-direct-map-starts-camera-webrtc="false"
+          data-direct-map-refreshes-radar-scan-proof-on-enter="true"
+          data-direct-map-refreshes-map-preview-on-enter="true"
+          data-direct-map-refreshes-radar-status-on-enter="true"
+          data-direct-map-starts-radar-lifecycle-on-enter="false"
           data-ros2-companion-style="rviz2-map-focus"
           data-ros2-companion-tools="rviz2,foxglove"
           data-ros2-companion-tool="rviz2"
@@ -21322,8 +21336,10 @@ onBeforeUnmount(() => {
                 data-starts-map-runtime="false"
                 data-starts-nav2="false"
                 data-uses-browser-fullscreen-api="false"
+                data-refreshes-radar-scan-proof-on-enter="true"
                 data-refreshes-map-preview-on-enter="true"
                 data-refreshes-radar-status-on-enter="true"
+                data-starts-radar-lifecycle-on-enter="false"
                 data-keeps-wysiwyg-overlays="image-route-robot-radar"
                 data-ros2-companion-required="false"
                 data-ros2-companion-tool="rviz2"
@@ -21721,6 +21737,10 @@ onBeforeUnmount(() => {
             data-direct-map-view-map-only="true"
             :data-direct-map-view-keeps-page-fullscreen-without-browser-api="String(plainMapDirectViewRequested)"
             data-direct-map-view-browser-fullscreen-required="false"
+            data-direct-map-refreshes-radar-scan-proof-on-enter="true"
+            data-direct-map-refreshes-map-preview-on-enter="true"
+            data-direct-map-refreshes-radar-status-on-enter="true"
+            data-direct-map-starts-radar-lifecycle-on-enter="false"
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
             data-ros2-companion-required="false"
