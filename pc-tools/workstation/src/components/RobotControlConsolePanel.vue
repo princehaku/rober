@@ -4286,8 +4286,7 @@ async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotion
       await refreshMapPreview({ radarStatusRefresh: true });
       await loadNavGoalExecutionLatest({ allowDuringMapRefresh: true });
       await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
-      await refreshConsole();
-      await loadDeliveryLatest({ allowDuringMapRefresh: true });
+      await refreshLiveDeliveryClosureReadback();
       return;
     }
     if (actionId === "hold_keyboard") {
@@ -10175,6 +10174,7 @@ const plainDeliveryClosureSummary = computed(() => {
     routeMapMatches,
     confirmationReady: deliveryOperatorConfirmationReady.value,
     deliverySuccessReady: deliverySuccessReady.value,
+    summaryDeliverySuccess: plainLiveClosureSummary.value?.delivery_success ?? false,
     confirmReady: plainDeliveryConfirmReady.value,
     missingCount: missingLabels.length,
     currentNav2RouteMapRef: freshNav2RouteMapRef.value || "not_loaded",
@@ -14861,6 +14861,15 @@ async function loadDeliveryLatest(options: { allowDuringMapRefresh?: boolean } =
   }
 }
 
+async function refreshLiveDeliveryClosureReadback(): Promise<void> {
+  // 当前卡点里的 delivery_success 来自 summary；读完 delivery latest 后必须同步刷新 summary，避免状态落后一拍。
+  if (!robotApiBaseUrl.value.trim() || deliveryLatestPending.value) {
+    return;
+  }
+  await loadDeliveryLatest({ allowDuringMapRefresh: true });
+  await refreshConsole();
+}
+
 function fillDeliveryRefsFromLatestReadback(): void {
   // 页面刷新后复用 delivery latest 中的草稿材料 ref；只预填输入，不提交报告、不确认送达。
   const refs = deliveryLatestResult.value?.delivery_material_refs;
@@ -17107,12 +17116,17 @@ onBeforeUnmount(() => {
           :data-route-map-matches-current-nav2="String(plainDeliveryClosureSummary.routeMapMatches)"
           :data-confirmation-ready="String(plainDeliveryClosureSummary.confirmationReady)"
           :data-delivery-success-ready="String(plainDeliveryClosureSummary.deliverySuccessReady)"
+          :data-summary-delivery-success="String(plainDeliveryClosureSummary.summaryDeliverySuccess)"
           :data-confirm-ready="String(plainDeliveryClosureSummary.confirmReady)"
           :data-missing-count="String(plainDeliveryClosureSummary.missingCount)"
           :data-current-nav2-route-map-ref="plainDeliveryClosureSummary.currentNav2RouteMapRef"
           :data-delivery-route-map-ref="plainDeliveryClosureSummary.deliveryRouteMapRef"
           data-fixed-delivery-latest-endpoint="/api/robot-control/delivery/latest"
+          data-fixed-summary-endpoint="/api/robot-control/summary"
+          data-readback-refresh-endpoints="/api/robot-control/delivery/latest,/api/robot-control/summary"
           data-readback-only="true"
+          data-refreshes-delivery-latest="true"
+          data-refreshes-summary="true"
           data-sends-motion-when-clicked="false"
           data-starts-nav2="false"
           data-starts-manual="false"
@@ -17135,7 +17149,11 @@ onBeforeUnmount(() => {
             data-testid="plain-live-delivery-closure-readback-refresh"
             :disabled="!canLoadDeliveryLatest"
             data-fixed-delivery-latest-endpoint="/api/robot-control/delivery/latest"
+            data-fixed-summary-endpoint="/api/robot-control/summary"
+            data-readback-refresh-endpoints="/api/robot-control/delivery/latest,/api/robot-control/summary"
             data-readback-only="true"
+            data-refreshes-delivery-latest="true"
+            data-refreshes-summary="true"
             data-sends-motion-when-clicked="false"
             data-starts-nav2="false"
             data-starts-manual="false"
@@ -17144,7 +17162,7 @@ onBeforeUnmount(() => {
             data-starts-map-runtime="false"
             data-submits-delivery="false"
             data-stops-motion="false"
-            @click="loadDeliveryLatest({ allowDuringMapRefresh: true })"
+            @click="refreshLiveDeliveryClosureReadback"
           >
             {{ deliveryLatestPending ? "读回中" : "读回送达" }}
           </button>

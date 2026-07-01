@@ -161,8 +161,8 @@ describe("robotControlSummary", () => {
       "/api/robot-control/map/preview",
       "/api/robot-control/nav2/goal/execution/latest",
       "/api/robot-control/base/feedback-samples",
-      "/api/robot-control/summary",
       "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
     ]);
     expect(summary.live_closure_summary?.wheel_rerun_delivery_success_required).toBe(true);
     expect(summary.live_closure_summary?.wheel_rerun_delivery_next_action_plain).toContain("提交 delivery success");
@@ -392,8 +392,8 @@ describe("robotControlSummary", () => {
       "/api/robot-control/map/preview",
       "/api/robot-control/nav2/goal/execution/latest",
       "/api/robot-control/base/feedback-samples",
-      "/api/robot-control/summary",
       "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
       "/api/robot-control/free-roam/autonomy/latest",
     ]);
     expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
@@ -432,8 +432,8 @@ describe("robotControlSummary", () => {
           "/api/robot-control/map/preview",
           "/api/robot-control/nav2/goal/execution/latest",
           "/api/robot-control/base/feedback-samples",
-          "/api/robot-control/summary",
           "/api/robot-control/delivery/latest",
+          "/api/robot-control/summary",
         ],
         proof_plain: "可复验完整行程：勾现场安全确认后执行图上路线，执行后按验收端点读回；还差：同窗口 wheel L/R 非零、delivery success。",
       }),

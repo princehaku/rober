@@ -9037,8 +9037,8 @@ function buildLiveClosureSummary(
     "/api/robot-control/map/preview",
     "/api/robot-control/nav2/goal/execution/latest",
     "/api/robot-control/base/feedback-samples",
-    "/api/robot-control/summary",
     "/api/robot-control/delivery/latest",
+    "/api/robot-control/summary",
   ];
   const wheelRerunChecklistPlain = needsSameWindowWheelRerun
     ? "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。"
@@ -9110,10 +9110,10 @@ function buildLiveClosureSummary(
         "/api/robot-control/map/preview",
         "/api/robot-control/nav2/goal/execution/latest",
         "/api/robot-control/base/feedback-samples",
-        "/api/robot-control/summary",
         "/api/robot-control/delivery/latest",
+        "/api/robot-control/summary",
       ],
-      acceptance_plain: "执行后读取地图路线画面、latest、同窗口 wheel L/R、summary 和 delivery latest，确认图上路线、到点成功、轮速非零且 delivery success 已记录。",
+      acceptance_plain: "执行后读取地图路线画面、latest、同窗口 wheel L/R、delivery latest 和 summary，确认图上路线、到点成功、轮速非零且 delivery success 已记录。",
       blocked_reasons: routeReadyOnMap || needsSameWindowWheelRerun ? [] : ["route_not_ready_on_map"],
     },
     {
