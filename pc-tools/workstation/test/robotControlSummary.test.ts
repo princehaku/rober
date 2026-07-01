@@ -381,6 +381,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
     expect(summary.camera_current_visible).toBe(false);
+    expect(summary.map_current_visible).toBe(true);
+    expect(summary.path_current_visible).toBe(true);
+    expect(summary.live_wysiwyg_map_visible).toBe(true);
     expect(summary.radar_map_points_visible).toBe(false);
     expect(summary.radar_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
     expect(summary.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);

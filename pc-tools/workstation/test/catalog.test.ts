@@ -6914,6 +6914,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_wysiwyg_missing_surface_ids).toEqual(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids);
       expect(summary.live_wysiwyg_refresh_sends_motion).toBe(false);
       expect(summary.camera_current_visible).toBe(summary.live_closure_summary?.camera_current_visible);
+      expect(summary.map_current_visible).toBe(summary.live_closure_summary?.map_current_visible);
+      expect(summary.path_current_visible).toBe(summary.live_closure_summary?.path_current_visible);
+      expect(summary.live_wysiwyg_map_visible).toBe(summary.live_closure_summary?.live_wysiwyg_map_visible);
       expect(summary.radar_map_points_visible).toBe(summary.live_closure_summary?.radar_map_points_visible);
       expect(summary.radar_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
       expect(live.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);

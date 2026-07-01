@@ -3254,6 +3254,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   wheel_rerun_current_gap_plain?: RobotControlLiveClosureSummary["wheel_rerun_current_gap_plain"];
   wheel_rerun_no_extra_precheck_plain?: RobotControlLiveClosureSummary["wheel_rerun_no_extra_precheck_plain"];
   camera_current_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
+  map_current_visible?: RobotControlLiveClosureSummary["map_current_visible"];
+  path_current_visible?: RobotControlLiveClosureSummary["path_current_visible"];
+  live_wysiwyg_map_visible?: RobotControlLiveClosureSummary["live_wysiwyg_map_visible"];
   radar_map_points_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   radar_overlay_status?: RobotControlLiveClosureSummary["radar_overlay_status"];
   radar_overlay_current_point_count?: RobotControlLiveClosureSummary["radar_overlay_current_point_count"];
