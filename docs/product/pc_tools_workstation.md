@@ -4996,3 +4996,10 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `field_acceptance_wysiwyg_refreshes_map_preview`。当当前所见同时缺相机和雷达地图点时，现场脚本可以直接确认这条
 `all_wysiwyg` 序列会复测相机、刷新雷达扫描、读取雷达状态并刷新地图画面；这些标记仍只描述只读刷新，不发车、不启动雷达 lifecycle、
 不启动建图 runtime，也不发送 `/cmd_vel`。
+
+2026-07-02 07:33 CST 起，summary 顶层新增 `live_wysiwyg_focused_refresh_sequence`、
+`live_wysiwyg_focused_refresh_sequence_labels`、`live_wysiwyg_focused_refresh_mode` 和对应 refresh capability flags。
+它们专门表达“当前缺口该跑哪条聚焦只读刷新链”，区别于仍保留的全量 `live_wysiwyg_refresh_sequence`。本轮现场只读执行
+`radar scan-proof -> radar status -> map preview -> camera probe -> camera mjpeg status -> summary` 后，雷达地图贴图从
+`not_current` 恢复为 `loaded`，当前地图雷达点 43 个，WYSIWYG 缺口收敛为只剩 `camera`；随后 focused refresh mode 变为
+`camera_only`，只需继续按“首帧 probe -> MJPEG status -> summary”复测相机。相机仍报告 USB 12M/full-speed，需要现场换高速 USB 后再复测。

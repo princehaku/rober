@@ -3657,6 +3657,15 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_wysiwyg_refresh_plan_available?: RobotControlLiveClosureSummary["live_wysiwyg_refresh_plan_available"];
   live_wysiwyg_refresh_sequence?: RobotControlLiveClosureSummary["live_wysiwyg_refresh_sequence"];
   live_wysiwyg_refresh_sequence_labels?: RobotControlLiveClosureSummary["live_wysiwyg_refresh_sequence_labels"];
+  live_wysiwyg_focused_refresh_sequence?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sequence"];
+  live_wysiwyg_focused_refresh_sequence_labels?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sequence_labels"];
+  live_wysiwyg_focused_refresh_mode?: RobotControlFieldAcceptanceWysiwygRefreshMode;
+  live_wysiwyg_focused_refresh_sends_motion?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sends_motion"];
+  live_wysiwyg_focused_refreshes_camera_first_frame_probe?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_camera_first_frame_probe"];
+  live_wysiwyg_focused_refreshes_camera_mjpeg_status?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_camera_mjpeg_status"];
+  live_wysiwyg_focused_refreshes_radar_scan_proof?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_radar_scan_proof"];
+  live_wysiwyg_focused_refreshes_radar_status?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_radar_status"];
+  live_wysiwyg_focused_refreshes_map_preview?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_map_preview"];
   fixed_live_wysiwyg_radar_refresh_endpoint?: RobotControlLiveClosureSummary["fixed_live_wysiwyg_radar_refresh_endpoint"];
   fixed_live_wysiwyg_camera_probe_endpoint?: RobotControlLiveClosureSummary["fixed_live_wysiwyg_camera_probe_endpoint"];
   fixed_live_wysiwyg_map_preview_endpoint?: RobotControlLiveClosureSummary["fixed_live_wysiwyg_map_preview_endpoint"];

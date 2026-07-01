@@ -676,6 +676,8 @@ describe("robotControlSummary", () => {
       "/api/robot-control/summary",
     ]);
     expect(summary.live_wysiwyg_refresh_sequence).toEqual(summary.live_closure_summary?.live_wysiwyg_refresh_sequence);
+    expect(summary.live_wysiwyg_focused_refresh_sequence).toEqual(summary.field_acceptance_wysiwyg_refresh_sequence);
+    expect(summary.live_wysiwyg_focused_refresh_mode).toBe("all_wysiwyg");
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_sequence_labels).toEqual([
       "刷新雷达扫描读数",
       "读取雷达状态",
@@ -685,6 +687,13 @@ describe("robotControlSummary", () => {
       "刷新总览",
     ]);
     expect(summary.live_wysiwyg_refresh_sequence_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_refresh_sequence_labels);
+    expect(summary.live_wysiwyg_focused_refresh_sequence_labels).toEqual(summary.field_acceptance_wysiwyg_refresh_sequence_labels);
+    expect(summary.live_wysiwyg_focused_refresh_sends_motion).toBe(false);
+    expect(summary.live_wysiwyg_focused_refreshes_radar_scan_proof).toBe(true);
+    expect(summary.live_wysiwyg_focused_refreshes_radar_status).toBe(true);
+    expect(summary.live_wysiwyg_focused_refreshes_map_preview).toBe(true);
+    expect(summary.live_wysiwyg_focused_refreshes_camera_first_frame_probe).toBe(true);
+    expect(summary.live_wysiwyg_focused_refreshes_camera_mjpeg_status).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refreshes_radar_scan_proof).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refreshes_camera_first_frame_probe).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refreshes_map_preview).toBe(true);
@@ -2159,11 +2168,20 @@ describe("robotControlSummary", () => {
       "/api/robot-control/camera/mjpeg/status",
       "/api/robot-control/summary",
     ]);
+    expect(summary.live_wysiwyg_focused_refresh_sequence).toEqual(summary.field_acceptance_wysiwyg_refresh_sequence);
+    expect(summary.live_wysiwyg_focused_refresh_mode).toBe("camera_only");
     expect(summary.field_acceptance_wysiwyg_refresh_sequence_labels).toEqual([
       "复测相机首帧",
       "读取相机 MJPEG 状态",
       "刷新总览",
     ]);
+    expect(summary.live_wysiwyg_focused_refresh_sequence_labels).toEqual(summary.field_acceptance_wysiwyg_refresh_sequence_labels);
+    expect(summary.live_wysiwyg_focused_refresh_sends_motion).toBe(false);
+    expect(summary.live_wysiwyg_focused_refreshes_camera_first_frame_probe).toBe(true);
+    expect(summary.live_wysiwyg_focused_refreshes_camera_mjpeg_status).toBe(true);
+    expect(summary.live_wysiwyg_focused_refreshes_radar_scan_proof).toBe(false);
+    expect(summary.live_wysiwyg_focused_refreshes_map_preview).toBe(false);
+    expect(summary.live_wysiwyg_focused_refreshes_radar_status).toBe(false);
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_camera_first_frame_probe).toBe(true);
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_camera_mjpeg_status).toBe(true);
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_radar_scan_proof).toBe(false);
