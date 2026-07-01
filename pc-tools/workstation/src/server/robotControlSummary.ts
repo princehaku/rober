@@ -9537,6 +9537,26 @@ function buildLiveClosureSummary(
     ?? null;
   const objectiveAuditMissingPlain = (item: RobotControlLiveObjectiveAuditItem): string => {
     // 顶层摘要必须说当前真实缺口，避免“画面/地图/雷达点”这种大类掩盖地图和雷达已可见的事实。
+    if (item.id === "motion") {
+      const motionGaps = [
+        ...(!nav2ObjectiveDone
+          ? [`图上行程还差${[
+            ...(!routeReadyOnMap ? ["路线显示"] : []),
+            ...(!nav2GoalSucceeded ? ["到点成功"] : []),
+            ...(!wheelLrNonzeroProven ? ["同窗口轮速 L/R 非零"] : []),
+            ...(!deliveryClaimReady ? ["送达确认"] : []),
+          ].join("、")}`]
+          : []),
+        ...(!keyboardObjectiveDone
+          ? [`键盘还差${[
+            ...(!keyboardMotionVerified ? ["按住读到轮速 L/R 非零"] : []),
+            ...(!keyboardStopSettledAfterPulse ? ["松开后停稳"] : []),
+          ].join("、")}`]
+          : []),
+        ...(!freeMoveObjectiveDone ? ["自由移动还差启动读回"] : []),
+      ];
+      return motionGaps.join("；") || item.title;
+    }
     if (item.id === "wysiwyg") {
       const cameraMissingPlain = cameraHardwareActionRequired
         ? `画面未显示（${cameraHardwareActionLabel}）`

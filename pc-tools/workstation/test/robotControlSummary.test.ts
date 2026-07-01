@@ -978,6 +978,10 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("雷达新鲜");
     expect(summary.live_closure_summary?.radar_map_points_visible).toBe(true);
     expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("画面未显示");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("图上行程还差路线显示、到点成功、同窗口轮速 L/R 非零、送达确认");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("键盘还差按住读到轮速 L/R 非零、松开后停稳");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("自由移动还差启动读回");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("未完成：行程/键盘/自由移动、");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("画面/地图/雷达点");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("雷达点未贴图");
   });
