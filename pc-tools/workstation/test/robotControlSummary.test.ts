@@ -1227,6 +1227,18 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_missing_id).toBe("same_window_wheel_lr_nonzero");
     expect(summary.field_acceptance_primary_missing_label).toBe("同窗口 wheel L/R 非零");
     expect(summary.field_acceptance_primary_missing_action_id).toBe("run_nav2_route");
+    expect(summary.field_acceptance_primary_missing_action_label).toBe("完整行程执行");
+    expect(summary.field_acceptance_primary_missing_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.field_acceptance_primary_missing_action_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.field_acceptance_primary_missing_action_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_primary_missing_action_sends_motion).toBe(true);
+    expect(summary.field_acceptance_primary_missing_action_requires_safety_confirm).toBe(true);
     expect(summary.field_acceptance_primary_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.field_acceptance_primary_readback_method).toBe("POST");
     expect(summary.field_acceptance_primary_requires_motion_before_readback).toBe(true);

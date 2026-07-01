@@ -3777,6 +3777,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_missing_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_id"];
   field_acceptance_primary_missing_label?: RobotControlFieldAcceptancePacket["primary_missing_evidence_label"];
   field_acceptance_primary_missing_action_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_action_id"];
+  field_acceptance_primary_missing_action_label?: RobotControlFieldAcceptanceStep["label"] | "none";
+  field_acceptance_primary_missing_action_start_endpoint?: RobotControlFieldAcceptanceStep["start_endpoint"] | "none";
+  field_acceptance_primary_missing_action_stop_endpoint?: RobotControlFieldAcceptanceStep["stop_endpoint"] | "none";
+  field_acceptance_primary_missing_action_acceptance_endpoints?: RobotControlFieldAcceptanceStep["acceptance_endpoints"];
+  field_acceptance_primary_missing_action_sends_motion?: RobotControlFieldAcceptanceStep["sends_motion_when_executed"];
+  field_acceptance_primary_missing_action_requires_safety_confirm?: RobotControlFieldAcceptanceStep["safety_confirm_required"];
   field_acceptance_primary_readback_endpoint?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_endpoint"];
   field_acceptance_primary_readback_method?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_method"];
   field_acceptance_primary_requires_motion_before_readback?: RobotControlFieldAcceptancePacket["primary_missing_evidence_requires_motion_before_readback"];

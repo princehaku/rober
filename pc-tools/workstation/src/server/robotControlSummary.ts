@@ -10424,6 +10424,9 @@ export async function buildRobotControlSummary(
       };
     }));
   const fieldAcceptancePrimaryMissingEvidence = fieldAcceptanceMissingEvidenceItems[0] ?? null;
+  const fieldAcceptancePrimaryMissingEvidenceAction = fieldAcceptanceSteps
+    .find((item) => item.id === fieldAcceptancePrimaryMissingEvidence?.action_id)
+    ?? null;
   const fieldAcceptanceWysiwygRefreshModeValue = fieldAcceptanceWysiwygRefreshMode(
     liveClosureSummary.live_wysiwyg_missing_surface_ids,
   );
@@ -11037,6 +11040,12 @@ export async function buildRobotControlSummary(
     field_acceptance_primary_missing_id: fieldAcceptancePacket.primary_missing_evidence_id,
     field_acceptance_primary_missing_label: fieldAcceptancePacket.primary_missing_evidence_label,
     field_acceptance_primary_missing_action_id: fieldAcceptancePacket.primary_missing_evidence_action_id,
+    field_acceptance_primary_missing_action_label: fieldAcceptancePrimaryMissingEvidenceAction?.label ?? "none",
+    field_acceptance_primary_missing_action_start_endpoint: fieldAcceptancePrimaryMissingEvidenceAction?.start_endpoint ?? "none",
+    field_acceptance_primary_missing_action_stop_endpoint: fieldAcceptancePrimaryMissingEvidenceAction?.stop_endpoint ?? "none",
+    field_acceptance_primary_missing_action_acceptance_endpoints: fieldAcceptancePrimaryMissingEvidenceAction?.acceptance_endpoints ?? [],
+    field_acceptance_primary_missing_action_sends_motion: fieldAcceptancePrimaryMissingEvidenceAction?.sends_motion_when_executed ?? false,
+    field_acceptance_primary_missing_action_requires_safety_confirm: fieldAcceptancePrimaryMissingEvidenceAction?.safety_confirm_required ?? false,
     field_acceptance_primary_readback_endpoint: fieldAcceptancePacket.primary_missing_evidence_readback_endpoint,
     field_acceptance_primary_readback_method: fieldAcceptancePacket.primary_missing_evidence_readback_method,
     field_acceptance_primary_requires_motion_before_readback: fieldAcceptancePacket.primary_missing_evidence_requires_motion_before_readback,

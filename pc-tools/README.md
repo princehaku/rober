@@ -96,12 +96,16 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 
 2026-07-02 CST 起，`GET /api/robot-control/summary` 进一步补齐现场脚本友好的短 alias：
 `field_acceptance_primary_missing_id`、`field_acceptance_primary_missing_label`、
-`field_acceptance_primary_missing_action_id`、`field_acceptance_primary_readback_endpoint`、
-`field_acceptance_primary_readback_method`、`field_acceptance_primary_requires_motion_before_readback`、
+`field_acceptance_primary_missing_action_id`、`field_acceptance_primary_missing_action_start_endpoint`、
+`field_acceptance_primary_missing_action_acceptance_endpoints`、`field_acceptance_primary_readback_endpoint`、
+`field_acceptance_primary_readback_method`、`field_acceptance_primary_missing_action_sends_motion`、
+`field_acceptance_primary_missing_action_requires_safety_confirm`、`field_acceptance_primary_requires_motion_before_readback`、
 `field_acceptance_primary_requires_safety_confirm_before_motion`、`live_wysiwyg_missing_reasons` 和
 `mapping_start_missing_evidence`。这些字段与既有 `*_missing_evidence_*`、
-`live_wysiwyg_missing_surface_ids`、`mapping_start_missing_reasons` 同源，只减少 `curl | jq` 取数路径，
-不重算验收状态，不启动 Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
+`live_motion_runbook_items`、`live_wysiwyg_missing_surface_ids`、`mapping_start_missing_reasons` 同源，只减少
+`curl | jq` 取数路径；当前 wheel L/R 缺口会直接指向安全确认后的
+`/api/robot-control/nav2/goal/execute` 和执行后读回端点，但不自动启动 Nav2、manual、keyboard、free-roam、
+建图、delivery、stop 或 `/cmd_vel`。
 普通首屏 `plain-field-acceptance-packet` DOM 同步暴露同名 `data-field-acceptance-primary-*`、
 `data-live-wysiwyg-missing-reasons` 和 `data-mapping-start-missing-evidence`，方便现场脚本不解析
 嵌套 packet 也能核对主缺口、所见缺口和建图缺口。
