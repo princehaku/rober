@@ -10709,6 +10709,19 @@ export async function buildRobotControlSummary(
   const fieldAcceptanceSafetyConfirmReadyActionAcceptanceEndpoints = fieldAcceptancePacket.safety_confirm_ready_actions.map(
     (action) => action.acceptance_endpoints.join("|"),
   );
+  const fieldAcceptanceParallelStatusPlain = [
+    fieldAcceptancePacket.primary_no_motion_readback_action_id === "none"
+      ? "只读复验：暂无"
+      : `只读复验：${fieldAcceptancePacket.primary_no_motion_readback_action_label}`,
+    fieldAcceptancePacket.primary_safety_confirm_ready_action_id === "none"
+      ? "安全确认后动作：暂无"
+      : `安全确认后动作：${fieldAcceptancePacket.primary_safety_confirm_ready_action_label}`,
+    fieldAcceptancePacket.primary_hardware_action_id === "none"
+      ? "设备处理：暂无"
+      : `设备处理：${fieldAcceptancePacket.primary_hardware_action_label}`,
+    `建图缺口：${liveClosureSummary.mapping_start_missing_reasons.join("、") || "暂无"}`,
+    `自由移动：${liveClosureSummary.free_move_start_ready ? "可在安全确认后先做" : "暂不可做"}`,
+  ].join("；");
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -10928,6 +10941,23 @@ export async function buildRobotControlSummary(
     field_acceptance_next_step_start_endpoint: fieldAcceptancePacket.next_step_start_endpoint,
     field_acceptance_next_step_sends_motion: fieldAcceptancePacket.next_step_sends_motion,
     field_acceptance_next_step_requires_safety_confirm: fieldAcceptancePacket.next_step_requires_safety_confirm,
+    field_acceptance_parallel_status_plain: fieldAcceptanceParallelStatusPlain,
+    field_acceptance_parallel_no_motion_action_id: fieldAcceptancePacket.primary_no_motion_readback_action_id,
+    field_acceptance_parallel_no_motion_action_label: fieldAcceptancePacket.primary_no_motion_readback_action_label,
+    field_acceptance_parallel_no_motion_action_endpoint: fieldAcceptancePacket.primary_no_motion_readback_action_endpoint,
+    field_acceptance_parallel_no_motion_action_method: fieldAcceptancePacket.primary_no_motion_readback_action_method,
+    field_acceptance_parallel_no_motion_action_sequence: fieldAcceptancePacket.primary_no_motion_readback_action_sequence,
+    field_acceptance_parallel_no_motion_action_sequence_labels: fieldAcceptancePacket.primary_no_motion_readback_action_sequence_labels,
+    field_acceptance_parallel_safety_action_id: fieldAcceptancePacket.primary_safety_confirm_ready_action_id,
+    field_acceptance_parallel_safety_action_label: fieldAcceptancePacket.primary_safety_confirm_ready_action_label,
+    field_acceptance_parallel_safety_action_start_endpoint: fieldAcceptancePacket.primary_safety_confirm_ready_action_start_endpoint,
+    field_acceptance_parallel_safety_action_acceptance_endpoints: fieldAcceptancePrimarySafetyAction?.acceptance_endpoints ?? [],
+    field_acceptance_parallel_hardware_action_id: fieldAcceptancePacket.primary_hardware_action_id,
+    field_acceptance_parallel_hardware_action_label: fieldAcceptancePacket.primary_hardware_action_label,
+    field_acceptance_parallel_hardware_action_after_readback_sequence: fieldAcceptancePacket.primary_hardware_action_after_readback_sequence,
+    field_acceptance_parallel_mapping_missing_evidence: liveClosureSummary.mapping_start_missing_reasons,
+    field_acceptance_parallel_free_move_allowed_while_mapping_blocked: liveClosureSummary.free_move_start_ready && !liveClosureSummary.mapping_start_ready,
+    field_acceptance_parallel_sends_motion_when_clicked: false,
     field_acceptance_ready_step_ids: fieldAcceptancePacket.ready_step_ids,
     field_acceptance_blocked_step_ids: fieldAcceptancePacket.blocked_step_ids,
     field_acceptance_motion_step_ids: fieldAcceptancePacket.motion_step_ids,

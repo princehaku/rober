@@ -139,6 +139,12 @@ Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 `field_acceptance_safety_confirm_ready_action_radar_preflight_required=false` 和
 `field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required=false`，并给 primary action 暴露同名单值字段。
 这些字段只说明安全确认后的执行/停止/读回口径，不会自动勾确认、不发车、不提交送达、不 stop。
+2026-07-02 CST 起，summary 顶层和 `plain-field-acceptance-packet` DOM 还暴露并行动作包：
+`field_acceptance_parallel_status_plain`、`field_acceptance_parallel_no_motion_action_*`、
+`field_acceptance_parallel_safety_action_*`、`field_acceptance_parallel_hardware_action_*`、
+`field_acceptance_parallel_mapping_missing_evidence` 和 `field_acceptance_parallel_free_move_allowed_while_mapping_blocked`。
+它把“现在可先做的只读复验”“勾安全确认后的运动动作”“硬件处理”“建图缺口”放在同一层；只读展示，不新增按钮，
+不自动刷新、不发车、不提交送达、不 stop。
 
 2026-07-01 23:16 CST 起，普通首屏现场验收卡新增 `plain-field-acceptance-primary-no-motion-readback`
 主按钮，文案为“只读复验：刷新雷达贴图 / 刷新当前所见 / 复验全部读数”。按钮直接使用

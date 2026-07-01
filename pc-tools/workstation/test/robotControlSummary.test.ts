@@ -808,6 +808,31 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_next_step_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.field_acceptance_next_step_sends_motion).toBe(true);
     expect(summary.field_acceptance_next_step_requires_safety_confirm).toBe(true);
+    expect(summary.field_acceptance_parallel_status_plain).toContain("只读复验：刷新雷达贴图");
+    expect(summary.field_acceptance_parallel_status_plain).toContain("安全确认后动作：完整行程执行");
+    expect(summary.field_acceptance_parallel_no_motion_action_id).toBe("refresh_radar_map_overlay");
+    expect(summary.field_acceptance_parallel_no_motion_action_label).toBe("刷新雷达贴图");
+    expect(summary.field_acceptance_parallel_no_motion_action_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.field_acceptance_parallel_no_motion_action_method).toBe("POST");
+    expect(summary.field_acceptance_parallel_no_motion_action_sequence).toEqual([
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/radar/status",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_parallel_safety_action_id).toBe("run_nav2_route");
+    expect(summary.field_acceptance_parallel_safety_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.field_acceptance_parallel_safety_action_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_parallel_hardware_action_id).toBe("none");
+    expect(summary.field_acceptance_parallel_mapping_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.field_acceptance_parallel_free_move_allowed_while_mapping_blocked).toBe(true);
+    expect(summary.field_acceptance_parallel_sends_motion_when_clicked).toBe(false);
     expect(summary.field_acceptance_ready_step_ids).toEqual([
       "run_nav2_route",
       "hold_keyboard",
