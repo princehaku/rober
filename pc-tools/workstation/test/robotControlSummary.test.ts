@@ -190,7 +190,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_primary_action_opens_current_page).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_default_observer).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_only).toBe(true);
-    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("400%");
+    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("600%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("2400%");
     expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
     expect(summary.live_closure_summary?.map_display_ros2_companion_required).toBe(false);
@@ -212,7 +212,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_ros2_observe_motion_topics).toBe(false);
     expect(summary.live_closure_summary?.map_display_ros2_observe_control_tools).toBe(false);
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：进入 /map 使用 PC 大地图");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 400% 细节视图");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 600% 细节视图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("适配");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("100% 看全图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("细节放大最高 2400%");

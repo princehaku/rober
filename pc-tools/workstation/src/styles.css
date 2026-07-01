@@ -1,6 +1,6 @@
 :root {
-  --plain-map-large-min-height: 1040px;
-  --plain-map-large-target-height: calc(100vh - 4px);
+  --plain-map-large-min-height: 1120px;
+  --plain-map-large-target-height: calc(100vh + 120px);
   --plain-map-large-max-height: 2600px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
@@ -68,8 +68,8 @@ button {
 
 .shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
   /* /map 直达页必须一打开就是地图观察屏，不能只是一张普通卡片。 */
-  height: calc(100vh - 50px);
-  min-height: calc(100vh - 50px);
+  height: calc(100vh - 24px);
+  min-height: calc(100vh - 24px);
 }
 
 .topbar {
@@ -1524,8 +1524,8 @@ h3 {
 }
 
 .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  height: calc(100vh - 42px);
-  min-height: 920px;
+  height: calc(100vh - 28px);
+  min-height: 1040px;
 }
 
 .plain-map-panel[data-state="地图可见"] {
@@ -3539,15 +3539,15 @@ th {
   }
 
   .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-    height: calc(100vh - 180px);
-    min-height: 360px;
+    height: calc(100vh - 96px);
+    min-height: 520px;
   }
 
   .plain-map-viewport[data-size="large"] .plain-map-layer,
   .plain-map-viewport[data-size="normal"] .plain-map-layer,
   .plain-map-layer {
     /* 窄 PC 窗口也要保持地图主视图，不能因为媒体查询退回小卡片。 */
-    height: clamp(620px, calc(100vh - 96px), 1100px);
-    min-height: 620px;
+    height: clamp(720px, calc(100vh + 80px), 1280px);
+    min-height: 720px;
   }
 }
