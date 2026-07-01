@@ -6867,6 +6867,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
       expect(live.camera_shared_preview_exclusive_camera_claim).toBe(summary.live_closure_summary?.camera_shared_preview_exclusive_camera_claim);
       expect(live.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.camera_recovery_next_action_plain);
+      expect(live.camera_hardware_action_required).toBe(summary.live_closure_summary?.camera_hardware_action_required);
+      expect(live.camera_hardware_action_label).toBe(summary.live_closure_summary?.camera_hardware_action_label);
+      expect(live.camera_usb_full_speed_detected).toBe(summary.live_closure_summary?.camera_usb_full_speed_detected);
+      expect(live.camera_blocks_mapping_start).toBe(summary.live_closure_summary?.camera_blocks_mapping_start);
+      expect(live.camera_blocks_free_move).toBe(false);
+      expect(live.camera_reprobe_after_hardware_action_required).toBe(summary.live_closure_summary?.camera_reprobe_after_hardware_action_required);
+      expect(live.camera_reprobe_sequence).toEqual(summary.live_closure_summary?.camera_reprobe_sequence);
       expect(live.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
       expect(live.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
       expect(live.camera_recovery_sends_motion).toBe(false);

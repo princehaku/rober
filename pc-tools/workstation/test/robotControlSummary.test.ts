@@ -733,6 +733,18 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_next_action_plain).toBe(
       "相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。",
     );
+    expect(summary.live_closure_summary?.camera_usb_speed).toBe("12M");
+    expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
+    expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("换高速USB后复测");
+    expect(summary.live_closure_summary?.camera_usb_full_speed_detected).toBe(true);
+    expect(summary.live_closure_summary?.camera_blocks_mapping_start).toBe(true);
+    expect(summary.live_closure_summary?.camera_blocks_free_move).toBe(false);
+    expect(summary.live_closure_summary?.camera_reprobe_after_hardware_action_required).toBe(true);
+    expect(summary.live_closure_summary?.camera_reprobe_sequence).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
   });
 
@@ -818,6 +830,17 @@ describe("robotControlSummary", () => {
       "复测相机首帧",
       "读取共享预览状态",
       "刷新当前卡点",
+    ]);
+    expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(false);
+    expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("复测相机首帧");
+    expect(summary.live_closure_summary?.camera_usb_full_speed_detected).toBe(false);
+    expect(summary.live_closure_summary?.camera_blocks_mapping_start).toBe(true);
+    expect(summary.live_closure_summary?.camera_blocks_free_move).toBe(false);
+    expect(summary.live_closure_summary?.camera_reprobe_after_hardware_action_required).toBe(false);
+    expect(summary.live_closure_summary?.camera_reprobe_sequence).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
     ]);
     expect(summary.live_closure_summary?.fixed_mapping_unblock_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_sends_motion).toBe(false);

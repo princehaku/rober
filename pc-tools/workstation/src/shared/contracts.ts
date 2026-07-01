@@ -2899,6 +2899,13 @@ export interface RobotControlLiveClosureSummary {
   camera_shared_preview_exclusive_camera_claim: string;
   camera_usb_speed: string;
   camera_recovery_next_action_plain: string;
+  camera_hardware_action_required: boolean;
+  camera_hardware_action_label: string;
+  camera_usb_full_speed_detected: boolean;
+  camera_blocks_mapping_start: boolean;
+  camera_blocks_free_move: false;
+  camera_reprobe_after_hardware_action_required: boolean;
+  camera_reprobe_sequence: string[];
   fixed_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
   fixed_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status";
   camera_recovery_sends_motion: false;

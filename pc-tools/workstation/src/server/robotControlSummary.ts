@@ -9003,6 +9003,15 @@ function buildLiveClosureSummary(
       : "相机首帧已满足。";
     return `建图启动还差：${mappingStartMissingPlain}；自由移动仍可先做，不被相机/雷达画面缺口阻塞。${cameraTail}；只读复测相机首帧和 MJPEG 状态，首帧 ready 后再启动建图。`;
   })();
+  const cameraUsbSpeed = readback.camera.uvc_usb_topology_video_usb_speed || "not_loaded";
+  const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M" || readback.camera.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
+  const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
+  const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
+  const cameraReprobeSequence = [
+    "/api/robot-control/camera/first-frame/probe",
+    "/api/robot-control/camera/mjpeg/status",
+    "/api/robot-control/summary",
+  ];
   const keyboardControlStartReady = keyboard.evidence?.keyboard_start_ready === true
     || readback.keyboard.keyboard_control_start_ready === "true";
   const keyboardContinuousControlReady = keyboardControlStartReady
@@ -9605,8 +9614,15 @@ function buildLiveClosureSummary(
     camera_source_diagnosis_status: readback.camera.source_diagnosis_status || "not_loaded",
     camera_source_diagnosis_not_exclusive: readback.camera.source_diagnosis_not_exclusive || "not_loaded",
     camera_shared_preview_exclusive_camera_claim: readback.camera.shared_preview_exclusive_camera_claim || "not_loaded",
-    camera_usb_speed: readback.camera.uvc_usb_topology_video_usb_speed || "not_loaded",
+    camera_usb_speed: cameraUsbSpeed,
     camera_recovery_next_action_plain: cameraRecoveryNextActionPlain,
+    camera_hardware_action_required: cameraHardwareActionRequired,
+    camera_hardware_action_label: cameraHardwareActionLabel,
+    camera_usb_full_speed_detected: cameraUsbFullSpeedDetected,
+    camera_blocks_mapping_start: mappingCameraBlocksStart,
+    camera_blocks_free_move: false,
+    camera_reprobe_after_hardware_action_required: cameraHardwareActionRequired,
+    camera_reprobe_sequence: cameraReprobeSequence,
     fixed_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
     fixed_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
     camera_recovery_sends_motion: false,
