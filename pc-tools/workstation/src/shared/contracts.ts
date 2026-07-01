@@ -2929,6 +2929,8 @@ export interface RobotControlFieldAcceptancePacket {
   primary_missing_evidence_id: string;
   primary_missing_evidence_label: string;
   primary_missing_evidence_action_id: RobotControlLiveMotionRunbookActionId | "none";
+  primary_missing_evidence_action_label: string;
+  primary_missing_evidence_action_display_label?: string;
   primary_missing_evidence_readback_endpoint: string;
   primary_missing_evidence_readback_method: "GET" | "POST" | "none";
   primary_missing_evidence_requires_motion_before_readback: boolean;
@@ -3814,6 +3816,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_missing_evidence_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_id"];
   field_acceptance_primary_missing_evidence_label?: RobotControlFieldAcceptancePacket["primary_missing_evidence_label"];
   field_acceptance_primary_missing_evidence_action_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_action_id"];
+  field_acceptance_primary_missing_evidence_action_label?: RobotControlFieldAcceptancePacket["primary_missing_evidence_action_label"];
+  field_acceptance_primary_missing_evidence_action_display_label?: RobotControlFieldAcceptancePacket["primary_missing_evidence_action_display_label"];
   field_acceptance_primary_missing_evidence_readback_endpoint?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_endpoint"];
   field_acceptance_primary_missing_evidence_readback_method?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_method"];
   field_acceptance_primary_missing_evidence_requires_motion_before_readback?: RobotControlFieldAcceptancePacket["primary_missing_evidence_requires_motion_before_readback"];

@@ -1307,6 +1307,8 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_missing_evidence_id).toBe("same_window_wheel_lr_nonzero");
     expect(summary.field_acceptance_primary_missing_evidence_label).toBe("同窗口 wheel L/R 非零");
     expect(summary.field_acceptance_primary_missing_evidence_action_id).toBe("run_nav2_route");
+    expect(summary.field_acceptance_primary_missing_evidence_action_label).toBe("完整行程执行");
+    expect(summary.field_acceptance_primary_missing_evidence_action_display_label).toBe("重跑图上行程并复验轮速");
     expect(summary.field_acceptance_primary_missing_evidence_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.field_acceptance_primary_missing_evidence_readback_method).toBe("POST");
     expect(summary.field_acceptance_primary_missing_evidence_requires_motion_before_readback).toBe(true);
@@ -1342,6 +1344,8 @@ describe("robotControlSummary", () => {
     expect(fieldAcceptancePacket).toBeDefined();
     expect(fieldAcceptancePacket?.next_step_display_label).toBe("重跑图上行程并复验轮速");
     expect(fieldAcceptancePacket?.primary_safety_confirm_ready_action_display_label).toBe("重跑图上行程并复验轮速");
+    expect(fieldAcceptancePacket?.primary_missing_evidence_action_label).toBe("完整行程执行");
+    expect(fieldAcceptancePacket?.primary_missing_evidence_action_display_label).toBe("重跑图上行程并复验轮速");
     expect(fieldAcceptancePacket?.primary_missing_evidence_readback_method).toBe("POST");
     expect(fieldAcceptancePacket?.primary_missing_evidence_requires_motion_before_readback).toBe(true);
     expect(fieldAcceptancePacket?.primary_missing_evidence_requires_safety_confirm_before_motion).toBe(true);
