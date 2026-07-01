@@ -6844,11 +6844,30 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.objective_audit_next_objective_id).toBe(summary.live_closure_summary?.objective_audit_next_objective_id);
       expect(summary.fixed_objective_audit_summary_endpoint).toBe("/api/robot-control/summary");
       expect(summary.objective_audit_sends_motion_when_clicked).toBe(false);
+      expect(summary.map_display_primary_tool).toBe("pc_big_map");
       expect(summary.map_display_primary_url).toBe("/map");
+      expect(summary.map_display_primary_action_label).toBe("进入地图大屏");
       expect(summary.map_display_default_zoom_percent).toBe("400%");
+      expect(summary.map_display_max_zoom_percent).toBe("2400%");
+      expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
       expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
+      expect(summary.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+      expect(summary.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+      expect(summary.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
+      expect(summary.map_display_ros2_observe_topics).toEqual([
+        "/map",
+        "/scan",
+        "/tf",
+        "/plan",
+        "/local_plan",
+        "/amcl_pose",
+        "/global_costmap/costmap",
+        "/local_costmap/costmap",
+      ]);
       expect(summary.map_display_sends_motion_when_clicked).toBe(false);
       expect(summary.map_display_starts_ros2).toBe(false);
+      expect(summary.map_display_starts_rviz2).toBe(false);
+      expect(summary.map_display_starts_foxglove).toBe(false);
       expect(summary.map_display_starts_nav2).toBe(false);
       expect(summary.map_display_starts_map_runtime).toBe(false);
       expect(summary.live_wysiwyg_ready).toBe(live.live_wysiwyg_ready);
