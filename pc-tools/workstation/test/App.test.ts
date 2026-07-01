@@ -1039,6 +1039,29 @@ const fixtures: Record<string, unknown> = {
       fixed_radar_overlay_map_preview_endpoint: "/api/robot-control/map/preview",
       radar_overlay_refresh_sends_motion: false,
       radar_overlay_refresh_starts_radar_lifecycle: false,
+      fixed_radar_start_endpoint: "/api/robot-control/radar/start",
+      fixed_radar_stop_endpoint: "/api/robot-control/radar/stop",
+      radar_start_map_wysiwyg_required: true,
+      radar_start_map_wysiwyg_sequence: [
+        "/api/robot-control/radar/start",
+        "/api/robot-control/summary",
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/map/preview",
+      ],
+      radar_start_map_wysiwyg_sequence_labels: ["启动雷达", "读取当前卡点", "刷新雷达扫描读数", "读取雷达状态", "刷新地图画面"],
+      radar_start_refreshes_scan_proof: true,
+      radar_start_refreshes_radar_status: true,
+      radar_start_refreshes_map_preview: true,
+      radar_start_refreshes_summary: true,
+      radar_start_sends_motion: false,
+      radar_start_starts_nav2: false,
+      radar_start_starts_manual: false,
+      radar_start_starts_keyboard: false,
+      radar_start_starts_free_roam: false,
+      radar_start_starts_map_runtime: false,
+      radar_start_submits_delivery: false,
+      radar_start_stops_motion: false,
       fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
       fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
       fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
@@ -5116,6 +5139,29 @@ describe("App", () => {
     const radarPanel = wrapper.find('[data-testid="plain-radar-panel"]');
     expect(radarPanel.exists()).toBe(true);
     expect(radarPanel.attributes("data-state")).toBe("雷达已运行");
+    expect(radarPanel.attributes("data-radar-start-map-wysiwyg-required")).toBe("true");
+    expect(radarPanel.attributes("data-radar-start-map-wysiwyg-sequence")).toBe("/api/robot-control/radar/start,/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview");
+    expect(radarPanel.attributes("data-radar-start-map-wysiwyg-sequence-labels")).toBe("启动雷达,读取当前卡点,刷新雷达扫描读数,读取雷达状态,刷新地图画面");
+    expect(radarPanel.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(radarPanel.attributes("data-starts-nav2")).toBe("false");
+    expect(radarPanel.attributes("data-starts-manual")).toBe("false");
+    expect(radarPanel.attributes("data-starts-keyboard")).toBe("false");
+    expect(radarPanel.attributes("data-starts-free-roam")).toBe("false");
+    expect(radarPanel.attributes("data-starts-map-runtime")).toBe("false");
+    expect(radarPanel.attributes("data-submits-delivery")).toBe("false");
+    expect(radarPanel.attributes("data-stops-motion")).toBe("false");
+    const radarRefresh = wrapper.find('[data-testid="plain-radar-refresh"]');
+    expect(radarRefresh.attributes("data-radar-start-map-wysiwyg-required")).toBe("true");
+    expect(radarRefresh.attributes("data-radar-start-map-wysiwyg-sequence")).toBe("/api/robot-control/radar/start,/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview");
+    expect(radarRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(radarRefresh.attributes("data-starts-radar-lifecycle")).toBe("false");
+    expect(radarRefresh.attributes("data-starts-nav2")).toBe("false");
+    expect(radarRefresh.attributes("data-starts-manual")).toBe("false");
+    expect(radarRefresh.attributes("data-starts-keyboard")).toBe("false");
+    expect(radarRefresh.attributes("data-starts-free-roam")).toBe("false");
+    expect(radarRefresh.attributes("data-starts-map-runtime")).toBe("false");
+    expect(radarRefresh.attributes("data-submits-delivery")).toBe("false");
+    expect(radarRefresh.attributes("data-stops-motion")).toBe("false");
     expect(wrapper.find('[data-testid="plain-radar-map-marker-readback"]').text()).toBe("地图雷达事实：雷达已运行且扫描是新的；地图雷达点当前显示 0 个，仍需以同轮地图预览为准。下一步：刷新地图画面，确认地图上实际显示的雷达点数。");
     expect(wrapper.find('[data-testid="plain-radar-map-marker-readback"]').text()).not.toContain("雷达 marker");
     expect(wrapper.find('[data-testid="plain-radar-map-marker-readback"]').text()).not.toContain("overlay");
@@ -23041,8 +23087,11 @@ describe("App", () => {
     expect(radarPanel.attributes("data-state")).toBe("雷达未运行");
     expect(radarPanel.attributes("data-radar-start-refreshes-proof")).toBe("true");
     expect(radarPanel.attributes("data-radar-start-refreshes-map-preview")).toBe("true");
+    expect(radarPanel.attributes("data-radar-start-map-wysiwyg-required")).toBe("true");
+    expect(radarPanel.attributes("data-radar-start-map-wysiwyg-sequence")).toBe("/api/robot-control/radar/start,/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview");
     expect(radarPanel.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(radarPanel.attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(radarPanel.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(firstScreenText).toContain("启动雷达");
     expect(wrapper.find('[data-testid="plain-radar-map-refresh-contract"]').text()).toBe("启动或重启雷达后会自动刷新雷达读数和地图画面；返回前不把旧点当作当前地图标记。");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-refreshes-proof-after-start")).toBe("true");
@@ -23050,6 +23099,17 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-radar-start-map-wysiwyg-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-radar-start-map-wysiwyg-sequence")).toBe("/api/robot-control/radar/start,/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-radar-lifecycle")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-nav2")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-manual")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-keyboard")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-free-roam")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-map-runtime")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-submits-delivery")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-stops-motion")).toBe("false");
     expect(wrapper.find('[data-testid="plain-radar-refresh"]').attributes("data-refreshes-map-preview-after-proof")).toBe("true");
     expect(firstScreenText).not.toContain("停止雷达");
     expect(firstScreenText).not.toContain("/api/radar/start");
@@ -23769,6 +23829,18 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-radar-freshness-label"]').text()).toBe("雷达点口径：雷达驱动在运行，但当前没有读到新的雷达点；这不是地图没刷新。");
     expect(wrapper.find('[data-testid="plain-map-radar-sweep"]').attributes("data-state")).toBe("雷达无新点");
     expect(wrapper.find('[data-testid="plain-radar-restart"]').text()).toBe("重启雷达");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-radar-start-map-wysiwyg-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-radar-start-map-wysiwyg-sequence")).toBe("/api/robot-control/radar/start,/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-starts-radar-lifecycle")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-stops-radar-lifecycle")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-starts-nav2")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-starts-manual")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-starts-keyboard")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-starts-free-roam")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-starts-map-runtime")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-submits-delivery")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-restart"]').attributes("data-stops-motion")).toBe("false");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -24787,6 +24859,17 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-start-endpoint")).toBe("/api/robot-control/radar/start");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-fixed-radar-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-radar-start-map-wysiwyg-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-radar-start-map-wysiwyg-sequence")).toBe("/api/robot-control/radar/start,/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-radar-lifecycle")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-nav2")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-manual")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-keyboard")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-free-roam")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-starts-map-runtime")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-submits-delivery")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("data-stops-motion")).toBe("false");
     expect(wrapper.find('[data-testid="plain-radar-refresh"]').attributes("data-refreshes-map-preview-after-proof")).toBe("true");
 
     const mapPreviewCallsBeforeStart = mockedFetch.mock.calls.filter(([url]) =>

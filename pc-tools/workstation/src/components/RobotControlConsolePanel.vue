@@ -4069,6 +4069,16 @@ const plainLiveClosureWysiwygRefreshSequenceLabels = computed(() => (
 const plainLiveClosureWysiwygRefreshPlanAvailable = computed(() => (
   plainLiveClosureSummary.value?.live_wysiwyg_refresh_plan_available ?? true
 ));
+const plainRadarStartMapWysiwygSequence = computed(() => (
+  plainLiveClosureSummary.value?.radar_start_map_wysiwyg_sequence?.length
+    ? plainLiveClosureSummary.value.radar_start_map_wysiwyg_sequence.join(",")
+    : "/api/robot-control/radar/start,/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview"
+));
+const plainRadarStartMapWysiwygSequenceLabels = computed(() => (
+  plainLiveClosureSummary.value?.radar_start_map_wysiwyg_sequence_labels?.length
+    ? plainLiveClosureSummary.value.radar_start_map_wysiwyg_sequence_labels.join(",")
+    : "启动雷达,读取当前卡点,刷新雷达扫描读数,读取雷达状态,刷新地图画面"
+));
 const plainLiveClosureTargetSourceCardId = computed(() => (
   plainLiveClosureSummary.value?.primary_status_source_card_id
   || plainLiveClosureSummary.value?.next_action_source_card_id
@@ -17294,6 +17304,23 @@ onBeforeUnmount(() => {
         :data-fixed-live-wysiwyg-map-preview-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_map_preview_endpoint"
         :data-fixed-live-wysiwyg-radar-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_radar_status_endpoint"
         :data-fixed-live-wysiwyg-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint"
+        :data-fixed-radar-start-endpoint="plainLiveClosureSummary.fixed_radar_start_endpoint"
+        :data-fixed-radar-stop-endpoint="plainLiveClosureSummary.fixed_radar_stop_endpoint"
+        :data-radar-start-map-wysiwyg-required="String(plainLiveClosureSummary.radar_start_map_wysiwyg_required)"
+        :data-radar-start-map-wysiwyg-sequence="plainRadarStartMapWysiwygSequence"
+        :data-radar-start-map-wysiwyg-sequence-labels="plainRadarStartMapWysiwygSequenceLabels"
+        :data-radar-start-refreshes-scan-proof="String(plainLiveClosureSummary.radar_start_refreshes_scan_proof)"
+        :data-radar-start-refreshes-radar-status="String(plainLiveClosureSummary.radar_start_refreshes_radar_status)"
+        :data-radar-start-refreshes-map-preview="String(plainLiveClosureSummary.radar_start_refreshes_map_preview)"
+        :data-radar-start-refreshes-summary="String(plainLiveClosureSummary.radar_start_refreshes_summary)"
+        :data-radar-start-sends-motion="String(plainLiveClosureSummary.radar_start_sends_motion)"
+        :data-radar-start-starts-nav2="String(plainLiveClosureSummary.radar_start_starts_nav2)"
+        :data-radar-start-starts-manual="String(plainLiveClosureSummary.radar_start_starts_manual)"
+        :data-radar-start-starts-keyboard="String(plainLiveClosureSummary.radar_start_starts_keyboard)"
+        :data-radar-start-starts-free-roam="String(plainLiveClosureSummary.radar_start_starts_free_roam)"
+        :data-radar-start-starts-map-runtime="String(plainLiveClosureSummary.radar_start_starts_map_runtime)"
+        :data-radar-start-submits-delivery="String(plainLiveClosureSummary.radar_start_submits_delivery)"
+        :data-radar-start-stops-motion="String(plainLiveClosureSummary.radar_start_stops_motion)"
         :data-free-move-start-ready="String(plainLiveClosureSummary.free_move_start_ready)"
         :data-free-move-minimal-precheck-safety-only="String(plainLiveClosureSummary.free_move_minimal_precheck_safety_only)"
         :data-free-move-safety-confirm-required="String(plainLiveClosureSummary.free_move_safety_confirm_required)"
@@ -19855,8 +19882,19 @@ onBeforeUnmount(() => {
           data-radar-start-refreshes-proof="true"
           data-radar-start-refreshes-map-preview="true"
           data-radar-restart-refreshes-map-preview="true"
+          data-radar-start-map-wysiwyg-required="true"
+          :data-radar-start-map-wysiwyg-sequence="plainRadarStartMapWysiwygSequence"
+          :data-radar-start-map-wysiwyg-sequence-labels="plainRadarStartMapWysiwygSequenceLabels"
           data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
           data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+          data-sends-motion-when-clicked="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+          data-starts-map-runtime="false"
+          data-submits-delivery="false"
+          data-stops-motion="false"
           :data-radar-map-points-visible="String(plainRadarMapDomEvidence.mapPointsVisible)"
           :data-radar-map-point-count="String(plainRadarMapDomEvidence.mapPointCount)"
           :data-radar-map-source-point-count="String(plainRadarMapDomEvidence.mapSourcePointCount)"
@@ -19883,6 +19921,17 @@ onBeforeUnmount(() => {
               data-refreshes-map-preview-after-proof="true"
               data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
               data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+              data-radar-start-map-wysiwyg-required="true"
+              :data-radar-start-map-wysiwyg-sequence="plainRadarStartMapWysiwygSequence"
+              data-sends-motion-when-clicked="false"
+              data-starts-radar-lifecycle="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
               @click="refreshRadarProof"
             >
               {{ radarProofRefreshButtonLabel }}
@@ -19898,6 +19947,18 @@ onBeforeUnmount(() => {
               data-refreshes-map-preview-after-restart="true"
               data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
               data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+              data-radar-start-map-wysiwyg-required="true"
+              :data-radar-start-map-wysiwyg-sequence="plainRadarStartMapWysiwygSequence"
+              data-sends-motion-when-clicked="false"
+              data-starts-radar-lifecycle="true"
+              data-stops-radar-lifecycle="true"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
               @click="restartPlainRadarLifecycle"
             >
               {{ plainRadarRestartButtonLabel }}
@@ -19914,6 +19975,17 @@ onBeforeUnmount(() => {
               data-fixed-radar-start-endpoint="/api/robot-control/radar/start"
               data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
               data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+              data-radar-start-map-wysiwyg-required="true"
+              :data-radar-start-map-wysiwyg-sequence="plainRadarStartMapWysiwygSequence"
+              data-sends-motion-when-clicked="false"
+              data-starts-radar-lifecycle="true"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
               @click="startPlainRadarLifecycle"
             >
               {{ plainRadarStartButtonLabel }}
