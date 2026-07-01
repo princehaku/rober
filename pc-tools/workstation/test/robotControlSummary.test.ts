@@ -590,20 +590,25 @@ describe("robotControlSummary", () => {
       "start_free_move",
       "start_mapping_when_sensors_ready",
     ]);
+    expect(summary.live_motion_runbook_action_ids).toEqual(summary.live_closure_summary?.live_motion_runbook_action_ids);
     expect(summary.live_closure_summary?.live_motion_runbook_ready_action_ids).toEqual([
       "run_nav2_route",
       "hold_keyboard",
       "start_free_move",
     ]);
+    expect(summary.live_motion_runbook_ready_action_ids).toEqual(summary.live_closure_summary?.live_motion_runbook_ready_action_ids);
     expect(summary.live_closure_summary?.live_motion_runbook_blocked_action_ids).toEqual([
       "start_mapping_when_sensors_ready",
     ]);
+    expect(summary.live_motion_runbook_blocked_action_ids).toEqual(summary.live_closure_summary?.live_motion_runbook_blocked_action_ids);
     expect(summary.live_closure_summary?.live_motion_runbook_primary_action_id).toBe("run_nav2_route");
+    expect(summary.live_motion_runbook_primary_action_id).toBe("run_nav2_route");
     expect(summary.live_closure_summary?.live_motion_runbook_start_endpoints).toEqual([
       "/api/robot-control/nav2/goal/execute",
       "/api/robot-control/base/manual",
       "/api/robot-control/free-roam/autonomy/start",
     ]);
+    expect(summary.live_motion_runbook_start_endpoints).toEqual(summary.live_closure_summary?.live_motion_runbook_start_endpoints);
     expect(summary.live_closure_summary?.live_motion_runbook_acceptance_endpoints).toEqual([
       "/api/robot-control/map/preview",
       "/api/robot-control/nav2/goal/execution/latest",
@@ -612,6 +617,7 @@ describe("robotControlSummary", () => {
       "/api/robot-control/summary",
       "/api/robot-control/free-roam/autonomy/latest",
     ]);
+    expect(summary.live_motion_runbook_acceptance_endpoints).toEqual(summary.live_closure_summary?.live_motion_runbook_acceptance_endpoints);
     expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.live_motion_runbook_safety_confirm_required).toBe(true);
@@ -619,10 +625,13 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_motion_runbook_ready_plain).toBe(
       "可先执行：完整行程执行、键盘连续手控、自由自助移动。",
     );
+    expect(summary.live_motion_runbook_ready_plain).toBe(summary.live_closure_summary?.live_motion_runbook_ready_plain);
     expect(summary.live_closure_summary?.live_motion_runbook_blocked_plain).toBe(
       "暂不可执行：传感器就绪后建图。",
     );
+    expect(summary.live_motion_runbook_blocked_plain).toBe(summary.live_closure_summary?.live_motion_runbook_blocked_plain);
     expect(summary.live_closure_summary?.live_motion_runbook_primary_action_plain).toBe("完整行程执行");
+    expect(summary.live_motion_runbook_primary_action_plain).toBe("完整行程执行");
     expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_plain).toBe(
       "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
     );
@@ -636,6 +645,10 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_motion_runbook_summary_plain).toContain(
       "发车前预检已精简",
     );
+    expect(summary.live_motion_runbook_summary_plain).toBe(summary.live_closure_summary?.live_motion_runbook_summary_plain);
+    expect(summary.live_motion_runbook_items).toEqual(summary.live_closure_summary?.live_motion_runbook_items);
+    expect(summary.keyboard_wheel_lr_nonzero).toBe(false);
+    expect(summary.keyboard_stop_after_release).toBe(false);
     expect(summary.live_closure_summary?.live_motion_runbook_items).toEqual([
       expect.objectContaining({
         id: "run_nav2_route",

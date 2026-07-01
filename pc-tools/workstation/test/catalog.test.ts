@@ -7000,6 +7000,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.keyboard_ready).toBe(true);
       expect(summary.keyboard_continuous_ready).toBe(true);
       expect(summary.keyboard_continuous_motion_verified).toBe(false);
+      expect(summary.keyboard_wheel_lr_nonzero).toBe(false);
+      expect(summary.keyboard_stop_after_release).toBe(false);
       expect(live.keyboard_enable_sends_motion).toBe(false);
       expect(summary.keyboard_enable_sends_motion).toBe(false);
       expect(live.keyboard_hold_to_move_required).toBe(true);
@@ -7017,6 +7019,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
       expect(summary.live_motion_runbook_safety_confirm_required).toBe(summary.live_closure_summary?.live_motion_runbook_safety_confirm_required);
       expect(summary.live_motion_runbook_minimal_precheck_plain).toBe(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_plain);
+      expect(summary.live_motion_runbook_items).toEqual(summary.live_closure_summary?.live_motion_runbook_items);
+      expect(summary.live_motion_runbook_action_ids).toEqual(summary.live_closure_summary?.live_motion_runbook_action_ids);
+      expect(summary.live_motion_runbook_ready_action_ids).toEqual(summary.live_closure_summary?.live_motion_runbook_ready_action_ids);
+      expect(summary.live_motion_runbook_blocked_action_ids).toEqual(summary.live_closure_summary?.live_motion_runbook_blocked_action_ids);
+      expect(summary.live_motion_runbook_primary_action_id).toBe(summary.live_closure_summary?.live_motion_runbook_primary_action_id);
+      expect(summary.live_motion_runbook_summary_plain).toBe(summary.live_closure_summary?.live_motion_runbook_summary_plain);
       expect(summary.free_move_minimal_precheck_safety_only).toBe(true);
       expect(summary.free_move_safety_confirm_required).toBe(true);
       expect(summary.free_move_camera_preflight_required).toBe(false);

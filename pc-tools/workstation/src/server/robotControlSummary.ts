@@ -10082,6 +10082,9 @@ export async function buildRobotControlSummary(
     },
   ) as NonNullable<RobotControlSummaryResponse["live_closure_summary"]>;
 
+  const keyboardRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "hold_keyboard");
+  const keyboardStopAfterRelease = keyboardRunbookItem ? !keyboardRunbookItem.missing_evidence.includes("stop_after_release") : false;
+
   return {
     schema: ROBOT_CONTROL_SCHEMA,
     console_status: hardBlockedReasons.length ? "blocked" : "loaded_fail_closed_summary",
@@ -10175,8 +10178,19 @@ export async function buildRobotControlSummary(
     wheel_rerun_no_extra_precheck_plain: liveClosureSummary.wheel_rerun_no_extra_precheck_plain,
     minimal_precheck_safety_only: liveClosureSummary.minimal_precheck_safety_only,
     safety_confirm_required_for_motion: liveClosureSummary.safety_confirm_required_for_motion,
+    live_motion_runbook_items: liveClosureSummary.live_motion_runbook_items,
+    live_motion_runbook_action_ids: liveClosureSummary.live_motion_runbook_action_ids,
+    live_motion_runbook_ready_action_ids: liveClosureSummary.live_motion_runbook_ready_action_ids,
+    live_motion_runbook_blocked_action_ids: liveClosureSummary.live_motion_runbook_blocked_action_ids,
+    live_motion_runbook_primary_action_id: liveClosureSummary.live_motion_runbook_primary_action_id,
+    live_motion_runbook_start_endpoints: liveClosureSummary.live_motion_runbook_start_endpoints,
+    live_motion_runbook_acceptance_endpoints: liveClosureSummary.live_motion_runbook_acceptance_endpoints,
     live_motion_runbook_minimal_precheck_safety_only: liveClosureSummary.live_motion_runbook_minimal_precheck_safety_only,
     live_motion_runbook_safety_confirm_required: liveClosureSummary.live_motion_runbook_safety_confirm_required,
+    live_motion_runbook_summary_plain: liveClosureSummary.live_motion_runbook_summary_plain,
+    live_motion_runbook_ready_plain: liveClosureSummary.live_motion_runbook_ready_plain,
+    live_motion_runbook_blocked_plain: liveClosureSummary.live_motion_runbook_blocked_plain,
+    live_motion_runbook_primary_action_plain: liveClosureSummary.live_motion_runbook_primary_action_plain,
     live_motion_runbook_minimal_precheck_plain: liveClosureSummary.live_motion_runbook_minimal_precheck_plain,
     camera_visible: liveClosureSummary.camera_current_visible,
     camera_current_visible: liveClosureSummary.camera_current_visible,
@@ -10217,6 +10231,8 @@ export async function buildRobotControlSummary(
     radar_overlay_refresh_starts_radar_lifecycle: liveClosureSummary.radar_overlay_refresh_starts_radar_lifecycle,
     keyboard_ready: liveClosureSummary.keyboard_ready,
     keyboard_continuous_ready: liveClosureSummary.keyboard_continuous_ready,
+    keyboard_wheel_lr_nonzero: liveClosureSummary.keyboard_continuous_motion_verified,
+    keyboard_stop_after_release: keyboardStopAfterRelease,
     keyboard_continuous_motion_verified: liveClosureSummary.keyboard_continuous_motion_verified,
     keyboard_continuous_minimal_precheck_safety_only: liveClosureSummary.keyboard_continuous_minimal_precheck_safety_only,
     keyboard_continuous_safety_confirm_required: liveClosureSummary.keyboard_continuous_safety_confirm_required,

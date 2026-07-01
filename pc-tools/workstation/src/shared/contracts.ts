@@ -3257,8 +3257,19 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   wheel_rerun_no_extra_precheck_plain?: RobotControlLiveClosureSummary["wheel_rerun_no_extra_precheck_plain"];
   minimal_precheck_safety_only?: RobotControlLiveClosureSummary["minimal_precheck_safety_only"];
   safety_confirm_required_for_motion?: RobotControlLiveClosureSummary["safety_confirm_required_for_motion"];
+  live_motion_runbook_items?: RobotControlLiveClosureSummary["live_motion_runbook_items"];
+  live_motion_runbook_action_ids?: RobotControlLiveClosureSummary["live_motion_runbook_action_ids"];
+  live_motion_runbook_ready_action_ids?: RobotControlLiveClosureSummary["live_motion_runbook_ready_action_ids"];
+  live_motion_runbook_blocked_action_ids?: RobotControlLiveClosureSummary["live_motion_runbook_blocked_action_ids"];
+  live_motion_runbook_primary_action_id?: RobotControlLiveClosureSummary["live_motion_runbook_primary_action_id"];
+  live_motion_runbook_start_endpoints?: RobotControlLiveClosureSummary["live_motion_runbook_start_endpoints"];
+  live_motion_runbook_acceptance_endpoints?: RobotControlLiveClosureSummary["live_motion_runbook_acceptance_endpoints"];
   live_motion_runbook_minimal_precheck_safety_only?: RobotControlLiveClosureSummary["live_motion_runbook_minimal_precheck_safety_only"];
   live_motion_runbook_safety_confirm_required?: RobotControlLiveClosureSummary["live_motion_runbook_safety_confirm_required"];
+  live_motion_runbook_summary_plain?: RobotControlLiveClosureSummary["live_motion_runbook_summary_plain"];
+  live_motion_runbook_ready_plain?: RobotControlLiveClosureSummary["live_motion_runbook_ready_plain"];
+  live_motion_runbook_blocked_plain?: RobotControlLiveClosureSummary["live_motion_runbook_blocked_plain"];
+  live_motion_runbook_primary_action_plain?: RobotControlLiveClosureSummary["live_motion_runbook_primary_action_plain"];
   live_motion_runbook_minimal_precheck_plain?: RobotControlLiveClosureSummary["live_motion_runbook_minimal_precheck_plain"];
   camera_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
   camera_current_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
@@ -3299,6 +3310,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   radar_overlay_refresh_starts_radar_lifecycle?: RobotControlLiveClosureSummary["radar_overlay_refresh_starts_radar_lifecycle"];
   keyboard_ready?: RobotControlLiveClosureSummary["keyboard_ready"];
   keyboard_continuous_ready?: RobotControlLiveClosureSummary["keyboard_continuous_ready"];
+  keyboard_wheel_lr_nonzero?: boolean;
+  keyboard_stop_after_release?: boolean;
   keyboard_continuous_motion_verified?: RobotControlLiveClosureSummary["keyboard_continuous_motion_verified"];
   keyboard_continuous_minimal_precheck_safety_only?: RobotControlLiveClosureSummary["keyboard_continuous_minimal_precheck_safety_only"];
   keyboard_continuous_safety_confirm_required?: RobotControlLiveClosureSummary["keyboard_continuous_safety_confirm_required"];
