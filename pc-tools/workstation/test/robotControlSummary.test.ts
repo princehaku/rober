@@ -1176,6 +1176,8 @@ describe("robotControlSummary", () => {
       "/api/robot-control/map/preview",
       "/api/robot-control/summary",
     ]);
+    expect(summary.free_move_readback_endpoints).toEqual(summary.free_move_acceptance_endpoints);
+    expect(summary.free_move_required_success_markers).toEqual(["free_roam_latest_motion_ready"]);
     expect(summary.free_move_proof_status).toBe("ready_to_verify");
     expect(summary.free_move_missing_evidence).toEqual(["free_roam_latest_motion_ready"]);
     expect(summary.free_move_proof_plain).toContain("可验证自由自助移动");

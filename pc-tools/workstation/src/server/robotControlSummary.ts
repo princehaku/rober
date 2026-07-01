@@ -11133,6 +11133,12 @@ export async function buildRobotControlSummary(
       liveClosureSummary.fixed_mapping_preview_endpoint,
       "/api/robot-control/summary",
     ],
+    free_move_readback_endpoints: freeMoveRunbookItem?.acceptance_endpoints ?? [
+      liveClosureSummary.fixed_free_roam_latest_endpoint,
+      liveClosureSummary.fixed_mapping_preview_endpoint,
+      "/api/robot-control/summary",
+    ],
+    free_move_required_success_markers: freeMoveRunbookItem?.missing_evidence ?? [],
     free_move_proof_status: freeMoveRunbookItem?.proof_status ?? "blocked",
     free_move_missing_evidence: freeMoveRunbookItem?.missing_evidence ?? [],
     free_move_proof_plain: freeMoveRunbookItem?.proof_plain ?? "自由自助移动未出现在当前 runbook。",

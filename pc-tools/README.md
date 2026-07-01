@@ -38,6 +38,13 @@ client publish、service 和 parameter 通道关到不匹配正则；安装仍�
 `ws://192.168.1.11:8765`；该按钮不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，`GET /api/robot-control/summary` 的自由移动顶层读回别名补齐为
+`free_move_readback_endpoints` 和 `free_move_required_success_markers`，分别复用既有
+`free_move_acceptance_endpoints` 和 `free_move_missing_evidence`。现场 `curl | jq` 可直接看到自由移动
+启动后要读 `/api/robot-control/free-roam/autonomy/latest`、地图预览和 summary，以及仍缺
+`free_roam_latest_motion_ready`；该 alias 只读，不启动 free-roam、不发 Nav2/manual/keyboard/delivery/stop
+或 `/cmd_vel`。
+
 2026-07-02 CST 起，固定 proof refresh POST 回包本体也直接说明 no-motion 边界：
 `readback_only=true`、`no_motion_refresh=true`、`sends_motion_when_clicked=false`、
 `starts_radar_lifecycle=false`、`starts_nav2=false`、`starts_manual=false`、`starts_keyboard=false`、
