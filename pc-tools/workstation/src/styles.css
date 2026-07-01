@@ -820,6 +820,37 @@ h3 {
   margin: 0;
 }
 
+.plain-live-mapping-unblock-actions {
+  /* 建图传感器解锁是只读复测入口，贴近 ready 动作但不混进发车动作。 */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.plain-live-mapping-unblock-action {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #d0d7de;
+  border-left: 3px solid #9a6700;
+  border-radius: 6px;
+  background: #fffdf0;
+}
+
+.plain-live-mapping-unblock-action[data-state="只差画面"] {
+  border-left-color: #0969da;
+  background: #f5f9ff;
+}
+
+.plain-live-mapping-unblock-action[data-state="先换USB"] {
+  border-left-color: #bf8700;
+  background: #fff8c5;
+}
+
+.plain-live-mapping-unblock-action p {
+  margin: 0;
+}
+
 .plain-safety-actions {
   display: grid;
   gap: 7px;

@@ -4367,6 +4367,41 @@ const plainLiveReadyMotionActionCards = computed(() => {
       };
     });
 });
+const plainLiveMappingUnblockActionCards = computed(() => {
+  // 建图解锁不是发车动作；单独放在 ready 动作旁边，避免相机首帧缺口被长卡片埋住。
+  const summary = plainLiveClosureSummary.value;
+  if (!summary || summary.mapping_start_ready || !summary.mapping_camera_blocks_start) {
+    return [];
+  }
+  const sequence = summary.mapping_unblock_camera_recovery_sequence?.length
+    ? summary.mapping_unblock_camera_recovery_sequence
+    : [summary.fixed_mapping_unblock_camera_probe_endpoint, summary.fixed_mapping_unblock_camera_mjpeg_status_endpoint, summary.fixed_mapping_unblock_summary_endpoint].filter(Boolean);
+  return [
+    {
+      id: "camera_first_frame",
+      label: "解除建图相机阻塞",
+      state: summary.mapping_unblock_camera_diagnosis_status === "uvc_full_speed_usb_not_exclusive" ? "先换USB" : "只差画面",
+      text: summary.mapping_unblock_camera_recovery_next_action_plain || summary.mapping_unblock_camera_next_action_plain || "复测相机首帧并读取共享预览状态。",
+      actionLabel: plainMappingCameraRecoveryActionLabel.value,
+      fixedCameraProbeEndpoint: summary.fixed_mapping_unblock_camera_probe_endpoint,
+      fixedCameraMjpegStatusEndpoint: summary.fixed_mapping_unblock_camera_mjpeg_status_endpoint,
+      fixedSummaryEndpoint: summary.fixed_mapping_unblock_summary_endpoint,
+      sequence,
+      sequenceLabels: summary.mapping_unblock_camera_recovery_sequence_labels ?? ["复测相机首帧", "读取共享预览状态", "刷新当前卡点"],
+      disabled: !canRunPlainCameraProbe.value,
+      diagnosisStatus: summary.mapping_unblock_camera_diagnosis_status,
+      cameraNotExclusive: summary.mapping_unblock_camera_not_exclusive,
+      allowsFreeMove: summary.mapping_unblock_allows_free_move,
+    },
+  ];
+});
+
+async function runPlainLiveMappingUnblockAction(actionId: string): Promise<void> {
+  // 快捷卡只触发只读传感器复测；真正建图启动仍在建图卡片里由 operator 再确认。
+  if (actionId === "camera_first_frame") {
+    await refreshMappingCameraRecovery();
+  }
+}
 
 async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotionRunbookItem["id"]): Promise<void> {
   // 动作清单的验收读回只刷新固定验收端点；不会执行路线、手控、自由移动、建图或 stop。
@@ -17669,6 +17704,91 @@ onBeforeUnmount(() => {
                 @click="focusPlainActionCardTarget(item.sourceCardId)"
               >
                 {{ item.buttonLabel }}
+              </button>
+            </div>
+          </div>
+          <div
+            v-if="plainLiveMappingUnblockActionCards.length"
+            class="plain-live-mapping-unblock-actions"
+            data-testid="plain-live-mapping-unblock-actions"
+            :data-action-ids="plainLiveMappingUnblockActionCards.map((item) => item.id).join(',')"
+            :data-action-count="String(plainLiveMappingUnblockActionCards.length)"
+            data-purpose="mapping_sensor_unblock"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-camera-exclusive-capture="false"
+            data-starts-radar-lifecycle="false"
+            data-starts-map-runtime="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <div
+              v-for="item in plainLiveMappingUnblockActionCards"
+              :key="item.id"
+              class="plain-live-mapping-unblock-action"
+              :data-testid="`plain-live-mapping-unblock-action-${item.id}`"
+              :data-action-id="item.id"
+              :data-state="item.state"
+              :data-camera-diagnosis-status="item.diagnosisStatus"
+              :data-camera-not-exclusive="item.cameraNotExclusive"
+              :data-allows-free-move="String(item.allowsFreeMove)"
+              :data-recovery-sequence="item.sequence.join(',') || 'none'"
+              :data-recovery-sequence-labels="item.sequenceLabels.join(',') || 'none'"
+              :data-fixed-camera-probe-endpoint="item.fixedCameraProbeEndpoint"
+              :data-fixed-camera-mjpeg-status-endpoint="item.fixedCameraMjpegStatusEndpoint"
+              :data-fixed-summary-endpoint="item.fixedSummaryEndpoint"
+              data-refreshes-camera-first-frame-probe="true"
+              data-refreshes-camera-mjpeg-status="true"
+              data-refreshes-summary="true"
+              data-refreshes-radar-scan-proof="false"
+              data-refreshes-map-preview="false"
+              data-sends-motion-when-clicked="false"
+              data-starts-camera-exclusive-capture="false"
+              data-starts-radar-lifecycle="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+            >
+              <div class="simple-status-row">
+                <strong>{{ item.label }}</strong>
+                <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+              </div>
+              <p>{{ plainActionCardUserText(item.text) }}</p>
+              <button
+                type="button"
+                class="secondary compact-stop"
+                :data-testid="`plain-live-mapping-unblock-action-run-${item.id}`"
+                :disabled="item.disabled"
+                :data-recovery-sequence="item.sequence.join(',') || 'none'"
+                :data-fixed-camera-probe-endpoint="item.fixedCameraProbeEndpoint"
+                :data-fixed-camera-mjpeg-status-endpoint="item.fixedCameraMjpegStatusEndpoint"
+                :data-fixed-summary-endpoint="item.fixedSummaryEndpoint"
+                data-refreshes-camera-first-frame-probe="true"
+                data-refreshes-camera-mjpeg-status="true"
+                data-refreshes-summary="true"
+                data-refreshes-radar-scan-proof="false"
+                data-refreshes-map-preview="false"
+                data-sends-motion-when-clicked="false"
+                data-starts-camera-exclusive-capture="false"
+                data-starts-radar-lifecycle="false"
+                data-starts-map-runtime="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                data-submits-delivery="false"
+                data-stops-motion="false"
+                @click="runPlainLiveMappingUnblockAction(item.id)"
+              >
+                {{ item.actionLabel }}
               </button>
             </div>
           </div>
