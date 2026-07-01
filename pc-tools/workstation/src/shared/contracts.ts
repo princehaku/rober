@@ -2989,6 +2989,14 @@ export interface RobotControlLiveClosureSummary {
   wheel_rerun_imu_attitude_delta_observed: string;
   wheel_rerun_imu_roll_delta: string;
   wheel_rerun_imu_pitch_delta: string;
+  wheel_rerun_mode_rerun_status: string;
+  wheel_rerun_mode_rerun_plain: string;
+  wheel_rerun_next_mode_plain: string;
+  wheel_rerun_base_command_nonzero_observed: string;
+  wheel_rerun_base_command_nonzero_count: string;
+  wheel_rerun_base_command_latest_nonzero_mode: string;
+  wheel_rerun_base_command_mode_counts: string;
+  wheel_rerun_control_diagnosis_plain: string;
   wheel_rerun_readback_plain: string;
   wheel_rerun_checklist_plain: string;
   wheel_rerun_acceptance_plain: string;

@@ -9030,8 +9030,22 @@ function buildLiveClosureSummary(
   const wheelRerunImuDeltaObserved = readback.nav2.goal_execution_base_feedback_imu_attitude_delta_observed || "not_loaded";
   const wheelRerunImuRollDelta = readback.nav2.goal_execution_base_feedback_imu_roll_delta || "not_loaded";
   const wheelRerunImuPitchDelta = readback.nav2.goal_execution_base_feedback_imu_pitch_delta || "not_loaded";
+  const wheelRerunModeRerunStatus = readback.nav2.goal_execution_mode_rerun_status || "not_loaded";
+  const wheelRerunModeRerunPlain = readback.nav2.goal_execution_mode_rerun_plain || "还没有可用的路线执行模式复验结论。";
+  const wheelRerunNextModePlain = readback.nav2.goal_execution_next_mode_plain || "下次底盘模式未读到。";
+  const wheelRerunBaseCommandNonzeroObserved = readback.nav2.goal_execution_base_command_nonzero_observed || "not_loaded";
+  const wheelRerunBaseCommandNonzeroCount = readback.nav2.goal_execution_base_command_nonzero_count || "not_loaded";
+  const wheelRerunBaseCommandLatestNonzeroMode = readback.nav2.goal_execution_base_command_latest_nonzero_mode || "not_loaded";
+  const wheelRerunBaseCommandModeCounts = readback.nav2.goal_execution_base_command_mode_counts || "not_loaded";
+  const wheelRerunControlDiagnosisPlain = needsSameWindowWheelRerun
+    ? [
+      wheelRerunModeRerunPlain,
+      `上次 ${wheelRerunLastBaseCommandMode.toUpperCase()} 模式已记录 ${wheelRerunBaseCommandNonzeroCount} 次非零底盘命令，最新非零命令模式=${wheelRerunBaseCommandLatestNonzeroMode}；IMU 姿态变化=${wheelRerunImuDeltaObserved}，轮速 L/R 仍为 ${wheelRerunLatestRawLeft}/${wheelRerunLatestRawRight}。`,
+      `下一次执行会用 ${wheelRerunNextBaseCommandMode.toUpperCase()} 模式复验控制链；这不是雷达、相机或地图所见缺口。`,
+    ].join(" ")
+    : "当前不需要底盘模式复验。";
   const wheelRerunReadbackPlain = needsSameWindowWheelRerun
-    ? `上次执行窗口 wheel L/R=${wheelRerunLatestRawLeft}/${wheelRerunLatestRawRight}，样本 ${wheelRerunFeedbackSampleCount} 个，非零样本 ${wheelRerunFeedbackNonzeroSampleCount} 个；下次用 ${wheelRerunNextBaseCommandMode} 模式重跑后读取 latest 与只读轮速采样。`
+    ? `上次执行窗口轮速 L/R=${wheelRerunLatestRawLeft}/${wheelRerunLatestRawRight}，样本 ${wheelRerunFeedbackSampleCount} 个，非零样本 ${wheelRerunFeedbackNonzeroSampleCount} 个；${wheelRerunNextModePlain} 重跑后读取 latest 与只读轮速采样。`
     : "当前不需要轮速复验。";
   const wheelRerunAcceptanceEndpoints = [
     "/api/robot-control/map/preview",
@@ -9671,6 +9685,14 @@ function buildLiveClosureSummary(
     wheel_rerun_imu_attitude_delta_observed: wheelRerunImuDeltaObserved,
     wheel_rerun_imu_roll_delta: wheelRerunImuRollDelta,
     wheel_rerun_imu_pitch_delta: wheelRerunImuPitchDelta,
+    wheel_rerun_mode_rerun_status: wheelRerunModeRerunStatus,
+    wheel_rerun_mode_rerun_plain: wheelRerunModeRerunPlain,
+    wheel_rerun_next_mode_plain: wheelRerunNextModePlain,
+    wheel_rerun_base_command_nonzero_observed: wheelRerunBaseCommandNonzeroObserved,
+    wheel_rerun_base_command_nonzero_count: wheelRerunBaseCommandNonzeroCount,
+    wheel_rerun_base_command_latest_nonzero_mode: wheelRerunBaseCommandLatestNonzeroMode,
+    wheel_rerun_base_command_mode_counts: wheelRerunBaseCommandModeCounts,
+    wheel_rerun_control_diagnosis_plain: wheelRerunControlDiagnosisPlain,
     wheel_rerun_readback_plain: wheelRerunReadbackPlain,
     wheel_rerun_checklist_plain: wheelRerunChecklistPlain,
     wheel_rerun_acceptance_plain: wheelRerunAcceptancePlain,

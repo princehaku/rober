@@ -1209,7 +1209,15 @@ const fixtures: Record<string, unknown> = {
       wheel_rerun_imu_attitude_delta_observed: "true",
       wheel_rerun_imu_roll_delta: "4.387221",
       wheel_rerun_imu_pitch_delta: "24.210531",
-      wheel_rerun_readback_plain: "上次执行窗口 wheel L/R=0/0，样本 239 个，非零样本 0 个；下次用 ros 模式重跑后读取 latest 与只读轮速采样。",
+      wheel_rerun_mode_rerun_status: "pending_ros_rerun_after_pwm",
+      wheel_rerun_mode_rerun_plain: "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。",
+      wheel_rerun_next_mode_plain: "下次将用 ROS 模式重跑图上路线。",
+      wheel_rerun_base_command_nonzero_observed: "true",
+      wheel_rerun_base_command_nonzero_count: "49",
+      wheel_rerun_base_command_latest_nonzero_mode: "pwm",
+      wheel_rerun_base_command_mode_counts: "{\"pwm\":49}",
+      wheel_rerun_control_diagnosis_plain: "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。 上次 PWM 模式已记录 49 次非零底盘命令，最新非零命令模式=pwm；IMU 姿态变化=true，轮速 L/R 仍为 0/0。 下一次执行会用 ROS 模式复验控制链；这不是雷达、相机或地图所见缺口。",
+      wheel_rerun_readback_plain: "上次执行窗口轮速 L/R=0/0，样本 239 个，非零样本 0 个；下次将用 ROS 模式重跑图上路线。 重跑后读取 latest 与只读轮速采样。",
       wheel_rerun_checklist_plain: "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取 latest、底盘轮速采样和 summary，确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。",
       wheel_rerun_acceptance_plain: "验收口径：Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。",
       wheel_rerun_acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
@@ -8137,6 +8145,24 @@ describe("App", () => {
       wheel_rerun_blocked_by_camera_wysiwyg: false,
       wheel_rerun_blocked_by_radar_wysiwyg: false,
       wheel_rerun_command_mode: "ros",
+      wheel_rerun_last_base_command_mode: "pwm",
+      wheel_rerun_next_base_command_mode: "ros",
+      wheel_rerun_feedback_sample_count: "239",
+      wheel_rerun_feedback_nonzero_sample_count: "0",
+      wheel_rerun_latest_raw_left: "0",
+      wheel_rerun_latest_raw_right: "0",
+      wheel_rerun_imu_attitude_delta_observed: "true",
+      wheel_rerun_imu_roll_delta: "4.387221",
+      wheel_rerun_imu_pitch_delta: "24.210531",
+      wheel_rerun_mode_rerun_status: "pending_ros_rerun_after_pwm",
+      wheel_rerun_mode_rerun_plain: "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。",
+      wheel_rerun_next_mode_plain: "下次将用 ROS 模式重跑图上路线。",
+      wheel_rerun_base_command_nonzero_observed: "true",
+      wheel_rerun_base_command_nonzero_count: "49",
+      wheel_rerun_base_command_latest_nonzero_mode: "pwm",
+      wheel_rerun_base_command_mode_counts: "{\"pwm\":49}",
+      wheel_rerun_control_diagnosis_plain: "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。 上次 PWM 模式已记录 49 次非零底盘命令，最新非零命令模式=pwm；IMU 姿态变化=true，轮速 L/R 仍为 0/0。 下一次执行会用 ROS 模式复验控制链；这不是雷达、相机或地图所见缺口。",
+      wheel_rerun_readback_plain: "上次执行窗口轮速 L/R=0/0，样本 239 个，非零样本 0 个；下次将用 ROS 模式重跑图上路线。 重跑后读取 latest 与只读轮速采样。",
       fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
       primary_status_item_id: "nav2_route_execution",
       primary_status_source_card_id: "nav2_route",
@@ -8186,7 +8212,15 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-wheel-rerun-imu-attitude-delta-observed")).toBe("true");
     expect(liveClosureSummary.attributes("data-wheel-rerun-imu-roll-delta")).toBe("4.387221");
     expect(liveClosureSummary.attributes("data-wheel-rerun-imu-pitch-delta")).toBe("24.210531");
-    expect(liveClosureSummary.attributes("data-wheel-rerun-readback-plain")).toContain("wheel L/R=0/0");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-mode-rerun-status")).toBe("pending_ros_rerun_after_pwm");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-mode-rerun-plain")).toContain("PWM 模式");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-next-mode-plain")).toContain("ROS 模式");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-base-command-nonzero-observed")).toBe("true");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-base-command-nonzero-count")).toBe("49");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-base-command-latest-nonzero-mode")).toBe("pwm");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-base-command-mode-counts")).toBe("{\"pwm\":49}");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-control-diagnosis-plain")).toContain("不是雷达、相机或地图所见缺口");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-readback-plain")).toContain("轮速 L/R=0/0");
     expect(liveClosureSummary.attributes("data-wheel-rerun-readback-plain")).toContain("样本 239 个");
     expect(liveClosureSummary.attributes("data-wheel-rerun-checklist-plain")).toContain("先勾现场安全确认");
     expect(liveClosureSummary.attributes("data-wheel-rerun-checklist-plain")).toContain("确认同窗口 wheel L/R 非零");
@@ -8209,11 +8243,24 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(liveClosureSummary.text()).toContain("待轮速复验");
     expect(liveClosureSummary.text()).toContain("同窗口轮速 L/R 还没有非零闭环");
+    expect(liveClosureSummary.text()).toContain("49 次非零底盘命令");
+    expect(liveClosureSummary.text()).toContain("不是雷达、相机或地图所见缺口");
     expect(liveClosureSummary.text()).toContain("轮速闭环后再到送达区确认 delivery success");
     expect(liveClosureSummary.text()).toContain("重跑图上行程");
     expect(liveClosureSummary.text()).not.toContain("/cmd_vel");
     const wheelRerunClosurePlan = wrapper.find('[data-testid="plain-wheel-rerun-closure-plan"]');
     expect(wheelRerunClosurePlan.exists()).toBe(true);
+    expect(wheelRerunClosurePlan.attributes("data-control-diagnosis-plain")).toContain("49 次非零底盘命令");
+    expect(wheelRerunClosurePlan.attributes("data-mode-rerun-status")).toBe("pending_ros_rerun_after_pwm");
+    expect(wheelRerunClosurePlan.attributes("data-mode-rerun-plain")).toContain("PWM 模式");
+    expect(wheelRerunClosurePlan.attributes("data-next-mode-plain")).toContain("ROS 模式");
+    expect(wheelRerunClosurePlan.attributes("data-base-command-nonzero-observed")).toBe("true");
+    expect(wheelRerunClosurePlan.attributes("data-base-command-nonzero-count")).toBe("49");
+    expect(wheelRerunClosurePlan.attributes("data-base-command-latest-nonzero-mode")).toBe("pwm");
+    expect(wheelRerunClosurePlan.attributes("data-base-command-mode-counts")).toBe("{\"pwm\":49}");
+    expect(wheelRerunClosurePlan.attributes("data-imu-attitude-delta-observed")).toBe("true");
+    expect(wheelRerunClosurePlan.text()).toContain("49 次非零底盘命令");
+    expect(wheelRerunClosurePlan.text()).toContain("不是雷达、相机或地图所见缺口");
     expect(wheelRerunClosurePlan.text()).toContain("先勾现场安全确认");
     expect(wheelRerunClosurePlan.text()).toContain("同窗口 wheel L/R 非零");
     expect(wheelRerunClosurePlan.text()).toContain("delivery success 与本轮行程材料对齐");
@@ -8289,7 +8336,15 @@ describe("App", () => {
     expect(liveClosureGuide.attributes("data-wheel-rerun-feedback-nonzero-sample-count")).toBe("0");
     expect(liveClosureGuide.attributes("data-wheel-rerun-latest-raw-left")).toBe("0");
     expect(liveClosureGuide.attributes("data-wheel-rerun-latest-raw-right")).toBe("0");
-    expect(liveClosureGuide.attributes("data-wheel-rerun-readback-plain")).toContain("wheel L/R=0/0");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-mode-rerun-status")).toBe("pending_ros_rerun_after_pwm");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-mode-rerun-plain")).toContain("PWM 模式");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-next-mode-plain")).toContain("ROS 模式");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-base-command-nonzero-observed")).toBe("true");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-base-command-nonzero-count")).toBe("49");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-base-command-latest-nonzero-mode")).toBe("pwm");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-base-command-mode-counts")).toBe("{\"pwm\":49}");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-control-diagnosis-plain")).toContain("不是雷达、相机或地图所见缺口");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-readback-plain")).toContain("轮速 L/R=0/0");
     expect(liveClosureGuide.attributes("data-wheel-rerun-checklist-plain")).toContain("先勾现场安全确认");
     expect(liveClosureGuide.attributes("data-wheel-rerun-acceptance-plain")).toContain("delivery success 与本轮行程材料对齐");
     expect(liveClosureGuide.attributes("data-wheel-rerun-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");

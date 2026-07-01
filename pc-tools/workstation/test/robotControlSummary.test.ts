@@ -158,7 +158,16 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_feedback_nonzero_sample_count).toBe("0");
     expect(summary.live_closure_summary?.wheel_rerun_latest_raw_left).toBe("0");
     expect(summary.live_closure_summary?.wheel_rerun_latest_raw_right).toBe("0");
-    expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("wheel L/R=0/0");
+    expect(summary.live_closure_summary?.wheel_rerun_mode_rerun_status).toBe("pending_ros_rerun_after_pwm");
+    expect(summary.live_closure_summary?.wheel_rerun_mode_rerun_plain).toContain("PWM 模式");
+    expect(summary.live_closure_summary?.wheel_rerun_next_mode_plain).toContain("ROS 模式");
+    expect(summary.live_closure_summary?.wheel_rerun_base_command_nonzero_observed).toBe("true");
+    expect(summary.live_closure_summary?.wheel_rerun_base_command_nonzero_count).toBe("3");
+    expect(summary.live_closure_summary?.wheel_rerun_base_command_latest_nonzero_mode).toBe("pwm");
+    expect(summary.live_closure_summary?.wheel_rerun_base_command_mode_counts).toBe("{\"pwm\":3}");
+    expect(summary.live_closure_summary?.wheel_rerun_control_diagnosis_plain).toContain("3 次非零底盘命令");
+    expect(summary.live_closure_summary?.wheel_rerun_control_diagnosis_plain).toContain("不是雷达、相机或地图所见缺口");
+    expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("轮速 L/R=0/0");
     expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("样本 2 个");
     expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("非零样本 0 个");
     expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("先勾现场安全确认");
