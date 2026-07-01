@@ -6975,8 +6975,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_wysiwyg_camera_visible).toBe(summary.live_closure_summary?.live_wysiwyg_camera_visible);
       expect(summary.camera_needs_usb_fix).toBe(summary.live_closure_summary?.camera_hardware_action_required);
       expect(summary.camera_usb_high_speed).toBe(false);
+      expect(summary.camera_usb_speed).toBe(summary.live_closure_summary?.camera_usb_speed);
       expect(summary.camera_source_diagnosis_status).toBe(summary.live_closure_summary?.camera_source_diagnosis_status);
       expect(summary.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
+      expect(summary.camera_source_diagnosis_plain_hint).toBe(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_plain_hint);
       expect(summary.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.camera_recovery_next_action_plain);
       expect(summary.camera_recovery_sends_motion).toBe(false);
       expect(summary.camera_blocks_mapping_start).toBe(summary.live_closure_summary?.camera_blocks_mapping_start);

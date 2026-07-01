@@ -3372,6 +3372,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_current_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
   camera_needs_usb_fix?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
   camera_usb_high_speed?: boolean;
+  camera_usb_speed?: RobotControlLiveClosureSummary["camera_usb_speed"];
   map_visible?: RobotControlLiveClosureSummary["map_current_visible"];
   map_current_visible?: RobotControlLiveClosureSummary["map_current_visible"];
   path_visible?: RobotControlLiveClosureSummary["path_current_visible"];
@@ -3387,6 +3388,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_reprobe_sequence?: RobotControlLiveClosureSummary["camera_reprobe_sequence"];
   camera_source_diagnosis_status?: RobotControlLiveClosureSummary["camera_source_diagnosis_status"];
   camera_source_diagnosis_not_exclusive?: RobotControlLiveClosureSummary["camera_source_diagnosis_not_exclusive"];
+  camera_source_diagnosis_plain_hint?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_plain_hint"];
   camera_recovery_next_action_plain?: RobotControlLiveClosureSummary["camera_recovery_next_action_plain"];
   camera_recovery_sends_motion?: RobotControlLiveClosureSummary["camera_recovery_sends_motion"];
   camera_recovery_starts_map_runtime?: RobotControlLiveClosureSummary["camera_recovery_starts_map_runtime"];
