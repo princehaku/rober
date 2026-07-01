@@ -17198,6 +17198,29 @@ onBeforeUnmount(() => {
         >
           画面复测：{{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain) }}
           共享预览：单上游多人共享，当前 {{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_client_count }} 个页面观看；上游 {{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active === "true" ? "已连接" : "未连接" }}；页面独占={{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim }}。
+          <a
+            v-if="cameraMjpegSharedPreviewLink"
+            class="secondary compact-stop plain-link-button"
+            data-testid="plain-live-camera-shared-preview-link"
+            :href="cameraMjpegSharedPreviewLink"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-opens-shared-preview="true"
+            data-readback-only="true"
+            data-fixed-shared-preview-endpoint="/api/robot-control/camera/mjpeg"
+            :data-fixed-shared-preview-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint"
+            data-starts-camera-exclusive-capture="false"
+            data-starts-map-runtime="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            data-sends-motion-when-clicked="false"
+          >
+            打开共享预览
+          </a>
           <button
             type="button"
             class="secondary compact-stop"
