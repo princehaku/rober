@@ -3930,6 +3930,17 @@ const plainLiveClosureWysiwygMissingSurfaceIds = computed(() => {
 });
 const plainLiveClosureWysiwygReady = computed(() => plainLiveClosureSummary.value?.live_wysiwyg_ready ?? plainLiveClosureWysiwygMissingSurfaceIds.value === "none");
 const plainLiveClosureNeedsWysiwygRefresh = computed(() => plainLiveClosureSummary.value?.live_wysiwyg_needs_refresh ?? plainLiveClosureSummary.value?.status === "needs_wysiwyg");
+const plainLiveRadarMapRefreshVisible = computed(() => {
+  // 雷达贴图可以独立只读刷新；相机已知卡住时，不能强迫 operator 等相机 probe 才能收口雷达 WYSIWYG。
+  const summary = plainLiveClosureSummary.value;
+  if (!summary || summary.radar_map_points_visible) {
+    return false;
+  }
+  return summary.live_wysiwyg_radar_map_refresh_sequence?.includes("/api/robot-control/radar/scan-proof/refresh") ?? false;
+});
+const plainLiveRadarMapRefreshButtonLabel = computed(() => (
+  radarRefreshPending.value || mapPreviewPending.value ? "刷新雷达贴图中" : "只刷新雷达贴图"
+));
 const plainLiveClosureWysiwygReadbackGapSurfaceIds = computed(() => {
   // 缺失 surface 还要区分“只是没显示”和“上车读数没回来”，现场排障时这两个下一步不同。
   const summary = plainLiveClosureSummary.value;
@@ -16808,6 +16819,61 @@ onBeforeUnmount(() => {
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_diagnostic_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain) }}
+        </p>
+        <p
+          v-if="plainLiveRadarMapRefreshVisible"
+          class="panel-note"
+          data-testid="plain-live-radar-map-readback"
+          :data-radar-map-current-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_current_point_count"
+          :data-radar-map-source-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_source_point_count"
+          :data-radar-map-stale-source-points-suppressed="String(plainLiveClosureSummary.live_wysiwyg_radar_map_stale_source_points_suppressed)"
+          :data-radar-map-primary-blocked-reason="plainLiveClosureSummary.live_wysiwyg_radar_map_primary_blocked_reason"
+          :data-radar-map-refresh-next-action-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain"
+          :data-radar-map-refresh-sequence="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence?.join(',') || 'none'"
+          :data-radar-map-refresh-sequence-labels="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence_labels?.join(',') || 'none'"
+          :data-fixed-radar-refresh-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint"
+          data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+          data-refreshes-radar-scan-proof="true"
+          data-refreshes-map-after-radar="true"
+          data-refreshes-radar-status="true"
+          data-refreshes-camera-first-frame-probe="false"
+          data-refreshes-camera-mjpeg-status="false"
+          data-starts-radar-lifecycle="false"
+          data-starts-map-runtime="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+          data-submits-delivery="false"
+          data-stops-motion="false"
+          data-sends-motion-when-clicked="false"
+        >
+          雷达贴图：{{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain) }}
+          <button
+            type="button"
+            class="secondary compact-stop"
+            data-testid="plain-live-radar-map-readback-refresh"
+            :disabled="!canRefreshRadarProof"
+            :data-fixed-radar-refresh-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint"
+            data-fixed-radar-map-preview-endpoint="/api/robot-control/map/preview"
+            data-refreshes-radar-scan-proof="true"
+            data-refreshes-map-after-radar="true"
+            data-refreshes-radar-status="true"
+            data-refreshes-camera-first-frame-probe="false"
+            data-refreshes-camera-mjpeg-status="false"
+            data-starts-radar-lifecycle="false"
+            data-starts-map-runtime="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            data-sends-motion-when-clicked="false"
+            @click="refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true })"
+          >
+            {{ plainLiveRadarMapRefreshButtonLabel }}
+          </button>
         </p>
         <p
           class="panel-note"
