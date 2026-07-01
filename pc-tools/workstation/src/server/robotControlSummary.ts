@@ -8984,6 +8984,7 @@ function buildLiveClosureSummary(
   const liveWysiwygPrimaryRefreshEndpoint = liveWysiwygMissingSurfaceRefreshEndpoints[0] ?? "none";
   const liveWysiwygPrimaryRefreshLabel = liveWysiwygMissingSurfaceRefreshLabels[0] ?? "无";
   const freeMoveStartReady = boundary.free_roam_motion_start_ready || goalSummary.ready_action_ids.includes("free_move");
+  const freeRoamMotionReady = readback.free_roam.free_roam_motion_ready === "true" || readback.free_roam.motion_ready === "true";
   const mappingStartReady = boundary.free_roam_mapping_start_ready || goalSummary.ready_action_ids.includes("mapping_start");
   const mappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
   const mappingAcceptanceMissingReasons = boundary.free_roam_mapping_missing_reasons;
@@ -9709,15 +9710,25 @@ function buildLiveClosureSummary(
     live_wysiwyg_refresh_starts_map_runtime: false,
     live_wysiwyg_surface_summaries: liveWysiwygSurfaceSummaries,
     free_move_start_ready: freeMoveStartReady,
+    free_roam_ready: freeMoveStartReady,
+    free_roam_start_ready: freeMoveStartReady,
+    free_roam_motion_start_ready: freeMoveStartReady,
+    free_roam_motion_ready: freeRoamMotionReady,
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: freeMoveStartReady,
     free_move_camera_preflight_required: false,
     free_move_radar_preflight_required: false,
+    free_move_without_camera_allowed: true,
+    free_roam_motion_without_radar_allowed: true,
     free_move_blocked_by_camera_wysiwyg: false,
     free_move_blocked_by_radar_wysiwyg: false,
     fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
     fixed_free_roam_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
     mapping_start_ready: mappingStartReady,
+    free_roam_mapping_start_ready: mappingStartReady,
+    free_roam_mapping_ready: boundary.free_roam_mapping_ready,
+    free_roam_mapping_start_missing_reasons: mappingStartMissingReasons,
+    free_roam_mapping_missing_reasons: mappingAcceptanceMissingReasons,
     mapping_start_requires_camera_first_frame: true,
     mapping_start_requires_lidar_fresh: true,
     mapping_start_missing_reasons: mappingStartMissingReasons,

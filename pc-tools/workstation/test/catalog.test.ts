@@ -6902,6 +6902,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.mapping_lidar_fresh_refresh_sends_motion).toBe(false);
       expect(live.mapping_lidar_fresh_refresh_starts_radar_lifecycle).toBe(false);
       expect(live.mapping_lidar_fresh_blocks_free_move).toBe(false);
+      expect(live.free_roam_ready).toBe(true);
+      expect(live.free_roam_start_ready).toBe(true);
+      expect(live.free_roam_motion_start_ready).toBe(true);
+      expect(live.free_roam_motion_ready).toBe(false);
+      expect(live.free_move_without_camera_allowed).toBe(true);
+      expect(live.free_roam_motion_without_radar_allowed).toBe(true);
+      expect(live.free_roam_mapping_start_ready).toBe(summary.live_closure_summary?.mapping_start_ready);
+      expect(live.free_roam_mapping_start_missing_reasons).toEqual(summary.live_closure_summary?.mapping_start_missing_reasons);
+      expect(live.free_roam_mapping_ready).toBe(false);
+      expect(live.free_roam_mapping_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
       expect(live.keyboard_ready).toBe(true);
       expect(live.keyboard_enable_sends_motion).toBe(false);
       expect(live.keyboard_hold_to_move_required).toBe(true);
