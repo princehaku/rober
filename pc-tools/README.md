@@ -38,6 +38,14 @@ client publish、service 和 parameter 通道关到不匹配正则；安装仍�
 `ws://192.168.1.11:8765`；该按钮不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，现场验收包的只读复验动作不再只暴露单个 endpoint。`no_motion_readback_actions[]`
+每项都带 `sequence_endpoints`、`sequence_labels` 和 refresh flags；summary 顶层也暴露
+`field_acceptance_no_motion_readback_action_sequences`、`field_acceptance_no_motion_readback_action_sequence_labels`
+以及 primary no-motion action 的 sequence/refresh flags。当前雷达贴图复验链路固定为
+`/api/robot-control/radar/scan-proof/refresh -> /api/robot-control/summary -> /api/robot-control/radar/status -> /api/robot-control/map/preview`，
+只用于确认地图上的雷达标记按当前读回刷新，不启动雷达 lifecycle、Nav2、manual、keyboard、
+free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，
 再打开 7002 看热更新页；`dev:public` 只是复用 `npm run dev` 的兼容旧入口，正式现场访问仍优先使用 7001 的 Node/Express 工作站。

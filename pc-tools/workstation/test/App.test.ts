@@ -1523,13 +1523,42 @@ const fixtures: Record<string, unknown> = {
           "/api/robot-control/radar/scan-proof/refresh",
         ],
         no_motion_readback_action_methods: ["GET", "POST", "POST"],
+        no_motion_readback_action_sequences: [
+          "/api/robot-control/map/preview|/api/robot-control/nav2/goal/execution/latest|/api/robot-control/base/feedback-samples|/api/robot-control/delivery/latest|/api/robot-control/summary|/api/robot-control/free-roam/autonomy/latest|/api/robot-control/radar/scan-proof/refresh|/api/robot-control/camera/first-frame/probe|/api/robot-control/radar/status|/api/robot-control/camera/mjpeg/status",
+          "/api/robot-control/radar/scan-proof/refresh|/api/robot-control/camera/first-frame/probe|/api/robot-control/map/preview|/api/robot-control/radar/status|/api/robot-control/camera/mjpeg/status",
+          "/api/robot-control/radar/scan-proof/refresh|/api/robot-control/summary|/api/robot-control/radar/status|/api/robot-control/map/preview",
+        ],
+        no_motion_readback_action_sequence_labels: [
+          "刷新地图画面|读取最近行程|复验轮速采样|读取送达确认|刷新总览|读取自由移动状态|刷新雷达扫描读数|复测相机首帧|读取雷达状态|读取相机 MJPEG 状态",
+          "刷新雷达扫描读数|复测相机首帧|刷新地图画面|读取雷达状态|读取相机 MJPEG 状态",
+          "刷新雷达扫描读数|刷新总览|读取雷达状态|刷新地图画面",
+        ],
         no_motion_readback_actions: [
           {
             id: "readback_all",
             label: "复验全部读数",
             endpoint: "/api/robot-control/summary",
             method: "GET",
-            summary_plain: "只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作。",
+            sequence_endpoints: [
+              "/api/robot-control/map/preview",
+              "/api/robot-control/nav2/goal/execution/latest",
+              "/api/robot-control/base/feedback-samples",
+              "/api/robot-control/delivery/latest",
+              "/api/robot-control/summary",
+              "/api/robot-control/free-roam/autonomy/latest",
+              "/api/robot-control/radar/scan-proof/refresh",
+              "/api/robot-control/camera/first-frame/probe",
+              "/api/robot-control/radar/status",
+              "/api/robot-control/camera/mjpeg/status",
+            ],
+            sequence_labels: ["刷新地图画面", "读取最近行程", "复验轮速采样", "读取送达确认", "刷新总览", "读取自由移动状态", "刷新雷达扫描读数", "复测相机首帧", "读取雷达状态", "读取相机 MJPEG 状态"],
+            refreshes_summary: true,
+            refreshes_radar_scan_proof: true,
+            refreshes_camera_first_frame_probe: true,
+            refreshes_map_preview: true,
+            refreshes_radar_status: true,
+            refreshes_camera_mjpeg_status: true,
+            summary_plain: "只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作；链路：刷新地图画面、读取最近行程、复验轮速采样、读取送达确认、刷新总览、读取自由移动状态、刷新雷达扫描读数、复测相机首帧、读取雷达状态、读取相机 MJPEG 状态。",
             sends_motion_when_clicked: false,
             starts_nav2_when_clicked: false,
             starts_manual_when_clicked: false,
@@ -1545,7 +1574,21 @@ const fixtures: Record<string, unknown> = {
             label: "刷新当前所见",
             endpoint: "/api/robot-control/camera/first-frame/probe",
             method: "POST",
-            summary_plain: "只读处理当前所见缺口：复测相机首帧。",
+            sequence_endpoints: [
+              "/api/robot-control/radar/scan-proof/refresh",
+              "/api/robot-control/camera/first-frame/probe",
+              "/api/robot-control/map/preview",
+              "/api/robot-control/radar/status",
+              "/api/robot-control/camera/mjpeg/status",
+            ],
+            sequence_labels: ["刷新雷达扫描读数", "复测相机首帧", "刷新地图画面", "读取雷达状态", "读取相机 MJPEG 状态"],
+            refreshes_summary: false,
+            refreshes_radar_scan_proof: true,
+            refreshes_camera_first_frame_probe: true,
+            refreshes_map_preview: true,
+            refreshes_radar_status: true,
+            refreshes_camera_mjpeg_status: true,
+            summary_plain: "只读处理当前所见缺口：刷新雷达扫描读数、复测相机首帧、刷新地图画面、读取雷达状态、读取相机 MJPEG 状态。",
             sends_motion_when_clicked: false,
             starts_nav2_when_clicked: false,
             starts_manual_when_clicked: false,
@@ -1561,7 +1604,20 @@ const fixtures: Record<string, unknown> = {
             label: "刷新雷达贴图",
             endpoint: "/api/robot-control/radar/scan-proof/refresh",
             method: "POST",
-            summary_plain: "只读刷新雷达扫描读数，再配合地图预览确认雷达点贴到当前地图。",
+            sequence_endpoints: [
+              "/api/robot-control/radar/scan-proof/refresh",
+              "/api/robot-control/summary",
+              "/api/robot-control/radar/status",
+              "/api/robot-control/map/preview",
+            ],
+            sequence_labels: ["刷新雷达扫描读数", "刷新总览", "读取雷达状态", "刷新地图画面"],
+            refreshes_summary: true,
+            refreshes_radar_scan_proof: true,
+            refreshes_camera_first_frame_probe: false,
+            refreshes_map_preview: true,
+            refreshes_radar_status: true,
+            refreshes_camera_mjpeg_status: false,
+            summary_plain: "只读刷新雷达扫描读数、刷新总览、读取雷达状态，再刷新地图画面确认雷达点贴到当前地图。",
             sends_motion_when_clicked: false,
             starts_nav2_when_clicked: false,
             starts_manual_when_clicked: false,
@@ -1577,6 +1633,19 @@ const fixtures: Record<string, unknown> = {
         primary_no_motion_readback_action_label: "刷新雷达贴图",
         primary_no_motion_readback_action_endpoint: "/api/robot-control/radar/scan-proof/refresh",
         primary_no_motion_readback_action_method: "POST",
+        primary_no_motion_readback_action_sequence: [
+          "/api/robot-control/radar/scan-proof/refresh",
+          "/api/robot-control/summary",
+          "/api/robot-control/radar/status",
+          "/api/robot-control/map/preview",
+        ],
+        primary_no_motion_readback_action_sequence_labels: ["刷新雷达扫描读数", "刷新总览", "读取雷达状态", "刷新地图画面"],
+        primary_no_motion_readback_action_refreshes_summary: true,
+        primary_no_motion_readback_action_refreshes_radar_scan_proof: true,
+        primary_no_motion_readback_action_refreshes_camera_first_frame_probe: false,
+        primary_no_motion_readback_action_refreshes_map_preview: true,
+        primary_no_motion_readback_action_refreshes_radar_status: true,
+        primary_no_motion_readback_action_refreshes_camera_mjpeg_status: false,
         primary_no_motion_readback_action_sends_motion: false,
         remaining_operator_action_summary_plain: "需要现场安全确认的运动验收：键盘连续手控、自由自助移动；勾一次安全确认后再手动执行，执行后只读读回复验。",
         remaining_hardware_action_summary_plain: "当前没有必须先处理的设备动作；可继续按现场验收包复验。",
@@ -5597,10 +5666,20 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-methods")).toBe("GET,POST,POST");
+    expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-sequences")).toContain("/api/robot-control/radar/scan-proof/refresh|/api/robot-control/summary|/api/robot-control/radar/status|/api/robot-control/map/preview");
+    expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-sequence-labels")).toContain("刷新雷达扫描读数|刷新总览|读取雷达状态|刷新地图画面");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_radar_map_overlay");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新雷达贴图");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/summary,/api/robot-control/radar/status,/api/robot-control/map/preview");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sequence-labels")).toBe("刷新雷达扫描读数,刷新总览,读取雷达状态,刷新地图画面");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-summary")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-radar-scan-proof")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-map-preview")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-radar-status")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-remaining-operator-action-summary-plain")).toContain("键盘连续手控、自由自助移动");
     expect(fieldAcceptancePacket.attributes("data-remaining-hardware-action-summary-plain")).toContain("当前没有必须先处理的设备动作");
@@ -5668,10 +5747,15 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-methods")).toBe("GET,POST,POST");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-sequences")).toContain("/api/robot-control/radar/scan-proof/refresh|/api/robot-control/summary|/api/robot-control/radar/status|/api/robot-control/map/preview");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-sequence-labels")).toContain("刷新雷达扫描读数|刷新总览|读取雷达状态|刷新地图画面");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_radar_map_overlay");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新雷达贴图");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/summary,/api/robot-control/radar/status,/api/robot-control/map/preview");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-refreshes-map-preview")).toBe("true");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-refreshes-radar-status")).toBe("true");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
     expect(fieldAcceptanceRemainingActions.attributes("data-remaining-operator-action-summary-plain")).toContain("键盘连续手控、自由自助移动");
     expect(fieldAcceptanceRemainingActions.attributes("data-remaining-hardware-action-summary-plain")).toContain("当前没有必须先处理的设备动作");
@@ -5715,6 +5799,14 @@ describe("App", () => {
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新雷达贴图");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/summary,/api/robot-control/radar/status,/api/robot-control/map/preview");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sequence-labels")).toBe("刷新雷达扫描读数,刷新总览,读取雷达状态,刷新地图画面");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-summary")).toBe("true");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-radar-scan-proof")).toBe("true");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-map-preview")).toBe("true");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-radar-status")).toBe("true");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status")).toBe("false");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-nav2")).toBe("false");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-manual")).toBe("false");
@@ -9729,13 +9821,38 @@ describe("App", () => {
         "/api/robot-control/camera/first-frame/probe",
       ],
       no_motion_readback_action_methods: ["GET", "POST"],
+      no_motion_readback_action_sequences: [
+        "/api/robot-control/map/preview|/api/robot-control/nav2/goal/execution/latest|/api/robot-control/base/feedback-samples|/api/robot-control/delivery/latest|/api/robot-control/summary|/api/robot-control/free-roam/autonomy/latest|/api/robot-control/camera/first-frame/probe|/api/robot-control/camera/mjpeg/status",
+        cameraOnlySequence.join("|"),
+      ],
+      no_motion_readback_action_sequence_labels: [
+        "刷新地图画面|读取最近行程|复验轮速采样|读取送达确认|刷新总览|读取自由移动状态|复测相机首帧|读取相机 MJPEG 状态",
+        cameraOnlyLabels.join("|"),
+      ],
       no_motion_readback_actions: [
         {
           id: "readback_all",
           label: "复验全部读数",
           endpoint: "/api/robot-control/summary",
           method: "GET",
-          summary_plain: "只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作。",
+          sequence_endpoints: [
+            "/api/robot-control/map/preview",
+            "/api/robot-control/nav2/goal/execution/latest",
+            "/api/robot-control/base/feedback-samples",
+            "/api/robot-control/delivery/latest",
+            "/api/robot-control/summary",
+            "/api/robot-control/free-roam/autonomy/latest",
+            "/api/robot-control/camera/first-frame/probe",
+            "/api/robot-control/camera/mjpeg/status",
+          ],
+          sequence_labels: ["刷新地图画面", "读取最近行程", "复验轮速采样", "读取送达确认", "刷新总览", "读取自由移动状态", "复测相机首帧", "读取相机 MJPEG 状态"],
+          refreshes_summary: true,
+          refreshes_radar_scan_proof: false,
+          refreshes_camera_first_frame_probe: true,
+          refreshes_map_preview: true,
+          refreshes_radar_status: false,
+          refreshes_camera_mjpeg_status: true,
+          summary_plain: "只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作；链路：刷新地图画面、读取最近行程、复验轮速采样、读取送达确认、刷新总览、读取自由移动状态、复测相机首帧、读取相机 MJPEG 状态。",
           sends_motion_when_clicked: false,
           starts_nav2_when_clicked: false,
           starts_manual_when_clicked: false,
@@ -9751,7 +9868,15 @@ describe("App", () => {
           label: "刷新当前所见",
           endpoint: "/api/robot-control/camera/first-frame/probe",
           method: "POST",
-          summary_plain: "只读处理当前所见缺口：复测相机首帧。",
+          sequence_endpoints: cameraOnlySequence,
+          sequence_labels: cameraOnlyLabels,
+          refreshes_summary: true,
+          refreshes_radar_scan_proof: false,
+          refreshes_camera_first_frame_probe: true,
+          refreshes_map_preview: false,
+          refreshes_radar_status: false,
+          refreshes_camera_mjpeg_status: true,
+          summary_plain: "只读处理当前所见缺口：复测相机首帧、读取相机 MJPEG 状态、刷新总览。",
           sends_motion_when_clicked: false,
           starts_nav2_when_clicked: false,
           starts_manual_when_clicked: false,
@@ -9767,6 +9892,14 @@ describe("App", () => {
       primary_no_motion_readback_action_label: "刷新当前所见",
       primary_no_motion_readback_action_endpoint: "/api/robot-control/camera/first-frame/probe",
       primary_no_motion_readback_action_method: "POST",
+      primary_no_motion_readback_action_sequence: cameraOnlySequence,
+      primary_no_motion_readback_action_sequence_labels: cameraOnlyLabels,
+      primary_no_motion_readback_action_refreshes_summary: true,
+      primary_no_motion_readback_action_refreshes_radar_scan_proof: false,
+      primary_no_motion_readback_action_refreshes_camera_first_frame_probe: true,
+      primary_no_motion_readback_action_refreshes_map_preview: false,
+      primary_no_motion_readback_action_refreshes_radar_status: false,
+      primary_no_motion_readback_action_refreshes_camera_mjpeg_status: true,
       primary_no_motion_readback_action_sends_motion: false,
       remaining_hardware_action_summary_plain: "需要设备处理：换高速USB后复测；相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。",
       remaining_no_motion_action_summary_plain: "可随时只读复验：复验全部读数、刷新当前所见；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
@@ -9803,11 +9936,21 @@ describe("App", () => {
     summaryFixture.field_acceptance_no_motion_readback_action_labels = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_labels;
     summaryFixture.field_acceptance_no_motion_readback_action_endpoints = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_endpoints;
     summaryFixture.field_acceptance_no_motion_readback_action_methods = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_methods;
+    summaryFixture.field_acceptance_no_motion_readback_action_sequences = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_sequences;
+    summaryFixture.field_acceptance_no_motion_readback_action_sequence_labels = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_sequence_labels;
     summaryFixture.field_acceptance_no_motion_readback_actions = liveClosureSummary.field_acceptance_packet.no_motion_readback_actions;
     summaryFixture.field_acceptance_primary_no_motion_readback_action_id = "refresh_current_wysiwyg";
     summaryFixture.field_acceptance_primary_no_motion_readback_action_label = "刷新当前所见";
     summaryFixture.field_acceptance_primary_no_motion_readback_action_endpoint = "/api/robot-control/camera/first-frame/probe";
     summaryFixture.field_acceptance_primary_no_motion_readback_action_method = "POST";
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_sequence = cameraOnlySequence;
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_sequence_labels = cameraOnlyLabels;
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_refreshes_summary = true;
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_refreshes_radar_scan_proof = false;
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_refreshes_camera_first_frame_probe = true;
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_refreshes_map_preview = false;
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_refreshes_radar_status = false;
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_refreshes_camera_mjpeg_status = true;
     summaryFixture.field_acceptance_primary_no_motion_readback_action_sends_motion = false;
     summaryFixture.field_acceptance_remaining_hardware_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_hardware_action_summary_plain;
     summaryFixture.field_acceptance_remaining_no_motion_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_no_motion_action_summary_plain;

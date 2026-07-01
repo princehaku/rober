@@ -826,10 +826,25 @@ describe("robotControlSummary", () => {
       "/api/robot-control/radar/scan-proof/refresh",
     ]);
     expect(summary.field_acceptance_no_motion_readback_action_methods).toEqual(["GET", "POST", "POST"]);
+    expect(summary.field_acceptance_no_motion_readback_action_sequences?.[2]).toBe("/api/robot-control/radar/scan-proof/refresh|/api/robot-control/summary|/api/robot-control/radar/status|/api/robot-control/map/preview");
+    expect(summary.field_acceptance_no_motion_readback_action_sequence_labels?.[2]).toBe("刷新雷达扫描读数|刷新总览|读取雷达状态|刷新地图画面");
     expect(summary.field_acceptance_primary_no_motion_readback_action_id).toBe("refresh_radar_map_overlay");
     expect(summary.field_acceptance_primary_no_motion_readback_action_label).toBe("刷新雷达贴图");
     expect(summary.field_acceptance_primary_no_motion_readback_action_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(summary.field_acceptance_primary_no_motion_readback_action_method).toBe("POST");
+    expect(summary.field_acceptance_primary_no_motion_readback_action_sequence).toEqual([
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/summary",
+      "/api/robot-control/radar/status",
+      "/api/robot-control/map/preview",
+    ]);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_sequence_labels).toEqual(["刷新雷达扫描读数", "刷新总览", "读取雷达状态", "刷新地图画面"]);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_summary).toBe(true);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_radar_scan_proof).toBe(true);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_camera_first_frame_probe).toBe(false);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_map_preview).toBe(true);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_radar_status).toBe(true);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_camera_mjpeg_status).toBe(false);
     expect(summary.field_acceptance_primary_no_motion_readback_action_sends_motion).toBe(false);
     expect(summary.field_acceptance_no_motion_readback_actions).toEqual([
       expect.objectContaining({
@@ -853,6 +868,19 @@ describe("robotControlSummary", () => {
         id: "refresh_radar_map_overlay",
         endpoint: "/api/robot-control/radar/scan-proof/refresh",
         method: "POST",
+        sequence_endpoints: [
+          "/api/robot-control/radar/scan-proof/refresh",
+          "/api/robot-control/summary",
+          "/api/robot-control/radar/status",
+          "/api/robot-control/map/preview",
+        ],
+        sequence_labels: ["刷新雷达扫描读数", "刷新总览", "读取雷达状态", "刷新地图画面"],
+        refreshes_summary: true,
+        refreshes_radar_scan_proof: true,
+        refreshes_camera_first_frame_probe: false,
+        refreshes_map_preview: true,
+        refreshes_radar_status: true,
+        refreshes_camera_mjpeg_status: false,
         sends_motion_when_clicked: false,
       }),
     ]);
@@ -889,8 +917,19 @@ describe("robotControlSummary", () => {
       primary_safety_confirm_ready_action_sends_motion: true,
       no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg", "refresh_radar_map_overlay"],
       no_motion_readback_action_labels: ["复验全部读数", "刷新当前所见", "刷新雷达贴图"],
+      no_motion_readback_action_sequences: expect.arrayContaining([
+        "/api/robot-control/radar/scan-proof/refresh|/api/robot-control/summary|/api/robot-control/radar/status|/api/robot-control/map/preview",
+      ]),
       primary_no_motion_readback_action_id: "refresh_radar_map_overlay",
       primary_no_motion_readback_action_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+      primary_no_motion_readback_action_sequence: [
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/summary",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/map/preview",
+      ],
+      primary_no_motion_readback_action_refreshes_map_preview: true,
+      primary_no_motion_readback_action_refreshes_radar_status: true,
       primary_no_motion_readback_action_sends_motion: false,
       safety_confirm_required: true,
       minimal_precheck_safety_only: true,

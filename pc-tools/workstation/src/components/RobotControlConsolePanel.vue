@@ -4407,6 +4407,18 @@ const plainFieldAcceptanceNoMotionReadbackActionEndpointsText = computed(() => (
 const plainFieldAcceptanceNoMotionReadbackActionMethodsText = computed(() => (
   plainFieldAcceptancePacket.value?.no_motion_readback_action_methods.join(",") || "none"
 ));
+const plainFieldAcceptanceNoMotionReadbackActionSequencesText = computed(() => (
+  plainFieldAcceptancePacket.value?.no_motion_readback_action_sequences.join(",") || "none"
+));
+const plainFieldAcceptanceNoMotionReadbackActionSequenceLabelsText = computed(() => (
+  plainFieldAcceptancePacket.value?.no_motion_readback_action_sequence_labels.join(",") || "none"
+));
+const plainFieldAcceptancePrimaryNoMotionReadbackSequenceText = computed(() => (
+  plainFieldAcceptancePacket.value?.primary_no_motion_readback_action_sequence.join(",") || "none"
+));
+const plainFieldAcceptancePrimaryNoMotionReadbackSequenceLabelsText = computed(() => (
+  plainFieldAcceptancePacket.value?.primary_no_motion_readback_action_sequence_labels.join(",") || "none"
+));
 const plainFieldAcceptanceEndpointText = computed(() => (
   plainFieldAcceptancePacket.value?.acceptance_endpoints.join(",") || "none"
 ));
@@ -18200,10 +18212,20 @@ onBeforeUnmount(() => {
           :data-no-motion-readback-action-labels="plainFieldAcceptanceNoMotionReadbackActionLabelsText"
           :data-no-motion-readback-action-endpoints="plainFieldAcceptanceNoMotionReadbackActionEndpointsText"
           :data-no-motion-readback-action-methods="plainFieldAcceptanceNoMotionReadbackActionMethodsText"
+          :data-no-motion-readback-action-sequences="plainFieldAcceptanceNoMotionReadbackActionSequencesText"
+          :data-no-motion-readback-action-sequence-labels="plainFieldAcceptanceNoMotionReadbackActionSequenceLabelsText"
           :data-primary-no-motion-readback-action-id="plainFieldAcceptancePacket.primary_no_motion_readback_action_id"
           :data-primary-no-motion-readback-action-label="plainFieldAcceptancePacket.primary_no_motion_readback_action_label"
           :data-primary-no-motion-readback-action-endpoint="plainFieldAcceptancePacket.primary_no_motion_readback_action_endpoint"
           :data-primary-no-motion-readback-action-method="plainFieldAcceptancePacket.primary_no_motion_readback_action_method"
+          :data-primary-no-motion-readback-action-sequence="plainFieldAcceptancePrimaryNoMotionReadbackSequenceText"
+          :data-primary-no-motion-readback-action-sequence-labels="plainFieldAcceptancePrimaryNoMotionReadbackSequenceLabelsText"
+          :data-primary-no-motion-readback-action-refreshes-summary="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_summary)"
+          :data-primary-no-motion-readback-action-refreshes-radar-scan-proof="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_radar_scan_proof)"
+          :data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_camera_first_frame_probe)"
+          :data-primary-no-motion-readback-action-refreshes-map-preview="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_map_preview)"
+          :data-primary-no-motion-readback-action-refreshes-radar-status="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_radar_status)"
+          :data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_camera_mjpeg_status)"
           :data-primary-no-motion-readback-action-sends-motion="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_sends_motion)"
           :data-remaining-operator-action-summary-plain="plainFieldAcceptancePacket.remaining_operator_action_summary_plain"
           :data-remaining-hardware-action-summary-plain="plainFieldAcceptancePacket.remaining_hardware_action_summary_plain"
@@ -18281,10 +18303,20 @@ onBeforeUnmount(() => {
             :data-no-motion-readback-action-labels="plainFieldAcceptanceNoMotionReadbackActionLabelsText"
             :data-no-motion-readback-action-endpoints="plainFieldAcceptanceNoMotionReadbackActionEndpointsText"
             :data-no-motion-readback-action-methods="plainFieldAcceptanceNoMotionReadbackActionMethodsText"
+            :data-no-motion-readback-action-sequences="plainFieldAcceptanceNoMotionReadbackActionSequencesText"
+            :data-no-motion-readback-action-sequence-labels="plainFieldAcceptanceNoMotionReadbackActionSequenceLabelsText"
             :data-primary-no-motion-readback-action-id="plainFieldAcceptancePacket.primary_no_motion_readback_action_id"
             :data-primary-no-motion-readback-action-label="plainFieldAcceptancePacket.primary_no_motion_readback_action_label"
             :data-primary-no-motion-readback-action-endpoint="plainFieldAcceptancePacket.primary_no_motion_readback_action_endpoint"
             :data-primary-no-motion-readback-action-method="plainFieldAcceptancePacket.primary_no_motion_readback_action_method"
+            :data-primary-no-motion-readback-action-sequence="plainFieldAcceptancePrimaryNoMotionReadbackSequenceText"
+            :data-primary-no-motion-readback-action-sequence-labels="plainFieldAcceptancePrimaryNoMotionReadbackSequenceLabelsText"
+            :data-primary-no-motion-readback-action-refreshes-summary="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_summary)"
+            :data-primary-no-motion-readback-action-refreshes-radar-scan-proof="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_radar_scan_proof)"
+            :data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_camera_first_frame_probe)"
+            :data-primary-no-motion-readback-action-refreshes-map-preview="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_map_preview)"
+            :data-primary-no-motion-readback-action-refreshes-radar-status="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_radar_status)"
+            :data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_camera_mjpeg_status)"
             :data-primary-no-motion-readback-action-sends-motion="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_sends_motion)"
             :data-remaining-operator-action-summary-plain="plainFieldAcceptancePacket.remaining_operator_action_summary_plain"
             :data-remaining-hardware-action-summary-plain="plainFieldAcceptancePacket.remaining_hardware_action_summary_plain"
@@ -18423,6 +18455,14 @@ onBeforeUnmount(() => {
             :data-primary-no-motion-readback-action-label="plainFieldAcceptancePacket.primary_no_motion_readback_action_label"
             :data-primary-no-motion-readback-action-endpoint="plainFieldAcceptancePacket.primary_no_motion_readback_action_endpoint"
             :data-primary-no-motion-readback-action-method="plainFieldAcceptancePacket.primary_no_motion_readback_action_method"
+            :data-primary-no-motion-readback-action-sequence="plainFieldAcceptancePrimaryNoMotionReadbackSequenceText"
+            :data-primary-no-motion-readback-action-sequence-labels="plainFieldAcceptancePrimaryNoMotionReadbackSequenceLabelsText"
+            :data-primary-no-motion-readback-action-refreshes-summary="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_summary)"
+            :data-primary-no-motion-readback-action-refreshes-radar-scan-proof="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_radar_scan_proof)"
+            :data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_camera_first_frame_probe)"
+            :data-primary-no-motion-readback-action-refreshes-map-preview="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_map_preview)"
+            :data-primary-no-motion-readback-action-refreshes-radar-status="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_radar_status)"
+            :data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_refreshes_camera_mjpeg_status)"
             :data-primary-no-motion-readback-action-sends-motion="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_sends_motion)"
             data-starts-nav2="false"
             data-starts-manual="false"

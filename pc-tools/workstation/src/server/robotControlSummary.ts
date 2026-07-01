@@ -10374,6 +10374,10 @@ export async function buildRobotControlSummary(
       };
     }));
   const fieldAcceptancePrimaryMissingEvidence = fieldAcceptanceMissingEvidenceItems[0] ?? null;
+  const fieldAcceptanceWysiwygRefreshModeValue = fieldAcceptanceWysiwygRefreshMode(
+    liveClosureSummary.live_wysiwyg_missing_surface_ids,
+  );
+  const fieldAcceptanceWysiwygRefreshPlan = fieldAcceptanceFocusedWysiwygRefreshPlan(fieldAcceptanceWysiwygRefreshModeValue);
   const fieldAcceptanceNoMotionReadbackActionIds: RobotControlFieldAcceptanceNoMotionReadbackActionId[] = [
     "readback_all",
   ];
@@ -10398,19 +10402,63 @@ export async function buildRobotControlSummary(
     refresh_current_wysiwyg: liveClosureSummary.live_wysiwyg_primary_refresh_endpoint || "/api/robot-control/summary",
     refresh_radar_map_overlay: liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
   };
+  const fieldAcceptanceNoMotionReadbackActionSequenceById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string[]> = {
+    readback_all: Array.from(new Set([
+      ...fieldAcceptanceSteps.flatMap((item) => item.acceptance_endpoints),
+      ...fieldAcceptanceWysiwygRefreshPlan.sequence,
+      "/api/robot-control/summary",
+    ])),
+    refresh_current_wysiwyg: fieldAcceptanceWysiwygRefreshPlan.sequence.length > 0
+      ? fieldAcceptanceWysiwygRefreshPlan.sequence
+      : ["/api/robot-control/summary"],
+    refresh_radar_map_overlay: [
+      liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
+      "/api/robot-control/summary",
+      liveClosureSummary.fixed_live_wysiwyg_radar_status_endpoint,
+      liveClosureSummary.fixed_live_wysiwyg_map_preview_endpoint,
+    ],
+  };
+  const fieldAcceptanceNoMotionReadbackActionSequenceLabelsById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string[]> = {
+    readback_all: fieldAcceptanceNoMotionReadbackActionSequenceById.readback_all.map((endpoint) => {
+      if (endpoint.includes("/camera/first-frame/probe")) return "复测相机首帧";
+      if (endpoint.includes("/camera/mjpeg/status")) return "读取相机 MJPEG 状态";
+      if (endpoint.includes("/radar/scan-proof/refresh")) return "刷新雷达扫描读数";
+      if (endpoint.includes("/radar/status")) return "读取雷达状态";
+      if (endpoint.includes("/map/preview")) return "刷新地图画面";
+      if (endpoint.includes("/base/feedback-samples")) return "复验轮速采样";
+      if (endpoint.includes("/nav2/goal/execution/latest")) return "读取最近行程";
+      if (endpoint.includes("/delivery/latest")) return "读取送达确认";
+      if (endpoint.includes("/free-roam/autonomy/latest")) return "读取自由移动状态";
+      if (endpoint.includes("/summary")) return "刷新总览";
+      return "只读复验";
+    }),
+    refresh_current_wysiwyg: fieldAcceptanceWysiwygRefreshPlan.labels.length > 0
+      ? fieldAcceptanceWysiwygRefreshPlan.labels
+      : ["刷新总览"],
+    refresh_radar_map_overlay: ["刷新雷达扫描读数", "刷新总览", "读取雷达状态", "刷新地图画面"],
+  };
   const fieldAcceptanceNoMotionReadbackActionSummaryById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
-    readback_all: "只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作。",
-    refresh_current_wysiwyg: `只读处理当前所见缺口：${liveClosureSummary.live_wysiwyg_primary_refresh_label || "刷新当前所见"}。`,
-    refresh_radar_map_overlay: "只读刷新雷达扫描读数，再配合地图预览确认雷达点贴到当前地图。",
+    readback_all: `只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作；链路：${fieldAcceptanceNoMotionReadbackActionSequenceLabelsById.readback_all.join("、")}。`,
+    refresh_current_wysiwyg: `只读处理当前所见缺口：${fieldAcceptanceNoMotionReadbackActionSequenceLabelsById.refresh_current_wysiwyg.join("、")}。`,
+    refresh_radar_map_overlay: "只读刷新雷达扫描读数、刷新总览、读取雷达状态，再刷新地图画面确认雷达点贴到当前地图。",
   };
   const fieldAcceptanceNoMotionReadbackActions: RobotControlFieldAcceptanceNoMotionReadbackAction[] = fieldAcceptanceNoMotionReadbackActionIds
     .map((id) => {
       const endpoint = fieldAcceptanceNoMotionReadbackActionEndpointById[id];
+      const sequence = fieldAcceptanceNoMotionReadbackActionSequenceById[id];
       return {
         id,
         label: fieldAcceptanceNoMotionReadbackActionLabelById[id],
         endpoint,
         method: fieldAcceptanceNoMotionReadbackMethod(endpoint),
+        sequence_endpoints: sequence,
+        sequence_labels: fieldAcceptanceNoMotionReadbackActionSequenceLabelsById[id],
+        refreshes_summary: sequence.some((item) => item.includes("/summary")),
+        refreshes_radar_scan_proof: sequence.some((item) => item.includes("/radar/scan-proof/refresh")),
+        refreshes_camera_first_frame_probe: sequence.some((item) => item.includes("/camera/first-frame/probe")),
+        refreshes_map_preview: sequence.some((item) => item.includes("/map/preview")),
+        refreshes_radar_status: sequence.some((item) => item.includes("/radar/status")),
+        refreshes_camera_mjpeg_status: sequence.some((item) => item.includes("/camera/mjpeg/status")),
         summary_plain: fieldAcceptanceNoMotionReadbackActionSummaryById[id],
         sends_motion_when_clicked: false,
         starts_nav2_when_clicked: false,
@@ -10452,10 +10500,6 @@ export async function buildRobotControlSummary(
     ? "当前所见已满足：画面、地图、路线、小车位置和雷达点都按当前读数显示。"
     : fieldAcceptanceWysiwygNextActions.join("；")
       || `当前所见还差 ${liveClosureSummary.live_wysiwyg_missing_surface_ids.join(",") || "unknown"}；点击${liveClosureSummary.live_wysiwyg_primary_refresh_label || "刷新当前所见"}只刷新证据。`;
-  const fieldAcceptanceWysiwygRefreshModeValue = fieldAcceptanceWysiwygRefreshMode(
-    liveClosureSummary.live_wysiwyg_missing_surface_ids,
-  );
-  const fieldAcceptanceWysiwygRefreshPlan = fieldAcceptanceFocusedWysiwygRefreshPlan(fieldAcceptanceWysiwygRefreshModeValue);
   const fieldAcceptancePacket: RobotControlFieldAcceptancePacket = {
     status: liveClosureSummary.status,
     summary_plain: `现场验收包：${liveClosureSummary.objective_audit_summary_plain} ${liveClosureSummary.live_motion_runbook_summary_plain} 下一步：${liveClosureSummary.next_action_plain}`,
@@ -10504,11 +10548,21 @@ export async function buildRobotControlSummary(
     no_motion_readback_action_labels: fieldAcceptanceNoMotionReadbackActions.map((item) => item.label),
     no_motion_readback_action_endpoints: fieldAcceptanceNoMotionReadbackActions.map((item) => item.endpoint),
     no_motion_readback_action_methods: fieldAcceptanceNoMotionReadbackActions.map((item) => item.method),
+    no_motion_readback_action_sequences: fieldAcceptanceNoMotionReadbackActions.map((item) => item.sequence_endpoints.join("|")),
+    no_motion_readback_action_sequence_labels: fieldAcceptanceNoMotionReadbackActions.map((item) => item.sequence_labels.join("|")),
     no_motion_readback_actions: fieldAcceptanceNoMotionReadbackActions,
     primary_no_motion_readback_action_id: fieldAcceptancePrimaryNoMotionReadbackAction?.id ?? "none",
     primary_no_motion_readback_action_label: fieldAcceptancePrimaryNoMotionReadbackAction?.label ?? "无只读复验动作",
     primary_no_motion_readback_action_endpoint: fieldAcceptancePrimaryNoMotionReadbackAction?.endpoint ?? "none",
     primary_no_motion_readback_action_method: fieldAcceptancePrimaryNoMotionReadbackAction?.method ?? "none",
+    primary_no_motion_readback_action_sequence: fieldAcceptancePrimaryNoMotionReadbackAction?.sequence_endpoints ?? [],
+    primary_no_motion_readback_action_sequence_labels: fieldAcceptancePrimaryNoMotionReadbackAction?.sequence_labels ?? [],
+    primary_no_motion_readback_action_refreshes_summary: fieldAcceptancePrimaryNoMotionReadbackAction?.refreshes_summary ?? false,
+    primary_no_motion_readback_action_refreshes_radar_scan_proof: fieldAcceptancePrimaryNoMotionReadbackAction?.refreshes_radar_scan_proof ?? false,
+    primary_no_motion_readback_action_refreshes_camera_first_frame_probe: fieldAcceptancePrimaryNoMotionReadbackAction?.refreshes_camera_first_frame_probe ?? false,
+    primary_no_motion_readback_action_refreshes_map_preview: fieldAcceptancePrimaryNoMotionReadbackAction?.refreshes_map_preview ?? false,
+    primary_no_motion_readback_action_refreshes_radar_status: fieldAcceptancePrimaryNoMotionReadbackAction?.refreshes_radar_status ?? false,
+    primary_no_motion_readback_action_refreshes_camera_mjpeg_status: fieldAcceptancePrimaryNoMotionReadbackAction?.refreshes_camera_mjpeg_status ?? false,
     primary_no_motion_readback_action_sends_motion: fieldAcceptancePrimaryNoMotionReadbackAction?.sends_motion_when_clicked ?? false,
     remaining_operator_action_summary_plain: fieldAcceptanceOperatorActionPlain,
     remaining_hardware_action_summary_plain: fieldAcceptanceHardwareActionPlain,
@@ -10845,11 +10899,21 @@ export async function buildRobotControlSummary(
     field_acceptance_no_motion_readback_action_labels: fieldAcceptancePacket.no_motion_readback_action_labels,
     field_acceptance_no_motion_readback_action_endpoints: fieldAcceptancePacket.no_motion_readback_action_endpoints,
     field_acceptance_no_motion_readback_action_methods: fieldAcceptancePacket.no_motion_readback_action_methods,
+    field_acceptance_no_motion_readback_action_sequences: fieldAcceptancePacket.no_motion_readback_action_sequences,
+    field_acceptance_no_motion_readback_action_sequence_labels: fieldAcceptancePacket.no_motion_readback_action_sequence_labels,
     field_acceptance_no_motion_readback_actions: fieldAcceptancePacket.no_motion_readback_actions,
     field_acceptance_primary_no_motion_readback_action_id: fieldAcceptancePacket.primary_no_motion_readback_action_id,
     field_acceptance_primary_no_motion_readback_action_label: fieldAcceptancePacket.primary_no_motion_readback_action_label,
     field_acceptance_primary_no_motion_readback_action_endpoint: fieldAcceptancePacket.primary_no_motion_readback_action_endpoint,
     field_acceptance_primary_no_motion_readback_action_method: fieldAcceptancePacket.primary_no_motion_readback_action_method,
+    field_acceptance_primary_no_motion_readback_action_sequence: fieldAcceptancePacket.primary_no_motion_readback_action_sequence,
+    field_acceptance_primary_no_motion_readback_action_sequence_labels: fieldAcceptancePacket.primary_no_motion_readback_action_sequence_labels,
+    field_acceptance_primary_no_motion_readback_action_refreshes_summary: fieldAcceptancePacket.primary_no_motion_readback_action_refreshes_summary,
+    field_acceptance_primary_no_motion_readback_action_refreshes_radar_scan_proof: fieldAcceptancePacket.primary_no_motion_readback_action_refreshes_radar_scan_proof,
+    field_acceptance_primary_no_motion_readback_action_refreshes_camera_first_frame_probe: fieldAcceptancePacket.primary_no_motion_readback_action_refreshes_camera_first_frame_probe,
+    field_acceptance_primary_no_motion_readback_action_refreshes_map_preview: fieldAcceptancePacket.primary_no_motion_readback_action_refreshes_map_preview,
+    field_acceptance_primary_no_motion_readback_action_refreshes_radar_status: fieldAcceptancePacket.primary_no_motion_readback_action_refreshes_radar_status,
+    field_acceptance_primary_no_motion_readback_action_refreshes_camera_mjpeg_status: fieldAcceptancePacket.primary_no_motion_readback_action_refreshes_camera_mjpeg_status,
     field_acceptance_primary_no_motion_readback_action_sends_motion: fieldAcceptancePacket.primary_no_motion_readback_action_sends_motion,
     field_acceptance_remaining_operator_action_summary_plain: fieldAcceptancePacket.remaining_operator_action_summary_plain,
     field_acceptance_remaining_hardware_action_summary_plain: fieldAcceptancePacket.remaining_hardware_action_summary_plain,
