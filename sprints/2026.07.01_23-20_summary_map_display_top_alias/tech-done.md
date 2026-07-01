@@ -31,7 +31,7 @@ sprint_type: micro
 - `npm run lint`：通过。
 - `npm run build`：通过；Vite 仍有既有 chunk size warning。
 - `git diff --check`：通过。
-- PC Node 已重启到 `0.0.0.0:7001`，PID `51876`。
+- PC Node 已重启到 `0.0.0.0:7001`，当前监听 PID `52020`。
 - 真实只读 `GET /api/robot-control/summary?baseUrl=http://192.168.1.11:8787` 顶层读回：
   - `map_display_primary_url=/map`
   - `map_display_legacy_url=?view=map`
