@@ -4977,3 +4977,9 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 让现场 `curl -fsS` 和普通脚本可以稳定读到 `proxy_status=probe_failed`、`remote_http_status`、`failure_reason`、
 `camera_hardware_action_label` 和所有 no-motion flags。本地请求错误如非法 `baseUrl` 仍可返回 400；真实失败状态不得靠 HTTP 5xx 表达，
 必须放在 body 中，同时继续保持 `readback_only=true`、`camera_probe_readback_only=true`、`robot_control_executed=false`。
+
+2026-07-02 07:18 CST 起，`GET /api/robot-control/summary` 顶层补齐现场复验别名：`wheel_rerun_acceptance_endpoints`、
+`wheel_rerun_next_action_plain`、`wheel_rerun_acceptance_plain`、`keyboard_continuous_post_hold_feedback_readback_required`
+和 `keyboard_continuous_post_hold_summary_refresh_required`。这些字段与 `live_closure_summary` 的轮速复验、键盘按住后读回合同保持同源，
+现场脚本不必解析 nested summary 就能看到“重跑图上行程后读地图/latest/轮速/送达/summary”和“键盘松开后读轮速采样并刷新 summary”。
+该变化只补只读 summary 合同，不执行 Nav2、不发送 keyboard/manual/stop，不提交送达，也不启动 ROS2、RViz2、Foxglove 或建图 runtime。

@@ -3702,9 +3702,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   wheel_rerun_start_sends_motion?: RobotControlLiveClosureSummary["wheel_rerun_start_sends_motion"];
   wheel_rerun_requires_safety_confirm?: RobotControlLiveClosureSummary["wheel_rerun_requires_safety_confirm"];
   wheel_rerun_readback_endpoint?: RobotControlLiveClosureSummary["fixed_wheel_readback_endpoint"];
+  wheel_rerun_acceptance_endpoints?: RobotControlLiveClosureSummary["wheel_rerun_acceptance_endpoints"];
   wheel_rerun_readback_endpoints?: RobotControlLiveClosureSummary["wheel_rerun_readback_endpoints"];
   wheel_rerun_required_success_markers?: RobotControlLiveClosureSummary["wheel_rerun_required_success_markers"];
   wheel_rerun_current_gap_plain?: RobotControlLiveClosureSummary["wheel_rerun_current_gap_plain"];
+  wheel_rerun_next_action_plain?: RobotControlLiveClosureSummary["wheel_rerun_checklist_plain"];
+  wheel_rerun_acceptance_plain?: RobotControlLiveClosureSummary["wheel_rerun_acceptance_plain"];
   wheel_rerun_no_extra_precheck_plain?: RobotControlLiveClosureSummary["wheel_rerun_no_extra_precheck_plain"];
   minimal_precheck_safety_only?: RobotControlLiveClosureSummary["minimal_precheck_safety_only"];
   safety_confirm_required_for_motion?: RobotControlLiveClosureSummary["safety_confirm_required_for_motion"];
@@ -4087,6 +4090,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   keyboard_post_hold_readback_sequence_labels?: string[];
   keyboard_post_hold_feedback_readback_required?: RobotControlLiveClosureSummary["keyboard_continuous_post_hold_feedback_readback_required"];
   keyboard_post_hold_summary_refresh_required?: RobotControlLiveClosureSummary["keyboard_continuous_post_hold_summary_refresh_required"];
+  keyboard_continuous_post_hold_feedback_readback_required?: RobotControlLiveClosureSummary["keyboard_continuous_post_hold_feedback_readback_required"];
+  keyboard_continuous_post_hold_summary_refresh_required?: RobotControlLiveClosureSummary["keyboard_continuous_post_hold_summary_refresh_required"];
   free_move_start_ready?: RobotControlLiveClosureSummary["free_move_start_ready"];
   free_move_ready?: RobotControlLiveClosureSummary["free_move_start_ready"];
   free_move_running?: RobotControlLiveClosureSummary["free_roam_motion_ready"];

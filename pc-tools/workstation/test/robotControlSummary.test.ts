@@ -281,6 +281,7 @@ describe("robotControlSummary", () => {
       "/api/robot-control/summary",
     ]);
     expect(summary.wheel_rerun_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
+    expect(summary.wheel_rerun_acceptance_endpoints).toEqual(summary.live_closure_summary?.wheel_rerun_acceptance_endpoints);
     expect(summary.wheel_rerun_readback_endpoints).toEqual(summary.live_closure_summary?.wheel_rerun_readback_endpoints);
     expect(summary.live_closure_summary?.wheel_rerun_required_success_markers).toEqual([
       "map_route_visible",
@@ -291,6 +292,8 @@ describe("robotControlSummary", () => {
     expect(summary.wheel_rerun_required_success_markers).toEqual(summary.live_closure_summary?.wheel_rerun_required_success_markers);
     expect(summary.live_closure_summary?.wheel_rerun_current_gap_plain).toContain("当前缺口");
     expect(summary.wheel_rerun_current_gap_plain).toContain("当前缺口");
+    expect(summary.wheel_rerun_next_action_plain).toContain("先勾现场安全确认");
+    expect(summary.wheel_rerun_acceptance_plain).toContain("同一执行窗口 wheel L/R 非零");
     expect(summary.live_closure_summary?.wheel_rerun_no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
     expect(summary.wheel_rerun_no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
     expect(summary.minimal_precheck_safety_only).toBe(true);
@@ -787,6 +790,8 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.keyboard_continuous_post_hold_summary_refresh_required).toBe(true);
     expect(summary.keyboard_post_hold_feedback_readback_required).toBe(true);
     expect(summary.keyboard_post_hold_summary_refresh_required).toBe(true);
+    expect(summary.keyboard_continuous_post_hold_feedback_readback_required).toBe(true);
+    expect(summary.keyboard_continuous_post_hold_summary_refresh_required).toBe(true);
     expect(summary.live_closure_summary?.live_motion_runbook_action_ids).toEqual([
       "run_nav2_route",
       "hold_keyboard",
