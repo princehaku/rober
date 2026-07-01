@@ -4160,6 +4160,37 @@ const plainTripClosureReadbackSummary = computed(() => {
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
   };
 });
+const plainLiveWheelFeedbackReadback = computed(() => {
+  // Nav2 闭环和键盘连续手控都卡在同窗口 wheel L/R；这里把共享证据前置，避免现场分别翻两张卡。
+  const rows = plainLiveMotionRunbookRows.value;
+  const wheelRows = rows.filter((item) =>
+    item.missing_evidence.includes("same_window_wheel_lr_nonzero")
+    || item.missing_evidence.includes("same_hold_window_wheel_lr_nonzero")
+    || (item.id === "run_nav2_route" && !plainTripClosureReadbackSummary.value.sameWindowWheelLrNonzero)
+    || (item.id === "hold_keyboard" && !plainLiveClosureSummary.value?.keyboard_motion_verified),
+  );
+  const summary = plainLiveClosureSummary.value;
+  const sampleCount = summary?.wheel_rerun_feedback_sample_count || "not_loaded";
+  const nonzeroSampleCount = summary?.wheel_rerun_feedback_nonzero_sample_count || "0";
+  const latestLeft = summary?.wheel_rerun_latest_raw_left || "not_loaded";
+  const latestRight = summary?.wheel_rerun_latest_raw_right || "not_loaded";
+  const actionLabels = wheelRows.map((item) => item.label).join("、") || "暂无";
+  const proven = Boolean(summary?.wheel_lr_nonzero_proven && summary.keyboard_motion_verified);
+  return {
+    visible: wheelRows.length > 0,
+    state: proven ? "已证明" : "待轮速",
+    actionIds: wheelRows.map((item) => item.id),
+    actionLabels,
+    sampleCount,
+    nonzeroSampleCount,
+    latestLeft,
+    latestRight,
+    text: `轮速验收：wheel L/R=${latestLeft}/${latestRight}；样本 ${sampleCount} 个，非零 ${nonzeroSampleCount} 个；影响：${actionLabels}。下一步：勾现场安全确认后执行对应动作，再读回轮速。`,
+    readbackEndpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+    readbackPending: liveMotionRunbookReadbackPendingAction.value === "hold_keyboard",
+    readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
+  };
+});
 const plainLiveMotionExecutionStrip = computed(() => {
   // 执行条只把 runbook 压成一个普通用户入口；按钮仍只聚焦，不自动勾选或发车。
   const rows = plainLiveMotionRunbookRows.value;
@@ -17238,6 +17269,52 @@ onBeforeUnmount(() => {
               @click="plainLiveMotionExecutionStrip.primarySourceCardId && focusPlainActionCardTarget(plainLiveMotionExecutionStrip.primarySourceCardId)"
             >
               {{ plainLiveMotionExecutionStrip.primaryButtonLabel }}
+            </button>
+          </div>
+          <div
+            v-if="plainLiveWheelFeedbackReadback.visible"
+            class="panel-note plain-live-wheel-feedback-readback"
+            data-testid="plain-live-wheel-feedback-readback"
+            :data-state="plainLiveWheelFeedbackReadback.state"
+            :data-action-ids="plainLiveWheelFeedbackReadback.actionIds.join(',') || 'none'"
+            :data-action-labels="plainLiveWheelFeedbackReadback.actionLabels"
+            :data-latest-wheel-raw-left="plainLiveWheelFeedbackReadback.latestLeft"
+            :data-latest-wheel-raw-right="plainLiveWheelFeedbackReadback.latestRight"
+            :data-feedback-sample-count="plainLiveWheelFeedbackReadback.sampleCount"
+            :data-feedback-nonzero-sample-count="plainLiveWheelFeedbackReadback.nonzeroSampleCount"
+            :data-readback-refresh-endpoints="plainLiveWheelFeedbackReadback.readbackEndpoints.join(',')"
+            :data-readback-refresh-pending="String(plainLiveWheelFeedbackReadback.readbackPending)"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <span class="plain-progress-label">轮速验收</span>
+            <span class="status-chip" :data-state="plainLiveWheelFeedbackReadback.state">{{ plainLiveWheelFeedbackReadback.state }}</span>
+            <span class="muted">{{ plainLiveWheelFeedbackReadback.text }}</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-live-wheel-feedback-readback-refresh"
+              :disabled="plainLiveWheelFeedbackReadback.readbackDisabled"
+              :data-readback-refresh-endpoints="plainLiveWheelFeedbackReadback.readbackEndpoints.join(',')"
+              data-readback-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="refreshLiveMotionRunbookReadback('hold_keyboard')"
+            >
+              {{ plainLiveWheelFeedbackReadback.readbackPending ? "读回中" : "读回轮速" }}
             </button>
           </div>
           <div
