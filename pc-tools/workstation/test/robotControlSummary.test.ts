@@ -706,8 +706,17 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.live_closure_summary?.fixed_keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.live_closure_summary?.fixed_keyboard_summary_endpoint).toBe("/api/robot-control/summary");
+    expect(summary.fixed_keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
+    expect(summary.fixed_keyboard_summary_endpoint).toBe("/api/robot-control/summary");
+    expect(summary.keyboard_post_hold_readback_endpoints).toEqual([
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.keyboard_post_hold_readback_sequence_labels).toEqual(["复验键盘轮速采样", "刷新总览"]);
     expect(summary.live_closure_summary?.keyboard_continuous_post_hold_feedback_readback_required).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_post_hold_summary_refresh_required).toBe(true);
+    expect(summary.keyboard_post_hold_feedback_readback_required).toBe(true);
+    expect(summary.keyboard_post_hold_summary_refresh_required).toBe(true);
     expect(summary.live_closure_summary?.live_motion_runbook_action_ids).toEqual([
       "run_nav2_route",
       "hold_keyboard",

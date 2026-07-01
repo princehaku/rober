@@ -103,6 +103,9 @@ free-roam、建图、delivery complete、stop 或 `/cmd_vel`。
 `/api/robot-control/base/feedback-samples -> /api/robot-control/summary`，让同一次按住窗口后的
 wheel L/R 证据马上回到首屏。该 post-hold 读回不再发送 manual 脉冲，不启动 Nav2/free-roam/建图、
 雷达 lifecycle、delivery complete、额外 stop 或 `/cmd_vel`。
+summary 顶层和 `plain-live-closure-summary` DOM 同步暴露 `keyboard_post_hold_readback_endpoints`、
+`keyboard_post_hold_readback_sequence_labels`、`keyboard_post_hold_feedback_readback_required` 和
+`keyboard_post_hold_summary_refresh_required`，现场脚本不用解析键盘面板也能确认松开后必须读回轮速采样和总览。
 
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，

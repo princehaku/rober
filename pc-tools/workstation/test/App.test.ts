@@ -5632,6 +5632,10 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(liveClosureSummary.attributes("data-keyboard-feedback-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(liveClosureSummary.attributes("data-keyboard-summary-endpoint")).toBe("/api/robot-control/summary");
+    expect(liveClosureSummary.attributes("data-keyboard-post-hold-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(liveClosureSummary.attributes("data-keyboard-post-hold-readback-sequence-labels")).toBe("复验键盘轮速采样,刷新总览");
+    expect(liveClosureSummary.attributes("data-keyboard-post-hold-feedback-readback-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-post-hold-summary-refresh-required")).toBe("true");
     const liveRobotConnection = wrapper.find('[data-testid="plain-live-robot-connection"]');
     expect(liveRobotConnection.exists()).toBe(true);
     expect(liveRobotConnection.text()).toContain("小车连接可读");

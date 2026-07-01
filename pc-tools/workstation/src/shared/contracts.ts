@@ -3935,6 +3935,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   keyboard_stop_endpoint?: RobotControlLiveClosureSummary["keyboard_stop_endpoint"];
   keyboard_feedback_readback_endpoint?: RobotControlLiveClosureSummary["keyboard_feedback_readback_endpoint"];
   keyboard_summary_endpoint?: RobotControlLiveClosureSummary["keyboard_summary_endpoint"];
+  fixed_keyboard_feedback_readback_endpoint?: RobotControlLiveClosureSummary["fixed_keyboard_feedback_readback_endpoint"];
+  fixed_keyboard_summary_endpoint?: RobotControlLiveClosureSummary["fixed_keyboard_summary_endpoint"];
+  keyboard_post_hold_readback_endpoints?: Array<
+    RobotControlLiveClosureSummary["fixed_keyboard_feedback_readback_endpoint"] | RobotControlLiveClosureSummary["fixed_keyboard_summary_endpoint"]
+  >;
+  keyboard_post_hold_readback_sequence_labels?: string[];
+  keyboard_post_hold_feedback_readback_required?: RobotControlLiveClosureSummary["keyboard_continuous_post_hold_feedback_readback_required"];
+  keyboard_post_hold_summary_refresh_required?: RobotControlLiveClosureSummary["keyboard_continuous_post_hold_summary_refresh_required"];
   free_move_start_ready?: RobotControlLiveClosureSummary["free_move_start_ready"];
   free_move_ready?: RobotControlLiveClosureSummary["free_move_start_ready"];
   free_move_running?: RobotControlLiveClosureSummary["free_roam_motion_ready"];
