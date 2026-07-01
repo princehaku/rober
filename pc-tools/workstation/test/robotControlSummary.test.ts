@@ -1872,6 +1872,26 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_radar_scan_proof).toBe(false);
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_map_preview).toBe(false);
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_radar_status).toBe(false);
+    expect(summary.field_acceptance_no_motion_readback_action_ids).toEqual([
+      "readback_all",
+      "refresh_camera_first_frame",
+    ]);
+    expect(summary.field_acceptance_no_motion_readback_action_labels).toEqual([
+      "复验全部读数",
+      "复测相机首帧",
+    ]);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_id).toBe("refresh_camera_first_frame");
+    expect(summary.field_acceptance_primary_no_motion_readback_action_label).toBe("复测相机首帧");
+    expect(summary.field_acceptance_primary_no_motion_readback_action_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.field_acceptance_primary_no_motion_readback_action_sequence).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_camera_first_frame_probe).toBe(true);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_camera_mjpeg_status).toBe(true);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_refreshes_radar_scan_proof).toBe(false);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_sends_motion).toBe(false);
   });
 
   it("uses free-roam latest mapping start gaps before stale runtime gate rows", async () => {

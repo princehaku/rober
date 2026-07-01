@@ -10395,10 +10395,13 @@ export async function buildRobotControlSummary(
     liveClosureSummary.live_wysiwyg_missing_surface_ids,
   );
   const fieldAcceptanceWysiwygRefreshPlan = fieldAcceptanceFocusedWysiwygRefreshPlan(fieldAcceptanceWysiwygRefreshModeValue);
+  const fieldAcceptanceCameraOnlyMissing = fieldAcceptanceWysiwygRefreshModeValue === "camera_only";
   const fieldAcceptanceNoMotionReadbackActionIds: RobotControlFieldAcceptanceNoMotionReadbackActionId[] = [
     "readback_all",
   ];
-  if (!liveClosureSummary.live_wysiwyg_ready) {
+  if (fieldAcceptanceCameraOnlyMissing) {
+    fieldAcceptanceNoMotionReadbackActionIds.push("refresh_camera_first_frame");
+  } else if (!liveClosureSummary.live_wysiwyg_ready) {
     fieldAcceptanceNoMotionReadbackActionIds.push("refresh_current_wysiwyg");
   }
   if (liveClosureSummary.radar_overlay_needs_refresh) {
@@ -10406,17 +10409,19 @@ export async function buildRobotControlSummary(
   }
   const fieldAcceptanceNoMotionReadbackActionLabels = [
     "复验全部读数",
-    ...(!liveClosureSummary.live_wysiwyg_ready ? ["刷新当前所见"] : []),
+    ...(fieldAcceptanceCameraOnlyMissing ? ["复测相机首帧"] : !liveClosureSummary.live_wysiwyg_ready ? ["刷新当前所见"] : []),
     ...(liveClosureSummary.radar_overlay_needs_refresh ? ["刷新雷达贴图"] : []),
   ];
   const fieldAcceptanceNoMotionReadbackActionLabelById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
     readback_all: "复验全部读数",
     refresh_current_wysiwyg: "刷新当前所见",
+    refresh_camera_first_frame: "复测相机首帧",
     refresh_radar_map_overlay: "刷新雷达贴图",
   };
   const fieldAcceptanceNoMotionReadbackActionEndpointById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
     readback_all: "/api/robot-control/summary",
     refresh_current_wysiwyg: liveClosureSummary.live_wysiwyg_primary_refresh_endpoint || "/api/robot-control/summary",
+    refresh_camera_first_frame: liveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint,
     refresh_radar_map_overlay: liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
   };
   const fieldAcceptanceNoMotionReadbackActionSequenceById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string[]> = {
@@ -10428,6 +10433,11 @@ export async function buildRobotControlSummary(
     refresh_current_wysiwyg: fieldAcceptanceWysiwygRefreshPlan.sequence.length > 0
       ? fieldAcceptanceWysiwygRefreshPlan.sequence
       : ["/api/robot-control/summary"],
+    refresh_camera_first_frame: [
+      liveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint,
+      liveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint,
+      "/api/robot-control/summary",
+    ],
     refresh_radar_map_overlay: [
       liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
       liveClosureSummary.fixed_live_wysiwyg_radar_status_endpoint,
@@ -10452,11 +10462,13 @@ export async function buildRobotControlSummary(
     refresh_current_wysiwyg: fieldAcceptanceWysiwygRefreshPlan.labels.length > 0
       ? fieldAcceptanceWysiwygRefreshPlan.labels
       : ["刷新总览"],
+    refresh_camera_first_frame: ["复测相机首帧", "读取相机 MJPEG 状态", "刷新总览"],
     refresh_radar_map_overlay: ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "刷新总览"],
   };
   const fieldAcceptanceNoMotionReadbackActionSummaryById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
     readback_all: `只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作；链路：${fieldAcceptanceNoMotionReadbackActionSequenceLabelsById.readback_all.join("、")}。`,
     refresh_current_wysiwyg: `只读处理当前所见缺口：${fieldAcceptanceNoMotionReadbackActionSequenceLabelsById.refresh_current_wysiwyg.join("、")}。`,
+    refresh_camera_first_frame: "只读复测相机首帧、读取共享 MJPEG 状态，再刷新总览；用于确认画面 WYSIWYG 和建图首帧是否解除。",
     refresh_radar_map_overlay: "只读刷新雷达扫描读数、读取雷达状态、刷新地图画面，再刷新总览确认雷达点贴到当前地图。",
   };
   const fieldAcceptanceNoMotionReadbackActions: RobotControlFieldAcceptanceNoMotionReadbackAction[] = fieldAcceptanceNoMotionReadbackActionIds
@@ -10490,6 +10502,8 @@ export async function buildRobotControlSummary(
     });
   const fieldAcceptancePrimaryNoMotionReadbackActionId: RobotControlFieldAcceptanceNoMotionReadbackActionId | "none" = liveClosureSummary.radar_overlay_needs_refresh
     ? "refresh_radar_map_overlay"
+    : fieldAcceptanceCameraOnlyMissing
+      ? "refresh_camera_first_frame"
     : !liveClosureSummary.live_wysiwyg_ready
       ? "refresh_current_wysiwyg"
       : "readback_all";

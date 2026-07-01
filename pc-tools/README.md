@@ -79,6 +79,12 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 读回推导，不启动雷达 lifecycle、Nav2、manual、keyboard、free-roam、建图、delivery、stop 或
 `/cmd_vel`。
 
+2026-07-02 CST 起，当当前所见只剩相机缺口时，现场验收包的 primary no-motion readback action
+固定为 `refresh_camera_first_frame`，label 为 `复测相机首帧`，序列为
+`/api/robot-control/camera/first-frame/probe -> /api/robot-control/camera/mjpeg/status -> /api/robot-control/summary`。
+这让现场能直接区分“相机首帧/USB 复测”和泛化的“刷新当前所见”；该动作只读，不重启相机、不独占摄像头、
+不启动 Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
+
 2026-07-02 CST 起，完整图上路线执行的现场读回也有顶层短 alias：
 `trip_execution_ready`、`trip_execution_complete`、`trip_execution_missing_evidence`、
 `trip_execution_required_success_markers`、`wheel_feedback_same_window_complete`、

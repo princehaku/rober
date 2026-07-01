@@ -9914,8 +9914,8 @@ describe("App", () => {
       primary_hardware_action_after_readback_sequence_labels: cameraHardwareReadbackLabels,
       primary_hardware_action_blocks_mapping_start: true,
       primary_hardware_action_blocks_free_move: false,
-      no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg"],
-      no_motion_readback_action_labels: ["复验全部读数", "刷新当前所见"],
+      no_motion_readback_action_ids: ["readback_all", "refresh_camera_first_frame"],
+      no_motion_readback_action_labels: ["复验全部读数", "复测相机首帧"],
       no_motion_readback_action_endpoints: [
         "/api/robot-control/summary",
         "/api/robot-control/camera/first-frame/probe",
@@ -9964,8 +9964,8 @@ describe("App", () => {
           stops_motion_when_clicked: false,
         },
         {
-          id: "refresh_current_wysiwyg",
-          label: "刷新当前所见",
+          id: "refresh_camera_first_frame",
+          label: "复测相机首帧",
           endpoint: "/api/robot-control/camera/first-frame/probe",
           method: "POST",
           sequence_endpoints: cameraOnlySequence,
@@ -9976,7 +9976,7 @@ describe("App", () => {
           refreshes_map_preview: false,
           refreshes_radar_status: false,
           refreshes_camera_mjpeg_status: true,
-          summary_plain: "只读处理当前所见缺口：复测相机首帧、读取相机 MJPEG 状态、刷新总览。",
+          summary_plain: "只读复测相机首帧、读取共享 MJPEG 状态，再刷新总览；用于确认画面 WYSIWYG 和建图首帧是否解除。",
           sends_motion_when_clicked: false,
           starts_nav2_when_clicked: false,
           starts_manual_when_clicked: false,
@@ -9988,8 +9988,8 @@ describe("App", () => {
           stops_motion_when_clicked: false,
         },
       ],
-      primary_no_motion_readback_action_id: "refresh_current_wysiwyg",
-      primary_no_motion_readback_action_label: "刷新当前所见",
+      primary_no_motion_readback_action_id: "refresh_camera_first_frame",
+      primary_no_motion_readback_action_label: "复测相机首帧",
       primary_no_motion_readback_action_endpoint: "/api/robot-control/camera/first-frame/probe",
       primary_no_motion_readback_action_method: "POST",
       primary_no_motion_readback_action_sequence: cameraOnlySequence,
@@ -10002,8 +10002,8 @@ describe("App", () => {
       primary_no_motion_readback_action_refreshes_camera_mjpeg_status: true,
       primary_no_motion_readback_action_sends_motion: false,
       remaining_hardware_action_summary_plain: "需要设备处理：换高速USB后复测；相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。",
-      remaining_no_motion_action_summary_plain: "可随时只读复验：复验全部读数、刷新当前所见；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
-      remaining_action_summary_plain: "需要现场安全确认的运动验收：键盘连续手控、自由自助移动；勾一次安全确认后再手动执行，执行后只读读回复验。 需要设备处理：换高速USB后复测；相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。 可随时只读复验：复验全部读数、刷新当前所见；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
+      remaining_no_motion_action_summary_plain: "可随时只读复验：复验全部读数、复测相机首帧；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
+      remaining_action_summary_plain: "需要现场安全确认的运动验收：键盘连续手控、自由自助移动；勾一次安全确认后再手动执行，执行后只读读回复验。 需要设备处理：换高速USB后复测；相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。 可随时只读复验：复验全部读数、复测相机首帧；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
       wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
       wysiwyg_primary_refresh_label: "复测相机首帧",
       wysiwyg_next_action_plain: liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain,
@@ -10036,15 +10036,15 @@ describe("App", () => {
     summaryFixture.field_acceptance_primary_hardware_action_after_readback_sequence_labels = cameraHardwareReadbackLabels;
     summaryFixture.field_acceptance_primary_hardware_action_blocks_mapping_start = true;
     summaryFixture.field_acceptance_primary_hardware_action_blocks_free_move = false;
-    summaryFixture.field_acceptance_no_motion_readback_action_ids = ["readback_all", "refresh_current_wysiwyg"];
+    summaryFixture.field_acceptance_no_motion_readback_action_ids = ["readback_all", "refresh_camera_first_frame"];
     summaryFixture.field_acceptance_no_motion_readback_action_labels = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_labels;
     summaryFixture.field_acceptance_no_motion_readback_action_endpoints = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_endpoints;
     summaryFixture.field_acceptance_no_motion_readback_action_methods = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_methods;
     summaryFixture.field_acceptance_no_motion_readback_action_sequences = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_sequences;
     summaryFixture.field_acceptance_no_motion_readback_action_sequence_labels = liveClosureSummary.field_acceptance_packet.no_motion_readback_action_sequence_labels;
     summaryFixture.field_acceptance_no_motion_readback_actions = liveClosureSummary.field_acceptance_packet.no_motion_readback_actions;
-    summaryFixture.field_acceptance_primary_no_motion_readback_action_id = "refresh_current_wysiwyg";
-    summaryFixture.field_acceptance_primary_no_motion_readback_action_label = "刷新当前所见";
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_id = "refresh_camera_first_frame";
+    summaryFixture.field_acceptance_primary_no_motion_readback_action_label = "复测相机首帧";
     summaryFixture.field_acceptance_primary_no_motion_readback_action_endpoint = "/api/robot-control/camera/first-frame/probe";
     summaryFixture.field_acceptance_primary_no_motion_readback_action_method = "POST";
     summaryFixture.field_acceptance_primary_no_motion_readback_action_sequence = cameraOnlySequence;
@@ -10108,12 +10108,12 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-after-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-blocks-mapping-start")).toBe("true");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-blocks-free-move")).toBe("false");
-    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg");
-    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_camera_first_frame");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,复测相机首帧");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-methods")).toBe("GET,POST");
-    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_current_wysiwyg");
-    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新当前所见");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_camera_first_frame");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-label")).toBe("复测相机首帧");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
@@ -10165,8 +10165,8 @@ describe("App", () => {
     expect(hardwareReadbackUrls.some((url) => url.startsWith("/api/robot-control/map/start"))).toBe(false);
     const fieldAcceptancePrimaryNoMotionReadback = wrapper.find('[data-testid="plain-field-acceptance-primary-no-motion-readback"]');
     expect(fieldAcceptancePrimaryNoMotionReadback.exists()).toBe(true);
-    expect(fieldAcceptancePrimaryNoMotionReadback.text()).toBe("只读复验：刷新当前所见");
-    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_current_wysiwyg");
+    expect(fieldAcceptancePrimaryNoMotionReadback.text()).toBe("只读复验：复测相机首帧");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_camera_first_frame");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");

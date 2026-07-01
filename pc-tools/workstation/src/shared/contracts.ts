@@ -2784,6 +2784,7 @@ export interface RobotControlFieldAcceptanceStep {
 export type RobotControlFieldAcceptanceNoMotionReadbackActionId =
   | "readback_all"
   | "refresh_current_wysiwyg"
+  | "refresh_camera_first_frame"
   | "refresh_radar_map_overlay";
 
 export interface RobotControlFieldAcceptanceNoMotionReadbackAction {
