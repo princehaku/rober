@@ -371,19 +371,25 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
     expect(summary.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
     expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(true);
+    expect(summary.live_wysiwyg_needs_refresh).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_readback_gap_surface_ids).toEqual([]);
+    expect(summary.live_wysiwyg_readback_gap_surface_ids).toEqual([]);
     expect(summary.live_closure_summary?.live_wysiwyg_primary_readback_gap_surface_id).toBe("none");
+    expect(summary.live_wysiwyg_primary_readback_gap_surface_id).toBe("none");
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_refresh_endpoints).toEqual([
       "/api/robot-control/camera/first-frame/probe",
       "/api/robot-control/radar/scan-proof/refresh",
     ]);
+    expect(summary.live_wysiwyg_missing_surface_refresh_endpoints).toEqual(summary.live_closure_summary?.live_wysiwyg_missing_surface_refresh_endpoints);
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_refresh_labels).toEqual([
       "复测相机首帧",
       "刷新雷达扫描读数",
     ]);
+    expect(summary.live_wysiwyg_missing_surface_refresh_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_missing_surface_refresh_labels);
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_label).toBe("复测相机首帧");
+    expect(summary.live_wysiwyg_primary_refresh_label).toBe("复测相机首帧");
     expect(summary.live_wysiwyg_refresh_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_camera_probe_failure_reason).toBe("none");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_status).toBe("not_loaded");
@@ -491,13 +497,23 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.radar_overlay_refresh_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.radar_overlay_refresh_starts_radar_lifecycle).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain).toContain("画面诊断：首帧未证明");
+    expect(summary.live_wysiwyg_diagnostic_plain).toBe(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain);
     expect(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain).toContain("还差=地图缺雷达点；小车地图位置未读到");
+    expect(summary.live_wysiwyg_camera_diagnostic_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain);
+    expect(summary.live_wysiwyg_radar_diagnostic_plain).toBe(summary.live_closure_summary?.live_wysiwyg_radar_diagnostic_plain);
+    expect(summary.live_wysiwyg_map_radar_diagnostic_plain).toBe(summary.live_closure_summary?.live_wysiwyg_map_radar_diagnostic_plain);
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.fixed_live_wysiwyg_radar_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.fixed_live_wysiwyg_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.fixed_live_wysiwyg_map_preview_endpoint).toBe("/api/robot-control/map/preview");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_status_endpoint).toBe("/api/robot-control/radar/status");
+    expect(summary.fixed_live_wysiwyg_radar_status_endpoint).toBe("/api/robot-control/radar/status");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_plan_available).toBe(true);
+    expect(summary.live_wysiwyg_refresh_plan_available).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_sequence).toEqual([
       "/api/robot-control/radar/scan-proof/refresh",
       "/api/robot-control/camera/first-frame/probe",
@@ -505,6 +521,7 @@ describe("robotControlSummary", () => {
       "/api/robot-control/radar/status",
       "/api/robot-control/camera/mjpeg/status",
     ]);
+    expect(summary.live_wysiwyg_refresh_sequence).toEqual(summary.live_closure_summary?.live_wysiwyg_refresh_sequence);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_sequence_labels).toEqual([
       "刷新雷达扫描读数",
       "复测相机首帧",
@@ -512,18 +529,26 @@ describe("robotControlSummary", () => {
       "读取雷达状态",
       "读取相机 MJPEG 状态",
     ]);
+    expect(summary.live_wysiwyg_refresh_sequence_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_refresh_sequence_labels);
     expect(summary.live_closure_summary?.live_wysiwyg_refreshes_radar_scan_proof).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refreshes_camera_first_frame_probe).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refreshes_map_preview).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refreshes_radar_status).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refreshes_camera_mjpeg_status).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_sends_motion).toBe(false);
+    expect(summary.live_wysiwyg_refresh_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_nav2).toBe(false);
+    expect(summary.live_wysiwyg_refresh_starts_nav2).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_manual).toBe(false);
+    expect(summary.live_wysiwyg_refresh_starts_manual).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_keyboard).toBe(false);
+    expect(summary.live_wysiwyg_refresh_starts_keyboard).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_free_roam).toBe(false);
+    expect(summary.live_wysiwyg_refresh_starts_free_roam).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_radar_lifecycle).toBe(false);
+    expect(summary.live_wysiwyg_refresh_starts_radar_lifecycle).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_refresh_starts_map_runtime).toBe(false);
+    expect(summary.live_wysiwyg_refresh_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_surface_summaries).toEqual([
       expect.objectContaining({
         id: "camera",
@@ -559,6 +584,7 @@ describe("robotControlSummary", () => {
         sends_motion_when_clicked: false,
       }),
     ]);
+    expect(summary.live_wysiwyg_surface_summaries).toEqual(summary.live_closure_summary?.live_wysiwyg_surface_summaries);
     expect(summary.live_closure_summary?.keyboard_continuous_minimal_precheck_safety_only).toBe(true);
     expect(summary.keyboard_continuous_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_safety_confirm_required).toBe(true);
