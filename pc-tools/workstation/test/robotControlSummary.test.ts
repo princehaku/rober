@@ -872,6 +872,111 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
   });
 
+  it("suppresses stale lidar_fresh mapping start gap when live radar readback is already fresh", async () => {
+    // live 面向现场当前事实：如果雷达扫描和地图贴图已经 fresh/loaded，就不能继续把旧 lidar_fresh gate 当成当前建图缺口。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      const payloadByPath: Record<string, Record<string, unknown>> = {
+        "/api/free-roam/autonomy/latest": {
+          ...basePayload,
+          latest_result: {
+            decision: {
+              state: "ready",
+              reason: "operator_can_start_low_speed_free_move",
+              gates: [
+                { id: "stop_available", label: "停止兜底", state: "ready", evidence: "stop endpoint ready", next_action: "继续监看" },
+                { id: "camera_first_frame", label: "画面首帧", state: "not_proven", evidence: "画面首帧未出", next_action: "检查画面" },
+                { id: "lidar_fresh", label: "雷达新鲜", state: "not_proven", evidence: "旧状态机 gate 尚未刷新", next_action: "先刷新雷达" },
+              ],
+            },
+            snapshot: {
+              external_stop_requested: false,
+              mapping_active: false,
+            },
+            cmd_vel_publish_enabled: false,
+          },
+        },
+        "/api/map/preview": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.map_preview_result",
+          map_available: true,
+          has_free_cells: true,
+          navigation_quality: "has_free_cells",
+          image_data_url: "data:image/png;base64,abc",
+          source_image_format: "pgm_p5",
+          radar_overlay: {
+            overlay_status: "loaded",
+            scan_preview_points: [
+              { x_m: 0.2, y_m: 0.1, range_m: 0.22, angle_rad: 0.46, frame_id: "laser_frame", source_index: 0 },
+            ],
+            scan_preview_point_count: 1,
+            scan_preview_source_point_count: 1,
+            scan_preview_frame_id: "laser_frame",
+            robot_pose: { frame_id: "map", x: 1, y: 2, yaw: 0.1, source: "/amcl_pose" },
+            blocked_reasons: [],
+          },
+        },
+        "/api/radar/status": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+          continuity_window_status: "latest_proof_fresh_while_lifecycle_running",
+          lifecycle_running: true,
+          lifecycle_state: "running",
+          latest_scan_proof_fresh: true,
+          scan_preview_points: [
+            { x_m: 0.2, y_m: 0.1, range_m: 0.22, angle_rad: 0.46, frame_id: "laser_frame", source_index: 0 },
+          ],
+          scan_preview_point_count: 1,
+          scan_preview_source_point_count: 1,
+          scan_preview_frame_id: "laser_frame",
+        },
+        "/api/radar/scan-proof/latest": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          latest_proof_status: "scan_once_hz_raw_packet_tf_observed",
+          latest_scan_proof_fresh: true,
+          scan_preview_points: [
+            { x_m: 0.2, y_m: 0.1, range_m: 0.22, angle_rad: 0.46, frame_id: "laser_frame", source_index: 0 },
+          ],
+          scan_preview_point_count: 1,
+          scan_preview_source_point_count: 1,
+          scan_preview_frame_id: "laser_frame",
+          freshness: { status: "fresh", age_seconds: 1 },
+        },
+      };
+      const payload = payloadByPath[url.pathname] ?? basePayload;
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.safe_command_boundary.free_roam_mapping_start_missing_reasons).toContain("lidar_fresh");
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_readback_ready).toBe(true);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_conflict).toBe(true);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_status).toBe("readback_ready_boundary_missing");
+    expect(summary.live_closure_summary?.mapping_start_missing_reasons).toEqual(["camera_first_frame"]);
+    expect(summary.live_closure_summary?.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame"]);
+    expect(summary.live_closure_summary?.mapping_lidar_blocks_start).toBe(false);
+    expect(summary.live_closure_summary?.mapping_camera_blocks_start).toBe(true);
+    expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧");
+    expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("雷达新鲜");
+    expect(summary.live_closure_summary?.radar_map_points_visible).toBe(true);
+  });
+
   it("does not draw stale radar scan proof points as current map overlay", async () => {
     // 地图雷达 overlay 的点来自 scan proof；proof stale 时，即使有旧点数组也不能标成当前 WYSIWYG。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

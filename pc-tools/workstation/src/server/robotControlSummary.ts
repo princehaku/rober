@@ -8985,15 +8985,21 @@ function buildLiveClosureSummary(
   const liveWysiwygPrimaryRefreshLabel = liveWysiwygMissingSurfaceRefreshLabels[0] ?? "无";
   const freeMoveStartReady = boundary.free_roam_motion_start_ready || goalSummary.ready_action_ids.includes("free_move");
   const freeRoamMotionReady = readback.free_roam.free_roam_motion_ready === "true" || readback.free_roam.motion_ready === "true";
-  const mappingStartReady = boundary.free_roam_mapping_start_ready || goalSummary.ready_action_ids.includes("mapping_start");
-  const mappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
+  const rawMappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
   const mappingAcceptanceMissingReasons = boundary.free_roam_mapping_missing_reasons;
-  const mappingCameraBlocksStart = mappingStartMissingReasons.includes("camera_first_frame");
-  const mappingLidarBlocksStart = mappingStartMissingReasons.includes("lidar_fresh");
+  const rawMappingLidarBlocksStart = rawMappingStartMissingReasons.includes("lidar_fresh");
   const mappingLidarFreshReadbackReady = readback.radar.latest_scan_proof_fresh === "true"
     && readback.radar.lifecycle_running === "true"
     && ["loaded", "partial"].includes(radarMapOverlayStatus);
-  const mappingLidarFreshGateConflict = mappingLidarBlocksStart && mappingLidarFreshReadbackReady;
+  const mappingLidarFreshGateConflict = rawMappingLidarBlocksStart && mappingLidarFreshReadbackReady;
+  const mappingStartMissingReasons = rawMappingStartMissingReasons.filter((reason) =>
+    !(reason === "lidar_fresh" && mappingLidarFreshReadbackReady)
+  );
+  const mappingStartReady = boundary.free_roam_mapping_start_ready
+    || goalSummary.ready_action_ids.includes("mapping_start")
+    || (freeMoveStartReady && mappingStartMissingReasons.length === 0);
+  const mappingCameraBlocksStart = mappingStartMissingReasons.includes("camera_first_frame");
+  const mappingLidarBlocksStart = mappingStartMissingReasons.includes("lidar_fresh");
   const mappingLidarFreshGateStatus = mappingLidarFreshGateConflict
     ? "readback_ready_boundary_missing"
     : mappingLidarBlocksStart
