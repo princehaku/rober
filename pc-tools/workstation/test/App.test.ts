@@ -801,10 +801,10 @@ const fixtures: Record<string, unknown> = {
     free_move_complete: false,
     free_move_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
     free_move_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
-    free_move_acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
+    free_move_acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
     free_move_proof_status: "ready_to_verify",
     free_move_missing_evidence: ["free_roam_latest_motion_ready"],
-    free_move_proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest 和 summary；还差：自由移动运行读数。",
+    free_move_proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary；还差：自由移动运行读数。",
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: true,
     free_move_camera_preflight_required: false,
@@ -1174,6 +1174,7 @@ const fixtures: Record<string, unknown> = {
       free_move_blocked_by_radar_wysiwyg: false,
       fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
       fixed_free_roam_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+      fixed_free_roam_latest_endpoint: "/api/robot-control/free-roam/autonomy/latest",
       mapping_start_ready: false,
       mapping_start_requires_camera_first_frame: true,
       mapping_start_requires_lidar_fresh: true,
@@ -1281,14 +1282,14 @@ const fixtures: Record<string, unknown> = {
           completed: false,
           proof_status: "ready_to_verify",
           missing_evidence: ["free_roam_latest_motion_ready"],
-          proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest 和 summary；还差：自由移动运行读数。",
+          proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary；还差：自由移动运行读数。",
           minimal_precheck_safety_only: true,
           safety_confirm_required: true,
           sends_motion_when_executed: true,
           start_endpoint: "/api/robot-control/free-roam/autonomy/start",
           stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
-          acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
-          acceptance_plain: "启动后读取 free-roam latest 和 summary；相机、雷达不作为自由移动发车前置。",
+          acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+          acceptance_plain: "启动后读取 free-roam latest、地图预览和 summary；相机、雷达不作为自由移动发车前置。",
           blocked_reasons: [],
         },
         {
@@ -1304,8 +1305,8 @@ const fixtures: Record<string, unknown> = {
           sends_motion_when_executed: true,
           start_endpoint: "/api/robot-control/map/start",
           stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
-          acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/summary"],
-          acceptance_plain: "相机首帧和雷达 fresh 后启动建图；随后读取地图预览和 summary 确认地图所见即所得。",
+          acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+          acceptance_plain: "相机首帧和雷达 fresh 后启动建图；随后读取 free-roam latest、地图预览和 summary 确认状态机和地图所见即所得。",
           blocked_reasons: ["camera_first_frame", "lidar_fresh"],
         },
       ],
@@ -1371,7 +1372,7 @@ const fixtures: Record<string, unknown> = {
             label: "自由自助移动",
             start_endpoint: "/api/robot-control/free-roam/autonomy/start",
             stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
-            acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
+            acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
             requires_safety_confirm: true,
             minimal_precheck_safety_only: true,
             sends_motion_when_executed: true,
@@ -1745,9 +1746,9 @@ const fixtures: Record<string, unknown> = {
             safety_confirm_required: true,
             start_endpoint: "/api/robot-control/free-roam/autonomy/start",
             stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
-            acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
+            acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
             missing_evidence: ["free_roam_latest_motion_ready"],
-            proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest 和 summary。",
+            proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary。",
             blocked_reasons: [],
           },
           {
@@ -1760,7 +1761,7 @@ const fixtures: Record<string, unknown> = {
             safety_confirm_required: false,
             start_endpoint: "/api/robot-control/map/start",
             stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
-            acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/summary"],
+            acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
             missing_evidence: ["camera_first_frame", "lidar_fresh"],
             proof_plain: "建图暂不可启动；还差：相机首帧、雷达新鲜读数。",
             blocked_reasons: ["camera_first_frame", "lidar_fresh"],
@@ -5896,7 +5897,7 @@ describe("App", () => {
     expect(fieldAcceptanceMotionProof.attributes("data-keyboard-stop-after-release")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-keyboard-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
     expect(fieldAcceptanceMotionProof.attributes("data-free-move-motion-ready")).toBe("false");
-    expect(fieldAcceptanceMotionProof.attributes("data-free-move-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/summary");
+    expect(fieldAcceptanceMotionProof.attributes("data-free-move-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
     expect(fieldAcceptanceMotionProof.attributes("data-safety-confirmed")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptanceMotionProof.attributes("data-camera-required-for-motion")).toBe("false");
@@ -5926,7 +5927,7 @@ describe("App", () => {
     expect(motionProofFreeMove.attributes("data-state")).toBe("可现场验证");
     expect(motionProofFreeMove.attributes("data-ready")).toBe("true");
     expect(motionProofFreeMove.attributes("data-missing-evidence")).toBe("free_roam_latest_motion_ready");
-    expect(motionProofFreeMove.attributes("data-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/summary");
+    expect(motionProofFreeMove.attributes("data-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
     const fieldAcceptanceWysiwyg = wrapper.find('[data-testid="plain-field-acceptance-wysiwyg"]');
     const fieldAcceptanceWysiwygRefresh = wrapper.find('[data-testid="plain-field-acceptance-wysiwyg-refresh"]');
     expect(fieldAcceptanceWysiwyg.exists()).toBe(true);
@@ -7014,7 +7015,7 @@ describe("App", () => {
     expect(mappingRunbook.attributes("data-focus-target-source-card-id")).toBe("mapping_start");
     expect(mappingRunbook.attributes("data-focus-target-kind")).toBe("mapping_start");
     expect(mappingRunbook.attributes("data-action-button-label")).toBe("去看建图条件");
-    expect(wrapper.find('[data-testid="plain-live-motion-runbook-readback-start_mapping_when_sensors_ready"]').attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(wrapper.find('[data-testid="plain-live-motion-runbook-readback-start_mapping_when_sensors_ready"]').attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
     const mappingRunbookGo = wrapper.find('[data-testid="plain-live-motion-runbook-go-start_mapping_when_sensors_ready"]');
     expect(mappingRunbookGo.text()).toBe("去看建图条件");
     expect(mappingRunbookGo.attributes("data-starts-map-runtime")).toBe("false");
@@ -19233,11 +19234,11 @@ describe("App", () => {
     expect(freeMoveOnlyGauge.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     expect(freeMoveOnlyGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
     const freeMoveAcceptanceProof = wrapper.find('[data-testid="plain-free-move-acceptance-proof"]');
-    expect(freeMoveAcceptanceProof.text()).toBe("自由移动验收：可启动；还差：自由移动运行读数；发车前只需安全确认，画面和雷达不作为移动前置；建图缺口=画面首帧。下一步：勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest 和 summary。");
+    expect(freeMoveAcceptanceProof.text()).toBe("自由移动验收：可启动；还差：自由移动运行读数；发车前只需安全确认，画面和雷达不作为移动前置；建图缺口=画面首帧。下一步：勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest、地图预览和 summary。");
     expect(freeMoveAcceptanceProof.attributes("data-state")).toBe("可现场验证");
     expect(freeMoveAcceptanceProof.attributes("data-proof-status")).toBe("ready_to_verify");
     expect(freeMoveAcceptanceProof.attributes("data-missing-evidence")).toBe("free_roam_latest_motion_ready");
-    expect(freeMoveAcceptanceProof.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/summary");
+    expect(freeMoveAcceptanceProof.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
     expect(freeMoveAcceptanceProof.attributes("data-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeMoveAcceptanceProof.attributes("data-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
     expect(freeMoveAcceptanceProof.attributes("data-start-ready")).toBe("true");

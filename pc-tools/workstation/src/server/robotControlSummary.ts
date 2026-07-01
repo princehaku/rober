@@ -9429,7 +9429,7 @@ function buildLiveClosureSummary(
         freeMoveStartReady,
         freeMoveMissingEvidence,
         "自由自助移动已闭环：free-roam latest 已证明可运行。",
-        "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest 和 summary",
+        "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary",
         "自由自助移动暂不可验证",
       ),
       minimal_precheck_safety_only: true,
@@ -9439,9 +9439,10 @@ function buildLiveClosureSummary(
       stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
       acceptance_endpoints: [
         "/api/robot-control/free-roam/autonomy/latest",
+        "/api/robot-control/map/preview",
         "/api/robot-control/summary",
       ],
-      acceptance_plain: "启动后读取 free-roam latest 和 summary；相机、雷达不作为自由移动发车前置。",
+      acceptance_plain: "启动后读取 free-roam latest、地图预览和 summary；相机、雷达不作为自由移动发车前置。",
       blocked_reasons: freeMoveStartReady ? [] : ["free_move_not_ready"],
     },
     {
@@ -9464,10 +9465,11 @@ function buildLiveClosureSummary(
       start_endpoint: "/api/robot-control/map/start",
       stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
       acceptance_endpoints: [
+        "/api/robot-control/free-roam/autonomy/latest",
         "/api/robot-control/map/preview",
         "/api/robot-control/summary",
       ],
-      acceptance_plain: "相机首帧和雷达 fresh 后启动建图；随后读取地图预览和 summary 确认地图所见即所得。",
+      acceptance_plain: "相机首帧和雷达 fresh 后启动建图；随后读取 free-roam latest、地图预览和 summary 确认状态机和地图所见即所得。",
       blocked_reasons: mappingStartReady ? [] : mappingStartMissingReasons,
     },
   ];
@@ -10022,6 +10024,7 @@ function buildLiveClosureSummary(
     free_move_blocked_by_radar_wysiwyg: false,
     fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
     fixed_free_roam_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+    fixed_free_roam_latest_endpoint: "/api/robot-control/free-roam/autonomy/latest",
     mapping_start_ready: mappingStartReady,
     free_roam_mapping_start_ready: mappingStartReady,
     free_roam_mapping_ready: boundary.free_roam_mapping_ready,
@@ -10974,7 +10977,8 @@ export async function buildRobotControlSummary(
     free_move_start_endpoint: freeMoveRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_free_roam_start_endpoint,
     free_move_stop_endpoint: freeMoveRunbookItem?.stop_endpoint ?? liveClosureSummary.fixed_free_roam_stop_endpoint,
     free_move_acceptance_endpoints: freeMoveRunbookItem?.acceptance_endpoints ?? [
-      "/api/robot-control/free-roam/autonomy/latest",
+      liveClosureSummary.fixed_free_roam_latest_endpoint,
+      liveClosureSummary.fixed_mapping_preview_endpoint,
       "/api/robot-control/summary",
     ],
     free_move_proof_status: freeMoveRunbookItem?.proof_status ?? "blocked",
@@ -10983,6 +10987,7 @@ export async function buildRobotControlSummary(
     mapping_start_endpoint: mappingRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_mapping_start_endpoint,
     mapping_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
     mapping_acceptance_endpoints: mappingRunbookItem?.acceptance_endpoints ?? [
+      liveClosureSummary.fixed_free_roam_latest_endpoint,
       liveClosureSummary.fixed_mapping_preview_endpoint,
       "/api/robot-control/summary",
     ],
@@ -11082,6 +11087,7 @@ export async function buildRobotControlSummary(
     free_move_blocked_by_radar_wysiwyg: liveClosureSummary.free_move_blocked_by_radar_wysiwyg,
     fixed_free_roam_start_endpoint: liveClosureSummary.fixed_free_roam_start_endpoint,
     fixed_free_roam_stop_endpoint: liveClosureSummary.fixed_free_roam_stop_endpoint,
+    fixed_free_roam_latest_endpoint: liveClosureSummary.fixed_free_roam_latest_endpoint,
     mapping_start_ready: liveClosureSummary.mapping_start_ready,
     mapping_start_missing_reasons: liveClosureSummary.mapping_start_missing_reasons,
     mapping_acceptance_ready: liveClosureSummary.free_roam_mapping_ready,

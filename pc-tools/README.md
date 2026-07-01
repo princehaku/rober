@@ -1362,3 +1362,11 @@ PC 地图口径保持默认大地图主视图：普通用户优先用本页大�
 当状态为 `needs_wheel_rerun` 时，`summary_plain` 和 `next_action_plain` 显示“同窗口轮速 L/R”而不是
 `wheel raw L/R`；结构化字段 `needs_same_window_wheel_rerun`、`fixed_wheel_rerun_endpoint`、
 `wheel_rerun_command_mode` 等保持不变。这样外部脚本或非 Vue 客户端直接读 summary API 时，也能得到与 PC 简易页面一致的文案。
+
+2026-07-02 01:20 CST 起，自由移动和建图的现场验收读回链路补齐状态机与地图双证据。
+`start_free_move` 的 `acceptance_endpoints` 从 free-roam latest + summary 扩展为
+`/api/robot-control/free-roam/autonomy/latest`、`/api/robot-control/map/preview`、`/api/robot-control/summary`；
+`start_mapping_when_sensors_ready` 也先读 free-roam latest，再读地图预览和 summary。summary 顶层同步暴露
+`fixed_free_roam_latest_endpoint=/api/robot-control/free-roam/autonomy/latest`，PC DOM 也使用该字段而不是散落硬编码。
+这让现场在勾安全确认并启动后，可以证明自由移动状态机和 WYSIWYG 地图画面都被读回；本变化只改读回合同和展示，
+不自动启动 free-roam、map runtime、Nav2、keyboard、manual、delivery 或 stop。

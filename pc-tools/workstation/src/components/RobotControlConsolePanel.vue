@@ -9359,6 +9359,7 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
   const missingEvidence = summary?.free_move_missing_evidence ?? item?.missing_evidence ?? [];
   const acceptanceEndpoints = summary?.free_move_acceptance_endpoints ?? item?.acceptance_endpoints ?? [
     "/api/robot-control/free-roam/autonomy/latest",
+    "/api/robot-control/map/preview",
     "/api/robot-control/summary",
   ];
   const startReady = Boolean(summary?.free_move_start_ready ?? evidence.freeMoveStartReady);
@@ -9386,7 +9387,7 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
   const nextAction = complete
     ? "自由移动已经收口。"
     : freeMoveReady
-      ? "勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest 和 summary。"
+      ? "勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest、地图预览和 summary。"
       : "先连接上车自由移动状态机和停止兜底。";
   const startEndpoint = summary?.free_move_start_endpoint ?? item?.start_endpoint ?? evidence.fixedFreeRoamStartEndpoint;
   const stopEndpoint = summary?.free_move_stop_endpoint ?? item?.stop_endpoint ?? evidence.fixedFreeRoamStopEndpoint;
@@ -18173,6 +18174,7 @@ onBeforeUnmount(() => {
         :data-free-move-blocked-by-radar-wysiwyg="String(plainLiveClosureSummary.free_move_blocked_by_radar_wysiwyg)"
         :data-fixed-free-roam-start-endpoint="plainLiveClosureSummary.fixed_free_roam_start_endpoint"
         :data-fixed-free-roam-stop-endpoint="plainLiveClosureSummary.fixed_free_roam_stop_endpoint"
+        :data-fixed-free-roam-latest-endpoint="plainLiveClosureSummary.fixed_free_roam_latest_endpoint"
         :data-mapping-start-ready="String(plainLiveClosureSummary.mapping_start_ready)"
         :data-mapping-start-requires-camera-first-frame="String(plainLiveClosureSummary.mapping_start_requires_camera_first_frame)"
         :data-mapping-start-requires-lidar-fresh="String(plainLiveClosureSummary.mapping_start_requires_lidar_fresh)"
@@ -19494,7 +19496,7 @@ onBeforeUnmount(() => {
           :data-mapping-lidar-fresh-blocks-free-move="String(plainLiveClosureSummary.mapping_lidar_fresh_blocks_free_move)"
           :data-mapping-unblock-allows-free-move="String(plainLiveClosureSummary.mapping_unblock_allows_free_move)"
           :data-fixed-free-roam-start-endpoint="plainLiveClosureSummary.fixed_free_roam_start_endpoint"
-          data-fixed-free-roam-latest-endpoint="/api/robot-control/free-roam/autonomy/latest"
+          :data-fixed-free-roam-latest-endpoint="plainLiveClosureSummary.fixed_free_roam_latest_endpoint"
           :data-fixed-mapping-start-endpoint="plainLiveClosureSummary.fixed_mapping_start_endpoint"
           data-fixed-summary-endpoint="/api/robot-control/summary"
           data-readback-only="true"

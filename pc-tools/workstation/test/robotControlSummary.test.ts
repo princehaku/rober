@@ -1052,6 +1052,7 @@ describe("robotControlSummary", () => {
     expect(summary.free_move_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
     expect(summary.free_move_acceptance_endpoints).toEqual([
       "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/map/preview",
       "/api/robot-control/summary",
     ]);
     expect(summary.free_move_proof_status).toBe("ready_to_verify");
@@ -1060,6 +1061,7 @@ describe("robotControlSummary", () => {
     expect(summary.mapping_start_endpoint).toBe("/api/robot-control/map/start");
     expect(summary.mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
     expect(summary.mapping_acceptance_endpoints).toEqual([
+      "/api/robot-control/free-roam/autonomy/latest",
       "/api/robot-control/map/preview",
       "/api/robot-control/summary",
     ]);
@@ -1162,6 +1164,7 @@ describe("robotControlSummary", () => {
         start_endpoint: "/api/robot-control/free-roam/autonomy/start",
         acceptance_endpoints: [
           "/api/robot-control/free-roam/autonomy/latest",
+          "/api/robot-control/map/preview",
           "/api/robot-control/summary",
         ],
       }),
@@ -1173,6 +1176,7 @@ describe("robotControlSummary", () => {
         missing_evidence: ["camera_first_frame", "lidar_fresh"],
         start_endpoint: "/api/robot-control/map/start",
         acceptance_endpoints: [
+          "/api/robot-control/free-roam/autonomy/latest",
           "/api/robot-control/map/preview",
           "/api/robot-control/summary",
         ],
@@ -1568,6 +1572,8 @@ describe("robotControlSummary", () => {
     expect(summary.fixed_free_roam_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(summary.live_closure_summary?.fixed_free_roam_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
     expect(summary.fixed_free_roam_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(summary.live_closure_summary?.fixed_free_roam_latest_endpoint).toBe("/api/robot-control/free-roam/autonomy/latest");
+    expect(summary.fixed_free_roam_latest_endpoint).toBe("/api/robot-control/free-roam/autonomy/latest");
     expect(summary.live_closure_summary?.mapping_start_ready).toBe(false);
     expect(summary.mapping_start_ready).toBe(false);
     expect(summary.free_roam_mapping_start_ready).toBe(false);

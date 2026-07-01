@@ -7196,6 +7196,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.free_move_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
       expect(summary.free_move_acceptance_endpoints).toEqual([
         "/api/robot-control/free-roam/autonomy/latest",
+        "/api/robot-control/map/preview",
         "/api/robot-control/summary",
       ]);
       expect(summary.free_move_proof_status).toBe("ready_to_verify");
@@ -7204,6 +7205,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.mapping_start_endpoint).toBe("/api/robot-control/map/start");
       expect(summary.mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
       expect(summary.mapping_acceptance_endpoints).toEqual([
+        "/api/robot-control/free-roam/autonomy/latest",
         "/api/robot-control/map/preview",
         "/api/robot-control/summary",
       ]);

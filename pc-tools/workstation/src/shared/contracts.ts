@@ -3284,6 +3284,7 @@ export interface RobotControlLiveClosureSummary {
   free_move_blocked_by_radar_wysiwyg: false;
   fixed_free_roam_start_endpoint: "/api/robot-control/free-roam/autonomy/start";
   fixed_free_roam_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop";
+  fixed_free_roam_latest_endpoint: "/api/robot-control/free-roam/autonomy/latest";
   mapping_start_ready: boolean;
   free_roam_mapping_start_ready: boolean;
   free_roam_mapping_ready: boolean;
@@ -3907,6 +3908,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   free_move_blocked_by_radar_wysiwyg?: RobotControlLiveClosureSummary["free_move_blocked_by_radar_wysiwyg"];
   fixed_free_roam_start_endpoint?: RobotControlLiveClosureSummary["fixed_free_roam_start_endpoint"];
   fixed_free_roam_stop_endpoint?: RobotControlLiveClosureSummary["fixed_free_roam_stop_endpoint"];
+  fixed_free_roam_latest_endpoint?: RobotControlLiveClosureSummary["fixed_free_roam_latest_endpoint"];
   mapping_start_ready?: RobotControlLiveClosureSummary["mapping_start_ready"];
   mapping_start_missing_reasons?: RobotControlLiveClosureSummary["mapping_start_missing_reasons"];
   mapping_acceptance_ready?: RobotControlLiveClosureSummary["free_roam_mapping_ready"];

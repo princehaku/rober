@@ -4917,3 +4917,11 @@ summary 同步暴露 `map_display_foxglove_web_app_url`、`map_display_foxglove_
 `field_acceptance_wysiwyg_refresh_sequence` 和 `field_acceptance_wysiwyg_refresh_mode`，脚本无需再读取
 `/api/robot-control/summary` 或解析 nested packet 才能判断当前是 `camera_only`、`radar_map_only`、`map_only`
 还是 `all_wysiwyg`。这些字段仍只描述证据刷新路径，不代表会发车或启动控制链。
+
+2026-07-02 01:20 CST 起，PC 现场验收把自由移动和建图的启动后读回合并到同一套可验收口径：
+自由移动启动后的读回端点固定为 free-roam latest、地图预览和 summary；传感器 ready 后建图的验收读回也固定为
+free-roam latest、地图预览和 summary。`GET /api/robot-control/summary` 顶层新增
+`fixed_free_roam_latest_endpoint=/api/robot-control/free-roam/autonomy/latest`，普通首屏 DOM 使用该字段暴露固定读回入口。
+这样“安全确认后可以自由移动”和“传感器 ready 后可以建图”不再只证明按钮可点，还能在启动后证明状态机 latest
+和地图 WYSIWYG 画面都被读取。本变化不自动发车、不启动建图 runtime、不执行 Nav2、不发送 manual/keyboard/stop、
+不提交 delivery complete，也不发送 `/cmd_vel`。
