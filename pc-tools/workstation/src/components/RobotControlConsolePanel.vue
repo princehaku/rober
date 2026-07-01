@@ -341,11 +341,11 @@ const plainMapDirectViewRequested = computed(() => {
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24] as const;
-const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 0;
+const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 1;
 const plainMapZoomIndex = ref(PLAIN_MAP_DEFAULT_ZOOM_INDEX);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
-const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "100%";
+const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "150%";
 const PLAIN_MAP_MAX_ZOOM_PERCENT = "2400%";
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
@@ -373,7 +373,7 @@ function centerPlainMapViewport(): void {
 const plainMapDisplayProofText = computed(() => {
   // 这行只给普通用户确认“当前就是大地图”；工程命令收进折叠区，避免首屏重新变复杂。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 全图适配，当前 ${plainMapZoomPercent.value}，点“细节放大”可查看局部，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口。本条只读，不启动工程工具、行程执行或小车运动。`;
+  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 现场大图，当前 ${plainMapZoomPercent.value}，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口。本条只读，不启动工程工具、行程执行或小车运动。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);

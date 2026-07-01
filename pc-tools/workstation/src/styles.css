@@ -1874,7 +1874,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；默认 100% 看全图，手动放大后每个边缘都能滚到。 */
+  /* 缩放作用在同一个 overlay frame 上；默认 150% 现场大图，适配 100% 仍能看全图。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
