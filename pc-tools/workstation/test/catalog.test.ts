@@ -6852,10 +6852,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.map_display_starts_nav2).toBe(false);
       expect(summary.map_display_starts_map_runtime).toBe(false);
       expect(live.nav2_route_ready).toBe(true);
+      expect(summary.route_ready).toBe(true);
       expect(summary.nav2_route_ready).toBe(true);
       expect(live.nav2_goal_succeeded).toBe(true);
       expect(summary.nav2_goal_succeeded).toBe(true);
       expect(live.wheel_lr_nonzero_proven).toBe(false);
+      expect(summary.wheel_lr_nonzero).toBe(false);
       expect(summary.wheel_lr_nonzero_proven).toBe(false);
       expect(live.wheel_rerun_ready_for_safety_confirm).toBe(true);
       expect(summary.wheel_rerun_ready_for_safety_confirm).toBe(true);
@@ -6963,6 +6965,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.free_roam_ready).toBe(true);
       expect(summary.free_roam_ready).toBe(true);
       expect(live.free_roam_start_ready).toBe(true);
+      expect(summary.free_roam_start_ready).toBe(true);
       expect(live.free_roam_motion_start_ready).toBe(true);
       expect(summary.free_roam_motion_start_ready).toBe(true);
       expect(live.free_roam_motion_ready).toBe(false);
