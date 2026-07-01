@@ -93,6 +93,15 @@ type PlainMapRadarReadback = {
   frameId: string;
   source: PlainMapRadarOverlaySource;
 };
+type PlainMapWysiwygLayerItem = {
+  id: "image" | "route" | "robot" | "radar";
+  label: string;
+  state: string;
+  currentVisible: boolean;
+  text: string;
+  pointCount?: number;
+  sourcePointCount?: number;
+};
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
@@ -6137,6 +6146,74 @@ const plainMapVisualSummary = computed(() => {
     freeRoamActionMarkerState: freeRoamActionMarker?.state ?? "",
     freeRoamActionMarkerStyle: freeRoamActionMarker?.style ?? {},
     freeRoamActionMarkerAria: freeRoamActionMarker?.aria ?? "",
+  };
+});
+const plainMapWysiwygLayerStrip = computed(() => {
+  // 地图大屏第一眼只回答“当前画布上哪些层是真的可见”；旧点和局部点不能冒充当前地图贴图。
+  const map = plainMapVisualSummary.value;
+  const imageVisible = Boolean(map.imageDataUrl);
+  const routeVisible = Boolean(map.showRoutePath);
+  const robotVisible = Boolean(map.showRobotPose);
+  const radarVisible = Boolean(map.radarMapPointsVisible);
+  const radarHasSuppressedOldPoints = !radarVisible && map.radarMapNotCurrentSourcePointCount > 0;
+  const radarState = radarVisible
+    ? "已贴当前图"
+    : radarHasSuppressedOldPoints || map.radarMapOverlayStatus === "not_current"
+      ? "旧点未贴图"
+      : map.radarMapLocalPointCount > 0
+        ? "局部点"
+        : map.radarMapCountOnlyPointCount > 0
+          ? "只有点数"
+          : "未贴当前图";
+  const radarText = radarVisible
+    ? `当前雷达点 ${map.radarMapPointCount} 个`
+    : radarHasSuppressedOldPoints
+      ? `旧来源点 ${map.radarMapNotCurrentSourcePointCount} 个已抑制`
+      : map.radarMapLocalPointCount > 0
+        ? `局部点 ${map.radarMapLocalPointCount} 个，等待定位后贴图`
+        : map.radarMapCountOnlyPointCount > 0
+          ? `只读到点数 ${map.radarMapCountOnlyPointCount} 个，未贴图`
+          : "当前地图没有雷达点";
+  const items: PlainMapWysiwygLayerItem[] = [
+    {
+      id: "image",
+      label: "地图图像",
+      state: imageVisible ? "已显示" : "未显示",
+      currentVisible: imageVisible,
+      text: imageVisible ? map.mapRefLabel : "地图画面未显示",
+    },
+    {
+      id: "route",
+      label: "图上行程",
+      state: routeVisible ? "已显示" : "未显示",
+      currentVisible: routeVisible,
+      text: routeVisible ? map.routePathLabel || "行程已画到当前地图" : "行程未画到当前地图",
+    },
+    {
+      id: "robot",
+      label: "小车位置",
+      state: robotVisible ? "已定位" : "未定位",
+      currentVisible: robotVisible,
+      text: robotVisible ? map.robotPoseAria : map.poseLabel,
+    },
+    {
+      id: "radar",
+      label: "雷达点",
+      state: radarState,
+      currentVisible: radarVisible,
+      text: radarText,
+      pointCount: map.radarMapPointCount,
+      sourcePointCount: map.radarMapSourcePointCount,
+    },
+  ];
+  const currentIds = items.filter((item) => item.currentVisible).map((item) => item.id);
+  const missingIds = items.filter((item) => !item.currentVisible).map((item) => item.id);
+  return {
+    state: missingIds.length === 0 ? "全部当前" : "未完整",
+    items,
+    currentIds,
+    missingIds,
+    text: items.map((item) => `${item.label}${item.state}`).join("；"),
   };
 });
 type PlainWysiwygSurfaceGauge = {
@@ -18945,6 +19022,49 @@ onBeforeUnmount(() => {
                 {{ plainMapObserverView ? "退出只看" : "只看地图" }}
               </button>
             </div>
+          </div>
+          <div
+            class="plain-map-wysiwyg-layer-strip"
+            data-testid="plain-map-wysiwyg-layer-strip"
+            :data-state="plainMapWysiwygLayerStrip.state"
+            :data-current-layer-ids="plainMapWysiwygLayerStrip.currentIds.join(',') || 'none'"
+            :data-missing-layer-ids="plainMapWysiwygLayerStrip.missingIds.join(',') || 'none'"
+            :data-layer-summary="plainMapWysiwygLayerStrip.text"
+            :data-map-image-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'image')?.currentVisible ?? false)"
+            :data-route-layer-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'route')?.currentVisible ?? false)"
+            :data-robot-marker-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'robot')?.currentVisible ?? false)"
+            :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
+            :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
+            :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
+            :data-radar-map-overlay-status="plainMapVisualSummary.radarMapOverlayStatus"
+            :data-radar-not-current-source-point-count="String(plainMapVisualSummary.radarMapNotCurrentSourcePointCount)"
+            data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
+            data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-radar-lifecycle="false"
+            data-starts-map-runtime="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+          >
+            <span class="plain-map-wysiwyg-layer-title">当前画布</span>
+            <span
+              v-for="item in plainMapWysiwygLayerStrip.items"
+              :key="item.id"
+              class="plain-map-wysiwyg-layer-chip"
+              :data-testid="`plain-map-wysiwyg-layer-${item.id}`"
+              :data-layer-id="item.id"
+              :data-state="item.state"
+              :data-current-visible="String(item.currentVisible)"
+              :data-point-count="String(item.pointCount ?? 0)"
+              :data-source-point-count="String(item.sourcePointCount ?? 0)"
+              :aria-label="`${item.label}：${item.text}`"
+            >
+              <strong>{{ item.label }}</strong>
+              <span>{{ item.state }}</span>
+            </span>
           </div>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" data-wysiwyg-surface="primary-map" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize">
             <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">

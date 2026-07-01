@@ -738,6 +738,55 @@ h3 {
   border-left-color: #8c959f;
 }
 
+.plain-map-wysiwyg-layer-strip {
+  /* 大地图自己的所见即所得状态条，只描述当前画布四层，不替代任何控制按钮。 */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+}
+
+.plain-map-wysiwyg-layer-title {
+  font-weight: 700;
+  color: #24292f;
+}
+
+.plain-map-wysiwyg-layer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #24292f;
+  white-space: nowrap;
+}
+
+.plain-map-wysiwyg-layer-chip[data-current-visible="true"] {
+  border-color: #9fdfb2;
+  background: #f3fbf6;
+}
+
+.plain-map-wysiwyg-layer-chip[data-state="旧点未贴图"],
+.plain-map-wysiwyg-layer-chip[data-state="局部点"],
+.plain-map-wysiwyg-layer-chip[data-state="只有点数"] {
+  border-color: #d8c06f;
+  background: #fff8d6;
+}
+
+.plain-map-wysiwyg-layer-chip[data-state="未显示"],
+.plain-map-wysiwyg-layer-chip[data-state="未定位"],
+.plain-map-wysiwyg-layer-chip[data-state="未贴当前图"] {
+  border-style: dashed;
+  color: #57606a;
+}
+
 .plain-safety-actions {
   display: grid;
   gap: 7px;
