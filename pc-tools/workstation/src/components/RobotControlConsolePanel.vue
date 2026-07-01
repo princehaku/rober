@@ -324,6 +324,7 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND = "sudo apt install ros-humble-f
 const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml";
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
+const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
   "/map",
   "/scan",
@@ -378,7 +379,7 @@ function centerPlainMapViewport(): void {
 const plainMapDisplayProofText = computed(() => {
   // 这行先回答现场“地图太小/ROS2 配套用什么”，工程命令仍收进折叠区，避免首屏重新变复杂。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 现场大图，当前 ${plainMapZoomPercent.value}，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；ROS2 配套是本地 RViz2 和远程 Foxglove，入口在“工程观察”，只看地图/雷达/TF/路径/定位，不发车。本条只读，不启动工程工具、行程执行或小车运动。`;
+  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 现场大图，当前 ${plainMapZoomPercent.value}，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；ROS2 配套是本地 RViz2 和远程 Foxglove，入口在“${PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL}”，只看地图/雷达/TF/路径/定位，不发车。本条只读，不启动工程工具、行程执行或小车运动。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -21327,7 +21328,7 @@ onBeforeUnmount(() => {
             data-ros2-remote-companion-tool="foxglove"
             data-ros2-companion-required="false"
             data-engineering-tools-visible-by-default="false"
-            data-engineering-tools-action-label="工程观察"
+            :data-engineering-tools-action-label="PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL"
             data-ordinary-user-tool="pc_big_map"
             :data-rviz-role-plain="PLAIN_MAP_RVIZ_ROLE_PLAIN"
             :data-rviz-launch-command="PLAIN_MAP_RVIZ_LAUNCH_COMMAND"
@@ -21367,7 +21368,7 @@ onBeforeUnmount(() => {
             data-rviz-companion-purpose="local_engineering_debug_map_scan_tf_path_pose"
             data-foxglove-companion-purpose="browser_remote_observation_map_scan_tf_path_pose"
             data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
-            data-engineering-tools-action-label="工程观察"
+            :data-engineering-tools-action-label="PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL"
             data-ordinary-user-tool="pc_big_map"
             :data-rviz-role-plain="PLAIN_MAP_RVIZ_ROLE_PLAIN"
             :data-foxglove-role-plain="PLAIN_MAP_FOXGLOVE_ROLE_PLAIN"
@@ -21399,7 +21400,7 @@ onBeforeUnmount(() => {
               data-starts-foxglove="false"
               @click="plainMapEngineeringToolsOpen = !plainMapEngineeringToolsOpen"
             >
-              工程观察
+              {{ PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL }}
             </button>
             <div v-if="plainMapEngineeringToolsOpen" class="plain-map-engineering-tools-body">
               <p>

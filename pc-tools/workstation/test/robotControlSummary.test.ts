@@ -314,8 +314,8 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
     expect(summary.live_closure_summary?.map_display_engineering_tools_visible_by_default).toBe(false);
     expect(summary.map_display_engineering_tools_visible_by_default).toBe(false);
-    expect(summary.live_closure_summary?.map_display_engineering_tools_action_label).toBe("工程观察");
-    expect(summary.map_display_engineering_tools_action_label).toBe("工程观察");
+    expect(summary.live_closure_summary?.map_display_engineering_tools_action_label).toBe("工程观察：RViz2 / Foxglove");
+    expect(summary.map_display_engineering_tools_action_label).toBe("工程观察：RViz2 / Foxglove");
     expect(summary.live_closure_summary?.map_display_ordinary_user_tool).toBe("pc_big_map");
     expect(summary.map_display_ordinary_user_tool).toBe("pc_big_map");
     expect(summary.live_closure_summary?.map_display_rviz_role_plain).toContain("本地工程调试");

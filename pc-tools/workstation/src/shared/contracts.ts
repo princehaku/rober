@@ -2995,7 +2995,7 @@ export interface RobotControlLiveClosureSummary {
   map_display_ros2_companion_required: false;
   map_display_ros2_companion_tools: string[];
   map_display_engineering_tools_visible_by_default: false;
-  map_display_engineering_tools_action_label: "工程观察";
+  map_display_engineering_tools_action_label: "工程观察：RViz2 / Foxglove";
   map_display_ordinary_user_tool: "pc_big_map";
   map_display_rviz_role_plain: string;
   map_display_rviz_launch_command: "ros2 launch ros2_trashbot_bringup rviz.launch.py";

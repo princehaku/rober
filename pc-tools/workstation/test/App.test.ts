@@ -942,7 +942,7 @@ const fixtures: Record<string, unknown> = {
       map_display_ros2_companion_required: false,
       map_display_ros2_companion_tools: ["rviz2", "foxglove"],
       map_display_engineering_tools_visible_by_default: false,
-      map_display_engineering_tools_action_label: "工程观察",
+      map_display_engineering_tools_action_label: "工程观察：RViz2 / Foxglove",
       map_display_ordinary_user_tool: "pc_big_map",
       map_display_rviz_role_plain: "RViz2 只给本地工程调试看 /map、/scan、TF、路径、定位和 costmap；普通用户不需要打开。",
       map_display_rviz_launch_command: "ros2 launch ros2_trashbot_bringup rviz.launch.py",
@@ -5711,7 +5711,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-map-display-direct-map-keeps-page-fullscreen-without-browser-api")).toBe("true");
     expect(liveClosureSummary.attributes("data-map-display-direct-map-browser-fullscreen-required")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-engineering-tools-visible-by-default")).toBe("false");
-    expect(liveClosureSummary.attributes("data-map-display-engineering-tools-action-label")).toBe("工程观察");
+    expect(liveClosureSummary.attributes("data-map-display-engineering-tools-action-label")).toBe("工程观察：RViz2 / Foxglove");
     expect(liveClosureSummary.attributes("data-map-display-ordinary-user-tool")).toBe("pc_big_map");
     expect(liveClosureSummary.attributes("data-map-display-rviz-role-plain")).toContain("本地工程调试");
     expect(liveClosureSummary.attributes("data-map-display-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
@@ -8030,7 +8030,7 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
     expect(mapDisplayProof.attributes("data-ros2-companion-required")).toBe("false");
     expect(mapDisplayProof.attributes("data-engineering-tools-visible-by-default")).toBe("false");
-    expect(mapDisplayProof.attributes("data-engineering-tools-action-label")).toBe("工程观察");
+    expect(mapDisplayProof.attributes("data-engineering-tools-action-label")).toBe("工程观察：RViz2 / Foxglove");
     expect(mapDisplayProof.attributes("data-ordinary-user-tool")).toBe("pc_big_map");
     expect(mapDisplayProof.attributes("data-rviz-role-plain")).toContain("本地工程调试");
     expect(mapDisplayProof.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
@@ -8058,7 +8058,7 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
     expect(mapDisplayProof.text()).toContain("?view=map 兼容入口");
     expect(mapDisplayProof.text()).toContain("ROS2 配套是本地 RViz2 和远程 Foxglove");
-    expect(mapDisplayProof.text()).toContain("入口在“工程观察”");
+    expect(mapDisplayProof.text()).toContain("入口在“工程观察：RViz2 / Foxglove”");
     expect(mapDisplayProof.text()).toContain("只看地图/雷达/TF/路径/定位，不发车");
     expect(mapDisplayProof.text()).toContain("图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布");
     expect(mapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
@@ -8103,7 +8103,7 @@ describe("App", () => {
     expect(mapRos2ToolNote.attributes("data-rviz-companion-purpose")).toBe("local_engineering_debug_map_scan_tf_path_pose");
     expect(mapRos2ToolNote.attributes("data-foxglove-companion-purpose")).toBe("browser_remote_observation_map_scan_tf_path_pose");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-handoff")).toBe("deploy_bridge_then_open_foxglove_studio");
-    expect(mapRos2ToolNote.attributes("data-engineering-tools-action-label")).toBe("工程观察");
+    expect(mapRos2ToolNote.attributes("data-engineering-tools-action-label")).toBe("工程观察：RViz2 / Foxglove");
     expect(mapRos2ToolNote.attributes("data-ordinary-user-tool")).toBe("pc_big_map");
     expect(mapRos2ToolNote.attributes("data-rviz-role-plain")).toContain("本地工程调试");
     expect(mapRos2ToolNote.attributes("data-foxglove-role-plain")).toContain("远程浏览器大屏观察");
@@ -8123,7 +8123,7 @@ describe("App", () => {
     expect(mapRos2ToolNote.attributes("data-starts-foxglove")).toBe("false");
     expect(mapRos2ToolNote.attributes("data-starts-nav2")).toBe("false");
     expect(mapRos2ToolNote.attributes("data-starts-map-runtime")).toBe("false");
-    expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').text()).toBe("工程观察");
+    expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').text()).toBe("工程观察：RViz2 / Foxglove");
     expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').attributes("aria-expanded")).toBe("false");
     expect(mapRos2ToolNote.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapRos2ToolNote.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");

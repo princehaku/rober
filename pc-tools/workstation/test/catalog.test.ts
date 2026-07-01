@@ -7217,7 +7217,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.fixed_free_roam_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
       expect(summary.fixed_free_roam_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
       expect(live.map_display_engineering_tools_visible_by_default).toBe(false);
-      expect(live.map_display_engineering_tools_action_label).toBe("工程观察");
+      expect(live.map_display_engineering_tools_action_label).toBe("工程观察：RViz2 / Foxglove");
       expect(live.map_display_ordinary_user_tool).toBe("pc_big_map");
       expect(live.map_display_direct_map_keeps_page_fullscreen_without_browser_api).toBe(true);
       expect(live.map_display_direct_map_browser_fullscreen_required).toBe(false);
