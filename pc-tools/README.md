@@ -60,6 +60,15 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 `field_acceptance_primary_missing_evidence_blocks_field_acceptance`。这些字段用于区分“现在可只读复验”
 和“必须先完成对应运动动作后再复验”，不新增任何自动运动入口。
 
+2026-07-02 CST 起，`GET /api/robot-control/summary` 进一步补齐现场脚本友好的短 alias：
+`field_acceptance_primary_missing_id`、`field_acceptance_primary_missing_label`、
+`field_acceptance_primary_missing_action_id`、`field_acceptance_primary_readback_endpoint`、
+`field_acceptance_primary_readback_method`、`field_acceptance_primary_requires_motion_before_readback`、
+`field_acceptance_primary_requires_safety_confirm_before_motion`、`live_wysiwyg_missing_reasons` 和
+`mapping_start_missing_evidence`。这些字段与既有 `*_missing_evidence_*`、
+`live_wysiwyg_missing_surface_ids`、`mapping_start_missing_reasons` 同源，只减少 `curl | jq` 取数路径，
+不重算验收状态，不启动 Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
+
 2026-07-02 CST 起，普通首屏 `执行图上路线` 在 execution forwarded 后，会按
 `nav2_route_acceptance_packet.readback_endpoints` 自动刷新执行后验收读回：地图预览、Nav2 latest、
 底盘 wheel feedback samples、delivery latest 和 summary。地图刷新保留 `tripExecutionRefresh`，

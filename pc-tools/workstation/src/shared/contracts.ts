@@ -3625,6 +3625,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   map_display_starts_map_runtime?: RobotControlLiveClosureSummary["map_display_starts_map_runtime"];
   live_wysiwyg_ready?: RobotControlLiveClosureSummary["live_wysiwyg_ready"];
   live_wysiwyg_missing_surface_ids?: RobotControlLiveClosureSummary["live_wysiwyg_missing_surface_ids"];
+  live_wysiwyg_missing_reasons?: RobotControlLiveClosureSummary["live_wysiwyg_missing_surface_ids"];
   live_wysiwyg_needs_refresh?: RobotControlLiveClosureSummary["live_wysiwyg_needs_refresh"];
   live_wysiwyg_readback_gap_surface_ids?: RobotControlLiveClosureSummary["live_wysiwyg_readback_gap_surface_ids"];
   live_wysiwyg_primary_readback_gap_surface_id?: RobotControlLiveClosureSummary["live_wysiwyg_primary_readback_gap_surface_id"];
@@ -3731,6 +3732,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_missing_evidence_ids?: RobotControlFieldAcceptancePacket["missing_evidence_ids"];
   field_acceptance_missing_evidence_labels?: RobotControlFieldAcceptancePacket["missing_evidence_labels"];
   field_acceptance_missing_evidence_items?: RobotControlFieldAcceptancePacket["missing_evidence_items"];
+  field_acceptance_primary_missing_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_id"];
+  field_acceptance_primary_missing_label?: RobotControlFieldAcceptancePacket["primary_missing_evidence_label"];
+  field_acceptance_primary_missing_action_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_action_id"];
+  field_acceptance_primary_readback_endpoint?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_endpoint"];
+  field_acceptance_primary_readback_method?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_method"];
+  field_acceptance_primary_requires_motion_before_readback?: RobotControlFieldAcceptancePacket["primary_missing_evidence_requires_motion_before_readback"];
+  field_acceptance_primary_requires_safety_confirm_before_motion?: RobotControlFieldAcceptancePacket["primary_missing_evidence_requires_safety_confirm_before_motion"];
+  field_acceptance_primary_blocks_field_acceptance?: RobotControlFieldAcceptancePacket["primary_missing_evidence_blocks_field_acceptance"];
   field_acceptance_primary_missing_evidence_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_id"];
   field_acceptance_primary_missing_evidence_label?: RobotControlFieldAcceptancePacket["primary_missing_evidence_label"];
   field_acceptance_primary_missing_evidence_action_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_action_id"];
@@ -3937,6 +3946,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   fixed_free_roam_latest_endpoint?: RobotControlLiveClosureSummary["fixed_free_roam_latest_endpoint"];
   mapping_start_ready?: RobotControlLiveClosureSummary["mapping_start_ready"];
   mapping_start_missing_reasons?: RobotControlLiveClosureSummary["mapping_start_missing_reasons"];
+  mapping_start_missing_evidence?: RobotControlLiveClosureSummary["mapping_start_missing_reasons"];
   mapping_acceptance_ready?: RobotControlLiveClosureSummary["free_roam_mapping_ready"];
   mapping_acceptance_missing_reasons?: RobotControlLiveClosureSummary["mapping_acceptance_missing_reasons"];
   mapping_start_requires_camera_first_frame?: RobotControlLiveClosureSummary["mapping_start_requires_camera_first_frame"];

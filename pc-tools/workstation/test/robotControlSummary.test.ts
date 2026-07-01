@@ -429,6 +429,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_wysiwyg_ready).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
     expect(summary.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
+    expect(summary.live_wysiwyg_missing_reasons).toEqual(["camera", "radar_map_points"]);
     expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(true);
     expect(summary.live_wysiwyg_needs_refresh).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_readback_gap_surface_ids).toEqual([]);
@@ -1108,6 +1109,14 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_missing_evidence_requires_motion_before_readback).toBe(true);
     expect(summary.field_acceptance_primary_missing_evidence_requires_safety_confirm_before_motion).toBe(true);
     expect(summary.field_acceptance_primary_missing_evidence_blocks_field_acceptance).toBe(true);
+    expect(summary.field_acceptance_primary_missing_id).toBe("same_window_wheel_lr_nonzero");
+    expect(summary.field_acceptance_primary_missing_label).toBe("同窗口 wheel L/R 非零");
+    expect(summary.field_acceptance_primary_missing_action_id).toBe("run_nav2_route");
+    expect(summary.field_acceptance_primary_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
+    expect(summary.field_acceptance_primary_readback_method).toBe("POST");
+    expect(summary.field_acceptance_primary_requires_motion_before_readback).toBe(true);
+    expect(summary.field_acceptance_primary_requires_safety_confirm_before_motion).toBe(true);
+    expect(summary.field_acceptance_primary_blocks_field_acceptance).toBe(true);
     const fieldAcceptancePacket = summary.field_acceptance_packet;
     expect(fieldAcceptancePacket).toBeDefined();
     expect(fieldAcceptancePacket?.primary_missing_evidence_readback_method).toBe("POST");
@@ -1634,6 +1643,7 @@ describe("robotControlSummary", () => {
     expect(summary.mapping_start_requires_lidar_fresh).toBe(true);
     expect(summary.live_closure_summary?.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.mapping_start_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.live_closure_summary?.mapping_acceptance_missing_reasons).toEqual([
       "camera_first_frame",
