@@ -4304,8 +4304,18 @@ const plainFieldAcceptanceNoMotionStepIdsText = computed(() => (
 const plainFieldAcceptanceSafetyConfirmReadyStepIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.safety_confirm_ready_step_ids.join(",") || "none"
 ));
+const plainFieldAcceptanceSafetyConfirmReadyActionIdsText = computed(() => (
+  robotSummary.value?.field_acceptance_safety_confirm_ready_action_ids?.join(",")
+    || plainFieldAcceptancePacket.value?.safety_confirm_ready_step_ids.join(",")
+    || "none"
+));
 const plainFieldAcceptanceSafetyConfirmReadyActionLabelsText = computed(() => (
   plainFieldAcceptancePacket.value?.safety_confirm_ready_action_labels.join(",") || "none"
+));
+const plainFieldAcceptanceSafetyConfirmReadyActionEndpointsText = computed(() => (
+  robotSummary.value?.field_acceptance_safety_confirm_ready_action_endpoints?.join(",")
+    || plainFieldAcceptancePacket.value?.safety_confirm_ready_action_start_endpoints.join(",")
+    || "none"
 ));
 const plainFieldAcceptanceSafetyConfirmReadyActionStartEndpointsText = computed(() => (
   plainFieldAcceptancePacket.value?.safety_confirm_ready_action_start_endpoints.join(",") || "none"
@@ -18393,7 +18403,9 @@ onBeforeUnmount(() => {
           :data-motion-step-ids="plainFieldAcceptanceMotionStepIdsText"
           :data-no-motion-step-ids="plainFieldAcceptanceNoMotionStepIdsText"
           :data-safety-confirm-ready-step-ids="plainFieldAcceptanceSafetyConfirmReadyStepIdsText"
+          :data-safety-confirm-ready-action-ids="plainFieldAcceptanceSafetyConfirmReadyActionIdsText"
           :data-safety-confirm-ready-action-labels="plainFieldAcceptanceSafetyConfirmReadyActionLabelsText"
+          :data-safety-confirm-ready-action-endpoints="plainFieldAcceptanceSafetyConfirmReadyActionEndpointsText"
           :data-safety-confirm-ready-action-start-endpoints="plainFieldAcceptanceSafetyConfirmReadyActionStartEndpointsText"
           :data-safety-confirm-ready-action-stop-endpoints="robotSummary?.field_acceptance_safety_confirm_ready_action_stop_endpoints?.join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.stop_endpoint).join(',') ?? 'none'"
           :data-safety-confirm-ready-action-acceptance-endpoints="robotSummary?.field_acceptance_safety_confirm_ready_action_acceptance_endpoints?.join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.acceptance_endpoints.join('|')).join(',') ?? 'none'"
@@ -18517,7 +18529,9 @@ onBeforeUnmount(() => {
             class="panel-note"
             data-testid="plain-field-acceptance-remaining-actions"
             :data-safety-confirm-ready-step-ids="plainFieldAcceptanceSafetyConfirmReadyStepIdsText"
+            :data-safety-confirm-ready-action-ids="plainFieldAcceptanceSafetyConfirmReadyActionIdsText"
             :data-safety-confirm-ready-action-labels="plainFieldAcceptanceSafetyConfirmReadyActionLabelsText"
+            :data-safety-confirm-ready-action-endpoints="plainFieldAcceptanceSafetyConfirmReadyActionEndpointsText"
             :data-safety-confirm-ready-action-start-endpoints="plainFieldAcceptanceSafetyConfirmReadyActionStartEndpointsText"
             :data-primary-safety-confirm-ready-action-id="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id"
             :data-primary-safety-confirm-ready-action-label="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_label"

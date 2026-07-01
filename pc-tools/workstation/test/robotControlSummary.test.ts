@@ -851,10 +851,20 @@ describe("robotControlSummary", () => {
       "hold_keyboard",
       "start_free_move",
     ]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_ids).toEqual([
+      "run_nav2_route",
+      "hold_keyboard",
+      "start_free_move",
+    ]);
     expect(summary.field_acceptance_safety_confirm_ready_action_labels).toEqual([
       "完整行程执行",
       "键盘连续手控",
       "自由自助移动",
+    ]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_endpoints).toEqual([
+      "/api/robot-control/nav2/goal/execute",
+      "/api/robot-control/base/manual",
+      "/api/robot-control/free-roam/autonomy/start",
     ]);
     expect(summary.field_acceptance_safety_confirm_ready_action_start_endpoints).toEqual([
       "/api/robot-control/nav2/goal/execute",

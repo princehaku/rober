@@ -5692,6 +5692,8 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-no-motion-step-ids")).toBe("none");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-step-ids")).toBe("hold_keyboard,start_free_move");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-labels")).toBe("键盘连续手控,自由自助移动");
+    expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-ids")).toBe("hold_keyboard,start_free_move");
+    expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-stop-endpoints")).toBe("/api/robot-control/base/stop,/api/robot-control/free-roam/autonomy/stop");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-acceptance-endpoints")).toBe("/api/robot-control/base/feedback-samples|/api/robot-control/summary,/api/robot-control/free-roam/autonomy/latest|/api/robot-control/map/preview|/api/robot-control/summary");
@@ -5802,6 +5804,8 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.text()).toContain("可随时只读复验");
     expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-step-ids")).toBe("hold_keyboard,start_free_move");
     expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-action-labels")).toBe("键盘连续手控,自由自助移动");
+    expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-action-ids")).toBe("hold_keyboard,start_free_move");
+    expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-action-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
     expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-action-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-safety-confirm-ready-action-id")).toBe("hold_keyboard");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-safety-confirm-ready-action-label")).toBe("键盘连续手控");

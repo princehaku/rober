@@ -154,11 +154,15 @@ Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 顶层同步暴露 `field_acceptance_primary_safety_confirm_ready_action_*`；真实现场可直接看到完整行程、键盘连续手控、自由自助移动
 都只差现场安全确认，不把相机或雷达当作发车前置。
 2026-07-02 CST 起，summary 顶层和 `plain-field-acceptance-packet` DOM 还暴露
+`field_acceptance_safety_confirm_ready_action_ids`、
+`field_acceptance_safety_confirm_ready_action_labels`、
+`field_acceptance_safety_confirm_ready_action_endpoints`、
 `field_acceptance_safety_confirm_ready_action_stop_endpoints`、
 `field_acceptance_safety_confirm_ready_action_acceptance_endpoints`、`field_acceptance_safety_confirm_ready_action_minimal_precheck_safety_only`、
 `field_acceptance_safety_confirm_ready_action_camera_preflight_required=false`、
 `field_acceptance_safety_confirm_ready_action_radar_preflight_required=false` 和
-`field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required=false`，并给 primary action 暴露同名单值字段。
+`field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required=false`；
+其中 `*_action_endpoints` 是 `*_action_start_endpoints` 的现场脚本兼容别名，并给 primary action 暴露同名单值字段。
 这些字段只说明安全确认后的执行/停止/读回口径，不会自动勾确认、不发车、不提交送达、不 stop。
 2026-07-02 CST 起，summary 顶层和 `plain-field-acceptance-packet` DOM 还暴露并行动作包：
 `field_acceptance_parallel_status_plain`、`field_acceptance_parallel_no_motion_action_*`、

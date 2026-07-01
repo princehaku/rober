@@ -3736,7 +3736,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_motion_step_ids?: RobotControlFieldAcceptancePacket["motion_step_ids"];
   field_acceptance_no_motion_step_ids?: RobotControlFieldAcceptancePacket["no_motion_step_ids"];
   field_acceptance_safety_confirm_ready_step_ids?: RobotControlFieldAcceptancePacket["safety_confirm_ready_step_ids"];
+  field_acceptance_safety_confirm_ready_action_ids?: RobotControlFieldAcceptancePacket["safety_confirm_ready_step_ids"];
   field_acceptance_safety_confirm_ready_action_labels?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_labels"];
+  field_acceptance_safety_confirm_ready_action_endpoints?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_start_endpoints"];
   field_acceptance_safety_confirm_ready_action_start_endpoints?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_start_endpoints"];
   field_acceptance_safety_confirm_ready_action_stop_endpoints?: string[];
   field_acceptance_safety_confirm_ready_action_acceptance_endpoints?: string[];
