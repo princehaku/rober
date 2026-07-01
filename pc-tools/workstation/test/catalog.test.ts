@@ -6914,6 +6914,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_wysiwyg_missing_surface_ids).toEqual(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids);
       expect(summary.live_wysiwyg_refresh_sends_motion).toBe(false);
       expect(summary.camera_current_visible).toBe(summary.live_closure_summary?.camera_current_visible);
+      expect(summary.live_wysiwyg_camera_visible).toBe(summary.live_closure_summary?.live_wysiwyg_camera_visible);
+      expect(summary.camera_source_diagnosis_status).toBe(summary.live_closure_summary?.camera_source_diagnosis_status);
+      expect(summary.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
+      expect(summary.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.camera_recovery_next_action_plain);
+      expect(summary.camera_recovery_sends_motion).toBe(false);
+      expect(summary.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+      expect(summary.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+      expect(summary.live_wysiwyg_camera_shared_preview_client_count).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count);
+      expect(summary.live_wysiwyg_camera_shared_preview_upstream_active).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_upstream_active);
+      expect(summary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_exclusive_camera_claim);
       expect(summary.map_current_visible).toBe(summary.live_closure_summary?.map_current_visible);
       expect(summary.path_current_visible).toBe(summary.live_closure_summary?.path_current_visible);
       expect(summary.live_wysiwyg_map_visible).toBe(summary.live_closure_summary?.live_wysiwyg_map_visible);
