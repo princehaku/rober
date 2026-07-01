@@ -5679,6 +5679,14 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-requires-motion-before-readback")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-requires-safety-confirm-before-motion")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-blocks-field-acceptance")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-id")).toBe("route_ready_on_map");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-label")).toBe("图上行程已显示");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-id")).toBe("run_nav2_route");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-readback-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-readback-method")).toBe("GET");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-requires-motion-before-readback")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-requires-safety-confirm-before-motion")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-blocks-field-acceptance")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
@@ -5707,6 +5715,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-unified-safety-confirmed")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-ready")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(fieldAcceptancePacket.attributes("data-live-wysiwyg-missing-reasons")).toBe("camera,radar_map_points");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-label")).toBe("复测相机首帧");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("复测相机首帧");
@@ -5725,6 +5734,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-stops-motion")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-mapping-start-ready")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-mapping-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(fieldAcceptancePacket.attributes("data-mapping-start-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
     expect(fieldAcceptancePacket.attributes("data-camera-blocks-mapping-start")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-camera-blocks-free-move")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-sends-motion-when-clicked")).toBe("false");

@@ -68,6 +68,9 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 `mapping_start_missing_evidence`。这些字段与既有 `*_missing_evidence_*`、
 `live_wysiwyg_missing_surface_ids`、`mapping_start_missing_reasons` 同源，只减少 `curl | jq` 取数路径，
 不重算验收状态，不启动 Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
+普通首屏 `plain-field-acceptance-packet` DOM 同步暴露同名 `data-field-acceptance-primary-*`、
+`data-live-wysiwyg-missing-reasons` 和 `data-mapping-start-missing-evidence`，方便现场脚本不解析
+嵌套 packet 也能核对主缺口、所见缺口和建图缺口。
 
 2026-07-02 CST 起，普通首屏 `执行图上路线` 在 execution forwarded 后，会按
 `nav2_route_acceptance_packet.readback_endpoints` 自动刷新执行后验收读回：地图预览、Nav2 latest、
