@@ -1239,6 +1239,11 @@ describe("robotControlSummary", () => {
     ]);
     expect(summary.field_acceptance_primary_missing_action_sends_motion).toBe(true);
     expect(summary.field_acceptance_primary_missing_action_requires_safety_confirm).toBe(true);
+    expect(summary.field_acceptance_primary_missing_action_minimal_precheck_safety_only).toBe(true);
+    expect(summary.field_acceptance_primary_missing_action_camera_preflight_required).toBe(false);
+    expect(summary.field_acceptance_primary_missing_action_radar_preflight_required).toBe(false);
+    expect(summary.field_acceptance_primary_missing_action_operator_report_preflight_required).toBe(false);
+    expect(summary.field_acceptance_primary_missing_action_route_wysiwyg_preflight_required).toBe(false);
     expect(summary.field_acceptance_primary_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.field_acceptance_primary_readback_method).toBe("POST");
     expect(summary.field_acceptance_primary_requires_motion_before_readback).toBe(true);

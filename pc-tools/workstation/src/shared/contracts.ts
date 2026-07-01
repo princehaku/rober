@@ -3783,6 +3783,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_missing_action_acceptance_endpoints?: RobotControlFieldAcceptanceStep["acceptance_endpoints"];
   field_acceptance_primary_missing_action_sends_motion?: RobotControlFieldAcceptanceStep["sends_motion_when_executed"];
   field_acceptance_primary_missing_action_requires_safety_confirm?: RobotControlFieldAcceptanceStep["safety_confirm_required"];
+  field_acceptance_primary_missing_action_minimal_precheck_safety_only?: boolean;
+  field_acceptance_primary_missing_action_camera_preflight_required?: boolean;
+  field_acceptance_primary_missing_action_radar_preflight_required?: boolean;
+  field_acceptance_primary_missing_action_operator_report_preflight_required?: boolean;
+  field_acceptance_primary_missing_action_route_wysiwyg_preflight_required?: boolean;
   field_acceptance_primary_readback_endpoint?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_endpoint"];
   field_acceptance_primary_readback_method?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_method"];
   field_acceptance_primary_requires_motion_before_readback?: RobotControlFieldAcceptancePacket["primary_missing_evidence_requires_motion_before_readback"];

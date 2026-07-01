@@ -10427,6 +10427,9 @@ export async function buildRobotControlSummary(
   const fieldAcceptancePrimaryMissingEvidenceAction = fieldAcceptanceSteps
     .find((item) => item.id === fieldAcceptancePrimaryMissingEvidence?.action_id)
     ?? null;
+  const fieldAcceptancePrimaryMissingEvidenceSafetyAction = fieldAcceptanceSafetyConfirmReadyActions
+    .find((item) => item.id === fieldAcceptancePrimaryMissingEvidence?.action_id)
+    ?? null;
   const fieldAcceptanceWysiwygRefreshModeValue = fieldAcceptanceWysiwygRefreshMode(
     liveClosureSummary.live_wysiwyg_missing_surface_ids,
   );
@@ -11046,6 +11049,11 @@ export async function buildRobotControlSummary(
     field_acceptance_primary_missing_action_acceptance_endpoints: fieldAcceptancePrimaryMissingEvidenceAction?.acceptance_endpoints ?? [],
     field_acceptance_primary_missing_action_sends_motion: fieldAcceptancePrimaryMissingEvidenceAction?.sends_motion_when_executed ?? false,
     field_acceptance_primary_missing_action_requires_safety_confirm: fieldAcceptancePrimaryMissingEvidenceAction?.safety_confirm_required ?? false,
+    field_acceptance_primary_missing_action_minimal_precheck_safety_only: fieldAcceptancePrimaryMissingEvidenceSafetyAction?.minimal_precheck_safety_only ?? false,
+    field_acceptance_primary_missing_action_camera_preflight_required: fieldAcceptancePrimaryMissingEvidenceSafetyAction?.camera_preflight_required ?? false,
+    field_acceptance_primary_missing_action_radar_preflight_required: fieldAcceptancePrimaryMissingEvidenceSafetyAction?.radar_preflight_required ?? false,
+    field_acceptance_primary_missing_action_operator_report_preflight_required: fieldAcceptancePrimaryMissingEvidenceSafetyAction?.operator_report_preflight_required ?? false,
+    field_acceptance_primary_missing_action_route_wysiwyg_preflight_required: fieldAcceptancePrimaryMissingEvidenceSafetyAction?.route_wysiwyg_preflight_required ?? false,
     field_acceptance_primary_readback_endpoint: fieldAcceptancePacket.primary_missing_evidence_readback_endpoint,
     field_acceptance_primary_readback_method: fieldAcceptancePacket.primary_missing_evidence_readback_method,
     field_acceptance_primary_requires_motion_before_readback: fieldAcceptancePacket.primary_missing_evidence_requires_motion_before_readback,
