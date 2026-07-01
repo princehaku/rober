@@ -115,6 +115,8 @@ const FREE_ROAM_MAPPING_START_REQUIRED_GATE_IDS = [
   "camera_first_frame",
   "lidar_fresh",
 ] as const;
+const CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS = 60_000;
+const CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS = 75_000;
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1718,6 +1720,13 @@ async function fetchFixedRobotPostSummary(
       error: "",
     };
   } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      return {
+        remote_http_status: null,
+        payload: null,
+        error: `fetch_timeout_${timeoutMs}ms`,
+      };
+    }
     return {
       remote_http_status: null,
       payload: null,
@@ -2299,6 +2308,13 @@ async function fetchCameraProxySummary(
       error: "",
     };
   } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      return {
+        remote_http_status: null,
+        payload: null,
+        error: `fetch_timeout_${timeoutMs}ms`,
+      };
+    }
     return {
       remote_http_status: null,
       payload: null,
@@ -4607,10 +4623,14 @@ export function createWorkstationApp(): express.Express {
         timeout_s: 3,
         read_call_timeout_s: 4,
       },
-      includeBackendSmoke ? 32000 : 12000,
+      includeBackendSmoke ? CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS : CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS,
     );
     if (remote.error) {
-      const failureBody = { ...cameraProbeFailure(sourceBaseUrl, remote.error), proxy_status: "probe_failed" as const };
+      const failureBody = {
+        ...cameraProbeFailure(sourceBaseUrl, remote.error),
+        proxy_status: "probe_failed" as const,
+        normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      };
       cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(failureBody));
       res.status(502).json(failureBody);
       return;

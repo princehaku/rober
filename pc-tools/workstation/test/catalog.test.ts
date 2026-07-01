@@ -39,7 +39,12 @@ import {
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
 import { createWorkstationApp, listenFailureHint, robotControlFixedProxyQueryBaseUrl, robotControlReadOnlyQueryBaseUrl, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
-import type { RobotControlCameraMjpegStatusResponse, RobotControlLiveSummaryResponse, RobotControlSummaryResponse } from "../src/shared/contracts";
+import type {
+  RobotControlCameraFirstFrameProbeProxyResponse,
+  RobotControlCameraMjpegStatusResponse,
+  RobotControlLiveSummaryResponse,
+  RobotControlSummaryResponse,
+} from "../src/shared/contracts";
 import { WORKSTATION_DEV_API_PROXY_TARGET, WORKSTATION_DEV_PORT, WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../src/shared/workstationDefaults";
 
 function sampleStatus(evidenceRef: string) {
@@ -15472,6 +15477,61 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("OpenCV/V4L2 后端也没有取到视频帧");
       expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
     } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation camera first-frame probe reports configured proxy timeout without losing robot base url", async () => {
+    // PC 代理超时应暴露稳定的现场原因；否则普通首屏会把上车 fallback 矩阵误读成 baseUrl 未加载。
+    const upstream = await listenRobotCameraProxyApi({
+      "/api/camera/first-frame/probe": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe_proxy",
+          status: "would_not_return_when_aborted",
+          safe_to_control: false,
+          robot_control_executed: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockImplementation(() => {
+      const controller = new AbortController();
+      controller.abort();
+      return controller.signal;
+    });
+    try {
+      const quickResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/first-frame/probe?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+      });
+      const quickBody = await quickResponse.json() as RobotControlCameraFirstFrameProbeProxyResponse;
+
+      expect(timeoutSpy).toHaveBeenLastCalledWith(60_000);
+      expect(quickResponse.status).toBe(502);
+      expect(quickBody.proxy_status).toBe("probe_failed");
+      expect(quickBody.failure_reason).toBe("fetch_timeout_60000ms");
+      expect(quickBody.blocked_reasons).toEqual(["fetch_timeout_60000ms"]);
+      expect(quickBody.normalized_base_url).toBe(upstream.baseUrl);
+      expect(quickBody.remote_http_status).toBeNull();
+      expect(quickBody.robot_control_executed).toBe(false);
+
+      const smokeResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/first-frame/probe?baseUrl=${encodeURIComponent(upstream.baseUrl)}&backendSmoke=1`, {
+        method: "POST",
+      });
+      const smokeBody = await smokeResponse.json() as RobotControlCameraFirstFrameProbeProxyResponse;
+
+      expect(timeoutSpy).toHaveBeenLastCalledWith(75_000);
+      expect(smokeResponse.status).toBe(502);
+      expect(smokeBody.proxy_status).toBe("probe_failed");
+      expect(smokeBody.failure_reason).toBe("fetch_timeout_75000ms");
+      expect(smokeBody.blocked_reasons).toEqual(["fetch_timeout_75000ms"]);
+      expect(smokeBody.normalized_base_url).toBe(upstream.baseUrl);
+      expect(smokeBody.remote_http_status).toBeNull();
+      expect(smokeBody.robot_control_executed).toBe(false);
+    } finally {
+      timeoutSpy.mockRestore();
       await workstation.close();
       await upstream.close();
     }
