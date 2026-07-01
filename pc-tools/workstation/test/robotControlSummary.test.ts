@@ -276,6 +276,17 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe("false");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status).toBe("needs_probe");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain).toBe("先复测相机首帧并读取共享预览状态；拿到首帧后再刷新当前所见和建图条件。");
+    expect(summary.live_closure_summary?.camera_first_frame_probe_status).toBe("not_loaded");
+    expect(summary.live_closure_summary?.camera_first_frame_failure_reason).toBe("none");
+    expect(summary.live_closure_summary?.camera_source_diagnosis_status).toBe("not_loaded");
+    expect(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive).toBe("not_loaded");
+    expect(summary.live_closure_summary?.camera_shared_preview_exclusive_camera_claim).toBe("false");
+    expect(summary.live_closure_summary?.camera_usb_speed).toBe("not_loaded");
+    expect(summary.live_closure_summary?.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain);
+    expect(summary.live_closure_summary?.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.live_closure_summary?.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.live_closure_summary?.camera_recovery_sends_motion).toBe(false);
+    expect(summary.live_closure_summary?.camera_recovery_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence).toEqual([
       "/api/robot-control/camera/first-frame/probe",
       "/api/robot-control/camera/mjpeg/status",

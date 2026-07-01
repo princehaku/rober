@@ -6838,6 +6838,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.live_wysiwyg_map_visible).toBe(true);
       expect(live.path_current_visible).toBe(true);
       expect(live.live_wysiwyg_camera_visible).toBe(false);
+      expect(live.camera_source_diagnosis_status).toBe(summary.live_closure_summary?.camera_source_diagnosis_status);
+      expect(live.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
+      expect(live.camera_shared_preview_exclusive_camera_claim).toBe(summary.live_closure_summary?.camera_shared_preview_exclusive_camera_claim);
+      expect(live.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.camera_recovery_next_action_plain);
+      expect(live.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+      expect(live.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+      expect(live.camera_recovery_sends_motion).toBe(false);
+      expect(live.camera_recovery_starts_map_runtime).toBe(false);
       expect(live.radar_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
       expect(live.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);
       expect(live.radar_overlay_source_point_count).toBe(summary.live_closure_summary?.radar_overlay_source_point_count);

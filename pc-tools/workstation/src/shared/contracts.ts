@@ -2868,6 +2868,17 @@ export interface RobotControlLiveClosureSummary {
   live_wysiwyg_camera_recovery_sequence: string[];
   live_wysiwyg_camera_recovery_sequence_labels: string[];
   live_wysiwyg_camera_recovery_sends_motion: false;
+  camera_first_frame_probe_status: string;
+  camera_first_frame_failure_reason: string;
+  camera_source_diagnosis_status: string;
+  camera_source_diagnosis_not_exclusive: string;
+  camera_shared_preview_exclusive_camera_claim: string;
+  camera_usb_speed: string;
+  camera_recovery_next_action_plain: string;
+  fixed_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
+  fixed_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status";
+  camera_recovery_sends_motion: false;
+  camera_recovery_starts_map_runtime: false;
   live_wysiwyg_radar_scan_missing_observations: string[];
   live_wysiwyg_map_radar_blocked_reasons: string[];
   live_wysiwyg_radar_map_overlay_status: string;
