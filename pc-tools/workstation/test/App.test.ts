@@ -1524,6 +1524,10 @@ const fixtures: Record<string, unknown> = {
         primary_missing_evidence_label: "图上行程已显示",
         primary_missing_evidence_action_id: "run_nav2_route",
         primary_missing_evidence_readback_endpoint: "/api/robot-control/map/preview",
+        primary_missing_evidence_readback_method: "GET",
+        primary_missing_evidence_requires_motion_before_readback: false,
+        primary_missing_evidence_requires_safety_confirm_before_motion: false,
+        primary_missing_evidence_blocks_field_acceptance: true,
         no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg", "refresh_radar_map_overlay"],
         no_motion_readback_action_labels: ["复验全部读数", "刷新当前所见", "刷新雷达贴图"],
         no_motion_readback_action_endpoints: [
@@ -5671,6 +5675,10 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-label")).toBe("图上行程已显示");
     expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-action-id")).toBe("run_nav2_route");
     expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-readback-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-readback-method")).toBe("GET");
+    expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-requires-motion-before-readback")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-requires-safety-confirm-before-motion")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-blocks-field-acceptance")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
@@ -5752,6 +5760,10 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-label")).toBe("图上行程已显示");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-action-id")).toBe("run_nav2_route");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-readback-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-readback-method")).toBe("GET");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-requires-motion-before-readback")).toBe("false");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-requires-safety-confirm-before-motion")).toBe("false");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-blocks-field-acceptance")).toBe("true");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
@@ -5782,6 +5794,10 @@ describe("App", () => {
     expect(fieldAcceptanceMissingEvidence.text()).toContain("画面首帧：可先只读刷新，归属 传感器就绪后建图；复验读 画面首帧");
     expect(fieldAcceptanceMissingEvidence.attributes("data-missing-evidence-ids")).toBe("route_ready_on_map,same_window_wheel_lr_nonzero,delivery_success,same_hold_window_wheel_lr_nonzero,stop_after_release,free_roam_latest_motion_ready,camera_first_frame,lidar_fresh");
     expect(fieldAcceptanceMissingEvidence.attributes("data-primary-missing-evidence-id")).toBe("route_ready_on_map");
+    expect(fieldAcceptanceMissingEvidence.attributes("data-primary-missing-evidence-readback-method")).toBe("GET");
+    expect(fieldAcceptanceMissingEvidence.attributes("data-primary-missing-evidence-requires-motion-before-readback")).toBe("false");
+    expect(fieldAcceptanceMissingEvidence.attributes("data-primary-missing-evidence-requires-safety-confirm-before-motion")).toBe("false");
+    expect(fieldAcceptanceMissingEvidence.attributes("data-primary-missing-evidence-blocks-field-acceptance")).toBe("true");
     expect(fieldAcceptanceMissingEvidence.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(fieldAcceptanceMissingEvidence.attributes("data-starts-nav2")).toBe("false");
     expect(fieldAcceptanceMissingEvidence.attributes("data-starts-keyboard")).toBe("false");

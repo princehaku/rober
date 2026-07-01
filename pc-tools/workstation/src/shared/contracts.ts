@@ -2920,6 +2920,10 @@ export interface RobotControlFieldAcceptancePacket {
   primary_missing_evidence_label: string;
   primary_missing_evidence_action_id: RobotControlLiveMotionRunbookActionId | "none";
   primary_missing_evidence_readback_endpoint: string;
+  primary_missing_evidence_readback_method: "GET" | "POST" | "none";
+  primary_missing_evidence_requires_motion_before_readback: boolean;
+  primary_missing_evidence_requires_safety_confirm_before_motion: boolean;
+  primary_missing_evidence_blocks_field_acceptance: boolean;
   no_motion_readback_action_ids: string[];
   no_motion_readback_action_labels: string[];
   no_motion_readback_action_endpoints: string[];
@@ -3731,6 +3735,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_missing_evidence_label?: RobotControlFieldAcceptancePacket["primary_missing_evidence_label"];
   field_acceptance_primary_missing_evidence_action_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_action_id"];
   field_acceptance_primary_missing_evidence_readback_endpoint?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_endpoint"];
+  field_acceptance_primary_missing_evidence_readback_method?: RobotControlFieldAcceptancePacket["primary_missing_evidence_readback_method"];
+  field_acceptance_primary_missing_evidence_requires_motion_before_readback?: RobotControlFieldAcceptancePacket["primary_missing_evidence_requires_motion_before_readback"];
+  field_acceptance_primary_missing_evidence_requires_safety_confirm_before_motion?: RobotControlFieldAcceptancePacket["primary_missing_evidence_requires_safety_confirm_before_motion"];
+  field_acceptance_primary_missing_evidence_blocks_field_acceptance?: RobotControlFieldAcceptancePacket["primary_missing_evidence_blocks_field_acceptance"];
   field_acceptance_no_motion_readback_action_ids?: RobotControlFieldAcceptancePacket["no_motion_readback_action_ids"];
   field_acceptance_no_motion_readback_action_labels?: RobotControlFieldAcceptancePacket["no_motion_readback_action_labels"];
   field_acceptance_no_motion_readback_action_endpoints?: RobotControlFieldAcceptancePacket["no_motion_readback_action_endpoints"];

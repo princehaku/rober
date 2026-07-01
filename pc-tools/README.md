@@ -53,6 +53,13 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 `live_closure_summary.objective_audit_*` 和同源 objective item，不重算、不触发运动，方便现场
 `curl | jq` 一眼确认 PC 易用性、WYSIWYG、最小预检和自由移动/建图还差哪一项。
 
+2026-07-02 CST 起，现场验收包的主缺口证据也在 summary 顶层和普通首屏 DOM 暴露完整读回口径：
+`field_acceptance_primary_missing_evidence_label`、`field_acceptance_primary_missing_evidence_readback_method`、
+`field_acceptance_primary_missing_evidence_requires_motion_before_readback`、
+`field_acceptance_primary_missing_evidence_requires_safety_confirm_before_motion` 和
+`field_acceptance_primary_missing_evidence_blocks_field_acceptance`。这些字段用于区分“现在可只读复验”
+和“必须先完成对应运动动作后再复验”，不新增任何自动运动入口。
+
 2026-07-02 CST 起，普通首屏 `执行图上路线` 在 execution forwarded 后，会按
 `nav2_route_acceptance_packet.readback_endpoints` 自动刷新执行后验收读回：地图预览、Nav2 latest、
 底盘 wheel feedback samples、delivery latest 和 summary。地图刷新保留 `tripExecutionRefresh`，

@@ -1101,8 +1101,19 @@ describe("robotControlSummary", () => {
       "雷达新鲜读数",
     ]);
     expect(summary.field_acceptance_primary_missing_evidence_id).toBe("same_window_wheel_lr_nonzero");
+    expect(summary.field_acceptance_primary_missing_evidence_label).toBe("同窗口 wheel L/R 非零");
     expect(summary.field_acceptance_primary_missing_evidence_action_id).toBe("run_nav2_route");
     expect(summary.field_acceptance_primary_missing_evidence_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
+    expect(summary.field_acceptance_primary_missing_evidence_readback_method).toBe("POST");
+    expect(summary.field_acceptance_primary_missing_evidence_requires_motion_before_readback).toBe(true);
+    expect(summary.field_acceptance_primary_missing_evidence_requires_safety_confirm_before_motion).toBe(true);
+    expect(summary.field_acceptance_primary_missing_evidence_blocks_field_acceptance).toBe(true);
+    const fieldAcceptancePacket = summary.field_acceptance_packet;
+    expect(fieldAcceptancePacket).toBeDefined();
+    expect(fieldAcceptancePacket?.primary_missing_evidence_readback_method).toBe("POST");
+    expect(fieldAcceptancePacket?.primary_missing_evidence_requires_motion_before_readback).toBe(true);
+    expect(fieldAcceptancePacket?.primary_missing_evidence_requires_safety_confirm_before_motion).toBe(true);
+    expect(fieldAcceptancePacket?.primary_missing_evidence_blocks_field_acceptance).toBe(true);
     expect(summary.field_acceptance_missing_evidence_items).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: "same_window_wheel_lr_nonzero",
