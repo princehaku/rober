@@ -4247,6 +4247,22 @@ function plainFieldAcceptanceStepTarget(step: RobotControlFieldAcceptanceStep): 
   };
   return targetByAction[step.id];
 }
+function plainFieldAcceptanceStepFocusKind(step: RobotControlFieldAcceptanceStep): string {
+  // 顶部验收入口只说明真实落点，具体动作仍必须在目标卡片里二次确认。
+  if (step.id === "run_nav2_route") {
+    return plainManualSafetyConfirmed.value ? "trip_execute_button" : "trip_safety_confirm";
+  }
+  if (step.id === "hold_keyboard") {
+    return "keyboard_arm";
+  }
+  if (step.id === "start_free_move") {
+    return "free_move_safety_confirm";
+  }
+  if (step.id === "start_mapping_when_sensors_ready") {
+    return "mapping_start";
+  }
+  return plainFieldAcceptanceStepTarget(step);
+}
 function plainFieldAcceptanceStepButtonLabel(step: RobotControlFieldAcceptanceStep): string {
   const labels: Record<RobotControlLiveMotionRunbookItem["id"], string> = {
     run_nav2_route: step.ready ? "去处理行程" : "去看行程",
@@ -4263,6 +4279,7 @@ const plainFieldAcceptanceRows = computed(() => (
     proofText: plainActionCardUserText(step.proof_plain),
     missingText: plainFieldAcceptanceMissingEvidenceText(step),
     sourceCardId: plainFieldAcceptanceStepTarget(step),
+    focusKind: plainFieldAcceptanceStepFocusKind(step),
     buttonLabel: plainFieldAcceptanceStepButtonLabel(step),
     acceptanceEndpointsText: step.acceptance_endpoints.join(",") || "none",
     blockedReasonsText: step.blocked_reasons.join(",") || "none",
@@ -4277,6 +4294,26 @@ const plainFieldAcceptanceNextText = computed(() => {
   const safetyText = packet.next_step_requires_safety_confirm ? "先勾现场安全确认" : "无需额外安全确认";
   const motionText = packet.next_step_sends_motion ? "这一步会让车动" : "这一步只读";
   return `下一步：${plainActionCardUserText(packet.next_step_label)}；${safetyText}；${motionText}。`;
+});
+const plainFieldAcceptancePrimaryStep = computed(() => {
+  // 现场验收卡顶部只压出一个主入口，避免 operator 在长清单里猜下一步。
+  const rows = plainFieldAcceptanceRows.value;
+  const packet = plainFieldAcceptancePacket.value;
+  const primary = rows.find((step) => step.id === packet?.next_step_id)
+    ?? rows.find((step) => step.ready && !step.completed)
+    ?? rows[0]
+    ?? null;
+  if (!primary) {
+    return null;
+  }
+  const safetyText = primary.safety_confirm_required ? "先勾现场安全确认" : "按当前卡片处理";
+  const motionText = primary.sends_motion_when_executed ? "目标动作会让车动" : "目标动作只读";
+  return {
+    ...primary,
+    text: `下一步：${plainActionCardUserText(primary.label)}；${safetyText}；${motionText}。去处理只跳到对应卡片，只读读回只刷新验收材料。`,
+    readbackPending: liveMotionRunbookReadbackPendingAction.value === primary.id,
+    readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
+  };
 });
 const plainTripRunbookItem = computed(() => (
   plainLiveClosureSummary.value?.live_motion_runbook_items.find((item) => item.id === "run_nav2_route") ?? null
@@ -17357,6 +17394,86 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="plain-field-acceptance-summary">
             {{ plainActionCardUserText(plainFieldAcceptancePacket.summary_plain) }}
           </p>
+          <div
+            v-if="plainFieldAcceptancePrimaryStep"
+            class="plain-field-acceptance-primary"
+            data-testid="plain-field-acceptance-primary"
+            :data-action-id="plainFieldAcceptancePrimaryStep.id"
+            :data-state="plainFieldAcceptancePrimaryStep.state"
+            :data-ready="String(plainFieldAcceptancePrimaryStep.ready)"
+            :data-completed="String(plainFieldAcceptancePrimaryStep.completed)"
+            :data-proof-status="plainFieldAcceptancePrimaryStep.proof_status"
+            :data-start-endpoint="plainFieldAcceptancePrimaryStep.start_endpoint"
+            :data-stop-endpoint="plainFieldAcceptancePrimaryStep.stop_endpoint"
+            :data-acceptance-endpoints="plainFieldAcceptancePrimaryStep.acceptanceEndpointsText"
+            :data-missing-evidence="plainFieldAcceptancePrimaryStep.missingEvidenceText"
+            :data-focus-target-source-card-id="plainFieldAcceptancePrimaryStep.sourceCardId"
+            :data-focus-target-kind="plainFieldAcceptancePrimaryStep.focusKind"
+            :data-readback-refresh-endpoints="plainFieldAcceptancePrimaryStep.acceptanceEndpointsText"
+            :data-readback-refresh-pending="String(plainFieldAcceptancePrimaryStep.readbackPending)"
+            :data-sends-motion-when-executed="String(plainFieldAcceptancePrimaryStep.sends_motion_when_executed)"
+            :data-safety-confirm-required="String(plainFieldAcceptancePrimaryStep.safety_confirm_required)"
+            data-focus-only="true"
+            data-readback-only="true"
+            data-readback-refresh-sends-motion="false"
+            data-readback-refresh-starts-nav2="false"
+            data-readback-refresh-starts-manual="false"
+            data-readback-refresh-starts-keyboard="false"
+            data-readback-refresh-starts-free-roam="false"
+            data-readback-refresh-starts-map-runtime="false"
+            data-readback-refresh-submits-delivery="false"
+            data-readback-refresh-stops-motion="false"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <span class="plain-progress-label">下一步</span>
+            <span class="status-chip" :data-state="plainFieldAcceptancePrimaryStep.state">{{ plainFieldAcceptancePrimaryStep.state }}</span>
+            <span class="muted">{{ plainFieldAcceptancePrimaryStep.text }}</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-field-acceptance-primary-go"
+              :data-focus-target-source-card-id="plainFieldAcceptancePrimaryStep.sourceCardId"
+              :data-focus-target-kind="plainFieldAcceptancePrimaryStep.focusKind"
+              data-focus-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="focusPlainActionCardTarget(plainFieldAcceptancePrimaryStep.sourceCardId)"
+            >
+              {{ plainFieldAcceptancePrimaryStep.buttonLabel }}
+            </button>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-field-acceptance-primary-readback"
+              :disabled="plainFieldAcceptancePrimaryStep.readbackDisabled"
+              :data-readback-refresh-endpoints="plainFieldAcceptancePrimaryStep.acceptanceEndpointsText"
+              data-readback-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="refreshLiveMotionRunbookReadback(plainFieldAcceptancePrimaryStep.id)"
+            >
+              {{ plainFieldAcceptancePrimaryStep.readbackPending ? "读回中" : "只读读回" }}
+            </button>
+          </div>
           <div class="plain-field-acceptance-steps" data-testid="plain-field-acceptance-steps">
             <div
               v-for="step in plainFieldAcceptanceRows"
@@ -17376,6 +17493,7 @@ onBeforeUnmount(() => {
               :data-missing-evidence="step.missingEvidenceText"
               :data-blocked-reasons="step.blockedReasonsText"
               :data-focus-target-source-card-id="step.sourceCardId"
+              :data-focus-target-kind="step.focusKind"
               data-focus-only="true"
               data-sends-motion-when-clicked="false"
               data-starts-nav2="false"

@@ -814,6 +814,18 @@ h3 {
   gap: 7px;
 }
 
+.plain-field-acceptance-primary {
+  /* 两个按钮只做导流和只读复验，放成一行减少普通首屏认知负担。 */
+  display: grid;
+  grid-template-columns: minmax(58px, auto) auto minmax(220px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+}
+
 .plain-field-acceptance-step {
   display: grid;
   grid-template-columns: minmax(96px, 0.42fr) auto minmax(180px, 1fr) auto;
