@@ -1162,6 +1162,80 @@ describe("robotControlSummary", () => {
     expect(wysiwygObjective?.source_card_id).toBe("radar_map_points");
   });
 
+  it("names the camera WYSIWYG action as USB hardware recovery when radar is already current", async () => {
+    // 雷达和地图已经 WYSIWYG 时，剩余相机缺口必须直接告诉现场先换高速 USB，再复测首帧。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      if (url.pathname === "/api/camera/health") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            owners: [],
+          },
+          uvc_usb_topology: {
+            status: "uvc_video_on_full_speed_usb",
+            video_usb_speed: "12M",
+            next_action: "move_camera_to_high_speed_usb_port_or_powered_hub",
+          },
+          source_diagnosis: {
+            status: "uvc_full_speed_usb_not_exclusive",
+            not_exclusive: true,
+          },
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.pathname === "/api/map/preview") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          map_current_visible: true,
+          map_once_observed: true,
+          radar_overlay_status: "loaded",
+          radar_overlay_point_count: 5,
+          radar_overlay_current_point_count: 5,
+          radar_overlay_source_point_count: 6,
+          radar_overlay_refresh_required: false,
+          radar_overlay_blocks_wysiwyg: false,
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(basePayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toEqual(["camera"]);
+    expect(summary.live_closure_summary?.radar_map_points_visible).toBe(true);
+    expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
+    expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("换高速USB后复测");
+    expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_label).toBe("换高速USB后复测相机首帧");
+    const wysiwygObjective = summary.live_closure_summary?.objective_audit_items.find((item) => item.id === "wysiwyg");
+    expect(wysiwygObjective?.next_action_plain).toBe("下一步：换高速USB后复测相机首帧。");
+    expect(wysiwygObjective?.source_card_id).toBe("camera_preview");
+  });
+
   it("separates free movement from mapping sensor readiness in live closure", async () => {
     // 自由移动只要安全确认和停止兜底；相机/雷达缺口只能阻塞建图启动，不能冒充移动前置。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

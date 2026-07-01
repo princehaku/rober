@@ -9125,7 +9125,7 @@ function buildLiveClosureSummary(
     },
   ];
   const liveWysiwygSurfaceLabel = (id: string): string => ({
-    camera: "复测相机首帧",
+    camera: cameraHardwareActionRequired ? "换高速USB后复测相机首帧" : "复测相机首帧",
     map: "刷新地图画面",
     radar_map_points: "刷新雷达扫描读数",
   }[id] ?? id);
